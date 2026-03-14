@@ -395,6 +395,9 @@ import setupRouter from "./routes/setup";
 import pdksRouter from "./routes/pdks";
 import payrollRouter from "./routes/payroll";
 import changeRequestsRouter from "./routes/change-requests";
+import { crmIletisimRouter } from "./routes/crm-iletisim";
+import { checkSlaBreaches } from "./services/ticket-routing-engine";
+import { schedulerManager } from "./scheduler-manager";
 
 
 // Multer configuration for file uploads (memory storage)
@@ -1054,9 +1057,175 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   initFactoryKioskMigrations();
   initOnboardingMigrations();
 
+  await runCrmSprint1Migration();
+
+  app.use("/api/iletisim", isAuthenticated, crmIletisimRouter);
+
+  schedulerManager.registerInterval('sla-breach-checker', async () => {
+    try {
+      await checkSlaBreaches();
+    } catch (err) {
+      console.error("[SLA-CHECKER] Error:", err);
+    }
+  }, 15 * 60 * 1000);
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+async function runCrmSprint1Migration() {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id SERIAL PRIMARY KEY,
+        ticket_number VARCHAR(20) NOT NULL UNIQUE,
+        branch_id INTEGER,
+        created_by_user_id VARCHAR,
+        department VARCHAR(50) NOT NULL,
+        title VARCHAR(300) NOT NULL,
+        description TEXT NOT NULL,
+        priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+        status VARCHAR(30) NOT NULL DEFAULT 'acik',
+        assigned_to_user_id VARCHAR,
+        assigned_at TIMESTAMP,
+        sla_deadline TIMESTAMP,
+        sla_breached BOOLEAN NOT NULL DEFAULT false,
+        sla_breached_at TIMESTAMP,
+        related_equipment_id INTEGER,
+        recurrence_count INTEGER NOT NULL DEFAULT 1,
+        resolved_at TIMESTAMP,
+        resolved_by_user_id VARCHAR,
+        resolution_note TEXT,
+        satisfaction_score INTEGER,
+        is_deleted BOOLEAN NOT NULL DEFAULT false,
+        deleted_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS st_branch_idx ON support_tickets(branch_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS st_dept_idx ON support_tickets(department)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS st_status_idx ON support_tickets(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS st_assigned_idx ON support_tickets(assigned_to_user_id)`);
+
+    await db.execute(sql`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'st_branch_fk') THEN
+        ALTER TABLE support_tickets ADD CONSTRAINT st_branch_fk FOREIGN KEY (branch_id) REFERENCES branches(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'st_created_by_fk') THEN
+        ALTER TABLE support_tickets ADD CONSTRAINT st_created_by_fk FOREIGN KEY (created_by_user_id) REFERENCES users(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'st_assigned_to_fk') THEN
+        ALTER TABLE support_tickets ADD CONSTRAINT st_assigned_to_fk FOREIGN KEY (assigned_to_user_id) REFERENCES users(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'st_resolved_by_fk') THEN
+        ALTER TABLE support_tickets ADD CONSTRAINT st_resolved_by_fk FOREIGN KEY (resolved_by_user_id) REFERENCES users(id);
+      END IF;
+    END $$`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS support_ticket_comments (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL,
+        author_id VARCHAR NOT NULL,
+        content TEXT NOT NULL,
+        is_internal BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await db.execute(sql`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'stc_ticket_fk') THEN
+        ALTER TABLE support_ticket_comments ADD CONSTRAINT stc_ticket_fk FOREIGN KEY (ticket_id) REFERENCES support_tickets(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'stc_author_fk') THEN
+        ALTER TABLE support_ticket_comments ADD CONSTRAINT stc_author_fk FOREIGN KEY (author_id) REFERENCES users(id);
+      END IF;
+    END $$`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hq_tasks (
+        id SERIAL PRIMARY KEY,
+        task_number VARCHAR(20) NOT NULL UNIQUE,
+        title VARCHAR(300) NOT NULL,
+        description TEXT,
+        assigned_by_user_id VARCHAR NOT NULL,
+        assigned_to_user_id VARCHAR NOT NULL,
+        department VARCHAR(50),
+        priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+        status VARCHAR(30) NOT NULL DEFAULT 'beklemede',
+        due_date TIMESTAMP,
+        completed_at TIMESTAMP,
+        completion_note TEXT,
+        progress_percent INTEGER NOT NULL DEFAULT 0,
+        is_deleted BOOLEAN NOT NULL DEFAULT false,
+        deleted_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS hqt_assigned_to_idx ON hq_tasks(assigned_to_user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS hqt_assigned_by_idx ON hq_tasks(assigned_by_user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS hqt_status_idx ON hq_tasks(status)`);
+
+    await db.execute(sql`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'hqt_assigned_by_fk') THEN
+        ALTER TABLE hq_tasks ADD CONSTRAINT hqt_assigned_by_fk FOREIGN KEY (assigned_by_user_id) REFERENCES users(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'hqt_assigned_to_fk') THEN
+        ALTER TABLE hq_tasks ADD CONSTRAINT hqt_assigned_to_fk FOREIGN KEY (assigned_to_user_id) REFERENCES users(id);
+      END IF;
+    END $$`);
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS broadcast_receipts (
+        id SERIAL PRIMARY KEY,
+        announcement_id INTEGER NOT NULL,
+        user_id VARCHAR NOT NULL,
+        branch_id INTEGER,
+        seen_at TIMESTAMP,
+        confirmed_at TIMESTAMP,
+        CONSTRAINT br_ann_user_uniq UNIQUE(announcement_id, user_id)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS br_ann_idx ON broadcast_receipts(announcement_id)`);
+
+    await db.execute(sql`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'br_announcement_fk') THEN
+        ALTER TABLE broadcast_receipts ADD CONSTRAINT br_announcement_fk FOREIGN KEY (announcement_id) REFERENCES announcements(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'br_user_fk') THEN
+        ALTER TABLE broadcast_receipts ADD CONSTRAINT br_user_fk FOREIGN KEY (user_id) REFERENCES users(id);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'br_branch_fk') THEN
+        ALTER TABLE broadcast_receipts ADD CONSTRAINT br_branch_fk FOREIGN KEY (branch_id) REFERENCES branches(id);
+      END IF;
+    END $$`);
+
+    console.log("[CRM-SPRINT-1] Migration complete");
+
+    const ticketCount = await db.execute(sql`SELECT COUNT(*) as count FROM support_tickets`);
+    if (parseInt(ticketCount.rows[0]?.count as string) === 0) {
+      const sampleTickets = [
+        { ticketNumber: "TKT-B001", department: "teknik", title: "Soğutucu dolap arızalandı — ürünler tehlikede", description: "Sabah 07:30'dan beri çalışmıyor. İçindeki cheesecake ve tiramisu risk altında.", priority: "kritik" },
+        { ticketNumber: "TKT-B002", department: "lojistik", title: "Sevkiyatta 24 adet Cinnaboom eksik", description: "Bu haftaki sevkiyatta Cinnaboom 6'lı paketten 24 adet eksik geldi.", priority: "yuksek" },
+        { ticketNumber: "TKT-B003", department: "muhasebe", title: "Kasım ayı faturasında 340₺ fark var", description: "Kasım ayı faturasında sipariş etmediğimiz 2 kalem ürün yer alıyor.", priority: "normal" },
+        { ticketNumber: "TKT-B004", department: "trainer", title: "Yeni barista için Bombty Latte reçete eğitimi", description: "Yeni başlayan personelimiz Bombty Latte reçetesinde sorun yaşıyor, eğitim talep ediyoruz.", priority: "normal" },
+        { ticketNumber: "TKT-B005", department: "marketing", title: "Bahar menüsü için masa üstü materyal talebi", description: "14 Mart lansmanı için 50 adet stand üstü menü kartı ve 20 adet pencere afişi talep ediyoruz.", priority: "dusuk" },
+      ];
+
+      for (const t of sampleTickets) {
+        await db.execute(sql`
+          INSERT INTO support_tickets (ticket_number, department, title, description, priority, branch_id, status)
+          VALUES (${t.ticketNumber}, ${t.department}, ${t.title}, ${t.description}, ${t.priority}, 1, 'acik')
+          ON CONFLICT DO NOTHING
+        `);
+      }
+      console.log("[CRM-SPRINT-1] Sample tickets seeded");
+    }
+  } catch (err) {
+    console.error("[CRM-SPRINT-1] Migration error:", err);
+  }
 }
 
 // Note: Global AI Chat endpoint added via append - will be inserted at end

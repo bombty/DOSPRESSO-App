@@ -15244,3 +15244,96 @@ export const webinarRegistrations = pgTable("webinar_registrations", {
 export const insertWebinarRegistrationSchema = createInsertSchema(webinarRegistrations).omit({ id: true, registeredAt: true });
 export type InsertWebinarRegistration = z.infer<typeof insertWebinarRegistrationSchema>;
 export type WebinarRegistration = typeof webinarRegistrations.$inferSelect;
+
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  ticketNumber: varchar("ticket_number", { length: 20 }).notNull().unique(),
+  branchId: integer("branch_id").references(() => branches.id),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  department: varchar("department", { length: 50 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description").notNull(),
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"),
+  status: varchar("status", { length: 30 }).notNull().default("acik"),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  assignedAt: timestamp("assigned_at"),
+  slaDeadline: timestamp("sla_deadline"),
+  slaBreached: boolean("sla_breached").notNull().default(false),
+  slaBreachedAt: timestamp("sla_breached_at"),
+  relatedEquipmentId: integer("related_equipment_id"),
+  recurrenceCount: integer("recurrence_count").notNull().default(1),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id),
+  resolutionNote: text("resolution_note"),
+  satisfactionScore: integer("satisfaction_score"),
+  isDeleted: boolean("is_deleted").notNull().default(false),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("st_branch_idx").on(table.branchId),
+  index("st_dept_idx").on(table.department),
+  index("st_status_idx").on(table.status),
+  index("st_assigned_idx").on(table.assignedToUserId),
+]);
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+
+export const supportTicketComments = pgTable("support_ticket_comments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => supportTickets.id),
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  isInternal: boolean("is_internal").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSupportTicketCommentSchema = createInsertSchema(supportTicketComments).omit({ id: true, createdAt: true });
+export type InsertSupportTicketComment = z.infer<typeof insertSupportTicketCommentSchema>;
+export type SupportTicketComment = typeof supportTicketComments.$inferSelect;
+
+export const hqTasks = pgTable("hq_tasks", {
+  id: serial("id").primaryKey(),
+  taskNumber: varchar("task_number", { length: 20 }).notNull().unique(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  assignedByUserId: varchar("assigned_by_user_id").notNull().references(() => users.id),
+  assignedToUserId: varchar("assigned_to_user_id").notNull().references(() => users.id),
+  department: varchar("department", { length: 50 }),
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"),
+  status: varchar("status", { length: 30 }).notNull().default("beklemede"),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  completionNote: text("completion_note"),
+  progressPercent: integer("progress_percent").notNull().default(0),
+  isDeleted: boolean("is_deleted").notNull().default(false),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("hqt_assigned_to_idx").on(table.assignedToUserId),
+  index("hqt_assigned_by_idx").on(table.assignedByUserId),
+  index("hqt_status_idx").on(table.status),
+]);
+
+export const insertHqTaskSchema = createInsertSchema(hqTasks).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertHqTask = z.infer<typeof insertHqTaskSchema>;
+export type HqTask = typeof hqTasks.$inferSelect;
+
+export const broadcastReceipts = pgTable("broadcast_receipts", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id").notNull().references(() => announcements.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  branchId: integer("branch_id").references(() => branches.id),
+  seenAt: timestamp("seen_at"),
+  confirmedAt: timestamp("confirmed_at"),
+}, (table) => [
+  unique("br_announcement_user_uniq").on(table.announcementId, table.userId),
+  index("br_ann_idx").on(table.announcementId),
+]);
+
+export const insertBroadcastReceiptSchema = createInsertSchema(broadcastReceipts).omit({ id: true });
+export type InsertBroadcastReceipt = z.infer<typeof insertBroadcastReceiptSchema>;
+export type BroadcastReceipt = typeof broadcastReceipts.$inferSelect;
