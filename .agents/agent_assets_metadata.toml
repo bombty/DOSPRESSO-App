@@ -90,3 +90,15 @@ id = "xhCTJg1UjHGk26srZ1X3-"
 uri = "file://.local/tasks/sistem-audit-raporu.md"
 type = "text"
 title = "DOSPRESSO Sistem Denetim Raporu"
+
+[[outputs]]
+id = "HLnb7POp10Tdxyhg6ZG9B"
+uri = "file://.local/tasks/dospresso-design-audit-report.md"
+type = "text"
+title = "DOSPRESSO Görsel Tasarım Sistemi Audit Raporu"
+
+[[outputs]]
+id = "K-JJQPxxWXOKn9x3YhlkZ"
+uri = "file://attached_assets/DOSPRESSO_Rol_Dashboard_Menu_Audit_Raporu.md"
+type = "text"
+title = "DOSPRESSO Rol, Dashboard ve Menü Denetim Raporu"
