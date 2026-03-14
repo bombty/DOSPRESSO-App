@@ -723,6 +723,56 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
   await setupAuth(app, authLimiter);
 
+  if (process.env.NODE_ENV !== 'production') {
+    const TEST_HQ_USER_ID = 'test-hq-superuser-001';
+    
+    (async () => {
+      try {
+        const [existing] = await db.select().from(users).where(eq(users.id, TEST_HQ_USER_ID)).limit(1);
+        if (!existing) {
+          const bcrypt = await import('bcrypt');
+          const hash = await bcrypt.default.hashSync('test-no-login', 10);
+          await db.insert(users).values({
+            id: TEST_HQ_USER_ID,
+            username: 'test_hq_all',
+            firstName: 'Test',
+            lastName: 'HQ Superuser',
+            email: 'test-hq@dospresso.local',
+            hashedPassword: hash,
+            role: 'admin',
+            isActive: true,
+            accountStatus: 'approved',
+          });
+          console.log('[TEST] Test HQ superuser created (id: test-hq-superuser-001)');
+        }
+      } catch (e: any) {
+        console.warn('[TEST] Could not create test HQ user:', e.message);
+      }
+    })();
+
+    app.get('/api/test-hq-login', (req: any, res) => {
+      (async () => {
+        try {
+          const [testUser] = await db.select().from(users).where(eq(users.id, TEST_HQ_USER_ID)).limit(1);
+          if (!testUser) return res.status(404).json({ error: 'Test kullanıcı bulunamadı' });
+
+          req.session.regenerate((regenErr: any) => {
+            if (regenErr) console.error('[TEST] Session regen error:', regenErr);
+            req.login(testUser, (loginErr: any) => {
+              if (loginErr) return res.status(500).json({ error: 'Login failed' });
+              req.session.save((saveErr: any) => {
+                if (saveErr) return res.status(500).json({ error: 'Session save failed' });
+                res.redirect('/');
+              });
+            });
+          });
+        } catch (e: any) {
+          res.status(500).json({ error: e.message });
+        }
+      })();
+    });
+  }
+
   app.use('/api/ai/', sensitiveApiLimiter);
   app.use('/api/agent/run-now', agentRunLimiter);
 
