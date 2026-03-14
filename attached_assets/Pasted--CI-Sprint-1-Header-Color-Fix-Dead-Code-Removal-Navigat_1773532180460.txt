@@ -1,0 +1,90 @@
+# CI-Sprint-1 — Header Color Fix + Dead Code Removal + Navigation Bugs
+
+## Context
+DOSPRESSO franchise management platform. Stack: React 18 + TypeScript, Shadcn/ui, Wouter routing.
+This sprint contains ONLY bug fixes and dead code removal. No new features. No layout changes.
+Do NOT touch any page contents, backend APIs, database schema, or auth system.
+
+---
+
+## TASK 1 — Fix Header Background Color
+
+**File:** `client/src/components/app-header.tsx`  
+**Line:** 85
+
+Current:
+```tsx
+<div className="px-3 py-2 border-b bg-[#1e3a5f] dark:bg-[#1e3a5f] flex items-center gap-3 relative">
+```
+
+Change to:
+```tsx
+<div className="px-3 py-2 border-b bg-[#122549] dark:bg-[#122549] flex items-center gap-3 relative">
+```
+
+Only change the two hex color values. Do not change anything else on this line or anywhere else in this file.
+
+---
+
+## TASK 2 — Fix İletişim Merkezi Navigation Path
+
+**File:** `client/src/components/hamburger-menu.tsx`  
+**Around line:** 321-325
+
+Find the navigation item that links to İletişim Merkezi (or İletişim, or similar label).
+It currently points to `/bildirimler`.
+
+Change the path from `/bildirimler` to `/iletisim-merkezi`.
+
+Only change the path string. Do not change the label, icon, or any other property.
+
+---
+
+## TASK 3 — Unify Logout Endpoint
+
+**File:** `client/src/components/hamburger-menu.tsx`  
+**Around line:** 342
+
+The hamburger menu logout currently calls `GET /api/logout`.
+
+Change it to call `POST /api/auth/logout` instead, matching the logout call used in the header component.
+
+The fix should look like:
+```typescript
+// Before (GET):
+window.location.href = '/api/logout';
+// or fetch('/api/logout')
+
+// After (POST):
+await fetch('/api/auth/logout', { method: 'POST' });
+// then redirect or clear session as appropriate
+```
+
+Match exactly how app-header.tsx handles logout — use the same pattern.
+
+---
+
+## TASK 4 — Delete Dead Code Files
+
+The following two files are defined but NEVER imported or rendered anywhere in the codebase.
+Verify they are not imported anywhere, then delete them:
+
+1. `client/src/components/app-sidebar.tsx` (~425 lines) — AppSidebar component, never used
+2. `client/src/components/page-header.tsx` (~120 lines) — PageHeader component, never used
+
+Before deleting, confirm with a search that neither file is imported in any .tsx or .ts file.
+If either file IS imported somewhere (unexpected), do NOT delete it — report it instead.
+
+---
+
+## Verification Checklist
+
+After completing all tasks, confirm:
+- [ ] Header shows #122549 (darker navy) in both light and dark mode
+- [ ] Hamburger menu İletişim Merkezi item navigates to /iletisim-merkezi
+- [ ] Logout from hamburger menu calls POST /api/auth/logout
+- [ ] app-sidebar.tsx deleted (or reported if still imported)
+- [ ] page-header.tsx deleted (or reported if still imported)
+- [ ] No other files were modified
+- [ ] TypeScript compilation has no new errors
+- [ ] App starts successfully

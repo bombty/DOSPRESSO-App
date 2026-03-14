@@ -82,7 +82,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
 
   return (
     <div className="sticky top-0 z-50 bg-background border-b">
-      <div className="px-3 py-2 border-b bg-[#1e3a5f] dark:bg-[#1e3a5f] flex items-center gap-3 relative">
+      <div className="px-3 py-2 border-b bg-[#122549] dark:bg-[#122549] flex items-center gap-3 relative">
         
         <div className="flex items-center gap-1 flex-shrink-0">
           <div className={hideHamburgerOnMobile ? 'hidden md:block' : ''}>

@@ -317,7 +317,7 @@ export function HamburgerMenu() {
 
             {!isFlat && (
               <button
-                onClick={() => handleNavigate("/bildirimler")}
+                onClick={() => handleNavigate("/iletisim-merkezi")}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
                 data-testid="menu-item-notifications-footer"
               >
@@ -337,9 +337,14 @@ export function HamburgerMenu() {
             <div className="mx-3 my-1 border-t" />
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 setOpen(false);
-                window.location.href = "/api/logout";
+                try {
+                  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                } catch (e) {
+                  console.error("Logout error:", e);
+                }
+                setLocation("/login");
               }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover-elevate transition-colors"
               data-testid="menu-item-logout"
