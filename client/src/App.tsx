@@ -213,6 +213,7 @@ const FranchiseOzet = lazy(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazy(() => import("@/pages/pdks"));
 const MaasPage = lazy(() => import("@/pages/maas"));
 const BordromPage = lazy(() => import("@/pages/bordrom"));
+const IletisimMerkezi = lazy(() => import("@/pages/iletisim-merkezi"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -458,6 +459,7 @@ function Router() {
           <Route path="/pdks" component={PdksPage} />
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
+          <Route path="/iletisim-merkezi" component={IletisimMerkezi} />
         </>
       )}
       
