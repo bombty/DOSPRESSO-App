@@ -60,9 +60,10 @@ export default function HqTasksTab() {
     },
   });
 
+  const safeTasks = Array.isArray(rawTasks) ? rawTasks : [];
   const tasks = !backendFilters.includes(filter)
-    ? rawTasks.filter(t => t.status === filter)
-    : rawTasks;
+    ? safeTasks.filter(t => t.status === filter)
+    : safeTasks;
 
   const { data: hqUsers = [] } = useQuery<HqUser[]>({
     queryKey: ["/api/users/hq"],

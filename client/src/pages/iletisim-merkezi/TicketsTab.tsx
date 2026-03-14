@@ -39,14 +39,16 @@ export default function TicketsTab() {
     },
   });
 
+  const safeTickets = Array.isArray(tickets) ? tickets : [];
+
   const filteredTickets = statusFilter === "sla"
-    ? tickets.filter(t => t.sla_breached)
-    : tickets;
+    ? safeTickets.filter(t => t.sla_breached)
+    : safeTickets;
 
   const deptCounts = DEPARTMENTS.map(d => ({
     ...d,
-    count: tickets.filter(t => t.department === d.key && !["cozuldu", "kapatildi"].includes(t.status)).length,
-    breached: tickets.filter(t => t.department === d.key && t.sla_breached).length,
+    count: safeTickets.filter(t => t.department === d.key && !["cozuldu", "kapatildi"].includes(t.status)).length,
+    breached: safeTickets.filter(t => t.department === d.key && t.sla_breached).length,
   }));
 
   const dotColors: Record<string, string> = {

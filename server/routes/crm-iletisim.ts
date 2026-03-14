@@ -1,9 +1,11 @@
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import { db } from "../db";
 import { supportTickets, supportTicketComments, hqTasks, broadcastReceipts, type SupportTicket } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { routeTicket, generateTicketNumber, generateHqTaskNumber } from "../services/ticket-routing-engine";
 import { storage } from "../storage";
+import { isAuthenticated } from "../localAuth";
 
 interface AuthenticatedUser {
   id: string;
@@ -17,6 +19,44 @@ interface AuthRequest extends Request {
 }
 
 const router = Router();
+
+router.use(isAuthenticated);
+
+const createTicketSchema = z.object({
+  department: z.enum(["teknik", "lojistik", "muhasebe", "marketing", "trainer", "hr"]),
+  title: z.string().min(5).max(300),
+  description: z.string().min(10),
+  priority: z.enum(["dusuk", "normal", "yuksek", "kritik"]).default("normal"),
+  relatedEquipmentId: z.number().optional(),
+});
+
+const updateTicketSchema = z.object({
+  status: z.enum(["acik", "islemde", "beklemede", "cozuldu", "kapatildi"]).optional(),
+  assignedToUserId: z.string().optional(),
+  resolutionNote: z.string().optional(),
+  priority: z.enum(["dusuk", "normal", "yuksek", "kritik"]).optional(),
+  satisfactionScore: z.number().min(1).max(5).optional(),
+});
+
+const createCommentSchema = z.object({
+  content: z.string().min(1).max(5000),
+  isInternal: z.boolean().default(false),
+});
+
+const createHqTaskSchema = z.object({
+  title: z.string().min(3).max(300),
+  description: z.string().optional(),
+  assignedToUserId: z.string().min(1),
+  priority: z.enum(["dusuk", "normal", "yuksek", "kritik"]).default("normal"),
+  dueDate: z.string().optional(),
+  department: z.string().optional(),
+});
+
+const updateHqTaskSchema = z.object({
+  status: z.enum(["beklemede", "devam_ediyor", "tamamlandi", "iptal"]).optional(),
+  progressPercent: z.number().min(0).max(100).optional(),
+  completionNote: z.string().optional(),
+});
 
 const BRANCH_ONLY_ROLES = ["barista", "bar_buddy", "stajyer"];
 const BRANCH_SCOPED_ROLES = ["supervisor", "mudur"];
@@ -71,8 +111,10 @@ router.get("/tickets", async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: "Access denied" });
     }
     const { department, status, priority, branchId, page = "1" } = req.query;
+    const pageNum = parseInt(page as string);
+    if (isNaN(pageNum) || pageNum < 1) return res.status(400).json({ error: "Invalid page" });
     const pageLimit = 20;
-    const pageOffset = (parseInt(page as string) - 1) * pageLimit;
+    const pageOffset = (pageNum - 1) * pageLimit;
 
     const conditions: ReturnType<typeof sql>[] = [sql`st.is_deleted = false`];
 
@@ -88,7 +130,10 @@ router.get("/tickets", async (req: AuthRequest, res: Response) => {
     if (department) conditions.push(sql`st.department = ${department}`);
     if (status) conditions.push(sql`st.status = ${status}`);
     if (priority) conditions.push(sql`st.priority = ${priority}`);
-    if (branchId && canSeeAllTickets(user.role)) conditions.push(sql`st.branch_id = ${parseInt(branchId as string)}`);
+    if (branchId && canSeeAllTickets(user.role)) {
+      const bid = parseInt(branchId as string);
+      if (!isNaN(bid)) conditions.push(sql`st.branch_id = ${bid}`);
+    }
 
     const whereClause = sql.join(conditions, sql` AND `);
 
@@ -159,16 +204,10 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
     if (BRANCH_ONLY_ROLES.includes(user.role)) {
       return res.status(403).json({ error: "Access denied" });
     }
-    const { department, title, description, priority = "normal", relatedEquipmentId } = req.body;
 
-    if (!department || !title || !description) {
-      return res.status(400).json({ error: "department, title, description are required" });
-    }
-
-    const validDepts = ["teknik", "lojistik", "muhasebe", "marketing", "trainer", "hr"];
-    if (!validDepts.includes(department)) {
-      return res.status(400).json({ error: "Invalid department" });
-    }
+    const parsed = createTicketSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const { department, title, description, priority, relatedEquipmentId } = parsed.data;
 
     const ticketNumber = await generateTicketNumber();
     const branchId = user.branchId ?? null;
@@ -182,7 +221,7 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
       description: description.trim(),
       priority,
       status: "acik",
-      relatedEquipmentId: relatedEquipmentId ? parseInt(relatedEquipmentId) : null,
+      relatedEquipmentId: relatedEquipmentId ?? null,
     }).returning();
 
     const newTicket = result[0];
@@ -207,6 +246,9 @@ router.patch("/tickets/:id", async (req: AuthRequest, res: Response) => {
     const ticketId = parseInt(req.params.id);
     if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
 
+    const parsed = updateTicketSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
     const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
     if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
 
@@ -215,17 +257,15 @@ router.patch("/tickets/:id", async (req: AuthRequest, res: Response) => {
     }
 
     if (!isHQRole(user.role)) {
-      const { satisfactionScore } = req.body;
+      const { satisfactionScore } = parsed.data;
       if (satisfactionScore !== undefined) {
-        const score = parseInt(satisfactionScore);
-        if (isNaN(score) || score < 1 || score > 5) return res.status(400).json({ error: "Score must be 1-5" });
-        await db.update(supportTickets).set({ satisfactionScore: score, updatedAt: new Date() }).where(eq(supportTickets.id, ticketId));
+        await db.update(supportTickets).set({ satisfactionScore, updatedAt: new Date() }).where(eq(supportTickets.id, ticketId));
         return res.json({ success: true });
       }
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const { status, assignedToUserId, resolutionNote, priority } = req.body;
+    const { status, assignedToUserId, resolutionNote, priority } = parsed.data;
     const updates: Partial<SupportTicket> = { updatedAt: new Date() };
 
     if (status) updates.status = status;
@@ -273,15 +313,16 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
     const ticketId = parseInt(req.params.id);
     if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
 
+    const parsed = createCommentSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const { content, isInternal } = parsed.data;
+
     const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
     if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
 
     if (!isHQRole(user.role) && ticket.branchId !== user.branchId) {
       return res.status(403).json({ error: "Access denied" });
     }
-
-    const { content, isInternal = false } = req.body;
-    if (!content?.trim()) return res.status(400).json({ error: "Content is required" });
 
     const internal = isHQRole(user.role) ? Boolean(isInternal) : false;
 
@@ -400,8 +441,9 @@ router.post("/hq-tasks", async (req: AuthRequest, res: Response) => {
     const user = req.user!;
     if (!isHQRole(user.role)) return res.status(403).json({ error: "HQ only" });
 
-    const { title, description, assignedToUserId, priority = "normal", dueDate, department } = req.body;
-    if (!title || !assignedToUserId) return res.status(400).json({ error: "title and assignedToUserId required" });
+    const parsed = createHqTaskSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const { title, description, assignedToUserId, priority, dueDate, department } = parsed.data;
 
     const taskNumber = await generateHqTaskNumber();
 
@@ -440,11 +482,14 @@ router.patch("/hq-tasks/:id", async (req: AuthRequest, res: Response) => {
     const taskId = parseInt(req.params.id);
     if (isNaN(taskId)) return res.status(400).json({ error: "Invalid task ID" });
 
-    const { status, progressPercent, completionNote } = req.body;
+    const parsed = updateHqTaskSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const { status, progressPercent, completionNote } = parsed.data;
+
     const updates: Partial<typeof hqTasks.$inferSelect> = { updatedAt: new Date() };
 
     if (status) updates.status = status;
-    if (progressPercent !== undefined) updates.progressPercent = Math.min(100, Math.max(0, parseInt(progressPercent)));
+    if (progressPercent !== undefined) updates.progressPercent = progressPercent;
     if (completionNote) updates.completionNote = completionNote;
     if (status === "tamamlandi") updates.completedAt = new Date();
 
