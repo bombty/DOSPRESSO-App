@@ -20,7 +20,7 @@ import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { users, productionLots, tasks, notifications as notificationsTable } from "@shared/schema";
-import { eq, sql, count, and, lte, gte, ne, inArray, isNotNull } from "drizzle-orm";
+import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull } from "drizzle-orm";
 
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('[UnhandledRejection] Unhandled promise rejection:', reason);
@@ -205,6 +205,7 @@ app.use((req, res, next) => {
       
       startWeeklyBackupScheduler();
       startTrackingCleanup();
+      startNotificationCleanupJob();
       
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
@@ -486,6 +487,38 @@ function startSktExpiryCheckJob() {
   }, 6 * 60 * 60 * 1000);
 
   log("SKT expiry check job started (runs every 6 hours)");
+}
+
+async function cleanupOldNotifications() {
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+
+    const result = await db
+      .delete(notificationsTable)
+      .where(
+        and(
+          eq(notificationsTable.isRead, true),
+          lt(notificationsTable.createdAt, cutoff)
+        )
+      );
+
+    log(`[Cleanup] Deleted old read notifications older than 90 days`);
+  } catch (err) {
+    console.error('[Cleanup] Notification cleanup failed:', err);
+  }
+}
+
+function startNotificationCleanupJob() {
+  schedulerManager.registerTimeout('notification-cleanup-init', () => {
+    cleanupOldNotifications();
+  }, 5 * 60 * 1000);
+
+  schedulerManager.registerInterval('notification-cleanup-daily', async () => {
+    await cleanupOldNotifications();
+  }, 24 * 60 * 60 * 1000);
+
+  log("Notification cleanup job started (runs daily, first run in 5 minutes)");
 }
 
 function forceShutdown(signal: string) {

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { db } from "../db";
-import { eq, desc, asc, sql, and, or, count, isNull } from "drizzle-orm";
+import { eq, lt, desc, asc, sql, and, or, count, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import { clearAIConfigCache, getAIConfig, getActiveProvider } from "../ai";
@@ -3466,6 +3466,38 @@ const router = Router();
       console.error("Update data lock rule error:", error);
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri" });
       res.status(500).json({ message: "Kilit kuralı güncellenemedi" });
+    }
+  });
+
+  router.get('/api/admin/notification-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role;
+      if (!userRole || !['admin', 'ceo'].includes(userRole)) {
+        return res.status(403).json({ message: 'Yetkiniz yok' });
+      }
+
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 90);
+
+      const [totalRow] = await db.select({ cnt: count() }).from(notifications);
+      const [readRow] = await db.select({ cnt: count() }).from(notifications).where(eq(notifications.isRead, true));
+      const [unreadRow] = await db.select({ cnt: count() }).from(notifications).where(eq(notifications.isRead, false));
+      const [oldReadRow] = await db.select({ cnt: count() }).from(notifications).where(
+        and(
+          eq(notifications.isRead, true),
+          lt(notifications.createdAt, cutoff)
+        )
+      );
+
+      res.json({
+        total: totalRow.cnt,
+        read: readRow.cnt,
+        unread: unreadRow.cnt,
+        oldReadCount: oldReadRow.cnt,
+      });
+    } catch (error: any) {
+      console.error("Notification stats error:", error);
+      res.status(500).json({ message: "Bildirim istatistikleri alınamadı" });
     }
   });
 

@@ -1,0 +1,87 @@
+# Notification-Cleanup — Otomatik Bildirim Arşivleme
+
+## Context
+DOSPRESSO franchise platform. Stack: Node.js + Express + Drizzle ORM + PostgreSQL.
+The `notifications` table is 25MB and growing — no cleanup policy exists.
+This sprint adds a scheduled cleanup job that runs daily.
+
+Do NOT touch: frontend, auth system, any other tables.
+
+---
+
+## TASK 1 — Cleanup Function
+
+**File:** Find where server startup/cron jobs live.
+Check: `server/index.ts`, `server/cron.ts`, `server/jobs/` — use whichever pattern already exists.
+If no cron pattern exists, add it to `server/index.ts`.
+
+Add this cleanup logic:
+
+```typescript
+import { db } from './db';
+import { notifications } from '../shared/schema';
+import { and, lt, eq } from 'drizzle-orm';
+
+export async function cleanupOldNotifications() {
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90); // 90 days ago
+
+    const result = await db
+      .delete(notifications)
+      .where(
+        and(
+          eq(notifications.isRead, true),  // only READ notifications
+          lt(notifications.createdAt, cutoff)
+        )
+      );
+
+    console.log(`[Cleanup] Deleted old read notifications older than 90 days`);
+  } catch (err) {
+    console.error('[Cleanup] Notification cleanup failed:', err);
+  }
+}
+```
+
+**Important:** Check the actual column names in `shared/schema.ts` for the notifications table:
+- Is the read status column named `isRead`, `read`, `readAt`, or something else?
+- Is the date column `createdAt` or `created_at`?
+Use the actual column names from the schema.
+
+---
+
+## TASK 2 — Schedule Daily Run
+
+Using `setInterval` (no extra dependencies needed):
+
+```typescript
+// Run once on startup after a 5 minute delay (let server warm up)
+setTimeout(cleanupOldNotifications, 5 * 60 * 1000);
+
+// Then run every 24 hours
+setInterval(cleanupOldNotifications, 24 * 60 * 60 * 1000);
+```
+
+Add this in `server/index.ts` after the server starts listening.
+
+---
+
+## TASK 3 — Admin API Endpoint (optional visibility)
+
+Add a simple endpoint so admin can see notification stats:
+
+```typescript
+// GET /api/admin/notification-stats
+// Returns: { total, read, unread, oldReadCount (>90 days) }
+```
+
+Register under existing admin routes.
+
+---
+
+## Verification
+
+- [ ] Cleanup function runs without errors on startup (check logs after 5 min)
+- [ ] Only READ notifications older than 90 days are deleted (unread are NEVER deleted)
+- [ ] Server starts without errors
+- [ ] No TypeScript errors
