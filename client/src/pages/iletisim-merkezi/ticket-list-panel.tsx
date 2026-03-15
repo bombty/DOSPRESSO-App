@@ -35,6 +35,24 @@ interface TicketListPanelProps {
   onNewTicket?: () => void;
 }
 
+function getTzTime(date: Date, timezone: string): { hour: number; minute: number; isoDay: number; dateKey: string } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric', minute: 'numeric', weekday: 'short',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '0';
+  const hour = parseInt(get('hour')) % 24;
+  const minute = parseInt(get('minute'));
+  const dayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const isoDay = dayMap[get('weekday')] ?? 1;
+  const dateKey = `${get('year')}-${get('month')}-${get('day')}`;
+
+  return { hour, minute, isoDay, dateKey };
+}
+
 function estimateRemainingBusinessHours(
   deadline: string,
   config: BusinessHoursConfig
@@ -46,28 +64,25 @@ function estimateRemainingBusinessHours(
     return { hours: 0, label: 'SLA Asildi', color: '#ef4444', percent: 100 };
   }
 
-  const { startHour, endHour, workDays } = config;
+  const { startHour, endHour, workDays, timezone } = config;
   const businessMinutesPerDay = (endHour - startHour) * 60;
   let totalMinutes = 0;
   const current = new Date(now);
+  const deadlineTz = getTzTime(deadlineDate, timezone);
 
   for (let safety = 0; safety < 500; safety++) {
-    const jsDay = current.getDay();
-    const isoDay = jsDay === 0 ? 7 : jsDay;
+    const tz = getTzTime(current, timezone);
 
-    if (workDays.includes(isoDay)) {
-      const h = current.getHours();
-      const m = current.getMinutes();
-
-      if (current.toDateString() === deadlineDate.toDateString()) {
-        const startMin = Math.max(h * 60 + m, startHour * 60);
-        const endMin = Math.min(deadlineDate.getHours() * 60 + deadlineDate.getMinutes(), endHour * 60);
+    if (workDays.includes(tz.isoDay)) {
+      if (tz.dateKey === deadlineTz.dateKey) {
+        const startMin = Math.max(tz.hour * 60 + tz.minute, startHour * 60);
+        const endMin = Math.min(deadlineTz.hour * 60 + deadlineTz.minute, endHour * 60);
         if (endMin > startMin) totalMinutes += endMin - startMin;
         break;
       }
 
       if (safety === 0) {
-        const startMin = Math.max(h * 60 + m, startHour * 60);
+        const startMin = Math.max(tz.hour * 60 + tz.minute, startHour * 60);
         const endMin = endHour * 60;
         if (endMin > startMin) totalMinutes += endMin - startMin;
       } else {
@@ -75,8 +90,7 @@ function estimateRemainingBusinessHours(
       }
     }
 
-    current.setDate(current.getDate() + 1);
-    current.setHours(startHour, 0, 0, 0);
+    current.setTime(current.getTime() + 86400000);
 
     if (current.getTime() > deadlineDate.getTime() + 86400000) break;
   }

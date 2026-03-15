@@ -265,7 +265,7 @@ export default function IletisimMerkezi() {
             </div>
           </div>
         ) : crmNavKey === 'sla' ? (
-          <SlaRulesPanel isAdmin={['admin', 'ceo'].includes(user?.role ?? '')} />
+          <SlaRulesPanel isAdmin={['admin', 'ceo', 'cgo'].includes(user?.role ?? '')} />
         ) : (
           <div className="flex-1 overflow-y-auto p-6" />
         )}
