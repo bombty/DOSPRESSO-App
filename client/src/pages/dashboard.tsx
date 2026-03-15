@@ -22,10 +22,10 @@ const HQDashboard = lazy(() => import("@/pages/hq-dashboard"));
 function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: number }) {
   const isBranchManager = userRole === 'mudur' || userRole === 'supervisor';
 
-  const { data: branchSummary } = useQuery<any>({
+  const { data: branchSummary, isLoading: kpiLoading, isError: kpiError } = useQuery<any>({
     queryKey: ['/api/branch-summary', branchId],
     queryFn: () => fetch(`/api/branch-summary/${branchId}`).then(r => r.json()),
-    enabled: !!branchId,
+    enabled: isBranchManager && !!branchId,
     staleTime: 3 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
   });
@@ -104,18 +104,22 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2 mb-1" data-testid="branch-kpi-section">
-        <DashboardAlertPills pills={alertPills} />
-        {branchSummary ? (
-          <DashboardKpiStrip items={kpiItems} />
-        ) : (
-          <div className="grid grid-cols-4 gap-1.5">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" data-testid={`kpi-skeleton-${i}`} />
-            ))}
-          </div>
-        )}
-      </div>
+      {isBranchManager && (
+        <div className="space-y-2 mb-1" data-testid="branch-kpi-section">
+          {kpiLoading ? (
+            <div className="grid grid-cols-4 gap-1.5">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" data-testid={`kpi-skeleton-${i}`} />
+              ))}
+            </div>
+          ) : kpiError ? null : (
+            <>
+              <DashboardAlertPills pills={alertPills} />
+              <DashboardKpiStrip items={kpiItems} />
+            </>
+          )}
+        </div>
+      )}
 
       <div className="space-y-3 mb-2" data-testid="branch-ci-section">
         <div>
