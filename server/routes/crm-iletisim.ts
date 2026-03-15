@@ -1,11 +1,14 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { supportTickets, supportTicketComments, hqTasks, broadcastReceipts, type SupportTicket } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { supportTickets, supportTicketComments, ticketAttachments, hqTasks, broadcastReceipts, users, type SupportTicket } from "@shared/schema";
+import { eq, and, sql, asc, inArray, isNull } from "drizzle-orm";
 import { routeTicket, generateTicketNumber, generateHqTaskNumber } from "../services/ticket-routing-engine";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 interface AuthenticatedUser {
   id: string;
@@ -141,8 +144,8 @@ router.get("/tickets", async (req: AuthRequest, res: Response) => {
       SELECT 
         st.*,
         b.name as branch_name,
-        u1.name as created_by_name,
-        u2.name as assigned_to_name
+        COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, '') as created_by_name,
+        COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as assigned_to_name
       FROM support_tickets st
       LEFT JOIN branches b ON st.branch_id = b.id
       LEFT JOIN users u1 ON st.created_by_user_id = u1.id
@@ -170,7 +173,7 @@ router.get("/tickets/:id", async (req: AuthRequest, res: Response) => {
     if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
 
     const ticket = await db.execute(
-      sql`SELECT st.*, b.name as branch_name, u1.name as created_by_name, u2.name as assigned_to_name
+      sql`SELECT st.*, b.name as branch_name, COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, '') as created_by_name, COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as assigned_to_name
           FROM support_tickets st
           LEFT JOIN branches b ON st.branch_id = b.id
           LEFT JOIN users u1 ON st.created_by_user_id = u1.id
@@ -186,8 +189,8 @@ router.get("/tickets/:id", async (req: AuthRequest, res: Response) => {
     }
 
     const commentsQuery = isHQRole(user.role)
-      ? sql`SELECT stc.*, u.name as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} ORDER BY stc.created_at ASC`
-      : sql`SELECT stc.*, u.name as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.is_internal = false ORDER BY stc.created_at ASC`;
+      ? sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} ORDER BY stc.created_at ASC`
+      : sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.is_internal = false ORDER BY stc.created_at ASC`;
 
     const comments = await db.execute(commentsQuery);
 
@@ -422,7 +425,7 @@ router.get("/hq-tasks", async (req: AuthRequest, res: Response) => {
     const whereClause = sql.join(conditions, sql` AND `);
 
     const result = await db.execute(sql`
-      SELECT ht.*, u1.name as assigned_by_name, u2.name as assigned_to_name
+      SELECT ht.*, COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, '') as assigned_by_name, COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as assigned_to_name
       FROM hq_tasks ht
       LEFT JOIN users u1 ON ht.assigned_by_user_id = u1.id
       LEFT JOIN users u2 ON ht.assigned_to_user_id = u2.id
@@ -576,7 +579,7 @@ router.get("/broadcast/:announcementId/receipts", async (req: AuthRequest, res: 
     if (isNaN(announcementId)) return res.status(400).json({ error: "Invalid ID" });
 
     const result = await db.execute(
-      sql`SELECT br.*, u.name as user_name, b.name as branch_name
+      sql`SELECT br.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as user_name, b.name as branch_name
           FROM broadcast_receipts br
           LEFT JOIN users u ON br.user_id = u.id
           LEFT JOIN branches b ON br.branch_id = b.id
@@ -628,6 +631,249 @@ router.get("/branch-health", async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error("Error fetching branch health:", error);
     res.status(500).json({ error: "Failed" });
+  }
+});
+
+const uploadDir = path.join(process.cwd(), "uploads", "tickets");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const diskStorage = multer.diskStorage({
+  destination: uploadDir,
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const ext = path.extname(file.originalname);
+    cb(null, `${unique}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage: diskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = [
+      "image/jpeg", "image/png", "image/gif", "image/webp",
+      "application/pdf", "video/mp4", "video/quicktime",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Desteklenmeyen dosya türü"));
+  },
+});
+
+router.post("/tickets/:id/attachments", upload.single("file"), async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (BRANCH_ONLY_ROLES.includes(user.role)) return res.status(403).json({ error: "Access denied" });
+    const ticketId = parseInt(req.params.id);
+    const file = req.file;
+    const userId = user.id;
+    const { commentId } = req.body;
+
+    if (!file) return res.status(400).json({ error: "Dosya gerekli" });
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket bulunamadı" });
+    if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    const [attachment] = await db.insert(ticketAttachments).values({
+      ticketId,
+      commentId: commentId ? parseInt(commentId) : null,
+      uploadedByUserId: userId,
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      storageKey: file.filename,
+    }).returning();
+
+    res.status(201).json(attachment);
+  } catch (err) {
+    console.error("Error uploading attachment:", err);
+    res.status(500).json({ error: "Dosya yüklenemedi" });
+  }
+});
+
+router.get("/tickets/:id/attachments", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (BRANCH_ONLY_ROLES.includes(user.role)) return res.status(403).json({ error: "Access denied" });
+    const ticketId = parseInt(req.params.id);
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket bulunamadı" });
+    if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    const attachments = await db
+      .select()
+      .from(ticketAttachments)
+      .where(eq(ticketAttachments.ticketId, ticketId))
+      .orderBy(asc(ticketAttachments.createdAt));
+    res.json(attachments);
+  } catch (err) {
+    console.error("Error fetching attachments:", err);
+    res.status(500).json({ error: "Ekler alınamadı" });
+  }
+});
+
+router.get("/attachments/:filename", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (BRANCH_ONLY_ROLES.includes(user.role)) return res.status(403).json({ error: "Access denied" });
+
+    const [attachment] = await db.select().from(ticketAttachments).where(eq(ticketAttachments.storageKey, req.params.filename));
+    if (!attachment) return res.status(404).json({ error: "Dosya bulunamadı" });
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, attachment.ticketId));
+    if (!ticket || !canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Dosya bulunamadı" });
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ error: "Dosya okunamadı" });
+  }
+});
+
+router.patch("/tickets/:id/assign", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role)) return res.status(403).json({ error: "Yetki yok" });
+
+    const ticketId = parseInt(req.params.id);
+    const { assignedToUserId } = req.body;
+    if (!assignedToUserId) return res.status(400).json({ error: "assignedToUserId gerekli" });
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket bulunamadı" });
+    if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    const [updated] = await db
+      .update(supportTickets)
+      .set({
+        assignedToUserId,
+        assignedAt: new Date(),
+        status: "islemde",
+        updatedAt: new Date(),
+      })
+      .where(eq(supportTickets.id, ticketId))
+      .returning();
+
+    const [assignedUser] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, assignedToUserId));
+    const assigneeName = assignedUser ? `${assignedUser.firstName ?? ""} ${assignedUser.lastName ?? ""}`.trim() : assignedToUserId;
+
+    await db.insert(supportTicketComments).values({
+      ticketId,
+      authorId: user.id,
+      content: `Ticket atandı: ${assigneeName}`,
+      isInternal: true,
+    });
+
+    await storage.createNotification({
+      userId: assignedToUserId,
+      type: "task_assigned",
+      title: `Ticket Atandı: ${ticket.title.substring(0, 50)}`,
+      message: `${ticket.department.toUpperCase()} departmanı ticket'ı size atandı`,
+      link: `/iletisim-merkezi`,
+    });
+
+    res.json(updated);
+  } catch (err) {
+    console.error("Error assigning ticket:", err);
+    res.status(500).json({ error: "Atama başarısız" });
+  }
+});
+
+const DEPT_ASSIGNABLE_ROLES: Record<string, string[]> = {
+  teknik: ["admin", "ceo", "cgo", "teknik_sorumlu"],
+  lojistik: ["admin", "ceo", "cgo", "satinalma"],
+  muhasebe: ["admin", "ceo", "muhasebe_ik"],
+  marketing: ["admin", "ceo", "cgo"],
+  trainer: ["admin", "ceo", "coach", "trainer"],
+  hr: ["admin", "ceo", "muhasebe_ik"],
+};
+
+router.get("/assignable-users", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role)) return res.status(403).json({ error: "Yetki yok" });
+    const { department } = req.query;
+    const allowedRoles = department
+      ? (DEPT_ASSIGNABLE_ROLES[department as string] ?? ["admin", "ceo", "cgo"])
+      : ["admin", "ceo", "cgo"];
+
+    const assignableUsers = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          eq(users.isActive, true),
+          inArray(users.role, allowedRoles)
+        )
+      );
+
+    const result = assignableUsers.map((u) => ({
+      id: u.id,
+      name: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.id,
+      role: u.role,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Error fetching assignable users:", err);
+    res.status(500).json({ error: "Kullanıcılar alınamadı" });
+  }
+});
+
+router.post("/tickets/:id/sla-remind", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role)) return res.status(403).json({ error: "Yetki yok" });
+
+    const ticketId = parseInt(req.params.id);
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket) return res.status(404).json({ error: "Ticket bulunamadı" });
+    if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    await db.insert(supportTicketComments).values({
+      ticketId,
+      authorId: user.id,
+      content: "SLA hatırlatması gönderildi",
+      isInternal: true,
+    });
+
+    const executives = await db.execute(
+      sql`SELECT id FROM users WHERE role IN ('cgo', 'ceo') AND is_active = true AND deleted_at IS NULL`
+    );
+    for (const exec of executives.rows) {
+      await storage.createNotification({
+        userId: exec.id as string,
+        type: "sla_breach",
+        title: `SLA Hatırlatma: ${ticket.department.toUpperCase()}`,
+        message: `${ticket.title.substring(0, 80)} — Manuel hatırlatma gönderildi`,
+        link: `/iletisim-merkezi`,
+      });
+    }
+
+    if (ticket.assignedToUserId) {
+      await storage.createNotification({
+        userId: ticket.assignedToUserId,
+        type: "sla_breach",
+        title: `SLA Hatırlatma: ${ticket.title.substring(0, 60)}`,
+        message: `Bu ticket için SLA hatırlatması yapıldı`,
+        link: `/iletisim-merkezi`,
+      });
+    }
+
+    res.json({ success: true, message: "SLA hatırlatması gönderildi" });
+  } catch (err) {
+    console.error("Error sending SLA reminder:", err);
+    res.status(500).json({ error: "Hatırlatma gönderilemedi" });
   }
 });
 

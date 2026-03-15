@@ -15294,6 +15294,23 @@ export const insertSupportTicketCommentSchema = createInsertSchema(supportTicket
 export type InsertSupportTicketComment = z.infer<typeof insertSupportTicketCommentSchema>;
 export type SupportTicketComment = typeof supportTicketComments.$inferSelect;
 
+export const ticketAttachments = pgTable("ticket_attachments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+  commentId: integer("comment_id").references(() => supportTicketComments.id, { onDelete: "set null" }),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  storageKey: varchar("storage_key", { length: 500 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("ta_ticket_idx").on(table.ticketId),
+]);
+
+export type TicketAttachment = typeof ticketAttachments.$inferSelect;
+export type InsertTicketAttachment = typeof ticketAttachments.$inferInsert;
+
 export const hqTasks = pgTable("hq_tasks", {
   id: serial("id").primaryKey(),
   taskNumber: varchar("task_number", { length: 20 }).notNull().unique(),

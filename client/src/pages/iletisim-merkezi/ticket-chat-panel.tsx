@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { getDeptConfig, getStatusConfig, isHQRole } from './categoryConfig';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface TicketComment {
   id: number;
@@ -14,6 +15,20 @@ interface TicketComment {
   content: string;
   is_internal: boolean;
   created_at: string;
+}
+
+interface TicketAttachment {
+  id: number;
+  fileName: string;
+  file_name?: string;
+  fileSize: number;
+  file_size?: number;
+  mimeType: string;
+  mime_type?: string;
+  storageKey: string;
+  storage_key?: string;
+  createdAt: string;
+  created_at?: string;
 }
 
 interface TicketDetailData {
@@ -31,6 +46,7 @@ interface TicketDetailData {
   sla_breached: boolean;
   created_at: string;
   comments: TicketComment[];
+  attachments?: TicketAttachment[];
 }
 
 interface Props {
@@ -39,14 +55,24 @@ interface Props {
   onClose?: () => void;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [inputMode, setInputMode] = useState<'reply' | 'internal'>('reply');
   const [message, setMessage] = useState('');
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isHQ = isHQRole(user?.role ?? '');
+  const isClosed = ticket ? (ticket.status === 'cozuldu' || ticket.status === 'kapatildi') : false;
 
   const commentMutation = useMutation({
     mutationFn: async () => {
@@ -72,6 +98,76 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
     },
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/iletisim/tickets/${ticket?.id}/attachments`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Yükleme başarısız');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Dosya yüklendi", description: "Dosya başarıyla eklendi" });
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id, 'attachments'] });
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Dosya yüklenemedi", variant: "destructive" });
+    },
+  });
+
+  const { data: attachments = [] } = useQuery<TicketAttachment[]>({
+    queryKey: ['/api/iletisim/tickets', ticket?.id, 'attachments'],
+    queryFn: async () => {
+      const res = await fetch(`/api/iletisim/tickets/${ticket?.id}/attachments`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!ticket?.id,
+  });
+
+  const { data: assignableUsers = [] } = useQuery<{ id: string; name: string; role: string }[]>({
+    queryKey: ['/api/iletisim/assignable-users', ticket?.department],
+    queryFn: async () => {
+      const res = await fetch(`/api/iletisim/assignable-users?department=${ticket?.department}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!ticket?.department && isHQ && showAssignDropdown,
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async (assignedToUserId: string) => {
+      return apiRequest("PATCH", `/api/iletisim/tickets/${ticket?.id}/assign`, { assignedToUserId });
+    },
+    onSuccess: () => {
+      toast({ title: "Atandı", description: "Ticket başarıyla atandı" });
+      setShowAssignDropdown(false);
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id] });
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets'] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Atama başarısız", variant: "destructive" });
+    },
+  });
+
+  const slaRemindMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/iletisim/tickets/${ticket?.id}/sla-remind`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Gönderildi", description: "SLA hatırlatması gönderildi" });
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Hatırlatma gönderilemedi", variant: "destructive" });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center" data-testid="chat-panel-loading">
@@ -83,7 +179,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   if (!ticket) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground" data-testid="chat-panel-empty">
-        <Ticket className="w-10 h-10 opacity-30" />
+        <TicketIcon className="w-10 h-10 opacity-30" />
         <div className="text-sm font-medium">Bir talep seçin</div>
         <div className="text-xs">Görüntülemek için soldan talep seçin</div>
       </div>
@@ -101,9 +197,13 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   };
 
   const sla = getSlaInfo();
-  const isClosed = ticket.status === 'cozuldu' || ticket.status === 'kapatildi';
   const dept = getDeptConfig(ticket.department);
   const statusLabel = getStatusConfig(ticket.status)?.label ?? ticket.status;
+
+  const getAttachmentIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return <Image className="w-3 h-3" />;
+    return <FileText className="w-3 h-3" />;
+  };
 
   return (
     <div
@@ -185,7 +285,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         {ticket.description && (
           <div className="flex gap-2">
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0 mt-3.5 bg-blue-600">
-              {(ticket.created_by_name ?? 'S')[0].toUpperCase()}
+              {(ticket.created_by_name || 'S').charAt(0).toUpperCase()}
             </div>
             <div>
               <div className="text-[7.5px] text-muted-foreground mb-1">{ticket.created_by_name ?? 'Şube'} · Açılış</div>
@@ -202,7 +302,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             return (
               <div key={c.id} className="flex gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0 mt-3.5 bg-purple-600">
-                  {(c.author_name ?? 'H')[0].toUpperCase()}
+                  {(c.author_name || 'H').charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="text-[7.5px] text-muted-foreground mb-1">
@@ -226,7 +326,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   isFromHQ ? 'bg-[#122549]' : 'bg-blue-600'
                 )}
               >
-                {(c.author_name ?? '?')[0].toUpperCase()}
+                {(c.author_name || '?').charAt(0).toUpperCase()}
               </div>
               <div className={cn('max-w-[75%]', isFromHQ && 'items-end flex flex-col')}>
                 <div className={cn('text-[7.5px] text-muted-foreground mb-1', isFromHQ && 'text-right')}>
@@ -244,6 +344,32 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             </div>
           );
         })}
+
+        {attachments.length > 0 && (
+          <div className="space-y-1.5" data-testid="attachment-list">
+            <div className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wide">Ekler ({attachments.length})</div>
+            {attachments.map((a) => {
+              const fname = a.fileName || a.file_name || 'dosya';
+              const fsize = a.fileSize || a.file_size || 0;
+              const fmime = a.mimeType || a.mime_type || '';
+              const fkey = a.storageKey || a.storage_key || '';
+              return (
+                <a
+                  key={a.id}
+                  href={`/api/iletisim/attachments/${fkey}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card text-foreground text-[9px] hover-elevate"
+                  data-testid={`attachment-${a.id}`}
+                >
+                  {getAttachmentIcon(fmime)}
+                  <span className="truncate flex-1">{fname}</span>
+                  <span className="text-muted-foreground flex-shrink-0">{formatFileSize(fsize)}</span>
+                </a>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {isClosed ? (
@@ -326,24 +452,69 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
 
           <div className="flex gap-2 mt-2 flex-wrap">
             <button
-              className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadMutation.isPending}
+              className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
               data-testid="button-attach-file"
             >
-              <Paperclip className="w-3 h-3" /> Dosya Ekle
+              {uploadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Paperclip className="w-3 h-3" />}
+              {uploadMutation.isPending ? 'Yükleniyor...' : 'Dosya Ekle'}
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,.pdf,.mp4,.mov,.doc,.docx"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uploadMutation.mutate(file);
+                e.target.value = '';
+              }}
+              data-testid="input-file-upload"
+            />
             {isHQ && (
               <>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+                    disabled={assignMutation.isPending}
+                    className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                    data-testid="button-add-person"
+                  >
+                    {assignMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                    Ata
+                  </button>
+                  {showAssignDropdown && (
+                    <div className="absolute left-0 bottom-full mb-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px] py-1 max-h-[200px] overflow-y-auto" data-testid="assign-dropdown">
+                      <div className="px-3 py-1.5 text-[8px] font-semibold text-muted-foreground uppercase tracking-wide border-b border-border flex items-center justify-between gap-2">
+                        <span>Kullanıcı Ata</span>
+                        <button onClick={() => setShowAssignDropdown(false)} className="text-muted-foreground"><X className="w-3 h-3" /></button>
+                      </div>
+                      {assignableUsers.length === 0 && (
+                        <div className="px-3 py-2 text-[9px] text-muted-foreground">Yükleniyor...</div>
+                      )}
+                      {assignableUsers.map((u) => (
+                        <button
+                          key={u.id}
+                          onClick={() => assignMutation.mutate(u.id)}
+                          className="w-full text-left px-3 py-1.5 text-[9px] hover:bg-accent transition-colors flex items-center justify-between gap-2"
+                          data-testid={`assign-user-${u.id}`}
+                        >
+                          <span className="truncate">{u.name}</span>
+                          <span className="text-muted-foreground text-[7px] flex-shrink-0">{u.role}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button
-                  className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors"
-                  data-testid="button-add-person"
-                >
-                  <UserPlus className="w-3 h-3" /> Kişi Ekle
-                </button>
-                <button
-                  className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors"
+                  onClick={() => slaRemindMutation.mutate()}
+                  disabled={slaRemindMutation.isPending}
+                  className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
                   data-testid="button-sla-remind"
                 >
-                  <Bell className="w-3 h-3" /> SLA Hatırlat
+                  {slaRemindMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+                  SLA Hatırlat
                 </button>
               </>
             )}
@@ -354,7 +525,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   );
 }
 
-function Ticket({ className }: { className?: string }) {
+function TicketIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
