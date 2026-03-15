@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Ticket, BarChart3,
   Wrench, Package, Calculator, Megaphone, GraduationCap, Users,
-  Settings, MessageSquare, ArrowRightLeft
+  Settings, MessageSquare
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -95,7 +95,9 @@ export function CrmNav({ activeKey, onSelect, ticketCounts, delegatedDepts = [] 
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="flex-1 truncate">{item.label}</span>
                   {delegatedDepts.includes(item.key) && (
-                    <ArrowRightLeft className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                    <span className="text-[7px] font-bold ml-1 px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 flex-shrink-0">
+                      DEV
+                    </span>
                   )}
                   {count > 0 && (
                     <span className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-md bg-[#cc1f1f] text-white flex-shrink-0">

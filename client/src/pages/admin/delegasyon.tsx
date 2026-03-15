@@ -37,29 +37,25 @@ interface ModuleDelegation {
 const DELEGATABLE_MODULES = [
   { key: 'crm_teknik',    label: 'CRM — Teknik Destek',    fromRole: 'teknik_sorumlu' },
   { key: 'crm_lojistik',  label: 'CRM — Lojistik',         fromRole: 'satinalma' },
-  { key: 'crm_muhasebe',  label: 'CRM — Muhasebe',         fromRole: 'muhasebe_ik' },
-  { key: 'crm_marketing', label: 'CRM — Marketing',        fromRole: 'cgo' },
-  { key: 'crm_hr',        label: 'CRM — İK',               fromRole: 'muhasebe_ik' },
+  { key: 'crm_muhasebe',  label: 'CRM — Muhasebe',         fromRole: 'muhasebe' },
+  { key: 'crm_marketing', label: 'CRM — Marketing',        fromRole: 'pazarlama' },
+  { key: 'crm_ik',        label: 'CRM — İK',               fromRole: 'ik' },
   { key: 'akademi',       label: 'Akademi Yönetimi',       fromRole: 'coach' },
-  { key: 'raporlar',      label: 'Raporlar',               fromRole: 'muhasebe_ik' },
+  { key: 'raporlar',      label: 'Raporlar',               fromRole: 'muhasebe' },
 ];
 
 const TARGET_ROLES = [
-  { key: 'admin', label: 'Admin' },
-  { key: 'ceo', label: 'CEO' },
   { key: 'cgo', label: 'CGO' },
+  { key: 'ceo', label: 'CEO' },
+  { key: 'admin', label: 'Admin' },
   { key: 'coach', label: 'Coach' },
   { key: 'trainer', label: 'Trainer' },
-  { key: 'teknik_sorumlu', label: 'Teknik Sorumlu' },
-  { key: 'satinalma', label: 'Satınalma' },
-  { key: 'muhasebe_ik', label: 'Muhasebe/İK' },
-  { key: 'kalite_kontrol', label: 'Kalite Kontrol' },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin', ceo: 'CEO', cgo: 'CGO', coach: 'Coach', trainer: 'Trainer',
-  teknik_sorumlu: 'Teknik Sorumlu', satinalma: 'Satınalma', muhasebe_ik: 'Muhasebe/İK',
-  kalite_kontrol: 'Kalite Kontrol', muhasebe: 'Muhasebe', ik: 'İK',
+  teknik_sorumlu: 'Teknik Sorumlu', satinalma: 'Satınalma', muhasebe: 'Muhasebe',
+  pazarlama: 'Pazarlama', ik: 'İK',
 };
 
 export default function AdminDelegasyon() {

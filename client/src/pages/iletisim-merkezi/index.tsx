@@ -65,7 +65,7 @@ export default function IletisimMerkezi() {
       crm_lojistik: 'lojistik',
       crm_muhasebe: 'muhasebe',
       crm_marketing: 'marketing',
-      crm_hr: 'hr',
+      crm_ik: 'hr',
     };
     return activeDelegations
       .map((d: any) => keyToDept[d.moduleKey])

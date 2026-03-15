@@ -100,7 +100,7 @@ function getDelegatedModulePath(moduleKey: string): string {
     crm_lojistik:  '/iletisim-merkezi',
     crm_muhasebe:  '/iletisim-merkezi',
     crm_marketing: '/iletisim-merkezi',
-    crm_hr:        '/iletisim-merkezi',
+    crm_ik:        '/iletisim-merkezi',
     akademi:       '/akademi',
     raporlar:      '/raporlar',
   };
@@ -226,10 +226,13 @@ export default function HQOzet() {
               <ModuleCard
                 key={del.moduleKey}
                 label={del.moduleName}
-                sublabel="Devralınan modül"
+                sublabel="Devral\u0131nan mod\u00fcl"
                 path={getDelegatedModulePath(del.moduleKey)}
                 icon={<ArrowRightLeft className="w-8 h-8 text-blue-600 dark:text-blue-400" />}
                 gradient="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900"
+                badge="DEV\u0130R"
+                badgeVariant="blue"
+                className="ring-2 ring-blue-300 dark:ring-blue-700"
               />
             ))}
           </div>
