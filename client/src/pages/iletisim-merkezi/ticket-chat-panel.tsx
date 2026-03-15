@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { getDeptConfig, getStatusConfig, isHQRole } from './categoryConfig';
@@ -51,8 +51,18 @@ interface TicketDetailData {
   sla_deadline: string | null;
   sla_breached: boolean;
   created_at: string;
+  related_equipment_id: number | null;
   comments: TicketComment[];
   attachments?: TicketAttachment[];
+}
+
+interface EquipmentInfo {
+  id: number;
+  name: string;
+  brand?: string | null;
+  model?: string | null;
+  equipmentType?: string | null;
+  equipment_type?: string | null;
 }
 
 interface Props {
@@ -141,6 +151,16 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
     queryKey: ['/api/iletisim/tickets', ticket?.id, 'sla-remaining'],
     enabled: !!ticket?.id && !!ticket?.sla_deadline && !isClosed,
     refetchInterval: 60000,
+  });
+
+  const { data: equipmentInfo } = useQuery<EquipmentInfo>({
+    queryKey: ['/api/equipment', ticket?.related_equipment_id],
+    queryFn: async () => {
+      const res = await fetch(`/api/equipment/${ticket?.related_equipment_id}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!ticket?.related_equipment_id,
   });
 
   const { data: assignableUsers = [] } = useQuery<{ id: string; name: string; role: string }[]>({
@@ -298,6 +318,66 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {(equipmentInfo || (attachments.length > 0)) && (
+        <div className="px-4 py-2 border-b border-border bg-muted/20 flex-shrink-0 space-y-2" data-testid="ticket-extras">
+          {equipmentInfo && (
+            <div className="flex items-center gap-2" data-testid="equipment-info">
+              <Wrench className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+              <span className="text-[9px] font-semibold text-foreground">
+                {equipmentInfo.name}
+                {equipmentInfo.brand ? ` (${equipmentInfo.brand})` : ''}
+                {equipmentInfo.model ? ` - ${equipmentInfo.model}` : ''}
+              </span>
+              <span className="text-[8px] text-muted-foreground">
+                {equipmentInfo.equipmentType || equipmentInfo.equipment_type || ''}
+              </span>
+            </div>
+          )}
+          {attachments.length > 0 && (
+            <div>
+              <div className="text-[8px] font-semibold text-muted-foreground mb-1.5">{attachments.length} Ek</div>
+              <div className="flex gap-2 flex-wrap">
+                {attachments.map((a) => {
+                  const fname = a.fileName || a.file_name || 'dosya';
+                  const fmime = a.mimeType || a.mime_type || '';
+                  const fkey = a.storageKey || a.storage_key || '';
+                  const fsize = a.fileSize || a.file_size || 0;
+                  const isImage = fmime.startsWith('image/');
+                  return isImage ? (
+                    <a
+                      key={a.id}
+                      href={`/api/iletisim/attachments/${fkey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid={`attachment-thumb-${a.id}`}
+                    >
+                      <img
+                        src={`/api/iletisim/attachments/${fkey}`}
+                        className="w-14 h-14 object-cover rounded-md border border-border hover:opacity-80 transition-opacity"
+                        alt={fname}
+                      />
+                    </a>
+                  ) : (
+                    <a
+                      key={a.id}
+                      href={`/api/iletisim/attachments/${fkey}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-[9px] px-2 py-1 rounded-md bg-muted border border-border hover:bg-accent transition-colors"
+                      data-testid={`attachment-file-${a.id}`}
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span className="truncate max-w-[80px]">{fname}</span>
+                      <span className="text-muted-foreground flex-shrink-0">{formatFileSize(fsize)}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex border-b border-border px-4 flex-shrink-0 bg-card" data-testid="chat-history-tabs">
         <button

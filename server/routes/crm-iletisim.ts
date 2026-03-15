@@ -32,6 +32,8 @@ const createTicketSchema = z.object({
   description: z.string().min(10),
   priority: z.enum(["dusuk", "normal", "yuksek", "kritik"]).default("normal"),
   relatedEquipmentId: z.number().optional(),
+  equipmentDescription: z.string().max(500).optional(),
+  attachmentUrls: z.array(z.string()).max(5).optional(),
 });
 
 const updateTicketSchema = z.object({
@@ -211,10 +213,24 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
 
     const parsed = createTicketSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-    const { department, title, description, priority, relatedEquipmentId } = parsed.data;
+    const { department, title, description, priority, relatedEquipmentId, equipmentDescription, attachmentUrls } = parsed.data;
+
+    if (relatedEquipmentId && isBranchRole(user.role) && user.branchId) {
+      const eqCheck = await db.execute(
+        sql`SELECT id FROM equipment WHERE id = ${relatedEquipmentId} AND branch_id = ${user.branchId} LIMIT 1`
+      );
+      if (!eqCheck.rows.length) {
+        return res.status(403).json({ error: "Gecersiz ekipman secimi" });
+      }
+    }
 
     const ticketNumber = await generateTicketNumber();
     const branchId = user.branchId ?? null;
+
+    let finalDescription = description.trim();
+    if (equipmentDescription && !relatedEquipmentId) {
+      finalDescription = `[Cihaz: ${equipmentDescription}]\n\n${finalDescription}`;
+    }
 
     const result = await db.insert(supportTickets).values({
       ticketNumber,
@@ -222,13 +238,39 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
       createdByUserId: user.id,
       department,
       title: title.trim(),
-      description: description.trim(),
+      description: finalDescription,
       priority,
       status: "acik",
       relatedEquipmentId: relatedEquipmentId ?? null,
     }).returning();
 
     const newTicket = result[0];
+
+    if (attachmentUrls && attachmentUrls.length > 0) {
+      for (const url of attachmentUrls) {
+        const filename = url.split('/').pop() ?? '';
+        const reg = tempUploadRegistry.get(filename);
+        if (!reg || reg.userId !== user.id) continue;
+        const filePath = path.join(uploadDir, filename);
+        if (fs.existsSync(filePath)) {
+          const stat = fs.statSync(filePath);
+          const ext = path.extname(filename).toLowerCase();
+          const mimeMap: Record<string, string> = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+            '.gif': 'image/gif', '.webp': 'image/webp',
+          };
+          await db.insert(ticketAttachments).values({
+            ticketId: newTicket.id,
+            uploadedByUserId: user.id,
+            fileName: filename,
+            fileSize: stat.size,
+            mimeType: mimeMap[ext] ?? 'image/jpeg',
+            storageKey: filename,
+          });
+          tempUploadRegistry.delete(filename);
+        }
+      }
+    }
 
     routeTicket(newTicket.id).catch(err =>
       console.error("[TICKET-ROUTING] Error routing ticket:", err)
@@ -660,6 +702,50 @@ const upload = multer({
     if (allowed.includes(file.mimetype)) cb(null, true);
     else cb(new Error("Desteklenmeyen dosya türü"));
   },
+});
+
+const tempUpload = multer({
+  storage: diskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error("Sadece resim dosyalari yuklenebilir"));
+  },
+});
+
+const tempUploadRegistry = new Map<string, { userId: string; createdAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of tempUploadRegistry.entries()) {
+    if (now - val.createdAt > 30 * 60 * 1000) {
+      tempUploadRegistry.delete(key);
+      const fp = path.join(uploadDir, key);
+      if (fs.existsSync(fp)) fs.unlinkSync(fp);
+    }
+  }
+}, 10 * 60 * 1000);
+
+router.post("/tickets/temp-upload", tempUpload.single("file"), async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (BRANCH_ONLY_ROLES.includes(user.role)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const userUploads = [...tempUploadRegistry.values()].filter(v => v.userId === user.id).length;
+    if (userUploads >= 10) {
+      return res.status(429).json({ error: "Cok fazla yukleme" });
+    }
+
+    if (!req.file) return res.status(400).json({ error: "Dosya gerekli" });
+    tempUploadRegistry.set(req.file.filename, { userId: user.id, createdAt: Date.now() });
+    const url = `/api/iletisim/attachments/${req.file.filename}`;
+    res.json({ url, filename: req.file.filename });
+  } catch (err) {
+    console.error("Error temp uploading:", err);
+    res.status(500).json({ error: "Dosya yuklenemedi" });
+  }
 });
 
 router.post("/tickets/:id/attachments", upload.single("file"), async (req: any, res: Response) => {

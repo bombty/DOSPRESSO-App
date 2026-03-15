@@ -19,15 +19,37 @@ const TicketsTab = lazy(() => import("./TicketsTab"));
 const HqTasksTab = lazy(() => import("./HqTasksTab"));
 const BroadcastTab = lazy(() => import("./BroadcastTab"));
 
-const TICKET_NAV_KEYS = ['talepler', 'teknik', 'lojistik', 'muhasebe', 'marketing', 'trainer', 'hr'];
+const HQ_TICKET_NAV_KEYS = ['talepler', 'teknik', 'lojistik', 'muhasebe', 'marketing', 'trainer', 'hr'];
+const BRANCH_TICKET_NAV_KEYS = ['taleplerim', 'teknik', 'lojistik', 'muhasebe', 'marketing', 'hr'];
 
 export default function IletisimMerkezi() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const isHQ = isHQRole(user?.role ?? "");
+  const [activeTab, setActiveTab] = useState(isHQ ? "dashboard" : "tickets");
   const [showNewTicket, setShowNewTicket] = useState(false);
 
-  const [crmNavKey, setCrmNavKey] = useState('talepler');
+  const defaultNavKey = isHQ ? 'talepler' : 'taleplerim';
+  const [crmNavKey, setCrmNavKey] = useState(defaultNavKey);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [prevIsHQ, setPrevIsHQ] = useState(isHQ);
+
+  if (prevIsHQ !== isHQ) {
+    setPrevIsHQ(isHQ);
+    setActiveTab(isHQ ? "dashboard" : "tickets");
+    setCrmNavKey(isHQ ? 'talepler' : 'taleplerim');
+  }
+
+  const TICKET_NAV_KEYS = isHQ ? HQ_TICKET_NAV_KEYS : BRANCH_TICKET_NAV_KEYS;
+
+  const { data: branchInfo } = useQuery<{ id: number; name: string }>({
+    queryKey: ['/api/branches', user?.branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/branches/${user?.branchId}`, { credentials: "include" });
+      if (!res.ok) return { id: 0, name: "Subem" };
+      return res.json();
+    },
+    enabled: !isHQ && !!user?.branchId,
+  });
 
   const { data: dashStats } = useQuery<{
     openTickets: number;
@@ -43,7 +65,7 @@ export default function IletisimMerkezi() {
   }>({
     queryKey: ["/api/iletisim/dashboard"],
     refetchInterval: 60_000,
-    enabled: canAccessIletisimMerkezi(user?.role ?? ""),
+    enabled: canAccessIletisimMerkezi(user?.role ?? "") && isHQ,
   });
 
   const { data: allTickets = [], isLoading: ticketsLoading } = useQuery<TicketListItem[]>({
@@ -58,9 +80,11 @@ export default function IletisimMerkezi() {
 
   const { data: activeDelegations = [] } = useQuery<any[]>({
     queryKey: ['/api/delegations/active'],
+    enabled: isHQ,
   });
 
   const delegatedDepts = useMemo(() => {
+    if (!isHQ) return [];
     const keyToDept: Record<string, string> = {
       crm_teknik: 'teknik',
       crm_lojistik: 'lojistik',
@@ -71,24 +95,26 @@ export default function IletisimMerkezi() {
     return activeDelegations
       .map((d: any) => keyToDept[d.moduleKey])
       .filter(Boolean) as string[];
-  }, [activeDelegations]);
+  }, [activeDelegations, isHQ]);
 
   const safeTickets: TicketListItem[] = Array.isArray(allTickets) ? allTickets : [];
 
   const filteredTickets = useMemo(() => {
-    if (crmNavKey === 'talepler') return safeTickets;
+    const allKey = isHQ ? 'talepler' : 'taleplerim';
+    if (crmNavKey === allKey) return safeTickets;
     return safeTickets.filter(t => t.department === crmNavKey);
-  }, [crmNavKey, safeTickets]);
+  }, [crmNavKey, safeTickets, isHQ]);
 
   const ticketCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     const openStatuses = ['acik', 'islemde', 'beklemede'];
-    counts.talepler = safeTickets.filter(t => openStatuses.includes(t.status)).length;
+    const allKey = isHQ ? 'talepler' : 'taleplerim';
+    counts[allKey] = safeTickets.filter(t => openStatuses.includes(t.status)).length;
     for (const dept of DEPARTMENTS) {
       counts[dept.key] = safeTickets.filter(t => t.department === dept.key && openStatuses.includes(t.status)).length;
     }
     return counts;
-  }, [safeTickets]);
+  }, [safeTickets, isHQ]);
 
   const { data: selectedTicketDetail, isLoading: ticketDetailLoading } = useQuery<any>({
     queryKey: ['/api/iletisim/tickets', selectedTicketId],
@@ -103,16 +129,19 @@ export default function IletisimMerkezi() {
   const openCount = dashStats?.openTickets ?? 0;
   const hqPending = dashStats?.hqTaskStats?.find((s) => s.status === "beklemede")?.count ?? 0;
 
-  const tabsForRole = useMemo(() => [
-    { key: "dashboard", label: "Dashboard", badge: null, showFor: "all" as const },
-    { key: "tickets", label: "Şube Talepleri", badge: openCount > 0 ? openCount : null, showFor: "all" as const },
-    { key: "hq-tasks", label: "HQ Görevler", badge: Number(hqPending) > 0 ? Number(hqPending) : null, showFor: "hq" as const },
-    { key: "broadcast", label: "Duyurular", badge: null, showFor: "hq" as const },
-  ].filter(t => {
-    if (t.showFor === "all") return true;
-    if (t.showFor === "hq") return isHQRole(user?.role ?? "");
-    return false;
-  }), [user?.role, openCount, hqPending]);
+  const tabsForRole = useMemo(() => {
+    if (isHQ) {
+      return [
+        { key: "dashboard", label: "Dashboard", badge: null },
+        { key: "tickets", label: "Sube Talepleri", badge: openCount > 0 ? openCount : null },
+        { key: "hq-tasks", label: "HQ Gorevler", badge: Number(hqPending) > 0 ? Number(hqPending) : null },
+        { key: "broadcast", label: "Duyurular", badge: null },
+      ];
+    }
+    return [
+      { key: "tickets", label: "Taleplerim", badge: null },
+    ];
+  }, [isHQ, openCount, hqPending]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -150,9 +179,9 @@ export default function IletisimMerkezi() {
       <div className="max-w-5xl mx-auto px-4 py-6" data-testid="iletisim-merkezi-unauthorized">
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <ShieldAlert className="h-10 w-10 text-muted-foreground mb-4" />
-          <h2 className="text-lg font-medium mb-1">Erişim Yetkisi Yok</h2>
+          <h2 className="text-lg font-medium mb-1">Erisim Yetkisi Yok</h2>
           <p className="text-sm text-muted-foreground">
-            Bu sayfaya erişim yetkiniz bulunmamaktadır.
+            Bu sayfaya erisim yetkiniz bulunmamaktadir.
           </p>
         </div>
       </div>
@@ -162,14 +191,16 @@ export default function IletisimMerkezi() {
   return (
     <div className="h-full flex flex-col" data-testid="iletisim-merkezi-page">
 
-      {/* MOBILE LAYOUT — unchanged tab-based */}
+      {/* MOBILE LAYOUT */}
       <div className="md:hidden flex flex-col h-full">
         <div className="max-w-5xl mx-auto px-4 py-6 w-full">
           <div className="flex items-start justify-between gap-2 mb-6 flex-wrap">
             <div>
-              <h1 className="text-xl font-medium" data-testid="text-page-title">İletişim Merkezi</h1>
+              <h1 className="text-xl font-medium" data-testid="text-page-title">
+                {isHQ ? 'Iletisim Merkezi' : 'Destek Taleplerim'}
+              </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Şube Talepleri · HQ Görevler · Duyurular
+                {isHQ ? 'Sube Talepleri · HQ Gorevler · Duyurular' : branchInfo?.name ?? 'Subem'}
               </p>
             </div>
             <Button
@@ -183,32 +214,36 @@ export default function IletisimMerkezi() {
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="mb-6 h-auto flex-wrap gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start">
-              {tabsForRole.map(tab => (
-                <TabsTrigger
-                  key={tab.key}
-                  value={tab.key}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground px-4 py-2 text-sm"
-                  data-testid={`tab-${tab.key}`}
-                >
-                  {tab.label}
-                  {tab.badge != null && (
-                    <Badge variant="destructive" className="ml-2 text-[10px]">
-                      {tab.badge}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            {tabsForRole.length > 1 && (
+              <TabsList className="mb-6 h-auto flex-wrap gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start">
+                {tabsForRole.map(tab => (
+                  <TabsTrigger
+                    key={tab.key}
+                    value={tab.key}
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground px-4 py-2 text-sm"
+                    data-testid={`tab-${tab.key}`}
+                  >
+                    {tab.label}
+                    {tab.badge != null && (
+                      <Badge variant="destructive" className="ml-2 text-[10px]">
+                        {tab.badge}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            )}
 
             <Suspense fallback={<TabSkeleton />}>
-              <TabsContent value="dashboard" className="mt-0">
-                <DashboardTab stats={dashStats} />
-              </TabsContent>
+              {isHQ && (
+                <TabsContent value="dashboard" className="mt-0">
+                  <DashboardTab stats={dashStats} />
+                </TabsContent>
+              )}
               <TabsContent value="tickets" className="mt-0">
                 <TicketsTab />
               </TabsContent>
-              {isHQRole(user?.role ?? "") && (
+              {isHQ && (
                 <>
                   <TabsContent value="hq-tasks" className="mt-0">
                     <HqTasksTab />
@@ -233,6 +268,8 @@ export default function IletisimMerkezi() {
           }}
           ticketCounts={ticketCounts}
           delegatedDepts={delegatedDepts}
+          isHQ={isHQ}
+          branchName={branchInfo?.name}
         />
 
         {TICKET_NAV_KEYS.includes(crmNavKey) && (
@@ -261,7 +298,7 @@ export default function IletisimMerkezi() {
             <div className="text-center text-muted-foreground py-16">
               <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm font-medium">Analizler</p>
-              <p className="text-xs">Yakında aktif olacak</p>
+              <p className="text-xs">Yakinda aktif olacak</p>
             </div>
           </div>
         ) : crmNavKey === 'sla' ? (
@@ -280,15 +317,6 @@ function BarChart3({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
-    </svg>
-  );
-}
-
-function Settings({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
