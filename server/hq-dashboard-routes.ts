@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments, insertHaccpControlPointSchema, insertHaccpRecordSchema, insertHygieneAuditSchema, insertSupplierCertificationSchema, insertFoodSafetyTrainingSchema, insertFoodSafetyDocumentSchema } from "@shared/schema";
 import { eq, and, inArray, notInArray, sql, or, gte, lt, count, avg, isNull, isNotNull } from "drizzle-orm";
-import { userTrainingProgress, userQuizAttempts, userCareerProgress, qualityAudits, factoryProductionRuns, factoryShiftSessions, factoryStations } from "@shared/schema";
+import { userTrainingProgress, userQuizAttempts, userCareerProgress, qualityAudits, factoryProductionRuns, factoryShiftSessions, factoryStations, campaigns, campaignBranches, campaignMetrics, hqSupportTickets } from "@shared/schema";
 import { computeBranchHealthScores } from "./services/branch-health-scoring";
 import { cache, generateCacheKey } from "./cache";
 
@@ -834,38 +834,50 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
-      
-      const [branchesData, usersData, faultsData, checklistsData] = await Promise.all([
-        db.select().from(branches),
-        db.select().from(users).where(eq(users.isActive, true)),
-        db.select().from(equipmentFaults),
-        db.select().from(checklistCompletions)
+
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const [branchCount, staffCount, faultData, clTotal, clCompleted, openComplaints, activeSessionCount] = await Promise.all([
+        db.select({ count: count() }).from(branches).where(eq(branches.isActive, true)),
+        db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.isActive, true))),
+        db.select({ count: count() }).from(equipmentFaults).where(inArray(equipmentFaults.status, ['open', 'in_progress'])),
+        db.select({ count: count() }).from(checklistCompletions).where(gte(checklistCompletions.completedAt, sevenDaysAgo)),
+        db.select({ count: count() }).from(checklistCompletions).where(and(gte(checklistCompletions.completedAt, sevenDaysAgo), eq(checklistCompletions.status, 'completed'))),
+        db.select({ count: count() }).from(guestComplaints).where(inArray(guestComplaints.status, ['new', 'assigned', 'in_progress'])),
+        db.select({ count: count() }).from(factoryShiftSessions).where(eq(factoryShiftSessions.status, 'active')),
       ]);
-      
-      const activeFaults = faultsData.filter((f: any) => f.status === 'open' || f.status === 'in_progress').length;
-      const totalEmployees = usersData.length;
-      const totalBranches = branchesData.length;
-      
+
+      const totalBranches = Number(branchCount[0]?.count ?? 0);
+      const totalStaff = Number(staffCount[0]?.count ?? 0);
+      const openFaults = Number(faultData[0]?.count ?? 0);
+      const checklistTotal = Number(clTotal[0]?.count ?? 0);
+      const checklistDone = Number(clCompleted[0]?.count ?? 0);
+      const completionRate = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : null;
+      const openComplaintCount = Number(openComplaints[0]?.count ?? 0);
+      const factoryActive = Number(activeSessionCount[0]?.count ?? 0);
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (openFaults > 0) alerts.push({ message: `${openFaults} açık arıza mevcut`, severity: openFaults > 10 ? "critical" : "warning" });
+      if (completionRate !== null && completionRate < 80) alerts.push({ message: `Checklist tamamlanma oranı düşük: %${completionRate}`, severity: "warning" });
+      if (openComplaintCount > 0) alerts.push({ message: `${openComplaintCount} açık misafir şikayeti`, severity: openComplaintCount > 5 ? "critical" : "warning" });
+      if (alerts.length === 0) alerts.push({ message: "Tüm sistemler normal", severity: "healthy" });
+
       res.json({
         metrics: [
-          { title: "Toplam Şube", value: totalBranches, status: "healthy", trend: "stable" },
-          { title: "Aktif Personel", value: totalEmployees, status: "healthy", trend: "up" },
-          { title: "Açık Arızalar", value: activeFaults, status: activeFaults > 10 ? "warning" : "healthy", trend: "stable" },
-          { title: "Checklist Tamamlanma", value: "92%", status: "healthy", trend: "up" }
+          { title: "Toplam Şube", value: `${totalBranches}`, status: "healthy", trend: "stable" },
+          { title: "Aktif Personel", value: `${totalStaff}`, status: "healthy", trend: "stable" },
+          { title: "Açık Arızalar", value: `${openFaults}`, status: openFaults > 10 ? "critical" : openFaults > 0 ? "warning" : "healthy", trend: "stable" },
+          { title: "Checklist Tamamlanma", value: completionRate !== null ? `%${completionRate}` : "—", status: completionRate === null ? "healthy" : completionRate >= 80 ? "healthy" : "warning", trend: "stable" },
         ],
-        departmentHealth: [
-          { name: "Satınalma", score: 88, status: "healthy" },
-          { name: "Fabrika", score: 82, status: "healthy" },
-          { name: "IK", score: 91, status: "healthy" },
-          { name: "Coach", score: 79, status: "warning" },
-          { name: "Marketing", score: 94, status: "healthy" },
-          { name: "Trainer", score: 85, status: "healthy" },
-          { name: "Kalite", score: 90, status: "healthy" }
-        ],
-        alerts: [
-          { message: "3 subede SLA ihlali riski", severity: "warning" },
-          { message: "Haftalik egitim hedefi %15 altinda", severity: "critical" }
-        ]
+        departmentHealth: {
+          openFaults,
+          openComplaints: openComplaintCount,
+          factoryActiveWorkers: factoryActive,
+          checklistCompletion: completionRate,
+          totalStaff,
+        },
+        alerts,
       });
     } catch (error: any) {
       console.error("Error in CGO dashboard:", error);
@@ -1144,22 +1156,35 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
-      
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const [activeCampaignData, campaignReachData, satisfactionData] = await Promise.all([
+        db.select({ count: count() }).from(campaigns).where(eq(campaigns.status, 'active')),
+        db.select({ count: sql<number>`COUNT(DISTINCT ${campaignBranches.branchId})` })
+          .from(campaignBranches)
+          .innerJoin(campaigns, eq(campaignBranches.campaignId, campaigns.id))
+          .where(eq(campaigns.status, 'active')),
+        db.select({ avg: avg(customerFeedback.rating) }).from(customerFeedback).where(gte(customerFeedback.createdAt, thirtyDaysAgo)),
+      ]);
+
+      const activeCampaigns = Number(activeCampaignData[0]?.count ?? 0);
+      const campaignBranchCount = Number(campaignReachData[0]?.count ?? 0);
+      const avgSatisfaction = satisfactionData[0]?.avg ? parseFloat(String(satisfactionData[0].avg)) : null;
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (activeCampaigns === 0) alerts.push({ message: "Aktif kampanya bulunmuyor", severity: "warning" });
+      if (avgSatisfaction !== null && avgSatisfaction < 3.5) alerts.push({ message: `Müşteri memnuniyeti düşük: ${avgSatisfaction.toFixed(1)}/5`, severity: "critical" });
+      if (alerts.length === 0) alerts.push({ message: "Pazarlama metrikleri normal", severity: "healthy" });
+
       res.json({
         metrics: [
-          { title: "Aktif Kampanya", value: 4, status: "healthy", trend: "stable" },
-          { title: "Sosyal Medya Erişimi", value: "125K", status: "healthy", trend: "up" },
-          { title: "Kampanya ROI", value: "3.2x", status: "healthy", trend: "up" },
-          { title: "Müşteri Memnuniyeti", value: "4.5/5", status: "healthy", trend: "stable" }
+          { title: "Aktif Kampanya", value: `${activeCampaigns}`, status: activeCampaigns > 0 ? "healthy" : "warning", trend: "stable" },
+          { title: "Kampanya Erişimi", value: campaignBranchCount > 0 ? `${campaignBranchCount} şube` : "—", status: "healthy", trend: "stable" },
+          { title: "Müşteri Memnuniyeti", value: avgSatisfaction !== null ? `${avgSatisfaction.toFixed(1)}/5` : "—", status: avgSatisfaction !== null && avgSatisfaction >= 4.0 ? "healthy" : "warning", trend: "stable" },
+          { title: "Kampanya ROI", value: "—", status: "healthy", trend: "stable" },
         ],
-        campaignPerformance: [
-          { name: "Yaz Kampanyasi", reach: 45000, conversion: 12.5, roi: 3.8 },
-          { name: "Sadakat Programi", reach: 32000, conversion: 25.0, roi: 4.2 },
-          { name: "Yeni Ürün Lansmanı", reach: 28000, conversion: 8.3, roi: 2.1 }
-        ],
-        alerts: [
-          { message: "Instagram etkilesimi dusuyor", severity: "warning" }
-        ]
+        alerts,
       });
     } catch (error: any) {
       console.error("Error in Marketing dashboard:", error);
@@ -1175,33 +1200,106 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
-      
-      const feedbackData = await db.select().from(customerFeedback);
-      const avgRating = feedbackData.length > 0 
-        ? (feedbackData.reduce((sum: number, f: any) => sum + (f.overallRating || 0), 0) / feedbackData.length).toFixed(1)
-        : "N/A";
-      
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const [auditScoreData, feedbackData, openComplaintData, monthlyTrend] = await Promise.all([
+        db.select({ avg: avg(qualityAudits.weightedTotalScore) }).from(qualityAudits).where(gte(qualityAudits.auditDate, thirtyDaysAgo)),
+        db.select({ avg: avg(customerFeedback.rating) }).from(customerFeedback).where(gte(customerFeedback.createdAt, thirtyDaysAgo)),
+        db.select({ count: count() }).from(guestComplaints).where(inArray(guestComplaints.status, ['new', 'assigned', 'in_progress'])),
+        db.select({
+          month: sql<string>`TO_CHAR(${qualityAudits.auditDate}, 'Mon')`,
+          score: sql<number>`ROUND(AVG(${qualityAudits.weightedTotalScore}))`,
+        }).from(qualityAudits)
+          .where(gte(qualityAudits.auditDate, sixMonthsAgo))
+          .groupBy(sql`TO_CHAR(${qualityAudits.auditDate}, 'Mon'), DATE_TRUNC('month', ${qualityAudits.auditDate})`)
+          .orderBy(sql`DATE_TRUNC('month', ${qualityAudits.auditDate})`),
+      ]);
+
+      const avgAuditScore = auditScoreData[0]?.avg ? Math.round(parseFloat(String(auditScoreData[0].avg))) : null;
+      const avgCustomerRating = feedbackData[0]?.avg ? parseFloat(String(feedbackData[0].avg)) : null;
+      const openComplaints = Number(openComplaintData[0]?.count ?? 0);
+
+      let auditGrade: string = "—";
+      if (avgAuditScore !== null) {
+        if (avgAuditScore >= 90) auditGrade = "A+";
+        else if (avgAuditScore >= 80) auditGrade = "A";
+        else if (avgAuditScore >= 70) auditGrade = "B";
+        else auditGrade = "C";
+      }
+
+      const qualityTrend = monthlyTrend.map((row: any) => ({
+        month: row.month,
+        score: Number(row.score ?? 0),
+      }));
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (openComplaints > 0) alerts.push({ message: `${openComplaints} açık şikayet`, severity: openComplaints > 5 ? "critical" : "warning" });
+      if (avgAuditScore !== null && avgAuditScore < 80) alerts.push({ message: `Denetim skoru düşük: ${avgAuditScore}`, severity: "critical" });
+      if (alerts.length === 0) alerts.push({ message: "Kalite metrikleri normal", severity: "healthy" });
+
       res.json({
         metrics: [
-          { title: "Kalite Skoru", value: "94%", status: "healthy", trend: "up" },
-          { title: "Müşteri Puanı", value: avgRating + "/5", status: "healthy", trend: "stable" },
-          { title: "Açık Şikayet", value: 3, status: "warning", trend: "down" },
-          { title: "Denetim Puanı", value: "A+", status: "healthy", trend: "stable" }
+          { title: "Kalite Skoru", value: avgAuditScore !== null ? `%${avgAuditScore}` : "—", status: avgAuditScore !== null && avgAuditScore >= 80 ? "healthy" : "warning", trend: "stable" },
+          { title: "Müşteri Puanı", value: avgCustomerRating !== null ? `${avgCustomerRating.toFixed(1)}/5` : "—", status: avgCustomerRating !== null && avgCustomerRating >= 4.0 ? "healthy" : "warning", trend: "stable" },
+          { title: "Açık Şikayet", value: `${openComplaints}`, status: openComplaints > 0 ? "warning" : "healthy", trend: "stable" },
+          { title: "Denetim Puanı", value: auditGrade, status: auditGrade === "A+" || auditGrade === "A" ? "healthy" : "warning", trend: "stable" },
         ],
-        qualityTrend: [
-          { month: "Oca", score: 91 },
-          { month: "Sub", score: 89 },
-          { month: "Mar", score: 92 },
-          { month: "Nis", score: 94 }
-        ],
-        alerts: [
-          { message: "2 subede hijyen denetimi planlanmali", severity: "warning" },
-          { message: "Fabrika kalite raporunu bekliyor", severity: "warning" }
-        ]
+        qualityTrend: qualityTrend.length > 0 ? qualityTrend : [],
+        alerts,
       });
     } catch (error: any) {
       console.error("Error in Kalite dashboard:", error);
       res.status(500).json({ message: "Veri alinamadi", error: error.message });
+    }
+  });
+
+  // HQ Dashboard - Destek (NEW)
+  app.get("/api/hq-dashboard/destek", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['ceo', 'admin', 'cgo', 'destek'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const [openTicketData, resolvedTodayData, avgResolutionData, avgRatingData] = await Promise.all([
+        db.select({ count: count() }).from(hqSupportTickets).where(eq(hqSupportTickets.status, 'aktif')),
+        db.select({ count: count() }).from(hqSupportTickets).where(and(eq(hqSupportTickets.status, 'kapatildi'), gte(hqSupportTickets.closedAt, today))),
+        db.select({
+          avgHours: sql<number>`ROUND(AVG(EXTRACT(EPOCH FROM (${hqSupportTickets.closedAt} - ${hqSupportTickets.createdAt})) / 3600)::numeric, 1)`,
+        }).from(hqSupportTickets).where(and(eq(hqSupportTickets.status, 'kapatildi'), isNotNull(hqSupportTickets.closedAt))),
+        db.select({ avg: avg(hqSupportTickets.rating) }).from(hqSupportTickets).where(isNotNull(hqSupportTickets.rating)),
+      ]);
+
+      const openTickets = Number(openTicketData[0]?.count ?? 0);
+      const resolvedToday = Number(resolvedTodayData[0]?.count ?? 0);
+      const avgResolutionHours = avgResolutionData[0]?.avgHours ? parseFloat(String(avgResolutionData[0].avgHours)) : null;
+      const avgSatisfaction = avgRatingData[0]?.avg ? parseFloat(String(avgRatingData[0].avg)) : null;
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (openTickets > 10) alerts.push({ message: `${openTickets} açık talep bekliyor`, severity: "critical" });
+      else if (openTickets > 0) alerts.push({ message: `${openTickets} açık talep mevcut`, severity: "warning" });
+      if (avgResolutionHours !== null && avgResolutionHours > 24) alerts.push({ message: `Ort. çözüm süresi yüksek: ${avgResolutionHours} saat`, severity: "warning" });
+      if (alerts.length === 0) alerts.push({ message: "Destek metrikleri normal", severity: "healthy" });
+
+      res.json({
+        metrics: [
+          { title: "Açık Talep", value: `${openTickets}`, status: openTickets > 10 ? "critical" : openTickets > 0 ? "warning" : "healthy", trend: "stable" },
+          { title: "Bugün Çözülen", value: `${resolvedToday}`, status: "healthy", trend: "stable" },
+          { title: "Ort. Çözüm Süresi", value: avgResolutionHours !== null ? `${avgResolutionHours} saat` : "—", status: avgResolutionHours !== null && avgResolutionHours <= 24 ? "healthy" : "warning", trend: "stable" },
+          { title: "Memnuniyet", value: avgSatisfaction !== null ? `${avgSatisfaction.toFixed(1)}/5` : "—", status: avgSatisfaction !== null && avgSatisfaction >= 4.0 ? "healthy" : "warning", trend: "stable" },
+        ],
+        alerts,
+      });
+    } catch (error: any) {
+      console.error("Error in Destek dashboard:", error);
+      res.status(500).json({ message: "Destek verisi alınamadı", error: error.message });
     }
   });
 

@@ -690,14 +690,14 @@ function MarketingDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Aktif Kampanya", value: 4, icon: <Megaphone className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10", status: 'healthy' },
-    { title: "Sosyal Medya Erişimi", value: "125K", icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", trend: 'up' },
-    { title: "Kampanya ROI", value: "3.2x", icon: <TrendingUp className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
-    { title: "Müşteri Memnuniyeti", value: "4.5/5", icon: <Heart className="w-5 h-5 text-pink-500" />, iconBgClass: "bg-pink-500/10", status: 'healthy' },
+    { title: "Aktif Kampanya", value: "—", icon: <Megaphone className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10", status: 'healthy' },
+    { title: "Kampanya Erişimi", value: "—", icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", trend: 'stable' },
+    { title: "Müşteri Memnuniyeti", value: "—", icon: <Heart className="w-5 h-5 text-pink-500" />, iconBgClass: "bg-pink-500/10", status: 'healthy' },
+    { title: "Kampanya ROI", value: "—", icon: <TrendingUp className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
-    { message: "Instagram etkileşim oranı düşüşte (%12)", severity: 'warning' as RiskStatus },
+    { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
@@ -898,14 +898,14 @@ function KaliteDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Kalite Skoru", value: "94%", icon: <Star className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy', trend: 'up' },
-    { title: "Müşteri Puanı", value: "4.5/5", icon: <ThumbsUp className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
-    { title: "Açık Şikayet", value: 3, icon: <MessageSquare className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'warning' },
-    { title: "Denetim Puanı", value: "A+", icon: <ClipboardCheck className="w-5 h-5 text-emerald-500" />, iconBgClass: "bg-emerald-500/10", status: 'healthy' },
+    { title: "Kalite Skoru", value: "—", icon: <Star className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy' },
+    { title: "Müşteri Puanı", value: "—", icon: <ThumbsUp className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Açık Şikayet", value: "—", icon: <MessageSquare className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'healthy' },
+    { title: "Denetim Puanı", value: "—", icon: <ClipboardCheck className="w-5 h-5 text-emerald-500" />, iconBgClass: "bg-emerald-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
-    { message: "İbni Sina şubesinden 2 olumsuz feedback", severity: 'warning' as RiskStatus },
+    { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
@@ -1079,25 +1079,16 @@ function CGODashboard() {
   ];
 
   const fallbackMetrics = [
-    { title: "Toplam Şube", value: 8, status: 'healthy' as RiskStatus, icon: <Store className="w-5 h-5 text-blue-500" /> },
-    { title: "Aktif Personel", value: 156, trend: 'up' as Trend, icon: <Users className="w-5 h-5 text-green-500" /> },
-    { title: "Açık Arızalar", value: 5, status: 'warning' as RiskStatus, icon: <AlertTriangle className="w-5 h-5 text-red-500" /> },
-    { title: "Checklist Tamamlanma", value: "92%", status: 'healthy' as RiskStatus, icon: <CheckCircle className="w-5 h-5 text-emerald-500" /> },
+    { title: "Toplam Şube", value: "—", status: 'healthy' as RiskStatus, icon: <Store className="w-5 h-5 text-blue-500" /> },
+    { title: "Aktif Personel", value: "—", status: 'healthy' as RiskStatus, icon: <Users className="w-5 h-5 text-green-500" /> },
+    { title: "Açık Arızalar", value: "—", status: 'healthy' as RiskStatus, icon: <AlertTriangle className="w-5 h-5 text-red-500" /> },
+    { title: "Checklist Tamamlanma", value: "—", status: 'healthy' as RiskStatus, icon: <CheckCircle className="w-5 h-5 text-emerald-500" /> },
   ];
 
-  const fallbackDepartmentHealth = [
-    { name: 'Satınalma', status: 'healthy', score: 88 },
-    { name: 'Fabrika', status: 'healthy', score: 82 },
-    { name: 'İK', status: 'healthy', score: 91 },
-    { name: 'Coach', status: 'warning', score: 79 },
-    { name: 'Marketing', status: 'healthy', score: 94 },
-    { name: 'Trainer', status: 'healthy', score: 85 },
-    { name: 'Kalite', status: 'healthy', score: 90 },
-  ];
+  const fallbackDepartmentHealth: any[] = [];
 
   const fallbackAlerts = [
-    { message: "3 şubede SLA ihlali riski", severity: 'warning' as RiskStatus },
-    { message: "Haftalık eğitim hedefi %15 altında", severity: 'critical' as RiskStatus },
+    { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
   const metrics = data?.metrics || fallbackMetrics;
@@ -1108,12 +1099,14 @@ function CGODashboard() {
     return <DashboardSkeleton />;
   }
 
-  const departmentSummary = departmentHealth.map((dept: any) => ({
+  const departmentSummary = Array.isArray(departmentHealth) ? departmentHealth.map((dept: any) => ({
     ...dept,
     owner: departmentOwnerMap[dept.name] || 'HQ'
-  }));
+  })) : [];
 
-  const overallScore = Math.round(departmentHealth.reduce((sum: number, d: any) => sum + d.score, 0) / departmentHealth.length);
+  const overallScore = Array.isArray(departmentHealth) && departmentHealth.length > 0
+    ? Math.round(departmentHealth.reduce((sum: number, d: any) => sum + (d.score ?? 0), 0) / departmentHealth.length)
+    : 0;
 
   return (
     <div className="space-y-3">
@@ -1638,15 +1631,14 @@ function DestekDashboard() {
   });
 
   const fallbackMetrics: MetricCard[] = [
-    { title: "Açık Destek Talepleri", value: 8, icon: <MessageSquare className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'warning', trend: 'stable' },
-    { title: "Ortalama Çözüm Süresi", value: "4.2 saat", icon: <Clock className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy', trend: 'up' },
-    { title: "Memnuniyet Oranı", value: "91%", icon: <ThumbsUp className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy', trend: 'up' },
-    { title: "Bugün Çözülen", value: 5, icon: <CheckCircle className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Açık Talep", value: "—", icon: <MessageSquare className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy' },
+    { title: "Bugün Çözülen", value: "—", icon: <CheckCircle className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Ort. Çözüm Süresi", value: "—", icon: <Clock className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+    { title: "Memnuniyet", value: "—", icon: <ThumbsUp className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy' },
   ];
 
   const fallbackAlerts = [
-    { message: "2 destek talebi 24 saatten fazla bekliyor", severity: 'warning' as RiskStatus },
-    { message: "Kadıköy şubesinden yoğun talep akışı", severity: 'warning' as RiskStatus },
+    { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
   const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
