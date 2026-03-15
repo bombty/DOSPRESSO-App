@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments, insertHaccpControlPointSchema, insertHaccpRecordSchema, insertHygieneAuditSchema, insertSupplierCertificationSchema, insertFoodSafetyTrainingSchema, insertFoodSafetyDocumentSchema } from "@shared/schema";
 import { eq, and, inArray, notInArray, sql, or, gte, lt, count, avg, isNull, isNotNull } from "drizzle-orm";
-import { userTrainingProgress, userQuizAttempts, userCareerProgress, qualityAudits } from "@shared/schema";
+import { userTrainingProgress, userQuizAttempts, userCareerProgress, qualityAudits, factoryProductionRuns, factoryShiftSessions, factoryStations } from "@shared/schema";
 import { computeBranchHealthScores } from "./services/branch-health-scoring";
 import { cache, generateCacheKey } from "./cache";
 
@@ -881,24 +881,47 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
       }
-      
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const todayRuns = await db.select().from(factoryProductionRuns)
+        .where(gte(factoryProductionRuns.startTime, today));
+
+      const totalProduced = todayRuns.reduce((sum, run) => sum + (run.quantityProduced || 0), 0);
+      const totalWaste = todayRuns.reduce((sum, run) => sum + (run.quantityWaste || 0), 0);
+
+      const efficiency = totalProduced > 0
+        ? Number(((totalProduced - totalWaste) / totalProduced * 100).toFixed(1))
+        : 0;
+      const wastePercent = totalProduced > 0
+        ? Number((totalWaste / totalProduced * 100).toFixed(1))
+        : 0;
+
+      const activeSessions = await db.select({ id: factoryShiftSessions.id })
+        .from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.status, 'active'));
+      const activeWorkers = activeSessions.length;
+
+      const allStations = await db.select({ id: factoryStations.id })
+        .from(factoryStations)
+        .where(eq(factoryStations.isActive, true));
+      const activeStationCount = allStations.length;
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (wastePercent > 3) alerts.push({ message: `Fire oranı yüksek (%${wastePercent})`, severity: "warning" });
+      if (activeWorkers === 0) alerts.push({ message: "Aktif vardiya personeli yok", severity: "warning" });
+      if (totalProduced === 0) alerts.push({ message: "Bugün henüz üretim kaydı yok", severity: "warning" });
+
       res.json({
         metrics: [
-          { title: "Günlük Üretim", value: "2,450 kg", status: "healthy", trend: "up" },
-          { title: "Verimlilik", value: "94.2%", status: "healthy", trend: "stable" },
-          { title: "Fire Oranı", value: "1.8%", status: "healthy", trend: "down" },
-          { title: "Makine Uptime", value: "98.5%", status: "healthy", trend: "stable" }
+          { title: "Bugün Üretim", value: totalProduced > 0 ? `${totalProduced.toLocaleString('tr-TR')} adet` : "—", status: "healthy", trend: "stable" },
+          { title: "Verimlilik", value: efficiency > 0 ? `%${efficiency}` : "—", status: efficiency >= 90 ? "healthy" : efficiency >= 75 ? "warning" : "critical", trend: "stable" },
+          { title: "Fire Oranı", value: totalProduced > 0 ? `%${wastePercent}` : "—", status: wastePercent <= 2 ? "healthy" : wastePercent <= 5 ? "warning" : "critical", trend: "stable" },
+          { title: "Aktif Personel", value: `${activeWorkers}`, status: activeWorkers > 0 ? "healthy" : "warning", trend: "stable" },
         ],
-        productionTrend: [
-          { day: "Pzt", actual: 2300, target: 2400 },
-          { day: "Sal", actual: 2450, target: 2400 },
-          { day: "Car", actual: 2380, target: 2400 },
-          { day: "Per", actual: 2520, target: 2400 },
-          { day: "Cum", actual: 2450, target: 2400 }
-        ],
-        alerts: [
-          { message: "Kavurma makinesi bakim zamani yaklasiyort", severity: "warning" }
-        ]
+        activeStations: activeStationCount,
+        alerts,
       });
     } catch (error: any) {
       console.error("Error in Fabrika dashboard:", error);

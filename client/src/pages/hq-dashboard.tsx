@@ -320,31 +320,29 @@ function FabrikaDashboard() {
     queryKey: ['/api/hq-dashboard/fabrika'],
   });
 
-  const fallbackMetrics: MetricCard[] = [
-    { title: "Günlük Üretim", value: "2,450 kg", icon: <Factory className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy', trend: 'up' },
-    { title: "Verimlilik", value: "94.2%", icon: <Gauge className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
-    { title: "Fire Oranı", value: "1.8%", icon: <Flame className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", status: 'healthy' },
-    { title: "Makine Uptime", value: "98.5%", icon: <Zap className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy' },
+  const fabrikaIconConfig = [
+    { icon: <Factory className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10" },
+    { icon: <Gauge className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10" },
+    { icon: <Flame className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10" },
+    { icon: <Users className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10" },
   ];
 
-  const fallbackAlerts = [
-    { message: "Kavurma makinesi bakım zamanı yaklaşıyor", severity: 'warning' as RiskStatus },
-  ];
+  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+    title: m.title,
+    value: m.value ?? "—",
+    status: m.status || 'healthy',
+    trend: m.trend || 'stable',
+    icon: fabrikaIconConfig[index]?.icon || <Factory className="w-5 h-5 text-muted-foreground" />,
+    iconBgClass: fabrikaIconConfig[index]?.iconBgClass,
+  })) : fabrikaIconConfig.map((cfg, i) => ({
+    title: ["Bugün Üretim", "Verimlilik", "Fire Oranı", "Aktif Personel"][i],
+    value: "—",
+    status: 'healthy' as RiskStatus,
+    icon: cfg.icon,
+    iconBgClass: cfg.iconBgClass,
+  }));
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
-    const fallbackIcon = fallbackMetrics[index]?.icon || <Factory className="w-5 h-5 text-muted-foreground" />;
-    return {
-      title: m.title,
-      value: m.value,
-      status: m.status,
-      trend: m.trend,
-      icon: fallbackIcon,
-      iconBgClass: fallbackMetrics[index]?.iconBgClass,
-      onClick: fallbackMetrics[index]?.onClick
-    };
-  }) : fallbackMetrics;
-  
-  const alerts = data?.alerts || fallbackAlerts;
+  const alerts = data?.alerts || [];
 
   if (isLoading) {
     return <DashboardSkeleton />;
