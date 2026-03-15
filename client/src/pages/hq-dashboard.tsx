@@ -208,32 +208,29 @@ function SatinalmaDashboard() {
     queryKey: ['/api/hq-dashboard/satinalma'],
   });
 
-  const fallbackMetrics: MetricCard[] = [
-    { title: "Aktif Tedarikçi", value: 24, icon: <Truck className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy', trend: 'stable' },
-    { title: "Bekleyen Sipariş", value: 12, icon: <Package className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", status: 'warning' },
-    { title: "Ortalama Teslimat", value: "2.4 gün", icon: <Clock className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
-    { title: "Fiyat Uyarısı", value: 5, icon: <AlertTriangle className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'critical' },
+  const iconConfig = [
+    { icon: <Truck className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10" },
+    { icon: <Package className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10" },
+    { icon: <Clock className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10" },
+    { icon: <DollarSign className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10" },
   ];
 
-  const fallbackAlerts = [
-    { message: "Kahve çekirdeği stoğu kritik seviyede (3 gün)", severity: 'critical' as RiskStatus },
-    { message: "Süt tedarikçisi fiyat artışı bildirdi (%8)", severity: 'warning' as RiskStatus },
-  ];
+  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+    title: m.title,
+    value: m.value ?? "—",
+    status: m.status || 'healthy',
+    trend: m.trend || 'stable',
+    icon: iconConfig[index]?.icon || <Package className="w-5 h-5 text-muted-foreground" />,
+    iconBgClass: iconConfig[index]?.iconBgClass,
+  })) : iconConfig.map((cfg, i) => ({
+    title: ["Aktif Tedarikçi", "Bekleyen Sipariş", "Ortalama Teslimat", "Aylık Toplam"][i],
+    value: "—",
+    status: 'healthy' as RiskStatus,
+    icon: cfg.icon,
+    iconBgClass: cfg.iconBgClass,
+  }));
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
-    const fallbackIcon = fallbackMetrics[index]?.icon || <Package className="w-5 h-5 text-muted-foreground" />;
-    return {
-      title: m.title,
-      value: m.value,
-      status: m.status,
-      trend: m.trend,
-      icon: fallbackIcon,
-      iconBgClass: fallbackMetrics[index]?.iconBgClass,
-      onClick: fallbackMetrics[index]?.onClick
-    };
-  }) : fallbackMetrics;
-  
-  const alerts = data?.alerts || fallbackAlerts;
+  const alerts = data?.alerts || [];
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -432,32 +429,29 @@ function IKDashboard() {
     queryKey: ['/api/hq-dashboard/ik'],
   });
 
-  const fallbackMetrics: MetricCard[] = [
-    { title: "Toplam Personel", value: 156, icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy', trend: 'up' },
-    { title: "Yıllık Turnover", value: "12%", icon: <UserX className="w-5 h-5 text-red-500" />, iconBgClass: "bg-red-500/10", status: 'warning' },
-    { title: "Ortalama Deneyim", value: "2.3 yıl", icon: <Calendar className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10", status: 'healthy' },
-    { title: "Eğitim Tamamlama", value: "85%", icon: <GraduationCap className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'healthy' },
+  const ikIconConfig = [
+    { icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10" },
+    { icon: <Store className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10" },
+    { icon: <Calendar className="w-5 h-5 text-orange-500" />, iconBgClass: "bg-orange-500/10" },
+    { icon: <UserCheck className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10" },
   ];
 
-  const fallbackAlerts = [
-    { message: "3 personelin sözleşmesi bu ay sona eriyor", severity: 'warning' as RiskStatus },
-    { message: "İbni Sina şubesinde devamsızlık artışı", severity: 'warning' as RiskStatus },
-  ];
+  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+    title: m.title,
+    value: m.value ?? "—",
+    status: m.status || 'healthy',
+    trend: m.trend || 'stable',
+    icon: ikIconConfig[index]?.icon || <Users className="w-5 h-5 text-muted-foreground" />,
+    iconBgClass: ikIconConfig[index]?.iconBgClass,
+  })) : ikIconConfig.map((cfg, i) => ({
+    title: ["Toplam Personel", "Şube Personeli", "Bekleyen İzin", "Bu Ay Yeni İşe Alım"][i],
+    value: "—",
+    status: 'healthy' as RiskStatus,
+    icon: cfg.icon,
+    iconBgClass: cfg.iconBgClass,
+  }));
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
-    const fallbackIcon = fallbackMetrics[index]?.icon || <Users className="w-5 h-5 text-muted-foreground" />;
-    return {
-      title: m.title,
-      value: m.value,
-      status: m.status,
-      trend: m.trend,
-      icon: fallbackIcon,
-      iconBgClass: fallbackMetrics[index]?.iconBgClass,
-      onClick: fallbackMetrics[index]?.onClick
-    };
-  }) : fallbackMetrics;
-  
-  const alerts = data?.alerts || fallbackAlerts;
+  const alerts = data?.alerts || [];
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -573,9 +567,9 @@ function CoachDashboard() {
     const cfg = metricConfig[m.title];
     return {
       title: m.title,
-      value: m.value,
-      status: m.status,
-      trend: m.trend,
+      value: m.value ?? "—",
+      status: m.status || 'healthy',
+      trend: m.trend || 'stable',
       icon: cfg?.icon || defaultIcon,
       iconBgClass: cfg?.iconBgClass,
       onClick: cfg?.onClick,
@@ -802,31 +796,29 @@ function TrainerDashboard() {
     queryKey: ['/api/hq-dashboard/trainer'],
   });
 
-  const fallbackMetrics: MetricCard[] = [
-    { title: "Eğitim Tamamlama", value: "78%", icon: <CheckCircle className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10", status: 'warning', trend: 'up' },
-    { title: "Ortalama Quiz Puanı", value: "82%", icon: <Award className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10", status: 'healthy' },
-    { title: "Sertifika Bekleyen", value: 12, icon: <GraduationCap className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10", status: 'warning' },
-    { title: "Aktif Öğrenci", value: 150, icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10", status: 'healthy' },
+  const trainerIconConfig = [
+    { icon: <CheckCircle className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10" },
+    { icon: <Award className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10" },
+    { icon: <GraduationCap className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10" },
+    { icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10" },
   ];
 
-  const fallbackAlerts = [
-    { message: "5 personelin temel eğitimi eksik", severity: 'warning' as RiskStatus },
-  ];
+  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+    title: m.title,
+    value: m.value ?? "—",
+    status: m.status || 'healthy',
+    trend: m.trend || 'stable',
+    icon: trainerIconConfig[index]?.icon || <BookOpen className="w-5 h-5 text-muted-foreground" />,
+    iconBgClass: trainerIconConfig[index]?.iconBgClass,
+  })) : trainerIconConfig.map((cfg, i) => ({
+    title: ["Eğitim Tamamlama", "Ortalama Quiz Puanı", "Sertifika Bekleyen", "Aktif Öğrenci"][i],
+    value: "—",
+    status: 'healthy' as RiskStatus,
+    icon: cfg.icon,
+    iconBgClass: cfg.iconBgClass,
+  }));
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
-    const fallbackIcon = fallbackMetrics[index]?.icon || <BookOpen className="w-5 h-5 text-muted-foreground" />;
-    return {
-      title: m.title,
-      value: m.value,
-      status: m.status,
-      trend: m.trend,
-      icon: fallbackIcon,
-      iconBgClass: fallbackMetrics[index]?.iconBgClass,
-      onClick: fallbackMetrics[index]?.onClick
-    };
-  }) : fallbackMetrics;
-  
-  const alerts = data?.alerts || fallbackAlerts;
+  const alerts = data?.alerts || [];
 
   if (isLoading) {
     return <DashboardSkeleton />;

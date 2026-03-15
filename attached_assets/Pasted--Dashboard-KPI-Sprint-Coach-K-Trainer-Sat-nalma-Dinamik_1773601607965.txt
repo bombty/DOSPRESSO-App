@@ -1,0 +1,344 @@
+# Dashboard-KPI-Sprint — Coach, İK, Trainer, Satınalma Dinamik KPIs
+
+## Context
+DOSPRESSO franchise platform. Stack: React 18 + TypeScript, TanStack Query v5, Drizzle ORM, PostgreSQL, Express.
+
+Target: hq-dashboard.tsx — 4 department dashboards currently showing hardcoded fallback data.
+Do NOT touch: auth system, other dashboards, CRM module, factory module.
+
+---
+
+## TASK 1 — /api/hq-dashboard/coach (Yeni Endpoint)
+
+**File:** Add to `server/routes/hq-dashboard-routes.ts` (or create if doesn't exist)
+
+This endpoint combines coach-summary data with additional branch health metrics.
+
+```typescript
+// GET /api/hq-dashboard/coach
+router.get('/coach', requireAuth, requireRole(['admin','ceo','cgo','coach','trainer']), async (req, res) => {
+  try {
+    // 1. Total active branches
+    const [branchCount] = await db
+      .select({ count: count() })
+      .from(branches)
+      .where(eq(branches.isActive, true)); // adjust column name
+
+    // 2. Staff needing attention (composite score < 65)
+    // Check actual table/column names with:
+    // grep -n "compositeScore\|composite_score\|performanceScore" shared/schema.ts | head -10
+    const attentionNeeded = await db
+      .select({
+        userId: users.id,
+        name: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        role: users.role,
+        branchId: users.branchId,
+      })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          inArray(users.role, ['barista', 'bar_buddy', 'stajyer', 'supervisor', 'mudur'])
+        )
+      )
+      .limit(20);
+
+    // 3. Pending exams (academy items not completed)
+    // Check: grep -n "userProgress\|academyProgress\|exam" shared/schema.ts | head -10
+    // Use whatever progress table exists
+
+    // 4. Branch visit count this month (if visit/denetim table exists)
+    // Check: grep -n "visit\|ziyaret\|denetim\|audit" shared/schema.ts | head -5
+
+    res.json({
+      totalBranches: branchCount?.count ?? 0,
+      attentionNeededCount: attentionNeeded.length,
+      // pendingExams: examCount,
+      // visitsThisMonth: visitCount,
+      // Fill in what's available, use 0 for what isn't
+    });
+  } catch (err) {
+    console.error('Coach dashboard error:', err);
+    res.status(500).json({ error: 'Coach dashboard verisi alınamadı' });
+  }
+});
+```
+
+**Important:** Before writing queries, check actual table/column names:
+```bash
+grep -n "branches\|staff\|personnel\|exam\|progress\|visit\|audit" shared/schema.ts | grep "pgTable" | head -20
+```
+Use actual column names. Don't assume.
+
+---
+
+## TASK 2 — /api/hq-dashboard/ik (Yeni Endpoint)
+
+```typescript
+// GET /api/hq-dashboard/ik
+router.get('/ik', requireAuth, requireRole(['admin','ceo','cgo','ik','muhasebe']), async (req, res) => {
+  try {
+    // 1. Total active staff
+    const [totalStaff] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          notInArray(users.role, ['admin','ceo','cgo','coach','trainer'])
+          // exclude HQ roles, count only operational staff
+        )
+      );
+
+    // 2. Active vs inactive breakdown
+    // Check if users table has isActive or similar field
+
+    // 3. Payroll this month — check actual payroll table
+    // grep -n "payroll\|bordro\|salary\|maas" shared/schema.ts | grep "pgTable" | head -5
+    // Then: SELECT SUM(amount) FROM payroll_records WHERE month = current_month
+
+    // 4. Leave requests pending
+    // grep -n "leave\|izin\|absence" shared/schema.ts | grep "pgTable" | head -5
+
+    // 5. New hires this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const [newHires] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          gte(users.createdAt, startOfMonth)
+        )
+      );
+
+    res.json({
+      totalStaff: totalStaff?.count ?? 0,
+      newHiresThisMonth: newHires?.count ?? 0,
+      // pendingLeaveRequests: leaveCount,
+      // monthlyPayrollTotal: payrollSum,
+    });
+  } catch (err) {
+    console.error('IK dashboard error:', err);
+    res.status(500).json({ error: 'İK dashboard verisi alınamadı' });
+  }
+});
+```
+
+---
+
+## TASK 3 — /api/hq-dashboard/trainer (Fix hardcoded endpoint)
+
+**File:** `server/routes/academy.ts` around line 441
+
+The `/api/academy/stats` endpoint returns hardcoded values. Fix it:
+
+```typescript
+// Replace hardcoded values with real DB queries
+router.get('/stats', requireAuth, async (req, res) => {
+  try {
+    // Check what academy progress tables exist:
+    // grep -n "academyProgress\|userProgress\|courseProgress\|enrollment" shared/schema.ts | grep "pgTable" | head -10
+
+    // 1. Active students (users enrolled in any course)
+    // 2. Average completion percentage
+    // 3. Average score
+    // Use actual table names
+
+    // Safe fallback: if tables don't have the right data yet,
+    // return real user counts at minimum:
+    const [activeStudentCount] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          inArray(users.role, ['barista', 'bar_buddy', 'stajyer', 'supervisor', 'mudur', 'supervisor_buddy'])
+        )
+      );
+
+    // Try to get real completion data if the table exists
+    // If it doesn't, return at least real student count with null for others
+
+    res.json({
+      activeStudents: activeStudentCount?.count ?? 0,
+      totalCompletion: null,   // null = not yet tracked, frontend shows "—"
+      averageScore: null,
+      weeklyGrowth: null,
+      roleCompletion: null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Akademi istatistikleri alınamadı' });
+  }
+});
+```
+
+**Also create:** `GET /api/hq-dashboard/trainer`
+
+```typescript
+router.get('/trainer', requireAuth, requireRole(['admin','ceo','cgo','coach','trainer']), async (req, res) => {
+  try {
+    // Check academy/training progress tables
+    // grep -n "training\|akademi\|academy\|course\|ders\|lesson" shared/schema.ts | grep "pgTable" | head -15
+
+    // 1. Count users with pending training (not completed required courses)
+    // 2. Count completed certifications this month
+    // 3. Average score across all active trainees
+
+    // Minimum viable: real user counts
+    const [traineeCount] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          inArray(users.role, ['barista', 'bar_buddy', 'stajyer'])
+        )
+      );
+
+    res.json({
+      totalTrainees: traineeCount?.count ?? 0,
+      // pendingCertifications: certCount,
+      // completedThisMonth: completedCount,
+      // averageScore: avgScore,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Trainer dashboard verisi alınamadı' });
+  }
+});
+```
+
+---
+
+## TASK 4 — /api/hq-dashboard/satinalma (Yeni Endpoint)
+
+```typescript
+// GET /api/hq-dashboard/satinalma
+router.get('/satinalma', requireAuth, requireRole(['admin','ceo','cgo','satinalma','muhasebe']), async (req, res) => {
+  try {
+    // Check supplier/order tables:
+    // grep -n "supplier\|tedarik\|order\|siparis\|purchase\|satin" shared/schema.ts | grep "pgTable" | head -10
+
+    // 1. Active suppliers count
+    // const [supplierCount] = await db.select({ count: count() }).from(suppliers).where(...)
+
+    // 2. Pending orders
+    // 3. This month's purchase total
+
+    // Minimum: return supplier count (5 suppliers in DB from audit)
+    res.json({
+      activeSuppliers: 5, // replace with real query
+      pendingOrders: 0,
+      monthlyPurchaseTotal: 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Satınalma dashboard verisi alınamadı' });
+  }
+});
+```
+
+**For each task:** Run the grep commands first to find actual table names, then write real queries.
+
+---
+
+## TASK 5 — Update hq-dashboard.tsx Frontend
+
+**File:** `client/src/pages/hq-dashboard.tsx`
+
+For each of the 4 departments (coach, ik, trainer, satinalma),
+find the existing useQuery call (e.g. `queryKey: ['/api/hq-dashboard/coach']`)
+and update the component to use real data instead of hardcoded fallback.
+
+### Pattern to apply for each department:
+
+**Before (hardcoded fallback):**
+```tsx
+const kpiItems = data ? [
+  { value: data.totalBranches?.toString() ?? '—', label: 'Şube' },
+  // ...
+] : [
+  { value: '8', label: 'Şube' },  // ← hardcoded
+  { value: '3', label: 'Tehlike' }, // ← hardcoded
+];
+```
+
+**After (dynamic with null-safe):**
+```tsx
+const kpiItems = [
+  { 
+    value: data?.totalBranches?.toString() ?? '—', 
+    label: 'Şube' 
+  },
+  { 
+    value: data?.attentionNeededCount?.toString() ?? '—', 
+    label: 'Dikkat Gereken',
+    color: (data?.attentionNeededCount ?? 0) > 0 ? '#f97316' : undefined
+  },
+  // ... use real fields from API response
+];
+```
+
+**Also update alert pills for each department:**
+```tsx
+// Build pills from real data instead of hardcoded strings
+const pills = [];
+if ((data?.attentionNeededCount ?? 0) > 0) {
+  pills.push({ label: `${data.attentionNeededCount} dikkat gereken personel`, variant: 'orange' as const, dot: true });
+}
+if (pills.length === 0) {
+  pills.push({ label: 'Sistem normal', variant: 'green' as const, dot: true });
+}
+```
+
+**Show loading skeleton while fetching:**
+```tsx
+{!data ? (
+  <div className="grid grid-cols-4 gap-1.5">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />
+    ))}
+  </div>
+) : (
+  <DashboardKpiStrip items={kpiItems} />
+)}
+```
+
+---
+
+## IMPORTANT NOTES
+
+1. **Check actual table names first** before writing any query.
+   The grep commands in each task will show what's available.
+
+2. **If a table doesn't exist yet**, return `null` or `0` for that metric.
+   Frontend should show `'—'` when value is null, not crash.
+
+3. **Don't create new tables** in this sprint — only read from existing ones.
+
+4. **Minimum viable approach:** Even if only 1-2 real metrics are available per dashboard,
+   replace the hardcoded numbers with those real values.
+   It's better to show "—" for unknown metrics than to show wrong hardcoded numbers.
+
+5. **Register new endpoints** in the main routes file if hq-dashboard-routes.ts
+   is not already registered. Check: `grep -n "hq-dashboard" server/index.ts`
+
+---
+
+## Verification Checklist
+
+- [ ] GET /api/hq-dashboard/coach returns real data (not hardcoded)
+- [ ] GET /api/hq-dashboard/ik returns real data
+- [ ] GET /api/hq-dashboard/trainer returns real data
+- [ ] GET /api/hq-dashboard/satinalma returns real data
+- [ ] /api/academy/stats no longer returns hardcoded 87/82/5.2/142
+- [ ] Coach dashboard KPIs show real branch count
+- [ ] IK dashboard KPIs show real staff count
+- [ ] Trainer dashboard KPIs show real trainee count
+- [ ] Loading skeletons show while data fetches
+- [ ] null values show as '—' not crash
+- [ ] Alert pills generated from real data
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors

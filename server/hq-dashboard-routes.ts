@@ -3,7 +3,8 @@ import { Express } from "express";
 import { storage } from "./storage";
 import { db } from "./db";
 import { branches, users, equipmentFaults, checklistCompletions, customerFeedback, leaveRequests, overtimeRequests, monthlyPayrolls, inventory, purchaseOrders, suppliers, productComplaints, productionBatches, equipment, auditInstances, tasks, guestComplaints, franchiseProjects, factoryProducts, haccpControlPoints, haccpRecords, hygieneAudits, supplierCertifications, foodSafetyTrainings, foodSafetyDocuments, insertHaccpControlPointSchema, insertHaccpRecordSchema, insertHygieneAuditSchema, insertSupplierCertificationSchema, insertFoodSafetyTrainingSchema, insertFoodSafetyDocumentSchema } from "@shared/schema";
-import { eq, and, inArray, sql, or, gte, count } from "drizzle-orm";
+import { eq, and, inArray, notInArray, sql, or, gte, lt, count, avg, isNull, isNotNull } from "drizzle-orm";
+import { userTrainingProgress, userQuizAttempts, userCareerProgress, qualityAudits } from "@shared/schema";
 import { computeBranchHealthScores } from "./services/branch-health-scoring";
 import { cache, generateCacheKey } from "./cache";
 
@@ -872,38 +873,6 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     }
   });
   
-  // HQ Dashboard - Satinalma
-  app.get("/api/hq-dashboard/satinalma", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      const allowedRoles = ['ceo', 'admin', 'cgo', 'satinalma'];
-      if (!allowedRoles.includes(user.role)) {
-        return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
-      }
-      
-      res.json({
-        metrics: [
-          { title: "Aktif Tedarikçi", value: 45, status: "healthy", trend: "stable" },
-          { title: "Bekleyen Sipariş", value: 23, status: "warning", trend: "up" },
-          { title: "Ortalama Teslimat", value: "2.3 gün", status: "healthy", trend: "down" },
-          { title: "Fiyat Uyarısı", value: 5, status: "critical", trend: "up" }
-        ],
-        supplierScores: [
-          { name: "Sut Tedarikcisi A", score: 92, onTimeDelivery: 98, priceStability: 85 },
-          { name: "Kahve Tedarikcisi B", score: 88, onTimeDelivery: 90, priceStability: 95 },
-          { name: "Ambalaj Tedarikcisi C", score: 78, onTimeDelivery: 82, priceStability: 75 }
-        ],
-        alerts: [
-          { message: "Kahve fiyatlarinda %8 artis bekleniyor", severity: "warning" },
-          { message: "Sut stoku kritik seviyede - 3 gun", severity: "critical" }
-        ]
-      });
-    } catch (error: any) {
-      console.error("Error in Satinalma dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
-    }
-  });
-  
   // HQ Dashboard - Fabrika
   app.get("/api/hq-dashboard/fabrika", isAuthenticated, async (req: any, res) => {
     try {
@@ -1033,41 +1002,6 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     }
   });
 
-  // HQ Dashboard - IK
-  app.get("/api/hq-dashboard/ik", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      const allowedRoles = ['ceo', 'admin', 'cgo', 'muhasebe_ik', 'muhasebe'];
-      if (!allowedRoles.includes(user.role)) {
-        return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
-      }
-      
-      const usersData = await db.select().from(users);
-      const activeUsers = usersData.filter(u => u.isActive).length;
-      
-      res.json({
-        metrics: [
-          { title: "Toplam Personel", value: activeUsers, status: "healthy", trend: "stable" },
-          { title: "Yıllık Turnover", value: "12%", status: "warning", trend: "up" },
-          { title: "Ortalama Deneyim", value: "2.3 yıl", status: "healthy", trend: "up" },
-          { title: "Eğitim Tamamlama", value: "85%", status: "healthy", trend: "up" }
-        ],
-        departmentDistribution: [
-          { department: "Sube", count: Math.floor(activeUsers * 0.7) },
-          { department: "Fabrika", count: Math.floor(activeUsers * 0.15) },
-          { department: "HQ", count: Math.floor(activeUsers * 0.15) }
-        ],
-        alerts: [
-          { message: "5 personelin sozlesmesi bu ay bitiyor", severity: "warning" },
-          { message: "3 subede personel eksikligi", severity: "critical" }
-        ]
-      });
-    } catch (error: any) {
-      console.error("Error in IK dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
-    }
-  });
-  
   // HQ Dashboard - Coach
   app.get("/api/hq-dashboard/coach", isAuthenticated, async (req: any, res) => {
     try {
@@ -1206,40 +1140,6 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: any) {
       console.error("Error in Marketing dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
-    }
-  });
-  
-  // HQ Dashboard - Trainer
-  app.get("/api/hq-dashboard/trainer", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = req.user;
-      const allowedRoles = ['ceo', 'admin', 'cgo', 'trainer'];
-      if (!allowedRoles.includes(user.role)) {
-        return res.status(403).json({ message: "Bu sayfaya erisim yetkiniz yok" });
-      }
-      
-      const usersData = await db.select().from(users).where(eq(users.isActive, true));
-      
-      res.json({
-        metrics: [
-          { title: "Eğitim Tamamlama", value: "78%", status: "warning", trend: "up" },
-          { title: "Ortalama Quiz Puanı", value: "82%", status: "healthy", trend: "stable" },
-          { title: "Sertifika Bekleyen", value: 12, status: "warning", trend: "stable" },
-          { title: "Aktif Öğrenci", value: usersData.length, status: "healthy", trend: "up" }
-        ],
-        trainingProgress: [
-          { category: "Barista Temelleri", completed: 85, inProgress: 10, notStarted: 5 },
-          { category: "Hijyen & Guvenlik", completed: 92, inProgress: 5, notStarted: 3 },
-          { category: "Müşteri İlişkileri", completed: 68, inProgress: 20, notStarted: 12 }
-        ],
-        alerts: [
-          { message: "15 personelin zorunlu egitimi eksik", severity: "critical" },
-          { message: "Yeni recete egitimi baslatilmali", severity: "warning" }
-        ]
-      });
-    } catch (error: any) {
-      console.error("Error in Trainer dashboard:", error);
       res.status(500).json({ message: "Veri alinamadi", error: error.message });
     }
   });
@@ -1676,6 +1576,134 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
     } catch (error: any) {
       console.error("Error in food safety dashboard summary:", error);
       res.status(500).json({ message: "Gida guvenligi ozeti alinamadi", error: error.message });
+    }
+  });
+
+  const COACH_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol'];
+  const IK_ROLES = ['admin', 'ceo', 'cgo', 'muhasebe', 'muhasebe_ik'];
+  const TRAINER_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
+  const SATINALMA_ROLES = ['admin', 'ceo', 'cgo', 'satinalma', 'muhasebe'];
+
+  function requireDeptRole(roles: string[]) {
+    return (req: any, res: any, next: any) => {
+      if (!req.user || !roles.includes(req.user.role)) {
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      }
+      next();
+    };
+  }
+
+  app.get("/api/hq-dashboard/ik", isAuthenticated, requireDeptRole(IK_ROLES), async (req: any, res) => {
+    try {
+      const [totalStaff] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.isActive, true)));
+      const branchRoles = ['barista', 'bar_buddy', 'stajyer', 'supervisor', 'supervisor_buddy', 'mudur', 'yatirimci_branch'];
+      const [branchStaff] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.isActive, true), inArray(users.role, branchRoles)));
+      const [inactiveStaff] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.isActive, false)));
+
+      const som = new Date(); som.setDate(1); som.setHours(0, 0, 0, 0);
+      const [newHires] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), gte(users.createdAt, som)));
+
+      let pendingLeaves = 0;
+      try { const [lc] = await db.select({ count: count() }).from(leaveRequests).where(eq(leaveRequests.status, "pending")); pendingLeaves = Number(lc?.count ?? 0); } catch {}
+
+      let payrollThisMonth = 0;
+      try {
+        const now = new Date();
+        const [ps] = await db.select({ total: sql<number>`COALESCE(SUM(${monthlyPayrolls.baseSalary}), 0)` }).from(monthlyPayrolls).where(and(eq(monthlyPayrolls.year, now.getFullYear()), eq(monthlyPayrolls.month, now.getMonth() + 1)));
+        payrollThisMonth = Number(ps?.total ?? 0);
+      } catch {}
+
+      const total = Number(totalStaff?.count ?? 0);
+      const branch = Number(branchStaff?.count ?? 0);
+      const inactive = Number(inactiveStaff?.count ?? 0);
+      const hires = Number(newHires?.count ?? 0);
+
+      const metrics = [
+        { title: "Toplam Personel", value: `${total}`, status: "healthy", trend: "stable" },
+        { title: "Şube Personeli", value: `${branch}`, status: "healthy", trend: "stable" },
+        { title: "Bekleyen İzin", value: `${pendingLeaves}`, status: pendingLeaves > 5 ? "warning" : "healthy", trend: "stable" },
+        { title: "Bu Ay Yeni İşe Alım", value: `${hires}`, status: "healthy", trend: hires > 0 ? "up" : "stable" },
+      ];
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (pendingLeaves > 0) alerts.push({ message: `${pendingLeaves} izin talebi onay bekliyor`, severity: "warning" });
+      if (inactive > 5) alerts.push({ message: `${inactive} pasif personel hesabı mevcut`, severity: "warning" });
+      if (payrollThisMonth === 0) alerts.push({ message: "Bu ay bordro hesaplanmamış", severity: "warning" });
+
+      res.json({ metrics, alerts, totalStaff: total, branchStaff: branch, inactiveStaff: inactive, newHiresThisMonth: hires, pendingLeaveRequests: pendingLeaves, monthlyPayrollTotal: payrollThisMonth });
+    } catch (err: any) {
+      console.error("IK dashboard error:", err);
+      res.status(500).json({ error: "İK dashboard verisi alınamadı" });
+    }
+  });
+
+  app.get("/api/hq-dashboard/trainer", isAuthenticated, requireDeptRole(TRAINER_ROLES), async (req: any, res) => {
+    try {
+      const traineeRoles = ['barista', 'bar_buddy', 'stajyer', 'supervisor_buddy', 'supervisor', 'mudur'];
+      const [traineeCount] = await db.select({ count: count() }).from(users).where(and(isNull(users.deletedAt), eq(users.isActive, true), inArray(users.role, traineeRoles)));
+      const [completedProgress] = await db.select({ count: count() }).from(userTrainingProgress).where(eq(userTrainingProgress.status, "completed"));
+      const [totalProgress] = await db.select({ count: count() }).from(userTrainingProgress);
+
+      const completionRate = Number(totalProgress?.count ?? 0) > 0 ? Math.round((Number(completedProgress?.count ?? 0) / Number(totalProgress?.count ?? 0)) * 100) : 0;
+
+      const [avgQuizScore] = await db.select({ avg: avg(userQuizAttempts.score) }).from(userQuizAttempts).where(isNotNull(userQuizAttempts.score));
+      const [certPending] = await db.select({ count: count() }).from(userTrainingProgress).where(and(eq(userTrainingProgress.status, "completed"), eq(userTrainingProgress.certificateIssued, false)));
+
+      const trainees = Number(traineeCount?.count ?? 0);
+      const avgScore = Math.round(Number(avgQuizScore?.avg ?? 0));
+      const pendingCerts = Number(certPending?.count ?? 0);
+
+      const metrics = [
+        { title: "Eğitim Tamamlama", value: `%${completionRate}`, status: completionRate >= 75 ? "healthy" : completionRate >= 50 ? "warning" : "critical", trend: "stable" },
+        { title: "Ortalama Quiz Puanı", value: avgScore > 0 ? `%${avgScore}` : "—", status: avgScore >= 70 ? "healthy" : avgScore >= 50 ? "warning" : "critical", trend: "stable" },
+        { title: "Sertifika Bekleyen", value: `${pendingCerts}`, status: pendingCerts > 10 ? "warning" : "healthy", trend: "stable" },
+        { title: "Aktif Öğrenci", value: `${trainees}`, status: "healthy", trend: "stable" },
+      ];
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (completionRate < 60) alerts.push({ message: `Eğitim tamamlama oranı düşük (%${completionRate})`, severity: "warning" });
+      if (pendingCerts > 5) alerts.push({ message: `${pendingCerts} sertifika onay bekliyor`, severity: "warning" });
+
+      res.json({ metrics, alerts, totalTrainees: trainees, completionRate, averageQuizScore: avgScore, pendingCertifications: pendingCerts });
+    } catch (err: any) {
+      console.error("Trainer dashboard error:", err);
+      res.status(500).json({ error: "Trainer dashboard verisi alınamadı" });
+    }
+  });
+
+  app.get("/api/hq-dashboard/satinalma", isAuthenticated, requireDeptRole(SATINALMA_ROLES), async (req: any, res) => {
+    try {
+      const [activeSupplierCount] = await db.select({ count: count() }).from(suppliers).where(eq(suppliers.status, "aktif"));
+      const [pendingOrderCount] = await db.select({ count: count() }).from(purchaseOrders).where(inArray(purchaseOrders.status, ["taslak", "onay_bekliyor", "onaylandi"]));
+
+      const som = new Date(); som.setDate(1); som.setHours(0, 0, 0, 0);
+      const [monthlyTotal] = await db.select({ total: sql<string>`COALESCE(SUM(${purchaseOrders.totalAmount}::numeric), 0)` }).from(purchaseOrders).where(and(gte(purchaseOrders.orderDate, som), notInArray(purchaseOrders.status, ["iptal"])));
+
+      let avgDeliveryDays = 0;
+      try {
+        const [da] = await db.select({ avg: sql<number>`COALESCE(AVG(EXTRACT(EPOCH FROM (${purchaseOrders.actualDeliveryDate} - ${purchaseOrders.orderDate})) / 86400), 0)` }).from(purchaseOrders).where(isNotNull(purchaseOrders.actualDeliveryDate));
+        avgDeliveryDays = Math.round(Number(da?.avg ?? 0) * 10) / 10;
+      } catch {}
+
+      const supplierCnt = Number(activeSupplierCount?.count ?? 0);
+      const orderCnt = Number(pendingOrderCount?.count ?? 0);
+      const purchaseTotal = Math.round(Number(monthlyTotal?.total ?? 0));
+
+      const metrics = [
+        { title: "Aktif Tedarikçi", value: `${supplierCnt}`, status: "healthy", trend: "stable" },
+        { title: "Bekleyen Sipariş", value: `${orderCnt}`, status: orderCnt > 10 ? "warning" : "healthy", trend: "stable" },
+        { title: "Ortalama Teslimat", value: avgDeliveryDays > 0 ? `${avgDeliveryDays} gün` : "—", status: avgDeliveryDays <= 3 ? "healthy" : "warning", trend: "stable" },
+        { title: "Aylık Toplam", value: purchaseTotal > 0 ? `₺${(purchaseTotal / 100).toLocaleString("tr-TR")}` : "—", status: "healthy", trend: "stable" },
+      ];
+
+      const alerts: Array<{ message: string; severity: string }> = [];
+      if (orderCnt > 10) alerts.push({ message: `${orderCnt} sipariş işlem bekliyor`, severity: "warning" });
+      if (supplierCnt === 0) alerts.push({ message: "Aktif tedarikçi bulunamadı", severity: "critical" });
+
+      res.json({ metrics, alerts, activeSuppliers: supplierCnt, pendingOrders: orderCnt, monthlyPurchaseTotal: purchaseTotal, avgDeliveryDays });
+    } catch (err: any) {
+      console.error("Satinalma dashboard error:", err);
+      res.status(500).json({ error: "Satınalma dashboard verisi alınamadı" });
     }
   });
 }

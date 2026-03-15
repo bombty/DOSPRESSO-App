@@ -31,8 +31,9 @@ import {
   trainingModules,
   trainingCompletions,
   careerLevels,
+  userTrainingProgress,
 } from "@shared/schema";
-import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
+import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import { z } from "zod";
 import { generateQuizQuestionsFromLesson } from "../ai";
 import { createAuditEntry, getAuditContext } from "../audit";
@@ -440,14 +441,67 @@ router.get('/api/academy/module-content/:materialId', isAuthenticated, async (re
 // GET /api/academy/stats - Analytics statistics
 router.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
   try {
-    const stats = {
-      totalCompletion: 87,
-      averageScore: 82,
-      weeklyGrowth: 5.2,
-      activeStudents: 142,
-      roleCompletion: { barista: 85, supervisor_buddy: 60, bar_buddy: 92, stajyer: 45 }
-    };
-    res.json(stats);
+    const traineeRoles = ['barista', 'bar_buddy', 'stajyer', 'supervisor_buddy', 'supervisor', 'mudur'];
+
+    const [studentCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          eq(users.isActive, true),
+          inArray(users.role, traineeRoles)
+        )
+      );
+
+    const [completedCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(userTrainingProgress)
+      .where(eq(userTrainingProgress.status, "completed"));
+
+    const [totalCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(userTrainingProgress);
+
+    const totalCompletion = Number(totalCount?.count ?? 0) > 0
+      ? Math.round((Number(completedCount?.count ?? 0) / Number(totalCount?.count ?? 0)) * 100)
+      : null;
+
+    const [avgScore] = await db
+      .select({ avg: sql<number>`COALESCE(AVG(score), 0)` })
+      .from(userQuizAttempts)
+      .where(isNotNull(userQuizAttempts.score));
+
+    const averageScore = Number(avgScore?.avg ?? 0) > 0 ? Math.round(Number(avgScore?.avg ?? 0)) : null;
+
+    let roleCompletion: Record<string, number | null> | null = null;
+    try {
+      const roleStats = await db
+        .select({
+          role: users.role,
+          total: sql<number>`count(*)`,
+          completed: sql<number>`count(*) FILTER (WHERE ${userTrainingProgress.status} = 'completed')`,
+        })
+        .from(userTrainingProgress)
+        .innerJoin(users, eq(userTrainingProgress.userId, users.id))
+        .where(inArray(users.role, traineeRoles))
+        .groupBy(users.role);
+
+      if (roleStats.length > 0) {
+        roleCompletion = {};
+        for (const rs of roleStats) {
+          roleCompletion[rs.role] = Number(rs.total) > 0 ? Math.round((Number(rs.completed) / Number(rs.total)) * 100) : 0;
+        }
+      }
+    } catch {}
+
+    res.json({
+      totalCompletion,
+      averageScore,
+      weeklyGrowth: null,
+      activeStudents: Number(studentCount?.count ?? 0),
+      roleCompletion,
+    });
   } catch (error: any) {
     handleApiError(res, error, "FetchAcademyStats");
   }
