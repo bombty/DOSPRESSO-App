@@ -7,7 +7,7 @@ import { Plus, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NewTicketDialog } from "./NewTicketDialog";
-import { isHQRole, canAccessIletisimMerkezi, DEPARTMENTS } from "./categoryConfig";
+import { isHQRole, canAccessIletisimMerkezi, canCreateTicket, isBranchOnlyRole, DEPARTMENTS } from "./categoryConfig";
 import { CrmNav } from "./crm-nav";
 import { TicketListPanel } from "./ticket-list-panel";
 import type { TicketListItem } from "./ticket-list-panel";
@@ -203,14 +203,16 @@ export default function IletisimMerkezi() {
                 {isHQ ? 'Sube Talepleri · HQ Gorevler · Duyurular' : branchInfo?.name ?? 'Subem'}
               </p>
             </div>
-            <Button
-              onClick={() => setShowNewTicket(true)}
-              size="sm"
-              data-testid="button-new-ticket"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Yeni Ticket
-            </Button>
+            {canCreateTicket(user?.role ?? "") && (
+              <Button
+                onClick={() => setShowNewTicket(true)}
+                size="sm"
+                data-testid="button-new-ticket"
+              >
+                <Plus className="h-4 w-4 mr-1.5" />
+                Yeni Ticket
+              </Button>
+            )}
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -278,7 +280,7 @@ export default function IletisimMerkezi() {
             selectedId={selectedTicketId}
             onSelect={setSelectedTicketId}
             isLoading={ticketsLoading}
-            onNewTicket={() => setShowNewTicket(true)}
+            onNewTicket={canCreateTicket(user?.role ?? "") ? () => setShowNewTicket(true) : undefined}
           />
         )}
 

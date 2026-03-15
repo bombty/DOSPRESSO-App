@@ -98,8 +98,8 @@ interface TicketAccessFields {
 
 function canAccessTicket(user: AuthenticatedUser, ticket: TicketAccessFields): boolean {
   if (canSeeAllTickets(user.role)) return true;
-  if (BRANCH_ONLY_ROLES.includes(user.role)) return false;
   const ticketBranch = ticket.branchId ?? ticket.branch_id ?? null;
+  if (BRANCH_ONLY_ROLES.includes(user.role)) return ticketBranch === user.branchId;
   if (BRANCH_SCOPED_ROLES.includes(user.role)) return ticketBranch === user.branchId;
   if (isHQRole(user.role)) {
     const dept = ROLE_TO_DEPT_MAP[user.role];
@@ -113,9 +113,6 @@ function canAccessTicket(user: AuthenticatedUser, ticket: TicketAccessFields): b
 router.get("/tickets", async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    if (BRANCH_ONLY_ROLES.includes(user.role)) {
-      return res.status(403).json({ error: "Access denied" });
-    }
     const { department, status, priority, branchId, page = "1" } = req.query;
     const pageNum = parseInt(page as string);
     if (isNaN(pageNum) || pageNum < 1) return res.status(400).json({ error: "Invalid page" });
@@ -169,9 +166,6 @@ router.get("/tickets", async (req: AuthRequest, res: Response) => {
 router.get("/tickets/:id", async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    if (BRANCH_ONLY_ROLES.includes(user.role)) {
-      return res.status(403).json({ error: "Access denied" });
-    }
     const ticketId = parseInt(req.params.id);
     if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
 

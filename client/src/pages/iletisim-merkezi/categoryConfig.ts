@@ -93,6 +93,7 @@ export function getStatusConfig(key: string) {
 export const HQ_ROLES = ["admin", "ceo", "cgo", "muhasebe_ik", "satinalma", "coach", "trainer", "kalite_kontrol", "teknik_sorumlu"];
 
 export const BRANCH_SCOPED_ROLES = ["supervisor", "mudur"];
+export const BRANCH_ONLY_ROLES = ["barista", "bar_buddy", "stajyer"];
 
 export function isHQRole(role: string): boolean {
   return HQ_ROLES.includes(role);
@@ -106,6 +107,14 @@ export function isBranchScopedRole(role: string): boolean {
   return BRANCH_SCOPED_ROLES.includes(role);
 }
 
-export function canAccessIletisimMerkezi(role: string): boolean {
+export function isBranchOnlyRole(role: string): boolean {
+  return BRANCH_ONLY_ROLES.includes(role);
+}
+
+export function canCreateTicket(role: string): boolean {
   return isHQRole(role) || BRANCH_SCOPED_ROLES.includes(role);
+}
+
+export function canAccessIletisimMerkezi(role: string): boolean {
+  return isHQRole(role) || BRANCH_SCOPED_ROLES.includes(role) || BRANCH_ONLY_ROLES.includes(role);
 }
