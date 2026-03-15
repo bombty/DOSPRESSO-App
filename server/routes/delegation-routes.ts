@@ -11,9 +11,9 @@ interface AuthenticatedUser {
   name: string | null;
 }
 
-interface AuthRequest extends Request {
+type AuthRequest = Request & {
   user?: AuthenticatedUser;
-}
+};
 
 const router = Router();
 
@@ -23,7 +23,7 @@ function isAdminRole(role: string): boolean {
   return ['admin', 'ceo'].includes(role);
 }
 
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', async (req: any, res: Response) => {
   try {
     const userRole = req.user?.role;
     if (!userRole || !isAdminRole(userRole)) {
@@ -40,7 +40,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.get('/active', async (req: AuthRequest, res: Response) => {
+router.get('/active', async (req: any, res: Response) => {
   try {
     const userRole = req.user?.role;
     if (!userRole) return res.json([]);
@@ -69,7 +69,7 @@ router.get('/active', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/', async (req: AuthRequest, res: Response) => {
+router.post('/', async (req: any, res: Response) => {
   try {
     const userRole = req.user?.role;
     if (!userRole || !isAdminRole(userRole)) {
@@ -117,7 +117,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.patch('/:id', async (req: AuthRequest, res: Response) => {
+router.patch('/:id', async (req: any, res: Response) => {
   try {
     const userRole = req.user?.role;
     if (!userRole || !isAdminRole(userRole)) {
@@ -147,7 +147,7 @@ router.patch('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.delete('/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/:id', async (req: any, res: Response) => {
   try {
     const userRole = req.user?.role;
     if (!userRole || !isAdminRole(userRole)) {

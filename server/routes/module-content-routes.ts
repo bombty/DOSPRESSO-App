@@ -5,9 +5,9 @@ import { eq, asc } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { z } from 'zod';
 
-interface AuthRequest extends Request {
+type AuthRequest = Request & {
   user?: { id: string; role: string; };
-}
+};
 
 const router = Router();
 
@@ -24,7 +24,7 @@ function parseId(raw: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-router.get('/:moduleKey', async (req: AuthRequest, res: Response) => {
+router.get('/:moduleKey', async (req: any, res: Response) => {
   try {
     const { moduleKey } = req.params;
     if (!VALID_MODULE_KEYS.includes(moduleKey)) {
@@ -54,7 +54,7 @@ router.get('/:moduleKey', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/:moduleKey/departments', async (req: AuthRequest, res: Response) => {
+router.post('/:moduleKey/departments', async (req: any, res: Response) => {
   try {
     if (!req.user?.role || !isAdminRole(req.user.role)) {
       return res.status(403).json({ error: 'Yetkiniz yok' });
@@ -82,7 +82,7 @@ router.post('/:moduleKey/departments', async (req: AuthRequest, res: Response) =
   }
 });
 
-router.delete('/departments/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/departments/:id', async (req: any, res: Response) => {
   try {
     if (!req.user?.role || !isAdminRole(req.user.role)) {
       return res.status(403).json({ error: 'Yetkiniz yok' });
@@ -98,7 +98,7 @@ router.delete('/departments/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-router.post('/departments/:id/topics', async (req: AuthRequest, res: Response) => {
+router.post('/departments/:id/topics', async (req: any, res: Response) => {
   try {
     if (!req.user?.role || !isAdminRole(req.user.role)) {
       return res.status(403).json({ error: 'Yetkiniz yok' });
@@ -124,7 +124,7 @@ router.post('/departments/:id/topics', async (req: AuthRequest, res: Response) =
   }
 });
 
-router.delete('/topics/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/topics/:id', async (req: any, res: Response) => {
   try {
     if (!req.user?.role || !isAdminRole(req.user.role)) {
       return res.status(403).json({ error: 'Yetkiniz yok' });

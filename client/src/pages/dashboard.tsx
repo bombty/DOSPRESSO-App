@@ -44,6 +44,21 @@ export default function Dashboard() {
     );
   }
 
+  const BRANCH_ROLES = ['mudur', 'supervisor', 'supervisor_buddy', 'barista', 'bar_buddy', 'stajyer', 'yatirimci_branch'];
+  if (userRole && BRANCH_ROLES.includes(userRole) && !(user as any)?.branchId) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 text-center px-6" data-testid="no-branch-warning">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <MessageSquare className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <div className="text-base font-bold text-foreground">Sube Atamasi Yok</div>
+        <div className="text-sm text-muted-foreground max-w-sm">
+          Hesabiniza henuz bir sube atanmamis. Yoneticinizle iletisime gecin.
+        </div>
+      </div>
+    );
+  }
+
   const isBranchManager = userRole === 'mudur' || userRole === 'supervisor';
 
   const BRANCH_MODULES = isBranchManager ? [
@@ -54,7 +69,7 @@ export default function Dashboard() {
   ] : [
     { label: 'Akademi', sublabel: 'Dersler & Sertifika', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
     { label: 'Görevlerim', sublabel: 'Bugün', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },
-    { label: 'Sıralama', sublabel: 'Lider tablosu', path: '/siralama', icon: <Trophy className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />, gradient: 'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900' },
+    { label: 'Sıralama', sublabel: 'Lider tablosu', path: '/akademi-leaderboard', icon: <Trophy className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />, gradient: 'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900' },
   ];
 
   return (

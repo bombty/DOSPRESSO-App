@@ -461,7 +461,7 @@ function Router() {
           <Route path="/pdks" component={PdksPage} />
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
-          <Route path="/iletisim-merkezi" component={IletisimMerkezi} />
+          <Route path="/iletisim-merkezi">{() => <ProtectedRoute allowedGroups={["admin", "hq", "sube"]}><IletisimMerkezi /></ProtectedRoute>}</Route>
         </>
       )}
       
