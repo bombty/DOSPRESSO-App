@@ -212,7 +212,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   if (!ticket) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground" data-testid="chat-panel-empty">
-        <TicketIcon className="w-10 h-10 opacity-30" />
+        <TicketIcon className="w-12 h-12 opacity-30" />
         <div className="text-sm font-medium">Bir talep seçin</div>
         <div className="text-xs">Görüntülemek için soldan talep seçin</div>
       </div>
@@ -245,8 +245,8 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   const statusLabel = getStatusConfig(ticket.status)?.label ?? ticket.status;
 
   const getAttachmentIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) return <Image className="w-3 h-3" />;
-    return <FileText className="w-3 h-3" />;
+    if (mimeType.startsWith('image/')) return <Image className="w-4 h-4" />;
+    return <FileText className="w-4 h-4" />;
   };
 
   return (
@@ -257,7 +257,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
       )}
       data-testid="ticket-chat-panel"
     >
-      <div className="flex items-start justify-between px-4 py-2.5 border-b border-border flex-shrink-0 gap-2">
+      <div className="flex items-start justify-between px-4 py-3 border-b border-border flex-shrink-0 gap-2">
         <div className="flex-1 min-w-0 mr-3">
           {onClose && (
             <button onClick={onClose} className="md:hidden mr-2 text-muted-foreground" data-testid="button-chat-back">
@@ -265,12 +265,12 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             </button>
           )}
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[9px] font-bold text-[#cc1f1f]" data-testid="text-chat-ticket-number">{ticket.ticket_number}</span>
-            <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <span className="text-xs font-bold text-[#cc1f1f]" data-testid="text-chat-ticket-number">{ticket.ticket_number}</span>
+            <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
               {dept?.label?.split(' ')[0] ?? ticket.department}
             </span>
             <span className={cn(
-              'text-[8px] font-semibold px-1.5 py-0.5 rounded',
+              'text-xs font-semibold px-1.5 py-0.5 rounded',
               isClosed
                 ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
                 : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
@@ -278,31 +278,31 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
               {statusLabel}
             </span>
           </div>
-          <div className="text-[12px] font-bold text-foreground truncate" data-testid="text-chat-ticket-title">{ticket.title}</div>
-          <div className="text-[8.5px] text-muted-foreground mt-0.5">
+          <div className="text-sm font-bold text-foreground truncate" data-testid="text-chat-ticket-title">{ticket.title}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">
             {ticket.branch_name ?? '—'} · {ticket.created_by_name ?? '—'} · Atanan: {ticket.assigned_to_name ?? 'Atanmadı'}
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="hidden md:block text-right mr-1">
-            <div className="text-[8px] font-semibold" style={{ color: sla.color }}>
+            <div className="text-xs font-semibold" style={{ color: sla.color }}>
               SLA: {sla.label}
             </div>
-            <div className="w-14 h-1 rounded-full bg-muted mt-0.5 overflow-hidden">
+            <div className="w-16 h-1.5 rounded-full bg-muted mt-0.5 overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${sla.percent}%`, background: sla.color }} />
             </div>
           </div>
 
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="w-7 h-7 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors"
+            className="w-8 h-8 rounded-lg border border-border bg-background flex items-center justify-center hover:bg-accent transition-colors"
             title={isFullscreen ? 'Küçült' : 'Tam Ekran'}
             data-testid="button-fullscreen-toggle"
           >
             {isFullscreen
-              ? <Minimize2 className="w-3.5 h-3.5 text-muted-foreground" />
-              : <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
+              ? <Minimize2 className="w-4 h-4 text-muted-foreground" />
+              : <Maximize2 className="w-4 h-4 text-muted-foreground" />
             }
           </button>
 
@@ -310,7 +310,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             <button
               onClick={() => statusMutation.mutate('cozuldu')}
               disabled={statusMutation.isPending}
-              className="text-[8.5px] font-semibold px-2 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+              className="text-xs font-semibold px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
               data-testid="button-resolve-ticket"
             >
               Çöz
@@ -320,23 +320,23 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
       </div>
 
       {(equipmentInfo || (attachments.length > 0)) && (
-        <div className="px-4 py-2 border-b border-border bg-muted/20 flex-shrink-0 space-y-2" data-testid="ticket-extras">
+        <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex-shrink-0 space-y-2" data-testid="ticket-extras">
           {equipmentInfo && (
             <div className="flex items-center gap-2" data-testid="equipment-info">
-              <Wrench className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-              <span className="text-[9px] font-semibold text-foreground">
+              <Wrench className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs font-semibold text-foreground">
                 {equipmentInfo.name}
                 {equipmentInfo.brand ? ` (${equipmentInfo.brand})` : ''}
                 {equipmentInfo.model ? ` - ${equipmentInfo.model}` : ''}
               </span>
-              <span className="text-[8px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {equipmentInfo.equipmentType || equipmentInfo.equipment_type || ''}
               </span>
             </div>
           )}
           {attachments.length > 0 && (
             <div>
-              <div className="text-[8px] font-semibold text-muted-foreground mb-1.5">{attachments.length} Ek</div>
+              <div className="text-xs font-semibold text-muted-foreground mb-1.5">{attachments.length} Ek</div>
               <div className="flex gap-2 flex-wrap">
                 {attachments.map((a) => {
                   const fname = a.fileName || a.file_name || 'dosya';
@@ -354,7 +354,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                     >
                       <img
                         src={`/api/iletisim/attachments/${fkey}`}
-                        className="w-14 h-14 object-cover rounded-md border border-border hover:opacity-80 transition-opacity"
+                        className="w-16 h-16 object-cover rounded-md border border-border hover:opacity-80 transition-opacity"
                         alt={fname}
                       />
                     </a>
@@ -364,11 +364,11 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                       href={`/api/iletisim/attachments/${fkey}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-[9px] px-2 py-1 rounded-md bg-muted border border-border hover:bg-accent transition-colors"
+                      className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-muted border border-border hover:bg-accent transition-colors"
                       data-testid={`attachment-file-${a.id}`}
                     >
-                      <FileText className="w-3 h-3" />
-                      <span className="truncate max-w-[80px]">{fname}</span>
+                      <FileText className="w-3.5 h-3.5" />
+                      <span className="truncate max-w-[100px]">{fname}</span>
                       <span className="text-muted-foreground flex-shrink-0">{formatFileSize(fsize)}</span>
                     </a>
                   );
@@ -383,7 +383,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         <button
           onClick={() => setChatTab('chat')}
           className={cn(
-            'text-xs font-semibold py-2 px-3 border-b-2 transition-colors',
+            'text-sm font-semibold py-2.5 px-3 border-b-2 transition-colors',
             chatTab === 'chat'
               ? 'border-[#122549] text-foreground dark:border-white'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -395,7 +395,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         <button
           onClick={() => setChatTab('history')}
           className={cn(
-            'text-xs font-semibold py-2 px-3 border-b-2 transition-colors',
+            'text-sm font-semibold py-2.5 px-3 border-b-2 transition-colors',
             chatTab === 'history'
               ? 'border-[#122549] text-foreground dark:border-white'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -412,11 +412,11 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             (ticket.comments ?? [])
               .filter((c: TicketComment) => c.is_internal)
               .map((c: TicketComment) => (
-                <div key={c.id} className="flex items-start gap-3 py-2.5 border-b border-border last:border-0" data-testid={`history-item-${c.id}`}>
-                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 mt-1.5 flex-shrink-0" />
+                <div key={c.id} className="flex items-start gap-3 py-3 border-b border-border last:border-0" data-testid={`history-item-${c.id}`}>
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/40 mt-1.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <div className="text-xs text-foreground">{c.content}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                    <div className="text-sm text-foreground">{c.content}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       {new Date(c.created_at).toLocaleString('tr-TR')}
                     </div>
                   </div>
@@ -430,21 +430,21 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         </div>
       ) : (
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-muted/20" data-testid="chat-messages">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-muted/20" data-testid="chat-messages">
         <div className="flex justify-center">
-          <span className="text-[8.5px] px-3 py-1 rounded-full bg-muted text-muted-foreground">
+          <span className="text-xs px-3 py-1.5 rounded-full bg-muted text-muted-foreground">
             Talep açıldı · {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: tr })}
           </span>
         </div>
 
         {ticket.description && (
-          <div className="flex gap-2">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0 mt-3.5 bg-blue-600">
+          <div className="flex gap-2.5">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-3.5 bg-blue-600">
               {(ticket.created_by_name || 'S').charAt(0).toUpperCase()}
             </div>
             <div>
-              <div className="text-[7.5px] text-muted-foreground mb-1">{ticket.created_by_name ?? 'Şube'} · Açılış</div>
-              <div className="px-3 py-2 rounded-xl text-[10px] leading-relaxed bg-card border border-border text-foreground rounded-tl-sm">
+              <div className="text-xs text-muted-foreground mb-1">{ticket.created_by_name ?? 'Şube'} · Açılış</div>
+              <div className="px-3 py-2.5 rounded-xl text-sm leading-relaxed bg-card border border-border text-foreground rounded-tl-sm">
                 {ticket.description}
               </div>
             </div>
@@ -455,16 +455,16 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
           if (c.is_internal) {
             if (!isHQ) return null;
             return (
-              <div key={c.id} className="flex gap-2">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0 mt-3.5 bg-purple-600">
+              <div key={c.id} className="flex gap-2.5">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-3.5 bg-purple-600">
                   {(c.author_name || 'H').charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="text-[7.5px] text-muted-foreground mb-1">
+                  <div className="text-xs text-muted-foreground mb-1">
                     {c.author_name} · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: tr })}
                   </div>
-                  <div className="px-3 py-2 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 text-[9.5px] text-amber-800 dark:text-amber-200">
-                    <div className="text-[7.5px] font-bold uppercase tracking-wide opacity-60 mb-1">Dahili Not</div>
+                  <div className="px-3 py-2.5 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 text-xs text-amber-800 dark:text-amber-200">
+                    <div className="text-xs font-bold uppercase tracking-wide opacity-60 mb-1">Dahili Not</div>
                     {c.content}
                   </div>
                 </div>
@@ -474,21 +474,21 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
 
           const isFromHQ = isHQRole(user?.role ?? '') && c.author_name !== ticket.created_by_name;
           return (
-            <div key={c.id} className={cn('flex gap-2', isFromHQ && 'flex-row-reverse')}>
+            <div key={c.id} className={cn('flex gap-2.5', isFromHQ && 'flex-row-reverse')}>
               <div
                 className={cn(
-                  'w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0 mt-3.5',
+                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-3.5',
                   isFromHQ ? 'bg-[#122549]' : 'bg-blue-600'
                 )}
               >
                 {(c.author_name || '?').charAt(0).toUpperCase()}
               </div>
               <div className={cn('max-w-[75%]', isFromHQ && 'items-end flex flex-col')}>
-                <div className={cn('text-[7.5px] text-muted-foreground mb-1', isFromHQ && 'text-right')}>
+                <div className={cn('text-xs text-muted-foreground mb-1', isFromHQ && 'text-right')}>
                   {c.author_name} · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: tr })}
                 </div>
                 <div className={cn(
-                  'px-3 py-2 rounded-xl text-[10px] leading-relaxed',
+                  'px-3 py-2.5 rounded-xl text-sm leading-relaxed',
                   isFromHQ
                     ? 'bg-[#122549] text-white rounded-tr-sm'
                     : 'bg-card border border-border text-foreground rounded-tl-sm'
@@ -501,8 +501,8 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         })}
 
         {attachments.length > 0 && (
-          <div className="space-y-1.5" data-testid="attachment-list">
-            <div className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wide">Ekler ({attachments.length})</div>
+          <div className="space-y-2" data-testid="attachment-list">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ekler ({attachments.length})</div>
             {attachments.map((a) => {
               const fname = a.fileName || a.file_name || 'dosya';
               const fsize = a.fileSize || a.file_size || 0;
@@ -514,7 +514,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   href={`/api/iletisim/attachments/${fkey}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border bg-card text-foreground text-[9px] hover-elevate"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground text-xs hover-elevate"
                   data-testid={`attachment-${a.id}`}
                 >
                   {getAttachmentIcon(fmime)}
@@ -530,10 +530,10 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
 
       {isClosed ? (
         <div className="px-4 py-3 border-t border-border bg-card flex-shrink-0">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
             <div className="flex-1">
-              <div className="text-[9.5px] font-semibold text-green-700 dark:text-green-300">Bu ticket kapatıldı</div>
-              <div className="text-[8.5px] text-green-600 dark:text-green-400">Yeni sorun için ayrı ticket açın.</div>
+              <div className="text-xs font-semibold text-green-700 dark:text-green-300">Bu ticket kapatıldı</div>
+              <div className="text-xs text-green-600 dark:text-green-400">Yeni sorun için ayrı ticket açın.</div>
             </div>
           </div>
         </div>
@@ -544,7 +544,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
               <button
                 onClick={() => setInputMode('reply')}
                 className={cn(
-                  'text-[8.5px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors',
+                  'text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors',
                   inputMode === 'reply'
                     ? 'bg-[#122549] text-white'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -556,7 +556,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
               <button
                 onClick={() => setInputMode('internal')}
                 className={cn(
-                  'text-[8.5px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors',
+                  'text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors',
                   inputMode === 'internal'
                     ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
                     : 'bg-muted text-muted-foreground hover:bg-accent'
@@ -578,9 +578,9 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   : 'Şubeye yanıt yaz...'
               }
               className={cn(
-                'flex-1 px-3 py-2 rounded-lg text-[10px] resize-none outline-none border',
+                'flex-1 px-3 py-2 rounded-lg text-sm resize-none outline-none border',
                 'bg-muted/50 border-border text-foreground placeholder:text-muted-foreground',
-                'min-h-[36px] max-h-[80px]',
+                'min-h-[40px] max-h-[100px]',
                 inputMode === 'internal' && 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20'
               )}
               rows={1}
@@ -589,16 +589,16 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             <button
               onClick={() => message.trim() && commentMutation.mutate()}
               disabled={!message.trim() || commentMutation.isPending}
-              className="w-8 h-8 rounded-lg bg-[#122549] flex items-center justify-center flex-shrink-0 hover:bg-[#0e1e3a] transition-colors disabled:opacity-50"
+              className="w-9 h-9 rounded-lg bg-[#122549] flex items-center justify-center flex-shrink-0 hover:bg-[#0e1e3a] transition-colors disabled:opacity-50"
               data-testid="button-send-message"
             >
-              <Send className="w-3.5 h-3.5 text-white" />
+              <Send className="w-4 h-4 text-white" />
             </button>
             {isHQ && !isClosed && (
               <button
                 onClick={() => statusMutation.mutate('cozuldu')}
                 disabled={statusMutation.isPending}
-                className="text-[8.5px] font-semibold px-2 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300 flex-shrink-0 hover:bg-green-100 transition-colors"
+                className="text-xs font-semibold px-2.5 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300 flex-shrink-0 hover:bg-green-100 transition-colors"
                 data-testid="button-resolve-and-close"
               >
                 Çöz & Kapat
@@ -610,10 +610,10 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadMutation.isPending}
-              className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
               data-testid="button-attach-file"
             >
-              {uploadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Paperclip className="w-3 h-3" />}
+              {uploadMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
               {uploadMutation.isPending ? 'Yükleniyor...' : 'Dosya Ekle'}
             </button>
             <input
@@ -634,30 +634,30 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   <button
                     onClick={() => setShowAssignDropdown(!showAssignDropdown)}
                     disabled={assignMutation.isPending}
-                    className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
                     data-testid="button-add-person"
                   >
-                    {assignMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+                    {assignMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
                     Ata
                   </button>
                   {showAssignDropdown && (
-                    <div className="absolute left-0 bottom-full mb-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px] py-1 max-h-[200px] overflow-y-auto" data-testid="assign-dropdown">
-                      <div className="px-3 py-1.5 text-[8px] font-semibold text-muted-foreground uppercase tracking-wide border-b border-border flex items-center justify-between gap-2">
+                    <div className="absolute left-0 bottom-full mb-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[200px] py-1 max-h-[200px] overflow-y-auto" data-testid="assign-dropdown">
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border flex items-center justify-between gap-2">
                         <span>Kullanıcı Ata</span>
-                        <button onClick={() => setShowAssignDropdown(false)} className="text-muted-foreground"><X className="w-3 h-3" /></button>
+                        <button onClick={() => setShowAssignDropdown(false)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
                       </div>
                       {assignableUsers.length === 0 && (
-                        <div className="px-3 py-2 text-[9px] text-muted-foreground">Yükleniyor...</div>
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Yükleniyor...</div>
                       )}
                       {assignableUsers.map((u) => (
                         <button
                           key={u.id}
                           onClick={() => assignMutation.mutate(u.id)}
-                          className="w-full text-left px-3 py-1.5 text-[9px] hover:bg-accent transition-colors flex items-center justify-between gap-2"
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center justify-between gap-2"
                           data-testid={`assign-user-${u.id}`}
                         >
                           <span className="truncate">{u.name}</span>
-                          <span className="text-muted-foreground text-[7px] flex-shrink-0">{u.role}</span>
+                          <span className="text-muted-foreground text-xs flex-shrink-0">{u.role}</span>
                         </button>
                       ))}
                     </div>
@@ -666,10 +666,10 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                 <button
                   onClick={() => slaRemindMutation.mutate()}
                   disabled={slaRemindMutation.isPending}
-                  className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
                   data-testid="button-sla-remind"
                 >
-                  {slaRemindMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+                  {slaRemindMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
                   SLA Hatırlat
                 </button>
               </>

@@ -50,7 +50,7 @@ export default function BroadcastTab() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
-                <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide flex items-center gap-1">
+                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide flex items-center gap-1">
                   {ann.priority === "urgent" ? (
                     <><AlertTriangle className="h-3 w-3 text-red-500" /> Acil</>
                   ) : (
@@ -60,11 +60,11 @@ export default function BroadcastTab() {
                 <p className="text-sm font-medium" data-testid={`text-announcement-title-${ann.id}`}>{ann.title}</p>
                 {ann.content && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ann.content}</p>}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(ann.createdAt ?? ann.created_at ?? new Date()), { addSuffix: true, locale: tr })}
                   </span>
                   {ann.confirmed_count != null && ann.total_recipients != null && (
-                    <Badge variant="outline" className="text-[9px]" data-testid={`receipt-count-${ann.id}`}>
+                    <Badge variant="outline" className="text-xs" data-testid={`receipt-count-${ann.id}`}>
                       {ann.confirmed_count}/{ann.total_recipients} onayladı
                     </Badge>
                   )}

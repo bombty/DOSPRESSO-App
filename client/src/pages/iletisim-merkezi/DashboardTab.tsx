@@ -75,7 +75,7 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
           <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <p className="text-xs font-medium text-foreground">Mr. Dobody</p>
+          <p className="text-sm font-medium text-foreground">Mr. Dobody</p>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{dobodyMessage}</p>
         </div>
       </div>
@@ -84,41 +84,41 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
         <Card className="bg-muted/50 border-0" data-testid="kpi-open-tickets">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <TicketCheck className="h-3 w-3 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Açık Şube Talebi</p>
+              <TicketCheck className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Açık Şube Talebi</p>
             </div>
             <p className={cn("text-2xl font-medium", openTickets > 5 ? "text-amber-500" : "text-foreground")} data-testid="text-open-tickets">{openTickets}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">{slaRisk > 0 ? `${slaRisk} SLA riski` : "Tümü zamanında"}</p>
+            <p className="text-xs text-muted-foreground mt-1">{slaRisk > 0 ? `${slaRisk} SLA riski` : "Tümü zamanında"}</p>
           </CardContent>
         </Card>
         <Card className="bg-muted/50 border-0" data-testid="kpi-sla-breaches">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <AlertTriangle className="h-3 w-3 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">SLA İhlali</p>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">SLA İhlali</p>
             </div>
             <p className={cn("text-2xl font-medium", slaBreaches > 0 ? "text-red-500" : "text-foreground")} data-testid="text-sla-breaches">{slaBreaches}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">{slaBreaches > 0 ? "Acil aksiyon gerekiyor" : "İhlal yok"}</p>
+            <p className="text-xs text-muted-foreground mt-1">{slaBreaches > 0 ? "Acil aksiyon gerekiyor" : "İhlal yok"}</p>
           </CardContent>
         </Card>
         <Card className="bg-muted/50 border-0" data-testid="kpi-sla-risk">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <Clock className="h-3 w-3 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">SLA Risk</p>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">SLA Risk</p>
             </div>
             <p className={cn("text-2xl font-medium", slaRisk > 0 ? "text-amber-500" : "text-foreground")} data-testid="text-sla-risk">{slaRisk}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">2 saat içinde aşılır</p>
+            <p className="text-xs text-muted-foreground mt-1">2 saat içinde aşılır</p>
           </CardContent>
         </Card>
         <Card className="bg-muted/50 border-0" data-testid="kpi-feedback">
           <CardContent className="p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <MessageSquare className="h-3 w-3 text-muted-foreground" />
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Müşteri GB</p>
+              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Müşteri GB</p>
             </div>
             <p className="text-2xl font-medium text-foreground" data-testid="text-feedback-count">{b2cFeedbackCount}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">Son 30 gün</p>
+            <p className="text-xs text-muted-foreground mt-1">Son 30 gün</p>
           </CardContent>
         </Card>
       </div>
@@ -127,23 +127,23 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
         <Card data-testid="branch-health-preview">
           <CardHeader className="pb-3 flex flex-row items-center justify-between gap-1">
             <CardTitle className="text-sm font-medium flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" />
+              <Building2 className="h-4 w-4" />
               Şube Sağlık Durumu
             </CardTitle>
-            <span className="text-[10px] text-muted-foreground">{branchHealth.length} şube</span>
+            <span className="text-xs text-muted-foreground">{branchHealth.length} şube</span>
           </CardHeader>
           <CardContent className="space-y-1.5">
             {branchHealth.slice(0, 8).map((branch) => (
               <div
                 key={branch.id}
-                className="flex items-center justify-between text-xs py-1.5"
+                className="flex items-center justify-between text-sm py-1.5"
                 data-testid={`branch-health-${branch.id}`}
               >
                 <span className="font-medium truncate flex-1 mr-2">{branch.name}</span>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-muted-foreground">{branch.open_tickets} açık</span>
+                  <span className="text-xs text-muted-foreground">{branch.open_tickets} açık</span>
                   {Number(branch.sla_breaches) > 0 && (
-                    <Badge variant="destructive" className="text-[9px]">
+                    <Badge variant="destructive" className="text-xs">
                       {branch.sla_breaches} SLA
                     </Badge>
                   )}
@@ -168,12 +168,12 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
               const DeptIcon = cfg?.icon;
               return (
                 <div key={dept.department} data-testid={`dept-load-${dept.department}`}>
-                  <div className="flex justify-between text-xs mb-1">
+                  <div className="flex justify-between text-sm mb-1">
                     <span className="flex items-center gap-1.5">
-                      {DeptIcon && <DeptIcon className="h-3 w-3" />}
+                      {DeptIcon && <DeptIcon className="h-3.5 w-3.5" />}
                       {cfg?.label ?? dept.department}
                     </span>
-                    <span className={breached > 0 ? "text-red-500" : "text-muted-foreground"}>
+                    <span className={cn("text-xs", breached > 0 ? "text-red-500" : "text-muted-foreground")}>
                       {count} açık{breached > 0 ? ` · ${breached} ihlal` : ""}
                     </span>
                   </div>
@@ -187,7 +187,7 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
               );
             })}
             {(!deptBreakdown || deptBreakdown.length === 0) && (
-              <p className="text-xs text-muted-foreground text-center py-3">Açık talep yok</p>
+              <p className="text-sm text-muted-foreground text-center py-3">Açık talep yok</p>
             )}
           </CardContent>
         </Card>
@@ -202,27 +202,27 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
               return (
                 <div key={ticket.id} className="flex items-start gap-2.5 py-2.5" data-testid={`recent-ticket-${ticket.id}`}>
                   <div className={cn(
-                    "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
+                    "w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0",
                     ticket.sla_breached ? "bg-red-500" :
                     ticket.priority === "kritik" ? "bg-red-400" :
                     ticket.priority === "yuksek" ? "bg-amber-500" : "bg-blue-500"
                   )} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{ticket.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-sm font-medium truncate">{ticket.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {ticket.branch_name} · {cfg?.label ?? ticket.department} · {
                         formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: tr })
                       }
                     </p>
                   </div>
                   {ticket.sla_breached && (
-                    <Badge variant="destructive" className="text-[9px] flex-shrink-0">SLA</Badge>
+                    <Badge variant="destructive" className="text-xs flex-shrink-0">SLA</Badge>
                   )}
                 </div>
               );
             })}
             {(!recentTickets || recentTickets.length === 0) && (
-              <p className="text-xs text-muted-foreground text-center py-4">Henüz aktivite yok</p>
+              <p className="text-sm text-muted-foreground text-center py-4">Henüz aktivite yok</p>
             )}
           </CardContent>
         </Card>

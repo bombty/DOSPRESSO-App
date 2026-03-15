@@ -251,7 +251,7 @@ export default function IletisimMerkezi() {
                   >
                     {tab.label}
                     {tab.badge != null && (
-                      <Badge variant="destructive" className="ml-2 text-[10px]">
+                      <Badge variant="destructive" className="ml-2 text-xs">
                         {tab.badge}
                       </Badge>
                     )}

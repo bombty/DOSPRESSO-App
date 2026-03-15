@@ -173,7 +173,7 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
                     data-testid={`dept-btn-${d.key}`}
                   >
                     <DIcon className="h-4 w-4 mb-1 text-muted-foreground" />
-                    <div className="text-[11px] font-medium leading-tight">{d.label}</div>
+                    <div className="text-xs font-medium leading-tight">{d.label}</div>
                   </button>
                 );
               })}
@@ -329,7 +329,7 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
               data-testid="input-photo-file"
             />
             {photos.length > 0 && (
-              <div className="text-[10px] text-muted-foreground mt-1">{photos.length} fotograf secildi (maks. 5)</div>
+              <div className="text-xs text-muted-foreground mt-1">{photos.length} fotograf secildi (maks. 5)</div>
             )}
           </div>
 

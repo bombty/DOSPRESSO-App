@@ -83,8 +83,8 @@ export default function TicketsTab() {
               data-testid={`dept-tile-${dept.key}`}
             >
               <DIcon className="h-4 w-4 mb-1 text-muted-foreground" />
-              <div className="text-[11px] font-medium leading-tight">{dept.label}</div>
-              <div className={cn("text-[10px] mt-1", dept.breached > 0 ? "text-red-500" : "text-muted-foreground")}>
+              <div className="text-xs font-medium leading-tight">{dept.label}</div>
+              <div className={cn("text-xs mt-1", dept.breached > 0 ? "text-red-500" : "text-muted-foreground")}>
                 {dept.count} açık{dept.breached > 0 ? ` · ${dept.breached} SLA` : ""}
               </div>
             </button>
@@ -113,7 +113,7 @@ export default function TicketsTab() {
       </div>
 
       <Card>
-        <div className="hidden md:grid grid-cols-[12px_1fr_80px_70px_70px_75px] gap-2 px-4 py-2 border-b border-border text-[10px] text-muted-foreground font-medium">
+        <div className="hidden md:grid grid-cols-[12px_1fr_90px_80px_80px_85px] gap-3 px-4 py-2.5 border-b border-border text-xs text-muted-foreground font-medium">
           <div />
           <div>Talep</div>
           <div>Şube</div>
@@ -135,35 +135,35 @@ export default function TicketsTab() {
                 <button
                   key={ticket.id}
                   onClick={() => setSelectedTicketId(ticket.id)}
-                  className="w-full grid grid-cols-1 md:grid-cols-[12px_1fr_80px_70px_70px_75px] gap-2 px-4 py-3 text-left hover-elevate transition-colors"
+                  className="w-full grid grid-cols-1 md:grid-cols-[12px_1fr_90px_80px_80px_85px] gap-3 px-4 py-3 text-left hover-elevate transition-colors"
                   data-testid={`ticket-row-${ticket.id}`}
                 >
                   <div className="hidden md:flex items-start pt-1.5">
-                    <div className={cn("w-2 h-2 rounded-full", ticket.sla_breached ? "bg-red-500" : dotColors[ticket.priority] ?? "bg-muted")} />
+                    <div className={cn("w-2.5 h-2.5 rounded-full", ticket.sla_breached ? "bg-red-500" : dotColors[ticket.priority] ?? "bg-muted")} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium truncate">{ticket.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-sm font-medium truncate">{ticket.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {ticket.ticket_number} · {ticket.assigned_to_name ? `Atandı: ${ticket.assigned_to_name}` : "Atanmadı"} · {
                         formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true, locale: tr })
                       }
                     </p>
                   </div>
-                  <div className="hidden md:block text-[11px] text-muted-foreground self-center">{ticket.branch_name ?? "—"}</div>
+                  <div className="hidden md:block text-xs text-muted-foreground self-center">{ticket.branch_name ?? "—"}</div>
                   <div className="hidden md:block self-center">
-                    <Badge variant="outline" className="text-[9px]">
-                      {DeptIcon && <DeptIcon className="h-2.5 w-2.5 mr-0.5" />}
+                    <Badge variant="outline" className="text-xs">
+                      {DeptIcon && <DeptIcon className="h-3 w-3 mr-0.5" />}
                       {deptCfg?.label?.split(" ")[0]}
                     </Badge>
                   </div>
-                  <div className={cn("hidden md:block text-[11px] font-medium self-center", priorityColors[ticket.priority])}>
+                  <div className={cn("hidden md:block text-xs font-medium self-center", priorityColors[ticket.priority])}>
                     {getPriorityConfig(ticket.priority)?.label}
                   </div>
                   <div className="hidden md:block self-center">
                     {ticket.sla_breached ? (
-                      <Badge variant="destructive" className="text-[9px]">SLA İhlal</Badge>
+                      <Badge variant="destructive" className="text-xs">SLA İhlal</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[9px]">
+                      <Badge variant="outline" className="text-xs">
                         {getStatusConfig(ticket.status)?.label}
                       </Badge>
                     )}

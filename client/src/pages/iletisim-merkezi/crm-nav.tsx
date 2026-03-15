@@ -67,28 +67,28 @@ const BRANCH_NAV_ITEMS: CrmNavItem[] = [
 export function CrmNav({ activeKey, onSelect, ticketCounts, delegatedDepts = [], isHQ, branchName }: CrmNavProps) {
   return (
     <aside
-      className="hidden md:flex flex-col w-[195px] flex-shrink-0 border-r border-border bg-card overflow-hidden"
+      className="hidden md:flex flex-col w-[220px] flex-shrink-0 border-r border-border bg-card overflow-hidden"
       data-testid="crm-nav"
     >
-      <div className="px-4 py-3 border-b border-border flex-shrink-0">
+      <div className="px-4 py-3.5 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-foreground flex-shrink-0" />
+          <MessageSquare className="w-5 h-5 text-foreground flex-shrink-0" />
           <div>
-            <div className="text-[12.5px] font-extrabold text-foreground">
+            <div className="text-sm font-extrabold text-foreground">
               {isHQ ? 'Iletisim M.' : 'Destek Taleplerim'}
             </div>
-            <div className="text-[8.5px] text-muted-foreground mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               {isHQ ? 'HQ · Tum subeler' : branchName ?? 'Subem'}
             </div>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-1.5 px-2">
+      <nav className="flex-1 overflow-y-auto py-2 px-2">
         {isHQ ? (
           HQ_NAV_SECTIONS.map((section) => (
             <div key={section.header}>
-              <div className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground px-2 pt-3 pb-1">
+              <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2 pt-3 pb-1.5">
                 {section.header}
               </div>
               {section.items.map((item) => (
@@ -138,22 +138,22 @@ function NavButton({
     <button
       onClick={() => onSelect(item.key)}
       className={cn(
-        'w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-[11px] font-medium transition-all duration-100 mb-0.5',
+        'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all duration-100 mb-0.5',
         isActive
           ? 'bg-[rgba(204,31,31,0.08)] text-[#cc1f1f] font-bold dark:bg-[rgba(204,31,31,0.12)] dark:text-red-300'
           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
       )}
       data-testid={`crm-nav-${item.key}`}
     >
-      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      <Icon className="w-4 h-4 flex-shrink-0" />
       <span className="flex-1 truncate">{item.label}</span>
       {isDelegated && (
-        <span className="text-[7px] font-bold ml-1 px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 flex-shrink-0">
+        <span className="text-xs font-bold ml-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 flex-shrink-0">
           DEV
         </span>
       )}
       {count > 0 && (
-        <span className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-md bg-[#cc1f1f] text-white flex-shrink-0">
+        <span className="text-xs font-bold px-1.5 py-0.5 rounded-md bg-[#cc1f1f] text-white flex-shrink-0">
           {count}
         </span>
       )}

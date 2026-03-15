@@ -115,13 +115,13 @@ export function TicketDetailSheet({ ticketId, open, onOpenChange }: TicketDetail
             <SheetHeader>
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <span className="text-xs text-muted-foreground" data-testid="text-ticket-number">{ticket.ticket_number}</span>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   {DeptIcon && <DeptIcon className="h-3 w-3 mr-1" />}
                   {dept?.label}
                 </Badge>
                 <Badge
                   variant={ticket.sla_breached ? "destructive" : "outline"}
-                  className="text-[10px]"
+                  className="text-xs"
                   data-testid="badge-priority"
                 >
                   {ticket.priority?.toUpperCase()}
@@ -132,20 +132,20 @@ export function TicketDetailSheet({ ticketId, open, onOpenChange }: TicketDetail
 
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-muted/50 rounded-md p-3">
-                <p className="text-[10px] text-muted-foreground mb-1">Şube</p>
-                <p className="text-xs font-medium" data-testid="text-ticket-branch">{ticket.branch_name ?? "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Şube</p>
+                <p className="text-sm font-medium" data-testid="text-ticket-branch">{ticket.branch_name ?? "—"}</p>
               </div>
               <div className="bg-muted/50 rounded-md p-3">
-                <p className="text-[10px] text-muted-foreground mb-1">Atanan</p>
-                <p className="text-xs font-medium" data-testid="text-ticket-assignee">{ticket.assigned_to_name ?? "Atanmadı"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Atanan</p>
+                <p className="text-sm font-medium" data-testid="text-ticket-assignee">{ticket.assigned_to_name ?? "Atanmadı"}</p>
               </div>
               <div className="bg-muted/50 rounded-md p-3">
-                <p className="text-[10px] text-muted-foreground mb-1">Durum</p>
-                <p className="text-xs font-medium" data-testid="text-ticket-status">{STATUSES.find(s => s.key === ticket.status)?.label ?? ticket.status}</p>
+                <p className="text-xs text-muted-foreground mb-1">Durum</p>
+                <p className="text-sm font-medium" data-testid="text-ticket-status">{STATUSES.find(s => s.key === ticket.status)?.label ?? ticket.status}</p>
               </div>
               <div className="bg-muted/50 rounded-md p-3">
-                <p className="text-[10px] text-muted-foreground mb-1">SLA Durumu</p>
-                <p className={cn("text-xs font-medium", slaStatus?.color ?? "text-foreground")} data-testid="text-sla-status">
+                <p className="text-xs text-muted-foreground mb-1">SLA Durumu</p>
+                <p className={cn("text-sm font-medium", slaStatus?.color ?? "text-foreground")} data-testid="text-sla-status">
                   {slaStatus?.label ?? "—"}
                 </p>
               </div>
@@ -159,7 +159,7 @@ export function TicketDetailSheet({ ticketId, open, onOpenChange }: TicketDetail
             {isHQRole(user?.role ?? "") && ticket.status !== "cozuldu" && ticket.status !== "kapatildi" && (
               <div className="flex gap-2 flex-wrap" data-testid="hq-actions">
                 <Select onValueChange={(v) => statusMutation.mutate(v)}>
-                  <SelectTrigger className="text-xs w-40" data-testid="select-status-change">
+                  <SelectTrigger className="text-sm w-40" data-testid="select-status-change">
                     <SelectValue placeholder="Durum Değiştir" />
                   </SelectTrigger>
                   <SelectContent>
@@ -173,10 +173,10 @@ export function TicketDetailSheet({ ticketId, open, onOpenChange }: TicketDetail
             )}
 
             <div>
-              <p className="text-xs font-medium mb-3">Aktivite Geçmişi</p>
+              <p className="text-sm font-medium mb-3">Aktivite Geçmişi</p>
               <div className="space-y-3" data-testid="activity-timeline">
-                <div className="flex gap-2.5 text-xs">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
+                <div className="flex gap-2.5 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
                   <div>
                     <span className="text-muted-foreground">
                       {ticket.created_by_name ?? "Sistem"} tarafından açıldı · {
@@ -186,15 +186,15 @@ export function TicketDetailSheet({ ticketId, open, onOpenChange }: TicketDetail
                   </div>
                 </div>
                 {(ticket.comments ?? []).map((c) => (
-                  <div key={c.id} className={cn("flex gap-2.5 text-xs", c.is_internal && "opacity-70")} data-testid={`comment-${c.id}`}>
-                    <div className={cn("w-2 h-2 rounded-full mt-1 flex-shrink-0", c.is_internal ? "bg-purple-500" : "bg-green-500")} />
+                  <div key={c.id} className={cn("flex gap-2.5 text-sm", c.is_internal && "opacity-70")} data-testid={`comment-${c.id}`}>
+                    <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", c.is_internal ? "bg-purple-500" : "bg-green-500")} />
                     <div>
                       <p className="font-medium">
                         {c.author_name}
                         {c.is_internal && <span className="text-purple-500 dark:text-purple-400 font-normal ml-1">(dahili)</span>}
                       </p>
                       <p className="text-muted-foreground mt-0.5">{c.content}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: tr })}
                       </p>
                     </div>

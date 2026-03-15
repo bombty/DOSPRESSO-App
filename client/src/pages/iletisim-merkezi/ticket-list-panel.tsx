@@ -136,7 +136,7 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
 
   if (isLoading) {
     return (
-      <div className="w-[260px] flex-shrink-0 border-r border-border flex items-center justify-center">
+      <div className="w-[310px] flex-shrink-0 border-r border-border flex items-center justify-center">
         <div className="text-sm text-muted-foreground">Yukleniyor...</div>
       </div>
     );
@@ -144,36 +144,36 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
 
   return (
     <div
-      className="w-[260px] flex-shrink-0 flex flex-col border-r border-border bg-muted/30 overflow-hidden"
+      className="w-[310px] flex-shrink-0 flex flex-col border-r border-border bg-muted/30 overflow-hidden"
       data-testid="ticket-list-panel"
     >
-      <div className="px-3 py-2.5 border-b border-border bg-card flex-shrink-0">
-        <div className="flex items-center justify-between gap-1 mb-2">
-          <div className="text-[11px] font-bold text-foreground">
+      <div className="px-3 py-3 border-b border-border bg-card flex-shrink-0">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="text-sm font-bold text-foreground">
             Talepler <span className="text-muted-foreground font-normal">({tickets.length})</span>
           </div>
           {onNewTicket && (
             <button
               onClick={onNewTicket}
-              className="flex items-center gap-0.5 text-[8.5px] font-semibold px-2 py-1 rounded-md bg-[#cc1f1f] text-white"
+              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-md bg-[#cc1f1f] text-white"
               data-testid="button-new-ticket-panel"
             >
-              <Plus className="w-3 h-3" /> Yeni
+              <Plus className="w-3.5 h-3.5" /> Yeni
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background border border-border text-muted-foreground">
-          <Search className="w-3 h-3 flex-shrink-0" />
+        <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-background border border-border text-muted-foreground">
+          <Search className="w-3.5 h-3.5 flex-shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Talep ara..."
-            className="text-[9px] bg-transparent outline-none flex-1 text-foreground placeholder:text-muted-foreground"
+            className="text-sm bg-transparent outline-none flex-1 text-foreground placeholder:text-muted-foreground"
             data-testid="input-ticket-search"
           />
         </div>
-        <div className="flex gap-1.5 mt-2 overflow-x-auto">
+        <div className="flex gap-1.5 mt-2.5 overflow-x-auto">
           {[
             { key: 'all', label: 'Tumu' },
             { key: 'acik', label: 'Acik' },
@@ -184,7 +184,7 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
               key={f.key}
               onClick={() => setStatusFilter(f.key)}
               className={cn(
-                'text-[7.5px] px-2 py-1 rounded-md border whitespace-nowrap flex-shrink-0 font-semibold',
+                'text-xs px-2.5 py-1.5 rounded-md border whitespace-nowrap flex-shrink-0 font-semibold',
                 statusFilter === f.key
                   ? 'border-[#cc1f1f] bg-[#cc1f1f] text-white'
                   : 'border-border bg-transparent text-muted-foreground'
@@ -199,7 +199,7 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
 
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="p-4 text-center text-[11px] text-muted-foreground" data-testid="text-no-tickets">
+          <div className="p-4 text-center text-sm text-muted-foreground" data-testid="text-no-tickets">
             Bu kategoride acik talep yok
           </div>
         ) : (
@@ -220,61 +220,61 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
                 key={ticket.id}
                 onClick={() => onSelect(ticket.id)}
                 className={cn(
-                  'w-full text-left px-3 py-2.5 border-b border-border transition-colors',
+                  'w-full text-left px-3 py-3 border-b border-border transition-colors',
                   isSelected
                     ? 'bg-blue-50 border-l-2 border-l-[#122549] dark:bg-[#172554]'
                     : 'hover:bg-accent'
                 )}
                 data-testid={`ticket-item-${ticket.id}`}
               >
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-2 mb-1">
                   {ticket.sla_breached ? (
-                    <span className="w-2 h-2 rounded-full bg-[#cc1f1f] flex-shrink-0" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#cc1f1f] flex-shrink-0" />
                   ) : (
-                    <span className="w-2 h-2 flex-shrink-0" />
+                    <span className="w-2.5 h-2.5 flex-shrink-0" />
                   )}
                   <span className={cn(
-                    'text-[8.5px] font-bold',
+                    'text-xs font-bold',
                     isSelected ? 'text-[#122549] dark:text-blue-300' : 'text-muted-foreground'
                   )}>
                     {ticket.ticket_number}
                   </span>
                   <span
-                    className="text-[7.5px] font-semibold px-1.5 py-0.5 rounded dark:hidden"
+                    className="text-xs font-semibold px-1.5 py-0.5 rounded dark:hidden"
                     style={{ background: dc.bg, color: dc.text }}
                   >
                     {dept?.label?.split(' ')[0] ?? ticket.department}
                   </span>
                   <span
-                    className="text-[7.5px] font-semibold px-1.5 py-0.5 rounded hidden dark:inline"
+                    className="text-xs font-semibold px-1.5 py-0.5 rounded hidden dark:inline"
                     style={{ background: dc.darkBg, color: dc.darkText }}
                   >
                     {dept?.label?.split(' ')[0] ?? ticket.department}
                   </span>
-                  <span className="ml-auto text-[7.5px] text-muted-foreground flex-shrink-0">
+                  <span className="ml-auto text-xs text-muted-foreground flex-shrink-0">
                     {formatDistanceToNow(new Date(ticket.created_at), { addSuffix: false, locale: tr })}
                   </span>
                 </div>
                 <div className={cn(
-                  'text-[10.5px] leading-snug mb-1.5 pl-3.5 truncate',
+                  'text-sm leading-snug mb-1.5 pl-5 truncate',
                   ticket.sla_breached ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'
                 )}>
                   {ticket.title}
                 </div>
-                <div className="flex items-center gap-2 pl-3.5">
-                  <span className="text-[8.5px] text-muted-foreground truncate flex-1">
+                <div className="flex items-center gap-2 pl-5">
+                  <span className="text-xs text-muted-foreground truncate flex-1">
                     {ticket.branch_name ?? '—'}
                   </span>
                   {slaInfo.label && (
                     <span
-                      className="text-[7px] font-semibold flex-shrink-0"
+                      className="text-xs font-semibold flex-shrink-0"
                       style={{ color: slaInfo.color }}
                       data-testid={`sla-label-${ticket.id}`}
                     >
                       {slaInfo.label}
                     </span>
                   )}
-                  <div className="w-8 h-1 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                  <div className="w-10 h-1.5 rounded-full bg-muted overflow-hidden flex-shrink-0">
                     <div
                       className="h-full rounded-full"
                       style={{

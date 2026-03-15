@@ -184,7 +184,7 @@ function BusinessHoursSection({ isAdmin }: { isAdmin: boolean }) {
                     key={d.value}
                     onClick={() => toggleDay(d.value)}
                     className={cn(
-                      'text-[10px] font-semibold px-2.5 py-1.5 rounded-md border transition-colors',
+                      'text-xs font-semibold px-2.5 py-1.5 rounded-md border transition-colors',
                       editDays.includes(d.value)
                         ? 'border-[#122549] bg-[#122549] text-white'
                         : 'border-border bg-transparent text-muted-foreground'
@@ -230,7 +230,7 @@ function BusinessHoursSection({ isAdmin }: { isAdmin: boolean }) {
               <span className="text-sm font-bold text-foreground">
                 {String(config?.startHour ?? 8).padStart(2, '0')}:00 — {String(config?.endHour ?? 18).padStart(2, '0')}:00
               </span>
-              <Badge variant="outline" className="text-[9px]">
+              <Badge variant="outline" className="text-xs">
                 {(config?.endHour ?? 18) - (config?.startHour ?? 8)} saat/gun
               </Badge>
             </div>
@@ -241,7 +241,7 @@ function BusinessHoursSection({ isAdmin }: { isAdmin: boolean }) {
                   <span
                     key={d.value}
                     className={cn(
-                      'text-[9px] font-semibold px-1.5 py-0.5 rounded',
+                      'text-xs font-semibold px-1.5 py-0.5 rounded',
                       (config?.workDays ?? [1, 2, 3, 4, 5]).includes(d.value)
                         ? 'bg-[#122549] text-white'
                         : 'bg-muted text-muted-foreground/50'
@@ -348,7 +348,7 @@ export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
           return (
             <div key={dept} className="bg-card border border-border rounded-xl overflow-hidden" data-testid={`sla-dept-${dept}`}>
               <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-[#122549] text-white flex items-center justify-center text-[8px] font-bold flex-shrink-0">
+                <div className="w-7 h-7 rounded-md bg-[#122549] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                   {DEPT_ICONS[dept]}
                 </div>
                 <span className="text-sm font-bold text-foreground">{deptLabel}</span>
@@ -369,7 +369,7 @@ export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
                       <div className="w-16 flex-shrink-0">
                         <Badge
                           variant="outline"
-                          className="text-[9px] font-semibold border-0 px-2"
+                          className="text-xs font-semibold border-0 px-2"
                           style={{ color: pInfo.color, backgroundColor: `${pInfo.color}15` }}
                         >
                           {pInfo.label}
@@ -416,7 +416,7 @@ export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
                             <span className="text-sm font-bold text-foreground">
                               {rule.hoursLimit}s
                             </span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               ({rule.hoursLimit >= 24
                                 ? `${Math.floor(rule.hoursLimit / 24)} gun${rule.hoursLimit % 24 > 0 ? ` ${rule.hoursLimit % 24}s` : ''}`
                                 : `${rule.hoursLimit} saat`})
@@ -425,7 +425,7 @@ export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
                         )}
                       </div>
 
-                      <div className="text-[10px] text-muted-foreground flex-shrink-0 hidden sm:block w-20 text-right">
+                      <div className="text-xs text-muted-foreground flex-shrink-0 hidden sm:block w-20 text-right">
                         {rule.updatedAt ? new Date(rule.updatedAt).toLocaleDateString('tr-TR') : '-'}
                       </div>
 

@@ -162,10 +162,10 @@ export default function HqTasksTab() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs font-medium" data-testid={`text-task-number-${task.id}`}>{task.task_number}</span>
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-xs">
                           {PRIORITIES.find(p => p.key === task.priority)?.label}
                         </Badge>
-                        <span className={cn("text-[11px]", statusColors[task.status])}>
+                        <span className={cn("text-xs", statusColors[task.status])}>
                           {statusLabels[task.status] ?? task.status}
                         </span>
                       </div>
@@ -179,7 +179,7 @@ export default function HqTasksTab() {
                         )}
                       </p>
                       <div className="mt-3">
-                        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
                           <span>İlerleme</span>
                           <span>%{task.progress_percent}</span>
                         </div>
@@ -197,7 +197,7 @@ export default function HqTasksTab() {
                                 size="sm"
                                 variant={task.progress_percent === pct ? "default" : "outline"}
                                 onClick={() => progressMutation.mutate({ id: task.id, progress: pct })}
-                                className="flex-1 text-[10px] toggle-elevate"
+                                className="flex-1 text-xs toggle-elevate"
                                 data-testid={`progress-btn-${task.id}-${pct}`}
                               >
                                 %{pct}
