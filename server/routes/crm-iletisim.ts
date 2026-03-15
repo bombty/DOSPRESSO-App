@@ -1,11 +1,12 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { supportTickets, supportTicketComments, ticketAttachments, hqTasks, broadcastReceipts, users, slaRules, type SupportTicket } from "@shared/schema";
+import { supportTickets, supportTicketComments, ticketAttachments, hqTasks, broadcastReceipts, users, slaRules, slaBusinessHours, type SupportTicket } from "@shared/schema";
 import { eq, and, sql, asc, inArray, isNull } from "drizzle-orm";
 import { routeTicket, generateTicketNumber, generateHqTaskNumber } from "../services/ticket-routing-engine";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { getBusinessHoursConfig, getRemainingBusinessHours } from "../services/business-hours";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -972,6 +973,103 @@ router.post("/sla-rules/reset", async (req: any, res: Response) => {
     res.json({ success: true, message: "Tüm SLA kuralları varsayılana sıfırlandı" });
   } catch (err) {
     res.status(500).json({ error: "Sıfırlama başarısız" });
+  }
+});
+
+router.get("/business-hours", async (req: any, res: Response) => {
+  try {
+    const config = await getBusinessHoursConfig();
+    res.json(config);
+  } catch (err) {
+    res.status(500).json({ error: "Mesai saatleri alınamadı" });
+  }
+});
+
+router.patch("/business-hours", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!['admin', 'ceo', 'cgo'].includes(user.role)) {
+      return res.status(403).json({ error: "Yetki yok" });
+    }
+
+    const schema = z.object({
+      startHour: z.number().min(0).max(23).optional(),
+      endHour: z.number().min(1).max(24).optional(),
+      workDays: z.array(z.number().min(1).max(7)).min(1).optional(),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+
+    const { startHour, endHour, workDays } = parsed.data;
+
+    if (startHour !== undefined && endHour !== undefined && startHour >= endHour) {
+      return res.status(400).json({ error: "Başlangıç saati bitiş saatinden küçük olmalı" });
+    }
+
+    const [existing] = await db.select().from(slaBusinessHours).limit(1);
+
+    const updates: Record<string, any> = { updatedBy: user.id, updatedAt: new Date() };
+    if (startHour !== undefined) updates.startHour = startHour;
+    if (endHour !== undefined) updates.endHour = endHour;
+    if (workDays !== undefined) updates.workDays = workDays;
+
+    if (existing) {
+      const finalStart = startHour ?? existing.startHour;
+      const finalEnd = endHour ?? existing.endHour;
+      if (finalStart >= finalEnd) {
+        return res.status(400).json({ error: "Başlangıç saati bitiş saatinden küçük olmalı" });
+      }
+      await db.update(slaBusinessHours).set(updates).where(eq(slaBusinessHours.id, existing.id));
+    } else {
+      await db.insert(slaBusinessHours).values({
+        startHour: startHour ?? 8,
+        endHour: endHour ?? 18,
+        workDays: workDays ?? [1, 2, 3, 4, 5],
+      });
+    }
+
+    const config = await getBusinessHoursConfig();
+    res.json(config);
+  } catch (err) {
+    res.status(500).json({ error: "Mesai saatleri güncellenemedi" });
+  }
+});
+
+router.get("/tickets/:id/sla-remaining", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (BRANCH_ONLY_ROLES.includes(user.role)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    const ticketId = parseInt(req.params.id);
+    if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
+
+    if (!canAccessTicket(user, ticket)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (!ticket.slaDeadline) {
+      return res.json({ remainingHours: null, breached: false });
+    }
+
+    if (ticket.slaBreached) {
+      return res.json({ remainingHours: 0, breached: true });
+    }
+
+    const config = await getBusinessHoursConfig();
+    const remaining = getRemainingBusinessHours(ticket.slaDeadline, new Date(), config);
+
+    res.json({
+      remainingHours: Math.round(remaining * 10) / 10,
+      breached: remaining <= 0,
+      deadline: ticket.slaDeadline,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "SLA bilgisi alınamadı" });
   }
 });
 

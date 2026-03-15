@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { getDeptConfig, getStatusConfig, isHQRole } from './categoryConfig';
@@ -8,6 +8,12 @@ import { tr } from 'date-fns/locale';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+
+interface SlaRemainingData {
+  remainingHours: number | null;
+  breached: boolean;
+  deadline?: string;
+}
 
 interface TicketComment {
   id: number;
@@ -131,6 +137,12 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
     enabled: !!ticket?.id,
   });
 
+  const { data: slaRemaining } = useQuery<SlaRemainingData>({
+    queryKey: ['/api/iletisim/tickets', ticket?.id, 'sla-remaining'],
+    enabled: !!ticket?.id && !!ticket?.sla_deadline && !isClosed,
+    refetchInterval: 60000,
+  });
+
   const { data: assignableUsers = [] } = useQuery<{ id: string; name: string; role: string }[]>({
     queryKey: ['/api/iletisim/assignable-users', ticket?.department],
     queryFn: async () => {
@@ -189,10 +201,21 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
 
   const getSlaInfo = () => {
     if (!ticket.sla_deadline) return { label: '—', percent: 0, color: '#22c55e' };
-    if (ticket.sla_breached) return { label: 'SLA Aşıldı', percent: 100, color: '#ef4444' };
+    if (ticket.sla_breached) return { label: 'SLA Asildi', percent: 100, color: '#ef4444' };
+
+    if (slaRemaining) {
+      if (slaRemaining.breached || slaRemaining.remainingHours === 0) {
+        return { label: 'SLA Asildi', percent: 100, color: '#ef4444' };
+      }
+      const h = slaRemaining.remainingHours ?? 0;
+      if (h < 1) return { label: `${Math.floor(h * 60)} dk is saati`, percent: 85, color: '#ef4444' };
+      if (h < 4) return { label: `${Number(h ?? 0).toFixed(1)} is saati`, percent: 60, color: '#f59e0b' };
+      return { label: `${Number(h ?? 0).toFixed(0)} is saati`, percent: 30, color: '#22c55e' };
+    }
+
     const hoursLeft = (new Date(ticket.sla_deadline).getTime() - Date.now()) / 3600000;
-    if (hoursLeft < 0) return { label: 'SLA Aşıldı', percent: 100, color: '#ef4444' };
-    if (hoursLeft < 1) return { label: `${Math.floor(hoursLeft * 60)} dk kaldı`, percent: 85, color: '#ef4444' };
+    if (hoursLeft < 0) return { label: 'SLA Asildi', percent: 100, color: '#ef4444' };
+    if (hoursLeft < 1) return { label: `${Math.floor(hoursLeft * 60)} dk kaldi`, percent: 85, color: '#ef4444' };
     if (hoursLeft < 4) return { label: `${Number(hoursLeft ?? 0).toFixed(1)} saat`, percent: 60, color: '#f59e0b' };
     return { label: `${Number(hoursLeft ?? 0).toFixed(0)} saat`, percent: 30, color: '#22c55e' };
   };

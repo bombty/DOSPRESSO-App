@@ -15418,3 +15418,17 @@ export const slaRules = pgTable('sla_rules', {
 
 export type SlaRule = typeof slaRules.$inferSelect;
 export type InsertSlaRule = typeof slaRules.$inferInsert;
+
+export const slaBusinessHours = pgTable('sla_business_hours', {
+  id: serial('id').primaryKey(),
+  startHour: integer('start_hour').notNull().default(8),
+  endHour: integer('end_hour').notNull().default(18),
+  workDays: integer('work_days').array().notNull().default(sql`'{1,2,3,4,5}'`),
+  timezone: varchar('timezone', { length: 50 }).notNull().default('Europe/Istanbul'),
+  updatedBy: varchar('updated_by').references(() => users.id),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type SlaBusinessHours = typeof slaBusinessHours.$inferSelect;
+export type InsertSlaBusinessHours = typeof slaBusinessHours.$inferInsert;

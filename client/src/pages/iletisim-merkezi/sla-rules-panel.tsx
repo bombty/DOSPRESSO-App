@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, RotateCcw, Pencil, Check, X } from 'lucide-react';
+import { Loader2, RotateCcw, Pencil, Check, X, Clock, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -53,6 +53,214 @@ function normalizeRule(r: SlaRule): SlaRule {
     isActive: r.isActive ?? r.is_active ?? true,
     updatedAt: r.updatedAt ?? r.updated_at ?? '',
   };
+}
+
+interface BusinessHoursConfig {
+  startHour: number;
+  endHour: number;
+  workDays: number[];
+  timezone: string;
+}
+
+const DAY_LABELS: { value: number; label: string }[] = [
+  { value: 1, label: 'Pzt' },
+  { value: 2, label: 'Sal' },
+  { value: 3, label: 'Car' },
+  { value: 4, label: 'Per' },
+  { value: 5, label: 'Cum' },
+  { value: 6, label: 'Cmt' },
+  { value: 7, label: 'Paz' },
+];
+
+function BusinessHoursSection({ isAdmin }: { isAdmin: boolean }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [editStart, setEditStart] = useState(8);
+  const [editEnd, setEditEnd] = useState(18);
+  const [editDays, setEditDays] = useState<number[]>([1, 2, 3, 4, 5]);
+
+  const { data: config, isLoading } = useQuery<BusinessHoursConfig>({
+    queryKey: ['/api/iletisim/business-hours'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { startHour: number; endHour: number; workDays: number[] }) => {
+      const res = await apiRequest('PATCH', '/api/iletisim/business-hours', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/business-hours'] });
+      setEditing(false);
+      toast({ title: 'Mesai saatleri guncellendi' });
+    },
+    onError: () => {
+      toast({ title: 'Hata', description: 'Guncelleme basarisiz', variant: 'destructive' });
+    },
+  });
+
+  const startEdit = () => {
+    if (config) {
+      setEditStart(config.startHour);
+      setEditEnd(config.endHour);
+      setEditDays([...config.workDays]);
+    }
+    setEditing(true);
+  };
+
+  const toggleDay = (day: number) => {
+    setEditDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort()
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-card border border-border rounded-xl p-4">
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground mx-auto" />
+      </div>
+    );
+  }
+
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="business-hours-section">
+      <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-bold text-foreground">Mesai Saatleri</span>
+        </div>
+        {isAdmin && !editing && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={startEdit}
+            data-testid="button-edit-business-hours"
+          >
+            <Pencil className="w-3.5 h-3.5 mr-1.5" />
+            Duzenle
+          </Button>
+        )}
+      </div>
+
+      <div className="px-4 py-3">
+        {editing ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Baslangic:</span>
+                <select
+                  value={editStart}
+                  onChange={(e) => setEditStart(parseInt(e.target.value))}
+                  className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground outline-none"
+                  data-testid="select-start-hour"
+                >
+                  {hours.map(h => (
+                    <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Bitis:</span>
+                <select
+                  value={editEnd}
+                  onChange={(e) => setEditEnd(parseInt(e.target.value))}
+                  className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground outline-none"
+                  data-testid="select-end-hour"
+                >
+                  {hours.filter(h => h > 0).map(h => (
+                    <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-xs text-muted-foreground mb-2 block">Calisma Gunleri:</span>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAY_LABELS.map(d => (
+                  <button
+                    key={d.value}
+                    onClick={() => toggleDay(d.value)}
+                    className={cn(
+                      'text-[10px] font-semibold px-2.5 py-1.5 rounded-md border transition-colors',
+                      editDays.includes(d.value)
+                        ? 'border-[#122549] bg-[#122549] text-white'
+                        : 'border-border bg-transparent text-muted-foreground'
+                    )}
+                    data-testid={`toggle-day-${d.value}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (editStart >= editEnd) {
+                    toast({ title: 'Hata', description: 'Baslangic saati bitis saatinden kucuk olmali', variant: 'destructive' });
+                    return;
+                  }
+                  if (editDays.length === 0) {
+                    toast({ title: 'Hata', description: 'En az bir calisma gunu secin', variant: 'destructive' });
+                    return;
+                  }
+                  updateMutation.mutate({ startHour: editStart, endHour: editEnd, workDays: editDays });
+                }}
+                disabled={updateMutation.isPending}
+                data-testid="button-save-business-hours"
+              >
+                {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
+                Kaydet
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditing(false)} data-testid="button-cancel-business-hours">
+                <X className="w-3.5 h-3.5 mr-1.5" />
+                Iptal
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Saat:</span>
+              <span className="text-sm font-bold text-foreground">
+                {String(config?.startHour ?? 8).padStart(2, '0')}:00 — {String(config?.endHour ?? 18).padStart(2, '0')}:00
+              </span>
+              <Badge variant="outline" className="text-[9px]">
+                {(config?.endHour ?? 18) - (config?.startHour ?? 8)} saat/gun
+              </Badge>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Gunler:</span>
+              <div className="flex gap-1">
+                {DAY_LABELS.map(d => (
+                  <span
+                    key={d.value}
+                    className={cn(
+                      'text-[9px] font-semibold px-1.5 py-0.5 rounded',
+                      (config?.workDays ?? [1, 2, 3, 4, 5]).includes(d.value)
+                        ? 'bg-[#122549] text-white'
+                        : 'bg-muted text-muted-foreground/50'
+                    )}
+                  >
+                    {d.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Zaman Dilimi:</span>
+              <span className="text-xs text-foreground">{config?.timezone ?? 'Europe/Istanbul'}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
@@ -130,7 +338,9 @@ export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
         )}
       </div>
 
-      <div className="space-y-5">
+      <BusinessHoursSection isAdmin={isAdmin} />
+
+      <div className="space-y-5 mt-5">
         {Object.entries(DEPT_LABELS).map(([dept, deptLabel]) => {
           const deptRules = grouped[dept] ?? [];
           if (!deptRules.length) return null;

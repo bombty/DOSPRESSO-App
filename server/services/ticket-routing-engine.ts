@@ -2,6 +2,7 @@ import { db } from "../db";
 import { supportTickets, slaRules } from "@shared/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { storage } from "../storage";
+import { addBusinessHours, getBusinessHoursConfig, isWithinBusinessHours } from "./business-hours";
 
 const SLA_DEFAULTS: Record<string, Record<string, number>> = {
   teknik:    { kritik: 4,  yuksek: 8,  normal: 24, dusuk: 48 },
@@ -53,7 +54,8 @@ export async function routeTicket(ticketId: number): Promise<void> {
   if (!ticket) return;
 
   const slaHours = await getSlaHours(ticket.department, ticket.priority);
-  const slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
+  const bhConfig = await getBusinessHoursConfig();
+  const slaDeadline = addBusinessHours(new Date(), slaHours, bhConfig);
 
   const targetRole = DEPT_ASSIGNEE_ROLE[ticket.department];
   let assignedToUserId: string | null = null;
@@ -145,6 +147,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
 
 export async function checkSlaBreaches(): Promise<void> {
   const now = new Date();
+  const bhConfig = await getBusinessHoursConfig();
 
   const breachedTickets = await db.execute(
     sql`SELECT id, assigned_to_user_id, title, department
@@ -159,6 +162,8 @@ export async function checkSlaBreaches(): Promise<void> {
     await db.execute(
       sql`UPDATE support_tickets SET sla_breached = true, sla_breached_at = ${now}, updated_at = ${now} WHERE id = ${ticket.id}`
     );
+
+    if (!isWithinBusinessHours(now, bhConfig)) continue;
 
     const executives = await db.execute(
       sql`SELECT id FROM users WHERE role IN ('cgo', 'ceo') AND is_active = true`
