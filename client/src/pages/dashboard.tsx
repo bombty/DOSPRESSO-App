@@ -10,6 +10,23 @@ import { useQuery } from "@tanstack/react-query";
 import { isHQRole, isFactoryFloorRole } from "@shared/schema";
 import { GraduationCap, ClipboardCheck, MessageSquare, BarChart3, Trophy } from "lucide-react";
 
+interface BranchSummaryKpis {
+  activeStaff: number;
+  totalStaff: number;
+  checklistCompletion: number;
+  customerAvg: number;
+  feedbackCount: number;
+  warnings: number;
+}
+
+interface BranchSummaryResponse {
+  branch: { id: number; name: string };
+  kpis: BranchSummaryKpis;
+  teamStatus: { id: string; name: string; role: string; checklistStatus: string }[];
+  lowStockItems: { id: number; name: string; currentStock: number; minStock: number }[];
+  suggestions: string[];
+}
+
 const HQ_SPECIAL_DASHBOARD_ROLES = [
   'ceo', 'cgo', 'yatirimci_hq', 'admin',
   'trainer', 'coach', 'satinalma', 'muhasebe', 'muhasebe_ik', 
@@ -22,7 +39,7 @@ const HQDashboard = lazy(() => import("@/pages/hq-dashboard"));
 function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: number }) {
   const isBranchManager = userRole === 'mudur' || userRole === 'supervisor';
 
-  const { data: branchSummary, isLoading: kpiLoading, isError: kpiError } = useQuery<any>({
+  const { data: branchSummary, isLoading: kpiLoading, isError: kpiError } = useQuery<BranchSummaryResponse>({
     queryKey: ['/api/branch-summary', branchId],
     queryFn: async () => {
       const r = await fetch(`/api/branch-summary/${branchId}`);
@@ -73,7 +90,7 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
     const kpis = branchSummary?.kpis;
 
     if ((kpis?.warnings ?? 0) > 0) {
-      pills.push({ label: `${kpis.warnings} uyari`, variant: 'red', dot: true });
+      pills.push({ label: `${kpis?.warnings} uyari`, variant: 'red', dot: true });
     }
 
     if (kpis?.checklistCompletion != null && kpis.checklistCompletion < 70) {
@@ -81,7 +98,7 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
     }
 
     if ((branchSummary?.lowStockItems?.length ?? 0) > 0) {
-      pills.push({ label: `${branchSummary.lowStockItems.length} dusuk stok`, variant: 'orange', dot: true });
+      pills.push({ label: `${branchSummary!.lowStockItems.length} dusuk stok`, variant: 'orange', dot: true });
     }
 
     if (kpis?.customerAvg != null && kpis.customerAvg >= 4.0) {
