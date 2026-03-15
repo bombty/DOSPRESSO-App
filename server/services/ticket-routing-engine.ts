@@ -55,7 +55,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
 
   const slaHours = await getSlaHours(ticket.department, ticket.priority);
   const bhConfig = await getBusinessHoursConfig();
-  const slaDeadline = addBusinessHours(new Date(), slaHours, bhConfig);
+  const slaDeadline = addBusinessHours(ticket.createdAt ?? new Date(), slaHours, bhConfig);
 
   const targetRole = DEPT_ASSIGNEE_ROLE[ticket.department];
   let assignedToUserId: string | null = null;
