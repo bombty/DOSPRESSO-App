@@ -843,8 +843,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(404).json({ message: "Oturum bulunamadı" });
       }
 
-      // Create production output record with photo if provided
-      if (quantityProduced > 0 || photoUrl) {
+      const hasWasteData = (quantityWaste > 0) || (wasteDoughKg && parseFloat(wasteDoughKg) > 0) || (wasteProductCount && parseInt(wasteProductCount) > 0);
+      if (quantityProduced > 0 || hasWasteData || photoUrl) {
         await db.insert(factoryProductionOutputs).values({
           sessionId,
           userId: session.userId,
@@ -1811,8 +1811,31 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     try {
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
+      const dateParam = req.query.date as string;
+      const stationIdParam = req.query.stationId as string;
       
-      let query = db.select({
+      const conditions: ReturnType<typeof eq>[] = [];
+
+      if (dateParam) {
+        conditions.push(eq(factoryProductionPlans.planDate, dateParam));
+      } else {
+        if (startDate) {
+          conditions.push(gte(factoryProductionPlans.planDate, startDate));
+        }
+        if (endDate) {
+          conditions.push(lte(factoryProductionPlans.planDate, endDate));
+        }
+      }
+
+      if (stationIdParam) {
+        const parsedStationId = parseInt(stationIdParam);
+        if (isNaN(parsedStationId)) {
+          return res.status(400).json({ message: "Geçersiz istasyon ID" });
+        }
+        conditions.push(eq(factoryProductionPlans.stationId, parsedStationId));
+      }
+
+      const plans = await db.select({
         id: factoryProductionPlans.id,
         productId: factoryProductionPlans.productId,
         stationId: factoryProductionPlans.stationId,
@@ -1827,13 +1850,62 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       .from(factoryProductionPlans)
       .leftJoin(factoryProducts, eq(factoryProductionPlans.productId, factoryProducts.id))
       .leftJoin(factoryStations, eq(factoryProductionPlans.stationId, factoryStations.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(factoryProductionPlans.planDate);
 
-      const plans = await query;
       res.json(plans);
     } catch (error: any) {
       console.error("Error fetching production plans:", error);
       res.status(500).json({ message: "Üretim planları alınamadı" });
+    }
+  });
+
+  router.get('/api/factory/kiosk/today-plans', isKioskAuthenticated, async (req, res) => {
+    try {
+      const stationIdParam = req.query.stationId as string;
+
+      const todayCondition = eq(
+        factoryProductionPlans.planDate,
+        sql`(now() AT TIME ZONE 'Europe/Istanbul')::date`
+      );
+
+      let stationCondition;
+      if (stationIdParam) {
+        const parsedStationId = parseInt(stationIdParam);
+        if (isNaN(parsedStationId)) {
+          return res.status(400).json({ message: "Geçersiz istasyon ID" });
+        }
+        stationCondition = eq(factoryProductionPlans.stationId, parsedStationId);
+      }
+
+      const whereClause = stationCondition
+        ? and(todayCondition, stationCondition)
+        : todayCondition;
+
+      const plans = await db.select({
+        id: factoryProductionPlans.id,
+        productId: factoryProductionPlans.productId,
+        stationId: factoryProductionPlans.stationId,
+        plannedDate: factoryProductionPlans.planDate,
+        targetQuantity: factoryProductionPlans.targetQuantity,
+        actualQuantity: factoryProductionPlans.actualQuantity,
+        status: factoryProductionPlans.status,
+        notes: factoryProductionPlans.notes,
+        unit: factoryProductionPlans.unit,
+        priority: factoryProductionPlans.priority,
+        productName: factoryProducts.name,
+        stationName: factoryStations.name,
+      })
+      .from(factoryProductionPlans)
+      .leftJoin(factoryProducts, eq(factoryProductionPlans.productId, factoryProducts.id))
+      .leftJoin(factoryStations, eq(factoryProductionPlans.stationId, factoryStations.id))
+      .where(whereClause)
+      .orderBy(factoryProductionPlans.planDate);
+
+      res.json(plans);
+    } catch (error: any) {
+      console.error("Error fetching today plans:", error);
+      res.status(500).json({ message: "Bugünkü planlar alınamadı" });
     }
   });
 

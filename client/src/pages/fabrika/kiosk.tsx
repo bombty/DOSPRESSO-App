@@ -108,6 +108,21 @@ interface ProductionRun {
   quantityWaste: number;
 }
 
+interface TodayPlan {
+  id: number;
+  productId: number;
+  stationId: number | null;
+  plannedDate: string;
+  targetQuantity: number;
+  actualQuantity: number | null;
+  status: string | null;
+  notes: string | null;
+  unit: string | null;
+  priority: string | null;
+  productName: string | null;
+  stationName: string | null;
+}
+
 const BREAK_OPTIONS = [
   { value: 'mola' as BreakReason, label: 'Mola', icon: Coffee, description: 'Kısa ara (yemek, dinlenme)', color: 'bg-blue-600' },
   { value: 'yardim' as BreakReason, label: 'Başka İstasyonda Yardım', icon: HandHelping, description: 'Farklı istasyonda destek', color: 'bg-purple-600' },
@@ -190,6 +205,19 @@ export default function FactoryKiosk() {
     },
     enabled: !!currentStationInfo?.id && (step === 'working' || step === 'end-shift-summary'),
     refetchInterval: 30000,
+  });
+
+  const { data: todayPlans = [], isFetched: todayPlansFetched } = useQuery<TodayPlan[]>({
+    queryKey: ['/api/factory/kiosk/today-plans', currentStationInfo?.id],
+    queryFn: async () => {
+      const url = currentStationInfo?.id
+        ? `/api/factory/kiosk/today-plans?stationId=${currentStationInfo.id}`
+        : '/api/factory/kiosk/today-plans';
+      const res = await apiRequest('GET', url);
+      return res.json();
+    },
+    enabled: !!currentStationInfo?.id && step === 'working',
+    refetchInterval: 60000,
   });
 
   const activeWorkerMap = useMemo(() => {
@@ -804,6 +832,38 @@ export default function FactoryKiosk() {
                   </div>
                 </div>
               </div>
+
+              {todayPlans.length > 0 ? (
+                <div className="bg-slate-700/30 rounded-lg p-3 space-y-2" data-testid="today-plan-section">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-amber-400" />
+                    <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
+                  </div>
+                  {todayPlans.map((plan) => (
+                    <div key={plan.id} className="flex items-center justify-between bg-slate-700/50 rounded-md px-3 py-2" data-testid={`today-plan-${plan.id}`}>
+                      <div>
+                        <p className="text-sm font-medium text-slate-200">{plan.productName || 'Ürün'}</p>
+                        {plan.priority === 'urgent' && (
+                          <Badge className="bg-red-600 text-xs mt-1">Acil</Badge>
+                        )}
+                        {plan.priority === 'high' && (
+                          <Badge className="bg-orange-600 text-xs mt-1">Yüksek</Badge>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-amber-400" data-testid={`plan-target-${plan.id}`}>
+                          {plan.actualQuantity || 0} / {plan.targetQuantity}
+                        </p>
+                        <p className="text-xs text-slate-400">{plan.unit || 'adet'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : todayPlansFetched && currentStationInfo && (
+                <div className="bg-slate-700/30 rounded-lg p-3 text-center" data-testid="no-plan-message">
+                  <p className="text-sm text-slate-400">Bugün için atanmış üretim planı yok</p>
+                </div>
+              )}
 
               {currentPhase === 'uretim' && (
                 <p className="text-xs text-slate-400 text-center" data-testid="text-perf-note">
