@@ -74,7 +74,7 @@ export default function AkademiV3() {
     const params = new URLSearchParams();
     params.set("tab", tab);
     if (category) params.set("category", category);
-    window.history.replaceState(null, "", `/akademi-v3?${params.toString()}`);
+    window.history.replaceState(null, "", `/akademi?${params.toString()}`);
   };
 
   const { data: homeData, isLoading: homeLoading } = useQuery<any>({
