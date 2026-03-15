@@ -12,6 +12,7 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 
 ### Technical Implementations
 - **Frontend**: React 18, Vite, Wouter (routing), TanStack Query (state management), React Hook Form, Shadcn/ui, i18next + react-i18next (i18n).
+- **Responsive Layout**: Mobile-first with NavRail (50px navy icon rail) on md+ (768px+). Bottom nav hidden on md+. Hamburger menu hidden on md+. NavRail config in `client/src/lib/navigation-config.ts`, component in `client/src/components/nav-rail.tsx`. Role-based icon sets for 6 role groups.
 - **Backend**: Node.js, Express.js, TypeScript, with Replit Auth (OpenID) and Passport.js for authentication.
 - **Database**: PostgreSQL (Neon serverless) via Drizzle ORM and pgvector for embeddings.
 - **i18n**: i18next with lazy-loaded translation files supporting TR, EN, AR (RTL), DE.

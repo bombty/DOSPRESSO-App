@@ -85,7 +85,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
       <div className="px-3 py-2 border-b bg-[#122549] dark:bg-[#122549] flex items-center gap-3 relative">
         
         <div className="flex items-center gap-1 flex-shrink-0">
-          <div className={hideHamburgerOnMobile ? 'hidden md:block' : ''}>
+          <div className={hideHamburgerOnMobile ? 'hidden' : 'md:hidden'}>
             <HamburgerMenu />
           </div>
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

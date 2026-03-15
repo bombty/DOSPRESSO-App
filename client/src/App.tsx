@@ -22,6 +22,7 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
+import { NavRail } from "@/components/nav-rail";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
 
 function PageLoader() {
@@ -555,22 +556,29 @@ function AppContent() {
       {/* QR Scanner Modal */}
       <QRScannerModal open={qrModalOpen} onOpenChange={setQrModalOpen} />
       
-      {/* Breadcrumb Navigation */}
-      <div className="px-2 pt-1">
-        <BreadcrumbNavigation />
+      {/* Below header: rail + content side by side on md+ */}
+      <div className="flex flex-1 overflow-hidden">
+        <NavRail />
+        
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Breadcrumb Navigation */}
+          <div className="px-2 pt-1">
+            <BreadcrumbNavigation />
+          </div>
+          
+          {/* Main Content */}
+          <main className="flex-1 overflow-auto pb-20 md:pb-4">
+            <div className="max-w-[1600px] mx-auto w-full">
+              <Router />
+            </div>
+          </main>
+          
+          {/* Flow Mode Mini-Bar */}
+          <DobodyMiniBar />
+        </div>
       </div>
       
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto pb-20">
-        <div className="max-w-[1600px] mx-auto w-full">
-          <Router />
-        </div>
-      </main>
-      
-      {/* Flow Mode Mini-Bar */}
-      <DobodyMiniBar />
-      
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation - hidden on md+ where NavRail takes over */}
       <BottomNav />
       
       {/* Global Search (Ctrl+K) */}

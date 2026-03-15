@@ -261,7 +261,7 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className="fixed left-0 right-0 sm:left-3 sm:right-3 z-[60]" style={{ bottom: 'max(0px, env(safe-area-inset-bottom, 0px))' }} data-testid="bottom-nav">
+      <nav className="fixed left-0 right-0 sm:left-3 sm:right-3 z-[60] md:hidden" style={{ bottom: 'max(0px, env(safe-area-inset-bottom, 0px))' }} data-testid="bottom-nav">
         {!isOnline && (
           <div className="flex items-center justify-center gap-1 py-1 bg-destructive text-destructive-foreground text-[10px] font-medium sm:max-w-md mx-auto sm:rounded-t-xl" data-testid="bottom-nav-offline">
             <WifiOff className="h-3 w-3" />
