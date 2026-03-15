@@ -7,10 +7,12 @@ import {
   factoryShipments,
   factoryProductionOutputs,
   branchOrders,
+  supportTickets,
+  users,
   isHQRole,
   type UserRoleType,
 } from "@shared/schema";
-import { eq, and, sql, count, avg, sum, desc } from "drizzle-orm";
+import { eq, and, sql, count, avg, sum, desc, ne, isNull } from "drizzle-orm";
 import {
   getHQSuggestions,
   getTrainerSuggestions,
@@ -126,6 +128,41 @@ router.get("/api/hq-summary", isAuthenticated, async (req: any, res) => {
       pendingOrderCount = orderCount?.count || 0;
     } catch {}
 
+    let openTickets = 0;
+    let slaBreaches = 0;
+    let activeUsers = 0;
+    try {
+      const [ticketResult] = await db
+        .select({ count: count() })
+        .from(supportTickets)
+        .where(and(
+          ne(supportTickets.status, 'resolved'),
+          ne(supportTickets.status, 'kapali'),
+          eq(supportTickets.isDeleted, false)
+        ));
+      openTickets = Number(ticketResult?.count ?? 0);
+
+      const [slaResult] = await db
+        .select({ count: count() })
+        .from(supportTickets)
+        .where(and(
+          eq(supportTickets.slaBreached, true),
+          ne(supportTickets.status, 'resolved'),
+          ne(supportTickets.status, 'kapali'),
+          eq(supportTickets.isDeleted, false)
+        ));
+      slaBreaches = Number(slaResult?.count ?? 0);
+
+      const [userResult] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(and(
+          isNull(users.deletedAt),
+          eq(users.isActive, true)
+        ));
+      activeUsers = Number(userResult?.count ?? 0);
+    } catch {}
+
     let suggestions: any[] = [];
     try {
       const roleSuggestionMap: Record<string, () => Promise<any[]>> = {
@@ -162,6 +199,9 @@ router.get("/api/hq-summary", isAuthenticated, async (req: any, res) => {
       branchRanking: branchRanking.slice(0, 20),
       factory: factorySummary,
       pendingOrders: pendingOrderCount,
+      openTickets,
+      slaBreaches,
+      activeUsers,
       suggestions,
     });
   } catch (error: any) {

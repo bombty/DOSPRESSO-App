@@ -65,6 +65,9 @@ interface HQSummaryData {
     pendingShipments: number;
   };
   pendingOrders: number;
+  openTickets: number;
+  slaBreaches: number;
+  activeUsers: number;
   suggestions: Array<{
     id: string;
     message: string;
@@ -171,7 +174,12 @@ export default function HQOzet() {
   if (isLoading) {
     return (
       <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="hq-ozet-loading">
-        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-6 w-2/3" />
+        <div className="grid grid-cols-4 gap-1.5">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-14 rounded-lg" />
+          ))}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <Skeleton className="h-24" /><Skeleton className="h-24" /><Skeleton className="h-24" />
         </div>
@@ -201,16 +209,19 @@ export default function HQOzet() {
       />
       <div className="space-y-3 mb-2" data-testid="hq-ci-section">
         <DashboardAlertPills pills={[
-          { label: 'İletişim M. kontrol et', variant: 'orange' as const, dot: true },
-          { label: `${data.branchStatus.total} Aktif Şube`, variant: 'green' as const, dot: true },
-          ...(data.branchStatus.critical > 0 ? [{ label: `${data.branchStatus.critical} Kritik Şube`, variant: 'red' as const, dot: true }] : []),
+          ...(data.slaBreaches > 0 ? [{ label: `${data.slaBreaches} SLA Ihlali`, variant: 'red' as const, dot: true }] : []),
+          ...(data.openTickets > 0 ? [{ label: `${data.openTickets} Acik Ticket`, variant: 'orange' as const, dot: true }] : []),
+          ...(data.branchStatus.critical > 0 ? [{ label: `${data.branchStatus.critical} Kritik Sube`, variant: 'red' as const, dot: true }] : []),
+          { label: `${data.branchStatus.total} Aktif Sube`, variant: 'green' as const, dot: true },
+          ...activeDelegations.map((del: any) => ({ label: `${del.moduleName} devredildi`, variant: 'blue' as const, dot: true })),
+          ...(data.slaBreaches === 0 && data.openTickets === 0 && data.branchStatus.critical === 0 ? [{ label: 'Sistem normal', variant: 'green' as const, dot: true }] : []),
         ]} />
 
         <DashboardKpiStrip items={[
-          { value: String(data.branchStatus.total), label: 'Şube' },
-          { value: String(data.branchStatus.critical), label: 'SLA İhlali', color: data.branchStatus.critical > 0 ? '#dc2626' : undefined },
-          { value: String(data.pendingOrders ?? 0), label: 'Açık Sipariş' },
-          { value: String(data.factory.pendingShipments ?? 0), label: 'Bekleyen Sevk' },
+          { value: String(data.branchStatus.total), label: 'Sube' },
+          { value: String(data.slaBreaches ?? 0), label: 'SLA Ihlali', color: (data.slaBreaches ?? 0) > 0 ? '#dc2626' : undefined },
+          { value: String(data.openTickets ?? 0), label: 'Acik Ticket', color: (data.openTickets ?? 0) > 10 ? '#b45309' : undefined },
+          { value: String(data.activeUsers ?? 0), label: 'Aktif Kullanici' },
         ]} />
 
         <div>
