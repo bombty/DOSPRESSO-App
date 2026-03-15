@@ -24,7 +24,11 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
 
   const { data: branchSummary, isLoading: kpiLoading, isError: kpiError } = useQuery<any>({
     queryKey: ['/api/branch-summary', branchId],
-    queryFn: () => fetch(`/api/branch-summary/${branchId}`).then(r => r.json()),
+    queryFn: async () => {
+      const r = await fetch(`/api/branch-summary/${branchId}`);
+      if (!r.ok) throw new Error(`branch-summary ${r.status}`);
+      return r.json();
+    },
     enabled: isBranchManager && !!branchId,
     staleTime: 3 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
