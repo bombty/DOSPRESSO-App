@@ -1256,6 +1256,25 @@ async function runCrmSprint1Migration() {
       END IF;
     END $$`);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS sla_business_hours (
+        id SERIAL PRIMARY KEY,
+        start_hour INTEGER NOT NULL DEFAULT 8,
+        end_hour INTEGER NOT NULL DEFAULT 18,
+        work_days INTEGER[] NOT NULL DEFAULT '{1,2,3,4,5}',
+        timezone VARCHAR(50) NOT NULL DEFAULT 'Europe/Istanbul',
+        updated_by VARCHAR REFERENCES users(id),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await db.execute(sql`
+      INSERT INTO sla_business_hours (start_hour, end_hour, work_days, timezone)
+      SELECT 8, 18, '{1,2,3,4,5}', 'Europe/Istanbul'
+      WHERE NOT EXISTS (SELECT 1 FROM sla_business_hours)
+    `);
+
     console.log("[CRM-SPRINT-1] Migration complete");
 
     const ticketCount = await db.execute(sql`SELECT COUNT(*) as count FROM support_tickets`);

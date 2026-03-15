@@ -148,6 +148,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
 export async function checkSlaBreaches(): Promise<void> {
   const now = new Date();
   const bhConfig = await getBusinessHoursConfig();
+  const withinBH = isWithinBusinessHours(now, bhConfig);
 
   const breachedTickets = await db.execute(
     sql`SELECT id, assigned_to_user_id, title, department
@@ -159,23 +160,23 @@ export async function checkSlaBreaches(): Promise<void> {
   );
 
   for (const ticket of breachedTickets.rows) {
-    await db.execute(
-      sql`UPDATE support_tickets SET sla_breached = true, sla_breached_at = ${now}, updated_at = ${now} WHERE id = ${ticket.id}`
-    );
+    if (withinBH) {
+      await db.execute(
+        sql`UPDATE support_tickets SET sla_breached = true, sla_breached_at = ${now}, updated_at = ${now} WHERE id = ${ticket.id}`
+      );
 
-    if (!isWithinBusinessHours(now, bhConfig)) continue;
-
-    const executives = await db.execute(
-      sql`SELECT id FROM users WHERE role IN ('cgo', 'ceo') AND is_active = true`
-    );
-    for (const exec of executives.rows) {
-      await storage.createNotification({
-        userId: exec.id as string,
-        type: "sla_breach",
-        title: `SLA İhlali: ${(ticket.department as string).toUpperCase()}`,
-        message: `${ticket.title} — Süre aşıldı`,
-        link: `/iletisim-merkezi/ticket/${ticket.id}`,
-      });
+      const executives = await db.execute(
+        sql`SELECT id FROM users WHERE role IN ('cgo', 'ceo') AND is_active = true`
+      );
+      for (const exec of executives.rows) {
+        await storage.createNotification({
+          userId: exec.id as string,
+          type: "sla_breach",
+          title: `SLA İhlali: ${(ticket.department as string).toUpperCase()}`,
+          message: `${ticket.title} — Süre aşıldı`,
+          link: `/iletisim-merkezi/ticket/${ticket.id}`,
+        });
+      }
     }
   }
 }

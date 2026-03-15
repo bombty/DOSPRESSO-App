@@ -3,6 +3,7 @@ import { Search, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { useQuery } from '@tanstack/react-query';
 import { getDeptConfig } from './categoryConfig';
 
 export interface TicketListItem {
@@ -14,8 +15,16 @@ export interface TicketListItem {
   priority: string;
   status: string;
   sla_breached: boolean;
+  sla_deadline: string | null;
   created_at: string;
   assigned_to_name: string | null;
+}
+
+interface BusinessHoursConfig {
+  startHour: number;
+  endHour: number;
+  workDays: number[];
+  timezone: string;
 }
 
 interface TicketListPanelProps {
@@ -26,11 +35,59 @@ interface TicketListPanelProps {
   onNewTicket?: () => void;
 }
 
-const SLA_COLOR = (breached: boolean, priority: string) => {
-  if (breached) return '#ef4444';
-  if (priority === 'kritik' || priority === 'yuksek') return '#f59e0b';
-  return '#22c55e';
-};
+function estimateRemainingBusinessHours(
+  deadline: string,
+  config: BusinessHoursConfig
+): { hours: number; label: string; color: string; percent: number } {
+  const deadlineDate = new Date(deadline);
+  const now = new Date();
+
+  if (deadlineDate.getTime() <= now.getTime()) {
+    return { hours: 0, label: 'SLA Asildi', color: '#ef4444', percent: 100 };
+  }
+
+  const { startHour, endHour, workDays } = config;
+  const businessMinutesPerDay = (endHour - startHour) * 60;
+  let totalMinutes = 0;
+  const current = new Date(now);
+
+  for (let safety = 0; safety < 500; safety++) {
+    const jsDay = current.getDay();
+    const isoDay = jsDay === 0 ? 7 : jsDay;
+
+    if (workDays.includes(isoDay)) {
+      const h = current.getHours();
+      const m = current.getMinutes();
+
+      if (current.toDateString() === deadlineDate.toDateString()) {
+        const startMin = Math.max(h * 60 + m, startHour * 60);
+        const endMin = Math.min(deadlineDate.getHours() * 60 + deadlineDate.getMinutes(), endHour * 60);
+        if (endMin > startMin) totalMinutes += endMin - startMin;
+        break;
+      }
+
+      if (safety === 0) {
+        const startMin = Math.max(h * 60 + m, startHour * 60);
+        const endMin = endHour * 60;
+        if (endMin > startMin) totalMinutes += endMin - startMin;
+      } else {
+        totalMinutes += businessMinutesPerDay;
+      }
+    }
+
+    current.setDate(current.getDate() + 1);
+    current.setHours(startHour, 0, 0, 0);
+
+    if (current.getTime() > deadlineDate.getTime() + 86400000) break;
+  }
+
+  const hours = Math.max(0, totalMinutes / 60);
+
+  if (hours <= 0) return { hours: 0, label: 'SLA Asildi', color: '#ef4444', percent: 100 };
+  if (hours < 1) return { hours, label: `${Math.floor(hours * 60)} dk`, color: '#ef4444', percent: 85 };
+  if (hours < 4) return { hours, label: `${Number(hours).toFixed(1)} is s.`, color: '#f59e0b', percent: 60 };
+  return { hours, label: `${Number(hours).toFixed(0)} is s.`, color: '#22c55e', percent: 30 };
+}
 
 const DEPT_COLORS: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
   teknik:    { bg: '#eff6ff', text: '#1d4ed8', darkBg: '#1e3a8a', darkText: '#93c5fd' },
@@ -44,6 +101,13 @@ const DEPT_COLORS: Record<string, { bg: string; text: string; darkBg: string; da
 export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNewTicket }: TicketListPanelProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { data: bhConfig } = useQuery<BusinessHoursConfig>({
+    queryKey: ['/api/iletisim/business-hours'],
+  });
+
+  const defaultConfig: BusinessHoursConfig = { startHour: 8, endHour: 18, workDays: [1,2,3,4,5], timezone: 'Europe/Istanbul' };
+  const config = bhConfig ?? defaultConfig;
 
   const filtered = tickets.filter(t => {
     if (statusFilter === 'acik' && !['acik', 'islemde'].includes(t.status)) return false;
@@ -59,7 +123,7 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
   if (isLoading) {
     return (
       <div className="w-[260px] flex-shrink-0 border-r border-border flex items-center justify-center">
-        <div className="text-sm text-muted-foreground">Yükleniyor...</div>
+        <div className="text-sm text-muted-foreground">Yukleniyor...</div>
       </div>
     );
   }
@@ -97,10 +161,10 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
         </div>
         <div className="flex gap-1.5 mt-2 overflow-x-auto">
           {[
-            { key: 'all', label: 'Tümü' },
-            { key: 'acik', label: 'Açık' },
-            { key: 'islemde', label: 'İşlemde' },
-            { key: 'cozuldu', label: 'Çözüldü' },
+            { key: 'all', label: 'Tumu' },
+            { key: 'acik', label: 'Acik' },
+            { key: 'islemde', label: 'Islemde' },
+            { key: 'cozuldu', label: 'Cozuldu' },
           ].map((f) => (
             <button
               key={f.key}
@@ -122,15 +186,20 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="p-4 text-center text-[11px] text-muted-foreground" data-testid="text-no-tickets">
-            Bu kategoride açık talep yok
+            Bu kategoride acik talep yok
           </div>
         ) : (
           filtered.map((ticket) => {
             const isSelected = ticket.id === selectedId;
             const dept = getDeptConfig(ticket.department);
             const dc = DEPT_COLORS[ticket.department] ?? { bg: '#f1f5f9', text: '#64748b', darkBg: '#1e293b', darkText: '#94a3b8' };
-            const slaColor = SLA_COLOR(ticket.sla_breached, ticket.priority);
-            const slaPercent = ticket.sla_breached ? 100 : ticket.priority === 'kritik' ? 75 : ticket.priority === 'yuksek' ? 55 : 30;
+            const isClosed = ['cozuldu', 'kapatildi'].includes(ticket.status);
+
+            const slaInfo = ticket.sla_breached
+              ? { hours: 0, label: 'SLA Asildi', color: '#ef4444', percent: 100 }
+              : ticket.sla_deadline && !isClosed
+                ? estimateRemainingBusinessHours(ticket.sla_deadline, config)
+                : { hours: 0, label: '', color: '#22c55e', percent: 0 };
 
             return (
               <button
@@ -182,12 +251,21 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
                   <span className="text-[8.5px] text-muted-foreground truncate flex-1">
                     {ticket.branch_name ?? '—'}
                   </span>
+                  {slaInfo.label && (
+                    <span
+                      className="text-[7px] font-semibold flex-shrink-0"
+                      style={{ color: slaInfo.color }}
+                      data-testid={`sla-label-${ticket.id}`}
+                    >
+                      {slaInfo.label}
+                    </span>
+                  )}
                   <div className="w-8 h-1 rounded-full bg-muted overflow-hidden flex-shrink-0">
                     <div
                       className="h-full rounded-full"
                       style={{
-                        width: `${slaPercent}%`,
-                        background: slaColor,
+                        width: `${slaInfo.percent}%`,
+                        background: slaInfo.color,
                       }}
                     />
                   </div>
