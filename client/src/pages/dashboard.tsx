@@ -78,9 +78,9 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
           : undefined,
       },
       {
-        value: kpis?.warnings?.toString() ?? '0',
+        value: kpis?.warnings != null ? kpis.warnings.toString() : '—',
         label: 'Uyari',
-        color: (kpis?.warnings ?? 0) > 0 ? '#dc2626' : undefined,
+        color: kpis?.warnings != null && kpis.warnings > 0 ? '#dc2626' : undefined,
       },
     ];
   }, [branchSummary]);
@@ -133,7 +133,9 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
                 <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" data-testid={`kpi-skeleton-${i}`} />
               ))}
             </div>
-          ) : kpiError ? null : (
+          ) : kpiError ? (
+            <DashboardAlertPills pills={[{ label: 'Veri yuklenemedi', variant: 'orange', dot: true }]} />
+          ) : (
             <>
               <DashboardAlertPills pills={alertPills} />
               <DashboardKpiStrip items={kpiItems} />
