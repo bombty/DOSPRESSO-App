@@ -14,6 +14,25 @@ import type { TicketListItem } from "./ticket-list-panel";
 import { TicketChatPanel } from "./ticket-chat-panel";
 import { SlaRulesPanel } from "./sla-rules-panel";
 
+interface TicketDetailResponse {
+  id: number;
+  ticket_number: string;
+  title: string;
+  description: string;
+  department: string;
+  priority: string;
+  status: string;
+  branch_name: string | null;
+  created_by_name: string | null;
+  assigned_to_name: string | null;
+  sla_deadline: string | null;
+  sla_breached: boolean;
+  created_at: string;
+  related_equipment_id: number | null;
+  comments: { id: number; content: string; author_name: string; created_at: string; is_internal: boolean }[];
+  attachments?: { id: number; fileName: string; storageKey: string; mimeType: string; fileSize: number }[];
+}
+
 const DashboardTab = lazy(() => import("./DashboardTab"));
 const TicketsTab = lazy(() => import("./TicketsTab"));
 const HqTasksTab = lazy(() => import("./HqTasksTab"));
@@ -78,7 +97,12 @@ export default function IletisimMerkezi() {
     enabled: canAccessIletisimMerkezi(user?.role ?? ""),
   });
 
-  const { data: activeDelegations = [] } = useQuery<any[]>({
+  interface DelegationItem {
+    moduleKey: string;
+    delegatedToUserId?: string;
+  }
+
+  const { data: activeDelegations = [] } = useQuery<DelegationItem[]>({
     queryKey: ['/api/delegations/active'],
     enabled: isHQ,
   });
@@ -93,7 +117,7 @@ export default function IletisimMerkezi() {
       crm_ik: 'hr',
     };
     return activeDelegations
-      .map((d: any) => keyToDept[d.moduleKey])
+      .map((d) => keyToDept[d.moduleKey])
       .filter(Boolean) as string[];
   }, [activeDelegations, isHQ]);
 
@@ -116,7 +140,7 @@ export default function IletisimMerkezi() {
     return counts;
   }, [safeTickets, isHQ]);
 
-  const { data: selectedTicketDetail, isLoading: ticketDetailLoading } = useQuery<any>({
+  const { data: selectedTicketDetail, isLoading: ticketDetailLoading } = useQuery<TicketDetailResponse>({
     queryKey: ['/api/iletisim/tickets', selectedTicketId],
     queryFn: async () => {
       const res = await fetch(`/api/iletisim/tickets/${selectedTicketId}`, { credentials: "include" });

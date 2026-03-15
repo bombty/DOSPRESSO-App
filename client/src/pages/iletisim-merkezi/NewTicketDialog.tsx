@@ -22,6 +22,16 @@ interface EquipmentItem {
   model?: string | null;
 }
 
+interface TicketCreatePayload {
+  department: string;
+  title: string;
+  description: string;
+  priority: string;
+  relatedEquipmentId?: number;
+  equipmentDescription?: string;
+  attachmentUrls?: string[];
+}
+
 export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -84,7 +94,7 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
       try {
         const photoUrls = photos.length > 0 ? await uploadPhotos(photos) : [];
 
-        const payload: Record<string, any> = {
+        const payload: TicketCreatePayload = {
           department: dept,
           title: title.trim(),
           description: description.trim(),
