@@ -1,163 +1,175 @@
 ---
 name: dospresso-debug-guide
-description: DOSPRESSO-specific debugging procedures for common issues. Covers auth chain debugging, TanStack Query cache issues, Drizzle ORM query problems, Radix UI crashes, and role-based access failures. Use when investigating any bug or unexpected behavior.
+description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, and TypeScript req.user pattern. Use when investigating any bug or unexpected behavior.
 ---
 
-# DOSPRESSO Debug Guide
+# DOSPRESSO Debug Checklist
 
-## Before Debugging — Common Root Causes
+## Quick Triage — Identify the Symptom
 
-90% of DOSPRESSO bugs fall into these categories:
-1. **Null/undefined crash** — API returns null, frontend calls .toFixed() or .map() on it
-2. **Auth/permission denied** — wrong middleware or missing role check
-3. **TanStack Query stale cache** — data updated but UI shows old value
-4. **Radix UI crash** — nested packages in node_modules
-5. **Wrong branch scope** — HQ user sees nothing (no branchId), or branch user sees other branch data
+| Symptom | Jump to |
+|---------|---------|
+| 401 Unauthorized | §1 Auth |
+| 403 Forbidden | §2 Role/Permission |
+| Stale UI data | §3 TanStack Cache |
+| Empty list / no data | §4 Branch Scope |
+| FK constraint error | §5 Database |
+| `dispatcher.useState` crash | §6 Radix |
+| HTTP 423 Locked | §7 Data Lock |
+| SLA/schedule off by hours | §8 Timezone |
+| TypeScript `req.user` error | §9 TypeScript |
 
-## Debug Procedure
+---
 
-### Step 1: Identify the Layer
-```
-Is it a frontend crash? → Check browser console for error
-Is it wrong data? → Check API response (curl or Network tab)
-Is it missing data? → Check database directly
-Is it auth failure? → Check middleware chain
-```
+## §1 — 401 Unauthorized
+User is not logged in or session expired.
 
-### Step 2: Auth Chain Debug
-
-DOSPRESSO auth chain (in order):
-```
-Request → Session cookie → Passport deserialize → req.user populated
-  → isAuthenticated check → Role check → Branch scope filter → Permission check
-```
-
-Debug each layer:
 ```bash
-# 1. Does the user exist and is active?
-echo "SELECT id, username, role, branch_id, is_active FROM users WHERE username='[username]';" | psql
-
-# 2. Does the endpoint have auth middleware?
-grep -n "[endpoint_path]" server/routes/*.ts | head -5
-
-# 3. What role does the middleware expect?
-grep -A 5 "[endpoint_path]" server/routes/*.ts | grep -i "role\|admin\|auth\|permission"
-
-# 4. Is branch_id correctly scoped?
-# HQ roles: branch_id should be NULL (sees all)
-# Branch roles: branch_id must match their assigned branch
+grep -n "isAuthenticated" server/routes/[ROUTE_FILE].ts | head -5
 ```
 
-### Step 3: TanStack Query Cache Issues
+Checklist:
+- [ ] Endpoint has `isAuthenticated` middleware
+- [ ] Session cookie (`connect.sid`) is present in request
+- [ ] User exists and `is_active = true` in DB
+- [ ] Passport `deserializeUser` succeeds (check server logs)
 
-Most common: Data was updated via API but the UI still shows old data.
+---
+
+## §2 — 403 Forbidden
+User is logged in but lacks the required role or permission.
+
+```bash
+grep -A 5 "[ENDPOINT_PATH]" server/routes/[ROUTE_FILE].ts | grep -i "role\|admin\|auth\|permission\|canAccess"
+```
+
+Checklist:
+- [ ] Correct middleware used: `isAdmin`, `isHQOrAdmin`, `isSupervisorPlus`, `canAccess(module, action)`
+- [ ] User's role matches what middleware expects
+- [ ] Permission matrix in `shared/schema.ts` → `PERMISSIONS` grants this role the action on this module
+- [ ] For `canAccess`: verify the `PermissionModule` key matches
+
+---
+
+## §3 — TanStack Query Stale Cache
+Data updated via API but UI shows old value.
 
 ```typescript
-// Check if the mutation invalidates the correct query key:
 onSuccess: () => {
   queryClient.invalidateQueries({ queryKey: ['/api/specific-endpoint'] });
-  // NOT just queryKey: ['generic-key'] — must match exact endpoint
 }
 ```
 
-Debug: Add to browser console:
+Checklist:
+- [ ] Mutation's `onSuccess` invalidates the correct `queryKey`
+- [ ] queryKey uses array segments for hierarchical keys: `['/api/resource', id]` not template literal
+- [ ] `queryClient` imported from `@/lib/queryClient`
+- [ ] No stale closure capturing old data in callbacks
+
+Browser console debug:
 ```javascript
-// See all cached queries
-window.__TANSTACK_QUERY_CLIENT__?.getQueryCache().getAll().map(q => ({ key: q.queryKey, state: q.state.status }))
+window.__TANSTACK_QUERY_CLIENT__?.getQueryCache().getAll().map(q => ({ key: q.queryKey, status: q.state.status }))
 ```
 
-### Step 4: Drizzle ORM Query Debug
+---
+
+## §4 — Empty Results / Wrong Branch Scope
+HQ user sees nothing (no branchId filter applied) or branch user sees other branch data.
+
+Checklist:
+- [ ] HQ roles: `branchId` should be NULL (sees all branches) — query should NOT filter by branchId
+- [ ] Branch roles: `branchId` must match their assigned branch — query MUST filter
+- [ ] Admin check pattern: `req.user.role === 'admin' ? req.query.branchId : req.user.branchId`
+- [ ] Frontend sends `branchId` as query param for HQ views with branch selector
+
+---
+
+## §5 — FK Constraint / Database Errors
+Foreign key violation or constraint error on INSERT/UPDATE.
+
+```bash
+grep -rn "references(" shared/schema.ts | grep "[TABLE_NAME]" | head -10
+```
+
+Checklist:
+- [ ] Referenced record exists before inserting
+- [ ] Correct column type (integer vs string ID)
+- [ ] `users` table uses string IDs; all other tables use serial integer
+- [ ] Soft-deleted records (`isActive: false`) may still be referenced — check if query filters them out
+
+---
+
+## §6 — Radix UI Crash (`dispatcher.useState`)
+`null is not an object (evaluating 'dispatcher.useState')`
+
+```bash
+find node_modules/@radix-ui -mindepth 2 -name "node_modules" -type d 2>/dev/null
+```
+
+Must return empty. If nested packages found:
+1. Identify which package caused nesting
+2. Downgrade to compatible version (pin exact, no `^` caret)
+3. Clear Vite cache: `rm -rf node_modules/.vite`
+4. Bump Service Worker version in `client/public/service-worker.js`
+
+---
+
+## §7 — HTTP 423 Data Lock
+User gets "Bu kayıt kilitli" when editing.
+
+```sql
+SELECT * FROM data_lock_rules WHERE table_name = '[TABLE]';
+SELECT id, created_at FROM [TABLE] WHERE id = [RECORD_ID];
+```
+
+Checklist:
+- [ ] Check `data_lock_rules` for the table's lock_after_days
+- [ ] `record.created_at + lock_after_days > now()` → record is locked
+- [ ] Locked records need a `data_change_request` (pending → approved) to modify
+- [ ] Some tables lock immediately on approval/delivery (factory_quality_checks, factory_shipments)
+
+---
+
+## §8 — SLA / Timezone Issues
+Scheduled jobs, escalation timers, or daily reports fire at wrong time.
+
+Checklist:
+- [ ] Server timezone vs Istanbul (UTC+3): agent-scheduler targets 07:00 TR for daily skills
+- [ ] `new Date()` returns UTC on server — compare with `Europe/Istanbul`
+- [ ] Quiet hours check in scheduler skips hourly skills during off-hours
+- [ ] Drizzle timestamps use `with timezone` — verify queries account for TZ
+
+---
+
+## §9 — TypeScript req.user Pattern
+`Property 'branchId' does not exist on type 'User'`
 
 ```typescript
-// Add .toSQL() to see the generated query:
-const query = db.select().from(users).where(eq(users.role, 'barista'));
-console.log(query.toSQL()); // Shows the actual SQL
+const user = req.user as Express.User;
+const branchId = user.branchId;
 ```
 
-Common Drizzle mistakes:
-- Forgetting `.limit(1)` when expecting single result
-- Using `eq()` with wrong type (string vs number for IDs)
-- Missing `.returning()` on INSERT when you need the new record
-- Not wrapping multiple operations in `db.transaction()`
+Always cast `req.user` before accessing custom properties. The Express User type is extended in the project but TypeScript sometimes loses the augmentation.
 
-### Step 5: Radix UI Crash (dispatcher.useState)
+---
 
-If you see `null is not an object (evaluating 'dispatcher.useState')`:
-```bash
-# Check for nested Radix packages
-find node_modules/@radix-ui -mindepth 2 -name "node_modules" -type d 2>/dev/null
+## Common Crash Patterns
 
-# If found, the solution is:
-# 1. Identify which package caused it
-# 2. Downgrade to compatible version
-# 3. Verify no nested packages remain
-# 4. Clear Vite cache: rm -rf node_modules/.vite
-# 5. Bump Service Worker version
-```
+| Pattern | Root Cause | Fix |
+|---------|-----------|-----|
+| `toFixed is not a function` | API returns string/null, not number | `Number(value ?? 0).toFixed(1)` |
+| `filtered.filter is not a function` | API returns `{data:[...]}` not `[...]` | `Array.isArray(data) ? data : (data?.data \|\| [])` |
+| `destroy is not a function` | JSX `return <X/>` inside useEffect | Move returns outside useEffect, after all hooks |
+| `Cannot read properties of undefined` | Missing optional chaining | `data?.stats?.rating` not `data.stats.rating` |
+| `Importing a module script failed` | Syntax error in lazy-loaded component | Check the imported file for broken JSX/missing braces |
+| PostgreSQL COUNT string concat | `COUNT()` returns string | Wrap with `Number()` in reduce/sum operations |
 
-### Step 6: Data Lock Issues
-
-If a user gets "Bu kayıt kilitli" (HTTP 423):
-```bash
-# Check lock rules for the table
-echo "SELECT * FROM data_lock_rules WHERE table_name='[table]';" | psql
-
-# Check when the record was created
-echo "SELECT id, created_at FROM [table] WHERE id=[record_id];" | psql
-
-# Calculate if lock period passed
-# record_created_at + lock_after_days > now() → locked
-```
+---
 
 ## Quick Diagnostic Commands
 
 ```bash
-# Server health
 curl -s http://localhost:5000/api/health
-
-# Server errors
 grep -i "error\|crash\|FATAL" /tmp/server.log 2>/dev/null | tail -10
-
-# Background jobs running
-grep -i "scheduler\|agent\|job" /tmp/server.log 2>/dev/null | tail -5
-
-# Database connectivity
-echo "SELECT 1;" | psql
-
-# Vite build check
-npx vite build 2>&1 | grep -i "error\|fail" | head -5
-
-# Active user sessions
-echo "SELECT COUNT(*) FROM sessions;" | psql
+grep -i "scheduler\|agent\|skill" /tmp/server.log 2>/dev/null | tail -5
 ```
-
-## Role-Specific Debug Tips
-
-- **Barista sees nothing**: Check branch_id is set and matches active branch
-- **Admin sees too much**: Normal — admin bypasses SIDEBAR_ALLOWED_ITEMS
-- **CGO sees individual performance items**: Check agent routing rules (should see summary only)
-- **Supervisor gets wrong person's notification**: Check approval chain uses target person's branchId
-- **Factory kiosk won't start**: Check PIN exists and isn't locked (3 failed attempts = 15min lock)
-
-## Recently Discovered Bug Patterns (Sprint 27+)
-
-### "toFixed is not a function"
-Root cause: API returns string or null, not number. `?.toFixed()` still crashes on strings.
-Fix: ALWAYS use `Number(value ?? 0).toFixed(1)` — never `value?.toFixed(1)`
-
-### "filtered.filter is not a function"
-Root cause: API returns `{data: [...]}` but code expects `[...]`
-Fix: Normalize with `Array.isArray(data) ? data : (data?.data || [])`
-Known APIs that return objects: `/api/faults`, `/api/agent/actions`
-
-### "destroy is not a function" (useEffect)
-Root cause: JSX `return <Component />` inside useEffect body
-Fix: Move all `if (isLoading) return ...` OUTSIDE useEffect, AFTER all hooks
-
-### "Cannot read properties of undefined"
-Root cause: Nested object access without optional chaining
-Fix: Use full chain: `data?.stats?.rating` not `data.stats.rating`
-
-### "Importing a module script failed"
-Root cause: Vite lazy-loaded chunk has a TypeScript/syntax error preventing compilation
-Fix: Check the lazy-imported component file for syntax errors (missing braces, broken JSX)

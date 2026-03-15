@@ -75,9 +75,9 @@ The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New Y
 - **Proactive Agent Skills (6 new)**: Security Monitor (suspicious activity), Stock Predictor (depletion forecast), Waste Analyzer (station waste tracking), Supplier Tracker (reliability scoring), Burnout Predictor (employee risk), Cost Analyzer (trend analysis).
 
 ## Custom Agent Skills (`.agents/skills/`)
-- **dospresso-quality-gate**: 11-point quality control checklist run after every sprint (auth, Turkish UI, null safety, Drizzle patterns, data lock, soft delete, dark mode, error states, Radix safety, SW bump, agent health).
-- **dospresso-architecture**: Full architecture reference — tech stack, project structure, 21 roles, API conventions, business logic chains, module connections, DB naming.
-- **dospresso-debug-guide**: Step-by-step debug procedures for common issues — null crashes, auth chain, TanStack cache, Radix crashes, data lock 423s, role-specific tips.
+- **dospresso-quality-gate**: 10-point PASS/FAIL quality checklist run after every sprint (auth middleware, Turkish UI, null safety, Drizzle transactions, data locks, soft delete, dark mode, role access, endpoint↔table consistency, TypeScript/React patterns).
+- **dospresso-architecture**: Full architecture reference — tech stack, project structure, 26 roles, CI colors, app layout, agent system (16 skills), API conventions, business logic chains, completed modules list, DB naming.
+- **dospresso-debug-guide**: Concise debug checklist with triage table — covers 401, 403, stale cache, empty results, FK errors, Radix crash, HTTP 423, SLA timezone, TypeScript req.user pattern, common crash patterns.
 - **dospresso-sprint-planner**: Sprint planning rules — task sizing (S/M/L/XL), priority ordering, prompt template, post-sprint checklist, common pitfalls, module reference table.
 - **dospresso-radix-safety**: Radix UI package safety — pinned versions, nested package detection, override rules, recovery procedure. Prevents the dispatcher.useState crash (occurred 3 times).
 
