@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { invalidateMenuCache } from "@/components/app-sidebar";
+import { invalidateMenuCache } from "@/lib/menu-utils";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { 
   type MenuSection, 

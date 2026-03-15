@@ -3677,8 +3677,9 @@ export class DatabaseStorage implements IStorage {
           eq(notifications.isArchived, false),
           gt(notifications.createdAt, sql`NOW() - INTERVAL '24 hours'`)
         ));
-      if ((countResult?.count || 0) >= 20) {
-        console.log(`⚠️ Throttled notification for user ${notification.userId}: daily limit (20) reached, type: ${notification.type}`);
+      const DAILY_NOTIFICATION_LIMIT = 50; // increased from 20 — active franchise platform needs higher limit
+      if ((countResult?.count || 0) >= DAILY_NOTIFICATION_LIMIT) {
+        console.log(`⚠️ Throttled notification for user ${notification.userId}: daily limit (${DAILY_NOTIFICATION_LIMIT}) reached, type: ${notification.type}`);
         return { id: -1, ...notification, isRead: false, isArchived: false, branchId: notification.branchId ?? null, link: notification.link ?? null, createdAt: new Date() } as Notification;
       }
     }

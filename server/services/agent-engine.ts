@@ -19,7 +19,7 @@ const SEVERITY_LEVELS = ["low", "med", "high", "critical"] as const;
 type Severity = typeof SEVERITY_LEVELS[number];
 
 const MAX_ACTIONS_PER_RUN = 5;
-const MAX_DAILY_ACTIONS_PER_USER = 20;
+const MAX_DAILY_ACTIONS_PER_USER = 50; // increased from 20 — active franchise platform needs higher limit
 
 const LlmActionSchema = z.object({
   actions: z.array(z.object({
