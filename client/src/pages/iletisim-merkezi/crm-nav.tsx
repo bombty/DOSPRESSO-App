@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Ticket, BarChart3,
   Wrench, Package, Calculator, Megaphone, GraduationCap, Users,
-  Settings, MessageSquare
+  Settings, MessageSquare, ArrowRightLeft
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,6 +22,7 @@ interface CrmNavProps {
   activeKey: string;
   onSelect: (key: string) => void;
   ticketCounts: Record<string, number>;
+  delegatedDepts?: string[];
 }
 
 const NAV_SECTIONS: CrmNavSection[] = [
@@ -52,7 +53,7 @@ const NAV_SECTIONS: CrmNavSection[] = [
   },
 ];
 
-export function CrmNav({ activeKey, onSelect, ticketCounts }: CrmNavProps) {
+export function CrmNav({ activeKey, onSelect, ticketCounts, delegatedDepts = [] }: CrmNavProps) {
   return (
     <aside
       className="hidden md:flex flex-col w-[195px] flex-shrink-0 border-r border-border bg-card overflow-hidden"
@@ -93,6 +94,9 @@ export function CrmNav({ activeKey, onSelect, ticketCounts }: CrmNavProps) {
                 >
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="flex-1 truncate">{item.label}</span>
+                  {delegatedDepts.includes(item.key) && (
+                    <ArrowRightLeft className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                  )}
                   {count > 0 && (
                     <span className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-md bg-[#cc1f1f] text-white flex-shrink-0">
                       {count}

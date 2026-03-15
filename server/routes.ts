@@ -396,6 +396,7 @@ import pdksRouter from "./routes/pdks";
 import payrollRouter from "./routes/payroll";
 import changeRequestsRouter from "./routes/change-requests";
 import { crmIletisimRouter } from "./routes/crm-iletisim";
+import delegationRouter from "./routes/delegation-routes";
 import { checkSlaBreaches } from "./services/ticket-routing-engine";
 import { schedulerManager } from "./scheduler-manager";
 
@@ -1110,6 +1111,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   await runCrmSprint1Migration();
 
   app.use("/api/iletisim", isAuthenticated, crmIletisimRouter);
+  app.use("/api/delegations", delegationRouter);
 
   schedulerManager.registerInterval('sla-breach-checker', async () => {
     try {

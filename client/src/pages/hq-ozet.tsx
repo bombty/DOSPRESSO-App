@@ -34,6 +34,7 @@ import {
   GraduationCap,
   Store,
   BarChart3,
+  ArrowRightLeft,
 } from "lucide-react";
 import { ModuleCard } from "@/components/module-card";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
@@ -93,6 +94,19 @@ function StatusCard({ icon: Icon, label, value, color }: {
   );
 }
 
+function getDelegatedModulePath(moduleKey: string): string {
+  const pathMap: Record<string, string> = {
+    crm_teknik:    '/iletisim-merkezi',
+    crm_lojistik:  '/iletisim-merkezi',
+    crm_muhasebe:  '/iletisim-merkezi',
+    crm_marketing: '/iletisim-merkezi',
+    crm_hr:        '/iletisim-merkezi',
+    akademi:       '/akademi',
+    raporlar:      '/raporlar',
+  };
+  return pathMap[moduleKey] ?? '/';
+}
+
 export default function HQOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -100,6 +114,10 @@ export default function HQOzet() {
 
   const { data, isLoading, isError, refetch } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-summary"],
+  });
+
+  const { data: activeDelegations = [] } = useQuery<any[]>({
+    queryKey: ['/api/delegations/active'],
   });
 
   const quickAction = useMutation({
@@ -204,6 +222,16 @@ export default function HQOzet() {
             <ModuleCard label="Akademi" sublabel="Eğitim & Gelişim" path="/akademi" icon={<GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />} gradient="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900" />
             <ModuleCard label="Şubeler" sublabel={`${data.branchStatus.total} Şube`} path="/subeler" icon={<Store className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
             <ModuleCard label="Raporlar" sublabel="Analiz & KPI" path="/raporlar" icon={<BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />} gradient="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900" />
+            {activeDelegations.map((del: any) => (
+              <ModuleCard
+                key={del.moduleKey}
+                label={del.moduleName}
+                sublabel="Devralınan modül"
+                path={getDelegatedModulePath(del.moduleKey)}
+                icon={<ArrowRightLeft className="w-8 h-8 text-blue-600 dark:text-blue-400" />}
+                gradient="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900"
+              />
+            ))}
           </div>
         </div>
       </div>

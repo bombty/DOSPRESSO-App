@@ -55,6 +55,23 @@ export default function IletisimMerkezi() {
     enabled: canAccessIletisimMerkezi(user?.role ?? ""),
   });
 
+  const { data: activeDelegations = [] } = useQuery<any[]>({
+    queryKey: ['/api/delegations/active'],
+  });
+
+  const delegatedDepts = useMemo(() => {
+    const keyToDept: Record<string, string> = {
+      crm_teknik: 'teknik',
+      crm_lojistik: 'lojistik',
+      crm_muhasebe: 'muhasebe',
+      crm_marketing: 'marketing',
+      crm_hr: 'hr',
+    };
+    return activeDelegations
+      .map((d: any) => keyToDept[d.moduleKey])
+      .filter(Boolean) as string[];
+  }, [activeDelegations]);
+
   const safeTickets: TicketListItem[] = Array.isArray(allTickets) ? allTickets : [];
 
   const filteredTickets = useMemo(() => {
@@ -214,6 +231,7 @@ export default function IletisimMerkezi() {
             setSelectedTicketId(null);
           }}
           ticketCounts={ticketCounts}
+          delegatedDepts={delegatedDepts}
         />
 
         {TICKET_NAV_KEYS.includes(crmNavKey) && (

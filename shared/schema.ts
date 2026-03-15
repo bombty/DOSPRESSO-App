@@ -15337,3 +15337,25 @@ export const broadcastReceipts = pgTable("broadcast_receipts", {
 export const insertBroadcastReceiptSchema = createInsertSchema(broadcastReceipts).omit({ id: true });
 export type InsertBroadcastReceipt = z.infer<typeof insertBroadcastReceiptSchema>;
 export type BroadcastReceipt = typeof broadcastReceipts.$inferSelect;
+
+export const moduleDelegations = pgTable('module_delegations', {
+  id: serial('id').primaryKey(),
+  moduleKey: varchar('module_key', { length: 100 }).notNull(),
+  moduleName: varchar('module_name', { length: 200 }).notNull(),
+  fromRole: varchar('from_role', { length: 100 }).notNull(),
+  toRole: varchar('to_role', { length: 100 }).notNull(),
+  delegationType: varchar('delegation_type', { length: 20 }).notNull().default('gecici'),
+  isActive: boolean('is_active').notNull().default(true),
+  expiresAt: timestamp('expires_at'),
+  note: varchar('note', { length: 500 }),
+  createdBy: varchar('created_by', { length: 100 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index("md_module_key_idx").on(table.moduleKey),
+  index("md_to_role_idx").on(table.toRole),
+  index("md_is_active_idx").on(table.isActive),
+]);
+
+export type ModuleDelegation = typeof moduleDelegations.$inferSelect;
+export type InsertModuleDelegation = typeof moduleDelegations.$inferInsert;
