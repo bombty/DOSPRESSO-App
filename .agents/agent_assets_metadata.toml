@@ -102,3 +102,9 @@ id = "K-JJQPxxWXOKn9x3YhlkZ"
 uri = "file://attached_assets/DOSPRESSO_Rol_Dashboard_Menu_Audit_Raporu.md"
 type = "text"
 title = "DOSPRESSO Rol, Dashboard ve Menü Denetim Raporu"
+
+[[outputs]]
+id = "vOJG5RvT4ECXfmvHvyU8_"
+uri = "file://.local/tasks/CRM-UI-Audit-Report.md"
+type = "text"
+title = "DOSPRESSO CRM UI/UX Denetim Raporu"
