@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ModuleContentEditor } from "@/components/module-content-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -2037,6 +2038,25 @@ export default function AdminYetkilendirme() {
               ) : null}
             </DragOverlay>
           </DndContext>
+
+          <div className="mt-8" data-testid="module-content-map-section">
+            <div className="mb-4">
+              <h3 className="text-base font-bold text-foreground">Modül İçerik Haritası</h3>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Her modülün hangi departman ve konuları kapsadığını tanımlayın.
+                Bu harita delegasyon sisteminde referans olarak kullanılır.
+              </p>
+            </div>
+            {[
+              { key: 'crm',      name: 'İletişim Merkezi (CRM)' },
+              { key: 'akademi',  name: 'Akademi' },
+              { key: 'fabrika',  name: 'Fabrika' },
+              { key: 'ik',       name: 'İnsan Kaynakları' },
+              { key: 'raporlar', name: 'Raporlar' },
+            ].map(m => (
+              <ModuleContentEditor key={m.key} moduleKey={m.key} moduleName={m.name} />
+            ))}
+          </div>
         </div>
       )}
 

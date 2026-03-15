@@ -15359,3 +15359,31 @@ export const moduleDelegations = pgTable('module_delegations', {
 
 export type ModuleDelegation = typeof moduleDelegations.$inferSelect;
 export type InsertModuleDelegation = typeof moduleDelegations.$inferInsert;
+
+// Module departments (content map for delegation)
+export const moduleDepartments = pgTable('module_departments', {
+  id: serial('id').primaryKey(),
+  moduleKey: varchar('module_key', { length: 100 }).notNull(),
+  name: varchar('name', { length: 200 }).notNull(),
+  icon: varchar('icon', { length: 10 }).default('📌'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const moduleDepartmentTopics = pgTable('module_department_topics', {
+  id: serial('id').primaryKey(),
+  departmentId: integer('department_id')
+    .notNull()
+    .references(() => moduleDepartments.id, { onDelete: 'cascade' }),
+  label: varchar('label', { length: 200 }).notNull(),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const insertModuleDepartmentSchema = createInsertSchema(moduleDepartments).omit({ id: true, createdAt: true });
+export const insertModuleDepartmentTopicSchema = createInsertSchema(moduleDepartmentTopics).omit({ id: true, createdAt: true });
+
+export type ModuleDepartment = typeof moduleDepartments.$inferSelect;
+export type InsertModuleDepartment = z.infer<typeof insertModuleDepartmentSchema>;
+export type ModuleDepartmentTopic = typeof moduleDepartmentTopics.$inferSelect;
+export type InsertModuleDepartmentTopic = z.infer<typeof insertModuleDepartmentTopicSchema>;
