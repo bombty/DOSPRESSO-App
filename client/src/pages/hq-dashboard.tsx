@@ -19,6 +19,7 @@ import { CriticalAlerts } from "@/components/critical-alerts";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { MrDobody } from "@/components/mr-dobody";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { ModuleCard } from "@/components/module-card";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -1908,6 +1909,13 @@ export default function HQDashboard() {
 
   const DepartmentComponent = roleToDashboard[userRole] || CGODashboard;
 
+  const HQ_DEPT_MODULES = [
+    { label: 'İletişim M.', sublabel: 'Şube Talepleri', path: '/iletisim-merkezi', icon: <MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />, gradient: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900' },
+    { label: 'Akademi', sublabel: 'Eğitim & Gelişim', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
+    { label: 'Şubeler', sublabel: 'Şube Yönetimi', path: '/subeler', icon: <Store className="w-8 h-8 text-purple-600 dark:text-purple-400" />, gradient: 'bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900' },
+    { label: 'Raporlar', sublabel: 'Analiz & KPI', path: '/raporlar', icon: <BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },
+  ];
+
   return (
     <div className="container mx-auto p-3 max-w-7xl space-y-3">
       <DobodyFlowMode
@@ -1917,6 +1925,18 @@ export default function HQDashboard() {
         branchId={user?.branchId ? Number(user.branchId) : null}
       />
         <UnifiedHero />
+
+      <div data-testid="hq-dept-quick-access">
+        <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+          Hızlı Erişim
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+          {HQ_DEPT_MODULES.map(m => (
+            <ModuleCard key={m.path} {...m} />
+          ))}
+        </div>
+      </div>
+
       <DailyTaskPanel />
       {!isCGO && <CriticalAlerts />}
       {canSeeWidget(userRole, 'atadiklarim') && <AtadiklarimWidget />}

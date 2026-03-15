@@ -1,9 +1,11 @@
 import { CardGridHub } from "@/components/card-grid-hub";
 import { DashboardWidgets } from "@/components/dashboard-widgets";
+import { ModuleCard } from "@/components/module-card";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect, lazy, Suspense } from "react";
 import { isHQRole, isFactoryFloorRole } from "@shared/schema";
+import { GraduationCap, ClipboardCheck, MessageSquare, BarChart3, Trophy } from "lucide-react";
 
 const HQ_SPECIAL_DASHBOARD_ROLES = [
   'ceo', 'cgo', 'yatirimci_hq', 'admin',
@@ -42,8 +44,33 @@ export default function Dashboard() {
     );
   }
 
+  const isBranchManager = userRole === 'mudur' || userRole === 'supervisor';
+
+  const BRANCH_MODULES = isBranchManager ? [
+    { label: 'Akademi', sublabel: 'Dersler', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
+    { label: 'Görevlerim', sublabel: 'Bugünkü görevler', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },
+    { label: 'İletişim M.', sublabel: 'Talepler', path: '/iletisim-merkezi', icon: <MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />, gradient: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900' },
+    { label: 'Raporlar', sublabel: 'Şube analiz', path: '/raporlar', icon: <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400" />, gradient: 'bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900' },
+  ] : [
+    { label: 'Akademi', sublabel: 'Dersler & Sertifika', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
+    { label: 'Görevlerim', sublabel: 'Bugün', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },
+    { label: 'Sıralama', sublabel: 'Lider tablosu', path: '/siralama', icon: <Trophy className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />, gradient: 'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900' },
+  ];
+
   return (
     <div className="space-y-4">
+      <div className="space-y-3 mb-2" data-testid="branch-ci-section">
+        <div>
+          <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+            Hızlı Erişim
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {BRANCH_MODULES.map(m => (
+              <ModuleCard key={m.path} {...m} />
+            ))}
+          </div>
+        </div>
+      </div>
       <DashboardWidgets />
       <CardGridHub />
     </div>

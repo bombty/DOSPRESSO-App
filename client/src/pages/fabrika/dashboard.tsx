@@ -36,6 +36,7 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as Recharts
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { DailyTaskPanel } from "@/components/daily-task-panel";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { ModuleCard } from "@/components/module-card";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 
@@ -236,6 +237,16 @@ export default function FabrikaDashboard() {
           userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
           branchId={user?.branchId ? Number(user.branchId) : null}
         />
+
+      <div data-testid="factory-quick-access">
+        <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+          Hızlı Erişim
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+          <ModuleCard label="Kiosk" sublabel="Üretim Timer" path="/fabrika/kiosk" icon={<Timer className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
+          <ModuleCard label="Görevlerim" sublabel="Vardiya" path="/gorevler" icon={<ClipboardCheck className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />} gradient="bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900" />
+        </div>
+      </div>
 
       {loadingStats ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

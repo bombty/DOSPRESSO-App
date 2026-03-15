@@ -30,7 +30,14 @@ import {
   Star,
   TrendingUp,
   Bell,
+  MessageSquare,
+  GraduationCap,
+  Store,
+  BarChart3,
 } from "lucide-react";
+import { ModuleCard } from "@/components/module-card";
+import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
+import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { ErrorState } from "../components/error-state";
@@ -174,6 +181,33 @@ export default function HQOzet() {
         userName={`${user?.firstName || ""} ${user?.lastName || ""}`.trim()}
         branchId={user?.branchId ? Number(user.branchId) : null}
       />
+      <div className="space-y-3 mb-2" data-testid="hq-ci-section">
+        <DashboardAlertPills pills={[
+          { label: 'İletişim M. kontrol et', variant: 'orange' as const, dot: true },
+          { label: `${data.branchStatus.total} Aktif Şube`, variant: 'green' as const, dot: true },
+          ...(data.branchStatus.critical > 0 ? [{ label: `${data.branchStatus.critical} Kritik Şube`, variant: 'red' as const, dot: true }] : []),
+        ]} />
+
+        <DashboardKpiStrip items={[
+          { value: String(data.branchStatus.total), label: 'Şube' },
+          { value: String(data.branchStatus.critical), label: 'SLA İhlali', color: data.branchStatus.critical > 0 ? '#dc2626' : undefined },
+          { value: String(data.pendingOrders ?? 0), label: 'Açık Sipariş' },
+          { value: String(data.factory.pendingShipments ?? 0), label: 'Bekleyen Sevk' },
+        ]} />
+
+        <div>
+          <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
+            Hızlı Erişim
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            <ModuleCard label="İletişim M." sublabel="Şube Talepleri" path="/iletisim-merkezi" icon={<MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />} gradient="bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900" />
+            <ModuleCard label="Akademi" sublabel="Eğitim & Gelişim" path="/akademi" icon={<GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />} gradient="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900" />
+            <ModuleCard label="Şubeler" sublabel={`${data.branchStatus.total} Şube`} path="/subeler" icon={<Store className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
+            <ModuleCard label="Raporlar" sublabel="Analiz & KPI" path="/raporlar" icon={<BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />} gradient="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900" />
+          </div>
+        </div>
+      </div>
+
       <div data-testid="hq-header">
         <h1 className="text-xl font-bold" data-testid="text-hq-title">HQ Genel Bakış</h1>
         <p className="text-sm text-muted-foreground">{data.branchStatus.total} şube</p>
