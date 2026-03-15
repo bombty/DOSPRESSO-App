@@ -1,9 +1,9 @@
 import { db } from "../db";
-import { supportTickets } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { supportTickets, slaRules } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { storage } from "../storage";
 
-const SLA_RULES: Record<string, Record<string, number>> = {
+const SLA_DEFAULTS: Record<string, Record<string, number>> = {
   teknik:    { kritik: 4,  yuksek: 8,  normal: 24, dusuk: 48 },
   lojistik:  { kritik: 8,  yuksek: 12, normal: 24, dusuk: 48 },
   muhasebe:  { kritik: 12, yuksek: 24, normal: 48, dusuk: 72 },
@@ -11,6 +11,24 @@ const SLA_RULES: Record<string, Record<string, number>> = {
   trainer:   { kritik: 12, yuksek: 24, normal: 48, dusuk: 72 },
   hr:        { kritik: 12, yuksek: 24, normal: 72, dusuk: 96 },
 };
+
+async function getSlaHours(department: string, priority: string): Promise<number> {
+  try {
+    const [rule] = await db
+      .select()
+      .from(slaRules)
+      .where(
+        and(
+          eq(slaRules.department, department),
+          eq(slaRules.priority, priority),
+          eq(slaRules.isActive, true)
+        )
+      );
+    return rule?.hoursLimit ?? SLA_DEFAULTS[department]?.[priority] ?? 24;
+  } catch {
+    return SLA_DEFAULTS[department]?.[priority] ?? 24;
+  }
+}
 
 const DEPT_ASSIGNEE_ROLE: Record<string, string> = {
   teknik:    "teknik_sorumlu",
@@ -34,7 +52,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
   const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
   if (!ticket) return;
 
-  const slaHours = SLA_RULES[ticket.department]?.[ticket.priority] ?? 48;
+  const slaHours = await getSlaHours(ticket.department, ticket.priority);
   const slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
 
   const targetRole = DEPT_ASSIGNEE_ROLE[ticket.department];

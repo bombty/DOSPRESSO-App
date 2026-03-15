@@ -12,6 +12,7 @@ import { CrmNav } from "./crm-nav";
 import { TicketListPanel } from "./ticket-list-panel";
 import type { TicketListItem } from "./ticket-list-panel";
 import { TicketChatPanel } from "./ticket-chat-panel";
+import { SlaRulesPanel } from "./sla-rules-panel";
 
 const DashboardTab = lazy(() => import("./DashboardTab"));
 const TicketsTab = lazy(() => import("./TicketsTab"));
@@ -264,13 +265,7 @@ export default function IletisimMerkezi() {
             </div>
           </div>
         ) : crmNavKey === 'sla' ? (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="text-center text-muted-foreground py-16">
-              <Settings className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium">SLA Kuralları</p>
-              <p className="text-xs">Yakında aktif olacak</p>
-            </div>
-          </div>
+          <SlaRulesPanel isAdmin={['admin', 'ceo'].includes(user?.role ?? '')} />
         ) : (
           <div className="flex-1 overflow-y-auto p-6" />
         )}

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { supportTickets, supportTicketComments, ticketAttachments, hqTasks, broadcastReceipts, users, type SupportTicket } from "@shared/schema";
+import { supportTickets, supportTicketComments, ticketAttachments, hqTasks, broadcastReceipts, users, slaRules, type SupportTicket } from "@shared/schema";
 import { eq, and, sql, asc, inArray, isNull } from "drizzle-orm";
 import { routeTicket, generateTicketNumber, generateHqTaskNumber } from "../services/ticket-routing-engine";
 import { storage } from "../storage";
@@ -874,6 +874,104 @@ router.post("/tickets/:id/sla-remind", async (req: any, res: Response) => {
   } catch (err) {
     console.error("Error sending SLA reminder:", err);
     res.status(500).json({ error: "Hatırlatma gönderilemedi" });
+  }
+});
+
+router.get("/sla-rules", async (req: any, res: Response) => {
+  try {
+    const rules = await db
+      .select()
+      .from(slaRules)
+      .orderBy(asc(slaRules.department), asc(slaRules.priority));
+    res.json(rules);
+  } catch (err) {
+    res.status(500).json({ error: "SLA kuralları alınamadı" });
+  }
+});
+
+router.patch("/sla-rules/:id", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!['admin', 'ceo'].includes(user.role)) {
+      return res.status(403).json({ error: "Yetki yok" });
+    }
+    const id = parseInt(req.params.id);
+    const { hoursLimit } = req.body;
+
+    if (!hoursLimit || hoursLimit < 1 || hoursLimit > 720) {
+      return res.status(400).json({ error: "hoursLimit must be between 1 and 720" });
+    }
+
+    const [updated] = await db
+      .update(slaRules)
+      .set({ hoursLimit, updatedBy: user.id, updatedAt: new Date() })
+      .where(eq(slaRules.id, id))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Kural bulunamadı" });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "SLA kuralı güncellenemedi" });
+  }
+});
+
+router.post("/sla-rules/reset", async (req: any, res: Response) => {
+  try {
+    const user = req.user!;
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: "Yetki yok" });
+    }
+
+    const DEFAULTS = [
+      { department: 'teknik', priority: 'kritik', hoursLimit: 4 },
+      { department: 'teknik', priority: 'yuksek', hoursLimit: 8 },
+      { department: 'teknik', priority: 'normal', hoursLimit: 24 },
+      { department: 'teknik', priority: 'dusuk', hoursLimit: 48 },
+      { department: 'lojistik', priority: 'kritik', hoursLimit: 8 },
+      { department: 'lojistik', priority: 'yuksek', hoursLimit: 12 },
+      { department: 'lojistik', priority: 'normal', hoursLimit: 24 },
+      { department: 'lojistik', priority: 'dusuk', hoursLimit: 48 },
+      { department: 'muhasebe', priority: 'kritik', hoursLimit: 12 },
+      { department: 'muhasebe', priority: 'yuksek', hoursLimit: 24 },
+      { department: 'muhasebe', priority: 'normal', hoursLimit: 48 },
+      { department: 'muhasebe', priority: 'dusuk', hoursLimit: 72 },
+      { department: 'marketing', priority: 'kritik', hoursLimit: 24 },
+      { department: 'marketing', priority: 'yuksek', hoursLimit: 48 },
+      { department: 'marketing', priority: 'normal', hoursLimit: 72 },
+      { department: 'marketing', priority: 'dusuk', hoursLimit: 96 },
+      { department: 'trainer', priority: 'kritik', hoursLimit: 12 },
+      { department: 'trainer', priority: 'yuksek', hoursLimit: 24 },
+      { department: 'trainer', priority: 'normal', hoursLimit: 48 },
+      { department: 'trainer', priority: 'dusuk', hoursLimit: 72 },
+      { department: 'hr', priority: 'kritik', hoursLimit: 12 },
+      { department: 'hr', priority: 'yuksek', hoursLimit: 24 },
+      { department: 'hr', priority: 'normal', hoursLimit: 72 },
+      { department: 'hr', priority: 'dusuk', hoursLimit: 96 },
+    ];
+
+    for (const rule of DEFAULTS) {
+      const [existing] = await db
+        .select()
+        .from(slaRules)
+        .where(
+          and(
+            eq(slaRules.department, rule.department),
+            eq(slaRules.priority, rule.priority)
+          )
+        );
+      if (existing) {
+        await db
+          .update(slaRules)
+          .set({ hoursLimit: rule.hoursLimit, updatedAt: new Date() })
+          .where(eq(slaRules.id, existing.id));
+      } else {
+        await db.insert(slaRules).values(rule);
+      }
+    }
+
+    res.json({ success: true, message: "Tüm SLA kuralları varsayılana sıfırlandı" });
+  } catch (err) {
+    res.status(500).json({ error: "Sıfırlama başarısız" });
   }
 });
 

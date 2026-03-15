@@ -66,6 +66,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   const [inputMode, setInputMode] = useState<'reply' | 'internal'>('reply');
   const [message, setMessage] = useState('');
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const [chatTab, setChatTab] = useState<'chat' | 'history'>('chat');
   const { user } = useAuth();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -275,6 +276,57 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         </div>
       </div>
 
+      <div className="flex border-b border-border px-4 flex-shrink-0 bg-card" data-testid="chat-history-tabs">
+        <button
+          onClick={() => setChatTab('chat')}
+          className={cn(
+            'text-xs font-semibold py-2 px-3 border-b-2 transition-colors',
+            chatTab === 'chat'
+              ? 'border-[#122549] text-foreground dark:border-white'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+          data-testid="tab-chat"
+        >
+          Sohbet
+        </button>
+        <button
+          onClick={() => setChatTab('history')}
+          className={cn(
+            'text-xs font-semibold py-2 px-3 border-b-2 transition-colors',
+            chatTab === 'history'
+              ? 'border-[#122549] text-foreground dark:border-white'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+          data-testid="tab-history"
+        >
+          Gecmis
+        </button>
+      </div>
+
+      {chatTab === 'history' ? (
+        <div className="flex-1 overflow-y-auto px-4 py-3 bg-muted/20" data-testid="ticket-history">
+          {(ticket.comments ?? []).filter((c: TicketComment) => c.is_internal).length > 0 ? (
+            (ticket.comments ?? [])
+              .filter((c: TicketComment) => c.is_internal)
+              .map((c: TicketComment) => (
+                <div key={c.id} className="flex items-start gap-3 py-2.5 border-b border-border last:border-0" data-testid={`history-item-${c.id}`}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 mt-1.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-xs text-foreground">{c.content}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {new Date(c.created_at).toLocaleString('tr-TR')}
+                    </div>
+                  </div>
+                </div>
+              ))
+          ) : (
+            <div className="text-center py-8 text-sm text-muted-foreground" data-testid="text-no-history">
+              Henuz gecmis kaydi yok
+            </div>
+          )}
+        </div>
+      ) : (
+
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-muted/20" data-testid="chat-messages">
         <div className="flex justify-center">
           <span className="text-[8.5px] px-3 py-1 rounded-full bg-muted text-muted-foreground">
@@ -371,6 +423,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
           </div>
         )}
       </div>
+      )}
 
       {isClosed ? (
         <div className="px-4 py-3 border-t border-border bg-card flex-shrink-0">

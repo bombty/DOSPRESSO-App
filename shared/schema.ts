@@ -15404,3 +15404,17 @@ export type ModuleDepartment = typeof moduleDepartments.$inferSelect;
 export type InsertModuleDepartment = z.infer<typeof insertModuleDepartmentSchema>;
 export type ModuleDepartmentTopic = typeof moduleDepartmentTopics.$inferSelect;
 export type InsertModuleDepartmentTopic = z.infer<typeof insertModuleDepartmentTopicSchema>;
+
+export const slaRules = pgTable('sla_rules', {
+  id: serial('id').primaryKey(),
+  department: varchar('department', { length: 50 }).notNull(),
+  priority: varchar('priority', { length: 20 }).notNull(),
+  hoursLimit: integer('hours_limit').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  updatedBy: varchar('updated_by').references(() => users.id),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type SlaRule = typeof slaRules.$inferSelect;
+export type InsertSlaRule = typeof slaRules.$inferInsert;
