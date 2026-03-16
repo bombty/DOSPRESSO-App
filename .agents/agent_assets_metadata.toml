@@ -108,3 +108,9 @@ id = "vOJG5RvT4ECXfmvHvyU8_"
 uri = "file://.local/tasks/CRM-UI-Audit-Report.md"
 type = "text"
 title = "DOSPRESSO CRM UI/UX Denetim Raporu"
+
+[[outputs]]
+id = "uLUKinc8w7eFtUoCYV1nV"
+uri = "file://KIOSK_AUDIT_REPORT.md"
+type = "text"
+title = "DOSPRESSO Kiosk Güvenlik Audit Raporu"
