@@ -2386,7 +2386,20 @@ router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req
 router.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
-    const { password } = req.body;
+    const { username, password } = req.body;
+
+    const [branch] = await db.select({ name: branches.name })
+      .from(branches)
+      .where(eq(branches.id, branchId))
+      .limit(1);
+
+    if (!branch) {
+      return res.status(404).json({ message: "Şube bulunamadı" });
+    }
+
+    if (username && branch.name.toLowerCase() !== username.toLowerCase()) {
+      return res.status(401).json({ message: "Kullanıcı adı veya parola hatalı" });
+    }
     
     const [settings] = await db.select().from(branchKioskSettings)
       .where(eq(branchKioskSettings.branchId, branchId))
@@ -2395,10 +2408,10 @@ router.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) =>
     const correctPassword = settings?.kioskPassword || '0000';
     
     if (password !== correctPassword) {
-      return res.status(401).json({ message: "Hatalı parola" });
+      return res.status(401).json({ message: "Kullanıcı adı veya parola hatalı" });
     }
     
-    res.json({ success: true });
+    res.json({ success: true, branchName: branch.name });
   } catch (error: any) {
     console.error("Error verifying kiosk password:", error);
     res.status(500).json({ message: "Parola doğrulanamadı" });
@@ -3012,6 +3025,11 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
 
 router.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req, res) => {
   try {
+    const user = req.user as any;
+    const BRANCH_PIN_ADMIN_ROLES = ['admin', 'ceo', 'mudur'];
+    if (!BRANCH_PIN_ADMIN_ROLES.includes(user?.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
     const branchId = parseInt(req.params.branchId);
     const { userId, pin } = req.body;
     

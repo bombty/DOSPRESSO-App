@@ -50,6 +50,7 @@ import {
   branchStockMovements,
   branchOrders,
   branchOrderItems,
+  factoryKioskConfig,
 } from "../../shared/schema";
 
 const router = Router();
@@ -402,8 +403,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Fabrika PIN kayıtlarını listele
+  const PIN_ADMIN_ROLES = ['admin', 'ceo', 'fabrika_mudur'];
+
   router.get('/api/factory/pins', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      if (!PIN_ADMIN_ROLES.includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const pinRecords = await db.select({
         id: factoryStaffPins.id,
         userId: factoryStaffPins.userId,
@@ -420,9 +427,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  // Yeni PIN oluştur
   router.post('/api/factory/pins', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      if (!PIN_ADMIN_ROLES.includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const { userId, pin } = req.body;
       
       if (!userId || !pin) {
@@ -459,9 +469,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  // PIN sıfırla
   router.patch('/api/factory/pins/:userId', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      if (!PIN_ADMIN_ROLES.includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) return res.status(400).json({ message: "Geçersiz ID" });
       const { pin } = req.body;
@@ -492,9 +505,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  // Hesap kilidini aç
   router.post('/api/factory/pins/:userId/unlock', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      if (!PIN_ADMIN_ROLES.includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) return res.status(400).json({ message: "Geçersiz ID" });
 
@@ -517,9 +533,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  // PIN sil
   router.delete('/api/factory/pins/:userId', isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as any;
+      if (!PIN_ADMIN_ROLES.includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) return res.status(400).json({ message: "Geçersiz ID" });
 
@@ -678,7 +697,111 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  // Kiosk vardiya başlat (istasyon seçerek)
+  router.post('/api/factory/kiosk/device-auth', async (req, res) => {
+    try {
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const rateLimitId = `device_auth_${clientIp}`;
+      const rateCheck = checkKioskRateLimit(rateLimitId);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({ message: `Çok fazla deneme. ${Math.ceil((rateCheck.retryAfter || 1800) / 60)} dakika sonra tekrar deneyin.`, retryAfter: rateCheck.retryAfter });
+      }
+
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: "Kullanıcı adı ve şifre gerekli" });
+      }
+
+      const [usernameConfig] = await db.select().from(factoryKioskConfig)
+        .where(eq(factoryKioskConfig.configKey, 'device_username'))
+        .limit(1);
+      const [passwordConfig] = await db.select().from(factoryKioskConfig)
+        .where(eq(factoryKioskConfig.configKey, 'device_password'))
+        .limit(1);
+
+      const storedUsername = usernameConfig?.configValue || 'Fabrika';
+      const storedPassword = passwordConfig?.configValue || '0000';
+
+      if (username.toLowerCase() !== storedUsername.toLowerCase() || password !== storedPassword) {
+        return res.status(401).json({ message: "Kullanıcı adı veya şifre hatalı" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error in device auth:", error);
+      res.status(500).json({ message: "Doğrulama başarısız" });
+    }
+  });
+
+  router.get('/api/factory/kiosk/device-credentials', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!['admin', 'ceo'].includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const configs = await db.select().from(factoryKioskConfig)
+        .where(
+          or(
+            eq(factoryKioskConfig.configKey, 'device_username'),
+            eq(factoryKioskConfig.configKey, 'device_password')
+          )
+        );
+
+      const usernameConfig = configs.find(c => c.configKey === 'device_username');
+      const passwordConfig = configs.find(c => c.configKey === 'device_password');
+
+      res.json({
+        username: usernameConfig?.configValue || 'Fabrika',
+        password: passwordConfig?.configValue || '0000',
+      });
+    } catch (error: any) {
+      console.error("Error fetching device credentials:", error);
+      res.status(500).json({ message: "Bilgiler alınamadı" });
+    }
+  });
+
+  router.patch('/api/factory/kiosk/device-credentials', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!['admin', 'ceo'].includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const { username, password } = req.body;
+      if (!username || username.length < 2) {
+        return res.status(400).json({ message: "Kullanıcı adı en az 2 karakter olmalı" });
+      }
+      if (!password || password.length !== 4 || !/^\d{4}$/.test(password)) {
+        return res.status(400).json({ message: "Şifre 4 haneli sayı olmalı" });
+      }
+
+      for (const item of [
+        { key: 'device_username', value: username },
+        { key: 'device_password', value: password },
+      ]) {
+        const [existing] = await db.select().from(factoryKioskConfig)
+          .where(eq(factoryKioskConfig.configKey, item.key))
+          .limit(1);
+
+        if (existing) {
+          await db.update(factoryKioskConfig)
+            .set({ configValue: item.value, updatedAt: new Date() })
+            .where(eq(factoryKioskConfig.configKey, item.key));
+        } else {
+          await db.insert(factoryKioskConfig).values({
+            configKey: item.key,
+            configValue: item.value,
+          });
+        }
+      }
+
+      res.json({ success: true, message: "Kiosk giriş bilgileri güncellendi" });
+    } catch (error: any) {
+      console.error("Error updating device credentials:", error);
+      res.status(500).json({ message: "Bilgiler güncellenemedi" });
+    }
+  });
+
   router.post('/api/factory/kiosk/start-shift', isKioskAuthenticated, async (req, res) => {
     try {
       const { userId, stationId } = req.body;
@@ -1056,17 +1179,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/staff/pin', isAuthenticated, async (req, res) => {
     try {
       const { userId, pin } = req.body;
-      const user = req.user!;
+      const user = req.user as any;
       
-      // Only factory managers or admins can set PINs for others
-      const canManage = user.role === 'admin' || user.role === 'fabrika_mudur' || user.id === userId;
-      
-      if (!canManage) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!PIN_ADMIN_ROLES.includes(user?.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
       }
 
-      if (!pin || pin.length < 4 || pin.length > 6) {
-        return res.status(400).json({ message: "PIN 4-6 haneli olmalıdır" });
+      if (!pin || pin.length !== 4) {
+        return res.status(400).json({ message: "PIN 4 haneli olmalıdır" });
       }
 
       const hashedPin = await bcrypt.hash(pin, 10);
@@ -6301,6 +6421,30 @@ export async function initFactoryKioskMigrations() {
         ADD COLUMN IF NOT EXISTS waste_product_count INTEGER
     `);
     console.log("[FAB-KIOSK] Phase + waste columns migration applied.");
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS factory_kiosk_config (
+        id SERIAL PRIMARY KEY,
+        config_key VARCHAR(100) NOT NULL UNIQUE,
+        config_value VARCHAR(500) NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    for (const item of [
+      { key: 'device_username', value: 'Fabrika' },
+      { key: 'device_password', value: '0000' },
+    ]) {
+      const [existing] = await db.select().from(factoryKioskConfig)
+        .where(eq(factoryKioskConfig.configKey, item.key))
+        .limit(1);
+      if (!existing) {
+        await db.insert(factoryKioskConfig).values({
+          configKey: item.key,
+          configValue: item.value,
+        });
+      }
+    }
+    console.log("[FAB-KIOSK] Device credentials seeded.");
   } catch (error) {
     console.error("[FAB-KIOSK] Migration error:", error);
   }

@@ -15432,3 +15432,13 @@ export const slaBusinessHours = pgTable('sla_business_hours', {
 
 export type SlaBusinessHours = typeof slaBusinessHours.$inferSelect;
 export type InsertSlaBusinessHours = typeof slaBusinessHours.$inferInsert;
+
+export const factoryKioskConfig = pgTable("factory_kiosk_config", {
+  id: serial("id").primaryKey(),
+  configKey: varchar("config_key", { length: 100 }).notNull().unique(),
+  configValue: varchar("config_value", { length: 500 }).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type FactoryKioskConfig = typeof factoryKioskConfig.$inferSelect;
+export type InsertFactoryKioskConfig = typeof factoryKioskConfig.$inferInsert;

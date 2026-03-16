@@ -50,7 +50,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 
-type KioskStep = 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
+type KioskStep = 'device-password' | 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
@@ -134,7 +134,9 @@ const BREAK_OPTIONS = [
 export default function FactoryKiosk() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<KioskStep>('select-user');
+  const [step, setStep] = useState<KioskStep>('device-password');
+  const [deviceUsername, setDeviceUsername] = useState('');
+  const [devicePassword, setDevicePassword] = useState('');
   const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
@@ -227,6 +229,21 @@ export default function FactoryKiosk() {
     });
     return map;
   }, [activeWorkers]);
+
+  const deviceAuthMutation = useMutation({
+    mutationFn: async (data: { username: string; password: string }) => {
+      const res = await apiRequest('POST', '/api/factory/kiosk/device-auth', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setStep('select-user');
+      setDevicePassword('');
+    },
+    onError: (error: any) => {
+      toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
+      setDevicePassword('');
+    },
+  });
 
   const loginMutation = useMutation({
     mutationFn: async (data: { userId: string; pin: string }) => {
@@ -547,7 +564,9 @@ export default function FactoryKiosk() {
   };
 
   const resetKiosk = () => {
-    setStep('select-user');
+    setStep('device-password');
+    setDeviceUsername('');
+    setDevicePassword('');
     setSelectedUser(null);
     setPinInput('');
     setSelectedStation(null);
@@ -613,6 +632,80 @@ export default function FactoryKiosk() {
         </CardHeader>
         
         <CardContent className="p-8">
+          {step === 'device-password' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-center text-slate-200">Kiosk Giriş</h3>
+              <p className="text-center text-slate-400">Kullanıcı adı ve parolayı girin</p>
+              <div className="max-w-xs mx-auto space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-400">Kullanıcı Adı</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input
+                      type="text"
+                      placeholder="örn: Fabrika"
+                      value={deviceUsername}
+                      onChange={(e) => setDeviceUsername(e.target.value)}
+                      className="pl-10 text-lg bg-slate-700 border-slate-600 h-12"
+                      autoFocus
+                      data-testid="input-device-username"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-400">Parola (4 haneli)</label>
+                  <div className="flex justify-center gap-2">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl font-bold ${
+                          devicePassword.length > i
+                            ? 'border-amber-500 bg-amber-900/50'
+                            : 'border-slate-600'
+                        }`}
+                      >
+                        {devicePassword[i] ? '•' : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'del'].map((num, idx) => (
+                    <Button
+                      key={idx}
+                      variant={num === '' ? 'ghost' : 'outline'}
+                      size="lg"
+                      className="h-14 text-xl border-slate-600"
+                      disabled={num === '' || !deviceUsername.trim()}
+                      data-testid={`keypad-device-${num}`}
+                      onClick={() => {
+                        if (num === 'del') {
+                          setDevicePassword(prev => prev.slice(0, -1));
+                        } else if (typeof num === 'number' && devicePassword.length < 4) {
+                          const newPass = devicePassword + num;
+                          setDevicePassword(newPass);
+                          if (newPass.length === 4 && deviceUsername.trim()) {
+                            deviceAuthMutation.mutate({ username: deviceUsername, password: newPass });
+                          }
+                        }
+                      }}
+                    >
+                      {num === 'del' ? '⌫' : num}
+                    </Button>
+                  ))}
+                </div>
+
+                {!deviceUsername.trim() && (
+                  <p className="text-sm text-slate-400 text-center">
+                    Lütfen önce kullanıcı adını girin
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {step === 'select-user' && (
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-center text-slate-200">Personel Seçin</h3>
@@ -681,7 +774,7 @@ export default function FactoryKiosk() {
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value)}
                     className="pl-10 text-center text-2xl tracking-widest bg-slate-700 border-slate-600 h-14"
-                    maxLength={6}
+                    maxLength={4}
                     autoFocus
                     data-testid="input-pin"
                     onKeyDown={(e) => e.key === 'Enter' && handlePinSubmit()}

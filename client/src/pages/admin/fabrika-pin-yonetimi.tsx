@@ -18,11 +18,16 @@ import {
   CheckCircle,
   XCircle,
   UnlockIcon,
-  Trash2
+  Trash2,
+  Eye,
+  EyeOff,
+  Shield,
+  Save
 } from "lucide-react";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StaffUser {
   id: number;
@@ -44,11 +49,17 @@ interface PinRecord {
 
 export default function AdminFabrikaPinYonetimi() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null);
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [showDevicePassword, setShowDevicePassword] = useState(false);
+  const [editDeviceUsername, setEditDeviceUsername] = useState("");
+  const [editDevicePassword, setEditDevicePassword] = useState("");
+  const [editingDeviceCredentials, setEditingDeviceCredentials] = useState(false);
+  const isAdminOrCeo = currentUser?.role === 'admin' || currentUser?.role === 'ceo';
 
   const { data: staff = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffUser[]>({
     queryKey: ['/api/factory/staff'],
@@ -56,6 +67,28 @@ export default function AdminFabrikaPinYonetimi() {
 
   const { data: pins = [], isLoading: loadingPins, refetch: refetchPins } = useQuery<PinRecord[]>({
     queryKey: ['/api/factory/pins'],
+  });
+
+  const { data: deviceCredentials } = useQuery<{ username: string; password: string }>({
+    queryKey: ['/api/factory/kiosk/device-credentials'],
+    enabled: isAdminOrCeo,
+  });
+
+  const updateDeviceCredentialsMutation = useMutation({
+    mutationFn: async (data: { username: string; password: string }) => {
+      const res = await apiRequest('PATCH', '/api/factory/kiosk/device-credentials', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Kiosk giriş bilgileri güncellendi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/factory/kiosk/device-credentials'] });
+      setEditingDeviceCredentials(false);
+      setEditDeviceUsername("");
+      setEditDevicePassword("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
   });
 
   const staffWithPins = staff.map(s => {
@@ -206,6 +239,101 @@ export default function AdminFabrikaPinYonetimi() {
           Yenile
         </Button>
       </div>
+
+      {isAdminOrCeo && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-amber-500" />
+              <div>
+                <CardTitle>Fabrika Kiosk Giriş Bilgileri</CardTitle>
+                <CardDescription>Kiosk cihazına giriş için kullanıcı adı ve parola</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Kullanıcı Adı:</span>
+                  <code className="px-3 py-1 rounded bg-muted font-mono text-sm" data-testid="text-device-username">
+                    {deviceCredentials?.username || 'Fabrika'}
+                  </code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Parola:</span>
+                  <code className="px-3 py-1 rounded bg-muted font-mono text-sm" data-testid="text-device-password">
+                    {showDevicePassword ? (deviceCredentials?.password || '0000') : '••••'}
+                  </code>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowDevicePassword(!showDevicePassword)}
+                    data-testid="button-toggle-device-password"
+                  >
+                    {showDevicePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {!editingDeviceCredentials && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingDeviceCredentials(true);
+                      setEditDeviceUsername(deviceCredentials?.username || 'Fabrika');
+                      setEditDevicePassword(deviceCredentials?.password || '0000');
+                    }}
+                    data-testid="button-edit-device-credentials"
+                  >
+                    <Key className="h-4 w-4 mr-1" />
+                    Değiştir
+                  </Button>
+                )}
+              </div>
+              {editingDeviceCredentials && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Input
+                    value={editDeviceUsername}
+                    onChange={(e) => setEditDeviceUsername(e.target.value)}
+                    placeholder="Kullanıcı adı"
+                    className="w-40"
+                    data-testid="input-edit-device-username"
+                  />
+                  <Input
+                    value={editDevicePassword}
+                    onChange={(e) => setEditDevicePassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="4 haneli parola"
+                    maxLength={4}
+                    className="w-32"
+                    data-testid="input-edit-device-password"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => updateDeviceCredentialsMutation.mutate({ username: editDeviceUsername, password: editDevicePassword })}
+                    disabled={editDeviceUsername.length < 2 || editDevicePassword.length !== 4 || updateDeviceCredentialsMutation.isPending}
+                    data-testid="button-save-device-credentials"
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Kaydet
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingDeviceCredentials(false);
+                      setEditDeviceUsername("");
+                      setEditDevicePassword("");
+                    }}
+                    data-testid="button-cancel-device-credentials"
+                  >
+                    İptal
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
