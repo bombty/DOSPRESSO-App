@@ -332,12 +332,14 @@ export default function SubeDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <Link href="/sube/kiosk">
-              <Button size="sm" variant="default" className="gap-1.5" data-testid="button-kiosk-mode">
-                <Monitor className="h-3.5 w-3.5" />
-                Kiosk
-              </Button>
-            </Link>
+            {['admin', 'mudur', 'supervisor'].includes(user?.role || '') && (
+              <Link href="/sube/kiosk">
+                <Button size="sm" variant="default" className="gap-1.5" data-testid="button-kiosk-mode">
+                  <Monitor className="h-3.5 w-3.5" />
+                  Kiosk
+                </Button>
+              </Link>
+            )}
             <Link href="/qr-scanner">
               <Button size="sm" variant="outline" className="gap-1.5" data-testid="button-qr-view">
                 <QrCode className="h-3.5 w-3.5" />

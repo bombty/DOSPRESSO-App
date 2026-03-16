@@ -259,7 +259,7 @@ function FabrikaDashboardRedirect() {
 }
 
 function KioskGuard({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [location, setLocation] = useLocation();
 
   const isSubeKiosk = location.startsWith("/sube/kiosk");
@@ -270,11 +270,13 @@ function KioskGuard({ children }: { children: ReactNode }) {
   const allowed = user ? allowedRoles.includes(user.role) : false;
 
   useEffect(() => {
+    if (isLoading) return;
     if (!allowed) {
       setLocation(user ? "/" : "/login", { replace: true });
     }
-  }, [allowed, user, setLocation]);
+  }, [isLoading, allowed, user, setLocation]);
 
+  if (isLoading) return null;
   if (!allowed) return null;
   return <>{children}</>;
 }
