@@ -204,7 +204,7 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              {isManagerOrAdmin && (
+              {user?.role === 'admin' && (
                 <Button variant="default" size="sm" onClick={() => {
                   const kioskUrl = `${window.location.origin}/fabrika/kiosk`;
                   const kioskWindow = window.open(kioskUrl, '_blank');
@@ -245,7 +245,9 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
           Hızlı Erişim
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-          <ModuleCard label="Kiosk" sublabel="Üretim Timer" path="/fabrika/kiosk" icon={<Timer className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
+          {user?.role === 'admin' && (
+            <ModuleCard label="Kiosk" sublabel="Üretim Timer" path="/fabrika/kiosk" icon={<Timer className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
+          )}
           <ModuleCard label="Görevlerim" sublabel="Vardiya" path="/gorevler" icon={<ClipboardCheck className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />} gradient="bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900" />
         </div>
       </div>
@@ -643,7 +645,9 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>Şu anda aktif çalışan yok</p>
-                  <p className="text-xs mt-1">Kiosk modundan giriş yapılabilir</p>
+                  {user?.role === 'admin' && (
+                    <p className="text-xs mt-1">Kiosk modundan giriş yapılabilir</p>
+                  )}
                 </div>
               )}
             </CardContent>

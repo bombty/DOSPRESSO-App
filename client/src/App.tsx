@@ -223,10 +223,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/reset-password", 
   "/misafir-geri-bildirim",
   "/setup",
-  "/sube/dashboard",
-  "/sube/kiosk",
-  "/fabrika/kiosk",
-  "/hq/kiosk"
+  "/sube/dashboard"
 ];
 
 function isPublicPath(path: string) {
@@ -265,14 +262,14 @@ function KioskGuard({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const kioskRoles = ['admin', 'ceo', 'fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'mudur', 'supervisor'];
-  const allowed = !user || kioskRoles.includes(user.role);
+  const kioskRoles = ['admin'];
+  const allowed = user ? kioskRoles.includes(user.role) : false;
 
   useEffect(() => {
     if (!allowed) {
-      setLocation("/", { replace: true });
+      setLocation(user ? "/" : "/login", { replace: true });
     }
-  }, [allowed, setLocation]);
+  }, [allowed, user, setLocation]);
 
   if (!allowed) return null;
   return <>{children}</>;
