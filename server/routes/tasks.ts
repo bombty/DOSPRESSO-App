@@ -8,6 +8,7 @@ import {
   hasPermission,
   isHQRole,
   isBranchRole,
+  isFactoryRole,
   type UserRoleType,
   insertTaskSchema,
   tasks,
@@ -98,12 +99,27 @@ const router = Router();
         return res.json(deliveredTasks);
       }
       
-      const tasks = await storage.getTasks(requestedBranchId, requestedAssignedToId);
+      let allTasks = await storage.getTasks(requestedBranchId, requestedAssignedToId);
+
+      if (user.role && isFactoryRole(user.role as UserRoleType)) {
+        const myAssigneeRows = await db.select().from(taskAssignees).where(eq(taskAssignees.userId, user.id));
+        const myAssigneeTaskIds = new Set(myAssigneeRows.map(r => r.taskId));
+        const userBranchId = user.branchId;
+
+        allTasks = allTasks.filter((t: any) => {
+          if (t.assignedToId === user.id) return true;
+          if (t.createdById === user.id) return true;
+          if (myAssigneeTaskIds.has(t.id)) return true;
+          if (userBranchId && t.branchId === userBranchId) return true;
+          return false;
+        });
+      }
+
       if (pag.wantsPagination) {
-        const { sliced, total } = sliceForPagination(tasks, pag);
+        const { sliced, total } = sliceForPagination(allTasks, pag);
         return res.json(wrapPaginatedResponse(sliced, total, pag));
       }
-      res.json(tasks);
+      res.json(allTasks);
     } catch (error: any) {
       console.error("Error fetching tasks:", error);
       if (error instanceof AuthorizationError) {

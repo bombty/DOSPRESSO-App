@@ -31,6 +31,7 @@ import {
   LogOut,
   Monitor,
   CheckCircle2,
+  MessageSquare,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
@@ -244,11 +245,33 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
         <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
           Hızlı Erişim
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
           {user?.role === 'admin' && (
-            <ModuleCard label="Kiosk" sublabel="Üretim Timer" path="/fabrika/kiosk" icon={<Timer className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
+            <Link href="/fabrika/kiosk">
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer" data-testid="quick-access-kiosk">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900 flex items-center justify-center">
+                  <Timer className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="text-[11px] font-semibold text-foreground">Kiosk</span>
+              </div>
+            </Link>
           )}
-          <ModuleCard label="Görevlerim" sublabel="Vardiya" path="/gorevler" icon={<ClipboardCheck className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />} gradient="bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900" />
+          <Link href="/gorevler">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer" data-testid="quick-access-gorevler">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900 flex items-center justify-center">
+                <ClipboardCheck className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <span className="text-[11px] font-semibold text-foreground">Görevlerim</span>
+            </div>
+          </Link>
+          <Link href="/iletisim-merkezi">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer" data-testid="quick-access-iletisim">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-[11px] font-semibold text-foreground">İletişim</span>
+            </div>
+          </Link>
         </div>
       </div>
 

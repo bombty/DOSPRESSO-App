@@ -60,7 +60,15 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
     ],
   },
   {
-    roles: ['fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel'],
+    roles: ['fabrika_mudur'],
+    items: [
+      { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/fabrika' },
+      { key: 'gorev', icon: 'CheckSquare', label: 'Görevler', path: '/gorevler' },
+      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi' },
+    ],
+  },
+  {
+    roles: ['fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel'],
     items: [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/fabrika' },
       { key: 'gorev', icon: 'CheckSquare', label: 'Görevler', path: '/gorevler' },

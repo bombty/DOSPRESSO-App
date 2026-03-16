@@ -22,10 +22,6 @@ export function NavRail() {
       className="hidden md:flex flex-col items-center bg-[#122549] w-[50px] min-h-full py-3 gap-1 flex-shrink-0 z-40"
       data-testid="nav-rail"
     >
-      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mb-2 flex-shrink-0">
-        <span className="text-white text-xs font-black">D</span>
-      </div>
-
       {items.map((item) => {
         const IconComponent = ICON_MAP[item.icon] ?? Home;
         const isActive =

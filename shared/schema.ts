@@ -224,6 +224,12 @@ export function isBranchRole(role: UserRoleType): boolean {
   return BRANCH_ROLES.has(role);
 }
 
+const FACTORY_ROLES = new Set<UserRoleType>(['fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel']);
+
+export function isFactoryRole(role: UserRoleType): boolean {
+  return FACTORY_ROLES.has(role);
+}
+
 // Permission types
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve';
 export type PermissionModule = 
