@@ -1048,4 +1048,291 @@ router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, asyn
   }
 });
 
+router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const results: Record<string, any> = {};
+
+    // ─── TASK 1: Fix product category inconsistencies ───
+    const catFixes = [
+      { from: ['donut'], to: 'Donut' },
+      { from: ['sirup', 'syrup', 'Şuruplar'], to: 'Şurup' },
+      { from: ['cheesecake'], to: 'Cheesecake' },
+      { from: ['cookie'], to: 'Cookie' },
+      { from: ['brownie'], to: 'Brownie' },
+      { from: ['mamabon'], to: 'Mamabon' },
+      { from: ['cinnaboom'], to: 'Cinnaboom' },
+      { from: ['kruvasan'], to: 'Kruvasan' },
+      { from: ['quesadilla'], to: 'Quesadilla' },
+      { from: ['sos'], to: 'Sos' },
+      { from: ['powder'], to: 'Toz&Topping' },
+      { from: ['cake'], to: 'Kek' },
+      { from: ['wrapitos'], to: 'Wrapitos' },
+    ];
+    let catUpdated = 0;
+    for (const fix of catFixes) {
+      for (const fromCat of fix.from) {
+        const r = await db.execute(sql`UPDATE factory_products SET category = ${fix.to} WHERE category = ${fromCat}`);
+        catUpdated += (r as any).rowCount || 0;
+      }
+    }
+    results.categoryFixes = catUpdated;
+
+    // ─── TASK 2: Add missing shift types ───
+    const existingShifts = await db.execute(sql`SELECT shift_type FROM factory_shifts`);
+    const existingTypes = (existingShifts.rows as any[]).map(r => r.shift_type);
+    let shiftsAdded = 0;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    if (!existingTypes.includes('ogle')) {
+      await db.execute(sql`
+        INSERT INTO factory_shifts (shift_date, shift_type, start_time, end_time, status, created_by_id)
+        VALUES (${todayStr}, 'ogle', '14:00', '22:00', 'planned', 'hq-eren-fabrika')
+      `);
+      shiftsAdded++;
+    }
+    if (!existingTypes.includes('gece')) {
+      await db.execute(sql`
+        INSERT INTO factory_shifts (shift_date, shift_type, start_time, end_time, status, created_by_id)
+        VALUES (${todayStr}, 'gece', '22:00', '06:00', 'planned', 'hq-eren-fabrika')
+      `);
+      shiftsAdded++;
+    }
+    results.shiftsAdded = shiftsAdded;
+
+    // ─── TASK 3: Add factory teams ───
+    const existingTeams = await db.execute(sql`SELECT COUNT(*)::text as c FROM factory_teams`);
+    let teamsAdded = 0;
+    if (parseInt((existingTeams.rows[0] as any).c) === 0) {
+      const teamDefs = [
+        { name: 'A Ekibi — Sabah', stationId: 1, leaderId: 'hq-eren-fabrika' },
+        { name: 'B Ekibi — Öğle', stationId: 7, leaderId: 'a5cb16ee-d017-4ebc-bc80-b5a215cf3550' },
+        { name: 'C Ekibi — Donut Hattı', stationId: 8, leaderId: '6d5b583c-f03f-4a27-bd03-c616e745302e' },
+      ];
+      for (const t of teamDefs) {
+        await db.execute(sql`
+          INSERT INTO factory_teams (name, station_id, leader_id, is_active)
+          VALUES (${t.name}, ${t.stationId}, ${t.leaderId}, true)
+        `);
+        teamsAdded++;
+      }
+
+      const newTeams = await db.execute(sql`SELECT id FROM factory_teams ORDER BY id`);
+      const teamIds = (newTeams.rows as any[]).map(r => r.id);
+      const factoryUsers = [
+        '6d5b583c-f03f-4a27-bd03-c616e745302e',
+        '41d2a9f0-f3be-45d0-90cc-e2aa585cfcc9',
+        'b8743987-e5d4-47f5-9a6f-08112d21d6c6',
+        '38f93cb4-0135-4402-99cf-b62c4e338546',
+        '4006e4a0-f2e1-404c-b860-3c41b2dc7842',
+      ];
+      for (let i = 0; i < factoryUsers.length; i++) {
+        const teamId = teamIds[i % teamIds.length];
+        await db.execute(sql`
+          INSERT INTO factory_team_members (team_id, user_id, role, is_active)
+          VALUES (${teamId}, ${factoryUsers[i]}, 'member', true)
+          ON CONFLICT DO NOTHING
+        `);
+      }
+    }
+    results.teamsAdded = teamsAdded;
+
+    // ─── TASK 4: Add daily targets (last 30 days + next 7 days) ───
+    const stationTargets = [
+      { stationId: 1, target: 900 },
+      { stationId: 2, target: 500 },
+      { stationId: 3, target: 384 },
+      { stationId: 4, target: 300 },
+      { stationId: 5, target: 350 },
+      { stationId: 6, target: 600 },
+      { stationId: 7, target: 900 },
+      { stationId: 8, target: 900 },
+      { stationId: 9, target: 280 },
+    ];
+
+    let targetsAdded = 0;
+    for (let daysAgo = 30; daysAgo >= -7; daysAgo--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - daysAgo);
+      if (d.getDay() === 0) continue;
+      const dateStr = d.toISOString().split('T')[0];
+
+      for (const st of stationTargets) {
+        const variation = 0.9 + Math.random() * 0.2;
+        const tgt = Math.round(st.target * variation);
+        const actual = daysAgo > 0 ? Math.round(tgt * (0.75 + Math.random() * 0.3)) : 0;
+        const waste = daysAgo > 0 ? Math.round(actual * (0.02 + Math.random() * 0.06)) : 0;
+
+        try {
+          await db.execute(sql`
+            INSERT INTO factory_daily_targets (station_id, target_date, target_quantity, actual_quantity, waste_quantity)
+            VALUES (${st.stationId}, ${dateStr}, ${tgt}, ${actual}, ${waste})
+            ON CONFLICT (station_id, target_date) DO NOTHING
+          `);
+          targetsAdded++;
+        } catch { }
+      }
+    }
+    results.dailyTargetsAdded = targetsAdded;
+
+    // ─── TASK 5: Add production runs (last 30 days) ───
+    const operatorIds = [
+      '6d5b583c-f03f-4a27-bd03-c616e745302e',
+      '41d2a9f0-f3be-45d0-90cc-e2aa585cfcc9',
+      'b8743987-e5d4-47f5-9a6f-08112d21d6c6',
+      '38f93cb4-0135-4402-99cf-b62c4e338546',
+      '4006e4a0-f2e1-404c-b860-3c41b2dc7842',
+    ];
+    const stationIds = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const wasteReasons = ['Hamur kıvamı uygunsuz', 'Pişirme süresi aşıldı', 'Şekil bozukluğu', 'Sıcaklık hatası', 'Ambalaj hasarı'];
+
+    let runsAdded = 0;
+    let sessionsAdded = 0;
+
+    for (let daysAgo = 30; daysAgo >= 1; daysAgo--) {
+      const runDate = new Date(today);
+      runDate.setDate(runDate.getDate() - daysAgo);
+      if (runDate.getDay() === 0) continue;
+
+      const runsPerDay = 2 + Math.floor(Math.random() * 2);
+      for (let run = 0; run < runsPerDay; run++) {
+        const stationId = stationIds[Math.floor(Math.random() * stationIds.length)];
+        const operatorId = operatorIds[Math.floor(Math.random() * operatorIds.length)];
+
+        const checkIn = new Date(runDate);
+        checkIn.setHours(6 + run * 4, Math.floor(Math.random() * 30), 0, 0);
+        const checkOut = new Date(checkIn);
+        checkOut.setHours(checkIn.getHours() + 3 + Math.floor(Math.random() * 2));
+
+        const produced = 80 + Math.floor(Math.random() * 300);
+        const waste = Math.floor(produced * (0.02 + Math.random() * 0.06));
+
+        try {
+          const sessionRes = await db.execute(sql`
+            INSERT INTO factory_shift_sessions (user_id, station_id, check_in_time, check_out_time, total_produced, total_waste, work_minutes, status, phase)
+            VALUES (${operatorId}, ${stationId}, ${checkIn.toISOString()}, ${checkOut.toISOString()}, ${produced}, ${waste}, ${Math.round((checkOut.getTime() - checkIn.getTime()) / 60000)}, 'completed', 'uretim')
+            RETURNING id
+          `);
+          const sessionId = (sessionRes.rows[0] as any).id;
+          sessionsAdded++;
+
+          const startTime = new Date(checkIn);
+          startTime.setMinutes(startTime.getMinutes() + 15);
+          const endTime = new Date(checkOut);
+          endTime.setMinutes(endTime.getMinutes() - 10);
+
+          const qualityScore = 70 + Math.floor(Math.random() * 30);
+          const wasteReason = waste > 10 ? wasteReasons[Math.floor(Math.random() * wasteReasons.length)] : null;
+
+          await db.execute(sql`
+            INSERT INTO factory_production_runs (session_id, user_id, station_id, start_time, end_time, quantity_produced, quantity_waste, waste_reason, quality_score, status)
+            VALUES (${sessionId}, ${operatorId}, ${stationId}, ${startTime.toISOString()}, ${endTime.toISOString()}, ${produced}, ${waste}, ${wasteReason}, ${qualityScore}, 'completed')
+          `);
+          runsAdded++;
+        } catch (e) {
+          console.warn('Seed production run skipped:', (e as Error).message);
+        }
+      }
+    }
+    results.sessionsAdded = sessionsAdded;
+    results.productionRunsAdded = runsAdded;
+
+    // ─── TASK 6: Add worker scores (last 4 weeks) ───
+    const allFactoryUserIds = [
+      'hq-eren-fabrika',
+      'a5cb16ee-d017-4ebc-bc80-b5a215cf3550',
+      '6d5b583c-f03f-4a27-bd03-c616e745302e',
+      '41d2a9f0-f3be-45d0-90cc-e2aa585cfcc9',
+      'b8743987-e5d4-47f5-9a6f-08112d21d6c6',
+      '38f93cb4-0135-4402-99cf-b62c4e338546',
+      '4006e4a0-f2e1-404c-b860-3c41b2dc7842',
+    ];
+
+    const existingScores = await db.execute(sql`SELECT COUNT(*)::text as c FROM factory_worker_scores`);
+    let scoresAdded = 0;
+    if (parseInt((existingScores.rows[0] as any).c) === 0) {
+      for (const userId of allFactoryUserIds) {
+        for (let weeksAgo = 4; weeksAgo >= 0; weeksAgo--) {
+          const weekDate = new Date(today);
+          weekDate.setDate(weekDate.getDate() - weeksAgo * 7);
+          const dateStr = weekDate.toISOString().split('T')[0];
+
+          const prodScore = (70 + Math.random() * 25).toFixed(2);
+          const wasteScore = (75 + Math.random() * 20).toFixed(2);
+          const qualScore = (78 + Math.random() * 20).toFixed(2);
+          const attendScore = (80 + Math.random() * 20).toFixed(2);
+          const breakScore = (70 + Math.random() * 25).toFixed(2);
+          const totalScore = ((parseFloat(prodScore) + parseFloat(wasteScore) + parseFloat(qualScore) + parseFloat(attendScore) + parseFloat(breakScore)) / 5).toFixed(2);
+          const totalProduced = (200 + Math.random() * 800).toFixed(0);
+          const totalWaste = (5 + Math.random() * 40).toFixed(0);
+          const breakMin = 30 + Math.floor(Math.random() * 30);
+
+          await db.execute(sql`
+            INSERT INTO factory_worker_scores (user_id, period_date, period_type, production_score, waste_score, quality_score, attendance_score, break_score, total_score, total_produced, total_waste, total_break_minutes, special_break_count)
+            VALUES (${userId}, ${dateStr}, 'weekly', ${prodScore}, ${wasteScore}, ${qualScore}, ${attendScore}, ${breakScore}, ${totalScore}, ${totalProduced}, ${totalWaste}, ${breakMin}, ${Math.floor(Math.random() * 3)})
+          `);
+          scoresAdded++;
+        }
+      }
+    }
+    results.workerScoresAdded = scoresAdded;
+
+    // ─── TASK 7: Add management scores (last 3 months) ───
+    const existingMgmt = await db.execute(sql`SELECT COUNT(*)::text as c FROM factory_management_scores`);
+    let mgmtAdded = 0;
+    if (parseInt((existingMgmt.rows[0] as any).c) === 0) {
+      for (let monthsAgo = 3; monthsAgo >= 0; monthsAgo--) {
+        const d = new Date(today);
+        d.setMonth(d.getMonth() - monthsAgo);
+        const month = d.getMonth() + 1;
+        const year = d.getFullYear();
+
+        const wasteCount = Math.floor(Math.random() * 8);
+        const prodErrorCount = Math.floor(Math.random() * 5);
+        const wrongProdCount = Math.floor(Math.random() * 3);
+        const branchComplaint = Math.floor(Math.random() * 4);
+        const invCompleted = Math.random() > 0.3;
+        const invOnTime = invCompleted && Math.random() > 0.2;
+
+        const wasteScore = Math.max(0, 100 - wasteCount * 8);
+        const prodErrScore = Math.max(0, 100 - prodErrorCount * 10);
+        const wrongProdScore = Math.max(0, 100 - wrongProdCount * 12);
+        const branchScore = Math.max(0, 100 - branchComplaint * 10);
+        const invScore = invCompleted ? (invOnTime ? 100 : 70) : 30;
+        const overall = Math.round((wasteScore + prodErrScore + wrongProdScore + branchScore + invScore) / 5);
+
+        await db.execute(sql`
+          INSERT INTO factory_management_scores (month, year, inventory_count_score, waste_score, production_error_score, wrong_production_score, branch_complaint_score, overall_score, waste_count, production_error_count, wrong_production_count, branch_complaint_count, inventory_count_completed, inventory_count_on_time)
+          VALUES (${month}, ${year}, ${invScore}, ${wasteScore}, ${prodErrScore}, ${wrongProdScore}, ${branchScore}, ${overall}, ${wasteCount}, ${prodErrorCount}, ${wrongProdCount}, ${branchComplaint}, ${invCompleted}, ${invOnTime})
+        `);
+        mgmtAdded++;
+      }
+    }
+    results.managementScoresAdded = mgmtAdded;
+
+    // ─── Summary counts ───
+    const finalCounts = await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*) FROM factory_shifts) as shifts,
+        (SELECT COUNT(*) FROM factory_teams) as teams,
+        (SELECT COUNT(*) FROM factory_daily_targets) as daily_targets,
+        (SELECT COUNT(*) FROM factory_shift_sessions) as sessions,
+        (SELECT COUNT(*) FROM factory_production_runs) as runs,
+        (SELECT COUNT(*) FROM factory_worker_scores) as worker_scores,
+        (SELECT COUNT(*) FROM factory_management_scores) as mgmt_scores,
+        (SELECT COUNT(DISTINCT category) FROM factory_products) as product_categories
+    `);
+
+    res.json({
+      success: true,
+      message: 'Fabrika seed verileri başarıyla oluşturuldu',
+      inserted: results,
+      finalCounts: finalCounts.rows[0],
+    });
+  } catch (error: any) {
+    console.error('Seed factory full error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
