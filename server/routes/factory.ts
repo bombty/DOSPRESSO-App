@@ -1153,24 +1153,30 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(403).json({ message: "Bu verilere erişim yetkiniz yok" });
       }
 
-      const [productCount] = await db.execute(sql`SELECT COUNT(*) as count FROM factory_products WHERE is_active = true`);
-      const [recipeCount] = await db.execute(sql`SELECT COUNT(*) as count FROM product_recipes WHERE is_active = true`);
-      const [materialCount] = await db.execute(sql`SELECT COUNT(*) as count FROM raw_materials`);
-      const [fixedCostResult] = await db.execute(sql`SELECT COALESCE(SUM(CAST(monthly_amount AS numeric)), 0) as total FROM factory_fixed_costs WHERE is_recurring = true`);
-      const [marginResult] = await db.execute(sql`SELECT COALESCE(AVG(CAST(default_margin AS numeric)), 1) as avg_margin FROM profit_margin_templates`);
+      const productCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM factory_products WHERE is_active = true`);
+      const productCount = productCountResult.rows[0];
+      const recipeCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM product_recipes WHERE is_active = true`);
+      const recipeCount = recipeCountResult.rows[0];
+      const materialCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM raw_materials`);
+      const materialCount = materialCountResult.rows[0];
+      const fixedCostRes = await db.execute(sql`SELECT COALESCE(SUM(CAST(monthly_amount AS numeric)), 0) as total FROM factory_fixed_costs WHERE is_recurring = true`);
+      const fixedCostResult = fixedCostRes.rows[0];
+      const marginRes = await db.execute(sql`SELECT COALESCE(AVG(CAST(default_margin AS numeric)), 1) as avg_margin FROM profit_margin_templates`);
+      const marginResult = marginRes.rows[0];
       
       const thisMonth = new Date();
       thisMonth.setDate(1);
       thisMonth.setHours(0, 0, 0, 0);
-      const [calcCount] = await db.execute(sql`SELECT COUNT(*) as count FROM product_recipes WHERE cost_last_calculated >= ${thisMonth}`);
+      const calcCountResult = await db.execute(sql`SELECT COUNT(*) as count FROM product_recipes WHERE cost_last_calculated >= ${thisMonth}`);
+      const calcCount = calcCountResult.rows[0];
 
       res.json({
-        productCount: Number((productCount as any).count || 0),
-        recipeCount: Number((recipeCount as any).count || 0),
-        materialCount: Number((materialCount as any).count || 0),
-        totalFixedCosts: Number((fixedCostResult as any).total || 0),
-        avgProfitMargin: (Number((marginResult as any).avg_margin || 1) - 1) * 100,
-        calculationsThisMonth: Number((calcCount as any).count || 0),
+        productCount: Number((productCount as any)?.count || 0),
+        recipeCount: Number((recipeCount as any)?.count || 0),
+        materialCount: Number((materialCount as any)?.count || 0),
+        totalFixedCosts: Number((fixedCostResult as any)?.total || 0),
+        avgProfitMargin: (Number((marginResult as any)?.avg_margin || 1) - 1) * 100,
+        calculationsThisMonth: Number((calcCount as any)?.count || 0),
       });
     } catch (error: any) {
       console.error("Error fetching cost dashboard stats:", error);
@@ -1186,15 +1192,15 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const qualityResults = await db.execute(sql`
         SELECT 
           COUNT(*) as total_checked,
-          COUNT(CASE WHEN quality_status = 'approved' THEN 1 END) as passed,
-          COUNT(CASE WHEN quality_status = 'rejected' THEN 1 END) as failed,
-          COUNT(CASE WHEN quality_status IN ('pending', 'pending_engineer') THEN 1 END) as pending
+          COUNT(CASE WHEN status = 'verified' THEN 1 END) as passed,
+          COUNT(CASE WHEN status = 'rejected' THEN 1 END) as failed,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as pending
         FROM factory_production_batches
         WHERE DATE(start_time) = CURRENT_DATE
-          AND status IN ('completed', 'verified')
+          AND status IN ('completed', 'verified', 'rejected')
       `);
 
-      const row = (qualityResults as any)[0] || {};
+      const row = qualityResults.rows[0] || {};
       const todayChecked = Number(row.total_checked || 0);
       const todayPassed = Number(row.passed || 0);
       const todayFailed = Number(row.failed || 0);
@@ -1217,26 +1223,26 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // Stock Overview for fabrika dashboard
   router.get('/api/factory/stock-overview', isAuthenticated, async (req: any, res) => {
     try {
-      const rawMaterialCount = await db.execute(sql`
+      const rawMaterialCountRes = await db.execute(sql`
         SELECT COUNT(*) as count FROM raw_materials WHERE is_active = true
       `);
-      const finishedProductCount = await db.execute(sql`
+      const finishedProductCountRes = await db.execute(sql`
         SELECT COUNT(*) as count FROM factory_products WHERE is_active = true
       `);
-      const lowStockResult = await db.execute(sql`
-        SELECT COUNT(*) as count FROM inventory_items 
-        WHERE current_stock <= COALESCE(min_stock, 0) 
-          AND COALESCE(min_stock, 0) > 0
+      const lowStockRes = await db.execute(sql`
+        SELECT COUNT(*) as count FROM inventory 
+        WHERE CAST(current_stock AS numeric) <= CAST(COALESCE(minimum_stock, '0') AS numeric) 
+          AND CAST(COALESCE(minimum_stock, '0') AS numeric) > 0
       `);
-      const lastCountResult = await db.execute(sql`
+      const lastCountRes = await db.execute(sql`
         SELECT MAX(created_at) as last_count FROM stock_counts
       `);
 
       res.json({
-        totalRawMaterials: Number((rawMaterialCount as any)[0]?.count || 0),
-        totalFinishedProducts: Number((finishedProductCount as any)[0]?.count || 0),
-        lowStockCount: Number((lowStockResult as any)[0]?.count || 0),
-        lastCountDate: (lastCountResult as any)[0]?.last_count || null,
+        totalRawMaterials: Number(rawMaterialCountRes.rows[0]?.count || 0),
+        totalFinishedProducts: Number(finishedProductCountRes.rows[0]?.count || 0),
+        lowStockCount: Number(lowStockRes.rows[0]?.count || 0),
+        lastCountDate: lastCountRes.rows[0]?.last_count || null,
       });
     } catch (error: any) {
       console.error("Error fetching stock overview:", error);
@@ -1269,7 +1275,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           AND status IN ('completed', 'verified')
       `);
 
-      const row = (batchStats as any)[0] || {};
+      const row = batchStats.rows[0] || {};
       const totalBatches = Number(row.total_batches || 0);
       const overToleranceCount = Number(row.over_tolerance_count || 0);
 
@@ -1309,12 +1315,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         totalWasteCostTl: canSeeCostData ? Number(row.total_waste_cost_tl || 0) : null,
         overToleranceCount,
         overToleranceRate: totalBatches > 0 ? ((overToleranceCount / totalBatches) * 100).toFixed(1) : '0',
-        trend: (trendData as any[]).map((t: any) => ({
+        trend: (trendData.rows as any[]).map((t: any) => ({
           date: t.date,
           wastePercent: Number(t.waste_percent || 0),
           batchCount: Number(t.batch_count || 0),
         })),
-        productRanking: (productRanking as any[]).map((p: any) => ({
+        productRanking: (productRanking.rows as any[]).map((p: any) => ({
           productId: p.product_id,
           name: p.name,
           wastePercent: Number(p.waste_percent || 0),
@@ -1334,7 +1340,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (isNaN(productId)) return res.status(400).json({ message: "Geçersiz ID" });
       
       // Get active recipe for this product
-      const [recipe] = await db.execute(sql`
+      const recipeResult = await db.execute(sql`
         SELECT 
           pr.id, pr.name, pr.output_quantity, pr.output_unit,
           pr.expected_output_count, pr.expected_waste_percent,
@@ -1345,9 +1351,9 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         ORDER BY pr.version DESC
         LIMIT 1
       `);
+      const recipe = recipeResult.rows[0];
 
-      // Get batch spec for this product  
-      const [batchSpec] = await db.execute(sql`
+      const batchSpecResult = await db.execute(sql`
         SELECT 
           bs.id, bs.batch_weight_kg, bs.expected_pieces,
           bs.target_duration_minutes, bs.machine_id, bs.description,
@@ -1358,15 +1364,16 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         WHERE bs.product_id = ${productId} AND bs.is_active = true
         LIMIT 1
       `);
+      const batchSpec = batchSpecResult.rows[0];
 
-      // Get the station for this product from batch spec or recipe
       let stationId = null;
       if (batchSpec && (batchSpec as any).station_id) {
         stationId = (batchSpec as any).station_id;
       } else if (recipe && (recipe as any).machine_id) {
-        const [machine] = await db.execute(sql`
+        const machineResult = await db.execute(sql`
           SELECT station_id FROM factory_machines WHERE id = ${(recipe as any).machine_id}
         `);
+        const machine = machineResult.rows[0];
         if (machine) stationId = (machine as any).station_id;
       }
 

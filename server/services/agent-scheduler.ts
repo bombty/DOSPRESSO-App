@@ -84,6 +84,26 @@ function incrementTokenUsage(userId: string, roleGroup: string): void {
 
 let inactiveUsersInterval: NodeJS.Timeout | null = null;
 
+async function cleanupOrphanedShiftSessions(): Promise<void> {
+  try {
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    const result = await db.execute(sql`
+      UPDATE factory_shift_sessions
+      SET status = 'completed',
+          check_out_time = NOW(),
+          notes = COALESCE(notes, '') || ' [Otomatik kapatıldı: 12 saatten fazla aktif]'
+      WHERE status = 'active'
+        AND check_in_time < ${twelveHoursAgo}
+    `);
+    const closedCount = result.rowCount || 0;
+    if (closedCount > 0) {
+      console.log(`[ShiftCleanup] ${closedCount} orphaned shift session(s) closed.`);
+    }
+  } catch (err) {
+    console.error("[ShiftCleanup] Error cleaning up orphaned sessions:", err);
+  }
+}
+
 async function deactivateInactiveUsers(): Promise<void> {
   console.log("[AgentScheduler] Inactive user deactivation starting...");
   try {
@@ -513,6 +533,15 @@ export function startAgentScheduler(): void {
     }, 24 * 60 * 60 * 1000);
   }, outcomeDelayMs);
 
+  const shiftCleanupDelayMs = getMillisUntilTurkeyTime(3, 0);
+  console.log(`[AgentScheduler] Shift session cleanup ${Math.round(shiftCleanupDelayMs / 60000)} dakika sonra calisacak (03:00 TR)`);
+  schedulerManager.registerTimeout('shift-cleanup-delay', () => {
+    cleanupOrphanedShiftSessions();
+    schedulerManager.registerInterval('shift-cleanup', cleanupOrphanedShiftSessions, 24 * 60 * 60 * 1000);
+  }, shiftCleanupDelayMs);
+
+  cleanupOrphanedShiftSessions();
+
   console.log("[AgentScheduler] Agent Scheduler basariyla baslatildi.");
 }
 
@@ -524,7 +553,8 @@ export function stopAgentScheduler(): void {
     'agent-event-check', 'agent-hourly-tick', 'skill-daily-delay',
     'skill-daily', 'skill-weekly-delay', 'skill-weekly', 'skill-queue',
     'inactive-users-delay', 'inactive-users',
-    'outcome-delay', 'outcome-check'
+    'outcome-delay', 'outcome-check',
+    'shift-cleanup-delay', 'shift-cleanup'
   ];
   for (const name of agentJobs) {
     schedulerManager.removeJob(name);

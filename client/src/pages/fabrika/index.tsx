@@ -20,6 +20,7 @@ import {
   Shield,
   ScanBarcode,
   Flame,
+  Award,
 } from "lucide-react";
 
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
@@ -35,6 +36,7 @@ const FabrikaSevkiyat = lazy(() => import("./sevkiyat"));
 const GidaGuvenligi = lazy(() => import("./gida-guvenligi"));
 const LotIzleme = lazy(() => import("./lot-izleme"));
 const Kavurma = lazy(() => import("./kavurma"));
+const FabrikaYonetimSkoru = lazy(() => import("./fabrika-yonetim-skoru"));
 
 interface TabConfig {
   id: string;
@@ -154,6 +156,15 @@ const FABRIKA_TABS: TabConfig[] = [
     icon: <Flame className="h-4 w-4" />,
     permissionModule: "factory_production",
     component: Kavurma
+  },
+  {
+    id: "yonetim-skoru",
+    label: "Management Score",
+    labelTr: "Yönetim Skoru",
+    icon: <Award className="h-4 w-4" />,
+    permissionModule: "factory_analytics",
+    restrictedToRoles: ['admin', 'ceo', 'cgo', 'fabrika_mudur'],
+    component: FabrikaYonetimSkoru
   }
 ];
 
