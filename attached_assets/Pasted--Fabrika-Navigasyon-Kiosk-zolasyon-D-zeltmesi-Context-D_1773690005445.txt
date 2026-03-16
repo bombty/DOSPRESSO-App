@@ -1,0 +1,207 @@
+# Fabrika Navigasyon + Kiosk İzolasyon Düzeltmesi
+
+## Context
+DOSPRESSO franchise platform. Stack: React 18 + TypeScript, Wouter routing.
+
+Two separate systems need to be clearly separated:
+1. **Fabrika Modülü** — HQ management view (dashboard, analytics, planning)
+2. **Kiosk Sistemi** — Isolated PIN-only terminal for factory/branch floor workers
+
+Current problems:
+- /fabrika/dashboard is standalone (no nav = HQ users get lost)
+- NavRail points to standalone dashboard instead of mega module
+- Kiosk has no route guard — anyone with URL can access
+- fabrika_operator can see kiosk nav link (they shouldn't navigate there manually)
+
+Do NOT touch: kiosk PIN auth logic, kiosk worker flow, CRM, academy modules.
+
+---
+
+## TASK 1 — Fix NavRail: Point to Mega Module
+
+**File:** `client/src/lib/navigation-config.ts`
+
+Find the fabrika nav item in the HQ and factory role groups.
+Change path from `/fabrika/dashboard` to `/fabrika`:
+
+```typescript
+// Find lines like:
+{ key: 'fabrika', label: 'Fabrika', path: '/fabrika/dashboard', icon: 'Factory' }
+
+// Change to:
+{ key: 'fabrika', label: 'Fabrika', path: '/fabrika', icon: 'Factory' }
+```
+
+Apply for ALL role groups that have a fabrika nav item.
+
+---
+
+## TASK 2 — Add Dashboard as First Tab in Mega Module
+
+**File:** `client/src/pages/fabrika/index.tsx`
+
+The mega module currently has tabs like: kalite-kontrol, performans, vardiya-uyumluluk, etc.
+Add "Dashboard" as the FIRST tab so it becomes the default landing:
+
+```typescript
+// Add at the beginning of the tabs array:
+{
+  id: 'dashboard',
+  label: 'Dashboard',
+  permission: 'factory_analytics',
+  allowedRoles: undefined, // all factory roles can see
+  component: lazy(() => import('./dashboard')),
+}
+```
+
+Also: when user navigates to `/fabrika` (no tab specified), default to `dashboard` tab:
+```typescript
+// In the tab routing logic, if no tab param:
+const activeTab = tabParam || 'dashboard';
+```
+
+---
+
+## TASK 3 — Remove /fabrika/dashboard Standalone Route
+
+**File:** `client/src/App.tsx`
+
+The standalone `/fabrika/dashboard` route is redundant now.
+Either:
+- Remove it and redirect to `/fabrika?tab=dashboard`
+- OR keep it but redirect: `<Redirect from="/fabrika/dashboard" to="/fabrika" />`
+
+Also remove `/fabrika/dashboard` from the standalone pages list if present:
+```typescript
+// Find standalone pages array and remove /fabrika/dashboard:
+const standalonePaths = [
+  '/fabrika/kiosk',  // keep this
+  '/hq/kiosk',       // keep this
+  '/sube/kiosk',     // keep this
+  // '/fabrika/dashboard' — REMOVE THIS
+];
+```
+
+---
+
+## TASK 4 — Add Route Guard to Kiosk Pages
+
+**File:** `client/src/App.tsx`
+
+Currently `/fabrika/kiosk`, `/hq/kiosk`, `/sube/kiosk` have no auth guard.
+Add a minimal guard that redirects to login if not authenticated:
+
+```typescript
+// Kiosk pages should:
+// 1. Still be standalone (no main nav/header)
+// 2. But require authentication OR have their own PIN system
+// 3. Regular branch/HQ users who somehow reach the URL should be redirected
+
+// Option A: Keep kiosk as public (PIN is the auth) but add a check:
+// If user is authenticated as a non-factory/non-admin role, redirect away
+// This prevents accidental access by wrong users
+
+// Check how existing auth guards work in App.tsx:
+// grep -n "ProtectedRoute\|AuthGuard\|isAuthenticated" client/src/App.tsx | head -10
+// Then apply same pattern to kiosk routes
+```
+
+For kiosk pages specifically:
+- Unauthenticated users → show kiosk PIN login (current behavior, keep it)
+- Authenticated non-kiosk users (e.g. coach, muhasebe) → redirect to their dashboard
+- Factory floor users and admins → allow through to kiosk
+
+```typescript
+// Add kiosk access check component:
+function KioskGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  
+  // Not logged in = show kiosk (PIN login handles auth)
+  if (!user) return <>{children}</>;
+  
+  // Admin can always access kiosk
+  if (['admin', 'ceo'].includes(user.role)) return <>{children}</>;
+  
+  // Factory/branch floor roles can access kiosk
+  const kioskRoles = ['fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 
+                       'fabrika_mudur', 'mudur', 'supervisor'];
+  if (kioskRoles.includes(user.role)) return <>{children}</>;
+  
+  // Everyone else → redirect to their home
+  return <Redirect to="/" />;
+}
+```
+
+---
+
+## TASK 5 — Remove Kiosk Link from Fabrika Nav Items
+
+**File:** `client/src/lib/navigation-config.ts`
+
+Factory floor roles (fabrika_operator, fabrika_sorumlu, fabrika_personel) 
+currently see a "Kiosk" nav item. Remove this — kiosk should only be accessed 
+via direct URL on dedicated tablets, not through the nav.
+
+```typescript
+// Find the factory floor nav group:
+// roles: ['fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel']
+// Remove the kiosk nav item from their list
+
+// Keep: Home (→ /fabrika), Görevler
+// Remove: Kiosk link from nav
+```
+
+Kiosk URL (/fabrika/kiosk) remains accessible directly — just not shown in nav.
+
+---
+
+## TASK 6 — Add Kiosk Management Page for Admin
+
+**File:** `client/src/pages/admin/` (or yonetim tab)
+
+Admin needs a simple page to:
+1. See all registered kiosk PINs (factory + branch)
+2. Create/reset PINs for workers
+3. See which kiosk sessions are active
+
+Check if this already exists:
+```bash
+grep -rn "pin\|Pin\|PIN\|kiosk.*admin\|admin.*kiosk" client/src/pages/admin/ --include="*.tsx" -l
+```
+
+If it exists, add it to admin panel navigation.
+If it doesn't exist, create a minimal version:
+
+```tsx
+// client/src/pages/admin/kiosk-yonetim.tsx
+// Simple table showing:
+// - User name | Role | Branch/Factory | PIN Status (set/not set) | Last Used | Actions (reset PIN)
+```
+
+Add to admin panel tabs if not already there.
+
+---
+
+## Verification Checklist
+
+**Navigation:**
+- [ ] HQ users clicking "Fabrika" nav → goes to /fabrika (mega module with tabs)
+- [ ] Default tab on /fabrika is "Dashboard" 
+- [ ] /fabrika/dashboard redirects to /fabrika
+- [ ] Fabrika mega module shows dashboard content as first tab
+
+**Kiosk Isolation:**
+- [ ] /fabrika/kiosk NOT visible in any nav menu
+- [ ] /fabrika/kiosk accessible directly via URL (for dedicated tablets)
+- [ ] Coach, muhasebe, barista etc. navigating to /fabrika/kiosk → redirected away
+- [ ] Admin can still access kiosk URL
+- [ ] Kiosk PIN login still works normally
+
+**Admin:**
+- [ ] Admin can manage kiosk PINs from admin panel
+- [ ] No kiosk nav link for fabrika_operator/personel roles
+
+**General:**
+- [ ] TypeScript has no new errors
+- [ ] Mobile layout unchanged
+- [ ] App starts without errors

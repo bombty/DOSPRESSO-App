@@ -225,7 +225,6 @@ const PUBLIC_PATH_PREFIXES = [
   "/setup",
   "/sube/dashboard",
   "/sube/kiosk",
-  "/fabrika/dashboard",
   "/fabrika/kiosk",
   "/hq/kiosk"
 ];
@@ -252,6 +251,31 @@ function ExecutiveOnly({ children }: { children: ReactNode }) {
 
 function CEOOnly({ children }: { children: ReactNode }) {
   return <ProtectedRoute allowedRoles={["ceo", "cgo"]} strictRoles>{children}</ProtectedRoute>;
+}
+
+function FabrikaDashboardRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/fabrika", { replace: true });
+  }, [setLocation]);
+  return null;
+}
+
+function KioskGuard({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const kioskRoles = ['admin', 'ceo', 'fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'mudur', 'supervisor'];
+  const allowed = !user || kioskRoles.includes(user.role);
+
+  useEffect(() => {
+    if (!allowed) {
+      setLocation("/", { replace: true });
+    }
+  }, [allowed, setLocation]);
+
+  if (!allowed) return null;
+  return <>{children}</>;
 }
 
 function AuthCatchAllToLogin() {
@@ -294,12 +318,12 @@ function Router() {
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
-      <Route path="/fabrika/dashboard" component={FabrikaDashboard} />
-      <Route path="/fabrika/kiosk" component={FabrikaKiosk} />
-      <Route path="/hq/kiosk" component={HqKiosk} />
+      <Route path="/fabrika/dashboard" component={FabrikaDashboardRedirect} />
+      <Route path="/fabrika/kiosk">{() => <KioskGuard><FabrikaKiosk /></KioskGuard>}</Route>
+      <Route path="/hq/kiosk">{() => <KioskGuard><HqKiosk /></KioskGuard>}</Route>
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
-      <Route path="/sube/kiosk/:branchId" component={SubeKiosk} />
-      <Route path="/sube/kiosk" component={SubeKiosk} />
+      <Route path="/sube/kiosk/:branchId">{() => <KioskGuard><SubeKiosk /></KioskGuard>}</Route>
+      <Route path="/sube/kiosk">{() => <KioskGuard><SubeKiosk /></KioskGuard>}</Route>
       <Route path="/sube/employee-dashboard" component={EmployeeDashboard} />
       <Route path="/sube/dashboard" component={SubeDashboard} />
 

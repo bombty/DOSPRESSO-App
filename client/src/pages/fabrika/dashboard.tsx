@@ -97,7 +97,7 @@ interface StockOverview {
   lastCountDate: string | null;
 }
 
-export default function FabrikaDashboard() {
+export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = {}) {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -190,47 +190,49 @@ export default function FabrikaDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="bg-card border-b px-3 py-2">
-        <div className="container mx-auto flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <img src={logoUrl} alt="DOSPRESSO" className="h-8 cursor-pointer" data-testid="img-logo" onClick={() => setLocation("/")} />
-            <div>
-              <h1 className="text-sm font-bold" data-testid="text-dashboard-title">Fabrika Yonetim Paneli</h1>
-              <p className="text-[10px] text-muted-foreground">
-                {today.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-              </p>
+    <div className={embedded ? "bg-background" : "min-h-screen bg-background"}>
+      {!embedded && (
+        <div className="bg-card border-b px-3 py-2">
+          <div className="container mx-auto flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <img src={logoUrl} alt="DOSPRESSO" className="h-8 cursor-pointer" data-testid="img-logo" onClick={() => setLocation("/")} />
+              <div>
+                <h1 className="text-sm font-bold" data-testid="text-dashboard-title">Fabrika Yonetim Paneli</h1>
+                <p className="text-[10px] text-muted-foreground">
+                  {today.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {isManagerOrAdmin && (
+                <Button variant="default" size="sm" onClick={() => {
+                  const kioskUrl = `${window.location.origin}/fabrika/kiosk`;
+                  const kioskWindow = window.open(kioskUrl, '_blank');
+                  if (kioskWindow) {
+                    kioskWindow.addEventListener('load', () => {
+                      try {
+                        kioskWindow.document.documentElement.requestFullscreen?.();
+                      } catch {}
+                    });
+                  }
+                }} className="gap-1.5" data-testid="button-kiosk-mode">
+                  <Monitor className="h-3.5 w-3.5" />
+                  Kiosk Aç
+                </Button>
+              )}
+              <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5" data-testid="button-logout">
+                <LogOut className="h-3.5 w-3.5" />
+                Cikis
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            {isManagerOrAdmin && (
-              <Button variant="default" size="sm" onClick={() => {
-                const kioskUrl = `${window.location.origin}/fabrika/kiosk`;
-                const kioskWindow = window.open(kioskUrl, '_blank');
-                if (kioskWindow) {
-                  kioskWindow.addEventListener('load', () => {
-                    try {
-                      kioskWindow.document.documentElement.requestFullscreen?.();
-                    } catch {}
-                  });
-                }
-              }} className="gap-1.5" data-testid="button-kiosk-mode">
-                <Monitor className="h-3.5 w-3.5" />
-                Kiosk Aç
-              </Button>
-            )}
-            <Button variant="outline" size="icon" onClick={() => refetch()} data-testid="button-refresh">
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-1.5" data-testid="button-logout">
-              <LogOut className="h-3.5 w-3.5" />
-              Cikis
-            </Button>
-          </div>
         </div>
-      </div>
+      )}
 
-      <div className="container mx-auto p-3 space-y-3">
+      <div className={embedded ? "p-3 space-y-3" : "container mx-auto p-3 space-y-3"}>
         <DobodyFlowMode
           userId={user?.id || ""}
           userRole={user?.role || ""}

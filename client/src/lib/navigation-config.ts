@@ -19,7 +19,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
       { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi', badge: true },
       { key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi' },
       { key: 'sube', icon: 'Building2', label: 'Şubeler', path: '/subeler' },
-      { key: 'fabrika', icon: 'Factory', label: 'Fabrika', path: '/fabrika/dashboard' },
+      { key: 'fabrika', icon: 'Factory', label: 'Fabrika', path: '/fabrika' },
       { key: 'raporlar', icon: 'BarChart2', label: 'Raporlar', path: '/raporlar' },
     ],
   },
@@ -62,8 +62,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
   {
     roles: ['fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel'],
     items: [
-      { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/fabrika/dashboard' },
-      { key: 'kiosk', icon: 'Timer', label: 'Kiosk', path: '/fabrika/kiosk' },
+      { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/fabrika' },
       { key: 'gorev', icon: 'CheckSquare', label: 'Görevler', path: '/gorevler' },
     ],
   },

@@ -21,8 +21,12 @@ import {
   ScanBarcode,
   Flame,
   Award,
+  LayoutDashboard,
 } from "lucide-react";
 
+const FabrikaDashboardTab = lazy(() => import("./dashboard").then(mod => ({
+  default: () => mod.default({ embedded: true })
+})));
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
 const FabrikaPerformans = lazy(() => import("./performans"));
 const FabrikaVardiyaUyumluluk = lazy(() => import("./vardiya-uyumluluk"));
@@ -49,6 +53,13 @@ interface TabConfig {
 }
 
 const FABRIKA_TABS: TabConfig[] = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    labelTr: "Dashboard",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    component: FabrikaDashboardTab
+  },
   {
     id: "kalite-kontrol",
     label: "Quality Control",
