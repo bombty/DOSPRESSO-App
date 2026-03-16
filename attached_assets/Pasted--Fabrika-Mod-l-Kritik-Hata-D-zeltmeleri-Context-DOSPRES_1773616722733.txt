@@ -1,0 +1,219 @@
+# Fabrika Modülü — Kritik Hata Düzeltmeleri
+
+## Context
+DOSPRESSO franchise platform. Stack: Node.js + Express + TypeScript, Drizzle ORM, PostgreSQL.
+Factory module has 4 crashing endpoints, 4 orphaned shift sessions, and 1 orphaned page.
+
+Do NOT touch: kiosk auth, tab navigation, other modules.
+
+---
+
+## FIX 1 — /api/factory/cost-dashboard-stats (CRITICAL — 500 error)
+
+**File:** `server/routes/factory.ts` around line 1156
+
+**Problem:** `db.execute()` returns a NeonQueryResult object `{rows: [...]}`, not a destructurable array.
+Code does `const [productCount] = await db.execute(sql\`...\`)` which fails.
+
+**Fix pattern:** Replace all `db.execute()` destructuring with `.rows` access:
+
+```typescript
+// WRONG:
+const [productCount] = await db.execute(sql`SELECT COUNT(*) FROM ...`);
+
+// RIGHT:
+const result = await db.execute(sql`SELECT COUNT(*) FROM ...`);
+const productCount = result.rows[0];
+```
+
+Find all `db.execute()` calls in the cost-dashboard-stats handler and apply this fix.
+Also check: is there a Drizzle builder alternative? If the queries are simple counts/sums,
+prefer Drizzle builder over raw SQL:
+
+```typescript
+// Preferred (Drizzle builder):
+const [productResult] = await db.select({ count: count() }).from(factoryProducts);
+const productCount = productResult?.count ?? 0;
+```
+
+---
+
+## FIX 2 — /api/factory/quality-overview (CRITICAL — 500 error)
+
+**File:** `server/routes/factory.ts` around line 1186-1189
+
+**Problem:** Query references `quality_status` column which doesn't exist on `factory_production_batches`.
+
+**Fix:**
+1. First check actual columns on factory_production_batches:
+```bash
+grep -n "factoryProductionBatches\|factory_production_batches" shared/schema.ts | head -20
+```
+
+2. Find what the actual status column is called (probably `status` not `quality_status`)
+
+3. Replace `quality_status` with the correct column name
+
+4. If the column truly doesn't exist and quality tracking isn't set up yet,
+   return safe defaults instead of crashing:
+```typescript
+// Safe fallback if quality data not available:
+res.json({
+  passRate: null,
+  failRate: null,
+  pendingReview: 0,
+  message: 'Kalite verisi henüz mevcut değil'
+});
+```
+
+---
+
+## FIX 3 — /api/factory/waste-dashboard-stats (CRITICAL — 500 error)
+
+**File:** `server/routes/factory.ts` around line 1312
+
+**Problem:** Same `db.execute()` destructuring issue as Fix 1.
+`trendData.map is not a function` because `trendData` is a NeonQueryResult, not an array.
+
+**Fix:**
+```typescript
+// WRONG:
+const trendData = await db.execute(sql`SELECT ...`);
+(trendData as any[]).map(...)
+
+// RIGHT:
+const trendResult = await db.execute(sql`SELECT ...`);
+const trendData = trendResult.rows;
+trendData.map(...)
+```
+
+Apply this fix to ALL `db.execute()` calls in the waste-dashboard-stats handler.
+
+---
+
+## FIX 4 — /api/factory/stock-overview (HIGH — silent 500)
+
+**File:** `server/routes/factory.ts` around line 1226-1227
+
+**Problem:** Query references `inventory_items` table which doesn't exist.
+
+**Fix:**
+1. Check what inventory tables actually exist:
+```bash
+grep -n "inventory\|Inventory" shared/schema.ts | grep "pgTable" | head -10
+```
+
+2. Common actual table names: `inventory`, `factory_inventory`, `branch_inventory`, `inventory_counts`
+
+3. Update the query to use the correct table name
+
+4. If the correct table doesn't have the expected columns, return safe defaults:
+```typescript
+res.json({
+  totalItems: 0,
+  lowStockCount: 0,
+  outOfStockCount: 0,
+  message: 'Stok verisi henüz mevcut değil'
+});
+```
+
+---
+
+## FIX 5 — Orphaned Shift Sessions (HIGH)
+
+**Problem:** 4 shift sessions stuck in 'active' state (oldest: 73 days).
+These corrupt active worker counts and station occupancy displays.
+
+**Fix:** Close them with a DB migration:
+
+```sql
+-- Close all shift sessions that have been active for more than 24 hours
+UPDATE factory_shift_sessions 
+SET 
+  status = 'completed',
+  ended_at = NOW(),
+  updated_at = NOW()
+WHERE 
+  status = 'active' 
+  AND started_at < NOW() - INTERVAL '24 hours';
+```
+
+Run this SQL using `db.execute()` in a one-time migration, or run directly.
+
+**Also add auto-cleanup:** In the scheduler (server/services/agent-scheduler.ts or similar),
+add a daily check that closes shift sessions older than 12 hours:
+
+```typescript
+// Add to daily scheduler:
+export async function closeOrphanedShiftSessions() {
+  try {
+    await db.execute(sql`
+      UPDATE factory_shift_sessions 
+      SET status = 'completed', ended_at = NOW(), updated_at = NOW()
+      WHERE status = 'active' 
+      AND started_at < NOW() - INTERVAL '12 hours'
+    `);
+    console.log('[Factory] Closed orphaned shift sessions');
+  } catch (err) {
+    console.error('[Factory] Failed to close orphaned sessions:', err);
+  }
+}
+```
+
+Register with schedulerManager: run once on startup (after 1 min delay), then daily.
+
+---
+
+## FIX 6 — fabrika-yonetim-skoru.tsx Orphaned Page (MEDIUM)
+
+**Problem:** `client/src/pages/fabrika/fabrika-yonetim-skoru.tsx` exists (12KB)
+but has no route in App.tsx and no tab in fabrika/index.tsx.
+
+**Fix Option A (recommended):** Add as a tab in fabrika/index.tsx:
+
+```typescript
+// In fabrika/index.tsx tabs array, add:
+{
+  id: 'yonetim-skoru',
+  label: 'Yönetim Skoru',
+  permission: 'factory_analytics',
+  allowedRoles: ['admin', 'ceo', 'cgo', 'fabrika_mudur'],
+  component: lazy(() => import('./fabrika-yonetim-skoru')),
+}
+```
+
+**Fix Option B:** If the page is not ready, just add a route in App.tsx:
+```tsx
+<Route path="/fabrika/yonetim-skoru" component={FabrikaYonetimSkoru} />
+```
+
+Check what the page renders before deciding. If it's functional, add as tab.
+If it's a stub/incomplete, add the route but hide from navigation.
+
+---
+
+## TASK 7 — General db.execute() Audit
+
+After fixing the above, do a broader check:
+
+```bash
+grep -n "const \[.*\] = await db.execute\|const \[.*\] = db.execute" server/routes/factory.ts | head -20
+```
+
+Fix any remaining destructuring of `db.execute()` results using the `.rows` pattern.
+This prevents similar crashes in other factory endpoints.
+
+---
+
+## Verification Checklist
+
+- [ ] GET /api/factory/cost-dashboard-stats returns 200 (not 500)
+- [ ] GET /api/factory/quality-overview returns 200 (not 500)
+- [ ] GET /api/factory/waste-dashboard-stats returns 200 (not 500)
+- [ ] GET /api/factory/stock-overview returns 200 (not 500)
+- [ ] Factory dashboard loads without console errors
+- [ ] Active shift sessions count is 0 (orphaned ones closed)
+- [ ] fabrika-yonetim-skoru.tsx is accessible via tab or route
+- [ ] Daily orphaned session cleanup registered in scheduler
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors
