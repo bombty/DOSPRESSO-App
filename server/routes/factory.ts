@@ -719,9 +719,25 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .limit(1);
 
       const storedUsername = usernameConfig?.configValue || 'Fabrika';
-      const storedPassword = passwordConfig?.configValue || '0000';
+      const storedPassword = passwordConfig?.configValue || null;
 
-      if (username.toLowerCase() !== storedUsername.toLowerCase() || password !== storedPassword) {
+      if (username.toLowerCase() !== storedUsername.toLowerCase()) {
+        return res.status(401).json({ message: "Kullanıcı adı veya şifre hatalı" });
+      }
+      
+      if (!storedPassword) {
+        console.warn(`[FactoryKiosk] No device password configured`);
+        return res.status(401).json({ message: "Kullanıcı adı veya şifre hatalı" });
+      }
+      
+      const isBcryptHash = storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$');
+      if (!isBcryptHash) {
+        console.warn(`[FactoryKiosk] Device password is unhashed — login rejected for security`);
+        return res.status(401).json({ message: "Kullanıcı adı veya şifre hatalı" });
+      }
+      
+      const isValid = await bcrypt.compare(password, storedPassword);
+      if (!isValid) {
         return res.status(401).json({ message: "Kullanıcı adı veya şifre hatalı" });
       }
 
@@ -752,7 +768,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       res.json({
         username: usernameConfig?.configValue || 'Fabrika',
-        password: passwordConfig?.configValue || '0000',
+        password: '****',
       });
     } catch (error: any) {
       console.error("Error fetching device credentials:", error);
@@ -775,9 +791,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(400).json({ message: "Şifre 4 haneli sayı olmalı" });
       }
 
+      const hashedPassword = await bcrypt.hash(password, 10);
       for (const item of [
         { key: 'device_username', value: username },
-        { key: 'device_password', value: password },
+        { key: 'device_password', value: hashedPassword },
       ]) {
         const [existing] = await db.select().from(factoryKioskConfig)
           .where(eq(factoryKioskConfig.configKey, item.key))
@@ -4336,9 +4353,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       
       // Yoksa varsayılan oluştur
       if (!settings) {
+        const hashedDefault = await bcrypt.hash('0000', 10);
         [settings] = await db.insert(branchKioskSettings).values({
           branchId,
-          kioskPassword: '0000',
+          kioskPassword: hashedDefault,
         }).returning();
       }
       
@@ -6430,9 +6448,10 @@ export async function initFactoryKioskMigrations() {
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
+    const hashedDefaultPassword = await bcrypt.hash('0000', 10);
     for (const item of [
       { key: 'device_username', value: 'Fabrika' },
-      { key: 'device_password', value: '0000' },
+      { key: 'device_password', value: hashedDefaultPassword },
     ]) {
       const [existing] = await db.select().from(factoryKioskConfig)
         .where(eq(factoryKioskConfig.configKey, item.key))

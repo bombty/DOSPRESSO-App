@@ -2370,9 +2370,10 @@ router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req
       .limit(1);
     
     if (!settings) {
+      const hashedDefault = await bcrypt.hash('0000', 10);
       [settings] = await db.insert(branchKioskSettings).values({
         branchId,
-        kioskPassword: '0000',
+        kioskPassword: hashedDefault,
       }).returning();
     }
     
@@ -2401,13 +2402,34 @@ router.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) =>
       return res.status(401).json({ message: "Kullanıcı adı veya parola hatalı" });
     }
     
-    const [settings] = await db.select().from(branchKioskSettings)
+    let [settings] = await db.select().from(branchKioskSettings)
       .where(eq(branchKioskSettings.branchId, branchId))
       .limit(1);
     
-    const correctPassword = settings?.kioskPassword || '0000';
+    if (!settings) {
+      const hashedDefault = await bcrypt.hash('0000', 10);
+      [settings] = await db.insert(branchKioskSettings).values({
+        branchId,
+        kioskPassword: hashedDefault,
+      }).returning();
+    }
     
-    if (password !== correctPassword) {
+    const storedPassword = settings.kioskPassword;
+    
+    if (!storedPassword) {
+      console.warn(`[KioskAuth] Branch ${branchId} has no kiosk password configured`);
+      return res.status(401).json({ message: "Kullanıcı adı veya parola hatalı" });
+    }
+    
+    const isBcryptHash = storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$');
+    
+    if (!isBcryptHash) {
+      console.warn(`[KioskAuth] Branch ${branchId} has unhashed kiosk password — login rejected for security`);
+      return res.status(401).json({ message: "Kullanıcı adı veya parola hatalı" });
+    }
+    
+    const isValid = await bcrypt.compare(password, storedPassword);
+    if (!isValid) {
       return res.status(401).json({ message: "Kullanıcı adı veya parola hatalı" });
     }
     
@@ -4345,9 +4367,11 @@ router.patch('/api/branches/:branchId/kiosk/mode', isAuthenticated, async (req: 
         .set({ kioskMode, updatedAt: new Date() })
         .where(eq(branchKioskSettings.branchId, branchId));
     } else {
+      const hashedDefault = await bcrypt.hash('0000', 10);
       await db.insert(branchKioskSettings).values({
         branchId,
         kioskMode,
+        kioskPassword: hashedDefault,
       });
     }
 

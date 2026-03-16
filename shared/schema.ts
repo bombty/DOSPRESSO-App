@@ -10957,7 +10957,7 @@ export const branchKioskSettings = pgTable("branch_kiosk_settings", {
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }).unique(),
   
   // Kiosk erişim parolası
-  kioskPassword: varchar("kiosk_password", { length: 50 }).default("0000").notNull(),
+  kioskPassword: varchar("kiosk_password", { length: 255 }).notNull(),
   
   // Çalışma saatleri (varsayılan vardiya)
   defaultShiftStartTime: varchar("default_shift_start_time", { length: 5 }).default("08:00"), // HH:mm

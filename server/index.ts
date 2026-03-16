@@ -20,7 +20,7 @@ import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { users, productionLots, tasks, notifications as notificationsTable } from "@shared/schema";
+import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig } from "@shared/schema";
 import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull } from "drizzle-orm";
 
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
@@ -151,12 +151,79 @@ app.use((req, res, next) => {
     });
   }
 
+  async function migrateKioskPasswords() {
+    try {
+      await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password TYPE varchar(255)`);
+      await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password DROP DEFAULT`);
+    } catch (error) {
+      console.error("[KioskMigration] Schema migration error:", error);
+    }
+
+    let branchCount = 0;
+    try {
+      const allBranches = await db.select({
+        id: branches.id,
+        kioskPassword: branches.kioskPassword,
+      }).from(branches);
+
+      for (const branch of allBranches) {
+        if (branch.kioskPassword && !branch.kioskPassword.startsWith('$2b$') && !branch.kioskPassword.startsWith('$2a$') && !branch.kioskPassword.startsWith('$2y$')) {
+          const hashed = await bcrypt.hash(branch.kioskPassword, 10);
+          await db.update(branches).set({ kioskPassword: hashed }).where(eq(branches.id, branch.id));
+          branchCount++;
+        }
+      }
+    } catch (error) {
+      console.error("[KioskMigration] Error hashing branches.kioskPassword:", error);
+    }
+
+    let settingsCount = 0;
+    try {
+      const allKioskSettings = await db.select({
+        id: branchKioskSettings.id,
+        kioskPassword: branchKioskSettings.kioskPassword,
+      }).from(branchKioskSettings);
+
+      for (const setting of allKioskSettings) {
+        if (setting.kioskPassword && !setting.kioskPassword.startsWith('$2b$') && !setting.kioskPassword.startsWith('$2a$') && !setting.kioskPassword.startsWith('$2y$')) {
+          const hashed = await bcrypt.hash(setting.kioskPassword, 10);
+          await db.update(branchKioskSettings).set({ kioskPassword: hashed }).where(eq(branchKioskSettings.id, setting.id));
+          settingsCount++;
+        }
+      }
+    } catch (error) {
+      console.error("[KioskMigration] Error hashing branch_kiosk_settings.kioskPassword:", error);
+    }
+
+    let factoryCount = 0;
+    try {
+      const [factoryPwConfig] = await db.select().from(factoryKioskConfig)
+        .where(eq(factoryKioskConfig.configKey, 'device_password'))
+        .limit(1);
+
+      if (factoryPwConfig && factoryPwConfig.configValue && !factoryPwConfig.configValue.startsWith('$2b$') && !factoryPwConfig.configValue.startsWith('$2a$') && !factoryPwConfig.configValue.startsWith('$2y$')) {
+        const hashed = await bcrypt.hash(factoryPwConfig.configValue, 10);
+        await db.update(factoryKioskConfig).set({ configValue: hashed, updatedAt: new Date() }).where(eq(factoryKioskConfig.configKey, 'device_password'));
+        factoryCount = 1;
+      }
+    } catch (error) {
+      console.error("[KioskMigration] Error hashing factory_kiosk_config.device_password:", error);
+    }
+
+    if (branchCount > 0 || settingsCount > 0 || factoryCount > 0) {
+      log(`[KioskMigration] Hashed plaintext passwords: ${branchCount} branches, ${settingsCount} kiosk_settings, ${factoryCount} factory_config`);
+    } else {
+      log(`[KioskMigration] All kiosk passwords already hashed`);
+    }
+  }
+
   async function onServerReady() {
     const startupTime = Date.now();
     
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await ensureAdminUserApproved();
+    await migrateKioskPasswords();
 
     const roleChain = async () => {
       await seedRoles();
