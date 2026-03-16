@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -223,19 +223,22 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
                   'w-full text-left px-3 py-3 border-b border-border transition-colors',
                   isSelected
                     ? 'bg-blue-50 border-l-2 border-l-[#122549] dark:bg-[#172554]'
-                    : 'hover:bg-accent'
+                    : 'hover:bg-accent',
+                  isClosed && 'opacity-60'
                 )}
                 data-testid={`ticket-item-${ticket.id}`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  {ticket.sla_breached ? (
+                  {isClosed ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400 flex-shrink-0" data-testid={`icon-closed-${ticket.id}`} />
+                  ) : ticket.sla_breached ? (
                     <span className="w-2.5 h-2.5 rounded-full bg-[#cc1f1f] flex-shrink-0" />
                   ) : (
                     <span className="w-2.5 h-2.5 flex-shrink-0" />
                   )}
                   <span className={cn(
                     'text-xs font-bold',
-                    isSelected ? 'text-[#122549] dark:text-blue-300' : 'text-muted-foreground'
+                    isClosed ? 'text-green-700 dark:text-green-400 line-through' : isSelected ? 'text-[#122549] dark:text-blue-300' : 'text-muted-foreground'
                   )}>
                     {ticket.ticket_number}
                   </span>
@@ -257,7 +260,7 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
                 </div>
                 <div className={cn(
                   'text-sm leading-snug mb-1.5 pl-5 truncate',
-                  ticket.sla_breached ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'
+                  isClosed ? 'text-muted-foreground' : ticket.sla_breached ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'
                 )}>
                   {ticket.title}
                 </div>
@@ -265,24 +268,32 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
                   <span className="text-xs text-muted-foreground truncate flex-1">
                     {ticket.branch_name ?? '—'}
                   </span>
-                  {slaInfo.label && (
-                    <span
-                      className="text-xs font-semibold flex-shrink-0"
-                      style={{ color: slaInfo.color }}
-                      data-testid={`sla-label-${ticket.id}`}
-                    >
-                      {slaInfo.label}
+                  {isClosed ? (
+                    <span className="text-xs font-semibold text-green-600 dark:text-green-400 flex-shrink-0" data-testid={`status-closed-${ticket.id}`}>
+                      Çözüldü
                     </span>
+                  ) : (
+                    <>
+                      {slaInfo.label && (
+                        <span
+                          className="text-xs font-semibold flex-shrink-0"
+                          style={{ color: slaInfo.color }}
+                          data-testid={`sla-label-${ticket.id}`}
+                        >
+                          {slaInfo.label}
+                        </span>
+                      )}
+                      <div className="w-10 h-1.5 rounded-full bg-muted overflow-hidden flex-shrink-0">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${slaInfo.percent}%`,
+                            background: slaInfo.color,
+                          }}
+                        />
+                      </div>
+                    </>
                   )}
-                  <div className="w-10 h-1.5 rounded-full bg-muted overflow-hidden flex-shrink-0">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${slaInfo.percent}%`,
-                        background: slaInfo.color,
-                      }}
-                    />
-                  </div>
                 </div>
               </button>
             );

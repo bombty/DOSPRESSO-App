@@ -6,7 +6,19 @@ import { cn } from "@/lib/utils";
 import { canSeeAllTickets, getDeptConfig } from "./categoryConfig";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Bot, AlertTriangle, Clock, MessageSquare, TicketCheck, Building2 } from "lucide-react";
+import { Bot, AlertTriangle, Clock, MessageSquare, TicketCheck, Building2, Users, TrendingUp } from "lucide-react";
+
+interface StaffPerformanceRow {
+  userId: string;
+  userName: string;
+  userRole: string;
+  resolvedCount: number;
+  avgResolutionHours: number;
+  slaComplianceRate: number;
+  avgSatisfaction: number;
+  openTicketCount: number;
+  performanceScore: number;
+}
 
 interface BranchHealthRow {
   id: number;
@@ -46,6 +58,12 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
   const { data: branchHealth = [] } = useQuery<BranchHealthRow[]>({
     queryKey: ["/api/iletisim/branch-health"],
     enabled: showBranchHealth,
+  });
+
+  const showStaffPerformance = canSeeAllTickets(user?.role ?? "");
+  const { data: staffPerformance = [] } = useQuery<StaffPerformanceRow[]>({
+    queryKey: ["/api/iletisim/staff-performance"],
+    enabled: showStaffPerformance,
   });
 
   if (!stats) {
@@ -150,6 +168,67 @@ export default function DashboardTab({ stats }: DashboardTabProps) {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {showStaffPerformance && staffPerformance.length > 0 && (
+        <Card data-testid="staff-performance-card">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between gap-1">
+            <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+              <Users className="h-4 w-4" />
+              Personel Performansı
+            </CardTitle>
+            <span className="text-xs text-muted-foreground">Son 30 gün</span>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-0 divide-y divide-border">
+              <div className="grid grid-cols-[1fr_60px_60px_60px_70px] gap-2 pb-2 text-xs text-muted-foreground font-medium">
+                <span>Personel</span>
+                <span className="text-right">Çözüm</span>
+                <span className="text-right">SLA %</span>
+                <span className="text-right">Ort. Süre</span>
+                <span className="text-right">Skor</span>
+              </div>
+              {staffPerformance.slice(0, 10).map((staff) => {
+                const scoreColor = staff.performanceScore >= 80
+                  ? 'text-green-600 dark:text-green-400'
+                  : staff.performanceScore >= 60
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-red-600 dark:text-red-400';
+                const scoreBg = staff.performanceScore >= 80
+                  ? 'bg-green-100 dark:bg-green-950/40'
+                  : staff.performanceScore >= 60
+                    ? 'bg-amber-100 dark:bg-amber-950/40'
+                    : 'bg-red-100 dark:bg-red-950/40';
+                return (
+                  <div
+                    key={staff.userId}
+                    className="grid grid-cols-[1fr_60px_60px_60px_70px] gap-2 py-2 items-center"
+                    data-testid={`staff-row-${staff.userId}`}
+                  >
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium truncate block">{staff.userName || '—'}</span>
+                      {staff.openTicketCount > 0 && (
+                        <span className="text-xs text-muted-foreground">{staff.openTicketCount} açık</span>
+                      )}
+                    </div>
+                    <span className="text-sm text-right font-medium">{staff.resolvedCount}</span>
+                    <span className={cn("text-sm text-right", staff.slaComplianceRate < 80 ? 'text-red-500' : 'text-foreground')}>
+                      %{staff.slaComplianceRate}
+                    </span>
+                    <span className="text-sm text-right text-muted-foreground">
+                      {staff.avgResolutionHours > 0 ? `${staff.avgResolutionHours}s` : '—'}
+                    </span>
+                    <div className="flex justify-end">
+                      <span className={cn("text-sm font-bold px-2 py-0.5 rounded", scoreColor, scoreBg)} data-testid={`score-${staff.userId}`}>
+                        {staff.performanceScore}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}

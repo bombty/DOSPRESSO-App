@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { getDeptConfig, getStatusConfig, isHQRole } from './categoryConfig';
@@ -8,6 +8,16 @@ import { tr } from 'date-fns/locale';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface SlaRemainingData {
   remainingHours: number | null;
@@ -48,6 +58,8 @@ interface TicketDetailData {
   branch_name: string | null;
   created_by_name: string | null;
   assigned_to_name: string | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
   sla_deadline: string | null;
   sla_breached: boolean;
   created_at: string;
@@ -104,14 +116,22 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
     },
   });
 
+  const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState('');
+
   const statusMutation = useMutation({
-    mutationFn: async (status: string) => {
-      return apiRequest("PATCH", `/api/iletisim/tickets/${ticket?.id}`, { status });
+    mutationFn: async ({ status, resolutionNote: note }: { status: string; resolutionNote?: string }) => {
+      const body: Record<string, string> = { status };
+      if (note !== undefined) body.resolutionNote = note;
+      return apiRequest("PATCH", `/api/iletisim/tickets/${ticket?.id}`, body);
     },
     onSuccess: () => {
+      setShowResolveDialog(false);
+      setResolutionNote('');
       qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets'] });
       qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id] });
       qc.invalidateQueries({ queryKey: ['/api/iletisim/dashboard'] });
+      toast({ title: "Talep çözüldü", description: "Talep başarıyla çözüldü olarak işaretlendi" });
     },
   });
 
@@ -308,7 +328,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
 
           {isHQ && !isClosed && (
             <button
-              onClick={() => statusMutation.mutate('cozuldu')}
+              onClick={() => setShowResolveDialog(true)}
               disabled={statusMutation.isPending}
               className="text-xs font-semibold px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
               data-testid="button-resolve-ticket"
@@ -318,6 +338,18 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {isClosed && ticket.resolved_by_name && (
+        <div className="px-4 py-2 border-b border-border bg-green-50 dark:bg-green-950/30 flex items-center gap-2 flex-shrink-0" data-testid="resolved-by-info">
+          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+          <span className="text-xs text-green-700 dark:text-green-300">
+            <span className="font-semibold">Çözen:</span> {ticket.resolved_by_name}
+            {ticket.resolved_at && (
+              <span className="text-green-600/70 dark:text-green-400/70"> · {formatDistanceToNow(new Date(ticket.resolved_at), { addSuffix: true, locale: tr })}</span>
+            )}
+          </span>
+        </div>
+      )}
 
       {(equipmentInfo || (attachments.length > 0)) && (
         <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex-shrink-0 space-y-2" data-testid="ticket-extras">
@@ -596,7 +628,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
             </button>
             {isHQ && !isClosed && (
               <button
-                onClick={() => statusMutation.mutate('cozuldu')}
+                onClick={() => setShowResolveDialog(true)}
                 disabled={statusMutation.isPending}
                 className="text-xs font-semibold px-2.5 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300 flex-shrink-0 hover:bg-green-100 transition-colors"
                 data-testid="button-resolve-and-close"
@@ -677,6 +709,40 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
           </div>
         </div>
       )}
+
+      <AlertDialog open={showResolveDialog} onOpenChange={setShowResolveDialog}>
+        <AlertDialogContent data-testid="resolve-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Talebi Çöz</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu talebi çözüldü olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <label className="text-sm font-medium text-foreground mb-1.5 block">Çözüm Notu (opsiyonel)</label>
+            <textarea
+              value={resolutionNote}
+              onChange={(e) => setResolutionNote(e.target.value)}
+              placeholder="Çözüm detaylarını yazın..."
+              className="w-full px-3 py-2 rounded-lg text-sm resize-none border border-border bg-muted/50 text-foreground placeholder:text-muted-foreground min-h-[60px] max-h-[120px] outline-none focus:ring-1 focus:ring-ring"
+              rows={2}
+              data-testid="input-resolution-note"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-resolve-cancel">İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => statusMutation.mutate({ status: 'cozuldu', resolutionNote: resolutionNote.trim() || undefined })}
+              disabled={statusMutation.isPending}
+              className="bg-green-600 text-white hover:bg-green-700"
+              data-testid="button-resolve-confirm"
+            >
+              {statusMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Onayla ve Çöz
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

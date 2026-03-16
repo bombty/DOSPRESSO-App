@@ -25,6 +25,8 @@ interface TicketDetailResponse {
   branch_name: string | null;
   created_by_name: string | null;
   assigned_to_name: string | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
   sla_deadline: string | null;
   sla_breached: boolean;
   created_at: string;

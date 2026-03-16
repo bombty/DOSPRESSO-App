@@ -170,11 +170,12 @@ router.get("/tickets/:id", async (req: AuthRequest, res: Response) => {
     if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
 
     const ticket = await db.execute(
-      sql`SELECT st.*, b.name as branch_name, COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, '') as created_by_name, COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as assigned_to_name
+      sql`SELECT st.*, b.name as branch_name, COALESCE(u1.first_name || ' ' || u1.last_name, u1.first_name, '') as created_by_name, COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as assigned_to_name, COALESCE(u3.first_name || ' ' || u3.last_name, u3.first_name, '') as resolved_by_name
           FROM support_tickets st
           LEFT JOIN branches b ON st.branch_id = b.id
           LEFT JOIN users u1 ON st.created_by_user_id = u1.id
           LEFT JOIN users u2 ON st.assigned_to_user_id = u2.id
+          LEFT JOIN users u3 ON st.resolved_by_user_id = u3.id
           WHERE st.id = ${ticketId} AND st.is_deleted = false`
     );
 
@@ -310,7 +311,7 @@ router.patch("/tickets/:id", async (req: AuthRequest, res: Response) => {
 
     if (status) updates.status = status;
     if (assignedToUserId) { updates.assignedToUserId = assignedToUserId; updates.assignedAt = new Date(); }
-    if (resolutionNote) updates.resolutionNote = resolutionNote;
+    if (resolutionNote !== undefined) updates.resolutionNote = resolutionNote;
     if (priority) updates.priority = priority;
     if (status === "cozuldu") { updates.resolvedAt = new Date(); updates.resolvedByUserId = user.id; }
 
@@ -1150,6 +1151,129 @@ router.get("/tickets/:id/sla-remaining", async (req: any, res: Response) => {
     });
   } catch (err) {
     res.status(500).json({ error: "SLA bilgisi alınamadı" });
+  }
+});
+
+router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!canSeeAllTickets(user.role)) return res.status(403).json({ error: "Yetkiniz yok" });
+
+    const days = parseInt(req.query.days as string) || 30;
+
+    const result = await db.execute(sql`
+      WITH resolver_stats AS (
+        SELECT 
+          st.resolved_by_user_id as user_id,
+          COUNT(*) as resolved_count,
+          AVG(EXTRACT(EPOCH FROM (st.resolved_at - st.created_at)) / 3600) as avg_resolution_hours,
+          COUNT(*) FILTER (WHERE st.sla_breached = true) as sla_breached_count,
+          AVG(st.satisfaction_score) FILTER (WHERE st.satisfaction_score IS NOT NULL) as avg_satisfaction
+        FROM support_tickets st
+        WHERE st.resolved_by_user_id IS NOT NULL
+          AND st.resolved_at IS NOT NULL
+          AND st.resolved_at >= NOW() - CAST(${days + ' days'} AS INTERVAL)
+          AND st.is_deleted = false
+        GROUP BY st.resolved_by_user_id
+      ),
+      open_stats AS (
+        SELECT 
+          st.assigned_to_user_id as user_id,
+          COUNT(*) as open_ticket_count
+        FROM support_tickets st
+        WHERE st.status NOT IN ('cozuldu', 'kapatildi')
+          AND st.assigned_to_user_id IS NOT NULL
+          AND st.is_deleted = false
+        GROUP BY st.assigned_to_user_id
+      )
+      SELECT 
+        COALESCE(rs.user_id, os.user_id) as user_id,
+        COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as user_name,
+        u.role as user_role,
+        COALESCE(rs.resolved_count, 0) as resolved_count,
+        COALESCE(rs.avg_resolution_hours, 0) as avg_resolution_hours,
+        COALESCE(rs.sla_breached_count, 0) as sla_breached_count,
+        COALESCE(rs.avg_satisfaction, 0) as avg_satisfaction,
+        COALESCE(os.open_ticket_count, 0) as open_ticket_count
+      FROM resolver_stats rs
+      FULL OUTER JOIN open_stats os ON rs.user_id = os.user_id
+      LEFT JOIN users u ON COALESCE(rs.user_id, os.user_id) = u.id
+      WHERE u.id IS NOT NULL
+      ORDER BY COALESCE(rs.resolved_count, 0) DESC
+    `);
+
+    const staff = result.rows.map((row: Record<string, unknown>) => {
+      const resolvedCount = parseInt(String(row.resolved_count ?? "0"));
+      const avgHours = parseFloat(String(row.avg_resolution_hours ?? "0"));
+      const slaBreachedCount = parseInt(String(row.sla_breached_count ?? "0"));
+      const avgSatisfaction = parseFloat(String(row.avg_satisfaction ?? "0"));
+      const openCount = parseInt(String(row.open_ticket_count ?? "0"));
+
+      const slaComplianceRate = resolvedCount > 0
+        ? Math.round(((resolvedCount - slaBreachedCount) / resolvedCount) * 100)
+        : 100;
+
+      let score = 50;
+      score += Math.min(resolvedCount * 2, 30);
+      score += (slaComplianceRate / 100) * 20;
+      if (avgSatisfaction > 0) score += Math.min(avgSatisfaction, 5) * 4;
+      if (avgHours > 24) score -= Math.min((avgHours - 24) * 0.5, 15);
+
+      const performanceScore = Math.max(0, Math.min(100, Math.round(score)));
+
+      return {
+        userId: row.user_id,
+        userName: row.user_name,
+        userRole: row.user_role,
+        resolvedCount,
+        avgResolutionHours: Math.round(avgHours * 10) / 10,
+        slaComplianceRate,
+        avgSatisfaction: Math.round(avgSatisfaction * 10) / 10,
+        openTicketCount: openCount,
+        performanceScore,
+      };
+    });
+
+    res.json(staff);
+  } catch (error) {
+    console.error("Error fetching staff performance:", error);
+    res.status(500).json({ error: "Performans verisi alınamadı" });
+  }
+});
+
+router.get("/staff-performance/:userId", async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!canSeeAllTickets(user.role)) return res.status(403).json({ error: "Yetkiniz yok" });
+
+    const targetUserId = req.params.userId;
+
+    const tickets = await db.execute(sql`
+      SELECT 
+        st.id, st.ticket_number, st.title, st.department, st.priority, st.status,
+        st.sla_breached, st.created_at, st.resolved_at, st.satisfaction_score,
+        b.name as branch_name,
+        EXTRACT(EPOCH FROM (st.resolved_at - st.created_at)) / 3600 as resolution_hours
+      FROM support_tickets st
+      LEFT JOIN branches b ON st.branch_id = b.id
+      WHERE (st.resolved_by_user_id = ${targetUserId} OR st.assigned_to_user_id = ${targetUserId})
+        AND st.is_deleted = false
+      ORDER BY st.created_at DESC
+      LIMIT 50
+    `);
+
+    const userInfo = await db.execute(sql`
+      SELECT id, COALESCE(first_name || ' ' || last_name, first_name, '') as name, role
+      FROM users WHERE id = ${targetUserId}
+    `);
+
+    res.json({
+      user: userInfo.rows[0] ?? null,
+      tickets: tickets.rows,
+    });
+  } catch (error) {
+    console.error("Error fetching staff detail:", error);
+    res.status(500).json({ error: "Detay alınamadı" });
   }
 });
 
