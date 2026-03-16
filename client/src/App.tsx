@@ -260,10 +260,14 @@ function FabrikaDashboardRedirect() {
 
 function KioskGuard({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
-  const kioskRoles = ['admin'];
-  const allowed = user ? kioskRoles.includes(user.role) : false;
+  const isSubeKiosk = location.startsWith("/sube/kiosk");
+  const subeKioskRoles = ['admin', 'mudur', 'supervisor'];
+  const factoryKioskRoles = ['admin'];
+
+  const allowedRoles = isSubeKiosk ? subeKioskRoles : factoryKioskRoles;
+  const allowed = user ? allowedRoles.includes(user.role) : false;
 
   useEffect(() => {
     if (!allowed) {
