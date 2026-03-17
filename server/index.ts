@@ -228,18 +228,16 @@ app.use((req, res, next) => {
         .limit(1);
 
       if (existingFabrika) {
-        if (existingFabrika.role !== 'fabrika_operator' || !existingFabrika.isActive) {
-          await db.update(users).set({
-            role: 'fabrika_operator',
-            isActive: true,
-            branchId: 24,
-            firstName: 'Fabrika',
-            lastName: 'Kiosk',
-            hashedPassword: passwordHash,
-            updatedAt: new Date(),
-          }).where(eq(users.id, existingFabrika.id));
-          log('[KioskSeed] Fixed fabrika account: role=fabrika_operator, active=true');
-        }
+        await db.update(users).set({
+          role: 'fabrika_operator',
+          isActive: true,
+          branchId: 24,
+          firstName: 'Fabrika',
+          lastName: 'Kiosk',
+          hashedPassword: passwordHash,
+          updatedAt: new Date(),
+        }).where(eq(users.id, existingFabrika.id));
+        log('[KioskSeed] Normalized fabrika account: role=fabrika_operator, active=true');
       } else {
         await db.insert(users).values({
           id: crypto.randomUUID(),
@@ -281,21 +279,22 @@ app.use((req, res, next) => {
       let skipped = 0;
 
       for (const account of kioskAccounts) {
-        const [existing] = await db.select({ id: users.id, hashedPassword: users.hashedPassword })
+        const [existing] = await db.select({ id: users.id })
           .from(users)
           .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
           .limit(1);
 
         if (existing) {
-          if (!existing.hashedPassword) {
-            await db.update(users).set({
-              hashedPassword: passwordHash,
-              updatedAt: new Date(),
-            }).where(eq(users.id, existing.id));
-            created++;
-          } else {
-            skipped++;
-          }
+          await db.update(users).set({
+            role: 'sube_kiosk',
+            isActive: true,
+            branchId: account.branchId,
+            firstName: account.firstName,
+            lastName: 'Kiosk',
+            hashedPassword: passwordHash,
+            updatedAt: new Date(),
+          }).where(eq(users.id, existing.id));
+          skipped++;
           continue;
         }
 
