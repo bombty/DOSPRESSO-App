@@ -1154,6 +1154,25 @@ router.get("/tickets/:id/sla-remaining", async (req: any, res: Response) => {
   }
 });
 
+interface ResolvedTicketRow {
+  user_id: string;
+  created_at: string;
+  resolved_at: string;
+  sla_breached: boolean;
+  satisfaction_score: string | null;
+}
+
+interface OpenStatRow {
+  user_id: string;
+  open_ticket_count: string;
+}
+
+interface UserInfoRow {
+  id: string;
+  user_name: string;
+  user_role: string;
+}
+
 router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
@@ -1182,13 +1201,13 @@ router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
     `);
 
     const openMap = new Map<string, number>();
-    for (const row of openStats.rows as any[]) {
+    for (const row of openStats.rows as OpenStatRow[]) {
       openMap.set(row.user_id, parseInt(String(row.open_ticket_count)));
     }
 
     const userMap = new Map<string, { resolvedCount: number; totalBizHours: number; slaBreachedCount: number; satisfactionSum: number; satisfactionCount: number }>();
-    for (const row of resolvedTickets.rows as any[]) {
-      const uid = row.user_id as string;
+    for (const row of resolvedTickets.rows as ResolvedTicketRow[]) {
+      const uid = row.user_id;
       if (!userMap.has(uid)) userMap.set(uid, { resolvedCount: 0, totalBizHours: 0, slaBreachedCount: 0, satisfactionSum: 0, satisfactionCount: 0 });
       const entry = userMap.get(uid)!;
       entry.resolvedCount++;
@@ -1208,7 +1227,7 @@ router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
       FROM users WHERE id = ANY(${sql`ARRAY[${sql.join([...allUserIds].map(id => sql`${id}`), sql`, `)}]`})
     `);
     const userInfoMap = new Map<string, { userName: string; userRole: string }>();
-    for (const row of userInfoResult.rows as any[]) {
+    for (const row of userInfoResult.rows as UserInfoRow[]) {
       userInfoMap.set(row.id, { userName: row.user_name, userRole: row.user_role });
     }
 
@@ -1281,7 +1300,21 @@ router.get("/staff-performance/:userId", async (req: AuthRequest, res: Response)
       LIMIT 50
     `);
 
-    const ticketsWithBizHours = tickets.rows.map((row: any) => ({
+    interface StaffDetailTicketRow {
+      id: number;
+      ticket_number: string;
+      title: string;
+      department: string;
+      priority: string;
+      status: string;
+      sla_breached: boolean;
+      created_at: string;
+      resolved_at: string | null;
+      satisfaction_score: string | null;
+      branch_name: string | null;
+    }
+
+    const ticketsWithBizHours = (tickets.rows as StaffDetailTicketRow[]).map((row) => ({
       ...row,
       resolution_hours: row.resolved_at && row.created_at
         ? Math.round(getElapsedBusinessHours(new Date(row.created_at), new Date(row.resolved_at), bhConfig) * 10) / 10
