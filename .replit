@@ -12,22 +12,6 @@ build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 publicDir = "dist/public"
 
-[[ports]]
-localPort = 5000
-externalPort = 80
-
-[[ports]]
-localPort = 23636
-externalPort = 3001
-
-[[ports]]
-localPort = 23637
-externalPort = 3000
-
-[[ports]]
-localPort = 23638
-externalPort = 3002
-
 [env]
 PORT = "5000"
 
@@ -68,3 +52,7 @@ defaultBucketID = "replit-objstore-8d46a745-6e30-4f2e-b482-808e3d81d7a2"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 180000
+
+[[ports]]
+localPort = 5000
+externalPort = 80

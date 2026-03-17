@@ -523,6 +523,16 @@ export default function BranchKiosk() {
     setQrScanMessage('');
   };
 
+  const handleKioskExit = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout');
+      queryClient.clear();
+      window.location.href = '/login';
+    } catch {
+      window.location.href = '/login';
+    }
+  };
+
   const resetKiosk = () => {
     setStep(kioskMode === 'qr' ? 'qr-scan' : 'password');
     setKioskPassword('');
@@ -1269,7 +1279,7 @@ export default function BranchKiosk() {
         variant="outline"
         size="sm"
         className="fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
-        onClick={resetKiosk}
+        onClick={handleKioskExit}
         data-testid="button-kiosk-exit"
       >
         <LogOut className="h-4 w-4 mr-2" />

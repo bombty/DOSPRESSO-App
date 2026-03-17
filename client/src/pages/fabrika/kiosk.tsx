@@ -606,6 +606,16 @@ export default function FactoryKiosk() {
     setWasteProductCount('');
   };
 
+  const handleKioskExit = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout');
+      queryClient.clear();
+      window.location.href = '/login';
+    } catch {
+      window.location.href = '/login';
+    }
+  };
+
   const resetKiosk = () => {
     setStep('device-password');
     setDeviceUsername('');
@@ -657,7 +667,7 @@ export default function FactoryKiosk() {
           variant="outline"
           size="sm"
           className="bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
-          onClick={resetKiosk}
+          onClick={handleKioskExit}
           data-testid="button-kiosk-exit"
         >
           <LogOut className="h-4 w-4 mr-2" />

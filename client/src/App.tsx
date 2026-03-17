@@ -271,13 +271,16 @@ function KioskGuard({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+const KIOSK_GUARD_EXEMPT_PATHS = ['/login', '/logout', '/forgot-password', '/reset-password'];
+
 function KioskRoleGuard({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [, setLocation] = useLocation();
-  const [location] = useLocation();
+  const { user, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!user?.role) return;
+    if (isLoading || !user?.role) return;
+
+    if (KIOSK_GUARD_EXEMPT_PATHS.some(p => location === p || location.startsWith(p + '/'))) return;
 
     if (user.role === 'sube_kiosk') {
       const kioskPath = user.branchId ? `/sube/kiosk/${user.branchId}` : '/sube/kiosk';
@@ -291,7 +294,7 @@ function KioskRoleGuard({ children }: { children: ReactNode }) {
     if (kioskPath && !location.startsWith(kioskPath)) {
       setLocation(kioskPath);
     }
-  }, [user, location, setLocation]);
+  }, [user?.role, user?.branchId, isLoading, location, setLocation]);
 
   return <>{children}</>;
 }

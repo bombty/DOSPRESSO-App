@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,7 +71,6 @@ interface HqEvent {
 
 export default function HqKiosk() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [step, setStep] = useState<HqKioskStep>("select-user");
   const [staffList, setStaffList] = useState<HqStaff[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
@@ -227,6 +226,16 @@ export default function HqKiosk() {
     }
     return () => clearInterval(interval);
   }, [step]);
+
+  const handleKioskExit = async () => {
+    try {
+      await apiRequest('POST', '/api/auth/logout');
+      queryClient.clear();
+      window.location.href = '/login';
+    } catch {
+      window.location.href = '/login';
+    }
+  };
 
   const resetKiosk = () => {
     setStep("select-user");
@@ -736,7 +745,7 @@ export default function HqKiosk() {
       variant="outline"
       size="sm"
       className="fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
-      onClick={() => setLocation("/")}
+      onClick={handleKioskExit}
       data-testid="button-kiosk-exit"
     >
       <LogOut className="h-4 w-4 mr-2" />
