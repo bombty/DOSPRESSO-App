@@ -179,6 +179,11 @@ export function getRemainingBusinessHours(deadline: Date, now: Date, config: Bus
   return Math.max(0, totalMinutes / 60);
 }
 
+export function getElapsedBusinessHours(start: Date, end: Date, config: BusinessHoursConfig): number {
+  if (end.getTime() <= start.getTime()) return 0;
+  return getRemainingBusinessHours(end, start, config);
+}
+
 export function isWithinBusinessHours(date: Date, config: BusinessHoursConfig): boolean {
   const tz = toTimezone(date, config.timezone);
   const jsToIso = (d: number) => d === 0 ? 7 : d;

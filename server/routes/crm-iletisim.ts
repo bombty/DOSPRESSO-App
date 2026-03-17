@@ -6,7 +6,7 @@ import { eq, and, sql, asc, inArray, isNull } from "drizzle-orm";
 import { routeTicket, generateTicketNumber, generateHqTaskNumber } from "../services/ticket-routing-engine";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
-import { getBusinessHoursConfig, getRemainingBusinessHours } from "../services/business-hours";
+import { getBusinessHoursConfig, getRemainingBusinessHours, getElapsedBusinessHours } from "../services/business-hours";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -1160,54 +1160,68 @@ router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
     if (!canSeeAllTickets(user.role)) return res.status(403).json({ error: "Yetkiniz yok" });
 
     const days = parseInt(req.query.days as string) || 30;
+    const bhConfig = await getBusinessHoursConfig();
 
-    const result = await db.execute(sql`
-      WITH resolver_stats AS (
-        SELECT 
-          st.resolved_by_user_id as user_id,
-          COUNT(*) as resolved_count,
-          AVG(EXTRACT(EPOCH FROM (st.resolved_at - st.created_at)) / 3600) as avg_resolution_hours,
-          COUNT(*) FILTER (WHERE st.sla_breached = true) as sla_breached_count,
-          AVG(st.satisfaction_score) FILTER (WHERE st.satisfaction_score IS NOT NULL) as avg_satisfaction
-        FROM support_tickets st
-        WHERE st.resolved_by_user_id IS NOT NULL
-          AND st.resolved_at IS NOT NULL
-          AND st.resolved_at >= NOW() - CAST(${days + ' days'} AS INTERVAL)
-          AND st.is_deleted = false
-        GROUP BY st.resolved_by_user_id
-      ),
-      open_stats AS (
-        SELECT 
-          st.assigned_to_user_id as user_id,
-          COUNT(*) as open_ticket_count
-        FROM support_tickets st
-        WHERE st.status NOT IN ('cozuldu', 'kapatildi')
-          AND st.assigned_to_user_id IS NOT NULL
-          AND st.is_deleted = false
-        GROUP BY st.assigned_to_user_id
-      )
-      SELECT 
-        COALESCE(rs.user_id, os.user_id) as user_id,
-        COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as user_name,
-        u.role as user_role,
-        COALESCE(rs.resolved_count, 0) as resolved_count,
-        COALESCE(rs.avg_resolution_hours, 0) as avg_resolution_hours,
-        COALESCE(rs.sla_breached_count, 0) as sla_breached_count,
-        COALESCE(rs.avg_satisfaction, 0) as avg_satisfaction,
-        COALESCE(os.open_ticket_count, 0) as open_ticket_count
-      FROM resolver_stats rs
-      FULL OUTER JOIN open_stats os ON rs.user_id = os.user_id
-      LEFT JOIN users u ON COALESCE(rs.user_id, os.user_id) = u.id
-      WHERE u.id IS NOT NULL
-      ORDER BY COALESCE(rs.resolved_count, 0) DESC
+    const resolvedTickets = await db.execute(sql`
+      SELECT st.resolved_by_user_id as user_id, st.created_at, st.resolved_at,
+             st.sla_breached, st.satisfaction_score
+      FROM support_tickets st
+      WHERE st.resolved_by_user_id IS NOT NULL
+        AND st.resolved_at IS NOT NULL
+        AND st.resolved_at >= NOW() - CAST(${days + ' days'} AS INTERVAL)
+        AND st.is_deleted = false
     `);
 
-    const staff = result.rows.map((row: Record<string, unknown>) => {
-      const resolvedCount = parseInt(String(row.resolved_count ?? "0"));
-      const avgHours = parseFloat(String(row.avg_resolution_hours ?? "0"));
-      const slaBreachedCount = parseInt(String(row.sla_breached_count ?? "0"));
-      const avgSatisfaction = parseFloat(String(row.avg_satisfaction ?? "0"));
-      const openCount = parseInt(String(row.open_ticket_count ?? "0"));
+    const openStats = await db.execute(sql`
+      SELECT st.assigned_to_user_id as user_id, COUNT(*) as open_ticket_count
+      FROM support_tickets st
+      WHERE st.status NOT IN ('cozuldu', 'kapatildi')
+        AND st.assigned_to_user_id IS NOT NULL
+        AND st.is_deleted = false
+      GROUP BY st.assigned_to_user_id
+    `);
+
+    const openMap = new Map<string, number>();
+    for (const row of openStats.rows as any[]) {
+      openMap.set(row.user_id, parseInt(String(row.open_ticket_count)));
+    }
+
+    const userMap = new Map<string, { resolvedCount: number; totalBizHours: number; slaBreachedCount: number; satisfactionSum: number; satisfactionCount: number }>();
+    for (const row of resolvedTickets.rows as any[]) {
+      const uid = row.user_id as string;
+      if (!userMap.has(uid)) userMap.set(uid, { resolvedCount: 0, totalBizHours: 0, slaBreachedCount: 0, satisfactionSum: 0, satisfactionCount: 0 });
+      const entry = userMap.get(uid)!;
+      entry.resolvedCount++;
+      entry.totalBizHours += getElapsedBusinessHours(new Date(row.created_at), new Date(row.resolved_at), bhConfig);
+      if (row.sla_breached) entry.slaBreachedCount++;
+      if (row.satisfaction_score != null) {
+        entry.satisfactionSum += parseFloat(String(row.satisfaction_score));
+        entry.satisfactionCount++;
+      }
+    }
+
+    const allUserIds = new Set([...userMap.keys(), ...openMap.keys()]);
+    if (allUserIds.size === 0) return res.json([]);
+
+    const userInfoResult = await db.execute(sql`
+      SELECT id, COALESCE(first_name || ' ' || last_name, first_name, '') as user_name, role as user_role
+      FROM users WHERE id = ANY(${sql`ARRAY[${sql.join([...allUserIds].map(id => sql`${id}`), sql`, `)}]`})
+    `);
+    const userInfoMap = new Map<string, { userName: string; userRole: string }>();
+    for (const row of userInfoResult.rows as any[]) {
+      userInfoMap.set(row.id, { userName: row.user_name, userRole: row.user_role });
+    }
+
+    const staff = [...allUserIds].map(uid => {
+      const stats = userMap.get(uid);
+      const info = userInfoMap.get(uid);
+      if (!info) return null;
+
+      const resolvedCount = stats?.resolvedCount ?? 0;
+      const avgHours = resolvedCount > 0 ? (stats!.totalBizHours / resolvedCount) : 0;
+      const slaBreachedCount = stats?.slaBreachedCount ?? 0;
+      const avgSatisfaction = stats && stats.satisfactionCount > 0 ? stats.satisfactionSum / stats.satisfactionCount : 0;
+      const openCount = openMap.get(uid) ?? 0;
 
       const slaComplianceRate = resolvedCount > 0
         ? Math.round(((resolvedCount - slaBreachedCount) / resolvedCount) * 100)
@@ -1222,9 +1236,9 @@ router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
       const performanceScore = Math.max(0, Math.min(100, Math.round(score)));
 
       return {
-        userId: row.user_id,
-        userName: row.user_name,
-        userRole: row.user_role,
+        userId: uid,
+        userName: info.userName,
+        userRole: info.userRole,
         resolvedCount,
         avgResolutionHours: Math.round(avgHours * 10) / 10,
         slaComplianceRate,
@@ -1232,7 +1246,9 @@ router.get("/staff-performance", async (req: AuthRequest, res: Response) => {
         openTicketCount: openCount,
         performanceScore,
       };
-    });
+    }).filter(Boolean);
+
+    staff.sort((a, b) => (b!.performanceScore - a!.performanceScore) || (b!.resolvedCount - a!.resolvedCount));
 
     res.json(staff);
   } catch (error) {
@@ -1247,20 +1263,30 @@ router.get("/staff-performance/:userId", async (req: AuthRequest, res: Response)
     if (!canSeeAllTickets(user.role)) return res.status(403).json({ error: "Yetkiniz yok" });
 
     const targetUserId = req.params.userId;
+    const days = parseInt(req.query.days as string) || 30;
+    const bhConfig = await getBusinessHoursConfig();
 
     const tickets = await db.execute(sql`
       SELECT 
         st.id, st.ticket_number, st.title, st.department, st.priority, st.status,
         st.sla_breached, st.created_at, st.resolved_at, st.satisfaction_score,
-        b.name as branch_name,
-        EXTRACT(EPOCH FROM (st.resolved_at - st.created_at)) / 3600 as resolution_hours
+        b.name as branch_name
       FROM support_tickets st
       LEFT JOIN branches b ON st.branch_id = b.id
-      WHERE (st.resolved_by_user_id = ${targetUserId} OR st.assigned_to_user_id = ${targetUserId})
+      WHERE st.resolved_by_user_id = ${targetUserId}
+        AND st.resolved_at IS NOT NULL
+        AND st.resolved_at >= NOW() - CAST(${days + ' days'} AS INTERVAL)
         AND st.is_deleted = false
-      ORDER BY st.created_at DESC
+      ORDER BY st.resolved_at DESC
       LIMIT 50
     `);
+
+    const ticketsWithBizHours = tickets.rows.map((row: any) => ({
+      ...row,
+      resolution_hours: row.resolved_at && row.created_at
+        ? Math.round(getElapsedBusinessHours(new Date(row.created_at), new Date(row.resolved_at), bhConfig) * 10) / 10
+        : null,
+    }));
 
     const userInfo = await db.execute(sql`
       SELECT id, COALESCE(first_name || ' ' || last_name, first_name, '') as name, role
@@ -1269,7 +1295,7 @@ router.get("/staff-performance/:userId", async (req: AuthRequest, res: Response)
 
     res.json({
       user: userInfo.rows[0] ?? null,
-      tickets: tickets.rows,
+      tickets: ticketsWithBizHours,
     });
   } catch (error) {
     console.error("Error fetching staff detail:", error);
