@@ -303,11 +303,11 @@ function Router() {
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/dashboard" component={FabrikaDashboardRedirect} />
-      <Route path="/fabrika/kiosk">{() => <KioskGuard><FabrikaKiosk /></KioskGuard>}</Route>
-      <Route path="/hq/kiosk">{() => <KioskGuard><HqKiosk /></KioskGuard>}</Route>
+      <Route path="/fabrika/kiosk">{() => <FabrikaKiosk />}</Route>
+      <Route path="/hq/kiosk">{() => <HqKiosk />}</Route>
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
-      <Route path="/sube/kiosk/:branchId">{() => <KioskGuard><SubeKiosk /></KioskGuard>}</Route>
-      <Route path="/sube/kiosk">{() => <KioskGuard><SubeKiosk /></KioskGuard>}</Route>
+      <Route path="/sube/kiosk/:branchId">{() => <SubeKiosk />}</Route>
+      <Route path="/sube/kiosk">{() => <SubeKiosk />}</Route>
       <Route path="/sube/employee-dashboard" component={EmployeeDashboard} />
       <Route path="/sube/dashboard" component={SubeDashboard} />
 

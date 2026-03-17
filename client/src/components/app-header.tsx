@@ -1,6 +1,7 @@
 import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
+import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import {
@@ -36,10 +37,11 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
         method: "POST",
         credentials: "include",
       });
-      setLocation("/login");
     } catch (error) {
       console.error("Logout error:", error);
     }
+    queryClient.clear();
+    window.location.href = "/login";
   };
 
   const getRoleLabel = (role: string | undefined) => {

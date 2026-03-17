@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -344,7 +345,8 @@ export function HamburgerMenu() {
                 } catch (e) {
                   console.error("Logout error:", e);
                 }
-                setLocation("/login");
+                queryClient.clear();
+                window.location.href = "/login";
               }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover-elevate transition-colors"
               data-testid="menu-item-logout"
