@@ -1,0 +1,163 @@
+Net durum. Önceki promptu Replit görmemiş — hesaplar oluşturulmamış. Şimdi direkt görev olarak gönderelim.
+
+🔧 **MOD: Power**
+
+```
+Create kiosk user accounts so staff can login from main /login page.
+This is the highest priority task right now.
+
+## CONTEXT
+- fabrika_operator role already redirects to /fabrika/kiosk ✓
+- Need to create user accounts with kiosk roles
+- One account per location (factory + each branch)
+- Login: username + "0000" password → auto-redirect to kiosk
+
+## TASK 1 — Activate/Fix Factory Kiosk Account
+
+User "fabrika" exists but is_active=false and has wrong role/branch.
+Fix it:
+
+```sql
+UPDATE users 
+SET 
+  role = 'fabrika_operator',
+  is_active = true,
+  branch_id = 24,
+  first_name = 'Fabrika',
+  last_name = 'Kiosk',
+  updated_at = NOW()
+WHERE username = 'fabrika' AND deleted_at IS NULL;
+
+-- Also make sure password is "0000":
+-- Check current password hash, if not "0000" update it
+```
+
+Verify the password is bcrypt hash of "0000":
+```typescript
+const bcrypt = require('bcrypt');
+const hash = await bcrypt.hash('0000', 10);
+// UPDATE users SET password = hash WHERE username = 'fabrika'
+```
+
+## TASK 2 — Add "sube_kiosk" Role
+
+This role will redirect to /sube/kiosk/:branchId after login.
+
+1. **shared/schema.ts** — Add to UserRole object:
+```typescript
+SUBE_KIOSK: 'sube_kiosk' as const,
+```
+Add to BRANCH_ROLES set.
+
+2. **client/src/lib/role-routes.ts** — Add dynamic redirect:
+```typescript
+// The redirect needs to include branchId
+// Check how this file currently works and add:
+sube_kiosk: '/sube/kiosk', // base path, branchId appended dynamically
+```
+
+Check if getRoleHomePath accepts a user object (with branchId):
+```bash
+cat client/src/lib/role-routes.ts
+```
+
+If it accepts user object, add:
+```typescript
+case 'sube_kiosk':
+  return user?.branchId ? `/sube/kiosk/${user.branchId}` : '/sube/kiosk';
+```
+
+3. **client/src/lib/navigation-config.ts** — Add minimal config for sube_kiosk:
+```typescript
+// sube_kiosk should have NO nav items (kiosk is fullscreen standalone)
+// Add to the config so it doesn't fall to default:
+{
+  roles: ['sube_kiosk'],
+  items: [], // no nav items
+}
+```
+
+4. **client/src/App.tsx** — Make sure sube_kiosk role is treated as standalone
+(no header/nav) when on /sube/kiosk path.
+
+## TASK 3 — Create Branch Kiosk User Accounts
+
+After sube_kiosk role is created, insert these accounts:
+
+```typescript
+const bcrypt = require('bcrypt');
+const passwordHash = await bcrypt.hash('0000', 10);
+
+const kioskAccounts = [
+  { username: 'isiklar',    firstName: 'Işıklar',              branchId: 5  },
+  { username: 'lara',       firstName: 'Antalya Lara',         branchId: 8  },
+  { username: 'beachpark',  firstName: 'Antalya Beachpark',    branchId: 9  },
+  { username: 'mallof',     firstName: 'Antalya Mallof',       branchId: 6  },
+  { username: 'markantalya',firstName: 'Antalya Markantalya',  branchId: 7  },
+  { username: 'ibrahimli',  firstName: 'Gaziantep İbrahimli',  branchId: 10 },
+  { username: 'ibnisina',   firstName: 'Gaziantep İbnisina',   branchId: 11 },
+  { username: 'universite', firstName: 'Gaziantep Üniversite', branchId: 12 },
+  { username: 'meram',      firstName: 'Konya Meram',          branchId: 13 },
+  { username: 'bosna',      firstName: 'Konya Bosna',          branchId: 14 },
+  { username: 'marina',     firstName: 'Samsun Marina',        branchId: 15 },
+  { username: 'atakum',     firstName: 'Samsun Atakum',        branchId: 16 },
+  { username: 'batman',     firstName: 'Batman',               branchId: 17 },
+  { username: 'duzce',      firstName: 'Düzce',                branchId: 18 },
+  { username: 'siirt',      firstName: 'Siirt',                branchId: 19 },
+  { username: 'kilis',      firstName: 'Kilis',                branchId: 20 },
+  { username: 'sanliurfa',  firstName: 'Şanlıurfa',            branchId: 21 },
+  { username: 'nizip',      firstName: 'Nizip',                branchId: 22 },
+];
+
+for (const account of kioskAccounts) {
+  // Check if exists first
+  const existing = await db.select().from(users)
+    .where(and(eq(users.username, account.username), isNull(users.deletedAt)));
+  
+  if (existing.length > 0) {
+    console.log(`[Kiosk] Account ${account.username} already exists, skipping`);
+    continue;
+  }
+  
+  await db.insert(users).values({
+    id: crypto.randomUUID(),
+    username: account.username,
+    password: passwordHash,
+    role: 'sube_kiosk',
+    firstName: account.firstName,
+    lastName: 'Kiosk',
+    branchId: account.branchId,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  console.log(`[Kiosk] Created account: ${account.username}`);
+}
+```
+
+Run this as a one-time migration in server/index.ts startup,
+similar to migrateKioskPasswords() pattern.
+
+## TASK 4 — Add Seed Endpoint for Easy Re-creation
+
+Add an admin endpoint to re-seed kiosk accounts:
+```
+POST /api/admin/seed-kiosk-accounts
+```
+- Admin only
+- Idempotent (skip if exists)
+- Returns list of created/skipped accounts
+
+## Verification
+
+- [ ] Login "fabrika" + "0000" → redirects to /fabrika/kiosk ✓
+- [ ] Login "isiklar" + "0000" → redirects to /sube/kiosk/5 ✓
+- [ ] Login "lara" + "0000" → redirects to /sube/kiosk/8 ✓
+- [ ] Login "batman" + "0000" → redirects to /sube/kiosk/17 ✓
+- [ ] sube_kiosk role has no nav items (kiosk is fullscreen)
+- [ ] Regular user accounts unaffected
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors
+```
+
+Gönderin — bu sefer direkt build olarak.
