@@ -1684,6 +1684,51 @@ export default function FactoryKiosk() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!pendingPhaseTransition} onOpenChange={(open) => { if (!open) setPendingPhaseTransition(null); }}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700 text-white max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg text-white" data-testid="phase-confirm-title">
+              {pendingPhaseTransition === 'uretim' && 'Ön hazırlık tamamlandı mı?'}
+              {pendingPhaseTransition === 'temizlik' && 'Üretim tamamlandı mı?'}
+              {pendingPhaseTransition === 'tamamlandi' && 'Temizlik tamamlandı mı?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {pendingPhaseTransition === 'uretim' && 'Hazırlık aşamasını tamamladınız. Üretime geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
+              {pendingPhaseTransition === 'temizlik' && 'Üretim aşamasını tamamladınız. Temizliğe geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
+              {pendingPhaseTransition === 'tamamlandi' && 'Temizlik aşamasını tamamladınız. Görevi bitirmek istediğinizden emin misiniz?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600" data-testid="button-phase-cancel">
+              Hayır, Devam Et
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                pendingPhaseTransition === 'uretim' ? 'bg-blue-600 hover:bg-blue-700' :
+                pendingPhaseTransition === 'temizlik' ? 'bg-orange-500 hover:bg-orange-600' :
+                'bg-green-600 hover:bg-green-700'
+              }
+              data-testid="button-phase-confirm"
+              onClick={async () => {
+                if (pendingPhaseTransition) {
+                  if (pendingPhaseTransition === 'tamamlandi') {
+                    await handlePhaseTransition('tamamlandi');
+                    handleStopClick();
+                  } else {
+                    await handlePhaseTransition(pendingPhaseTransition);
+                  }
+                }
+                setPendingPhaseTransition(null);
+              }}
+            >
+              {pendingPhaseTransition === 'uretim' && 'Evet, Üretime Geç'}
+              {pendingPhaseTransition === 'temizlik' && 'Evet, Temizliğe Geç'}
+              {pendingPhaseTransition === 'tamamlandi' && 'Evet, Görevi Bitir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1934,50 +1979,6 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
         </div>
       )}
 
-      <AlertDialog open={!!pendingPhaseTransition} onOpenChange={(open) => { if (!open) setPendingPhaseTransition(null); }}>
-        <AlertDialogContent className="bg-slate-800 border-slate-700 text-white max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg text-white" data-testid="phase-confirm-title">
-              {pendingPhaseTransition === 'uretim' && 'Ön hazırlık tamamlandı mı?'}
-              {pendingPhaseTransition === 'temizlik' && 'Üretim tamamlandı mı?'}
-              {pendingPhaseTransition === 'tamamlandi' && 'Temizlik tamamlandı mı?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-300">
-              {pendingPhaseTransition === 'uretim' && 'Hazırlık aşamasını tamamladınız. Üretime geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
-              {pendingPhaseTransition === 'temizlik' && 'Üretim aşamasını tamamladınız. Temizliğe geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
-              {pendingPhaseTransition === 'tamamlandi' && 'Temizlik aşamasını tamamladınız. Görevi bitirmek istediğinizden emin misiniz?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600" data-testid="button-phase-cancel">
-              Hayır, Devam Et
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className={
-                pendingPhaseTransition === 'uretim' ? 'bg-blue-600 hover:bg-blue-700' :
-                pendingPhaseTransition === 'temizlik' ? 'bg-orange-500 hover:bg-orange-600' :
-                'bg-green-600 hover:bg-green-700'
-              }
-              data-testid="button-phase-confirm"
-              onClick={async () => {
-                if (pendingPhaseTransition) {
-                  if (pendingPhaseTransition === 'tamamlandi') {
-                    await handlePhaseTransition('tamamlandi');
-                    handleStopClick();
-                  } else {
-                    await handlePhaseTransition(pendingPhaseTransition);
-                  }
-                }
-                setPendingPhaseTransition(null);
-              }}
-            >
-              {pendingPhaseTransition === 'uretim' && 'Evet, Üretime Geç'}
-              {pendingPhaseTransition === 'temizlik' && 'Evet, Temizliğe Geç'}
-              {pendingPhaseTransition === 'tamamlandi' && 'Evet, Görevi Bitir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
