@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -178,6 +179,7 @@ export default function FactoryKiosk() {
   const [productError, setProductError] = useState('');
   const [wasteDoughKg, setWasteDoughKg] = useState('');
   const [wasteProductCount, setWasteProductCount] = useState('');
+  const [pendingPhaseTransition, setPendingPhaseTransition] = useState<KioskPhase | null>(null);
 
   const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
@@ -1086,7 +1088,7 @@ export default function FactoryKiosk() {
               {currentPhase === 'hazirlik' && (
                 <Button 
                   className="w-full bg-blue-600 text-white text-lg h-14"
-                  onClick={() => handlePhaseTransition('uretim')}
+                  onClick={() => setPendingPhaseTransition('uretim')}
                   data-testid="button-phase-uretim"
                 >
                   <Sparkles className="h-5 w-5 mr-2" />
@@ -1097,7 +1099,7 @@ export default function FactoryKiosk() {
               {currentPhase === 'uretim' && (
                 <Button 
                   className="w-full bg-orange-500 text-white text-lg h-14"
-                  onClick={() => handlePhaseTransition('temizlik')}
+                  onClick={() => setPendingPhaseTransition('temizlik')}
                   data-testid="button-phase-temizlik"
                 >
                   <SprayCan className="h-5 w-5 mr-2" />
@@ -1108,10 +1110,7 @@ export default function FactoryKiosk() {
               {currentPhase === 'temizlik' && (
                 <Button 
                   className="w-full bg-green-600 text-white text-lg h-14"
-                  onClick={async () => {
-                    await handlePhaseTransition('tamamlandi');
-                    handleStopClick();
-                  }}
+                  onClick={() => setPendingPhaseTransition('tamamlandi')}
                   data-testid="button-phase-tamamla"
                 >
                   <CheckCircle2 className="h-5 w-5 mr-2" />
@@ -1934,6 +1933,51 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
           )}
         </div>
       )}
+
+      <AlertDialog open={!!pendingPhaseTransition} onOpenChange={(open) => { if (!open) setPendingPhaseTransition(null); }}>
+        <AlertDialogContent className="bg-slate-800 border-slate-700 text-white max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg text-white" data-testid="phase-confirm-title">
+              {pendingPhaseTransition === 'uretim' && 'Ön hazırlık tamamlandı mı?'}
+              {pendingPhaseTransition === 'temizlik' && 'Üretim tamamlandı mı?'}
+              {pendingPhaseTransition === 'tamamlandi' && 'Temizlik tamamlandı mı?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {pendingPhaseTransition === 'uretim' && 'Hazırlık aşamasını tamamladınız. Üretime geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
+              {pendingPhaseTransition === 'temizlik' && 'Üretim aşamasını tamamladınız. Temizliğe geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
+              {pendingPhaseTransition === 'tamamlandi' && 'Temizlik aşamasını tamamladınız. Görevi bitirmek istediğinizden emin misiniz?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600" data-testid="button-phase-cancel">
+              Hayır, Devam Et
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                pendingPhaseTransition === 'uretim' ? 'bg-blue-600 hover:bg-blue-700' :
+                pendingPhaseTransition === 'temizlik' ? 'bg-orange-500 hover:bg-orange-600' :
+                'bg-green-600 hover:bg-green-700'
+              }
+              data-testid="button-phase-confirm"
+              onClick={async () => {
+                if (pendingPhaseTransition) {
+                  if (pendingPhaseTransition === 'tamamlandi') {
+                    await handlePhaseTransition('tamamlandi');
+                    handleStopClick();
+                  } else {
+                    await handlePhaseTransition(pendingPhaseTransition);
+                  }
+                }
+                setPendingPhaseTransition(null);
+              }}
+            >
+              {pendingPhaseTransition === 'uretim' && 'Evet, Üretime Geç'}
+              {pendingPhaseTransition === 'temizlik' && 'Evet, Temizliğe Geç'}
+              {pendingPhaseTransition === 'tamamlandi' && 'Evet, Görevi Bitir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
