@@ -100,6 +100,9 @@ export default function Login() {
       const getTarget = () => {
         const redirectTarget = getRedirectTarget();
         if (redirectTarget && redirectTarget !== '/') return redirectTarget;
+        if (userRole === 'sube_kiosk' && data.user?.branchId) {
+          return `/sube/kiosk/${data.user.branchId}`;
+        }
         if (userRole && ROLE_HOME_ROUTES[userRole]) return ROLE_HOME_ROUTES[userRole];
         return '/';
       };

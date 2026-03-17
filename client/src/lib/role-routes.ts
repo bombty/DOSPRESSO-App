@@ -10,6 +10,7 @@ export const ROLE_HOME_ROUTES: Record<string, string> = {
   fabrika: '/fabrika/dashboard',
   fabrika_sorumlu: '/fabrika/dashboard',
   fabrika_personel: '/fabrika/kiosk',
+  sube_kiosk: '/sube/kiosk',
   ceo: '/hq-ozet',
   cgo: '/hq-ozet',
   admin: '/hq-ozet',
@@ -30,7 +31,8 @@ export const ROLE_HOME_ROUTES: Record<string, string> = {
   ekipman_teknik: '/',
 };
 
-export function getRoleHomePath(role: string | undefined): string {
+export function getRoleHomePath(role: string | undefined, branchId?: number | null): string {
   if (!role) return '/';
+  if (role === 'sube_kiosk' && branchId) return `/sube/kiosk/${branchId}`;
   return ROLE_HOME_ROUTES[role] || '/';
 }

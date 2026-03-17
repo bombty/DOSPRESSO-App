@@ -128,7 +128,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
             alt="DOSPRESSO" 
             className="h-8 object-contain cursor-pointer"
             onClick={() => {
-              setLocation(getRoleHomePath(user?.role));
+              setLocation(getRoleHomePath(user?.role, user?.branchId));
             }}
             data-testid="img-dospresso-logo"
           />

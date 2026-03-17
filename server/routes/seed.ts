@@ -1335,4 +1335,84 @@ router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async
   }
 });
 
+router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, async (req: any, res) => {
+  try {
+    const bcrypt = await import('bcrypt');
+    const crypto = await import('crypto');
+    const { users } = await import('@shared/schema');
+    const { eq, and, isNull } = await import('drizzle-orm');
+
+    const passwordHash = await bcrypt.default.hash('0000', 10);
+
+    const kioskAccounts = [
+      { username: 'fabrika', firstName: 'Fabrika', branchId: 24, role: 'fabrika_operator' },
+      { username: 'isiklar', firstName: 'Işıklar', branchId: 5, role: 'sube_kiosk' },
+      { username: 'mallof', firstName: 'Antalya Mallof', branchId: 6, role: 'sube_kiosk' },
+      { username: 'markantalya', firstName: 'Antalya Markantalya', branchId: 7, role: 'sube_kiosk' },
+      { username: 'lara', firstName: 'Antalya Lara', branchId: 8, role: 'sube_kiosk' },
+      { username: 'beachpark', firstName: 'Antalya Beachpark', branchId: 9, role: 'sube_kiosk' },
+      { username: 'ibrahimli', firstName: 'Gaziantep İbrahimli', branchId: 10, role: 'sube_kiosk' },
+      { username: 'ibnisina', firstName: 'Gaziantep İbnisina', branchId: 11, role: 'sube_kiosk' },
+      { username: 'universite', firstName: 'Gaziantep Üniversite', branchId: 12, role: 'sube_kiosk' },
+      { username: 'meram', firstName: 'Konya Meram', branchId: 13, role: 'sube_kiosk' },
+      { username: 'bosna', firstName: 'Konya Bosna', branchId: 14, role: 'sube_kiosk' },
+      { username: 'marina', firstName: 'Samsun Marina', branchId: 15, role: 'sube_kiosk' },
+      { username: 'atakum', firstName: 'Samsun Atakum', branchId: 16, role: 'sube_kiosk' },
+      { username: 'batman', firstName: 'Batman', branchId: 17, role: 'sube_kiosk' },
+      { username: 'duzce', firstName: 'Düzce', branchId: 18, role: 'sube_kiosk' },
+      { username: 'siirt', firstName: 'Siirt', branchId: 19, role: 'sube_kiosk' },
+      { username: 'kilis', firstName: 'Kilis', branchId: 20, role: 'sube_kiosk' },
+      { username: 'sanliurfa', firstName: 'Şanlıurfa', branchId: 21, role: 'sube_kiosk' },
+      { username: 'nizip', firstName: 'Nizip', branchId: 22, role: 'sube_kiosk' },
+    ];
+
+    const results: { username: string; status: string }[] = [];
+
+    for (const account of kioskAccounts) {
+      const [existing] = await db.select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
+        .limit(1);
+
+      if (existing) {
+        await db.update(users).set({
+          role: account.role,
+          isActive: true,
+          branchId: account.branchId,
+          firstName: account.firstName,
+          lastName: 'Kiosk',
+          hashedPassword: passwordHash,
+          updatedAt: new Date(),
+        }).where(eq(users.id, existing.id));
+        results.push({ username: account.username, status: 'updated' });
+      } else {
+        await db.insert(users).values({
+          id: crypto.default.randomUUID(),
+          username: account.username,
+          hashedPassword: passwordHash,
+          role: account.role,
+          firstName: account.firstName,
+          lastName: 'Kiosk',
+          branchId: account.branchId,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        results.push({ username: account.username, status: 'created' });
+      }
+    }
+
+    res.json({
+      success: true,
+      total: results.length,
+      created: results.filter(r => r.status === 'created').length,
+      updated: results.filter(r => r.status === 'updated').length,
+      accounts: results,
+    });
+  } catch (error: any) {
+    console.error('[SeedKiosk] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

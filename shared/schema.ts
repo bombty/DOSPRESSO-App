@@ -81,6 +81,8 @@ export const UserRole = {
   FABRIKA_OPERATOR: "fabrika_operator",
   FABRIKA_SORUMLU: "fabrika_sorumlu",
   FABRIKA_PERSONEL: "fabrika_personel",
+  // Kiosk Roles
+  SUBE_KIOSK: "sube_kiosk",
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
@@ -162,6 +164,7 @@ export const BRANCH_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.SUPERVISOR,
   UserRole.MUDUR,
   UserRole.YATIRIMCI_BRANCH,
+  UserRole.SUBE_KIOSK,
 ]);
 
 export const FACTORY_FLOOR_ROLES: ReadonlySet<UserRoleType> = new Set([

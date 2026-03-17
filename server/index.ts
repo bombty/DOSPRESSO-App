@@ -21,7 +21,8 @@ import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig } from "@shared/schema";
-import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull } from "drizzle-orm";
+import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull, isNull } from "drizzle-orm";
+import crypto from "crypto";
 
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('[UnhandledRejection] Unhandled promise rejection:', reason);
@@ -217,6 +218,110 @@ app.use((req, res, next) => {
     }
   }
 
+  async function seedKioskAccounts() {
+    try {
+      const passwordHash = await bcrypt.hash('0000', 10);
+      
+      const [existingFabrika] = await db.select({ id: users.id, role: users.role, isActive: users.isActive })
+        .from(users)
+        .where(and(eq(users.username, 'fabrika'), isNull(users.deletedAt)))
+        .limit(1);
+
+      if (existingFabrika) {
+        if (existingFabrika.role !== 'fabrika_operator' || !existingFabrika.isActive) {
+          await db.update(users).set({
+            role: 'fabrika_operator',
+            isActive: true,
+            branchId: 24,
+            firstName: 'Fabrika',
+            lastName: 'Kiosk',
+            hashedPassword: passwordHash,
+            updatedAt: new Date(),
+          }).where(eq(users.id, existingFabrika.id));
+          log('[KioskSeed] Fixed fabrika account: role=fabrika_operator, active=true');
+        }
+      } else {
+        await db.insert(users).values({
+          id: crypto.randomUUID(),
+          username: 'fabrika',
+          hashedPassword: passwordHash,
+          role: 'fabrika_operator',
+          firstName: 'Fabrika',
+          lastName: 'Kiosk',
+          branchId: 24,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        log('[KioskSeed] Created fabrika account');
+      }
+
+      const kioskAccounts = [
+        { username: 'isiklar', firstName: 'Işıklar', branchId: 5 },
+        { username: 'mallof', firstName: 'Antalya Mallof', branchId: 6 },
+        { username: 'markantalya', firstName: 'Antalya Markantalya', branchId: 7 },
+        { username: 'lara', firstName: 'Antalya Lara', branchId: 8 },
+        { username: 'beachpark', firstName: 'Antalya Beachpark', branchId: 9 },
+        { username: 'ibrahimli', firstName: 'Gaziantep İbrahimli', branchId: 10 },
+        { username: 'ibnisina', firstName: 'Gaziantep İbnisina', branchId: 11 },
+        { username: 'universite', firstName: 'Gaziantep Üniversite', branchId: 12 },
+        { username: 'meram', firstName: 'Konya Meram', branchId: 13 },
+        { username: 'bosna', firstName: 'Konya Bosna', branchId: 14 },
+        { username: 'marina', firstName: 'Samsun Marina', branchId: 15 },
+        { username: 'atakum', firstName: 'Samsun Atakum', branchId: 16 },
+        { username: 'batman', firstName: 'Batman', branchId: 17 },
+        { username: 'duzce', firstName: 'Düzce', branchId: 18 },
+        { username: 'siirt', firstName: 'Siirt', branchId: 19 },
+        { username: 'kilis', firstName: 'Kilis', branchId: 20 },
+        { username: 'sanliurfa', firstName: 'Şanlıurfa', branchId: 21 },
+        { username: 'nizip', firstName: 'Nizip', branchId: 22 },
+      ];
+
+      let created = 0;
+      let skipped = 0;
+
+      for (const account of kioskAccounts) {
+        const [existing] = await db.select({ id: users.id, hashedPassword: users.hashedPassword })
+          .from(users)
+          .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
+          .limit(1);
+
+        if (existing) {
+          if (!existing.hashedPassword) {
+            await db.update(users).set({
+              hashedPassword: passwordHash,
+              updatedAt: new Date(),
+            }).where(eq(users.id, existing.id));
+            created++;
+          } else {
+            skipped++;
+          }
+          continue;
+        }
+
+        await db.insert(users).values({
+          id: crypto.randomUUID(),
+          username: account.username,
+          hashedPassword: passwordHash,
+          role: 'sube_kiosk',
+          firstName: account.firstName,
+          lastName: 'Kiosk',
+          branchId: account.branchId,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        created++;
+      }
+
+      if (created > 0 || skipped > 0) {
+        log(`[KioskSeed] Branch kiosk accounts: ${created} created, ${skipped} skipped (already exist)`);
+      }
+    } catch (error) {
+      console.error('[KioskSeed] Error seeding kiosk accounts:', error);
+    }
+  }
+
   async function onServerReady() {
     const startupTime = Date.now();
     
@@ -224,6 +329,7 @@ app.use((req, res, next) => {
     await bootstrapAdminUser();
     await ensureAdminUserApproved();
     await migrateKioskPasswords();
+    await seedKioskAccounts();
 
     const roleChain = async () => {
       await seedRoles();

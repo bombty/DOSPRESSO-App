@@ -74,6 +74,10 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
       { key: 'gorev', icon: 'CheckSquare', label: 'Görevler', path: '/gorevler' },
     ],
   },
+  {
+    roles: ['sube_kiosk'],
+    items: [],
+  },
 ];
 
 export function getNavRailItems(role: string | undefined): NavRailItem[] {
