@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { 
   Factory, 
@@ -131,9 +132,19 @@ const BREAK_OPTIONS = [
   { value: 'vardiya_kapat' as BreakReason, label: 'Vardiya Kapat', icon: CalendarOff, description: 'Günün vardiyasını sonlandır', color: 'bg-red-600' },
 ];
 
+const FABRIKA_ALLOWED_ROLES = ['fabrika_operator', 'fabrika_personel', 'fabrika_sorumlu', 'admin'];
+
 export default function FactoryKiosk() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!user) return;
+    if (!FABRIKA_ALLOWED_ROLES.includes(user.role)) {
+      setLocation('/');
+    }
+  }, [user, setLocation]);
   const [step, setStep] = useState<KioskStep>('device-password');
   const [deviceUsername, setDeviceUsername] = useState('');
   const [devicePassword, setDevicePassword] = useState('');
