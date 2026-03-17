@@ -1,3 +1,9 @@
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import { db } from '../db';
+import { users } from '@shared/schema';
+import { eq, and, isNull } from 'drizzle-orm';
+
 export const KIOSK_DEFAULT_PASSWORD = '0000';
 
 export const BRANCH_KIOSK_ACCOUNTS = [
@@ -27,3 +33,54 @@ export const FABRIKA_KIOSK_ACCOUNT = {
   branchId: 24,
   role: 'fabrika_operator' as const,
 };
+
+export interface KioskSeedResult {
+  username: string;
+  status: 'created' | 'updated';
+}
+
+export async function seedAllKioskAccounts(): Promise<KioskSeedResult[]> {
+  const passwordHash = await bcrypt.hash(KIOSK_DEFAULT_PASSWORD, 10);
+  const results: KioskSeedResult[] = [];
+
+  const allAccounts = [
+    { ...FABRIKA_KIOSK_ACCOUNT },
+    ...BRANCH_KIOSK_ACCOUNTS.map(a => ({ ...a, role: 'sube_kiosk' as const })),
+  ];
+
+  for (const account of allAccounts) {
+    const [existing] = await db.select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
+      .limit(1);
+
+    if (existing) {
+      await db.update(users).set({
+        role: account.role,
+        isActive: true,
+        branchId: account.branchId,
+        firstName: account.firstName,
+        lastName: 'Kiosk',
+        hashedPassword: passwordHash,
+        updatedAt: new Date(),
+      }).where(eq(users.id, existing.id));
+      results.push({ username: account.username, status: 'updated' });
+    } else {
+      await db.insert(users).values({
+        id: crypto.randomUUID(),
+        username: account.username,
+        hashedPassword: passwordHash,
+        role: account.role,
+        firstName: account.firstName,
+        lastName: 'Kiosk',
+        branchId: account.branchId,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      results.push({ username: account.username, status: 'created' });
+    }
+  }
+
+  return results;
+}

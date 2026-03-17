@@ -1337,54 +1337,8 @@ router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async
 
 router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, async (req: any, res) => {
   try {
-    const bcrypt = await import('bcrypt');
-    const crypto = await import('crypto');
-    const { users } = await import('@shared/schema');
-    const { eq, and, isNull } = await import('drizzle-orm');
-    const { BRANCH_KIOSK_ACCOUNTS, FABRIKA_KIOSK_ACCOUNT, KIOSK_DEFAULT_PASSWORD } = await import('../lib/kiosk-accounts');
-
-    const passwordHash = await bcrypt.default.hash(KIOSK_DEFAULT_PASSWORD, 10);
-
-    const kioskAccounts = [
-      { ...FABRIKA_KIOSK_ACCOUNT },
-      ...BRANCH_KIOSK_ACCOUNTS.map(a => ({ ...a, role: 'sube_kiosk' as const })),
-    ];
-
-    const results: { username: string; status: string }[] = [];
-
-    for (const account of kioskAccounts) {
-      const [existing] = await db.select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
-        .limit(1);
-
-      if (existing) {
-        await db.update(users).set({
-          role: account.role,
-          isActive: true,
-          branchId: account.branchId,
-          firstName: account.firstName,
-          lastName: 'Kiosk',
-          hashedPassword: passwordHash,
-          updatedAt: new Date(),
-        }).where(eq(users.id, existing.id));
-        results.push({ username: account.username, status: 'updated' });
-      } else {
-        await db.insert(users).values({
-          id: crypto.default.randomUUID(),
-          username: account.username,
-          hashedPassword: passwordHash,
-          role: account.role,
-          firstName: account.firstName,
-          lastName: 'Kiosk',
-          branchId: account.branchId,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        results.push({ username: account.username, status: 'created' });
-      }
-    }
+    const { seedAllKioskAccounts } = await import('../lib/kiosk-accounts');
+    const results = await seedAllKioskAccounts();
 
     res.json({
       success: true,

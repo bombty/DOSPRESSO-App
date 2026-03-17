@@ -13,7 +13,7 @@ import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedSlaRules } from "./seed-sla-rules";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
-import { BRANCH_KIOSK_ACCOUNTS, FABRIKA_KIOSK_ACCOUNT, KIOSK_DEFAULT_PASSWORD } from "./lib/kiosk-accounts";
+import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
@@ -221,82 +221,10 @@ app.use((req, res, next) => {
 
   async function seedKioskAccounts() {
     try {
-      const passwordHash = await bcrypt.hash(KIOSK_DEFAULT_PASSWORD, 10);
-      
-      const fab = FABRIKA_KIOSK_ACCOUNT;
-      const [existingFabrika] = await db.select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.username, fab.username), isNull(users.deletedAt)))
-        .limit(1);
-
-      if (existingFabrika) {
-        await db.update(users).set({
-          role: fab.role,
-          isActive: true,
-          branchId: fab.branchId,
-          firstName: fab.firstName,
-          lastName: 'Kiosk',
-          hashedPassword: passwordHash,
-          updatedAt: new Date(),
-        }).where(eq(users.id, existingFabrika.id));
-        log('[KioskSeed] Normalized fabrika account: role=fabrika_operator, active=true');
-      } else {
-        await db.insert(users).values({
-          id: crypto.randomUUID(),
-          username: fab.username,
-          hashedPassword: passwordHash,
-          role: fab.role,
-          firstName: fab.firstName,
-          lastName: 'Kiosk',
-          branchId: fab.branchId,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        log('[KioskSeed] Created fabrika account');
-      }
-
-      let created = 0;
-      let skipped = 0;
-
-      for (const account of BRANCH_KIOSK_ACCOUNTS) {
-        const [existing] = await db.select({ id: users.id })
-          .from(users)
-          .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
-          .limit(1);
-
-        if (existing) {
-          await db.update(users).set({
-            role: 'sube_kiosk',
-            isActive: true,
-            branchId: account.branchId,
-            firstName: account.firstName,
-            lastName: 'Kiosk',
-            hashedPassword: passwordHash,
-            updatedAt: new Date(),
-          }).where(eq(users.id, existing.id));
-          skipped++;
-          continue;
-        }
-
-        await db.insert(users).values({
-          id: crypto.randomUUID(),
-          username: account.username,
-          hashedPassword: passwordHash,
-          role: 'sube_kiosk',
-          firstName: account.firstName,
-          lastName: 'Kiosk',
-          branchId: account.branchId,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        created++;
-      }
-
-      if (created > 0 || skipped > 0) {
-        log(`[KioskSeed] Branch kiosk accounts: ${created} created, ${skipped} normalized (existing)`);
-      }
+      const results = await seedAllKioskAccounts();
+      const created = results.filter(r => r.status === 'created').length;
+      const updated = results.filter(r => r.status === 'updated').length;
+      log(`[KioskSeed] Kiosk accounts: ${created} created, ${updated} updated (total: ${results.length})`);
     } catch (error) {
       console.error('[KioskSeed] Error seeding kiosk accounts:', error);
     }
