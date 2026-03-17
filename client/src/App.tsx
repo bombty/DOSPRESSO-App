@@ -261,7 +261,38 @@ function FabrikaDashboardRedirect() {
   return null;
 }
 
+const KIOSK_ROLES: Record<string, string> = {
+  fabrika_operator: '/fabrika/kiosk',
+  fabrika_personel: '/fabrika/kiosk',
+  fabrika_sorumlu: '/fabrika/kiosk',
+};
+
 function KioskGuard({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
+function KioskRoleGuard({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const [location] = useLocation();
+
+  useEffect(() => {
+    if (!user?.role) return;
+
+    if (user.role === 'sube_kiosk') {
+      const kioskPath = user.branchId ? `/sube/kiosk/${user.branchId}` : '/sube/kiosk';
+      if (!location.startsWith('/sube/kiosk')) {
+        setLocation(kioskPath);
+      }
+      return;
+    }
+
+    const kioskPath = KIOSK_ROLES[user.role];
+    if (kioskPath && !location.startsWith(kioskPath)) {
+      setLocation(kioskPath);
+    }
+  }, [user, location, setLocation]);
+
   return <>{children}</>;
 }
 
@@ -628,7 +659,9 @@ export default function App() {
             <TooltipProvider>
               <DobodyFlowProvider>
                 <BreadcrumbProvider>
-                  <AppContent />
+                  <KioskRoleGuard>
+                    <AppContent />
+                  </KioskRoleGuard>
                 </BreadcrumbProvider>
               </DobodyFlowProvider>
               <Toaster />

@@ -499,7 +499,7 @@ export default function BranchKiosk() {
       interval = setInterval(() => {
         setAutoLogoutCountdown(prev => {
           if (prev <= 1) {
-            resetKiosk();
+            resetWorker();
             return 15;
           }
           return prev - 1;
@@ -509,11 +509,21 @@ export default function BranchKiosk() {
     return () => clearInterval(interval);
   }, [step]);
 
+  const resetWorker = () => {
+    setStep('select-user');
+    setSelectedUser(null);
+    setPinInput('');
+    setCurrentSession(null);
+    setUserTasks([]);
+    setElapsedTime(0);
+    setShiftSummary(null);
+    setAutoLogoutCountdown(15);
+    setQrScannedUser(null);
+    setQrScanResult('idle');
+    setQrScanMessage('');
+  };
+
   const resetKiosk = () => {
-    if (branchAuth) {
-      setLocation('/sube/dashboard');
-      return;
-    }
     setStep(kioskMode === 'qr' ? 'qr-scan' : 'password');
     setKioskPassword('');
     setKioskUsername('');
@@ -823,7 +833,7 @@ export default function BranchKiosk() {
             </Badge>
           </div>
         </div>
-        <Button variant="outline" onClick={resetKiosk} data-testid="button-logout">
+        <Button variant="outline" onClick={resetWorker} data-testid="button-logout">
           <LogOut className="h-4 w-4 mr-2" /> Çıkış
         </Button>
       </div>
@@ -1051,7 +1061,7 @@ export default function BranchKiosk() {
 
           <Button
             className="w-full"
-            onClick={resetKiosk}
+            onClick={resetWorker}
             data-testid="button-finish"
           >
             Tamam ({autoLogoutCountdown}s)
@@ -1259,7 +1269,7 @@ export default function BranchKiosk() {
         variant="outline"
         size="sm"
         className="fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
-        onClick={() => setLocation('/')}
+        onClick={resetKiosk}
         data-testid="button-kiosk-exit"
       >
         <LogOut className="h-4 w-4 mr-2" />

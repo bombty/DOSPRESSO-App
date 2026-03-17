@@ -209,6 +209,16 @@ export default function FactoryKiosk() {
     refetchInterval: 30000,
   });
 
+  const { data: allTodayPlans = [] } = useQuery<TodayPlan[]>({
+    queryKey: ['/api/factory/kiosk/today-plans', 'all'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/factory/kiosk/today-plans');
+      return res.json();
+    },
+    enabled: step === 'select-user' || step === 'select-station',
+    refetchInterval: 60000,
+  });
+
   const { data: todayPlans = [], isFetched: todayPlansFetched } = useQuery<TodayPlan[]>({
     queryKey: ['/api/factory/kiosk/today-plans', currentStationInfo?.id],
     queryFn: async () => {
@@ -397,7 +407,7 @@ export default function FactoryKiosk() {
         setAutoLogoutCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-            resetKiosk();
+            resetWorker();
             return 0;
           }
           return prev - 1;
@@ -563,6 +573,39 @@ export default function FactoryKiosk() {
     }
   };
 
+  const resetWorker = () => {
+    setStep('select-user');
+    setSelectedUser(null);
+    setPinInput('');
+    setSelectedStation(null);
+    setCurrentSession(null);
+    setCurrentProductionRun(null);
+    setCurrentStationInfo(null);
+    setQuantityProduced('');
+    setProducedUnit('adet');
+    setQuantityWaste('');
+    setWasteUnit('adet');
+    setSelectedWasteReason(null);
+    setWasteNotes('');
+    setShiftSummary(null);
+    setElapsedTime(0);
+    setSelectedBreakReason(null);
+    setTargetStationId(null);
+    setAutoLogoutCountdown(10);
+    setProductionPhotoUrl(null);
+    setIsUploadingPhoto(false);
+    setFaultType(null);
+    setFaultDescription('');
+    setFaultStationId(null);
+    setCurrentPhase('hazirlik');
+    setPhaseStartTime(new Date());
+    setPhaseDurations({ hazirlik: 0, uretim: 0, temizlik: 0 });
+    setSelectedProductId(null);
+    setProductError('');
+    setWasteDoughKg('');
+    setWasteProductCount('');
+  };
+
   const resetKiosk = () => {
     setStep('device-password');
     setDeviceUsername('');
@@ -614,7 +657,7 @@ export default function FactoryKiosk() {
           variant="outline"
           size="sm"
           className="bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
-          onClick={() => setLocation('/')}
+          onClick={resetKiosk}
           data-testid="button-kiosk-exit"
         >
           <LogOut className="h-4 w-4 mr-2" />
@@ -745,6 +788,33 @@ export default function FactoryKiosk() {
                   ))}
                 </div>
               )}
+
+              {allTodayPlans.length > 0 && (
+                <div className="mt-6 bg-slate-700/30 rounded-lg p-4 space-y-2" data-testid="select-user-plan-section">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="h-4 w-4 text-amber-400" />
+                    <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allTodayPlans.map((plan) => (
+                      <div key={plan.id} className="flex items-center justify-between bg-slate-700/50 rounded-md px-3 py-2" data-testid={`overview-plan-${plan.id}`}>
+                        <div>
+                          <p className="text-sm font-medium text-slate-200">{plan.productName || 'Ürün'}</p>
+                          <p className="text-xs text-slate-400">{plan.stationName || 'İstasyon belirtilmemiş'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-amber-400">
+                            {plan.actualQuantity || 0} / {plan.targetQuantity} {plan.unit || 'adet'}
+                          </p>
+                          <Badge variant="secondary" className="text-xs">
+                            {plan.status === 'completed' ? 'Tamamlandı' : plan.status === 'in_progress' ? 'Devam Ediyor' : 'Planlandı'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -842,11 +912,38 @@ export default function FactoryKiosk() {
                 </div>
               )}
               
+              {allTodayPlans.length > 0 && (
+                <div className="bg-slate-700/30 rounded-lg p-4 space-y-2" data-testid="select-station-plan-section">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="h-4 w-4 text-amber-400" />
+                    <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allTodayPlans.map((plan) => (
+                      <div key={plan.id} className="flex items-center justify-between bg-slate-700/50 rounded-md px-3 py-2" data-testid={`station-plan-${plan.id}`}>
+                        <div>
+                          <p className="text-sm font-medium text-slate-200">{plan.productName || 'Ürün'}</p>
+                          <p className="text-xs text-slate-400">{plan.stationName || 'İstasyon belirtilmemiş'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-amber-400">
+                            {plan.actualQuantity || 0} / {plan.targetQuantity} {plan.unit || 'adet'}
+                          </p>
+                          <Badge variant="secondary" className="text-xs">
+                            {plan.status === 'completed' ? 'Tamamlandı' : plan.status === 'in_progress' ? 'Devam Ediyor' : 'Planlandı'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"
                   className="flex-1 border-slate-600"
-                  onClick={resetKiosk}
+                  onClick={resetWorker}
                   data-testid="button-cancel"
                 >
                   İptal
@@ -1557,7 +1654,7 @@ export default function FactoryKiosk() {
               
               <Button
                 className="w-full bg-amber-600 hover:bg-amber-700 h-14 text-lg"
-                onClick={resetKiosk}
+                onClick={resetWorker}
                 data-testid="button-immediate-logout"
               >
                 <ArrowRight className="h-5 w-5 mr-2" />

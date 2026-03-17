@@ -8,7 +8,7 @@ export const ROLE_HOME_ROUTES: Record<string, string> = {
   fabrika_operator: '/fabrika/kiosk',
   fabrika_mudur: '/fabrika/dashboard',
   fabrika: '/fabrika/dashboard',
-  fabrika_sorumlu: '/fabrika/dashboard',
+  fabrika_sorumlu: '/fabrika/kiosk',
   fabrika_personel: '/fabrika/kiosk',
   sube_kiosk: '/sube/kiosk',
   ceo: '/hq-ozet',
