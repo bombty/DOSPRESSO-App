@@ -1341,29 +1341,13 @@ router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, asy
     const crypto = await import('crypto');
     const { users } = await import('@shared/schema');
     const { eq, and, isNull } = await import('drizzle-orm');
+    const { BRANCH_KIOSK_ACCOUNTS, FABRIKA_KIOSK_ACCOUNT, KIOSK_DEFAULT_PASSWORD } = await import('../lib/kiosk-accounts');
 
-    const passwordHash = await bcrypt.default.hash('0000', 10);
+    const passwordHash = await bcrypt.default.hash(KIOSK_DEFAULT_PASSWORD, 10);
 
     const kioskAccounts = [
-      { username: 'fabrika', firstName: 'Fabrika', branchId: 24, role: 'fabrika_operator' },
-      { username: 'isiklar', firstName: 'Işıklar', branchId: 5, role: 'sube_kiosk' },
-      { username: 'mallof', firstName: 'Antalya Mallof', branchId: 6, role: 'sube_kiosk' },
-      { username: 'markantalya', firstName: 'Antalya Markantalya', branchId: 7, role: 'sube_kiosk' },
-      { username: 'lara', firstName: 'Antalya Lara', branchId: 8, role: 'sube_kiosk' },
-      { username: 'beachpark', firstName: 'Antalya Beachpark', branchId: 9, role: 'sube_kiosk' },
-      { username: 'ibrahimli', firstName: 'Gaziantep İbrahimli', branchId: 10, role: 'sube_kiosk' },
-      { username: 'ibnisina', firstName: 'Gaziantep İbnisina', branchId: 11, role: 'sube_kiosk' },
-      { username: 'universite', firstName: 'Gaziantep Üniversite', branchId: 12, role: 'sube_kiosk' },
-      { username: 'meram', firstName: 'Konya Meram', branchId: 13, role: 'sube_kiosk' },
-      { username: 'bosna', firstName: 'Konya Bosna', branchId: 14, role: 'sube_kiosk' },
-      { username: 'marina', firstName: 'Samsun Marina', branchId: 15, role: 'sube_kiosk' },
-      { username: 'atakum', firstName: 'Samsun Atakum', branchId: 16, role: 'sube_kiosk' },
-      { username: 'batman', firstName: 'Batman', branchId: 17, role: 'sube_kiosk' },
-      { username: 'duzce', firstName: 'Düzce', branchId: 18, role: 'sube_kiosk' },
-      { username: 'siirt', firstName: 'Siirt', branchId: 19, role: 'sube_kiosk' },
-      { username: 'kilis', firstName: 'Kilis', branchId: 20, role: 'sube_kiosk' },
-      { username: 'sanliurfa', firstName: 'Şanlıurfa', branchId: 21, role: 'sube_kiosk' },
-      { username: 'nizip', firstName: 'Nizip', branchId: 22, role: 'sube_kiosk' },
+      { ...FABRIKA_KIOSK_ACCOUNT },
+      ...BRANCH_KIOSK_ACCOUNTS.map(a => ({ ...a, role: 'sube_kiosk' as const })),
     ];
 
     const results: { username: string; status: string }[] = [];

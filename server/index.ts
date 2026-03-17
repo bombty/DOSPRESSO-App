@@ -13,6 +13,7 @@ import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedSlaRules } from "./seed-sla-rules";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
+import { BRANCH_KIOSK_ACCOUNTS, FABRIKA_KIOSK_ACCOUNT, KIOSK_DEFAULT_PASSWORD } from "./lib/kiosk-accounts";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
@@ -220,19 +221,20 @@ app.use((req, res, next) => {
 
   async function seedKioskAccounts() {
     try {
-      const passwordHash = await bcrypt.hash('0000', 10);
+      const passwordHash = await bcrypt.hash(KIOSK_DEFAULT_PASSWORD, 10);
       
-      const [existingFabrika] = await db.select({ id: users.id, role: users.role, isActive: users.isActive })
+      const fab = FABRIKA_KIOSK_ACCOUNT;
+      const [existingFabrika] = await db.select({ id: users.id })
         .from(users)
-        .where(and(eq(users.username, 'fabrika'), isNull(users.deletedAt)))
+        .where(and(eq(users.username, fab.username), isNull(users.deletedAt)))
         .limit(1);
 
       if (existingFabrika) {
         await db.update(users).set({
-          role: 'fabrika_operator',
+          role: fab.role,
           isActive: true,
-          branchId: 24,
-          firstName: 'Fabrika',
+          branchId: fab.branchId,
+          firstName: fab.firstName,
           lastName: 'Kiosk',
           hashedPassword: passwordHash,
           updatedAt: new Date(),
@@ -241,12 +243,12 @@ app.use((req, res, next) => {
       } else {
         await db.insert(users).values({
           id: crypto.randomUUID(),
-          username: 'fabrika',
+          username: fab.username,
           hashedPassword: passwordHash,
-          role: 'fabrika_operator',
-          firstName: 'Fabrika',
+          role: fab.role,
+          firstName: fab.firstName,
           lastName: 'Kiosk',
-          branchId: 24,
+          branchId: fab.branchId,
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -254,31 +256,10 @@ app.use((req, res, next) => {
         log('[KioskSeed] Created fabrika account');
       }
 
-      const kioskAccounts = [
-        { username: 'isiklar', firstName: 'Işıklar', branchId: 5 },
-        { username: 'mallof', firstName: 'Antalya Mallof', branchId: 6 },
-        { username: 'markantalya', firstName: 'Antalya Markantalya', branchId: 7 },
-        { username: 'lara', firstName: 'Antalya Lara', branchId: 8 },
-        { username: 'beachpark', firstName: 'Antalya Beachpark', branchId: 9 },
-        { username: 'ibrahimli', firstName: 'Gaziantep İbrahimli', branchId: 10 },
-        { username: 'ibnisina', firstName: 'Gaziantep İbnisina', branchId: 11 },
-        { username: 'universite', firstName: 'Gaziantep Üniversite', branchId: 12 },
-        { username: 'meram', firstName: 'Konya Meram', branchId: 13 },
-        { username: 'bosna', firstName: 'Konya Bosna', branchId: 14 },
-        { username: 'marina', firstName: 'Samsun Marina', branchId: 15 },
-        { username: 'atakum', firstName: 'Samsun Atakum', branchId: 16 },
-        { username: 'batman', firstName: 'Batman', branchId: 17 },
-        { username: 'duzce', firstName: 'Düzce', branchId: 18 },
-        { username: 'siirt', firstName: 'Siirt', branchId: 19 },
-        { username: 'kilis', firstName: 'Kilis', branchId: 20 },
-        { username: 'sanliurfa', firstName: 'Şanlıurfa', branchId: 21 },
-        { username: 'nizip', firstName: 'Nizip', branchId: 22 },
-      ];
-
       let created = 0;
       let skipped = 0;
 
-      for (const account of kioskAccounts) {
+      for (const account of BRANCH_KIOSK_ACCOUNTS) {
         const [existing] = await db.select({ id: users.id })
           .from(users)
           .where(and(eq(users.username, account.username), isNull(users.deletedAt)))
