@@ -314,7 +314,7 @@ app.use((req, res, next) => {
       }
 
       if (created > 0 || skipped > 0) {
-        log(`[KioskSeed] Branch kiosk accounts: ${created} created, ${skipped} skipped (already exist)`);
+        log(`[KioskSeed] Branch kiosk accounts: ${created} created, ${skipped} normalized (existing)`);
       }
     } catch (error) {
       console.error('[KioskSeed] Error seeding kiosk accounts:', error);

@@ -85,7 +85,7 @@ interface Task {
   dueDate: string | null;
 }
 
-const KIOSK_HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
+const KIOSK_HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq', 'sube_kiosk'];
 
 export default function BranchKiosk() {
   const { toast } = useToast();
@@ -108,6 +108,12 @@ export default function BranchKiosk() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      if (user?.role === 'sube_kiosk' && user.branchId) {
+        setBranchAuth({ id: user.branchId, username: user.username });
+        setStep('select-user');
+        setAuthChecked(true);
+        return;
+      }
       const branchAuthStr = sessionStorage.getItem('branchAuth');
       if (branchAuthStr) {
         try {
@@ -120,7 +126,7 @@ export default function BranchKiosk() {
       }
       setAuthChecked(true);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!authChecked || branchAuth) return;
