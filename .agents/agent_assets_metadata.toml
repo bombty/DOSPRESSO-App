@@ -132,3 +132,9 @@ id = "skZwbcfiugYInyKVRkYGF"
 uri = "file://.local/fix-report-akademi-routing-19-mart-2026.md"
 type = "text"
 title = "Akademi HQ Yönlendirme Düzeltmesi Raporu — 19 Mart 2026"
+
+[[outputs]]
+id = "hvt0tdNcUNGt2EKntBjim"
+uri = "file://.local/it-rapor-akademi-hq-kpi-crash-19-mart-2026.md"
+type = "text"
+title = "IT Danışman Raporu — Akademi HQ KPI Crash Düzeltmesi (19 Mart 2026)"
