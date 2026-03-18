@@ -120,3 +120,9 @@ id = "pbf1bgyIzs4nv-s-b4SCg"
 uri = "file://DOSPRESSO-SISTEM-RAPORU.md"
 type = "text"
 title = "DOSPRESSO Kapsamlı Sistem Raporu — Yeni AI Asistan Rehberi"
+
+[[outputs]]
+id = "sfkRhLop-qe4vMqglaUq8"
+uri = "file://.local/audit-report-19-mart-2026.md"
+type = "text"
+title = "DOSPRESSO Sprint Sonrası Sistem Denetim Raporu — 19 Mart 2026"
