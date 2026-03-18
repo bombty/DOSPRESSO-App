@@ -660,17 +660,13 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                 Dahili Not
               </button>
               <button
-                onClick={() => ticket.isCoworkMember && setInputMode('cowork')}
-                disabled={!ticket.isCoworkMember}
+                onClick={() => setInputMode('cowork')}
                 className={cn(
                   'text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1',
                   inputMode === 'cowork'
                     ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
-                    : !ticket.isCoworkMember
-                      ? 'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
-                      : 'bg-muted text-muted-foreground hover:bg-accent'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
                 )}
-                title={!ticket.isCoworkMember ? 'Bu cowork sohbetine erişiminiz yok' : undefined}
                 data-testid="button-cowork-mode"
               >
                 <Users className="w-3 h-3" />
@@ -792,7 +788,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   {slaRemindMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
                   SLA Hatırlat
                 </button>
-                {ticket.assigned_to_user_id === user?.id && (
+                {isHQ && (
                 <div className="relative">
                   <button
                     onClick={() => setShowCoworkInvite(!showCoworkInvite)}

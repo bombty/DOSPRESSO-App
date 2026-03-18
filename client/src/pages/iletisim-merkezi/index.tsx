@@ -31,8 +31,10 @@ interface TicketDetailResponse {
   sla_breached: boolean;
   created_at: string;
   related_equipment_id: number | null;
-  comments: { id: number; content: string; author_name: string; created_at: string; is_internal: boolean }[];
+  comments: { id: number; content: string; author_name: string; created_at: string; is_internal: boolean; comment_type: string }[];
   attachments?: { id: number; fileName: string; storageKey: string; mimeType: string; fileSize: number }[];
+  isCoworkMember: boolean;
+  assigned_to_user_id: string | null;
 }
 
 const DashboardTab = lazy(() => import("./DashboardTab"));

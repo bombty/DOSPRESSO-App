@@ -194,14 +194,9 @@ router.get("/tickets/:id", async (req: AuthRequest, res: Response) => {
     }
 
     let commentsQuery;
-    const isAssigned = (t as Record<string, unknown>).assigned_to_user_id === user.id;
-    const isCoworkMemberFlag = isHQRole(user.role) && (isAssigned || isCoworkInvited);
+    const isCoworkMemberFlag = isHQRole(user.role);
     if (isHQRole(user.role)) {
-      if (isCoworkMemberFlag) {
-        commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} ORDER BY stc.created_at ASC`;
-      } else {
-        commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.comment_type != 'cowork' ORDER BY stc.created_at ASC`;
-      }
+      commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} ORDER BY stc.created_at ASC`;
     } else {
       commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.is_internal = false AND stc.comment_type != 'cowork' ORDER BY stc.created_at ASC`;
     }
@@ -389,12 +384,6 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
       if (!isHQRole(user.role)) {
         return res.status(403).json({ error: "Cowork sadece HQ kullanıcıları içindir" });
       }
-      const coworkMembers = await db.select().from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
-      const isAssigned = ticket.assignedToUserId === user.id;
-      const isMember = coworkMembers.some(m => m.userId === user.id);
-      if (!isAssigned && !isMember) {
-        return res.status(403).json({ error: "Bu cowork sohbetine erişiminiz yok" });
-      }
     } else if (commentType === 'internal') {
       if (!isHQRole(user.role)) {
         finalCommentType = 'reply';
@@ -460,11 +449,6 @@ router.get("/tickets/:id/cowork/members", async (req: AuthRequest, res: Response
     const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
     if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
 
-    const memberCheck = await db.select().from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
-    const isAssigned = ticket.assignedToUserId === user.id;
-    const isMember = memberCheck.some(m => m.userId === user.id);
-    if (!isAssigned && !isMember) return res.status(403).json({ error: "Cowork üyesi değilsiniz" });
-
     const members = await db.execute(sql`
       SELECT tcm.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as user_name, u.role as user_role,
              COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as invited_by_name
@@ -496,10 +480,6 @@ router.post("/tickets/:id/cowork/invite", async (req: AuthRequest, res: Response
     if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
     if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
 
-    const isAssigned = ticket.assignedToUserId === user.id;
-    if (!isAssigned) {
-      return res.status(403).json({ error: "Sadece atanan kişi cowork sohbetine davet edebilir" });
-    }
     const existingMembers = await db.select().from(ticketCoworkMembers)
       .where(eq(ticketCoworkMembers.ticketId, ticketId));
 
