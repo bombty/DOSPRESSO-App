@@ -290,7 +290,7 @@ dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (noti
 - **Admin UI**: `client/src/pages/admin/module-flags.tsx` — tab "modul-bayraklari" in admin-mega.tsx, 5 category cards, branch override management, role-based overrides accordion
 - **Page Protection**: `client/src/components/module-guard.tsx` — wraps route pages, shows lock screen when disabled. Applied in `App.tsx` for all toggleable modules
 - **Bulk Flags**: `GET /api/module-flags/my-flags` — single endpoint returns all effective flags for current user (branchId + role), used by `useMyModuleFlags()` hook
-- **Score Integration**: `server/services/branch-health-scoring.ts` — `isComponentEnabled()` checks module flags before including components in health score. Uses context="data" so pdks/vardiya always included
+- **Score Integration**: `server/services/branch-health-scoring.ts` — `isComponentEnabled()` checks module flags before including components in health score. Uses context="data" so pdks/vardiya always included. Components: inspections(0.19), complaints(0.19), equipment(0.16), training(0.12), opsHygiene(0.11), customerSatisfaction(0.11), branchTasks(0.12). `branchTasks` maps to `sube_gorevleri` module key
 - **Agent Filtering**: `server/agent/skills/skill-notifications.ts` — `SKILL_TO_MODULE_MAP` maps skill IDs to module keys. Notifications skipped for disabled modules
 
 ### Graceful Degradation

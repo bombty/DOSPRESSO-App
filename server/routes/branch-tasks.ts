@@ -3,6 +3,7 @@ import { db } from "../db";
 import { sql, eq, and, desc, asc } from "drizzle-orm";
 import { isAuthenticated, isKioskAuthenticated } from "../localAuth";
 import { requireModuleEnabled } from "../services/module-flag-service";
+import { calculateBranchTaskScore } from "../services/branch-health-scoring";
 import { branchRecurringTasks, branchTaskInstances, branchTaskCategories, branchRecurringTaskOverrides } from "@shared/schema";
 
 const router = Router();
@@ -504,7 +505,17 @@ router.get("/api/branch-tasks/stats", isAuthenticated, moduleGuard, async (req, 
     }
 
     const result = await db.execute(query);
-    res.json(result.rows?.[0] || { total: 0, pending: 0, claimed: 0, completed: 0, overdue: 0, completion_rate: 0 });
+    const stats = result.rows?.[0] || { total: 0, pending: 0, claimed: 0, completed: 0, overdue: 0, completion_rate: 0 };
+
+    if (branchScope) {
+      try {
+        const scoreResult = await calculateBranchTaskScore(branchScope);
+        (stats as any).score = scoreResult.score;
+        (stats as any).scoreDetails = scoreResult.details;
+      } catch {}
+    }
+
+    res.json(stats);
   } catch (error: any) {
     res.status(500).json({ message: "İstatistikler yüklenemedi" });
   }
@@ -736,6 +747,61 @@ router.post("/api/branch-tasks/kiosk/:id/complete", isKioskAuthenticated, module
     res.json(result.rows[0]);
   } catch (error: any) {
     res.status(500).json({ message: "Kiosk görev tamamlanamadı" });
+  }
+});
+
+router.get("/api/branch-tasks/score", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    let branchId = Number(req.query.branchId);
+    if (!branchId && isBranchRole(user.role)) {
+      branchId = user.branchId;
+    }
+    if (!branchId) return res.status(400).json({ message: "branchId gerekli" });
+
+    if (isBranchRole(user.role) && !canAccessBranch(user, branchId)) {
+      return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+    }
+
+    const days = Number(req.query.days) || 30;
+    const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const end = new Date();
+
+    const result = await calculateBranchTaskScore(branchId, undefined, { start, end });
+    res.json(result);
+  } catch (error: any) {
+    console.error("Branch task score error:", error);
+    res.status(500).json({ message: "Puan hesaplanamadı" });
+  }
+});
+
+router.get("/api/branch-tasks/score/user/:userId", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const targetUserId = req.params.userId;
+    let branchId = Number(req.query.branchId);
+    if (!branchId && isBranchRole(user.role)) {
+      branchId = user.branchId;
+    }
+    if (!branchId) return res.status(400).json({ message: "branchId gerekli" });
+
+    if (isBranchRole(user.role) && !canAccessBranch(user, branchId)) {
+      return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+    }
+
+    const days = Number(req.query.days) || 30;
+    const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const end = new Date();
+
+    const result = await calculateBranchTaskScore(branchId, targetUserId, { start, end });
+    res.json(result);
+  } catch (error: any) {
+    console.error("User task score error:", error);
+    res.status(500).json({ message: "Kullanıcı puanı hesaplanamadı" });
   }
 });
 

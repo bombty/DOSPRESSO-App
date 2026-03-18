@@ -81,7 +81,9 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
   - `POST /api/branch-tasks/instances/:id/claim` — claim a task
   - `POST /api/branch-tasks/instances/:id/complete` — complete a task
   - `POST /api/branch-tasks/instances/:id/unclaim` — unclaim a task
-  - `GET /api/branch-tasks/stats` — completion stats for a branch
+  - `GET /api/branch-tasks/stats` — completion stats for a branch (includes score + scoreDetails when branchId scoped)
+  - `GET /api/branch-tasks/score?branchId=5&days=30` — branch task score (0-100)
+  - `GET /api/branch-tasks/score/user/:userId?branchId=5&days=30` — user's task score
   - `GET /api/branch-tasks/kiosk/instances` — today's tasks for kiosk branch (isKioskAuthenticated)
   - `POST /api/branch-tasks/kiosk/:id/claim` — kiosk claim task
   - `POST /api/branch-tasks/kiosk/:id/complete` — kiosk complete task
@@ -96,6 +98,13 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Path mapping**: `/sube-gorevleri` and `/gorev-panosu` → `sube_gorevleri` in `PATH_TO_MODULE_KEY_MAP`
 - **Roles**: TEMPLATE_ROLES (create/edit): admin, ceo, cgo, coach, trainer, mudur, supervisor. HQ_ROLES (see all branches): admin, ceo, cgo, coach, trainer, muhasebe_ik, satinalma, marketing, kalite_kontrol, gida_muhendisi, fabrika_mudur. Branch users scoped to their branchId.
 - **Instance unique constraint**: `uq_branch_task_instance_recurring_branch_date` on (recurring_task_id, branch_id, due_date)
+- **Composite Score Integration (Sprint 3)**: `branchTasks` component added to `server/services/branch-health-scoring.ts`
+  - `scoreBranchTasks()` — queries branch_task_instances for completion rate (last 30 days), -5 pts per overdue task (max -30)
+  - Weight: 0.12 (existing weights reduced proportionally: inspections 0.19, complaints 0.19, equipment 0.16, training 0.12, opsHygiene 0.11, customerSatisfaction 0.11)
+  - `COMPONENT_MODULE_MAP["branchTasks"] = ["sube_gorevleri"]` — excluded when module disabled, weights recalculate proportionally
+  - `calculateBranchTaskScore(branchId, userId?, dateRange?)` — exported for per-user and per-branch score queries
+  - Score API: `GET /api/branch-tasks/score?branchId=X&days=30`, `GET /api/branch-tasks/score/user/:userId?branchId=X&days=30`
+  - Stats endpoint enhanced: returns `score` and `scoreDetails` when branchId scoped
 
 ## Kiosk System
 - **Factory Kiosk**: PIN-based auth for factory floor workers, device password in `factory_kiosk_config`, station assignment, shift tracking

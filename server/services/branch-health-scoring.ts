@@ -21,6 +21,7 @@ const COMPONENT_MODULE_MAP: Record<string, string[]> = {
   training: ["akademi"],
   opsHygiene: ["gorevler"],
   customerSatisfaction: ["crm"],
+  branchTasks: ["sube_gorevleri"],
 };
 
 async function isComponentEnabled(componentKey: string, branchId: number): Promise<boolean> {
@@ -60,12 +61,13 @@ export interface BranchHealthReport {
 }
 
 const WEIGHTS = {
-  inspections: 0.22,
-  complaints: 0.22,
-  equipment: 0.18,
-  training: 0.13,
-  opsHygiene: 0.13,
-  customerSatisfaction: 0.12,
+  inspections: 0.19,
+  complaints: 0.19,
+  equipment: 0.16,
+  training: 0.12,
+  opsHygiene: 0.11,
+  customerSatisfaction: 0.11,
+  branchTasks: 0.12,
 };
 
 function neutralComponent(key: string, label: string, weight: number): ComponentScore {
@@ -470,6 +472,134 @@ async function scoreCustomerSatisfactionPrev(branchId: number, rangeDays: number
   }
 }
 
+async function scoreBranchTasks(branchId: number, rangeDays: number): Promise<ComponentScore> {
+  const key = "branchTasks";
+  const label = "Şube Görevleri";
+  const weight = WEIGHTS.branchTasks;
+
+  try {
+    const { from, to } = dateRange(rangeDays);
+    const fromStr = from.toISOString().split("T")[0];
+    const toStr = to.toISOString().split("T")[0];
+
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed_count,
+        COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed') as overdue_count
+      FROM branch_task_instances
+      WHERE branch_id = ${branchId}
+        AND due_date >= ${fromStr}
+        AND due_date <= ${toStr}
+    `);
+
+    const row = result.rows?.[0] as any;
+    const total = Number(row?.total ?? 0);
+    if (total === 0) return neutralComponent(key, label, weight);
+
+    const completed = Number(row?.completed_count ?? 0);
+    const overdue = Number(row?.overdue_count ?? 0);
+    const completionRate = total > 0 ? completed / total : 0;
+    const overduePenalty = Math.min(overdue * 5, 30);
+
+    const score = clamp(completionRate * 100 - overduePenalty);
+
+    const notes: string[] = [];
+    notes.push(`${total} şube görevi, ${completed} tamamlandı`);
+    if (overdue > 0) notes.push(`${overdue} gecikmiş görev`);
+
+    return { key, label, score, weight, notes, evidenceCount: total };
+  } catch {
+    return neutralComponent(key, label, weight);
+  }
+}
+
+async function scoreBranchTasksPrev(branchId: number, rangeDays: number): Promise<ComponentScore> {
+  const key = "branchTasks";
+  const label = "Şube Görevleri";
+  const weight = WEIGHTS.branchTasks;
+
+  try {
+    const { from, to } = dateRange(rangeDays, rangeDays);
+    const fromStr = from.toISOString().split("T")[0];
+    const toStr = to.toISOString().split("T")[0];
+
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed_count,
+        COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed') as overdue_count
+      FROM branch_task_instances
+      WHERE branch_id = ${branchId}
+        AND due_date >= ${fromStr}
+        AND due_date <= ${toStr}
+    `);
+
+    const row = result.rows?.[0] as any;
+    const total = Number(row?.total ?? 0);
+    if (total === 0) return neutralComponent(key, label, weight);
+
+    const completed = Number(row?.completed_count ?? 0);
+    const overdue = Number(row?.overdue_count ?? 0);
+    const completionRate = total > 0 ? completed / total : 0;
+
+    const score = clamp(completionRate * 100 - Math.min(overdue * 5, 30));
+    return { key, label, score, weight, notes: [], evidenceCount: total };
+  } catch {
+    return neutralComponent(key, label, weight);
+  }
+}
+
+export async function calculateBranchTaskScore(
+  branchId: number,
+  userId?: string,
+  dateRangeParam?: { start: Date; end: Date }
+): Promise<{ score: number; details: { total: number; completed: number; overdue: number; rate: number } }> {
+  const start = dateRangeParam?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const end = dateRangeParam?.end || new Date();
+  const startStr = start.toISOString().split("T")[0];
+  const endStr = end.toISOString().split("T")[0];
+
+  let queryStr;
+  if (userId) {
+    queryStr = sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed_count,
+        COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed') as overdue_count
+      FROM branch_task_instances
+      WHERE branch_id = ${branchId}
+        AND due_date >= ${startStr}
+        AND due_date <= ${endStr}
+        AND (claimed_by_user_id = ${userId} OR completed_by_user_id = ${userId})
+    `;
+  } else {
+    queryStr = sql`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'completed') as completed_count,
+        COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed') as overdue_count
+      FROM branch_task_instances
+      WHERE branch_id = ${branchId}
+        AND due_date >= ${startStr}
+        AND due_date <= ${endStr}
+    `;
+  }
+
+  const result = await db.execute(queryStr);
+  const row = result.rows?.[0] as any;
+  const total = Number(row?.total ?? 0);
+  const completed = Number(row?.completed_count ?? 0);
+  const overdue = Number(row?.overdue_count ?? 0);
+  const completionRate = total > 0 ? (completed / total) * 100 : 100;
+  const overduePenalty = Math.min(overdue * 5, 30);
+
+  return {
+    score: Math.max(0, Math.min(100, Math.round(completionRate - overduePenalty))),
+    details: { total, completed, overdue, rate: Math.round(completionRate) },
+  };
+}
+
 async function computeTotalForBranch(branchId: number, rangeDays: number): Promise<number> {
   const scoreFns: { key: string; fn: () => Promise<ComponentScore> }[] = [
     { key: "inspections", fn: () => scoreInspections(branchId, rangeDays) },
@@ -478,6 +608,7 @@ async function computeTotalForBranch(branchId: number, rangeDays: number): Promi
     { key: "training", fn: () => scoreTraining(branchId, rangeDays) },
     { key: "opsHygiene", fn: () => scoreOpsHygiene(branchId, rangeDays) },
     { key: "customerSatisfaction", fn: () => scoreCustomerSatisfaction(branchId, rangeDays) },
+    { key: "branchTasks", fn: () => scoreBranchTasks(branchId, rangeDays) },
   ];
 
   const enabledChecks = await Promise.all(
@@ -546,6 +677,7 @@ export async function computeBranchHealthScores(options: {
         { key: "training", fn: () => scoreTraining(branch.id, rangeDays) },
         { key: "opsHygiene", fn: () => scoreOpsHygiene(branch.id, rangeDays) },
         { key: "customerSatisfaction", fn: () => scoreCustomerSatisfaction(branch.id, rangeDays) },
+        { key: "branchTasks", fn: () => scoreBranchTasks(branch.id, rangeDays) },
       ];
 
       const enabledChecks = await Promise.all(
@@ -573,6 +705,7 @@ export async function computeBranchHealthScores(options: {
           scoreTrainingPrev(branch.id, rangeDays),
           scoreOpsHygienePrev(branch.id, rangeDays),
           scoreCustomerSatisfactionPrev(branch.id, rangeDays),
+          scoreBranchTasksPrev(branch.id, rangeDays),
         ]);
         const prevTotal = clamp(
           prevComponents.reduce((sum, c) => sum + c.score * c.weight, 0)

@@ -286,7 +286,9 @@ SELECT * FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL ORD
 
 11. **Module disabled but page still accessible:** Check `client/src/App.tsx` — the route must be wrapped with `<ModuleGuard moduleKey="X">`. ModuleGuard uses `useModuleEnabled` hook → bulk `/api/module-flags/my-flags` endpoint.
 
-12. **Branch health score not reflecting disabled modules:** `server/services/branch-health-scoring.ts` uses `isComponentEnabled()` with `context="data"`. Modules with `ui_hidden_data_continues` (pdks, vardiya) still contribute to scores even when UI is hidden.
+12. **Branch health score not reflecting disabled modules:** `server/services/branch-health-scoring.ts` uses `isComponentEnabled()` with `context="data"`. Modules with `ui_hidden_data_continues` (pdks, vardiya) still contribute to scores even when UI is hidden. The `branchTasks` component (weight 0.12) maps to `sube_gorevleri` module key — when disabled, it's excluded and remaining weights recalculate proportionally.
+
+12b. **Branch task score showing 0 or unexpected values:** Check `branch_task_instances` table has data for the branch in the last 30 days. Score formula: `(completed/total)*100 - min(overdue*5, 30)`. If total=0, returns neutralComponent (score=70, insufficientData=true). User-level score only counts instances where user is claimed_by or completed_by.
 
 13. **Agent notifications still arriving for disabled module:** Check `SKILL_TO_MODULE_MAP` in `server/agent/skills/skill-notifications.ts`. Skills without mapping (burnout_predictor, security_monitor, cost_analyzer, team_tracker) always run. Skills with mapping check `isModuleEnabled(moduleKey, branchId, "api")` before delivering.
 
