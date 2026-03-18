@@ -224,6 +224,54 @@ grep -rn "delegations\|delegation" server/routes/delegation-routes.ts | head -10
 
 ---
 
+## §13 Module Flag Issues
+
+### Symptoms
+- Module visible when it should be hidden
+- Module hidden when it should be visible
+- Sub-module not responding to parent toggle
+- Data collection stops when module UI is hidden
+- `isModuleEnabled` always returns true
+
+### Triage Steps
+
+1. **Check flag exists in DB:**
+```sql
+SELECT module_key, flag_level, flag_behavior, parent_key, is_enabled, scope, branch_id
+FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL;
+```
+
+2. **Check behavior type:** If `flag_behavior = 'always_on'`, the module ALWAYS returns true regardless of `is_enabled`.
+
+3. **Check parent chain:** If module has `parent_key`, verify parent is enabled:
+```sql
+SELECT mf.module_key, mf.is_enabled, parent.module_key as parent, parent.is_enabled as parent_enabled, parent.flag_behavior
+FROM module_flags mf
+LEFT JOIN module_flags parent ON parent.module_key = mf.parent_key AND parent.scope = 'global' AND parent.deleted_at IS NULL
+WHERE mf.module_key = '<KEY>' AND mf.deleted_at IS NULL;
+```
+
+4. **Check branch override:** Branch flags override global. If branch flag exists and is disabled, module is disabled for that branch even if global is enabled:
+```sql
+SELECT * FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL ORDER BY scope;
+```
+
+5. **Check context mismatch:** `ui_hidden_data_continues` behaves differently based on context:
+   - `context="data"` → always true (data continues)
+   - `context="ui"` or `context="api"` → respects isEnabled
+   - If a route uses `requireModuleEnabled()` it passes `context="api"`
+
+6. **Clear cache:** Module flags are cached for 60 seconds. Call `clearModuleFlagCache()` or restart server to force refresh.
+
+7. **Check PATH_TO_MODULE_KEY_MAP:** If a path is not mapped, `getModuleKeyForPath()` returns null and the menu won't filter it:
+```typescript
+// server/services/module-flag-service.ts — PATH_TO_MODULE_KEY_MAP
+```
+
+8. **Seed didn't run:** Check startup logs for `[SEED] Module flags: X/Y flags upserted`. If the table didn't exist, CREATE TABLE must be run first.
+
+---
+
 ## Quick Diagnostic Commands
 
 ```bash

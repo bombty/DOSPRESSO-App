@@ -241,6 +241,40 @@ IMPORTANT: Not all APIs return arrays. Known object-wrapped responses:
 
 Frontend MUST normalize: `Array.isArray(data) ? data : (data?.data || data?.actions || data?.tasks || data?.items || [])`
 
+## Module Feature Flag System
+Table: `module_flags` in `shared/schema.ts` — global + branch-level module toggles with behavior types.
+
+### Table Columns
+- `moduleKey` (varchar 100) — unique module identifier
+- `scope` (varchar 20) — "global" or "branch"
+- `branchId` (integer, nullable) — NULL for global, branch ID for overrides
+- `isEnabled` (boolean) — toggle state
+- `flagLevel` (varchar 20) — "module" | "submodule" | "widget" | "function"
+- `flagBehavior` (varchar 30) — "fully_hidden" | "ui_hidden_data_continues" | "always_on"
+- `parentKey` (varchar 100, nullable) — parent moduleKey for sub-modules
+
+### Behavior Types
+1. **always_on** — always returns true regardless of isEnabled. Used for core modules (admin, dashboard, fabrika, satinalma, bordro, dobody).
+2. **fully_hidden** — standard toggle. When disabled, module is completely hidden from UI and API returns 403.
+3. **ui_hidden_data_continues** — when context="data", always returns true (data collection continues even if UI is hidden). Used for pdks, vardiya, fabrika.vardiya.
+
+### Parent-Child Hierarchy
+Sub-modules have a `parentKey` pointing to their parent module. If parent is disabled, all children are disabled too (exception: always_on parents are never disabled).
+
+### Factory Sub-Modules (8)
+fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vardiya, fabrika.kalite, fabrika.kavurma, fabrika.stok
+
+### Key Files
+- **Schema**: `shared/schema.ts` — `moduleFlags` table definition
+- **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled(key, branchId?, context?)`, `requireModuleEnabled()`, `getModuleFlagBehavior()`, `PATH_TO_MODULE_KEY_MAP`
+- **Routes**: `server/routes/module-flags.ts` — CRUD (admin only) + `/api/module-flags/check?moduleKey=X&context=ui`
+- **Seed**: `server/seed-module-flags.ts` — 28 flags (20 modules + 8 sub-modules), ALTER TABLE migration on startup
+- **Menu**: `server/menu-service.ts` — `buildMenuForUser()` filters sidebar items with context="ui"
+- **Hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)`
+
+### Graceful Degradation
+When a module is disabled, composite scores and analytics recalculate without it. No crashes — disabled modules are simply excluded from calculations.
+
 ## Permission Modules
 88 permission module keys defined in `shared/schema.ts` as `PermissionModule` type.
 Key groups: dashboard, tasks, checklists, equipment, faults, hr, training, factory_*, academy_*, satinalma, crm_*, food_safety, branch_inspection, cost_management.
