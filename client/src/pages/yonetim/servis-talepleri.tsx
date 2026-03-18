@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { MobileFilterCollapse } from '@/components/mobile-filter-collapse';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -504,9 +505,10 @@ export default function ServiceRequestsManagement() {
       />
 
       {/* Filters */}
+      <MobileFilterCollapse activeFilterCount={activeFiltersCount} testId="servis-filter">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <Filter className="w-5 h-5" />
               <CardTitle>Filtreler</CardTitle>
@@ -526,7 +528,7 @@ export default function ServiceRequestsManagement() {
                   className="gap-1"
                 >
                   <Download className="w-4 h-4" />
-                  CSV İndir
+                  <span className="hidden sm:inline">CSV İndir</span>
                 </Button>
               )}
               {activeFiltersCount > 0 && (
@@ -583,6 +585,7 @@ export default function ServiceRequestsManagement() {
           </div>
         </CardContent>
       </Card>
+      </MobileFilterCollapse>
 
       {/* Service Requests List */}
       {isLoading ? (

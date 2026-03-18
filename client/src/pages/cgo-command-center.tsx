@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -171,21 +172,32 @@ function GrowthTab({ data }: { data: CGOData }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpiCards.map((kpi, i) => (
-          <Card key={i} data-testid={`cgo-kpi-${i}`}>
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center gap-2 mb-1">
-                {kpi.icon}
-                <span className="text-xs text-muted-foreground">{kpi.label}</span>
-              </div>
-              <p className="text-2xl font-bold">
-                {kpi.value}{kpi.suffix && <span className="text-sm text-muted-foreground font-normal">{kpi.suffix}</span>}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <CompactKPIStrip
+        items={kpiCards.map((kpi, i) => ({
+          label: kpi.label,
+          value: kpi.suffix ? `${kpi.value}${kpi.suffix}` : kpi.value,
+          icon: kpi.icon,
+          color: "info" as const,
+          testId: `cgo-kpi-${i}`,
+        }))}
+        desktopRenderer={
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {kpiCards.map((kpi, i) => (
+              <Card key={i} data-testid={`cgo-kpi-${i}`}>
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    {kpi.icon}
+                    <span className="text-xs text-muted-foreground">{kpi.label}</span>
+                  </div>
+                  <p className="text-2xl font-bold">
+                    {kpi.value}{kpi.suffix && <span className="text-sm text-muted-foreground font-normal">{kpi.suffix}</span>}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

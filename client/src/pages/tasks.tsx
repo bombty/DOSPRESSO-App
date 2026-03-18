@@ -807,7 +807,7 @@ export default function Tasks() {
                   </CardContent>
                 </Card>
 
-                <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="flex flex-col gap-2 sm:gap-4">
                   {filteredTasks?.map((task) => {
                     const assigner = allUsers?.find(u => u.id === task.assignedById);
                     const branch = branches?.find(b => b.id === task.branchId);
@@ -818,11 +818,11 @@ export default function Tasks() {
                       data-testid={`card-task-${task.id}`}
                       className="hover-elevate cursor-pointer"
                     >
-                      <CardContent className="p-3">
-                        <div className="flex flex-col gap-2">
+                      <CardContent className="p-2 sm:p-3">
+                        <div className="flex flex-col gap-1.5 sm:gap-2">
                           <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-sm font-medium line-clamp-2 flex-1">{task.description}</h3>
-                            <div className="flex flex-wrap gap-1 items-center">
+                            <h3 className="text-xs sm:text-sm font-medium line-clamp-1 sm:line-clamp-2 flex-1">{task.description}</h3>
+                            <div className="flex flex-wrap gap-1 items-center shrink-0">
                               <Badge
                                 variant={
                                   task.status === "onaylandi"
@@ -831,7 +831,7 @@ export default function Tasks() {
                                     ? "destructive"
                                     : "secondary"
                                 }
-                                className="text-xs whitespace-nowrap"
+                                className="text-[10px] sm:text-xs whitespace-nowrap"
                                 data-testid={`badge-task-status-${task.id}`}
                               >
                                 {task.status === "beklemede" && "Beklemede"}
@@ -857,7 +857,7 @@ export default function Tasks() {
                                       ? "secondary"
                                       : "outline"
                                   }
-                                  className="text-xs whitespace-nowrap"
+                                  className="text-[10px] sm:text-xs whitespace-nowrap"
                                   data-testid={`badge-task-priority-${task.id}`}
                                 >
                                   {task.priority === "kritik" && "Kritik"}
@@ -870,7 +870,7 @@ export default function Tasks() {
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-muted-foreground">
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-1 text-xs text-muted-foreground">
                             {task.assignedToId && (
                               <div className="min-w-0">
                                 <p className="font-medium text-foreground truncate text-[10px]">

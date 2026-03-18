@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import { Link } from "wouter";
+import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -704,6 +705,7 @@ export default function KaliteDenetimi() {
         {/* Audits Tab */}
         <TabsContent value="audits" className="space-y-4 mt-4">
           {/* Filters */}
+          <MobileFilterCollapse activeFilterCount={(filterBranch !== "all" ? 1 : 0) + (filterStatus !== "all" ? 1 : 0)} testId="kalite-filter">
           <Card>
             <CardContent className="p-3">
               <div className="flex flex-wrap gap-3">
@@ -751,6 +753,7 @@ export default function KaliteDenetimi() {
               </div>
             </CardContent>
           </Card>
+          </MobileFilterCollapse>
 
           {filteredAudits.length === 0 ? (
             <Card>

@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -381,52 +382,64 @@ export default function CEOCommandCenter() {
           )}
 
           {dashboardData.kpiSummary && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Card data-testid="ceo-kpi-branches">
-                <CardContent className="pt-3 pb-2 px-3 text-center">
-                  <Store className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-                  <p className="text-xl font-bold">{dashboardData.kpiSummary.totalBranches}</p>
-                  <p className="text-[10px] text-muted-foreground">Şube</p>
-                </CardContent>
-              </Card>
-              <Card data-testid="ceo-kpi-employees">
-                <CardContent className="pt-3 pb-2 px-3 text-center">
-                  <Users className="w-5 h-5 text-purple-500 mx-auto mb-1" />
-                  <p className="text-xl font-bold">{dashboardData.kpiSummary.totalEmployees}</p>
-                  <p className="text-[10px] text-muted-foreground">Personel</p>
-                </CardContent>
-              </Card>
-              <Card data-testid="ceo-kpi-faults">
-                <CardContent className="pt-3 pb-2 px-3 text-center">
-                  <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${dashboardData.kpiSummary.activeFaults > 5 ? 'text-red-500' : 'text-orange-500'}`} />
-                  <p className="text-xl font-bold">{dashboardData.kpiSummary.activeFaults}</p>
-                  <p className="text-[10px] text-muted-foreground">Aktif Arıza</p>
-                </CardContent>
-              </Card>
-              <Card data-testid="ceo-kpi-uptime">
-                <CardContent className="pt-3 pb-2 px-3 text-center">
-                  <Wrench className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-                  <p className="text-xl font-bold">%{dashboardData.kpiSummary.equipmentUptime}</p>
-                  <p className="text-[10px] text-muted-foreground">Uptime</p>
-                </CardContent>
-              </Card>
-              <Card data-testid="ceo-kpi-score">
-                <CardContent className="pt-3 pb-2 px-3 text-center">
-                  <Target className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                  <p className="text-xl font-bold">{dashboardData.kpiSummary.branchAvgScore}</p>
-                  <p className="text-[10px] text-muted-foreground">Ort. Skor</p>
-                </CardContent>
-              </Card>
-              {dashboardData.kpiSummary.monthlyRevenue && (
-                <Card data-testid="ceo-kpi-revenue">
-                  <CardContent className="pt-3 pb-2 px-3 text-center">
-                    <TrendingUp className="w-5 h-5 text-green-500 mx-auto mb-1" />
-                    <p className="text-lg font-bold">{dashboardData.kpiSummary.monthlyRevenue}</p>
-                    <p className="text-[10px] text-muted-foreground">Aylık Ciro</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <CompactKPIStrip
+              items={[
+                { label: "Şube", value: dashboardData.kpiSummary.totalBranches, icon: <Store className="h-4 w-4 text-blue-500" />, color: "info", testId: "ceo-kpi-branches" },
+                { label: "Personel", value: dashboardData.kpiSummary.totalEmployees, icon: <Users className="h-4 w-4 text-purple-500" />, color: "info", testId: "ceo-kpi-employees" },
+                { label: "Aktif Arıza", value: dashboardData.kpiSummary.activeFaults, icon: <AlertTriangle className={`h-4 w-4 ${dashboardData.kpiSummary.activeFaults > 5 ? 'text-red-500' : 'text-orange-500'}`} />, color: dashboardData.kpiSummary.activeFaults > 5 ? "danger" : "warning", testId: "ceo-kpi-faults" },
+                { label: "Uptime", value: `%${dashboardData.kpiSummary.equipmentUptime}`, icon: <Wrench className="h-4 w-4 text-emerald-500" />, color: "success", testId: "ceo-kpi-uptime" },
+                { label: "Ort. Skor", value: dashboardData.kpiSummary.branchAvgScore, icon: <Target className="h-4 w-4 text-blue-600" />, color: "info", testId: "ceo-kpi-score" },
+                ...(dashboardData.kpiSummary.monthlyRevenue ? [{ label: "Aylık Ciro", value: dashboardData.kpiSummary.monthlyRevenue, icon: <TrendingUp className="h-4 w-4 text-green-500" />, color: "success" as const, testId: "ceo-kpi-revenue" }] : []),
+              ]}
+              desktopRenderer={
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <Card data-testid="ceo-kpi-branches">
+                    <CardContent className="pt-3 pb-2 px-3 text-center">
+                      <Store className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                      <p className="text-xl font-bold">{dashboardData.kpiSummary.totalBranches}</p>
+                      <p className="text-[10px] text-muted-foreground">Şube</p>
+                    </CardContent>
+                  </Card>
+                  <Card data-testid="ceo-kpi-employees">
+                    <CardContent className="pt-3 pb-2 px-3 text-center">
+                      <Users className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+                      <p className="text-xl font-bold">{dashboardData.kpiSummary.totalEmployees}</p>
+                      <p className="text-[10px] text-muted-foreground">Personel</p>
+                    </CardContent>
+                  </Card>
+                  <Card data-testid="ceo-kpi-faults">
+                    <CardContent className="pt-3 pb-2 px-3 text-center">
+                      <AlertTriangle className={`w-5 h-5 mx-auto mb-1 ${dashboardData.kpiSummary.activeFaults > 5 ? 'text-red-500' : 'text-orange-500'}`} />
+                      <p className="text-xl font-bold">{dashboardData.kpiSummary.activeFaults}</p>
+                      <p className="text-[10px] text-muted-foreground">Aktif Arıza</p>
+                    </CardContent>
+                  </Card>
+                  <Card data-testid="ceo-kpi-uptime">
+                    <CardContent className="pt-3 pb-2 px-3 text-center">
+                      <Wrench className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
+                      <p className="text-xl font-bold">%{dashboardData.kpiSummary.equipmentUptime}</p>
+                      <p className="text-[10px] text-muted-foreground">Uptime</p>
+                    </CardContent>
+                  </Card>
+                  <Card data-testid="ceo-kpi-score">
+                    <CardContent className="pt-3 pb-2 px-3 text-center">
+                      <Target className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                      <p className="text-xl font-bold">{dashboardData.kpiSummary.branchAvgScore}</p>
+                      <p className="text-[10px] text-muted-foreground">Ort. Skor</p>
+                    </CardContent>
+                  </Card>
+                  {dashboardData.kpiSummary.monthlyRevenue && (
+                    <Card data-testid="ceo-kpi-revenue">
+                      <CardContent className="pt-3 pb-2 px-3 text-center">
+                        <TrendingUp className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                        <p className="text-lg font-bold">{dashboardData.kpiSummary.monthlyRevenue}</p>
+                        <p className="text-[10px] text-muted-foreground">Aylık Ciro</p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              }
+            />
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

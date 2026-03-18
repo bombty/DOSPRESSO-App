@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { MobileFilterCollapse } from '@/components/mobile-filter-collapse';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -487,6 +488,7 @@ export default function EkipmanServis() {
       </div>
 
       {/* Filters */}
+      <MobileFilterCollapse activeFilterCount={(filterBranch !== "all" ? 1 : 0) + (filterType !== "all" ? 1 : 0)} testId="ekipman-servis-filter">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -530,6 +532,7 @@ export default function EkipmanServis() {
           </div>
         </CardContent>
       </Card>
+      </MobileFilterCollapse>
 
       {/* List */}
       <div className="w-full space-y-2 sm:space-y-3">

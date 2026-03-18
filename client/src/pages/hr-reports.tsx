@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole, type UserRoleType } from "@shared/schema";
+import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
 import {
   Card,
   CardContent,
@@ -234,6 +235,7 @@ export default function HRReportsPage() {
       </div>
 
       {/* Filter Card */}
+      <MobileFilterCollapse activeFilterCount={selectedBranchId !== "all" ? 1 : 0} testId="hr-filter">
       <Card>
         <CardHeader>
           <CardTitle>Filtreler ve Dönem</CardTitle>
@@ -280,6 +282,7 @@ export default function HRReportsPage() {
           )}
         </CardContent>
       </Card>
+      </MobileFilterCollapse>
 
       {/* Stats Cards */}
       <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-5 gap-2 sm:gap-3">

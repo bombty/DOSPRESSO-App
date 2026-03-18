@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -167,33 +168,23 @@ export default function SubeOzet() {
         <p className="text-sm text-muted-foreground">Şube Özeti</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3" data-testid="kpi-grid">
-        <KPICard
-          icon={Users}
-          label="Aktif Personel"
-          value={data.kpis.activeStaff}
-          sub={`/ ${data.kpis.totalStaff}`}
-        />
-        <KPICard
-          icon={ClipboardCheck}
-          label="Checklist"
-          value={`%${data.kpis.checklistCompletion}`}
-          variant={data.kpis.checklistCompletion < 50 ? "warning" : data.kpis.checklistCompletion >= 80 ? "success" : "default"}
-        />
-        <KPICard
-          icon={Star}
-          label="Müşteri Puanı"
-          value={data.kpis.customerAvg || "---"}
-          sub={data.kpis.feedbackCount > 0 ? `${data.kpis.feedbackCount} değerlendirme` : undefined}
-          variant={data.kpis.customerAvg > 0 && data.kpis.customerAvg < 3.5 ? "warning" : "default"}
-        />
-        <KPICard
-          icon={AlertTriangle}
-          label="Uyarılar"
-          value={data.kpis.warnings}
-          variant={data.kpis.warnings > 0 ? "warning" : "default"}
-        />
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Aktif Personel", value: data.kpis.activeStaff, subtitle: `/ ${data.kpis.totalStaff}`, icon: <Users className="h-4 w-4 text-muted-foreground" />, color: "info", testId: "kpi-active-staff" },
+          { label: "Checklist", value: `%${data.kpis.checklistCompletion}`, icon: <ClipboardCheck className={`h-4 w-4 ${data.kpis.checklistCompletion < 50 ? "text-orange-500" : data.kpis.checklistCompletion >= 80 ? "text-green-500" : "text-muted-foreground"}`} />, color: data.kpis.checklistCompletion < 50 ? "warning" : data.kpis.checklistCompletion >= 80 ? "success" : "info", testId: "kpi-checklist" },
+          { label: "Müşteri Puanı", value: data.kpis.customerAvg || "---", subtitle: data.kpis.feedbackCount > 0 ? `${data.kpis.feedbackCount} değerlendirme` : undefined, icon: <Star className={`h-4 w-4 ${data.kpis.customerAvg > 0 && data.kpis.customerAvg < 3.5 ? "text-orange-500" : "text-muted-foreground"}`} />, color: data.kpis.customerAvg > 0 && data.kpis.customerAvg < 3.5 ? "warning" : "info", testId: "kpi-customer" },
+          { label: "Uyarılar", value: data.kpis.warnings, icon: <AlertTriangle className={`h-4 w-4 ${data.kpis.warnings > 0 ? "text-orange-500" : "text-muted-foreground"}`} />, color: data.kpis.warnings > 0 ? "warning" : "muted", testId: "kpi-warnings" },
+        ]}
+        desktopColumns={2}
+        desktopRenderer={
+          <div className="grid grid-cols-2 gap-3" data-testid="kpi-grid">
+            <KPICard icon={Users} label="Aktif Personel" value={data.kpis.activeStaff} sub={`/ ${data.kpis.totalStaff}`} />
+            <KPICard icon={ClipboardCheck} label="Checklist" value={`%${data.kpis.checklistCompletion}`} variant={data.kpis.checklistCompletion < 50 ? "warning" : data.kpis.checklistCompletion >= 80 ? "success" : "default"} />
+            <KPICard icon={Star} label="Müşteri Puanı" value={data.kpis.customerAvg || "---"} sub={data.kpis.feedbackCount > 0 ? `${data.kpis.feedbackCount} değerlendirme` : undefined} variant={data.kpis.customerAvg > 0 && data.kpis.customerAvg < 3.5 ? "warning" : "default"} />
+            <KPICard icon={AlertTriangle} label="Uyarılar" value={data.kpis.warnings} variant={data.kpis.warnings > 0 ? "warning" : "default"} />
+          </div>
+        }
+      />
 
       <DobodySuggestionList
         suggestions={data.suggestions || []}

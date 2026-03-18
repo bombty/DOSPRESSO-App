@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Equipment as EquipmentType, InsertEquipment, insertEquipmentSchema, Branch, hasPermission, isHQRole, EQUIPMENT_METADATA, EQUIPMENT_TYPES } from "@shared/schema";
+import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -930,6 +931,7 @@ export default function Equipment() {
         </DialogContent>
       </Dialog>
 
+      <MobileFilterCollapse activeFilterCount={[selectedType !== 'all' && selectedType ? 1 : 0, selectedBranch ? 1 : 0, maintenanceFilter !== 'all' ? 1 : 0, healthFilter !== 'all' ? 1 : 0].reduce((a, b) => a + b, 0)} testId="equipment-filter">
       <div className="flex flex-wrap gap-2 sm:gap-3">
         <Select value={selectedType} onValueChange={setSelectedType}>
           <SelectTrigger className="w-[200px]" data-testid="filter-type">
@@ -1010,6 +1012,7 @@ export default function Equipment() {
           </Button>
         )}
       </div>
+      </MobileFilterCollapse>
 
       {isLoading ? (
         <ListSkeleton count={6} variant="card" showHeader={false} />

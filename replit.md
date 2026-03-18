@@ -112,11 +112,17 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Score Integration**: `server/services/branch-health-scoring.ts` — disabled modules excluded from branch health scores, weights recalculated proportionally
 - **Agent Filtering**: `server/agent/skills/skill-notifications.ts` — `SKILL_TO_MODULE_MAP` maps skill IDs to module keys, notifications suppressed for disabled modules
 
+## Mobile Compactness Sprint
+- **CompactKPIStrip**: `client/src/components/compact-kpi-strip.tsx` — Horizontal scrollable strip on mobile (<md), grid on desktop (md+). Props: `items: KPIItem[]`, `desktopColumns`, `desktopRenderer` (JSX for exact desktop parity). Applied to 18+ pages.
+- **MobileFilterCollapse**: `client/src/components/mobile-filter-collapse.tsx` — Wraps filter sections to collapse on mobile by default with "Filtreler (N aktif)" toggle. Desktop unchanged. Applied to 6 filter pages.
+- **scrollbar-hidden** CSS class (not scrollbar-hide) — used for hiding scrollbars on mobile scroll strips
+- **Mobile test IDs**: CompactKPIStrip mobile items use `${testId}-mobile` suffix to avoid duplicate selectors
+
 ## Database Summary
 - **Tables**: 379 in `shared/schema.ts`
 - **Endpoints**: ~1340 across 48 route files in `server/routes/`
 - **Pages**: 267 page components in `client/src/pages/`
-- **Components**: 148 components in `client/src/components/`
+- **Components**: 150 components in `client/src/components/`
 
 ## Agent Skills Reference
 - `.agents/skills/dospresso-architecture/SKILL.md` — Full architecture map

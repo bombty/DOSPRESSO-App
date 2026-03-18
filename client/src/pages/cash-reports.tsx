@@ -12,6 +12,7 @@ import {
   type Branch,
   isBranchRole,
 } from "@shared/schema";
+import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -462,6 +463,7 @@ export default function CashReports() {
       </div>
 
       {isMuhasebe && (
+        <MobileFilterCollapse activeFilterCount={(selectedBranchFilter ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0)} testId="cash-filter">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Filtreler</CardTitle>
@@ -561,6 +563,7 @@ export default function CashReports() {
             )}
           </CardContent>
         </Card>
+        </MobileFilterCollapse>
       )}
 
       <div className="w-full space-y-2 sm:space-y-3">
