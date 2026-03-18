@@ -126,3 +126,9 @@ id = "sfkRhLop-qe4vMqglaUq8"
 uri = "file://.local/audit-report-19-mart-2026.md"
 type = "text"
 title = "DOSPRESSO Sprint Sonrası Sistem Denetim Raporu — 19 Mart 2026"
+
+[[outputs]]
+id = "skZwbcfiugYInyKVRkYGF"
+uri = "file://.local/fix-report-akademi-routing-19-mart-2026.md"
+type = "text"
+title = "Akademi HQ Yönlendirme Düzeltmesi Raporu — 19 Mart 2026"
