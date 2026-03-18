@@ -4,8 +4,11 @@ import { useDobodyFlow } from "@/contexts/dobody-flow-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ChevronUp, ChevronDown, X, Bot, ArrowRight } from "lucide-react";
+import { useModuleEnabled } from "@/hooks/use-module-flags";
 
 export function DobodyMiniBar() {
+  const { isEnabled: isChatEnabled, isLoading: isChatLoading } = useModuleEnabled("dobody.chat");
+
   const {
     flowTasks,
     activeTaskIndex,
@@ -61,6 +64,7 @@ export function DobodyMiniBar() {
     }
   }, [currentTask, setLocation]);
 
+  if (!isChatEnabled || isChatLoading) return null;
   if (!isFlowActive || totalTasks === 0) return null;
 
   if (allComplete && allDoneVisible) {

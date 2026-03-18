@@ -40,20 +40,29 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
   { key: "fabrika.kalite", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
   { key: "fabrika.kavurma", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
   { key: "fabrika.stok", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
+
+  { key: "dobody.chat", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
+  { key: "dobody.bildirim", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
+  { key: "dobody.flow", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
 ];
 
 export async function seedModuleFlags() {
   await db.execute(sql`ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS flag_level VARCHAR(20) NOT NULL DEFAULT 'module'`);
   await db.execute(sql`ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS flag_behavior VARCHAR(30) NOT NULL DEFAULT 'fully_hidden'`);
   await db.execute(sql`ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS parent_key VARCHAR(100)`);
+  await db.execute(sql`ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS target_role VARCHAR(50)`);
+
+  await db.execute(sql`DROP INDEX IF EXISTS uq_module_flags_key_scope_branch`);
+  await db.execute(sql`DROP INDEX IF EXISTS uq_module_flags_key_scope_branch_role`);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_module_flags_key_scope_branch_role ON module_flags (module_key, scope, COALESCE(branch_id, 0), COALESCE(target_role, ''))`);
 
   let upserted = 0;
   for (const def of MODULE_DEFINITIONS) {
     try {
       await db.execute(
-        sql`INSERT INTO module_flags (module_key, scope, branch_id, is_enabled, flag_level, flag_behavior, parent_key, created_at, updated_at)
-            VALUES (${def.key}, 'global', NULL, true, ${def.level}, ${def.behavior}, ${def.parent}, NOW(), NOW())
-            ON CONFLICT (module_key, scope, branch_id)
+        sql`INSERT INTO module_flags (module_key, scope, branch_id, is_enabled, flag_level, flag_behavior, parent_key, target_role, created_at, updated_at)
+            VALUES (${def.key}, 'global', NULL, true, ${def.level}, ${def.behavior}, ${def.parent}, NULL, NOW(), NOW())
+            ON CONFLICT (module_key, scope, COALESCE(branch_id, 0), COALESCE(target_role, ''))
             DO UPDATE SET
               flag_level = EXCLUDED.flag_level,
               flag_behavior = EXCLUDED.flag_behavior,

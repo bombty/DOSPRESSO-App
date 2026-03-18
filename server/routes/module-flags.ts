@@ -1,9 +1,11 @@
 import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { moduleFlags } from "@shared/schema";
+import { moduleFlags, UserRole } from "@shared/schema";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { isModuleEnabled, clearModuleFlagCache, getModuleFlagBehavior } from "../services/module-flag-service";
+
+const VALID_ROLES = new Set(Object.values(UserRole));
 
 const router = Router();
 
@@ -48,11 +50,14 @@ router.get("/api/module-flags/branch/:branchId", isAuthenticated, async (req: Re
       .where(isNull(moduleFlags.deletedAt))
       .orderBy(moduleFlags.moduleKey);
 
-    const globalFlags = allFlags.filter(f => f.scope === "global");
+    const globalFlags = allFlags.filter(f => f.scope === "global" && !f.targetRole);
     const branchFlags = allFlags.filter(f => f.scope === "branch" && f.branchId === branchId);
+    const globalRoleFlags = allFlags.filter(f => f.scope === "global" && f.targetRole);
 
     const effectiveFlags = globalFlags.map(gf => {
-      const branchOverride = branchFlags.find(bf => bf.moduleKey === gf.moduleKey);
+      const branchOverride = branchFlags.find(bf => bf.moduleKey === gf.moduleKey && !bf.targetRole);
+      const branchRoleOverrides = branchFlags.filter(bf => bf.moduleKey === gf.moduleKey && bf.targetRole);
+      const globalRoleOverrides = globalRoleFlags.filter(grf => grf.moduleKey === gf.moduleKey);
       return {
         moduleKey: gf.moduleKey,
         flagLevel: gf.flagLevel,
@@ -63,6 +68,10 @@ router.get("/api/module-flags/branch/:branchId", isAuthenticated, async (req: Re
         effectiveEnabled: branchOverride ? branchOverride.isEnabled : gf.isEnabled,
         globalFlagId: gf.id,
         branchFlagId: branchOverride?.id ?? null,
+        roleOverrides: [
+          ...globalRoleOverrides.map(r => ({ scope: "global" as const, targetRole: r.targetRole, isEnabled: r.isEnabled, id: r.id })),
+          ...branchRoleOverrides.map(r => ({ scope: "branch" as const, targetRole: r.targetRole, isEnabled: r.isEnabled, id: r.id })),
+        ],
       };
     });
 
@@ -135,44 +144,58 @@ router.post("/api/module-flags", isAuthenticated, async (req: Request, res: Resp
       return res.status(403).json({ error: "Bu işlem için yetkiniz bulunmamaktadır." });
     }
 
-    const { moduleKey, branchId, isEnabled } = req.body;
+    const { moduleKey, branchId, isEnabled, targetRole } = req.body;
 
     if (!moduleKey || typeof moduleKey !== "string") {
       return res.status(400).json({ error: "moduleKey alanı zorunludur." });
     }
-    if (!branchId || typeof branchId !== "number") {
-      return res.status(400).json({ error: "branchId alanı zorunludur (şube override için)." });
-    }
     if (typeof isEnabled !== "boolean") {
       return res.status(400).json({ error: "isEnabled alanı boolean olmalıdır." });
+    }
+    if (targetRole !== undefined && targetRole !== null && typeof targetRole !== "string") {
+      return res.status(400).json({ error: "targetRole alanı string olmalıdır." });
+    }
+    if (targetRole && !VALID_ROLES.has(targetRole)) {
+      return res.status(400).json({ error: `Geçersiz rol: ${targetRole}` });
+    }
+
+    const scope = branchId ? "branch" : "global";
+
+    if (scope === "branch" && (typeof branchId !== "number" || isNaN(branchId))) {
+      return res.status(400).json({ error: "branchId geçerli bir sayı olmalıdır." });
     }
 
     const user = req.user as any;
 
-    const [existing] = await db
+    const existingFlags = await db
       .select()
       .from(moduleFlags)
       .where(
         and(
           eq(moduleFlags.moduleKey, moduleKey),
-          eq(moduleFlags.scope, "branch"),
-          eq(moduleFlags.branchId, branchId),
+          eq(moduleFlags.scope, scope),
           isNull(moduleFlags.deletedAt)
         )
-      )
-      .limit(1);
+      );
+
+    const existing = existingFlags.find(f => {
+      const matchBranch = scope === "global" ? !f.branchId : f.branchId === branchId;
+      const matchRole = (targetRole ?? null) === (f.targetRole ?? null);
+      return matchBranch && matchRole;
+    });
 
     if (existing) {
-      return res.status(409).json({ error: "Bu şube için bu modülün override kaydı zaten mevcut." });
+      return res.status(409).json({ error: "Bu kombinasyon için override kaydı zaten mevcut." });
     }
 
     const [created] = await db
       .insert(moduleFlags)
       .values({
         moduleKey,
-        scope: "branch",
-        branchId,
+        scope,
+        branchId: branchId ?? null,
         isEnabled,
+        targetRole: targetRole ?? null,
         enabledBy: isEnabled ? user.id : null,
         enabledAt: isEnabled ? new Date() : null,
         disabledBy: !isEnabled ? user.id : null,
@@ -184,7 +207,7 @@ router.post("/api/module-flags", isAuthenticated, async (req: Request, res: Resp
     res.status(201).json(created);
   } catch (error) {
     console.error("[ModuleFlags] POST / error:", error);
-    res.status(500).json({ error: "Şube override oluşturulurken hata oluştu." });
+    res.status(500).json({ error: "Override oluşturulurken hata oluştu." });
   }
 });
 
@@ -209,7 +232,7 @@ router.delete("/api/module-flags/:id", isAuthenticated, async (req: Request, res
       return res.status(404).json({ error: "Modül bayrağı bulunamadı." });
     }
 
-    if (existing.scope === "global") {
+    if (existing.scope === "global" && !existing.targetRole) {
       return res.status(400).json({ error: "Global bayraklar silinemez, sadece kapatılabilir." });
     }
 
@@ -222,7 +245,7 @@ router.delete("/api/module-flags/:id", isAuthenticated, async (req: Request, res
     res.json({ success: true });
   } catch (error) {
     console.error("[ModuleFlags] DELETE /:id error:", error);
-    res.status(500).json({ error: "Şube override silinirken hata oluştu." });
+    res.status(500).json({ error: "Override silinirken hata oluştu." });
   }
 });
 
@@ -240,7 +263,8 @@ router.get("/api/module-flags/check", isAuthenticated, async (req: Request, res:
 
     const user = req.user as any;
     const branchId = user?.branchId ?? null;
-    const enabled = await isModuleEnabled(moduleKey, branchId, flagContext);
+    const userRole = user?.role ?? null;
+    const enabled = await isModuleEnabled(moduleKey, branchId, flagContext, userRole);
 
     res.json({ enabled });
   } catch (error) {

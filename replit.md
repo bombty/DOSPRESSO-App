@@ -72,18 +72,20 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Middleware**: `isKioskAuthenticated` checks `x-kiosk-token` header first, then falls back to web session for authorized roles
 - **Startup**: `migrateKioskPasswords()` in `server/index.ts` auto-hashes any plaintext passwords on boot
 
-## Module Feature Flags (Sprint 1 + 1B)
-- **Table**: `module_flags` in `shared/schema.ts` — global + branch-level module toggles with behavior types
-- **Columns (Sprint 1B)**: `flag_level` (module/submodule/widget/function), `flag_behavior` (fully_hidden/ui_hidden_data_continues/always_on), `parent_key` (parent module for sub-modules)
-- **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled(key, branchId?, context?)` with 60s cache, `requireModuleEnabled()` middleware (passes context="api"), `getModuleFlagBehavior()` helper
+## Module Feature Flags (Sprint 1 + 1B + 1C)
+- **Table**: `module_flags` in `shared/schema.ts` — global + branch-level + role-level module toggles with behavior types
+- **Columns**: `flag_level` (module/submodule/widget/function), `flag_behavior` (fully_hidden/ui_hidden_data_continues/always_on), `parent_key` (parent module for sub-modules), `target_role` (nullable, role-specific override)
+- **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled(key, branchId?, context?, userRole?)` with 60s cache, `requireModuleEnabled()` middleware (passes context="api" + user role), `getModuleFlagBehavior()` helper
+- **4-level lookup priority**: branch+role > branch > global+role > global (most specific wins)
 - **Behavior types**: `always_on` (always true, ignore isEnabled), `fully_hidden` (standard toggle), `ui_hidden_data_continues` (data context always true, ui/api respect isEnabled)
 - **Parent-child**: Sub-modules inherit parent state — if parent disabled, children disabled too (except always_on parents)
-- **Routes**: `server/routes/module-flags.ts` — CRUD for flags (admin only) + `/api/module-flags/check?moduleKey=X&context=ui` (authenticated)
-- **Seed**: `server/seed-module-flags.ts` — 28 flags (20 modules + 8 factory sub-modules) upserted on startup with ALTER TABLE migration
-- **Menu integration**: `buildMenuForUser()` in `server/menu-service.ts` filters sidebar items by module flag status (context="ui")
+- **Routes**: `server/routes/module-flags.ts` — CRUD for flags (admin only) + `/api/module-flags/check?moduleKey=X&context=ui` (authenticated, auto-uses user role)
+- **Seed**: `server/seed-module-flags.ts` — 31 flags (20 modules + 8 factory sub-modules + 3 dobody sub-modules) upserted on startup with ALTER TABLE migration
+- **Menu integration**: `buildMenuForUser()` in `server/menu-service.ts` filters sidebar items by module flag status (context="ui", passes user role)
 - **Frontend hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)` returns `{ isEnabled, isLoading, isError }`
 - **Module keys**: admin, dashboard, bordro, dobody, fabrika, satinalma (always_on); pdks, vardiya (ui_hidden_data_continues); checklist, gorevler, akademi, crm, stok, ekipman, denetim, iletisim_merkezi, raporlar, finans, delegasyon, franchise (fully_hidden)
 - **Factory sub-modules**: fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vardiya, fabrika.kalite, fabrika.kavurma, fabrika.stok
+- **Dobody sub-modules**: dobody.chat (DobodyMiniBar), dobody.bildirim (notifications), dobody.flow (DobodyFlowMode)
 
 ## Database Summary
 - **Tables**: 376 in `shared/schema.ts`

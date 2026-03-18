@@ -15541,6 +15541,7 @@ export const moduleFlags = pgTable("module_flags", {
   flagLevel: varchar("flag_level", { length: 20 }).notNull().default("module"),
   flagBehavior: varchar("flag_behavior", { length: 30 }).notNull().default("fully_hidden"),
   parentKey: varchar("parent_key", { length: 100 }),
+  targetRole: varchar("target_role", { length: 50 }),
   enabledBy: varchar("enabled_by").references(() => users.id),
   enabledAt: timestamp("enabled_at", { withTimezone: true }).defaultNow(),
   disabledBy: varchar("disabled_by").references(() => users.id),
@@ -15549,7 +15550,7 @@ export const moduleFlags = pgTable("module_flags", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("uq_module_flags_key_scope_branch").on(table.moduleKey, table.scope, table.branchId),
+  uniqueIndex("uq_module_flags_key_scope_branch_role").on(table.moduleKey, table.scope, table.branchId, table.targetRole),
 ]);
 
 export const insertModuleFlagSchema = createInsertSchema(moduleFlags).omit({ id: true, createdAt: true, updatedAt: true });

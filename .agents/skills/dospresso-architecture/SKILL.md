@@ -242,7 +242,7 @@ IMPORTANT: Not all APIs return arrays. Known object-wrapped responses:
 Frontend MUST normalize: `Array.isArray(data) ? data : (data?.data || data?.actions || data?.tasks || data?.items || [])`
 
 ## Module Feature Flag System
-Table: `module_flags` in `shared/schema.ts` — global + branch-level module toggles with behavior types.
+Table: `module_flags` in `shared/schema.ts` — global + branch-level + role-level module toggles with behavior types.
 
 ### Table Columns
 - `moduleKey` (varchar 100) — unique module identifier
@@ -252,6 +252,13 @@ Table: `module_flags` in `shared/schema.ts` — global + branch-level module tog
 - `flagLevel` (varchar 20) — "module" | "submodule" | "widget" | "function"
 - `flagBehavior` (varchar 30) — "fully_hidden" | "ui_hidden_data_continues" | "always_on"
 - `parentKey` (varchar 100, nullable) — parent moduleKey for sub-modules
+- `targetRole` (varchar 50, nullable) — NULL = all roles, "barista" = only that role
+
+### 4-Level Lookup Priority (most specific wins)
+1. **Level 1**: branch + role override (branchId=X, targetRole="barista")
+2. **Level 2**: branch override (branchId=X, targetRole=NULL)
+3. **Level 3**: global + role override (scope="global", targetRole="barista")
+4. **Level 4**: global default (scope="global", targetRole=NULL)
 
 ### Behavior Types
 1. **always_on** — always returns true regardless of isEnabled. Used for core modules (admin, dashboard, fabrika, satinalma, bordro, dobody).
@@ -264,13 +271,22 @@ Sub-modules have a `parentKey` pointing to their parent module. If parent is dis
 ### Factory Sub-Modules (8)
 fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vardiya, fabrika.kalite, fabrika.kavurma, fabrika.stok
 
+### Dobody Sub-Modules (3)
+dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (notification delivery)
+
+### Module Keys (31 total)
+- **always_on** (6): admin, dashboard, bordro, dobody, fabrika, satinalma
+- **ui_hidden_data_continues** (3): pdks, vardiya, fabrika.vardiya
+- **fully_hidden** (22): checklist, gorevler, akademi, crm, stok, ekipman, denetim, iletisim_merkezi, raporlar, finans, delegasyon, franchise, fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.kalite, fabrika.kavurma, fabrika.stok, dobody.chat, dobody.bildirim, dobody.flow
+
 ### Key Files
 - **Schema**: `shared/schema.ts` — `moduleFlags` table definition
-- **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled(key, branchId?, context?)`, `requireModuleEnabled()`, `getModuleFlagBehavior()`, `PATH_TO_MODULE_KEY_MAP`
+- **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled(key, branchId?, context?, userRole?)`, `requireModuleEnabled()`, `getModuleFlagBehavior()`, `PATH_TO_MODULE_KEY_MAP`
 - **Routes**: `server/routes/module-flags.ts` — CRUD (admin only) + `/api/module-flags/check?moduleKey=X&context=ui`
-- **Seed**: `server/seed-module-flags.ts` — 28 flags (20 modules + 8 sub-modules), ALTER TABLE migration on startup
-- **Menu**: `server/menu-service.ts` — `buildMenuForUser()` filters sidebar items with context="ui"
+- **Seed**: `server/seed-module-flags.ts` — 31 flags (20 modules + 8 fabrika sub-modules + 3 dobody sub-modules), ALTER TABLE migration on startup
+- **Menu**: `server/menu-service.ts` — `buildMenuForUser()` filters sidebar items with context="ui" and user role
 - **Hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)`
+- **Dobody integration**: `client/src/components/dobody-mini-bar.tsx` (dobody.chat), `client/src/components/dobody-flow-mode.tsx` (dobody.flow)
 
 ### Graceful Degradation
 When a module is disabled, composite scores and analytics recalculate without it. No crashes — disabled modules are simply excluded from calculations.

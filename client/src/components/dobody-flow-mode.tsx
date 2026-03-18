@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bot, CheckCircle2, Clock, Flame, Trophy, X } from "lucide-react";
 import { useDobodyFlow, type FlowTask } from "@/contexts/dobody-flow-context";
 import { useDobodyAvatar } from "@/hooks/use-dobody-avatar";
+import { useModuleEnabled } from "@/hooks/use-module-flags";
 
 interface DobodyFlowModeProps {
   userId: string | number;
@@ -25,6 +26,7 @@ interface FlowTasksResponse {
 }
 
 export function DobodyFlowMode({ userId, userRole, userName, branchId }: DobodyFlowModeProps) {
+  const { isEnabled: isFlowEnabled, isLoading: isFlowFlagLoading } = useModuleEnabled("dobody.flow");
   const [, navigate] = useLocation();
   const {
     flowTasks,
@@ -84,6 +86,7 @@ export function DobodyFlowMode({ userId, userRole, userName, branchId }: DobodyF
     }
   }, [allCompleted, isFlowActive]);
 
+  if (!isFlowEnabled || isFlowFlagLoading) return null;
   if (!userIdSet) return null;
   if (isDismissed) return null;
   if (isFlowActive && !showCompletion) return null;

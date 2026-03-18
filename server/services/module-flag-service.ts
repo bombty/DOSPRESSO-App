@@ -11,9 +11,12 @@ interface CacheEntry {
 const flagCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 1000;
 
-function getCacheKey(moduleKey: string, branchId?: number | null, context?: string): string {
-  const base = branchId ? `${moduleKey}:branch:${branchId}` : `${moduleKey}:global`;
-  return context ? `${base}:${context}` : base;
+function getCacheKey(moduleKey: string, branchId?: number | null, context?: string, userRole?: string | null): string {
+  const parts = [moduleKey];
+  if (branchId) parts.push(`branch:${branchId}`);
+  if (userRole) parts.push(`role:${userRole}`);
+  if (context) parts.push(`ctx:${context}`);
+  return parts.join(":");
 }
 
 export function clearModuleFlagCache(): void {
@@ -23,9 +26,10 @@ export function clearModuleFlagCache(): void {
 export async function isModuleEnabled(
   moduleKey: string,
   branchId?: number | null,
-  context?: "ui" | "api" | "data"
+  context?: "ui" | "api" | "data",
+  userRole?: string | null
 ): Promise<boolean> {
-  const cacheKey = getCacheKey(moduleKey, branchId, context);
+  const cacheKey = getCacheKey(moduleKey, branchId, context, userRole);
   const now = Date.now();
   const cached = flagCache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
@@ -33,7 +37,7 @@ export async function isModuleEnabled(
   }
 
   try {
-    const flagRecord = await getFlagRecord(moduleKey, branchId);
+    const flagRecord = await getFlagRecord(moduleKey, branchId, userRole);
 
     if (!flagRecord) {
       flagCache.set(cacheKey, { value: true, expiresAt: now + CACHE_TTL_MS });
@@ -41,7 +45,7 @@ export async function isModuleEnabled(
     }
 
     if (flagRecord.parentKey) {
-      const parentEnabled = await isModuleEnabled(flagRecord.parentKey, branchId, context);
+      const parentEnabled = await isModuleEnabled(flagRecord.parentKey, branchId, context, userRole);
       if (!parentEnabled) {
         flagCache.set(cacheKey, { value: false, expiresAt: now + CACHE_TTL_MS });
         return false;
@@ -77,49 +81,51 @@ interface FlagRecord {
   effectiveEnabled: boolean;
 }
 
-async function getFlagRecord(moduleKey: string, branchId?: number | null): Promise<FlagRecord | null> {
-  if (branchId) {
-    const [branchFlag] = await db
-      .select()
-      .from(moduleFlags)
-      .where(
-        and(
-          eq(moduleFlags.moduleKey, moduleKey),
-          eq(moduleFlags.scope, "branch"),
-          eq(moduleFlags.branchId, branchId),
-          isNull(moduleFlags.deletedAt)
-        )
-      )
-      .limit(1);
-
-    if (branchFlag) {
-      return {
-        flagBehavior: branchFlag.flagBehavior,
-        parentKey: branchFlag.parentKey,
-        effectiveEnabled: branchFlag.isEnabled,
-      };
-    }
-  }
-
-  const [globalFlag] = await db
+async function getFlagRecord(moduleKey: string, branchId?: number | null, userRole?: string | null): Promise<FlagRecord | null> {
+  const allFlags = await db
     .select()
     .from(moduleFlags)
     .where(
       and(
         eq(moduleFlags.moduleKey, moduleKey),
-        eq(moduleFlags.scope, "global"),
-        isNull(moduleFlags.branchId),
         isNull(moduleFlags.deletedAt)
       )
-    )
-    .limit(1);
+    );
 
-  if (!globalFlag) return null;
+  if (allFlags.length === 0) return null;
+
+  let matched: typeof allFlags[0] | null = null;
+
+  if (branchId && userRole) {
+    matched = allFlags.find(f =>
+      f.scope === "branch" && f.branchId === branchId && f.targetRole === userRole
+    ) ?? null;
+  }
+
+  if (!matched && branchId) {
+    matched = allFlags.find(f =>
+      f.scope === "branch" && f.branchId === branchId && !f.targetRole
+    ) ?? null;
+  }
+
+  if (!matched && userRole) {
+    matched = allFlags.find(f =>
+      f.scope === "global" && !f.branchId && f.targetRole === userRole
+    ) ?? null;
+  }
+
+  if (!matched) {
+    matched = allFlags.find(f =>
+      f.scope === "global" && !f.branchId && !f.targetRole
+    ) ?? null;
+  }
+
+  if (!matched) return null;
 
   return {
-    flagBehavior: globalFlag.flagBehavior,
-    parentKey: globalFlag.parentKey,
-    effectiveEnabled: globalFlag.isEnabled,
+    flagBehavior: matched.flagBehavior,
+    parentKey: matched.parentKey,
+    effectiveEnabled: matched.isEnabled,
   };
 }
 
@@ -128,7 +134,8 @@ export function requireModuleEnabled(moduleKey: string): RequestHandler {
     try {
       const user = req.user as Express.User;
       const branchId = (user as any)?.branchId ?? null;
-      const enabled = await isModuleEnabled(moduleKey, branchId, "api");
+      const userRole = (user as any)?.role ?? null;
+      const enabled = await isModuleEnabled(moduleKey, branchId, "api", userRole);
       if (!enabled) {
         return res.status(403).json({ error: "Bu modül şubeniz için aktif değildir." });
       }

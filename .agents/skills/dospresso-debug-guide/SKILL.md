@@ -232,12 +232,13 @@ grep -rn "delegations\|delegation" server/routes/delegation-routes.ts | head -10
 - Sub-module not responding to parent toggle
 - Data collection stops when module UI is hidden
 - `isModuleEnabled` always returns true
+- Role-based override not working
 
 ### Triage Steps
 
 1. **Check flag exists in DB:**
 ```sql
-SELECT module_key, flag_level, flag_behavior, parent_key, is_enabled, scope, branch_id
+SELECT module_key, flag_level, flag_behavior, parent_key, target_role, is_enabled, scope, branch_id
 FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL;
 ```
 
@@ -251,24 +252,37 @@ LEFT JOIN module_flags parent ON parent.module_key = mf.parent_key AND parent.sc
 WHERE mf.module_key = '<KEY>' AND mf.deleted_at IS NULL;
 ```
 
-4. **Check branch override:** Branch flags override global. If branch flag exists and is disabled, module is disabled for that branch even if global is enabled:
+4. **Check 4-level lookup priority:** Most specific match wins:
+   - Level 1: branch + role (branchId=X, targetRole="barista")
+   - Level 2: branch only (branchId=X, targetRole=NULL)
+   - Level 3: global + role (scope="global", targetRole="barista")
+   - Level 4: global default (scope="global", targetRole=NULL)
 ```sql
-SELECT * FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL ORDER BY scope;
+SELECT module_key, scope, branch_id, target_role, is_enabled
+FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL
+ORDER BY CASE WHEN scope='branch' AND target_role IS NOT NULL THEN 1
+              WHEN scope='branch' AND target_role IS NULL THEN 2
+              WHEN scope='global' AND target_role IS NOT NULL THEN 3
+              ELSE 4 END;
 ```
 
-5. **Check context mismatch:** `ui_hidden_data_continues` behaves differently based on context:
+5. **Check role override conflicts:** If a global+role override exists but branch override also exists, branch wins:
+```sql
+SELECT * FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL ORDER BY scope, target_role;
+```
+
+6. **Check context mismatch:** `ui_hidden_data_continues` behaves differently based on context:
    - `context="data"` → always true (data continues)
    - `context="ui"` or `context="api"` → respects isEnabled
-   - If a route uses `requireModuleEnabled()` it passes `context="api"`
+   - If a route uses `requireModuleEnabled()` it passes `context="api"` and user's role
 
-6. **Clear cache:** Module flags are cached for 60 seconds. Call `clearModuleFlagCache()` or restart server to force refresh.
+7. **Clear cache:** Module flags are cached for 60 seconds. Cache key includes moduleKey + branchId + role + context. Call `clearModuleFlagCache()` or restart server to force refresh.
 
-7. **Check PATH_TO_MODULE_KEY_MAP:** If a path is not mapped, `getModuleKeyForPath()` returns null and the menu won't filter it:
-```typescript
-// server/services/module-flag-service.ts — PATH_TO_MODULE_KEY_MAP
-```
+8. **Check PATH_TO_MODULE_KEY_MAP:** If a path is not mapped, `getModuleKeyForPath()` returns null and the menu won't filter it.
 
-8. **Seed didn't run:** Check startup logs for `[SEED] Module flags: X/Y flags upserted`. If the table didn't exist, CREATE TABLE must be run first.
+9. **Seed didn't run:** Check startup logs for `[SEED] Module flags: X/Y flags upserted` (expect 31). If table didn't exist, CREATE TABLE must be run first.
+
+10. **Dobody flags not working:** Check the 3 sub-modules: dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (notifications). Parent is `dobody` (always_on), so sub-modules can be toggled independently.
 
 ---
 

@@ -828,13 +828,14 @@ export async function buildMenuForUser(
 
   // Apply module feature flags — filter out items whose path maps to a disabled module
   const branchId = user.branchId ?? null;
+  const userRole = user.role;
   const moduleFlagChecks = new Map<string, boolean>();
   const allPaths = preFilteredSections.flatMap(s => s.items.map(i => i.path));
   for (const path of allPaths) {
     const flagKey = getModuleKeyForPath(path);
     if (flagKey && !moduleFlagChecks.has(flagKey)) {
       try {
-        moduleFlagChecks.set(flagKey, await isModuleEnabled(flagKey, branchId, "ui"));
+        moduleFlagChecks.set(flagKey, await isModuleEnabled(flagKey, branchId, "ui", userRole));
       } catch {
         moduleFlagChecks.set(flagKey, true);
       }
