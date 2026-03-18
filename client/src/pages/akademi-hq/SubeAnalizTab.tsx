@@ -66,10 +66,10 @@ export function SubeAnalizTab() {
   };
 
   const kpiItems: KPIItem[] = [
-    { label: "Toplam Şube", value: totalBranches, icon: Building2, testId: "stat-total-branches" },
-    { label: "Aktif Öğrenci", value: totalStudents, icon: Users, testId: "stat-total-students" },
-    { label: "Ort. Tamamlanma", value: `%${avgCompletion}`, icon: TrendingUp, testId: "stat-avg-completion" },
-    { label: "Ort. Puan", value: avgScore, icon: BarChart3, testId: "stat-avg-score" },
+    { label: "Toplam Şube", value: totalBranches, icon: <Building2 className="w-4 h-4" />, testId: "stat-total-branches" },
+    { label: "Aktif Öğrenci", value: totalStudents, icon: <Users className="w-4 h-4" />, testId: "stat-total-students" },
+    { label: "Ort. Tamamlanma", value: `%${avgCompletion}`, icon: <TrendingUp className="w-4 h-4" />, testId: "stat-avg-completion" },
+    { label: "Ort. Puan", value: avgScore, icon: <BarChart3 className="w-4 h-4" />, testId: "stat-avg-score" },
   ];
 
   if (isLoading) {

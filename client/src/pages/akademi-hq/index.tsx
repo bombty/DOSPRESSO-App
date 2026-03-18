@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { hasPermission, type UserRoleType } from "@shared/schema";
@@ -17,6 +18,7 @@ import { SertifikaTab } from "./SertifikaTab";
 export default function AcademyHQ() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState("training");
 
   const canManageTraining = user && hasPermission(user.role as UserRoleType, 'training', 'edit');
 
@@ -40,22 +42,21 @@ export default function AcademyHQ() {
 
   return (
     <div className="grid grid-cols-1 gap-2 p-3">
-      <div className="flex items-center gap-2 mb-4">
-        <Button
-          onClick={() => window.history.back()}
-          variant="outline"
-          size="icon"
-          data-testid="button-back"
-          title="Geri Dön"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-      </div>
-
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
-          <p className="text-muted-foreground mt-2">Modül yönetimi, sınav talepleri ve atamalar</p>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => window.history.back()}
+            variant="outline"
+            size="icon"
+            data-testid="button-back"
+            title="Geri Dön"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
+            <p className="text-xs text-muted-foreground">Modül yönetimi, sınav talepleri ve atamalar</p>
+          </div>
         </div>
         <Button
           variant="outline"
@@ -69,42 +70,47 @@ export default function AcademyHQ() {
         </Button>
       </div>
 
-      <RoleDashboard />
+      <RoleDashboard
+        onNavigateTab={setActiveTab}
+        onCertSettings={() => setActiveTab("certs")}
+        onOpenAiOnboarding={() => setActiveTab("training")}
+        onOpenAiProgram={() => setActiveTab("training")}
+      />
 
-      <Tabs defaultValue="training" className="w-full">
-        <TabsList className="w-full flex flex-wrap gap-1">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="w-full flex overflow-x-auto scrollbar-hidden gap-1" data-testid="academy-hq-tabs">
           <TabsTrigger value="training" className="flex-1 min-w-fit" data-testid="tab-training">
-            <GraduationCap className="w-4 h-4 mr-2" />
+            <GraduationCap className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">Modüller</span>
             <span className="sm:hidden">Modül</span>
           </TabsTrigger>
           <TabsTrigger value="quiz" className="flex-1 min-w-fit" data-testid="tab-quiz">
-            <ListChecks className="w-4 h-4 mr-2" />
+            <ListChecks className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">Quiz Yönetimi</span>
             <span className="sm:hidden">Quiz</span>
           </TabsTrigger>
           <TabsTrigger value="webinar" className="flex-1 min-w-fit" data-testid="tab-webinar">
-            <Video className="w-4 h-4 mr-2" />
+            <Video className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">Webinarlar</span>
             <span className="sm:hidden">Web.</span>
           </TabsTrigger>
           <TabsTrigger value="stats" className="flex-1 min-w-fit" data-testid="tab-stats">
-            <BarChart3 className="w-4 h-4 mr-2" />
+            <BarChart3 className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">İstatistikler</span>
             <span className="sm:hidden">İst.</span>
           </TabsTrigger>
           <TabsTrigger value="branch" className="flex-1 min-w-fit" data-testid="tab-branch">
-            <Building2 className="w-4 h-4 mr-2" />
+            <Building2 className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">Şube Analiz</span>
             <span className="sm:hidden">Şube</span>
           </TabsTrigger>
           <TabsTrigger value="exams" className="flex-1 min-w-fit" data-testid="tab-exams">
-            <Clock className="w-4 h-4 mr-2" />
+            <Clock className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">Sınav Talepleri</span>
             <span className="sm:hidden">Sınav</span>
           </TabsTrigger>
           <TabsTrigger value="certs" className="flex-1 min-w-fit" data-testid="tab-certs">
-            <Award className="w-4 h-4 mr-2" />
+            <Award className="w-4 h-4 mr-1.5" />
             <span className="hidden sm:inline">Sertifikalar</span>
             <span className="sm:hidden">Sert.</span>
           </TabsTrigger>

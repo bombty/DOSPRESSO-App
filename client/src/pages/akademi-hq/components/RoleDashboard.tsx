@@ -30,12 +30,13 @@ interface TrainingStats {
 }
 
 interface RoleDashboardProps {
+  onNavigateTab?: (tab: string) => void;
   onCertSettings?: () => void;
   onOpenAiOnboarding?: () => void;
   onOpenAiProgram?: () => void;
 }
 
-export function RoleDashboard({ onCertSettings, onOpenAiOnboarding, onOpenAiProgram }: RoleDashboardProps) {
+export function RoleDashboard({ onNavigateTab, onCertSettings, onOpenAiOnboarding, onOpenAiProgram }: RoleDashboardProps) {
   const { user } = useAuth();
   const role = user?.role || '';
 
@@ -266,18 +267,18 @@ export function RoleDashboard({ onCertSettings, onOpenAiOnboarding, onOpenAiProg
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="grid grid-cols-2 gap-2">
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-create-onboarding" onClick={() => onOpenAiOnboarding?.()}>
-                <Plus className="w-3 h-3" /> Onboarding Şablonu
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <Button size="sm" variant="outline" className="justify-start gap-2 text-xs" data-testid="btn-create-onboarding" onClick={() => { onNavigateTab?.("training"); onOpenAiOnboarding?.(); }}>
+                <Plus className="w-3.5 h-3.5" /> Onboarding Şablonu
               </Button>
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-view-reports">
-                <BarChart3 className="w-3 h-3" /> Eğitim Raporu
+              <Button size="sm" variant="outline" className="justify-start gap-2 text-xs" data-testid="btn-view-reports" onClick={() => onNavigateTab?.("stats")}>
+                <BarChart3 className="w-3.5 h-3.5" /> Eğitim Raporu
               </Button>
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-cert-settings" onClick={() => onCertSettings?.()}>
-                <Award className="w-3 h-3" /> Sertifika Ayarları
+              <Button size="sm" variant="outline" className="justify-start gap-2 text-xs" data-testid="btn-cert-settings" onClick={() => { onNavigateTab?.("certs"); onCertSettings?.(); }}>
+                <Award className="w-3.5 h-3.5" /> Sertifika Ayarları
               </Button>
-              <Button size="sm" variant="outline" className="justify-start gap-2" data-testid="btn-ai-generate" onClick={() => onOpenAiProgram?.()}>
-                <GraduationCap className="w-3 h-3" /> AI Modül Üret
+              <Button size="sm" variant="outline" className="justify-start gap-2 text-xs" data-testid="btn-ai-generate" onClick={() => { onNavigateTab?.("training"); onOpenAiProgram?.(); }}>
+                <GraduationCap className="w-3.5 h-3.5" /> AI Modül Üret
               </Button>
             </div>
           </CardContent>

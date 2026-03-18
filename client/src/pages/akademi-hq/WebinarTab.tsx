@@ -146,10 +146,10 @@ export function WebinarTab() {
   const totalRegistrations = webinars.reduce((sum, w) => sum + (w.registrationCount || 0), 0);
 
   const kpiItems: KPIItem[] = [
-    { label: "Toplam Webinar", value: webinars.length, icon: Video, testId: "stat-total-webinars" },
-    { label: "Planlandı", value: scheduled, icon: Calendar, testId: "stat-scheduled" },
-    { label: "Tamamlandı", value: completed, icon: CheckCircle, testId: "stat-completed" },
-    { label: "Toplam Kayıt", value: totalRegistrations, icon: Users, testId: "stat-registrations" },
+    { label: "Toplam Webinar", value: webinars.length, icon: <Video className="w-4 h-4" />, testId: "stat-total-webinars" },
+    { label: "Planlandı", value: scheduled, icon: <Calendar className="w-4 h-4" />, testId: "stat-scheduled" },
+    { label: "Tamamlandı", value: completed, icon: <CheckCircle className="w-4 h-4" />, testId: "stat-completed" },
+    { label: "Toplam Kayıt", value: totalRegistrations, icon: <Users className="w-4 h-4" />, testId: "stat-registrations" },
   ];
 
   const roleOptions = [
