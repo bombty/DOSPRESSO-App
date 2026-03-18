@@ -44,6 +44,8 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
   { key: "dobody.chat", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
   { key: "dobody.bildirim", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
   { key: "dobody.flow", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
+
+  { key: "sube_gorevleri", level: "module", behavior: "fully_hidden", parent: null },
 ];
 
 export async function seedModuleFlags() {

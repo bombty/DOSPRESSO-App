@@ -1,0 +1,297 @@
+Tüm kararlar tamam. Sprint 1 promptunu yazıyorum — Replit'e yapıştırın:
+
+---
+
+```
+## Branch Task Board — Sprint 1: Database + API + Scheduler
+
+### Context
+DOSPRESSO needs a recurring task system for branches. Different from checklists (multi-step lists), these are individual, repeatable tasks like "cam silme her Pazartesi" that can be assigned to someone or claimed by any employee. Tasks carry over as overdue if not completed.
+
+Read these skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### Task 1: Database Tables
+
+Add to shared/schema.ts:
+
+#### Table 1: branch_recurring_tasks (task templates/definitions)
+```typescript
+export const branchRecurringTasks = pgTable("branch_recurring_tasks", {
+  id: serial("id").primaryKey(),
+  
+  // What
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull().default("genel"),
+  // Values: "temizlik", "bakim", "stok", "genel"
+  
+  // Where
+  branchId: integer("branch_id").references(() => branches.id),
+  // NULL = HQ template (applies to ALL branches)
+  // integer = branch-specific task
+  
+  // When — recurrence
+  recurrenceType: varchar("recurrence_type", { length: 20 }).notNull(),
+  // Values: "daily", "weekly", "monthly", "once"
+  
+  dayOfWeek: integer("day_of_week"),
+  // 0=Sunday, 1=Monday ... 6=Saturday — used when recurrenceType="weekly"
+  
+  dayOfMonth: integer("day_of_month"),
+  // 1-31 — used when recurrenceType="monthly"
+  
+  specificDate: date("specific_date"),
+  // Used when recurrenceType="once"
+  
+  // Who
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  // NULL = open task (anyone can claim), string = assigned to specific person
+  
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdByRole: varchar("created_by_role", { length: 50 }).notNull(),
+  // Track if HQ or branch created it
+  
+  // Photo requirement
+  photoRequired: boolean("photo_required").default(false),
+  // false = photo optional, true = photo encouraged (not blocking)
+  
+  // Status
+  isActive: boolean("is_active").default(true).notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+```
+
+#### Table 2: branch_task_instances (daily generated task instances)
+```typescript
+export const branchTaskInstances = pgTable("branch_task_instances", {
+  id: serial("id").primaryKey(),
+  
+  // Link to template
+  recurringTaskId: integer("recurring_task_id").references(() => branchRecurringTasks.id).notNull(),
+  branchId: integer("branch_id").references(() => branches.id).notNull(),
+  
+  // Due date for this instance
+  dueDate: date("due_date").notNull(),
+  
+  // Status: "pending", "claimed", "completed", "overdue"
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  
+  // Assignment/claiming
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  // Copied from template at creation time. NULL = open for claiming.
+  
+  claimedByUserId: varchar("claimed_by_user_id").references(() => users.id),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  
+  // Completion
+  completedByUserId: varchar("completed_by_user_id").references(() => users.id),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  completionNote: text("completion_note"),
+  photoUrl: text("photo_url"),
+  // Optional photo proof
+  
+  // Overdue tracking
+  isOverdue: boolean("is_overdue").default(false).notNull(),
+  originalDueDate: date("original_due_date"),
+  // If carried over, originalDueDate = first due date, dueDate = today
+  
+  // Metadata
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+```
+
+#### Table 3: branch_task_categories (configurable categories)
+```typescript
+export const branchTaskCategories = pgTable("branch_task_categories", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 50 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  icon: varchar("icon", { length: 50 }), // Lucide icon name
+  color: varchar("color", { length: 20 }), // Tailwind color class
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+```
+
+Create insert schemas and types for all 3 tables using createInsertSchema pattern.
+
+Run ALTER TABLE / CREATE TABLE via SQL (like seed-module-flags.ts pattern — add migration to a new seed file).
+
+### Task 2: Seed Data
+
+Create `server/seed-branch-tasks.ts`:
+
+Seed default categories:
+```typescript
+const DEFAULT_CATEGORIES = [
+  { key: "temizlik", label: "Temizlik", icon: "Sparkles", color: "blue", sortOrder: 1 },
+  { key: "bakim", label: "Bakım", icon: "Wrench", color: "amber", sortOrder: 2 },
+  { key: "stok", label: "Stok", icon: "Package", color: "green", sortOrder: 3 },
+  { key: "genel", label: "Genel", icon: "ClipboardList", color: "gray", sortOrder: 4 },
+];
+```
+
+Seed sample HQ template tasks (for testing):
+```typescript
+const SAMPLE_HQ_TASKS = [
+  { title: "Vitrin cam temizliği", category: "temizlik", recurrenceType: "weekly", dayOfWeek: 1 },
+  { title: "Tezgah dezenfeksiyon kontrolü", category: "temizlik", recurrenceType: "daily" },
+  { title: "Günlük stok sayımı", category: "stok", recurrenceType: "daily" },
+  { title: "Aylık ekipman bakım kontrolü", category: "bakim", recurrenceType: "monthly", dayOfMonth: 1 },
+];
+```
+Set createdByUserId to the admin user (find admin user ID first). Set branchId=NULL for HQ templates.
+
+Call from server/index.ts on startup (like seedSlaRules pattern). Use ON CONFLICT DO NOTHING.
+
+### Task 3: Task Instance Scheduler
+
+Create `server/services/branch-task-scheduler.ts`:
+
+```typescript
+export async function generateDailyTaskInstances(): Promise<number> {
+  // 1. Get today's date in Europe/Istanbul timezone
+  // 2. Find all active recurring tasks that match today:
+  //    - recurrenceType="daily" → always match
+  //    - recurrenceType="weekly" → match if dayOfWeek === today's day
+  //    - recurrenceType="monthly" → match if dayOfMonth === today's date
+  //    - recurrenceType="once" → match if specificDate === today
+  // 3. For HQ templates (branchId=NULL): generate instance for EVERY active branch
+  // 4. For branch-specific tasks: generate instance for that branch only
+  // 5. Check if instance already exists for (recurringTaskId, branchId, dueDate) — skip if exists
+  // 6. Insert new instances with status="pending", copy assignedToUserId from template
+  // 7. Return count of generated instances
+}
+
+export async function markOverdueInstances(): Promise<number> {
+  // 1. Find all instances where:
+  //    - status = "pending" or "claimed"
+  //    - dueDate < today (Europe/Istanbul)
+  // 2. Update: isOverdue = true, keep status as-is (don't change to "overdue")
+  //    The task stays claimable/completable even when overdue
+  // 3. Return count of marked instances
+}
+```
+
+Register in the existing scheduler (server/scheduler-manager.ts or server/index.ts):
+- Run `generateDailyTaskInstances()` daily at 00:05 Europe/Istanbul
+- Run `markOverdueInstances()` daily at 00:10 Europe/Istanbul
+- Also run both on server startup (catch up if server was down)
+
+Check how the existing agent-scheduler works:
+```bash
+grep -rn "schedule\|cron\|setInterval\|daily" server/scheduler-manager.ts server/index.ts --include="*.ts" | head -20
+```
+Integrate with the existing pattern — don't create a new scheduler.
+
+### Task 4: API Endpoints
+
+Create `server/routes/branch-tasks.ts`:
+
+#### Template CRUD (for müdür, supervisor, HQ roles):
+```
+GET    /api/branch-tasks/templates              — list templates (branch-scoped for branch roles, all for HQ)
+GET    /api/branch-tasks/templates/:id           — get single template
+POST   /api/branch-tasks/templates               — create template
+PATCH  /api/branch-tasks/templates/:id           — update template
+DELETE /api/branch-tasks/templates/:id           — soft delete template
+```
+
+#### Instance endpoints (for all branch employees):
+```
+GET    /api/branch-tasks/instances               — today's tasks for current user's branch
+                                                   query params: ?date=YYYY-MM-DD&status=pending&category=temizlik
+GET    /api/branch-tasks/instances/:id           — single instance detail
+POST   /api/branch-tasks/instances/:id/claim     — claim an open task (set claimedByUserId)
+POST   /api/branch-tasks/instances/:id/complete  — complete a task (set completedByUserId, photoUrl, note)
+POST   /api/branch-tasks/instances/:id/unclaim   — release a claimed task (only if not completed)
+```
+
+#### Category endpoint:
+```
+GET    /api/branch-tasks/categories              — list active categories
+```
+
+#### Stats endpoint (for dashboard):
+```
+GET    /api/branch-tasks/stats                   — today's stats for branch
+                                                   { total, pending, claimed, completed, overdue, completionRate }
+GET    /api/branch-tasks/stats/user/:userId      — user's task completion stats (for score)
+```
+
+#### Auth rules:
+- Template CRUD: isAuthenticated + role check (admin, ceo, cgo, coach, trainer, mudur, supervisor)
+- HQ roles can create templates with branchId=NULL (all branches) or specific branchId
+- Branch roles can only create templates for their own branchId
+- Instance endpoints: isAuthenticated + branch scope (user sees only their branch's tasks)
+- Claim/complete: any branch employee can claim open tasks, only claimer/assignee can complete
+- Stats: isAuthenticated + branch scope
+
+#### Important business rules in endpoints:
+1. Claim: Only if status="pending" and assignedToUserId is NULL (open task) or matches current user
+2. Complete: Only if claimedByUserId matches current user OR assignedToUserId matches current user
+3. Unclaim: Only if claimedByUserId matches current user AND status="claimed" (not completed)
+4. Branch scope: Branch roles see only their branchId tasks. HQ roles see all or filtered by query param.
+5. Overdue tasks are still claimable and completable — they just have isOverdue=true badge
+
+Register in server/routes.ts.
+
+### Task 5: Module Flag Integration
+
+Add "sube_gorevleri" to the module flag system:
+
+1. Add to seed-module-flags.ts:
+```typescript
+{ key: "sube_gorevleri", level: "module", behavior: "fully_hidden", parent: null },
+```
+
+2. Add to PATH_TO_MODULE_KEY_MAP in module-flag-service.ts:
+```typescript
+"/sube-gorevleri": "sube_gorevleri",
+"/gorev-panosu": "sube_gorevleri",
+```
+
+3. The scheduler should check module flag before generating instances:
+```typescript
+// In generateDailyTaskInstances, for each branch:
+const enabled = await isModuleEnabled("sube_gorevleri", branchId, "data");
+if (!enabled) continue; // Skip this branch
+```
+
+### DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Existing checklist system (this is a separate system)
+- Existing tasks system (server/routes/tasks.ts — different feature)
+- Kiosk pages (kiosk integration comes in Sprint 2)
+- Composite score (comes in Sprint 3)
+
+### Testing Checklist:
+1. App starts without errors
+2. SELECT count(*) FROM branch_task_categories; → 4 rows
+3. SELECT count(*) FROM branch_recurring_tasks; → 4+ sample HQ templates
+4. Run generateDailyTaskInstances manually or restart → instances created for today
+5. SELECT count(*) FROM branch_task_instances WHERE due_date = CURRENT_DATE; → should have instances
+6. GET /api/branch-tasks/instances (as branch user) → returns today's tasks
+7. POST /api/branch-tasks/instances/:id/claim → status changes to "claimed"
+8. POST /api/branch-tasks/instances/:id/complete → status changes to "completed"
+9. GET /api/branch-tasks/stats → returns correct counts
+10. GET /api/branch-tasks/templates (as admin) → returns all templates
+11. POST /api/branch-tasks/templates (as mudur) → creates branch-specific template
+12. Verify module flag: SELECT * FROM module_flags WHERE module_key='sube_gorevleri';
+
+### After implementation:
+1. Run quality gate
+2. Update replit.md — add Branch Task Board section
+3. Update .agents/skills/dospresso-architecture/SKILL.md — add new tables and endpoints
+4. Update .agents/skills/dospresso-debug-guide/SKILL.md — add §14 Branch Task Issues
+```
+
+---
+
+Direkt build başlatın! Sprint 1 bitince UI (Sprint 2) ve skor entegrasyonu (Sprint 3) gelecek.

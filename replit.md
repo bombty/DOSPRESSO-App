@@ -50,7 +50,7 @@ fabrika_operator, fabrika_sorumlu, fabrika_personel
 sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 
 ## Key Modules
-- **Operations**: Dashboard, Tasks, Checklists, Equipment/Faults, Lost & Found, Branch Orders/Stock
+- **Operations**: Dashboard, Tasks, Checklists, Equipment/Faults, Lost & Found, Branch Orders/Stock, Branch Task Board (recurring tasks)
 - **HR & Shifts**: Staff Management, Shifts, Attendance (PDKS), Payroll
 - **Factory**: Dashboard, Kiosk, Quality Control, Stations, Performance, Compliance, Shipments, Food Safety
 - **Training & Academy**: Academy V3 (gamification, badges, leaderboard, learning paths, AI assistant), Knowledge Base
@@ -63,6 +63,26 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Franchise/Investor**: Investor profiles, contract tracking, branch performance
 - **Webinar**: Webinar management and registration system
 - **System**: Admin Panel, Content Studio, Projects, Security/Backups
+
+## Branch Task Board (Sprint 1)
+- **Tables**: `branchTaskCategories`, `branchRecurringTasks`, `branchTaskInstances` in `shared/schema.ts`
+- **Seed**: `server/seed-branch-tasks.ts` — 4 categories (temizlik, bakim, stok, genel) + 4 sample HQ tasks. Registered in `server/index.ts` allSettled.
+- **Scheduler**: `server/services/branch-task-scheduler.ts` — `generateDailyTaskInstances()` runs at 00:00-00:10 TR in master 10-min tick + startup catch-up. `markOverdueInstances()` runs alongside.
+- **API**: `server/routes/branch-tasks.ts` — registered in `server/routes.ts`
+  - `GET /api/branch-tasks/categories` — list categories
+  - `GET /api/branch-tasks/templates` — list recurring task templates (HQ sees all, branch users see own branch)
+  - `POST /api/branch-tasks/templates` — create template (admin/ceo/cgo/coach/trainer/mudur/supervisor)
+  - `PATCH /api/branch-tasks/templates/:id` — update template
+  - `DELETE /api/branch-tasks/templates/:id` — soft delete template
+  - `GET /api/branch-tasks/instances` — list task instances (filter by branchId, date, status)
+  - `POST /api/branch-tasks/instances/:id/claim` — claim a task
+  - `POST /api/branch-tasks/instances/:id/complete` — complete a task
+  - `POST /api/branch-tasks/instances/:id/unclaim` — unclaim a task
+  - `GET /api/branch-tasks/stats` — completion stats for a branch
+- **Module flag**: `sube_gorevleri` (fully_hidden) in `server/seed-module-flags.ts`. Scheduler checks `isModuleEnabled("sube_gorevleri", branchId, "data")` before generating instances.
+- **Path mapping**: `/sube-gorevleri` and `/gorev-panosu` → `sube_gorevleri` in `PATH_TO_MODULE_KEY_MAP`
+- **Roles**: TEMPLATE_ROLES (create/edit): admin, ceo, cgo, coach, trainer, mudur, supervisor. HQ_ROLES (see all branches): admin, ceo, cgo, coach, trainer, muhasebe_ik, satinalma, marketing, kalite_kontrol, gida_muhendisi, fabrika_mudur. Branch users scoped to their branchId.
+- **Instance unique constraint**: `uq_branch_task_instance_recurring_branch_date` on (recurring_task_id, branch_id, due_date)
 
 ## Kiosk System
 - **Factory Kiosk**: PIN-based auth for factory floor workers, device password in `factory_kiosk_config`, station assignment, shift tracking
@@ -80,10 +100,10 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Behavior types**: `always_on` (always true, ignore isEnabled), `fully_hidden` (standard toggle), `ui_hidden_data_continues` (data context always true, ui/api respect isEnabled)
 - **Parent-child**: Sub-modules inherit parent state — if parent disabled, children disabled too (except always_on parents)
 - **Routes**: `server/routes/module-flags.ts` — CRUD for flags (admin only) + `/api/module-flags/check?moduleKey=X&context=ui` (authenticated, auto-uses user role)
-- **Seed**: `server/seed-module-flags.ts` — 31 flags (20 modules + 8 factory sub-modules + 3 dobody sub-modules) upserted on startup with ALTER TABLE migration
+- **Seed**: `server/seed-module-flags.ts` — 32 flags (21 modules + 8 factory sub-modules + 3 dobody sub-modules) upserted on startup with ALTER TABLE migration
 - **Menu integration**: `buildMenuForUser()` in `server/menu-service.ts` filters sidebar items by module flag status (context="ui", passes user role)
 - **Frontend hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)` returns `{ isEnabled, isLoading, isError }`
-- **Module keys**: admin, dashboard, bordro, dobody, fabrika, satinalma (always_on); pdks, vardiya (ui_hidden_data_continues); checklist, gorevler, akademi, crm, stok, ekipman, denetim, iletisim_merkezi, raporlar, finans, delegasyon, franchise (fully_hidden)
+- **Module keys**: admin, dashboard, bordro, dobody, fabrika, satinalma (always_on); pdks, vardiya (ui_hidden_data_continues); checklist, gorevler, akademi, crm, stok, ekipman, denetim, iletisim_merkezi, raporlar, finans, delegasyon, franchise, sube_gorevleri (fully_hidden)
 - **Factory sub-modules**: fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vardiya, fabrika.kalite, fabrika.kavurma, fabrika.stok
 - **Dobody sub-modules**: dobody.chat (DobodyMiniBar), dobody.bildirim (notifications), dobody.flow (DobodyFlowMode)
 - **Admin UI**: Admin panel tab "Modül Bayrakları" in `client/src/pages/admin/module-flags.tsx` — toggle flags globally/per-branch/per-role, grouped by category (Sistem, Veri Toplama, Şube Modülleri, Fabrika Alt-Modülleri, Mr. Dobody)
@@ -93,8 +113,8 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Agent Filtering**: `server/agent/skills/skill-notifications.ts` — `SKILL_TO_MODULE_MAP` maps skill IDs to module keys, notifications suppressed for disabled modules
 
 ## Database Summary
-- **Tables**: 376 in `shared/schema.ts`
-- **Endpoints**: ~1326 across 47 route files in `server/routes/`
+- **Tables**: 379 in `shared/schema.ts`
+- **Endpoints**: ~1340 across 48 route files in `server/routes/`
 - **Pages**: 267 page components in `client/src/pages/`
 - **Components**: 148 components in `client/src/components/`
 

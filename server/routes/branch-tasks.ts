@@ -1,0 +1,541 @@
+import { Router } from "express";
+import { db } from "../db";
+import { sql, eq, and, desc, asc } from "drizzle-orm";
+import { isAuthenticated } from "../localAuth";
+import { requireModuleEnabled } from "../services/module-flag-service";
+import { branchRecurringTasks, branchTaskInstances, branchTaskCategories } from "@shared/schema";
+
+const router = Router();
+
+const TEMPLATE_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur", "supervisor"];
+const HQ_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "muhasebe_ik", "satinalma", "marketing", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur"];
+
+function isBranchRole(role: string): boolean {
+  return !HQ_ROLES.includes(role);
+}
+
+function canAccessBranch(user: any, branchId: number): boolean {
+  if (!isBranchRole(user.role)) return true;
+  return user.branchId === branchId;
+}
+
+const moduleGuard = requireModuleEnabled("sube_gorevleri");
+
+router.get("/api/branch-tasks/categories", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const cats = await db
+      .select()
+      .from(branchTaskCategories)
+      .where(eq(branchTaskCategories.isActive, true))
+      .orderBy(asc(branchTaskCategories.sortOrder));
+    res.json(cats);
+  } catch (error: any) {
+    res.status(500).json({ message: "Kategoriler yüklenemedi", error: error.message });
+  }
+});
+
+router.get("/api/branch-tasks/templates", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const branchId = req.query.branchId ? Number(req.query.branchId) : null;
+
+    let result;
+    if (isBranchRole(user.role)) {
+      if (!user.branchId) return res.status(403).json({ message: "Şube ataması yapılmamış" });
+      result = await db.execute(sql`
+        SELECT * FROM branch_recurring_tasks
+        WHERE (branch_id = ${user.branchId} OR branch_id IS NULL)
+          AND is_active = true AND deleted_at IS NULL
+        ORDER BY created_at DESC
+      `);
+    } else {
+      if (branchId) {
+        result = await db.execute(sql`
+          SELECT * FROM branch_recurring_tasks
+          WHERE (branch_id = ${branchId} OR branch_id IS NULL)
+            AND is_active = true AND deleted_at IS NULL
+          ORDER BY created_at DESC
+        `);
+      } else {
+        result = await db.execute(sql`
+          SELECT * FROM branch_recurring_tasks
+          WHERE is_active = true AND deleted_at IS NULL
+          ORDER BY created_at DESC
+        `);
+      }
+    }
+
+    res.json(result.rows || []);
+  } catch (error: any) {
+    res.status(500).json({ message: "Şablonlar yüklenemedi", error: error.message });
+  }
+});
+
+router.get("/api/branch-tasks/templates/:id", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const id = Number(req.params.id);
+    const result = await db.execute(sql`
+      SELECT * FROM branch_recurring_tasks WHERE id = ${id} AND deleted_at IS NULL
+    `);
+    if (!result.rows || result.rows.length === 0) {
+      return res.status(404).json({ message: "Şablon bulunamadı" });
+    }
+
+    const template = result.rows[0] as any;
+    if (template.branch_id && isBranchRole(user.role) && !canAccessBranch(user, template.branch_id)) {
+      return res.status(403).json({ message: "Bu şablona erişim yetkiniz yok" });
+    }
+
+    res.json(template);
+  } catch (error: any) {
+    res.status(500).json({ message: "Şablon yüklenemedi", error: error.message });
+  }
+});
+
+router.post("/api/branch-tasks/templates", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    if (!TEMPLATE_ROLES.includes(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const { title, description, category, branchId, recurrenceType, dayOfWeek, dayOfMonth, specificDate, assignedToUserId, photoRequired } = req.body;
+
+    if (!title || !recurrenceType) {
+      return res.status(400).json({ message: "Başlık ve tekrar tipi zorunludur" });
+    }
+
+    const validRecurrenceTypes = ["daily", "weekly", "monthly", "once"];
+    if (!validRecurrenceTypes.includes(recurrenceType)) {
+      return res.status(400).json({ message: "Geçersiz tekrar tipi" });
+    }
+
+    let targetBranchId = branchId ?? null;
+    if (isBranchRole(user.role)) {
+      if (!user.branchId) return res.status(403).json({ message: "Şube ataması yapılmamış" });
+      targetBranchId = user.branchId;
+    }
+
+    const result = await db.execute(sql`
+      INSERT INTO branch_recurring_tasks (title, description, category, branch_id, recurrence_type, day_of_week, day_of_month, specific_date, assigned_to_user_id, created_by_user_id, created_by_role, photo_required)
+      VALUES (${title}, ${description || null}, ${category || "genel"}, ${targetBranchId}, ${recurrenceType}, ${dayOfWeek ?? null}, ${dayOfMonth ?? null}, ${specificDate || null}, ${assignedToUserId || null}, ${user.id}, ${user.role}, ${photoRequired || false})
+      RETURNING *
+    `);
+
+    res.status(201).json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ message: "Şablon oluşturulamadı", error: error.message });
+  }
+});
+
+router.patch("/api/branch-tasks/templates/:id", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    if (!TEMPLATE_ROLES.includes(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    const existing = await db.execute(sql`
+      SELECT * FROM branch_recurring_tasks WHERE id = ${id} AND deleted_at IS NULL
+    `);
+    if (!existing.rows || existing.rows.length === 0) {
+      return res.status(404).json({ message: "Şablon bulunamadı" });
+    }
+
+    const template = existing.rows[0] as any;
+    if (template.branch_id && isBranchRole(user.role) && !canAccessBranch(user, template.branch_id)) {
+      return res.status(403).json({ message: "Bu şablonu düzenleme yetkiniz yok" });
+    }
+
+    const { title, description, category, recurrenceType, dayOfWeek, dayOfMonth, specificDate, assignedToUserId, photoRequired, isActive } = req.body;
+
+    if (recurrenceType) {
+      const validRecurrenceTypes = ["daily", "weekly", "monthly", "once"];
+      if (!validRecurrenceTypes.includes(recurrenceType)) {
+        return res.status(400).json({ message: "Geçersiz tekrar tipi" });
+      }
+    }
+
+    const result = await db.execute(sql`
+      UPDATE branch_recurring_tasks SET
+        title = COALESCE(${title ?? null}, title),
+        description = COALESCE(${description ?? null}, description),
+        category = COALESCE(${category ?? null}, category),
+        recurrence_type = COALESCE(${recurrenceType ?? null}, recurrence_type),
+        day_of_week = ${dayOfWeek !== undefined ? dayOfWeek : template.day_of_week},
+        day_of_month = ${dayOfMonth !== undefined ? dayOfMonth : template.day_of_month},
+        specific_date = ${specificDate !== undefined ? specificDate : template.specific_date},
+        assigned_to_user_id = ${assignedToUserId !== undefined ? assignedToUserId : template.assigned_to_user_id},
+        photo_required = ${photoRequired !== undefined ? photoRequired : template.photo_required},
+        is_active = ${isActive !== undefined ? isActive : template.is_active},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ message: "Şablon güncellenemedi", error: error.message });
+  }
+});
+
+router.delete("/api/branch-tasks/templates/:id", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    if (!TEMPLATE_ROLES.includes(user.role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    const existing = await db.execute(sql`
+      SELECT * FROM branch_recurring_tasks WHERE id = ${id} AND deleted_at IS NULL
+    `);
+    if (!existing.rows || existing.rows.length === 0) {
+      return res.status(404).json({ message: "Şablon bulunamadı" });
+    }
+
+    const template = existing.rows[0] as any;
+    if (template.branch_id && isBranchRole(user.role) && !canAccessBranch(user, template.branch_id)) {
+      return res.status(403).json({ message: "Bu şablonu silme yetkiniz yok" });
+    }
+
+    await db.execute(sql`
+      UPDATE branch_recurring_tasks SET is_active = false, deleted_at = NOW(), updated_at = NOW()
+      WHERE id = ${id}
+    `);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ message: "Şablon silinemedi", error: error.message });
+  }
+});
+
+router.get("/api/branch-tasks/instances", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const dateParam = (req.query.date as string) || null;
+    const statusParam = req.query.status as string || null;
+    const categoryParam = req.query.category as string || null;
+
+    let branchScope: number | null = null;
+    if (isBranchRole(user.role)) {
+      if (!user.branchId) return res.status(403).json({ message: "Şube ataması yapılmamış" });
+      branchScope = user.branchId;
+    } else {
+      branchScope = req.query.branchId ? Number(req.query.branchId) : null;
+    }
+
+    let query = sql`
+      SELECT i.*, r.title, r.description, r.category, r.photo_required, r.recurrence_type,
+             b.name as branch_name,
+             cu.first_name as claimed_first, cu.last_name as claimed_last,
+             au.first_name as assigned_first, au.last_name as assigned_last,
+             cou.first_name as completed_first, cou.last_name as completed_last
+      FROM branch_task_instances i
+      JOIN branch_recurring_tasks r ON i.recurring_task_id = r.id
+      LEFT JOIN branches b ON i.branch_id = b.id
+      LEFT JOIN users cu ON i.claimed_by_user_id = cu.id
+      LEFT JOIN users au ON i.assigned_to_user_id = au.id
+      LEFT JOIN users cou ON i.completed_by_user_id = cou.id
+      WHERE r.deleted_at IS NULL
+    `;
+
+    if (branchScope) {
+      query = sql`${query} AND i.branch_id = ${branchScope}`;
+    }
+
+    if (dateParam) {
+      query = sql`${query} AND i.due_date = ${dateParam}`;
+    }
+
+    if (statusParam) {
+      query = sql`${query} AND i.status = ${statusParam}`;
+    }
+
+    if (categoryParam) {
+      query = sql`${query} AND r.category = ${categoryParam}`;
+    }
+
+    query = sql`${query} ORDER BY i.is_overdue DESC, i.due_date ASC, r.title ASC`;
+
+    const result = await db.execute(query);
+    res.json(result.rows || []);
+  } catch (error: any) {
+    res.status(500).json({ message: "Görevler yüklenemedi", error: error.message });
+  }
+});
+
+router.get("/api/branch-tasks/instances/:id", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const id = Number(req.params.id);
+    const result = await db.execute(sql`
+      SELECT i.*, r.title, r.description, r.category, r.photo_required, r.recurrence_type
+      FROM branch_task_instances i
+      JOIN branch_recurring_tasks r ON i.recurring_task_id = r.id
+      WHERE i.id = ${id}
+    `);
+    if (!result.rows || result.rows.length === 0) {
+      return res.status(404).json({ message: "Görev bulunamadı" });
+    }
+
+    const instance = result.rows[0] as any;
+    if (!canAccessBranch(user, instance.branch_id)) {
+      return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+    }
+
+    res.json(instance);
+  } catch (error: any) {
+    res.status(500).json({ message: "Görev yüklenemedi", error: error.message });
+  }
+});
+
+router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const id = Number(req.params.id);
+    const instance = await db.execute(sql`
+      SELECT * FROM branch_task_instances WHERE id = ${id}
+    `);
+
+    if (!instance.rows || instance.rows.length === 0) {
+      return res.status(404).json({ message: "Görev bulunamadı" });
+    }
+
+    const task = instance.rows[0] as any;
+
+    if (!canAccessBranch(user, task.branch_id)) {
+      return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+    }
+
+    if (task.status !== "pending" && task.status !== "claimed") {
+      return res.status(400).json({ message: "Bu görev sahiplenilemez" });
+    }
+
+    if (task.assigned_to_user_id && task.assigned_to_user_id !== user.id) {
+      return res.status(403).json({ message: "Bu görev başka birine atanmış" });
+    }
+
+    if (task.claimed_by_user_id && task.claimed_by_user_id !== user.id) {
+      return res.status(400).json({ message: "Bu görev zaten başka biri tarafından sahiplenildi" });
+    }
+
+    const result = await db.execute(sql`
+      UPDATE branch_task_instances SET
+        claimed_by_user_id = ${user.id},
+        claimed_at = NOW(),
+        status = 'claimed',
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ message: "Görev sahiplenilemedi", error: error.message });
+  }
+});
+
+router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const id = Number(req.params.id);
+    const instance = await db.execute(sql`
+      SELECT * FROM branch_task_instances WHERE id = ${id}
+    `);
+
+    if (!instance.rows || instance.rows.length === 0) {
+      return res.status(404).json({ message: "Görev bulunamadı" });
+    }
+
+    const task = instance.rows[0] as any;
+
+    if (!canAccessBranch(user, task.branch_id)) {
+      return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+    }
+
+    if (task.status === "completed") {
+      return res.status(400).json({ message: "Bu görev zaten tamamlanmış" });
+    }
+
+    const canComplete = task.claimed_by_user_id === user.id ||
+      task.assigned_to_user_id === user.id ||
+      (!task.claimed_by_user_id && !task.assigned_to_user_id) ||
+      !isBranchRole(user.role);
+
+    if (!canComplete) {
+      return res.status(403).json({ message: "Bu görevi tamamlama yetkiniz yok" });
+    }
+
+    const { completionNote, photoUrl } = req.body || {};
+
+    const result = await db.execute(sql`
+      UPDATE branch_task_instances SET
+        completed_by_user_id = ${user.id},
+        completed_at = NOW(),
+        completion_note = ${completionNote || null},
+        photo_url = ${photoUrl || null},
+        status = 'completed',
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ message: "Görev tamamlanamadı", error: error.message });
+  }
+});
+
+router.post("/api/branch-tasks/instances/:id/unclaim", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const id = Number(req.params.id);
+    const instance = await db.execute(sql`
+      SELECT * FROM branch_task_instances WHERE id = ${id}
+    `);
+
+    if (!instance.rows || instance.rows.length === 0) {
+      return res.status(404).json({ message: "Görev bulunamadı" });
+    }
+
+    const task = instance.rows[0] as any;
+
+    if (!canAccessBranch(user, task.branch_id)) {
+      return res.status(403).json({ message: "Bu göreve erişim yetkiniz yok" });
+    }
+
+    if (task.claimed_by_user_id !== user.id && isBranchRole(user.role)) {
+      return res.status(403).json({ message: "Sadece sahiplenen kişi bırakabilir" });
+    }
+
+    if (task.status === "completed") {
+      return res.status(400).json({ message: "Tamamlanmış görev bırakılamaz" });
+    }
+
+    const result = await db.execute(sql`
+      UPDATE branch_task_instances SET
+        claimed_by_user_id = NULL,
+        claimed_at = NULL,
+        status = 'pending',
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ message: "Görev bırakılamadı", error: error.message });
+  }
+});
+
+router.get("/api/branch-tasks/stats", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    let branchScope: number | null = null;
+    if (isBranchRole(user.role)) {
+      if (!user.branchId) return res.status(403).json({ message: "Şube ataması yapılmamış" });
+      branchScope = user.branchId;
+    } else {
+      branchScope = req.query.branchId ? Number(req.query.branchId) : null;
+    }
+
+    const dateParam = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+
+    let query;
+    if (branchScope) {
+      query = sql`
+        SELECT
+          COUNT(*)::int as total,
+          COUNT(*) FILTER (WHERE status = 'pending')::int as pending,
+          COUNT(*) FILTER (WHERE status = 'claimed')::int as claimed,
+          COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+          COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed')::int as overdue,
+          CASE WHEN COUNT(*) > 0
+            THEN ROUND(COUNT(*) FILTER (WHERE status = 'completed')::numeric / COUNT(*)::numeric * 100, 1)
+            ELSE 0 END as completion_rate
+        FROM branch_task_instances
+        WHERE branch_id = ${branchScope} AND due_date = ${dateParam}
+      `;
+    } else {
+      query = sql`
+        SELECT
+          COUNT(*)::int as total,
+          COUNT(*) FILTER (WHERE status = 'pending')::int as pending,
+          COUNT(*) FILTER (WHERE status = 'claimed')::int as claimed,
+          COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+          COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed')::int as overdue,
+          CASE WHEN COUNT(*) > 0
+            THEN ROUND(COUNT(*) FILTER (WHERE status = 'completed')::numeric / COUNT(*)::numeric * 100, 1)
+            ELSE 0 END as completion_rate
+        FROM branch_task_instances
+        WHERE due_date = ${dateParam}
+      `;
+    }
+
+    const result = await db.execute(query);
+    res.json(result.rows?.[0] || { total: 0, pending: 0, claimed: 0, completed: 0, overdue: 0, completion_rate: 0 });
+  } catch (error: any) {
+    res.status(500).json({ message: "İstatistikler yüklenemedi", error: error.message });
+  }
+});
+
+router.get("/api/branch-tasks/stats/user/:userId", isAuthenticated, moduleGuard, async (req, res) => {
+  try {
+    const user = req.user as any;
+    if (!user) return res.status(401).json({ message: "Yetkilendirme gerekli" });
+
+    const userId = req.params.userId;
+
+    if (isBranchRole(user.role) && user.id !== userId) {
+      return res.status(403).json({ message: "Sadece kendi istatistiklerinizi görebilirsiniz" });
+    }
+
+    const dateParam = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*)::int as total,
+        COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+        COUNT(*) FILTER (WHERE status = 'pending')::int as pending,
+        COUNT(*) FILTER (WHERE status = 'claimed')::int as claimed,
+        COUNT(*) FILTER (WHERE is_overdue = true AND status != 'completed')::int as overdue,
+        CASE WHEN COUNT(*) > 0
+          THEN ROUND(COUNT(*) FILTER (WHERE status = 'completed')::numeric / COUNT(*)::numeric * 100, 1)
+          ELSE 0 END as completion_rate
+      FROM branch_task_instances
+      WHERE (assigned_to_user_id = ${userId} OR claimed_by_user_id = ${userId} OR completed_by_user_id = ${userId})
+        AND due_date = ${dateParam}
+    `);
+
+    res.json(result.rows?.[0] || { total: 0, completed: 0, pending: 0, claimed: 0, overdue: 0, completion_rate: 0 });
+  } catch (error: any) {
+    res.status(500).json({ message: "Kullanıcı istatistikleri yüklenemedi", error: error.message });
+  }
+});
+
+export default router;

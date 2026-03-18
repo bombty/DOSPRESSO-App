@@ -15572,3 +15572,65 @@ export const moduleFlags = pgTable("module_flags", {
 export const insertModuleFlagSchema = createInsertSchema(moduleFlags).omit({ id: true, createdAt: true, updatedAt: true });
 export type ModuleFlag = typeof moduleFlags.$inferSelect;
 export type InsertModuleFlag = z.infer<typeof insertModuleFlagSchema>;
+
+export const branchTaskCategories = pgTable("branch_task_categories", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 50 }).notNull().unique(),
+  label: varchar("label", { length: 100 }).notNull(),
+  icon: varchar("icon", { length: 50 }),
+  color: varchar("color", { length: 20 }),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertBranchTaskCategorySchema = createInsertSchema(branchTaskCategories).omit({ id: true, createdAt: true });
+export type BranchTaskCategory = typeof branchTaskCategories.$inferSelect;
+export type InsertBranchTaskCategory = z.infer<typeof insertBranchTaskCategorySchema>;
+
+export const branchRecurringTasks = pgTable("branch_recurring_tasks", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull().default("genel"),
+  branchId: integer("branch_id").references(() => branches.id),
+  recurrenceType: varchar("recurrence_type", { length: 20 }).notNull(),
+  dayOfWeek: integer("day_of_week"),
+  dayOfMonth: integer("day_of_month"),
+  specificDate: date("specific_date"),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+  createdByRole: varchar("created_by_role", { length: 50 }).notNull(),
+  photoRequired: boolean("photo_required").default(false),
+  isActive: boolean("is_active").default(true).notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertBranchRecurringTaskSchema = createInsertSchema(branchRecurringTasks).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export type BranchRecurringTask = typeof branchRecurringTasks.$inferSelect;
+export type InsertBranchRecurringTask = z.infer<typeof insertBranchRecurringTaskSchema>;
+
+export const branchTaskInstances = pgTable("branch_task_instances", {
+  id: serial("id").primaryKey(),
+  recurringTaskId: integer("recurring_task_id").references(() => branchRecurringTasks.id).notNull(),
+  branchId: integer("branch_id").references(() => branches.id).notNull(),
+  dueDate: date("due_date").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  claimedByUserId: varchar("claimed_by_user_id").references(() => users.id),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  completedByUserId: varchar("completed_by_user_id").references(() => users.id),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  completionNote: text("completion_note"),
+  photoUrl: text("photo_url"),
+  isOverdue: boolean("is_overdue").default(false).notNull(),
+  originalDueDate: date("original_due_date"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertBranchTaskInstanceSchema = createInsertSchema(branchTaskInstances).omit({ id: true, createdAt: true, updatedAt: true });
+export type BranchTaskInstance = typeof branchTaskInstances.$inferSelect;
+export type InsertBranchTaskInstance = z.infer<typeof insertBranchTaskInstanceSchema>;

@@ -197,6 +197,8 @@ export const PATH_TO_MODULE_KEY_MAP: Record<string, string> = {
   "/fabrika/vardiya-planlama": "fabrika.vardiya",
   "/fabrika/kalite-kontrol": "fabrika.kalite",
   "/fabrika/kavurma": "fabrika.kavurma",
+  "/sube-gorevleri": "sube_gorevleri",
+  "/gorev-panosu": "sube_gorevleri",
 };
 
 export function getModuleKeyForPath(path: string): string | null {

@@ -12,6 +12,8 @@ import { seedDospressoRecipes } from "./seed-dospresso-recipes";
 import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedSlaRules } from "./seed-sla-rules";
 import { seedModuleFlags } from "./seed-module-flags";
+import { seedBranchTasks } from "./seed-branch-tasks";
+import { generateDailyTaskInstances, markOverdueInstances } from "./services/branch-task-scheduler";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
@@ -256,9 +258,10 @@ app.use((req, res, next) => {
       seedDefaultAuditTemplate(),
       seedSlaRules(),
       seedModuleFlags(),
+      seedBranchTasks(),
     ]);
 
-    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate', 'slaRules', 'moduleFlags'];
+    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate', 'slaRules', 'moduleFlags', 'branchTasks'];
     allSeedResults.forEach((result, i) => {
       if (result.status === 'rejected') {
         console.error(`Error seeding ${seedNames[i]}:`, result.reason);
@@ -291,7 +294,10 @@ app.use((req, res, next) => {
       startWeeklyBackupScheduler();
       startTrackingCleanup();
       startNotificationCleanupJob();
-      
+
+      generateDailyTaskInstances().catch(e => console.error("[BranchTasks] Startup generation error:", e));
+      markOverdueInstances().catch(e => console.error("[BranchTasks] Startup overdue check error:", e));
+
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
       
@@ -392,6 +398,15 @@ function startMaster10MinTick() {
     try { const { checkWebinarReminders } = await import("./routes/academy-v3"); await checkWebinarReminders(); } catch (e) { console.error("Error in webinar reminder:", e); }
 
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+
+    if (nowTR.getHours() === 0 && nowTR.getMinutes() < 10) {
+      try {
+        const gen = await generateDailyTaskInstances();
+        const marked = await markOverdueInstances();
+        log(`[BranchTasks] Daily: ${gen} generated, ${marked} marked overdue`);
+      } catch (e) { console.error("[BranchTasks] Daily generation error:", e); }
+    }
+
     if (nowTR.getHours() === 3 && nowTR.getMinutes() < 10) {
       try {
         const result = await storage.runAllCompositeScoreUpdates();
