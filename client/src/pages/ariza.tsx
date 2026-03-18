@@ -191,7 +191,7 @@ export default function FaultHub() {
               { label: "Çözüldü", value: metrics.resolved.length, icon: <CheckCircle2 className="h-4 w-4 text-success" />, color: "success", testId: "text-resolved-count" },
               { label: "Açık", value: metrics.open.length, icon: <Wrench className="h-4 w-4 text-primary" />, color: "info", testId: "text-open-count" },
             ]}
-            desktopColumns={4}
+            desktopGridClass="md:grid-cols-3 lg:grid-cols-4"
           />
 
           {metrics.critical.length > 0 && (
@@ -421,7 +421,7 @@ export default function FaultHub() {
                 { label: "Kritik", value: metrics.myFaults.filter((f: EquipmentFault) => f.priority === "kritik").length, color: "danger", testId: "text-my-critical" },
                 { label: "Devam Ediyor", value: metrics.myFaults.filter((f: EquipmentFault) => f.currentStage === "devam_ediyor").length, color: "info", testId: "text-my-inprogress" },
               ]}
-              desktopColumns={3}
+              desktopGridClass="md:grid-cols-3"
             />
 
             <Card>

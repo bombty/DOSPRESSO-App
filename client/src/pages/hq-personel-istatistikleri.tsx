@@ -178,7 +178,7 @@ export default function HQPersonelIstatistikleri() {
           { label: "HQ Personeli", value: stats.hqEmployees, icon: <Briefcase className="h-4 w-4 text-muted-foreground" />, testId: "stat-hq-employees" },
           { label: "Fabrika Personeli", value: stats.factoryEmployees, icon: <Factory className="h-4 w-4 text-muted-foreground" />, testId: "stat-factory-employees" },
         ]}
-        desktopColumns={4}
+        desktopGridClass="md:grid-cols-2 lg:grid-cols-4"
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

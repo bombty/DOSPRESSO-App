@@ -14,6 +14,7 @@ export interface KPIItem {
 interface CompactKPIStripProps {
   items: KPIItem[];
   desktopColumns?: 2 | 3 | 4 | 5;
+  desktopGridClass?: string;
   className?: string;
   desktopRenderer?: React.ReactNode;
 }
@@ -39,6 +40,7 @@ const valueFgMap: Record<string, string> = {
 export function CompactKPIStrip({
   items,
   desktopColumns = 4,
+  desktopGridClass,
   className = "",
   desktopRenderer,
 }: CompactKPIStripProps) {
@@ -48,6 +50,8 @@ export function CompactKPIStrip({
     4: "md:grid-cols-4",
     5: "md:grid-cols-5",
   };
+
+  const gridClass = desktopGridClass || colsClass[desktopColumns] || "md:grid-cols-4";
 
   return (
     <>
@@ -89,7 +93,7 @@ export function CompactKPIStrip({
         <div className="hidden md:block">{desktopRenderer}</div>
       ) : (
         <div
-          className={`hidden md:grid ${colsClass[desktopColumns] || "md:grid-cols-4"} gap-2 sm:gap-3 ${className}`}
+          className={`hidden md:grid ${gridClass} gap-2 sm:gap-3 ${className}`}
           data-testid="compact-kpi-strip-desktop"
         >
           {items.map((item, idx) => {

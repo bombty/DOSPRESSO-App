@@ -153,7 +153,7 @@ export default function SubeGorevlerPage() {
             { label: "Başarısız", value: `${stats.failureRate}%`, subtitle: `${stats.failed} görev`, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: "danger", testId: "card-failed" },
             { label: "Geciken", value: stats.overdue, subtitle: `${stats.overdueRate}% oranı`, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning", testId: "card-overdue" },
           ]}
-          desktopColumns={4}
+          desktopGridClass="md:grid-cols-2 lg:grid-cols-4"
         />
 
         {/* Additional Metrics */}

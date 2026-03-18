@@ -444,7 +444,7 @@ export default function Tasks() {
           { label: "Tamamlanmayan", value: stats.tamamlanmayan, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: "danger" as const, active: filterStatus === 'reddedildi', onClick: () => { setFilterStatus(filterStatus === 'reddedildi' ? null : 'reddedildi'); setFilterOpen(false); }, testId: "card-stat-tamamlanmayan" },
           { label: "Tamamlanan", value: stats.tamamlanan, icon: <CheckCircle2 className="h-4 w-4 text-success" />, color: "success" as const, active: filterStatus === 'onaylandi', onClick: () => { setFilterStatus(filterStatus === 'onaylandi' ? null : 'onaylandi'); setFilterOpen(false); }, testId: "card-stat-tamamlanan" },
         ]}
-        desktopColumns={3}
+        desktopGridClass="md:grid-cols-2 lg:grid-cols-3"
       />
 
       {overdueTasks.length > 0 && archivableTasks.length > 0 && (user?.role === 'supervisor' || isHQRole(user?.role as any)) && (
@@ -873,24 +873,24 @@ export default function Tasks() {
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-1 text-xs text-muted-foreground">
                             {task.assignedToId && (
                               <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate text-[10px]">
+                                <p className="font-medium text-foreground truncate text-[10px] sm:text-xs">
                                   {allUsers?.find(u => u.id === task.assignedToId)?.firstName}
                                 </p>
-                                <p className="text-[9px] text-muted-foreground">Atanan</p>
+                                <p className="text-[9px] sm:text-[11px] text-muted-foreground">Atanan</p>
                               </div>
                             )}
                             {assigner && (
                               <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate text-[10px]">
+                                <p className="font-medium text-foreground truncate text-[10px] sm:text-xs">
                                   {assigner.firstName}
                                 </p>
-                                <p className="text-[9px] text-muted-foreground">Atayan</p>
+                                <p className="text-[9px] sm:text-[11px] text-muted-foreground">Atayan</p>
                               </div>
                             )}
                             {branch && (
                               <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate text-[10px]">{branch.name}</p>
-                                <p className="text-[9px] text-muted-foreground">Şube</p>
+                                <p className="font-medium text-foreground truncate text-[10px] sm:text-xs">{branch.name}</p>
+                                <p className="text-[9px] sm:text-[11px] text-muted-foreground">Şube</p>
                               </div>
                             )}
                           </div>

@@ -132,7 +132,7 @@ export default function AdminDashboard() {
           icon: <stat.icon className="h-4 w-4 text-muted-foreground" />,
           subtitle: stat.trend,
         }))}
-        desktopColumns={3}
+        desktopGridClass="md:grid-cols-2 lg:grid-cols-3"
       />
 
       <Card>

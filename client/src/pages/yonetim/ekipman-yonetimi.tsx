@@ -445,7 +445,7 @@ export default function EquipmentManagement() {
           { label: "Tamamlanan (30gün)", value: stats.completed, color: "success", testId: "kpi-completed" },
           { label: "Toplam Ekipman", value: equipment.length, testId: "kpi-total-equipment" },
         ]}
-        desktopColumns={4}
+        desktopGridClass="md:grid-cols-3 lg:grid-cols-4"
       />
 
       {/* Main Tabs */}

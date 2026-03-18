@@ -501,7 +501,7 @@ export default function ServiceRequestsManagement() {
           { label: "İptal Edilen", value: stats.cancelled, color: "muted", testId: "kpi-cancelled" },
           { label: "Kritik Öncelik", value: stats.criticalPriority, color: "danger", testId: "kpi-critical" },
         ]}
-        desktopColumns={5}
+        desktopGridClass="md:grid-cols-3 lg:grid-cols-5"
       />
 
       {/* Filters */}

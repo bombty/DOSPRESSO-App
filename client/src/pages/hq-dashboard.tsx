@@ -193,6 +193,16 @@ function metricsToKPI(metrics: MetricCard[]): KPIItem[] {
   }));
 }
 
+function MetricCardGrid({ metrics }: { metrics: MetricCard[] }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+      {metrics.map((metric: MetricCard, index: number) => (
+        <MetricCardComponent key={index} metric={metric} />
+      ))}
+    </div>
+  );
+}
+
 function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: RiskStatus }> }) {
   if (!alerts || alerts.length === 0) return null;
   
@@ -266,7 +276,7 @@ function SatinalmaDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Satınalma</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2" data-testid="chart-demand-forecast">
@@ -374,7 +384,7 @@ function FabrikaDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Fabrika</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2" data-testid="chart-production-tracking">
@@ -488,7 +498,7 @@ function IKDashboard() {
         </div>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2">
@@ -597,7 +607,7 @@ function CoachDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Coach</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       {summary && (
         <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
@@ -729,7 +739,7 @@ function MarketingDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Marketing</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
@@ -830,7 +840,7 @@ function TrainerDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Trainer</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
@@ -930,7 +940,7 @@ function KaliteDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Kalite Kontrol</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
@@ -1651,7 +1661,7 @@ function DestekDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Destek Merkezi</h2>
       </div>
 
-      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopRenderer={<MetricCardGrid metrics={metrics} />} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <Card

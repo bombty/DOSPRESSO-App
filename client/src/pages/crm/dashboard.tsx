@@ -122,7 +122,7 @@ export default function CRMDashboard() {
             { label: "SLA İhlalleri", value: kpis.slaBreachCount, subtitle: "Süre aşımı", icon: <AlertTriangle className={`h-4 w-4 ${kpis.slaBreachCount > 0 ? "text-red-600" : "text-green-600"}`} />, color: kpis.slaBreachCount > 0 ? "danger" : "success", testId: "kpi-sla-breaches" },
             { label: "Kampanya & Etkileşim", value: kpis.totalFeedback30d, subtitle: "Son 30 gün", icon: <Megaphone className="h-4 w-4 text-blue-600" />, color: "info", testId: "kpi-campaigns" },
           ]}
-          desktopColumns={3}
+          desktopGridClass="md:grid-cols-2 lg:grid-cols-3"
         />
 
         <Card data-testid="recent-tickets">

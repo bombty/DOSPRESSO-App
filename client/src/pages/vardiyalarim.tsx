@@ -692,7 +692,7 @@ export default function Vardiyalarim() {
           { label: "Yaklaşan", value: upcomingShifts, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning", testId: "text-upcoming-shifts" },
           { label: "Bu Ay", value: `${workedDays}/${workDaysInMonth}`, icon: <Check className="h-4 w-4 text-success" />, color: "success", testId: "text-month-attendance" },
         ]}
-        desktopColumns={3}
+        desktopGridClass="md:grid-cols-2 lg:grid-cols-3"
       />
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} data-testid="tabs-view-mode">
