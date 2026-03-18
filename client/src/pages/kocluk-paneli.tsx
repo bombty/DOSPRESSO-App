@@ -17,7 +17,7 @@ import {
 import { useState } from "react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
-import { DobodyTaskAssignDialog } from "@/components/dobody-task-assign-dialog";
+import { QuickTaskModal } from "@/components/quick-task-modal";
 import { Bot } from "lucide-react";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
@@ -177,11 +177,10 @@ export default function KoclukPaneli() {
         </Link>
       </div>
 
-      <DobodyTaskAssignDialog
+      <QuickTaskModal
         open={showAssignDialog}
         onOpenChange={setShowAssignDialog}
-        scope="coach"
-        branchIds={data.branches.map((b) => b.id)}
+        allowedBranchIds={data.branches.map((b) => b.id)}
       />
     </div>
   );
