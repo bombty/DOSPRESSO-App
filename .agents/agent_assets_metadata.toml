@@ -144,3 +144,9 @@ id = "9HK5Rd2AK1M2uP0kJWt6O"
 uri = "file://.local/it-rapor-akademi-hq-4-fix-19-mart-2026.md"
 type = "text"
 title = "IT Danışman Raporu — Akademi HQ 4 Sorun Düzeltmesi (19 Mart 2026)"
+
+[[outputs]]
+id = "avUAoz3YKSERDnPtqxzNw"
+uri = "file://.local/it-rapor-moduller-onboarding-ayirma-19-mart-2026.md"
+type = "text"
+title = "IT Raporu — Eğitim vs Onboarding Modül Ayrıştırması (19 Mart 2026)"

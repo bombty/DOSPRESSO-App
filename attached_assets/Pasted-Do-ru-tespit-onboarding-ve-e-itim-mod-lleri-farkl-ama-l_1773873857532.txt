@@ -1,0 +1,137 @@
+Doğru tespit — onboarding ve eğitim modülleri farklı amaçlara hizmet ediyor ama karışık görünüyor. Önce Replit'ten durum öğrenelim, sonra düzeltelim. Şu promptu yapıştırın:
+
+---
+
+```
+## Investigation + Fix: Separate Onboarding from Training Modules in Academy HQ
+
+### PHASE 1: INVESTIGATION — Report ALL results before making changes
+
+I need to understand how onboarding and training modules are currently structured in the database and UI.
+
+```bash
+# 1. How are modules categorized in the database?
+echo "SELECT DISTINCT category, scope, level, count(*) FROM training_modules WHERE deleted_at IS NULL GROUP BY category, scope, level ORDER BY category;" | psql 2>/dev/null
+# OR find the correct table name:
+grep -n "training_module\|academy_module\|course\|onboarding" shared/schema.ts | grep "pgTable" | head -10
+
+# 2. Is there a separate onboarding table or is it the same as training modules?
+grep -n "onboarding" shared/schema.ts | head -20
+
+# 3. Check if modules have a "type" or "isOnboarding" field
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='training_modules' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+# 4. What does the module data look like — any onboarding-specific fields?
+echo "SELECT id, title, category, scope, level FROM training_modules WHERE deleted_at IS NULL LIMIT 20;" | psql 2>/dev/null
+
+# 5. Check if there's a separate onboarding system
+grep -rn "onboarding" server/routes/ --include="*.ts" -l | head -10
+grep -n "onboarding" server/routes/academy-v3.ts server/routes/training.ts 2>/dev/null | head -20
+
+# 6. How does the ModullerTab currently render modules — any type/category filter?
+grep -n "onboarding\|category\|type\|filter\|isOnboarding" client/src/pages/akademi-hq/ModullerTab.tsx | head -15
+
+# 7. What categories exist in the academy student view?
+grep -n "category\|kategori\|Barista\|Güvenlik\|Ekipman\|Müşteri\|Yönetim\|Onboarding\|Gelişim" client/src/pages/akademi-v3/categoryConfig.ts | head -20
+
+# 8. Are there onboarding-specific API endpoints?
+grep -rn "onboarding" server/routes/ --include="*.ts" | head -20
+
+# 9. Check the AI onboarding creator — what does it create?
+grep -n "onboarding" client/src/pages/akademi-hq/components/AIModuleCreator.tsx 2>/dev/null | head -10
+grep -n "onboarding" client/src/pages/akademi-hq/ModullerTab.tsx | head -10
+
+# 10. Is there an onboarding program/template system separate from modules?
+grep -rn "onboarding_program\|onboarding_template\|onboarding_step\|onboarding_checklist" shared/schema.ts | head -10
+```
+
+### Report the results of ALL 10 queries. Then proceed to Phase 2.
+
+---
+
+### PHASE 2: Fix based on findings
+
+Based on the investigation, the goal is to clearly separate onboarding from training modules in the Academy HQ management panel.
+
+#### Expected separation:
+
+**Onboarding modülleri:**
+- Purpose: İşe yeni başlayanlar veya kademe yükseltenler için kısa, zorunlu programlar
+- Examples: "Barista Onboarding", "Supervisor Geçiş Programı"
+- Usually linked to a role transition
+- Short duration, mandatory completion within X days
+- Has a checklist/step structure
+
+**Eğitim modülleri:**
+- Purpose: Sürekli devam eden, kapsamlı mesleki eğitimler
+- Examples: "Gıda Güvenliği ve HACCP", "Liderlik ve Ekip Yönetimi"
+- Ongoing, no specific deadline
+- Has lessons, quizzes, certificates
+
+#### UI Fix in ModullerTab.tsx:
+
+**Option A (if same table, differentiated by category/type):**
+Add a top-level filter/toggle:
+```typescript
+// Two sections or a toggle:
+<div className="flex gap-2 mb-4">
+  <Button 
+    variant={viewMode === "egitim" ? "default" : "outline"} 
+    size="sm"
+    onClick={() => setViewMode("egitim")}
+  >
+    Eğitim Modülleri
+  </Button>
+  <Button 
+    variant={viewMode === "onboarding" ? "default" : "outline"} 
+    size="sm"
+    onClick={() => setViewMode("onboarding")}
+  >
+    Onboarding Programları
+  </Button>
+</div>
+```
+
+Then filter the module list based on viewMode.
+
+**Option B (if separate tables):**
+Create two distinct sections in the tab, each fetching from its own API.
+
+**Option C (if no clear separation in DB):**
+Add a `moduleType` field to distinguish them, then filter in UI.
+
+#### Additional: Module cards should show type badge
+Each module card should clearly indicate:
+- 🟢 "Eğitim" badge (teal) for training modules
+- 🟠 "Onboarding" badge (amber) for onboarding modules
+- Target roles
+- Estimated duration
+
+### Also apply the KPI removal + grid layout from previous prompt:
+1. Remove top KPI cards (Yayında/Taslak/Toplam/Bekleyen)
+2. Module cards in responsive grid (1/2/3 columns)
+3. Compact card design
+
+### DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Student academy view (/akademi)
+- Other academy tabs (unless onboarding affects them)
+
+### Testing:
+1. /akademi-hq Modüller tab opens
+2. Clear separation between Eğitim and Onboarding visible
+3. Can filter/switch between the two types
+4. Module cards in grid layout (2-col tablet, 3-col desktop)
+5. KPI cards removed from top
+6. Creating new module — can select type (Eğitim/Onboarding)
+7. Dark mode works
+
+### After fixes:
+1. Report: How are onboarding and training currently structured in DB?
+2. Report: What changes were made to separate them?
+3. Run quality gate on changed files
+```
+
+---
+
+Direkt build başlatın! Önce araştırma yapacak, sonra duruma göre en uygun çözümü uygulayacak.

@@ -20,7 +20,19 @@ import { AIModuleCreator } from "./components/AIModuleCreator";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, GraduationCap, Edit2, Trash2, Search, Sparkles, Brain } from "lucide-react";
+import { Plus, GraduationCap, Edit2, Trash2, Search, Sparkles, Brain, BookOpen, UserPlus, Clock, Eye, EyeOff } from "lucide-react";
+
+type ViewMode = "egitim" | "onboarding";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  barista_temelleri: "Barista Temelleri",
+  hijyen_guvenlik: "Hijyen & Güvenlik",
+  musteri_iliskileri: "Müşteri İlişkileri",
+  yonetim: "Yönetim",
+  ekipman: "Ekipman",
+  genel_gelisim: "Genel Gelişim",
+  onboarding: "Onboarding",
+};
 
 const trainingModuleSchema = z.object({
   title: z.string().min(3, "Başlık en az 3 karakter olmalı"),
@@ -39,6 +51,7 @@ export function ModullerTab() {
   const [, setLocation] = useLocation();
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
 
+  const [viewMode, setViewMode] = useState<ViewMode>("egitim");
   const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
   const [isEditTrainingOpen, setIsEditTrainingOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
@@ -77,7 +90,7 @@ export function ModullerTab() {
       return apiRequest("DELETE", `/api/training/modules/${id}`, {});
     },
     onSuccess: () => {
-      toast({ title: "Eğitim modülü silindi" });
+      toast({ title: "Modül silindi" });
       queryClient.invalidateQueries({ queryKey: ["/api/training/modules"] });
     },
     onError: () => {
@@ -91,7 +104,7 @@ export function ModullerTab() {
       return apiRequest("PUT", `/api/training/modules/${editingModule.id}`, data);
     },
     onSuccess: () => {
-      toast({ title: "Eğitim modülü güncellendi" });
+      toast({ title: "Modül güncellendi" });
       setIsEditTrainingOpen(false);
       setEditingModule(null);
       editTrainingForm.reset();
@@ -180,35 +193,83 @@ export function ModullerTab() {
     },
   });
 
-  const filteredModules = trainingModules
+  const isOnboarding = (m: any) => m.category === "onboarding" || m.moduleType === "onboarding" || m.module_type === "onboarding";
+
+  const onboardingModules = trainingModules.filter((m: any) => isOnboarding(m));
+  const trainingOnly = trainingModules.filter((m: any) => !isOnboarding(m));
+
+  const currentModules = viewMode === "onboarding" ? onboardingModules : trainingOnly;
+
+  const filteredModules = currentModules
     .filter((m: any) => scopeFilter === "all" || m.scope === scopeFilter || m.scope === 'both')
     .filter((m: any) => !searchQuery || m.title?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const publishedCount = currentModules.filter((m: any) => m.isPublished).length;
+  const draftCount = currentModules.filter((m: any) => !m.isPublished).length;
 
   const activeFilterCount = (scopeFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0);
 
   return (
     <div className="w-full space-y-2 sm:space-y-3">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h2 className="text-base sm:text-lg font-semibold">Modülleri Yönet</h2>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsAiGeneratorOpen(true)} data-testid="button-ai-generator">
-            <GraduationCap className="w-3 h-3 mr-1" />
-            <span className="hidden sm:inline">AI ile Modül Oluştur</span>
-            <span className="sm:hidden">AI</span>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <h2 className="text-base sm:text-lg font-semibold">Modülleri Yönet</h2>
+          <div className="flex flex-wrap gap-2">
+            {viewMode === "egitim" && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => setIsAiGeneratorOpen(true)} data-testid="button-ai-generator">
+                  <GraduationCap className="w-3 h-3 mr-1" />
+                  <span className="hidden sm:inline">AI Modül</span>
+                  <span className="sm:hidden">AI</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsAiProgramOpen(true)} data-testid="button-ai-program">
+                  <Brain className="w-3 h-3 mr-1" />
+                  <span className="hidden sm:inline">Program</span>
+                </Button>
+              </>
+            )}
+            {viewMode === "onboarding" && (
+              <Button variant="outline" size="sm" onClick={() => setIsAiOnboardingOpen(true)} data-testid="button-ai-onboarding">
+                <Sparkles className="w-3 h-3 mr-1" />
+                <span className="hidden sm:inline">AI Onboarding</span>
+                <span className="sm:hidden">AI</span>
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setLocation('/akademi-modul-editor')} data-testid="button-add-training">
+              <Plus className="w-3 h-3 mr-1" />
+              <span className="hidden sm:inline">Yeni Modül</span>
+              <span className="sm:hidden">Ekle</span>
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === "egitim" ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setViewMode("egitim"); setSearchQuery(""); setScopeFilter("all"); }}
+            data-testid="toggle-view-egitim"
+          >
+            <BookOpen className="w-3.5 h-3.5 mr-1.5" />
+            Eğitim Modülleri
+            <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 no-default-hover-elevate no-default-active-elevate">{trainingOnly.length}</Badge>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setIsAiOnboardingOpen(true)} data-testid="button-ai-onboarding">
-            <Sparkles className="w-3 h-3 mr-1" />
-            <span className="hidden sm:inline">Onboarding</span>
+          <Button
+            variant={viewMode === "onboarding" ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setViewMode("onboarding"); setSearchQuery(""); setScopeFilter("all"); }}
+            data-testid="toggle-view-onboarding"
+          >
+            <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+            Onboarding
+            <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 no-default-hover-elevate no-default-active-elevate">{onboardingModules.length}</Badge>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setIsAiProgramOpen(true)} data-testid="button-ai-program">
-            <Brain className="w-3 h-3 mr-1" />
-            <span className="hidden sm:inline">Program</span>
-          </Button>
-          <Button size="sm" onClick={() => setLocation('/akademi-modul-editor')} data-testid="button-add-training">
-            <Plus className="w-3 h-3 mr-1" />
-            <span className="hidden sm:inline">Yeni Modül</span>
-            <span className="sm:hidden">Ekle</span>
-          </Button>
+        </div>
+
+        <div className="flex gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {publishedCount} yayında</span>
+          <span className="flex items-center gap-1"><EyeOff className="w-3 h-3" /> {draftCount} taslak</span>
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {currentModules.length} toplam</span>
         </div>
       </div>
 
@@ -232,49 +293,74 @@ export function ModullerTab() {
         </div>
       </MobileFilterCollapse>
 
-      <div className="flex flex-col gap-3 sm:gap-4">
-        {filteredModules.map((module: TrainingModule) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filteredModules.map((trainingMod: TrainingModule) => (
           <div
-            key={module.id}
-            onClick={() => { sessionStorage.setItem('academyReferrer', '/akademi-hq'); setLocation(`/akademi-modul/${module.id}`); }}
+            key={trainingMod.id}
+            onClick={() => { sessionStorage.setItem('academyReferrer', '/akademi-hq'); setLocation(`/akademi-modul/${trainingMod.id}`); }}
             className="cursor-pointer"
           >
             <Card className="hover-elevate h-full flex flex-col">
-              <CardHeader className="pb-2 pt-2 px-2 flex-1">
-                <div className="flex justify-between items-start gap-2 mb-2">
+              <CardHeader className="pb-2 pt-3 px-3 flex-1">
+                <div className="flex justify-between items-start gap-2">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-xs font-semibold line-clamp-2 leading-tight">{module.title}</CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
-                      {module.level === 'beginner' ? 'Başlangıç' : module.level === 'intermediate' ? 'Orta' : 'İleri'}
-                    </CardDescription>
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      <Badge
+                        variant={isOnboarding(trainingMod) ? "default" : "secondary"}
+                        className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate"
+                        style={isOnboarding(trainingMod) ? { backgroundColor: 'hsl(var(--chart-4))', color: 'white' } : undefined}
+                        data-testid={`badge-type-${trainingMod.id}`}
+                      >
+                        {isOnboarding(trainingMod) ? "Onboarding" : "Eğitim"}
+                      </Badge>
+                      {trainingMod.isPublished ? (
+                        <Badge variant="default" className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate">Yayında</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate">Taslak</Badge>
+                      )}
+                    </div>
+                    <CardTitle className="text-sm font-semibold line-clamp-2 leading-tight">{trainingMod.title}</CardTitle>
+                    {trainingMod.description && (
+                      <CardDescription className="text-xs mt-1 line-clamp-2">{trainingMod.description}</CardDescription>
+                    )}
                   </div>
                   <div className="flex gap-0.5 flex-shrink-0">
-                    <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/akademi-modul-editor/${module.id}`); }} title="Düzenle" data-testid={`button-edit-module-${module.id}`}>
+                    <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setLocation(`/akademi-modul-editor/${trainingMod.id}`); }} title="Düzenle" data-testid={`button-edit-module-${trainingMod.id}`}>
                       <Edit2 className="w-3 h-3" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); requestDelete(module.id, module.title || ""); }} disabled={deleteTrainingMutation.isPending} title="Sil" data-testid={`button-delete-module-${module.id}`}>
+                    <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); requestDelete(trainingMod.id, trainingMod.title || ""); }} disabled={deleteTrainingMutation.isPending} title="Sil" data-testid={`button-delete-module-${trainingMod.id}`}>
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-1 text-xs p-3">
-                {module.description && <p className="text-muted-foreground line-clamp-1 text-xs">{module.description}</p>}
+              <CardContent className="px-3 pb-3 pt-0">
                 <div className="flex gap-1 flex-wrap">
-                  {module.isPublished && <Badge variant="default" className="text-xs px-1.5 py-0">Yayında</Badge>}
-                  {!module.isPublished && <Badge variant="secondary" className="text-xs px-1.5 py-0">Taslak</Badge>}
-                  <Badge variant={(module as any).scope === 'factory' ? 'destructive' : (module as any).scope === 'both' ? 'outline' : 'secondary'} className="text-xs px-1.5 py-0">
-                    {(module as any).scope === 'factory' ? 'Fabrika' : (module as any).scope === 'both' ? 'Tümü' : 'Şube'}
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate">
+                    {trainingMod.level === 'beginner' ? 'Başlangıç' : trainingMod.level === 'intermediate' ? 'Orta' : 'İleri'}
                   </Badge>
-                  <Badge variant="outline" className="text-xs px-1.5 py-0">{module.estimatedDuration} dk</Badge>
+                  <Badge variant={(trainingMod as any).scope === 'factory' ? 'destructive' : (trainingMod as any).scope === 'both' ? 'outline' : 'secondary'} className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate">
+                    {(trainingMod as any).scope === 'factory' ? 'Fabrika' : (trainingMod as any).scope === 'both' ? 'Tümü' : 'Şube'}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate">
+                    <Clock className="w-2.5 h-2.5 mr-0.5" />
+                    {trainingMod.estimatedDuration} dk
+                  </Badge>
+                  {!isOnboarding(trainingMod) && (trainingMod as any).category && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 no-default-hover-elevate no-default-active-elevate">
+                      {CATEGORY_LABELS[(trainingMod as any).category] || (trainingMod as any).category}
+                    </Badge>
+                  )}
                 </div>
-                {module.requiredForRole && module.requiredForRole.length > 0 && (
-                  <div className="pt-2 border-t">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Zorunlu Roller:</p>
+                {trainingMod.requiredForRole && trainingMod.requiredForRole.length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
                     <div className="flex gap-1 flex-wrap">
-                      {module.requiredForRole.map((role: string) => (
-                        <Badge key={role} variant="outline" className="text-xs">{role}</Badge>
+                      {trainingMod.requiredForRole.slice(0, 3).map((role: string) => (
+                        <Badge key={role} variant="outline" className="text-[10px] px-1 py-0 no-default-hover-elevate no-default-active-elevate">{role}</Badge>
                       ))}
+                      {trainingMod.requiredForRole.length > 3 && (
+                        <span className="text-[10px] text-muted-foreground">+{trainingMod.requiredForRole.length - 3}</span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -287,9 +373,18 @@ export function ModullerTab() {
       {filteredModules.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center">
-            <GraduationCap className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-muted-foreground" data-testid="text-no-modules">
-              {searchQuery ? "Arama sonucu bulunamadı" : "Henüz eğitim modülü eklenmedi"}
+            {viewMode === "onboarding" ? (
+              <UserPlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            ) : (
+              <GraduationCap className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            )}
+            <p className="text-muted-foreground text-sm" data-testid="text-no-modules">
+              {searchQuery
+                ? "Arama sonucu bulunamadı"
+                : viewMode === "onboarding"
+                  ? "Henüz onboarding modülü eklenmedi"
+                  : "Henüz eğitim modülü eklenmedi"
+              }
             </p>
           </CardContent>
         </Card>
