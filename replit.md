@@ -86,6 +86,7 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Module keys**: admin, dashboard, bordro, dobody, fabrika, satinalma (always_on); pdks, vardiya (ui_hidden_data_continues); checklist, gorevler, akademi, crm, stok, ekipman, denetim, iletisim_merkezi, raporlar, finans, delegasyon, franchise (fully_hidden)
 - **Factory sub-modules**: fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vardiya, fabrika.kalite, fabrika.kavurma, fabrika.stok
 - **Dobody sub-modules**: dobody.chat (DobodyMiniBar), dobody.bildirim (notifications), dobody.flow (DobodyFlowMode)
+- **Admin UI**: Admin panel tab "Modül Bayrakları" in `client/src/pages/admin/module-flags.tsx` — toggle flags globally/per-branch/per-role, grouped by category (Sistem, Veri Toplama, Şube Modülleri, Fabrika Alt-Modülleri, Mr. Dobody)
 
 ## Database Summary
 - **Tables**: 376 in `shared/schema.ts`

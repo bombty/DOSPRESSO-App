@@ -287,6 +287,7 @@ dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (noti
 - **Menu**: `server/menu-service.ts` — `buildMenuForUser()` filters sidebar items with context="ui" and user role
 - **Hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)`
 - **Dobody integration**: `client/src/components/dobody-mini-bar.tsx` (dobody.chat), `client/src/components/dobody-flow-mode.tsx` (dobody.flow)
+- **Admin UI**: `client/src/pages/admin/module-flags.tsx` — tab "modul-bayraklari" in admin-mega.tsx, 5 category cards, branch override management, role-based overrides accordion
 
 ### Graceful Degradation
 When a module is disabled, composite scores and analytics recalculate without it. No crashes — disabled modules are simply excluded from calculations.

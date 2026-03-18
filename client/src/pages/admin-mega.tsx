@@ -33,7 +33,8 @@ import {
   LayoutGrid,
   Trash2,
   Bot,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ToggleLeft
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -75,6 +76,7 @@ const AdminDobodyGorevYonetimi = lazy(() => import("./admin/dobody-gorev-yonetim
 const AdminVeriKilitleri = lazy(() => import("./admin/veri-kilitleri"));
 const AdminDegisiklikTalepleri = lazy(() => import("./admin/degisiklik-talepleri"));
 const AdminDelegasyon = lazy(() => import("./admin/delegasyon"));
+const AdminModuleFlags = lazy(() => import("./admin/module-flags"));
 
 interface TabConfig {
   id: string;
@@ -414,6 +416,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "admin_panel",
     group: "operasyon",
     component: AdminDelegasyon
+  },
+  {
+    id: "modul-bayraklari",
+    label: "Module Flags",
+    labelTr: "Modül Bayrakları",
+    icon: <ToggleLeft className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "sistem",
+    component: AdminModuleFlags
   }
 ];
 
