@@ -114,3 +114,9 @@ id = "uLUKinc8w7eFtUoCYV1nV"
 uri = "file://KIOSK_AUDIT_REPORT.md"
 type = "text"
 title = "DOSPRESSO Kiosk Güvenlik Audit Raporu"
+
+[[outputs]]
+id = "pbf1bgyIzs4nv-s-b4SCg"
+uri = "file://DOSPRESSO-SISTEM-RAPORU.md"
+type = "text"
+title = "DOSPRESSO Kapsamlı Sistem Raporu — Yeni AI Asistan Rehberi"
