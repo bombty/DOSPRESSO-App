@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Loader2 } from "lucide-react";
 import {
   Home,
   BookOpen,
@@ -70,10 +71,25 @@ export default function AkademiV3() {
   const urlParams = new URLSearchParams(window.location.search);
   const initialTab = urlParams.get("tab") || "ana";
   const urlCategory = urlParams.get("category") || undefined;
+  const isPreviewMode = urlParams.get("preview") === "true";
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(urlCategory);
   const isHQUser = user && HQ_ROLES.includes(user.role);
+
+  useEffect(() => {
+    if (user && HQ_ROLES.includes(user.role) && !isPreviewMode) {
+      setLocation('/akademi-hq');
+    }
+  }, [user, setLocation, isPreviewMode]);
+
+  if (isHQUser && !isPreviewMode) {
+    return (
+      <div className="flex items-center justify-center h-64" data-testid="hq-redirect-loading">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const handleNavigate = (tab: string, category?: string) => {
     setActiveTab(tab);
@@ -81,6 +97,7 @@ export default function AkademiV3() {
     const params = new URLSearchParams();
     params.set("tab", tab);
     if (category) params.set("category", category);
+    if (isPreviewMode) params.set("preview", "true");
     window.history.replaceState(null, "", `/akademi?${params.toString()}`);
   };
 

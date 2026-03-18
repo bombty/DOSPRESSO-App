@@ -1,9 +1,10 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { hasPermission, type UserRoleType } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, GraduationCap, ListChecks, Video, BarChart3, Building2, Clock, Award } from "lucide-react";
+import { ArrowLeft, GraduationCap, ListChecks, Video, BarChart3, Building2, Clock, Award, Eye } from "lucide-react";
 import { RoleDashboard } from "./components/RoleDashboard";
 import { SinavTalepleriTab } from "./SinavTalepleriTab";
 import { ModullerTab } from "./ModullerTab";
@@ -15,6 +16,7 @@ import { SertifikaTab } from "./SertifikaTab";
 
 export default function AcademyHQ() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const canManageTraining = user && hasPermission(user.role as UserRoleType, 'training', 'edit');
 
@@ -50,9 +52,21 @@ export default function AcademyHQ() {
         </Button>
       </div>
 
-      <div>
-        <h1 className="text-lg font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
-        <p className="text-muted-foreground mt-2">Modül yönetimi, sınav talepleri ve atamalar</p>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h1 className="text-lg font-bold tracking-tight">Akademi - HQ Yönetim Paneli</h1>
+          <p className="text-muted-foreground mt-2">Modül yönetimi, sınav talepleri ve atamalar</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setLocation('/akademi?preview=true')}
+          className="shrink-0 gap-1.5"
+          data-testid="button-student-preview"
+        >
+          <Eye className="h-4 w-4" />
+          Öğrenci Görünümü
+        </Button>
       </div>
 
       <RoleDashboard />
