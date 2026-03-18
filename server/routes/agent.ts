@@ -701,6 +701,31 @@ router.get("/api/agent/cgo-summary", isAuthenticated, isAdminCgoCeo, async (req:
   }
 });
 
+router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req: any, res) => {
+  const user = req.user;
+  if (user.role !== "admin") return res.status(403).json({ error: "Admin only" });
+
+  try {
+    const { ensureSkillsLoaded, SKILL_REGISTRY } = await import("../agent/skills/skill-registry");
+    await ensureSkillsLoaded();
+    const skill = SKILL_REGISTRY.find((s: any) => s.id === req.params.skillId);
+    if (!skill) return res.status(404).json({ error: "Skill bulunamadı" });
+
+    const now = new Date();
+    const dayStart = new Date(now);
+    dayStart.setHours(0, 0, 0, 0);
+    const context = { userId: user.id, role: user.role, timeRange: { start: dayStart, end: now } };
+
+    const insights = await skill.analyze(context);
+    const actions = skill.generateActions(insights, context);
+
+    res.json({ skillId: skill.id, insightCount: insights.length, actionCount: actions.length, insights, actions });
+  } catch (error: any) {
+    console.error("Test skill error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export function registerAgentRoutes(app: Express) {
   app.use(router);
 }

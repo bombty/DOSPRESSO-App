@@ -134,6 +134,22 @@ const branchId = user.branchId;
 ### 16 Agent Skills:
 ai-enrichment, burnout-predictor, contract-tracker, cost-analyzer, customer-watcher, daily-coach, food-safety, performance-coach, production-director, security-monitor, stock-assistant, stock-predictor, supplier-tracker, team-tracker, training-optimizer, waste-analyzer
 
+### training-optimizer (Enhanced):
+Weekly skill targeting trainer/coach/ceo/cgo/admin. 11 insight types:
+1. overall_completion_rate — assignment completion % (30d)
+2. low_completion_modules — modules with <40% completion
+3. high_completion_modules — modules with >90% completion
+4. hardest_quiz_questions — quizzes with >50% fail rate
+5. quiz_score_trends — 30d vs 60d average score comparison
+6. branch_training_comparison — inactive branches, low/top performers
+7. personal_training_recommendations — overdue assignments, failed-not-retried
+8. onboarding_status — incomplete onboarding >7 days
+9. usage_report — weekly branch usage rates
+10. certification_pipeline — pending exams, recent certificates
+11. quiz_gap_detection — modules without quizzes, few questions
+Data sources: trainingAssignments, trainingCompletions, userTrainingProgress, userQuizAttempts, quizResults, quizQuestions, moduleQuizzes, userCareerProgress, examRequests, employeeOnboardingProgress, issuedCertificates, branches, users
+Test endpoint: GET /api/agent/test-skill/training_optimizer (admin only)
+
 ### Utilities:
 skill-registry.ts (loads/runs skills by schedule), skill-notifications.ts (queued delivery)
 

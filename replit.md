@@ -21,6 +21,7 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **AI Integration:** AI capabilities (GPT-4o, GPT-4o-mini, Vision, Embeddings) are integrated into various modules, notably the Academy V3 for content generation and assistant features.
 - **Branch Task Board:** Implements recurring task management with scheduling, instance generation, override capabilities, and a scoring system integrated into branch health metrics.
 - **Academy HQ:** Refactored into a modular 7-tab structure for managing training modules, quizzes, webinars, analytics, exam requests, and certificate designs, with AI-powered content creation tools.
+- **Training Optimizer Skill (Enhanced):** Mr. Dobody's `training_optimizer` skill expanded from 3 to 11 insight types — covering quiz performance trends, branch comparison, personal training recommendations, onboarding tracking, usage/engagement reports, certification pipeline, and quiz gap detection. Runs weekly, targets trainer/coach/ceo/cgo/admin roles. Test endpoint: `GET /api/agent/test-skill/training_optimizer` (admin only).
 
 ## External Dependencies
 - **OpenAI API**: For AI vision, chat, embeddings, and summarization capabilities.
