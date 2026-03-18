@@ -268,6 +268,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "both",
       },
       {
+        id: "training-academy-hq",
+        titleTr: "Akademi Yönetimi",
+        path: "/akademi-hq",
+        icon: "GraduationCap",
+        moduleKey: "training",
+        scope: "hq",
+      },
+      {
         id: "knowledge-base",
         titleTr: "Bilgi Bankası",
         path: "/bilgi-bankasi",
@@ -671,13 +679,13 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'dashboard', 'reports', 'notifications',
   ],
   coach: [
-    'dashboard', 'branches-list', 'branch-inspection', 'customer-satisfaction', 'training-academy', 'notifications', 'crm-main', 'iletisim-merkezi',
+    'dashboard', 'branches-list', 'branch-inspection', 'customer-satisfaction', 'training-academy-hq', 'tasks-list', 'notifications', 'crm-main', 'iletisim-merkezi',
   ],
   destek: [
     'dashboard', 'branches-list', 'faults', 'hq-support', 'notifications',
   ],
   trainer: [
-    'dashboard', 'training-academy', 'branch-inspection', 'knowledge-base', 'notifications', 'iletisim-merkezi',
+    'dashboard', 'training-academy-hq', 'tasks-list', 'branch-inspection', 'knowledge-base', 'notifications', 'iletisim-merkezi',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety', 'factory-quality', 'notifications',
@@ -711,7 +719,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   admin: [
     'dashboard', 'branches-list', 'reports', 'performance-dashboard', 'hr',
-    'training-academy', 'knowledge-base', 'branch-health', 'customer-satisfaction',
+    'training-academy-hq', 'knowledge-base', 'branch-health', 'customer-satisfaction',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors', 'notifications', 'usage-guide', 'hq-support', 'iletisim-merkezi',
   ],
   fabrika_sorumlu: [
