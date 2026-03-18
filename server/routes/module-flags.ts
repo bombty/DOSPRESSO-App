@@ -3,7 +3,7 @@ import { db } from "../db";
 import { moduleFlags } from "@shared/schema";
 import { eq, and, isNull, desc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
-import { isModuleEnabled, clearModuleFlagCache } from "../services/module-flag-service";
+import { isModuleEnabled, clearModuleFlagCache, getModuleFlagBehavior } from "../services/module-flag-service";
 
 const router = Router();
 
@@ -55,6 +55,9 @@ router.get("/api/module-flags/branch/:branchId", isAuthenticated, async (req: Re
       const branchOverride = branchFlags.find(bf => bf.moduleKey === gf.moduleKey);
       return {
         moduleKey: gf.moduleKey,
+        flagLevel: gf.flagLevel,
+        flagBehavior: gf.flagBehavior,
+        parentKey: gf.parentKey,
         globalEnabled: gf.isEnabled,
         branchOverride: branchOverride ? branchOverride.isEnabled : null,
         effectiveEnabled: branchOverride ? branchOverride.isEnabled : gf.isEnabled,
@@ -225,14 +228,19 @@ router.delete("/api/module-flags/:id", isAuthenticated, async (req: Request, res
 
 router.get("/api/module-flags/check", isAuthenticated, async (req: Request, res: Response) => {
   try {
-    const { moduleKey } = req.query;
+    const { moduleKey, context } = req.query;
     if (!moduleKey || typeof moduleKey !== "string") {
       return res.status(400).json({ error: "moduleKey parametresi zorunludur." });
     }
 
+    const validContexts = ["ui", "api", "data"];
+    const flagContext = (typeof context === "string" && validContexts.includes(context))
+      ? context as "ui" | "api" | "data"
+      : "ui";
+
     const user = req.user as any;
     const branchId = user?.branchId ?? null;
-    const enabled = await isModuleEnabled(moduleKey, branchId);
+    const enabled = await isModuleEnabled(moduleKey, branchId, flagContext);
 
     res.json({ enabled });
   } catch (error) {

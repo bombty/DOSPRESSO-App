@@ -834,7 +834,7 @@ export async function buildMenuForUser(
     const flagKey = getModuleKeyForPath(path);
     if (flagKey && !moduleFlagChecks.has(flagKey)) {
       try {
-        moduleFlagChecks.set(flagKey, await isModuleEnabled(flagKey, branchId));
+        moduleFlagChecks.set(flagKey, await isModuleEnabled(flagKey, branchId, "ui"));
       } catch {
         moduleFlagChecks.set(flagKey, true);
       }
