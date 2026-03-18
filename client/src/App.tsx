@@ -59,7 +59,7 @@ const KnowledgeBase = lazy(() => import("@/pages/knowledge-base"));
 const TrainingAssign = lazy(() => import("@/pages/training-assign"));
 const Academy = lazy(() => import("@/pages/academy"));
 const AcademySupervisor = lazy(() => import("@/pages/academy-supervisor"));
-const AcademyHQ = lazy(() => import("@/pages/academy-hq"));
+const AcademyHQ = lazy(() => import("@/pages/akademi-hq"));
 const ModuleDetail = lazy(() => import("@/pages/module-detail"));
 const AcademyModuleEditor = lazy(() => import("@/pages/academy-module-editor"));
 const AcademyAnalytics = lazy(() => import("@/pages/academy-analytics"));

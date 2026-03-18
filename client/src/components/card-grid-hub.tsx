@@ -388,7 +388,7 @@ export function CardGridHub() {
       id: "academy-hq", 
       icon: GraduationCap, 
       label: navLabel("academy-hq", "Akademi Yönetimi"), 
-      path: "/yonetim/akademi",
+      path: "/akademi-hq",
       color: "bg-blue-500",
       description: navDesc("academy-hq", "Eğitim yönetimi")
     },

@@ -37,7 +37,7 @@ import {
 
 const AcademyMyPath = lazy(() => import("./academy-my-path"));
 const Academy = lazy(() => import("./academy"));
-const AcademyHQ = lazy(() => import("./academy-hq"));
+const AcademyHQ = lazy(() => import("./akademi-hq"));
 const AcademySupervisor = lazy(() => import("./academy-supervisor"));
 const CoachOnboardingStudio = lazy(() => import("./coach-onboarding-studio"));
 const SupervisorOnboarding = lazy(() => import("./supervisor-onboarding"));

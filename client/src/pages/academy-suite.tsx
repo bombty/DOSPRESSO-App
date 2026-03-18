@@ -15,7 +15,7 @@ import { Link, useRoute } from "wouter";
 import { isHQRole } from "@shared/schema";
 
 import Academy from "./academy";
-import AcademyHQ from "./academy-hq";
+import AcademyHQ from "./akademi-hq";
 import AcademyAnalytics from "./academy-analytics";
 import AcademyBadges from "./academy-badges";
 import AcademyCertificates from "./academy-certificates";

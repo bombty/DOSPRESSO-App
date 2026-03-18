@@ -265,7 +265,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: "academy-hq",
-    route: "/yonetim/akademi",
+    route: "/akademi-hq",
     icon: GraduationCap,
     group: "management",
     order: 30,

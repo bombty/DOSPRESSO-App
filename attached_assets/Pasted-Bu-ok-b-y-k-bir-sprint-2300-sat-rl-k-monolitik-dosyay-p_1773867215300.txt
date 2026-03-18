@@ -1,0 +1,360 @@
+Bu çok büyük bir sprint — 2300 satırlık monolitik dosyayı parçalayıp, 7 özellik eklemek. Tek prompt'a sığdırmak zor ama yapılandırılmış bir şekilde yazıyorum. Replit'e yapıştırın:
+
+---
+
+```
+## Academy HQ Management Panel — Complete Overhaul
+
+### Context
+The /akademi-hq page is a 2300-line monolithic file with broken tabs (Modüller tab has no TabsTrigger), missing features (no webinar tab), and hardcoded data. This sprint refactors it into a clean, modular management panel with 7 tabs.
+
+Read these skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Turkish UI, dark mode compatible, no hardcoded colors, no emoji (Lucide icons)
+- Use CompactKPIStrip for mobile KPI cards
+- Use MobileFilterCollapse for filter sections
+- Shadcn/ui components (Tabs, Card, Badge, Dialog, Switch, Select, Table)
+- Do NOT touch server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- users.id is VARCHAR, soft delete pattern
+
+---
+
+### PART 1: Refactor Page Structure
+
+#### 1A: Break monolithic file into tab components
+
+Create these files from the existing academy-hq.tsx code:
+```
+client/src/pages/akademi-hq/
+├── index.tsx                    — Main page shell with tabs + role dashboard header
+├── ModullerTab.tsx              — Module CRUD + AI creation
+├── QuizYonetimTab.tsx           — Quiz management + question analytics
+├── WebinarTab.tsx               — Webinar planning and tracking
+├── IstatistiklerTab.tsx         — Participation stats (module-based)
+├── SinavTalepleriTab.tsx        — Exam request approvals (existing)
+├── SertifikaTab.tsx             — Certificate/badge management
+├── SubeAnalizTab.tsx            — Branch comparison analytics
+└── components/
+    ├── AIModuleCreator.tsx      — AI-powered module creation wizard (extract from existing)
+    ├── ModuleGallery.tsx        — Module card grid (extract from existing)
+    ├── QuizEditor.tsx           — Quiz CRUD dialog (extract from existing)
+    └── RoleDashboard.tsx        — Role-specific KPI dashboard header (extract from existing)
+```
+
+#### 1B: Main page shell (index.tsx)
+
+```typescript
+// Top: Role-specific KPI dashboard (CEO sees executive stats, Coach sees personnel progress, Trainer sees training stats)
+// Below: 7-tab navigation
+// Tabs: Modüller | Quizler | Webinarlar | İstatistikler | Sınav Talepleri | Sertifikalar | Şube Analiz
+
+export default function AcademyHQ() {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("moduller");
+  
+  return (
+    <div>
+      <RoleDashboard user={user} />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full overflow-x-auto flex-nowrap">
+          <TabsTrigger value="moduller">Modüller</TabsTrigger>
+          <TabsTrigger value="quizler">Quizler</TabsTrigger>
+          <TabsTrigger value="webinarlar">Webinarlar</TabsTrigger>
+          <TabsTrigger value="istatistikler">İstatistikler</TabsTrigger>
+          <TabsTrigger value="sinav-talepleri">Sınav Talepleri</TabsTrigger>
+          <TabsTrigger value="sertifikalar">Sertifikalar</TabsTrigger>
+          <TabsTrigger value="sube-analiz">Şube Analiz</TabsTrigger>
+        </TabsList>
+        <TabsContent value="moduller"><ModullerTab /></TabsContent>
+        <TabsContent value="quizler"><QuizYonetimTab /></TabsContent>
+        <TabsContent value="webinarlar"><WebinarTab /></TabsContent>
+        <TabsContent value="istatistikler"><IstatistiklerTab /></TabsContent>
+        <TabsContent value="sinav-talepleri"><SinavTalepleriTab /></TabsContent>
+        <TabsContent value="sertifikalar"><SertifikaTab /></TabsContent>
+        <TabsContent value="sube-analiz"><SubeAnalizTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+TabsList should be horizontally scrollable on mobile (overflow-x-auto).
+
+#### 1C: RoleDashboard component
+
+Extract the existing RoleDashboardSection from academy-hq.tsx into components/RoleDashboard.tsx. Keep the role-based logic:
+- CEO/CGO: executive metrics (total modules, active learners, completion rate, avg quiz score)
+- Coach: personnel progress summary, pending exam requests count
+- Trainer: training completion stats, content creation stats, pending reviews
+- Admin: full overview of all metrics
+
+Use CompactKPIStrip for the KPI cards.
+
+---
+
+### PART 2: Modüller Tab (Module CRUD + AI Creation)
+
+Extract and enhance the existing module management from academy-hq.tsx.
+
+**Features:**
+1. Module list — fetch from API (NOT hardcoded ACADEMY_MODULES array)
+   ```bash
+   # Check what API returns for modules
+   grep -n "modules\|module" server/routes/academy-v3.ts | head -20
+   ```
+   Use GET /api/v3/academy/modules to fetch actual modules from DB
+
+2. Module card grid (ModuleGallery) with:
+   - Module title + description
+   - Category badge (Barista, Güvenlik, Ekipman, Müşteri, Yönetim, Onboarding, Gelişim)
+   - Status badge (Aktif / Taslak / Arşivlenmiş)
+   - Stats: enrolled count, completion rate, avg quiz score
+   - Scope badge: Şube / Fabrika / Her ikisi
+   - Edit / Archive / Delete buttons
+   - Click to open module detail
+
+3. "Yeni Modül Oluştur" button → opens create dialog with:
+   - Manual creation: title, description, category, scope, lessons
+   - AI creation: existing AI wizard (extract AIModuleCreator component)
+
+4. Filter/search: category filter chips + text search + status filter
+
+5. Role-based exam creation system:
+   - When creating a module, allow selecting target roles
+   - Target roles: dropdown with checkboxes for all 27 roles
+   - "Bu modül hangi roller için zorunlu?" section
+   - This maps to the existing module scope/assignment system
+
+---
+
+### PART 3: Quiz Yönetim Tab (Quiz Management + Question Analytics)
+
+**Features:**
+1. Quiz list — all quizzes with:
+   - Quiz title + linked module
+   - Question count
+   - Avg score across all attempts
+   - Pass rate
+   - Edit / Delete buttons
+
+2. Quiz detail/editor dialog:
+   - Title, description, pass score, time limit
+   - Question list (add/edit/remove)
+   - Question types: multiple choice, true/false
+   - Per-question stats: how many got it right/wrong
+
+3. **Question analytics (NEW):**
+   - "En Çok Hata Yapılan Sorular" section
+   - Table: Question text | Module | Correct % | Total attempts
+   - Sorted by lowest correct % (most failed questions first)
+   - This helps trainer identify confusing questions or knowledge gaps
+
+4. API needs — check what exists:
+   ```bash
+   grep -n "quiz\|question\|answer\|attempt" server/routes/academy-v3.ts server/routes/*.ts | head -30
+   ```
+   If question-level analytics API doesn't exist, create:
+   ```
+   GET /api/v3/academy/quiz-analytics — returns per-question success rates
+   ```
+
+---
+
+### PART 4: Webinar Tab
+
+The API already supports full webinar CRUD. Build the UI:
+
+**Features:**
+1. Webinar list with:
+   - Title + description
+   - Date/time
+   - Status: Planlandı / Devam Ediyor / Tamamlandı / İptal
+   - Registered count / capacity
+   - Target roles
+   - Actions: edit, cancel, complete, view participants
+
+2. "Yeni Webinar Oluştur" dialog:
+   - Title, description, date/time, duration
+   - Capacity (optional)
+   - Target roles (multi-select)
+   - Presenter name
+   - Meeting link (optional)
+
+3. Participant management:
+   - View registered participants
+   - Mark attendance (katıldı/katılmadı)
+   - Export participant list
+
+4. Calendar view (optional — if time permits):
+   - Monthly calendar showing scheduled webinars
+   - Or simple timeline/list view
+
+Use existing API endpoints:
+- GET /api/v3/academy/webinars
+- POST /api/v3/academy/webinars
+- PATCH /api/v3/academy/webinars/:id
+- POST /api/v3/academy/webinars/:id/cancel
+- POST /api/v3/academy/webinars/:id/complete
+- GET /api/v3/academy/webinars/:id/participants
+- PATCH /api/v3/academy/webinars/:id/attendance
+
+---
+
+### PART 5: İstatistikler Tab (Participation Stats)
+
+**Features:**
+1. Overall KPI strip:
+   - Total active learners
+   - Overall completion rate
+   - Avg quiz score
+   - Total certificates issued
+   - Active streaks count
+
+2. **Module-based statistics table:**
+   - Each row: Module name | Enrolled | Completed | Completion % | Avg Quiz Score | Avg Time
+   - Sortable by any column
+   - Click row to see detailed module stats
+   - Filter by category
+
+3. **Module detail popup (on row click):**
+   - Completion trend chart (last 30 days — simple line/bar)
+   - Per-lesson completion rates
+   - Quiz question breakdown (which questions are hardest)
+   - Top performers list
+
+4. **Time-based filters:**
+   - Period selector: Bu Hafta / Bu Ay / Son 3 Ay / Tüm Zamanlar
+   - Affects all stats on the page
+
+5. API needs:
+   ```bash
+   grep -n "stats\|analytics\|completion\|progress" server/routes/academy-v3.ts server/routes/*.ts | grep -i "academ" | head -20
+   ```
+   Create endpoints if missing:
+   ```
+   GET /api/v3/academy/stats/overview — overall KPIs
+   GET /api/v3/academy/stats/modules — per-module completion stats
+   GET /api/v3/academy/stats/module/:id — detailed module stats
+   ```
+
+---
+
+### PART 6: Sertifika/Badge Tab
+
+**Features:**
+1. Certificate template list:
+   - Template name + design preview (if available)
+   - Linked module/quiz
+   - Issued count
+   - Edit / Delete buttons
+
+2. Badge list:
+   - Badge name + icon
+   - Unlock criteria
+   - Earned count across all users
+   - Edit criteria
+
+3. "Yeni Sertifika Şablonu" dialog:
+   - Template name
+   - Linked module (required)
+   - Minimum pass score
+   - Auto-issue on completion (toggle)
+
+4. Issued certificates table:
+   - User name | Module | Issue date | Certificate ID
+   - Search by user name
+   - Revoke option (soft delete)
+
+5. API check:
+   ```bash
+   grep -n "certificate\|badge\|sertifika\|rozet" server/routes/academy-v3.ts server/routes/*.ts | head -20
+   ```
+
+---
+
+### PART 7: Şube Analiz Tab (Branch Comparison)
+
+**Features:**
+1. Branch comparison table:
+   - Each row: Branch name | Active learners | Avg completion % | Avg quiz score | Overdue modules | Rank
+   - Sortable by any column
+   - Color-coded: green (top 25%), yellow (middle 50%), red (bottom 25%)
+
+2. Module completion heatmap (optional):
+   - Rows: modules, Columns: branches
+   - Cell color: green (>80%), yellow (50-80%), red (<50%)
+   - Quick visual of which branches lag on which modules
+
+3. **Drill-down:** Click a branch → see that branch's detailed academy stats:
+   - Per-employee completion table
+   - Module-by-module breakdown
+   - Overdue/incomplete items
+
+4. API check:
+   ```bash
+   grep -n "branch.*academ\|academ.*branch\|branch.*training\|branch.*completion" server/routes/ --include="*.ts" | head -15
+   ```
+   Create if missing:
+   ```
+   GET /api/v3/academy/stats/branches — all branches comparison
+   GET /api/v3/academy/stats/branch/:id — single branch detail
+   GET /api/v3/academy/stats/branch/:id/employees — per-employee in branch
+   ```
+
+---
+
+### PART 8: Role-Based Exam System Enhancement
+
+When creating/editing a module in ModullerTab:
+1. Add "Hedef Roller" multi-select: which roles must complete this module
+2. Add "Zorunlu mu?" toggle per role
+3. This data feeds into:
+   - Sınav Talepleri tab (exam requests filtered by role eligibility)
+   - İstatistikler tab (completion tracked per target role)
+   - Dashboard alerts ("3 barista henüz Gıda Güvenliği modülünü tamamlamadı")
+
+Check if target roles already exist in the schema:
+```bash
+grep -n "target.*role\|role.*target\|required.*role\|mandatory" shared/schema.ts | grep -i "academ\|training\|module\|course" | head -10
+```
+
+If not, add a targetRoles array column to the appropriate table.
+
+---
+
+### DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Student academy view (/akademi — barista experience)
+- Kiosk pages
+- Existing working API endpoints (only add new ones)
+
+### Testing Checklist:
+1. App starts without errors
+2. Navigate to /akademi-hq as trainer → 7 tabs visible, all clickable
+3. Modüller tab: modules load from API (not hardcoded), CRUD works
+4. AI module creation wizard works
+5. Quizler tab: quiz list loads, question analytics shows hardest questions
+6. Webinarlar tab: CRUD works, participant management works
+7. İstatistikler tab: KPIs load, module table shows completion data
+8. Sınav Talepleri tab: existing functionality preserved
+9. Sertifikalar tab: certificate/badge CRUD works
+10. Şube Analiz tab: branch comparison table loads
+11. Mobile: tabs scroll horizontally, all sections compact
+12. Dark mode: all elements readable
+13. Login as coach → same page works with coach-appropriate data
+14. Login as admin → full access to all tabs
+
+### After implementation:
+1. Run 15-point quality gate
+2. Delete the old monolithic academy-hq.tsx (replaced by akademi-hq/index.tsx)
+3. Update App.tsx route if the import path changed
+4. Update replit.md — add Academy HQ Management section
+5. Update .agents/skills/dospresso-architecture/SKILL.md — add academy HQ tab structure
+```
+
+---
+
+Bu çok büyük bir sprint — Replit Agent muhtemelen birden fazla session'da tamamlayacak. Direkt build başlatın!
