@@ -15634,3 +15634,20 @@ export const branchTaskInstances = pgTable("branch_task_instances", {
 export const insertBranchTaskInstanceSchema = createInsertSchema(branchTaskInstances).omit({ id: true, createdAt: true, updatedAt: true });
 export type BranchTaskInstance = typeof branchTaskInstances.$inferSelect;
 export type InsertBranchTaskInstance = z.infer<typeof insertBranchTaskInstanceSchema>;
+
+export const branchRecurringTaskOverrides = pgTable("branch_recurring_task_overrides", {
+  id: serial("id").primaryKey(),
+  recurringTaskId: integer("recurring_task_id").references(() => branchRecurringTasks.id).notNull(),
+  branchId: integer("branch_id").references(() => branches.id).notNull(),
+  isDisabled: boolean("is_disabled").notNull().default(true),
+  disabledByUserId: varchar("disabled_by_user_id").references(() => users.id).notNull(),
+  disabledByRole: varchar("disabled_by_role", { length: 50 }).notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const insertBranchRecurringTaskOverrideSchema = createInsertSchema(branchRecurringTaskOverrides).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
+export type BranchRecurringTaskOverride = typeof branchRecurringTaskOverrides.$inferSelect;
+export type InsertBranchRecurringTaskOverride = z.infer<typeof insertBranchRecurringTaskOverrideSchema>;

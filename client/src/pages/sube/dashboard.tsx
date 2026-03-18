@@ -32,6 +32,7 @@ import {
 import logoUrl from "@assets/IMG_6637_1765138781125.png";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { TodaysTasksWidget } from "@/components/widgets/todays-tasks-widget";
 
 interface WeeklyShift {
   id: number;
@@ -374,6 +375,8 @@ export default function SubeDashboard() {
               ]}
               desktopColumns={4}
             />
+
+            <TodaysTasksWidget />
 
             {(dashboardData?.alerts?.length || 0) > 0 && (
               <Card>

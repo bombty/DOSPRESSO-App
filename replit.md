@@ -64,22 +64,35 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Webinar**: Webinar management and registration system
 - **System**: Admin Panel, Content Studio, Projects, Security/Backups
 
-## Branch Task Board (Sprint 1)
-- **Tables**: `branchTaskCategories`, `branchRecurringTasks`, `branchTaskInstances` in `shared/schema.ts`
+## Branch Task Board (Sprint 1 + 2)
+- **Tables**: `branchTaskCategories`, `branchRecurringTasks`, `branchTaskInstances`, `branchRecurringTaskOverrides` in `shared/schema.ts`
 - **Seed**: `server/seed-branch-tasks.ts` — 4 categories (temizlik, bakim, stok, genel) + 4 sample HQ tasks. Registered in `server/index.ts` allSettled.
-- **Scheduler**: `server/services/branch-task-scheduler.ts` — `generateDailyTaskInstances()` runs at 00:00-00:10 TR in master 10-min tick + startup catch-up. `markOverdueInstances()` runs alongside.
+- **Scheduler**: `server/services/branch-task-scheduler.ts` — `generateDailyTaskInstances()` runs at 00:00-00:10 TR in master 10-min tick + startup catch-up. `markOverdueInstances()` runs alongside. Checks `branchRecurringTaskOverrides` before generating instances (skips overridden branches).
 - **API**: `server/routes/branch-tasks.ts` — registered in `server/routes.ts`
   - `GET /api/branch-tasks/categories` — list categories
   - `GET /api/branch-tasks/templates` — list recurring task templates (HQ sees all, branch users see own branch)
   - `POST /api/branch-tasks/templates` — create template (admin/ceo/cgo/coach/trainer/mudur/supervisor)
   - `PATCH /api/branch-tasks/templates/:id` — update template
   - `DELETE /api/branch-tasks/templates/:id` — soft delete template
+  - `GET /api/branch-tasks/templates/:id/overrides` — list branch overrides for a template
+  - `POST /api/branch-tasks/templates/:id/overrides` — create override (disable for branch)
+  - `DELETE /api/branch-tasks/overrides/:id` — remove override (re-enable)
   - `GET /api/branch-tasks/instances` — list task instances (filter by branchId, date, status)
   - `POST /api/branch-tasks/instances/:id/claim` — claim a task
   - `POST /api/branch-tasks/instances/:id/complete` — complete a task
   - `POST /api/branch-tasks/instances/:id/unclaim` — unclaim a task
   - `GET /api/branch-tasks/stats` — completion stats for a branch
-- **Module flag**: `sube_gorevleri` (fully_hidden) in `server/seed-module-flags.ts`. Scheduler checks `isModuleEnabled("sube_gorevleri", branchId, "data")` before generating instances.
+  - `GET /api/branch-tasks/kiosk/instances` — today's tasks for kiosk branch (isKioskAuthenticated)
+  - `POST /api/branch-tasks/kiosk/:id/claim` — kiosk claim task
+  - `POST /api/branch-tasks/kiosk/:id/complete` — kiosk complete task
+- **Override table**: `branchRecurringTaskOverrides` — per-branch template disabling with soft delete, unique index on (recurring_task_id, branch_id) WHERE deleted_at IS NULL
+- **Görevler UI (Sprint 2)**: 3-tab page in `client/src/pages/tasks.tsx`
+  - Tab 1 "Bana Atanan" — existing ad-hoc tasks (unchanged)
+  - Tab 2 "Şube Görevleri" — today's branch task instances with claim/unclaim/complete, category filter chips, CompactKPIStrip
+  - Tab 3 "Tekrarlayan Yönetimi" — template CRUD, grouped by category, HQ override toggle per branch (only visible for TEMPLATE_ROLES)
+- **Dashboard Widget**: `client/src/components/widgets/todays-tasks-widget.tsx` — combined ad-hoc + branch tasks widget on `sube/dashboard.tsx`, progress bar, max 10 items
+- **Kiosk Integration**: `KioskBranchTasks` component in `client/src/pages/sube/kiosk.tsx` — shows open branch tasks, claim/complete buttons, uses isKioskAuthenticated endpoints
+- **Module flag**: `sube_gorevleri` (fully_hidden) in `server/seed-module-flags.ts`. Scheduler checks `isModuleEnabled("sube_gorevleri", branchId, "data")` before generating instances. Tab 2/3 hidden when disabled, widget hidden, kiosk section hidden.
 - **Path mapping**: `/sube-gorevleri` and `/gorev-panosu` → `sube_gorevleri` in `PATH_TO_MODULE_KEY_MAP`
 - **Roles**: TEMPLATE_ROLES (create/edit): admin, ceo, cgo, coach, trainer, mudur, supervisor. HQ_ROLES (see all branches): admin, ceo, cgo, coach, trainer, muhasebe_ik, satinalma, marketing, kalite_kontrol, gida_muhendisi, fabrika_mudur. Branch users scoped to their branchId.
 - **Instance unique constraint**: `uq_branch_task_instance_recurring_branch_date` on (recurring_task_id, branch_id, due_date)

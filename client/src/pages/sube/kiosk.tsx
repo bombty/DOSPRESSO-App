@@ -983,6 +983,8 @@ export default function BranchKiosk() {
           </CardContent>
         </Card>
 
+        <KioskBranchTasks />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1386,6 +1388,96 @@ export default function BranchKiosk() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function KioskBranchTasks() {
+  const { toast } = useToast();
+  const { data: instances, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/branch-tasks/kiosk/instances"],
+    queryFn: () => fetch("/api/branch-tasks/kiosk/instances", {
+      headers: { "x-kiosk-token": localStorage.getItem("kiosk-token") || "" },
+    }).then(r => {
+      if (!r.ok) return [];
+      return r.json();
+    }),
+  });
+
+  const claimMutation = useMutation({
+    mutationFn: (id: number) => fetch(`/api/branch-tasks/kiosk/${id}/claim`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-kiosk-token": localStorage.getItem("kiosk-token") || "",
+      },
+    }).then(r => { if (!r.ok) throw new Error("Sahiplenilemedi"); return r.json(); }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/kiosk/instances"] });
+      toast({ title: "Görev sahiplenildi" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: number) => fetch(`/api/branch-tasks/kiosk/${id}/complete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-kiosk-token": localStorage.getItem("kiosk-token") || "",
+      },
+    }).then(r => { if (!r.ok) throw new Error("Tamamlanamadı"); return r.json(); }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/kiosk/instances"] });
+      toast({ title: "Görev tamamlandı" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  if (isLoading) return null;
+  if (!instances || instances.length === 0) return null;
+
+  const openTasks = instances.filter((t: any) => t.status !== "completed");
+  if (openTasks.length === 0) return null;
+
+  return (
+    <Card data-testid="card-kiosk-branch-tasks">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ListTodo className="h-5 w-5 text-teal-600" />
+          Şube Görevleri
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {openTasks.map((task: any) => (
+            <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card" data-testid={`kiosk-branch-task-${task.id}`}>
+              <div className={`p-2 rounded-full ${task.is_overdue ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" : "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"}`}>
+                {task.is_overdue ? <AlertCircle className="h-4 w-4" /> : <ListTodo className="h-4 w-4" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{task.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {task.category}
+                  {task.claimed_first && ` | ${task.claimed_first} ${task.claimed_last}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                {task.status === "pending" && (
+                  <Button size="sm" onClick={() => claimMutation.mutate(task.id)} disabled={claimMutation.isPending} data-testid={`button-kiosk-claim-${task.id}`}>
+                    Sahiplen
+                  </Button>
+                )}
+                {task.status === "claimed" && (
+                  <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => completeMutation.mutate(task.id)} disabled={completeMutation.isPending} data-testid={`button-kiosk-complete-${task.id}`}>
+                    Tamamla
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

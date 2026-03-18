@@ -66,6 +66,14 @@ export async function generateDailyTaskInstances(): Promise<number> {
         if (!enabled) continue;
       } catch {}
 
+      const overrideCheck = await db.execute(
+        sql`SELECT 1 FROM branch_recurring_task_overrides
+            WHERE recurring_task_id = ${task.id} AND branch_id = ${branchId}
+              AND is_disabled = true AND deleted_at IS NULL
+            LIMIT 1`
+      );
+      if (overrideCheck.rows && overrideCheck.rows.length > 0) continue;
+
       const result = await db.execute(
         sql`INSERT INTO branch_task_instances (recurring_task_id, branch_id, due_date, status, assigned_to_user_id)
             VALUES (${task.id}, ${branchId}, ${today}, 'pending', ${task.assigned_to_user_id})

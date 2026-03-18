@@ -21,18 +21,24 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { QuickTaskModal } from "@/components/quick-task-modal";
+import { Switch } from "@/components/ui/switch";
 import { type Task, type Branch, type User, isHQRole as checkIsHQRole, type TaskStatus, type TaskPriority, hasPermission, type UserRoleType } from "@shared/schema";
-import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calendar, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3 } from "lucide-react";
+import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calendar, ChevronDown, Filter, XCircle, ArrowUp, ArrowDown, Eye, EyeOff, Building2, Send, Star, BarChart3, Plus, Repeat, Camera, Trash2, Edit, ClipboardList, ListChecks, Settings2 } from "lucide-react";
 import { format } from "date-fns";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
 import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { useModuleEnabled } from "@/hooks/use-module-flags";
+
+const TEMPLATE_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur", "supervisor"];
 
 export default function Tasks() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mainTab, setMainTab] = useState("bana-atanan");
   const [activeTab, setActiveTab] = useState("all");
+  const { isEnabled: isBranchTasksEnabled } = useModuleEnabled("sube_gorevleri");
   
   const [filterBranchId, setFilterBranchId] = useState<number | null>(null);
   const [filterAssigneeId, setFilterAssigneeId] = useState<string | null>(null);
@@ -318,13 +324,15 @@ export default function Tasks() {
   }, [tasks, searchQuery, activeTab, user, filterBranchId, filterAssigneeId, filterStatus, filterPriority, filterDateFrom, filterDateTo, sortConfig, assignmentFilter, showCompleted]);
 
   
+  const canManageTemplates = user?.role ? TEMPLATE_ROLES.includes(user.role) : false;
+
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Tasklar</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Görevler</h1>
         <div className="flex flex-wrap gap-2 items-center">
           {isHQ && (
             <Button size="sm" variant="outline" onClick={() => setShowFairnessDialog(true)} data-testid="button-fairness-report">
@@ -339,10 +347,34 @@ export default function Tasks() {
             </Button>
           )}
         </div>
-        {canAssignTasks && (
+        {canAssignTasks && mainTab === "bana-atanan" && (
           <QuickTaskModal trigger={<Button size="sm" data-testid="button-add-task">Yeni Görev Ekle</Button>} />
         )}
       </div>
+
+      <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
+        <div className="w-full overflow-x-auto">
+          <TabsList data-testid="tabs-main-nav">
+            <TabsTrigger value="bana-atanan" data-testid="tab-bana-atanan">
+              <ClipboardList className="h-4 w-4 mr-1.5" />
+              Bana Atanan
+            </TabsTrigger>
+            {isBranchTasksEnabled && (
+              <TabsTrigger value="sube-gorevleri" data-testid="tab-sube-gorevleri">
+                <ListChecks className="h-4 w-4 mr-1.5" />
+                Şube Görevleri
+              </TabsTrigger>
+            )}
+            {isBranchTasksEnabled && canManageTemplates && (
+              <TabsTrigger value="tekrarlayan" data-testid="tab-tekrarlayan">
+                <Settings2 className="h-4 w-4 mr-1.5" />
+                Tekrarlayan Yönetimi
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
+
+        <TabsContent value="bana-atanan" className="space-y-4 mt-4">
 
       {/* Assignment Direction Filter + Branch Selector */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
@@ -1164,6 +1196,21 @@ export default function Tasks() {
         </DialogContent>
       </Dialog>
 
+        </TabsContent>
+
+        {isBranchTasksEnabled && (
+          <TabsContent value="sube-gorevleri" className="mt-4">
+            <BranchTasksTab />
+          </TabsContent>
+        )}
+
+        {isBranchTasksEnabled && canManageTemplates && (
+          <TabsContent value="tekrarlayan" className="mt-4">
+            <RecurringTasksManagementTab />
+          </TabsContent>
+        )}
+      </Tabs>
+
       <Dialog open={showFairnessDialog} onOpenChange={setShowFairnessDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -1243,6 +1290,549 @@ export default function Tasks() {
                 );
               })
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function BranchTasksTab() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: stats } = useQuery<any>({
+    queryKey: ["/api/branch-tasks/stats", { date: today }],
+    queryFn: () => fetch(`/api/branch-tasks/stats?date=${today}`).then(r => { if (!r.ok) return {}; return r.json(); }),
+  });
+
+  const { data: categories } = useQuery<any[]>({
+    queryKey: ["/api/branch-tasks/categories"],
+  });
+
+  const { data: instances, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/branch-tasks/instances", { date: today }],
+    queryFn: () => fetch(`/api/branch-tasks/instances?date=${today}`).then(r => { if (!r.ok) return []; return r.json(); }),
+  });
+
+  const claimMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/branch-tasks/instances/${id}/claim`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/stats"] });
+      toast({ title: "Görev sahiplenildi" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const unclaimMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/branch-tasks/instances/${id}/unclaim`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/stats"] });
+      toast({ title: "Görev bırakıldı" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const [completingId, setCompletingId] = useState<number | null>(null);
+  const [completionNote, setCompletionNote] = useState("");
+
+  const completeMutation = useMutation({
+    mutationFn: ({ id, note }: { id: number; note?: string }) =>
+      apiRequest("POST", `/api/branch-tasks/instances/${id}/complete`, { completionNote: note || null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/stats"] });
+      setCompletingId(null);
+      setCompletionNote("");
+      toast({ title: "Görev tamamlandı" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const filtered = useMemo(() => {
+    if (!instances) return [];
+    if (categoryFilter === "all") return instances;
+    return instances.filter((i: any) => i.category === categoryFilter);
+  }, [instances, categoryFilter]);
+
+  const categoryColors: Record<string, string> = {
+    temizlik: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    bakim: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+    stok: "bg-green-500/10 text-green-700 dark:text-green-400",
+    genel: "bg-gray-500/10 text-gray-700 dark:text-gray-400",
+  };
+
+  return (
+    <div className="space-y-4">
+      <CompactKPIStrip
+        items={[
+          { label: "Bekleyen", value: stats?.pending ?? 0, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning" as const, testId: "card-branch-stat-pending" },
+          { label: "Sahiplenilmiş", value: stats?.claimed ?? 0, icon: <PlayCircle className="h-4 w-4 text-primary" />, color: "info" as const, testId: "card-branch-stat-claimed" },
+          { label: "Tamamlanan", value: stats?.completed ?? 0, icon: <CheckCircle2 className="h-4 w-4 text-success" />, color: "success" as const, testId: "card-branch-stat-completed" },
+          { label: "Gecikmiş", value: stats?.overdue ?? 0, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: "danger" as const, testId: "card-branch-stat-overdue" },
+        ]}
+        desktopGridClass="md:grid-cols-2 lg:grid-cols-4"
+      />
+
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
+        <Button variant={categoryFilter === "all" ? "default" : "outline"} size="sm" className="flex-shrink-0" onClick={() => setCategoryFilter("all")} data-testid="chip-category-all">Tümü</Button>
+        {categories?.map((cat: any) => (
+          <Button key={cat.key} variant={categoryFilter === cat.key ? "default" : "outline"} size="sm" className="flex-shrink-0" onClick={() => setCategoryFilter(cat.key)} data-testid={`chip-category-${cat.key}`}>
+            {cat.label}
+          </Button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <ListSkeleton count={4} variant="row" showHeader={false} />
+      ) : filtered.length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Bugün için şube görevi bulunmuyor.</CardContent></Card>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map((task: any) => {
+            const isMyClaim = task.claimed_by_user_id === user?.id;
+            const isMyAssignment = task.assigned_to_user_id === user?.id;
+            return (
+              <Card key={task.id} data-testid={`card-branch-task-${task.id}`}>
+                <CardContent className="p-3">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${categoryColors[task.category] || ""}`} data-testid={`badge-category-${task.id}`}>
+                          {categories?.find((c: any) => c.key === task.category)?.label || task.category}
+                        </Badge>
+                        <span className="font-medium text-sm truncate">{task.title}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {task.is_overdue && task.status !== "completed" && (
+                          <Badge variant="destructive" className="text-[10px]" data-testid={`badge-overdue-${task.id}`}>Gecikmiş</Badge>
+                        )}
+                        {task.status === "completed" && (
+                          <Badge variant="default" className="text-[10px]" data-testid={`badge-completed-${task.id}`}>
+                            <Check className="h-3 w-3 mr-0.5" />Tamamlandı
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {task.description && <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>}
+
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        {task.status === "completed" && task.completed_first && (
+                          <span>Tamamlayan: {task.completed_first} {task.completed_last}</span>
+                        )}
+                        {task.status === "claimed" && task.claimed_first && (
+                          <span>Sahiplenen: {task.claimed_first} {task.claimed_last}</span>
+                        )}
+                        {task.status === "pending" && task.assigned_first && (
+                          <span>Atanan: {task.assigned_first} {task.assigned_last}</span>
+                        )}
+                        {task.status === "pending" && !task.assigned_to_user_id && (
+                          <span className="text-muted-foreground">Açık görev</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {task.status === "pending" && (!task.assigned_to_user_id || isMyAssignment) && (
+                          <Button size="sm" onClick={() => claimMutation.mutate(task.id)} disabled={claimMutation.isPending} data-testid={`button-claim-${task.id}`}>
+                            Sahiplen
+                          </Button>
+                        )}
+                        {task.status === "claimed" && isMyClaim && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => unclaimMutation.mutate(task.id)} disabled={unclaimMutation.isPending} data-testid={`button-unclaim-${task.id}`}>
+                              Bırak
+                            </Button>
+                            <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => setCompletingId(task.id)} data-testid={`button-complete-${task.id}`}>
+                              Tamamla
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog open={!!completingId} onOpenChange={(open) => { if (!open) { setCompletingId(null); setCompletionNote(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Görevi Tamamla</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Textarea placeholder="Not ekle (isteğe bağlı)..." value={completionNote} onChange={(e) => setCompletionNote(e.target.value)} data-testid="input-completion-note" />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setCompletingId(null); setCompletionNote(""); }}>İptal</Button>
+              <Button onClick={() => { if (completingId) completeMutation.mutate({ id: completingId, note: completionNote }); }} disabled={completeMutation.isPending} data-testid="button-confirm-complete">
+                {completeMutation.isPending ? "Tamamlanıyor..." : "Tamamla"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function RecurringTasksManagementTab() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isHQ = user?.role && checkIsHQRole(user.role as any);
+
+  const { data: templates, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/branch-tasks/templates"],
+  });
+
+  const { data: categories } = useQuery<any[]>({
+    queryKey: ["/api/branch-tasks/categories"],
+  });
+
+  const { data: branches } = useQuery<any[]>({
+    queryKey: ["/api/branches"],
+  });
+
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formCategory, setFormCategory] = useState("genel");
+  const [formRecurrence, setFormRecurrence] = useState("daily");
+  const [formDayOfWeek, setFormDayOfWeek] = useState<number>(1);
+  const [formDayOfMonth, setFormDayOfMonth] = useState<number>(1);
+  const [formSpecificDate, setFormSpecificDate] = useState("");
+  const [formPhotoRequired, setFormPhotoRequired] = useState(false);
+  const [formBranchId, setFormBranchId] = useState<string>("all");
+
+  const [overrideTemplateId, setOverrideTemplateId] = useState<number | null>(null);
+
+  const { data: overrides } = useQuery<any[]>({
+    queryKey: ["/api/branch-tasks/templates", overrideTemplateId, "overrides"],
+    queryFn: () => fetch(`/api/branch-tasks/templates/${overrideTemplateId}/overrides`).then(r => { if (!r.ok) return []; return r.json(); }),
+    enabled: !!overrideTemplateId,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/branch-tasks/templates", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/templates"] });
+      resetForm();
+      toast({ title: "Şablon oluşturuldu" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/branch-tasks/templates/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/templates"] });
+      resetForm();
+      toast({ title: "Şablon güncellendi" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/branch-tasks/templates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/templates"] });
+      toast({ title: "Şablon silindi" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const createOverrideMutation = useMutation({
+    mutationFn: ({ templateId, branchId, reason }: { templateId: number; branchId: number; reason?: string }) =>
+      apiRequest("POST", `/api/branch-tasks/templates/${templateId}/overrides`, { branchId, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/templates", overrideTemplateId, "overrides"] });
+      toast({ title: "Şube için devre dışı bırakıldı" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteOverrideMutation = useMutation({
+    mutationFn: (overrideId: number) => apiRequest("DELETE", `/api/branch-tasks/overrides/${overrideId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/branch-tasks/templates", overrideTemplateId, "overrides"] });
+      toast({ title: "Şube için tekrar aktif edildi" });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
+
+  function resetForm() {
+    setShowDialog(false);
+    setEditingId(null);
+    setFormTitle("");
+    setFormDescription("");
+    setFormCategory("genel");
+    setFormRecurrence("daily");
+    setFormDayOfWeek(1);
+    setFormDayOfMonth(1);
+    setFormSpecificDate("");
+    setFormPhotoRequired(false);
+    setFormBranchId("all");
+  }
+
+  function openEdit(t: any) {
+    setEditingId(t.id);
+    setFormTitle(t.title);
+    setFormDescription(t.description || "");
+    setFormCategory(t.category);
+    setFormRecurrence(t.recurrence_type);
+    setFormDayOfWeek(t.day_of_week ?? 1);
+    setFormDayOfMonth(t.day_of_month ?? 1);
+    setFormSpecificDate(t.specific_date || "");
+    setFormPhotoRequired(t.photo_required || false);
+    setFormBranchId(t.branch_id ? String(t.branch_id) : "all");
+    setShowDialog(true);
+  }
+
+  function handleSubmit() {
+    if (!formTitle.trim()) {
+      toast({ title: "Hata", description: "Başlık zorunludur", variant: "destructive" });
+      return;
+    }
+    const data: any = {
+      title: formTitle,
+      description: formDescription || null,
+      category: formCategory,
+      recurrenceType: formRecurrence,
+      photoRequired: formPhotoRequired,
+      branchId: formBranchId === "all" ? null : Number(formBranchId),
+    };
+    if (formRecurrence === "weekly") data.dayOfWeek = formDayOfWeek;
+    if (formRecurrence === "monthly") data.dayOfMonth = formDayOfMonth;
+    if (formRecurrence === "once") data.specificDate = formSpecificDate;
+
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  }
+
+  const recurrenceLabel = (t: any) => {
+    switch (t.recurrence_type) {
+      case "daily": return "Her gün";
+      case "weekly": {
+        const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+        return `Her ${days[t.day_of_week] || ""}`;
+      }
+      case "monthly": return `Her ayın ${t.day_of_month}'i`;
+      case "once": return `Tek seferlik: ${t.specific_date || ""}`;
+      default: return t.recurrence_type;
+    }
+  };
+
+  const categoryColors: Record<string, string> = {
+    temizlik: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    bakim: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+    stok: "bg-green-500/10 text-green-700 dark:text-green-400",
+    genel: "bg-gray-500/10 text-gray-700 dark:text-gray-400",
+  };
+
+  const grouped = useMemo(() => {
+    if (!templates) return {};
+    const g: Record<string, any[]> = {};
+    templates.forEach((t: any) => {
+      const cat = t.category || "genel";
+      if (!g[cat]) g[cat] = [];
+      g[cat].push(t);
+    });
+    return g;
+  }, [templates]);
+
+  const dayOptions = [
+    { value: 0, label: "Pazar" }, { value: 1, label: "Pazartesi" }, { value: 2, label: "Salı" },
+    { value: 3, label: "Çarşamba" }, { value: 4, label: "Perşembe" }, { value: 5, label: "Cuma" }, { value: 6, label: "Cumartesi" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold" data-testid="text-recurring-title">Tekrarlayan Görev Şablonları</h2>
+        <Button size="sm" onClick={() => { resetForm(); setShowDialog(true); }} data-testid="button-new-template">
+          <Plus className="h-4 w-4 mr-1" />Yeni Şablon
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <ListSkeleton count={3} variant="row" showHeader={false} />
+      ) : Object.keys(grouped).length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-muted-foreground">Henüz şablon oluşturulmamış.</CardContent></Card>
+      ) : (
+        Object.entries(grouped).map(([catKey, items]) => (
+          <div key={catKey} className="space-y-2">
+            <h3 className="text-sm font-medium text-muted-foreground capitalize" data-testid={`text-group-${catKey}`}>
+              {categories?.find((c: any) => c.key === catKey)?.label || catKey}
+            </h3>
+            {items.map((t: any) => (
+              <Card key={t.id} data-testid={`card-template-${t.id}`}>
+                <CardContent className="p-3">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${categoryColors[t.category] || ""}`}>
+                          {categories?.find((c: any) => c.key === t.category)?.label || t.category}
+                        </Badge>
+                        <span className="font-medium text-sm truncate">{t.title}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Badge variant="secondary" className="text-[10px]">
+                          <Repeat className="h-3 w-3 mr-0.5" />{recurrenceLabel(t)}
+                        </Badge>
+                        {!t.branch_id && <Badge variant="outline" className="text-[10px]">HQ Şablonu</Badge>}
+                      </div>
+                    </div>
+                    {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        {t.assigned_to_user_id ? "Atanmış" : "Açık görev"}
+                        {t.photo_required && " | Fotoğraf gerekli"}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {!t.branch_id && isHQ && (
+                          <Button size="sm" variant="outline" onClick={() => setOverrideTemplateId(overrideTemplateId === t.id ? null : t.id)} data-testid={`button-overrides-${t.id}`}>
+                            Şube Durumları
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(t)} data-testid={`button-edit-template-${t.id}`}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(t.id)} data-testid={`button-delete-template-${t.id}`}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {overrideTemplateId === t.id && (
+                      <div className="mt-2 border-t pt-2 space-y-2">
+                        <p className="text-xs font-medium">Şube Durumları</p>
+                        {branches?.map((b: any) => {
+                          const ov = overrides?.find((o: any) => o.branch_id === b.id);
+                          return (
+                            <div key={b.id} className="flex items-center justify-between gap-2 text-xs" data-testid={`row-override-${b.id}`}>
+                              <span>{b.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={ov ? "text-destructive" : "text-success"}>{ov ? "Devre Dışı" : "Aktif"}</span>
+                                <Switch
+                                  checked={!ov}
+                                  onCheckedChange={(checked) => {
+                                    if (!checked) {
+                                      createOverrideMutation.mutate({ templateId: t.id, branchId: b.id });
+                                    } else if (ov) {
+                                      deleteOverrideMutation.mutate(ov.id);
+                                    }
+                                  }}
+                                  data-testid={`switch-override-${b.id}`}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ))
+      )}
+
+      <Dialog open={showDialog} onOpenChange={(open) => { if (!open) resetForm(); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Şablonu Düzenle" : "Yeni Şablon Oluştur"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-1">Başlık</label>
+              <Input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Görev başlığı..." data-testid="input-template-title" />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Açıklama (isteğe bağlı)</label>
+              <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Açıklama..." data-testid="input-template-description" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium block mb-1">Kategori</label>
+                <Select value={formCategory} onValueChange={setFormCategory}>
+                  <SelectTrigger data-testid="select-template-category"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {categories?.map((c: any) => (
+                      <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Tekrar Tipi</label>
+                <Select value={formRecurrence} onValueChange={setFormRecurrence}>
+                  <SelectTrigger data-testid="select-template-recurrence"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Günlük</SelectItem>
+                    <SelectItem value="weekly">Haftalık</SelectItem>
+                    <SelectItem value="monthly">Aylık</SelectItem>
+                    <SelectItem value="once">Tek Seferlik</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {formRecurrence === "weekly" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Gün</label>
+                <Select value={String(formDayOfWeek)} onValueChange={(v) => setFormDayOfWeek(Number(v))}>
+                  <SelectTrigger data-testid="select-template-dow"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {dayOptions.map((d) => (
+                      <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {formRecurrence === "monthly" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Ayın Günü</label>
+                <Input type="number" min={1} max={31} value={formDayOfMonth} onChange={(e) => setFormDayOfMonth(Number(e.target.value))} data-testid="input-template-dom" />
+              </div>
+            )}
+            {formRecurrence === "once" && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Tarih</label>
+                <Input type="date" value={formSpecificDate} onChange={(e) => setFormSpecificDate(e.target.value)} data-testid="input-template-date" />
+              </div>
+            )}
+            {isHQ && (
+              <div>
+                <label className="text-sm font-medium block mb-1">Şube</label>
+                <Select value={formBranchId} onValueChange={setFormBranchId}>
+                  <SelectTrigger data-testid="select-template-branch"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Şubeler (HQ)</SelectItem>
+                    {branches?.map((b: any) => (
+                      <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Switch checked={formPhotoRequired} onCheckedChange={setFormPhotoRequired} data-testid="switch-photo-required" />
+              <label className="text-sm">Fotoğraf zorunlu</label>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={resetForm}>İptal</Button>
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-template">
+              {(createMutation.isPending || updateMutation.isPending) ? "Kaydediliyor..." : editingId ? "Güncelle" : "Oluştur"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

@@ -1,0 +1,270 @@
+İşte Branch Tasks Sprint 2 promptu, Replit'e yapıştırın:
+
+---
+
+```
+## Branch Tasks Sprint 2: Task Tabs + Dashboard Widget + Template Override + Kiosk
+
+### Context
+Sprint 1 created the backend (branch_recurring_tasks, branch_task_instances, scheduler, API). Now we build the UI and add template override capability. The existing Görevler page gets 3 tabs, dashboard gets a combined widget, and kiosk gets task claiming.
+
+Read these skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Use CompactKPIStrip for mobile KPI cards (already exists at client/src/components/compact-kpi-strip.tsx)
+- Use MobileFilterCollapse for filter sections on mobile (client/src/components/mobile-filter-collapse.tsx)
+- Turkish UI, dark mode compatible, no hardcoded colors, no emoji (Lucide icons only)
+- Do NOT touch server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Soft delete pattern, users.id is VARCHAR
+
+---
+
+### PART 1: Template Override Table + API
+
+#### 1A: Database Table
+Add to shared/schema.ts:
+```typescript
+export const branchRecurringTaskOverrides = pgTable("branch_recurring_task_overrides", {
+  id: serial("id").primaryKey(),
+  recurringTaskId: integer("recurring_task_id").references(() => branchRecurringTasks.id).notNull(),
+  branchId: integer("branch_id").references(() => branches.id).notNull(),
+  isDisabled: boolean("is_disabled").notNull().default(true),
+  disabledByUserId: varchar("disabled_by_user_id").references(() => users.id).notNull(),
+  disabledByRole: varchar("disabled_by_role", { length: 50 }).notNull(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("uq_task_override_task_branch").on(table.recurringTaskId, table.branchId),
+]);
+```
+
+Create insert schema and types. Run CREATE TABLE via SQL in seed file.
+
+#### 1B: Override API Endpoints
+Add to server/routes/branch-tasks.ts:
+```
+GET    /api/branch-tasks/templates/:id/overrides     — list all branch overrides for a template
+POST   /api/branch-tasks/templates/:id/overrides      — create override (disable template for a branch)
+         Body: { branchId, reason? }
+         Auth: mudur (own branch only), supervisor (own branch only), admin/coach/trainer (any branch)
+DELETE /api/branch-tasks/overrides/:id                 — remove override (re-enable template for branch)
+         Auth: same as create
+```
+
+#### 1C: Update Scheduler
+In server/services/branch-task-scheduler.ts, update generateDailyTaskInstances:
+- Before creating an instance for (templateId, branchId), check if an active override exists
+- If branchRecurringTaskOverrides has a row with (recurringTaskId=templateId, branchId=branchId, isDisabled=true, deletedAt IS NULL) → skip this branch for this template
+
+---
+
+### PART 2: Görevler Page — 3 Tabs
+
+The existing Görevler page (tasks.tsx or wherever the /gorevler route points) needs 3 tabs.
+
+First find the current page:
+```bash
+grep -n "gorevler\|/gorevler" client/src/App.tsx | head -10
+find client/src/pages -name "tasks*" -o -name "gorevler*" | head -10
+```
+
+#### Tab 1: "Bana Atanan" (existing — keep as is)
+- Current ad-hoc tasks from the tasks table
+- This is the existing content of the Görevler page
+- Just wrap it in a tab panel, no other changes
+
+#### Tab 2: "Şube Görevleri"
+New tab showing today's branch_task_instances for the user's branch.
+
+Layout:
+- CompactKPIStrip at top: Bekleyen, Sahiplenilmiş, Tamamlanan, Gecikmiş (from GET /api/branch-tasks/stats)
+- Category filter chips: Tümü | Temizlik | Bakım | Stok | Genel (from GET /api/branch-tasks/categories)
+- Task list:
+  - Each task card shows:
+    - Category badge (colored, small)
+    - Task title
+    - If assigned: "Atanan: Cihan" text
+    - If open (no assignee): "Sahiplen" button (primary, small)
+    - If claimed by current user: "Tamamla" button (green) + optional photo upload
+    - If overdue: red "Gecikmiş" badge
+    - If completed: green checkmark + completer name + time
+  - Sort: overdue first, then pending, then claimed, then completed
+
+Fetch: GET /api/branch-tasks/instances?date=today
+Actions:
+- Sahiplen → POST /api/branch-tasks/instances/:id/claim
+- Tamamla → POST /api/branch-tasks/instances/:id/complete (with optional photo + note)
+- Bırak → POST /api/branch-tasks/instances/:id/unclaim
+
+Photo upload on complete:
+- Optional file input (camera icon button)
+- Upload to existing file upload endpoint or use base64
+- Show thumbnail after upload
+
+#### Tab 3: "Tekrarlayan Yönetimi" (only visible for: mudur, supervisor, admin, coach, trainer)
+Template management for recurring tasks.
+
+Layout:
+- "Yeni Şablon" button at top right
+- Template list grouped by category
+- Each template card shows:
+  - Title + description
+  - Recurrence badge: "Her gün" / "Her Pazartesi" / "Her ayın 1'i" / "Tek seferlik: 25 Mar"
+  - Category badge
+  - Assigned to (if set) or "Açık görev"
+  - For HQ templates (branchId=NULL): "HQ Şablonu" badge + override status per branch
+  - Edit / Delete (soft) buttons
+  - "Bu şubede deaktive et" toggle (for HQ templates — creates/removes override)
+
+Create/Edit Template Dialog:
+- Title (required)
+- Description (optional)
+- Category (select from categories)
+- Recurrence type: Günlük / Haftalık / Aylık / Tek Seferlik
+  - If Haftalık: day of week picker (Pazartesi-Pazar)
+  - If Aylık: day of month input (1-31)
+  - If Tek Seferlik: date picker
+- Assign to: dropdown of branch employees (optional — NULL = open task)
+- Photo required: toggle
+- For HQ roles: Branch selector (Tüm şubeler / specific branch)
+
+Fetch: GET /api/branch-tasks/templates
+Create: POST /api/branch-tasks/templates
+Edit: PATCH /api/branch-tasks/templates/:id
+Delete: DELETE /api/branch-tasks/templates/:id
+
+HQ Template Override UI:
+- When viewing an HQ template, show a collapsible "Şube Durumları" section
+- List all branches with a toggle switch: Aktif / Deaktive
+- Toggle creates/removes override via POST/DELETE /api/branch-tasks/templates/:id/overrides
+- Show reason input when deactivating
+
+---
+
+### PART 3: Dashboard "Bugünün Görevleri" Widget
+
+Find the dashboard components for barista/branch roles:
+```bash
+grep -rn "dashboard\|Dashboard" client/src/pages/ --include="*.tsx" -l | head -15
+grep -rn "Bugünün\|bugunun\|daily.*task\|günlük.*görev" client/src/pages/ --include="*.tsx" | head -10
+```
+
+Create a new widget component: `client/src/components/widgets/todays-tasks-widget.tsx`
+
+This widget combines BOTH task sources into one unified "Bugünün Görevleri" list:
+
+**Data sources (fetch in parallel):**
+1. Ad-hoc tasks: GET /api/tasks?assignedToMe=true&status=pending,in_progress&dueDate=today (adapt to actual API)
+2. Branch recurring tasks: GET /api/branch-tasks/instances?date=today&status=pending,claimed
+
+**Combined list:**
+- Merge both arrays into one list
+- Sort: overdue first, then by priority/due time
+- Each item shows:
+  - Source badge: tiny "Görev" (blue) or "Şube" (teal) badge to distinguish
+  - Title
+  - Status (Bekliyor / Sahiplenildi / Devam Ediyor)
+  - Priority badge (for ad-hoc tasks)
+  - Category badge (for recurring tasks)
+- Tap on ad-hoc task → navigate to /gorevler (Tab 1)
+- Tap on recurring task → navigate to /gorevler (Tab 2)
+- Max 10 items shown, "Tümünü Gör →" link at bottom
+
+**Widget header:**
+- "Bugünün Görevleri" title
+- Compact stat: "3/8 tamamlandı" progress text
+- Small progress bar
+
+**Add this widget to branch role dashboards:**
+Find where barista/supervisor/mudur dashboards are defined and add TodaysTasksWidget.
+```bash
+grep -rn "SubeDashboard\|EmployeeDashboard\|BaristaDashboard\|sube.*dashboard" client/src/pages/ --include="*.tsx" -l | head -10
+```
+
+Place it prominently — ideally right after the greeting/date section, before other widgets.
+
+---
+
+### PART 4: Kiosk Task Claiming
+
+Find the kiosk pages:
+```bash
+grep -rn "kiosk" client/src/pages/sube/ --include="*.tsx" -l | head -5
+cat client/src/pages/sube/kiosk.tsx 2>/dev/null | head -50
+```
+
+Add a "Şube Görevleri" section to the branch kiosk page:
+- Show today's open (unclaimed) recurring tasks
+- Each task: title, category badge, "Sahiplen" button
+- When employee is logged into kiosk (after PIN), they can claim tasks
+- After claiming: show "Tamamla" button
+- Uses isKioskAuthenticated endpoints
+
+Add kiosk-specific API endpoints if needed:
+```
+GET  /api/branch-tasks/kiosk/instances     — today's tasks for kiosk branch (isKioskAuthenticated)
+POST /api/branch-tasks/kiosk/:id/claim     — claim task from kiosk (isKioskAuthenticated)
+POST /api/branch-tasks/kiosk/:id/complete  — complete task from kiosk (isKioskAuthenticated)
+```
+
+These kiosk endpoints should mirror the regular endpoints but use isKioskAuthenticated middleware and get branchId from the kiosk session.
+
+---
+
+### PART 5: Module Flag Integration
+
+The sube_gorevleri module flag (added in Sprint 1) should:
+- Hide Tab 2 ("Şube Görevleri") and Tab 3 ("Tekrarlayan Yönetimi") when disabled
+- Hide the dashboard widget when disabled
+- Hide kiosk task section when disabled
+- Tab 1 ("Bana Atanan") stays visible regardless (it's the existing tasks system with "gorevler" module flag)
+
+Use the useModuleEnabled hook:
+```typescript
+const { isEnabled: isBranchTasksEnabled } = useModuleEnabled("sube_gorevleri");
+```
+
+---
+
+### Testing Checklist
+
+#### Part 1 — Override:
+1. POST /api/branch-tasks/templates/:id/overrides { branchId: 5 } as coach → creates override
+2. Run scheduler → branch 5 should NOT get instances for that template
+3. DELETE override → branch 5 gets instances again on next run
+
+#### Part 2 — Tabs:
+4. Login as barista → /gorevler shows 3 tabs (if sube_gorevleri enabled)
+5. Tab 1 "Bana Atanan" → existing task list works as before
+6. Tab 2 "Şube Görevleri" → today's recurring tasks visible, can claim + complete
+7. Tab 3 "Tekrarlayan Yönetimi" → not visible for barista
+8. Login as mudur → Tab 3 visible, can create/edit/delete templates
+9. Login as coach → Tab 3 visible, can create HQ templates + manage overrides
+
+#### Part 3 — Dashboard Widget:
+10. Login as barista → dashboard shows "Bugünün Görevleri" widget
+11. Widget shows both ad-hoc and recurring tasks combined
+12. Tap on task → navigates to correct tab in Görevler
+
+#### Part 4 — Kiosk:
+13. Access branch kiosk → "Şube Görevleri" section visible
+14. After PIN login → can claim and complete tasks
+
+#### Part 5 — Module Flag:
+15. Disable sube_gorevleri → Tab 2, Tab 3, dashboard widget, kiosk section all hidden
+16. Tab 1 still works
+
+### After implementation:
+1. Run 15-point quality gate
+2. Update replit.md — add Branch Task Board UI section
+3. Update .agents/skills/dospresso-architecture/SKILL.md — add override table, UI tabs, dashboard widget
+4. Update .agents/skills/dospresso-debug-guide/SKILL.md — update §14 with UI troubleshooting
+```
+
+---
+
+Direkt build başlatın! Bu büyük sprint bitince görev sistemi tamamen fonksiyonel olacak.
