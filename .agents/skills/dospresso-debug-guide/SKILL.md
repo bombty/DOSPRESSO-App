@@ -284,6 +284,14 @@ SELECT * FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL ORD
 
 10. **Dobody flags not working:** Check the 3 sub-modules: dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (notifications). Parent is `dobody` (always_on), so sub-modules can be toggled independently.
 
+11. **Module disabled but page still accessible:** Check `client/src/App.tsx` — the route must be wrapped with `<ModuleGuard moduleKey="X">`. ModuleGuard uses `useModuleEnabled` hook → bulk `/api/module-flags/my-flags` endpoint.
+
+12. **Branch health score not reflecting disabled modules:** `server/services/branch-health-scoring.ts` uses `isComponentEnabled()` with `context="data"`. Modules with `ui_hidden_data_continues` (pdks, vardiya) still contribute to scores even when UI is hidden.
+
+13. **Agent notifications still arriving for disabled module:** Check `SKILL_TO_MODULE_MAP` in `server/agent/skills/skill-notifications.ts`. Skills without mapping (burnout_predictor, security_monitor, cost_analyzer, team_tracker) always run. Skills with mapping check `isModuleEnabled(moduleKey, branchId, "api")` before delivering.
+
+14. **Bulk flags endpoint returns unexpected values:** `/api/module-flags/my-flags` computes all 31 flags per user session (branchId + role). Cache TTL is 60s. Check if user's branchId and role are correctly set on the session.
+
 ---
 
 ## Quick Diagnostic Commands

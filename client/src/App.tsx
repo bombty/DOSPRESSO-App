@@ -22,6 +22,7 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
+import { ModuleGuard } from "@/components/module-guard";
 import { NavRail } from "@/components/nav-rail";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
 
@@ -333,53 +334,53 @@ function Router() {
           <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
           <Route path="/personel-onboarding">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/personel-onboarding'; return null; }}</Route>
           <Route path="/onboarding-programlar">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/onboarding-programlar'; return null; }}</Route>
-          <Route path="/vardiyalar" component={Vardiyalar} />
-          <Route path="/vardiya-planlama" component={VardiyaPlanlama} />
-          <Route path="/vardiyalarim" component={Vardiyalarim} />
-          <Route path="/vardiya-checkin" component={VardiyaCheckin} />
+          <Route path="/vardiyalar">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalar /></ModuleGuard>}</Route>
+          <Route path="/vardiya-planlama">{() => <ModuleGuard moduleKey="vardiya"><VardiyaPlanlama /></ModuleGuard>}</Route>
+          <Route path="/vardiyalarim">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalarim /></ModuleGuard>}</Route>
+          <Route path="/vardiya-checkin">{() => <ModuleGuard moduleKey="vardiya"><VardiyaCheckin /></ModuleGuard>}</Route>
           <Route path="/nfc-giris" component={NFCGiris} />
           <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
-          <Route path="/devam-takibi" component={Attendance} />
+          <Route path="/devam-takibi">{() => <ModuleGuard moduleKey="pdks"><Attendance /></ModuleGuard>}</Route>
           <Route path="/sube-vardiya-takibi" component={SubeDashboard} />
-          <Route path="/gorevler" component={Tasks} />
-          <Route path="/gorev-detay/:id" component={GorevDetay} />
-          <Route path="/sube-gorevler/:id" component={SubeGorevler} />
-          <Route path="/checklistler" component={Checklists} />
-          <Route path="/ekipman-detay/:id" component={EquipmentDetail} />
-          <Route path="/ekipman/:tab?" component={EkipmanMegaModule} />
-          <Route path="/ariza" component={FaultHub} />
-          <Route path="/ariza-detay/:id" component={FaultDetail} />
-          <Route path="/ariza-yeni" component={NewFaultReport} />
-          <Route path="/ekipman-analitics" component={EquipmentAnalytics} />
+          <Route path="/gorevler">{() => <ModuleGuard moduleKey="gorevler"><Tasks /></ModuleGuard>}</Route>
+          <Route path="/gorev-detay/:id">{() => <ModuleGuard moduleKey="gorevler"><GorevDetay /></ModuleGuard>}</Route>
+          <Route path="/sube-gorevler/:id">{() => <ModuleGuard moduleKey="gorevler"><SubeGorevler /></ModuleGuard>}</Route>
+          <Route path="/checklistler">{() => <ModuleGuard moduleKey="checklist"><Checklists /></ModuleGuard>}</Route>
+          <Route path="/ekipman-detay/:id">{() => <ModuleGuard moduleKey="ekipman"><EquipmentDetail /></ModuleGuard>}</Route>
+          <Route path="/ekipman/:tab?">{() => <ModuleGuard moduleKey="ekipman"><EkipmanMegaModule /></ModuleGuard>}</Route>
+          <Route path="/ariza">{() => <ModuleGuard moduleKey="ekipman"><FaultHub /></ModuleGuard>}</Route>
+          <Route path="/ariza-detay/:id">{() => <ModuleGuard moduleKey="ekipman"><FaultDetail /></ModuleGuard>}</Route>
+          <Route path="/ariza-yeni">{() => <ModuleGuard moduleKey="ekipman"><NewFaultReport /></ModuleGuard>}</Route>
+          <Route path="/ekipman-analitics">{() => <ModuleGuard moduleKey="ekipman"><EquipmentAnalytics /></ModuleGuard>}</Route>
           <Route path="/qr-tara" component={QRScanner} />
           <Route path="/bilgi-bankasi" component={KnowledgeBase} />
-          <Route path="/akademi/*?" component={AkademiV3} />
-          <Route path="/akademi-v3/*?" component={AkademiV3} />
-          <Route path="/akademi-legacy/*?" component={AkademiMegaModule} />
-          <Route path="/akademi-modul-editor/:id" component={AcademyModuleEditor} />
-          <Route path="/akademi-modul-editor" component={AcademyModuleEditor} />
-          <Route path="/akademi-modul/:id" component={ModuleDetail} />
-          <Route path="/akademi-quiz/:quizId" component={AcademyQuiz} />
-          <Route path="/akademi-rozet-koleksiyonum" component={BadgeCollection} />
-          <Route path="/akademi-learning-path/:pathId" component={AcademyLearningPathDetail} />
-          <Route path="/egitim-programi/:topicId" component={EgitimProgrami} />
-          <Route path="/akademi-hq" component={AcademyHQ} />
-          <Route path="/akademi-supervisor" component={AcademySupervisor} />
-          <Route path="/akademi-analytics" component={AcademyAnalytics} />
-          <Route path="/akademi-badges" component={AcademyBadges} />
-          <Route path="/akademi-leaderboard" component={AcademyLeaderboard} />
-          <Route path="/akademi-certificates" component={AcademyCertificates} />
-          <Route path="/akademi-learning-paths" component={AcademyLearningPaths} />
-          <Route path="/akademi-ai-assistant" component={AcademyAIAssistant} />
-          <Route path="/akademi-team-competitions" component={AcademyTeamCompetitions} />
-          <Route path="/akademi-achievements" component={AcademyAchievements} />
-          <Route path="/akademi-progress-overview" component={AcademyProgressOverview} />
-          <Route path="/akademi-streak-tracker" component={AcademyStreakTracker} />
-          <Route path="/akademi-adaptive-engine" component={AcademyAdaptiveEngine} />
-          <Route path="/akademi-social-groups" component={AcademySocialGroups} />
-          <Route path="/akademi-advanced-analytics" component={AcademyAdvancedAnalytics} />
-          <Route path="/akademi-branch-analytics" component={AcademyBranchAnalytics} />
-          <Route path="/akademi-cohort-analytics" component={AcademyCohortAnalytics} />
+          <Route path="/akademi/*?">{() => <ModuleGuard moduleKey="akademi"><AkademiV3 /></ModuleGuard>}</Route>
+          <Route path="/akademi-v3/*?">{() => <ModuleGuard moduleKey="akademi"><AkademiV3 /></ModuleGuard>}</Route>
+          <Route path="/akademi-legacy/*?">{() => <ModuleGuard moduleKey="akademi"><AkademiMegaModule /></ModuleGuard>}</Route>
+          <Route path="/akademi-modul-editor/:id">{() => <ModuleGuard moduleKey="akademi"><AcademyModuleEditor /></ModuleGuard>}</Route>
+          <Route path="/akademi-modul-editor">{() => <ModuleGuard moduleKey="akademi"><AcademyModuleEditor /></ModuleGuard>}</Route>
+          <Route path="/akademi-modul/:id">{() => <ModuleGuard moduleKey="akademi"><ModuleDetail /></ModuleGuard>}</Route>
+          <Route path="/akademi-quiz/:quizId">{() => <ModuleGuard moduleKey="akademi"><AcademyQuiz /></ModuleGuard>}</Route>
+          <Route path="/akademi-rozet-koleksiyonum">{() => <ModuleGuard moduleKey="akademi"><BadgeCollection /></ModuleGuard>}</Route>
+          <Route path="/akademi-learning-path/:pathId">{() => <ModuleGuard moduleKey="akademi"><AcademyLearningPathDetail /></ModuleGuard>}</Route>
+          <Route path="/egitim-programi/:topicId">{() => <ModuleGuard moduleKey="akademi"><EgitimProgrami /></ModuleGuard>}</Route>
+          <Route path="/akademi-hq">{() => <ModuleGuard moduleKey="akademi"><AcademyHQ /></ModuleGuard>}</Route>
+          <Route path="/akademi-supervisor">{() => <ModuleGuard moduleKey="akademi"><AcademySupervisor /></ModuleGuard>}</Route>
+          <Route path="/akademi-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyAnalytics /></ModuleGuard>}</Route>
+          <Route path="/akademi-badges">{() => <ModuleGuard moduleKey="akademi"><AcademyBadges /></ModuleGuard>}</Route>
+          <Route path="/akademi-leaderboard">{() => <ModuleGuard moduleKey="akademi"><AcademyLeaderboard /></ModuleGuard>}</Route>
+          <Route path="/akademi-certificates">{() => <ModuleGuard moduleKey="akademi"><AcademyCertificates /></ModuleGuard>}</Route>
+          <Route path="/akademi-learning-paths">{() => <ModuleGuard moduleKey="akademi"><AcademyLearningPaths /></ModuleGuard>}</Route>
+          <Route path="/akademi-ai-assistant">{() => <ModuleGuard moduleKey="akademi"><AcademyAIAssistant /></ModuleGuard>}</Route>
+          <Route path="/akademi-team-competitions">{() => <ModuleGuard moduleKey="akademi"><AcademyTeamCompetitions /></ModuleGuard>}</Route>
+          <Route path="/akademi-achievements">{() => <ModuleGuard moduleKey="akademi"><AcademyAchievements /></ModuleGuard>}</Route>
+          <Route path="/akademi-progress-overview">{() => <ModuleGuard moduleKey="akademi"><AcademyProgressOverview /></ModuleGuard>}</Route>
+          <Route path="/akademi-streak-tracker">{() => <ModuleGuard moduleKey="akademi"><AcademyStreakTracker /></ModuleGuard>}</Route>
+          <Route path="/akademi-adaptive-engine">{() => <ModuleGuard moduleKey="akademi"><AcademyAdaptiveEngine /></ModuleGuard>}</Route>
+          <Route path="/akademi-social-groups">{() => <ModuleGuard moduleKey="akademi"><AcademySocialGroups /></ModuleGuard>}</Route>
+          <Route path="/akademi-advanced-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyAdvancedAnalytics /></ModuleGuard>}</Route>
+          <Route path="/akademi-branch-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyBranchAnalytics /></ModuleGuard>}</Route>
+          <Route path="/akademi-cohort-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyCohortAnalytics /></ModuleGuard>}</Route>
           <Route path="/receteler" component={Receteler} />
           <Route path="/recete/:id" component={ReceteDetay} />
           <Route path="/egitim/:id" component={ModuleDetail} />
@@ -400,11 +401,11 @@ function Router() {
           <Route path="/ik-raporlari" component={HRReports} />
           <Route path="/kasa-raporlari" component={CashReports} />
           <Route path="/e2e-raporlar" component={E2EReports} />
-          <Route path="/raporlar/:tab?" component={RaporlarMegaModule} />
-          <Route path="/raporlar-hub" component={RaporlarHub} />
+          <Route path="/raporlar/:tab?">{() => <ModuleGuard moduleKey="raporlar"><RaporlarMegaModule /></ModuleGuard>}</Route>
+          <Route path="/raporlar-hub">{() => <ModuleGuard moduleKey="raporlar"><RaporlarHub /></ModuleGuard>}</Route>
           <Route path="/performans" component={Performance} />
-          <Route path="/muhasebe" component={Muhasebe} />
-          <Route path="/mali-yonetim" component={MaliYonetim} />
+          <Route path="/muhasebe">{() => <ModuleGuard moduleKey="finans"><Muhasebe /></ModuleGuard>}</Route>
+          <Route path="/mali-yonetim">{() => <ModuleGuard moduleKey="finans"><MaliYonetim /></ModuleGuard>}</Route>
           <Route path="/fabrika/:tab?" component={FabrikaMegaModule} />
           <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
@@ -412,20 +413,20 @@ function Router() {
           <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
           <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />
           <Route path="/muhasebe-raporlama" component={MuhasebeRaporlama} />
-          <Route path="/kalite-denetimi" component={KaliteDenetimi} />
-          <Route path="/coach-sube-denetim" component={CoachSubeDenetim} />
-          <Route path="/denetim-sablonlari" component={DenetimSablonlari} />
-          <Route path="/denetimler" component={Denetimler} />
-          <Route path="/denetim/:id" component={DenetimYurutme} />
-          <Route path="/capa/:id" component={CapaDetay} />
+          <Route path="/kalite-denetimi">{() => <ModuleGuard moduleKey="denetim"><KaliteDenetimi /></ModuleGuard>}</Route>
+          <Route path="/coach-sube-denetim">{() => <ModuleGuard moduleKey="denetim"><CoachSubeDenetim /></ModuleGuard>}</Route>
+          <Route path="/denetim-sablonlari">{() => <ModuleGuard moduleKey="denetim"><DenetimSablonlari /></ModuleGuard>}</Route>
+          <Route path="/denetimler">{() => <ModuleGuard moduleKey="denetim"><Denetimler /></ModuleGuard>}</Route>
+          <Route path="/denetim/:id">{() => <ModuleGuard moduleKey="denetim"><DenetimYurutme /></ModuleGuard>}</Route>
+          <Route path="/capa/:id">{() => <ModuleGuard moduleKey="denetim"><CapaDetay /></ModuleGuard>}</Route>
           <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/misafir-memnuniyeti"); return null; }}</Route>
           <Route path="/misafir-memnuniyeti/:tab?" component={MisafirMemnuniyetiModul} />
           <Route path="/sikayetler">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
-          <Route path="/franchise-acilis" component={FranchiseAcilis} />
-          <Route path="/franchise-yatirimcilar" component={FranchiseYatirimcilar} />
-          <Route path="/franchise-yatirimcilar/:id" component={FranchiseYatirimciDetay} />
+          <Route path="/franchise-acilis">{() => <ModuleGuard moduleKey="franchise"><FranchiseAcilis /></ModuleGuard>}</Route>
+          <Route path="/franchise-yatirimcilar">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimcilar /></ModuleGuard>}</Route>
+          <Route path="/franchise-yatirimcilar/:id">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimciDetay /></ModuleGuard>}</Route>
           <Route path="/yonetim/icerik" component={AdminContentManagement} />
           <Route path="/yonetim/ayarlar" component={Settings} />
           <Route path="/yonetim/kullanicilar" component={UserCRM} />
@@ -446,7 +447,7 @@ function Router() {
           <Route path="/hub/:sectionId" component={HubPage} />
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
-          <Route path="/crm/*?" component={CRMMegaModule} />
+          <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <HQOnly><CEOCommandCenter /></HQOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
@@ -459,17 +460,17 @@ function Router() {
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
           <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
-          <Route path="/sube/siparis-stok" component={SubeSiparisStok} />
+          <Route path="/sube/siparis-stok">{() => <ModuleGuard moduleKey="stok"><SubeSiparisStok /></ModuleGuard>}</Route>
           <Route path="/agent-merkezi" component={AgentMerkezi} />
           <Route path="/benim-gunum" component={BenimGunum} />
           <Route path="/sube-ozet" component={SubeOzet} />
           <Route path="/hq-ozet" component={HQOzet} />
           <Route path="/kocluk-paneli" component={KoclukPaneli} />
           <Route path="/franchise-ozet" component={FranchiseOzet} />
-          <Route path="/pdks" component={PdksPage} />
+          <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
-          <Route path="/iletisim-merkezi">{() => <ProtectedRoute allowedGroups={["admin", "hq", "sube"]}><IletisimMerkezi /></ProtectedRoute>}</Route>
+          <Route path="/iletisim-merkezi">{() => <ProtectedRoute allowedGroups={["admin", "hq", "sube"]}><ModuleGuard moduleKey="iletisim_merkezi"><IletisimMerkezi /></ModuleGuard></ProtectedRoute>}</Route>
         </>
       )}
       

@@ -12,6 +12,25 @@ import {
   users,
 } from "@shared/schema";
 import { eq, and, gte, lte, sql, count, avg, inArray, isNotNull } from "drizzle-orm";
+import { isModuleEnabled } from "./module-flag-service";
+
+const COMPONENT_MODULE_MAP: Record<string, string[]> = {
+  inspections: ["checklist"],
+  complaints: ["crm"],
+  equipment: ["ekipman"],
+  training: ["akademi"],
+  opsHygiene: ["gorevler"],
+  customerSatisfaction: ["crm"],
+};
+
+async function isComponentEnabled(componentKey: string, branchId: number): Promise<boolean> {
+  const moduleKeys = COMPONENT_MODULE_MAP[componentKey];
+  if (!moduleKeys) return true;
+  for (const mk of moduleKeys) {
+    if (!(await isModuleEnabled(mk, branchId, "data"))) return false;
+  }
+  return true;
+}
 
 interface ComponentScore {
   key: string;
@@ -452,17 +471,27 @@ async function scoreCustomerSatisfactionPrev(branchId: number, rangeDays: number
 }
 
 async function computeTotalForBranch(branchId: number, rangeDays: number): Promise<number> {
-  const components = await Promise.all([
-    scoreInspections(branchId, rangeDays),
-    scoreComplaints(branchId, rangeDays),
-    scoreEquipment(branchId, rangeDays),
-    scoreTraining(branchId, rangeDays),
-    scoreOpsHygiene(branchId, rangeDays),
-    scoreCustomerSatisfaction(branchId, rangeDays),
-  ]);
+  const scoreFns: { key: string; fn: () => Promise<ComponentScore> }[] = [
+    { key: "inspections", fn: () => scoreInspections(branchId, rangeDays) },
+    { key: "complaints", fn: () => scoreComplaints(branchId, rangeDays) },
+    { key: "equipment", fn: () => scoreEquipment(branchId, rangeDays) },
+    { key: "training", fn: () => scoreTraining(branchId, rangeDays) },
+    { key: "opsHygiene", fn: () => scoreOpsHygiene(branchId, rangeDays) },
+    { key: "customerSatisfaction", fn: () => scoreCustomerSatisfaction(branchId, rangeDays) },
+  ];
+
+  const enabledChecks = await Promise.all(
+    scoreFns.map(async (s) => ({ ...s, enabled: await isComponentEnabled(s.key, branchId) }))
+  );
+  const enabledFns = enabledChecks.filter(s => s.enabled);
+  if (enabledFns.length === 0) return 0;
+
+  const components = await Promise.all(enabledFns.map(s => s.fn()));
+  const totalWeight = components.reduce((sum, c) => sum + c.weight, 0);
+  if (totalWeight === 0) return 0;
 
   return clamp(
-    components.reduce((sum, c) => sum + c.score * c.weight, 0)
+    components.reduce((sum, c) => sum + c.score * (c.weight / totalWeight), 0)
   );
 }
 
@@ -510,18 +539,27 @@ export async function computeBranchHealthScores(options: {
 
   const entries: BranchHealthEntry[] = await Promise.all(
     branchList.map(async (branch) => {
-      const components = await Promise.all([
-        scoreInspections(branch.id, rangeDays),
-        scoreComplaints(branch.id, rangeDays),
-        scoreEquipment(branch.id, rangeDays),
-        scoreTraining(branch.id, rangeDays),
-        scoreOpsHygiene(branch.id, rangeDays),
-        scoreCustomerSatisfaction(branch.id, rangeDays),
-      ]);
+      const scoreFns: { key: string; fn: () => Promise<ComponentScore> }[] = [
+        { key: "inspections", fn: () => scoreInspections(branch.id, rangeDays) },
+        { key: "complaints", fn: () => scoreComplaints(branch.id, rangeDays) },
+        { key: "equipment", fn: () => scoreEquipment(branch.id, rangeDays) },
+        { key: "training", fn: () => scoreTraining(branch.id, rangeDays) },
+        { key: "opsHygiene", fn: () => scoreOpsHygiene(branch.id, rangeDays) },
+        { key: "customerSatisfaction", fn: () => scoreCustomerSatisfaction(branch.id, rangeDays) },
+      ];
 
-      const totalScore = clamp(
-        components.reduce((sum, c) => sum + c.score * c.weight, 0)
+      const enabledChecks = await Promise.all(
+        scoreFns.map(async (s) => ({ ...s, enabled: await isComponentEnabled(s.key, branch.id) }))
       );
+      const enabledFns = enabledChecks.filter(s => s.enabled);
+      const components = enabledFns.length > 0
+        ? await Promise.all(enabledFns.map(s => s.fn()))
+        : [];
+
+      const totalWeight = components.reduce((sum, c) => sum + c.weight, 0);
+      const totalScore = totalWeight > 0
+        ? clamp(components.reduce((sum, c) => sum + c.score * (c.weight / totalWeight), 0))
+        : 0;
 
       const level: "green" | "yellow" | "red" =
         totalScore >= 75 ? "green" : totalScore >= 50 ? "yellow" : "red";

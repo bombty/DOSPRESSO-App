@@ -87,6 +87,10 @@ sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
 - **Factory sub-modules**: fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vardiya, fabrika.kalite, fabrika.kavurma, fabrika.stok
 - **Dobody sub-modules**: dobody.chat (DobodyMiniBar), dobody.bildirim (notifications), dobody.flow (DobodyFlowMode)
 - **Admin UI**: Admin panel tab "Modül Bayrakları" in `client/src/pages/admin/module-flags.tsx` — toggle flags globally/per-branch/per-role, grouped by category (Sistem, Veri Toplama, Şube Modülleri, Fabrika Alt-Modülleri, Mr. Dobody)
+- **Page Protection**: `client/src/components/module-guard.tsx` wraps route pages — shows lock screen when disabled. Applied in `App.tsx` for all toggleable modules
+- **Bulk Flags API**: `GET /api/module-flags/my-flags` — returns all effective flags for current user in single call, used by `useMyModuleFlags()` hook
+- **Score Integration**: `server/services/branch-health-scoring.ts` — disabled modules excluded from branch health scores, weights recalculated proportionally
+- **Agent Filtering**: `server/agent/skills/skill-notifications.ts` — `SKILL_TO_MODULE_MAP` maps skill IDs to module keys, notifications suppressed for disabled modules
 
 ## Database Summary
 - **Tables**: 376 in `shared/schema.ts`

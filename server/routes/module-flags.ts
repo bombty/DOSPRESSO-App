@@ -249,6 +249,30 @@ router.delete("/api/module-flags/:id", isAuthenticated, async (req: Request, res
   }
 });
 
+router.get("/api/module-flags/my-flags", isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as any;
+    const branchId = user?.branchId ?? null;
+    const userRole = user?.role ?? null;
+
+    const allFlags = await db
+      .select()
+      .from(moduleFlags)
+      .where(isNull(moduleFlags.deletedAt));
+
+    const uniqueKeys = [...new Set(allFlags.map(f => f.moduleKey))];
+    const flags: Record<string, boolean> = {};
+    for (const key of uniqueKeys) {
+      flags[key] = await isModuleEnabled(key, branchId, "ui", userRole);
+    }
+
+    res.json({ flags });
+  } catch (error) {
+    console.error("[ModuleFlags] GET /my-flags error:", error);
+    res.status(500).json({ error: "Modül bayrakları yüklenirken hata oluştu." });
+  }
+});
+
 router.get("/api/module-flags/check", isAuthenticated, async (req: Request, res: Response) => {
   try {
     const { moduleKey, context } = req.query;

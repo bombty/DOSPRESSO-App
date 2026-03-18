@@ -288,9 +288,18 @@ dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (noti
 - **Hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)`
 - **Dobody integration**: `client/src/components/dobody-mini-bar.tsx` (dobody.chat), `client/src/components/dobody-flow-mode.tsx` (dobody.flow)
 - **Admin UI**: `client/src/pages/admin/module-flags.tsx` — tab "modul-bayraklari" in admin-mega.tsx, 5 category cards, branch override management, role-based overrides accordion
+- **Page Protection**: `client/src/components/module-guard.tsx` — wraps route pages, shows lock screen when disabled. Applied in `App.tsx` for all toggleable modules
+- **Bulk Flags**: `GET /api/module-flags/my-flags` — single endpoint returns all effective flags for current user (branchId + role), used by `useMyModuleFlags()` hook
+- **Score Integration**: `server/services/branch-health-scoring.ts` — `isComponentEnabled()` checks module flags before including components in health score. Uses context="data" so pdks/vardiya always included
+- **Agent Filtering**: `server/agent/skills/skill-notifications.ts` — `SKILL_TO_MODULE_MAP` maps skill IDs to module keys. Notifications skipped for disabled modules
 
 ### Graceful Degradation
-When a module is disabled, composite scores and analytics recalculate without it. No crashes — disabled modules are simply excluded from calculations.
+When a module is disabled:
+- Route pages show ModuleGuard lock screen ("Bu modül şu anda aktif değildir")
+- Sidebar menu items filtered via `buildMenuForUser()` (context="ui")
+- Branch health scores recalculate proportionally without disabled components
+- Agent notifications for that module are suppressed (throttled)
+- Data collection continues for `ui_hidden_data_continues` modules (pdks, vardiya)
 
 ## Permission Modules
 88 permission module keys defined in `shared/schema.ts` as `PermissionModule` type.

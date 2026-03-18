@@ -4,6 +4,20 @@ import { agentPendingActions, aiAgentLogs } from "@shared/schema";
 import { eq, and, gte, count } from "drizzle-orm";
 import type { AgentSkill, SkillAction } from "./skill-registry";
 import { routeAgentAction } from "../routing";
+import { isModuleEnabled } from "../../services/module-flag-service";
+
+const SKILL_TO_MODULE_MAP: Record<string, string> = {
+  stock_assistant: "stok",
+  stock_predictor: "stok",
+  waste_analyzer: "stok",
+  training_optimizer: "akademi",
+  performance_coach: "gorevler",
+  daily_coach: "checklist",
+  customer_watcher: "crm",
+  production_director: "fabrika",
+  food_safety: "denetim",
+  supplier_tracker: "satinalma",
+};
 
 const TURKEY_OFFSET_MS = 3 * 60 * 60 * 1000;
 const MAX_AGENT_NOTIFICATIONS_PER_TYPE_PER_DAY = 3;
@@ -80,6 +94,18 @@ export async function processSkillActions(
   for (const action of actions) {
     const targetUserId = action.targetUserId;
     if (!targetUserId) continue;
+
+    const moduleKey = SKILL_TO_MODULE_MAP[skill.id];
+    if (moduleKey) {
+      try {
+        const branchId = action.branchId || null;
+        const enabled = await isModuleEnabled(moduleKey, branchId, "api");
+        if (!enabled) {
+          throttled++;
+          continue;
+        }
+      } catch {}
+    }
 
     if (!checkThrottle(targetUserId, skill.id)) {
       throttled++;

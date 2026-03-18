@@ -1,32 +1,41 @@
 import { useQuery } from "@tanstack/react-query";
 
-interface ModuleCheckResponse {
-  enabled: boolean;
+interface MyFlagsResponse {
+  flags: Record<string, boolean>;
+}
+
+export function useMyModuleFlags(): {
+  flags: Record<string, boolean>;
+  isLoading: boolean;
+  isModuleEnabled: (key: string) => boolean;
+} {
+  const { data, isLoading } = useQuery<MyFlagsResponse>({
+    queryKey: ["/api/module-flags/my-flags"],
+    queryFn: async () => {
+      const res = await fetch("/api/module-flags/my-flags");
+      if (!res.ok) throw new Error("Module flags fetch failed");
+      return res.json();
+    },
+    staleTime: 60 * 1000,
+    retry: 2,
+  });
+
+  return {
+    flags: data?.flags ?? {},
+    isLoading,
+    isModuleEnabled: (key: string) => data?.flags?.[key] ?? true,
+  };
 }
 
 export function useModuleEnabled(
   moduleKey: string,
   context: "ui" | "api" | "data" = "ui"
 ): { isEnabled: boolean; isLoading: boolean; isError: boolean } {
-  const { data, isLoading, isError } = useQuery<ModuleCheckResponse>({
-    queryKey: ["/api/module-flags/check", moduleKey, context],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/module-flags/check?moduleKey=${encodeURIComponent(moduleKey)}&context=${encodeURIComponent(context)}`
-      );
-      if (!res.ok) {
-        throw new Error("Module flag check failed");
-      }
-      return res.json();
-    },
-    staleTime: 60 * 1000,
-    retry: 2,
-    enabled: !!moduleKey,
-  });
+  const { isModuleEnabled, isLoading } = useMyModuleFlags();
 
   return {
-    isEnabled: isError ? true : (data?.enabled ?? true),
+    isEnabled: isModuleEnabled(moduleKey),
     isLoading,
-    isError,
+    isError: false,
   };
 }
