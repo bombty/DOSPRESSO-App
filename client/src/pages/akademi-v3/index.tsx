@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,8 @@ import {
   Video,
   Target,
   Flame,
+  Eye,
+  ArrowRight,
 } from "lucide-react";
 
 const HomeTab = lazy(() => import("./HomeTab"));
@@ -59,14 +62,18 @@ function TabSkeleton() {
   );
 }
 
+const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol', 'gida_muhendisi'];
+
 export default function AkademiV3() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const urlParams = new URLSearchParams(window.location.search);
   const initialTab = urlParams.get("tab") || "ana";
   const urlCategory = urlParams.get("category") || undefined;
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(urlCategory);
+  const isHQUser = user && HQ_ROLES.includes(user.role);
 
   const handleNavigate = (tab: string, category?: string) => {
     setActiveTab(tab);
@@ -99,6 +106,26 @@ export default function AkademiV3() {
 
   return (
     <div className="min-h-full bg-background" data-testid="akademi-v3-shell">
+      {isHQUser && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap" data-testid="hq-preview-banner">
+          <div className="flex items-center gap-2 min-w-0">
+            <Eye className="h-4 w-4 text-amber-500 shrink-0" />
+            <span className="text-sm text-amber-600 dark:text-amber-400 truncate">
+              Öğrenci ön izleme modundasınız
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/akademi-hq')}
+            className="shrink-0 gap-1.5"
+            data-testid="button-back-to-hq"
+          >
+            Yönetim Paneline Dön
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
       <div className="sticky top-0 z-50 bg-background border-b">
         <div className="px-4 py-3 flex items-center gap-3 flex-wrap" data-testid="v3-header">
           <Avatar className="h-9 w-9 shrink-0" data-testid="header-avatar">

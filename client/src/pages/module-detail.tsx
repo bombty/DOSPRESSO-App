@@ -121,15 +121,15 @@ export default function ModuleDetail() {
 
   // Auto-finish quiz when time runs out
   useEffect(() => {
-    if (quizFinished && !quizScore && module?.quiz) {
-      const quiz = module.quiz;
+    if (quizFinished && !quizScore && trainingModule?.quiz) {
+      const quiz = trainingModule?.quiz;
       let correct = 0;
       quiz.forEach((q: any, idx: number) => {
         if (quizAnswers[idx] === q.correct_option_index) correct++;
       });
       setQuizScore({ correct, total: quiz.length, percentage: Math.round((correct / quiz.length) * 100) });
     }
-  }, [quizFinished, quizScore, module?.quiz, quizAnswers]);
+  }, [quizFinished, quizScore, trainingModule?.quiz, quizAnswers]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -138,7 +138,7 @@ export default function ModuleDetail() {
   };
 
   const startQuiz = () => {
-    const timeLimitMin = module?.timeLimitMinutes || 0;
+    const timeLimitMin = trainingModule?.timeLimitMinutes || 0;
     setQuizAnswers({});
     setQuizScore(null);
     setQuizFinished(false);
@@ -163,7 +163,7 @@ export default function ModuleDetail() {
   const [roleplayMessages, setRoleplayMessages] = useState<Array<{role: 'user' | 'customer'; message: string}>>([]);
   const [roleplayInput, setRoleplayInput] = useState("");
 
-  const { data: module, isLoading, isError, refetch } = useQuery({
+  const { data: trainingModule, isLoading, isError, refetch } = useQuery({
     queryKey: ['/api/training/modules', moduleId],
     queryFn: async () => {
       if (!moduleId) return null;
@@ -176,37 +176,37 @@ export default function ModuleDetail() {
 
   const objectivesForm = useForm<z.infer<typeof objectivesEditSchema>>({
     resolver: zodResolver(objectivesEditSchema),
-    defaultValues: { objectives: module?.learningObjectives || [] },
+    defaultValues: { objectives: trainingModule?.learningObjectives || [] },
   });
 
   const stepsForm = useForm<z.infer<typeof stepsEditSchema>>({
     resolver: zodResolver(stepsEditSchema),
-    defaultValues: { steps: module?.steps || [] },
+    defaultValues: { steps: trainingModule?.steps || [] },
   });
 
   const quizForm = useForm<z.infer<typeof quizEditSchema>>({
     resolver: zodResolver(quizEditSchema),
-    defaultValues: { quiz: module?.quiz || [] },
+    defaultValues: { quiz: trainingModule?.quiz || [] },
   });
 
   const scenariosForm = useForm<z.infer<typeof scenariosEditSchema>>({
     resolver: zodResolver(scenariosEditSchema),
-    defaultValues: { scenarioTasks: module?.scenarioTasks || [] },
+    defaultValues: { scenarioTasks: trainingModule?.scenarioTasks || [] },
   });
 
   const checklistForm = useForm<z.infer<typeof checklistEditSchema>>({
     resolver: zodResolver(checklistEditSchema),
-    defaultValues: { supervisorChecklist: module?.supervisorChecklist || [] },
+    defaultValues: { supervisorChecklist: trainingModule?.supervisorChecklist || [] },
   });
 
   const updateObjectivesMutation = useMutation({
     mutationFn: async (data: z.infer<typeof objectivesEditSchema>) => {
       if (!moduleId) throw new Error("Module not found");
       return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
-        title: module?.title,
-        description: module?.description,
-        level: module?.level,
-        estimatedDuration: module?.estimatedDuration,
+        title: trainingModule?.title,
+        description: trainingModule?.description,
+        level: trainingModule?.level,
+        estimatedDuration: trainingModule?.estimatedDuration,
         learningObjectives: data.objectives,
       });
     },
@@ -243,10 +243,10 @@ export default function ModuleDetail() {
     mutationFn: async (data: z.infer<typeof stepsEditSchema>) => {
       if (!moduleId) throw new Error("Module not found");
       return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
-        title: module?.title,
-        description: module?.description,
-        level: module?.level,
-        estimatedDuration: module?.estimatedDuration,
+        title: trainingModule?.title,
+        description: trainingModule?.description,
+        level: trainingModule?.level,
+        estimatedDuration: trainingModule?.estimatedDuration,
         steps: data.steps,
       });
     },
@@ -264,10 +264,10 @@ export default function ModuleDetail() {
     mutationFn: async (data: z.infer<typeof quizEditSchema>) => {
       if (!moduleId) throw new Error("Module not found");
       return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
-        title: module?.title,
-        description: module?.description,
-        level: module?.level,
-        estimatedDuration: module?.estimatedDuration,
+        title: trainingModule?.title,
+        description: trainingModule?.description,
+        level: trainingModule?.level,
+        estimatedDuration: trainingModule?.estimatedDuration,
         quiz: data.quiz,
       });
     },
@@ -285,10 +285,10 @@ export default function ModuleDetail() {
     mutationFn: async (data: z.infer<typeof scenariosEditSchema>) => {
       if (!moduleId) throw new Error("Module not found");
       return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
-        title: module?.title,
-        description: module?.description,
-        level: module?.level,
-        estimatedDuration: module?.estimatedDuration,
+        title: trainingModule?.title,
+        description: trainingModule?.description,
+        level: trainingModule?.level,
+        estimatedDuration: trainingModule?.estimatedDuration,
         scenarioTasks: data.scenarioTasks,
       });
     },
@@ -306,10 +306,10 @@ export default function ModuleDetail() {
     mutationFn: async (data: z.infer<typeof checklistEditSchema>) => {
       if (!moduleId) throw new Error("Module not found");
       return apiRequest("PUT", `/api/training/modules/${moduleId}`, {
-        title: module?.title,
-        description: module?.description,
-        level: module?.level,
-        estimatedDuration: module?.estimatedDuration,
+        title: trainingModule?.title,
+        description: trainingModule?.description,
+        level: trainingModule?.level,
+        estimatedDuration: trainingModule?.estimatedDuration,
         supervisorChecklist: data.supervisorChecklist,
       });
     },
@@ -325,21 +325,21 @@ export default function ModuleDetail() {
 
   // Sync form values and selectedRoles when module loads
   useEffect(() => {
-    if (module) {
-      objectivesForm.reset({ objectives: module.learningObjectives || [] });
-      stepsForm.reset({ steps: module.steps || [] });
-      quizForm.reset({ quiz: module.quiz || [] });
-      scenariosForm.reset({ scenarioTasks: module.scenarioTasks || [] });
-      checklistForm.reset({ supervisorChecklist: module.supervisorChecklist || [] });
-      setSelectedRoles(module.requiredForRole || []);
+    if (trainingModule) {
+      objectivesForm.reset({ objectives: trainingModule?.learningObjectives || [] });
+      stepsForm.reset({ steps: trainingModule?.steps || [] });
+      quizForm.reset({ quiz: trainingModule?.quiz || [] });
+      scenariosForm.reset({ scenarioTasks: trainingModule?.scenarioTasks || [] });
+      checklistForm.reset({ supervisorChecklist: trainingModule?.supervisorChecklist || [] });
+      setSelectedRoles(trainingModule?.requiredForRole || []);
     }
-  }, [module, objectivesForm, stepsForm, quizForm, scenariosForm, checklistForm]);
+  }, [trainingModule, objectivesForm, stepsForm, quizForm, scenariosForm, checklistForm]);
 
   if (isLoading) {
     return <div className="p-6 text-center text-muted-foreground">Yükleniyor...</div>;
   }
 
-  if (!module) {
+  if (!trainingModule) {
     return (
       <div className="p-6">
         <Button onClick={() => setLocation("/akademi")} variant="outline" size="sm">
@@ -351,10 +351,10 @@ export default function ModuleDetail() {
     );
   }
 
-  const learningObjectives = module.learningObjectives || [];
-  const steps = module.steps || [];
-  const scenarioTasks = module.scenarioTasks || [];
-  const supervisorChecklist = module.supervisorChecklist || [];
+  const learningObjectives = trainingModule?.learningObjectives || [];
+  const steps = trainingModule?.steps || [];
+  const scenarioTasks = trainingModule?.scenarioTasks || [];
+  const supervisorChecklist = trainingModule?.supervisorChecklist || [];
 
   // STUDENT VIEW - Auto-show full learning experience immediately
   if (!isEditor) {
@@ -373,13 +373,13 @@ export default function ModuleDetail() {
 
         {/* Student Learning Header */}
         <div>
-          <h1 className="text-lg font-bold tracking-tight">{module.title}</h1>
-          <p className="text-xs text-muted-foreground mt-1">{module.description}</p>
+          <h1 className="text-lg font-bold tracking-tight">{trainingModule?.title}</h1>
+          <p className="text-xs text-muted-foreground mt-1">{trainingModule?.description}</p>
           <div className="flex gap-2 mt-4 flex-wrap">
             <Badge variant="outline">
-              {module.level === "beginner" ? "Başlangıç" : module.level === "intermediate" ? "Orta" : "İleri"}
+              {trainingModule?.level === "beginner" ? "Başlangıç" : trainingModule?.level === "intermediate" ? "Orta" : "İleri"}
             </Badge>
-            <Badge variant="outline">{module.estimatedDuration} dk</Badge>
+            <Badge variant="outline">{trainingModule?.estimatedDuration} dk</Badge>
           </div>
         </div>
 
@@ -466,7 +466,7 @@ export default function ModuleDetail() {
 
           {/* Quiz Tab */}
           <TabsContent value="quiz" className="w-full space-y-2 sm:space-y-3">
-            {module.quiz && module.quiz.length > 0 ? (
+            {trainingModule?.quiz && trainingModule?.quiz.length > 0 ? (
               <>
                 {!quizStarted ? (
                   <Card>
@@ -477,19 +477,19 @@ export default function ModuleDetail() {
                     <CardContent className="space-y-3">
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline" data-testid="badge-quiz-count">
-                          {module.quiz.length} Soru
+                          {trainingModule?.quiz.length} Soru
                         </Badge>
-                        {module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                        {trainingModule?.timeLimitMinutes && trainingModule?.timeLimitMinutes > 0 && (
                           <Badge variant="outline" data-testid="badge-quiz-time">
                             <Clock className="w-3 h-3 mr-1" />
-                            {module.timeLimitMinutes} Dakika
+                            {trainingModule?.timeLimitMinutes} Dakika
                           </Badge>
                         )}
                       </div>
-                      {module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                      {trainingModule?.timeLimitMinutes && trainingModule?.timeLimitMinutes > 0 && (
                         <div className="bg-muted/50 p-3 rounded text-sm text-muted-foreground">
                           <AlertCircle className="w-4 h-4 inline mr-1" />
-                          S\u0131nav ba\u015flad\u0131ktan sonra {module.timeLimitMinutes} dakikan\u0131z olacak. S\u00fcre doldu\u011funda s\u0131nav otomatik olarak kapanacak ve sonu\u00e7lar\u0131n\u0131z g\u00f6r\u00fcnt\u00fclenecek.
+                          S\u0131nav ba\u015flad\u0131ktan sonra {trainingModule?.timeLimitMinutes} dakikan\u0131z olacak. S\u00fcre doldu\u011funda s\u0131nav otomatik olarak kapanacak ve sonu\u00e7lar\u0131n\u0131z g\u00f6r\u00fcnt\u00fclenecek.
                         </div>
                       )}
                       <Button onClick={startQuiz} className="w-full" data-testid="button-start-quiz">
@@ -514,13 +514,13 @@ export default function ModuleDetail() {
                           <p className="text-4xl font-bold" data-testid="text-quiz-score">%{quizScore.percentage}</p>
                           <p className="text-sm text-muted-foreground mt-1">{quizScore.correct}/{quizScore.total} do\u011fru</p>
                         </div>
-                        {quizTimeRemaining === 0 && module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                        {quizTimeRemaining === 0 && trainingModule?.timeLimitMinutes && trainingModule?.timeLimitMinutes > 0 && (
                           <div className="bg-muted/50 p-2 rounded text-xs text-center text-muted-foreground">
                             S\u00fcre doldu - S\u0131nav otomatik olarak tamamland\u0131
                           </div>
                         )}
                         <div className="space-y-2">
-                          {module.quiz.map((q: any, idx: number) => (
+                          {trainingModule?.quiz.map((q: any, idx: number) => (
                             <div key={idx} className={`p-3 rounded border text-sm ${quizAnswers[idx] === q.correct_option_index ? 'bg-green-500/10 border-green-500/30' : 'bg-destructive/10 border-destructive/30'}`}>
                               <p className="font-medium mb-1">{idx + 1}. {q.question_text}</p>
                               <p className="text-xs">
@@ -568,7 +568,7 @@ export default function ModuleDetail() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {module.timeLimitMinutes && module.timeLimitMinutes > 0 && (
+                    {trainingModule?.timeLimitMinutes && trainingModule?.timeLimitMinutes > 0 && (
                       <div className={`sticky top-0 z-50 p-3 rounded-md flex items-center justify-between ${quizTimeRemaining <= 30 ? 'bg-destructive/20 border border-destructive/50' : 'bg-muted'}`}>
                         <div className="flex items-center gap-2">
                           <Clock className={`w-4 h-4 ${quizTimeRemaining <= 30 ? 'text-destructive animate-pulse' : ''}`} />
@@ -576,10 +576,10 @@ export default function ModuleDetail() {
                             {formatTime(quizTimeRemaining)}
                           </span>
                         </div>
-                        <Badge variant="outline">{Object.keys(quizAnswers).length}/{module.quiz.length} cevaplanm\u0131\u015f</Badge>
+                        <Badge variant="outline">{Object.keys(quizAnswers).length}/{trainingModule?.quiz.length} cevaplanm\u0131\u015f</Badge>
                       </div>
                     )}
-                    {module.quiz.map((q: any, idx: number) => (
+                    {trainingModule?.quiz.map((q: any, idx: number) => (
                       <Card key={idx}>
                         <CardContent className="pt-4">
                           <p className="font-medium mb-3 text-sm">{idx + 1}. {q.question_text}</p>
@@ -603,7 +603,7 @@ export default function ModuleDetail() {
                       </Card>
                     ))}
                     <Button onClick={submitQuiz} className="w-full" data-testid="button-submit-quiz">
-                      S\u0131nav\u0131 Tamamla ({Object.keys(quizAnswers).length}/{module.quiz.length})
+                      S\u0131nav\u0131 Tamamla ({Object.keys(quizAnswers).length}/{trainingModule?.quiz.length})
                     </Button>
                   </div>
                 )}
@@ -680,25 +680,25 @@ export default function ModuleDetail() {
       <div>
         <div className="flex justify-between items-start gap-2 sm:gap-3">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">{module.title}</h1>
-            <p className="text-muted-foreground mt-2">{module.description}</p>
+            <h1 className="text-3xl font-bold tracking-tight">{trainingModule?.title}</h1>
+            <p className="text-muted-foreground mt-2">{trainingModule?.description}</p>
             <div className="flex gap-2 mt-4 flex-wrap">
-              {module.isPublished ? (
+              {trainingModule?.isPublished ? (
                 <Badge variant="default">Yayında</Badge>
               ) : (
                 <Badge variant="secondary">Taslak</Badge>
               )}
               <Badge variant="outline">
-                {module.level === "beginner"
+                {trainingModule?.level === "beginner"
                   ? "Başlangıç"
-                  : module.level === "intermediate"
+                  : trainingModule?.level === "intermediate"
                   ? "Orta"
                   : "İleri"}
               </Badge>
-              <Badge variant="outline">{module.estimatedDuration} dk</Badge>
-              {module.tags && module.tags.length > 0 && (
+              <Badge variant="outline">{trainingModule?.estimatedDuration} dk</Badge>
+              {trainingModule?.tags && trainingModule?.tags.length > 0 && (
                 <div className="flex gap-1">
-                  {module.tags.map((tag: string) => (
+                  {trainingModule?.tags.map((tag: string) => (
                     <Badge key={tag} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
@@ -882,12 +882,12 @@ export default function ModuleDetail() {
               {/* Quiz Phase */}
               {previewPhase === 'quiz' && (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {!module?.quiz || module.quiz.length === 0 ? (
+                  {!trainingModule?.quiz || trainingModule?.quiz.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Quiz sorusu tanımlanmamış</p>
                   ) : (
                     <>
                       <div className="w-full space-y-2 sm:space-y-3">
-                        {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
+                        {trainingModule?.quiz.map((q: typeof trainingModule?.quiz[0], idx: number) => (
                           <div key={idx} className="bg-card rounded-md border-l-4 border-l-success shadow-sm">
                             <div className="p-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
@@ -1007,7 +1007,7 @@ export default function ModuleDetail() {
                     <p className="text-muted-foreground mb-1">Modülü başarıyla tamamladınız</p>
                     <Badge className="mt-3 bg-warning/20 text-warning dark:bg-warning/5 dark:text-warning">
                       <Award className="w-3 h-3 mr-1" />
-                      Rozet Kazandı: {module.title}
+                      Rozet Kazandı: {trainingModule?.title}
                     </Badge>
                   </div>
                   <div className="flex gap-2 justify-center">
@@ -1078,7 +1078,7 @@ export default function ModuleDetail() {
             {visibleTabs.includes('quiz') && (
             <TabsTrigger value="quiz">
               <BookOpen className="w-4 h-4 mr-2" />
-              Quiz ({module?.quiz?.length || 0})
+              Quiz ({trainingModule?.quiz?.length || 0})
             </TabsTrigger>
             )}
             {visibleTabs.includes('scenarios') && (
@@ -1125,14 +1125,14 @@ export default function ModuleDetail() {
               <div className="grid md:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Başlık</p>
-                  <p className="font-medium">{module.title}</p>
+                  <p className="font-medium">{trainingModule?.title}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Seviye</p>
                   <Badge variant="outline">
-                    {module.level === "beginner"
+                    {trainingModule?.level === "beginner"
                       ? "Başlangıç"
-                      : module.level === "intermediate"
+                      : trainingModule?.level === "intermediate"
                       ? "Orta"
                       : "İleri"}
                   </Badge>
@@ -1140,24 +1140,24 @@ export default function ModuleDetail() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Açıklama</p>
-                <p className="text-sm">{module.description}</p>
+                <p className="text-sm">{trainingModule?.description}</p>
               </div>
               <div className="grid md:grid-cols-2 gap-2 sm:gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Tahmini Süre</p>
-                  <p className="font-medium">{module.estimatedDuration} dakika</p>
+                  <p className="font-medium">{trainingModule?.estimatedDuration} dakika</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Durum</p>
-                  <Badge variant={module.isPublished ? "default" : "secondary"}>
-                    {module.isPublished ? "Yayında" : "Taslak"}
+                  <Badge variant={trainingModule?.isPublished ? "default" : "secondary"}>
+                    {trainingModule?.isPublished ? "Yayında" : "Taslak"}
                   </Badge>
                 </div>
               </div>
-              {module.code && (
+              {trainingModule?.code && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Modül Kodu</p>
-                  <p className="font-mono text-sm bg-muted p-2 rounded">{module.code}</p>
+                  <p className="font-mono text-sm bg-muted p-2 rounded">{trainingModule?.code}</p>
                 </div>
               )}
             </CardContent>
@@ -1196,10 +1196,10 @@ export default function ModuleDetail() {
                 onClick={async () => {
                   try {
                     await apiRequest("PUT", `/api/training/modules/${moduleId}`, {
-                      title: module?.title,
-                      description: module?.description,
-                      level: module?.level,
-                      estimatedDuration: module?.estimatedDuration,
+                      title: trainingModule?.title,
+                      description: trainingModule?.description,
+                      level: trainingModule?.level,
+                      estimatedDuration: trainingModule?.estimatedDuration,
                       requiredForRole: selectedRoles,
                     });
                     toast({ title: "Atamalar kaydedildi" });
@@ -1216,20 +1216,20 @@ export default function ModuleDetail() {
           </Card>
 
           {/* Gallery Section */}
-          {module.galleryImages && module.galleryImages.length > 0 && (
+          {trainingModule?.galleryImages && trainingModule?.galleryImages.length > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Image className="w-5 h-5" />
                   <div>
                     <CardTitle>Modül Galerisi</CardTitle>
-                    <CardDescription>{module.galleryImages.length} fotoğraf</CardDescription>
+                    <CardDescription>{trainingModule?.galleryImages.length} fotoğraf</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {module.galleryImages.map((img: typeof module.galleryImages[0], idx: number) => (
+                  {trainingModule?.galleryImages.map((img: typeof trainingModule?.galleryImages[0], idx: number) => (
                     <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
                       <img
                         src={img.url}
@@ -1671,11 +1671,11 @@ export default function ModuleDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              {!module?.quiz || module.quiz.length === 0 ? (
+              {!trainingModule?.quiz || trainingModule?.quiz.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-3">Quiz sorusu tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {module.quiz.map((q: typeof module.quiz[0], idx: number) => (
+                  {trainingModule?.quiz.map((q: typeof trainingModule?.quiz[0], idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-success">
                       <CardContent className="pt-4">
                         <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
@@ -1880,11 +1880,11 @@ export default function ModuleDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              {!module?.supervisorChecklist || module.supervisorChecklist.length === 0 ? (
+              {!trainingModule?.supervisorChecklist || trainingModule?.supervisorChecklist.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-3">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {module.supervisorChecklist.map((item: typeof module.supervisorChecklist[0], idx: number) => (
+                  {trainingModule?.supervisorChecklist.map((item: typeof trainingModule?.supervisorChecklist[0], idx: number) => (
                     <Card key={idx} className="border-l-4 border-l-warning">
                       <CardContent className="pt-4">
                         <div className="w-full space-y-1 md:space-y-1">
@@ -1947,13 +1947,13 @@ export default function ModuleDetail() {
                   <ShoppingBag className="w-4 h-4" />
                   Satış Cümleleri
                 </h4>
-                {(module?.salesTips as Array<{phrase: string; context: string; emotion?: string}> || []).length === 0 ? (
+                {(trainingModule?.salesTips as Array<{phrase: string; context: string; emotion?: string}> || []).length === 0 ? (
                   <p className="text-muted-foreground text-sm italic">
                     Henüz satış ipucu eklenmemiş. AI ile oluşturabilirsiniz.
                   </p>
                 ) : (
                   <div className="grid gap-3">
-                    {(module?.salesTips as Array<{phrase: string; context: string; emotion?: string}> || []).map((tip, idx) => (
+                    {(trainingModule?.salesTips as Array<{phrase: string; context: string; emotion?: string}> || []).map((tip, idx) => (
                       <Card key={idx} className="border-l-4 border-l-green-500">
                         <CardContent className="pt-4">
                           <p className="font-medium text-sm mb-1">"{tip.phrase}"</p>
@@ -1974,9 +1974,9 @@ export default function ModuleDetail() {
                   <Users className="w-4 h-4" />
                   Müşteri Soru-Cevap
                 </h4>
-                {(module?.marketingContent as any)?.customerQA?.length > 0 ? (
+                {(trainingModule?.marketingContent as any)?.customerQA?.length > 0 ? (
                   <div className="space-y-2">
-                    {(module?.marketingContent as any)?.customerQA?.map((qa: {question: string; answer: string}, idx: number) => (
+                    {(trainingModule?.marketingContent as any)?.customerQA?.map((qa: {question: string; answer: string}, idx: number) => (
                       <Card key={idx}>
                         <CardContent className="pt-4 space-y-2">
                           <p className="text-sm font-medium flex items-center gap-2">
@@ -2042,86 +2042,86 @@ export default function ModuleDetail() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {!(module?.presentationGuide as any) ? (
+              {!(trainingModule?.presentationGuide as any) ? (
                 <p className="text-muted-foreground text-sm italic">
                   Sunum rehberi henüz oluşturulmamış. AI ile oluşturabilirsiniz.
                 </p>
               ) : (
                 <div className="grid gap-4">
                   {/* Serving Instructions */}
-                  {(module?.presentationGuide as any)?.servingInstructions && (
+                  {(trainingModule?.presentationGuide as any)?.servingInstructions && (
                     <Card className="border-l-4 border-l-blue-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <CheckCircle className="w-4 h-4 text-blue-500" />
                           <h5 className="font-semibold text-sm">Sunum Talimatları</h5>
                         </div>
-                        <p className="text-sm">{(module?.presentationGuide as any)?.servingInstructions}</p>
+                        <p className="text-sm">{(trainingModule?.presentationGuide as any)?.servingInstructions}</p>
                       </CardContent>
                     </Card>
                   )}
 
                   {/* Thawing Instructions */}
-                  {(module?.presentationGuide as any)?.thawingInstructions && (
+                  {(trainingModule?.presentationGuide as any)?.thawingInstructions && (
                     <Card className="border-l-4 border-l-cyan-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Package className="w-4 h-4 text-cyan-500" />
                           <h5 className="font-semibold text-sm">Çözündürme Talimatları</h5>
                         </div>
-                        <p className="text-sm">{(module?.presentationGuide as any)?.thawingInstructions}</p>
+                        <p className="text-sm">{(trainingModule?.presentationGuide as any)?.thawingInstructions}</p>
                       </CardContent>
                     </Card>
                   )}
 
                   {/* Heating Instructions */}
-                  {(module?.presentationGuide as any)?.heatingInstructions && (
+                  {(trainingModule?.presentationGuide as any)?.heatingInstructions && (
                     <Card className="border-l-4 border-l-orange-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Thermometer className="w-4 h-4 text-orange-500" />
                           <h5 className="font-semibold text-sm">Isıtma Talimatları</h5>
                         </div>
-                        <p className="text-sm">{(module?.presentationGuide as any)?.heatingInstructions}</p>
+                        <p className="text-sm">{(trainingModule?.presentationGuide as any)?.heatingInstructions}</p>
                       </CardContent>
                     </Card>
                   )}
 
                   {/* Plating Tips */}
-                  {(module?.presentationGuide as any)?.platingTips && (
+                  {(trainingModule?.presentationGuide as any)?.platingTips && (
                     <Card className="border-l-4 border-l-purple-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Presentation className="w-4 h-4 text-purple-500" />
                           <h5 className="font-semibold text-sm">Tabak Düzenleme</h5>
                         </div>
-                        <p className="text-sm">{(module?.presentationGuide as any)?.platingTips}</p>
+                        <p className="text-sm">{(trainingModule?.presentationGuide as any)?.platingTips}</p>
                       </CardContent>
                     </Card>
                   )}
 
                   {/* Storage Notes */}
-                  {(module?.presentationGuide as any)?.storageNotes && (
+                  {(trainingModule?.presentationGuide as any)?.storageNotes && (
                     <Card className="border-l-4 border-l-gray-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <Package className="w-4 h-4 text-gray-500" />
                           <h5 className="font-semibold text-sm">Saklama Notları</h5>
                         </div>
-                        <p className="text-sm">{(module?.presentationGuide as any)?.storageNotes}</p>
+                        <p className="text-sm">{(trainingModule?.presentationGuide as any)?.storageNotes}</p>
                       </CardContent>
                     </Card>
                   )}
 
                   {/* Allergen Info */}
-                  {(module?.presentationGuide as any)?.allergenInfo && (
+                  {(trainingModule?.presentationGuide as any)?.allergenInfo && (
                     <Card className="border-l-4 border-l-red-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
                           <AlertCircle className="w-4 h-4 text-red-500" />
                           <h5 className="font-semibold text-sm">Alerjen Bilgisi</h5>
                         </div>
-                        <p className="text-sm">{(module?.presentationGuide as any)?.allergenInfo}</p>
+                        <p className="text-sm">{(trainingModule?.presentationGuide as any)?.allergenInfo}</p>
                       </CardContent>
                     </Card>
                   )}
@@ -2172,30 +2172,30 @@ export default function ModuleDetail() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {!(module?.marketingContent as any) ? (
+              {!(trainingModule?.marketingContent as any) ? (
                 <p className="text-muted-foreground text-sm italic">
                   Pazarlama içerikleri henüz oluşturulmamış. AI ile oluşturabilirsiniz.
                 </p>
               ) : (
                 <div className="space-y-4">
                   {/* Product Story */}
-                  {(module?.marketingContent as any)?.productStory && (
+                  {(trainingModule?.marketingContent as any)?.productStory && (
                     <div>
                       <h4 className="font-semibold text-sm mb-2">Ürün Hikayesi</h4>
                       <Card className="bg-muted/50">
                         <CardContent className="pt-4">
-                          <p className="text-sm italic">"{(module?.marketingContent as any)?.productStory}"</p>
+                          <p className="text-sm italic">"{(trainingModule?.marketingContent as any)?.productStory}"</p>
                         </CardContent>
                       </Card>
                     </div>
                   )}
 
                   {/* Social Media Captions */}
-                  {(module?.marketingContent as any)?.socialMediaCaptions?.length > 0 && (
+                  {(trainingModule?.marketingContent as any)?.socialMediaCaptions?.length > 0 && (
                     <div>
                       <h4 className="font-semibold text-sm mb-2">Sosyal Medya Açıklamaları</h4>
                       <div className="grid gap-2">
-                        {(module?.marketingContent as any)?.socialMediaCaptions?.map((caption: string, idx: number) => (
+                        {(trainingModule?.marketingContent as any)?.socialMediaCaptions?.map((caption: string, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-pink-500">
                             <CardContent className="pt-3 pb-3">
                               <p className="text-sm">{caption}</p>
@@ -2207,14 +2207,14 @@ export default function ModuleDetail() {
                   )}
 
                   {/* Upselling Phrases */}
-                  {(module?.marketingContent as any)?.upsellingPhrases?.length > 0 && (
+                  {(trainingModule?.marketingContent as any)?.upsellingPhrases?.length > 0 && (
                     <div>
                       <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
                         Upselling Önerileri
                       </h4>
                       <div className="grid gap-2">
-                        {(module?.marketingContent as any)?.upsellingPhrases?.map((phrase: string, idx: number) => (
+                        {(trainingModule?.marketingContent as any)?.upsellingPhrases?.map((phrase: string, idx: number) => (
                           <Card key={idx} className="border-l-4 border-l-green-500">
                             <CardContent className="pt-3 pb-3">
                               <p className="text-sm">"{phrase}"</p>
@@ -2226,11 +2226,11 @@ export default function ModuleDetail() {
                   )}
 
                   {/* Target Audience */}
-                  {(module?.marketingContent as any)?.targetAudience && (
+                  {(trainingModule?.marketingContent as any)?.targetAudience && (
                     <div>
                       <h4 className="font-semibold text-sm mb-2">Hedef Kitle</h4>
                       <Badge variant="outline" className="text-sm">
-                        {(module?.marketingContent as any)?.targetAudience}
+                        {(trainingModule?.marketingContent as any)?.targetAudience}
                       </Badge>
                     </div>
                   )}
@@ -2279,13 +2279,13 @@ export default function ModuleDetail() {
               )}
             </CardHeader>
             <CardContent>
-              {(module?.aiRoleplayScenarios as Array<{scenarioId: string; title: string; customerType: string; initialMessage: string; expectedResponses: string[]; tips: string[]}> || []).length === 0 ? (
+              {(trainingModule?.aiRoleplayScenarios as Array<{scenarioId: string; title: string; customerType: string; initialMessage: string; expectedResponses: string[]; tips: string[]}> || []).length === 0 ? (
                 <p className="text-muted-foreground text-sm italic">
                   Henüz senaryo oluşturulmamış. AI ile oluşturabilirsiniz.
                 </p>
               ) : (
                 <div className="grid gap-3">
-                  {(module?.aiRoleplayScenarios as Array<{scenarioId: string; title: string; customerType: string; initialMessage: string; expectedResponses: string[]; tips: string[]}> || []).map((scenario, idx) => (
+                  {(trainingModule?.aiRoleplayScenarios as Array<{scenarioId: string; title: string; customerType: string; initialMessage: string; expectedResponses: string[]; tips: string[]}> || []).map((scenario, idx) => (
                     <Card key={idx} className="border-l-4 border-l-indigo-500 hover-elevate cursor-pointer"
                       onClick={() => {
                         setActiveRoleplayScenario(activeRoleplayScenario === idx ? null : idx);
