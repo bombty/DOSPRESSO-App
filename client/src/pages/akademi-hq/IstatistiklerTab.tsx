@@ -85,10 +85,10 @@ export function IstatistiklerTab() {
     : 0;
 
   const kpiItems: KPIItem[] = [
-    { label: "Aktif Öğrenci", value: totalActiveStudents, icon: Users, testId: "stat-active-learners" },
-    { label: "Tamamlanma Oranı", value: `%${avgCompletionRate}`, icon: TrendingUp, testId: "stat-overall-completion" },
-    { label: "Ort. Quiz Puanı", value: avgQuizScore, icon: BarChart3, testId: "stat-avg-quiz-score" },
-    { label: "Toplam Modül", value: totalModules, icon: BookOpen, sublabel: `${publishedModules} yayında`, testId: "stat-total-modules" },
+    { label: "Aktif Öğrenci", value: totalActiveStudents, icon: <Users className="w-4 h-4" />, testId: "stat-active-learners" },
+    { label: "Tamamlanma Oranı", value: `%${avgCompletionRate}`, icon: <TrendingUp className="w-4 h-4" />, testId: "stat-overall-completion" },
+    { label: "Ort. Quiz Puanı", value: avgQuizScore, icon: <BarChart3 className="w-4 h-4" />, testId: "stat-avg-quiz-score" },
+    { label: "Toplam Modül", value: totalModules, icon: <BookOpen className="w-4 h-4" />, subtitle: `${publishedModules} yayında`, testId: "stat-total-modules" },
   ];
 
   return (

@@ -109,23 +109,23 @@ export function RoleDashboard({ onCertSettings, onOpenAiOnboarding, onOpenAiProg
 
   if (isCeoOrCgo || isAdmin) {
     kpiItems.push(
-      { label: "Toplam Modül", value: totalModules, icon: BookOpen, sublabel: `${publishedModules} Yayında, ${draftModules} Taslak`, testId: "stat-total-modules" },
-      { label: "Tamamlanma", value: `%${avgCompletionRate}`, icon: TrendingUp, testId: "stat-completion-rate" },
-      { label: "Aktif Öğrenci", value: totalActiveStudents, icon: Activity, sublabel: `${branchAnalytics.length} şubede`, testId: "stat-active-students" },
-      { label: "Bekleyen Sınav", value: pendingExams.length, icon: Clock, testId: "stat-pending-exams" },
+      { label: "Toplam Modül", value: totalModules, icon: <BookOpen className="w-4 h-4" />, subtitle: `${publishedModules} Yayında, ${draftModules} Taslak`, testId: "stat-total-modules" },
+      { label: "Tamamlanma", value: `%${avgCompletionRate}`, icon: <TrendingUp className="w-4 h-4" />, testId: "stat-completion-rate" },
+      { label: "Aktif Öğrenci", value: totalActiveStudents, icon: <Activity className="w-4 h-4" />, subtitle: `${branchAnalytics.length} şubede`, testId: "stat-active-students" },
+      { label: "Bekleyen Sınav", value: pendingExams.length, icon: <Clock className="w-4 h-4" />, testId: "stat-pending-exams" },
     );
   } else if (isCoach) {
     kpiItems.push(
-      { label: "Eğitim Uyumu", value: `%${avgCompletionRate}`, icon: Award, testId: "stat-branch-compliance" },
-      { label: "Aktif Öğrenci", value: totalActiveStudents, icon: Users, sublabel: `${branchAnalytics.length} şube`, testId: "stat-active-students-coach" },
-      { label: "Bekleyen Sınav", value: pendingExams.length, icon: Clock, testId: "stat-pending-exams-coach" },
+      { label: "Eğitim Uyumu", value: `%${avgCompletionRate}`, icon: <Award className="w-4 h-4" />, testId: "stat-branch-compliance" },
+      { label: "Aktif Öğrenci", value: totalActiveStudents, icon: <Users className="w-4 h-4" />, subtitle: `${branchAnalytics.length} şube`, testId: "stat-active-students-coach" },
+      { label: "Bekleyen Sınav", value: pendingExams.length, icon: <Clock className="w-4 h-4" />, testId: "stat-pending-exams-coach" },
     );
   } else if (isTrainer) {
     kpiItems.push(
-      { label: "Yayında", value: publishedModules, icon: BookOpen, testId: "stat-published-modules" },
-      { label: "Taslak", value: draftModules, icon: BookOpen, testId: "stat-draft-modules" },
-      { label: "Toplam", value: totalModules, icon: GraduationCap, testId: "stat-total-modules-trainer" },
-      { label: "Bekleyen Sınav", value: pendingExams.length, icon: Clock, testId: "stat-pending-exams-trainer" },
+      { label: "Yayında", value: publishedModules, icon: <BookOpen className="w-4 h-4" />, testId: "stat-published-modules" },
+      { label: "Taslak", value: draftModules, icon: <BookOpen className="w-4 h-4" />, testId: "stat-draft-modules" },
+      { label: "Toplam", value: totalModules, icon: <GraduationCap className="w-4 h-4" />, testId: "stat-total-modules-trainer" },
+      { label: "Bekleyen Sınav", value: pendingExams.length, icon: <Clock className="w-4 h-4" />, testId: "stat-pending-exams-trainer" },
     );
   }
 
