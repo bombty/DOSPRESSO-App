@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { supportTickets, supportTicketComments, ticketAttachments, hqTasks, broadcastReceipts, users, slaRules, slaBusinessHours, type SupportTicket } from "@shared/schema";
+import { supportTickets, supportTicketComments, ticketAttachments, ticketCoworkMembers, hqTasks, broadcastReceipts, users, slaRules, slaBusinessHours, type SupportTicket } from "@shared/schema";
 import { eq, and, sql, asc, inArray, isNull } from "drizzle-orm";
 import { routeTicket, generateTicketNumber, generateHqTaskNumber } from "../services/ticket-routing-engine";
 import { storage } from "../storage";
@@ -47,6 +47,7 @@ const updateTicketSchema = z.object({
 const createCommentSchema = z.object({
   content: z.string().min(1).max(5000),
   isInternal: z.boolean().default(false),
+  commentType: z.enum(["reply", "internal", "cowork"]).default("reply"),
 });
 
 const createHqTaskSchema = z.object({
@@ -182,17 +183,32 @@ router.get("/tickets/:id", async (req: AuthRequest, res: Response) => {
     if (!ticket.rows.length) return res.status(404).json({ error: "Ticket not found" });
     const t = ticket.rows[0] as Record<string, unknown>;
 
-    if (!canAccessTicket(user, t as TicketAccessFields)) {
+    let coworkMembers: { userId: string }[] = [];
+    if (isHQRole(user.role)) {
+      coworkMembers = await db.select({ userId: ticketCoworkMembers.userId }).from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
+    }
+    const isCoworkInvited = coworkMembers.some(m => m.userId === user.id);
+
+    if (!canAccessTicket(user, t as TicketAccessFields) && !isCoworkInvited) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const commentsQuery = isHQRole(user.role)
-      ? sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} ORDER BY stc.created_at ASC`
-      : sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.is_internal = false ORDER BY stc.created_at ASC`;
+    let commentsQuery;
+    const isAssigned = (t as Record<string, unknown>).assigned_to_user_id === user.id;
+    const isCoworkMemberFlag = isHQRole(user.role) && (isAssigned || isCoworkInvited);
+    if (isHQRole(user.role)) {
+      if (isCoworkMemberFlag) {
+        commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} ORDER BY stc.created_at ASC`;
+      } else {
+        commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.comment_type != 'cowork' ORDER BY stc.created_at ASC`;
+      }
+    } else {
+      commentsQuery = sql`SELECT stc.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as author_name FROM support_ticket_comments stc LEFT JOIN users u ON stc.author_id = u.id WHERE stc.ticket_id = ${ticketId} AND stc.is_internal = false AND stc.comment_type != 'cowork' ORDER BY stc.created_at ASC`;
+    }
 
     const comments = await db.execute(commentsQuery);
 
-    res.json({ ...t, comments: comments.rows });
+    res.json({ ...t, comments: comments.rows, isCoworkMember: isCoworkMemberFlag });
   } catch (error) {
     console.error("Error fetching ticket:", error);
     res.status(500).json({ error: "Failed to fetch ticket" });
@@ -356,7 +372,7 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
 
     const parsed = createCommentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-    const { content, isInternal } = parsed.data;
+    const { content, isInternal, commentType } = parsed.data;
 
     const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
     if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
@@ -365,16 +381,56 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const internal = isHQRole(user.role) ? Boolean(isInternal) : false;
+    let finalCommentType = commentType;
+    if (finalCommentType === 'reply' && isInternal && isHQRole(user.role)) {
+      finalCommentType = 'internal';
+    }
+    if (commentType === 'cowork') {
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ error: "Cowork sadece HQ kullanıcıları içindir" });
+      }
+      const coworkMembers = await db.select().from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
+      const isAssigned = ticket.assignedToUserId === user.id;
+      const isMember = coworkMembers.some(m => m.userId === user.id);
+      if (!isAssigned && !isMember) {
+        return res.status(403).json({ error: "Bu cowork sohbetine erişiminiz yok" });
+      }
+    } else if (commentType === 'internal') {
+      if (!isHQRole(user.role)) {
+        finalCommentType = 'reply';
+      }
+    }
+
+    const internal = finalCommentType === 'internal';
 
     const result = await db.insert(supportTicketComments).values({
       ticketId,
       authorId: user.id,
       content: content.trim(),
       isInternal: internal,
+      commentType: finalCommentType,
     }).returning();
 
-    if (ticket) {
+    if (finalCommentType === 'cowork') {
+      const coworkMembers = await db.select().from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
+      const notifyUserIds = coworkMembers
+        .map(m => m.userId)
+        .filter(id => id !== user.id);
+      if (ticket.assignedToUserId && ticket.assignedToUserId !== user.id) {
+        if (!notifyUserIds.includes(ticket.assignedToUserId)) {
+          notifyUserIds.push(ticket.assignedToUserId);
+        }
+      }
+      for (const uid of notifyUserIds) {
+        await storage.createNotification({
+          userId: uid,
+          type: "task_assigned",
+          title: `Cowork Mesajı: ${ticket.title.substring(0, 50)}`,
+          message: content.substring(0, 100),
+          link: `/iletisim-merkezi/ticket/${ticketId}`,
+        });
+      }
+    } else if (ticket) {
       const notifyUserId = isHQRole(user.role) ? ticket.createdByUserId : ticket.assignedToUserId;
       if (notifyUserId && notifyUserId !== user.id) {
         await storage.createNotification({
@@ -391,6 +447,118 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
   } catch (error) {
     console.error("Error adding comment:", error);
     res.status(500).json({ error: "Failed to add comment" });
+  }
+});
+
+router.get("/tickets/:id/cowork/members", async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role)) return res.status(403).json({ error: "HQ only" });
+    const ticketId = parseInt(req.params.id);
+    if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
+
+    const memberCheck = await db.select().from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
+    const isAssigned = ticket.assignedToUserId === user.id;
+    const isMember = memberCheck.some(m => m.userId === user.id);
+    if (!isAssigned && !isMember) return res.status(403).json({ error: "Cowork üyesi değilsiniz" });
+
+    const members = await db.execute(sql`
+      SELECT tcm.*, COALESCE(u.first_name || ' ' || u.last_name, u.first_name, '') as user_name, u.role as user_role,
+             COALESCE(u2.first_name || ' ' || u2.last_name, u2.first_name, '') as invited_by_name
+      FROM ticket_cowork_members tcm
+      LEFT JOIN users u ON tcm.user_id = u.id
+      LEFT JOIN users u2 ON tcm.invited_by_user_id = u2.id
+      WHERE tcm.ticket_id = ${ticketId}
+      ORDER BY tcm.invited_at ASC
+    `);
+    res.json(members.rows);
+  } catch (error) {
+    console.error("Error fetching cowork members:", error);
+    res.status(500).json({ error: "Failed to fetch cowork members" });
+  }
+});
+
+router.post("/tickets/:id/cowork/invite", async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role)) return res.status(403).json({ error: "HQ only" });
+    const ticketId = parseInt(req.params.id);
+    if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
+
+    const parsed = z.object({ userId: z.string().min(1) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
+    const { userId } = parsed.data;
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
+    if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    const isAssigned = ticket.assignedToUserId === user.id;
+    if (!isAssigned) {
+      return res.status(403).json({ error: "Sadece atanan kişi cowork sohbetine davet edebilir" });
+    }
+    const existingMembers = await db.select().from(ticketCoworkMembers)
+      .where(eq(ticketCoworkMembers.ticketId, ticketId));
+
+    const [invitedUser] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+    if (!invitedUser || !isHQRole(invitedUser.role)) {
+      return res.status(400).json({ error: "Sadece HQ kullanıcıları cowork sohbetine davet edilebilir" });
+    }
+
+    if (existingMembers.some(m => m.userId === userId)) {
+      return res.status(409).json({ error: "Kullanıcı zaten cowork üyesi" });
+    }
+
+    if (ticket.assignedToUserId === userId) {
+      return res.status(409).json({ error: "Atanan kişi zaten cowork erişimine sahip" });
+    }
+
+    const result = await db.insert(ticketCoworkMembers).values({
+      ticketId,
+      userId,
+      invitedByUserId: user.id,
+    }).returning();
+
+    await storage.createNotification({
+      userId,
+      type: "task_assigned",
+      title: `Cowork Daveti: ${ticket.title.substring(0, 50)}`,
+      message: `${user.name ?? 'Bir kullanıcı'} sizi bir ticket cowork sohbetine davet etti`,
+      link: `/iletisim-merkezi/ticket/${ticketId}`,
+    });
+
+    res.status(201).json(result[0]);
+  } catch (error) {
+    console.error("Error inviting cowork member:", error);
+    res.status(500).json({ error: "Failed to invite cowork member" });
+  }
+});
+
+router.delete("/tickets/:id/cowork/members/:userId", async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user!;
+    if (!isHQRole(user.role)) return res.status(403).json({ error: "HQ only" });
+    const ticketId = parseInt(req.params.id);
+    const targetUserId = req.params.userId;
+    if (isNaN(ticketId)) return res.status(400).json({ error: "Invalid ticket ID" });
+
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
+    if (!canAccessTicket(user, ticket)) return res.status(403).json({ error: "Access denied" });
+
+    if (ticket.assignedToUserId !== user.id) {
+      return res.status(403).json({ error: "Sadece atanan kişi cowork üyesi çıkarabilir" });
+    }
+
+    await db.delete(ticketCoworkMembers)
+      .where(and(eq(ticketCoworkMembers.ticketId, ticketId), eq(ticketCoworkMembers.userId, targetUserId)));
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error removing cowork member:", error);
+    res.status(500).json({ error: "Failed to remove cowork member" });
   }
 });
 
@@ -848,6 +1016,7 @@ router.patch("/tickets/:id/assign", async (req: any, res: Response) => {
       authorId: user.id,
       content: `Ticket atandı: ${assigneeName}`,
       isInternal: true,
+      commentType: 'internal',
     });
 
     await storage.createNotification({
@@ -879,9 +1048,12 @@ router.get("/assignable-users", async (req: any, res: Response) => {
     const user = req.user!;
     if (!isHQRole(user.role)) return res.status(403).json({ error: "Yetki yok" });
     const { department } = req.query;
-    const allowedRoles = department
-      ? (DEPT_ASSIGNABLE_ROLES[department as string] ?? ["admin", "ceo", "cgo"])
-      : ["admin", "ceo", "cgo"];
+    const HQ_ALL_ROLES = ["admin", "ceo", "cgo", "muhasebe_ik", "satinalma", "coach", "trainer", "kalite_kontrol", "teknik_sorumlu"];
+    const allowedRoles = department === 'all'
+      ? HQ_ALL_ROLES
+      : department
+        ? (DEPT_ASSIGNABLE_ROLES[department as string] ?? ["admin", "ceo", "cgo"])
+        : ["admin", "ceo", "cgo"];
 
     const assignableUsers = await db
       .select({
@@ -927,6 +1099,7 @@ router.post("/tickets/:id/sla-remind", async (req: any, res: Response) => {
       authorId: user.id,
       content: "SLA hatırlatması gönderildi",
       isInternal: true,
+      commentType: 'internal',
     });
 
     const executives = await db.execute(

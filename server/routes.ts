@@ -1277,6 +1277,21 @@ async function runCrmSprint1Migration() {
       WHERE NOT EXISTS (SELECT 1 FROM sla_business_hours)
     `);
 
+    await db.execute(sql`ALTER TABLE support_ticket_comments ADD COLUMN IF NOT EXISTS comment_type VARCHAR(20) NOT NULL DEFAULT 'reply'`);
+    await db.execute(sql`UPDATE support_ticket_comments SET comment_type = 'internal' WHERE is_internal = true AND comment_type = 'reply'`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS ticket_cowork_members (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+        user_id VARCHAR NOT NULL REFERENCES users(id),
+        invited_by_user_id VARCHAR NOT NULL REFERENCES users(id),
+        invited_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS tcm_ticket_idx ON ticket_cowork_members(ticket_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS tcm_user_idx ON ticket_cowork_members(user_id)`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS tcm_ticket_user_unique ON ticket_cowork_members(ticket_id, user_id)`);
+
     console.log("[CRM-SPRINT-1] Migration complete");
 
     const ticketCount = await db.execute(sql`SELECT COUNT(*) as count FROM support_tickets`);

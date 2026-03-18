@@ -15376,12 +15376,28 @@ export const supportTicketComments = pgTable("support_ticket_comments", {
   authorId: varchar("author_id").notNull().references(() => users.id),
   content: text("content").notNull(),
   isInternal: boolean("is_internal").notNull().default(false),
+  commentType: varchar("comment_type", { length: 20 }).notNull().default("reply"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertSupportTicketCommentSchema = createInsertSchema(supportTicketComments).omit({ id: true, createdAt: true });
 export type InsertSupportTicketComment = z.infer<typeof insertSupportTicketCommentSchema>;
 export type SupportTicketComment = typeof supportTicketComments.$inferSelect;
+
+export const ticketCoworkMembers = pgTable("ticket_cowork_members", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  invitedByUserId: varchar("invited_by_user_id").notNull().references(() => users.id),
+  invitedAt: timestamp("invited_at").defaultNow(),
+}, (table) => [
+  index("tcm_ticket_idx").on(table.ticketId),
+  index("tcm_user_idx").on(table.userId),
+  uniqueIndex("tcm_ticket_user_unique").on(table.ticketId, table.userId),
+]);
+
+export type TicketCoworkMember = typeof ticketCoworkMembers.$inferSelect;
+export type InsertTicketCoworkMember = typeof ticketCoworkMembers.$inferInsert;
 
 export const ticketAttachments = pgTable("ticket_attachments", {
   id: serial("id").primaryKey(),

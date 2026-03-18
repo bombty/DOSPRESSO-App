@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench, CheckCircle2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { getDeptConfig, getStatusConfig, isHQRole } from './categoryConfig';
@@ -30,6 +30,7 @@ interface TicketComment {
   author_name: string;
   content: string;
   is_internal: boolean;
+  comment_type: string;
   created_at: string;
 }
 
@@ -58,6 +59,7 @@ interface TicketDetailData {
   branch_name: string | null;
   created_by_name: string | null;
   assigned_to_name: string | null;
+  assigned_to_user_id: string | null;
   resolved_by_name: string | null;
   resolved_at: string | null;
   sla_deadline: string | null;
@@ -66,6 +68,7 @@ interface TicketDetailData {
   related_equipment_id: number | null;
   comments: TicketComment[];
   attachments?: TicketAttachment[];
+  isCoworkMember?: boolean;
 }
 
 interface EquipmentInfo {
@@ -91,9 +94,10 @@ function formatFileSize(bytes: number): string {
 
 export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [inputMode, setInputMode] = useState<'reply' | 'internal'>('reply');
+  const [inputMode, setInputMode] = useState<'reply' | 'internal' | 'cowork'>('reply');
   const [message, setMessage] = useState('');
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const [showCoworkInvite, setShowCoworkInvite] = useState(false);
   const [chatTab, setChatTab] = useState<'chat' | 'history'>('chat');
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -108,11 +112,46 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
       return apiRequest("POST", `/api/iletisim/tickets/${ticket?.id}/comments`, {
         content: message.trim(),
         isInternal: inputMode === 'internal',
+        commentType: inputMode,
       });
     },
     onSuccess: () => {
       setMessage('');
       qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id] });
+    },
+  });
+
+  const { data: coworkMembers = [] } = useQuery<{ user_id: string; user_name: string; user_role: string; invited_by_name: string }[]>({
+    queryKey: ['/api/iletisim/tickets', ticket?.id, 'cowork', 'members'],
+    queryFn: async () => {
+      const res = await fetch(`/api/iletisim/tickets/${ticket?.id}/cowork/members`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!ticket?.id && isHQ,
+  });
+
+  const { data: hqUsers = [] } = useQuery<{ id: string; name: string; role: string }[]>({
+    queryKey: ['/api/iletisim/assignable-users', 'all-hq'],
+    queryFn: async () => {
+      const res = await fetch('/api/iletisim/assignable-users?department=all', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isHQ && showCoworkInvite,
+  });
+
+  const coworkInviteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return apiRequest("POST", `/api/iletisim/tickets/${ticket?.id}/cowork/invite`, { userId });
+    },
+    onSuccess: () => {
+      toast({ title: "Davet edildi", description: "Kullanıcı cowork sohbetine davet edildi" });
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id, 'cowork', 'members'] });
+      qc.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket?.id] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Davet gönderilemedi", variant: "destructive" });
     },
   });
 
@@ -484,7 +523,30 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
         )}
 
         {(ticket.comments ?? []).map((c) => {
-          if (c.is_internal) {
+          if (c.comment_type === 'cowork') {
+            if (!isHQ) return null;
+            return (
+              <div key={c.id} className="flex gap-2.5" data-testid={`comment-cowork-${c.id}`}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-3.5 bg-indigo-600">
+                  {(c.author_name || 'C').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {c.author_name} · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: tr })}
+                  </div>
+                  <div className="px-3 py-2.5 rounded-lg border-2 border-dashed border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950/30 text-xs text-indigo-800 dark:text-indigo-200">
+                    <div className="text-xs font-bold uppercase tracking-wide opacity-60 mb-1 flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      COWORK
+                    </div>
+                    {c.content}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (c.is_internal || c.comment_type === 'internal') {
             if (!isHQ) return null;
             return (
               <div key={c.id} className="flex gap-2.5">
@@ -572,7 +634,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
       ) : (
         <div className="px-4 py-3 border-t border-border bg-card flex-shrink-0">
           {isHQ && (
-            <div className="flex gap-1.5 mb-2">
+            <div className="flex gap-1.5 mb-2 flex-wrap">
               <button
                 onClick={() => setInputMode('reply')}
                 className={cn(
@@ -597,6 +659,29 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
               >
                 Dahili Not
               </button>
+              <button
+                onClick={() => ticket.isCoworkMember && setInputMode('cowork')}
+                disabled={!ticket.isCoworkMember}
+                className={cn(
+                  'text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1',
+                  inputMode === 'cowork'
+                    ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'
+                    : !ticket.isCoworkMember
+                      ? 'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
+                      : 'bg-muted text-muted-foreground hover:bg-accent'
+                )}
+                title={!ticket.isCoworkMember ? 'Bu cowork sohbetine erişiminiz yok' : undefined}
+                data-testid="button-cowork-mode"
+              >
+                <Users className="w-3 h-3" />
+                Cowork
+              </button>
+              {coworkMembers.length > 0 && (
+                <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                  <Users className="w-3 h-3" />
+                  <span>{coworkMembers.length} cowork üyesi</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -605,15 +690,18 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={
-                inputMode === 'internal'
-                  ? 'Dahili not ekle — sadece HQ görebilir...'
-                  : 'Şubeye yanıt yaz...'
+                inputMode === 'cowork'
+                  ? 'Cowork mesajı yaz — sadece cowork üyeleri görebilir...'
+                  : inputMode === 'internal'
+                    ? 'Dahili not ekle — sadece HQ görebilir...'
+                    : 'Şubeye yanıt yaz...'
               }
               className={cn(
                 'flex-1 px-3 py-2 rounded-lg text-sm resize-none outline-none border',
                 'bg-muted/50 border-border text-foreground placeholder:text-muted-foreground',
                 'min-h-[40px] max-h-[100px]',
-                inputMode === 'internal' && 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20'
+                inputMode === 'internal' && 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/20',
+                inputMode === 'cowork' && 'border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950/20'
               )}
               rows={1}
               data-testid="input-chat-message"
@@ -704,6 +792,60 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   {slaRemindMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
                   SLA Hatırlat
                 </button>
+                {ticket.assigned_to_user_id === user?.id && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCoworkInvite(!showCoworkInvite)}
+                    disabled={coworkInviteMutation.isPending}
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 dark:bg-indigo-950 dark:border-indigo-800 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors disabled:opacity-50"
+                    data-testid="button-cowork-invite"
+                  >
+                    {coworkInviteMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5" />}
+                    Cowork Davet
+                  </button>
+                  {showCoworkInvite && (
+                    <div className="absolute left-0 bottom-full mb-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[220px] py-1 max-h-[250px] overflow-y-auto" data-testid="cowork-invite-dropdown">
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border flex items-center justify-between gap-2">
+                        <span>Cowork Davet Et</span>
+                        <button onClick={() => setShowCoworkInvite(false)} className="text-muted-foreground"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                      {coworkMembers.length > 0 && (
+                        <div className="px-3 py-1.5 border-b border-border">
+                          <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1">Mevcut Üyeler</div>
+                          {coworkMembers.map((m) => (
+                            <div key={m.user_id} className="text-xs text-muted-foreground py-0.5 flex items-center gap-1" data-testid={`cowork-member-${m.user_id}`}>
+                              <div className="w-4 h-4 rounded-full bg-indigo-600 flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">
+                                {(m.user_name || '?').charAt(0).toUpperCase()}
+                              </div>
+                              <span className="truncate">{m.user_name}</span>
+                              <span className="text-muted-foreground flex-shrink-0">({m.user_role})</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {hqUsers.length === 0 && showCoworkInvite && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Yükleniyor...</div>
+                      )}
+                      {hqUsers.length > 0 && hqUsers.filter(u => u.id !== user?.id && !coworkMembers.some(m => m.user_id === u.id)).length === 0 && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Davet edilecek kullanıcı kalmadı</div>
+                      )}
+                      {hqUsers
+                        .filter(u => u.id !== user?.id && !coworkMembers.some(m => m.user_id === u.id))
+                        .map((u) => (
+                          <button
+                            key={u.id}
+                            onClick={() => coworkInviteMutation.mutate(u.id)}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-accent transition-colors flex items-center justify-between gap-2"
+                            data-testid={`cowork-invite-user-${u.id}`}
+                          >
+                            <span className="truncate">{u.name}</span>
+                            <span className="text-muted-foreground text-xs flex-shrink-0">{u.role}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                )}
               </>
             )}
           </div>
