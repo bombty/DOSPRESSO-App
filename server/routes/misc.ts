@@ -2717,8 +2717,8 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       }
       
       // Build menu using the new service with dynamic permissions
-      const menuResponse = buildMenuForUser(
-        { id: user.id, role: userRole },
+      const menuResponse = await buildMenuForUser(
+        { id: user.id, role: userRole, branchId: user.branchId ?? null },
         badges,
         dynamicPermissions
       );
@@ -2783,7 +2783,7 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       }
       
       // Use new menu service with dynamic permissions
-      const menuResponse = buildMenuForUser({ id: user.id, role: userRole }, {}, dynamicPermissions);
+      const menuResponse = await buildMenuForUser({ id: user.id, role: userRole, branchId: user.branchId ?? null }, {}, dynamicPermissions);
       
       // Convert to legacy format for backwards compatibility
       res.json({

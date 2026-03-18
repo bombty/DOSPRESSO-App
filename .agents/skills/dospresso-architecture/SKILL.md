@@ -1,6 +1,6 @@
 ---
 name: dospresso-architecture
-description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 26-role system, module connections, CI colors, app layout, agent system, and coding conventions. Use when adding new features, routes, components, or tables.
+description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 27-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
 ---
 
 # DOSPRESSO Architecture Map
@@ -26,25 +26,26 @@ DOSPRESSO uses a Navy Blue + Light Blue Gradient + Red Accent corporate palette.
 ## Project Structure
 ```
 client/src/
-├── pages/          # 269 page components (168 root + 101 in subdirs)
-├── components/     # 149 components (71 custom + 78 in subdirs including Shadcn UI)
+├── pages/          # 267 page components
+├── components/     # 148 components (custom + Shadcn UI)
 ├── contexts/       # DobodyFlow, Theme, Auth
 ├── hooks/          # Custom React hooks
 ├── lib/            # Utilities, role-routes.ts
 └── App.tsx         # Root with providers + lazy route definitions
 
 server/
-├── routes/         # 46 route files, ~1313 endpoints
+├── routes/         # 46 route files, ~1320 endpoints
 ├── agent/          # Mr. Dobody agent system
 │   ├── skills/     # 16 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
-├── services/       # agent-scheduler, data-lock, change-tracking
+├── services/       # agent-scheduler, data-lock, change-tracking, business-hours
 ├── lib/            # Business logic (pdks-engine, payroll-engine)
 ├── menu-service.ts # Sidebar blueprint + RBAC menu config
-└── shared/schema.ts # 373 tables, 15434 lines
+├── seed-sla-rules.ts # SLA defaults seeded on startup
+└── shared/schema.ts # 375 tables, 15533 lines
 ```
 
-## Role System (26 Roles)
+## Role System (27 Roles)
 
 ### System:
 admin
@@ -63,6 +64,9 @@ stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur, yatirimci_bran
 
 ### Factory Floor Roles:
 fabrika_operator, fabrika_sorumlu, fabrika_personel
+
+### Kiosk Roles:
+sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out at branch kiosks
 
 ### Role Groupings (shared/schema.ts):
 - `HQ_ROLES` — admin + ceo + cgo + all HQ department + legacy roles
@@ -96,10 +100,23 @@ router.get("/api/resource", isAuthenticated, async (req, res) => {
 ```
 
 ### Auth Middleware Order:
-1. `isAuthenticated` — is user logged in?
-2. Role check — `isAdmin`, `isHQOrAdmin`, `isSupervisorPlus`
-3. Permission check — `canAccess('module', 'view')`
-4. Branch scope — filter data by user's branchId
+1. `isAuthenticated` — is user logged in? (web session)
+2. `isKioskAuthenticated` — kiosk token or authorized web session (for kiosk endpoints)
+3. Role check — `isAdmin`, `isHQOrAdmin`, `isSupervisorPlus`
+4. Permission check — `canAccess('module', 'view')`
+5. Branch scope — filter data by user's branchId
+
+### Kiosk Auth Pattern:
+Kiosk endpoints use `isKioskAuthenticated` instead of `isAuthenticated`.
+```typescript
+router.post('/api/factory/kiosk/start-shift', isKioskAuthenticated, async (req, res) => { ... });
+```
+- `isKioskAuthenticated` middleware (`server/localAuth.ts:500`): checks `x-kiosk-token` header first, then falls back to web session for authorized roles
+- `createKioskSession(userId)` → returns UUID token stored in in-memory `Map` with 8hr TTL (`server/localAuth.ts:461`)
+- PIN verification uses `bcrypt.compare()` — PINs stored as bcrypt hashes
+- `pinLockedUntil` field on user record for lockout after failed attempts
+- Device passwords stored in `factory_kiosk_config` (configKey='device_password') and `branch_kiosk_settings` (kioskPassword column) — both bcrypt-hashed
+- `migrateKioskPasswords()` runs on server startup (`server/index.ts:156`) to auto-hash any plaintext passwords
 
 ### TypeScript req.user Pattern:
 ```typescript
@@ -159,8 +176,48 @@ Training & Academy: Academy V3 (gamification, badges, leaderboard, learning path
 Audit & Analytics: Quality Control, Branch Inspection, Health Score, Food Safety Dashboard
 Finance & Procurement: Accounting, Procurement (Satınalma), Inventory, Suppliers, Purchase Orders, Goods Receipt
 CRM: Dashboard, Feedback, Complaints, Campaigns, Analytics, Settings
+İletişim Merkezi: Support Tickets (SLA-tracked), HQ Tasks, Broadcasts, Dashboard — `server/routes/crm-iletisim.ts`
+Delegation System: Module-level role delegation (permanent/temporary) — `server/routes/delegation-routes.ts`
+SLA Business Hours: Configurable work hours, business-hour-aware SLA deadlines — `server/services/business-hours.ts`
+Kiosk System: Factory + Branch PIN auth, device passwords, shift tracking — `server/routes/factory.ts` kiosk endpoints
+Franchise/Investor: Investor profiles, contract tracking, branch performance — `server/routes/franchise-investors.ts`
+Webinar: Webinar management and registration system
 Communication: HQ Support, Notifications, AI Assistant, Agent Center
 System: Admin Panel, Content Studio, Projects, Security/Backups
+
+## New Tables (Recent Sprints)
+- `support_tickets` — İletişim Merkezi tickets with SLA tracking
+- `support_ticket_comments` — Ticket comments (internal/external)
+- `ticket_attachments` — File attachments on tickets
+- `hq_tasks` — HQ internal task assignment system
+- `broadcast_receipts` — Announcement delivery confirmations
+- `sla_rules` — Department × priority SLA hour limits (seeded by `server/seed-sla-rules.ts`)
+- `sla_business_hours` — Single-row config for work hours and timezone
+- `factory_kiosk_config` — Factory kiosk device settings (device_password, etc.)
+- `branch_kiosk_settings` — Branch kiosk passwords and config
+- `module_delegations` — Module-level role delegation records
+- `module_departments` — Department definitions for delegation
+- `module_department_topics` — Topic categories within departments
+- `franchise_investors` — Investor profiles with contract data
+- `franchise_investor_branches` — Investor ↔ branch associations
+- `franchise_investor_notes` — Meeting notes for investors
+- `factory_station_benchmarks` — Station performance benchmarks
+- `webinars` — Webinar definitions
+- `webinar_registrations` — Webinar attendance records
+
+## New Route Files (Recent Sprints)
+- `server/routes/crm-iletisim.ts` — İletişim Merkezi (tickets, HQ tasks, broadcasts, dashboard, SLA)
+- `server/routes/delegation-routes.ts` — Module delegation CRUD
+- `server/routes/module-content-routes.ts` — Module content and topic management
+- `server/routes/franchise-investors.ts` — Franchise investor management
+- `server/routes/franchise-summary.ts` — Franchise performance summaries
+- `server/routes/academy-v3.ts` — Academy V3 with webinars
+- `server/routes/change-requests.ts` — Data change request workflow for locked records
+- `server/routes/dobody-task-manager.ts` — Mr. Dobody task management
+- `server/routes/dobody-avatars.ts` — Dynamic avatar system for Mr. Dobody
+- `server/routes/dobody-flow.ts` — Guided workflow mode for daily tasks
+- `server/routes/coach-summary.ts` — Coach role dashboard summaries
+- `server/routes/hq-summary.ts` — HQ executive dashboard summaries
 
 ## Database Naming Conventions
 - Table names: snake_case (factory_products, branch_inventory)

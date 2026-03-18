@@ -1,9 +1,9 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 10-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, and TypeScript patterns. Run after every sprint build or code change.
+description: DOSPRESSO 15-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, and kiosk role safety. Run after every sprint build or code change.
 ---
 
-# DOSPRESSO Quality Gate — 10-Point Checklist
+# DOSPRESSO Quality Gate — 15-Point Checklist
 
 Run after EVERY sprint build or significant code change. Report each item as PASS or FAIL.
 
@@ -156,22 +156,97 @@ done 2>/dev/null | head -10
 
 ---
 
+## 11. Kiosk Auth — Kiosk Endpoints Use `isKioskAuthenticated`
+All kiosk-related endpoints must use `isKioskAuthenticated`, not `isAuthenticated`.
+
+```bash
+grep -rn "kiosk" server/routes/ --include="*.ts" -i | grep "router\.\(get\|post\|put\|patch\|delete\)" | grep -v "isKioskAuthenticated" | grep -v "isAuthenticated.*kiosk\|kiosk.*config\|kiosk.*settings\|kiosk.*account\|kiosk.*seed\|kiosk.*migrate\|kiosk.*password" | head -10
+```
+
+**PASS**: All kiosk endpoints use `isKioskAuthenticated`.
+**FAIL**: Any kiosk endpoint using `isAuthenticated` instead.
+
+---
+
+## 12. bcrypt Password Security — No Plaintext Passwords or PINs
+Kiosk passwords and PINs must be stored as bcrypt hashes. Seed scripts must use `bcrypt.hash()`.
+
+```bash
+grep -rn "kioskPassword\|device_password\|\.pin\b" server/ --include="*.ts" | grep -i "set\|insert\|values\|update" | grep -v "bcrypt\|hash\|\$2b\$\|\$2a\$\|compare\|startsWith\|migration\|select\|\.get\|\.delete" | head -10
+```
+
+**PASS**: No plaintext password/PIN storage found.
+**FAIL**: Any password or PIN stored without bcrypt hashing.
+
+---
+
+## 13. SLA Business Hours Consistency
+`sla_rules` must have rows for all 6 departments × 4 priorities (24 rows). `sla_business_hours` should have at most 1 row.
+
+```bash
+grep -c "department:" server/seed-sla-rules.ts
+```
+
+Expected: 24 SLA_DEFAULTS entries. Also verify `seedSlaRules()` is called on startup:
+```bash
+grep -n "seedSlaRules" server/index.ts | head -5
+```
+
+**PASS**: 24 SLA rules defined, seed function called on startup.
+**FAIL**: Missing departments/priorities or seed not called.
+
+---
+
+## 14. CRM Endpoint Auth — All crm-iletisim.ts Endpoints Have Auth
+All endpoints in `server/routes/crm-iletisim.ts` must be protected by auth middleware.
+
+```bash
+grep -n "router\.\(get\|post\|put\|patch\|delete\)" server/routes/crm-iletisim.ts | head -30
+```
+
+Check that `router.use(isAuthenticated)` is applied at the top of the file:
+```bash
+grep -n "router.use(isAuthenticated)" server/routes/crm-iletisim.ts
+```
+
+**PASS**: `router.use(isAuthenticated)` is present, covering all routes.
+**FAIL**: Any route missing auth middleware.
+
+---
+
+## 15. Kiosk Role Safety — sube_kiosk + Factory Roles Route Correctly
+`sube_kiosk` role and factory roles must redirect to their correct kiosk paths, not to standard dashboards.
+
+```bash
+grep -rn "sube_kiosk" client/src/lib/role-routes.ts server/menu-service.ts | head -10
+```
+
+**PASS**: `sube_kiosk` and factory roles have kiosk-specific home paths.
+**FAIL**: Kiosk roles redirect to standard dashboard or have no route mapping.
+
+---
+
 ## Output Format
 
 After running all checks, report:
 
 ```
 DOSPRESSO Quality Gate — [DATE]
-1. Auth Middleware:     PASS / FAIL (details)
-2. Turkish UI:         PASS / FAIL (details)
-3. Null Safety:        PASS / FAIL (details)
-4. Drizzle Tx:         PASS / FAIL (details)
-5. Data Lock:          PASS / FAIL (details)
-6. Soft Delete:        PASS / FAIL (details)
-7. Dark Mode:          PASS / FAIL (details)
-8. Role Access:        PASS / FAIL (details)
-9. Endpoint↔Table:     PASS / FAIL (details)
-10. TypeScript/React:  PASS / FAIL (details)
+1.  Auth Middleware:     PASS / FAIL (details)
+2.  Turkish UI:         PASS / FAIL (details)
+3.  Null Safety:        PASS / FAIL (details)
+4.  Drizzle Tx:         PASS / FAIL (details)
+5.  Data Lock:          PASS / FAIL (details)
+6.  Soft Delete:        PASS / FAIL (details)
+7.  Dark Mode:          PASS / FAIL (details)
+8.  Role Access:        PASS / FAIL (details)
+9.  Endpoint↔Table:     PASS / FAIL (details)
+10. TypeScript/React:   PASS / FAIL (details)
+11. Kiosk Auth:         PASS / FAIL (details)
+12. bcrypt Security:    PASS / FAIL (details)
+13. SLA Consistency:    PASS / FAIL (details)
+14. CRM Endpoint Auth:  PASS / FAIL (details)
+15. Kiosk Role Safety:  PASS / FAIL (details)
 
-Score: X/10 PASS
+Score: X/15 PASS
 ```

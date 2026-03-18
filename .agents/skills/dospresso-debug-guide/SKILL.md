@@ -1,6 +1,6 @@
 ---
 name: dospresso-debug-guide
-description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, and TypeScript req.user pattern. Use when investigating any bug or unexpected behavior.
+description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, and delegation system issues. Use when investigating any bug or unexpected behavior.
 ---
 
 # DOSPRESSO Debug Checklist
@@ -18,6 +18,9 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 | HTTP 423 Locked | §7 Data Lock |
 | SLA/schedule off by hours | §8 Timezone |
 | TypeScript `req.user` error | §9 TypeScript |
+| Kiosk login/PIN fails | §10 Kiosk Auth |
+| SLA deadline wrong | §11 SLA Business Hours |
+| Delegated module not visible | §12 Delegation |
 
 ---
 
@@ -150,6 +153,61 @@ const branchId = user.branchId;
 ```
 
 Always cast `req.user` before accessing custom properties. The Express User type is extended in the project but TypeScript sometimes loses the augmentation.
+
+---
+
+## §10 — Kiosk Auth Failures
+Kiosk login returns 401 or PIN verification fails.
+
+Checklist:
+- [ ] Endpoint uses `isKioskAuthenticated` (NOT `isAuthenticated`) — kiosk endpoints must use the kiosk middleware
+- [ ] `x-kiosk-token` header is sent with the request from the kiosk client
+- [ ] Kiosk sessions are stored in-memory (`server/localAuth.ts:461`) — sessions are lost on server restart
+- [ ] PIN is verified with `bcrypt.compare()` — if PIN was stored as plaintext, `migrateKioskPasswords()` should have hashed it on startup
+- [ ] Check `pinLockedUntil` on user record — user may be locked out after failed attempts
+- [ ] Device password is bcrypt-hashed in `factory_kiosk_config` (configKey='device_password') or `branch_kiosk_settings.kioskPassword`
+- [ ] `migrateKioskPasswords()` runs on startup (`server/index.ts:156`) — check server logs for `[KioskMigration]` messages
+- [ ] For web session fallback: user's role must be in `KIOSK_AUTHORIZED_ROLES` array (admin, fabrika_mudur, fabrika_operator, fabrika, supervisor, supervisor_buddy, coach)
+
+```bash
+grep -n "isKioskAuthenticated\|isAuthenticated" server/routes/factory.ts | grep -i "kiosk" | head -10
+```
+
+---
+
+## §11 — SLA Business Hours Issues
+SLA deadlines are calculated incorrectly or breach checks fire at wrong times.
+
+Checklist:
+- [ ] `sla_business_hours` table has exactly one row — if empty, defaults to 08:00–18:00 Mon–Fri Europe/Istanbul
+- [ ] Timezone is `Europe/Istanbul` (UTC+3) — check `server/services/business-hours.ts` DEFAULT_CONFIG
+- [ ] `addBusinessHours()` correctly skips weekends and non-work hours when computing deadlines
+- [ ] `isWithinBusinessHours()` is called in `checkSlaBreaches()` — breaches are only marked during business hours
+- [ ] `checkSlaBreaches()` in `server/services/ticket-routing-engine.ts:148` defers breach marking outside business hours
+- [ ] `seedSlaRules()` in `server/seed-sla-rules.ts` seeds 24 rules (6 departments × 4 priorities) — called on startup from `server/index.ts`
+- [ ] `sla_rules` table has rows for all departments: teknik, lojistik, muhasebe, marketing, trainer, hr
+
+```bash
+grep -rn "seedSlaRules\|checkSlaBreaches\|addBusinessHours\|isWithinBusinessHours" server/ --include="*.ts" | head -10
+```
+
+---
+
+## §12 — Delegation System Issues
+Delegated modules not visible to the target role, or delegation not activating.
+
+Checklist:
+- [ ] `module_delegations` table has a row with correct `moduleKey`, `fromRole`, `toRole`
+- [ ] Delegation `isActive` is `true`
+- [ ] For temporary delegations: `expiresAt` has not passed (compared with `new Date()`)
+- [ ] For permanent delegations: `delegationType` is `'kalici'` — these never expire
+- [ ] Active delegation query in `server/routes/delegation-routes.ts` filters by `toRole` matching current user's role
+- [ ] CRM navigation integration checks `/api/delegations/active` to show delegated menu items
+- [ ] Only admin and ceo roles can create/modify delegations (enforced in route)
+
+```bash
+grep -rn "delegations\|delegation" server/routes/delegation-routes.ts | head -10
+```
 
 ---
 

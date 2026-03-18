@@ -1,89 +1,106 @@
-# DOSPRESSO Franchise Management WebApp
+# DOSPRESSO Franchise Management Platform
 
-## Overview
-The DOSPRESSO WebApp is a comprehensive platform designed to centralize and streamline coffee shop franchise operations for Headquarter (HQ) staff. Its primary goal is to enhance efficiency, ensure brand consistency across all DOSPRESSO branches, and provide robust management tools. Key capabilities include monitoring branches, assigning and AI-verifying tasks, tracking equipment health, managing training, and providing support through features like unified fault management, SLA monitoring, and an AI-powered knowledge base. The platform also includes a full Learning Management System (LMS) with gamification and analytics, comprehensive procurement and cost management, and advanced factory shift and production planning. The project aims to improve operational efficiency and standardization across all franchise locations.
+## Quick Start
+- **Run command**: `npm run dev` (workflow: "Start application")
+- **Port**: 5000 (Express backend + Vite frontend on same port)
+- **Dev URL**: Use `$REPLIT_DEV_DOMAIN` (not localhost) for browser preview
 
-## User Preferences
-Preferred communication style: Simple, everyday language. Turkish language communication preferred. Fast implementation in Build mode, continues with "devam" frequently.
+## Tech Stack
+- **Frontend**: React 18 + TypeScript + Vite (SPA)
+- **UI**: Shadcn/ui + Tailwind CSS + CVA
+- **State**: TanStack Query v5
+- **Backend**: Node.js + Express.js + TypeScript
+- **Database**: PostgreSQL (Neon serverless) + pgvector
+- **ORM**: Drizzle ORM 0.39
+- **Auth**: Passport.js (Local strategy) + Session-based + Kiosk PIN auth
+- **AI**: OpenAI (GPT-4o, GPT-4o-mini, Vision, Embeddings)
+- **Storage**: AWS S3 (Replit Object Storage)
+- **i18n**: i18next (TR, EN, AR, DE)
 
-## System Architecture
-### UI/UX Decisions
-The frontend uses React 18+ with TypeScript and Vite, employing Shadcn/ui (New York variant, Radix UI-based) and Material Design 3 principles. Styling is managed with Tailwind CSS, supporting dark mode and Turkish localization. The design emphasizes a mobile-first, responsive approach with compact, touch-friendly interactions optimized for vertical screens, utilizing bottom-sheet dialogs on mobile and centered modals on larger screens. Sidebar navigation is optimized for role-based display, collapsing into hub links for sections with many items.
+## Critical Rules
+1. **User IDs are varchar** — `users` table uses string IDs, all other tables use serial integer
+2. **Soft delete everywhere** — `isActive: false` + `deletedAt` timestamp, never hard DELETE on business data
+3. **Data locks** — Time/status-based record locking (HTTP 423), change request workflow for locked records
+4. **Turkish UI** — All user-facing strings use proper Turkish characters (ş ç ğ ı ö ü İ Ş Ç Ğ Ö Ü), error messages in Turkish
+5. **Auth middleware required** — Every endpoint needs `isAuthenticated` or `isKioskAuthenticated`
+6. **Kiosk auth** — Factory/branch kiosk endpoints use `isKioskAuthenticated` (not `isAuthenticated`), PIN verified with bcrypt, in-memory sessions with 8hr TTL
+7. **req.user casting** — Always `const user = req.user as Express.User;` before accessing properties
 
-### Technical Implementations
-- **Frontend**: React 18, Vite, Wouter (routing), TanStack Query (state management), React Hook Form, Shadcn/ui, i18next + react-i18next (i18n).
-- **Responsive Layout**: Mobile-first with NavRail (50px navy icon rail) on md+ (768px+). Bottom nav hidden on md+. Hamburger menu hidden on md+. NavRail config in `client/src/lib/navigation-config.ts`, component in `client/src/components/nav-rail.tsx`. Role-based icon sets for 6 role groups.
-- **Backend**: Node.js, Express.js, TypeScript, with Replit Auth (OpenID) and Passport.js for authentication.
-- **Database**: PostgreSQL (Neon serverless) via Drizzle ORM and pgvector for embeddings.
-- **i18n**: i18next with lazy-loaded translation files supporting TR, EN, AR (RTL), DE.
-- **File Upload**: Uppy integration for AWS S3.
-- **QR Code**: html5-qrcode for scanning.
-- **Background Jobs**: Node.js interval-based scheduling for SLA checks, notifications, and maintenance reminders.
-- **Offline Resilience**: Service Worker, localStorage-based mutation queue, and API retry mechanisms.
+## Role System (27 Roles)
 
-### Feature Specifications
-- **Authentication & RBAC**: 21-role system with granular permissions, branch-level data filtering, concurrent session limit (max 2), and auto-deactivation of 60+ day inactive users.
-- **Equipment Management**: Lifecycle management, health monitoring, and maintenance scheduling.
-- **Unified Fault System**: Creation, assignment, workflow, escalation, photo documentation, cost tracking, QR-integrated reporting.
-- **SLA Monitoring**: Real-time tracking with automated alerts.
-- **AI Integration**: AI photo verification, RAG-enabled knowledge base, AI Academy Chat Assistant, Adaptive Learning Engine, and smart recommendations. AI Policy Console V2 for configurable data access.
-- **DOSPRESSO Academy (LMS)**: Comprehensive training with career progression, quizzes, gamification, certification, and AI learning paths. Features a Learnify/Duolingo-style landing page at `/akademi` with hero section, daily recommendation, weekly stats, mandatory/optional module separation, 8 standardized categories grid, quick links, and role-based management tools. Tab-based mega module accessible via sub-paths (e.g., `/akademi/benim-yolum`, `/akademi/kesfet`). Training module categories standardized from 21 to 8: barista_temelleri, hijyen_guvenlik, receteler, musteri_iliskileri, ekipman, yonetim, onboarding, genel_gelisim.
-- **Daily Task Guidance**: Role-based task templates with personalized lists and AI recommendations.
-- **Advanced Task Workflow**: Approvals, Q&A, deadline extension, scheduled delivery, bulk assignment, and subtask management.
-- **Checklist Management System**: Time-windowed tasks with photo validation and performance weighting.
-- **Recipe Management System**: Product recipes with version tracking and AI Recipe Creation.
-- **New Shop Opening Management System**: 7-phase workflow tracking for franchise openings with hierarchical tasks.
-- **Procurement Management System**: Full procurement module with Inventory, Supplier Management, Purchase Orders, and Goods Receipt, including approval roles.
-- **Cost Management System**: Comprehensive product cost calculation integrated with procurement.
-- **Factory Shift & Production Planning**: Shift planning, batch tracking, performance monitoring, kiosk PIN authentication, production/waste recording, and fault reporting.
-- **Mr. Dobody Agent Engine**: Autonomous AI agent system ("Read-Only AI, Write-Through Human") for analyzing data and proposing user-approved actions. Includes rule-based suggestion engine, modular skill engine, and proactive notifications with an approval chain, smart routing, escalation, and outcome tracking.
-- **CRM — İş İlişkileri**: Business relations module with campaign management, ticket/support system (branch-to-HQ requests), and business analytics. Guest feedback separated into dedicated module. Ticket system polished with category filters and Turkish status labels.
-- **İletişim Merkezi (Communication Center)**: 4-tab mega module at `/iletisim-merkezi` — Dashboard (KPI cards, Mr. Dobody AI banner, dept load bars, recent activity), Şube Talepleri (department-filtered ticket management with SLA tracking), HQ Görevler (internal task assignment with progress tracking), Duyurular (broadcast announcements with confirmation). Role-based: branch roles hidden; supervisor/mudur see Dashboard + Tickets; HQ roles see all 4 tabs. Files in `client/src/pages/iletisim-merkezi/`.
-- **Misafir Memnuniyeti (Guest Satisfaction)**: Standalone mega module for guest feedback management — QR ratings, guest complaints (auto-created from low ratings), SLA tracking, form settings, and satisfaction analytics. Accessible by kalite_kontrol, coach, supervisor, mudur, cgo, admin roles.
-- **Franchise Investor Management**: Investor profile cards with contract tracking, branch performance aggregation, meeting notes, and contract expiry agent skill. Tables: franchise_investors, franchise_investor_branches, franchise_investor_notes. Accessible by admin, ceo, cgo.
-- **Fabrika Uretim-Stok-Sevkiyat Zinciri**: Shipment system with status workflow, pre-dispatch stock validation, automatic inventory deduction, 2-stage quality control, HACCP records, LOT/Parti tracking, and SKT background jobs.
-- **Branch Order & Stock Management**: Full branch order lifecycle, inventory system with stock movements, waste recording, and expiring product alerts.
-- **PDKS (Personel Devam Kontrol Sistemi)**: Kiosk-integrated attendance tracking with day classification and monthly summaries.
-- **Maaş Hesaplama (Payroll Calculation)**: Position-based salary system with 8 business rules.
+### System:
+admin
 
-### System Design Choices
-- **Health Score Calculation**: Real-time scores based on faults and compliance.
-- **SLA Calculation**: Dynamic, time-based calculation by fault priority.
-- **Notifications**: Automatic in-app alerts and email notifications with deduplication and throttling.
-- **State Management**: TanStack Query for server state and localStorage for theme persistence.
-- **Security Hardening**: CSP headers, Permissions-Policy, Referrer-Policy, CORS whitelist, rate limiting, session fixation protection, and expanded audit logging. Secure cookies are enforced.
-- **API Security**: Rate limiting and Factory RBAC for data access. Error responses are sanitized.
-- **Transaction Safety**: Atomic operations using Drizzle transactions.
-- **RAG Knowledge Base**: Vector-based semantic search using OpenAI embeddings.
-- **Gamification**: Integrated badges, career progression, leaderboards, team competitions, and daily learning streaks.
-- **Mega-Module Architecture**: Tabbed modules with lazy-loaded page components, URL synchronization, and code splitting.
-- **Performance Optimization**: DB connection pooling, server-side caching, database indexes, and TanStack Query garbage collection.
-- **Shift Scheduling**: Fair algorithm for employee work hours.
-- **Evaluation Anti-Abuse System**: Cooldown and monthly limits on employee evaluations.
-- **Reminder System**: Interval-based checks for tasks and evaluations.
-- **Academy V2 Implementation**: Gate system, Content Pack management, My Path NBA engine, and Onboarding Studio.
-- **Knowledge Base Content Pipeline**: Seed endpoints for importing modules, recipes, procedures, and quality specs into AI knowledge base with automatic embedding synchronization.
-- **Dashboard Role Routing**: Explicit dashboard mapping for HQ roles; branch roles get a CardGridHub with role-filtered widgets.
-- **Command Palette (Ctrl+K)**: Global search modal with fuzzy search and keyboard navigation.
-- **Feedback Form Settings**: Seeded settings for branches with categories, photo upload, location verification, and multi-language support.
-- **Feedback SLA System**: Hourly background job for overdue feedback responses and critical notifications.
-- **Feedback Pattern Analysis**: Weekly job for trend analysis and alerts.
-- **WordPress-Style Data Export/Import**: Full system data export to ZIP, background job processing, and import modes.
-- **Setup Wizard**: 6-step wizard for initial system configuration, including default data seeding.
-- **Data Protection (Sprint 27)**: Soft delete everywhere with audit logging, role-based write restrictions (admin-only user delete, payroll restrictions), data change log with field-level tracking, confirmation dialogs for destructive actions.
-- **Data Lock System**: 13 lock rules for time/status-based record locking (HTTP 423), change request workflow for locked records, record revision history tracking, admin UI for lock rule management.
-- **Proactive Agent Skills (6 new)**: Security Monitor (suspicious activity), Stock Predictor (depletion forecast), Waste Analyzer (station waste tracking), Supplier Tracker (reliability scoring), Burnout Predictor (employee risk), Cost Analyzer (trend analysis).
+### Executive:
+ceo, cgo
 
-## Custom Agent Skills (`.agents/skills/`)
-- **dospresso-quality-gate**: 10-point PASS/FAIL quality checklist run after every sprint (auth middleware, Turkish UI, null safety, Drizzle transactions, data locks, soft delete, dark mode, role access, endpoint↔table consistency, TypeScript/React patterns).
-- **dospresso-architecture**: Full architecture reference — tech stack, project structure, 26 roles, CI colors, app layout, agent system (16 skills), API conventions, business logic chains, completed modules list, DB naming.
-- **dospresso-debug-guide**: Concise debug checklist with triage table — covers 401, 403, stale cache, empty results, FK errors, Radix crash, HTTP 423, SLA timezone, TypeScript req.user pattern, common crash patterns.
-- **dospresso-sprint-planner**: Sprint planning rules — task sizing (S/M/L/XL), priority ordering, prompt template, post-sprint checklist, common pitfalls, module reference table.
-- **dospresso-radix-safety**: Radix UI package safety — pinned versions, nested package detection, override rules, recovery procedure. Prevents the dispatcher.useState crash (occurred 3 times).
+### HQ Department Roles:
+muhasebe_ik, satinalma, coach, marketing, trainer, kalite_kontrol, gida_muhendisi, fabrika_mudur
+
+### Legacy HQ Roles:
+muhasebe, teknik, destek, fabrika, yatirimci_hq
+
+### Branch Roles (lowest → highest):
+stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur, yatirimci_branch
+
+### Factory Floor Roles:
+fabrika_operator, fabrika_sorumlu, fabrika_personel
+
+### Kiosk Roles:
+sube_kiosk — auto-created kiosk account per branch for PDKS check-in/out
+
+## Key Modules
+- **Operations**: Dashboard, Tasks, Checklists, Equipment/Faults, Lost & Found, Branch Orders/Stock
+- **HR & Shifts**: Staff Management, Shifts, Attendance (PDKS), Payroll
+- **Factory**: Dashboard, Kiosk, Quality Control, Stations, Performance, Compliance, Shipments, Food Safety
+- **Training & Academy**: Academy V3 (gamification, badges, leaderboard, learning paths, AI assistant), Knowledge Base
+- **Audit & Analytics**: Quality Control, Branch Inspection, Health Score, Food Safety Dashboard
+- **Finance & Procurement**: Accounting, Procurement, Inventory, Suppliers, Purchase Orders, Goods Receipt
+- **CRM**: Dashboard, Feedback, Complaints, Campaigns, Analytics, Settings
+- **İletişim Merkezi**: Support Tickets (SLA-tracked), HQ Tasks, Broadcasts, Dashboard
+- **Delegation System**: Module-level role delegation (permanent/temporary)
+- **Communication**: HQ Support, Notifications, AI Assistant, Agent Center
+- **Franchise/Investor**: Investor profiles, contract tracking, branch performance
+- **Webinar**: Webinar management and registration system
+- **System**: Admin Panel, Content Studio, Projects, Security/Backups
+
+## Kiosk System
+- **Factory Kiosk**: PIN-based auth for factory floor workers, device password in `factory_kiosk_config`, station assignment, shift tracking
+- **Branch Kiosk**: PIN-based PDKS attendance for branch staff, device password in `branch_kiosk_settings`
+- **Auth flow**: PIN verified with bcrypt, `createKioskSession()` returns UUID token, stored in `x-kiosk-token` header
+- **Sessions**: In-memory `Map` in `server/localAuth.ts` (line 461), 8hr TTL, lost on server restart
+- **Middleware**: `isKioskAuthenticated` checks `x-kiosk-token` header first, then falls back to web session for authorized roles
+- **Startup**: `migrateKioskPasswords()` in `server/index.ts` auto-hashes any plaintext passwords on boot
+
+## Module Feature Flags (Sprint 1)
+- **Table**: `module_flags` in `shared/schema.ts` — global + branch-level module toggles
+- **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled()` with 60s in-memory cache, `requireModuleEnabled()` middleware
+- **Routes**: `server/routes/module-flags.ts` — CRUD for flags (admin only) + `/api/module-flags/check` (authenticated)
+- **Seed**: `server/seed-module-flags.ts` — 16 global flags seeded on startup (ON CONFLICT DO NOTHING)
+- **Menu integration**: `buildMenuForUser()` in `server/menu-service.ts` filters sidebar items by module flag status
+- **Frontend hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey)` returns `{ isEnabled, isLoading, isError }`
+- **Module keys**: checklist, crm, akademi, fabrika, pdks, vardiya, stok, raporlar, ekipman, gorevler, finans, satinalma, denetim, iletisim_merkezi, delegasyon, franchise
+
+## Database Summary
+- **Tables**: 376 in `shared/schema.ts`
+- **Endpoints**: ~1326 across 47 route files in `server/routes/`
+- **Pages**: 267 page components in `client/src/pages/`
+- **Components**: 148 components in `client/src/components/`
+
+## Agent Skills Reference
+- `.agents/skills/dospresso-architecture/SKILL.md` — Full architecture map
+- `.agents/skills/dospresso-debug-guide/SKILL.md` — Debug checklist & triage
+- `.agents/skills/dospresso-quality-gate/SKILL.md` — Quality gate checklist
+- `.agents/skills/dospresso-sprint-planner/SKILL.md` — Sprint planning rules
+- `.agents/skills/dospresso-radix-safety/SKILL.md` — Radix UI package safety
 
 ## External Dependencies
-- **OpenAI API**: AI-powered vision analysis, chat completions, embeddings, and summary generation.
-- **Replit Auth**: User authentication via OpenID Connect.
-- **AWS S3**: Cloud storage for photo uploads, backups, and persistent storage.
-- **Neon Database**: Serverless PostgreSQL instance.
-- **IONOS SMTP**: Email notification delivery.
+- **OpenAI API**: AI vision, chat, embeddings, summaries
+- **Replit Auth**: User authentication via OpenID Connect
+- **AWS S3**: Cloud storage for uploads and backups
+- **Neon Database**: Serverless PostgreSQL
+- **IONOS SMTP**: Email notifications
+
+## User Preferences
+- Preferred communication: Simple, everyday language, Turkish preferred
+- Fast implementation in Build mode, continues with "devam"

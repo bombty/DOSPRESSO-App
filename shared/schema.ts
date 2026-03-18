@@ -15531,3 +15531,24 @@ export const factoryKioskConfig = pgTable("factory_kiosk_config", {
 
 export type FactoryKioskConfig = typeof factoryKioskConfig.$inferSelect;
 export type InsertFactoryKioskConfig = typeof factoryKioskConfig.$inferInsert;
+
+export const moduleFlags = pgTable("module_flags", {
+  id: serial("id").primaryKey(),
+  moduleKey: varchar("module_key", { length: 100 }).notNull(),
+  scope: varchar("scope", { length: 20 }).notNull().default("global"),
+  branchId: integer("branch_id").references(() => branches.id),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  enabledBy: varchar("enabled_by").references(() => users.id),
+  enabledAt: timestamp("enabled_at", { withTimezone: true }).defaultNow(),
+  disabledBy: varchar("disabled_by").references(() => users.id),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uq_module_flags_key_scope_branch").on(table.moduleKey, table.scope, table.branchId),
+]);
+
+export const insertModuleFlagSchema = createInsertSchema(moduleFlags).omit({ id: true, createdAt: true, updatedAt: true });
+export type ModuleFlag = typeof moduleFlags.$inferSelect;
+export type InsertModuleFlag = z.infer<typeof insertModuleFlagSchema>;

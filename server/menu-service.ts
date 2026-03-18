@@ -10,6 +10,7 @@ import {
   PERMISSIONS,
   PermissionModule
 } from "@shared/schema";
+import { isModuleEnabled, getModuleKeyForPath } from "./services/module-flag-service";
 
 // ========================================
 // STATIC MENU BLUEPRINT
@@ -787,11 +788,11 @@ function isScopeAllowed(scope: SidebarMenuScope, userScope: 'branch' | 'hq' | 'a
   return scope === userScope;
 }
 
-export function buildMenuForUser(
-  user: { id: string; role: UserRoleType },
+export async function buildMenuForUser(
+  user: { id: string; role: UserRoleType; branchId?: number | null },
   badges: Record<string, number> = {},
   dynamicPermissions?: DynamicPermissions
-): SidebarMenuResponse {
+): Promise<SidebarMenuResponse> {
   const role = user.role;
   
   // Determine user scope
@@ -811,7 +812,7 @@ export function buildMenuForUser(
   const allowedItems = SIDEBAR_ALLOWED_ITEMS[role];
 
   // Filter sections by scope, permissions, and sidebar visibility overrides
-  const filteredSections: SidebarMenuSection[] = MENU_BLUEPRINT
+  const preFilteredSections: SidebarMenuSection[] = MENU_BLUEPRINT
     .filter(section => isScopeAllowed(section.scope, userScope))
     .map(section => ({
       ...section,
@@ -821,6 +822,32 @@ export function buildMenuForUser(
         if (item.alwaysVisible) return true;
         if (!canAccessModule(role, item.moduleKey, dynamicPermissions)) return false;
         return true;
+      }),
+    }))
+    .filter(section => section.items.length > 0);
+
+  // Apply module feature flags — filter out items whose path maps to a disabled module
+  const branchId = user.branchId ?? null;
+  const moduleFlagChecks = new Map<string, boolean>();
+  const allPaths = preFilteredSections.flatMap(s => s.items.map(i => i.path));
+  for (const path of allPaths) {
+    const flagKey = getModuleKeyForPath(path);
+    if (flagKey && !moduleFlagChecks.has(flagKey)) {
+      try {
+        moduleFlagChecks.set(flagKey, await isModuleEnabled(flagKey, branchId));
+      } catch {
+        moduleFlagChecks.set(flagKey, true);
+      }
+    }
+  }
+
+  const filteredSections = preFilteredSections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => {
+        const flagKey = getModuleKeyForPath(item.path);
+        if (!flagKey) return true;
+        return moduleFlagChecks.get(flagKey) !== false;
       }),
     }))
     .filter(section => section.items.length > 0);

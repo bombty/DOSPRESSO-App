@@ -11,6 +11,7 @@ import { seedServiceRequests } from "./seed-service-requests";
 import { seedDospressoRecipes } from "./seed-dospresso-recipes";
 import { seedDefaultAuditTemplate } from "./seed-audit-template";
 import { seedSlaRules } from "./seed-sla-rules";
+import { seedModuleFlags } from "./seed-module-flags";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
@@ -254,9 +255,10 @@ app.use((req, res, next) => {
       seedAcademyCategories(),
       seedDefaultAuditTemplate(),
       seedSlaRules(),
+      seedModuleFlags(),
     ]);
 
-    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate', 'slaRules'];
+    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate', 'slaRules', 'moduleFlags'];
     allSeedResults.forEach((result, i) => {
       if (result.status === 'rejected') {
         console.error(`Error seeding ${seedNames[i]}:`, result.reason);
