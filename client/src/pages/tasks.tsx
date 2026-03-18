@@ -26,6 +26,7 @@ import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calenda
 import { format } from "date-fns";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -427,119 +428,41 @@ export default function Tasks() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-        {overdueTasks.length > 0 && (
-          <Card 
-            data-testid="card-stat-overdue" 
-            className={`border-destructive cursor-pointer hover-elevate transition-all ${filterStatus === 'gecikmiş' ? 'ring-2 ring-destructive' : ''}`}
+      <CompactKPIStrip
+        items={[
+          ...(overdueTasks.length > 0 ? [{
+            label: "Gecikmiş",
+            value: overdueTasks.length,
+            icon: <AlertCircle className="h-4 w-4 text-destructive" />,
+            color: "danger" as const,
+            active: filterStatus === 'gecikmiş',
+            onClick: () => { setFilterStatus(filterStatus === 'gecikmiş' ? null : 'gecikmiş'); setFilterOpen(false); },
+            testId: "card-stat-overdue",
+          }] : []),
+          { label: "Bekleyen", value: stats.beklemede, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning" as const, active: filterStatus === 'beklemede', onClick: () => { setFilterStatus(filterStatus === 'beklemede' ? null : 'beklemede'); setFilterOpen(false); }, testId: "card-stat-beklemede" },
+          { label: "Devam Eden", value: stats.devamEden, icon: <PlayCircle className="h-4 w-4 text-primary" />, color: "info" as const, active: filterStatus === 'devam_ediyor', onClick: () => { setFilterStatus(filterStatus === 'devam_ediyor' ? null : 'devam_ediyor'); setFilterOpen(false); }, testId: "card-stat-devam-eden" },
+          { label: "Tamamlanmayan", value: stats.tamamlanmayan, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: "danger" as const, active: filterStatus === 'reddedildi', onClick: () => { setFilterStatus(filterStatus === 'reddedildi' ? null : 'reddedildi'); setFilterOpen(false); }, testId: "card-stat-tamamlanmayan" },
+          { label: "Tamamlanan", value: stats.tamamlanan, icon: <CheckCircle2 className="h-4 w-4 text-success" />, color: "success" as const, active: filterStatus === 'onaylandi', onClick: () => { setFilterStatus(filterStatus === 'onaylandi' ? null : 'onaylandi'); setFilterOpen(false); }, testId: "card-stat-tamamlanan" },
+        ]}
+        desktopColumns={3}
+      />
+
+      {overdueTasks.length > 0 && archivableTasks.length > 0 && (user?.role === 'supervisor' || isHQRole(user?.role as any)) && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="destructive"
+            data-testid="button-bulk-archive"
             onClick={() => {
-              setFilterStatus(filterStatus === 'gecikmiş' ? null : 'gecikmiş');
-              setFilterOpen(false);
+              setSelectedArchiveIds(archivableTasks.map(t => t.id));
+              setShowBulkArchiveDialog(true);
             }}
           >
-            <CardContent className="p-3">
-              <div className="flex flex-col items-center text-center gap-1.5">
-                <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
-                  <AlertCircle className="h-4 w-4 text-destructive dark:text-red-500" />
-                </div>
-                <p className="text-xs text-muted-foreground">Gecikmiş</p>
-                <p className="text-lg font-bold text-destructive">{overdueTasks.length}</p>
-                {archivableTasks.length > 0 && (user?.role === 'supervisor' || isHQRole(user?.role as any)) && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    data-testid="button-bulk-archive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedArchiveIds(archivableTasks.map(t => t.id));
-                      setShowBulkArchiveDialog(true);
-                    }}
-                  >
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Toplu Arsivle ({archivableTasks.length})
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        
-        <Card 
-          data-testid="card-stat-beklemede"
-          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'beklemede' ? 'ring-2 ring-warning' : ''}`}
-          onClick={() => {
-            setFilterStatus(filterStatus === 'beklemede' ? null : 'beklemede');
-            setFilterOpen(false);
-          }}
-        >
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-warning/20 dark:bg-warning/5/20 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-warning dark:text-warning" />
-              </div>
-              <p className="text-xs text-muted-foreground">Bekleyen</p>
-              <p className="text-lg font-bold">{stats.beklemede}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          data-testid="card-stat-devam-eden"
-          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'devam_ediyor' ? 'ring-2 ring-primary' : ''}`}
-          onClick={() => {
-            setFilterStatus(filterStatus === 'devam_ediyor' ? null : 'devam_ediyor');
-            setFilterOpen(false);
-          }}
-        >
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
-                <PlayCircle className="h-4 w-4 text-primary dark:text-blue-500" />
-              </div>
-              <p className="text-xs text-muted-foreground">Devam Eden</p>
-              <p className="text-lg font-bold">{stats.devamEden}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          data-testid="card-stat-tamamlanmayan"
-          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'reddedildi' ? 'ring-2 ring-destructive' : ''}`}
-          onClick={() => {
-            setFilterStatus(filterStatus === 'reddedildi' ? null : 'reddedildi');
-            setFilterOpen(false);
-          }}
-        >
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
-                <AlertCircle className="h-4 w-4 text-destructive dark:text-red-500" />
-              </div>
-              <p className="text-xs text-muted-foreground">Tamamlanmayan</p>
-              <p className="text-lg font-bold">{stats.tamamlanmayan}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          data-testid="card-stat-tamamlanan"
-          className={`cursor-pointer hover-elevate transition-all ${filterStatus === 'onaylandi' ? 'ring-2 ring-green-500' : ''}`}
-          onClick={() => {
-            setFilterStatus(filterStatus === 'onaylandi' ? null : 'onaylandi');
-            setFilterOpen(false);
-          }}
-        >
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4 text-success dark:text-green-500" />
-              </div>
-              <p className="text-xs text-muted-foreground">Tamamlanan</p>
-              <p className="text-lg font-bold">{stats.tamamlanan}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <XCircle className="h-3 w-3 mr-1" />
+            Toplu Arşivle ({archivableTasks.length})
+          </Button>
+        </div>
+      )}
 
       <Collapsible open={filterOpen} onOpenChange={setFilterOpen}>
         <Card>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import {
   Megaphone,
   TicketCheck,
@@ -115,58 +116,14 @@ export default function CRMDashboard() {
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <Card data-testid="kpi-open-tickets">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">Açık Ticket / Talepler</p>
-                  <p className="text-2xl font-bold" data-testid="value-open-tickets">
-                    {kpis.openComplaintsCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Çözüm bekliyor</p>
-                </div>
-                <div className={`p-3 rounded-full ${kpis.openComplaintsCount > 0 ? "bg-orange-100 dark:bg-orange-900/30" : "bg-green-100 dark:bg-green-900/30"}`}>
-                  <TicketCheck className={`h-5 w-5 ${kpis.openComplaintsCount > 0 ? "text-orange-600" : "text-green-600"}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="kpi-sla-breaches">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">SLA İhlalleri</p>
-                  <p className="text-2xl font-bold" data-testid="value-sla-breaches">
-                    {kpis.slaBreachCount}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Süre aşımı</p>
-                </div>
-                <div className={`p-3 rounded-full ${kpis.slaBreachCount > 0 ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"}`}>
-                  <AlertTriangle className={`h-5 w-5 ${kpis.slaBreachCount > 0 ? "text-red-600" : "text-green-600"}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="kpi-campaigns">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">Kampanya & Etkileşim</p>
-                  <p className="text-2xl font-bold" data-testid="value-total-interactions">
-                    {kpis.totalFeedback30d}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Son 30 gün toplam etkileşim</p>
-                </div>
-                <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                  <Megaphone className="h-5 w-5 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <CompactKPIStrip
+          items={[
+            { label: "Açık Ticket / Talepler", value: kpis.openComplaintsCount, subtitle: "Çözüm bekliyor", icon: <TicketCheck className={`h-4 w-4 ${kpis.openComplaintsCount > 0 ? "text-orange-600" : "text-green-600"}`} />, color: kpis.openComplaintsCount > 0 ? "warning" : "success", testId: "kpi-open-tickets" },
+            { label: "SLA İhlalleri", value: kpis.slaBreachCount, subtitle: "Süre aşımı", icon: <AlertTriangle className={`h-4 w-4 ${kpis.slaBreachCount > 0 ? "text-red-600" : "text-green-600"}`} />, color: kpis.slaBreachCount > 0 ? "danger" : "success", testId: "kpi-sla-breaches" },
+            { label: "Kampanya & Etkileşim", value: kpis.totalFeedback30d, subtitle: "Son 30 gün", icon: <Megaphone className="h-4 w-4 text-blue-600" />, color: "info", testId: "kpi-campaigns" },
+          ]}
+          desktopColumns={3}
+        />
 
         <Card data-testid="recent-tickets">
           <CardHeader className="pb-2">

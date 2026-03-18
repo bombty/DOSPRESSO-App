@@ -10,6 +10,7 @@ import { ArrowLeft, TrendingUp, Clock, CheckCircle2, AlertCircle, Users } from "
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 
 type BranchTaskStats = {
   totalTasks: number;
@@ -145,64 +146,15 @@ export default function SubeGorevlerPage() {
           </Card>
         )}
 
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Toplam Görevler */}
-          <Card data-testid="card-total-tasks">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Görev</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTasks}</div>
-              <div className="mt-2 space-y-1 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-green-600">Tamamlanan:</span>
-                  <span className="font-semibold">{stats.completed}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-amber-600">Devam Eden:</span>
-                  <span className="font-semibold">{stats.inProgress}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Zamanında Tamamlama */}
-          <Card data-testid="card-on-time">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Zamanında Tamamlama</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.onTimeRate}%</div>
-              <Progress value={stats.onTimeRate} className="mt-2 h-2" data-testid="progress-on-time" />
-              <p className="text-xs text-muted-foreground mt-1">{stats.completed} görev tamamlandı</p>
-            </CardContent>
-          </Card>
-
-          {/* Başarısız Görevler */}
-          <Card data-testid="card-failed">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Başarısız Görevler</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.failureRate}%</div>
-              <Progress value={stats.failureRate} className="mt-2 h-2" data-testid="progress-failure" />
-              <p className="text-xs text-muted-foreground mt-1">{stats.failed} görev başarısız</p>
-            </CardContent>
-          </Card>
-
-          {/* Geciken Görevler */}
-          <Card data-testid="card-overdue">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Geciken Görevler</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-600">{stats.overdue}</div>
-              <Progress value={Math.min(100, (stats.overdue / stats.totalTasks) * 100)} className="mt-2 h-2" data-testid="progress-overdue" />
-              <p className="text-xs text-muted-foreground mt-1">{stats.overdueRate}% oranı</p>
-            </CardContent>
-          </Card>
-        </div>
+        <CompactKPIStrip
+          items={[
+            { label: "Toplam Görev", value: stats.totalTasks, subtitle: `${stats.completed} tamamlanan`, icon: <CheckCircle2 className="h-4 w-4 text-primary" />, color: "info", testId: "card-total-tasks" },
+            { label: "Zamanında", value: `${stats.onTimeRate}%`, subtitle: `${stats.completed} görev`, icon: <Clock className="h-4 w-4 text-success" />, color: "success", testId: "card-on-time" },
+            { label: "Başarısız", value: `${stats.failureRate}%`, subtitle: `${stats.failed} görev`, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: "danger", testId: "card-failed" },
+            { label: "Geciken", value: stats.overdue, subtitle: `${stats.overdueRate}% oranı`, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning", testId: "card-overdue" },
+          ]}
+          desktopColumns={4}
+        />
 
         {/* Additional Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

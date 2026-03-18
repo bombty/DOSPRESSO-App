@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -124,20 +125,15 @@ export default function AdminDashboard() {
         </Badge>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {stats.map((stat, i) => (
-          <Card key={i} className="text-center">
-            <CardContent className="p-3">
-              <stat.icon className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <Badge variant="secondary" className="text-xs mt-1">
-                {stat.trend}
-              </Badge>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <CompactKPIStrip
+        items={stats.map((stat) => ({
+          label: stat.label,
+          value: stat.value,
+          icon: <stat.icon className="h-4 w-4 text-muted-foreground" />,
+          subtitle: stat.trend,
+        }))}
+        desktopColumns={3}
+      />
 
       <Card>
         <CardHeader className="pb-2">

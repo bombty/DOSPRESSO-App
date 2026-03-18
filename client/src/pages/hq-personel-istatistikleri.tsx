@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Badge } from "@/components/ui/badge";
 import { ListSkeleton } from "@/components/list-skeleton";
 import {
@@ -170,44 +171,15 @@ export default function HQPersonelIstatistikleri() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card data-testid="stat-total-employees">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Toplam Personel</span>
-            </div>
-            <p className="text-2xl font-bold mt-1">{stats.totalEmployees}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="stat-branch-employees">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Şube Personeli</span>
-            </div>
-            <p className="text-2xl font-bold mt-1">{stats.branchEmployees}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="stat-hq-employees">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">HQ Personeli</span>
-            </div>
-            <p className="text-2xl font-bold mt-1">{stats.hqEmployees}</p>
-          </CardContent>
-        </Card>
-        <Card data-testid="stat-factory-employees">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Factory className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Fabrika Personeli</span>
-            </div>
-            <p className="text-2xl font-bold mt-1">{stats.factoryEmployees}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Toplam Personel", value: stats.totalEmployees, icon: <Users className="h-4 w-4 text-muted-foreground" />, testId: "stat-total-employees" },
+          { label: "Şube Personeli", value: stats.branchEmployees, icon: <Building2 className="h-4 w-4 text-muted-foreground" />, color: "info", testId: "stat-branch-employees" },
+          { label: "HQ Personeli", value: stats.hqEmployees, icon: <Briefcase className="h-4 w-4 text-muted-foreground" />, testId: "stat-hq-employees" },
+          { label: "Fabrika Personeli", value: stats.factoryEmployees, icon: <Factory className="h-4 w-4 text-muted-foreground" />, testId: "stat-factory-employees" },
+        ]}
+        desktopColumns={4}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card data-testid="chart-branch-comparison">

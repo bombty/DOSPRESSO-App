@@ -21,6 +21,7 @@ import machine4 from '@assets/stock_images/coffee_machine_equip_29a816b5.jpg';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 
 const STATUS_LABELS = {
   'talep_edildi': 'Talep Edildi',
@@ -491,48 +492,16 @@ export default function ServiceRequestsManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Talep</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Açık Talep</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{stats.open}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlanan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{stats.completed}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">İptal Edilen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">{stats.cancelled}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Kritik Öncelik</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.criticalPriority}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Toplam Talep", value: stats.total, testId: "kpi-total" },
+          { label: "Açık Talep", value: stats.open, color: "warning", testId: "kpi-open" },
+          { label: "Tamamlanan", value: stats.completed, color: "success", testId: "kpi-completed" },
+          { label: "İptal Edilen", value: stats.cancelled, color: "muted", testId: "kpi-cancelled" },
+          { label: "Kritik Öncelik", value: stats.criticalPriority, color: "danger", testId: "kpi-critical" },
+        ]}
+        desktopColumns={5}
+      />
 
       {/* Filters */}
       <Card>

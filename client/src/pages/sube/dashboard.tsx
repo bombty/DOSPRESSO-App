@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Link, useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
@@ -364,62 +365,15 @@ export default function SubeDashboard() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-green-500/20 rounded-lg">
-                      <Users className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Aktif Personel</p>
-                      <p className="text-lg font-bold" data-testid="text-active-staff">{dashboardData?.stats.activeStaff || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-500/20 rounded-lg">
-                      <ClipboardList className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Checklist</p>
-                      <p className="text-lg font-bold" data-testid="text-checklist-rate">%{checklistRate}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-emerald-500/20 rounded-lg">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Görev Tamamlama</p>
-                      <p className="text-lg font-bold" data-testid="text-tasks-done">
-                        {dashboardData?.stats.completedTasks || 0}/{(dashboardData?.stats.completedTasks || 0) + (dashboardData?.stats.pendingTasks || 0)}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${(dashboardData?.stats.activeAlerts || 0) > 0 ? "bg-red-500/20" : "bg-muted"}`}>
-                      <Bell className={`h-4 w-4 ${(dashboardData?.stats.activeAlerts || 0) > 0 ? "text-red-500" : "text-muted-foreground"}`} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Uyarılar</p>
-                      <p className="text-lg font-bold" data-testid="text-alerts">{dashboardData?.stats.activeAlerts || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <CompactKPIStrip
+              items={[
+                { label: "Aktif Personel", value: dashboardData?.stats.activeStaff || 0, icon: <Users className="h-4 w-4 text-green-600" />, color: "success", testId: "text-active-staff" },
+                { label: "Checklist", value: `%${checklistRate}`, icon: <ClipboardList className="h-4 w-4 text-blue-600" />, color: "info", testId: "text-checklist-rate" },
+                { label: "Görev Tamamlama", value: `${dashboardData?.stats.completedTasks || 0}/${(dashboardData?.stats.completedTasks || 0) + (dashboardData?.stats.pendingTasks || 0)}`, icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />, color: "success", testId: "text-tasks-done" },
+                { label: "Uyarılar", value: dashboardData?.stats.activeAlerts || 0, icon: <Bell className={`h-4 w-4 ${(dashboardData?.stats.activeAlerts || 0) > 0 ? "text-red-500" : "text-muted-foreground"}`} />, color: (dashboardData?.stats.activeAlerts || 0) > 0 ? "danger" : "muted", testId: "text-alerts" },
+              ]}
+              desktopColumns={4}
+            />
 
             {(dashboardData?.alerts?.length || 0) > 0 && (
               <Card>

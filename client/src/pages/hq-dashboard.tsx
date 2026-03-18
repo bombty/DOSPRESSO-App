@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import { canSeeWidget } from "@/lib/role-visibility";
 import { MuhasebeIKDashboard } from "@/components/dashboards/muhasebe-ik-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -180,6 +181,18 @@ function MetricCardComponent({ metric, testId }: { metric: MetricCard; testId?: 
   );
 }
 
+function metricsToKPI(metrics: MetricCard[]): KPIItem[] {
+  return metrics.map(m => ({
+    label: m.title,
+    value: m.value,
+    icon: m.icon,
+    color: (m.status === 'critical' ? 'danger' : m.status === 'warning' ? 'warning' : m.status === 'healthy' ? 'success' : 'info') as KPIItem['color'],
+    onClick: m.onClick,
+    testId: `card-metric-${m.title.toLowerCase().replace(/\s+/g, '-')}`,
+    subtitle: m.subValue || (m.trendValue ? m.trendValue : undefined),
+  }));
+}
+
 function AlertPanel({ alerts }: { alerts: Array<{ message: string; severity: RiskStatus }> }) {
   if (!alerts || alerts.length === 0) return null;
   
@@ -253,11 +266,7 @@ function SatinalmaDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Satınalma</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2" data-testid="chart-demand-forecast">
@@ -365,11 +374,7 @@ function FabrikaDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Fabrika</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2" data-testid="chart-production-tracking">
@@ -483,11 +488,7 @@ function IKDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <Card className="lg:col-span-2">
@@ -596,11 +597,7 @@ function CoachDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Coach</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       {summary && (
         <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
@@ -732,11 +729,7 @@ function MarketingDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Marketing</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
@@ -837,11 +830,7 @@ function TrainerDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Trainer</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
@@ -941,11 +930,7 @@ function KaliteDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Kalite Kontrol</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
         <Card>
@@ -1666,11 +1651,7 @@ function DestekDashboard() {
         <h2 className="text-base font-semibold" data-testid="text-dashboard-title">Destek Merkezi</h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-        {metrics.map((metric: MetricCard, index: number) => (
-          <MetricCardComponent key={index} metric={metric} />
-        ))}
-      </div>
+      <CompactKPIStrip items={metricsToKPI(metrics)} desktopColumns={4} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <Card

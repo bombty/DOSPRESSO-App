@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Building2, User, AlertCircle } from "lucide-react";
 import { EmptyStatePreset } from "@/components/empty-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocation } from "wouter";
@@ -183,55 +184,15 @@ export default function FaultHub() {
 
         {/* TAB 1: Overview */}
         <TabsContent value="overview" className="w-full">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Kritik</p>
-                  <p className="text-lg font-bold text-destructive" data-testid="text-critical-count">{metrics.critical.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-warning/10 dark:bg-warning/5/20 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-warning" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Yüksek</p>
-                  <p className="text-lg font-bold text-warning" data-testid="text-high-count">{metrics.high.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Çözüldü</p>
-                  <p className="text-lg font-bold text-success" data-testid="text-resolved-count">{metrics.resolved.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-3">
-                <div className="flex flex-col items-center text-center gap-1.5">
-                  <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
-                    <Wrench className="h-4 w-4 text-primary" />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Açık</p>
-                  <p className="text-lg font-bold" data-testid="text-open-count">{metrics.open.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <CompactKPIStrip
+            items={[
+              { label: "Kritik", value: metrics.critical.length, icon: <AlertTriangle className="h-4 w-4 text-destructive" />, color: "danger", testId: "text-critical-count" },
+              { label: "Yüksek", value: metrics.high.length, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning", testId: "text-high-count" },
+              { label: "Çözüldü", value: metrics.resolved.length, icon: <CheckCircle2 className="h-4 w-4 text-success" />, color: "success", testId: "text-resolved-count" },
+              { label: "Açık", value: metrics.open.length, icon: <Wrench className="h-4 w-4 text-primary" />, color: "info", testId: "text-open-count" },
+            ]}
+            desktopColumns={4}
+          />
 
           {metrics.critical.length > 0 && (
             <div>
@@ -454,34 +415,14 @@ export default function FaultHub() {
         {/* TAB 4: My Faults (Technician) */}
         {user?.id && (
           <TabsContent value="myFaults" className="w-full space-y-2 sm:space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Toplam</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold" data-testid="text-my-total">{metrics.myFaults.length}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-destructive">Kritik</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-destructive" data-testid="text-my-critical">{metrics.myFaults.filter((f: EquipmentFault) => f.priority === "kritik").length}</div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-primary">Devam Ediyor</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-primary" data-testid="text-my-inprogress">{metrics.myFaults.filter((f: EquipmentFault) => f.currentStage === "devam_ediyor").length}</div>
-                </CardContent>
-              </Card>
-            </div>
+            <CompactKPIStrip
+              items={[
+                { label: "Toplam", value: metrics.myFaults.length, color: "info", testId: "text-my-total" },
+                { label: "Kritik", value: metrics.myFaults.filter((f: EquipmentFault) => f.priority === "kritik").length, color: "danger", testId: "text-my-critical" },
+                { label: "Devam Ediyor", value: metrics.myFaults.filter((f: EquipmentFault) => f.currentStage === "devam_ediyor").length, color: "info", testId: "text-my-inprogress" },
+              ]}
+              desktopColumns={3}
+            />
 
             <Card>
               <CardHeader>

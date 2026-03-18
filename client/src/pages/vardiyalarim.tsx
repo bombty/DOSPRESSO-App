@@ -13,6 +13,7 @@ import { format, startOfWeek, addDays, isToday, differenceInDays, startOfMonth, 
 import { tr } from "date-fns/locale";
 import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, UserMinus, AlertTriangle, AlertCircle, Timer, FileText, QrCode } from "lucide-react";
 import QrCheckinGenerator from "@/components/qr-checkin-generator";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ErrorState } from "../components/error-state";
@@ -685,32 +686,14 @@ export default function Vardiyalarim() {
         <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-page-description">Çalışma programınız ve talepler</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <Card>
-          <CardContent className="p-2">
-            <div className="flex flex-col items-center text-center gap-0.5">
-              <p className="text-[10px] text-muted-foreground">Toplam Vardiya</p>
-              <p className="text-lg font-bold" data-testid="text-total-shifts">{totalShifts}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-2">
-            <div className="flex flex-col items-center text-center gap-0.5">
-              <p className="text-[10px] text-muted-foreground">Yaklaşan</p>
-              <p className="text-lg font-bold" data-testid="text-upcoming-shifts">{upcomingShifts}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-2">
-            <div className="flex flex-col items-center text-center gap-0.5">
-              <p className="text-[10px] text-muted-foreground">Bu Ay</p>
-              <p className="text-lg font-bold" data-testid="text-month-attendance">{workedDays}/{workDaysInMonth}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Toplam Vardiya", value: totalShifts, icon: <Calendar className="h-4 w-4 text-primary" />, color: "info", testId: "text-total-shifts" },
+          { label: "Yaklaşan", value: upcomingShifts, icon: <Clock className="h-4 w-4 text-warning" />, color: "warning", testId: "text-upcoming-shifts" },
+          { label: "Bu Ay", value: `${workedDays}/${workDaysInMonth}`, icon: <Check className="h-4 w-4 text-success" />, color: "success", testId: "text-month-attendance" },
+        ]}
+        desktopColumns={3}
+      />
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} data-testid="tabs-view-mode">
         <TabsList className="w-full grid grid-cols-4">

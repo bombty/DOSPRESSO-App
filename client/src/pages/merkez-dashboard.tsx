@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -175,63 +176,15 @@ export default function MerkezDashboard() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Card data-testid="card-branches">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-500/20 rounded-lg shrink-0">
-                      <Store className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Toplam Şube</p>
-                      <p className="text-lg font-bold" data-testid="text-total-branches">{data?.totalBranches || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-employees">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-green-500/20 rounded-lg shrink-0">
-                      <Users className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Aktif Personel</p>
-                      <p className="text-lg font-bold" data-testid="text-active-employees">{data?.activeEmployees || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-checklists">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-emerald-500/20 rounded-lg shrink-0">
-                      <ClipboardCheck className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Checklist</p>
-                      <p className="text-lg font-bold" data-testid="text-checklist-rate">%{data?.checklistCompletion?.rate || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card data-testid="card-tasks">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-amber-500/20 rounded-lg shrink-0">
-                      <ListTodo className="h-4 w-4 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Açık Görev</p>
-                      <p className="text-lg font-bold" data-testid="text-open-tasks">{data?.openTasks || 0}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <CompactKPIStrip
+              items={[
+                { label: "Toplam Şube", value: data?.totalBranches || 0, icon: <Store className="h-4 w-4 text-blue-600" />, color: "info", testId: "card-branches" },
+                { label: "Aktif Personel", value: data?.activeEmployees || 0, icon: <Users className="h-4 w-4 text-green-600" />, color: "success", testId: "card-employees" },
+                { label: "Checklist", value: `%${data?.checklistCompletion?.rate || 0}`, icon: <ClipboardCheck className="h-4 w-4 text-emerald-600" />, color: "success", testId: "card-checklists" },
+                { label: "Açık Görev", value: data?.openTasks || 0, icon: <ListTodo className="h-4 w-4 text-amber-600" />, color: "warning", testId: "card-tasks" },
+              ]}
+              desktopColumns={4}
+            />
 
             {(data?.alerts?.critical || 0) > 0 && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3" data-testid="panel-critical-alerts">

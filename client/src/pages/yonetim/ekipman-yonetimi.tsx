@@ -22,6 +22,7 @@ import type { Branch, Equipment as EquipmentType, InsertEquipmentServiceRequest 
 import { insertEquipmentServiceRequestSchema } from '@shared/schema';
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 
 interface ServiceRequest {
   id: number;
@@ -437,45 +438,15 @@ export default function EquipmentManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-        <Card className={stats.critical > 0 ? 'border-destructive/30 dark:border-destructive/40' : ''}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pending}</div>
-            {stats.critical > 0 && (
-              <div className="text-xs text-destructive dark:text-destructive mt-1 font-semibold">
-                {stats.critical} Kritik
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Devam Eden</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{stats.inProgress}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlanan (30gün)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{stats.completed}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Ekipman</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{equipment.length}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Bekleyen", value: stats.pending, color: stats.critical > 0 ? "danger" : "default", subtitle: stats.critical > 0 ? `${stats.critical} Kritik` : undefined, testId: "kpi-pending" },
+          { label: "Devam Eden", value: stats.inProgress, color: "warning", testId: "kpi-inprogress" },
+          { label: "Tamamlanan (30gün)", value: stats.completed, color: "success", testId: "kpi-completed" },
+          { label: "Toplam Ekipman", value: equipment.length, testId: "kpi-total-equipment" },
+        ]}
+        desktopColumns={4}
+      />
 
       {/* Main Tabs */}
       <Tabs defaultValue="pending" className="w-full">

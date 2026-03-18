@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -287,63 +288,15 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
         </div>
       ) : stats ? (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Card className="hover-elevate">
-              <CardContent className="px-3 pb-3 pt-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <Users className="h-4 w-4 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Aktif Çalışan</p>
-                    <p className="text-lg font-bold" data-testid="text-active-workers">{stats.activeWorkers}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardContent className="px-3 pb-3 pt-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-green-500/20 rounded-lg">
-                    <Package className="h-4 w-4 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Bugünkü Üretim</p>
-                    <p className="text-lg font-bold" data-testid="text-total-produced">{stats.totalProduced}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardContent className="px-3 pb-3 pt-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-red-500/20 rounded-lg">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Zaiyat</p>
-                    <p className="text-lg font-bold" data-testid="text-total-waste">{stats.totalWaste}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate">
-              <CardContent className="px-3 pb-3 pt-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-amber-500/20 rounded-lg">
-                    <TrendingUp className="h-4 w-4 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Verimlilik</p>
-                    <p className="text-lg font-bold" data-testid="text-efficiency">%{stats.efficiency}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <CompactKPIStrip
+            items={[
+              { label: "Aktif Çalışan", value: stats.activeWorkers, icon: <Users className="h-4 w-4 text-blue-500" />, color: "info", testId: "text-active-workers" },
+              { label: "Bugünkü Üretim", value: stats.totalProduced, icon: <Package className="h-4 w-4 text-green-500" />, color: "success", testId: "text-total-produced" },
+              { label: "Zaiyat", value: stats.totalWaste, icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: "danger", testId: "text-total-waste" },
+              { label: "Verimlilik", value: `%${stats.efficiency}`, icon: <TrendingUp className="h-4 w-4 text-amber-500" />, color: "warning", testId: "text-efficiency" },
+            ]}
+            desktopColumns={4}
+          />
 
           {costStats && isCostRole && (
             <Card>
