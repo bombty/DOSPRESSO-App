@@ -1,0 +1,67 @@
+Promptta imza ayarları var ama coach/trainer'ın sertifika **içerik metnini düzenlemesi** eksik. Ve border kalınlıkları ince. Replit'e yapıştırmadan önce şu eklemeleri yapın — promptun içine şu 2 bölümü ekleyin:
+
+Aslında daha pratik olsun — promptu zaten yapıştırmadıysanız, şu ekleri ben dahil ediyorum. **Promptun sonuna (Testing bölümünden önce) şu bölümü ekleyin:**
+
+---
+
+**Bu satırları promptun `### STEP 5` bölümünün sonuna ekleyin:**
+
+```
+### STEP 5B: Coach/Trainer Certificate Editing
+
+Coach and Trainer roles must be able to fully customize certificates before issuing:
+
+**Editable fields in "Sertifika Oluştur" dialog:**
+- Sertifika başlığı (default from template, but editable)
+- Açıklama metni (the body text describing the achievement — default from template, fully editable textarea)
+- İmzalayan 1 adı + unvanı (default from saved settings)
+- İmzalayan 2 adı + unvanı (default from saved settings)
+- Alıcı adı
+- Modül adı (for module completion)
+
+**"İmza Ayarları" is NOT localStorage — use a database table:**
+```typescript
+export const certificateSettings = pgTable("certificate_settings", {
+  id: serial("id").primaryKey(),
+  settingKey: varchar("setting_key", { length: 50 }).notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+// Seed defaults:
+// signer1_name = "Yavuz Kolakan"
+// signer1_title = "Coach" 
+// signer2_name = "Ece Trainer"
+// signer2_title = "Eğitim Müdürü"
+```
+
+API:
+```
+GET  /api/certificate-settings          — get all settings
+PATCH /api/certificate-settings/:key    — update a setting (coach, trainer, admin only)
+```
+
+Coach/Trainer can update the default signer names/titles from İmza Ayarları section. These persist across all future certificates.
+
+**Template descriptions are also editable per-template:**
+When coach clicks "Sertifika Oluştur", the description field is pre-filled from the template but shown as a textarea that can be modified for this specific certificate.
+```
+
+---
+
+**Ve promptun `### STEP 3` bölümündeki border kalınlıklarını şu şekilde değiştirin:**
+
+```
+**Certificate container borders (premium thick frames):**
+- Outer border: 4px solid #122549 (navy) — thick premium frame
+- Inner border: 1.5px solid #c9a84c (gold) — visible gold accent frame, inset 16px from outer
+- Optional: third decorative line between outer and inner, 0.5px dashed #c9a84c at inset 10px
+```
+
+---
+
+Yani iki küçük ekleme:
+1. **Coach/Trainer tam düzenleme** + DB'de ayar tablosu (localStorage değil)
+2. **Border kalınlıkları** artırıldı (outer 2.5→4px, inner 0.5→1.5px)
+
+Bu eklemeleri promptun içine koyup Replit'e yapıştırın. Yoksa isterseniz tüm promptu bu eklemelerle birlikte tekrar yazayım?

@@ -6847,6 +6847,36 @@ export const insertCertificateDesignSettingSchema = createInsertSchema(certifica
   updatedAt: true,
 });
 
+export const certificateSettings = pgTable("certificate_settings", {
+  id: serial("id").primaryKey(),
+  settingKey: varchar("setting_key", { length: 50 }).notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const issuedCertificates = pgTable("issued_certificates", {
+  id: serial("id").primaryKey(),
+  type: varchar("type", { length: 30 }).notNull(),
+  templateKey: varchar("template_key", { length: 50 }).notNull(),
+  certificateNo: varchar("certificate_no", { length: 30 }).notNull().unique(),
+  recipientUserId: varchar("recipient_user_id").references(() => users.id),
+  recipientName: varchar("recipient_name", { length: 200 }).notNull(),
+  title: varchar("title", { length: 255 }),
+  description: text("description"),
+  branchName: varchar("branch_name", { length: 200 }),
+  moduleName: varchar("module_name", { length: 200 }),
+  quizScore: integer("quiz_score"),
+  signer1Name: varchar("signer1_name", { length: 100 }).notNull(),
+  signer1Title: varchar("signer1_title", { length: 100 }).notNull(),
+  signer2Name: varchar("signer2_name", { length: 100 }).notNull(),
+  signer2Title: varchar("signer2_title", { length: 100 }).notNull(),
+  issuedAt: timestamp("issued_at", { withTimezone: true }).defaultNow().notNull(),
+  isActive: boolean("is_active").default(true),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type InsertCertificateDesignSetting = z.infer<typeof insertCertificateDesignSettingSchema>;
 export type CertificateDesignSetting = typeof certificateDesignSettings.$inferSelect;
 

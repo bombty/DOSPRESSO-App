@@ -123,6 +123,8 @@ import {
   purchaseOrders,
   banners,
   certificateDesignSettings,
+  certificateSettings,
+  issuedCertificates,
   franchiseProjects,
   franchiseProjectPhases,
   franchiseProjectTasks,
@@ -2251,6 +2253,130 @@ const normalizeTimeGlobal = (timeStr: string): string => {
     } catch (error: any) {
       console.error("Error deleting certificate design:", error);
       res.status(500).json({ message: "Sertifika tasarımı silinirken hata oluştu" });
+    }
+  });
+
+  router.get('/api/certificate-settings', isAuthenticated, async (req, res) => {
+    try {
+      const settings = await db.select().from(certificateSettings);
+      const result: Record<string, string> = {};
+      for (const s of settings) {
+        result[s.settingKey] = s.settingValue;
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching certificate settings:", error);
+      res.status(500).json({ message: "Sertifika ayarları alınırken hata oluştu" });
+    }
+  });
+
+  router.patch('/api/certificate-settings/:key', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const role = user.role as string;
+      if (!['admin', 'ceo', 'coach', 'trainer'].includes(role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const key = req.params.key;
+      const { value } = req.body;
+      if (!value || typeof value !== 'string') {
+        return res.status(400).json({ message: "Geçerli bir değer giriniz" });
+      }
+      const existing = await db.select().from(certificateSettings).where(eq(certificateSettings.settingKey, key));
+      if (existing.length > 0) {
+        const [updated] = await db.update(certificateSettings)
+          .set({ settingValue: value, updatedBy: user.id, updatedAt: new Date() })
+          .where(eq(certificateSettings.settingKey, key))
+          .returning();
+        res.json(updated);
+      } else {
+        const [created] = await db.insert(certificateSettings)
+          .values({ settingKey: key, settingValue: value, updatedBy: user.id })
+          .returning();
+        res.json(created);
+      }
+    } catch (error: any) {
+      console.error("Error updating certificate setting:", error);
+      res.status(500).json({ message: "Sertifika ayarı güncellenirken hata oluştu" });
+    }
+  });
+
+  router.get('/api/certificates', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const certs = await db.select().from(issuedCertificates)
+        .where(eq(issuedCertificates.isActive, true))
+        .orderBy(desc(issuedCertificates.issuedAt));
+      res.json(certs);
+    } catch (error: any) {
+      console.error("Error fetching certificates:", error);
+      res.status(500).json({ message: "Sertifikalar alınırken hata oluştu" });
+    }
+  });
+
+  router.get('/api/certificates/my', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const certs = await db.select().from(issuedCertificates)
+        .where(and(
+          eq(issuedCertificates.recipientUserId, user.id),
+          eq(issuedCertificates.isActive, true)
+        ))
+        .orderBy(desc(issuedCertificates.issuedAt));
+      res.json(certs);
+    } catch (error: any) {
+      console.error("Error fetching my certificates:", error);
+      res.status(500).json({ message: "Sertifikalarınız alınırken hata oluştu" });
+    }
+  });
+
+  router.get('/api/certificates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [cert] = await db.select().from(issuedCertificates)
+        .where(and(eq(issuedCertificates.id, id), eq(issuedCertificates.isActive, true)));
+      if (!cert) {
+        return res.status(404).json({ message: "Sertifika bulunamadı" });
+      }
+      res.json(cert);
+    } catch (error: any) {
+      console.error("Error fetching certificate:", error);
+      res.status(500).json({ message: "Sertifika alınırken hata oluştu" });
+    }
+  });
+
+  router.post('/api/certificates', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const [cert] = await db.insert(issuedCertificates).values(req.body).returning();
+      res.json(cert);
+    } catch (error: any) {
+      console.error("Error creating certificate:", error);
+      res.status(500).json({ message: "Sertifika oluşturulurken hata oluştu" });
+    }
+  });
+
+  router.delete('/api/certificates/:id', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!isHQRole(user.role as any)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+      const id = parseInt(req.params.id);
+      const [updated] = await db.update(issuedCertificates)
+        .set({ isActive: false, deletedAt: new Date() })
+        .where(eq(issuedCertificates.id, id))
+        .returning();
+      if (!updated) {
+        return res.status(404).json({ message: "Sertifika bulunamadı" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting certificate:", error);
+      res.status(500).json({ message: "Sertifika silinirken hata oluştu" });
     }
   });
 
