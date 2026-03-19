@@ -157,6 +157,26 @@ app.use((req, res, next) => {
     });
   }
 
+  async function ensureKioskSessionsTable() {
+    try {
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS kiosk_sessions (
+          id SERIAL PRIMARY KEY,
+          token VARCHAR(64) NOT NULL UNIQUE,
+          user_id VARCHAR NOT NULL REFERENCES users(id),
+          station_id INTEGER,
+          expires_at TIMESTAMPTZ NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_token ON kiosk_sessions(token)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_user ON kiosk_sessions(user_id)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_expires ON kiosk_sessions(expires_at)`);
+    } catch (error) {
+      console.error("[KioskSessions] Table bootstrap error:", error);
+    }
+  }
+
   async function migrateKioskPasswords() {
     try {
       await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password TYPE varchar(255)`);
@@ -240,6 +260,7 @@ app.use((req, res, next) => {
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await ensureAdminUserApproved();
+    await ensureKioskSessionsTable();
     await migrateKioskPasswords();
     await seedKioskAccounts();
 
