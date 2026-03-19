@@ -62,6 +62,7 @@ import {
   factoryKioskConfig,
   factoryWorkerScores,
   kioskSessions,
+  pdksRecords,
 } from "../../shared/schema";
 
 const router = Router();
@@ -998,6 +999,23 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         prepStartedAt: now,
       }).returning();
 
+      const [worker] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, userId)).limit(1);
+      if (worker?.branchId) {
+        try {
+          await db.insert(pdksRecords).values({
+            userId,
+            branchId: worker.branchId,
+            recordDate: now.toISOString().split('T')[0],
+            recordTime: now.toTimeString().split(' ')[0],
+            recordType: 'giris',
+            source: 'kiosk',
+            deviceInfo: 'factory-kiosk',
+          });
+        } catch (pdksErr: any) {
+          console.warn("[FAB-KIOSK] PDKS clock-in write failed (non-blocking):", pdksErr.message);
+        }
+      }
+
       let productionRun = null;
       let station = null;
       if (stationId) {
@@ -1171,6 +1189,69 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Error fetching worker today stats:", error);
       res.status(500).json({ message: "İstatistikler alınamadı" });
+    }
+  });
+
+  router.post('/api/factory/kiosk/log-production', isKioskAuthenticated, async (req, res) => {
+    try {
+      const { sessionId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, photoUrl, productId, productName, wasteDoughKg, wasteProductCount } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "Oturum ID gerekli" });
+      }
+
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session || session.status !== 'active') {
+        return res.status(404).json({ message: "Aktif oturum bulunamadı" });
+      }
+
+      if (!session.stationId) {
+        return res.status(400).json({ message: "Üretim kaydı için istasyon gerekli" });
+      }
+
+      const produced = parseFloat(quantityProduced) || 0;
+      const waste = parseFloat(quantityWaste) || 0;
+      const doughKg = parseFloat(wasteDoughKg) || 0;
+      const prodCount = parseInt(wasteProductCount) || 0;
+
+      if (produced > 0 || waste > 0 || doughKg > 0 || prodCount > 0 || photoUrl) {
+        await db.insert(factoryProductionOutputs).values({
+          sessionId,
+          userId: session.userId,
+          stationId: session.stationId!,
+          productId: productId || null,
+          productName: productName || null,
+          producedQuantity: String(produced),
+          producedUnit: producedUnit || 'adet',
+          wasteQuantity: String(waste),
+          wasteUnit: wasteUnit || 'adet',
+          wasteReasonId: wasteReasonId || null,
+          wasteNotes: wasteNotes || null,
+          wasteDoughKg: wasteDoughKg ? String(wasteDoughKg) : null,
+          wasteProductCount: wasteProductCount || null,
+          photoUrl: photoUrl || null,
+          qualityStatus: 'pending',
+        });
+
+        await db.update(factoryShiftSessions)
+          .set({
+            totalProduced: (session.totalProduced || 0) + produced,
+            totalWaste: (session.totalWaste || 0) + waste,
+          })
+          .where(eq(factoryShiftSessions.id, sessionId));
+      }
+
+      res.json({
+        success: true,
+        message: "Üretim kaydedildi",
+        totalProduced: (session.totalProduced || 0) + produced,
+        totalWaste: (session.totalWaste || 0) + waste,
+      });
+    } catch (error: any) {
+      console.error("Error logging production:", error);
+      res.status(500).json({ message: "Üretim kaydedilemedi" });
     }
   });
 

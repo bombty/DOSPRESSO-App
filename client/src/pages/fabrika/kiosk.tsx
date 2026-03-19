@@ -67,7 +67,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
-type KioskStep = 'device-password' | 'enter-credentials' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
+type KioskStep = 'device-password' | 'enter-credentials' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'log-production' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
 type BreakReason = 'mola' | 'ozel_ihtiyac';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
@@ -212,7 +212,7 @@ export default function FactoryKiosk() {
         : '/api/factory/products';
       return kioskFetchJson<FactoryProduct[]>(url, []);
     },
-    enabled: step === 'production-entry' || step === 'working',
+    enabled: step === 'production-entry' || step === 'log-production' || step === 'working',
   });
 
   const { data: todayStats } = useQuery<TodayStats>({
@@ -390,6 +390,35 @@ export default function FactoryKiosk() {
     },
   });
 
+  const logProductionMutation = useMutation({
+    mutationFn: async (data: {
+      sessionId: number;
+      quantityProduced?: number;
+      producedUnit?: string;
+      quantityWaste?: number;
+      wasteUnit?: string;
+      wasteReasonId?: number;
+      wasteNotes?: string;
+      photoUrl?: string;
+      productId?: number;
+      productName?: string;
+      wasteDoughKg?: number;
+      wasteProductCount?: number;
+    }) => {
+      const res = await kioskFetch('/api/factory/kiosk/log-production', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Üretim kaydedilemedi'); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Üretim kaydedildi" });
+      queryClient.invalidateQueries({ queryKey: ['/api/factory/kiosk/worker-today-stats'] });
+      setStep('worker-home');
+    },
+    onError: (error: any) => {
+      toast({ title: "Üretim kaydedilemedi", description: error.message, variant: "destructive" });
+    },
+  });
+
   const reportFaultMutation = useMutation({
     mutationFn: async (data: {
       faultType: 'machine' | 'product';
@@ -540,20 +569,9 @@ export default function FactoryKiosk() {
     setStep('stop-options');
   };
 
-  const handleProductionSubmit = () => {
-    if (!currentSession) return;
-
-    if ((parseFloat(quantityProduced) || 0) > 0 && !selectedProductId) {
-      setProductError("Lütfen bir ürün seçin");
-      return;
-    }
-    setProductError('');
-
+  const buildProductionPayload = () => {
     const selectedProduct = factoryProducts.find(p => p.id === selectedProductId);
-
-    endShiftMutation.mutate({
-      sessionId: currentSession.id,
-      productionRunId: currentProductionRun?.id,
+    return {
       quantityProduced: parseFloat(quantityProduced) || 0,
       producedUnit,
       quantityWaste: parseFloat(quantityWaste) || 0,
@@ -565,6 +583,35 @@ export default function FactoryKiosk() {
       productName: selectedProduct?.name || undefined,
       wasteDoughKg: parseFloat(wasteDoughKg) || undefined,
       wasteProductCount: parseInt(wasteProductCount) || undefined,
+    };
+  };
+
+  const handleLogProductionSubmit = () => {
+    if (!currentSession) return;
+    if ((parseFloat(quantityProduced) || 0) > 0 && !selectedProductId) {
+      setProductError("Lütfen bir ürün seçin");
+      return;
+    }
+    setProductError('');
+    logProductionMutation.mutate({
+      sessionId: currentSession.id,
+      ...buildProductionPayload(),
+    });
+  };
+
+  const handleProductionSubmit = () => {
+    if (!currentSession) return;
+
+    if ((parseFloat(quantityProduced) || 0) > 0 && !selectedProductId) {
+      setProductError("Lütfen bir ürün seçin");
+      return;
+    }
+    setProductError('');
+
+    endShiftMutation.mutate({
+      sessionId: currentSession.id,
+      productionRunId: currentProductionRun?.id,
+      ...buildProductionPayload(),
     });
   };
 
@@ -906,11 +953,34 @@ export default function FactoryKiosk() {
                   </Button>
                 )}
 
+                {currentStationInfo && (
+                  <Button
+                    className="h-24 text-lg flex flex-col items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => {
+                      setQuantityProduced('');
+                      setProducedUnit('adet');
+                      setQuantityWaste('');
+                      setWasteUnit('adet');
+                      setSelectedWasteReason(null);
+                      setWasteNotes('');
+                      setProductionPhotoUrl(null);
+                      setSelectedProductId(null);
+                      setProductError('');
+                      setWasteDoughKg('');
+                      setWasteProductCount('');
+                      setStep('log-production');
+                    }}
+                    data-testid="button-log-production"
+                  >
+                    <Package className="h-8 w-8" />
+                    Üretim Kaydet
+                  </Button>
+                )}
+
                 <Button
                   className="h-24 text-lg flex flex-col items-center gap-2 bg-orange-500 hover:bg-orange-600"
                   onClick={() => {
                     if (!currentSession) return;
-                    setSelectedBreakReason(null);
                     setStep('stop-options');
                   }}
                   data-testid="button-goto-break"
@@ -1256,6 +1326,28 @@ export default function FactoryKiosk() {
               </div>
 
               <Button
+                className="w-full bg-red-600 hover:bg-red-700 h-14 text-lg"
+                onClick={() => {
+                  setQuantityProduced('');
+                  setProducedUnit('adet');
+                  setQuantityWaste('');
+                  setWasteUnit('adet');
+                  setSelectedWasteReason(null);
+                  setWasteNotes('');
+                  setProductionPhotoUrl(null);
+                  setSelectedProductId(null);
+                  setProductError('');
+                  setWasteDoughKg('');
+                  setWasteProductCount('');
+                  setStep('production-entry');
+                }}
+                data-testid="stop-option-end-shift"
+              >
+                <LogOut className="h-5 w-5 mr-2" />
+                Vardiyayı Bitir
+              </Button>
+
+              <Button
                 variant="outline"
                 className="w-full border-slate-600 h-14 text-lg"
                 onClick={() => setStep(currentStationInfo ? 'working' : 'worker-home')}
@@ -1347,9 +1439,11 @@ export default function FactoryKiosk() {
             </div>
           )}
 
-          {step === 'production-entry' && (
+          {(step === 'log-production' || step === 'production-entry') && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-center text-slate-200">Vardiya Sonlandırma</h3>
+              <h3 className="text-xl font-semibold text-center text-slate-200">
+                {step === 'log-production' ? 'Üretim Kaydı' : 'Vardiya Sonlandırma'}
+              </h3>
               <p className="text-center text-slate-400">Üretim ve zaiyat bilgilerini girin</p>
 
               <div className="space-y-4">
@@ -1539,12 +1633,7 @@ export default function FactoryKiosk() {
                   ) : (
                     <ObjectUploader
                       onGetUploadParameters={async () => {
-                        const res = await fetch("/api/objects/generate-upload-url", {
-                          method: "POST",
-                          credentials: "include",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ prefix: "factory-production", visibility: "public" }),
-                        });
+                        const res = await kioskFetch("/api/objects/generate-upload-url", "POST", { prefix: "factory-production", visibility: "public" });
                         const data = await res.json();
                         return { method: "PUT", url: data.uploadUrl };
                       }}
@@ -1579,14 +1668,25 @@ export default function FactoryKiosk() {
                 >
                   Vazgeç
                 </Button>
-                <Button
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                  onClick={handleProductionSubmit}
-                  disabled={endShiftMutation.isPending}
-                  data-testid="button-submit-production"
-                >
-                  {endShiftMutation.isPending ? "Kaydediliyor..." : "Vardiyayı Sonlandır"}
-                </Button>
+                {step === 'log-production' ? (
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={handleLogProductionSubmit}
+                    disabled={logProductionMutation.isPending}
+                    data-testid="button-submit-log-production"
+                  >
+                    {logProductionMutation.isPending ? "Kaydediliyor..." : "Üretimi Kaydet"}
+                  </Button>
+                ) : (
+                  <Button
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                    onClick={handleProductionSubmit}
+                    disabled={endShiftMutation.isPending}
+                    data-testid="button-submit-production"
+                  >
+                    {endShiftMutation.isPending ? "Kaydediliyor..." : "Vardiyayı Sonlandır"}
+                  </Button>
+                )}
               </div>
             </div>
           )}
