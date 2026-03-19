@@ -156,3 +156,9 @@ id = "YoozSmrVq0D2ae5Z1YyBw"
 uri = "file://.local/tasks/dospresso-gap-analysis-report.md"
 type = "text"
 title = "DOSPRESSO Gap Analysis Raporu — 19 Mart 2026"
+
+[[outputs]]
+id = "26HudkbCgs1uD5htuFFAy"
+uri = "file://DOSPRESSO_IT_Audit_Report_2026.md"
+type = "text"
+title = "DOSPRESSO IT Denetim Raporu — 19 Mart 2026"
