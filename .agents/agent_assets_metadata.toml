@@ -150,3 +150,9 @@ id = "avUAoz3YKSERDnPtqxzNw"
 uri = "file://.local/it-rapor-moduller-onboarding-ayirma-19-mart-2026.md"
 type = "text"
 title = "IT Raporu — Eğitim vs Onboarding Modül Ayrıştırması (19 Mart 2026)"
+
+[[outputs]]
+id = "YoozSmrVq0D2ae5Z1YyBw"
+uri = "file://.local/tasks/dospresso-gap-analysis-report.md"
+type = "text"
+title = "DOSPRESSO Gap Analysis Raporu — 19 Mart 2026"

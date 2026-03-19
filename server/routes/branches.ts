@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { isAuthenticated } from "../localAuth";
+import { isAuthenticated, createKioskSession } from "../localAuth";
 import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";
@@ -2574,7 +2574,7 @@ router.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
       ))
       .limit(1);
 
-    const kioskToken = `kiosk_${branchId}_${userId}_${Date.now()}`;
+    const kioskToken = await createKioskSession(userId);
 
     res.json({
       success: true,

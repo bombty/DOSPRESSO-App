@@ -111,8 +111,11 @@ Kiosk endpoints use `isKioskAuthenticated` instead of `isAuthenticated`.
 ```typescript
 router.post('/api/factory/kiosk/start-shift', isKioskAuthenticated, async (req, res) => { ... });
 ```
-- `isKioskAuthenticated` middleware (`server/localAuth.ts:500`): checks `x-kiosk-token` header first, then falls back to web session for authorized roles
-- `createKioskSession(userId)` → returns UUID token stored in in-memory `Map` with 8hr TTL (`server/localAuth.ts:461`)
+- `isKioskAuthenticated` middleware (`server/localAuth.ts`): async, checks `x-kiosk-token` header first, then falls back to web session for authorized roles
+- `createKioskSession(userId)` → async, returns UUID token stored in `kiosk_sessions` PostgreSQL table with 8hr TTL + 30s in-memory cache layer
+- All session functions are async: `createKioskSession`, `validateKioskSession`, `updateKioskStation`, `deleteKioskSession`
+- Sessions persist across server restarts; expired sessions cleaned on startup + hourly
+- `GET /api/factory/kiosk/active-sessions` — HQ-only endpoint to view active kiosk auth sessions
 - PIN verification uses `bcrypt.compare()` — PINs stored as bcrypt hashes
 - `pinLockedUntil` field on user record for lockout after failed attempts
 - Device passwords stored in `factory_kiosk_config` (configKey='device_password') and `branch_kiosk_settings` (kioskPassword column) — both bcrypt-hashed
@@ -211,6 +214,7 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `sla_business_hours` — Single-row config for work hours and timezone
 - `factory_kiosk_config` — Factory kiosk device settings (device_password, etc.)
 - `branch_kiosk_settings` — Branch kiosk passwords and config
+- `kiosk_sessions` — PostgreSQL-backed kiosk auth sessions (token, user_id, station_id, expires_at)
 - `module_delegations` — Module-level role delegation records
 - `module_departments` — Department definitions for delegation
 - `module_department_topics` — Topic categories within departments
