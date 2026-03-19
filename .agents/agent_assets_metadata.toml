@@ -162,3 +162,9 @@ id = "26HudkbCgs1uD5htuFFAy"
 uri = "file://DOSPRESSO_IT_Audit_Report_2026.md"
 type = "text"
 title = "DOSPRESSO IT Denetim Raporu — 19 Mart 2026"
+
+[[outputs]]
+id = "EjE5FicC0EAZUDuRW2nJU"
+uri = "file://MEGA_SPRINT_AUDIT_REPORT.md"
+type = "text"
+title = "DOSPRESSO Mega Sprint Audit Raporu"
