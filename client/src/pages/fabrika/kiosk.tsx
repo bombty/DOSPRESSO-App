@@ -60,6 +60,7 @@ import {
   Wrench,
   Sparkles,
   SprayCan,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -500,7 +501,9 @@ export default function FactoryKiosk() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (step === 'auto-logout') {
+    if (step === 'auto-logout' || step === 'end-shift-summary') {
+      const countdown = step === 'end-shift-summary' ? 6 : autoLogoutCountdown;
+      if (step === 'end-shift-summary') setAutoLogoutCountdown(6);
       interval = setInterval(() => {
         setAutoLogoutCountdown((prev) => {
           if (prev <= 1) {
@@ -797,7 +800,21 @@ export default function FactoryKiosk() {
       </div>
 
       <Card className="w-full max-w-2xl bg-slate-800/90 border-slate-700 text-white shadow-2xl">
-        <CardHeader className="text-center border-b border-slate-700 pb-6">
+        <CardHeader className="text-center border-b border-slate-700 pb-6 relative">
+          {selectedUser && !['device-password', 'enter-credentials'].includes(step) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute left-4 top-4 text-slate-400 hover:text-white"
+              onClick={() => {
+                resetWorker();
+              }}
+              data-testid="button-kiosk-home"
+            >
+              <Home className="h-5 w-5 mr-1" />
+              Ana Sayfa
+            </Button>
+          )}
           <div className="flex items-center justify-center gap-3 mb-2">
             <Factory className="h-10 w-10 text-amber-500" />
             <CardTitle className="text-3xl font-bold text-amber-500">DOSPRESSO Fabrika</CardTitle>
@@ -1860,6 +1877,20 @@ export default function FactoryKiosk() {
                   </div>
                 </div>
               )}
+
+              <div className="mt-6 pt-4 border-t border-slate-700">
+                <p className="text-slate-500 text-sm mb-3">
+                  {autoLogoutCountdown} saniye sonra personel seçim ekranına dönülecek...
+                </p>
+                <Button
+                  className="w-full bg-amber-600 h-14 text-lg"
+                  onClick={resetWorker}
+                  data-testid="button-summary-go-home"
+                >
+                  <Users className="h-5 w-5 mr-2" />
+                  Personel Seçimine Dön
+                </Button>
+              </div>
             </div>
           )}
 
