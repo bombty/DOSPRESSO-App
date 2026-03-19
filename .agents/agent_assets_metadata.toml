@@ -174,3 +174,9 @@ id = "SDr168UyLIaJ91vdFKwUJ"
 uri = "file://LAUNCH_READINESS_REPORT.md"
 type = "text"
 title = "DOSPRESSO Launch Readiness Raporu — 19 Mart 2026"
+
+[[outputs]]
+id = "P8jmMzID1OJ9p2xSSdVmH"
+uri = "file://MR_DOBODY_GUIDANCE_AUDIT_REPORT.md"
+type = "text"
+title = "Mr. Dobody Otonom Rehberlik Sistemi — Denetim Raporu"
