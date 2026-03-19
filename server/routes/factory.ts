@@ -51,6 +51,7 @@ import {
   branchOrders,
   branchOrderItems,
   factoryKioskConfig,
+  kioskSessions,
 } from "../../shared/schema";
 
 const router = Router();
@@ -694,6 +695,36 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Error in kiosk login:", error);
       res.status(500).json({ message: "Giriş yapılamadı" });
+    }
+  });
+
+  router.get('/api/factory/kiosk/active-sessions', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!isHQRole(user.role)) {
+        return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+      }
+
+      const activeSessions = await db
+        .select({
+          id: kioskSessions.id,
+          userId: kioskSessions.userId,
+          stationId: kioskSessions.stationId,
+          expiresAt: kioskSessions.expiresAt,
+          createdAt: kioskSessions.createdAt,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role,
+        })
+        .from(kioskSessions)
+        .leftJoin(users, eq(kioskSessions.userId, users.id))
+        .where(gte(kioskSessions.expiresAt, new Date()))
+        .orderBy(desc(kioskSessions.createdAt));
+
+      res.json({ sessions: activeSessions, total: activeSessions.length });
+    } catch (error) {
+      console.error("Error fetching active kiosk sessions:", error);
+      res.status(500).json({ message: "Aktif kiosk oturumları alınamadı" });
     }
   });
 
