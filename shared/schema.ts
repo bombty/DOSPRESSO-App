@@ -9898,7 +9898,7 @@ export type FactoryStaffPin = typeof factoryStaffPins.$inferSelect;
 export const factoryShiftSessions = pgTable("factory_shift_sessions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "restrict" }),
+  stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "restrict" }),
   
   checkInTime: timestamp("check_in_time").notNull().defaultNow(),
   checkOutTime: timestamp("check_out_time"),

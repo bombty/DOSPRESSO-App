@@ -953,11 +953,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     try {
       const { userId, stationId } = req.body;
       
-      if (!userId || !stationId) {
-        return res.status(400).json({ message: "Kullanıcı ve istasyon gerekli" });
+      if (!userId) {
+        return res.status(400).json({ message: "Kullanıcı ID gerekli" });
       }
 
-      // Check for existing active session
       const [existingSession] = await db.select().from(factoryShiftSessions)
         .where(and(
           eq(factoryShiftSessions.userId, userId),
@@ -966,33 +965,55 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .limit(1);
 
       if (existingSession) {
-        return res.status(400).json({ message: "Zaten aktif bir vardiyası var", sessionId: existingSession.id });
+        let station = null;
+        if (existingSession.stationId) {
+          const [s] = await db.select().from(factoryStations)
+            .where(eq(factoryStations.id, existingSession.stationId))
+            .limit(1);
+          station = s || null;
+        }
+        const [productionRun] = await db.select().from(factoryProductionRuns)
+          .where(and(
+            eq(factoryProductionRuns.sessionId, existingSession.id),
+            eq(factoryProductionRuns.status, 'in_progress')
+          ))
+          .limit(1);
+
+        return res.json({
+          success: true,
+          session: existingSession,
+          productionRun: productionRun || null,
+          station,
+          resumed: true,
+        });
       }
 
       const now = new Date();
-      // Create shift session
       const [session] = await db.insert(factoryShiftSessions).values({
         userId,
-        stationId,
+        stationId: stationId || null,
         checkInTime: now,
         status: 'active',
         phase: 'hazirlik',
         prepStartedAt: now,
       }).returning();
 
-      // Start production run
-      const [productionRun] = await db.insert(factoryProductionRuns).values({
-        sessionId: session.id,
-        userId,
-        stationId,
-        startTime: new Date(),
-        status: 'in_progress',
-      }).returning();
+      let productionRun = null;
+      let station = null;
+      if (stationId) {
+        [productionRun] = await db.insert(factoryProductionRuns).values({
+          sessionId: session.id,
+          userId,
+          stationId,
+          startTime: now,
+          status: 'in_progress',
+        }).returning();
 
-      // Get station info
-      const [station] = await db.select().from(factoryStations)
-        .where(eq(factoryStations.id, stationId))
-        .limit(1);
+        const [s] = await db.select().from(factoryStations)
+          .where(eq(factoryStations.id, stationId))
+          .limit(1);
+        station = s || null;
+      }
 
       res.json({
         success: true,
@@ -1003,6 +1024,153 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Error starting shift:", error);
       res.status(500).json({ message: "Vardiya başlatılamadı" });
+    }
+  });
+
+  router.post('/api/factory/kiosk/assign-station', isKioskAuthenticated, async (req, res) => {
+    try {
+      const { sessionId, stationId } = req.body;
+      if (!sessionId || !stationId) {
+        return res.status(400).json({ message: "Oturum ID ve istasyon ID gerekli" });
+      }
+
+      const [session] = await db.select().from(factoryShiftSessions)
+        .where(eq(factoryShiftSessions.id, sessionId))
+        .limit(1);
+
+      if (!session || session.status !== 'active') {
+        return res.status(404).json({ message: "Aktif oturum bulunamadı" });
+      }
+
+      const existingRuns = await db.select().from(factoryProductionRuns)
+        .where(and(
+          eq(factoryProductionRuns.sessionId, sessionId),
+          eq(factoryProductionRuns.status, 'in_progress')
+        ));
+      for (const run of existingRuns) {
+        await db.update(factoryProductionRuns)
+          .set({ endTime: new Date(), status: 'completed' })
+          .where(eq(factoryProductionRuns.id, run.id));
+      }
+
+      await db.update(factoryShiftSessions)
+        .set({ stationId })
+        .where(eq(factoryShiftSessions.id, sessionId));
+
+      const now = new Date();
+      const [productionRun] = await db.insert(factoryProductionRuns).values({
+        sessionId,
+        userId: session.userId,
+        stationId,
+        startTime: now,
+        status: 'in_progress',
+      }).returning();
+
+      const [station] = await db.select().from(factoryStations)
+        .where(eq(factoryStations.id, stationId))
+        .limit(1);
+
+      res.json({
+        success: true,
+        session: { ...session, stationId },
+        productionRun,
+        station,
+      });
+    } catch (error: any) {
+      console.error("Error assigning station:", error);
+      res.status(500).json({ message: "İstasyon atanamadı" });
+    }
+  });
+
+  router.get('/api/factory/kiosk/worker-today-stats', isKioskAuthenticated, async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ message: "userId gerekli" });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const sessions = await db.select({
+        checkInTime: factoryShiftSessions.checkInTime,
+        checkOutTime: factoryShiftSessions.checkOutTime,
+        totalProduced: factoryShiftSessions.totalProduced,
+        totalWaste: factoryShiftSessions.totalWaste,
+        workMinutes: factoryShiftSessions.workMinutes,
+        status: factoryShiftSessions.status,
+      }).from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, userId),
+          gte(factoryShiftSessions.checkInTime, today),
+          lte(factoryShiftSessions.checkInTime, tomorrow)
+        ));
+
+      let totalProduced = 0;
+      let totalWaste = 0;
+      let totalShiftMinutes = 0;
+      const now = new Date();
+
+      for (const s of sessions) {
+        totalProduced += s.totalProduced || 0;
+        totalWaste += s.totalWaste || 0;
+        if (s.workMinutes && s.status === 'completed') {
+          totalShiftMinutes += s.workMinutes;
+        } else if (s.status === 'active') {
+          totalShiftMinutes += Math.round((now.getTime() - new Date(s.checkInTime).getTime()) / 60000);
+        }
+      }
+
+      const outputs = await db.select({
+        producedQuantity: factoryProductionOutputs.producedQuantity,
+        wasteQuantity: factoryProductionOutputs.wasteQuantity,
+      }).from(factoryProductionOutputs)
+        .where(and(
+          eq(factoryProductionOutputs.userId, userId),
+          gte(factoryProductionOutputs.createdAt, today),
+          lte(factoryProductionOutputs.createdAt, tomorrow)
+        ));
+
+      let outputProduced = 0;
+      let outputWaste = 0;
+      for (const o of outputs) {
+        outputProduced += Number(o.producedQuantity || 0);
+        outputWaste += Number(o.wasteQuantity || 0);
+      }
+
+      const breaks = await db.select({
+        startedAt: factoryBreakLogs.startedAt,
+        endedAt: factoryBreakLogs.endedAt,
+        durationMinutes: factoryBreakLogs.durationMinutes,
+      }).from(factoryBreakLogs)
+        .where(and(
+          eq(factoryBreakLogs.userId, userId),
+          gte(factoryBreakLogs.startedAt, today),
+          lte(factoryBreakLogs.startedAt, tomorrow)
+        ));
+
+      let totalBreakMinutes = 0;
+      for (const b of breaks) {
+        if (b.durationMinutes && b.durationMinutes > 0) {
+          totalBreakMinutes += b.durationMinutes;
+        } else if (b.endedAt && b.startedAt) {
+          totalBreakMinutes += Math.max(0, Math.round((new Date(b.endedAt).getTime() - new Date(b.startedAt).getTime()) / 60000));
+        }
+      }
+
+      res.json({
+        totalProduced: Math.max(totalProduced, outputProduced),
+        totalWaste: Math.max(totalWaste, outputWaste),
+        totalShiftMinutes,
+        totalBreakMinutes,
+        breakCount: breaks.length,
+        shiftCount: sessions.length,
+      });
+    } catch (error: any) {
+      console.error("Error fetching worker today stats:", error);
+      res.status(500).json({ message: "İstatistikler alınamadı" });
     }
   });
 
@@ -1114,11 +1282,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       const hasWasteData = (quantityWaste > 0) || (wasteDoughKg && parseFloat(wasteDoughKg) > 0) || (wasteProductCount && parseInt(wasteProductCount) > 0);
-      if (quantityProduced > 0 || hasWasteData || photoUrl) {
+      if ((quantityProduced > 0 || hasWasteData || photoUrl) && session.stationId) {
         await db.insert(factoryProductionOutputs).values({
           sessionId,
           userId: session.userId,
-          stationId: session.stationId,
+          stationId: session.stationId!,
           productId: productId || null,
           productName: productName || null,
           producedQuantity: String(quantityProduced || 0),
@@ -1694,10 +1862,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         ))
         .limit(1);
 
-      // Get station info
-      const [station] = await db.select().from(factoryStations)
-        .where(eq(factoryStations.id, session.stationId))
-        .limit(1);
+      let station = null;
+      if (session.stationId) {
+        const [stationRow] = await db.select().from(factoryStations)
+          .where(eq(factoryStations.id, session.stationId))
+          .limit(1);
+        station = stationRow || null;
+      }
 
       res.json({
         session,
@@ -2720,12 +2891,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const parsedDoughKg = parseFloat(wasteDoughKg) || 0;
       const parsedProductCount = parseInt(wasteProductCount) || 0;
 
-      if (parsedProduced > 0 || parsedWaste > 0 || parsedDoughKg > 0 || parsedProductCount > 0 || photoUrl) {
+      if ((parsedProduced > 0 || parsedWaste > 0 || parsedDoughKg > 0 || parsedProductCount > 0 || photoUrl) && session.stationId) {
         await db.insert(factoryProductionOutputs).values({
           sessionEventId: event.id,
           sessionId,
           userId: session.userId,
-          stationId: session.stationId,
+          stationId: session.stationId!,
           producedQuantity: parsedProduced.toString(),
           producedUnit: producedUnit || 'adet',
           wasteQuantity: parsedWaste.toString(),
@@ -3059,7 +3230,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       })
         .from(factoryShiftSessions)
         .innerJoin(users, eq(factoryShiftSessions.userId, users.id))
-        .innerJoin(factoryStations, eq(factoryShiftSessions.stationId, factoryStations.id))
+        .leftJoin(factoryStations, eq(factoryShiftSessions.stationId, factoryStations.id))
         .where(eq(factoryShiftSessions.status, 'active'));
 
       res.json(activeSessions);

@@ -24,7 +24,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,14 +60,15 @@ import {
   Sparkles,
   SprayCan,
   Home,
+  MapPin,
+  BarChart3,
+  Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import { ErrorState } from "../../components/error-state";
-import { LoadingState } from "../../components/loading-state";
 
-type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report' | 'on-break';
-type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
+type KioskStep = 'device-password' | 'enter-credentials' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
+type BreakReason = 'mola' | 'ozel_ihtiyac';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
 
@@ -98,7 +98,7 @@ interface WasteReason {
 interface Session {
   id: number;
   userId: string;
-  stationId: number;
+  stationId: number | null;
   checkInTime: string;
   totalProduced: number;
   totalWaste: number;
@@ -125,28 +125,14 @@ interface ProductionRun {
   quantityWaste: number;
 }
 
-interface TodayPlan {
-  id: number;
-  productId: number;
-  stationId: number | null;
-  plannedDate: string;
-  targetQuantity: number;
-  actualQuantity: number | null;
-  status: string | null;
-  notes: string | null;
-  unit: string | null;
-  priority: string | null;
-  productName: string | null;
-  stationName: string | null;
+interface TodayStats {
+  totalProduced: number;
+  totalWaste: number;
+  totalShiftMinutes: number;
+  totalBreakMinutes: number;
+  breakCount: number;
+  shiftCount: number;
 }
-
-const BREAK_OPTIONS = [
-  { value: 'mola' as BreakReason, label: 'Mola', icon: Coffee, description: 'Kısa ara (yemek, dinlenme)', color: 'bg-blue-600' },
-  { value: 'yardim' as BreakReason, label: 'Başka İstasyonda Yardım', icon: HandHelping, description: 'Farklı istasyonda destek', color: 'bg-purple-600' },
-  { value: 'ozel_ihtiyac' as BreakReason, label: 'Özel İhtiyaç', icon: CircleUser, description: 'WC, kişisel ihtiyaç', color: 'bg-orange-500' },
-  { value: 'gorev_bitis' as BreakReason, label: 'Görev Sonlandırma', icon: CheckCircle2, description: 'Bu istasyondaki işi bitir', color: 'bg-green-600' },
-  { value: 'vardiya_kapat' as BreakReason, label: 'Vardiya Kapat', icon: CalendarOff, description: 'Günün vardiyasını sonlandır', color: 'bg-red-600' },
-];
 
 const FABRIKA_ALLOWED_ROLES = ['fabrika_operator', 'fabrika_personel', 'fabrika_sorumlu', 'admin'];
 
@@ -160,9 +146,10 @@ export default function FactoryKiosk() {
     if (!FABRIKA_ALLOWED_ROLES.includes(user.role)) {
       setLocation('/');
     } else if (step === 'device-password') {
-      setStep('select-user');
+      setStep('enter-credentials');
     }
   }, [user, setLocation]);
+
   const [step, setStep] = useState<KioskStep>('device-password');
   const [deviceUsername, setDeviceUsername] = useState('');
   const [devicePassword, setDevicePassword] = useState('');
@@ -181,11 +168,8 @@ export default function FactoryKiosk() {
   const [wasteNotes, setWasteNotes] = useState('');
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
-  const [targetStationId, setTargetStationId] = useState<number | null>(null);
-  const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(10);
+  const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(6);
   const [productionPhotoUrl, setProductionPhotoUrl] = useState<string | null>(null);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [faultType, setFaultType] = useState<'machine' | 'product' | null>(null);
   const [faultDescription, setFaultDescription] = useState('');
   const [faultStationId, setFaultStationId] = useState<number | null>(null);
@@ -201,83 +185,64 @@ export default function FactoryKiosk() {
   const [breakStartTime, setBreakStartTime] = useState<Date | null>(null);
   const [breakElapsed, setBreakElapsed] = useState(0);
   const [currentBreakLogId, setCurrentBreakLogId] = useState<number | null>(null);
+  const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
 
-  const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
-    queryKey: ['/api/factory/staff'],
-    queryFn: async () => { const res = await kioskFetch('/api/factory/staff'); return res.json(); },
-    enabled: step === 'select-user' || step === 'select-station' || step === 'working',
-  });
+  async function kioskFetchJson<T>(url: string, fallback: T): Promise<T> {
+    const res = await kioskFetch(url);
+    if (!res.ok) return fallback;
+    return res.json();
+  }
 
   const { data: stations = [], isLoading: loadingStations } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
-    queryFn: async () => { const res = await kioskFetch('/api/factory/stations'); return res.json(); },
+    queryFn: () => kioskFetchJson<Station[]>('/api/factory/stations', []),
   });
 
   const { data: wasteReasons = [] } = useQuery<WasteReason[]>({
     queryKey: ['/api/factory/waste-reasons'],
-    queryFn: async () => { const res = await kioskFetch('/api/factory/waste-reasons'); return res.json(); },
-  });
-
-  const { data: activeWorkers = [] } = useQuery<any[]>({
-    queryKey: ['/api/factory/active-workers'],
-    queryFn: async () => { const res = await kioskFetch('/api/factory/active-workers'); return res.json(); },
-    refetchInterval: 5000,
+    queryFn: () => kioskFetchJson<WasteReason[]>('/api/factory/waste-reasons', []),
   });
 
   const stationCategory = currentStationInfo?.category || null;
   const { data: factoryProducts = [] } = useQuery<FactoryProduct[]>({
     queryKey: ['/api/factory/products', stationCategory],
-    queryFn: async () => {
+    queryFn: () => {
       const url = stationCategory 
         ? `/api/factory/products?category=${encodeURIComponent(stationCategory)}`
         : '/api/factory/products';
-      const res = await kioskFetch(url);
-      return res.json();
+      return kioskFetchJson<FactoryProduct[]>(url, []);
     },
     enabled: step === 'production-entry' || step === 'working',
   });
 
+  const { data: todayStats } = useQuery<TodayStats>({
+    queryKey: ['/api/factory/kiosk/worker-today-stats', selectedUser?.id],
+    queryFn: () => kioskFetchJson<TodayStats>(`/api/factory/kiosk/worker-today-stats?userId=${selectedUser!.id}`, { totalProduced: 0, totalWaste: 0, totalShiftMinutes: 0, totalBreakMinutes: 0, breakCount: 0, shiftCount: 0 }),
+    enabled: !!selectedUser && (step === 'worker-home' || step === 'end-shift-summary'),
+    refetchInterval: 30000,
+  });
+
   const { data: collaborativeScores } = useQuery<any>({
     queryKey: ['/api/factory/collaborative-scores', currentStationInfo?.id],
-    queryFn: async () => {
+    queryFn: () => {
       if (!currentStationInfo?.id) return null;
-      const res = await kioskFetch(`/api/factory/collaborative-scores/${currentStationInfo.id}`);
-      return res.json();
+      return kioskFetchJson<any>(`/api/factory/collaborative-scores/${currentStationInfo.id}`, null);
     },
     enabled: !!currentStationInfo?.id && (step === 'working' || step === 'end-shift-summary'),
     refetchInterval: 30000,
   });
 
-  const { data: allTodayPlans = [] } = useQuery<TodayPlan[]>({
-    queryKey: ['/api/factory/kiosk/today-plans', 'all'],
-    queryFn: async () => {
-      const res = await kioskFetch('/api/factory/kiosk/today-plans');
-      return res.json();
-    },
-    enabled: step === 'enter-credentials' || step === 'select-user' || step === 'enter-pin' || step === 'select-station',
-    refetchInterval: 60000,
-  });
-
-  const { data: todayPlans = [], isFetched: todayPlansFetched } = useQuery<TodayPlan[]>({
+  const { data: todayPlans = [], isFetched: todayPlansFetched } = useQuery<any[]>({
     queryKey: ['/api/factory/kiosk/today-plans', currentStationInfo?.id],
-    queryFn: async () => {
+    queryFn: () => {
       const url = currentStationInfo?.id
         ? `/api/factory/kiosk/today-plans?stationId=${currentStationInfo.id}`
         : '/api/factory/kiosk/today-plans';
-      const res = await kioskFetch(url);
-      return res.json();
+      return kioskFetchJson<any[]>(url, []);
     },
     enabled: !!currentStationInfo?.id && step === 'working',
     refetchInterval: 60000,
   });
-
-  const activeWorkerMap = useMemo(() => {
-    const map: Record<string, { stationName: string; stationId: number }> = {};
-    activeWorkers.forEach((w: any) => {
-      map[w.userId] = { stationName: w.stationName, stationId: w.stationId };
-    });
-    return map;
-  }, [activeWorkers]);
 
   const deviceAuthMutation = useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
@@ -285,7 +250,7 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: () => {
-      setStep('select-user');
+      setStep('enter-credentials');
       setDevicePassword('');
       setUsernameInput('');
       setPinInput('');
@@ -296,30 +261,35 @@ export default function FactoryKiosk() {
     },
   });
 
-  const loginMutation = useMutation({
-    mutationFn: async (data: { userId: string; pin: string }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/login', data);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (data.kioskToken) {
-        localStorage.setItem("factory-kiosk-token", data.kioskToken);
+  const autoStartShift = async (userData: StaffMember) => {
+    try {
+      const res = await kioskFetch('/api/factory/kiosk/start-shift', 'POST', { userId: userData.id });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Vardiya başlatılamadı');
       }
-      setSelectedUser({ id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role });
-      if (data.activeSession) {
-        setCurrentSession(data.activeSession);
-        fetchSessionDetails(data.user.id);
-        setStep('working');
+      const data = await res.json();
+      setCurrentSession(data.session);
+      setCurrentProductionRun(data.productionRun || null);
+      setCurrentStationInfo(data.station || null);
+      if (data.session.phase) {
+        setCurrentPhase(data.session.phase as KioskPhase);
+      }
+      if (data.station) {
+        const phaseStart = data.session.cleanStartedAt || data.session.prodStartedAt || data.session.prepStartedAt || data.session.checkInTime;
+        if (phaseStart) setPhaseStartTime(new Date(phaseStart));
+      }
+      setStep('worker-home');
+      if (data.resumed) {
+        toast({ title: "Aktif vardiya bulundu", description: "Vardiyaya devam ediyorsunuz" });
       } else {
-        setStep('select-station');
+        toast({ title: "Vardiya başladı", description: `Hoş geldin ${userData.firstName}` });
       }
-      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
-    },
-    onError: (error: any) => {
-      toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
-      setPinInput('');
-    },
-  });
+    } catch (error: any) {
+      toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
+      setStep('enter-credentials');
+    }
+  };
 
   const loginByUsernameMutation = useMutation({
     mutationFn: async (data: { username: string; pin: string }) => {
@@ -330,15 +300,9 @@ export default function FactoryKiosk() {
       if (data.kioskToken) {
         localStorage.setItem("factory-kiosk-token", data.kioskToken);
       }
-      setSelectedUser({ id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role });
-      if (data.activeSession) {
-        setCurrentSession(data.activeSession);
-        fetchSessionDetails(data.user.id);
-        setStep('working');
-      } else {
-        setStep('select-station');
-      }
-      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
+      const userData: StaffMember = { id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role };
+      setSelectedUser(userData);
+      autoStartShift(userData);
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
@@ -346,10 +310,10 @@ export default function FactoryKiosk() {
     },
   });
 
-  const startShiftMutation = useMutation({
-    mutationFn: async (data: { userId: string; stationId: number }) => {
-      const res = await kioskFetch('/api/factory/kiosk/start-shift', 'POST', data);
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Vardiya başlatılamadı'); }
+  const assignStationMutation = useMutation({
+    mutationFn: async (data: { sessionId: number; stationId: number }) => {
+      const res = await kioskFetch('/api/factory/kiosk/assign-station', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'İstasyon atanamadı'); }
       return res.json();
     },
     onSuccess: (data) => {
@@ -360,10 +324,10 @@ export default function FactoryKiosk() {
       setPhaseStartTime(new Date());
       setPhaseDurations({ hazirlik: 0, uretim: 0, temizlik: 0 });
       setStep('working');
-      toast({ title: "Vardiya başladı", description: `${data.station.name} istasyonunda çalışmaya başladın` });
+      toast({ title: "İstasyon atandı", description: `${data.station.name} istasyonunda çalışmaya başladın` });
     },
     onError: (error: any) => {
-      toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
+      toast({ title: "İstasyon atanamadı", description: error.message, variant: "destructive" });
     },
   });
 
@@ -385,19 +349,11 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: (data, variables) => {
-      if (variables.breakReason === 'mola' || variables.breakReason === 'ozel_ihtiyac') {
-        toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
-        setCurrentBreakLogId(data.breakLogId || null);
-        setBreakStartTime(new Date());
-        setBreakElapsed(0);
-        setStep('on-break');
-      } else if (variables.breakReason === 'gorev_bitis') {
-        toast({ title: "Görev tamamlandı", description: "Üretim kaydedildi" });
-        startAutoLogout();
-      } else {
-        toast({ title: "İşlem kaydedildi" });
-        startAutoLogout();
-      }
+      toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
+      setCurrentBreakLogId(data.breakLogId || null);
+      setBreakStartTime(new Date());
+      setBreakElapsed(0);
+      setStep('on-break');
     },
     onError: (error: any) => {
       toast({ title: "İşlem başarısız", description: error.message, variant: "destructive" });
@@ -415,6 +371,10 @@ export default function FactoryKiosk() {
       wasteReasonId?: number;
       wasteNotes?: string;
       photoUrl?: string;
+      productId?: number;
+      productName?: string;
+      wasteDoughKg?: number;
+      wasteProductCount?: number;
     }) => {
       const res = await kioskFetch('/api/factory/kiosk/end-shift', 'POST', data);
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Vardiya sonlandırılamadı'); }
@@ -423,7 +383,6 @@ export default function FactoryKiosk() {
     onSuccess: (data) => {
       setShiftSummary(data.summary);
       setStep('end-shift-summary');
-      startAutoLogout();
       toast({ title: "Vardiya tamamlandı" });
     },
     onError: (error: any) => {
@@ -450,7 +409,7 @@ export default function FactoryKiosk() {
           ? `${data.notifiedPerson} bilgilendirildi` 
           : "Yetkili kişiye bildirim gönderildi" 
       });
-      startAutoLogout();
+      setStep('worker-home');
     },
     onError: (error: any) => {
       toast({ title: "Arıza bildirilemedi", description: error.message, variant: "destructive" });
@@ -464,46 +423,21 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "Mola bitti", description: "Çalışmaya devam!" });
+      toast({ title: "Mola bitti", description: "İyi çalışmalar!" });
       setBreakStartTime(null);
       setBreakElapsed(0);
       setCurrentBreakLogId(null);
-      setStep('working');
+      setStep('worker-home');
     },
     onError: (error: any) => {
-      toast({ title: "Hata", description: error.message || "Mola sonlandırılamadı, tekrar deneyin", variant: "destructive" });
+      toast({ title: "Hata", description: error.message || "Mola sonlandırılamadı", variant: "destructive" });
     },
   });
 
-  const fetchSessionDetails = async (userId: string) => {
-    try {
-      const res = await kioskFetch(`/api/factory/kiosk/session/${userId}`);
-      const data = await res.json();
-      if (data.session) {
-        setCurrentSession(data.session);
-        setCurrentProductionRun(data.productionRun);
-        setCurrentStationInfo(data.station);
-        if (data.session.phase) {
-          setCurrentPhase(data.session.phase as KioskPhase);
-        }
-        const phaseStart = data.session.cleanStartedAt || data.session.prodStartedAt || data.session.prepStartedAt || data.session.checkInTime;
-        if (phaseStart) setPhaseStartTime(new Date(phaseStart));
-      }
-    } catch (error) {
-      console.error("Error fetching session:", error);
-    }
-  };
-
-  const startAutoLogout = () => {
-    setStep('auto-logout');
-    setAutoLogoutCountdown(3);
-  };
-
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (step === 'auto-logout' || step === 'end-shift-summary') {
-      const countdown = step === 'end-shift-summary' ? 6 : autoLogoutCountdown;
-      if (step === 'end-shift-summary') setAutoLogoutCountdown(6);
+    if (step === 'end-shift-summary') {
+      setAutoLogoutCountdown(6);
       interval = setInterval(() => {
         setAutoLogoutCountdown((prev) => {
           if (prev <= 1) {
@@ -515,7 +449,7 @@ export default function FactoryKiosk() {
         });
       }, 1000);
     }
-  return () => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [step]);
 
   useEffect(() => {
@@ -533,8 +467,7 @@ export default function FactoryKiosk() {
     if (step === 'working' && currentProductionRun) {
       interval = setInterval(() => {
         const start = new Date(currentProductionRun.startTime).getTime();
-        const now = Date.now();
-        setElapsedTime(Math.floor((now - start) / 1000));
+        setElapsedTime(Math.floor((Date.now() - start) / 1000));
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -547,27 +480,14 @@ export default function FactoryKiosk() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const handleUserSelect = (userId: string) => {
-    const user = staffList.find(s => s.id === userId);
-    if (user) {
-      setSelectedUser(user);
-      setStep('enter-pin');
-    }
-  };
-
-  const handlePinSubmit = () => {
-    if (!selectedUser || !pinInput) return;
-    loginMutation.mutate({ userId: selectedUser.id, pin: pinInput });
-  };
-
   const handleCredentialsSubmit = () => {
     if (!usernameInput || !pinInput) return;
     loginByUsernameMutation.mutate({ username: usernameInput.trim(), pin: pinInput });
   };
 
-  const handleStartShift = () => {
-    if (!selectedUser || !selectedStation) return;
-    startShiftMutation.mutate({ userId: selectedUser.id, stationId: selectedStation });
+  const handleAssignStation = () => {
+    if (!currentSession || !selectedStation) return;
+    assignStationMutation.mutate({ sessionId: currentSession.id, stationId: selectedStation });
   };
 
   const handleFullscreen = () => {
@@ -593,19 +513,14 @@ export default function FactoryKiosk() {
   const handlePhaseTransition = async (nextPhase: KioskPhase) => {
     const now = new Date();
     const elapsed = Math.floor((now.getTime() - phaseStartTime.getTime()) / 60000);
-    
     setPhaseDurations(prev => ({ ...prev, [currentPhase]: elapsed }));
-    
     if (currentSession) {
       try {
-        await kioskFetch(`/api/factory/kiosk/session/${currentSession.id}/phase`, 'PATCH', {
-          phase: nextPhase
-        });
+        await kioskFetch(`/api/factory/kiosk/session/${currentSession.id}/phase`, 'PATCH', { phase: nextPhase });
       } catch (e) {
         console.warn("Phase transition API failed:", e);
       }
     }
-    
     setCurrentPhase(nextPhase);
     setPhaseStartTime(now);
   };
@@ -617,8 +532,6 @@ export default function FactoryKiosk() {
     setWasteUnit('adet');
     setSelectedWasteReason(null);
     setWasteNotes('');
-    setTargetStationId(null);
-    setSelectedBreakReason(null);
     setProductionPhotoUrl(null);
     setSelectedProductId(null);
     setProductError('');
@@ -627,23 +540,8 @@ export default function FactoryKiosk() {
     setStep('stop-options');
   };
 
-  const handleBreakReasonSelect = (reason: BreakReason) => {
-    setSelectedBreakReason(reason);
-    if (reason === 'gorev_bitis' || reason === 'vardiya_kapat') {
-      setStep('production-entry');
-    } else if (reason === 'yardim') {
-      setStep('production-entry');
-    } else {
-      if (!currentSession) return;
-      logBreakMutation.mutate({
-        sessionId: currentSession.id,
-        breakReason: reason,
-      });
-    }
-  };
-
   const handleProductionSubmit = () => {
-    if (!currentSession || !selectedBreakReason) return;
+    if (!currentSession) return;
 
     if ((parseFloat(quantityProduced) || 0) > 0 && !selectedProductId) {
       setProductError("Lütfen bir ürün seçin");
@@ -653,44 +551,25 @@ export default function FactoryKiosk() {
 
     const selectedProduct = factoryProducts.find(p => p.id === selectedProductId);
 
-    if (selectedBreakReason === 'vardiya_kapat') {
-      endShiftMutation.mutate({
-        sessionId: currentSession.id,
-        productionRunId: currentProductionRun?.id,
-        quantityProduced: parseFloat(quantityProduced) || 0,
-        producedUnit,
-        quantityWaste: parseFloat(quantityWaste) || 0,
-        wasteUnit,
-        wasteReasonId: selectedWasteReason || undefined,
-        wasteNotes: wasteNotes || undefined,
-        photoUrl: productionPhotoUrl || undefined,
-        productId: selectedProductId || undefined,
-        productName: selectedProduct?.name || undefined,
-        wasteDoughKg: parseFloat(wasteDoughKg) || undefined,
-        wasteProductCount: parseInt(wasteProductCount) || undefined,
-      });
-    } else {
-      logBreakMutation.mutate({
-        sessionId: currentSession.id,
-        breakReason: selectedBreakReason,
-        targetStationId: targetStationId || undefined,
-        producedQuantity: parseFloat(quantityProduced) || 0,
-        producedUnit,
-        wasteQuantity: parseFloat(quantityWaste) || 0,
-        wasteUnit,
-        wasteReasonId: selectedWasteReason || undefined,
-        wasteNotes: wasteNotes || undefined,
-        photoUrl: productionPhotoUrl || undefined,
-        productId: selectedProductId || undefined,
-        productName: selectedProduct?.name || undefined,
-        wasteDoughKg: parseFloat(wasteDoughKg) || undefined,
-        wasteProductCount: parseInt(wasteProductCount) || undefined,
-      });
-    }
+    endShiftMutation.mutate({
+      sessionId: currentSession.id,
+      productionRunId: currentProductionRun?.id,
+      quantityProduced: parseFloat(quantityProduced) || 0,
+      producedUnit,
+      quantityWaste: parseFloat(quantityWaste) || 0,
+      wasteUnit,
+      wasteReasonId: selectedWasteReason || undefined,
+      wasteNotes: wasteNotes || undefined,
+      photoUrl: productionPhotoUrl || undefined,
+      productId: selectedProductId || undefined,
+      productName: selectedProduct?.name || undefined,
+      wasteDoughKg: parseFloat(wasteDoughKg) || undefined,
+      wasteProductCount: parseInt(wasteProductCount) || undefined,
+    });
   };
 
   const resetWorker = () => {
-    setStep(user && FABRIKA_ALLOWED_ROLES.includes(user.role) ? 'select-user' : 'enter-credentials');
+    setStep('enter-credentials');
     setSelectedUser(null);
     setPinInput('');
     setUsernameInput('');
@@ -707,10 +586,8 @@ export default function FactoryKiosk() {
     setShiftSummary(null);
     setElapsedTime(0);
     setSelectedBreakReason(null);
-    setTargetStationId(null);
-    setAutoLogoutCountdown(10);
+    setAutoLogoutCountdown(6);
     setProductionPhotoUrl(null);
-    setIsUploadingPhoto(false);
     setFaultType(null);
     setFaultDescription('');
     setFaultStationId(null);
@@ -738,42 +615,18 @@ export default function FactoryKiosk() {
 
   const resetKiosk = () => {
     localStorage.removeItem("factory-kiosk-token");
-    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'select-user' : 'device-password');
+    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'enter-credentials' : 'device-password');
     setDeviceUsername('');
     setDevicePassword('');
-    setSelectedUser(null);
-    setPinInput('');
-    setSelectedStation(null);
-    setCurrentSession(null);
-    setCurrentProductionRun(null);
-    setCurrentStationInfo(null);
-    setQuantityProduced('');
-    setProducedUnit('adet');
-    setQuantityWaste('');
-    setWasteUnit('adet');
-    setSelectedWasteReason(null);
-    setWasteNotes('');
-    setShiftSummary(null);
-    setElapsedTime(0);
-    setSelectedBreakReason(null);
-    setTargetStationId(null);
-    setAutoLogoutCountdown(10);
-    setProductionPhotoUrl(null);
-    setIsUploadingPhoto(false);
-    setFaultType(null);
-    setFaultDescription('');
-    setFaultStationId(null);
-    setCurrentPhase('hazirlik');
-    setPhaseStartTime(new Date());
-    setPhaseDurations({ hazirlik: 0, uretim: 0, temizlik: 0 });
-    setSelectedProductId(null);
-    setProductError('');
-    setWasteDoughKg('');
-    setWasteProductCount('');
-    setBreakStartTime(null);
-    setBreakElapsed(0);
-    setCurrentBreakLogId(null);
+    resetWorker();
   };
+
+  const shiftHours = currentSession 
+    ? Math.floor((Date.now() - new Date(currentSession.checkInTime).getTime()) / 3600000)
+    : 0;
+  const shiftMinutes = currentSession 
+    ? Math.floor(((Date.now() - new Date(currentSession.checkInTime).getTime()) % 3600000) / 60000)
+    : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
@@ -801,15 +654,18 @@ export default function FactoryKiosk() {
 
       <Card className="w-full max-w-2xl bg-slate-800/90 border-slate-700 text-white shadow-2xl">
         <CardHeader className="text-center border-b border-slate-700 pb-6 relative">
-          {selectedUser && !['device-password', 'enter-credentials'].includes(step) && (
+          {selectedUser && !['device-password', 'enter-credentials'].includes(step) && step !== 'end-shift-summary' && (
             <Button
               variant="outline"
               className="absolute left-3 top-3 border-slate-600 text-slate-300 px-4 py-2 text-base"
               onClick={() => {
                 if (step === 'on-break' && currentBreakLogId) {
                   kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
+                  setBreakStartTime(null);
+                  setBreakElapsed(0);
+                  setCurrentBreakLogId(null);
                 }
-                resetWorker();
+                setStep('worker-home');
               }}
               data-testid="button-kiosk-home"
             >
@@ -845,7 +701,6 @@ export default function FactoryKiosk() {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-400">Parola (4 haneli)</label>
                   <div className="flex justify-center gap-2">
@@ -858,12 +713,11 @@ export default function FactoryKiosk() {
                             : 'border-slate-600'
                         }`}
                       >
-                        {devicePassword[i] ? '•' : ''}
+                        {devicePassword[i] ? '\u2022' : ''}
                       </div>
                     ))}
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-2">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'del'].map((num, idx) => (
                     <Button
@@ -885,132 +739,15 @@ export default function FactoryKiosk() {
                         }
                       }}
                     >
-                      {num === 'del' ? '⌫' : num}
+                      {num === 'del' ? '\u232B' : num}
                     </Button>
                   ))}
                 </div>
-
                 {!deviceUsername.trim() && (
                   <p className="text-sm text-slate-400 text-center">
                     Lütfen önce kullanıcı adını girin
                   </p>
                 )}
-              </div>
-            </div>
-          )}
-
-          {step === 'select-user' && (
-            <div className="space-y-6">
-              <div className="text-center mb-4">
-                <Users className="h-12 w-12 mx-auto mb-2 text-amber-400 opacity-80" />
-                <h3 className="text-xl font-semibold text-slate-200">Personel Seçin</h3>
-                <p className="text-sm text-slate-400 mt-1">İsminize tıklayarak giriş yapın</p>
-              </div>
-
-              {loadingStaff ? (
-                <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
-              ) : isError ? (
-                <div className="text-center py-8">
-                  <p className="text-red-400 mb-2">Personel listesi yüklenemedi</p>
-                  <Button variant="outline" onClick={() => refetch()} className="border-slate-600" data-testid="button-retry-staff">
-                    <RefreshCw className="h-4 w-4 mr-2" /> Tekrar Dene
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {staffList.map((staff) => {
-                    const initials = `${staff.firstName?.[0] || ''}${staff.lastName?.[0] || ''}`.toUpperCase();
-                    const workerInfo = activeWorkerMap[staff.id];
-                    return (
-                      <button
-                        key={staff.id}
-                        onClick={() => handleUserSelect(staff.id)}
-                        className="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-600 bg-slate-700/50 hover:bg-slate-600/50 transition-colors"
-                        data-testid={`button-select-staff-${staff.id}`}
-                      >
-                        <Avatar className="h-14 w-14 border-2 border-amber-500">
-                          {staff.avatarUrl ? (
-                            <AvatarImage src={staff.avatarUrl} alt={`${staff.firstName} ${staff.lastName}`} />
-                          ) : null}
-                          <AvatarFallback className="bg-amber-600 text-white text-lg font-bold">{initials}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium text-slate-200 text-center">
-                          {staff.firstName} {staff.lastName}
-                        </span>
-                        {workerInfo && (
-                          <Badge variant="secondary" className="text-xs">
-                            {workerInfo.stationName}
-                          </Badge>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 'enter-pin' && selectedUser && (
-            <div className="space-y-6">
-              <div className="text-center mb-4">
-                <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-amber-500">
-                  {selectedUser.avatarUrl ? (
-                    <AvatarImage src={selectedUser.avatarUrl} alt={`${selectedUser.firstName} ${selectedUser.lastName}`} />
-                  ) : null}
-                  <AvatarFallback className="bg-amber-600 text-white text-2xl font-bold">
-                    {`${selectedUser.firstName?.[0] || ''}${selectedUser.lastName?.[0] || ''}`.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <h3 className="text-xl font-semibold text-slate-200">{selectedUser.firstName} {selectedUser.lastName}</h3>
-                <p className="text-sm text-slate-400 mt-1">PIN kodunuzu girin</p>
-              </div>
-
-              <div className="max-w-xs mx-auto space-y-4">
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input
-                    type="password"
-                    placeholder="PIN"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value)}
-                    className="pl-10 text-center text-2xl tracking-widest bg-slate-700 border-slate-600 h-14"
-                    maxLength={4}
-                    autoFocus
-                    data-testid="input-pin-entry"
-                    onKeyDown={(e) => e.key === 'Enter' && pinInput.length >= 4 && handlePinSubmit()}
-                  />
-                </div>
-
-                <div className="flex gap-2 justify-center">
-                  {[0,1,2,3].map(i => (
-                    <div key={i} className="w-10 h-10 border-2 border-slate-600 rounded-lg flex items-center justify-center text-xl text-amber-400">
-                      {pinInput[i] ? "\u25CF" : ""}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-slate-600"
-                    onClick={() => {
-                      setStep('select-user');
-                      setSelectedUser(null);
-                      setPinInput('');
-                    }}
-                    data-testid="button-back-to-users"
-                  >
-                    Geri
-                  </Button>
-                  <Button
-                    className="flex-1 bg-amber-600 hover:bg-amber-700"
-                    onClick={handlePinSubmit}
-                    disabled={pinInput.length < 4 || loginMutation.isPending}
-                    data-testid="button-submit-pin"
-                  >
-                    {loginMutation.isPending ? "Giriş..." : "Giriş Yap"}
-                  </Button>
-                </div>
               </div>
             </div>
           )}
@@ -1043,7 +780,6 @@ export default function FactoryKiosk() {
                     }}
                   />
                 </div>
-
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input
@@ -1057,7 +793,6 @@ export default function FactoryKiosk() {
                     onKeyDown={(e) => e.key === 'Enter' && usernameInput && pinInput.length >= 4 && handleCredentialsSubmit()}
                   />
                 </div>
-
                 <div className="flex gap-2 justify-center">
                   {[0,1,2,3].map(i => (
                     <div key={i} className="w-10 h-10 border-2 border-slate-600 rounded-lg flex items-center justify-center text-xl text-amber-400">
@@ -1065,7 +800,6 @@ export default function FactoryKiosk() {
                     </div>
                   ))}
                 </div>
-                
                 <div className="flex gap-3">
                   {!(user && FABRIKA_ALLOWED_ROLES.includes(user.role)) && (
                     <Button
@@ -1091,37 +825,140 @@ export default function FactoryKiosk() {
                   </Button>
                 </div>
               </div>
-
-              {allTodayPlans.length > 0 && (
-                <div className="mt-6 bg-slate-700/30 rounded-lg p-4 space-y-2" data-testid="credentials-plan-section">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Package className="h-4 w-4 text-amber-400" />
-                    <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
-                  </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {allTodayPlans.map((plan) => (
-                      <div key={plan.id} className="flex items-center justify-between bg-slate-700/50 rounded-md px-3 py-2" data-testid={`overview-plan-${plan.id}`}>
-                        <div>
-                          <p className="text-sm font-medium text-slate-200">{plan.productName || 'Ürün'}</p>
-                          <p className="text-xs text-slate-400">{plan.stationName || 'İstasyon belirtilmemiş'}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-amber-400">
-                            {plan.actualQuantity || 0} / {plan.targetQuantity} {plan.unit || 'adet'}
-                          </p>
-                          <Badge variant="secondary" className="text-xs">
-                            {plan.status === 'completed' ? 'Tamamlandı' : plan.status === 'in_progress' ? 'Devam Ediyor' : 'Planlandı'}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {step === 'select-station' && selectedUser && (
+          {step === 'worker-home' && selectedUser && currentSession && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16 border-2 border-amber-500">
+                  {selectedUser.avatarUrl ? (
+                    <AvatarImage src={selectedUser.avatarUrl} alt={`${selectedUser.firstName} ${selectedUser.lastName}`} />
+                  ) : null}
+                  <AvatarFallback className="bg-amber-600 text-white text-xl font-bold">
+                    {`${selectedUser.firstName?.[0] || ''}${selectedUser.lastName?.[0] || ''}`.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-slate-100" data-testid="text-worker-name">
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className="bg-green-600">Vardiyada</Badge>
+                    <span className="text-sm text-slate-400">
+                      {shiftHours}s {shiftMinutes}dk
+                    </span>
+                  </div>
+                  {currentStationInfo && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <MapPin className="h-3 w-3 text-amber-400" />
+                      <span className="text-sm text-amber-400">{currentStationInfo.name}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {todayStats && (
+                <div className="grid grid-cols-3 gap-3" data-testid="worker-today-stats">
+                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                    <Package className="h-5 w-5 text-green-400 mx-auto mb-1" />
+                    <p className="text-xl font-bold text-slate-100" data-testid="text-stat-produced">{todayStats.totalProduced}</p>
+                    <p className="text-xs text-slate-400">Üretim</p>
+                  </div>
+                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                    <Clock className="h-5 w-5 text-blue-400 mx-auto mb-1" />
+                    <p className="text-xl font-bold text-slate-100" data-testid="text-stat-shift">
+                      {Math.floor((todayStats.totalShiftMinutes || 0) / 60)}s {(todayStats.totalShiftMinutes || 0) % 60}dk
+                    </p>
+                    <p className="text-xs text-slate-400">Vardiya</p>
+                  </div>
+                  <div className="bg-slate-700/50 rounded-lg p-3 text-center">
+                    <Coffee className="h-5 w-5 text-orange-400 mx-auto mb-1" />
+                    <p className="text-xl font-bold text-slate-100" data-testid="text-stat-break">{todayStats.totalBreakMinutes || 0}dk</p>
+                    <p className="text-xs text-slate-400">Mola</p>
+                  </div>
+                </div>
+              )}
+
+              <Separator className="bg-slate-700" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  className="h-24 text-lg flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    setSelectedStation(null);
+                    setStep('select-station');
+                  }}
+                  data-testid="button-goto-station"
+                >
+                  <MapPin className="h-8 w-8" />
+                  {currentStationInfo ? 'İstasyon Değiştir' : 'İstasyon Seç'}
+                </Button>
+
+                {currentStationInfo && (
+                  <Button
+                    className="h-24 text-lg flex flex-col items-center gap-2 bg-green-600 hover:bg-green-700"
+                    onClick={() => setStep('working')}
+                    data-testid="button-goto-working"
+                  >
+                    <Play className="h-8 w-8" />
+                    Üretime Devam
+                  </Button>
+                )}
+
+                <Button
+                  className="h-24 text-lg flex flex-col items-center gap-2 bg-orange-500 hover:bg-orange-600"
+                  onClick={() => {
+                    if (!currentSession) return;
+                    setSelectedBreakReason(null);
+                    setStep('stop-options');
+                  }}
+                  data-testid="button-goto-break"
+                >
+                  <Coffee className="h-8 w-8" />
+                  Molaya Cik
+                </Button>
+
+                <Button
+                  className="h-24 text-lg flex flex-col items-center gap-2 bg-yellow-600 hover:bg-yellow-700"
+                  onClick={() => {
+                    setFaultType(null);
+                    setFaultDescription('');
+                    setFaultStationId(currentStationInfo?.id || null);
+                    setStep('fault-report');
+                  }}
+                  data-testid="button-goto-fault"
+                >
+                  <AlertTriangle className="h-8 w-8" />
+                  Ariza Bildir
+                </Button>
+              </div>
+
+              <Button
+                className="w-full h-16 text-xl bg-red-600 hover:bg-red-700"
+                onClick={() => {
+                  setQuantityProduced('');
+                  setProducedUnit('adet');
+                  setQuantityWaste('');
+                  setWasteUnit('adet');
+                  setSelectedWasteReason(null);
+                  setWasteNotes('');
+                  setProductionPhotoUrl(null);
+                  setSelectedProductId(null);
+                  setProductError('');
+                  setWasteDoughKg('');
+                  setWasteProductCount('');
+                  setStep('production-entry');
+                }}
+                data-testid="button-end-shift"
+              >
+                <LogOut className="h-6 w-6 mr-2" />
+                Vardiya Bitir
+              </Button>
+            </div>
+          )}
+
+          {step === 'select-station' && selectedUser && currentSession && (
             <div className="space-y-6">
               <div className="text-center mb-6">
                 <h3 className="text-xl font-semibold text-slate-200">İstasyon Seçin</h3>
@@ -1155,51 +992,24 @@ export default function FactoryKiosk() {
                   ))}
                 </div>
               )}
-              
-              {allTodayPlans.length > 0 && (
-                <div className="bg-slate-700/30 rounded-lg p-4 space-y-2" data-testid="select-station-plan-section">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Package className="h-4 w-4 text-amber-400" />
-                    <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
-                  </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {allTodayPlans.map((plan) => (
-                      <div key={plan.id} className="flex items-center justify-between bg-slate-700/50 rounded-md px-3 py-2" data-testid={`station-plan-${plan.id}`}>
-                        <div>
-                          <p className="text-sm font-medium text-slate-200">{plan.productName || 'Ürün'}</p>
-                          <p className="text-xs text-slate-400">{plan.stationName || 'İstasyon belirtilmemiş'}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-amber-400">
-                            {plan.actualQuantity || 0} / {plan.targetQuantity} {plan.unit || 'adet'}
-                          </p>
-                          <Badge variant="secondary" className="text-xs">
-                            {plan.status === 'completed' ? 'Tamamlandı' : plan.status === 'in_progress' ? 'Devam Ediyor' : 'Planlandı'}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"
                   className="flex-1 border-slate-600"
-                  onClick={resetWorker}
-                  data-testid="button-cancel"
+                  onClick={() => setStep('worker-home')}
+                  data-testid="button-cancel-station"
                 >
-                  İptal
+                  Geri
                 </Button>
                 <Button
                   className="flex-1 bg-green-600 hover:bg-green-700"
-                  onClick={handleStartShift}
-                  disabled={!selectedStation || startShiftMutation.isPending}
-                  data-testid="button-start-shift"
+                  onClick={handleAssignStation}
+                  disabled={!selectedStation || assignStationMutation.isPending}
+                  data-testid="button-assign-station"
                 >
                   <Play className="h-5 w-5 mr-2" />
-                  {startShiftMutation.isPending ? "Başlatılıyor..." : "Vardiyayı Başlat"}
+                  {assignStationMutation.isPending ? "Atanıyor..." : "Çalışmaya Başla"}
                 </Button>
               </div>
             </div>
@@ -1230,7 +1040,6 @@ export default function FactoryKiosk() {
 
               <Separator className="bg-slate-700" />
 
-              {/* 3-Phase Progress Bar */}
               <div className="flex items-center gap-1 w-full" data-testid="phase-progress">
                 {[
                   { key: 'hazirlik' as KioskPhase, label: 'Hazırlık', Icon: Wrench },
@@ -1273,16 +1082,12 @@ export default function FactoryKiosk() {
                     <Package className="h-4 w-4 text-amber-400" />
                     <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
                   </div>
-                  {todayPlans.map((plan) => (
+                  {todayPlans.map((plan: any) => (
                     <div key={plan.id} className="flex items-center justify-between bg-slate-700/50 rounded-md px-3 py-2" data-testid={`today-plan-${plan.id}`}>
                       <div>
                         <p className="text-sm font-medium text-slate-200">{plan.productName || 'Ürün'}</p>
-                        {plan.priority === 'urgent' && (
-                          <Badge className="bg-red-600 text-xs mt-1">Acil</Badge>
-                        )}
-                        {plan.priority === 'high' && (
-                          <Badge className="bg-orange-600 text-xs mt-1">Yüksek</Badge>
-                        )}
+                        {plan.priority === 'urgent' && <Badge className="bg-red-600 text-xs mt-1">Acil</Badge>}
+                        {plan.priority === 'high' && <Badge className="bg-orange-600 text-xs mt-1">Yüksek</Badge>}
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-amber-400" data-testid={`plan-target-${plan.id}`}>
@@ -1293,7 +1098,7 @@ export default function FactoryKiosk() {
                     </div>
                   ))}
                 </div>
-              ) : todayPlansFetched && currentStationInfo && (
+              ) : todayPlansFetched && (
                 <div className="bg-slate-700/30 rounded-lg p-3 text-center" data-testid="no-plan-message">
                   <p className="text-sm text-slate-400">Bugün için atanmış üretim planı yok</p>
                 </div>
@@ -1305,7 +1110,6 @@ export default function FactoryKiosk() {
                 </p>
               )}
 
-              {/* Phase transition buttons */}
               {currentPhase === 'hazirlik' && (
                 <Button 
                   className="w-full bg-blue-600 text-white text-lg h-14"
@@ -1382,54 +1186,83 @@ export default function FactoryKiosk() {
               <h3 className="text-xl font-semibold text-center text-slate-200">Ne yapmak istiyorsunuz?</h3>
               
               <div className="grid grid-cols-2 gap-4">
-                {BREAK_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <Button
-                      key={option.value}
-                      variant="outline"
-                      className={`h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 hover:border-amber-500 transition-all`}
-                      onClick={() => handleBreakReasonSelect(option.value)}
-                      disabled={logBreakMutation.isPending}
-                      data-testid={`break-option-${option.value}`}
-                    >
-                      <div className={`p-3 rounded-full ${option.color}`}>
-                        <Icon className="h-8 w-8 text-white" />
-                      </div>
-                      <span className="text-slate-200 font-semibold">{option.label}</span>
-                      <span className="text-slate-400 text-xs text-center">{option.description}</span>
-                    </Button>
-                  );
-                })}
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
+                  onClick={() => {
+                    if (!currentSession) return;
+                    logBreakMutation.mutate({ sessionId: currentSession.id, breakReason: 'mola' });
+                  }}
+                  disabled={logBreakMutation.isPending}
+                  data-testid="break-option-mola"
+                >
+                  <div className="p-3 rounded-full bg-blue-600">
+                    <Coffee className="h-8 w-8 text-white" />
+                  </div>
+                  <span className="text-slate-200 font-semibold">Mola</span>
+                  <span className="text-slate-400 text-xs text-center">Kısa ara (yemek, dinlenme)</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
+                  onClick={() => {
+                    if (!currentSession) return;
+                    logBreakMutation.mutate({ sessionId: currentSession.id, breakReason: 'ozel_ihtiyac' });
+                  }}
+                  disabled={logBreakMutation.isPending}
+                  data-testid="break-option-ozel_ihtiyac"
+                >
+                  <div className="p-3 rounded-full bg-orange-500">
+                    <CircleUser className="h-8 w-8 text-white" />
+                  </div>
+                  <span className="text-slate-200 font-semibold">Özel İhtiyaç</span>
+                  <span className="text-slate-400 text-xs text-center">WC, kişisel ihtiyaç</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
+                  onClick={() => {
+                    setSelectedStation(null);
+                    setStep('select-station');
+                  }}
+                  data-testid="break-option-station-change"
+                >
+                  <div className="p-3 rounded-full bg-purple-600">
+                    <Repeat className="h-8 w-8 text-white" />
+                  </div>
+                  <span className="text-slate-200 font-semibold">İstasyon Değiştir</span>
+                  <span className="text-slate-400 text-xs text-center">Farklı istasyona geç</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
+                  onClick={() => {
+                    setFaultType(null);
+                    setFaultDescription('');
+                    setFaultStationId(currentStationInfo?.id || null);
+                    setStep('fault-report');
+                  }}
+                  data-testid="button-fault-report"
+                >
+                  <div className="p-3 rounded-full bg-yellow-600">
+                    <AlertTriangle className="h-8 w-8 text-white" />
+                  </div>
+                  <span className="text-slate-200 font-semibold">Arıza Bildir</span>
+                  <span className="text-slate-400 text-xs text-center">Makina arızası veya ürün hatası</span>
+                </Button>
               </div>
 
               <Button
                 variant="outline"
-                className="w-full h-auto p-4 flex items-center gap-4 bg-yellow-900/30 border-yellow-700 transition-all"
-                onClick={() => {
-                  setFaultType(null);
-                  setFaultDescription('');
-                  setFaultStationId(currentStationInfo?.id || null);
-                  setStep('fault-report');
-                }}
-                data-testid="button-fault-report"
-              >
-                <div className="p-3 rounded-full bg-yellow-600">
-                  <AlertTriangle className="h-6 w-6 text-white" />
-                </div>
-                <div className="text-left">
-                  <span className="text-yellow-300 font-semibold block">Arıza Bildir</span>
-                  <span className="text-slate-400 text-xs">Makina arızası veya ürün hatası bildirin</span>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full border-slate-600"
-                onClick={() => setStep('working')}
+                className="w-full border-slate-600 h-14 text-lg"
+                onClick={() => setStep(currentStationInfo ? 'working' : 'worker-home')}
                 data-testid="button-cancel-stop"
               >
-                İptal - Çalışmaya Devam Et
+                <ArrowRight className="h-5 w-5 mr-2" />
+                Üretime Dön
               </Button>
             </div>
           )}
@@ -1489,14 +1322,15 @@ export default function FactoryKiosk() {
                       reportFaultMutation.mutate({
                         faultType,
                         description: faultDescription,
-                        stationId: faultStationId || currentStationInfo?.id,
+                        stationId: faultStationId,
                         sessionId: currentSession?.id,
                         userId: selectedUser?.id,
                       });
                     }}
-                    disabled={reportFaultMutation.isPending || !faultDescription.trim()}
+                    disabled={!faultDescription.trim() || reportFaultMutation.isPending}
                     data-testid="button-submit-fault"
                   >
+                    <AlertTriangle className="h-5 w-5 mr-2" />
                     {reportFaultMutation.isPending ? "Bildiriliyor..." : "Yetkili Kişiye Bildir"}
                   </Button>
                 </div>
@@ -1505,7 +1339,7 @@ export default function FactoryKiosk() {
               <Button
                 variant="outline"
                 className="w-full border-slate-600"
-                onClick={() => setStep('stop-options')}
+                onClick={() => setStep(currentStationInfo ? 'stop-options' : 'worker-home')}
                 data-testid="button-back-fault"
               >
                 Geri
@@ -1515,17 +1349,10 @@ export default function FactoryKiosk() {
 
           {step === 'production-entry' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-center text-slate-200">
-                {selectedBreakReason === 'gorev_bitis' ? 'Görev Sonlandırma' : selectedBreakReason === 'vardiya_kapat' ? 'Vardiya Sonlandırma' : 'Yardım Öncesi Kayıt'}
-              </h3>
-              <p className="text-center text-slate-400">
-                {selectedBreakReason === 'gorev_bitis' || selectedBreakReason === 'vardiya_kapat'
-                  ? 'Üretim ve zaiyat bilgilerini girin' 
-                  : 'Mevcut üretimi kaydedin'}
-              </p>
+              <h3 className="text-xl font-semibold text-center text-slate-200">Vardiya Sonlandırma</h3>
+              <p className="text-center text-slate-400">Üretim ve zaiyat bilgilerini girin</p>
 
               <div className="space-y-4">
-                {/* Product selection - required */}
                 <div className="space-y-2">
                   <Label className="text-slate-300 flex items-center gap-2">
                     <Package className="h-4 w-4 text-amber-400" />
@@ -1583,7 +1410,6 @@ export default function FactoryKiosk() {
 
                 <Separator className="bg-slate-700" />
 
-                {/* Dual waste for dough stations, standard for others */}
                 {currentStationInfo?.code === 'donut_dough' || currentStationInfo?.name?.toLowerCase().includes('hamur') ? (
                   <div className="space-y-3">
                     <Label className="text-slate-300 flex items-center gap-2">
@@ -1602,7 +1428,6 @@ export default function FactoryKiosk() {
                         step="0.01"
                         data-testid="input-waste-dough-kg"
                       />
-                      <p className="text-xs text-slate-500">Tartılan artan veya kullanılamaz hamur miktarı</p>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-slate-400 text-xs">Zaiyat Donut (adet)</Label>
@@ -1615,7 +1440,6 @@ export default function FactoryKiosk() {
                         min="0"
                         data-testid="input-waste-product-count"
                       />
-                      <p className="text-xs text-slate-500">Pişirme sonrası zaiyat olan donut adedi</p>
                     </div>
                   </div>
                 ) : (
@@ -1687,29 +1511,6 @@ export default function FactoryKiosk() {
                   </>
                 )}
 
-                {selectedBreakReason === 'yardim' && (
-                  <div className="space-y-2">
-                    <Label className="text-slate-300">Yardıma Gidilen İstasyon</Label>
-                    <Select 
-                      value={targetStationId?.toString() || ''} 
-                      onValueChange={(v) => setTargetStationId(parseInt(v))}
-                    >
-                      <SelectTrigger className="bg-slate-700 border-slate-600">
-                        <SelectValue placeholder="İstasyon seçin..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stations
-                          .filter(s => s.id !== currentStationInfo?.id)
-                          .map((station) => (
-                            <SelectItem key={station.id} value={station.id.toString()}>
-                              {station.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
                 <Separator className="bg-slate-700" />
 
                 <div className="space-y-2">
@@ -1742,10 +1543,7 @@ export default function FactoryKiosk() {
                           method: "POST",
                           credentials: "include",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ 
-                            prefix: "factory-production",
-                            visibility: "public"
-                          }),
+                          body: JSON.stringify({ prefix: "factory-production", visibility: "public" }),
                         });
                         const data = await res.json();
                         return { method: "PUT", url: data.uploadUrl };
@@ -1776,24 +1574,18 @@ export default function FactoryKiosk() {
                 <Button
                   variant="outline"
                   className="flex-1 border-slate-600"
-                  onClick={() => setStep('stop-options')}
+                  onClick={() => setStep('worker-home')}
                   data-testid="button-back-production"
                 >
-                  Geri
+                  Vazgeç
                 </Button>
                 <Button
-                  className={`flex-1 ${selectedBreakReason === 'gorev_bitis' ? 'bg-green-600 hover:bg-green-700' : selectedBreakReason === 'vardiya_kapat' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
                   onClick={handleProductionSubmit}
-                  disabled={endShiftMutation.isPending || logBreakMutation.isPending}
+                  disabled={endShiftMutation.isPending}
                   data-testid="button-submit-production"
                 >
-                  {endShiftMutation.isPending || logBreakMutation.isPending 
-                    ? "Kaydediliyor..." 
-                    : selectedBreakReason === 'gorev_bitis' 
-                      ? "Görevi Tamamla"
-                      : selectedBreakReason === 'vardiya_kapat'
-                        ? "Vardiyayı Sonlandır"
-                        : "Kaydet ve Devam Et"}
+                  {endShiftMutation.isPending ? "Kaydediliyor..." : "Vardiyayı Sonlandır"}
                 </Button>
               </div>
             </div>
@@ -1882,15 +1674,15 @@ export default function FactoryKiosk() {
 
               <div className="mt-6 pt-4 border-t border-slate-700">
                 <p className="text-slate-500 text-sm mb-3">
-                  {autoLogoutCountdown} saniye sonra personel seçim ekranına dönülecek...
+                  {autoLogoutCountdown} saniye sonra giriş ekranına dönülecek...
                 </p>
                 <Button
                   className="w-full bg-amber-600 h-14 text-lg"
                   onClick={resetWorker}
                   data-testid="button-summary-go-home"
                 >
-                  <Users className="h-5 w-5 mr-2" />
-                  Personel Seçimine Dön
+                  <ArrowRight className="h-5 w-5 mr-2" />
+                  Giriş Ekranına Dön
                 </Button>
               </div>
             </div>
@@ -1922,57 +1714,14 @@ export default function FactoryKiosk() {
                   } else {
                     setBreakStartTime(null);
                     setBreakElapsed(0);
-                    setStep('working');
+                    setStep('worker-home');
                   }
                 }}
                 disabled={endBreakMutation.isPending}
                 data-testid="button-return-from-break"
               >
-                <Play className="h-6 w-6 mr-2" />
-                Üretime Dön
-              </Button>
-
-              <Separator className="bg-slate-600" />
-
-              <p className="text-slate-500 text-sm">
-                Başka bir personel giriş yapmak istiyorsa:
-              </p>
-
-              <Button
-                variant="outline"
-                className="w-full border-slate-600 text-slate-300 h-14 text-lg"
-                onClick={() => {
-                  if (currentBreakLogId) {
-                    kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
-                  }
-                  resetWorker();
-                }}
-                data-testid="button-break-go-home"
-              >
-                <Users className="h-5 w-5 mr-2" />
-                Personel Seçimine Dön
-              </Button>
-            </div>
-          )}
-
-          {step === 'auto-logout' && (
-            <div className="space-y-6 text-center">
-              <div className="w-24 h-24 bg-amber-600 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-4xl font-bold text-white">{autoLogoutCountdown}</span>
-              </div>
-              
-              <h3 className="text-2xl font-semibold text-slate-200">İşlem Tamamlandı</h3>
-              <p className="text-slate-400">
-                {autoLogoutCountdown} saniye sonra personel seçim ekranına dönülecek...
-              </p>
-              
-              <Button
-                className="w-full bg-amber-600 hover:bg-amber-700 h-14 text-lg"
-                onClick={resetWorker}
-                data-testid="button-immediate-logout"
-              >
-                <ArrowRight className="h-5 w-5 mr-2" />
-                Personel Seçimine Dön
+                <Home className="h-6 w-6 mr-2" />
+                Ana Sayfaya Dön
               </Button>
             </div>
           )}
@@ -1989,14 +1738,12 @@ export default function FactoryKiosk() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
               {pendingPhaseTransition === 'uretim' && 'Hazırlık aşamasını tamamladınız. Üretime geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
-              {pendingPhaseTransition === 'temizlik' && 'Üretim aşamasını tamamladınız. Temizliğe geçmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'}
+              {pendingPhaseTransition === 'temizlik' && 'Üretim aşamasını tamamladınız. Temizliğe geçmek istediğinizden emin misiniz?'}
               {pendingPhaseTransition === 'tamamlandi' && 'Temizlik aşamasını tamamladınız. Görevi bitirmek istediğinizden emin misiniz?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600" data-testid="button-phase-cancel">
-              Hayır, Devam Et
-            </AlertDialogCancel>
+            <AlertDialogCancel className="border-slate-600 text-slate-300" data-testid="button-phase-cancel">İptal</AlertDialogCancel>
             <AlertDialogAction
               className={
                 pendingPhaseTransition === 'uretim' ? 'bg-blue-600 hover:bg-blue-700' :
@@ -2274,7 +2021,6 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
           )}
         </div>
       )}
-
     </div>
   );
 }
