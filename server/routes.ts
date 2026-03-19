@@ -26,7 +26,7 @@ import dobodyAvatarRoutes from "./routes/dobody-avatars";
 import dobodyTaskManagerRoutes from "./routes/dobody-task-manager";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, createKioskSession, isKioskAuthenticated, deleteKioskSession, updateKioskStation } from "./localAuth";
+import { setupAuth, isAuthenticated } from "./localAuth";
 import { auditMiddleware, auditLogSystem } from "./audit";
 import * as XLSX from "xlsx";
 import QRCode from "qrcode";
