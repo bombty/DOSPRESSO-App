@@ -1,0 +1,78 @@
+Bu ciddi bir güvenlik açığı olabilir. Kontrol edeyim:Benim erişimim kısıtlı — site boş HTML döndürüyor (SPA olduğu için). Ama şifresiz HQ dashboard açılması ciddi bir güvenlik açığı. Hemen Replit'e şu promptu yapıştırın:
+
+---
+
+```
+## CRITICAL SECURITY: HQ Dashboard Opens Without Login
+
+### Problem
+The HQ dashboard page is accessible without authentication. This is a critical security vulnerability — any user who knows the URL can see sensitive franchise data.
+
+### Investigation — Run these FIRST, report results
+
+```bash
+# 1. Does /api/test-hq-login exist? What does it do?
+grep -rn "test-hq-login\|test.*hq.*login" server/ --include="*.ts" | head -10
+
+# 2. Check if it auto-creates a session
+grep -rn "test-hq-login" server/routes/ --include="*.ts" -A20 | head -30
+
+# 3. Test without cookie — does the API return data?
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/branches
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/users
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/module-flags
+
+# 4. Check auth middleware on dashboard routes
+grep -n "isAuthenticated\|requireAuth\|ensureAuth" server/routes.ts server/routes/index.ts 2>/dev/null | head -10
+
+# 5. Is there a bypass or dev-mode auto-login?
+grep -rn "auto.*login\|dev.*login\|bypass.*auth\|skip.*auth\|NODE_ENV.*dev" server/ --include="*.ts" | head -10
+
+# 6. Check session configuration
+grep -n "session\|cookie\|maxAge\|secure\|httpOnly" server/index.ts server/localAuth.ts | head -15
+
+# 7. The SPA serves index.html for all routes — is the AUTH CHECK only client-side?
+grep -n "useAuth\|isAuthenticated\|ProtectedRoute\|AuthGuard" client/src/App.tsx | head -10
+
+# 8. Is /api/test-hq-login creating a persistent session?
+grep -rn "req.login\|req.logIn\|passport.authenticate\|session.userId" server/ --include="*.ts" | grep "test-hq" | head -5
+```
+
+### FIX based on findings:
+
+#### If /api/test-hq-login auto-logs in:
+This was likely a debug/test endpoint. REMOVE IT or protect it:
+```typescript
+// OPTION A: Delete the endpoint entirely
+// OPTION B: Restrict to admin + development only
+router.get("/api/test-hq-login", isAuthenticated, (req, res) => {
+  const user = req.user as any;
+  if (user.role !== "admin") return res.status(403).json({ error: "Admin only" });
+  // ... rest of logic
+});
+```
+
+#### If auth is only client-side:
+The SPA (React) serves index.html for ALL routes. The client-side router checks auth and redirects to /login. But if someone directly accesses the URL, the HTML loads first, then React checks auth. During that moment, the page content might flash.
+
+Fix: Ensure ALL /api/* endpoints have isAuthenticated middleware. The frontend auth redirect should work but API data must be protected.
+
+#### If there's a dev auto-login:
+Remove any `NODE_ENV === 'development'` auto-login bypass.
+
+### Testing:
+1. Open an incognito/private browser window
+2. Navigate to the site URL → should show login page
+3. Navigate to /hq-dashboard → should redirect to login
+4. Call /api/branches without cookie → should return 401
+5. /api/test-hq-login → should NOT exist or should require auth
+
+### Report:
+- What was the root cause?
+- What was fixed?
+- Are there other similar test/debug endpoints?
+```
+
+---
+
+Direkt yapıştırın — bu güvenlik açığını hemen kapamamız lazım!
