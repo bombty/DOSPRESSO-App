@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Trophy,
   Star,
@@ -13,7 +16,16 @@ import {
   Medal,
   Lock,
   CheckCircle2,
+  Eye,
+  Printer,
+  FileText,
 } from "lucide-react";
+import {
+  CertificateRenderer,
+  CERTIFICATE_TEMPLATES,
+  printCertificate,
+} from "@/components/certificate-renderer";
+import type { CertificateProps } from "@/components/certificate-renderer";
 
 const CAREER_LEVELS = [
   { id: "stajyer", label: "Stajyer", levelNum: 1, icon: Star, colorClass: "text-blue-500 dark:text-blue-400 border-blue-500/30 bg-blue-500/10" },
@@ -30,6 +42,28 @@ const DEFAULT_GATES = [
   { id: "onay", title: "Onay", progress: 0, status: "pending" },
 ];
 
+function formatTurkishDate(date: Date): string {
+  return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function buildCertPropsFromIssued(cert: any): CertificateProps {
+  const tmpl = CERTIFICATE_TEMPLATES.find(t => t.id === cert.templateKey) || CERTIFICATE_TEMPLATES[CERTIFICATE_TEMPLATES.length - 1];
+  return {
+    template: tmpl,
+    recipientName: cert.recipientName || "Ad Soyad",
+    issueDate: cert.issuedAt ? formatTurkishDate(new Date(cert.issuedAt)) : formatTurkishDate(new Date()),
+    certificateId: cert.certificateNo || "",
+    moduleName: cert.moduleName || undefined,
+    branchName: cert.branchName || undefined,
+    signer1Name: cert.signer1Name || "",
+    signer1Title: cert.signer1Title || "",
+    signer2Name: cert.signer2Name || "",
+    signer2Title: cert.signer2Title || "",
+    customTitle: cert.title || undefined,
+    customDescription: cert.description || undefined,
+  };
+}
+
 function CareerSkeleton() {
   return (
     <div className="space-y-4 p-4" data-testid="career-skeleton">
@@ -45,6 +79,7 @@ function CareerSkeleton() {
 
 export default function CareerTab() {
   const { user } = useAuth();
+  const [selectedCert, setSelectedCert] = useState<any>(null);
 
   const { data: homeData, isLoading: homeLoading } = useQuery<any>({
     queryKey: ["/api/v3/academy/home-data"],
@@ -53,6 +88,11 @@ export default function CareerTab() {
 
   const { data: badges, isLoading: badgesLoading } = useQuery<any[]>({
     queryKey: ["/api/academy/badges"],
+    enabled: !!user,
+  });
+
+  const { data: myCertificates } = useQuery<any[]>({
+    queryKey: ["/api/certificates/my"],
     enabled: !!user,
   });
 
@@ -225,6 +265,74 @@ export default function CareerTab() {
         </div>
       </div>
 
+      <div data-testid="certificates-section">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          Sertifikalarım
+          {myCertificates && myCertificates.length > 0 && (
+            <Badge variant="secondary">{myCertificates.length}</Badge>
+          )}
+        </h2>
+
+        {(!myCertificates || myCertificates.length === 0) ? (
+          <div className="text-center py-8 border border-dashed rounded-lg" data-testid="no-certificates">
+            <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+            <p className="text-sm text-muted-foreground">
+              Henüz sertifikanız bulunmuyor.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Eğitimleri tamamlayarak sertifika kazanabilirsiniz.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {myCertificates.map((cert: any) => (
+              <Card key={cert.id} data-testid={`cert-card-${cert.id}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      {cert.type === "role_transition" ? "Kademe Geçişi" : "Eğitim Tamamlama"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground" data-testid={`cert-date-${cert.id}`}>
+                      {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString('tr-TR') : "-"}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-medium" data-testid={`cert-title-${cert.id}`}>
+                    {cert.title || cert.templateKey?.replace(/-/g, ' ') || "Sertifika"}
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-1" data-testid={`cert-no-${cert.id}`}>
+                    Sertifika No: {cert.certificateNo}
+                  </p>
+                  {cert.moduleName && (
+                    <p className="text-xs text-muted-foreground">
+                      Modül: {cert.moduleName}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedCert(cert)}
+                      data-testid={`btn-view-cert-${cert.id}`}
+                    >
+                      <Eye className="h-3 w-3 mr-1" /> Görüntüle
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => printCertificate(buildCertPropsFromIssued(cert))}
+                      data-testid={`btn-print-cert-${cert.id}`}
+                    >
+                      <Printer className="h-3 w-3 mr-1" /> PDF İndir
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div data-testid="badge-collection">
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 flex-wrap">
           <Medal className="h-4 w-4 text-muted-foreground" />
@@ -281,6 +389,34 @@ export default function CareerTab() {
           </div>
         )}
       </div>
+
+      {selectedCert && (
+        <Dialog open={!!selectedCert} onOpenChange={() => setSelectedCert(null)}>
+          <DialogContent className="max-w-[1200px] max-h-[90vh] overflow-auto p-4" data-testid="cert-view-dialog">
+            <div className="overflow-x-auto">
+              <CertificateRenderer {...buildCertPropsFromIssued(selectedCert)} />
+            </div>
+            <div className="flex justify-end gap-2 mt-3 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => printCertificate(buildCertPropsFromIssued(selectedCert))}
+                data-testid="btn-dialog-print-cert"
+              >
+                <Printer className="h-3 w-3 mr-1" /> PDF İndir
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedCert(null)}
+                data-testid="btn-dialog-close-cert"
+              >
+                Kapat
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

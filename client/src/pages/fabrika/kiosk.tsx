@@ -52,7 +52,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 
-type KioskStep = 'device-password' | 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
+type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
@@ -151,6 +151,7 @@ export default function FactoryKiosk() {
   const [devicePassword, setDevicePassword] = useState('');
   const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
   const [pinInput, setPinInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [currentProductionRun, setCurrentProductionRun] = useState<ProductionRun | null>(null);
@@ -183,6 +184,7 @@ export default function FactoryKiosk() {
 
   const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
+    enabled: step === 'select-station' || step === 'working',
   });
 
   const { data: stations = [], isLoading: loadingStations } = useQuery<Station[]>({
@@ -228,7 +230,7 @@ export default function FactoryKiosk() {
       const res = await apiRequest('GET', '/api/factory/kiosk/today-plans');
       return res.json();
     },
-    enabled: step === 'select-user' || step === 'select-station',
+    enabled: step === 'enter-credentials' || step === 'select-user' || step === 'select-station',
     refetchInterval: 60000,
   });
 
@@ -259,8 +261,10 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: () => {
-      setStep('select-user');
+      setStep('enter-credentials');
       setDevicePassword('');
+      setUsernameInput('');
+      setPinInput('');
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
@@ -274,6 +278,29 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: (data) => {
+      setSelectedUser({ id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role });
+      if (data.activeSession) {
+        setCurrentSession(data.activeSession);
+        fetchSessionDetails(data.user.id);
+        setStep('working');
+      } else {
+        setStep('select-station');
+      }
+      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
+      setPinInput('');
+    },
+  });
+
+  const loginByUsernameMutation = useMutation({
+    mutationFn: async (data: { username: string; pin: string }) => {
+      const res = await apiRequest('POST', '/api/factory/kiosk/login-by-username', data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSelectedUser({ id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role });
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
         fetchSessionDetails(data.user.id);
@@ -462,6 +489,11 @@ export default function FactoryKiosk() {
     loginMutation.mutate({ userId: selectedUser.id, pin: pinInput });
   };
 
+  const handleCredentialsSubmit = () => {
+    if (!usernameInput || !pinInput) return;
+    loginByUsernameMutation.mutate({ username: usernameInput.trim(), pin: pinInput });
+  };
+
   const handleStartShift = () => {
     if (!selectedUser || !selectedStation) return;
     startShiftMutation.mutate({ userId: selectedUser.id, stationId: selectedStation });
@@ -587,9 +619,10 @@ export default function FactoryKiosk() {
   };
 
   const resetWorker = () => {
-    setStep('select-user');
+    setStep('enter-credentials');
     setSelectedUser(null);
     setPinInput('');
+    setUsernameInput('');
     setSelectedStation(null);
     setCurrentSession(null);
     setCurrentProductionRun(null);
@@ -772,48 +805,83 @@ export default function FactoryKiosk() {
             </div>
           )}
 
-          {step === 'select-user' && (
+          {step === 'enter-credentials' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-center text-slate-200">Personel Seçin</h3>
-              {loadingStaff ? (
-                <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
-              ) : staffList.length === 0 ? (
-                <div className="text-center py-8 text-slate-400">
-                  <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Fabrika personeli bulunamadı</p>
-                  <p className="text-sm mt-2">Sistem yöneticisine başvurun</p>
+              <div className="text-center mb-4">
+                <CircleUser className="h-16 w-16 mx-auto mb-3 text-amber-400 opacity-80" />
+                <h3 className="text-xl font-semibold text-slate-200">Giriş Yapın</h3>
+                <p className="text-sm text-slate-400 mt-1">Kullanıcı adınızı ve PIN kodunuzu girin</p>
+              </div>
+              
+              <div className="max-w-xs mx-auto space-y-4">
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Kullanıcı adı"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    className="pl-10 text-lg bg-slate-700 border-slate-600 h-14"
+                    autoFocus
+                    autoComplete="off"
+                    data-testid="input-kiosk-username"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const pinEl = document.querySelector('[data-testid="input-kiosk-pin"]') as HTMLInputElement;
+                        if (pinEl) pinEl.focus();
+                      }
+                    }}
+                  />
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {staffList.map((staff) => (
-                    <Button
-                      key={staff.id}
-                      variant="outline"
-                      className="h-auto p-4 flex flex-col items-center gap-2 bg-slate-700/50 border-slate-600 hover:bg-slate-600 hover:border-amber-500 transition-all"
-                      onClick={() => handleUserSelect(staff.id)}
-                      data-testid={`staff-select-${staff.id}`}
-                    >
-                      <Avatar className="h-16 w-16">
-                        <AvatarImage src={staff.avatarUrl || undefined} />
-                        <AvatarFallback className="bg-amber-600 text-white text-lg">
-                          {staff.firstName[0]}{staff.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-slate-200 font-medium text-center">
-                        {staff.firstName} {staff.lastName}
-                      </span>
-                      {activeWorkerMap[staff.id] && (
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          {activeWorkerMap[staff.id].stationName}
-                        </Badge>
-                      )}
-                    </Button>
+
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="password"
+                    placeholder="PIN"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value)}
+                    className="pl-10 text-center text-2xl tracking-widest bg-slate-700 border-slate-600 h-14"
+                    maxLength={4}
+                    data-testid="input-kiosk-pin"
+                    onKeyDown={(e) => e.key === 'Enter' && usernameInput && pinInput.length >= 4 && handleCredentialsSubmit()}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-center">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="w-10 h-10 border-2 border-slate-600 rounded-lg flex items-center justify-center text-xl text-amber-400">
+                      {pinInput[i] ? "\u25CF" : ""}
+                    </div>
                   ))}
                 </div>
-              )}
+                
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-slate-600"
+                    onClick={() => {
+                      setStep('device-password');
+                      setUsernameInput('');
+                      setPinInput('');
+                    }}
+                    data-testid="button-back-credentials"
+                  >
+                    Geri
+                  </Button>
+                  <Button
+                    className="flex-1 bg-amber-600 hover:bg-amber-700"
+                    onClick={handleCredentialsSubmit}
+                    disabled={!usernameInput || pinInput.length < 4 || loginByUsernameMutation.isPending}
+                    data-testid="button-login-credentials"
+                  >
+                    {loginByUsernameMutation.isPending ? "Giriş..." : "Giriş Yap"}
+                  </Button>
+                </div>
+              </div>
 
               {allTodayPlans.length > 0 && (
-                <div className="mt-6 bg-slate-700/30 rounded-lg p-4 space-y-2" data-testid="select-user-plan-section">
+                <div className="mt-6 bg-slate-700/30 rounded-lg p-4 space-y-2" data-testid="credentials-plan-section">
                   <div className="flex items-center gap-2 mb-3">
                     <Package className="h-4 w-4 text-amber-400" />
                     <span className="text-sm font-medium text-slate-300">Bugünkü Üretim Planı</span>
@@ -838,65 +906,6 @@ export default function FactoryKiosk() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {step === 'enter-pin' && selectedUser && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 justify-center mb-6">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={selectedUser.avatarUrl || undefined} />
-                  <AvatarFallback className="bg-amber-600 text-white text-2xl">
-                    {selectedUser.firstName[0]}{selectedUser.lastName[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-200">
-                    {selectedUser.firstName} {selectedUser.lastName}
-                  </h3>
-                  <p className="text-slate-400">PIN kodunuzu girin</p>
-                </div>
-              </div>
-              
-              <div className="max-w-xs mx-auto space-y-4">
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                  <Input
-                    type="password"
-                    placeholder="PIN"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value)}
-                    className="pl-10 text-center text-2xl tracking-widest bg-slate-700 border-slate-600 h-14"
-                    maxLength={4}
-                    autoFocus
-                    data-testid="input-pin"
-                    onKeyDown={(e) => e.key === 'Enter' && handlePinSubmit()}
-                  />
-                </div>
-                
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-slate-600"
-                    onClick={() => {
-                      setStep('select-user');
-                      setSelectedUser(null);
-                      setPinInput('');
-                    }}
-                    data-testid="button-back"
-                  >
-                    Geri
-                  </Button>
-                  <Button
-                    className="flex-1 bg-amber-600 hover:bg-amber-700"
-                    onClick={handlePinSubmit}
-                    disabled={pinInput.length < 4 || loginMutation.isPending}
-                    data-testid="button-login"
-                  >
-                    {loginMutation.isPending ? "Giriş..." : "Giriş Yap"}
-                  </Button>
-                </div>
-              </div>
             </div>
           )}
 

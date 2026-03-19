@@ -698,6 +698,92 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  router.post('/api/factory/kiosk/login-by-username', async (req, res) => {
+    try {
+      const { username, pin } = req.body;
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const rateLimitId = `factory_${clientIp}_${username || 'unknown'}`;
+      const rateCheck = checkKioskRateLimit(rateLimitId);
+      if (!rateCheck.allowed) { return res.status(429).json({ message: `Çok fazla deneme. ${Math.ceil((rateCheck.retryAfter || 1800) / 60)} dakika sonra tekrar deneyin.`, retryAfter: rateCheck.retryAfter }); }
+      
+      if (!username || !pin) {
+        return res.status(400).json({ message: "Kullanıcı adı ve PIN gerekli" });
+      }
+
+      const [foundUser] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, avatarUrl: users.avatarUrl, role: users.role })
+        .from(users)
+        .where(and(
+          eq(users.username, username.trim().toLowerCase()),
+          eq(users.isActive, true)
+        ))
+        .limit(1);
+
+      if (!foundUser) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı. Kullanıcı adınızı kontrol edin." });
+      }
+
+      const [pinRecord] = await db.select().from(factoryStaffPins)
+        .where(and(
+          eq(factoryStaffPins.userId, foundUser.id),
+          eq(factoryStaffPins.isActive, true)
+        ))
+        .limit(1);
+
+      if (!pinRecord) {
+        return res.status(404).json({ message: "PIN kaydı bulunamadı. Yöneticinizle iletişime geçin." });
+      }
+
+      if (pinRecord.pinLockedUntil && new Date(pinRecord.pinLockedUntil) > new Date()) {
+        const remainingMinutes = Math.ceil((new Date(pinRecord.pinLockedUntil).getTime() - Date.now()) / 60000);
+        return res.status(423).json({ message: `Hesabınız ${remainingMinutes} dakika kilitli` });
+      }
+
+      const isValid = await bcrypt.compare(pin, pinRecord.hashedPin);
+      
+      if (!isValid) {
+        const newAttempts = (pinRecord.pinFailedAttempts || 0) + 1;
+        const lockUntil = newAttempts >= 3 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+        
+        await db.update(factoryStaffPins)
+          .set({ pinFailedAttempts: newAttempts, pinLockedUntil: lockUntil })
+          .where(eq(factoryStaffPins.id, pinRecord.id));
+        
+        return res.status(401).json({ 
+          message: "Hatalı PIN",
+          attemptsRemaining: Math.max(0, 3 - newAttempts)
+        });
+      }
+
+      await db.update(factoryStaffPins)
+        .set({ pinFailedAttempts: 0, pinLockedUntil: null })
+        .where(eq(factoryStaffPins.id, pinRecord.id));
+
+      const [activeSession] = await db.select().from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.userId, foundUser.id),
+          eq(factoryShiftSessions.status, 'active')
+        ))
+        .limit(1);
+
+      const kioskToken = await createKioskSession(foundUser.id);
+      res.json({
+        success: true,
+        user: {
+          id: foundUser.id,
+          firstName: foundUser.firstName,
+          lastName: foundUser.lastName,
+          avatarUrl: foundUser.avatarUrl,
+          role: foundUser.role,
+        },
+        activeSession: activeSession || null,
+        kioskToken,
+      });
+    } catch (error: any) {
+      console.error("Error in kiosk login-by-username:", error);
+      res.status(500).json({ message: "Giriş yapılamadı" });
+    }
+  });
+
   const activeSessionsHandler = async (req: any, res: any) => {
     try {
       const user = req.user as any;
