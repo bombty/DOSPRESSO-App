@@ -148,7 +148,7 @@ const burnoutPredictorSkill: AgentSkill = {
           for (const u of userRows) {
             userNames[u.id] = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.id;
           }
-        } catch {}
+        } catch (error) { console.error("[burnout-predictor] Skill error:", error instanceof Error ? error.message : error); }
 
         insights.push({
           type: "burnout_risk",
@@ -163,7 +163,7 @@ const burnoutPredictorSkill: AgentSkill = {
           requiresAI: true,
         });
       }
-    } catch {
+    } catch (error) { console.error("[burnout-predictor] Skill error:", error instanceof Error ? error.message : error);
       return [];
     }
 

@@ -36,7 +36,7 @@ const securityMonitorSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[security-monitor] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const [lateNightAccess] = await db
@@ -60,7 +60,7 @@ const securityMonitorSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[security-monitor] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const [bulkOps] = await db
@@ -86,7 +86,7 @@ const securityMonitorSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[security-monitor] Skill error:", error instanceof Error ? error.message : error); }
 
     return insights;
   },

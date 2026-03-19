@@ -108,7 +108,8 @@ const wasteAnalyzerSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {
+    } catch (error) {
+      console.error("[waste-analyzer] Skill error:", error instanceof Error ? error.message : error);
       return [];
     }
 

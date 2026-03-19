@@ -117,7 +117,7 @@ const costAnalyzerSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {
+    } catch (error) { console.error("[cost-analyzer] Skill error:", error instanceof Error ? error.message : error);
       return [];
     }
 

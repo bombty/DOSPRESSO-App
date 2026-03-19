@@ -52,7 +52,7 @@ const productionDirectorSkill: AgentSkill = {
           requiresAI: true,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[production-director] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const lowRawMaterials = await db
@@ -80,7 +80,7 @@ const productionDirectorSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[production-director] Skill error:", error instanceof Error ? error.message : error); }
 
     return insights;
   },

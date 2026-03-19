@@ -79,7 +79,8 @@ const supplierTrackerSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {
+    } catch (error) {
+      console.error("[supplier-tracker] Skill error:", error instanceof Error ? error.message : error);
       return [];
     }
 

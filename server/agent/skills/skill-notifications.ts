@@ -63,21 +63,20 @@ function checkThrottle(userId: string, skillId: string): boolean {
 
 async function checkDuplicate(targetUserId: string, title: string, skillId: string): Promise<boolean> {
   try {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const existing = await db
       .select({ id: agentPendingActions.id })
       .from(agentPendingActions)
       .where(
         and(
-          eq(agentPendingActions.targetUserId, targetUserId),
           eq(agentPendingActions.title, title),
-          eq(agentPendingActions.status, "pending"),
-          gte(agentPendingActions.createdAt, oneDayAgo)
+          gte(agentPendingActions.createdAt, sevenDaysAgo)
         )
       )
       .limit(1);
     return existing.length > 0;
-  } catch {
+  } catch (error) {
+    console.error(`[SkillNotification] Dedup check error for ${skillId}:`, error instanceof Error ? error.message : error);
     return false;
   }
 }
@@ -104,7 +103,7 @@ export async function processSkillActions(
           throttled++;
           continue;
         }
-      } catch {}
+      } catch (error) { console.error("[skill-notifications] Error:", error instanceof Error ? error.message : error); }
     }
 
     if (!checkThrottle(targetUserId, skill.id)) {
@@ -260,7 +259,7 @@ async function logAgentAction(
       status,
       executionTimeMs: 0,
     });
-  } catch {}
+  } catch (error) { console.error("[skill-notifications] Error:", error instanceof Error ? error.message : error); }
 }
 
 export async function sendQueuedNotifications(): Promise<number> {
@@ -300,9 +299,9 @@ export async function sendQueuedNotifications(): Promise<number> {
           .where(eq(agentPendingActions.id, action.id));
 
         sent++;
-      } catch {}
+      } catch (error) { console.error("[skill-notifications] Error:", error instanceof Error ? error.message : error); }
     }
-  } catch {}
+  } catch (error) { console.error("[skill-notifications] Error:", error instanceof Error ? error.message : error); }
 
   return sent;
 }

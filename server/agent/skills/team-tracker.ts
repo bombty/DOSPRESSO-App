@@ -10,7 +10,7 @@ async function getBranchName(branchId?: number): Promise<string> {
   try {
     const [b] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
     return b?.name || "";
-  } catch { return ""; }
+  } catch (error) { console.error("[team-tracker] Branch lookup error:", error instanceof Error ? error.message : error); return ""; }
 }
 
 const teamTrackerSkill: AgentSkill = {
@@ -58,7 +58,7 @@ const teamTrackerSkill: AgentSkill = {
           requiresAI: lateChecklists.length >= 3,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[team-tracker] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const threeDaysAgo = new Date();
@@ -94,7 +94,7 @@ const teamTrackerSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[team-tracker] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const droppedScores = await db
@@ -124,7 +124,7 @@ const teamTrackerSkill: AgentSkill = {
           requiresAI: true,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[team-tracker] Skill error:", error instanceof Error ? error.message : error); }
 
     return insights;
   },

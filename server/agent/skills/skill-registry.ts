@@ -123,7 +123,7 @@ export async function runSkillsForUser(
       if (aiNeeded.length > 0) {
         try {
           enriched = await enrichInsightsWithAI(insights, context);
-        } catch {
+        } catch (error) { console.error("[skill-registry] Skill error:", error instanceof Error ? error.message : error);
           enriched = insights;
         }
       }
@@ -209,7 +209,7 @@ export async function getLatestSkillInsights(
         payload: a.deepLink ? { route: a.deepLink, ...meta } : meta,
       };
     });
-  } catch {
+  } catch (error) { console.error("[skill-registry] Skill error:", error instanceof Error ? error.message : error);
     return [];
   }
 }

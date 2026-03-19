@@ -396,6 +396,7 @@ import setupRouter from "./routes/setup";
 import pdksRouter from "./routes/pdks";
 import payrollRouter from "./routes/payroll";
 import changeRequestsRouter from "./routes/change-requests";
+import stubEndpointsRouter from "./routes/stub-endpoints";
 import { crmIletisimRouter } from "./routes/crm-iletisim";
 import delegationRouter from "./routes/delegation-routes";
 import moduleContentRouter from "./routes/module-content-routes";
@@ -810,6 +811,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(pdksRouter);
   app.use(payrollRouter);
   app.use(changeRequestsRouter);
+  app.use(stubEndpointsRouter);
 
   app.get('/api/health', async (req, res) => {
     try {

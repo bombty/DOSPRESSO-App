@@ -41,7 +41,7 @@ const dailyCoachSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[daily-coach] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const pendingTrainings = await db
@@ -68,7 +68,7 @@ const dailyCoachSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[daily-coach] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const [streak] = await db
@@ -99,7 +99,7 @@ const dailyCoachSkill: AgentSkill = {
           });
         }
       }
-    } catch {}
+    } catch (error) { console.error("[daily-coach] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       const nearBadges = await db
@@ -128,7 +128,7 @@ const dailyCoachSkill: AgentSkill = {
           requiresAI: false,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[daily-coach] Skill error:", error instanceof Error ? error.message : error); }
 
     return insights;
   },

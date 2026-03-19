@@ -67,7 +67,7 @@ const performanceCoachSkill: AgentSkill = {
           requiresAI: true,
         });
       }
-    } catch {}
+    } catch (error) { console.error("[performance-coach] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       if (context.branchId) {
@@ -114,7 +114,7 @@ const performanceCoachSkill: AgentSkill = {
           }
         }
       }
-    } catch {}
+    } catch (error) { console.error("[performance-coach] Skill error:", error instanceof Error ? error.message : error); }
 
     return insights;
   },

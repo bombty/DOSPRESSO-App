@@ -8,7 +8,7 @@ async function getBranchName(branchId?: number): Promise<string> {
   try {
     const [b] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
     return b?.name || "";
-  } catch { return ""; }
+  } catch (error) { console.error("[stock-assistant] Branch lookup error:", error instanceof Error ? error.message : error); return ""; }
 }
 
 const stockAssistantSkill: AgentSkill = {
@@ -51,7 +51,7 @@ const stockAssistantSkill: AgentSkill = {
             requiresAI: false,
           });
         }
-      } catch {}
+      } catch (error) { console.error("[stock-assistant] Skill error:", error instanceof Error ? error.message : error); }
     }
 
     if (context.role === "satinalma") {
@@ -81,7 +81,7 @@ const stockAssistantSkill: AgentSkill = {
             requiresAI: false,
           });
         }
-      } catch {}
+      } catch (error) { console.error("[stock-assistant] Skill error:", error instanceof Error ? error.message : error); }
     }
 
     return insights;

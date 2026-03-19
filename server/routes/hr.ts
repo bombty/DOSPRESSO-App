@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
-import { hasPermission, type UserRoleType } from "../permission-service";
+import { hasPermission, resolvePermissionScope, applyScopeFilter, type UserRoleType } from "../permission-service";
 import { createAuditEntry, getAuditContext } from "../audit";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, max, min } from "drizzle-orm";
 import { sendNotificationEmail, sendEmployeeOfMonthEmail } from "../email";

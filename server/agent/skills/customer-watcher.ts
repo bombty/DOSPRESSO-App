@@ -8,7 +8,7 @@ async function getBranchName(branchId?: number): Promise<string> {
   try {
     const [b] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
     return b?.name || "";
-  } catch { return ""; }
+  } catch (error) { console.error("[customer-watcher] Branch lookup error:", error instanceof Error ? error.message : error); return ""; }
 }
 
 const customerWatcherSkill: AgentSkill = {
@@ -57,7 +57,7 @@ const customerWatcherSkill: AgentSkill = {
           });
         }
       }
-    } catch {}
+    } catch (error) { console.error("[customer-watcher] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       if (targetBranchId) {
@@ -92,7 +92,7 @@ const customerWatcherSkill: AgentSkill = {
           });
         }
       }
-    } catch {}
+    } catch (error) { console.error("[customer-watcher] Skill error:", error instanceof Error ? error.message : error); }
 
     try {
       if (targetBranchId) {
@@ -117,7 +117,7 @@ const customerWatcherSkill: AgentSkill = {
           });
         }
       }
-    } catch {}
+    } catch (error) { console.error("[customer-watcher] Skill error:", error instanceof Error ? error.message : error); }
 
     return insights;
   },
