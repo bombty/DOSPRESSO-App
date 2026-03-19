@@ -1882,7 +1882,7 @@ export default function FactoryKiosk() {
               </p>
 
               <Button
-                className="w-full bg-green-600 hover:bg-green-700 h-16 text-xl"
+                className="w-full bg-green-600 h-16 text-xl"
                 onClick={() => {
                   if (currentBreakLogId) {
                     endBreakMutation.mutate({ breakLogId: currentBreakLogId });
@@ -1897,6 +1897,28 @@ export default function FactoryKiosk() {
               >
                 <Play className="h-6 w-6 mr-2" />
                 Üretime Dön
+              </Button>
+
+              <Separator className="bg-slate-600" />
+
+              <p className="text-slate-500 text-sm">
+                Başka bir personel giriş yapmak istiyorsa:
+              </p>
+
+              <Button
+                variant="outline"
+                className="w-full border-slate-600 text-slate-300 h-14 text-lg"
+                onClick={() => {
+                  if (currentBreakLogId) {
+                    endBreakMutation.mutate({ breakLogId: currentBreakLogId });
+                  }
+                  resetWorker();
+                }}
+                disabled={endBreakMutation.isPending}
+                data-testid="button-break-go-home"
+              >
+                <Users className="h-5 w-5 mr-2" />
+                Personel Seçimine Dön
               </Button>
             </div>
           )}
