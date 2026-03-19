@@ -628,8 +628,7 @@ const router = Router();
       // Hash the new password
       const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 10);
 
-      // Update employee password
-      await storage.updateUser(employeeId, { hashedPassword });
+      await storage.updateUser(employeeId, { hashedPassword, mustChangePassword: true });
 
       // Audit log: Record password reset event
       await storage.createAuditLog({
@@ -650,6 +649,150 @@ const router = Router();
     } catch (error: any) {
       console.error("Error resetting password:", error);
       res.status(500).json({ message: "Şifre sıfırlanırken hata oluştu" });
+    }
+  });
+
+  router.post('/api/me/change-password', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Mevcut şifre ve yeni şifre gereklidir" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Yeni şifre en az 6 karakter olmalıdır" });
+      }
+
+      const [dbUser] = await db.select().from(users)
+        .where(eq(users.id, reqUser.id));
+
+      if (!dbUser) {
+        return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      }
+
+      if (!dbUser.hashedPassword) {
+        return res.status(400).json({ error: "Bu hesap için şifre değiştirme desteklenmiyor" });
+      }
+
+      const isValid = await bcrypt.compare(currentPassword, dbUser.hashedPassword);
+      if (!isValid) {
+        return res.status(401).json({ error: "Mevcut şifre yanlış" });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await db.update(users)
+        .set({ hashedPassword, mustChangePassword: false, updatedAt: new Date() })
+        .where(eq(users.id, reqUser.id));
+
+      await storage.createAuditLog({
+        userId: reqUser.id,
+        action: 'password_self_change',
+        resource: 'users',
+        resourceId: reqUser.id,
+        details: { timestamp: new Date().toISOString() },
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+      });
+
+      res.json({ success: true, message: "Şifreniz başarıyla değiştirildi" });
+    } catch (error) {
+      console.error("[Password Change] Error:", error);
+      res.status(500).json({ error: "Şifre değiştirme başarısız" });
+    }
+  });
+
+  router.post('/api/admin/bulk-reset-passwords', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      if (!['admin', 'muhasebe_ik'].includes(reqUser.role)) {
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      }
+
+      const { branchId, defaultPassword } = req.body;
+      if (!defaultPassword || defaultPassword.length < 6) {
+        return res.status(400).json({ error: "Varsayılan şifre en az 6 karakter olmalı" });
+      }
+
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+      const conditions = [eq(users.isActive, true)];
+      if (branchId) {
+        conditions.push(eq(users.branchId, Number(branchId)));
+      }
+
+      const result = await db.update(users)
+        .set({ hashedPassword, mustChangePassword: true, updatedAt: new Date() })
+        .where(and(...conditions))
+        .returning({ id: users.id });
+
+      await storage.createAuditLog({
+        userId: reqUser.id,
+        action: 'bulk_password_reset',
+        resource: 'users',
+        resourceId: branchId ? String(branchId) : 'all',
+        details: { count: result.length, branchId, timestamp: new Date().toISOString() },
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+      });
+
+      res.json({
+        success: true,
+        message: `${result.length} kullanıcının şifresi sıfırlandı`,
+        count: result.length,
+      });
+    } catch (error) {
+      console.error("[Bulk Reset] Error:", error);
+      res.status(500).json({ error: "Toplu şifre sıfırlama başarısız" });
+    }
+  });
+
+  router.get('/api/notification-preferences', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      const [dbUser] = await db.select({ notificationPreferences: users.notificationPreferences })
+        .from(users).where(eq(users.id, reqUser.id));
+
+      const defaults: Record<string, boolean> = {
+        task_overdue: true,
+        agent_guidance: true,
+        sla_breach: true,
+        shift_reminder: true,
+        checklist_reminder: true,
+        system_announcements: true,
+      };
+
+      res.json({ preferences: { ...defaults, ...(dbUser?.notificationPreferences || {}) } });
+    } catch (error) {
+      console.error("[NotifPrefs] Error:", error);
+      res.status(500).json({ error: "Bildirim tercihleri alınamadı" });
+    }
+  });
+
+  router.patch('/api/notification-preferences', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      const { category, enabled } = req.body;
+
+      if (!category || typeof enabled !== 'boolean') {
+        return res.status(400).json({ error: "Kategori ve durum gerekli" });
+      }
+
+      const [dbUser] = await db.select({ notificationPreferences: users.notificationPreferences })
+        .from(users).where(eq(users.id, reqUser.id));
+
+      const current = dbUser?.notificationPreferences || {};
+      const updated = { ...current, [category]: enabled };
+
+      await db.update(users)
+        .set({ notificationPreferences: updated, updatedAt: new Date() })
+        .where(eq(users.id, reqUser.id));
+
+      res.json({ success: true, preferences: updated });
+    } catch (error) {
+      console.error("[NotifPrefs] Error:", error);
+      res.status(500).json({ error: "Bildirim tercihi güncellenemedi" });
     }
   });
 

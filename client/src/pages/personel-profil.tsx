@@ -16,8 +16,9 @@ import { EmployeeOfMonthBadge } from "@/components/widgets/employee-of-month-wid
 import { 
   User, Calendar, Award, ClipboardCheck, Users,
   Clock, TrendingUp, AlertCircle, CheckCircle2, XCircle, LogOut, Camera, Trash2, Wallet, Banknote, 
-  Timer, Plus, Loader2, Shield, Star, BookOpen, Target, Eye, Sparkles, FileWarning
+  Timer, Plus, Loader2, Shield, Star, BookOpen, Target, Eye, Sparkles, FileWarning, Lock, Bell, Key
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,6 +103,56 @@ export default function PersonelProfilPage() {
       window.location.href = '/';
     }
   };
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async () => {
+      if (newPassword !== confirmPassword) throw new Error("Şifreler eşleşmiyor");
+      if (newPassword.length < 6) throw new Error("Yeni şifre en az 6 karakter olmalıdır");
+      const res = await apiRequest("POST", "/api/me/change-password", { currentPassword, newPassword });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Şifre değiştirilemedi");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Şifre değiştirildi", description: "Yeni şifreniz aktif" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const { data: notifPrefs } = useQuery<{ preferences: Record<string, boolean> }>({
+    queryKey: ['/api/notification-preferences'],
+    enabled: isOwnProfile,
+  });
+
+  const updateNotifMutation = useMutation({
+    mutationFn: async ({ category, enabled }: { category: string; enabled: boolean }) => {
+      const res = await apiRequest("PATCH", "/api/notification-preferences", { category, enabled });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notification-preferences'] });
+    },
+  });
+
+  const NOTIF_CATEGORIES = [
+    { key: "task_overdue", label: "Görev Gecikmeleri" },
+    { key: "agent_guidance", label: "Mr. Dobody Önerileri" },
+    { key: "sla_breach", label: "SLA İhlalleri" },
+    { key: "shift_reminder", label: "Vardiya Hatırlatmaları" },
+    { key: "checklist_reminder", label: "Checklist Hatırlatmaları" },
+    { key: "system_announcements", label: "Sistem Duyuruları" },
+  ];
 
   // Fetch personnel profile
   const { data: profile, isLoading, isError, refetch } = useQuery<PersonnelProfile>({
@@ -1985,6 +2036,78 @@ export default function PersonelProfilPage() {
 
         {isOwnProfile && (
           <TabsContent value="ayarlar" className="flex flex-col gap-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Şifre Değiştir
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-w-sm">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Mevcut Şifre</Label>
+                    <Input
+                      type="password"
+                      value={currentPassword}
+                      onChange={e => setCurrentPassword(e.target.value)}
+                      data-testid="input-current-password"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Yeni Şifre</Label>
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      data-testid="input-new-password"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Yeni Şifre (Tekrar)</Label>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      data-testid="input-confirm-password"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => changePasswordMutation.mutate()}
+                    disabled={changePasswordMutation.isPending || !currentPassword || !newPassword || !confirmPassword}
+                    size="sm"
+                    data-testid="button-change-password"
+                  >
+                    <Lock className="h-3.5 w-3.5 mr-1.5" />
+                    {changePasswordMutation.isPending ? "Değiştiriliyor..." : "Şifreyi Değiştir"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Bildirim Tercihleri
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {NOTIF_CATEGORIES.map((cat) => (
+                    <div key={cat.key} className="flex items-center justify-between gap-4" data-testid={`notif-pref-${cat.key}`}>
+                      <Label className="text-sm">{cat.label}</Label>
+                      <Switch
+                        checked={notifPrefs?.preferences?.[cat.key] !== false}
+                        onCheckedChange={(checked) => updateNotifMutation.mutate({ category: cat.key, enabled: checked })}
+                        data-testid={`switch-notif-${cat.key}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Dil Ayarları</CardTitle>

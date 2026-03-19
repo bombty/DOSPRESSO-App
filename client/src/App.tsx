@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, lazy, Suspense, type ReactNode } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Switch, Route, useLocation } from "wouter";
-import { queryClient, onLockError, type LockInfo } from "./lib/queryClient";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { queryClient, onLockError, type LockInfo, apiRequest } from "./lib/queryClient";
+import { QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
 import { LockedRecordDialog } from "@/components/locked-record-dialog";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -617,6 +617,71 @@ function AppContent() {
   );
 }
 
+function ForcePasswordChangeDialog() {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user && (user as any).mustChangePassword) {
+      setOpen(true);
+    }
+  }, [user]);
+
+  const changeMutation = useMutation({
+    mutationFn: async () => {
+      if (newPw !== confirmPw) throw new Error("Şifreler eşleşmiyor");
+      if (newPw.length < 6) throw new Error("Yeni şifre en az 6 karakter olmalıdır");
+      const res = await apiRequest("POST", "/api/me/change-password", { currentPassword: currentPw, newPassword: newPw });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Şifre değiştirilemedi");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setOpen(false);
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+      setError("");
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" data-testid="force-password-dialog">
+      <div className="bg-card border rounded-lg p-6 w-full max-w-sm mx-4 shadow-xl">
+        <h2 className="text-lg font-semibold mb-1" data-testid="text-force-password-title">Şifrenizi Değiştirin</h2>
+        <p className="text-sm text-muted-foreground mb-4">Güvenliğiniz için lütfen yeni bir şifre belirleyin.</p>
+        {error && <p className="text-sm text-destructive mb-3" data-testid="text-password-error">{error}</p>}
+        <div className="space-y-3">
+          <input type="password" placeholder="Mevcut Şifre" value={currentPw} onChange={e => { setCurrentPw(e.target.value); setError(""); }}
+            className="w-full px-3 py-2 border rounded-md bg-background text-sm" data-testid="input-force-current-pw" />
+          <input type="password" placeholder="Yeni Şifre (en az 6 karakter)" value={newPw} onChange={e => { setNewPw(e.target.value); setError(""); }}
+            className="w-full px-3 py-2 border rounded-md bg-background text-sm" data-testid="input-force-new-pw" />
+          <input type="password" placeholder="Yeni Şifre (Tekrar)" value={confirmPw} onChange={e => { setConfirmPw(e.target.value); setError(""); }}
+            className="w-full px-3 py-2 border rounded-md bg-background text-sm" data-testid="input-force-confirm-pw" />
+          <button onClick={() => changeMutation.mutate()}
+            disabled={changeMutation.isPending || !currentPw || !newPw || !confirmPw}
+            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium disabled:opacity-50"
+            data-testid="button-force-change-pw">
+            {changeMutation.isPending ? "Değiştiriliyor..." : "Şifreyi Değiştir"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GlobalLockDialogHost() {
   const [lockInfo, setLockInfo] = useState<LockInfo | null>(null);
   useEffect(() => {
@@ -648,6 +713,7 @@ export default function App() {
               </DobodyFlowProvider>
               <Toaster />
               <PushPermissionBanner />
+              <ForcePasswordChangeDialog />
               <GlobalLockDialogHost />
             </TooltipProvider>
           </NetworkStatusProvider>

@@ -326,6 +326,7 @@ export async function setupAuth(app: Express, authLimiter?: any) {
                 lastName: (user as any).lastName,
                 role: (user as any).role,
                 branchId: (user as any).branchId,
+                mustChangePassword: (user as any).mustChangePassword || false,
               }
             });
           });

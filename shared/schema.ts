@@ -2761,6 +2761,7 @@ export const users = pgTable("users", {
   bonusPercentage: numeric("bonus_percentage").default("0"),
   language: varchar("language", { length: 5 }).default("tr"),
   notificationPreferences: jsonb("notification_preferences").$type<Record<string, boolean>>(),
+  mustChangePassword: boolean("must_change_password").default(false),
   titleId: integer("title_id"),
   employeeTypeId: integer("employee_type_id"),
   lastLoginAt: timestamp("last_login_at"),
