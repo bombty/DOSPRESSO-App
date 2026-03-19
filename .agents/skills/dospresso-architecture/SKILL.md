@@ -294,7 +294,7 @@ fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.vard
 ### Dobody Sub-Modules (3)
 dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (notification delivery)
 
-### Module Keys (31 total)
+### Module Keys (34 total)
 - **always_on** (6): admin, dashboard, bordro, dobody, fabrika, satinalma
 - **ui_hidden_data_continues** (3): pdks, vardiya, fabrika.vardiya
 - **fully_hidden** (22): checklist, gorevler, akademi, crm, stok, ekipman, denetim, iletisim_merkezi, raporlar, finans, delegasyon, franchise, fabrika.sevkiyat, fabrika.sayim, fabrika.hammadde, fabrika.siparis, fabrika.kalite, fabrika.kavurma, fabrika.stok, dobody.chat, dobody.bildirim, dobody.flow
@@ -303,7 +303,7 @@ dobody.chat (DobodyMiniBar), dobody.flow (DobodyFlowMode), dobody.bildirim (noti
 - **Schema**: `shared/schema.ts` — `moduleFlags` table definition
 - **Service**: `server/services/module-flag-service.ts` — `isModuleEnabled(key, branchId?, context?, userRole?)`, `requireModuleEnabled()`, `getModuleFlagBehavior()`, `PATH_TO_MODULE_KEY_MAP`
 - **Routes**: `server/routes/module-flags.ts` — CRUD (admin only) + `/api/module-flags/check?moduleKey=X&context=ui`
-- **Seed**: `server/seed-module-flags.ts` — 31 flags (20 modules + 8 fabrika sub-modules + 3 dobody sub-modules), ALTER TABLE migration on startup
+- **Seed**: `server/seed-module-flags.ts` — 34 flags (23 modules + 8 fabrika sub-modules + 3 dobody sub-modules), ALTER TABLE migration on startup
 - **Menu**: `server/menu-service.ts` — `buildMenuForUser()` filters sidebar items with context="ui" and user role
 - **Hook**: `client/src/hooks/use-module-flags.ts` — `useModuleEnabled(moduleKey, context?)`
 - **Dobody integration**: `client/src/components/dobody-mini-bar.tsx` (dobody.chat), `client/src/components/dobody-flow-mode.tsx` (dobody.flow)
@@ -320,6 +320,28 @@ When a module is disabled:
 - Branch health scores recalculate proportionally without disabled components
 - Agent notifications for that module are suppressed (throttled)
 - Data collection continues for `ui_hidden_data_continues` modules (pdks, vardiya)
+
+## Mobile UI Components
+- CompactKPIStrip (`client/src/components/compact-kpi-strip.tsx`) — horizontal scroll strip on mobile, grid on desktop. Used in 19+ pages.
+- MobileFilterCollapse (`client/src/components/mobile-filter-collapse.tsx`) — auto-collapse filters on mobile, expand on desktop. Used in 7+ pages.
+- Pattern: mobile (<md) gets compact view, desktop (md+) stays unchanged.
+
+## Branch Recurring Tasks
+- Tables: `branch_recurring_tasks` (templates), `branch_task_instances` (daily), `branch_task_categories` (4), `branch_recurring_task_overrides`
+- Scheduler: generates daily instances at startup + 08:00 TR, marks overdue
+- UI: 3-tab Görevler page (Bana Atanan / Şube Görevleri / Tekrarlayan Yönetimi)
+- Dashboard: TodaysTasksWidget (combined ad-hoc + recurring)
+- Kiosk: KioskBranchTasks section
+- Score: branchTasks component in health scoring (weight 0.12)
+- Module flag: `sube_gorevleri`
+
+## Certificate System
+- Tables: `issued_certificates`, `certificate_settings`
+- Templates: 5 role transition + module completion
+- Renderer: `client/src/components/certificate-renderer.tsx`
+- Features: Dancing Script handwriting font, DOSPRESSO logo watermark, vintage seal, dual signatures
+- HQ: SertifikaTab in akademi-hq (create/preview/print)
+- API: `/api/certificates` (CRUD), `/api/certificate-settings` (signer config)
 
 ## Permission Modules
 88 permission module keys defined in `shared/schema.ts` as `PermissionModule` type.

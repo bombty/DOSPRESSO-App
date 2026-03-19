@@ -538,7 +538,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "ai-assistant",
         titleTr: "AI Asistan",
-        path: "/ai-asistan",
+        path: "/akademi-ai-assistant",
         icon: "Brain",
         moduleKey: "knowledge_base",
         scope: "both",

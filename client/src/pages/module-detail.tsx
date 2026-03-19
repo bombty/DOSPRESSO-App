@@ -887,8 +887,8 @@ export default function ModuleDetail() {
                   ) : (
                     <>
                       <div className="w-full space-y-2 sm:space-y-3">
-                        {trainingModule?.quiz.map((q: typeof trainingModule?.quiz[0], idx: number) => (
-                          <div key={idx} className="bg-card rounded-md border-l-4 border-l-success shadow-sm">
+                        {trainingModule?.quiz.map((q: any, idx: number) => (
+                          <div key={idx} className="bg-card border-l-4 border-l-success shadow-sm">
                             <div className="p-4">
                               <p className="font-medium mb-3">{idx + 1}. {q.question_text || `Soru ${idx + 1}`}</p>
                               <div className="flex flex-col gap-3 sm:gap-4">
@@ -1229,7 +1229,7 @@ export default function ModuleDetail() {
               </CardHeader>
               <CardContent>
                 <div className="w-full space-y-2 sm:space-y-3 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {trainingModule?.galleryImages.map((img: typeof trainingModule?.galleryImages[0], idx: number) => (
+                  {trainingModule?.galleryImages.map((img: any, idx: number) => (
                     <div key={idx} className="overflow-hidden rounded-lg bg-muted aspect-[6/4]">
                       <img
                         src={img.url}
@@ -1675,8 +1675,8 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Quiz sorusu tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {trainingModule?.quiz.map((q: typeof trainingModule?.quiz[0], idx: number) => (
-                    <Card key={idx} className="border-l-4 border-l-success">
+                  {trainingModule?.quiz.map((q: any, idx: number) => (
+                    <Card key={idx} className="border border-success/30">
                       <CardContent className="pt-4">
                         <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
                         {q.options && (
@@ -1884,8 +1884,8 @@ export default function ModuleDetail() {
                 <p className="text-sm text-muted-foreground text-center py-3">Kontrol listesi maddesi tanımlanmamış</p>
               ) : (
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {trainingModule?.supervisorChecklist.map((item: typeof trainingModule?.supervisorChecklist[0], idx: number) => (
-                    <Card key={idx} className="border-l-4 border-l-warning">
+                  {trainingModule?.supervisorChecklist.map((item: any, idx: number) => (
+                    <Card key={idx} className="border border-warning/30">
                       <CardContent className="pt-4">
                         <div className="w-full space-y-1 md:space-y-1">
                           <p className="font-medium text-sm">{item.title}</p>

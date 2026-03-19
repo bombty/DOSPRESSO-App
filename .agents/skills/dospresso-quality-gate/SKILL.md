@@ -1,9 +1,9 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 15-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, and kiosk role safety. Run after every sprint build or code change.
+description: DOSPRESSO 17-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, and mobile compactness. Run after every sprint build or code change.
 ---
 
-# DOSPRESSO Quality Gate — 15-Point Checklist
+# DOSPRESSO Quality Gate — 17-Point Checklist
 
 Run after EVERY sprint build or significant code change. Report each item as PASS or FAIL.
 
@@ -228,6 +228,32 @@ grep -rn "sube_kiosk" client/src/lib/role-routes.ts server/menu-service.ts | hea
 
 ## Output Format
 
+---
+
+## 16. Module Flag Consistency
+All new modules must have a corresponding flag in `server/seed-module-flags.ts`.
+
+```bash
+echo "SELECT count(*) as flag_count FROM module_flags WHERE deleted_at IS NULL;" | psql $DATABASE_URL
+```
+
+**PASS**: Expected 34 flags (as of March 2026). All new modules have flags.
+**FAIL**: New module added without flag seed, or count does not match.
+
+---
+
+## 17. Mobile Compactness
+New pages with KPI/stat cards must use CompactKPIStrip. New pages with filters must use MobileFilterCollapse on mobile.
+
+```bash
+grep -rn "grid.*col.*[3-5]" client/src/pages/ --include="*.tsx" | grep -v "CompactKPIStrip\|compact-kpi" | head -10
+```
+
+**PASS**: All stat-heavy pages use CompactKPIStrip for mobile view.
+**FAIL**: Page has 3+ stat cards in a grid without mobile-optimized layout.
+
+---
+
 After running all checks, report:
 
 ```
@@ -247,6 +273,8 @@ DOSPRESSO Quality Gate — [DATE]
 13. SLA Consistency:    PASS / FAIL (details)
 14. CRM Endpoint Auth:  PASS / FAIL (details)
 15. Kiosk Role Safety:  PASS / FAIL (details)
+16. Module Flags:       PASS / FAIL (details)
+17. Mobile Compactness: PASS / FAIL (details)
 
-Score: X/15 PASS
+Score: X/17 PASS
 ```

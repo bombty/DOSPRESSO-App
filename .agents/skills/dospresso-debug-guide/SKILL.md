@@ -298,6 +298,43 @@ SELECT * FROM module_flags WHERE module_key = '<KEY>' AND deleted_at IS NULL ORD
 
 ---
 
+## §14 — Branch Recurring Task Issues
+Recurring tasks not generating daily instances, or task board showing empty.
+
+Checklist:
+- [ ] Scheduler running? Check logs for `[BRANCH-TASKS]`
+- [ ] Module flag enabled? `SELECT * FROM module_flags WHERE module_key='sube_gorevleri' AND deleted_at IS NULL;`
+- [ ] Override blocking? `SELECT * FROM branch_recurring_task_overrides WHERE deleted_at IS NULL;`
+- [ ] Instances generated? `SELECT count(*) FROM branch_task_instances WHERE due_date = CURRENT_DATE;`
+- [ ] Categories exist? `SELECT * FROM branch_task_categories;` (expected: 4 categories)
+- [ ] Task assigned to correct branch? Check `branch_recurring_tasks.branch_id` matches user's branch
+
+---
+
+## §15 — Module Flag Page Protection Issues
+Page accessible when module should be disabled, or ModuleGuard not showing.
+
+Checklist:
+- [ ] Flag exists? `SELECT * FROM module_flags WHERE module_key='[key]' AND deleted_at IS NULL;`
+- [ ] my-flags endpoint returns correct state? `GET /api/module-flags/my-flags`
+- [ ] ModuleGuard wrapping the route in `App.tsx`?
+- [ ] `useModuleEnabled` hook working? Check browser console for `/api/module-flags/my-flags` response
+- [ ] Cache stale? Module flags cached for 60s — restart server or wait
+
+---
+
+## §16 — Certificate Issues
+Certificate not rendering, print not working, or settings missing.
+
+Checklist:
+- [ ] `certificate_settings` has 4 rows? `SELECT * FROM certificate_settings;`
+- [ ] Certificate renderer loads? Check for Dancing Script font loading in network tab
+- [ ] Print window opens? Check browser popup blocker
+- [ ] DOSPRESSO logo renders? Check logo file path in public/ directory
+- [ ] `issued_certificates` row exists? `SELECT * FROM issued_certificates WHERE user_id='[userId]' ORDER BY issued_at DESC LIMIT 5;`
+
+---
+
 ## Quick Diagnostic Commands
 
 ```bash
