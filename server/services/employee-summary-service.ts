@@ -1,6 +1,7 @@
 import { db } from "../db";
-import { users, userTrainingProgress, quizResults, branchTaskInstances, pdksRecords, tasks } from "@shared/schema";
+import { users, userTrainingProgress, quizResults, branchTaskInstances, pdksRecords, tasks, factoryShiftSessions, factoryProductionOutputs, factoryBreakLogs } from "@shared/schema";
 import { eq, and, gte, isNull, sql, desc, or, count } from "drizzle-orm";
+import { getWorkerScoreSummary } from "./factory-scoring-service";
 
 export interface TrainingMetrics {
   totalAssigned: number;
@@ -30,11 +31,28 @@ export interface AttendanceMetrics {
   attendanceRate: number;
 }
 
+export interface FactoryMetrics {
+  shiftCount: number;
+  totalProduced: number;
+  totalWaste: number;
+  totalBreakMinutes: number;
+  factoryScore: number;
+  factoryTrend: "up" | "down" | "stable";
+  breakdown: {
+    production: number;
+    waste: number;
+    quality: number;
+    attendance: number;
+    break: number;
+  } | null;
+}
+
 export interface ScoreBreakdown {
   training: number;
   tasks: number;
   branchTasks: number;
   attendance: number;
+  factory?: number;
 }
 
 export interface EmployeeSummary {
@@ -47,6 +65,7 @@ export interface EmployeeSummary {
   tasks: TaskMetrics;
   branchTasks: BranchTaskMetrics;
   attendance: AttendanceMetrics;
+  factory?: FactoryMetrics;
   overallScore: number;
   scoreBreakdown: ScoreBreakdown;
 }
@@ -154,12 +173,100 @@ async function getAttendanceMetrics(userId: string, sinceDate: Date): Promise<At
   }
 }
 
+const FACTORY_ROLES = [
+  "fabrika_operator", "fabrika_personel", "fabrika_sorumlu",
+  "stajyer", "supervisor", "supervisor_buddy",
+];
+
+async function getFactoryMetrics(userId: string, days: number): Promise<FactoryMetrics | null> {
+  try {
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - days);
+
+    const sessions = await db.select({
+      id: factoryShiftSessions.id,
+      totalProduced: factoryShiftSessions.totalProduced,
+      totalWaste: factoryShiftSessions.totalWaste,
+    }).from(factoryShiftSessions)
+      .where(and(
+        eq(factoryShiftSessions.userId, userId),
+        gte(factoryShiftSessions.checkInTime, sinceDate)
+      ));
+
+    const breaks = await db.select({
+      durationMinutes: factoryBreakLogs.durationMinutes,
+    }).from(factoryBreakLogs)
+      .where(and(
+        eq(factoryBreakLogs.userId, userId),
+        gte(factoryBreakLogs.startedAt, sinceDate)
+      ));
+
+    const totalProduced = sessions.reduce((s, x) => s + (x.totalProduced || 0), 0);
+    const totalWaste = sessions.reduce((s, x) => s + (x.totalWaste || 0), 0);
+    const totalBreakMinutes = breaks.reduce((s, x) => s + (x.durationMinutes || 0), 0);
+
+    const scoreSummary = await getWorkerScoreSummary(userId, days);
+
+    return {
+      shiftCount: sessions.length,
+      totalProduced,
+      totalWaste,
+      totalBreakMinutes,
+      factoryScore: scoreSummary?.avgScore || 0,
+      factoryTrend: scoreSummary?.trend || "stable",
+      breakdown: scoreSummary?.breakdown || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function computeOverallScore(
   training: TrainingMetrics,
   taskMetrics: TaskMetrics,
   branchTasks: BranchTaskMetrics,
-  attendance: AttendanceMetrics
+  attendance: AttendanceMetrics,
+  factoryMetrics?: FactoryMetrics | null
 ): { overallScore: number; scoreBreakdown: ScoreBreakdown } {
+  const isFactoryWorker = factoryMetrics && factoryMetrics.shiftCount > 0;
+
+  if (isFactoryWorker && factoryMetrics!.factoryScore > 0) {
+    const weights = { factory: 0.50, training: 0.15, tasks: 0.10, branchTasks: 0.05, attendance: 0.20 };
+    let totalWeight = 0;
+    let weightedSum = 0;
+
+    const factoryScore = factoryMetrics!.factoryScore;
+    weightedSum += factoryScore * weights.factory;
+    totalWeight += weights.factory;
+
+    const trainingScore = training.completionRate >= 0
+      ? (training.completionRate * 0.6 + (training.avgQuizScore >= 0 ? training.avgQuizScore * 0.4 : training.completionRate * 0.4))
+      : -1;
+    const taskScore = taskMetrics.completionRate >= 0 ? taskMetrics.completionRate : -1;
+    const branchTaskScore = branchTasks.completionRate >= 0 ? branchTasks.completionRate : -1;
+    const attendanceScore = attendance.attendanceRate >= 0
+      ? Math.max(0, attendance.attendanceRate - (attendance.lateDays * 2))
+      : -1;
+
+    if (trainingScore >= 0) { weightedSum += trainingScore * weights.training; totalWeight += weights.training; }
+    if (taskScore >= 0) { weightedSum += taskScore * weights.tasks; totalWeight += weights.tasks; }
+    if (branchTaskScore >= 0) { weightedSum += branchTaskScore * weights.branchTasks; totalWeight += weights.branchTasks; }
+    if (attendanceScore >= 0) { weightedSum += attendanceScore * weights.attendance; totalWeight += weights.attendance; }
+
+    const overallScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
+
+    return {
+      overallScore,
+      scoreBreakdown: {
+        training: trainingScore >= 0 ? Math.round(trainingScore) : 0,
+        tasks: taskScore >= 0 ? Math.round(taskScore) : 0,
+        branchTasks: branchTaskScore >= 0 ? Math.round(branchTaskScore) : 0,
+        attendance: attendanceScore >= 0 ? Math.round(attendanceScore) : 0,
+        factory: Math.round(factoryScore),
+      },
+    };
+  }
+
   const weights = { training: 0.25, tasks: 0.25, branchTasks: 0.20, attendance: 0.30 };
   let totalWeight = 0;
   let weightedSum = 0;
@@ -207,16 +314,19 @@ export async function getEmployeeSummary(userId: string, days: number = 30): Pro
   const sinceDate = new Date();
   sinceDate.setDate(sinceDate.getDate() - days);
 
-  const [training, taskMetrics, branchTasks, attendance] = await Promise.all([
+  const isFactoryWorker = FACTORY_ROLES.includes(user.role || "");
+
+  const [training, taskMetrics, branchTasks, attendance, factoryMetrics] = await Promise.all([
     getTrainingMetrics(userId),
     getTaskMetrics(userId, sinceDate),
     getBranchTaskMetrics(userId, sinceDate),
     getAttendanceMetrics(userId, sinceDate),
+    isFactoryWorker ? getFactoryMetrics(userId, days) : Promise.resolve(null),
   ]);
 
-  const { overallScore, scoreBreakdown } = computeOverallScore(training, taskMetrics, branchTasks, attendance);
+  const { overallScore, scoreBreakdown } = computeOverallScore(training, taskMetrics, branchTasks, attendance, factoryMetrics);
 
-  return {
+  const result: EmployeeSummary = {
     userId: user.id,
     fullName: `${user.firstName} ${user.lastName}`,
     role: user.role || 'barista',
@@ -229,6 +339,12 @@ export async function getEmployeeSummary(userId: string, days: number = 30): Pro
     overallScore,
     scoreBreakdown,
   };
+
+  if (factoryMetrics) {
+    result.factory = factoryMetrics;
+  }
+
+  return result;
 }
 
 export async function getBranchEmployeeSummaries(branchId: number, days: number = 30): Promise<EmployeeSummary[]> {

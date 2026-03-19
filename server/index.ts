@@ -21,6 +21,7 @@ import { cleanupExpiredKioskSessions } from "./localAuth";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
+import { calculateAndSaveDailyScores, calculateAndSaveWeeklyScores, backfillNullScores, closeOrphanedBreakLogs } from "./services/factory-scoring-service";
 import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
@@ -322,9 +323,13 @@ app.use((req, res, next) => {
       startWeeklyBackupScheduler();
       startTrackingCleanup();
       startNotificationCleanupJob();
+      startFactoryScoringScheduler();
 
       generateDailyTaskInstances().catch(e => console.error("[BranchTasks] Startup generation error:", e));
       markOverdueInstances().catch(e => console.error("[BranchTasks] Startup overdue check error:", e));
+
+      closeOrphanedBreakLogs().catch(e => console.error("[Factory Scoring] Startup orphan break cleanup error:", e));
+      backfillNullScores().catch(e => console.error("[Factory Scoring] Startup backfill error:", e));
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
@@ -472,6 +477,26 @@ function startConsolidatedHourlyJobs() {
     }
   }, 60 * 60 * 1000);
   log("Consolidated hourly tick started (stock-alert + feedback-sla + danger-zone@1st)");
+}
+
+function startFactoryScoringScheduler() {
+  schedulerManager.registerInterval('factory-scoring-daily', async () => {
+    const now = new Date();
+    if (now.getHours() === 2 && now.getMinutes() < 10) {
+      try {
+        await closeOrphanedBreakLogs();
+        const result = await calculateAndSaveDailyScores();
+        log(`[Factory Scoring] Daily scores: ${result.calculated} calculated, ${result.saved} saved`);
+      } catch (e) { console.error("[Factory Scoring] Daily calculation error:", e); }
+    }
+    if (now.getDay() === 1 && now.getHours() === 3 && now.getMinutes() < 10) {
+      try {
+        const result = await calculateAndSaveWeeklyScores();
+        log(`[Factory Scoring] Weekly scores: ${result.calculated} calculated, ${result.saved} saved`);
+      } catch (e) { console.error("[Factory Scoring] Weekly calculation error:", e); }
+    }
+  }, 10 * 60 * 1000);
+  log("Factory scoring scheduler started (daily@02:00, weekly@Mon 03:00)");
 }
 
 function startScheduledTaskDeliveryJob() {

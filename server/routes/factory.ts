@@ -5,6 +5,15 @@ import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../lo
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { checkDataLock } from "../services/data-lock";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
+import {
+  calculateAllWorkerScores,
+  calculateAndSaveDailyScores,
+  calculateAndSaveWeeklyScores,
+  saveWorkerScores,
+  backfillNullScores,
+  closeOrphanedBreakLogs,
+  getWorkerScoreSummary,
+} from "../services/factory-scoring-service";
 import bcrypt from "bcrypt";
 import {
   hasPermission,
@@ -51,6 +60,7 @@ import {
   branchOrders,
   branchOrderItems,
   factoryKioskConfig,
+  factoryWorkerScores,
   kioskSessions,
 } from "../../shared/schema";
 
@@ -6138,6 +6148,126 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Quick end error:", error);
       res.status(500).json({ message: "Vardiya sonlandırılamadı" });
+    }
+  });
+
+  // ========================================
+  // FACTORY WORKER SCORING ENDPOINTS
+  // ========================================
+
+  router.post('/api/factory/scoring/calculate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (!['admin', 'fabrika_mudur', 'fabrika_operator'].includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const { period = 'daily', startDate: startStr, endDate: endStr } = req.body;
+
+      let startDate: Date, endDate: Date;
+
+      if (startStr && endStr) {
+        startDate = new Date(startStr);
+        endDate = new Date(endStr);
+      } else if (period === 'weekly') {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        endDate.setHours(0, 0, 0, 0);
+      }
+
+      const scores = await calculateAllWorkerScores(startDate, endDate, period);
+      const saved = await saveWorkerScores(scores);
+
+      res.json({
+        message: `${scores.length} çalışan skoru hesaplandı, ${saved} kaydedildi`,
+        period,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        scores: scores.map(s => ({
+          userId: s.userId,
+          totalScore: s.totalScore,
+          production: s.productionScore,
+          waste: s.wasteScore,
+          quality: s.qualityScore,
+          attendance: s.attendanceScore,
+          break: s.breakScore,
+          details: s.details,
+        })),
+      });
+    } catch (error: any) {
+      console.error("[Factory Scoring] Calculate error:", error);
+      res.status(500).json({ message: "Skor hesaplama hatası", error: error.message });
+    }
+  });
+
+  router.post('/api/factory/scoring/backfill', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRole = req.user?.role as UserRoleType;
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Sadece admin backfill yapabilir" });
+      }
+
+      const [closedBreaks, filledScores] = await Promise.all([
+        closeOrphanedBreakLogs(),
+        backfillNullScores(),
+      ]);
+
+      res.json({
+        message: `${closedBreaks} açık mola kapatıldı, ${filledScores} boş skor dolduruldu`,
+        closedBreaks,
+        filledScores,
+      });
+    } catch (error: any) {
+      console.error("[Factory Scoring] Backfill error:", error);
+      res.status(500).json({ message: "Backfill hatası", error: error.message });
+    }
+  });
+
+  router.get('/api/factory/scoring/worker/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const days = parseInt(req.query.days as string) || 30;
+      const summary = await getWorkerScoreSummary(userId, days);
+
+      if (!summary) {
+        return res.json({ message: "Skor verisi bulunamadı", scores: [] });
+      }
+
+      const scores = await db.select().from(factoryWorkerScores)
+        .where(and(
+          eq(factoryWorkerScores.userId, userId),
+          gte(factoryWorkerScores.periodDate, new Date(Date.now() - days * 86400000).toISOString().split('T')[0])
+        ))
+        .orderBy(desc(factoryWorkerScores.periodDate))
+        .limit(30);
+
+      res.json({
+        summary,
+        scores: scores.map(s => ({
+          periodDate: s.periodDate,
+          periodType: s.periodType,
+          totalScore: Number(s.totalScore),
+          production: Number(s.productionScore),
+          waste: Number(s.wasteScore),
+          quality: Number(s.qualityScore),
+          attendance: Number(s.attendanceScore),
+          break: Number(s.breakScore),
+          totalProduced: Number(s.totalProduced),
+          totalWaste: Number(s.totalWaste),
+          totalBreakMinutes: s.totalBreakMinutes,
+        })),
+      });
+    } catch (error: any) {
+      console.error("[Factory Scoring] Worker score error:", error);
+      res.status(500).json({ message: "Skor getirme hatası" });
     }
   });
 
