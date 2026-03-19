@@ -145,7 +145,7 @@ export default function FactoryKiosk() {
     if (!FABRIKA_ALLOWED_ROLES.includes(user.role)) {
       setLocation('/');
     } else if (step === 'device-password') {
-      setStep('enter-credentials');
+      setStep('select-user');
     }
   }, [user, setLocation]);
   const [step, setStep] = useState<KioskStep>('device-password');
@@ -186,7 +186,7 @@ export default function FactoryKiosk() {
 
   const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
-    enabled: step === 'select-station' || step === 'working',
+    enabled: step === 'select-user' || step === 'select-station' || step === 'working',
   });
 
   const { data: stations = [], isLoading: loadingStations } = useQuery<Station[]>({
@@ -232,7 +232,7 @@ export default function FactoryKiosk() {
       const res = await apiRequest('GET', '/api/factory/kiosk/today-plans');
       return res.json();
     },
-    enabled: step === 'enter-credentials' || step === 'select-user' || step === 'select-station',
+    enabled: step === 'enter-credentials' || step === 'select-user' || step === 'enter-pin' || step === 'select-station',
     refetchInterval: 60000,
   });
 
@@ -263,7 +263,7 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: () => {
-      setStep('enter-credentials');
+      setStep('select-user');
       setDevicePassword('');
       setUsernameInput('');
       setPinInput('');
@@ -621,7 +621,7 @@ export default function FactoryKiosk() {
   };
 
   const resetWorker = () => {
-    setStep('enter-credentials');
+    setStep(user && FABRIKA_ALLOWED_ROLES.includes(user.role) ? 'select-user' : 'enter-credentials');
     setSelectedUser(null);
     setPinInput('');
     setUsernameInput('');
@@ -665,7 +665,7 @@ export default function FactoryKiosk() {
   };
 
   const resetKiosk = () => {
-    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'enter-credentials' : 'device-password');
+    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'select-user' : 'device-password');
     setDeviceUsername('');
     setDevicePassword('');
     setSelectedUser(null);
@@ -803,6 +803,122 @@ export default function FactoryKiosk() {
                     Lütfen önce kullanıcı adını girin
                   </p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {step === 'select-user' && (
+            <div className="space-y-6">
+              <div className="text-center mb-4">
+                <Users className="h-12 w-12 mx-auto mb-2 text-amber-400 opacity-80" />
+                <h3 className="text-xl font-semibold text-slate-200">Personel Seçin</h3>
+                <p className="text-sm text-slate-400 mt-1">İsminize tıklayarak giriş yapın</p>
+              </div>
+
+              {loadingStaff ? (
+                <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
+              ) : isError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-400 mb-2">Personel listesi yüklenemedi</p>
+                  <Button variant="outline" onClick={() => refetch()} className="border-slate-600" data-testid="button-retry-staff">
+                    <RefreshCw className="h-4 w-4 mr-2" /> Tekrar Dene
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {staffList.map((staff) => {
+                    const initials = `${staff.firstName?.[0] || ''}${staff.lastName?.[0] || ''}`.toUpperCase();
+                    const workerInfo = activeWorkerMap[staff.id];
+                    return (
+                      <button
+                        key={staff.id}
+                        onClick={() => handleUserSelect(staff.id)}
+                        className="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-600 bg-slate-700/50 hover:bg-slate-600/50 transition-colors"
+                        data-testid={`button-select-staff-${staff.id}`}
+                      >
+                        <Avatar className="h-14 w-14 border-2 border-amber-500">
+                          {staff.avatarUrl ? (
+                            <AvatarImage src={staff.avatarUrl} alt={`${staff.firstName} ${staff.lastName}`} />
+                          ) : null}
+                          <AvatarFallback className="bg-amber-600 text-white text-lg font-bold">{initials}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium text-slate-200 text-center">
+                          {staff.firstName} {staff.lastName}
+                        </span>
+                        {workerInfo && (
+                          <Badge variant="secondary" className="text-xs">
+                            {workerInfo.stationName}
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 'enter-pin' && selectedUser && (
+            <div className="space-y-6">
+              <div className="text-center mb-4">
+                <Avatar className="h-20 w-20 mx-auto mb-3 border-2 border-amber-500">
+                  {selectedUser.avatarUrl ? (
+                    <AvatarImage src={selectedUser.avatarUrl} alt={`${selectedUser.firstName} ${selectedUser.lastName}`} />
+                  ) : null}
+                  <AvatarFallback className="bg-amber-600 text-white text-2xl font-bold">
+                    {`${selectedUser.firstName?.[0] || ''}${selectedUser.lastName?.[0] || ''}`.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="text-xl font-semibold text-slate-200">{selectedUser.firstName} {selectedUser.lastName}</h3>
+                <p className="text-sm text-slate-400 mt-1">PIN kodunuzu girin</p>
+              </div>
+
+              <div className="max-w-xs mx-auto space-y-4">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    type="password"
+                    placeholder="PIN"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value)}
+                    className="pl-10 text-center text-2xl tracking-widest bg-slate-700 border-slate-600 h-14"
+                    maxLength={4}
+                    autoFocus
+                    data-testid="input-pin-entry"
+                    onKeyDown={(e) => e.key === 'Enter' && pinInput.length >= 4 && handlePinSubmit()}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-center">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="w-10 h-10 border-2 border-slate-600 rounded-lg flex items-center justify-center text-xl text-amber-400">
+                      {pinInput[i] ? "\u25CF" : ""}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-slate-600"
+                    onClick={() => {
+                      setStep('select-user');
+                      setSelectedUser(null);
+                      setPinInput('');
+                    }}
+                    data-testid="button-back-to-users"
+                  >
+                    Geri
+                  </Button>
+                  <Button
+                    className="flex-1 bg-amber-600 hover:bg-amber-700"
+                    onClick={handlePinSubmit}
+                    disabled={pinInput.length < 4 || loginMutation.isPending}
+                    data-testid="button-submit-pin"
+                  >
+                    {loginMutation.isPending ? "Giriş..." : "Giriş Yap"}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
