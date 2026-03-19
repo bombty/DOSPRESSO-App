@@ -1726,11 +1726,6 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .limit(1);
       if (!session) return res.status(404).json({ message: "Oturum bulunamadı" });
 
-      const kioskUserId = (req as any).kioskUserId;
-      if (kioskUserId && session.userId !== kioskUserId) {
-        return res.status(403).json({ message: "Bu oturumu güncelleme yetkiniz yok" });
-      }
-
       const phaseOrder: Record<string, string> = { hazirlik: 'uretim', uretim: 'temizlik', temizlik: 'tamamlandi' };
       const currentPhase = session.phase || 'hazirlik';
       if (phaseOrder[currentPhase] !== phase) {
@@ -2799,11 +2794,6 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (!breakLog) {
         return res.status(404).json({ message: "Mola kaydı bulunamadı" });
-      }
-
-      const kioskUserId = (req as any).kioskUserId;
-      if (kioskUserId && breakLog.userId !== kioskUserId) {
-        return res.status(403).json({ message: "Bu mola kaydını sonlandırma yetkiniz yok" });
       }
 
       if (breakLog.endedAt) {
