@@ -180,3 +180,9 @@ id = "P8jmMzID1OJ9p2xSSdVmH"
 uri = "file://MR_DOBODY_GUIDANCE_AUDIT_REPORT.md"
 type = "text"
 title = "Mr. Dobody Otonom Rehberlik Sistemi — Denetim Raporu"
+
+[[outputs]]
+id = "gZSJKeLc40wFNln9Sx62u"
+uri = "file://PRELAUNCH_AUDIT_REPORT.md"
+type = "text"
+title = "DOSPRESSO Pre-Launch Final Audit Raporu"
