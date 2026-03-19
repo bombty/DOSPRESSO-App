@@ -453,10 +453,28 @@ export async function setupAuth(app: Express, authLimiter?: any) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Unauthorized" });
+  if (req.isAuthenticated()) {
+    return next();
   }
-  next();
+  const token = req.headers['x-kiosk-token'] as string;
+  if (token) {
+    try {
+      const session = await validateKioskSession(token);
+      if (session) {
+        (req as any).kioskUserId = session.userId;
+        (req as any).kioskStationId = session.stationId;
+        (req as any).authMethod = 'kiosk_token';
+        const [kioskUser] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
+        if (kioskUser) {
+          (req as any).user = kioskUser;
+          return next();
+        }
+      }
+    } catch (err) {
+      console.error("[Auth] Kiosk token validation in isAuthenticated:", err);
+    }
+  }
+  return res.status(401).json({ message: "Unauthorized" });
 };
 
 const KIOSK_SESSION_TTL = 8 * 60 * 60 * 1000;

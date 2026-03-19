@@ -21,7 +21,7 @@ import { cleanupExpiredKioskSessions } from "./localAuth";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
-import { calculateAndSaveDailyScores, calculateAndSaveWeeklyScores, backfillNullScores, closeOrphanedBreakLogs } from "./services/factory-scoring-service";
+import { calculateAndSaveDailyScores, calculateAndSaveWeeklyScores, backfillNullScores, closeOrphanedBreakLogs, cleanupStaleShiftSessions } from "./services/factory-scoring-service";
 import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
@@ -330,6 +330,7 @@ app.use((req, res, next) => {
 
       closeOrphanedBreakLogs().catch(e => console.error("[Factory Scoring] Startup orphan break cleanup error:", e));
       backfillNullScores().catch(e => console.error("[Factory Scoring] Startup backfill error:", e));
+      cleanupStaleShiftSessions().catch(e => console.error("[Factory Kiosk] Startup stale shift cleanup error:", e));
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
@@ -467,6 +468,9 @@ function startConsolidatedHourlyJobs() {
       const cleaned = await cleanupExpiredKioskSessions();
       if (cleaned > 0) log(`[Kiosk] Cleaned up ${cleaned} expired sessions`);
     } catch (e) { console.error("Error in kiosk session cleanup:", e); }
+    try {
+      await cleanupStaleShiftSessions();
+    } catch (e) { console.error("Error in stale shift cleanup:", e); }
 
     const now = new Date();
     if (now.getDate() === 1 && now.getHours() === 0) {

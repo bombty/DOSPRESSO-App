@@ -1,6 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+function kioskFetch(url: string, method: string = 'GET', data?: unknown): Promise<Response> {
+  const token = localStorage.getItem("factory-kiosk-token");
+  const headers: HeadersInit = {
+    ...(data ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "x-kiosk-token": token } : {}),
+  };
+  return fetch(url, {
+    method,
+    credentials: 'include',
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -189,19 +203,23 @@ export default function FactoryKiosk() {
 
   const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
+    queryFn: async () => { const res = await kioskFetch('/api/factory/staff'); return res.json(); },
     enabled: step === 'select-user' || step === 'select-station' || step === 'working',
   });
 
   const { data: stations = [], isLoading: loadingStations } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
+    queryFn: async () => { const res = await kioskFetch('/api/factory/stations'); return res.json(); },
   });
 
   const { data: wasteReasons = [] } = useQuery<WasteReason[]>({
     queryKey: ['/api/factory/waste-reasons'],
+    queryFn: async () => { const res = await kioskFetch('/api/factory/waste-reasons'); return res.json(); },
   });
 
   const { data: activeWorkers = [] } = useQuery<any[]>({
     queryKey: ['/api/factory/active-workers'],
+    queryFn: async () => { const res = await kioskFetch('/api/factory/active-workers'); return res.json(); },
     refetchInterval: 5000,
   });
 
@@ -212,7 +230,7 @@ export default function FactoryKiosk() {
       const url = stationCategory 
         ? `/api/factory/products?category=${encodeURIComponent(stationCategory)}`
         : '/api/factory/products';
-      const res = await apiRequest('GET', url);
+      const res = await kioskFetch(url);
       return res.json();
     },
     enabled: step === 'production-entry' || step === 'working',
@@ -222,7 +240,7 @@ export default function FactoryKiosk() {
     queryKey: ['/api/factory/collaborative-scores', currentStationInfo?.id],
     queryFn: async () => {
       if (!currentStationInfo?.id) return null;
-      const res = await apiRequest('GET', `/api/factory/collaborative-scores/${currentStationInfo.id}`);
+      const res = await kioskFetch(`/api/factory/collaborative-scores/${currentStationInfo.id}`);
       return res.json();
     },
     enabled: !!currentStationInfo?.id && (step === 'working' || step === 'end-shift-summary'),
@@ -232,7 +250,7 @@ export default function FactoryKiosk() {
   const { data: allTodayPlans = [] } = useQuery<TodayPlan[]>({
     queryKey: ['/api/factory/kiosk/today-plans', 'all'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/factory/kiosk/today-plans');
+      const res = await kioskFetch('/api/factory/kiosk/today-plans');
       return res.json();
     },
     enabled: step === 'enter-credentials' || step === 'select-user' || step === 'enter-pin' || step === 'select-station',
@@ -245,7 +263,7 @@ export default function FactoryKiosk() {
       const url = currentStationInfo?.id
         ? `/api/factory/kiosk/today-plans?stationId=${currentStationInfo.id}`
         : '/api/factory/kiosk/today-plans';
-      const res = await apiRequest('GET', url);
+      const res = await kioskFetch(url);
       return res.json();
     },
     enabled: !!currentStationInfo?.id && step === 'working',
@@ -283,6 +301,9 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: (data) => {
+      if (data.kioskToken) {
+        localStorage.setItem("factory-kiosk-token", data.kioskToken);
+      }
       setSelectedUser({ id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role });
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
@@ -305,6 +326,9 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: (data) => {
+      if (data.kioskToken) {
+        localStorage.setItem("factory-kiosk-token", data.kioskToken);
+      }
       setSelectedUser({ id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role });
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
@@ -323,7 +347,8 @@ export default function FactoryKiosk() {
 
   const startShiftMutation = useMutation({
     mutationFn: async (data: { userId: string; stationId: number }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/start-shift', data);
+      const res = await kioskFetch('/api/factory/kiosk/start-shift', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Vardiya başlatılamadı'); }
       return res.json();
     },
     onSuccess: (data) => {
@@ -354,7 +379,8 @@ export default function FactoryKiosk() {
       wasteNotes?: string;
       photoUrl?: string;
     }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/log-break', data);
+      const res = await kioskFetch('/api/factory/kiosk/log-break', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'İşlem başarısız'); }
       return res.json();
     },
     onSuccess: (data, variables) => {
@@ -389,7 +415,8 @@ export default function FactoryKiosk() {
       wasteNotes?: string;
       photoUrl?: string;
     }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/end-shift', data);
+      const res = await kioskFetch('/api/factory/kiosk/end-shift', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Vardiya sonlandırılamadı'); }
       return res.json();
     },
     onSuccess: (data) => {
@@ -411,7 +438,8 @@ export default function FactoryKiosk() {
       sessionId?: number | null;
       userId?: string | null;
     }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/report-fault', data);
+      const res = await kioskFetch('/api/factory/kiosk/report-fault', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Arıza bildirilemedi'); }
       return res.json();
     },
     onSuccess: (data) => {
@@ -430,7 +458,8 @@ export default function FactoryKiosk() {
 
   const endBreakMutation = useMutation({
     mutationFn: async (data: { breakLogId: number }) => {
-      const res = await apiRequest('POST', '/api/factory/kiosk/end-break', data);
+      const res = await kioskFetch('/api/factory/kiosk/end-break', 'POST', data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Mola sonlandırılamadı'); }
       return res.json();
     },
     onSuccess: () => {
@@ -447,7 +476,7 @@ export default function FactoryKiosk() {
 
   const fetchSessionDetails = async (userId: string) => {
     try {
-      const res = await fetch(`/api/factory/kiosk/session/${userId}`);
+      const res = await kioskFetch(`/api/factory/kiosk/session/${userId}`);
       const data = await res.json();
       if (data.session) {
         setCurrentSession(data.session);
@@ -566,7 +595,7 @@ export default function FactoryKiosk() {
     
     if (currentSession) {
       try {
-        await apiRequest("PATCH", `/api/factory/kiosk/session/${currentSession.id}/phase`, {
+        await kioskFetch(`/api/factory/kiosk/session/${currentSession.id}/phase`, 'PATCH', {
           phase: nextPhase
         });
       } catch (e) {
@@ -705,6 +734,7 @@ export default function FactoryKiosk() {
   };
 
   const resetKiosk = () => {
+    localStorage.removeItem("factory-kiosk-token");
     setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'select-user' : 'device-password');
     setDeviceUsername('');
     setDevicePassword('');
@@ -1956,7 +1986,7 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
   const { data: assignment } = useQuery<any>({
     queryKey: ["/api/factory-shifts/my-assignment", userId],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/factory-shifts/my-assignment/${userId}`);
+      const res = await kioskFetch(`/api/factory-shifts/my-assignment/${userId}`);
       return res.json();
     },
     refetchInterval: 30000,
@@ -1965,7 +1995,7 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
   const { data: activeBatches = [] } = useQuery<any[]>({
     queryKey: ["/api/factory-production-batches", "operator", userId, "in_progress"],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/factory-production-batches?operatorId=${userId}&status=in_progress`);
+      const res = await kioskFetch(`/api/factory-production-batches?operatorId=${userId}&status=in_progress`);
       return res.json();
     },
     refetchInterval: 10000,
@@ -1987,7 +2017,8 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
 
   const startBatchMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/factory-production-batches/start", data);
+      const res = await kioskFetch("/api/factory-production-batches/start", "POST", data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Batch başlatılamadı'); }
       return res.json();
     },
     onSuccess: () => {
@@ -2000,7 +2031,8 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
 
   const completeBatchMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await apiRequest("PUT", `/api/factory-production-batches/${id}/complete`, data);
+      const res = await kioskFetch(`/api/factory-production-batches/${id}/complete`, "PUT", data);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Batch tamamlanamadı'); }
       return res.json();
     },
     onSuccess: () => {

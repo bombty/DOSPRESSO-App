@@ -666,6 +666,28 @@ export async function closeOrphanedBreakLogs(): Promise<number> {
   }
 }
 
+export async function cleanupStaleShiftSessions(): Promise<number> {
+  try {
+    const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    const result = await db.execute(sql`
+      UPDATE factory_shift_sessions 
+      SET status = 'completed',
+          check_out_time = NOW(),
+          notes = COALESCE(notes, '') || ' [Otomatik kapatıldı — 12 saatten eski]'
+      WHERE status = 'active'
+        AND check_in_time < ${cutoff}
+    `);
+    const count = Number(result.rowCount || 0);
+    if (count > 0) {
+      console.log(`[Factory Kiosk] Cleaned ${count} stale shift sessions (>12h)`);
+    }
+    return count;
+  } catch (error) {
+    console.error("[Factory Kiosk] Stale shift cleanup failed:", error);
+    return 0;
+  }
+}
+
 export async function getWorkerScoreSummary(
   userId: string,
   days: number = 30

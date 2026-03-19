@@ -5953,7 +5953,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post("/api/factory/kiosk/quick-start", isKioskAuthenticated, async (req: any, res) => {
     try {
       const { stationId } = req.body;
-      const userId = req.user?.id;
+      const userId = (req as any).kioskUserId || req.user?.id;
 
       if (!stationId) {
         return res.status(400).json({ message: "İstasyon seçimi zorunludur" });
@@ -5985,7 +5985,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.post("/api/factory/kiosk/quick-complete", isKioskAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).kioskUserId || req.user?.id;
       const { productId, quantity, wasteQuantity, notes } = req.body;
 
       if (!productId || !quantity) {
@@ -6103,7 +6103,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.post("/api/factory/kiosk/quick-end", isKioskAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.id;
+      const userId = (req as any).kioskUserId || req.user?.id;
 
       const [activeSession] = await db.select().from(factoryShiftSessions)
         .where(and(
@@ -6292,7 +6292,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(400).json({ message: "Önce fabrika ürün ve istasyon seed'i çalıştırın" });
       }
 
-      const userId = req.user?.id;
+      const userId = (req as any).kioskUserId || req.user?.id;
 
       const [testSession] = await db.insert(factoryShiftSessions).values({
         userId,
