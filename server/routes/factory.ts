@@ -678,7 +678,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         ))
         .limit(1);
 
-      const kioskToken = createKioskSession(userId);
+      const kioskToken = await createKioskSession(userId);
       res.json({
         success: true,
         user: {

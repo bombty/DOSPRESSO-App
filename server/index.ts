@@ -17,6 +17,7 @@ import { generateDailyTaskInstances, markOverdueInstances } from "./services/bra
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
+import { cleanupExpiredKioskSessions } from "./localAuth";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
@@ -271,6 +272,11 @@ app.use((req, res, next) => {
     const seedDuration = Date.now() - startupTime;
     log(`Seeds completed in ${seedDuration}ms`);
     
+    try {
+      const cleaned = await cleanupExpiredKioskSessions();
+      if (cleaned > 0) log(`[Kiosk] Startup cleanup: removed ${cleaned} expired sessions`);
+    } catch (e) { console.error("Error in startup kiosk cleanup:", e); }
+
     log("Schedulers will start in 30 seconds (lazy init)...");
     schedulerManager.registerTimeout('scheduler-lazy-init', () => {
       initReminderSystem();
@@ -430,6 +436,10 @@ function startConsolidatedHourlyJobs() {
   schedulerManager.registerInterval('tick-1hr', async () => {
     try { await checkLowStockNotifications(); } catch (e) { console.error("Error in stock alert:", e); }
     try { await checkFeedbackSlaBreaches(); } catch (e) { console.error("Error in feedback SLA:", e); }
+    try {
+      const cleaned = await cleanupExpiredKioskSessions();
+      if (cleaned > 0) log(`[Kiosk] Cleaned up ${cleaned} expired sessions`);
+    } catch (e) { console.error("Error in kiosk session cleanup:", e); }
 
     const now = new Date();
     if (now.getDate() === 1 && now.getHours() === 0) {

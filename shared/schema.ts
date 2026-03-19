@@ -15681,3 +15681,17 @@ export const branchRecurringTaskOverrides = pgTable("branch_recurring_task_overr
 export const insertBranchRecurringTaskOverrideSchema = createInsertSchema(branchRecurringTaskOverrides).omit({ id: true, createdAt: true, updatedAt: true, deletedAt: true });
 export type BranchRecurringTaskOverride = typeof branchRecurringTaskOverrides.$inferSelect;
 export type InsertBranchRecurringTaskOverride = z.infer<typeof insertBranchRecurringTaskOverrideSchema>;
+
+export const kioskSessions = pgTable("kiosk_sessions", {
+  id: serial("id").primaryKey(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  stationId: integer("station_id"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_kiosk_sessions_token").on(table.token),
+  index("idx_kiosk_sessions_user").on(table.userId),
+  index("idx_kiosk_sessions_expires").on(table.expiresAt),
+]);
+export type KioskSession = typeof kioskSessions.$inferSelect;

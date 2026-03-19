@@ -7,9 +7,9 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
-import { branches, sessions, users } from "@shared/schema";
+import { branches, sessions, users, kioskSessions } from "@shared/schema";
 import { generateTasksForUser } from "./services/task-trigger-service";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, lt } from "drizzle-orm";
 import { auditLog, createAuditEntry, getAuditContext } from "./audit";
 
 const loginSchema = z.object({
@@ -458,37 +458,84 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   next();
 };
 
-const kioskSessions = new Map<string, { userId: string; expiresAt: Date; stationId?: number }>();
 const KIOSK_SESSION_TTL = 8 * 60 * 60 * 1000;
+const KIOSK_CACHE_TTL = 30 * 1000;
+const kioskSessionCache = new Map<string, { userId: string; stationId?: number; expiresAt: number; cachedAt: number }>();
 
-export function createKioskSession(userId: string): string {
+export async function createKioskSession(userId: string): Promise<string> {
   const token = crypto.randomUUID();
-  kioskSessions.set(token, {
-    userId,
-    expiresAt: new Date(Date.now() + KIOSK_SESSION_TTL),
-  });
+  const expiresAt = new Date(Date.now() + KIOSK_SESSION_TTL);
+
+  await db.insert(kioskSessions).values({ token, userId, expiresAt });
+
   return token;
 }
 
-export function validateKioskSession(token: string): { userId: string; stationId?: number } | null {
-  const session = kioskSessions.get(token);
-  if (!session) return null;
-  if (session.expiresAt < new Date()) {
-    kioskSessions.delete(token);
+export async function validateKioskSession(token: string): Promise<{ userId: string; stationId?: number } | null> {
+  if (!token) return null;
+
+  const cached = kioskSessionCache.get(token);
+  if (cached && Date.now() - cached.cachedAt < KIOSK_CACHE_TTL) {
+    if (Date.now() >= cached.expiresAt) {
+      kioskSessionCache.delete(token);
+      return null;
+    }
+    return { userId: cached.userId, stationId: cached.stationId };
+  }
+
+  const [session] = await db
+    .select()
+    .from(kioskSessions)
+    .where(eq(kioskSessions.token, token))
+    .limit(1);
+
+  if (!session) {
+    kioskSessionCache.delete(token);
     return null;
   }
-  return { userId: session.userId, stationId: session.stationId };
-}
 
-export function updateKioskStation(token: string, stationId: number): void {
-  const session = kioskSessions.get(token);
-  if (session) {
-    session.stationId = stationId;
+  if (new Date(session.expiresAt) < new Date()) {
+    kioskSessionCache.delete(token);
+    await db.delete(kioskSessions).where(eq(kioskSessions.token, token));
+    return null;
   }
+
+  kioskSessionCache.set(token, {
+    userId: session.userId,
+    stationId: session.stationId ?? undefined,
+    expiresAt: new Date(session.expiresAt).getTime(),
+    cachedAt: Date.now(),
+  });
+
+  return { userId: session.userId, stationId: session.stationId ?? undefined };
 }
 
-export function deleteKioskSession(token: string): void {
-  kioskSessions.delete(token);
+export async function updateKioskStation(token: string, stationId: number): Promise<void> {
+  kioskSessionCache.delete(token);
+  await db
+    .update(kioskSessions)
+    .set({ stationId })
+    .where(eq(kioskSessions.token, token));
+}
+
+export async function deleteKioskSession(token: string): Promise<void> {
+  kioskSessionCache.delete(token);
+  await db.delete(kioskSessions).where(eq(kioskSessions.token, token));
+}
+
+export async function cleanupExpiredKioskSessions(): Promise<number> {
+  const now = Date.now();
+  for (const [token, entry] of kioskSessionCache) {
+    if (now >= entry.expiresAt) {
+      kioskSessionCache.delete(token);
+    }
+  }
+
+  const result = await db
+    .delete(kioskSessions)
+    .where(lt(kioskSessions.expiresAt, new Date()))
+    .returning({ id: kioskSessions.id });
+  return result.length;
 }
 
 // Kiosk işlemlerine web oturumu ile de erişebilen yetkili roller
@@ -497,20 +544,22 @@ const KIOSK_AUTHORIZED_ROLES = [
   'supervisor', 'supervisor_buddy', 'coach'
 ];
 
-export const isKioskAuthenticated: RequestHandler = (req, res, next) => {
-  // Önce kiosk token'ı kontrol et
+export const isKioskAuthenticated: RequestHandler = async (req, res, next) => {
   const token = req.headers['x-kiosk-token'] as string;
   if (token) {
-    const session = validateKioskSession(token);
-    if (session) {
-      (req as any).kioskUserId = session.userId;
-      (req as any).kioskStationId = session.stationId;
-      (req as any).authMethod = 'kiosk_token';
-      return next();
+    try {
+      const session = await validateKioskSession(token);
+      if (session) {
+        (req as any).kioskUserId = session.userId;
+        (req as any).kioskStationId = session.stationId;
+        (req as any).authMethod = 'kiosk_token';
+        return next();
+      }
+    } catch (err) {
+      console.error("[Kiosk] Session validation error:", err);
     }
   }
-  
-  // Kiosk token yoksa veya geçersizse, web oturumunu kontrol et
+
   if (req.isAuthenticated() && req.user) {
     const user = req.user as any;
     if (KIOSK_AUTHORIZED_ROLES.includes(user.role)) {
@@ -519,6 +568,6 @@ export const isKioskAuthenticated: RequestHandler = (req, res, next) => {
       return next();
     }
   }
-  
+
   return res.status(401).json({ message: "Kiosk oturumu gerekli" });
 };

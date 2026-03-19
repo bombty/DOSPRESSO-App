@@ -1,0 +1,274 @@
+Çok akıllıca — iki farklı perspektif daha güçlü sonuç verir. Şu promptu Replit'e yapıştırın:
+
+---
+
+```
+## System-Wide Gap Analysis — What's Missing or Broken?
+
+### Context
+We've done massive work today (12+ sprints). Now we need an honest assessment of what's still incomplete, broken, or overlooked. This is a READ-ONLY audit — do NOT modify any code.
+
+Read these skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### REPORT ALL FINDINGS — be thorough and honest.
+
+---
+
+### SECTION 1: Feature Completeness Audit
+
+Check each major feature for completeness. For each, report: COMPLETE / PARTIAL / BROKEN / NOT STARTED
+
+```bash
+# 1.1 Feature Flag System
+echo "=== Feature Flags ==="
+echo "Flags count:" && echo "SELECT count(*) FROM module_flags WHERE deleted_at IS NULL;" | psql
+echo "Admin UI exists:" && ls client/src/pages/admin/module-flags.tsx 2>/dev/null && echo "YES" || echo "NO"
+echo "ModuleGuard exists:" && grep -l "ModuleGuard" client/src/components/ 2>/dev/null
+echo "my-flags endpoint:" && grep -n "my-flags" server/routes/module-flags.ts | head -3
+
+# 1.2 Branch Recurring Tasks
+echo "=== Branch Tasks ==="
+echo "Tables:" && echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'branch_%task%' OR table_name LIKE 'branch_%recurring%';" | psql
+echo "Instances count:" && echo "SELECT count(*) FROM branch_task_instances;" | psql
+echo "3 tabs in tasks.tsx:" && grep -c "TabsTrigger\|TabsContent" client/src/pages/tasks.tsx
+echo "Dashboard widget:" && grep -l "TodaysTasksWidget" client/src/ -r --include="*.tsx" | head -3
+echo "Kiosk integration:" && grep -c "KioskBranchTasks" client/src/pages/sube/kiosk.tsx
+
+# 1.3 Academy HQ
+echo "=== Academy HQ ==="
+echo "Directory exists:" && ls client/src/pages/akademi-hq/ 2>/dev/null
+echo "Tab count:" && grep -c "TabsTrigger" client/src/pages/akademi-hq/index.tsx
+echo "Old file deleted:" && ls client/src/pages/academy-hq.tsx 2>/dev/null && echo "STILL EXISTS!" || echo "Deleted (good)"
+echo "KPI cards removed:" && grep -c "Yayında\|Taslak\|Toplam.*51\|Bekleyen Sınav" client/src/pages/akademi-hq/components/RoleDashboard.tsx client/src/pages/akademi-hq/index.tsx 2>/dev/null
+
+# 1.4 Certificate System
+echo "=== Certificates ==="
+echo "Table exists:" && echo "SELECT count(*) FROM issued_certificates;" | psql 2>/dev/null || echo "TABLE MISSING"
+echo "Settings table:" && echo "SELECT count(*) FROM certificate_settings;" | psql 2>/dev/null || echo "TABLE MISSING"
+echo "Student view (CareerTab):" && grep -c "sertifika\|certificate\|Sertifikalarım" client/src/pages/akademi-v3/CareerTab.tsx
+
+# 1.5 Mobile Compactness
+echo "=== Mobile ==="
+echo "CompactKPIStrip usage:" && grep -rl "CompactKPIStrip" client/src/pages/ --include="*.tsx" | wc -l
+echo "MobileFilterCollapse usage:" && grep -rl "MobileFilterCollapse" client/src/pages/ --include="*.tsx" | wc -l
+
+# 1.6 QuickTaskModal
+echo "=== QuickTaskModal ==="
+echo "Used in sube-ozet:" && grep -c "QuickTaskModal" client/src/pages/sube-ozet.tsx
+echo "Used in kocluk-paneli:" && grep -c "QuickTaskModal" client/src/pages/kocluk-paneli.tsx
+
+# 1.7 Kiosk Session
+echo "=== Kiosk Sessions ==="
+echo "DB table exists:" && echo "SELECT count(*) FROM kiosk_sessions;" | psql 2>/dev/null || echo "TABLE MISSING — still in-memory"
+echo "In-memory Map still used:" && grep -c "new Map" server/localAuth.ts
+
+# 1.8 Mr. Dobody Academy Skill
+echo "=== Dobody Skill ==="
+echo "Insight count:" && grep -c "case \"" server/agent/skills/training-optimizer.ts
+echo "Test endpoint:" && grep -c "test-skill" server/routes/agent.ts 2>/dev/null || grep -c "test-skill" server/routes/ -r --include="*.ts"
+
+# 1.9 Auto-redirect for HQ academy
+echo "=== Academy Routing ==="
+echo "Auto-redirect exists:" && grep -c "navigate.*akademi-hq\|replace.*akademi-hq" client/src/pages/akademi-v3/index.tsx
+echo "Preview mode:" && grep -c "preview=true\|isPreviewMode" client/src/pages/akademi-v3/index.tsx
+echo "Preview button in HQ:" && grep -c "Öğrenci Görünümü\|preview=true" client/src/pages/akademi-hq/index.tsx
+```
+
+---
+
+### SECTION 2: Broken Pages / Runtime Errors
+
+```bash
+# Check for known crash patterns in recently modified files
+echo "=== Potential Crash Points ==="
+
+# Unguarded .toFixed in new files
+grep -rn "\.toFixed\|\.toLocaleString" client/src/pages/akademi-hq/ client/src/pages/tasks.tsx client/src/components/certificate-renderer.tsx client/src/components/todays-tasks-widget.tsx 2>/dev/null | grep -v "Number(" | head -10
+
+# Lucide icons used as objects (not JSX) — the bug we fixed 3 times today
+grep -rn "icon: [A-Z][a-zA-Z]*[^(]" client/src/pages/akademi-hq/ --include="*.tsx" | grep -v "icon: <\|icon: null\|icon: undefined\|import\|//\|interface\|type " | head -10
+
+# Missing null guards on API data
+grep -rn "\.map(\|\.filter(" client/src/pages/akademi-hq/ client/src/pages/tasks.tsx --include="*.tsx" | grep "data\.\|result\." | grep -v "??\|Array.isArray\||| \[\]" | head -10
+
+# Components importing from deleted files
+grep -rn "from.*academy-hq['\"]" client/src/ --include="*.tsx" --include="*.ts" | grep -v "akademi-hq/" | head -5
+```
+
+---
+
+### SECTION 3: Route & Navigation Consistency
+
+```bash
+# Pages in App.tsx but not in sidebar
+echo "=== Orphan Routes ==="
+grep -oP "path=\"([^\"]+)\"" client/src/App.tsx | sort > /tmp/app_routes.txt
+# Compare with sidebar paths
+grep -oP "path: \"([^\"]+)\"" server/menu-service.ts | sort > /tmp/sidebar_paths.txt
+echo "Routes in App.tsx but not in sidebar (may be intentional):"
+comm -23 /tmp/app_routes.txt /tmp/sidebar_paths.txt | head -20
+
+# Dead routes — pages that don't exist
+echo "=== Dead Imports ==="
+grep -n "lazy.*import" client/src/App.tsx | while read line; do
+  file=$(echo "$line" | grep -oP "import\(\"[^\"]+\"" | sed 's/import("//' | sed 's/"//')
+  if [ ! -z "$file" ]; then
+    resolved="client/src/${file#@/}.tsx"
+    if [ ! -f "$resolved" ] && [ ! -d "${resolved%.tsx}" ]; then
+      echo "MISSING: $resolved (from App.tsx)"
+    fi
+  fi
+done 2>/dev/null | head -10
+
+# Sidebar items pointing to non-existent routes
+echo "=== Sidebar → Route Check ==="
+grep "path:" server/menu-service.ts | grep -oP "\"[^\"]+\"" | sort -u | while read path; do
+  clean=$(echo $path | tr -d '"')
+  if ! grep -q "\"$clean\"" client/src/App.tsx 2>/dev/null; then
+    echo "SIDEBAR PATH NOT IN APP.TSX: $clean"
+  fi
+done | head -10
+```
+
+---
+
+### SECTION 4: Database Integrity
+
+```bash
+echo "=== DB Health ==="
+# Tables with 0 rows that should have data
+for tbl in module_flags branch_task_categories branch_recurring_tasks sla_rules certificate_settings; do
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "$tbl: $count rows"
+done
+
+# Check for orphaned data
+echo "SELECT count(*) as orphan_flags FROM module_flags WHERE branch_id IS NOT NULL AND branch_id NOT IN (SELECT id FROM branches);" | psql 2>/dev/null
+echo "SELECT count(*) as orphan_tasks FROM branch_task_instances WHERE branch_id NOT IN (SELECT id FROM branches);" | psql 2>/dev/null
+
+# Kiosk sessions state
+echo "In-memory sessions or DB?" 
+grep -c "new Map" server/localAuth.ts
+echo "kiosk_sessions table:" && echo "SELECT count(*) FROM kiosk_sessions;" | psql 2>/dev/null || echo "NOT YET MIGRATED"
+```
+
+---
+
+### SECTION 5: Roadmap Items from Original Devir Teslim
+
+Check the original planned items from the handover document:
+
+```bash
+echo "=== Planned Features Status ==="
+
+# Feature Flag — done?
+echo "1. Module Feature Flag: $(echo "SELECT count(*) FROM module_flags;" | psql -t 2>/dev/null | tr -d ' ') flags"
+
+# Fabrika pilot test
+echo "2. Fabrika pilot test: NOT STARTED (check factory health)"
+echo "SELECT count(*) FROM factory_production_runs;" | psql 2>/dev/null
+
+# Kiosk DB session
+echo "3. Kiosk DB session migration:"
+echo "SELECT count(*) FROM kiosk_sessions;" | psql 2>/dev/null || echo "NOT MIGRATED YET"
+
+# Fabrika kiosk ön yetki (personel listesi gizlensin)
+echo "4. Fabrika kiosk ön yetki:" && grep -c "authorize\|pre-auth\|personnel.*list.*hide" client/src/pages/fabrika/kiosk.tsx 2>/dev/null || echo "NOT IMPLEMENTED"
+
+# Şubesiz 12 kullanıcı
+echo "5. Şubesiz kullanıcılar:" && echo "SELECT count(*) FROM users WHERE branch_id IS NULL AND is_active = true AND role NOT IN ('admin','ceo','cgo','coach','trainer','muhasebe_ik','satinalma','kalite_kontrol','gida_muhendisi','fabrika_mudur','muhasebe','teknik','destek','fabrika','yatirimci_hq');" | psql 2>/dev/null
+
+# Branch barista KPIs
+echo "6. Branch barista KPIs (employee-summary):" && grep -c "employee-summary\|employee.*summary" server/routes/ -r --include="*.ts" 2>/dev/null || echo "NOT IMPLEMENTED"
+
+# 657 TypeScript errors
+echo "7. TypeScript errors:" && npx tsc --noEmit 2>&1 | tail -3
+```
+
+---
+
+### SECTION 6: Skill Files — Are They Up To Date?
+
+```bash
+echo "=== Skill File Freshness ==="
+
+# Check if skills mention today's changes
+grep -c "module_flags\|feature.flag\|ModuleGuard" .agents/skills/dospresso-architecture/SKILL.md
+grep -c "branch_recurring_tasks\|branch.task\|sube_gorevleri" .agents/skills/dospresso-architecture/SKILL.md
+grep -c "certificate\|sertifika\|Dancing.Script" .agents/skills/dospresso-architecture/SKILL.md
+grep -c "training_optimizer.*11\|quiz_gap\|branch_training_comparison" .agents/skills/dospresso-architecture/SKILL.md
+grep -c "CompactKPIStrip\|MobileFilterCollapse" .agents/skills/dospresso-architecture/SKILL.md
+grep -c "kiosk_sessions.*table\|kiosk.*DB\|kiosk.*PostgreSQL" .agents/skills/dospresso-architecture/SKILL.md
+
+# Check debug guide
+grep -c "ModuleGuard\|module-guard" .agents/skills/dospresso-debug-guide/SKILL.md
+grep -c "branch.task\|recurring.task" .agents/skills/dospresso-debug-guide/SKILL.md
+
+# Check quality gate
+grep -c "module.flag\|feature.flag" .agents/skills/dospresso-quality-gate/SKILL.md
+```
+
+---
+
+### SECTION 7: What Would YOU Recommend?
+
+Based on your full codebase knowledge, list the TOP 5 things that should be done next — prioritized by:
+1. User-facing bugs (things that are broken)
+2. Data integrity risks
+3. Missing features that users expect
+4. Technical debt that causes frequent issues
+5. Performance concerns
+
+---
+
+### OUTPUT FORMAT
+
+```
+═══════════════════════════════════════
+DOSPRESSO Gap Analysis — 19 Mar 2026
+═══════════════════════════════════════
+
+SECTION 1: Feature Completeness
+  Feature Flag:        COMPLETE / PARTIAL / BROKEN
+  Branch Tasks:        COMPLETE / PARTIAL / BROKEN
+  Academy HQ:          COMPLETE / PARTIAL / BROKEN
+  Certificates:        COMPLETE / PARTIAL / BROKEN
+  Mobile Compactness:  COMPLETE / PARTIAL / BROKEN
+  QuickTaskModal:      COMPLETE / PARTIAL / BROKEN
+  Kiosk Sessions:      COMPLETE / PARTIAL / BROKEN
+  Dobody Skill:        COMPLETE / PARTIAL / BROKEN
+  Academy Routing:     COMPLETE / PARTIAL / BROKEN
+
+SECTION 2: Broken Pages
+  [list any crash-prone code]
+
+SECTION 3: Navigation Issues
+  [list orphan routes, dead links]
+
+SECTION 4: Database Health
+  [list any integrity issues]
+
+SECTION 5: Roadmap Status
+  [list original planned items + status]
+
+SECTION 6: Skill Files
+  [list outdated skills]
+
+SECTION 7: Top 5 Recommendations
+  1. ...
+  2. ...
+  3. ...
+  4. ...
+  5. ...
+═══════════════════════════════════════
+```
+
+Report EVERYTHING honestly. Do not skip any section.
+```
+
+---
+
+Direkt yapıştırın, build başlatmayın — bu read-only audit. Replit'in gördüklerini bize raporlayacak, sonra birlikte önceliklendiririz.
