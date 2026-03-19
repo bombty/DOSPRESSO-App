@@ -317,6 +317,7 @@ app.use((req, res, next) => {
       startConsolidatedHourlyJobs();
       
       startAgentScheduler();
+      startDailyGapDetection();
       
       startWeeklyBackupScheduler();
       startTrackingCleanup();
@@ -638,6 +639,86 @@ async function cleanupOldNotifications() {
   } catch (err) {
     console.error('[Cleanup] Notification cleanup failed:', err);
   }
+}
+
+function startDailyGapDetection() {
+  schedulerManager.registerTimeout('gap-detection-init', async () => {
+    try {
+      const { detectSystemGaps } = await import("./services/system-completeness-service");
+      const gaps = await detectSystemGaps();
+      const criticalGaps = gaps.filter(g => g.severity === "critical");
+
+      if (criticalGaps.length > 0) {
+        const roleGaps = new Map<string, typeof criticalGaps>();
+        for (const gap of criticalGaps) {
+          for (const role of gap.targetRoles) {
+            if (!roleGaps.has(role)) roleGaps.set(role, []);
+            roleGaps.get(role)!.push(gap);
+          }
+        }
+
+        for (const [role, items] of roleGaps) {
+          const targetUsers = await db.select({ id: users.id }).from(users)
+            .where(and(eq(users.role, role), eq(users.isActive, true)));
+
+          for (const targetUser of targetUsers) {
+            try {
+              await storage.createNotification({
+                userId: targetUser.id,
+                type: "agent_guidance",
+                title: `Mr. Dobody: ${items.length} kritik eksiklik tespit edildi`,
+                message: items.map(i => `• ${i.title}`).join("\n"),
+                link: "/",
+              });
+            } catch (e) { console.error("[Agent Guidance] Notification failed:", e); }
+          }
+        }
+      }
+      log(`[Agent Guidance] Gap detection: ${gaps.length} total, ${criticalGaps.length} critical`);
+    } catch (error) {
+      console.error("[Agent Guidance] Gap detection failed:", error);
+    }
+  }, 2 * 60 * 1000);
+
+  schedulerManager.registerInterval('gap-detection-daily', async () => {
+    try {
+      const { detectSystemGaps } = await import("./services/system-completeness-service");
+      const gaps = await detectSystemGaps();
+      const criticalGaps = gaps.filter(g => g.severity === "critical");
+
+      if (criticalGaps.length > 0) {
+        const roleGaps = new Map<string, typeof criticalGaps>();
+        for (const gap of criticalGaps) {
+          for (const role of gap.targetRoles) {
+            if (!roleGaps.has(role)) roleGaps.set(role, []);
+            roleGaps.get(role)!.push(gap);
+          }
+        }
+
+        for (const [role, items] of roleGaps) {
+          const targetUsers = await db.select({ id: users.id }).from(users)
+            .where(and(eq(users.role, role), eq(users.isActive, true)));
+
+          for (const targetUser of targetUsers) {
+            try {
+              await storage.createNotification({
+                userId: targetUser.id,
+                type: "agent_guidance",
+                title: `Mr. Dobody: ${items.length} kritik eksiklik tespit edildi`,
+                message: items.map(i => `• ${i.title}`).join("\n"),
+                link: "/",
+              });
+            } catch (e) { console.error("[Agent Guidance] Daily notification failed:", e); }
+          }
+        }
+      }
+      console.log(`[Agent Guidance] Daily: ${gaps.length} total, ${criticalGaps.length} critical`);
+    } catch (error) {
+      console.error("[Agent Guidance] Daily check failed:", error);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  log("Daily gap detection started (first run in 2min, then every 24h)");
 }
 
 function startNotificationCleanupJob() {

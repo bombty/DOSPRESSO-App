@@ -15695,3 +15695,12 @@ export const kioskSessions = pgTable("kiosk_sessions", {
   index("idx_kiosk_sessions_expires").on(table.expiresAt),
 ]);
 export type KioskSession = typeof kioskSessions.$inferSelect;
+
+export const guidanceDismissals = pgTable("guidance_dismissals", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  guidanceId: varchar("guidance_id", { length: 100 }).notNull(),
+  dismissedAt: timestamp("dismissed_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("idx_guidance_dismissals_unique").on(table.userId, table.guidanceId),
+]);

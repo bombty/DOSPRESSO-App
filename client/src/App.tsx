@@ -24,7 +24,23 @@ import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
 import { ModuleGuard } from "@/components/module-guard";
 import { NavRail } from "@/components/nav-rail";
+import { GuidanceWidget } from "@/components/widgets/guidance-widget";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
+
+const GUIDANCE_ROLES = [
+  "admin", "ceo", "cgo", "coach", "trainer", "muhasebe_ik",
+  "satinalma", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur",
+  "mudur", "supervisor", "supervisor_buddy",
+];
+
+function GuidanceWidgetWrapper({ user }: { user: any }) {
+  if (!user || !GUIDANCE_ROLES.includes(user.role)) return null;
+  return (
+    <div className="px-4 pt-4">
+      <GuidanceWidget />
+    </div>
+  );
+}
 
 function PageLoader() {
   return (
@@ -579,6 +595,7 @@ function AppContent() {
           {/* Main Content */}
           <main className="flex-1 overflow-auto pb-20 md:pb-4">
             <div className="max-w-[1600px] mx-auto w-full">
+              <GuidanceWidgetWrapper user={user} />
               <Router />
             </div>
           </main>

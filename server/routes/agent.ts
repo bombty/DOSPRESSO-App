@@ -4,7 +4,8 @@ import { storage } from "../storage";
 import { 
   agentPendingActions, agentRuns, agentEscalationHistory, 
   agentActionOutcomes, agentRejectionPatterns, agentRoutingRules,
-  users, notifications, aiAgentLogs, tasks, dobodyFlowTasks
+  users, notifications, aiAgentLogs, tasks, dobodyFlowTasks,
+  guidanceDismissals
 } from "@shared/schema";
 import { eq, desc, and, count, sql, gte, or, inArray, ne } from "drizzle-orm";
 import { runAgentAnalysis } from "../services/agent-engine";
@@ -723,6 +724,81 @@ router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req: any, r
   } catch (error: any) {
     console.error("Test skill error:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe_ik', 'kalite_kontrol', 'gida_muhendisi', 'fabrika_mudur', 'satinalma'];
+
+let cachedGaps: any[] | null = null;
+let cachedGapsAt = 0;
+const GAP_CACHE_TTL = 3 * 60 * 1000;
+
+async function getCachedGaps() {
+  if (cachedGaps && Date.now() - cachedGapsAt < GAP_CACHE_TTL) return cachedGaps;
+  const { detectSystemGaps } = await import("../services/system-completeness-service");
+  cachedGaps = await detectSystemGaps();
+  cachedGapsAt = Date.now();
+  return cachedGaps;
+}
+
+router.get("/api/agent/guidance", isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user as any;
+    const allGaps = await getCachedGaps();
+
+    const dismissals = await db.select().from(guidanceDismissals).where(eq(guidanceDismissals.userId, user.id));
+    const dismissedIds = new Set(dismissals.map((d: any) => d.guidanceId));
+
+    const isHQ = HQ_ROLES.includes(user.role);
+    const myGuidance = allGaps.filter(gap => {
+      if (dismissedIds.has(gap.id)) return false;
+      if (!gap.targetRoles.includes(user.role)) return false;
+      if (gap.targetBranchId) {
+        if (!isHQ) {
+          if (!user.branchId || gap.targetBranchId !== user.branchId) return false;
+        }
+      }
+      return true;
+    });
+
+    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    myGuidance.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
+
+    const grouped = {
+      critical: myGuidance.filter(g => g.severity === "critical"),
+      high: myGuidance.filter(g => g.severity === "high"),
+      medium: myGuidance.filter(g => g.severity === "medium"),
+      low: myGuidance.filter(g => g.severity === "low"),
+    };
+
+    res.json({
+      totalGaps: myGuidance.length,
+      criticalCount: grouped.critical.length,
+      items: myGuidance,
+      grouped,
+      lastChecked: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[Guidance] Error:", error);
+    res.json({ totalGaps: 0, items: [], grouped: { critical: [], high: [], medium: [], low: [] } });
+  }
+});
+
+router.post("/api/agent/guidance/:id/dismiss", isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user as any;
+    const guidanceId = req.params.id;
+    await db.insert(guidanceDismissals).values({
+      userId: user.id,
+      guidanceId,
+    }).onConflictDoUpdate({
+      target: [guidanceDismissals.userId, guidanceDismissals.guidanceId],
+      set: { dismissedAt: new Date() },
+    });
+    res.json({ dismissed: true });
+  } catch (error) {
+    console.error("[Guidance] Dismiss error:", error);
+    res.status(500).json({ error: "Dismiss failed" });
   }
 });
 
