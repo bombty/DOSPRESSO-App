@@ -1,0 +1,259 @@
+Mükemmel audit — sorunun kökü net: **Mola kaydedildikten sonra auto-logout çağrılıyor.** Kullanıcı her moladan sonra tekrar PIN + istasyon seçmek zorunda kalıyor. Bu kabul edilemez.
+
+Replit'e yapıştırın:
+
+---
+
+```
+## CRITICAL FIX: Factory Kiosk — Break Flow Must Return to Working Screen
+
+### Problem
+When a factory kiosk user takes a break (mola), the system:
+1. Logs the break correctly (DB record created ✓)
+2. Then calls startAutoLogout() → resetWorker() → kicks user back to select-user screen ✗
+
+User must re-enter PIN and re-select station after EVERY break. This is unacceptable for production workflow.
+
+### Expected Flow
+```
+Working → STOP → Mola → log break → RETURN TO WORKING (same station, same user)
+Working → STOP → Görev Bitir → log + production entry → auto-logout → select-user
+Working → STOP → Vardiya Kapat → log + production entry + end shift → auto-logout → select-user
+Working → STOP → Arıza Bildir → fault report → auto-logout → select-user
+Working → STOP → Yardım İste → production entry → auto-logout → select-user
+Working → STOP → Özel İhtiyaç → log break → RETURN TO WORKING (same as mola)
+```
+
+Only "Görev Bitir", "Vardiya Kapat", and "Arıza Bildir" should logout. "Mola" and "Özel İhtiyaç" should return to the working screen.
+
+### Fix Location
+File: `client/src/pages/fabrika/kiosk.tsx`
+
+Find the `handleBreakReasonSelect` function (around line 561-573):
+
+```bash
+grep -n "handleBreakReasonSelect\|logBreakMutation\|startAutoLogout\|resetWorker" client/src/pages/fabrika/kiosk.tsx | head -20
+```
+
+### Current Code (broken):
+```typescript
+function handleBreakReasonSelect(reason: string) {
+  if (reason === 'gorev_bitis' || reason === 'vardiya_kapat' || reason === 'yardim') {
+    // These go to production-entry first
+    setBreakReason(reason);
+    setStep('production-entry');
+  } else {
+    // Mola and Özel İhtiyaç — logs break then AUTO-LOGOUT (WRONG!)
+    setBreakReason(reason);
+    logBreakMutation.mutate({ reason });
+    // logBreakMutation.onSuccess calls startAutoLogout() → resetWorker()
+  }
+}
+```
+
+### Fix:
+Change the mola/özel ihtiyaç flow to return to working screen instead of logging out:
+
+```typescript
+function handleBreakReasonSelect(reason: string) {
+  if (reason === 'gorev_bitis' || reason === 'vardiya_kapat' || reason === 'yardim') {
+    // These go to production-entry first, then eventually logout
+    setBreakReason(reason);
+    setStep('production-entry');
+  } else if (reason === 'ariza_bildir') {
+    // Arıza goes to fault report, then logout
+    setBreakReason(reason);
+    setStep('fault-report');
+  } else {
+    // Mola and Özel İhtiyaç — log break then RETURN TO WORKING
+    setBreakReason(reason);
+    logBreakMutationNoLogout.mutate({ reason });
+  }
+}
+```
+
+Create a separate mutation for breaks that DON'T logout:
+
+```typescript
+const logBreakMutationNoLogout = useMutation({
+  mutationFn: async (data: { reason: string }) => {
+    const res = await fetch("/api/factory/kiosk/log-break", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventType: data.reason,
+        stationId: selectedStation?.id,
+        notes: `${data.reason} - moladan dönecek`,
+      }),
+    });
+    if (!res.ok) throw new Error("Break log failed");
+    return res.json();
+  },
+  onSuccess: () => {
+    // Show a brief "Mola kaydedildi" toast/message
+    setStep('on-break'); // Go to break screen, NOT auto-logout
+  },
+  onError: (error) => {
+    console.error("[Kiosk] Break log error:", error);
+    // Still go to break screen even if log fails
+    setStep('on-break');
+  },
+});
+```
+
+### Add New "on-break" Step
+Add a new step/screen between stop-options and working:
+
+```typescript
+// New state for break screen
+// When step === 'on-break', show:
+
+{step === 'on-break' && (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+    {/* Break indicator */}
+    <div className="text-center">
+      <Coffee className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+      <h2 className="text-2xl font-bold">Mola</h2>
+      <p className="text-muted-foreground mt-2">
+        {selectedWorker?.firstName} {selectedWorker?.lastName}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        İstasyon: {selectedStation?.name}
+      </p>
+    </div>
+    
+    {/* Break timer */}
+    <div className="text-center">
+      <BreakTimer /> {/* Show elapsed break time */}
+      <p className="text-xs text-muted-foreground mt-2">Mola süresi</p>
+    </div>
+    
+    {/* Return to work button */}
+    <Button 
+      size="lg" 
+      className="w-64 h-16 text-lg bg-green-600 hover:bg-green-700 text-white"
+      onClick={handleReturnFromBreak}
+    >
+      Üretime Dön
+    </Button>
+  </div>
+)}
+```
+
+### BreakTimer Component (simple elapsed timer)
+```typescript
+function BreakTimer() {
+  const [seconds, setSeconds] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  
+  return (
+    <span className="text-4xl font-mono font-bold">
+      {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+    </span>
+  );
+}
+```
+
+### Return from Break Handler
+```typescript
+function handleReturnFromBreak() {
+  // Log break end
+  fetch("/api/factory/kiosk/log-break", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventType: "break_end",
+      stationId: selectedStation?.id,
+      notes: `Moladan döndü - ${breakReason}`,
+    }),
+  }).catch(err => console.error("[Kiosk] Break end log error:", err));
+  
+  // Return to working screen — same station, same user, same phase
+  setStep('working');
+  setBreakReason(null);
+}
+```
+
+### Also: Fix "Özel İhtiyaç" — Same Pattern
+Özel İhtiyaç (bathroom/personal) should also use the on-break screen with return to working:
+```typescript
+// In handleBreakReasonSelect:
+} else {
+  // Both 'mola' and 'ozel_ihtiyac' → on-break screen → return to working
+  setBreakReason(reason);
+  logBreakMutationNoLogout.mutate({ reason });
+}
+```
+
+### Keep Auto-Logout for These:
+These SHOULD still auto-logout after completion:
+- gorev_bitis (task finished → production entry → logout)
+- vardiya_kapat (shift end → production entry → end shift → logout)
+- ariza_bildir (fault report → logout)
+- yardim (help request → production entry → logout)
+
+### Backend: Add "break_end" Event Type (if not exists)
+```bash
+grep -n "break_end\|breakEnd\|mola_bitis" server/routes/factory.ts | head -5
+```
+If the backend doesn't accept "break_end" as an eventType, add it to the allowed types.
+
+### Also Fix: Kiosk Token Not Stored
+The audit found that loginMutation.onSuccess ignores the kioskToken. Fix this too:
+
+```bash
+grep -n "kioskToken\|kiosk_token\|x-kiosk-token" client/src/pages/fabrika/kiosk.tsx | head -10
+```
+
+If the token is returned but not used, store it and add to subsequent requests:
+```typescript
+// In loginMutation.onSuccess:
+if (data.kioskToken) {
+  // Store token for kiosk API calls
+  setKioskToken(data.kioskToken);
+}
+
+// In all kiosk API calls, add header:
+headers: {
+  "Content-Type": "application/json",
+  ...(kioskToken ? { "x-kiosk-token": kioskToken } : {}),
+}
+```
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Branch kiosk (different page)
+- Device auth flow
+- Production entry flow
+- End shift flow
+
+## Testing:
+1. Factory kiosk → login → select station → working screen
+2. Click STOP → select "Mola" → break is logged, on-break screen shown (NOT auto-logout!)
+3. On-break screen shows: worker name, station, elapsed timer
+4. Click "Üretime Dön" → returns to working screen (same station, same phase)
+5. Click STOP → select "Özel İhtiyaç" → same on-break flow
+6. Click STOP → select "Görev Bitir" → production entry → auto-logout (this SHOULD logout)
+7. Click STOP → select "Vardiya Kapat" → production entry → end shift → auto-logout
+8. Click STOP → select "Arıza Bildir" → fault report → auto-logout
+9. Break logs in DB: both break_start and break_end recorded
+10. Kiosk token stored and used in API calls
+
+## After:
+1. Report: what the break screen looks like
+2. Report: break_start and break_end records in DB
+3. Report: which flows still auto-logout vs return to working
+```
+
+---
+
+Direkt yapıştırın! Bu fix moladan sonra aynı istasyonda çalışmaya devam etmeyi sağlayacak.

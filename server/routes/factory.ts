@@ -710,7 +710,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.status(400).json({ message: "Kullanıcı adı ve PIN gerekli" });
       }
 
-      const [foundUser] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, avatarUrl: users.avatarUrl, role: users.role })
+      const [foundUser] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, profileImageUrl: users.profileImageUrl, role: users.role })
         .from(users)
         .where(and(
           eq(users.username, username.trim().toLowerCase()),
@@ -772,7 +772,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           id: foundUser.id,
           firstName: foundUser.firstName,
           lastName: foundUser.lastName,
-          avatarUrl: foundUser.avatarUrl,
+          avatarUrl: foundUser.profileImageUrl,
           role: foundUser.role,
         },
         activeSession: activeSession || null,
@@ -2703,15 +2703,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         notes: wasteNotes || null,
       }).returning();
 
-      // Log break
-      await db.insert(factoryBreakLogs).values({
+      const [breakLog] = await db.insert(factoryBreakLogs).values({
         sessionEventId: event.id,
         userId: session.userId,
         sessionId,
         breakReason,
         targetStationId: targetStationId || null,
         startedAt: new Date(),
-      });
+      }).returning();
 
       const parsedDoughKg = parseFloat(wasteDoughKg) || 0;
       const parsedProductCount = parseInt(wasteProductCount) || 0;
@@ -2768,11 +2767,66 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       res.json({ 
         success: true, 
         event,
+        breakLogId: breakLog.id,
         message: breakReason === 'gorev_bitis' ? 'Görev tamamlandı' : 'Mola kaydedildi'
       });
     } catch (error: any) {
       console.error("Error logging break:", error);
       res.status(500).json({ message: "Mola kaydedilemedi" });
+    }
+  });
+
+  router.post('/api/factory/kiosk/end-break', isKioskAuthenticated, async (req, res) => {
+    try {
+      const { breakLogId } = req.body;
+      if (!breakLogId) {
+        return res.status(400).json({ message: "breakLogId gerekli" });
+      }
+
+      const [breakLog] = await db.select().from(factoryBreakLogs)
+        .where(eq(factoryBreakLogs.id, breakLogId))
+        .limit(1);
+
+      if (!breakLog) {
+        return res.status(404).json({ message: "Mola kaydı bulunamadı" });
+      }
+
+      const kioskUserId = (req as any).kioskUserId;
+      if (kioskUserId && breakLog.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu mola kaydını sonlandırma yetkiniz yok" });
+      }
+
+      if (breakLog.endedAt) {
+        return res.status(400).json({ message: "Bu mola zaten sonlandırılmış" });
+      }
+
+      const now = new Date();
+      const durationMinutes = breakLog.startedAt
+        ? Math.floor((now.getTime() - new Date(breakLog.startedAt).getTime()) / 60000)
+        : 0;
+
+      await db.update(factoryBreakLogs)
+        .set({
+          endedAt: now,
+          durationMinutes,
+        })
+        .where(eq(factoryBreakLogs.id, breakLogId));
+
+      if (breakLog.sessionId) {
+        await db.insert(factorySessionEvents).values({
+          sessionId: breakLog.sessionId,
+          userId: breakLog.userId,
+          stationId: null,
+          eventType: 'resume',
+          breakReason: breakLog.breakReason,
+          breakDurationMinutes: durationMinutes,
+        });
+      }
+
+      res.json({ success: true, durationMinutes, message: "Mola sonlandırıldı" });
+    } catch (error: any) {
+      console.error("Error ending break:", error);
+      res.status(500).json({ message: "Mola sonlandırılamadı" });
     }
   });
 
@@ -2964,10 +3018,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         }
       }
 
-      if (sessionId) {
+      const kioskUserId = (req as any).kioskUserId;
+      const eventUserId = userId || kioskUserId;
+      if (sessionId && eventUserId) {
         await db.insert(factorySessionEvents).values({
           sessionId,
-          userId: userId || 'system',
+          userId: eventUserId,
           stationId: stationId || null,
           eventType: 'fault_report',
           notes: `[${faultTypeLabel}] ${description}`,

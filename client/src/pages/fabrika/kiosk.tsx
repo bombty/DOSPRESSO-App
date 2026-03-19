@@ -52,7 +52,7 @@ import { ObjectUploader } from "@/components/ObjectUploader";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 
-type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report';
+type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'select-station' | 'working' | 'stop-options' | 'production-entry' | 'end-shift-summary' | 'auto-logout' | 'fault-report' | 'on-break';
 type BreakReason = 'mola' | 'yardim' | 'ozel_ihtiyac' | 'gorev_bitis' | 'vardiya_kapat';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
@@ -183,6 +183,9 @@ export default function FactoryKiosk() {
   const [wasteDoughKg, setWasteDoughKg] = useState('');
   const [wasteProductCount, setWasteProductCount] = useState('');
   const [pendingPhaseTransition, setPendingPhaseTransition] = useState<KioskPhase | null>(null);
+  const [breakStartTime, setBreakStartTime] = useState<Date | null>(null);
+  const [breakElapsed, setBreakElapsed] = useState(0);
+  const [currentBreakLogId, setCurrentBreakLogId] = useState<number | null>(null);
 
   const { data: staffList = [], isLoading: loadingStaff, isError, refetch } = useQuery<StaffMember[]>({
     queryKey: ['/api/factory/staff'],
@@ -355,12 +358,19 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: (data, variables) => {
-      if (variables.breakReason === 'gorev_bitis') {
+      if (variables.breakReason === 'mola' || variables.breakReason === 'ozel_ihtiyac') {
+        toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
+        setCurrentBreakLogId(data.breakLogId || null);
+        setBreakStartTime(new Date());
+        setBreakElapsed(0);
+        setStep('on-break');
+      } else if (variables.breakReason === 'gorev_bitis') {
         toast({ title: "Görev tamamlandı", description: "Üretim kaydedildi" });
+        startAutoLogout();
       } else {
-        toast({ title: "Mola kaydedildi", description: "İyi dinlenmeler!" });
+        toast({ title: "İşlem kaydedildi" });
+        startAutoLogout();
       }
-      startAutoLogout();
     },
     onError: (error: any) => {
       toast({ title: "İşlem başarısız", description: error.message, variant: "destructive" });
@@ -418,6 +428,23 @@ export default function FactoryKiosk() {
     },
   });
 
+  const endBreakMutation = useMutation({
+    mutationFn: async (data: { breakLogId: number }) => {
+      const res = await apiRequest('POST', '/api/factory/kiosk/end-break', data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Mola bitti", description: "Çalışmaya devam!" });
+      setBreakStartTime(null);
+      setBreakElapsed(0);
+      setCurrentBreakLogId(null);
+      setStep('working');
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message || "Mola sonlandırılamadı, tekrar deneyin", variant: "destructive" });
+    },
+  });
+
   const fetchSessionDetails = async (userId: string) => {
     try {
       const res = await fetch(`/api/factory/kiosk/session/${userId}`);
@@ -458,6 +485,16 @@ export default function FactoryKiosk() {
     }
   return () => clearInterval(interval);
   }, [step]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 'on-break' && breakStartTime) {
+      interval = setInterval(() => {
+        setBreakElapsed(Math.floor((Date.now() - breakStartTime.getTime()) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, breakStartTime]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -652,6 +689,9 @@ export default function FactoryKiosk() {
     setProductError('');
     setWasteDoughKg('');
     setWasteProductCount('');
+    setBreakStartTime(null);
+    setBreakElapsed(0);
+    setCurrentBreakLogId(null);
   };
 
   const handleKioskExit = async () => {
@@ -697,6 +737,9 @@ export default function FactoryKiosk() {
     setProductError('');
     setWasteDoughKg('');
     setWasteProductCount('');
+    setBreakStartTime(null);
+    setBreakElapsed(0);
+    setCurrentBreakLogId(null);
   };
 
   return (
@@ -1787,6 +1830,44 @@ export default function FactoryKiosk() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {step === 'on-break' && (
+            <div className="space-y-6 text-center">
+              <div className="w-28 h-28 bg-blue-600 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                <Coffee className="h-14 w-14 text-white" />
+              </div>
+
+              <h3 className="text-2xl font-semibold text-slate-200">
+                {selectedBreakReason === 'ozel_ihtiyac' ? 'Özel İhtiyaç Molası' : 'Mola'}
+              </h3>
+
+              <div className="text-5xl font-mono font-bold text-blue-400" data-testid="text-break-timer">
+                {formatTime(breakElapsed)}
+              </div>
+
+              <p className="text-slate-400">
+                {selectedUser?.firstName}, moladan döndüğünde aşağıdaki butona bas
+              </p>
+
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 h-16 text-xl"
+                onClick={() => {
+                  if (currentBreakLogId) {
+                    endBreakMutation.mutate({ breakLogId: currentBreakLogId });
+                  } else {
+                    setBreakStartTime(null);
+                    setBreakElapsed(0);
+                    setStep('working');
+                  }
+                }}
+                disabled={endBreakMutation.isPending}
+                data-testid="button-return-from-break"
+              >
+                <Play className="h-6 w-6 mr-2" />
+                Üretime Dön
+              </Button>
             </div>
           )}
 
