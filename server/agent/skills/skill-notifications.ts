@@ -1,7 +1,7 @@
 import { db } from "../../db";
 import { storage } from "../../storage";
 import { agentPendingActions, aiAgentLogs } from "@shared/schema";
-import { eq, and, gte, count } from "drizzle-orm";
+import { eq, and, gte, count, inArray } from "drizzle-orm";
 import type { AgentSkill, SkillAction } from "./skill-registry";
 import { routeAgentAction } from "../routing";
 import { isModuleEnabled } from "../../services/module-flag-service";
@@ -70,6 +70,7 @@ async function checkDuplicate(targetUserId: string, title: string, skillId: stri
       .where(
         and(
           eq(agentPendingActions.title, title),
+          inArray(agentPendingActions.status, ['pending', 'approved']),
           gte(agentPendingActions.createdAt, sevenDaysAgo)
         )
       )

@@ -168,3 +168,9 @@ id = "EjE5FicC0EAZUDuRW2nJU"
 uri = "file://MEGA_SPRINT_AUDIT_REPORT.md"
 type = "text"
 title = "DOSPRESSO Mega Sprint Audit Raporu"
+
+[[outputs]]
+id = "SDr168UyLIaJ91vdFKwUJ"
+uri = "file://LAUNCH_READINESS_REPORT.md"
+type = "text"
+title = "DOSPRESSO Launch Readiness Raporu — 19 Mart 2026"
