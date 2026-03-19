@@ -698,7 +698,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.get('/api/factory/kiosk/active-sessions', isAuthenticated, async (req, res) => {
+  const activeSessionsHandler = async (req: any, res: any) => {
     try {
       const user = req.user as any;
       if (!isHQRole(user.role)) {
@@ -726,7 +726,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       console.error("Error fetching active kiosk sessions:", error);
       res.status(500).json({ message: "Aktif kiosk oturumları alınamadı" });
     }
-  });
+  };
+
+  router.get('/api/kiosk/active-sessions', isAuthenticated, activeSessionsHandler);
+  router.get('/api/factory/kiosk/active-sessions', isAuthenticated, activeSessionsHandler);
 
   router.post('/api/factory/kiosk/device-auth', async (req, res) => {
     try {

@@ -162,7 +162,9 @@ Kiosk login returns 401 or PIN verification fails.
 Checklist:
 - [ ] Endpoint uses `isKioskAuthenticated` (NOT `isAuthenticated`) — kiosk endpoints must use the kiosk middleware
 - [ ] `x-kiosk-token` header is sent with the request from the kiosk client
-- [ ] Kiosk sessions are stored in-memory (`server/localAuth.ts:461`) — sessions are lost on server restart
+- [ ] Kiosk sessions are PostgreSQL-backed (`kiosk_sessions` table) with 30s in-memory cache — sessions persist across server restarts with 8-hour TTL
+- [ ] Expired sessions are cleaned on startup and hourly — check logs for `[Kiosk] Startup cleanup` or `[Kiosk] Cleaned up`
+- [ ] Use `GET /api/kiosk/active-sessions` or `GET /api/factory/kiosk/active-sessions` (HQ-only) to check active kiosk auth sessions
 - [ ] PIN is verified with `bcrypt.compare()` — if PIN was stored as plaintext, `migrateKioskPasswords()` should have hashed it on startup
 - [ ] Check `pinLockedUntil` on user record — user may be locked out after failed attempts
 - [ ] Device password is bcrypt-hashed in `factory_kiosk_config` (configKey='device_password') or `branch_kiosk_settings.kioskPassword`
