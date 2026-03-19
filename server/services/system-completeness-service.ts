@@ -1,6 +1,11 @@
 import { db } from "../db";
-import { branches, users, checklists, checklistAssignments, branchRecurringTasks, shifts, slaRules, certificateSettings, customerFeedback, trainingAssignments } from "@shared/schema";
-import { eq, and, isNull, sql, inArray } from "drizzle-orm";
+import {
+  branches, users, checklists, checklistAssignments, branchRecurringTasks,
+  shifts, slaRules, certificateSettings, customerFeedback, trainingAssignments,
+  payrollParameters, suppliers, purchaseOrders, haccpControlPoints,
+  qualityAudits, pdksRecords, employeeOnboarding, factoryDailyTargets,
+} from "@shared/schema";
+import { eq, and, isNull, sql, gte } from "drizzle-orm";
 
 export interface CompletenessItem {
   id: string;
@@ -34,7 +39,11 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
     }).from(users).where(eq(users.isActive, true));
 
     const shopBranches = activeBranches.filter(b => !isHQOrFactory(b.name));
+    const factoryBranch = activeBranches.find(b => b.name.includes("Fabrika"));
 
+    // ============================================
+    // CATEGORY 1: PERSONNEL GAPS
+    // ============================================
     for (const branch of activeBranches) {
       const branchUsers = allUsers.filter(u => u.branchId === branch.id);
       const roles = branchUsers.map(u => u.role);
@@ -88,6 +97,9 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
       }
     }
 
+    // ============================================
+    // CATEGORY 2: CHECKLIST GAPS
+    // ============================================
     const allAssignments = await db.select({
       branchId: checklistAssignments.branchId,
       checklistId: checklistAssignments.checklistId,
@@ -127,7 +139,7 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
           title: `${branch.name}: Açılış checklist'i atanmamış`,
           description: `${branch.name} şubesi için açılış kontrol listesi atanmamış. Personel sabah açılışta ne yapacağını bilemez. Coach veya Supervisor olarak checklist atayın.`,
           deepLink: `/checklistler?branchId=${branch.id}`,
-          targetRoles: ["coach", "trainer", "supervisor", "mudur"],
+          targetRoles: ["coach", "trainer", "supervisor", "mudur", "kalite_kontrol"],
           targetBranchId: branch.id,
           autoResolvable: false,
           checkFn: "checklist-opening",
@@ -142,7 +154,7 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
           title: `${branch.name}: Kapanış checklist'i atanmamış`,
           description: `${branch.name} şubesi için kapanış kontrol listesi atanmamış. Kapanış checklist'i atayın.`,
           deepLink: `/checklistler?branchId=${branch.id}`,
-          targetRoles: ["coach", "trainer", "supervisor", "mudur"],
+          targetRoles: ["coach", "trainer", "supervisor", "mudur", "kalite_kontrol"],
           targetBranchId: branch.id,
           autoResolvable: false,
           checkFn: "checklist-closing",
@@ -150,6 +162,9 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
       }
     }
 
+    // ============================================
+    // CATEGORY 3: RECURRING TASKS
+    // ============================================
     const recurringTasks = await db.select({
       branchId: branchRecurringTasks.branchId,
     }).from(branchRecurringTasks).where(isNull(branchRecurringTasks.deletedAt));
@@ -173,6 +188,9 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
       }
     }
 
+    // ============================================
+    // CATEGORY 4: CONFIGURATION & SYSTEM
+    // ============================================
     const shiftCount = await db.select({ count: sql<number>`count(*)::int` }).from(shifts).where(isNull(shifts.deletedAt));
     if (Number(shiftCount[0]?.count || 0) === 0) {
       gaps.push({
@@ -246,6 +264,249 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
         autoResolvable: false,
         checkFn: "training-assignments",
       });
+    }
+
+    // ============================================
+    // CATEGORY 5: MUHASEBE / İK GAPS
+    // ============================================
+    const payrollParamCount = await db.select({ count: sql<number>`count(*)::int` }).from(payrollParameters).where(eq(payrollParameters.isActive, true));
+    if (Number(payrollParamCount[0]?.count || 0) === 0) {
+      gaps.push({
+        id: "bordro-no-active-params",
+        category: "configuration",
+        severity: "high",
+        title: "Bordro parametreleri aktif değil",
+        description: "Aktif bordro parametresi bulunamadı. SGK, vergi oranları ve asgari ücret bilgilerini kontrol edin ve aktif bir parametre seti oluşturun.",
+        deepLink: "/bordro?tab=parametreler",
+        targetRoles: ["admin", "muhasebe_ik"],
+        autoResolvable: false,
+        checkFn: "bordro-params",
+      });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    for (const branch of shopBranches) {
+      const branchStaff = allUsers.filter(u => u.branchId === branch.id && ["barista", "bar_buddy", "stajyer", "supervisor", "mudur", "supervisor_buddy"].includes(u.role));
+      if (branchStaff.length === 0) continue;
+
+      const pdksResult = await db.select({ count: sql<number>`count(DISTINCT user_id)::int` })
+        .from(pdksRecords)
+        .where(and(
+          eq(pdksRecords.branchId, branch.id),
+          gte(pdksRecords.recordDate, thirtyDaysAgo),
+        ));
+
+      const usersWithPdks = Number(pdksResult[0]?.count || 0);
+      const missingPdks = branchStaff.length - usersWithPdks;
+
+      if (missingPdks > 0 && usersWithPdks < branchStaff.length) {
+        gaps.push({
+          id: `pdks-missing-records-${branch.id}`,
+          category: "data",
+          severity: "medium",
+          title: `${branch.name}: ${missingPdks} personelin PDKS kaydı yok`,
+          description: `${branch.name} şubesinde ${branchStaff.length} personelden ${missingPdks} kişinin son 30 günde PDKS kaydı bulunmuyor. Devam takibi için kiosk kullanımını kontrol edin.`,
+          deepLink: `/devam-takibi?branchId=${branch.id}`,
+          targetRoles: ["admin", "muhasebe_ik", "supervisor", "mudur", "coach"],
+          targetBranchId: branch.id,
+          autoResolvable: false,
+          checkFn: "pdks-missing",
+        });
+      }
+    }
+
+    // ============================================
+    // CATEGORY 6: SATINALMA GAPS
+    // ============================================
+    const supplierCount = await db.select({ count: sql<number>`count(*)::int` }).from(suppliers);
+    if (Number(supplierCount[0]?.count || 0) < 3) {
+      gaps.push({
+        id: "satinalma-low-suppliers",
+        category: "data",
+        severity: "medium",
+        title: `Tedarikçi listesi eksik (${supplierCount[0]?.count || 0} kayıt)`,
+        description: "Tedarikçi veritabanında yeterli kayıt yok. Excel ile toplu import yaparak tedarikçi bilgilerini ekleyin.",
+        deepLink: "/satinalma?tab=tedarikciler",
+        targetRoles: ["satinalma", "admin"],
+        autoResolvable: false,
+        checkFn: "satinalma-suppliers",
+      });
+    }
+
+    const poCount = await db.select({ count: sql<number>`count(*)::int` }).from(purchaseOrders);
+    if (Number(poCount[0]?.count || 0) === 0) {
+      gaps.push({
+        id: "satinalma-no-orders",
+        category: "data",
+        severity: "medium",
+        title: "Satınalma siparişi henüz oluşturulmamış",
+        description: "Sistemde hiç satınalma siparişi kaydı yok. İlk siparişi oluşturarak satınalma sürecinizi başlatın.",
+        deepLink: "/satinalma?tab=siparisler",
+        targetRoles: ["satinalma", "admin"],
+        autoResolvable: false,
+        checkFn: "satinalma-orders",
+      });
+    }
+
+    // ============================================
+    // CATEGORY 7: FABRİKA MÜDÜR GAPS
+    // ============================================
+    if (factoryBranch) {
+      const factoryStaff = allUsers.filter(u => u.branchId === factoryBranch.id && ["stajyer", "fabrika_operator", "fabrika_personel"].includes(u.role));
+      const onboardingResult = await db.select({ count: sql<number>`count(*)::int` })
+        .from(employeeOnboarding)
+        .where(eq(employeeOnboarding.status, "in_progress"));
+
+      const activeOnboarding = Number(onboardingResult[0]?.count || 0);
+      if (activeOnboarding > 0) {
+        gaps.push({
+          id: "fabrika-onboarding-pending",
+          category: "training",
+          severity: "high",
+          title: `${activeOnboarding} personelin onboarding süreci devam ediyor`,
+          description: `${activeOnboarding} personelin onboarding programı tamamlanmamış. İlerleme durumlarını kontrol edin ve gerekli adımları tamamlayın.`,
+          deepLink: "/personel-onboarding",
+          targetRoles: ["admin", "fabrika_mudur", "coach", "trainer"],
+          targetBranchId: factoryBranch.id,
+          autoResolvable: false,
+          checkFn: "fabrika-onboarding",
+        });
+      }
+
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const weekAgoDateStr = weekAgo.toISOString().slice(0, 10);
+      const factoryTargetCount = await db.select({ count: sql<number>`count(*)::int` })
+        .from(factoryDailyTargets)
+        .where(sql`${factoryDailyTargets.targetDate} >= ${weekAgoDateStr}::date`);
+
+      if (Number(factoryTargetCount[0]?.count || 0) === 0) {
+        gaps.push({
+          id: "fabrika-no-weekly-targets",
+          category: "configuration",
+          severity: "medium",
+          title: "Fabrika üretim hedefleri bu hafta tanımlı değil",
+          description: "Bu hafta için fabrika istasyonlarında üretim hedefi girilmemiş. Günlük hedef belirleme yaparak üretim takibini başlatın.",
+          deepLink: "/fabrika?tab=hedefler",
+          targetRoles: ["fabrika_mudur", "admin"],
+          targetBranchId: factoryBranch.id,
+          autoResolvable: false,
+          checkFn: "fabrika-targets",
+        });
+      }
+
+      const weekAgoStr = weekAgo.toISOString().slice(0, 10);
+      const factoryShiftWeek = await db.select({ count: sql<number>`count(*)::int` })
+        .from(shifts)
+        .where(and(
+          eq(shifts.branchId, factoryBranch.id),
+          sql`${shifts.shiftDate} >= ${weekAgoStr}::date`,
+          isNull(shifts.deletedAt),
+        ));
+
+      if (Number(factoryShiftWeek[0]?.count || 0) === 0 && factoryStaff.length > 0) {
+        gaps.push({
+          id: "fabrika-no-shift-plan",
+          category: "configuration",
+          severity: "medium",
+          title: "Fabrika vardiya planı bu hafta oluşturulmamış",
+          description: `Fabrikada ${factoryStaff.length} personel var ama bu hafta için vardiya planı girilmemiş. Vardiya planlaması yapın.`,
+          deepLink: "/vardiya-planlama?branchId=" + factoryBranch.id,
+          targetRoles: ["fabrika_mudur", "admin"],
+          targetBranchId: factoryBranch.id,
+          autoResolvable: false,
+          checkFn: "fabrika-shifts",
+        });
+      }
+    }
+
+    // ============================================
+    // CATEGORY 8: KALİTE KONTROL GAPS
+    // ============================================
+    const haccpCount = await db.select({ count: sql<number>`count(*)::int` }).from(haccpControlPoints);
+    if (Number(haccpCount[0]?.count || 0) < 5) {
+      gaps.push({
+        id: "kalite-haccp-insufficient",
+        category: "settings",
+        severity: "medium",
+        title: `HACCP kontrol noktaları yetersiz (${haccpCount[0]?.count || 0} tanımlı)`,
+        description: "HACCP kontrol noktaları yeterince tanımlı değil. Gıda güvenliği için kritik kontrol noktalarını sisteme ekleyin.",
+        deepLink: "/denetim-paneli?tab=haccp",
+        targetRoles: ["admin", "kalite_kontrol", "gida_muhendisi", "coach"],
+        autoResolvable: false,
+        checkFn: "kalite-haccp",
+      });
+    }
+
+    const recentAuditCount = await db.select({ count: sql<number>`count(*)::int` })
+      .from(qualityAudits)
+      .where(gte(qualityAudits.createdAt, thirtyDaysAgo));
+
+    if (Number(recentAuditCount[0]?.count || 0) === 0) {
+      gaps.push({
+        id: "kalite-no-recent-audits",
+        category: "data",
+        severity: "high",
+        title: "Son 30 günde kalite denetimi yapılmamış",
+        description: "Son 30 gün içinde hiç kalite denetimi kaydı bulunmuyor. Şubelerde düzenli kalite denetimi yapılması gerekmektedir.",
+        deepLink: "/denetim-paneli",
+        targetRoles: ["admin", "kalite_kontrol", "gida_muhendisi", "coach"],
+        autoResolvable: false,
+        checkFn: "kalite-audits",
+      });
+    }
+
+    // ============================================
+    // CATEGORY 9: BRANCH-LEVEL SHIFT GAPS (per branch this week)
+    // ============================================
+    const weekStartStr = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - d.getDay() + 1);
+      return d.toISOString().slice(0, 10);
+    })();
+
+    for (const branch of shopBranches) {
+      const branchStaff = allUsers.filter(u => u.branchId === branch.id && ["barista", "bar_buddy", "stajyer", "supervisor", "mudur", "supervisor_buddy"].includes(u.role));
+      if (branchStaff.length === 0) continue;
+
+      const weekShifts = await db.select({ count: sql<number>`count(DISTINCT assigned_to_id)::int` })
+        .from(shifts)
+        .where(and(
+          eq(shifts.branchId, branch.id),
+          sql`${shifts.shiftDate} >= ${weekStartStr}::date`,
+          isNull(shifts.deletedAt),
+        ));
+
+      const assignedCount = Number(weekShifts[0]?.count || 0);
+      const unassigned = branchStaff.length - assignedCount;
+
+      if (assignedCount === 0 && branchStaff.length >= 2) {
+        gaps.push({
+          id: `shift-no-plan-${branch.id}`,
+          category: "configuration",
+          severity: "high",
+          title: `${branch.name}: Bu hafta vardiya planı yok`,
+          description: `${branch.name} şubesinde ${branchStaff.length} personel var ama bu hafta hiç vardiya planı oluşturulmamış.`,
+          deepLink: `/vardiya-planlama?branchId=${branch.id}`,
+          targetRoles: ["mudur", "supervisor", "coach"],
+          targetBranchId: branch.id,
+          autoResolvable: false,
+          checkFn: "shift-weekly-plan",
+        });
+      } else if (unassigned > 0 && assignedCount > 0) {
+        gaps.push({
+          id: `shift-missing-staff-${branch.id}`,
+          category: "configuration",
+          severity: "medium",
+          title: `${branch.name}: Bu hafta vardiya planında ${unassigned} personel eksik`,
+          description: `${branch.name} şubesinde ${branchStaff.length} personelden ${unassigned} kişi bu haftanın vardiya planına dahil edilmemiş.`,
+          deepLink: `/vardiya-planlama?branchId=${branch.id}`,
+          targetRoles: ["mudur", "supervisor", "coach"],
+          targetBranchId: branch.id,
+          autoResolvable: false,
+          checkFn: "shift-missing-staff",
+        });
+      }
     }
 
   } catch (error) {
