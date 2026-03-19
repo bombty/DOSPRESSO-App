@@ -144,6 +144,8 @@ export default function FactoryKiosk() {
     if (!user) return;
     if (!FABRIKA_ALLOWED_ROLES.includes(user.role)) {
       setLocation('/');
+    } else if (step === 'device-password') {
+      setStep('enter-credentials');
     }
   }, [user, setLocation]);
   const [step, setStep] = useState<KioskStep>('device-password');
@@ -663,7 +665,7 @@ export default function FactoryKiosk() {
   };
 
   const resetKiosk = () => {
-    setStep('device-password');
+    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'enter-credentials' : 'device-password');
     setDeviceUsername('');
     setDevicePassword('');
     setSelectedUser(null);
@@ -857,18 +859,20 @@ export default function FactoryKiosk() {
                 </div>
                 
                 <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1 border-slate-600"
-                    onClick={() => {
-                      setStep('device-password');
-                      setUsernameInput('');
-                      setPinInput('');
-                    }}
-                    data-testid="button-back-credentials"
-                  >
-                    Geri
-                  </Button>
+                  {!(user && FABRIKA_ALLOWED_ROLES.includes(user.role)) && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-slate-600"
+                      onClick={() => {
+                        setStep('device-password');
+                        setUsernameInput('');
+                        setPinInput('');
+                      }}
+                      data-testid="button-back-credentials"
+                    >
+                      Geri
+                    </Button>
+                  )}
                   <Button
                     className="flex-1 bg-amber-600 hover:bg-amber-700"
                     onClick={handleCredentialsSubmit}
