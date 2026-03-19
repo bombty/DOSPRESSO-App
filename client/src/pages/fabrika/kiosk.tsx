@@ -803,10 +803,12 @@ export default function FactoryKiosk() {
         <CardHeader className="text-center border-b border-slate-700 pb-6 relative">
           {selectedUser && !['device-password', 'enter-credentials'].includes(step) && (
             <Button
-              variant="ghost"
-              size="sm"
-              className="absolute left-4 top-4 text-slate-400 hover:text-white"
+              variant="outline"
+              className="absolute left-3 top-3 border-slate-600 text-slate-300 px-4 py-2 text-base"
               onClick={() => {
+                if (step === 'on-break' && currentBreakLogId) {
+                  kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
+                }
                 resetWorker();
               }}
               data-testid="button-kiosk-home"
@@ -1941,11 +1943,10 @@ export default function FactoryKiosk() {
                 className="w-full border-slate-600 text-slate-300 h-14 text-lg"
                 onClick={() => {
                   if (currentBreakLogId) {
-                    endBreakMutation.mutate({ breakLogId: currentBreakLogId });
+                    kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
                   }
                   resetWorker();
                 }}
-                disabled={endBreakMutation.isPending}
                 data-testid="button-break-go-home"
               >
                 <Users className="h-5 w-5 mr-2" />
