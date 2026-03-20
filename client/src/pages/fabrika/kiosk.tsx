@@ -768,7 +768,7 @@ export default function FactoryKiosk() {
     : 0;
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="w-screen overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" style={{ height: '100dvh' }}>
       <div className="flex-shrink-0 h-14 border-b border-slate-700 flex items-center justify-between px-4 bg-slate-800/90">
         <div className="flex items-center gap-3">
           {selectedUser && !['device-password', 'enter-credentials', 'select-user', 'enter-pin'].includes(step) && step !== 'end-shift-summary' && (
