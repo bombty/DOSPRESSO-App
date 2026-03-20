@@ -952,7 +952,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.post('/api/factory/kiosk/start-shift', isKioskAuthenticated, async (req, res) => {
     try {
-      const { userId, stationId } = req.body;
+      const { stationId } = req.body;
+      const userId = (req as any).kioskUserId || req.body.userId;
       
       if (!userId) {
         return res.status(400).json({ message: "Kullanıcı ID gerekli" });
@@ -1048,6 +1049,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/kiosk/assign-station', isKioskAuthenticated, async (req, res) => {
     try {
       const { sessionId, stationId } = req.body;
+      const kioskUserId = (req as any).kioskUserId;
       if (!sessionId || !stationId) {
         return res.status(400).json({ message: "Oturum ID ve istasyon ID gerekli" });
       }
@@ -1058,6 +1060,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (!session || session.status !== 'active') {
         return res.status(404).json({ message: "Aktif oturum bulunamadı" });
+      }
+
+      if (kioskUserId && session.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu oturum size ait değil" });
       }
 
       const existingRuns = await db.select().from(factoryProductionRuns)
@@ -1102,7 +1108,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/kiosk/worker-today-stats', isKioskAuthenticated, async (req, res) => {
     try {
-      const userId = req.query.userId as string;
+      const userId = (req as any).kioskUserId || req.query.userId as string;
       if (!userId) {
         return res.status(400).json({ message: "userId gerekli" });
       }
@@ -1195,6 +1201,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/kiosk/log-production', isKioskAuthenticated, async (req, res) => {
     try {
       const { sessionId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, photoUrl, productId, productName, wasteDoughKg, wasteProductCount } = req.body;
+      const kioskUserId = (req as any).kioskUserId;
       if (!sessionId) {
         return res.status(400).json({ message: "Oturum ID gerekli" });
       }
@@ -1205,6 +1212,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (!session || session.status !== 'active') {
         return res.status(404).json({ message: "Aktif oturum bulunamadı" });
+      }
+
+      if (kioskUserId && session.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu oturum size ait değil" });
       }
 
       if (!session.stationId) {
