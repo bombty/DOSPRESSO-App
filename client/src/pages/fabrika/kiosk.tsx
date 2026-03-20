@@ -200,7 +200,7 @@ export default function FactoryKiosk() {
   const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
 
   const inactivityRef = useRef<NodeJS.Timeout | null>(null);
-  const INACTIVITY_MS = 5000;
+  const INACTIVITY_MS = 30000;
   const AUTO_RETURN_STEPS: KioskStep[] = ['worker-home', 'end-shift-summary'];
 
   useEffect(() => {

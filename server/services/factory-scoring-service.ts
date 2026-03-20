@@ -266,6 +266,7 @@ async function getAttendanceScore(
         checkOutTime: factoryShiftSessions.checkOutTime,
         workMinutes: factoryShiftSessions.workMinutes,
         status: factoryShiftSessions.status,
+        notes: factoryShiftSessions.notes,
       })
       .from(factoryShiftSessions)
       .where(
@@ -284,7 +285,13 @@ async function getAttendanceScore(
     const totalSessions = sessions.length;
     const completionRate = totalSessions > 0 ? completedSessions.length / totalSessions : 0;
 
+    let attendancePenalty = 0;
     const totalWorkMinutes = sessions.reduce((sum, s) => {
+      const isAutoClosed = s.notes?.includes('[Otomatik kapatıldı');
+      if (isAutoClosed) {
+        attendancePenalty += 5;
+        return sum + 510;
+      }
       if (s.workMinutes && s.workMinutes > 0) return sum + s.workMinutes;
       if (s.checkOutTime && s.checkInTime) {
         const diff = (new Date(s.checkOutTime).getTime() - new Date(s.checkInTime).getTime()) / 60000;
@@ -304,6 +311,8 @@ async function getAttendanceScore(
     } else {
       score = completedSessions.length > 0 ? 85 : DEFAULT_SCORES.attendance;
     }
+
+    score = Math.max(0, score - attendancePenalty);
 
     const abandonedCount = sessions.filter((s) => s.status === "abandoned").length;
     score = Math.max(0, score - abandonedCount * 10);

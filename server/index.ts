@@ -26,7 +26,7 @@ import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig } from "@shared/schema";
+import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig, factoryShiftSessions, factoryBreakLogs, kioskSessions, pdksRecords } from "@shared/schema";
 import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull, isNull } from "drizzle-orm";
 import crypto from "crypto";
 
@@ -332,6 +332,8 @@ app.use((req, res, next) => {
       backfillNullScores().catch(e => console.error("[Factory Scoring] Startup backfill error:", e));
       cleanupStaleShiftSessions().catch(e => console.error("[Factory Kiosk] Startup stale shift cleanup error:", e));
 
+      scheduleFactoryAutoCheckout();
+
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
       
@@ -501,6 +503,91 @@ function startFactoryScoringScheduler() {
     }
   }, 10 * 60 * 1000);
   log("Factory scoring scheduler started (daily@02:00, weekly@Mon 03:00)");
+}
+
+async function forceCloseAllFactoryShifts() {
+  try {
+    const activeShifts = await db.select()
+      .from(factoryShiftSessions)
+      .where(eq(factoryShiftSessions.status, 'active'));
+
+    if (activeShifts.length === 0) return;
+
+    const now = new Date();
+
+    for (const shift of activeShifts) {
+      await db.update(factoryShiftSessions)
+        .set({
+          status: 'completed',
+          checkOutTime: now,
+          notes: '[Otomatik kapatıldı — 20:30 çıkış unutuldu]',
+        })
+        .where(eq(factoryShiftSessions.id, shift.id));
+
+      try {
+        const [worker] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, shift.userId)).limit(1);
+        if (worker?.branchId) {
+          await db.insert(pdksRecords).values({
+            userId: shift.userId,
+            branchId: worker.branchId,
+            recordDate: now.toISOString().split('T')[0],
+            recordTime: now.toTimeString().split(' ')[0],
+            recordType: 'cikis',
+            source: 'kiosk',
+            deviceInfo: 'auto_checkout_2030',
+          });
+        }
+      } catch (e) {
+        console.error('[Factory] PDKS auto-checkout error:', e);
+      }
+
+      try {
+        await db.update(factoryBreakLogs)
+          .set({
+            endedAt: now,
+            durationMinutes: 15,
+            notes: '[Otomatik kapatıldı]',
+          })
+          .where(and(
+            eq(factoryBreakLogs.userId, shift.userId),
+            isNull(factoryBreakLogs.endedAt)
+          ));
+      } catch (e) {}
+
+      try {
+        await db.delete(kioskSessions)
+          .where(eq(kioskSessions.userId, shift.userId));
+      } catch (e) {}
+    }
+
+    log(`[Factory] Auto-checkout: ${activeShifts.length} shifts force-closed at 20:30`);
+  } catch (error) {
+    console.error('[Factory] Auto-checkout failed:', error);
+  }
+}
+
+function scheduleFactoryAutoCheckout() {
+  const checkAndSchedule = () => {
+    const now = new Date();
+    const istanbul = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+
+    const target = new Date(istanbul);
+    target.setHours(20, 30, 0, 0);
+    if (istanbul >= target) {
+      target.setDate(target.getDate() + 1);
+    }
+
+    const msUntil = target.getTime() - istanbul.getTime();
+
+    setTimeout(async () => {
+      await forceCloseAllFactoryShifts();
+      checkAndSchedule();
+    }, msUntil);
+
+    log(`[Factory] Auto-checkout scheduled for 20:30 (in ${Math.round(msUntil / 60000)} min)`);
+  };
+
+  checkAndSchedule();
 }
 
 function startScheduledTaskDeliveryJob() {
