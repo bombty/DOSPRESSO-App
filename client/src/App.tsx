@@ -561,9 +561,9 @@ function AppContent() {
 
   if (isStandaloneDashboard) {
     return (
-      <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex flex-col h-screen overflow-hidden bg-background">
         <OfflineBanner />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto">
           <Router />
         </main>
       </div>
@@ -571,7 +571,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
       <OfflineBanner />
       <AppHeader 
         user={user}

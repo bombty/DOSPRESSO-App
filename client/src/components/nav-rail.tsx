@@ -19,7 +19,7 @@ export function NavRail() {
 
   return (
     <aside
-      className="hidden md:flex flex-col items-center bg-[#122549] w-[50px] min-h-full py-3 gap-1 flex-shrink-0 z-40"
+      className="hidden md:flex flex-col items-center bg-[#122549] w-[50px] py-3 gap-1 flex-shrink-0 z-40 overflow-y-auto"
       data-testid="nav-rail"
     >
       {items.map((item) => {
