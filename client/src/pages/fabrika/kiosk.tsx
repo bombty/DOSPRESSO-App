@@ -1067,45 +1067,54 @@ export default function FactoryKiosk() {
                   })}
                 </div>
 
-                {guidanceData && guidanceData.items.length > 0 && (
-                  <div className="mt-3 p-3 bg-slate-700/50 rounded-lg" data-testid="kiosk-guidance-widget">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ShieldAlert className="h-4 w-4 text-amber-400" />
-                      <h3 className="text-xs font-medium text-amber-400 uppercase tracking-wider">
-                        Mr. Dobody ({guidanceData.criticalCount > 0 ? `${guidanceData.criticalCount} kritik` : `${guidanceData.totalGaps} uyarı`})
-                      </h3>
-                    </div>
-                    <div className="space-y-1.5">
-                      {guidanceData.items.slice(0, 3).map((item) => (
-                        <div
-                          key={item.id}
-                          className={cn(
-                            "p-2 rounded text-xs",
-                            item.severity === 'critical' ? 'bg-red-900/40 border border-red-500/30' :
-                            item.severity === 'high' ? 'bg-orange-900/40 border border-orange-500/30' :
-                            item.severity === 'medium' ? 'bg-yellow-900/40 border border-yellow-500/30' :
-                            'bg-slate-800/40 border border-slate-600/30'
+                {(() => {
+                  const factoryAlerts = guidanceData?.items.filter(i => i.id.includes('fabrika')) || [];
+                  return (
+                    <div className="mt-3 p-3 bg-slate-700/50 rounded-lg" data-testid="kiosk-guidance-widget">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldAlert className="h-4 w-4 text-amber-400" />
+                        <h3 className="text-xs font-medium text-amber-400 uppercase tracking-wider">
+                          Mr. Dobody {factoryAlerts.length > 0 ? `(${factoryAlerts.length} uyarı)` : ''}
+                        </h3>
+                      </div>
+                      {factoryAlerts.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-2" data-testid="guidance-empty">Şu an aktif uyarı yok</p>
+                      ) : (
+                        <>
+                          <div className="space-y-1.5">
+                            {factoryAlerts.slice(0, 3).map((item) => (
+                              <div
+                                key={item.id}
+                                className={cn(
+                                  "p-2 rounded text-xs",
+                                  item.severity === 'critical' ? 'bg-red-900/40 border border-red-500/30' :
+                                  item.severity === 'high' ? 'bg-orange-900/40 border border-orange-500/30' :
+                                  item.severity === 'medium' ? 'bg-yellow-900/40 border border-yellow-500/30' :
+                                  'bg-slate-800/40 border border-slate-600/30'
+                                )}
+                                data-testid={`guidance-item-${item.id}`}
+                              >
+                                <p className={cn(
+                                  "font-medium truncate",
+                                  item.severity === 'critical' ? 'text-red-300' :
+                                  item.severity === 'high' ? 'text-orange-300' :
+                                  item.severity === 'medium' ? 'text-yellow-300' :
+                                  'text-slate-300'
+                                )}>
+                                  {item.title}
+                                </p>
+                                <p className="text-slate-400 truncate mt-0.5">{item.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {factoryAlerts.length > 3 && (
+                            <p className="text-[10px] text-slate-500 mt-1.5 text-center">+{factoryAlerts.length - 3} daha fazla uyarı</p>
                           )}
-                          data-testid={`guidance-item-${item.id}`}
-                        >
-                          <p className={cn(
-                            "font-medium truncate",
-                            item.severity === 'critical' ? 'text-red-300' :
-                            item.severity === 'high' ? 'text-orange-300' :
-                            item.severity === 'medium' ? 'text-yellow-300' :
-                            'text-slate-300'
-                          )}>
-                            {item.title}
-                          </p>
-                          <p className="text-slate-400 truncate mt-0.5">{item.description}</p>
-                        </div>
-                      ))}
+                        </>
+                      )}
                     </div>
-                    {guidanceData.items.length > 3 && (
-                      <p className="text-[10px] text-slate-500 mt-1.5 text-center">+{guidanceData.items.length - 3} daha fazla uyarı</p>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {!(user && FABRIKA_ALLOWED_ROLES.includes(user.role)) && (
                   <Button
@@ -1260,22 +1269,23 @@ export default function FactoryKiosk() {
                 </div>
               )}
 
-              {guidanceData && guidanceData.criticalCount > 0 && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-red-900/30 border border-red-500/30" data-testid="worker-home-guidance-banner">
-                  <ShieldAlert className="h-5 w-5 text-red-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-red-300">
-                      {guidanceData.grouped.critical[0]?.title}
-                    </p>
-                    <p className="text-xs text-red-400/70 truncate">
-                      {guidanceData.grouped.critical[0]?.description}
-                    </p>
+              {(() => {
+                const workerAlerts = guidanceData?.items.filter(i => i.id.includes('fabrika')) || [];
+                if (workerAlerts.length === 0) return null;
+                const topAlert = workerAlerts[0];
+                return (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-900/30 border border-amber-500/30" data-testid="worker-home-guidance-banner">
+                    <ShieldAlert className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-amber-300">{topAlert.title}</p>
+                      <p className="text-xs text-amber-400/70 truncate">{topAlert.description}</p>
+                    </div>
+                    {workerAlerts.length > 1 && (
+                      <Badge className="bg-amber-600/50 text-amber-200 text-[10px] flex-shrink-0">+{workerAlerts.length - 1}</Badge>
+                    )}
                   </div>
-                  {guidanceData.criticalCount > 1 && (
-                    <Badge className="bg-red-600/50 text-red-200 text-[10px] flex-shrink-0">+{guidanceData.criticalCount - 1}</Badge>
-                  )}
-                </div>
-              )}
+                );
+              })()}
 
               <Separator className="bg-slate-700" />
 
