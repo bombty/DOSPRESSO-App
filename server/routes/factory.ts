@@ -1341,6 +1341,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/kiosk/end-shift', isKioskAuthenticated, async (req, res) => {
     try {
       const { sessionId, productionRunId, quantityProduced, producedUnit, quantityWaste, wasteUnit, wasteReasonId, wasteNotes, wasteReason, photoUrl, productId, productName, wasteDoughKg, wasteProductCount } = req.body;
+      const kioskUserId = (req as any).kioskUserId;
       
       if (!sessionId) {
         return res.status(400).json({ message: "Oturum ID gerekli" });
@@ -1371,6 +1372,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (!session) {
         return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      if (kioskUserId && session.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu oturum size ait değil" });
       }
 
       const hasWasteData = (quantityWaste > 0) || (wasteDoughKg && parseFloat(wasteDoughKg) > 0) || (wasteProductCount && parseInt(wasteProductCount) > 0);
@@ -2942,6 +2947,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         wasteDoughKg,
         wasteProductCount
       } = req.body;
+      const kioskUserId = (req as any).kioskUserId;
 
       // Parse quantities safely
       const parsedProduced = parseFloat(producedQuantity) || 0;
@@ -2954,6 +2960,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (!session) {
         return res.status(404).json({ message: "Oturum bulunamadı" });
+      }
+
+      if (kioskUserId && session.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu oturum size ait değil" });
       }
 
       // Log event
@@ -3047,6 +3057,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.post('/api/factory/kiosk/end-break', isKioskAuthenticated, async (req, res) => {
     try {
       const { breakLogId } = req.body;
+      const kioskUserId = (req as any).kioskUserId;
       if (!breakLogId) {
         return res.status(400).json({ message: "breakLogId gerekli" });
       }
@@ -3057,6 +3068,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (!breakLog) {
         return res.status(404).json({ message: "Mola kaydı bulunamadı" });
+      }
+
+      if (kioskUserId && breakLog.userId !== kioskUserId) {
+        return res.status(403).json({ message: "Bu mola kaydı size ait değil" });
       }
 
       if (breakLog.endedAt) {
@@ -3224,7 +3239,9 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.post('/api/factory/kiosk/report-fault', isKioskAuthenticated, async (req, res) => {
     try {
-      const { faultType, description, stationId, sessionId, userId } = req.body;
+      const { faultType, description, stationId, sessionId } = req.body;
+      const kioskUserId = (req as any).kioskUserId;
+      const effectiveUserId = kioskUserId || req.body.userId;
 
       if (!faultType || !description?.trim()) {
         return res.status(400).json({ message: 'Arıza türü ve açıklama gerekli' });
@@ -3235,8 +3252,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         : [];
       const stationName = stationInfo.length > 0 ? stationInfo[0].name : 'Bilinmeyen İstasyon';
 
-      const reporterInfo = userId
-        ? await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, userId)).limit(1)
+      const reporterInfo = effectiveUserId
+        ? await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, effectiveUserId)).limit(1)
         : [];
       const reporterName = reporterInfo.length > 0 ? `${reporterInfo[0].firstName} ${reporterInfo[0].lastName}` : 'Bilinmeyen Personel';
 
@@ -3281,12 +3298,10 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         }
       }
 
-      const kioskUserId = (req as any).kioskUserId;
-      const eventUserId = userId || kioskUserId;
-      if (sessionId && eventUserId) {
+      if (sessionId && effectiveUserId) {
         await db.insert(factorySessionEvents).values({
           sessionId,
-          userId: eventUserId,
+          userId: effectiveUserId,
           stationId: stationId || null,
           eventType: 'fault_report',
           notes: `[${faultTypeLabel}] ${description}`,

@@ -63,6 +63,7 @@ import {
   MapPin,
   BarChart3,
   Repeat,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -1326,7 +1327,7 @@ export default function FactoryKiosk() {
               </div>
 
               <Button
-                className="w-full bg-red-600 hover:bg-red-700 h-14 text-lg"
+                className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg"
                 onClick={() => {
                   setQuantityProduced('');
                   setProducedUnit('adet');
@@ -1339,12 +1340,12 @@ export default function FactoryKiosk() {
                   setProductError('');
                   setWasteDoughKg('');
                   setWasteProductCount('');
-                  setStep('production-entry');
+                  setStep('log-production');
                 }}
-                data-testid="stop-option-end-shift"
+                data-testid="stop-option-log-production"
               >
-                <LogOut className="h-5 w-5 mr-2" />
-                Vardiyayı Bitir
+                <ClipboardCheck className="h-5 w-5 mr-2" />
+                Üretimi Bitir
               </Button>
 
               <Button
