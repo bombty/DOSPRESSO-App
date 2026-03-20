@@ -28,6 +28,7 @@ import {
   CartesianGrid, Tooltip, Legend, AreaChart, Area
 } from "recharts";
 import { ErrorState } from "../components/error-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { LoadingState } from "../components/loading-state";
 
 type PeriodType = "monthly" | "quarterly" | "yearly" | "all";
@@ -200,55 +201,58 @@ export default function MyPerformancePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className={totalScore >= 70 ? "border-green-500" : totalScore >= 50 ? "border-yellow-500" : "border-red-500"} data-testid="card-total-score">
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center">
-                  <Trophy className={`h-8 w-8 mb-2 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />
-                  <p className="text-3xl font-bold" data-testid="text-total-score">{totalScore.toFixed(1)}</p>
-                  <p className="text-sm text-muted-foreground">Toplam Puan</p>
-                  <Progress value={totalScore} className="h-2 mt-2 w-full" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-ranking">
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center">
-                  <Medal className="h-8 w-8 mb-2 text-blue-500" />
-                  <p className="text-3xl font-bold" data-testid="text-rank">{rank || "-"}</p>
-                  <p className="text-sm text-muted-foreground">Sıralama</p>
-                  {rank && rank <= 3 && (
-                    <Badge className="mt-2">İlk 3'te!</Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-customer-score">
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center">
-                  <Star className="h-8 w-8 mb-2 text-yellow-500" />
-                  <p className="text-3xl font-bold">
-                    {perf?.customerRatingAvg?.toFixed(1) || "-"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Müşteri Puanı</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-checklist-score">
-              <CardContent className="pt-6">
-                <div className="flex flex-col items-center">
-                  <ClipboardCheck className="h-8 w-8 mb-2 text-purple-500" />
-                  <p className="text-3xl font-bold">
-                    {perf?.checklistCompletion?.toFixed(0) || 0}%
-                  </p>
-                  <p className="text-sm text-muted-foreground">Checklist</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <CompactKPIStrip
+            items={[
+              { label: "Toplam Puan", value: totalScore.toFixed(1), icon: <Trophy className={`h-4 w-4 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />, color: totalScore >= 70 ? "success" : totalScore >= 50 ? "warning" : "danger", testId: "card-total-score" },
+              { label: "Sıralama", value: rank || "-", icon: <Medal className="h-4 w-4 text-blue-500" />, color: "info", testId: "card-ranking", subtitle: rank && rank <= 3 ? "İlk 3'te!" : undefined },
+              { label: "Müşteri Puanı", value: perf?.customerRatingAvg?.toFixed(1) || "-", icon: <Star className="h-4 w-4 text-yellow-500" />, color: "warning", testId: "card-customer-score" },
+              { label: "Checklist", value: `${perf?.checklistCompletion?.toFixed(0) || 0}%`, icon: <ClipboardCheck className="h-4 w-4 text-purple-500" />, color: "info", testId: "card-checklist-score" },
+            ]}
+            desktopRenderer={
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className={totalScore >= 70 ? "border-green-500" : totalScore >= 50 ? "border-yellow-500" : "border-red-500"} data-testid="card-total-score">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col items-center">
+                      <Trophy className={`h-8 w-8 mb-2 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />
+                      <p className="text-3xl font-bold" data-testid="text-total-score">{totalScore.toFixed(1)}</p>
+                      <p className="text-sm text-muted-foreground">Toplam Puan</p>
+                      <Progress value={totalScore} className="h-2 mt-2 w-full" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-ranking">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col items-center">
+                      <Medal className="h-8 w-8 mb-2 text-blue-500" />
+                      <p className="text-3xl font-bold" data-testid="text-rank">{rank || "-"}</p>
+                      <p className="text-sm text-muted-foreground">Sıralama</p>
+                      {rank && rank <= 3 && (
+                        <Badge className="mt-2">İlk 3'te!</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-customer-score">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col items-center">
+                      <Star className="h-8 w-8 mb-2 text-yellow-500" />
+                      <p className="text-3xl font-bold">{perf?.customerRatingAvg?.toFixed(1) || "-"}</p>
+                      <p className="text-sm text-muted-foreground">Müşteri Puanı</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-checklist-score">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col items-center">
+                      <ClipboardCheck className="h-8 w-8 mb-2 text-purple-500" />
+                      <p className="text-3xl font-bold">{perf?.checklistCompletion?.toFixed(0) || 0}%</p>
+                      <p className="text-sm text-muted-foreground">Checklist</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            }
+          />
 
           <Tabs defaultValue="periods" className="space-y-4">
             <TabsList className="flex flex-wrap">

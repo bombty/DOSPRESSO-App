@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
 import {
   Table,
   TableBody,
@@ -306,10 +307,11 @@ export default function UserCRM() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Filtreler</CardTitle>
-            <CardDescription>Kullanıcıları rol, şube veya ada göre filtrele</CardDescription>
+            <CardTitle className="hidden md:block">Filtreler</CardTitle>
+            <CardDescription className="hidden md:block">Kullanıcıları rol, şube veya ada göre filtrele</CardDescription>
           </CardHeader>
           <CardContent>
+            <MobileFilterCollapsible activeFilterCount={(roleFilter !== "all" ? 1 : 0) + (branchFilter !== "all" ? 1 : 0) + (accountStatusFilter !== "all" ? 1 : 0) + (searchQuery ? 1 : 0)}>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
               <div>
                 <Label htmlFor="role-filter">Rol</Label>
@@ -373,6 +375,7 @@ export default function UserCRM() {
                 </div>
               </div>
             </div>
+            </MobileFilterCollapsible>
           </CardContent>
         </Card>
 

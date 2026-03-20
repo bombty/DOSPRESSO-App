@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CompactStatusBadge } from "@/components/compact-status-badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -318,15 +319,15 @@ export default function FabrikaKaliteKontrol() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
-        return <Badge className="bg-green-600"><Check className="h-3 w-3 mr-1" />Onaylandı</Badge>;
+        return <CompactStatusBadge label="Onaylandı" className="bg-green-600" icon={<Check className="h-3 w-3 mr-1" />} />;
       case 'rejected':
-        return <Badge variant="destructive"><X className="h-3 w-3 mr-1" />Reddedildi</Badge>;
+        return <CompactStatusBadge label="Reddedildi" variant="destructive" icon={<X className="h-3 w-3 mr-1" />} />;
       case 'pending_engineer':
-        return <Badge className="bg-blue-600"><Shield className="h-3 w-3 mr-1" />Mühendis Bekliyor</Badge>;
+        return <CompactStatusBadge label="Mühendis Bekliyor" className="bg-blue-600" icon={<Shield className="h-3 w-3 mr-1" />} />;
       case 'hold':
-        return <Badge className="bg-orange-600"><PauseCircle className="h-3 w-3 mr-1" />Beklemede</Badge>;
+        return <CompactStatusBadge label="Beklemede" className="bg-orange-600" icon={<PauseCircle className="h-3 w-3 mr-1" />} />;
       default:
-        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Bekliyor</Badge>;
+        return <CompactStatusBadge label="Bekliyor" variant="secondary" icon={<Clock className="h-3 w-3 mr-1" />} />;
     }
   };
 
@@ -334,11 +335,11 @@ export default function FabrikaKaliteKontrol() {
     if (!result) return <span className="text-muted-foreground">-</span>;
     switch (result) {
       case 'pass':
-        return <Badge className="bg-green-600" data-testid="badge-pass"><Check className="h-3 w-3 mr-1" />Geçti</Badge>;
+        return <CompactStatusBadge label="Geçti" className="bg-green-600" data-testid="badge-pass" icon={<Check className="h-3 w-3 mr-1" />} />;
       case 'fail':
-        return <Badge variant="destructive" data-testid="badge-fail"><X className="h-3 w-3 mr-1" />Kaldı</Badge>;
+        return <CompactStatusBadge label="Başarısız" variant="destructive" data-testid="badge-fail" icon={<X className="h-3 w-3 mr-1" />} />;
       case 'warning':
-        return <Badge className="bg-orange-500" data-testid="badge-warning"><AlertTriangle className="h-3 w-3 mr-1" />Uyarı</Badge>;
+        return <CompactStatusBadge label="Uyarı" className="bg-orange-500" data-testid="badge-warning" icon={<AlertTriangle className="h-3 w-3 mr-1" />} />;
       default:
         return <span className="text-muted-foreground">{result}</span>;
     }

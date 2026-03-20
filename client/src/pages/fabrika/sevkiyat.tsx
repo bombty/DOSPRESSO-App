@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
+import { CompactStatusBadge } from "@/components/compact-status-badge";
 
 interface Shipment {
   id: number;
@@ -339,13 +341,13 @@ export default function FabrikaSevkiyat() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'hazirlaniyor':
-        return <Badge variant="secondary" data-testid={`badge-status-${status}`}><Clock className="h-3 w-3 mr-1" />Hazırlanıyor</Badge>;
+        return <CompactStatusBadge label="Hazırlanıyor" variant="secondary" data-testid={`badge-status-${status}`} icon={<Clock className="h-3 w-3 mr-1" />} />;
       case 'sevk_edildi':
-        return <Badge className="bg-blue-600" data-testid={`badge-status-${status}`}><Send className="h-3 w-3 mr-1" />Sevk Edildi</Badge>;
+        return <CompactStatusBadge label="Sevk Edildi" className="bg-blue-600" data-testid={`badge-status-${status}`} icon={<Send className="h-3 w-3 mr-1" />} />;
       case 'teslim_edildi':
-        return <Badge className="bg-green-600" data-testid={`badge-status-${status}`}><CheckCircle2 className="h-3 w-3 mr-1" />Teslim Edildi</Badge>;
+        return <CompactStatusBadge label="Teslim Edildi" className="bg-green-600" data-testid={`badge-status-${status}`} icon={<CheckCircle2 className="h-3 w-3 mr-1" />} />;
       case 'iptal':
-        return <Badge variant="destructive" data-testid={`badge-status-${status}`}><XCircle className="h-3 w-3 mr-1" />İptal</Badge>;
+        return <CompactStatusBadge label="İptal" variant="destructive" data-testid={`badge-status-${status}`} icon={<XCircle className="h-3 w-3 mr-1" />} />;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -354,13 +356,13 @@ export default function FabrikaSevkiyat() {
   const getOrderStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary" data-testid={`badge-order-status-${status}`}><Clock className="h-3 w-3 mr-1" />Bekliyor</Badge>;
+        return <CompactStatusBadge label="Beklemede" variant="secondary" data-testid={`badge-order-status-${status}`} icon={<Clock className="h-3 w-3 mr-1" />} />;
       case 'approved':
-        return <Badge className="bg-green-600" data-testid={`badge-order-status-${status}`}><CheckCircle2 className="h-3 w-3 mr-1" />Onaylandı</Badge>;
+        return <CompactStatusBadge label="Onaylandı" className="bg-green-600" data-testid={`badge-order-status-${status}`} icon={<CheckCircle2 className="h-3 w-3 mr-1" />} />;
       case 'cancelled':
-        return <Badge variant="destructive" data-testid={`badge-order-status-${status}`}><XCircle className="h-3 w-3 mr-1" />Reddedildi</Badge>;
+        return <CompactStatusBadge label="Reddedildi" variant="destructive" data-testid={`badge-order-status-${status}`} icon={<XCircle className="h-3 w-3 mr-1" />} />;
       case 'delivered':
-        return <Badge className="bg-blue-600" data-testid={`badge-order-status-${status}`}><Truck className="h-3 w-3 mr-1" />Teslim Edildi</Badge>;
+        return <CompactStatusBadge label="Teslim Edildi" className="bg-blue-600" data-testid={`badge-order-status-${status}`} icon={<Truck className="h-3 w-3 mr-1" />} />;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -794,35 +796,37 @@ export default function FabrikaSevkiyat() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-3 mb-4 flex-wrap">
-                <div className="w-48">
-                  <Select value={filterBranch} onValueChange={setFilterBranch}>
-                    <SelectTrigger data-testid="select-filter-branch">
-                      <SelectValue placeholder="Şube Filtrele" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tüm Şubeler</SelectItem>
-                      {branchesList.map(b => (
-                        <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <MobileFilterCollapsible activeFilterCount={(filterBranch !== "all" ? 1 : 0) + (filterStatus !== "all" ? 1 : 0)}>
+                <div className="flex gap-3 mb-4 flex-wrap">
+                  <div className="w-full md:w-48">
+                    <Select value={filterBranch} onValueChange={setFilterBranch}>
+                      <SelectTrigger data-testid="select-filter-branch">
+                        <SelectValue placeholder="Şube Filtrele" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tüm Şubeler</SelectItem>
+                        {branchesList.map(b => (
+                          <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full md:w-48">
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger data-testid="select-filter-status">
+                        <SelectValue placeholder="Durum Filtrele" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tüm Durumlar</SelectItem>
+                        <SelectItem value="hazirlaniyor">Hazırlanıyor</SelectItem>
+                        <SelectItem value="sevk_edildi">Sevk Edildi</SelectItem>
+                        <SelectItem value="teslim_edildi">Teslim Edildi</SelectItem>
+                        <SelectItem value="iptal">İptal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="w-48">
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger data-testid="select-filter-status">
-                      <SelectValue placeholder="Durum Filtrele" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tüm Durumlar</SelectItem>
-                      <SelectItem value="hazirlaniyor">Hazırlanıyor</SelectItem>
-                      <SelectItem value="sevk_edildi">Sevk Edildi</SelectItem>
-                      <SelectItem value="teslim_edildi">Teslim Edildi</SelectItem>
-                      <SelectItem value="iptal">İptal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              </MobileFilterCollapsible>
 
               {shipmentsLoading ? (
                 <div className="space-y-3">

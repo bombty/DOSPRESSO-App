@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
 
 interface HaccpRecord {
   id: number;
@@ -208,71 +210,24 @@ export default function GidaGuvenligi() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryLoading ? (
-          <>
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-          </>
-        ) : (
-          <>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-emerald-500/20 rounded-lg">
-                    <TrendingUp className="h-6 w-6 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Uyum Oranı</p>
-                    <p className="text-2xl font-bold" data-testid="text-compliance-rate">%{passRate}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-green-500/20 rounded-lg">
-                    <CheckCircle2 className="h-6 w-6 text-green-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Geçen</p>
-                    <p className="text-2xl font-bold" data-testid="text-pass-count">{summary?.pass || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-red-500/20 rounded-lg">
-                    <XCircle className="h-6 w-6 text-red-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Başarısız</p>
-                    <p className="text-2xl font-bold" data-testid="text-fail-count">{summary?.fail || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-amber-500/20 rounded-lg">
-                    <AlertTriangle className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Uyarı</p>
-                    <p className="text-2xl font-bold" data-testid="text-warning-count">{summary?.warning || 0}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
+      {summaryLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <Skeleton className="h-14 md:h-24" />
+          <Skeleton className="h-14 md:h-24" />
+          <Skeleton className="h-14 md:h-24" />
+          <Skeleton className="h-14 md:h-24" />
+        </div>
+      ) : (
+        <CompactKPIStrip
+          items={[
+            { label: "Uyum Oranı", value: `%${passRate}`, icon: <TrendingUp className="h-4 w-4 text-emerald-500" />, color: "success", testId: "text-compliance-rate" },
+            { label: "Geçen", value: summary?.pass || 0, icon: <CheckCircle2 className="h-4 w-4 text-green-500" />, color: "success", testId: "text-pass-count" },
+            { label: "Başarısız", value: summary?.fail || 0, icon: <XCircle className="h-4 w-4 text-red-500" />, color: "danger", testId: "text-fail-count" },
+            { label: "Uyarı", value: summary?.warning || 0, icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, color: "warning", testId: "text-warning-count" },
+          ]}
+          desktopColumns={4}
+        />
+      )}
 
       <Card>
         <CardHeader>
@@ -282,34 +237,36 @@ export default function GidaGuvenligi() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-3 mb-4 flex-wrap">
-            <div className="w-48">
-              <Select value={filterStation} onValueChange={setFilterStation}>
-                <SelectTrigger data-testid="select-filter-haccp-station">
-                  <SelectValue placeholder="İstasyon Filtrele" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm İstasyonlar</SelectItem>
-                  {stations.filter(s => s.isActive).map(s => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <MobileFilterCollapsible activeFilterCount={(filterStation !== "all" ? 1 : 0) + (filterResult !== "all" ? 1 : 0)}>
+            <div className="flex gap-3 mb-4 flex-wrap">
+              <div className="w-full md:w-48">
+                <Select value={filterStation} onValueChange={setFilterStation}>
+                  <SelectTrigger data-testid="select-filter-haccp-station">
+                    <SelectValue placeholder="İstasyon Filtrele" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm İstasyonlar</SelectItem>
+                    {stations.filter(s => s.isActive).map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full md:w-48">
+                <Select value={filterResult} onValueChange={setFilterResult}>
+                  <SelectTrigger data-testid="select-filter-haccp-result">
+                    <SelectValue placeholder="Sonuç Filtrele" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Sonuçlar</SelectItem>
+                    <SelectItem value="pass">Geçti</SelectItem>
+                    <SelectItem value="fail">Başarısız</SelectItem>
+                    <SelectItem value="warning">Uyarı</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="w-48">
-              <Select value={filterResult} onValueChange={setFilterResult}>
-                <SelectTrigger data-testid="select-filter-haccp-result">
-                  <SelectValue placeholder="Sonuç Filtrele" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tüm Sonuçlar</SelectItem>
-                  <SelectItem value="pass">Geçti</SelectItem>
-                  <SelectItem value="fail">Başarısız</SelectItem>
-                  <SelectItem value="warning">Uyarı</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          </MobileFilterCollapsible>
 
           {recordsLoading ? (
             <div className="space-y-3">

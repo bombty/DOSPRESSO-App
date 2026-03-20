@@ -36,6 +36,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import {
   BarChart,
   Bar,
@@ -728,12 +729,22 @@ function TedarikciPerformansTab() {
 
   return (
     <div className="space-y-4" data-testid="supplier-performance-container">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard title="Aktif Tedarikçi" value={summary.totalSuppliers.toString()} icon={Users} color="text-blue-500" bgColor="bg-blue-500/10" testId="sp-card-suppliers" />
-        <SummaryCard title="Toplam Sipariş (90 Gün)" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-green-500" bgColor="bg-green-500/10" testId="sp-card-orders" />
-        <SummaryCard title="Toplam Tutar" value={formatCurrency(summary.totalValue) + " TL"} icon={DollarSign} color="text-purple-500" bgColor="bg-purple-500/10" testId="sp-card-value" />
-        <SummaryCard title="Ort. Kalite Puanı" value={(summary.avgQuality ?? 0).toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Aktif Tedarikçi", value: summary.totalSuppliers, icon: <Users className="h-4 w-4 text-blue-500" />, color: "info", testId: "sp-card-suppliers" },
+          { label: "Sipariş (90 Gün)", value: summary.totalOrders, icon: <ShoppingCart className="h-4 w-4 text-green-500" />, color: "success", testId: "sp-card-orders" },
+          { label: "Toplam Tutar", value: formatCurrency(summary.totalValue) + " TL", icon: <DollarSign className="h-4 w-4 text-purple-500" />, color: "info", testId: "sp-card-value" },
+          { label: "Ort. Kalite", value: (summary.avgQuality ?? 0).toFixed(1), icon: <Star className="h-4 w-4 text-yellow-500" />, color: "warning", testId: "sp-card-quality" },
+        ]}
+        desktopRenderer={
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <SummaryCard title="Aktif Tedarikçi" value={summary.totalSuppliers.toString()} icon={Users} color="text-blue-500" bgColor="bg-blue-500/10" testId="sp-card-suppliers" />
+            <SummaryCard title="Toplam Sipariş (90 Gün)" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-green-500" bgColor="bg-green-500/10" testId="sp-card-orders" />
+            <SummaryCard title="Toplam Tutar" value={formatCurrency(summary.totalValue) + " TL"} icon={DollarSign} color="text-purple-500" bgColor="bg-purple-500/10" testId="sp-card-value" />
+            <SummaryCard title="Ort. Kalite Puanı" value={(summary.avgQuality ?? 0).toFixed(1)} icon={Star} color="text-yellow-500" bgColor="bg-yellow-500/10" testId="sp-card-quality" />
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card data-testid="chart-supplier-quality">
@@ -906,12 +917,22 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
 
   return (
     <div className="space-y-4" data-testid="stock-movement-container">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard title="Toplam Hareket" value={summary.totalMovements.toLocaleString("tr-TR")} icon={ArrowUpDown} color="text-blue-500" bgColor="bg-blue-500/10" testId="sm-card-total" />
-        <SummaryCard title="Toplam Giriş Miktarı" value={formatCurrency(summary.totalIn)} icon={ArrowDownRight} color="text-green-500" bgColor="bg-green-500/10" testId="sm-card-in" />
-        <SummaryCard title="Toplam Çıkış Miktarı" value={formatCurrency(summary.totalOut)} icon={ArrowUpRight} color="text-red-500" bgColor="bg-red-500/10" testId="sm-card-out" />
-        <SummaryCard title="Net Fark" value={formatCurrency(summary.totalIn - summary.totalOut)} icon={Package} color="text-purple-500" bgColor="bg-purple-500/10" testId="sm-card-net" />
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Toplam Hareket", value: summary.totalMovements.toLocaleString("tr-TR"), icon: <ArrowUpDown className="h-4 w-4 text-blue-500" />, color: "info", testId: "sm-card-total" },
+          { label: "Giriş Miktarı", value: formatCurrency(summary.totalIn), icon: <ArrowDownRight className="h-4 w-4 text-green-500" />, color: "success", testId: "sm-card-in" },
+          { label: "Çıkış Miktarı", value: formatCurrency(summary.totalOut), icon: <ArrowUpRight className="h-4 w-4 text-red-500" />, color: "danger", testId: "sm-card-out" },
+          { label: "Net Fark", value: formatCurrency(summary.totalIn - summary.totalOut), icon: <Package className="h-4 w-4 text-purple-500" />, color: "info", testId: "sm-card-net" },
+        ]}
+        desktopRenderer={
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <SummaryCard title="Toplam Hareket" value={summary.totalMovements.toLocaleString("tr-TR")} icon={ArrowUpDown} color="text-blue-500" bgColor="bg-blue-500/10" testId="sm-card-total" />
+            <SummaryCard title="Toplam Giriş Miktarı" value={formatCurrency(summary.totalIn)} icon={ArrowDownRight} color="text-green-500" bgColor="bg-green-500/10" testId="sm-card-in" />
+            <SummaryCard title="Toplam Çıkış Miktarı" value={formatCurrency(summary.totalOut)} icon={ArrowUpRight} color="text-red-500" bgColor="bg-red-500/10" testId="sm-card-out" />
+            <SummaryCard title="Net Fark" value={formatCurrency(summary.totalIn - summary.totalOut)} icon={Package} color="text-purple-500" bgColor="bg-purple-500/10" testId="sm-card-net" />
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card data-testid="chart-monthly-movements">
@@ -1042,19 +1063,29 @@ function MaliyetAnaliziTab({ branchId }: { branchId: string }) {
 
   return (
     <div className="space-y-4" data-testid="cost-analysis-container">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryCard title="Toplam Harcama (12 Ay)" value={formatCurrency(summary.totalSpending) + " TL"} icon={DollarSign} color="text-green-500" bgColor="bg-green-500/10" testId="ca-card-total" />
-        <SummaryCard title="Toplam Sipariş" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-blue-500" bgColor="bg-blue-500/10" testId="ca-card-orders" />
-        <SummaryCard title="Ort. Aylık Harcama" value={formatCurrency(summary.avgMonthlySpending) + " TL"} icon={BarChart3} color="text-purple-500" bgColor="bg-purple-500/10" testId="ca-card-monthly" />
-        <SummaryCard
-          title="6 Aylık Değişim"
-          value={((summary.changePercent ?? 0) >= 0 ? "+" : "") + (summary.changePercent ?? 0).toFixed(1) + "%"}
-          icon={summary.changePercent >= 0 ? TrendingUp : ArrowDownRight}
-          color={summary.changePercent > 0 ? "text-red-500" : "text-green-500"}
-          bgColor={summary.changePercent > 0 ? "bg-red-500/10" : "bg-green-500/10"}
-          testId="ca-card-change"
-        />
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Harcama (12 Ay)", value: formatCurrency(summary.totalSpending) + " TL", icon: <DollarSign className="h-4 w-4 text-green-500" />, color: "success", testId: "ca-card-total" },
+          { label: "Toplam Sipariş", value: summary.totalOrders, icon: <ShoppingCart className="h-4 w-4 text-blue-500" />, color: "info", testId: "ca-card-orders" },
+          { label: "Aylık Harcama", value: formatCurrency(summary.avgMonthlySpending) + " TL", icon: <BarChart3 className="h-4 w-4 text-purple-500" />, color: "info", testId: "ca-card-monthly" },
+          { label: "6 Aylık Değişim", value: ((summary.changePercent ?? 0) >= 0 ? "+" : "") + (summary.changePercent ?? 0).toFixed(1) + "%", icon: summary.changePercent >= 0 ? <TrendingUp className="h-4 w-4 text-red-500" /> : <ArrowDownRight className="h-4 w-4 text-green-500" />, color: summary.changePercent > 0 ? "danger" : "success", testId: "ca-card-change" },
+        ]}
+        desktopRenderer={
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <SummaryCard title="Toplam Harcama (12 Ay)" value={formatCurrency(summary.totalSpending) + " TL"} icon={DollarSign} color="text-green-500" bgColor="bg-green-500/10" testId="ca-card-total" />
+            <SummaryCard title="Toplam Sipariş" value={summary.totalOrders.toString()} icon={ShoppingCart} color="text-blue-500" bgColor="bg-blue-500/10" testId="ca-card-orders" />
+            <SummaryCard title="Ort. Aylık Harcama" value={formatCurrency(summary.avgMonthlySpending) + " TL"} icon={BarChart3} color="text-purple-500" bgColor="bg-purple-500/10" testId="ca-card-monthly" />
+            <SummaryCard
+              title="6 Aylık Değişim"
+              value={((summary.changePercent ?? 0) >= 0 ? "+" : "") + (summary.changePercent ?? 0).toFixed(1) + "%"}
+              icon={summary.changePercent >= 0 ? TrendingUp : ArrowDownRight}
+              color={summary.changePercent > 0 ? "text-red-500" : "text-green-500"}
+              bgColor={summary.changePercent > 0 ? "bg-red-500/10" : "bg-green-500/10"}
+              testId="ca-card-change"
+            />
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card data-testid="chart-cost-trend">

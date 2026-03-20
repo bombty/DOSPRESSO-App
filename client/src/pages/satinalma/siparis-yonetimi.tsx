@@ -27,6 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
+import { CompactStatusBadge } from "@/components/compact-status-badge";
 import { Label } from "@/components/ui/label";
 import { 
   ShoppingCart, 
@@ -530,7 +532,7 @@ export default function SiparisYonetimi() {
       iptal: { label: "İptal", variant: "destructive" }
     };
     const config = statusMap[status] || { label: status, variant: "outline" as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <CompactStatusBadge label={config.label} variant={config.variant} />;
   };
 
   const formatDate = (dateStr: string) => {
@@ -557,30 +559,34 @@ export default function SiparisYonetimi() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-[180px]" data-testid="select-order-status">
-            <SelectValue placeholder="Durum" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MobileFilterCollapsible activeFilterCount={(status !== "all" ? 1 : 0) + (branchFilter !== "all" ? 1 : 0)}>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger className="w-full md:w-[180px]" data-testid="select-order-status">
+                <SelectValue placeholder="Durum" />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        {canFilterBranch && branches && branches.length > 0 && (
-          <Select value={branchFilter} onValueChange={setBranchFilter}>
-            <SelectTrigger className="w-[200px]" data-testid="select-order-branch">
-              <SelectValue placeholder="Şube" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tüm Şubeler</SelectItem>
-              {branches.map((b: { id: number; name: string }) => (
-                <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+            {canFilterBranch && branches && branches.length > 0 && (
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-full md:w-[200px]" data-testid="select-order-branch">
+                  <SelectValue placeholder="Şube" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Şubeler</SelectItem>
+                  {branches.map((b: { id: number; name: string }) => (
+                    <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </MobileFilterCollapsible>
 
         <div className="flex-1" />
 

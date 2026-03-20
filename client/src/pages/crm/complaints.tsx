@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
+import { CompactStatusBadge } from "@/components/compact-status-badge";
 import {
   AlertCircle,
   CheckCircle2,
@@ -278,20 +280,20 @@ export default function CRMComplaints() {
 
   const getStatusBadge = (status: string, slaBreached?: boolean) => {
     if (slaBreached) {
-      return <Badge variant="destructive"><AlertCircle className="w-3 h-3 mr-1" />SLA Aşıldı</Badge>;
+      return <CompactStatusBadge label="SLA Aşıldı" variant="destructive" icon={<AlertCircle className="w-3 h-3 mr-1" />} />;
     }
     switch (status) {
       case "resolved":
-        return <Badge className="bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-300"><CheckCircle2 className="w-3 h-3 mr-1" />Çözüldü</Badge>;
+        return <CompactStatusBadge label="Çözüldü" className="bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-300" icon={<CheckCircle2 className="w-3 h-3 mr-1" />} />;
       case "in_progress":
       case "investigating":
-        return <Badge className="bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-300"><Timer className="w-3 h-3 mr-1" />İşleniyor</Badge>;
+        return <CompactStatusBadge label="İşleniyor" className="bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-300" icon={<Timer className="w-3 h-3 mr-1" />} />;
       case "assigned":
-        return <Badge className="bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"><User className="w-3 h-3 mr-1" />Atandı</Badge>;
+        return <CompactStatusBadge label="Atandı" className="bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300" icon={<User className="w-3 h-3 mr-1" />} />;
       case "closed":
-        return <Badge variant="secondary">Kapatıldı</Badge>;
+        return <CompactStatusBadge label="Kapatıldı" variant="secondary" />;
       default:
-        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Açık</Badge>;
+        return <CompactStatusBadge label="Açık" variant="outline" icon={<Clock className="w-3 h-3 mr-1" />} />;
     }
   };
 
@@ -428,6 +430,7 @@ export default function CRMComplaints() {
         <p className="text-sm text-muted-foreground mt-1">Şube geri bildirimleri ve ürün şikayetlerini tek panelden yönetin</p>
       </div>
 
+      <MobileFilterCollapsible activeFilterCount={(typeFilter !== "all" ? 1 : 0) + (branchFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0) + (priorityFilter !== "all" ? 1 : 0) + (startDate ? 1 : 0) + (endDate ? 1 : 0)}>
       <div className="flex flex-wrap gap-2" data-testid="filter-bar">
         <div className="flex gap-1" data-testid="type-toggle">
           {[
@@ -512,6 +515,7 @@ export default function CRMComplaints() {
           data-testid="input-end-date"
         />
       </div>
+      </MobileFilterCollapsible>
 
       <div className="grid gap-2 sm:gap-3" data-testid="complaints-list">
         {filteredComplaints && filteredComplaints.length > 0 ? (

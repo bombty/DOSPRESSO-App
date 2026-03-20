@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
 import {
   BarChart,
   Bar,
@@ -105,35 +106,37 @@ export default function CRMAnalytics() {
 
   return (
     <div className="space-y-4 p-4" data-testid="analytics-page">
-      <div className="flex flex-wrap items-center gap-3" data-testid="analytics-filters">
-        <Select
-          value={String(days)}
-          onValueChange={(v) => setDays(Number(v))}
-        >
-          <SelectTrigger className="w-[160px]" data-testid="select-period">
-            <SelectValue placeholder="Dönem seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="30">Son 30 Gün</SelectItem>
-            <SelectItem value="60">Son 60 Gün</SelectItem>
-            <SelectItem value="90">Son 90 Gün</SelectItem>
-          </SelectContent>
-        </Select>
+      <MobileFilterCollapsible activeFilterCount={(days !== 30 ? 1 : 0) + (branchId !== "all" ? 1 : 0)}>
+        <div className="flex flex-wrap items-center gap-3" data-testid="analytics-filters">
+          <Select
+            value={String(days)}
+            onValueChange={(v) => setDays(Number(v))}
+          >
+            <SelectTrigger className="w-full md:w-[160px]" data-testid="select-period">
+              <SelectValue placeholder="Dönem seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">Son 30 Gün</SelectItem>
+              <SelectItem value="60">Son 60 Gün</SelectItem>
+              <SelectItem value="90">Son 90 Gün</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Select value={branchId} onValueChange={setBranchId}>
-          <SelectTrigger className="w-[200px]" data-testid="select-branch">
-            <SelectValue placeholder="Şube seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tüm Şubeler</SelectItem>
-            {branchList?.map((b) => (
-              <SelectItem key={b.id} value={String(b.id)}>
-                {b.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <Select value={branchId} onValueChange={setBranchId}>
+            <SelectTrigger className="w-full md:w-[200px]" data-testid="select-branch">
+              <SelectValue placeholder="Şube seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm Şubeler</SelectItem>
+              {branchList?.map((b) => (
+                <SelectItem key={b.id} value={String(b.id)}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </MobileFilterCollapsible>
 
       <Card data-testid="ticket-trend-chart">
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">

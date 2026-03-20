@@ -443,20 +443,32 @@ function OperationalTab({ data }: { data: CGOData }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {statCards.map((stat, i) => (
-          <Card key={i} data-testid={`cgo-op-stat-${i}`}>
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center gap-2 mb-1">
-                {stat.icon}
-                <span className="text-xs text-muted-foreground">{stat.label}</span>
-              </div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <CompactKPIStrip
+        items={statCards.map((stat, i) => ({
+          label: stat.label,
+          value: stat.value,
+          icon: stat.icon,
+          color: i === 1 ? "danger" as const : i === 2 ? "success" as const : "info" as const,
+          testId: `cgo-op-stat-${i}`,
+          subtitle: stat.sub,
+        }))}
+        desktopRenderer={
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {statCards.map((stat, i) => (
+              <Card key={i} data-testid={`cgo-op-stat-${i}`}>
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    {stat.icon}
+                    <span className="text-xs text-muted-foreground">{stat.label}</span>
+                  </div>
+                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>

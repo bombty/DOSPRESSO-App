@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CompactStatusBadge } from "@/components/compact-status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +29,7 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
@@ -244,60 +246,15 @@ export default function SayimYonetimi() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-amber-500/20 rounded-lg">
-                <ClipboardList className="h-4 w-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Aktif</p>
-                <p className="text-lg font-bold" data-testid="text-active-count">{activeCounts.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-green-500/20 rounded-lg">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Tamamlanan</p>
-                <p className="text-lg font-bold" data-testid="text-completed-count">{completedCounts.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Gecikmiş</p>
-                <p className="text-lg font-bold" data-testid="text-overdue-count">{overdueCounts.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-3 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <BarChart3 className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Toplam</p>
-                <p className="text-lg font-bold" data-testid="text-total-count">{counts?.length || 0}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Aktif", value: activeCounts.length, icon: <ClipboardList className="h-4 w-4 text-amber-500" />, color: "warning", testId: "text-active-count" },
+          { label: "Tamamlanan", value: completedCounts.length, icon: <CheckCircle className="h-4 w-4 text-green-500" />, color: "success", testId: "text-completed-count" },
+          { label: "Gecikmiş", value: overdueCounts.length, icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: "danger", testId: "text-overdue-count" },
+          { label: "Toplam", value: counts?.length || 0, icon: <BarChart3 className="h-4 w-4 text-blue-500" />, color: "info", testId: "text-total-count" },
+        ]}
+        desktopColumns={4}
+      />
 
       <Tabs value={mainTab} onValueChange={setMainTab}>
         <TabsList className="w-full justify-start overflow-x-auto">
@@ -1023,10 +980,11 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={r.severity === "critical" || r.severity === "high" ? "destructive" : r.severity === "medium" ? "outline" : "secondary"}>
-                      {r.severity === "critical" ? "Kritik" : r.severity === "high" ? "Yüksek" : r.severity === "medium" ? "Orta" : "Düşük"}
-                    </Badge>
-                    {r.resolved_at && <Badge variant="default">Çözüldü</Badge>}
+                    <CompactStatusBadge
+                      label={r.severity === "critical" ? "Kritik" : r.severity === "high" ? "Yüksek" : r.severity === "medium" ? "Orta" : "Düşük"}
+                      variant={r.severity === "critical" || r.severity === "high" ? "destructive" : r.severity === "medium" ? "outline" : "secondary"}
+                    />
+                    {r.resolved_at && <CompactStatusBadge label="Çözüldü" variant="default" />}
                   </div>
                 </div>
                 {r.action_taken && <p className="text-xs text-muted-foreground mt-1">{r.action_taken}</p>}

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
 import {
   Star,
   MessageSquare,
@@ -251,6 +252,7 @@ export default function CRMFeedback() {
 
       <Card data-testid="filter-bar">
         <CardContent className="p-3">
+          <MobileFilterCollapsible activeFilterCount={(filters.branchId ? 1 : 0) + (filters.startDate ? 1 : 0) + (filters.endDate ? 1 : 0) + (filters.rating ? 1 : 0) + (filters.status ? 1 : 0) + (filters.category ? 1 : 0) + (filters.source ? 1 : 0)}>
           <div className="flex gap-2 flex-wrap pb-1" data-testid="filter-scroll">
             <Select value={filters.branchId || "_all"} onValueChange={(v) => setFilters((f) => ({ ...f, branchId: v === "_all" ? "" : v }))}>
               <SelectTrigger className="w-full sm:w-[150px] shrink-0" data-testid="filter-branch">
@@ -326,6 +328,7 @@ export default function CRMFeedback() {
               </SelectContent>
             </Select>
           </div>
+          </MobileFilterCollapsible>
         </CardContent>
       </Card>
 

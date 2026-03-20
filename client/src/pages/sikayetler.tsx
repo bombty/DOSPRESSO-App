@@ -6,11 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CompactStatusBadge } from "@/components/compact-status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, CheckCircle2, Clock, AlertTriangle, MessageSquare, Timer } from "lucide-react";
+import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ErrorState } from "../components/error-state";
@@ -109,15 +111,15 @@ export default function Sikayetler() {
     const testId = complaintId ? `badge-status-${complaintId}` : "badge-status";
     switch (status) {
       case "resolved":
-        return <Badge className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100" data-testid={testId}><CheckCircle2 className="w-3 h-3 mr-1" />Çözüldü</Badge>;
+        return <CompactStatusBadge label="Çözüldü" className="bg-success/10 text-success dark:bg-success/5 dark:text-green-100" data-testid={testId} icon={<CheckCircle2 className="w-3 h-3 mr-1" />} />;
       case "in_progress":
-        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary" data-testid={testId}><Timer className="w-3 h-3 mr-1" />İşlemde</Badge>;
+        return <CompactStatusBadge label="İşleniyor" className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary" data-testid={testId} icon={<Timer className="w-3 h-3 mr-1" />} />;
       case "assigned":
-        return <Badge className="bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-purple-100" data-testid={testId}><MessageSquare className="w-3 h-3 mr-1" />Atandı</Badge>;
+        return <CompactStatusBadge label="Atandı" className="bg-secondary/10 text-secondary dark:bg-secondary/5 dark:text-purple-100" data-testid={testId} icon={<MessageSquare className="w-3 h-3 mr-1" />} />;
       case "closed":
-        return <Badge variant="secondary" data-testid={testId}>Kapalı</Badge>;
+        return <CompactStatusBadge label="Kapatıldı" variant="secondary" data-testid={testId} />;
       default:
-        return <Badge variant="outline" data-testid={testId}><Clock className="w-3 h-3 mr-1" />Açık</Badge>;
+        return <CompactStatusBadge label="Açık" variant="outline" data-testid={testId} icon={<Clock className="w-3 h-3 mr-1" />} />;
     }
   };
 
@@ -201,51 +203,15 @@ export default function Sikayetler() {
       </div>
 
       {stats && (
-        <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Toplam Şikayet</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-total-complaints">{stats.total}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">SLA İhlali</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive" data-testid="text-sla-breaches">
-                {stats.slaBreachCount}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Kritik/Yüksek Öncelik</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning" data-testid="text-high-priority">
-                {(stats.byPriority?.critical || 0) + (stats.byPriority?.high || 0)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Ort. Çözüm Süresi</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-avg-resolution">
-                {stats.avgResolutionTimeHours > 0 
-                  ? `${Math.round(stats.avgResolutionTimeHours)}s`
-                  : "—"}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <CompactKPIStrip
+          items={[
+            { label: "Toplam Şikayet", value: stats.total, icon: <MessageSquare className="h-4 w-4 text-primary" />, color: "info", testId: "text-total-complaints" },
+            { label: "SLA İhlali", value: stats.slaBreachCount, icon: <AlertTriangle className="h-4 w-4 text-destructive" />, color: "danger", testId: "text-sla-breaches" },
+            { label: "Kritik/Yüksek", value: (stats.byPriority?.critical || 0) + (stats.byPriority?.high || 0), icon: <AlertCircle className="h-4 w-4 text-warning" />, color: "warning", testId: "text-high-priority" },
+            { label: "Ort. Çözüm", value: stats.avgResolutionTimeHours > 0 ? `${Math.round(stats.avgResolutionTimeHours)}s` : "—", icon: <Timer className="h-4 w-4 text-muted-foreground" />, color: "default", testId: "text-avg-resolution" },
+          ]}
+          desktopColumns={4}
+        />
       )}
 
       <div className="flex gap-2 sm:gap-3">
