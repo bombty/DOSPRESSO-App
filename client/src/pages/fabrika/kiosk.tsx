@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -68,7 +68,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
 
-type KioskStep = 'device-password' | 'enter-credentials' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'log-production' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
+type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'log-production' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
 type BreakReason = 'mola' | 'ozel_ihtiyac';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
@@ -78,7 +78,18 @@ interface StaffMember {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  profileImageUrl?: string | null;
   role: string;
+  username?: string;
+}
+
+function LiveClock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <>{time.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</>;
 }
 
 interface Station {
@@ -147,7 +158,7 @@ export default function FactoryKiosk() {
     if (!FABRIKA_ALLOWED_ROLES.includes(user.role)) {
       setLocation('/');
     } else if (step === 'device-password') {
-      setStep('enter-credentials');
+      setStep('select-user');
     }
   }, [user, setLocation]);
 
@@ -188,11 +199,49 @@ export default function FactoryKiosk() {
   const [currentBreakLogId, setCurrentBreakLogId] = useState<number | null>(null);
   const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
 
+  const inactivityRef = useRef<NodeJS.Timeout | null>(null);
+  const INACTIVITY_MS = 5000;
+  const AUTO_RETURN_STEPS: KioskStep[] = ['worker-home', 'end-shift-summary'];
+
+  useEffect(() => {
+    function resetInactivityTimer() {
+      if (inactivityRef.current) clearTimeout(inactivityRef.current);
+      if (AUTO_RETURN_STEPS.includes(step) && selectedUser) {
+        inactivityRef.current = setTimeout(() => resetWorker(), INACTIVITY_MS);
+      }
+    }
+    const events = ['touchstart', 'mousedown', 'keydown'];
+    events.forEach(e => document.addEventListener(e, resetInactivityTimer));
+    resetInactivityTimer();
+    return () => {
+      if (inactivityRef.current) clearTimeout(inactivityRef.current);
+      events.forEach(e => document.removeEventListener(e, resetInactivityTimer));
+    };
+  }, [step, selectedUser]);
+
   async function kioskFetchJson<T>(url: string, fallback: T): Promise<T> {
     const res = await kioskFetch(url);
     if (!res.ok) return fallback;
     return res.json();
   }
+
+  const { data: factoryStaff = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory/staff'],
+    queryFn: () => kioskFetchJson<any[]>('/api/factory/staff', []),
+    enabled: step === 'select-user',
+    refetchInterval: 30000,
+  });
+
+  const { data: activeWorkersData = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory/active-workers'],
+    queryFn: () => kioskFetchJson<any[]>('/api/factory/active-workers', []),
+    enabled: step === 'select-user',
+    refetchInterval: 15000,
+  });
+
+  const activeWorkerUserIds = useMemo(() => new Set(activeWorkersData.map((w: any) => w.userId)), [activeWorkersData]);
+  const activeWorkersForGrid = useMemo(() => factoryStaff.filter((w: any) => activeWorkerUserIds.has(w.id)), [factoryStaff, activeWorkerUserIds]);
+  const availableWorkersForGrid = useMemo(() => factoryStaff.filter((w: any) => !activeWorkerUserIds.has(w.id)), [factoryStaff, activeWorkerUserIds]);
 
   const { data: stations = [], isLoading: loadingStations } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
@@ -251,7 +300,7 @@ export default function FactoryKiosk() {
       return res.json();
     },
     onSuccess: () => {
-      setStep('enter-credentials');
+      setStep('select-user');
       setDevicePassword('');
       setUsernameInput('');
       setPinInput('');
@@ -288,7 +337,7 @@ export default function FactoryKiosk() {
       }
     } catch (error: any) {
       toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
-      setStep('enter-credentials');
+      setStep('select-user');
     }
   };
 
@@ -310,6 +359,15 @@ export default function FactoryKiosk() {
       setPinInput('');
     },
   });
+
+  const handlePinDigit = useCallback((digit: string) => {
+    if (pinInput.length >= 4) return;
+    const newPin = pinInput + digit;
+    setPinInput(newPin);
+    if (newPin.length === 4 && selectedUser?.username) {
+      loginByUsernameMutation.mutate({ username: selectedUser.username, pin: newPin });
+    }
+  }, [pinInput, selectedUser, loginByUsernameMutation]);
 
   const assignStationMutation = useMutation({
     mutationFn: async (data: { sessionId: number; stationId: number }) => {
@@ -617,7 +675,7 @@ export default function FactoryKiosk() {
   };
 
   const resetWorker = () => {
-    setStep('enter-credentials');
+    setStep('select-user');
     setSelectedUser(null);
     setPinInput('');
     setUsernameInput('');
@@ -663,7 +721,7 @@ export default function FactoryKiosk() {
 
   const resetKiosk = () => {
     localStorage.removeItem("factory-kiosk-token");
-    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'enter-credentials' : 'device-password');
+    setStep((user && FABRIKA_ALLOWED_ROLES.includes(user.role)) ? 'select-user' : 'device-password');
     setDeviceUsername('');
     setDevicePassword('');
     resetWorker();
@@ -700,9 +758,9 @@ export default function FactoryKiosk() {
         </Button>
       </div>
 
-      <Card className="w-full max-w-2xl bg-slate-800/90 border-slate-700 text-white shadow-2xl">
+      <Card className={cn("w-full bg-slate-800/90 border-slate-700 text-white shadow-2xl", step === 'select-user' ? 'max-w-5xl' : 'max-w-2xl')}>
         <CardHeader className="text-center border-b border-slate-700 pb-6 relative">
-          {selectedUser && !['device-password', 'enter-credentials'].includes(step) && step !== 'end-shift-summary' && (
+          {selectedUser && !['device-password', 'enter-credentials', 'select-user', 'enter-pin'].includes(step) && step !== 'end-shift-summary' && (
             <Button
               variant="outline"
               className="absolute left-3 top-3 border-slate-600 text-slate-300 px-4 py-2 text-base"
@@ -849,20 +907,18 @@ export default function FactoryKiosk() {
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  {!(user && FABRIKA_ALLOWED_ROLES.includes(user.role)) && (
-                    <Button
-                      variant="outline"
-                      className="flex-1 border-slate-600"
-                      onClick={() => {
-                        setStep('device-password');
-                        setUsernameInput('');
-                        setPinInput('');
-                      }}
-                      data-testid="button-back-credentials"
-                    >
-                      Geri
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-slate-600"
+                    onClick={() => {
+                      setStep('select-user');
+                      setUsernameInput('');
+                      setPinInput('');
+                    }}
+                    data-testid="button-back-credentials"
+                  >
+                    Geri
+                  </Button>
                   <Button
                     className="flex-1 bg-amber-600 hover:bg-amber-700"
                     onClick={handleCredentialsSubmit}
@@ -873,6 +929,213 @@ export default function FactoryKiosk() {
                   </Button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {step === 'select-user' && (
+            <div className="flex flex-col md:flex-row" style={{ minHeight: 'calc(100vh - 200px)' }}>
+              <div className="md:w-3/5 p-4 overflow-y-auto">
+                <div className="text-center mb-4">
+                  <h2 className="text-lg font-bold text-slate-100">DOSPRESSO Fabrika</h2>
+                  <p className="text-sm text-slate-400">Vardiya başlatmak için isminize dokunun</p>
+                </div>
+
+                {activeWorkersForGrid.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="text-xs font-medium text-green-400 mb-2 uppercase tracking-wider">
+                      Vardiyada ({activeWorkersForGrid.length})
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {activeWorkersForGrid.map((worker: any) => (
+                        <button
+                          key={worker.id}
+                          className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center active:scale-95 transition-all"
+                          onClick={() => {
+                            setSelectedUser({ id: worker.id, firstName: worker.firstName, lastName: worker.lastName, avatarUrl: worker.profileImageUrl || null, role: worker.role, username: worker.username });
+                            setPinInput('');
+                            setStep('enter-pin');
+                          }}
+                          data-testid={`worker-active-${worker.id}`}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-1">
+                            <span className="text-sm font-bold text-green-400">{worker.firstName?.[0]}</span>
+                          </div>
+                          <p className="font-medium text-xs truncate text-slate-100">{worker.firstName}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{worker.lastName}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                    Personel ({availableWorkersForGrid.length})
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {availableWorkersForGrid.map((worker: any) => (
+                      <button
+                        key={worker.id}
+                        className="p-3 rounded-lg bg-slate-700/50 border border-slate-600 text-center active:scale-95 transition-all"
+                        onClick={() => {
+                          setSelectedUser({ id: worker.id, firstName: worker.firstName, lastName: worker.lastName, avatarUrl: worker.profileImageUrl || null, role: worker.role, username: worker.username });
+                          setPinInput('');
+                          setStep('enter-pin');
+                        }}
+                        data-testid={`worker-available-${worker.id}`}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center mx-auto mb-1">
+                          <span className="text-sm font-bold text-slate-300">{worker.firstName?.[0]}</span>
+                        </div>
+                        <p className="font-medium text-xs truncate text-slate-100">{worker.firstName}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{worker.lastName}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {factoryStaff.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-slate-400">Personel listesi yükleniyor...</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="md:w-2/5 p-4 border-t md:border-t-0 md:border-l border-slate-700 overflow-y-auto bg-slate-900/30">
+                <div className="text-center mb-4 p-3 bg-slate-700/50 rounded-lg">
+                  <p className="text-3xl font-mono font-bold text-amber-400"><LiveClock /></p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </p>
+                </div>
+
+                <div className="mb-3 p-3 bg-slate-700/50 rounded-lg">
+                  <h3 className="text-xs font-medium text-slate-300 mb-2">Aktif Durum</h3>
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="p-2 bg-slate-800/50 rounded">
+                      <p className="text-lg font-bold text-slate-100">{activeWorkersData.length}</p>
+                      <p className="text-[10px] text-slate-400">Aktif Personel</p>
+                    </div>
+                    <div className="p-2 bg-slate-800/50 rounded">
+                      <p className="text-lg font-bold text-slate-100">{stations.length}</p>
+                      <p className="text-[10px] text-slate-400">Toplam İstasyon</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-700/50 rounded-lg">
+                  <h3 className="text-xs font-medium text-slate-300 mb-2">İstasyonlar</h3>
+                  {stations.map((station) => {
+                    const workersAtStation = activeWorkersData.filter((w: any) => w.stationId === station.id);
+                    return (
+                      <div key={station.id} className="flex justify-between items-center py-1 text-xs border-b border-slate-600 last:border-0">
+                        <span className="text-slate-300">{station.name}</span>
+                        <span className={workersAtStation.length > 0 ? "text-green-400" : "text-slate-500"}>
+                          {workersAtStation.length > 0 ? `${workersAtStation.length} kişi` : 'Boş'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {!(user && FABRIKA_ALLOWED_ROLES.includes(user.role)) && (
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4 border-slate-600 text-slate-300"
+                    onClick={() => {
+                      setStep('device-password');
+                      setDeviceUsername('');
+                      setDevicePassword('');
+                    }}
+                    data-testid="button-back-to-device"
+                  >
+                    Cihaz Girişine Dön
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 'enter-pin' && selectedUser && (
+            <div className="flex flex-col items-center justify-center py-8 px-6">
+              <button
+                className="absolute top-20 left-10 text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setPinInput('');
+                  setStep('select-user');
+                }}
+                data-testid="button-back-to-select-user"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180" />
+                Geri
+              </button>
+
+              <div className="w-14 h-14 rounded-full bg-amber-600/20 flex items-center justify-center mb-3">
+                <span className="text-xl font-bold text-amber-400">
+                  {selectedUser.firstName?.[0]}{selectedUser.lastName?.[0]}
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-slate-100">{selectedUser.firstName} {selectedUser.lastName}</h2>
+              <p className="text-sm text-slate-400 mb-6">PIN kodunuzu girin</p>
+
+              <div className="flex gap-3 mb-6">
+                {[0, 1, 2, 3].map(i => (
+                  <div key={i} className={cn(
+                    "w-12 h-12 border-2 rounded-lg flex items-center justify-center text-xl font-bold",
+                    pinInput.length > i ? "border-amber-500 bg-amber-900/50" : "border-slate-600"
+                  )}>
+                    {pinInput.length > i ? '\u25CF' : ''}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 w-56">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                  <Button
+                    key={n}
+                    variant="outline"
+                    className="h-12 text-lg font-bold border-slate-600"
+                    data-testid={`keypad-pin-${n}`}
+                    onClick={() => handlePinDigit(String(n))}
+                  >
+                    {n}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  className="h-12 text-xs border-slate-600"
+                  onClick={() => setPinInput('')}
+                  data-testid="keypad-pin-clear"
+                >
+                  Temizle
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 text-lg font-bold border-slate-600"
+                  data-testid="keypad-pin-0"
+                  onClick={() => handlePinDigit('0')}
+                >
+                  0
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 text-xs border-slate-600"
+                  onClick={() => setPinInput(p => p.slice(0, -1))}
+                  data-testid="keypad-pin-delete"
+                >
+                  Sil
+                </Button>
+              </div>
+
+              {loginByUsernameMutation.isPending && (
+                <p className="text-sm text-amber-400 mt-4">Giriş yapılıyor...</p>
+              )}
+              {loginByUsernameMutation.isError && (
+                <p className="text-sm text-red-400 mt-4" data-testid="text-pin-error">
+                  {(loginByUsernameMutation.error as any)?.message || 'PIN hatalı'}
+                </p>
+              )}
             </div>
           )}
 

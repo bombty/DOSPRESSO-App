@@ -575,6 +575,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       // Get users with factory role or factory branch
       const factoryStaff = await db.select({
         id: users.id,
+        username: users.username,
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
