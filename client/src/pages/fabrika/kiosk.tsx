@@ -1262,6 +1262,7 @@ export default function FactoryKiosk() {
                   className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
                   onClick={() => {
                     if (!currentSession) return;
+                    setSelectedBreakReason('mola');
                     logBreakMutation.mutate({ sessionId: currentSession.id, breakReason: 'mola' });
                   }}
                   disabled={logBreakMutation.isPending}
@@ -1279,6 +1280,7 @@ export default function FactoryKiosk() {
                   className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
                   onClick={() => {
                     if (!currentSession) return;
+                    setSelectedBreakReason('ozel_ihtiyac');
                     logBreakMutation.mutate({ sessionId: currentSession.id, breakReason: 'ozel_ihtiyac' });
                   }}
                   disabled={logBreakMutation.isPending}

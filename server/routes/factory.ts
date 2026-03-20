@@ -1406,8 +1406,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       await db.update(factoryShiftSessions)
         .set({
           checkOutTime: now,
-          totalProduced: (session.totalProduced || 0) + (quantityProduced || 0),
-          totalWaste: (session.totalWaste || 0) + (quantityWaste || 0),
+          totalProduced: (session.totalProduced || 0) + (session.stationId ? (quantityProduced || 0) : 0),
+          totalWaste: (session.totalWaste || 0) + (session.stationId ? (quantityWaste || 0) : 0),
           workMinutes,
           status: 'completed',
         })
