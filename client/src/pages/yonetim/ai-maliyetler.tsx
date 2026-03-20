@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -92,64 +93,14 @@ export default function AICostDashboard() {
       </div>
 
       {/* Header Cards */}
-      <div className="grid gap-2 sm:gap-3 md:grid-cols-3">
-        <Card data-testid="card-month-cost">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bu Ay Harcama</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24" data-testid="skeleton-month-cost" />
-            ) : (
-              <div className="text-2xl font-bold" data-testid="text-month-cost">
-                {formatCurrency(data?.monthToDateCost || 0)}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Aylık bütçe: $10.00
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-remaining-budget">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kalan Bütçe</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24" data-testid="skeleton-remaining-budget" />
-            ) : (
-              <div className="text-2xl font-bold" data-testid="text-remaining-budget">
-                {formatCurrency(data?.remainingBudget || 0)}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {data && data.remainingBudget < 2 ? 'Bütçe azalıyor' : 'Bütçe durumu iyi'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-daily-average">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Günlük Ortalama</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-24" data-testid="skeleton-daily-average" />
-            ) : (
-              <div className="text-2xl font-bold" data-testid="text-daily-average">
-                {formatCurrency(data?.dailyAverage || 0)}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Ortalama günlük harcama
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Bu Ay Harcama", value: isLoading ? "..." : formatCurrency(data?.monthToDateCost || 0), icon: <DollarSign className="h-4 w-4 text-primary" />, color: "info", testId: "card-month-cost" },
+          { label: "Kalan Bütçe", value: isLoading ? "..." : formatCurrency(data?.remainingBudget || 0), icon: <TrendingDown className="h-4 w-4 text-warning" />, color: data && data.remainingBudget < 2 ? "danger" : "success", testId: "card-remaining-budget" },
+          { label: "Günlük Ortalama", value: isLoading ? "..." : formatCurrency(data?.dailyAverage || 0), icon: <Calendar className="h-4 w-4 text-muted-foreground" />, color: "default", testId: "card-daily-average" },
+        ]}
+        desktopColumns={3}
+      />
 
       {/* Highest Cost Feature Highlight */}
       {!isLoading && highestCostFeature && (

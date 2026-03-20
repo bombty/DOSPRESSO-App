@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import { Link } from "wouter";
 import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
+import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -452,56 +453,15 @@ export default function KaliteDenetimi() {
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="space-y-4 mt-4">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card data-testid="card-total-audits">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Toplam Denetim</p>
-                    <p className="text-2xl font-bold">{totalAudits}</p>
-                  </div>
-                  <ClipboardCheck className="w-8 h-8 text-primary opacity-20" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-avg-score">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Ortalama Skor</p>
-                    <p className="text-2xl font-bold">{Number(avgScore).toFixed(1)}%</p>
-                  </div>
-                  <Target className="w-8 h-8 text-green-500 opacity-20" />
-                </div>
-                <Progress value={Number(avgScore)} className="mt-2 h-1" />
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-in-progress">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Devam Eden</p>
-                    <p className="text-2xl font-bold">{inProgressCount}</p>
-                  </div>
-                  <Clock className="w-8 h-8 text-yellow-500 opacity-20" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-open-capas">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Açık CAPA</p>
-                    <p className="text-2xl font-bold">{openCapas}</p>
-                  </div>
-                  <AlertTriangle className="w-8 h-8 text-red-500 opacity-20" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <CompactKPIStrip
+            items={[
+              { label: "Toplam Denetim", value: totalAudits, icon: <ClipboardCheck className="h-4 w-4 text-primary" />, color: "info", testId: "card-total-audits" },
+              { label: "Ortalama Skor", value: `${Number(avgScore).toFixed(1)}%`, icon: <Target className="h-4 w-4 text-green-500" />, color: "success", testId: "card-avg-score" },
+              { label: "Devam Eden", value: inProgressCount, icon: <Clock className="h-4 w-4 text-yellow-500" />, color: "warning", testId: "card-in-progress" },
+              { label: "Açık CAPA", value: openCapas, icon: <AlertTriangle className="h-4 w-4 text-red-500" />, color: openCapas > 0 ? "danger" : "default", testId: "card-open-capas" },
+            ]}
+            desktopColumns={4}
+          />
 
           {/* Charts Row */}
           <div className="grid md:grid-cols-2 gap-4">

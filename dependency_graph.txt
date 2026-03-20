@@ -1,0 +1,1505 @@
+L40: export const sessions = pgTable(
+---
+L2669: export const branches = pgTable("branches", {
+---
+L2708: export const users = pgTable("users", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+approvedBy: varchar("approved_by").references(() => users.id),
+---
+L2798: export const employeeWarnings = pgTable("employee_warnings", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+issuedBy: varchar("issued_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L2822: export const checklists = pgTable("checklists", {
+---
+L2859: export const checklistTasks = pgTable("checklist_tasks", {
+checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+---
+L2940: export const checklistAssignments = pgTable("checklist_assignments", {
+checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+assignedUserId: varchar("assigned_user_id").references(() => users.id, { onDelete: "cascade" }), // For scope='user'
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // For scope='branch' or 'role'
+shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "set null" }), // Optional: link to specific shift
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L2979: export const checklistCompletions = pgTable("checklist_completions", {
+assignmentId: integer("assignment_id").notNull().references(() => checklistAssignments.id, { onDelete: "cascade" }),
+checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "set null" }),
+reviewedById: varchar("reviewed_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L3024: export const checklistTaskCompletions = pgTable("checklist_task_completions", {
+completionId: integer("completion_id").notNull().references(() => checklistCompletions.id, { onDelete: "cascade" }),
+taskId: integer("task_id").notNull().references(() => checklistTasks.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3071: export const tasks = pgTable("tasks", {
+checklistId: integer("checklist_id").references(() => checklists.id, { onDelete: "set null" }),
+checklistTaskId: integer("checklist_task_id").references(() => checklistTasks.id, { onDelete: "set null" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }), // Nullable for HQ tasks
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+assignedById: varchar("assigned_by_id").references(() => users.id, { onDelete: "set null" }), // Who assigned the task
+acknowledgedById: varchar("acknowledged_by_id").references(() => users.id, { onDelete: "set null" }),
+statusUpdatedById: varchar("status_updated_by_id").references(() => users.id, { onDelete: "set null" }),
+checkerId: varchar("checker_id").references(() => users.id, { onDelete: "set null" }), // Who will verify completion
+approvedByAssignerId: varchar("approved_by_assigner_id").references(() => users.id, { onDelete: "set null" }),
+---
+L3204: export const taskStatusHistory = pgTable("task_status_history", {
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+changedById: varchar("changed_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3228: export const taskAssignees = pgTable("task_assignees", {
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3255: export const taskRatings = pgTable("task_ratings", {
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+ratedById: varchar("rated_by_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assigner who rates
+ratedUserId: varchar("rated_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assignee being rated
+---
+L3289: export const checklistRatings = pgTable("checklist_ratings", {
+checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Person being rated
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L3326: export const employeeSatisfactionScores = pgTable("employee_satisfaction_scores", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+---
+L3448: export const equipment = pgTable("equipment", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L3521: export const equipmentFaults = pgTable("equipment_faults", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+equipmentId: integer("equipment_id").references(() => equipment.id, { onDelete: "set null" }), // Link to equipment table
+reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }), // Assigned user (branch or HQ teknik)
+---
+L3591: export const equipmentTroubleshootingCompletion = pgTable("equipment_troubleshooting_completion", {
+faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+stepId: integer("step_id").notNull().references(() => equipmentTroubleshootingSteps.id, { onDelete: "cascade" }),
+completedById: varchar("completed_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3616: export const faultStageTransitions = pgTable("fault_stage_transitions", {
+faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+changedBy: varchar("changed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3634: export const faultComments = pgTable("fault_comments", {
+faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3655: export const knowledgeBaseArticles = pgTable("knowledge_base_articles", {
+---
+L3679: export const knowledgeBaseEmbeddings = pgTable("knowledge_base_embeddings", {
+articleId: integer("article_id").notNull().references(() => knowledgeBaseArticles.id, { onDelete: "cascade" }),
+---
+L3699: export const reminders = pgTable("reminders", {
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L3719: export const performanceMetrics = pgTable("performance_metrics", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+---
+L3765: export const trainingModules = pgTable("training_modules", {
+createdBy: varchar("created_by").references(() => users.id), // VARCHAR - users.id is UUID
+---
+L3837: export const moduleMedia = pgTable("module_media", {
+moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+uploadedBy: varchar("uploaded_by").references(() => users.id),
+---
+L3851: export const moduleVideos = pgTable("module_videos", {
+moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+---
+L3863: export const moduleLessons = pgTable("module_lessons", {
+moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+---
+L3878: export const moduleQuizzes = pgTable("module_quizzes", {
+moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+---
+L3891: export const quizQuestions = pgTable("quiz_questions", {
+quizId: integer("quiz_id").references(() => moduleQuizzes.id, { onDelete: "cascade" }),
+careerQuizId: integer("career_quiz_id").references(() => quizzes.id, { onDelete: "cascade" }),
+---
+L3907: export const flashcards = pgTable("flashcards", {
+moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+---
+L3919: export const userTrainingProgress = pgTable("user_training_progress", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // VARCHAR - users.id is UUID
+moduleId: integer("module_id").notNull().references(() => trainingModules.id, { onDelete: "cascade" }),
+---
+L3937: export const userQuizAttempts = pgTable("user_quiz_attempts", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // VARCHAR - users.id is UUID
+quizId: integer("quiz_id").notNull().references(() => moduleQuizzes.id, { onDelete: "cascade" }),
+approvedBy: varchar("approved_by").references(() => users.id), // VARCHAR - Supervisor/coach approval
+---
+L4022: export const messages = pgTable("messages", {
+parentMessageId: integer("parent_message_id").references((): any => messages.id), // For reply chains
+senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+recipientId: varchar("recipient_id").references(() => users.id, { onDelete: "cascade" }), // null for role-based broadcast
+---
+L4053: export const threadParticipants = pgTable("thread_participants", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4072: export const messageReads = pgTable("message_reads", {
+messageId: integer("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4090: export const equipmentMaintenanceLogs = pgTable("equipment_maintenance_logs", {
+equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+performedBy: varchar("performed_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4111: export const equipmentComments = pgTable("equipment_comments", {
+equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4150: export const equipmentServiceRequests = pgTable("equipment_service_requests", {
+equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+faultId: integer("fault_id").references(() => equipmentFaults.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+updatedById: varchar("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L4331: export const hqSupportTickets = pgTable("hq_support_tickets", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+closedBy: varchar("closed_by").references(() => users.id, { onDelete: "set null" }),
+---
+L4364: export const hqSupportMessages = pgTable("hq_support_messages", {
+ticketId: integer("ticket_id").notNull().references(() => hqSupportTickets.id, { onDelete: "cascade" }),
+senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4385: export const ticketActivityLogs = pgTable("ticket_activity_logs", {
+ticketId: integer("ticket_id").notNull().references(() => hqSupportTickets.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4407: export const hqSupportCategoryAssignments = pgTable("hq_support_category_assignments", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L4443: export const notifications = pgTable("notifications", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4479: export const announcements = pgTable("announcements", {
+createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4530: export const announcementReadStatus = pgTable("announcement_read_status", {
+announcementId: integer("announcementId").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+userId: varchar("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4550: export const dailyCashReports = pgTable("daily_cash_reports", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4577: export const shifts = pgTable("shifts", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+checklistId: integer("checklist_id").references(() => checklists.id, { onDelete: "set null" }),
+checklist2Id: integer("checklist2_id").references(() => checklists.id, { onDelete: "set null" }),
+checklist3Id: integer("checklist3_id").references(() => checklists.id, { onDelete: "set null" }),
+---
+L4620: export const shiftChecklists = pgTable("shift_checklists", {
+shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
+---
+L4644: export const shiftTasks = pgTable("shift_tasks", {
+shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+---
+L4682: export const leaveRequests = pgTable("leave_requests", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+---
+L4712: export const shiftAttendance = pgTable("shift_attendance", {
+shiftId: integer("shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L4799: export const shiftTradeRequests = pgTable("shift_trade_requests", {
+requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+responderId: varchar("responder_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+requesterShiftId: integer("requester_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+responderShiftId: integer("responder_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+supervisorId: varchar("supervisor_id").references(() => users.id, { onDelete: "set null" }),
+---
+L4835: export const menuSections = pgTable("menu_sections", {
+---
+L4852: export const menuItems = pgTable("menu_items", {
+sectionId: integer("section_id").notNull().references(() => menuSections.id, { onDelete: "cascade" }),
+---
+L4872: export const menuVisibilityRules = pgTable("menu_visibility_rules", {
+menuItemId: integer("menu_item_id").notNull().references(() => menuItems.id, { onDelete: "cascade" }),
+userId: varchar("user_id").references(() => users.id),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L4918: export const pageContent = pgTable("page_content", {
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+updatedById: varchar("updated_by_id").notNull().references(() => users.id),
+---
+L5001: export const aiUsageLogs = pgTable("ai_usage_logs", {
+userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+---
+L5036: export const branding = pgTable("branding", {
+updatedById: varchar("updated_by_id").references(() => users.id),
+---
+L5056: export const auditTemplates = pgTable("audit_templates", {
+createdById: varchar("created_by_id").notNull().references(() => users.id), // Keeping old column name
+---
+L5084: export const auditTemplateItems = pgTable("audit_template_items", {
+templateId: integer("template_id").notNull().references(() => auditTemplates.id, { onDelete: "cascade" }),
+---
+L5114: export const qualityAudits = pgTable("quality_audits", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+templateId: integer("template_id").notNull().references(() => auditTemplates.id),
+auditorId: varchar("auditor_id").notNull().references(() => users.id),
+---
+L5153: export const auditItemScores = pgTable("audit_item_scores", {
+auditId: integer("audit_id").notNull().references(() => qualityAudits.id, { onDelete: "cascade" }),
+templateItemId: integer("template_item_id").notNull().references(() => auditTemplateItems.id),
+---
+L5183: export const branchAuditScores = pgTable("branch_audit_scores", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L5216: export const auditInstances = pgTable("audit_instances", {
+templateId: integer("template_id").notNull().references(() => auditTemplates.id),
+branchId: integer("branch_id").references(() => branches.id),
+userId: varchar("user_id").references(() => users.id), // For personnel audits
+auditorId: varchar("auditor_id").notNull().references(() => users.id),
+---
+L5261: export const auditInstanceItems = pgTable("audit_instance_items", {
+instanceId: integer("instance_id").notNull().references(() => auditInstances.id, { onDelete: "cascade" }),
+templateItemId: integer("template_item_id").notNull().references(() => auditTemplateItems.id),
+---
+L5300: export const correctiveActions = pgTable("corrective_actions", {
+auditInstanceId: integer("audit_instance_id").notNull().references(() => auditInstances.id, { onDelete: "cascade" }),
+auditItemId: integer("audit_item_id").notNull().references(() => auditTemplateItems.id),
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L5332: export const correctiveActionUpdates = pgTable("corrective_action_updates", {
+correctiveActionId: integer("corrective_action_id").notNull().references(() => correctiveActions.id, { onDelete: "cascade" }),
+updatedById: varchar("updated_by_id").notNull().references(() => users.id),
+---
+L5354: export const personnelFiles = pgTable("personnel_files", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+---
+L5392: export const customerFeedback = pgTable("customer_feedback", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+staffId: varchar("staff_id").references(() => users.id, { onDelete: "set null" }), // Which staff served the customer
+reviewedById: varchar("reviewed_by_id").references(() => users.id),
+---
+L5490: export const feedbackResponses = pgTable("feedback_responses", {
+feedbackId: integer("feedback_id").notNull().references(() => customerFeedback.id, { onDelete: "cascade" }),
+responderId: varchar("responder_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L5515: export const feedbackFormSettings = pgTable("feedback_form_settings", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+updatedById: varchar("updated_by_id").references(() => users.id),
+---
+L5579: export const feedbackCustomQuestions = pgTable("feedback_custom_questions", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L5607: export const feedbackIpBlocks = pgTable("feedback_ip_blocks", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+---
+L5630: export const maintenanceSchedules = pgTable("maintenance_schedules", {
+equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+---
+L5656: export const maintenanceLogs = pgTable("maintenance_logs", {
+scheduleId: integer("schedule_id").references(() => maintenanceSchedules.id, { onDelete: "set null" }),
+equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+performedById: varchar("performed_by_id").notNull().references(() => users.id),
+---
+L5688: export const equipmentCalibrations = pgTable("equipment_calibrations", {
+equipmentId: integer("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+calibratedById: varchar("calibrated_by_id").references(() => users.id), // Internal calibration
+auditInstanceId: integer("audit_instance_id").references(() => auditInstances.id), // Link to quality audit
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L5728: export const campaigns = pgTable("campaigns", {
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L5759: export const campaignBranches = pgTable("campaign_branches", {
+campaignId: integer("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L5777: export const campaignMetrics = pgTable("campaign_metrics", {
+campaignId: integer("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+reportedById: varchar("reported_by_id").notNull().references(() => users.id),
+---
+L5804: export const franchiseOnboarding = pgTable("franchise_onboarding", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+assignedCoachId: varchar("assigned_coach_id").references(() => users.id),
+---
+L5830: export const onboardingDocuments = pgTable("onboarding_documents", {
+onboardingId: integer("onboarding_id").notNull().references(() => franchiseOnboarding.id, { onDelete: "cascade" }),
+uploadedById: varchar("uploaded_by_id").references(() => users.id),
+approvedById: varchar("approved_by_id").references(() => users.id),
+---
+L5858: export const licenseRenewals = pgTable("license_renewals", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L5891: export const shiftTemplates = pgTable("shift_templates", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L5926: export const employeeAvailability = pgTable("employee_availability", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L5963: export const roles = pgTable("roles", {
+---
+L5985: export const permissions = pgTable("permissions", {
+---
+L6007: export const rolePermissions = pgTable("role_permissions", {
+roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+permissionId: integer("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
+---
+L6030: export const siteSettings = pgTable("site_settings", {
+updatedBy: varchar("updated_by").references(() => users.id),
+---
+L6059: export const passwordResetTokens = pgTable("password_reset_tokens", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L6083: export const auditLogs = pgTable("audit_logs", {
+userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6123: export const overtimeRequests = pgTable("overtime_requests", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
+approverId: varchar("approver_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6162: export const shiftSwapRequests = pgTable("shift_swap_requests", {
+requesterId: varchar("requester_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+targetUserId: varchar("target_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+requesterShiftId: integer("requester_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+targetShiftId: integer("target_shift_id").notNull().references(() => shifts.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+supervisorId: varchar("supervisor_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6206: export const attendancePenalties = pgTable("attendance_penalties", {
+shiftAttendanceId: integer("shift_attendance_id").notNull().references(() => shiftAttendance.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6232: export const monthlyAttendanceSummaries = pgTable("monthly_attendance_summaries", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L6264: export const guestComplaints = pgTable("guest_complaints", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+resolvedById: varchar("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6318: export const equipmentTroubleshootingSteps = pgTable("equipment_troubleshooting_steps", {
+---
+L6345: export const employeePerformanceScores = pgTable("employee_performance_scores", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L6394: export const staffEvaluations = pgTable("staff_evaluations", {
+employeeId: varchar("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+evaluatorId: varchar("evaluator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L6427: export const branchQualityAudits = pgTable("branch_quality_audits", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+auditorId: varchar("auditor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L6498: export const productComplaints = pgTable("product_complaints", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+reportedById: varchar("reported_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+resolvedById: varchar("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6540: export const employeeDocuments = pgTable("employee_documents", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+uploadedById: varchar("uploaded_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+verifiedById: varchar("verified_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6576: export const disciplinaryReports = pgTable("disciplinary_reports", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+resolvedById: varchar("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6624: export const employeeOnboarding = pgTable("employee_onboarding", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+assignedMentorId: varchar("assigned_mentor_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6657: export const employeeOnboardingTasks = pgTable("employee_onboarding_tasks", {
+onboardingId: integer("onboarding_id").notNull().references(() => employeeOnboarding.id, { onDelete: "cascade" }),
+completedById: varchar("completed_by_id").references(() => users.id, { onDelete: "set null" }),
+verifiedById: varchar("verified_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L6694: export const onboardingTemplates = pgTable("onboarding_templates", {
+---
+L6721: export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
+templateId: integer("template_id").notNull().references(() => onboardingTemplates.id, { onDelete: "cascade" }),
+---
+L6757: export const employeeOnboardingAssignments = pgTable("employee_onboarding_assignments", {
+templateId: integer("template_id").notNull().references(() => onboardingTemplates.id),
+---
+L6789: export const employeeOnboardingProgress = pgTable("employee_onboarding_progress", {
+assignmentId: integer("assignment_id").notNull().references(() => employeeOnboardingAssignments.id, { onDelete: "cascade" }),
+stepId: integer("step_id").notNull().references(() => onboardingTemplateSteps.id),
+---
+L6824: export const certificateDesignSettings = pgTable("certificate_design_settings", {
+createdBy: varchar("created_by").references(() => users.id),
+---
+L6851: export const certificateSettings = pgTable("certificate_settings", {
+updatedBy: varchar("updated_by").references(() => users.id),
+---
+L6859: export const issuedCertificates = pgTable("issued_certificates", {
+recipientUserId: varchar("recipient_user_id").references(() => users.id),
+---
+L6888: export const permissionModules = pgTable("permission_modules", {
+---
+L6923: export const permissionActions = pgTable("permission_actions", {
+---
+L6948: export const rolePermissionGrants = pgTable("role_permission_grants", {
+actionId: integer("action_id").notNull().references(() => permissionActions.id, { onDelete: "cascade" }),
+---
+L6978: export const roleModulePermissions = pgTable("role_module_permissions", {
+---
+L7008: export const megaModuleMappings = pgTable("mega_module_mappings", {
+---
+L7038: export const backupRecords = pgTable("backup_records", {
+---
+L7066: export const trainingMaterials = pgTable("training_materials", {
+articleId: integer("article_id").notNull().references(() => knowledgeBaseArticles.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L7094: export const trainingAssignments = pgTable("training_assignments", {
+materialId: integer("material_id").notNull().references(() => trainingMaterials.id, { onDelete: "cascade" }),
+userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+assignedById: varchar("assigned_by_id").notNull().references(() => users.id),
+---
+L7125: export const trainingCompletions = pgTable("training_completions", {
+assignmentId: integer("assignment_id").notNull().references(() => trainingAssignments.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+materialId: integer("material_id").notNull().references(() => trainingMaterials.id, { onDelete: "cascade" }),
+---
+L7158: export const careerLevels = pgTable("career_levels", {
+---
+L7182: export const examRequests = pgTable("exam_requests", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+supervisorId: varchar("supervisor_id").notNull().references(() => users.id),
+approvedById: varchar("approved_by_id").references(() => users.id), // HQ onaylayan
+---
+L7213: export const userCareerProgress = pgTable("user_career_progress", {
+userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+currentCareerLevelId: integer("current_career_level_id").notNull().references(() => careerLevels.id),
+lastExamRequestId: integer("last_exam_request_id").references(() => examRequests.id),
+---
+L7251: export const managerEvaluations = pgTable("manager_evaluations", {
+employeeId: varchar("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+evaluatorId: varchar("evaluator_id").notNull().references(() => users.id),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L7289: export const careerScoreHistory = pgTable("career_score_history", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+careerLevelId: integer("career_level_id").references(() => careerLevels.id),
+---
+L7315: export const quizResults = pgTable("quiz_results", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L7339: export const quizzes = pgTable("quizzes", {
+careerLevelId: integer("career_level_id").notNull().references(() => careerLevels.id),
+---
+L7367: export const badges = pgTable("badges", {
+---
+L7390: export const userBadges = pgTable("user_badges", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+badgeId: integer("badge_id").notNull().references(() => badges.id, { onDelete: "cascade" }),
+---
+L7414: export const branchFeedbacks = pgTable("branch_feedbacks", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+submittedById: varchar("submitted_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+respondedById: varchar("responded_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L7449: export const lostFoundItems = pgTable("lost_found_items", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+foundById: varchar("found_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+handoveredById: varchar("handovered_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L7503: export const recipeCategories = pgTable("recipe_categories", {
+---
+L7531: export const recipes = pgTable("recipes", {
+categoryId: integer("category_id").notNull().references(() => recipeCategories.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L7604: export const recipeVersions = pgTable("recipe_versions", {
+recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+updatedById: varchar("updated_by_id").references(() => users.id),
+approvedById: varchar("approved_by_id").references(() => users.id),
+---
+L7647: export const recipeNotifications = pgTable("recipe_notifications", {
+recipeId: integer("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+versionId: integer("version_id").notNull().references(() => recipeVersions.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L7674: export const dailyMissions = pgTable("daily_missions", {
+---
+L7700: export const userMissionProgress = pgTable("user_mission_progress", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+missionId: integer("mission_id").notNull().references(() => dailyMissions.id, { onDelete: "cascade" }),
+---
+L7725: export const leaderboardSnapshots = pgTable("leaderboard_snapshots", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L7755: export const userPracticeSessions = pgTable("user_practice_sessions", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L7782: export const learningStreaks = pgTable("learning_streaks", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L7810: export const academyHubCategories = pgTable("academy_hub_categories", {
+---
+L7843: export const projects = pgTable("projects", {
+ownerId: varchar("owner_id").notNull().references(() => users.id),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }), // Yeni şube için oluşturulacak branch
+---
+L7889: export const projectMembers = pgTable("project_members", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L7914: export const projectMilestones = pgTable("project_milestones", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+---
+L7940: export const projectTasks = pgTable("project_tasks", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+milestoneId: integer("milestone_id").references(() => projectMilestones.id, { onDelete: "set null" }),
+assignedToId: varchar("assigned_to_id").references(() => users.id),
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L7979: export const projectTaskDependencies = pgTable("project_task_dependencies", {
+taskId: integer("task_id").notNull().references(() => projectTasks.id, { onDelete: "cascade" }),
+dependsOnTaskId: integer("depends_on_task_id").notNull().references(() => projectTasks.id, { onDelete: "cascade" }),
+---
+L8000: export const projectComments = pgTable("project_comments", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+taskId: integer("task_id").references(() => projectTasks.id, { onDelete: "cascade" }), // null = project-level comment
+userId: varchar("user_id").notNull().references(() => users.id),
+---
+L8040: export const projectPhases = pgTable("project_phases", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+responsibleUserId: varchar("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+---
+L8094: export const projectBudgetLines = pgTable("project_budget_lines", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+phaseId: integer("phase_id").references(() => projectPhases.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L8147: export const projectVendors = pgTable("project_vendors", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L8188: export const projectRisks = pgTable("project_risks", {
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+phaseId: integer("phase_id").references(() => projectPhases.id, { onDelete: "set null" }),
+responsibleUserId: varchar("responsible_user_id").references(() => users.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L8231: export const phaseAssignments = pgTable("phase_assignments", {
+phaseId: integer("phase_id").notNull().references(() => projectPhases.id, { onDelete: "cascade" }),
+userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Internal user
+externalUserId: integer("external_user_id").references(() => externalUsers.id, { onDelete: "cascade" }), // External user
+assignedById: varchar("assigned_by_id").references(() => users.id),
+---
+L8260: export const phaseSubTasks = pgTable("phase_sub_tasks", {
+phaseId: integer("phase_id").notNull().references(() => projectPhases.id, { onDelete: "cascade" }),
+assigneeUserId: varchar("assignee_user_id").references(() => users.id, { onDelete: "set null" }),
+assigneeExternalId: integer("assignee_external_id").references(() => externalUsers.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L8298: export const procurementItems = pgTable("procurement_items", {
+subTaskId: integer("sub_task_id").notNull().references(() => phaseSubTasks.id, { onDelete: "cascade" }),
+awardedById: varchar("awarded_by_id").references(() => users.id),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L8335: export const procurementProposals = pgTable("procurement_proposals", {
+procurementItemId: integer("procurement_item_id").notNull().references(() => procurementItems.id, { onDelete: "cascade" }),
+vendorId: integer("vendor_id").references(() => externalUsers.id, { onDelete: "set null" }), // External vendor
+reviewedById: varchar("reviewed_by_id").references(() => users.id),
+---
+L8379: export const externalUsers = pgTable("external_users", {
+invitedById: varchar("invited_by_id").references(() => users.id),
+---
+L8409: export const externalUserProjects = pgTable("external_user_projects", {
+externalUserId: integer("external_user_id").notNull().references(() => externalUsers.id, { onDelete: "cascade" }),
+projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+grantedById: varchar("granted_by_id").references(() => users.id),
+---
+L8437: export const externalUserAuditLog = pgTable("external_user_audit_log", {
+externalUserId: integer("external_user_id").notNull().references(() => externalUsers.id, { onDelete: "cascade" }),
+projectId: integer("project_id").references(() => projects.id, { onDelete: "cascade" }),
+---
+L8464: export const emailSettings = pgTable("email_settings", {
+updatedById: varchar("updated_by_id").references(() => users.id),
+---
+L8489: export const serviceEmailSettings = pgTable("service_email_settings", {
+updatedById: varchar("updated_by_id").references(() => users.id),
+---
+L8514: export const banners = pgTable("banners", {
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L8553: export const aiSettings = pgTable("ai_settings", {
+updatedById: varchar("updated_by_id").references(() => users.id),
+---
+L8726: export const jobPositions = pgTable("job_positions", {
+branchId: integer("branch_id").references(() => branches.id), // Null ise HQ pozisyonu
+selectedApplicationId: integer("selected_application_id").references(() => jobApplications.id), // Seçilen aday
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+assignedToId: varchar("assigned_to_id").references(() => users.id), // İşe alımdan sorumlu kişi
+---
+L8767: export const jobApplications = pgTable("job_applications", {
+positionId: integer("position_id").notNull().references(() => jobPositions.id),
+referredBy: varchar("referred_by_id").references(() => users.id), // Referans veren personel
+createdById: varchar("created_by_id").references(() => users.id), // Kim ekledi (null = online başvuru)
+assignedToId: varchar("assigned_to_id").references(() => users.id), // Kim takip ediyor
+---
+L8812: export const interviews = pgTable("interviews", {
+applicationId: integer("application_id").notNull().references(() => jobApplications.id),
+interviewerId: varchar("interviewer_id").notNull().references(() => users.id),
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L8852: export const interviewQuestions = pgTable("interview_questions", {
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L8873: export const interviewResponses = pgTable("interview_responses", {
+interviewId: integer("interview_id").notNull().references(() => interviews.id, { onDelete: "cascade" }),
+questionId: integer("question_id").notNull().references(() => interviewQuestions.id),
+---
+L8895: export const employeeTerminations = pgTable("employee_terminations", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+processedById: varchar("processed_by_id").notNull().references(() => users.id), // İK tarafından işlem gören
+approvedById: varchar("approved_by_id").references(() => users.id), // Onay yapan (genellikle HQ)
+---
+L8936: export const shiftCorrections = pgTable("shift_corrections", {
+shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "cascade" }),
+correctedById: varchar("corrected_by_id").notNull().references(() => users.id),
+employeeId: varchar("employee_id").notNull().references(() => users.id),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L8964: export const employeeLeaves = pgTable("employee_leaves", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L8996: export const detailedReports = pgTable("detailed_reports", {
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L9025: export const branchComparisons = pgTable("branch_comparisons", {
+reportId: integer("report_id").references(() => detailedReports.id, { onDelete: "cascade" }),
+branch1Id: integer("branch1_id").notNull().references(() => branches.id),
+branch2Id: integer("branch2_id").notNull().references(() => branches.id),
+---
+L9051: export const trendMetrics = pgTable("trend_metrics", {
+reportId: integer("report_id").references(() => detailedReports.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L9080: export const aiReportSummaries = pgTable("ai_report_summaries", {
+reportId: integer("report_id").notNull().references(() => detailedReports.id, { onDelete: "cascade" }),
+---
+L9101: export const publicHolidays = pgTable("public_holidays", {
+---
+L9124: export const leaveRecords = pgTable("leave_records", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+approvedById: varchar("approved_by_id").references(() => users.id), // Onaylayan
+---
+L9157: export const employeeSalaries = pgTable("employee_salaries", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L9193: export const salaryDeductionTypes = pgTable("salary_deduction_types", {
+---
+L9221: export const monthlyPayrolls = pgTable("monthly_payrolls", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id),
+approvedById: varchar("approved_by_id").references(() => users.id),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L9277: export const salaryDeductions = pgTable("salary_deductions", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+payrollId: integer("payroll_id").references(() => monthlyPayrolls.id, { onDelete: "cascade" }),
+deductionTypeId: integer("deduction_type_id").notNull().references(() => salaryDeductionTypes.id),
+approvedById: varchar("approved_by_id").references(() => users.id),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L9320: export const payrollParameters = pgTable("payroll_parameters", {
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L9383: export const employeeTaxLedger = pgTable("employee_tax_ledger", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L9424: export const employeeBenefits = pgTable("employee_benefits", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L9470: export const payrollRecords = pgTable("payroll_records", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L9548: export const taskSteps = pgTable("task_steps", {
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+authorId: varchar("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+assignedToId: varchar("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+---
+L9594: export const titles = pgTable("titles", {
+---
+L9620: export const roleTemplates = pgTable("role_templates", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L9676: export const factoryProducts = pgTable("factory_products", {
+parentProductId: integer("parent_product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+---
+L9721: export const productionBatches = pgTable("production_batches", {
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+producedById: varchar("produced_by_id").references(() => users.id, { onDelete: "set null" }),
+approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L9758: export const branchOrders = pgTable("branch_orders", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+requestedById: varchar("requested_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+processedById: varchar("processed_by_id").references(() => users.id, { onDelete: "set null" }),
+approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L9797: export const branchOrderItems = pgTable("branch_order_items", {
+orderId: integer("order_id").notNull().references(() => branchOrders.id, { onDelete: "cascade" }),
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+batchId: integer("batch_id").references(() => productionBatches.id, { onDelete: "set null" }),
+---
+L9825: export const factoryInventory = pgTable("factory_inventory", {
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+batchId: integer("batch_id").references(() => productionBatches.id, { onDelete: "set null" }),
+lastUpdatedById: varchar("last_updated_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L9853: export const factoryStations = pgTable("factory_stations", {
+productTypeId: integer("product_type_id").references(() => factoryProducts.id, { onDelete: "set null" }), // Hangi ürünü üretir
+---
+L9875: export const factoryStaffPins = pgTable("factory_staff_pins", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L9898: export const factoryShiftSessions = pgTable("factory_shift_sessions", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "restrict" }),
+---
+L9941: export const factoryProductionRuns = pgTable("factory_production_runs", {
+sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "restrict" }),
+---
+L9978: export const factoryDailyTargets = pgTable("factory_daily_targets", {
+stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+---
+L10006: export const factoryWasteReasons = pgTable("factory_waste_reasons", {
+---
+L10026: export const factoryStationBenchmarks = pgTable("factory_station_benchmarks", {
+---
+L10050: export const factorySessionEvents = pgTable("factory_session_events", {
+sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+userId: text("user_id").notNull().references(() => users.id),
+stationId: integer("station_id").references(() => factoryStations.id),
+wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id),
+---
+L10087: export const factoryBreakLogs = pgTable("factory_break_logs", {
+sessionEventId: integer("session_event_id").references(() => factorySessionEvents.id),
+userId: text("user_id").notNull().references(() => users.id),
+sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+targetStationId: integer("target_station_id").references(() => factoryStations.id), // yardım için gidilen istasyon
+---
+L10117: export const factoryStationTargets = pgTable("factory_station_targets", {
+stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+createdBy: text("created_by").references(() => users.id),
+---
+L10146: export const factoryWorkerScores = pgTable("factory_worker_scores", {
+userId: text("user_id").notNull().references(() => users.id),
+---
+L10184: export const factoryProductionOutputs = pgTable("factory_production_outputs", {
+sessionEventId: integer("session_event_id").references(() => factorySessionEvents.id),
+sessionId: integer("session_id").notNull().references(() => factoryShiftSessions.id, { onDelete: "cascade" }),
+userId: text("user_id").notNull().references(() => users.id),
+stationId: integer("station_id").notNull().references(() => factoryStations.id),
+productId: integer("product_id").references(() => factoryProducts.id),
+wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id),
+qualityCheckedBy: text("quality_checked_by").references(() => users.id),
+---
+L10242: export const factoryQualitySpecs = pgTable("factory_quality_specs", {
+stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+productId: integer("product_id").references(() => factoryProducts.id),
+createdBy: text("created_by").references(() => users.id),
+---
+L10283: export const factoryQualityAssignments = pgTable("factory_quality_assignments", {
+userId: text("user_id").notNull().references(() => users.id),
+assignedBy: text("assigned_by").notNull().references(() => users.id),
+---
+L10310: export const factoryQualityChecks = pgTable("factory_quality_checks", {
+productionOutputId: integer("production_output_id").notNull().references(() => factoryProductionOutputs.id),
+inspectorId: text("inspector_id").notNull().references(() => users.id),
+producerId: text("producer_id").notNull().references(() => users.id),
+stationId: integer("station_id").notNull().references(() => factoryStations.id),
+---
+L10357: export const factoryQualityMeasurements = pgTable("factory_quality_measurements", {
+qualityCheckId: integer("quality_check_id").notNull().references(() => factoryQualityChecks.id, { onDelete: "cascade" }),
+specId: integer("spec_id").notNull().references(() => factoryQualitySpecs.id),
+---
+L10386: export const factoryQualityMedia = pgTable("factory_quality_media", {
+qualityCheckId: integer("quality_check_id").notNull().references(() => factoryQualityChecks.id, { onDelete: "cascade" }),
+uploadedBy: text("uploaded_by").references(() => users.id),
+---
+L10409: export const factoryAiReports = pgTable("factory_ai_reports", {
+targetUserId: text("target_user_id").references(() => users.id), // belirli personel için
+targetStationId: integer("target_station_id").references(() => factoryStations.id),
+generatedBy: text("generated_by").references(() => users.id),
+---
+L10448: export const factoryProductionPlans = pgTable("factory_production_plans", {
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+createdBy: text("created_by").references(() => users.id),
+---
+L10487: export const factoryTeams = pgTable("factory_teams", {
+stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+leaderId: text("leader_id").references(() => users.id, { onDelete: "set null" }), // Ekip lideri
+---
+L10508: export const factoryTeamMembers = pgTable("factory_team_members", {
+teamId: integer("team_id").notNull().references(() => factoryTeams.id, { onDelete: "cascade" }),
+userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L10532: export const factoryTeamSessions = pgTable("factory_team_sessions", {
+stationId: integer("station_id").notNull().references(() => factoryStations.id),
+---
+L10560: export const factoryTeamSessionMembers = pgTable("factory_team_session_members", {
+teamSessionId: integer("team_session_id").notNull().references(() => factoryTeamSessions.id, { onDelete: "cascade" }),
+userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+shiftSessionId: integer("shift_session_id").references(() => factoryShiftSessions.id, { onDelete: "set null" }),
+---
+L10589: export const factoryShiftCompliance = pgTable("factory_shift_compliance", {
+userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+factorySessionId: integer("factory_session_id").references(() => factoryShiftSessions.id, { onDelete: "set null" }),
+shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
+overtimeApprovedBy: text("overtime_approved_by").references(() => users.id),
+---
+L10658: export const factoryWeeklyAttendanceSummary = pgTable("factory_weekly_attendance_summary", {
+userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L10709: export const branchStaffPins = pgTable("branch_staff_pins", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L10734: export const branchShiftSessions = pgTable("branch_shift_sessions", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+shiftAttendanceId: integer("shift_attendance_id").references(() => shiftAttendance.id, { onDelete: "set null" }),
+---
+L10789: export const branchShiftEvents = pgTable("branch_shift_events", {
+sessionId: integer("session_id").notNull().references(() => branchShiftSessions.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L10817: export const branchBreakLogs = pgTable("branch_break_logs", {
+sessionId: integer("session_id").notNull().references(() => branchShiftSessions.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L10844: export const branchShiftDailySummary = pgTable("branch_shift_daily_summary", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L10896: export const branchWeeklyAttendanceSummary = pgTable("branch_weekly_attendance_summary", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L10945: export const hqShiftSessions = pgTable("hq_shift_sessions", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L10981: export const hqShiftEvents = pgTable("hq_shift_events", {
+sessionId: integer("session_id").notNull().references(() => hqShiftSessions.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L11011: export const branchMonthlyPayrollSummary = pgTable("branch_monthly_payroll_summary", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+finalizedById: varchar("finalized_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11069: export const branchKioskSettings = pgTable("branch_kiosk_settings", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }).unique(),
+---
+L11106: export const qrCheckinNonces = pgTable("qr_checkin_nonces", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L11171: export const dashboardAlerts = pgTable("dashboard_alerts", {
+relatedUserId: varchar("related_user_id").references(() => users.id, { onDelete: "set null" }),
+acknowledgedByUserId: varchar("acknowledged_by_user_id").references(() => users.id, { onDelete: "set null" }),
+resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11227: export const megaModuleConfig = pgTable("mega_module_config", {
+---
+L11250: export const megaModuleItems = pgTable("mega_module_items", {
+---
+L11289: export const staffQrRatings = pgTable("staff_qr_ratings", {
+staffId: varchar("staff_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L11338: export const staffQrTokens = pgTable("staff_qr_tokens", {
+staffId: varchar("staff_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L11368: export const employeeOfMonthWeights = pgTable("employee_of_month_weights", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // null = global default
+---
+L11398: export const monthlyEmployeePerformance = pgTable("monthly_employee_performance", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L11467: export const employeeOfMonthAwards = pgTable("employee_of_month_awards", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+performanceId: integer("performance_id").references(() => monthlyEmployeePerformance.id, { onDelete: "set null" }),
+approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11518: export const managerMonthlyRatings = pgTable("manager_monthly_ratings", {
+managerId: varchar("manager_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+employeeId: varchar("employee_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L11578: export const equipmentKnowledge = pgTable("equipment_knowledge", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11627: export const aiSystemConfig = pgTable("ai_system_config", {
+updatedById: varchar("updated_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11670: export const inventory = pgTable("inventory", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11722: export const inventoryMovements = pgTable("inventory_movements", {
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11770: export const suppliers = pgTable("suppliers", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L11832: export const productSuppliers = pgTable("product_suppliers", {
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+---
+L11875: export const purchaseOrders = pgTable("purchase_orders", {
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "restrict" }).notNull(),
+approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }).notNull(),
+---
+L11927: export const purchaseOrderItems = pgTable("purchase_order_items", {
+purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+---
+L11967: export const goodsReceipts = pgTable("goods_receipts", {
+purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "set null" }),
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "restrict" }).notNull(),
+qualityCheckedById: varchar("quality_checked_by_id").references(() => users.id, { onDelete: "set null" }),
+receivedById: varchar("received_by_id").references(() => users.id, { onDelete: "set null" }).notNull(),
+---
+L12024: export const goodsReceiptItems = pgTable("goods_receipt_items", {
+goodsReceiptId: integer("goods_receipt_id").references(() => goodsReceipts.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+purchaseOrderItemId: integer("purchase_order_item_id").references(() => purchaseOrderItems.id, { onDelete: "set null" }),
+---
+L12071: export const recipeIngredients = pgTable("recipe_ingredients", {
+recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+---
+L12104: export const productionRecords = pgTable("production_records", {
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+recipeId: integer("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+producedById: varchar("produced_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L12155: export const productionIngredients = pgTable("production_ingredients", {
+productionRecordId: integer("production_record_id").references(() => productionRecords.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "restrict" }).notNull(),
+---
+L12186: export const cariAccounts = pgTable("cari_accounts", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+---
+L12217: export const cariTransactions = pgTable("cari_transactions", {
+accountId: integer("account_id").references(() => cariAccounts.id, { onDelete: "cascade" }).notNull(),
+purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "set null" }),
+goodsReceiptId: integer("goods_receipt_id").references(() => goodsReceipts.id, { onDelete: "set null" }),
+---
+L12281: export const rawMaterials = pgTable("raw_materials", {
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "set null" }),
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+---
+L12328: export const productRecipes = pgTable("product_recipes", {
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L12394: export const productRecipeIngredients = pgTable("product_recipe_ingredients", {
+recipeId: integer("recipe_id").references(() => productRecipes.id, { onDelete: "cascade" }).notNull(),
+rawMaterialId: integer("raw_material_id").references(() => rawMaterials.id, { onDelete: "restrict" }).notNull(),
+---
+L12424: export const productPackagingItems = pgTable("product_packaging_items", {
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+rawMaterialId: integer("raw_material_id").references(() => rawMaterials.id, { onDelete: "set null" }),
+---
+L12450: export const factoryCostSettings = pgTable("factory_cost_settings", {
+---
+L12476: export const factoryFixedCosts = pgTable("factory_fixed_costs", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L12518: export const profitMarginTemplates = pgTable("profit_margin_templates", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L12551: export const productCostCalculations = pgTable("product_cost_calculations", {
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+recipeId: integer("recipe_id").references(() => productRecipes.id, { onDelete: "set null" }),
+calculatedById: varchar("calculated_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L12604: export const productionCostTracking = pgTable("production_cost_tracking", {
+productionRecordId: integer("production_record_id").references(() => productionRecords.id, { onDelete: "cascade" }),
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+---
+L12639: export const rawMaterialPriceHistory = pgTable("raw_material_price_history", {
+rawMaterialId: integer("raw_material_id").references(() => rawMaterials.id, { onDelete: "cascade" }).notNull(),
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+---
+L12665: export const factoryMachines = pgTable("factory_machines", {
+---
+L12685: export const machineProducts = pgTable("machine_products", {
+machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "cascade" }).notNull(),
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "cascade" }).notNull(),
+---
+L12700: export const factoryShifts = pgTable("factory_shifts", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L12726: export const factoryShiftWorkers = pgTable("factory_shift_workers", {
+shiftId: integer("shift_id").notNull().references(() => factoryShifts.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+---
+L12750: export const factoryBatchSpecs = pgTable("factory_batch_specs", {
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+---
+L12779: export const factoryShiftProductions = pgTable("factory_shift_productions", {
+shiftId: integer("shift_id").notNull().references(() => factoryShifts.id, { onDelete: "cascade" }),
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+batchSpecId: integer("batch_spec_id").references(() => factoryBatchSpecs.id, { onDelete: "set null" }),
+---
+L12803: export const factoryProductionBatches = pgTable("factory_production_batches", {
+shiftProductionId: integer("shift_production_id").references(() => factoryShiftProductions.id, { onDelete: "set null" }),
+shiftId: integer("shift_id").references(() => factoryShifts.id, { onDelete: "set null" }),
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+machineId: integer("machine_id").references(() => factoryMachines.id, { onDelete: "set null" }),
+batchSpecId: integer("batch_spec_id").references(() => factoryBatchSpecs.id, { onDelete: "set null" }),
+operatorUserId: varchar("operator_user_id").references(() => users.id, { onDelete: "set null" }),
+wasteReasonId: integer("waste_reason_id").references(() => factoryWasteReasons.id, { onDelete: "set null" }),
+---
+L12853: export const factoryBatchVerifications = pgTable("factory_batch_verifications", {
+batchId: integer("batch_id").notNull().references(() => factoryProductionBatches.id, { onDelete: "cascade" }),
+verifierUserId: varchar("verifier_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L12875: export const roleTaskTemplates = pgTable("role_task_templates", {
+---
+L12895: export const roleTaskCompletions = pgTable("role_task_completions", {
+---
+L12912: export const stockCounts = pgTable("stock_counts", {
+---
+L12939: export const eventTriggeredTasks = pgTable("event_triggered_tasks", {
+---
+L12966: export const professionalTrainingLessons = pgTable("professional_training_lessons", {
+---
+L12980: export const professionalTrainingProgress = pgTable("professional_training_progress", {
+---
+L12996: export const professionalTrainingQuizCache = pgTable("professional_training_quiz_cache", {
+---
+L13003: export const stockCountItems = pgTable("stock_count_items", {
+---
+L13026: export const dashboardWidgets = pgTable("dashboard_widgets", {
+createdBy: varchar("created_by").references(() => users.id),
+---
+L13045: export const dashboardModuleVisibility = pgTable("dashboard_module_visibility", {
+updatedBy: varchar("updated_by").references(() => users.id),
+---
+L13059: export const managementReports = pgTable("management_reports", {
+branchId: integer("branch_id").references(() => branches.id),
+approvedBy: varchar("approved_by").references(() => users.id),
+createdBy: varchar("created_by").references(() => users.id),
+---
+L13084: export const franchiseProjects = pgTable("franchise_projects", {
+branchId: integer("branch_id").references(() => branches.id),
+managerId: varchar("manager_id").references(() => users.id),
+createdBy: varchar("created_by").references(() => users.id),
+---
+L13116: export const franchiseProjectPhases = pgTable("franchise_project_phases", {
+projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+---
+L13138: export const franchiseProjectTasks = pgTable("franchise_project_tasks", {
+projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+phaseId: integer("phase_id").notNull().references(() => franchiseProjectPhases.id, { onDelete: "cascade" }),
+assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+---
+L13167: export const franchiseCollaborators = pgTable("franchise_collaborators", {
+projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+---
+L13189: export const franchiseProjectComments = pgTable("franchise_project_comments", {
+projectId: integer("project_id").notNull().references(() => franchiseProjects.id, { onDelete: "cascade" }),
+taskId: integer("task_id").references(() => franchiseProjectTasks.id, { onDelete: "cascade" }),
+authorUserId: varchar("author_user_id").references(() => users.id),
+authorCollaboratorId: integer("author_collaborator_id").references(() => franchiseCollaborators.id),
+---
+L13210: export const equipmentCatalog = pgTable("equipment_catalog", {
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L13266: export const faultServiceTracking = pgTable("fault_service_tracking", {
+faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
+equipmentId: integer("equipment_id").references(() => equipment.id, { onDelete: "set null" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").notNull().references(() => users.id),
+---
+L13313: export const faultServiceStatusUpdates = pgTable("fault_service_status_updates", {
+trackingId: integer("tracking_id").notNull().references(() => faultServiceTracking.id, { onDelete: "cascade" }),
+updatedById: varchar("updated_by_id").notNull().references(() => users.id),
+---
+L13351: export const inventoryCounts = pgTable("inventory_counts", {
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L13376: export const inventoryCountAssignments = pgTable("inventory_count_assignments", {
+countId: integer("count_id").references(() => inventoryCounts.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+counter1Id: varchar("counter_1_id").references(() => users.id, { onDelete: "set null" }),
+counter2Id: varchar("counter_2_id").references(() => users.id, { onDelete: "set null" }),
+---
+L13396: export const inventoryCountEntries = pgTable("inventory_count_entries", {
+assignmentId: integer("assignment_id").references(() => inventoryCountAssignments.id, { onDelete: "cascade" }).notNull(),
+counterId: varchar("counter_id").references(() => users.id, { onDelete: "set null" }).notNull(),
+---
+L13423: export const factoryManagementScores = pgTable("factory_management_scores", {
+---
+L13460: export const supplierPerformanceScores = pgTable("supplier_performance_scores", {
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+---
+L13493: export const inventoryCountReports = pgTable("inventory_count_reports", {
+countId: integer("count_id").references(() => inventoryCounts.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+---
+L13522: export const dashboardWidgetItems = pgTable("dashboard_widget_items", {
+---
+L13543: export const financialRecords = pgTable("financial_records", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+createdBy: varchar("created_by").references(() => users.id),
+---
+L13575: export const salaryScales = pgTable("salary_scales", {
+updatedBy: varchar("updated_by").references(() => users.id),
+---
+L13602: export const supplierQuotes = pgTable("supplier_quotes", {
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "cascade" }).notNull(),
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+requestedById: varchar("requested_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L13636: export const supplierIssues = pgTable("supplier_issues", {
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+inventoryId: integer("inventory_id").references(() => inventory.id, { onDelete: "set null" }),
+reportedById: varchar("reported_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L13665: export const purchaseOrderPayments = pgTable("purchase_order_payments", {
+purchaseOrderId: integer("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "cascade" }).notNull(),
+processedById: varchar("processed_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L13696: export const haccpControlPoints = pgTable("haccp_control_points", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id),
+---
+L13720: export const haccpRecords = pgTable("haccp_records", {
+controlPointId: integer("control_point_id").references(() => haccpControlPoints.id, { onDelete: "cascade" }).notNull(),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+recordedById: varchar("recorded_by_id").references(() => users.id).notNull(),
+---
+L13741: export const hygieneAudits = pgTable("hygiene_audits", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }).notNull(),
+auditorId: varchar("auditor_id").references(() => users.id).notNull(),
+---
+L13770: export const supplierCertifications = pgTable("supplier_certifications", {
+supplierId: integer("supplier_id").references(() => suppliers.id, { onDelete: "cascade" }).notNull(),
+verifiedById: varchar("verified_by_id").references(() => users.id),
+---
+L13797: export const foodSafetyTrainings = pgTable("food_safety_trainings", {
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+trainerId: varchar("trainer_id").references(() => users.id),
+---
+L13826: export const foodSafetyDocuments = pgTable("food_safety_documents", {
+createdById: varchar("created_by_id").references(() => users.id),
+approvedById: varchar("approved_by_id").references(() => users.id),
+---
+L13854: export const importBatches = pgTable("import_batches", {
+createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+---
+L13878: export const importResults = pgTable("import_results", {
+batchId: integer("batch_id").notNull().references(() => importBatches.id, { onDelete: "cascade" }),
+---
+L13894: export const taskTriggers = pgTable("task_triggers", {
+---
+L13923: export const opsRules = pgTable("ops_rules", {
+---
+L13948: export const taskEvidence = pgTable("task_evidence", {
+taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+submittedByUserId: varchar("submitted_by_user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+reviewedByUserId: varchar("reviewed_by_user_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+---
+L13978: export const wasteCategories = pgTable("waste_categories", {
+---
+L13996: export const wasteReasons = pgTable("waste_reasons", {
+categoryId: integer("category_id").notNull().references(() => wasteCategories.id, { onDelete: "cascade" }),
+---
+L14040: export const wasteEvents = pgTable("waste_events", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+createdByUserId: varchar("created_by_user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+categoryId: integer("category_id").notNull().references(() => wasteCategories.id),
+reasonId: integer("reason_id").notNull().references(() => wasteReasons.id),
+---
+L14089: export const wasteLots = pgTable("waste_lots", {
+createdByUserId: varchar("created_by_user_id", { length: 255 }).notNull().references(() => users.id),
+---
+L14117: export const wasteActionLinks = pgTable("waste_action_links", {
+wasteEventId: integer("waste_event_id").notNull().references(() => wasteEvents.id, { onDelete: "cascade" }),
+taskId: integer("task_id").references(() => tasks.id, { onDelete: "set null" }),
+auditLogId: integer("audit_log_id").references(() => auditLogs.id, { onDelete: "set null" }),
+createdByUserId: varchar("created_by_user_id", { length: 255 }).references(() => users.id),
+---
+L14142: export const guideDocs = pgTable("guide_docs", {
+---
+L14173: export const onboardingPrograms = pgTable("onboarding_programs", {
+---
+L14194: export const onboardingWeeks = pgTable("onboarding_weeks", {
+---
+L14214: export const onboardingInstances = pgTable("onboarding_instances", {
+---
+L14239: export const onboardingCheckins = pgTable("onboarding_checkins", {
+---
+L14267: export const careerGates = pgTable("career_gates", {
+fromLevelId: integer("from_level_id").references(() => careerLevels.id),
+toLevelId: integer("to_level_id").references(() => careerLevels.id),
+quizId: integer("quiz_id").references(() => quizzes.id),
+---
+L14304: export const gateAttempts = pgTable("gate_attempts", {
+gateId: integer("gate_id").notNull().references(() => careerGates.id),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+practicalApprovedBy: varchar("practical_approved_by").references(() => users.id),
+---
+L14344: export const kpiSignalRules = pgTable("kpi_signal_rules", {
+recommendedModuleId: integer("recommended_module_id").references(() => trainingModules.id),
+---
+L14374: export const contentPacks = pgTable("content_packs", {
+createdBy: varchar("created_by").references(() => users.id),
+---
+L14401: export const contentPackItems = pgTable("content_pack_items", {
+packId: integer("pack_id").notNull().references(() => contentPacks.id, { onDelete: "cascade" }),
+trainingModuleId: integer("training_module_id").references(() => trainingModules.id),
+quizId: integer("quiz_id").references(() => quizzes.id),
+---
+L14431: export const userPackProgress = pgTable("user_pack_progress", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+packId: integer("pack_id").notNull().references(() => contentPacks.id),
+packItemId: integer("pack_item_id").notNull().references(() => contentPackItems.id),
+approvedBy: varchar("approved_by").references(() => users.id),
+---
+L14451: export const aiAgentLogs = pgTable("ai_agent_logs", {
+---
+L14480: export const aiDataDomains = pgTable("ai_data_domains", {
+---
+L14491: export const aiDomainPolicies = pgTable("ai_domain_policies", {
+domainId: integer("domain_id").references(() => aiDataDomains.id, { onDelete: "cascade" }).notNull(),
+---
+L14524: export const employeeTypes = pgTable("employee_types", {
+---
+L14537: export const employeeTypePolicies = pgTable("employee_type_policies", {
+employeeTypeId: integer("employee_type_id").references(() => employeeTypes.id, { onDelete: "cascade" }).notNull(),
+---
+L14548: export const orgEmployeeTypeAssignments = pgTable("org_employee_type_assignments", {
+employeeTypeId: integer("employee_type_id").references(() => employeeTypes.id, { onDelete: "cascade" }).notNull(),
+---
+L14595: export const agentPendingActions = pgTable("agent_pending_actions", {
+---
+L14639: export const agentRuns = pgTable("agent_runs", {
+---
+L14668: export const agentEscalationHistory = pgTable("agent_escalation_history", {
+sourceActionId: integer("source_action_id").references(() => agentPendingActions.id, { onDelete: "cascade" }).notNull(),
+---
+L14692: export const agentRoutingRules = pgTable("agent_routing_rules", {
+---
+L14720: export const agentActionOutcomes = pgTable("agent_action_outcomes", {
+---
+L14745: export const agentRejectionPatterns = pgTable("agent_rejection_patterns", {
+---
+L14770: export const factoryShipments = pgTable("factory_shipments", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+preparedById: varchar("prepared_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L14801: export const factoryShipmentItems = pgTable("factory_shipment_items", {
+shipmentId: integer("shipment_id").notNull().references(() => factoryShipments.id, { onDelete: "cascade" }),
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+---
+L14826: export const haccpCheckRecords = pgTable("haccp_check_records", {
+stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+checkedBy: varchar("checked_by", { length: 255 }).references(() => users.id).notNull(),
+productionOutputId: integer("production_output_id").references(() => factoryProductionOutputs.id, { onDelete: "set null" }),
+---
+L14852: export const coffeeRoastingLogs = pgTable("coffee_roasting_logs", {
+greenCoffeeProductId: integer("green_coffee_product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+roastedProductId: integer("roasted_product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+operatorId: text("operator_id").references(() => users.id, { onDelete: "set null" }),
+---
+L14882: export const productionLots = pgTable("production_lots", {
+productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+batchId: integer("batch_id").references(() => productionBatches.id, { onDelete: "set null" }),
+producedBy: text("produced_by").references(() => users.id, { onDelete: "set null" }),
+stationId: integer("station_id").references(() => factoryStations.id, { onDelete: "set null" }),
+qualityCheckId: integer("quality_check_id").references(() => factoryQualityChecks.id, { onDelete: "set null" }),
+---
+L14915: export const branchInventory = pgTable("branch_inventory", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+---
+L14939: export const branchStockMovements = pgTable("branch_stock_movements", {
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
+---
+L14967: export const pushSubscriptions = pgTable("push_subscriptions", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L14987: export const pdksRecords = pgTable("pdks_records", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15010: export const positionSalaries = pgTable("position_salaries", {
+---
+L15029: export const monthlyPayroll = pgTable("monthly_payroll", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15072: export const scheduledOffs = pgTable("scheduled_offs", {
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+---
+L15092: export const dobodyAvatars = pgTable("dobody_avatars", {
+---
+L15111: export const dobodyFlowTasks = pgTable("dobody_flow_tasks", {
+---
+L15140: export const dobodyFlowCompletions = pgTable("dobody_flow_completions", {
+---
+L15160: export const dataLockRules = pgTable("data_lock_rules", {
+---
+L15182: export const dataChangeRequests = pgTable("data_change_requests", {
+requestedBy: varchar("requested_by").references(() => users.id, { onDelete: "set null" }),
+reviewedBy: varchar("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15217: export const recordRevisions = pgTable("record_revisions", {
+changedBy: varchar("changed_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15242: export const dataChangeLog = pgTable("data_change_log", {
+changedBy: varchar("changed_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15261: export const franchiseInvestors = pgTable("franchise_investors", {
+userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+---
+L15288: export const franchiseInvestorBranches = pgTable("franchise_investor_branches", {
+investorId: integer("investor_id").notNull().references(() => franchiseInvestors.id, { onDelete: "cascade" }),
+branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+---
+L15303: export const franchiseInvestorNotes = pgTable("franchise_investor_notes", {
+investorId: integer("investor_id").notNull().references(() => franchiseInvestors.id, { onDelete: "cascade" }),
+createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15323: export const webinars = pgTable("webinars", {
+hostUserId: varchar("host_user_id").references(() => users.id, { onDelete: "set null" }),
+branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+---
+L15350: export const webinarRegistrations = pgTable("webinar_registrations", {
+webinarId: integer("webinar_id").notNull().references(() => webinars.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+---
+L15368: export const supportTickets = pgTable("support_tickets", {
+branchId: integer("branch_id").references(() => branches.id),
+createdByUserId: varchar("created_by_user_id").references(() => users.id),
+assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id),
+---
+L15404: export const supportTicketComments = pgTable("support_ticket_comments", {
+ticketId: integer("ticket_id").notNull().references(() => supportTickets.id),
+authorId: varchar("author_id").notNull().references(() => users.id),
+---
+L15418: export const ticketCoworkMembers = pgTable("ticket_cowork_members", {
+ticketId: integer("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+userId: varchar("user_id").notNull().references(() => users.id),
+invitedByUserId: varchar("invited_by_user_id").notNull().references(() => users.id),
+---
+L15433: export const ticketAttachments = pgTable("ticket_attachments", {
+ticketId: integer("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+commentId: integer("comment_id").references(() => supportTicketComments.id, { onDelete: "set null" }),
+uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id),
+---
+L15450: export const hqTasks = pgTable("hq_tasks", {
+assignedByUserId: varchar("assigned_by_user_id").notNull().references(() => users.id),
+assignedToUserId: varchar("assigned_to_user_id").notNull().references(() => users.id),
+---
+L15478: export const broadcastReceipts = pgTable("broadcast_receipts", {
+announcementId: integer("announcement_id").notNull().references(() => announcements.id),
+userId: varchar("user_id").notNull().references(() => users.id),
+branchId: integer("branch_id").references(() => branches.id),
+---
+L15494: export const moduleDelegations = pgTable('module_delegations', {
+---
+L15517: export const moduleDepartments = pgTable('module_departments', {
+---
+L15526: export const moduleDepartmentTopics = pgTable('module_department_topics', {
+.references(() => moduleDepartments.id, { onDelete: 'cascade' }),
+---
+L15544: export const slaRules = pgTable('sla_rules', {
+updatedBy: varchar('updated_by').references(() => users.id),
+---
+L15558: export const slaBusinessHours = pgTable('sla_business_hours', {
+updatedBy: varchar('updated_by').references(() => users.id),
+---
+L15572: export const factoryKioskConfig = pgTable("factory_kiosk_config", {
+---
+L15582: export const moduleFlags = pgTable("module_flags", {
+branchId: integer("branch_id").references(() => branches.id),
+enabledBy: varchar("enabled_by").references(() => users.id),
+disabledBy: varchar("disabled_by").references(() => users.id),
+---
+L15607: export const branchTaskCategories = pgTable("branch_task_categories", {
+---
+L15622: export const branchRecurringTasks = pgTable("branch_recurring_tasks", {
+branchId: integer("branch_id").references(() => branches.id),
+assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+---
+L15646: export const branchTaskInstances = pgTable("branch_task_instances", {
+recurringTaskId: integer("recurring_task_id").references(() => branchRecurringTasks.id).notNull(),
+branchId: integer("branch_id").references(() => branches.id).notNull(),
+assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+claimedByUserId: varchar("claimed_by_user_id").references(() => users.id),
+completedByUserId: varchar("completed_by_user_id").references(() => users.id),
+---
+L15669: export const branchRecurringTaskOverrides = pgTable("branch_recurring_task_overrides", {
+recurringTaskId: integer("recurring_task_id").references(() => branchRecurringTasks.id).notNull(),
+branchId: integer("branch_id").references(() => branches.id).notNull(),
+disabledByUserId: varchar("disabled_by_user_id").references(() => users.id).notNull(),
+---
+L15686: export const kioskSessions = pgTable("kiosk_sessions", {
+userId: varchar("user_id").references(() => users.id).notNull(),
+---
+L15700: export const guidanceDismissals = pgTable("guidance_dismissals", {
+userId: varchar("user_id").references(() => users.id).notNull(),
+---

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
@@ -447,23 +448,34 @@ export default function SatinalmaDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-        {metrics.map((metric, index) => (
-          <Card key={index} data-testid={`metric-card-${index}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
-                {metric.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${metric.bgColor}`}>
-                <metric.icon className={`h-3.5 w-3.5 ${metric.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent className="px-3 pb-3">
-              <div className="text-lg font-bold" data-testid={`metric-value-${index}`}>{metric.value}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <CompactKPIStrip
+        items={metrics.map((metric): KPIItem => ({
+          label: metric.title,
+          value: metric.value,
+          icon: <metric.icon className={`h-4 w-4 ${metric.color}`} />,
+          color: metric.color.includes('red') ? 'danger' : metric.color.includes('orange') ? 'warning' : metric.color.includes('green') ? 'success' : metric.color.includes('blue') ? 'info' : 'default',
+        }))}
+        desktopColumns={5}
+        desktopRenderer={
+          <div className="grid grid-cols-3 lg:grid-cols-5 gap-2">
+            {metrics.map((metric, index) => (
+              <Card key={index} data-testid={`metric-card-${index}`}>
+                <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 gap-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground">
+                    {metric.title}
+                  </CardTitle>
+                  <div className={`p-2 rounded-lg ${metric.bgColor}`}>
+                    <metric.icon className={`h-3.5 w-3.5 ${metric.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <div className="text-lg font-bold" data-testid={`metric-value-${index}`}>{metric.value}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        }
+      />
 
       <Card className="border-primary/30" data-testid="card-qr-scanner">
         <CardContent className="flex items-center justify-between gap-3 py-3 px-3 flex-wrap">

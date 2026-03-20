@@ -4,6 +4,7 @@ import { useParams, useLocation } from "wouter";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -776,59 +777,15 @@ export default function PersonelProfilPage() {
       </Card>
 
       {!isProfileHQ && (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Vardiya</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="total-shifts">
-              {profile.totalShifts || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Bu ay</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tamamlanan</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="completed-shifts">
-              {profile.completedShifts || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Vardiya</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Geç Kalma</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="lateness-count">
-              {profile.latenessCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Kez</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Devamsızlık</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="absence-count">
-              {profile.absenceCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Gün</p>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Toplam Vardiya", value: profile.totalShifts || 0, icon: <Clock className="h-4 w-4 text-primary" />, color: "info", subtitle: "Bu ay", testId: "total-shifts" },
+          { label: "Tamamlanan", value: profile.completedShifts || 0, icon: <CheckCircle2 className="h-4 w-4 text-success" />, color: "success", subtitle: "Vardiya", testId: "completed-shifts" },
+          { label: "Geç Kalma", value: profile.latenessCount || 0, icon: <AlertCircle className="h-4 w-4 text-warning" />, color: (profile.latenessCount || 0) > 0 ? "warning" : "default", subtitle: "Kez", testId: "lateness-count" },
+          { label: "Devamsızlık", value: profile.absenceCount || 0, icon: <XCircle className="h-4 w-4 text-destructive" />, color: (profile.absenceCount || 0) > 0 ? "danger" : "default", subtitle: "Gün", testId: "absence-count" },
+        ]}
+        desktopColumns={4}
+      />
       )}
 
       {/* Salary Information - Only visible to authorized roles */}

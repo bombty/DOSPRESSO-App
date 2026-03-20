@@ -1,0 +1,404 @@
+# DOSPRESSO Sistem Bağlantı Haritası
+## Hangi Modül Hangi Modülü Etkiler?
+**Son Güncelleme:** 20 Mart 2026
+
+---
+
+## 1. VERİTABANI TABLO BAĞLANTILARI
+
+### users (merkez tablo — HER ŞEY buna bağlı)
+```
+users.id (VARCHAR/UUID) ← FK olarak kullanan tablolar:
+├── tasks.assignedToId, tasks.createdBy
+├── shifts.userId (şube + fabrika vardiya)
+├── pdks_records.userId (devam takibi)
+├── checklist_completions.userId
+├── notifications.userId
+├── messages.senderId, messages.receiverId
+├── leave_requests.userId
+├── branch_task_instances.claimedByUserId, completedByUserId
+├── factory_shift_sessions.userId
+├── factory_production_outputs.userId
+├── factory_break_logs.userId
+├── factory_worker_scores.userId
+├── factory_kiosk_session_events.userId
+├── kiosk_sessions.userId
+├── user_training_progress.userId
+├── quiz_results.userId
+├── issued_certificates.recipientUserId
+├── support_tickets.userId
+├── customer_feedback.userId
+├── equipment_faults.reportedBy
+├── agent_pending_actions.targetUserId
+├── guidance_dismissals.userId
+├── audit_logs.userId
+├── notification_preferences.userId (jsonb in users)
+├── employee_onboarding_progress.userId
+└── payroll_records.userId
+```
+
+### branches (ikinci merkez tablo)
+```
+branches.id ← FK olarak kullanan:
+├── users.branchId (personel-şube ilişkisi)
+├── shifts.branchId
+├── tasks.branchId
+├── checklist_templates.branchId
+├── branch_recurring_tasks.branchId
+├── branch_task_instances.branchId
+├── module_flags (branch-level overrides)
+├── factory_stations (factory branch)
+├── equipment.branchId
+├── sla_rules.branchId
+├── customer_feedback.branchId
+└── support_tickets.branchId
+```
+
+---
+
+## 2. MODÜL BAĞIMLILIKLARI
+
+### A) FABRİKA KİOSK → Etkilediği Sistemler
+```
+Fabrika Kiosk Değişikliği →
+├── factory_shift_sessions → Employee Summary Service (skor hesaplama)
+│                          → Factory Worker Scoring (5 bileşen)
+│                          → Factory Analytics endpoints
+│                          → Mr. Dobody production_director skill
+│
+├── factory_production_outputs → Factory Worker Scores (production_score)
+│                               → Factory Analytics (station performance)
+│                               → Factory Dashboard stats
+│                               → HQ Dashboard (fabrika özet)
+│
+├── factory_break_logs → Factory Worker Scores (break_score)
+│                       → Employee Summary (fabrika entegrasyonu)
+│                       → Kiosk session events
+│
+├── pdks_records → Employee Summary (attendance_score)
+│                → Şube/HQ PDKS raporları
+│                → Coach dashboard (devam takibi)
+│                → Mr. Dobody team_tracker skill
+│
+├── kiosk_sessions → isKioskAuthenticated middleware
+│                   → İsAuthenticated kiosk fallback (localAuth.ts)
+│                   → TÜM kiosk endpoint'leri (17 adet)
+│                   → Şube kiosk (aynı session tablosu!)
+│
+├── factory_kiosk_session_events → Factory scoring
+│                                  → Analytics
+│
+└── equipment_faults → Ekipman modülü
+                     → SLA kontrolü
+                     → Mr. Dobody security_monitor skill
+```
+
+### B) PDKS → Etkilediği Sistemler
+```
+PDKS Değişikliği →
+├── Şube Dashboard (devam özeti)
+├── Employee Summary Service (attendance bileşeni — %25-30 ağırlık)
+├── Factory Worker Scores (attendance_score — %25)
+├── Branch Health Score (devam bileşeni)
+├── Mr. Dobody team_tracker (geç kalma analizi)
+├── Mr. Dobody burnout_predictor (mesai analizi)
+├── Vardiya planlama (mola saatleri kontrolü)
+├── Bordro/Maaş (çalışma saatleri)
+├── Coach Dashboard (personel devam takibi)
+└── Guidance Widget (PDKS eksikliği gap olarak gösterilir)
+```
+
+### C) VARDIYA SİSTEMİ → Etkilediği Sistemler
+```
+Vardiya Değişikliği →
+├── PDKS (vardiya saatleri ile karşılaştırma)
+├── Employee Summary (vardiya uyum skoru)
+├── Factory Shift Sessions (fabrika vardiyası — FARKLI tablo!)
+├── Bordro/Maaş (çalışma saatleri hesaplama)
+├── Mola planlaması (mola saatleri vardiyaya göre)
+├── AI vardiya planlama (haftalık plan oluşturma)
+├── Mr. Dobody team_tracker
+├── Guidance Widget ("vardiya planı eksik" uyarısı)
+├── Şube Dashboard (bugünün vardiyası)
+├── Coach Dashboard (tüm şubelerin vardiya durumu)
+└── Kiosk (personel vardiya bilgisi gösterimi)
+```
+
+### D) İK / PERSONEL → Etkilediği Sistemler
+```
+İK/Personel Değişikliği →
+├── users tablosu → TÜM SİSTEM ETKİLENİR
+│
+├── Vardiya planlama (FT 45 saat, PT değişken)
+├── Bordro/Maaş (maaş, hakediş, izin bakiyesi)
+├── PDKS (personel giriş/çıkış)
+├── Akademi (eğitim atamaları, quiz sonuçları)
+├── Onboarding (yeni personel süreci)
+├── Sertifika (rol geçiş sertifikaları)
+├── Görev sistemi (görev atama/tamamlama)
+├── Mesajlaşma (alıcı/gönderici)
+├── İzin yönetimi (izin talepleri)
+├── Tutanak sistemi (disiplin)
+├── Employee Summary (TÜM bileşenler)
+├── Branch Health Score
+├── Factory Worker Scores
+├── Mr. Dobody tüm skill'ler (kullanıcı bazlı analiz)
+├── Guidance Widget (personel eksikliği tespiti)
+├── Kiosk (personel listesi, PIN girişi)
+├── Sidebar menü (rol bazlı erişim)
+├── Module Flags (rol bazlı bayraklar)
+└── Admin paneli (kullanıcı yönetimi)
+```
+
+### E) CHECKLIST → Etkilediği Sistemler
+```
+Checklist Değişikliği →
+├── Branch Health Score (inspections bileşeni)
+├── Employee Summary (görev bileşeni)
+├── Kiosk (checklist tamamlama)
+├── Coach Dashboard (checklist uyum)
+├── Mr. Dobody daily_coach skill
+├── Mr. Dobody food_safety skill
+├── SLA kuralları (checklist tamamlama SLA'sı)
+├── Guidance Widget ("checklist eksik" uyarısı)
+└── Şube Dashboard (bugünün checklist durumu)
+```
+
+### F) GÖREV SİSTEMİ → Etkilediği Sistemler
+```
+Görev Değişikliği →
+├── Branch Health Score (opsHygiene bileşeni)
+├── Employee Summary (tasks bileşeni)
+├── Branch Task Instances (tekrarlayan görevler)
+├── Kiosk (görev sahiplenme/tamamlama)
+├── Coach Dashboard (görev durumu)
+├── Bildirimler (task_overdue, task_assigned, vb.)
+├── SLA kuralları (görev tamamlama SLA'sı)
+├── Mr. Dobody daily_coach
+├── Mr. Dobody team_tracker
+├── Guidance Widget ("tekrarlayan görev eksik" uyarısı)
+└── TodaysTasksWidget (dashboard widget)
+```
+
+### G) AKADEMİ → Etkilediği Sistemler
+```
+Akademi Değişikliği →
+├── Employee Summary (training bileşeni — %25)
+├── Branch Health Score (training bileşeni)
+├── Sertifika sistemi (modül tamamlama → sertifika)
+├── Onboarding (onboarding modülleri)
+├── Mr. Dobody training_optimizer (11 insight)
+├── Quiz sonuçları (personel değerlendirme)
+├── CareerTab (kariyer ilerlemesi)
+├── Guidance Widget ("eğitim atanmamış" uyarısı)
+└── HQ Dashboard (eğitim uyumu istatistikleri)
+```
+
+### H) MR. DOBODY / AGENT → Etkilediği Sistemler
+```
+Agent Değişikliği →
+├── 18 skill dosyası (her biri farklı veri kaynakları)
+├── agent_pending_actions (bekleyen aksiyonlar)
+├── Bildirimler (agent_guidance, agent_escalation)
+├── Guidance Widget (57 gap tespiti, 15 kategori)
+├── guidance_dismissals (dismiss tablosu)
+├── Scheduler (günlük 06:00, haftalık Pazartesi)
+├── skill_notifications (dedup mekanizması)
+├── HQ Dashboard (agent özeti)
+└── Coach Dashboard (guidance widget)
+```
+
+### I) CRM → Etkilediği Sistemler
+```
+CRM Değişikliği →
+├── support_tickets (destek talepleri)
+├── customer_feedback (QR geri bildirim)
+├── Branch Health Score (customerSatisfaction bileşeni)
+├── Mr. Dobody customer_watcher skill
+├── Mr. Dobody feedback analizi (haftalık Pazartesi)
+├── SLA kuralları (feedback yanıt SLA'sı)
+└── Coach Dashboard (müşteri memnuniyeti)
+```
+
+### J) BORDRO/MAAŞ → Etkilediği Sistemler
+```
+Bordro Değişikliği →
+├── Vardiya (çalışma saatleri hesaplama)
+├── PDKS (devam verileri)
+├── İzin yönetimi (izin günleri)
+├── Personel bilgileri (maaş, hakediş)
+├── Muhasebe/İK dashboard
+└── Yatırımcı raporları (maliyet)
+```
+
+---
+
+## 3. AUTH ZİNCİRİ (EN KRİTİK)
+
+```
+Değişiklik Yapılırsa DİKKAT:
+
+localAuth.ts (isAuthenticated + isKioskAuthenticated)
+├── TÜM API endpoint'leri (1,365+)
+├── Kiosk session yönetimi (kiosk_sessions tablosu)
+├── Passport.js session (web login)
+├── Kiosk token fallback (x-kiosk-token header)
+├── req.user ayarlama (web session)
+├── req.kioskUserId ayarlama (kiosk token)
+├── Rate limiting (login attempts)
+└── Session cookie ayarları
+```
+
+---
+
+## 4. SCHEDULER BAĞLANTILARI (30 zamanlayıcı)
+
+```
+Scheduler Değişikliği → Etkilenen Servisler:
+├── Agent günlük analiz (06:00) → 18 skill + bildirimler
+├── Agent haftalık özet (Pazartesi 08:00) → training_optimizer
+├── Görev hatırlatma (10dk) → bildirimler + SLA
+├── SLA kontrol (15dk) → bildirimler + escalation
+├── Branch task oluşturma (günlük 08:00) → görev sistemi
+├── Composite score (günlük 03:00) → branch health
+├── Factory scoring (günlük 02:00) → factory_worker_scores
+├── Factory scoring (haftalık Pazartesi 03:00) → haftalık ortalama
+├── Kiosk session cleanup (saatlik) → kiosk_sessions
+├── Stale shift cleanup (saatlik) → factory_shift_sessions
+├── Bildirim arşivleme (günlük 02:00) → notifications
+├── Backup (saatlik) → backup_records
+├── Gap detection (24 saatte bir) → guidance widget
+└── Stok uyarı (saatlik) → bildirimler
+```
+
+---
+
+## 5. FRONTEND SAYFA BAĞIMLILIKLARI
+
+### Bir Sayfayı Değiştirirken Kontrol Edilecekler:
+
+```
+HQ Dashboard değişirse →
+├── Coach Dashboard (benzer widget'lar)
+├── CEO Command Center (benzer veri kaynakları)
+├── Guidance Widget (tüm dashboard'larda gösterilir)
+└── Branch Dashboard (şube versiyonu)
+
+Kiosk sayfası değişirse →
+├── Fabrika kiosk (client/src/pages/fabrika/kiosk.tsx)
+├── Şube kiosk (client/src/pages/sube/kiosk.tsx)
+├── localAuth.ts (auth mekanizması ortaklığı)
+├── kiosk_sessions tablosu (ortak kullanım!)
+└── kioskFetch helper (fabrika kiosk'ta)
+
+Vardiya sayfası değişirse →
+├── PDKS sayfası (vardiya-devam ilişkisi)
+├── İK sayfası (izin/mesai)
+├── Bordro sayfası (çalışma saatleri)
+├── Kiosk (vardiya bilgisi gösterimi)
+└── Factory vardiya (FARKLI tablo ve sayfa!)
+
+Akademi sayfaları değişirse →
+├── akademi-hq/ (7 tab yönetim paneli)
+├── akademi-v3/ (öğrenci görünümü — auto-redirect!)
+├── module-detail.tsx (modül detay)
+├── CareerTab (sertifika görünümü)
+├── certificate-renderer.tsx (sertifika basımı)
+└── training_optimizer skill (veri kaynağı)
+```
+
+---
+
+## 6. ORTAK KULLANILAN SERVİSLER
+
+```
+employee-summary-service.ts →
+├── Şube çalışanları: training %25, tasks %25, branch_tasks %20, attendance %30
+├── Fabrika çalışanları: factory scoring → production %35, attendance %25, quality %15, break %15, waste %10
+├── HQ Dashboard
+├── Coach Dashboard
+├── Şube Dashboard
+├── Branch Health Score
+└── Mr. Dobody
+
+branch-health-scoring.ts →
+├── 7 bileşen: inspections, complaints, equipment, training, opsHygiene, customerSatisfaction, branchTasks
+├── Her bileşenin module flag entegrasyonu var
+├── HQ Dashboard
+├── CEO Dashboard
+├── Coach Dashboard
+├── Branch comparison
+└── Mr. Dobody
+
+system-completeness-service.ts (Guidance) →
+├── 15 kategori gap tespiti
+├── 13 yönetici rolü → widget görünürlüğü
+├── 3dk cache
+├── guidance_dismissals tablosu
+├── Günlük scheduler bildirimi
+└── 6 dashboard sayfasında gösterilir
+
+menu-service.ts (Sidebar) →
+├── 27 rol tanımı
+├── Module flag entegrasyonu
+├── Dinamik menü öğeleri
+├── Her rol farklı sidebar görür
+└── Sidebar değişikliği → TÜM kullanıcıları etkiler
+```
+
+---
+
+## 7. DEĞİŞİKLİK ETKİ MATRİSİ
+
+Bir modülde değişiklik yapılırken kontrol edilmesi gereken diğer modüller:
+
+| Değişiklik | Kontrol Et |
+|------------|-----------|
+| users tablosu | HER ŞEY — tüm FK bağlantıları |
+| branches tablosu | Vardiya, görev, checklist, personel, flag |
+| localAuth.ts | TÜM 1365+ endpoint, kiosk, session |
+| Kiosk session | Fabrika + Şube kiosk, auth middleware |
+| Vardiya | PDKS, bordro, mola, employee summary |
+| PDKS | Employee summary, scoring, bordro |
+| Görev sistemi | Branch health, employee summary, kiosk, bildirim |
+| Checklist | Branch health, kiosk, SLA, guidance |
+| Akademi | Employee summary, sertifika, onboarding |
+| Fabrika üretim | Factory scoring, analytics, employee summary |
+| Agent/Dobody | Bildirim, guidance, scheduler |
+| Module flags | Sidebar, sayfa erişim, scoring ağırlıkları |
+| Scoring servisleri | Dashboard'lar, raporlar, guidance |
+| Bildirim sistemi | Her modül bildirim gönderir |
+
+---
+
+## 8. FARKLI TABLOLAR — AYNI İSİM KAYNAKLIĞI
+
+DİKKAT — Bu tablolar benzer ama FARKLI:
+
+| Tablo 1 | Tablo 2 | Fark |
+|---------|---------|------|
+| shifts (şube vardiya) | factory_shift_sessions (fabrika) | Farklı yapı, farklı endpoint |
+| tasks (ad-hoc görevler) | branch_task_instances (tekrarlayan) | Farklı tablo, farklı UI tab |
+| pdks_records (genel) | factory_kiosk_session_events | Fabrika PDKS farklı kaynak |
+| kiosk_sessions (ortak) | factory_kiosk_sessions (eski?) | Hangisi aktif kontrol et |
+
+---
+
+## 9. PROMPT YAZARKEN CHECKLIST
+
+Her Replit promptu yazmadan önce şu soruları sor:
+
+1. ☐ Bu değişiklik hangi TABLOLARI etkiler?
+2. ☐ Bu tabloları başka hangi SERVİSLER/ENDPOINT'LER kullanıyor?
+3. ☐ HQ tarafında bu veriyi KİM görüyor?
+4. ☐ Şube tarafında bu veriyi KİM görüyor?
+5. ☐ Fabrika tarafında bu veriyi KİM görüyor?
+6. ☐ Mr. Dobody/Agent bu veriyi KULLANIYOR mu?
+7. ☐ Scheduler'lar bu veriyi İŞLİYOR mu?
+8. ☐ Employee Summary / Branch Health SKORU etkileniyor mu?
+9. ☐ Guidance Widget bunu TESPİT ediyor mu?
+10. ☐ Auth/Session mekanizması DEĞİŞİYOR mu?
+11. ☐ Kiosk (fabrika + şube) ETKİLENİYOR mu?
+12. ☐ Bildirim sistemi YENİ bildirim göndermeli mi?
+13. ☐ Module flag entegrasyonu GEREKLİ mi?
+14. ☐ Raporlama/export bu veriyi ÇEKİYOR mu?

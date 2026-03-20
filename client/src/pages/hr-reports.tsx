@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole, type UserRoleType } from "@shared/schema";
 import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
+import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import {
   Card,
   CardContent,
@@ -285,77 +286,16 @@ export default function HRReportsPage() {
       </MobileFilterCollapse>
 
       {/* Stats Cards */}
-      <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-5 gap-2 sm:gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-primary/10 dark:bg-primary/5/20 flex items-center justify-center">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
-              <p className="text-xs text-muted-foreground">Vardiya</p>
-              {isLoading ? <Skeleton className="h-5 w-12" /> : 
-                <p className="text-lg font-bold">{attendanceStats.totalRecords}</p>
-              }
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-success/10 dark:bg-success/10 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-success" />
-              </div>
-              <p className="text-xs text-muted-foreground">Toplam</p>
-              {isLoading ? <Skeleton className="h-5 w-12" /> : 
-                <p className="text-lg font-bold">{attendanceStats.totalHoursWorked.toFixed(1)}h</p>
-              }
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-secondary/10 dark:bg-secondary/5/20 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-secondary" />
-              </div>
-              <p className="text-xs text-muted-foreground">Ortalama</p>
-              {isLoading ? <Skeleton className="h-5 w-12" /> : 
-                <p className="text-lg font-bold">{attendanceStats.avgHoursPerShift.toFixed(1)}h</p>
-              }
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-warning/10 dark:bg-warning/5/20 flex items-center justify-center">
-                <Coffee className="h-4 w-4 text-warning" />
-              </div>
-              <p className="text-xs text-muted-foreground">Mola</p>
-              {isLoading ? <Skeleton className="h-5 w-12" /> : 
-                <p className="text-lg font-bold">{attendanceStats.totalBreakMinutes}m</p>
-              }
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex flex-col items-center text-center gap-1.5">
-              <div className="h-4 w-4 rounded-full bg-destructive/10 dark:bg-destructive/5/20 flex items-center justify-center">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-              </div>
-              <p className="text-xs text-muted-foreground">Geç</p>
-              {isLoading ? <Skeleton className="h-5 w-12" /> : 
-                <p className="text-lg font-bold text-warning">{attendanceStats.lateArrivals}</p>
-              }
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <CompactKPIStrip
+        items={[
+          { label: "Vardiya", value: isLoading ? "..." : attendanceStats.totalRecords, icon: <Users className="h-4 w-4 text-primary" />, color: "info" },
+          { label: "Toplam", value: isLoading ? "..." : `${attendanceStats.totalHoursWorked.toFixed(1)}h`, icon: <Clock className="h-4 w-4 text-success" />, color: "success" },
+          { label: "Ortalama", value: isLoading ? "..." : `${attendanceStats.avgHoursPerShift.toFixed(1)}h`, icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />, color: "default" },
+          { label: "Mola", value: isLoading ? "..." : `${attendanceStats.totalBreakMinutes}m`, icon: <Coffee className="h-4 w-4 text-warning" />, color: "warning" },
+          { label: "Geç", value: isLoading ? "..." : attendanceStats.lateArrivals, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: attendanceStats.lateArrivals > 0 ? "danger" : "default" },
+        ]}
+        desktopColumns={5}
+      />
 
       {/* Detailed Report Table */}
       <Card>
