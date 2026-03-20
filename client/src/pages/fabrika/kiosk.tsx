@@ -16,7 +16,7 @@ function kioskFetch(url: string, method: string = 'GET', data?: unknown): Promis
   });
 }
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -64,9 +64,26 @@ import {
   BarChart3,
   Repeat,
   ClipboardCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
+
+interface GuidanceItem {
+  id: string;
+  category: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  deepLink?: string;
+}
+
+interface GuidanceResponse {
+  totalGaps: number;
+  criticalCount: number;
+  items: GuidanceItem[];
+  grouped: { critical: GuidanceItem[]; high: GuidanceItem[]; medium: GuidanceItem[]; low: GuidanceItem[] };
+}
 
 type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'log-production' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
 type BreakReason = 'mola' | 'ozel_ihtiyac';
@@ -270,6 +287,15 @@ export default function FactoryKiosk() {
     queryFn: () => kioskFetchJson<TodayStats>(`/api/factory/kiosk/worker-today-stats?userId=${selectedUser!.id}`, { totalProduced: 0, totalWaste: 0, totalShiftMinutes: 0, totalBreakMinutes: 0, breakCount: 0, shiftCount: 0 }),
     enabled: !!selectedUser && (step === 'worker-home' || step === 'end-shift-summary'),
     refetchInterval: 30000,
+  });
+
+  const kioskToken = typeof window !== 'undefined' ? localStorage.getItem('factory-kiosk-token') : null;
+  const { data: guidanceData } = useQuery<GuidanceResponse>({
+    queryKey: ['/api/agent/guidance', kioskToken],
+    queryFn: () => kioskFetchJson<GuidanceResponse>('/api/agent/guidance', { totalGaps: 0, criticalCount: 0, items: [], grouped: { critical: [], high: [], medium: [], low: [] } }),
+    enabled: (step === 'select-user' || step === 'worker-home') && !!kioskToken,
+    refetchInterval: 300000,
+    retry: false,
   });
 
   const { data: collaborativeScores } = useQuery<any>({
@@ -735,35 +761,14 @@ export default function FactoryKiosk() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="fixed top-4 right-4 z-50 flex gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
-          onClick={handleFullscreen}
-          data-testid="button-fullscreen"
-        >
-          {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-slate-700/80 border-slate-600 text-slate-200 backdrop-blur-sm"
-          onClick={handleKioskExit}
-          data-testid="button-kiosk-exit"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Kiosk'tan Cik
-        </Button>
-      </div>
-
-      <Card className={cn("w-full bg-slate-800/90 border-slate-700 text-white shadow-2xl", step === 'select-user' ? 'max-w-5xl' : 'max-w-2xl')}>
-        <CardHeader className="text-center border-b border-slate-700 pb-6 relative">
+    <div className="h-screen w-screen overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="flex-shrink-0 h-14 border-b border-slate-700 flex items-center justify-between px-4 bg-slate-800/90">
+        <div className="flex items-center gap-3">
           {selectedUser && !['device-password', 'enter-credentials', 'select-user', 'enter-pin'].includes(step) && step !== 'end-shift-summary' && (
             <Button
               variant="outline"
-              className="absolute left-3 top-3 border-slate-600 text-slate-300 px-4 py-2 text-base"
+              size="sm"
+              className="border-slate-600 text-slate-300"
               onClick={() => {
                 if (step === 'on-break' && currentBreakLogId) {
                   kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
@@ -775,17 +780,41 @@ export default function FactoryKiosk() {
               }}
               data-testid="button-kiosk-home"
             >
-              <Home className="h-5 w-5 mr-1" />
+              <Home className="h-4 w-4 mr-1" />
               Ana Sayfa
             </Button>
           )}
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <Factory className="h-10 w-10 text-amber-500" />
-            <CardTitle className="text-3xl font-bold text-amber-500">DOSPRESSO Fabrika</CardTitle>
+          <div className="flex items-center gap-2">
+            <Factory className="h-6 w-6 text-amber-500" />
+            <span className="text-lg font-bold text-amber-500">DOSPRESSO Fabrika</span>
           </div>
-          <CardDescription className="text-slate-300 text-lg">Üretim Takip Sistemi</CardDescription>
-        </CardHeader>
-        
+          <span className="text-sm text-slate-400 hidden sm:inline">Üretim Takip Sistemi</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-slate-700/80 border-slate-600 text-slate-200"
+            onClick={handleFullscreen}
+            data-testid="button-fullscreen"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-slate-700/80 border-slate-600 text-slate-200"
+            onClick={handleKioskExit}
+            data-testid="button-kiosk-exit"
+          >
+            <LogOut className="h-4 w-4 mr-1" />
+            Kiosk'tan Cik
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto flex items-start justify-center p-4">
+      <Card className={cn("w-full bg-slate-800/90 border-slate-700 text-white shadow-2xl", step === 'select-user' ? 'max-w-5xl' : 'max-w-2xl')}>
         <CardContent className="p-8">
           {step === 'device-password' && (
             <div className="space-y-6">
@@ -933,7 +962,7 @@ export default function FactoryKiosk() {
           )}
 
           {step === 'select-user' && (
-            <div className="flex flex-col md:flex-row" style={{ minHeight: 'calc(100vh - 200px)' }}>
+            <div className="flex flex-col md:flex-row">
               <div className="md:w-3/5 p-4 overflow-y-auto">
                 <div className="text-center mb-4">
                   <h2 className="text-lg font-bold text-slate-100">DOSPRESSO Fabrika</h2>
@@ -1037,6 +1066,46 @@ export default function FactoryKiosk() {
                     );
                   })}
                 </div>
+
+                {guidanceData && guidanceData.items.length > 0 && (
+                  <div className="mt-3 p-3 bg-slate-700/50 rounded-lg" data-testid="kiosk-guidance-widget">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ShieldAlert className="h-4 w-4 text-amber-400" />
+                      <h3 className="text-xs font-medium text-amber-400 uppercase tracking-wider">
+                        Mr. Dobody ({guidanceData.criticalCount > 0 ? `${guidanceData.criticalCount} kritik` : `${guidanceData.totalGaps} uyarı`})
+                      </h3>
+                    </div>
+                    <div className="space-y-1.5">
+                      {guidanceData.items.slice(0, 3).map((item) => (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "p-2 rounded text-xs",
+                            item.severity === 'critical' ? 'bg-red-900/40 border border-red-500/30' :
+                            item.severity === 'high' ? 'bg-orange-900/40 border border-orange-500/30' :
+                            item.severity === 'medium' ? 'bg-yellow-900/40 border border-yellow-500/30' :
+                            'bg-slate-800/40 border border-slate-600/30'
+                          )}
+                          data-testid={`guidance-item-${item.id}`}
+                        >
+                          <p className={cn(
+                            "font-medium truncate",
+                            item.severity === 'critical' ? 'text-red-300' :
+                            item.severity === 'high' ? 'text-orange-300' :
+                            item.severity === 'medium' ? 'text-yellow-300' :
+                            'text-slate-300'
+                          )}>
+                            {item.title}
+                          </p>
+                          <p className="text-slate-400 truncate mt-0.5">{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {guidanceData.items.length > 3 && (
+                      <p className="text-[10px] text-slate-500 mt-1.5 text-center">+{guidanceData.items.length - 3} daha fazla uyarı</p>
+                    )}
+                  </div>
+                )}
 
                 {!(user && FABRIKA_ALLOWED_ROLES.includes(user.role)) && (
                   <Button
@@ -1188,6 +1257,23 @@ export default function FactoryKiosk() {
                     <p className="text-xl font-bold text-slate-100" data-testid="text-stat-break">{todayStats.totalBreakMinutes || 0}dk</p>
                     <p className="text-xs text-slate-400">Mola</p>
                   </div>
+                </div>
+              )}
+
+              {guidanceData && guidanceData.criticalCount > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-red-900/30 border border-red-500/30" data-testid="worker-home-guidance-banner">
+                  <ShieldAlert className="h-5 w-5 text-red-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-red-300">
+                      {guidanceData.grouped.critical[0]?.title}
+                    </p>
+                    <p className="text-xs text-red-400/70 truncate">
+                      {guidanceData.grouped.critical[0]?.description}
+                    </p>
+                  </div>
+                  {guidanceData.criticalCount > 1 && (
+                    <Badge className="bg-red-600/50 text-red-200 text-[10px] flex-shrink-0">+{guidanceData.criticalCount - 1}</Badge>
+                  )}
                 </div>
               )}
 
@@ -2093,6 +2179,7 @@ export default function FactoryKiosk() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       <AlertDialog open={!!pendingPhaseTransition} onOpenChange={(open) => { if (!open) setPendingPhaseTransition(null); }}>
         <AlertDialogContent className="bg-slate-800 border-slate-700 text-white max-w-sm">
