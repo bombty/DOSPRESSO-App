@@ -374,7 +374,6 @@ router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (re
           await storage.createUserCareerProgress(examRequest.userId, targetCareerLevel.id);
         }
         
-        console.log(`✅ Auto-promotion: User ${examRequest.userId} advanced to ${examRequest.targetRoleId}`);
       }
     } catch (promotionError: any) {
       console.error("Auto-promotion error:", promotionError);
@@ -582,7 +581,6 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
           completedModuleId = quiz.moduleId;
           await storage.addCompletedModuleToCareerProgress(req.user.id, quiz.moduleId);
           moduleCompleted = true;
-          console.log(`Training chain: User ${req.user.id} passed quiz ${quizId} (score: ${score}) -> module ${quiz.moduleId} added to completed_module_ids`);
         }
       }
     } catch (chainError: any) {
@@ -2058,7 +2056,6 @@ router.post('/api/academy/recipe-version', isAuthenticated, async (req: any, res
             link: `/academy/recipes/${data.recipeId}`,
           });
         }
-        console.log(`📢 Recipe version notifications sent to ${targetUsers.length} staff for "${updatedRecipe.nameTr}"`);
       }
     } catch (notifErr) {
       console.error("Recipe version notification error:", notifErr);
@@ -2194,7 +2191,6 @@ router.post('/api/academy/ai-generate-quiz/:moduleId', isAuthenticated, async (r
       }
     }
 
-    console.log(`🎓 AI Quiz: Modül ${moduleId} (${trainingModule.title}) için ${savedCount} soru oluşturuldu`);
 
     res.json({
       success: true,
@@ -2273,7 +2269,6 @@ router.post('/api/academy/ai-generate-all-quizzes', isAuthenticated, async (req:
 
         totalGenerated += savedCount;
         results.push({ moduleId: mod.id, title: mod.title, status: 'generated', questionCount: savedCount });
-        console.log(`🎓 AI Quiz: Modül ${mod.id} (${mod.title}) -> ${savedCount} soru`);
       } catch (moduleErr: any) {
         console.error(`AI quiz generation failed for module ${mod.id}:`, moduleErr.message);
         results.push({ moduleId: mod.id, title: mod.title, status: 'failed' });

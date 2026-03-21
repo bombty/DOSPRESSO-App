@@ -622,7 +622,6 @@ Mevcut aksiyonlar (tekrarlama): ${existingTitles || "yok"}`;
     );
 
     if (safetyResult.rejectedActions.length > 0) {
-      console.log(`Agent safety: ${safetyResult.rejectedActions.length} LLM actions filtered out`);
     }
 
     return { actions: validActions, tokensUsed, model };
@@ -646,7 +645,6 @@ export async function runAgentAnalysis(
     const roleGroup = getRoleGroup(user.role);
     const dailyCount = await getDailyActionCount(userId);
     if (dailyCount >= MAX_DAILY_ACTIONS_PER_USER) {
-      console.log(`Agent: Daily action limit reached for user ${userId} (${dailyCount}/${MAX_DAILY_ACTIONS_PER_USER})`);
       return { run: null, actionsCreated: 0 };
     }
 

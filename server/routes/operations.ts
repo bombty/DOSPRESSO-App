@@ -1108,7 +1108,6 @@ function ensurePermission(user: Express.User, module: string, action: string, er
           }
 
           // Log for monitoring
-          console.log(`Critical fault notification sent to ${hqTechUsers.length} technicians - Fault #${fault.id}`);
         } catch (notificationError) {
           console.error("Error sending critical fault notifications:", notificationError);
           // Don't fail the fault creation if notifications fail
@@ -1449,10 +1448,16 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       const comments = await db.select().from(faultComments).where(eq(faultComments.faultId, faultId)).orderBy(faultComments.createdAt);
 
-      const enriched = await Promise.all(comments.map(async (c) => {
-        const u = await storage.getUser(c.userId);
+      const userIds = [...new Set(comments.map(c => c.userId))];
+      const userList = userIds.length > 0
+        ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, role: users.role })
+            .from(users).where(inArray(users.id, userIds))
+        : [];
+      const userMap = new Map(userList.map(u => [u.id, u]));
+      const enriched = comments.map(c => {
+        const u = userMap.get(c.userId);
         return { ...c, userName: u ? `${u.firstName} ${u.lastName}` : "Bilinmeyen", userRole: u?.role || "" };
-      }));
+      });
       res.json(enriched);
     } catch (error: any) {
       console.error("Error fetching fault comments:", error);
@@ -1496,10 +1501,16 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       const history = await storage.getFaultStageHistory(id);
       const comments = await db.select().from(faultComments).where(eq(faultComments.faultId, id)).orderBy(faultComments.createdAt);
-      const enrichedComments = await Promise.all(comments.map(async (c) => {
-        const u = await storage.getUser(c.userId);
+      const commentUserIds = [...new Set(comments.map(c => c.userId))];
+      const commentUsers = commentUserIds.length > 0
+        ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, role: users.role })
+            .from(users).where(inArray(users.id, commentUserIds))
+        : [];
+      const commentUserMap = new Map(commentUsers.map(u => [u.id, u]));
+      const enrichedComments = comments.map(c => {
+        const u = commentUserMap.get(c.userId);
         return { ...c, userName: u ? `${u.firstName} ${u.lastName}` : "Bilinmeyen", userRole: u?.role || "" };
-      }));
+      });
 
       let equipmentInfo = null;
       if (fault.equipmentId) {
@@ -1857,7 +1868,6 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               branchId: branchId,
             });
           }
-          console.log(`📢 Critical notification sent to HQ staff for service request ${serviceRequest.id}`);
         } catch (notificationError) {
           console.error('Failed to send critical notifications:', notificationError);
         }
@@ -2617,10 +2627,15 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(eq(correctiveActionUpdates.correctiveActionId, capaId))
         .orderBy(desc(correctiveActionUpdates.createdAt));
 
-      const updatesWithUsers = await Promise.all(updates.map(async (update) => {
-        const [updatedBy] = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
-          .from(users).where(eq(users.id, update.updatedById));
-        return { ...update, updatedBy };
+      const updateUserIds = [...new Set(updates.map(u => u.updatedById))];
+      const updateUsers = updateUserIds.length > 0
+        ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(inArray(users.id, updateUserIds))
+        : [];
+      const updateUserMap = new Map(updateUsers.map(u => [u.id, u]));
+      const updatesWithUsers = updates.map(update => ({
+        ...update,
+        updatedBy: updateUserMap.get(update.updatedById) || undefined,
       }));
 
       res.json({
@@ -5460,7 +5475,6 @@ Turkish question: "${question.questionTr}"`;
           createdCapas.push(capa);
         }
         
-        console.log(`Created ${createdCapas.length} CAPA records for audit ${id}`);
       } catch (capaError) {
         // Log but don't fail the audit completion
         console.error("Error creating CAPA records:", capaError);

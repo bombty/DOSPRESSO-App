@@ -304,7 +304,7 @@ export default function Raporlar() {
       });
       doc.addImage(img, "JPEG", margin, yPos, 50, 25);
     } catch (e) {
-      console.log("Logo yüklenemedi");
+      console.error("Logo yüklenemedi");
     }
 
     // Header - Date
@@ -431,7 +431,7 @@ export default function Raporlar() {
         });
         doc.addImage(img, "JPEG", margin, yPos, 50, 25);
       } catch (e) {
-        console.log("Logo yüklenemedi");
+        console.error("Logo yüklenemedi");
       }
 
       // Header - Date
@@ -1007,7 +1007,7 @@ export default function Raporlar() {
                   </div>
                   <div className="p-3 rounded-lg border bg-gray-50 dark:bg-gray-900 text-center">
                     <p className="text-xs text-muted-foreground">Ekipman</p>
-                    <p className="text-lg font-bold text-gray-600">10%</p>
+                    <p className="text-lg font-bold text-muted-foreground">10%</p>
                   </div>
                 </div>
                 

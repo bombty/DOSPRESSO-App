@@ -745,7 +745,6 @@ router.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, 
             aiDressCodeTimestamp: new Date(),
           });
           
-          console.log(`✅ Dress code analyzed for attendance ${attendance.id}: ${analysis.score}/100`);
         } catch (error: any) {
           console.error("Error analyzing dress code:", error);
           await storage.updateShiftAttendance(attendance.id, {
@@ -832,7 +831,6 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any,
       );
       approvedOvertimeMinutes = approvedRequests.reduce((sum: number, req: any) => sum + (req.requestedMinutes || 0), 0);
     } catch (e) {
-      console.log('Could not fetch overtime requests:', e);
     }
     
     // Effective overtime = min(actual overtime, approved overtime)
@@ -844,7 +842,6 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any,
     // Log if there's unapproved overtime
     const unapprovedOvertimeMinutes = overtimeMinutes - effectiveOvertimeMinutes;
     if (unapprovedOvertimeMinutes > 0) {
-      console.log(`⚠️ Onaylanmamış mesai: ${unapprovedOvertimeMinutes} dakika (Kullanıcı: ${user.id}, Vardiya: ${shift.id})`);
     }
     
     const updated = await storage.updateShiftAttendance(userAttendance.id, {
@@ -2086,7 +2083,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
         
         const existingForDay = existingShiftsByDayAndEmployee.get(dayKey);
         if (existingForDay && existingForDay.has(employeeId)) {
-          console.log(`⚠️ Skipping duplicate: ${employeeId} already has shift on ${dayKey} (existing)`);
           return false;
         }
         
@@ -2095,7 +2091,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
         }
         const newForDay = newShiftsByDayAndEmployee.get(dayKey)!;
         if (newForDay.has(employeeId)) {
-          console.log(`⚠️ Skipping duplicate: ${employeeId} already assigned on ${dayKey} (in batch)`);
           return false;
         }
         
@@ -2137,7 +2132,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
       const targetDays = emp.employmentType === 'parttime' ? 3 : 6;
 
       if (currentCount > targetDays) {
-        console.log(`Trimming: ${emp.name} ${currentCount}/${targetDays} gun, ${currentCount - targetDays} siliniyor`);
         let removedCount = 0;
         for (let i = validatedShifts.length - 1; i >= 0 && removedCount < (currentCount - targetDays); i--) {
           if (validatedShifts[i].assignedToId === employeeId) {
@@ -2162,7 +2156,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
       const missingDays = targetDays - validatedShifts.filter(s => s.assignedToId === employeeId).length;
       if (missingDays <= 0) continue;
 
-      console.log(`Filler: ${emp.name} ${currentCount}/${targetDays} gun, ${missingDays} ekleniyor`);
 
       const assignedDates = new Set(
         validatedShifts.filter(s => s.assignedToId === employeeId).map(s => s.shiftDate)
@@ -2228,7 +2221,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
             if (validatedShifts[i].assignedToId === employeeId) {
               const dow = new Date(validatedShifts[i].shiftDate).getDay();
               if (dow === 1 || dow === 2) {
-                console.log(`Weekend swap: ${emp.name} removing ${validatedShifts[i].shiftDate} (${dow === 1 ? 'Mon' : 'Tue'}) for Saturday`);
                 validatedShifts.splice(i, 1);
                 break;
               }
@@ -2266,7 +2258,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
             if (validatedShifts[i].assignedToId === employeeId) {
               const dow = new Date(validatedShifts[i].shiftDate).getDay();
               if (dow === 1 || dow === 2) {
-                console.log(`Weekend swap: ${emp.name} removing ${validatedShifts[i].shiftDate} for Sunday`);
                 validatedShifts.splice(i, 1);
                 break;
               }
@@ -2302,7 +2293,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
       const empShiftCount = validatedShifts.filter(s => s.assignedToId === employeeId).length;
       
       if (empShiftCount > targetDays) {
-        console.log(`Final trim: ${emp.name} has ${empShiftCount}/${targetDays} shifts, removing ${empShiftCount - targetDays}`);
         let toRemove = empShiftCount - targetDays;
         const dayPriority = [1, 2, 3, 4];
         for (const dayTarget of dayPriority) {
@@ -2326,7 +2316,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
     for (let i = validatedShifts.length - 1; i >= 0; i--) {
       const key = `${validatedShifts[i].assignedToId}_${validatedShifts[i].shiftDate}`;
       if (seenShifts.has(key)) {
-        console.log(`Removing duplicate: ${key}`);
         validatedShifts.splice(i, 1);
       } else {
         seenShifts.add(key);
@@ -2334,7 +2323,6 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
     }
 
     const finalPlannedCount = new Set(validatedShifts.map(s => s.assignedToId)).size;
-    console.log(`Final: ${validatedShifts.length} vardiya, ${finalPlannedCount}/${employees.length} personel`);
 
     res.json({
       recommendations: validatedShifts,
@@ -2733,7 +2721,6 @@ router.post('/api/shifts/ai-apply', isAuthenticated, async (req: any, res) => {
           sql`${shifts.shiftDate} < ${weekEndStr}`,
           isNull(shifts.deletedAt)
         ));
-      console.log(`[Shifts] Soft-deleted ${existingShifts.length} existing shifts for branch ${branchId}, week ${weekStartDate}`);
     }
 
     let created = 0;

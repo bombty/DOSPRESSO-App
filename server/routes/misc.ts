@@ -1138,7 +1138,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         } else if (permissionModule) {
           const canView = hasPermission(userRole, permissionModule, 'view');
           if (!canView) {
-            console.log(`[Dashboard] Skipping ${subModulePath} - no permission for ${permissionModule}`);
             continue; // Yetkisi olmayan modülü atla
           }
         }
@@ -2022,7 +2021,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         );
         
         if (knowledgeResults.length > 0) {
-          console.log(`📚 Found ${knowledgeResults.length} equipment knowledge entries for context`);
           // Add knowledge to context
           const knowledgeContext = knowledgeResults
             .slice(0, 3)
@@ -2042,7 +2040,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         if (isRecipeQuestion) {
           const recipeResults = await storage.searchRecipesForAI(question);
           if (recipeResults.length > 0) {
-            console.log(`🍵 Found ${recipeResults.length} recipes for context`);
             const recipeContext = recipeResults.map(r => {
               const massivoInfo = r.size?.massivo ? 
                 `Massivo (${r.size.massivo.cupMl}ml): ${r.size.massivo.espresso || ''} ${r.size.massivo.milk?.ml ? r.size.massivo.milk.ml + 'ml ' + r.size.massivo.milk.type : ''}` : '';
@@ -2849,7 +2846,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
         dynamicPermissions
       );
       
-      console.log(`[/api/me/menu v2] User: ${user.username}, Role: ${userRole}, Scope: ${menuResponse.meta.scope}, Sections: ${menuResponse.sections.length}, DynamicPerms: ${dynamicPermissions.length}`);
       
       return res.status(200).json(menuResponse);
     } catch (error: any) {
@@ -4028,7 +4024,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
               effectiveWorkMinutes: newEffectiveWorkMinutes,
             });
             
-            console.log(`✅ Retroactive overtime approval: Updated attendance ${relevantAttendance.id} effectiveWorkMinutes from ${relevantAttendance.effectiveWorkMinutes} to ${newEffectiveWorkMinutes}`);
           }
         } catch (error: any) {
           console.error("Error updating attendance for retroactive overtime approval:", error);
@@ -5026,7 +5021,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
           // Badge already exists, skip
         }
       }
-      console.log('✅ Badge seeding complete');
     } catch (error: any) {
       console.error('Badge seeding error:', error);
     }
@@ -6404,7 +6398,6 @@ const normalizeTimeGlobal = (timeStr: string): string => {
       
       await transporter.sendMail(mailOptions);
       
-      console.log(`Service request email sent to ${serviceEmail} for fault ${faultId} by user ${user.id}`);
       
       res.json({ message: "Servis talebi e-postası gönderildi" });
     } catch (error: any) {
@@ -7948,7 +7941,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
             console.error("Banner upload failed:", uploadResult.error);
             bannerImageUrl = imageData;
           } else {
-            console.log("Banner uploaded successfully to:", filename);
             bannerImageUrl = `https://objectstorage.us-west-2.replit.dev/${bucketId}/${filename}`;
           }
         } catch (error: any) {
@@ -7956,7 +7948,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
           bannerImageUrl = imageData;
         }
       } else {
-        console.log("Object Storage not configured, using base64 for banner image");
         bannerImageUrl = imageData;
       }
       
@@ -8001,7 +7992,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         return res.status(403).json({ message: "AI görsel oluşturma yetkiniz yok" });
       }
 
-      console.log(`[AI] Generating image for user ${req.user?.id}, prompt: ${prompt.substring(0, 50)}...`);
 
       // OpenAI DALL-E API'sini çağır (Replit AI Integrations üzerinden)
       const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -8032,7 +8022,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         return res.status(500).json({ message: "Görsel URL alınamadı" });
       }
 
-      console.log(`[AI] DALL-E returned temp URL, downloading and uploading to Object Storage...`);
 
       // Geçici URL'den görseli indir
       const imageResponse = await fetch(tempImageUrl);
@@ -8075,7 +8064,6 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
       // Public URL oluştur
       const publicUrl = `https://storage.googleapis.com/${bucketId}/${fileName}`;
       
-      console.log(`[AI] Image saved to Object Storage: ${publicUrl}`);
 
       res.json({ imageUrl: publicUrl });
     } catch (error: any) {
@@ -8789,12 +8777,16 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(managerMonthlyRatings.createdAt));
 
-      const enriched = await Promise.all(ratings.map(async (r) => {
-        const employee = await db.select({ firstName: users.firstName, lastName: users.lastName })
-          .from(users).where(eq(users.id, r.employeeId)).limit(1);
-        const manager = await db.select({ firstName: users.firstName, lastName: users.lastName })
-          .from(users).where(eq(users.id, r.managerId)).limit(1);
-        return { ...r, employee: employee[0] || null, manager: manager[0] || null };
+      const allUserIds = [...new Set([...ratings.map(r => r.employeeId), ...ratings.map(r => r.managerId)])];
+      const ratingUsers = allUserIds.length > 0
+        ? await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(inArray(users.id, allUserIds))
+        : [];
+      const ratingUserMap = new Map(ratingUsers.map(u => [u.id, { firstName: u.firstName, lastName: u.lastName }]));
+      const enriched = ratings.map(r => ({
+        ...r,
+        employee: ratingUserMap.get(r.employeeId) || null,
+        manager: ratingUserMap.get(r.managerId) || null,
       }));
 
       res.json(enriched);
@@ -8918,12 +8910,24 @@ DOSPRESSO İnsan Kaynakları Ekibi`;
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(staffQrTokens.createdAt));
       
-      const enriched = await Promise.all(tokens.map(async (t) => {
-        const [staff] = await db.select({ firstName: users.firstName, lastName: users.lastName })
-          .from(users).where(eq(users.id, t.staffId)).limit(1);
-        const [branch] = await db.select({ name: branches.name })
-          .from(branches).where(eq(branches.id, t.branchId)).limit(1);
-        return { ...t, staff, branch };
+      const staffIds = [...new Set(tokens.map(t => t.staffId))];
+      const branchIds = [...new Set(tokens.map(t => t.branchId))];
+      const [staffList, branchList] = await Promise.all([
+        staffIds.length > 0
+          ? db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+              .from(users).where(inArray(users.id, staffIds))
+          : Promise.resolve([]),
+        branchIds.length > 0
+          ? db.select({ id: branches.id, name: branches.name })
+              .from(branches).where(inArray(branches.id, branchIds))
+          : Promise.resolve([]),
+      ]);
+      const staffMap = new Map(staffList.map(s => [s.id, { firstName: s.firstName, lastName: s.lastName }]));
+      const branchMap2 = new Map(branchList.map(b => [b.id, { name: b.name }]));
+      const enriched = tokens.map(t => ({
+        ...t,
+        staff: staffMap.get(t.staffId) || null,
+        branch: branchMap2.get(t.branchId) || null,
       }));
       
       res.json(enriched);

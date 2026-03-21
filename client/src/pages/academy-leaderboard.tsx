@@ -117,7 +117,7 @@ export default function AcademyLeaderboard() {
                 <div key={performer.rank} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className="text-center">
-                      <Trophy className={`w-5 h-5 mx-auto ${performer.rank === 1 ? "text-warning" : performer.rank === 2 ? "text-gray-400" : performer.rank === 3 ? "text-warning" : "text-gray-500"}`} />
+                      <Trophy className={`w-5 h-5 mx-auto ${performer.rank === 1 ? "text-warning" : performer.rank === 2 ? "text-muted-foreground" : performer.rank === 3 ? "text-warning" : "text-muted-foreground"}`} />
                       <p className="text-xs font-bold mt-1">#{performer.rank}</p>
                     </div>
                     <Avatar className="h-10 w-10">
@@ -180,7 +180,7 @@ export default function AcademyLeaderboard() {
                   <div key={performer.userId} className="flex items-center justify-between p-3 border rounded-lg hover-elevate">
                     <div className="flex items-center gap-2 sm:gap-3">
                       <div className="text-center">
-                        <Flame className={`w-5 h-5 mx-auto ${idx === 0 ? "text-red-500" : idx === 1 ? "text-warning" : idx === 2 ? "text-warning" : "text-gray-500"}`} />
+                        <Flame className={`w-5 h-5 mx-auto ${idx === 0 ? "text-red-500" : idx === 1 ? "text-warning" : idx === 2 ? "text-warning" : "text-muted-foreground"}`} />
                         <p className="text-xs font-bold mt-1">#{idx + 1}</p>
                       </div>
                       <Avatar className="h-10 w-10">

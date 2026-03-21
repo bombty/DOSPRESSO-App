@@ -227,7 +227,6 @@ async function exportAllTablesToStorage(backupId: string): Promise<ExportResult>
   }
 
   if (optionalSkipped.length > 0) {
-    console.log(`ℹ️ Atlanan opsiyonel tablolar (${optionalSkipped.length}): ${optionalSkipped.join(', ')}`);
   }
 
   const errorSummary = criticalErrors.length > 0
@@ -280,7 +279,6 @@ async function loadBackupHistory(): Promise<void> {
       backupStatus.lastBackupSuccess = lastRecord.success;
     }
     
-    console.log(`📚 ${records.length} backup kaydı veritabanından yüklendi`);
   } catch (error) {
     console.error('Backup geçmişi yüklenemedi:', error);
   }
@@ -327,7 +325,6 @@ async function createBackupSnapshot(backupType: 'hourly' | 'daily' | 'weekly' | 
     
     const recordCounts = await getTableRecordCounts();
     
-    console.log(`📦 Tablolar object storage'a yedekleniyor...`);
     const exportResult = await exportAllTablesToStorage(backupId);
     
     const duration = Date.now() - startTime;
@@ -379,8 +376,6 @@ async function createBackupSnapshot(backupType: 'hourly' | 'daily' | 'weekly' | 
     } else {
       console.warn(`❌ Backup başarısız: ${backupId} (${duration}ms) - ${exportResult.criticalErrors.length} kritik hata`);
     }
-    console.log(`📦 Object storage'a ${exportResult.totalExported} kayıt yedeklendi`);
-    console.log(`💾 Backup veritabanına kaydedildi (ID: ${backupRecord.id})`);
     
     return backupRecord;
   } catch (error: any) {
@@ -452,7 +447,6 @@ async function notifyAdminsAboutBackup(backupRecord: schema.BackupRecord): Promi
       });
     }
     
-    console.log(`📧 ${admins.length} admin'e backup bildirimi gönderildi`);
   } catch (error) {
     console.error('Backup bildirimi gönderilemedi:', error);
   }
@@ -496,7 +490,6 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
       await runHourlyBackupWithRetention();
     }, 30 * 1000);
   } else {
-    console.log('✅ Guncel backup mevcut — sonraki saatlik dongude devam edecek');
   }
   
   schedulerManager.registerInterval('backup-hourly', async () => {
@@ -508,7 +501,6 @@ export async function startWeeklyBackupScheduler(): Promise<void> {
 
 async function runHourlyBackupWithRetention(): Promise<void> {
   if (backupJobRunning) {
-    console.log('⏳ Önceki backup hala çalışıyor, bu tur atlanıyor (mutex)');
     return;
   }
   backupJobRunning = true;
@@ -540,7 +532,6 @@ async function deleteBackupFiles(backupId: string): Promise<boolean> {
       } catch {
       }
     }
-    console.log(`🗑️ Object storage dosyaları silindi: ${backupId} (${deletedCount} dosya)`);
     return true;
   } catch (error: any) {
     console.error(`⚠️ Object storage dosyaları silinemedi (${backupId}):`, error?.message);
@@ -561,7 +552,6 @@ async function enforceRetentionPolicy(): Promise<void> {
       if (allRecords.length <= limit) continue;
       
       const toDelete = allRecords.slice(limit);
-      console.log(`🗑️ Retention: ${backupType} backuplarından ${toDelete.length} eski kayıt siliniyor (limit: ${limit})`);
       
       for (const record of toDelete) {
         const filesDeleted = await deleteBackupFiles(record.backupId);
@@ -573,7 +563,6 @@ async function enforceRetentionPolicy(): Promise<void> {
         }
       }
       
-      console.log(`✅ Retention tamamlandı: ${backupType} (${allRecords.length} → ${limit})`);
     }
   } catch (error: any) {
     console.error('⚠️ Retention politikası uygulanırken hata:', error?.message);
@@ -757,7 +746,6 @@ export async function restoreFromBackup(backupId: string): Promise<{
         const [exists] = await file.exists();
         
         if (!exists) {
-          console.log(`⏭️ ${tableName} backup dosyası bulunamadı, atlanıyor`);
           continue;
         }
         
@@ -765,7 +753,6 @@ export async function restoreFromBackup(backupId: string): Promise<{
         const rows = JSON.parse(content.toString());
         
         if (!Array.isArray(rows) || rows.length === 0) {
-          console.log(`⏭️ ${tableName} boş, atlanıyor`);
           continue;
         }
         
@@ -809,7 +796,6 @@ export async function restoreFromBackup(backupId: string): Promise<{
           
           tablesRestored.push(tableName);
           totalRecords += rows.length;
-          console.log(`✅ ${tableName}: ${rows.length} kayıt geri yüklendi`);
         } catch (err: any) {
           // Transaction will rollback on error
           throw new Error(`${tableName}: ${err?.message || String(err)}`);

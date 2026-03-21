@@ -144,7 +144,6 @@ export async function generateTasksForAllActiveUsers(): Promise<{ totalCreated: 
         isNull(users.deletedAt)
       ));
 
-    console.log(`[TaskTrigger] Generating tasks for ${activeUsers.length} active users...`);
 
     for (const user of activeUsers) {
       const result = await generateTasksForUser(user.id);
@@ -153,7 +152,6 @@ export async function generateTasksForAllActiveUsers(): Promise<{ totalCreated: 
       usersProcessed++;
     }
 
-    console.log(`[TaskTrigger] Done: ${usersProcessed} users, ${totalCreated} created, ${totalSkipped} skipped`);
   } catch (err) {
     console.error("[TaskTrigger] Error in generateTasksForAllActiveUsers:", err);
   }

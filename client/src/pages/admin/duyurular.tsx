@@ -321,7 +321,7 @@ export default function AdminDuyurular() {
     const published = announcement.publishedAt ? new Date(announcement.publishedAt) : null;
     const expires = announcement.expiresAt ? new Date(announcement.expiresAt) : null;
     
-    if (expires && now > expires) return { label: "Süresi Dolmuş", color: "bg-gray-500/10 text-gray-500" };
+    if (expires && now > expires) return { label: "Süresi Dolmuş", color: "bg-muted text-muted-foreground" };
     if (published && now < published) return { label: "Planlandı", color: "bg-blue-500/10 text-blue-600" };
     return { label: "Aktif", color: "bg-green-500/10 text-green-600" };
   };

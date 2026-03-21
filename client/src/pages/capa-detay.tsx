@@ -79,7 +79,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, { badge: string; icon: typeof AlertTriangle }> = {
   OPEN: { badge: "bg-blue-500 text-white", icon: AlertCircle },
-  IN_PROGRESS: { badge: "bg-yellow-500 text-black", icon: Clock },
+  IN_PROGRESS: { badge: "bg-yellow-500 text-foreground", icon: Clock },
   PENDING_REVIEW: { badge: "bg-purple-500 text-white", icon: Shield },
   CLOSED: { badge: "bg-green-500 text-white", icon: CheckCircle2 },
   ESCALATED: { badge: "bg-red-500 text-white", icon: AlertTriangle },
@@ -93,8 +93,8 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-500 text-white",
-  medium: "bg-yellow-500 text-black",
+  low: "bg-gray-500 text-white dark:bg-gray-600",
+  medium: "bg-yellow-500 text-foreground",
   high: "bg-orange-500 text-white",
   critical: "bg-red-600 text-white",
 };
@@ -539,7 +539,7 @@ export default function CapaDetayPage() {
                           </Badge>
                         )}
                         {update.oldStatus && <span className="text-xs">→</span>}
-                        <Badge className={STATUS_COLORS[update.newStatus]?.badge || 'bg-gray-500'}>
+                        <Badge className={STATUS_COLORS[update.newStatus]?.badge || 'bg-muted text-muted-foreground'}>
                           {STATUS_LABELS[update.newStatus] || update.newStatus}
                         </Badge>
                       </div>
@@ -582,7 +582,7 @@ export default function CapaDetayPage() {
               
               {/* Creation event */}
               <div className="relative" data-testid="timeline-item-created">
-                <div className="absolute -left-4 top-1 w-3 h-3 rounded-full border-2 border-background bg-gray-400" />
+                <div className="absolute -left-4 top-1 w-3 h-3 rounded-full border-2 border-background bg-muted-foreground/40" />
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <Badge variant="outline">Oluşturuldu</Badge>

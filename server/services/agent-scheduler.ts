@@ -130,7 +130,6 @@ async function deactivateInactiveUsers(): Promise<void> {
       );
 
     if (inactiveUsers.length === 0) {
-      console.log("[AgentScheduler] No inactive users found to deactivate.");
       return;
     }
 
@@ -163,7 +162,6 @@ async function deactivateInactiveUsers(): Promise<void> {
       });
     }
 
-    console.log(`[AgentScheduler] Deactivated ${inactiveUsers.length} inactive user(s).`);
   } catch (err) {
     console.error("[AgentScheduler] Inactive user deactivation error:", err);
   }
@@ -234,7 +232,6 @@ async function runDailyAnalysis(): Promise<void> {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log(`[AgentScheduler] Günlük analiz tamamlandı: ${totalProcessed} kullanıcı, ${totalActions} aksiyon, ${totalErrors} hata`);
   } catch (err) {
     console.error("[AgentScheduler] Günlük analiz hatası:", err);
   }
@@ -276,7 +273,6 @@ async function runWeeklySummary(): Promise<void> {
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    console.log(`[AgentScheduler] Haftalık özet tamamlandı: ${totalProcessed} kullanıcı, ${totalActions} aksiyon, ${totalErrors} hata`);
   } catch (err) {
     console.error("[AgentScheduler] Haftalık özet hatası:", err);
   }
@@ -324,7 +320,6 @@ async function checkEventTriggers(): Promise<void> {
 
     if (!shouldTrigger) return;
 
-    console.log(`[AgentScheduler] Event trigger tespit edildi: stok_sifir=${zeroStockCount}, sla_ihlali=${slaBreachCount}, feedback_sla=${feedbackSlaCount}`);
 
     const targetGroups = [];
     if (zeroStockCount >= 3) targetGroups.push("hq_finance");
@@ -342,7 +337,6 @@ async function checkEventTriggers(): Promise<void> {
         "daily_analysis",
         "event"
       );
-      console.log(`[AgentScheduler] Event-triggered analiz: ${result.usersProcessed} kullanıcı, ${result.totalActions} aksiyon`);
     }
   } catch (err) {
     console.error("[AgentScheduler] Event trigger kontrolü hatası:", err);
@@ -387,7 +381,6 @@ async function runSkillsBySchedule(schedule: "hourly" | "daily" | "weekly"): Pro
       }
     }
 
-    console.log(`[SkillScheduler] ${label} skill tamamlandi: ${processed} kullanici, ${errors} hata`);
   } catch (err) {
     console.error(`[SkillScheduler] ${label} skill hatasi:`, err);
   }
@@ -396,7 +389,6 @@ async function runSkillsBySchedule(schedule: "hourly" | "daily" | "weekly"): Pro
 async function runHourlySkills(): Promise<void> {
   const turkeyHour = getTurkeyDate().getUTCHours();
   if (turkeyHour < 7 || turkeyHour >= 20) {
-    console.log("[SkillScheduler] Sessiz saat, saatlik skill'ler atlanıyor.");
     return;
   }
   await runSkillsBySchedule("hourly");
@@ -472,7 +464,6 @@ export function startAgentScheduler(): void {
     try {
       const result = await runEscalationCheck();
       if (result.results.length > 0) {
-        console.log(`[AgentScheduler] Escalation check: ${result.results.length} aksiyon yukseltildi`);
       }
     } catch (err) {
       console.error("[AgentScheduler] Escalation check error:", err);
@@ -482,7 +473,6 @@ export function startAgentScheduler(): void {
 
     try {
       const cnt = await checkRoutingEscalations();
-      if (cnt > 0) console.log(`[RoutingEscalation] ${cnt} aksiyon eskalasyon edildi`);
     } catch (err) {
       console.error("[RoutingEscalation] Hata:", err);
     }
@@ -506,7 +496,6 @@ export function startAgentScheduler(): void {
   schedulerManager.registerInterval('skill-queue', async () => {
     try {
       const sent = await sendQueuedNotifications();
-      if (sent > 0) console.log(`[SkillScheduler] Kuyruklu bildirim: ${sent} gonderildi`);
     } catch {}
   }, 30 * 60 * 1000);
   console.log("[SkillScheduler] Kuyruk kontrolu her 30 dakikada calisacak.");
@@ -526,7 +515,6 @@ export function startAgentScheduler(): void {
     schedulerManager.registerInterval('outcome-check', async () => {
       try {
         const cnt = await checkActionOutcomes();
-        if (cnt > 0) console.log(`[OutcomeTracking] ${cnt} sonuc kontrolu tamamlandi`);
       } catch (err) {
         console.error("[OutcomeTracking] Hata:", err);
       }

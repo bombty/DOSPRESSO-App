@@ -114,7 +114,7 @@ export default function AcademyLearningPathDetail() {
                           <h3 className="text-xs font-semibold flex items-center gap-1">
                             {quiz.status === "completed" && <CheckCircle2 className="w-4 h-4 text-success" />}
                             {quiz.status === "recommended" && <Zap className="w-4 h-4 text-warning" />}
-                            {quiz.status === "locked" && <Lock className="w-4 h-4 text-gray-400" />}
+                            {quiz.status === "locked" && <Lock className="w-4 h-4 text-muted-foreground" />}
                             {(quiz.status === "available") && <Circle className="w-4 h-4 text-primary" />}
                             {quiz.title}
                           </h3>

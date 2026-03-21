@@ -446,8 +446,8 @@ export default function DenetimYurutmePage() {
     const colors: Record<string, string> = {
       'critical': 'bg-red-500 text-white',
       'high': 'bg-orange-500 text-white',
-      'medium': 'bg-yellow-500 text-black',
-      'low': 'bg-gray-500 text-white',
+      'medium': 'bg-yellow-500 text-foreground',
+      'low': 'bg-muted text-muted-foreground',
     };
     const labels: Record<string, string> = {
       'critical': 'Kritik',

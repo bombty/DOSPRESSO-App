@@ -67,7 +67,7 @@ export default function NFCGiris() {
         await reader.scan();
 
         reader.addEventListener("reading", async ({ message, serialNumber }: NDEFReading) => {
-          console.log("NFC Tag detected:", serialNumber);
+          
           setScannedData(serialNumber);
           
           // Get location
@@ -149,7 +149,7 @@ export default function NFCGiris() {
             {/* Status */}
             <div className="border rounded-lg p-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-3">
-                <div className={`h-3 w-3 rounded-full ${isScanning ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
+                <div className={`h-3 w-3 rounded-full ${isScanning ? 'bg-blue-500 animate-pulse' : 'bg-muted'}`} />
                 <span className="text-sm font-medium">
                   {isScanning ? "NFC Aranıyor..." : "NFC Taraması Başlamadı"}
                 </span>

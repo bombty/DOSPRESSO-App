@@ -495,7 +495,7 @@ export function CardGridHub() {
       icon: Settings, 
       label: navLabel("admin-settings", "Yönetim"), 
       path: "/yonetim/ayarlar",
-      color: "bg-slate-600",
+      color: "bg-muted-foreground",
       description: navDesc("admin-settings", "Sistem ayarları")
     },
     { 
@@ -668,7 +668,7 @@ export function CardGridHub() {
   };
 
   const getColor = (moduleId: string | undefined | null) => {
-    if (!moduleId) return "bg-slate-400";
+    if (!moduleId) return "bg-muted";
     const colorMap: Record<string, string> = {
       "akademi": "bg-blue-500",
       "akademi-hq": "bg-blue-500",
@@ -714,9 +714,9 @@ export function CardGridHub() {
       "projeler": "bg-violet-600",
       "projects": "bg-violet-600",
       "projects-main": "bg-violet-600",
-      "ayarlar": "bg-slate-600",
-      "settings": "bg-slate-600",
-      "settings-main": "bg-slate-600",
+      "ayarlar": "bg-muted-foreground",
+      "settings": "bg-muted-foreground",
+      "settings-main": "bg-muted-foreground",
       "admin": "bg-red-600",
       "admin-main": "bg-red-600",
       "yetkilendirme": "bg-red-600",
@@ -736,7 +736,7 @@ export function CardGridHub() {
       "branch-dashboard": "bg-indigo-500",
       "branches": "bg-indigo-500",
       "branches-list": "bg-indigo-500",
-      "qr-scan": "bg-gray-500",
+      "qr-scan": "bg-muted",
       "tasks-list": "bg-green-500",
       "training-academy": "bg-blue-500",
       "knowledge-base": "bg-emerald-500",
@@ -755,7 +755,7 @@ export function CardGridHub() {
       "crm": "bg-rose-500",
       "crm-dashboard": "bg-rose-500",
     };
-    return colorMap[moduleId.toLocaleLowerCase('tr-TR')] || "bg-slate-400";
+    return colorMap[moduleId.toLocaleLowerCase('tr-TR')] || "bg-muted";
   };
 
   // Badge mapping for dynamic modules
@@ -819,7 +819,7 @@ export function CardGridHub() {
 
   // Get section color based on section ID
   const getSectionColor = (sectionId: string | undefined): string => {
-    if (!sectionId) return "bg-slate-500";
+    if (!sectionId) return "bg-muted";
     const colorMap: Record<string, string> = {
       "dashboard-hq": "bg-indigo-500",
       "dashboard-branch": "bg-indigo-500",
@@ -842,8 +842,8 @@ export function CardGridHub() {
       "projects-section": "bg-violet-600",
       "admin": "bg-red-600",
       "admin-section": "bg-red-600",
-      "settings": "bg-slate-600",
-      "settings-section": "bg-slate-600",
+      "settings": "bg-muted-foreground",
+      "settings-section": "bg-muted-foreground",
       "support": "bg-rose-500",
       "support-section": "bg-rose-500",
       "quality": "bg-amber-500",
@@ -1042,7 +1042,7 @@ export function CardGridHub() {
                   <div className={`w-2 h-2 rounded-full ${
                     shift.shiftType === 'sabah' ? 'bg-amber-500' : 
                     shift.shiftType === 'aksam' ? 'bg-indigo-500' : 
-                    shift.shiftType === 'gece' ? 'bg-slate-700' : 'bg-green-500'
+                    shift.shiftType === 'gece' ? 'bg-muted' : 'bg-green-500'
                   }`} />
                   <span className="font-medium capitalize">{shift.shiftType || 'Tam Gün'}</span>
                 </div>

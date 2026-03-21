@@ -27,7 +27,6 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ''),
     });
-    console.log(`📧 Email sent to ${options.to}: ${options.subject}`);
   } catch (error) {
     console.error('Email send error:', error);
     // Don't throw - notifications are best-effort

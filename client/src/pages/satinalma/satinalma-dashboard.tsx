@@ -417,8 +417,8 @@ export default function SatinalmaDashboard() {
       title: "Düşük Stok Uyarısı",
       value: data?.lowStockAlerts || 0,
       icon: AlertTriangle,
-      color: data?.lowStockAlerts && data.lowStockAlerts > 0 ? "text-red-500" : "text-gray-500",
-      bgColor: data?.lowStockAlerts && data.lowStockAlerts > 0 ? "bg-red-500/10" : "bg-gray-500/10"
+      color: data?.lowStockAlerts && data.lowStockAlerts > 0 ? "text-red-500" : "text-muted-foreground",
+      bgColor: data?.lowStockAlerts && data.lowStockAlerts > 0 ? "bg-red-500/10" : "bg-muted"
     }
   ];
 

@@ -161,10 +161,10 @@ export function AgentAdminPanel() {
                       pending: { label: "Bekleyen", color: "bg-amber-500" },
                       approved: { label: "Onaylanan", color: "bg-green-500" },
                       rejected: { label: "Reddedilen", color: "bg-red-500" },
-                      expired: { label: "Süresi Dolan", color: "bg-gray-500" },
+                      expired: { label: "Süresi Dolan", color: "bg-muted text-muted-foreground" },
                       auto_resolved: { label: "Otomatik Çözülen", color: "bg-blue-500" },
                     };
-                    const config = labels[status] || { label: status, color: "bg-gray-400" };
+                    const config = labels[status] || { label: status, color: "bg-muted" };
                     const total = Object.values(stats.statusBreakdown).reduce((a, b) => a + b, 0);
                     const pct = total > 0 ? Math.round((cnt / total) * 100) : 0;
 

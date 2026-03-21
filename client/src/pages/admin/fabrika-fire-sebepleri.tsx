@@ -152,7 +152,7 @@ export default function AdminFabrikaFireSebepleri() {
       case 'ekipman': return 'bg-purple-600';
       case 'insan': return 'bg-red-600';
       case 'kalite': return 'bg-green-600';
-      default: return 'bg-gray-600';
+      default: return 'bg-muted-foreground';
     }
   };
 

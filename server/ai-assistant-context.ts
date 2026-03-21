@@ -225,7 +225,7 @@ ${Object.entries(roleDistribution).sort(([,a], [,b]) => b - a).slice(0, 8).map((
           db.select().from(customerFeedback),
           db.select().from(trainingCompletions),
         ]);
-      } catch (e) { console.log("Coach extra context error:", e); }
+      } catch (e) { /* extra context fetch failed, continue with defaults */ }
 
       const activeUsers = usersData.filter(u => u.isActive);
 

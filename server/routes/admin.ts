@@ -2954,7 +2954,6 @@ const router = Router();
       }
 
       const userId = String(user.id);
-      console.log("[TEST-NOTIF] inserting for userId:", userId);
 
       const created = await storage.createNotification({
         userId,
@@ -2967,7 +2966,6 @@ const router = Router();
 
       const [row] = await db.select({ cnt: count() }).from(notifications).where(eq(notifications.userId, userId));
       const countForUser = row?.cnt ?? 0;
-      console.log("[TEST-NOTIF] insertedId:", created.id, "countForUser:", countForUser);
 
       if (countForUser === 0) {
         console.error("[TEST-NOTIF] COUNT is 0 after insert! userId:", userId, "insertedId:", created.id);

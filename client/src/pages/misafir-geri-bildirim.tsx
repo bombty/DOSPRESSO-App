@@ -718,7 +718,7 @@ export default function MisafirGeriBildirim() {
               className={`h-9 w-9 sm:h-10 sm:w-10 transition-colors ${
                 star <= value 
                   ? 'fill-amber-400 text-amber-400 drop-shadow-md' 
-                  : 'text-gray-300 hover:text-amber-200'
+                  : 'text-muted-foreground hover:text-amber-200'
               }`}
             />
           </button>
@@ -737,7 +737,7 @@ export default function MisafirGeriBildirim() {
           className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-sm transition-all min-h-[40px] touch-manipulation ${
             lang === code 
               ? 'bg-amber-600 text-white shadow-md' 
-              : 'bg-white/80 hover:bg-white text-gray-700 shadow'
+              : 'bg-card hover:bg-accent text-foreground shadow'
           }`}
           data-testid={`lang-${code}`}
         >
@@ -1126,7 +1126,7 @@ export default function MisafirGeriBildirim() {
 
               {/* Anonymous Checkbox */}
               {(formSettings?.allowAnonymous !== false) && (
-                <div className="flex items-center space-x-2 bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 bg-muted p-3 rounded-lg">
                   <Checkbox
                     id="anonymous"
                     checked={isAnonymous}

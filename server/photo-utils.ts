@@ -36,7 +36,6 @@ export async function compressChecklistPhoto(imageBuffer: Buffer): Promise<Buffe
       .webp({ quality: CHECKLIST_PHOTO_CONFIG.quality })
       .toBuffer();
     
-    console.log(`📸 Checklist photo compressed: ${imageBuffer.length} → ${compressed.length} bytes`);
     return compressed;
   } catch (error) {
     console.error('Error compressing checklist photo:', error);

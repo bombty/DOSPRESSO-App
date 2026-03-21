@@ -263,7 +263,7 @@ export default function AdminKullanicilar() {
                         </span>
                         <Badge 
                           variant="outline" 
-                          className={`text-xs ${ROLE_COLORS[userItem.role] || "bg-gray-500/10"}`}
+                          className={`text-xs ${ROLE_COLORS[userItem.role] || "bg-muted"}`}
                         >
                           {ROLE_LABELS[userItem.role] || userItem.role}
                         </Badge>

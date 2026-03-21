@@ -240,7 +240,7 @@ export default function KaliteDenetimi() {
   if (isError) return <ErrorState onRetry={refetch} />;
 
   return (
-      <Badge className={`${colors[grade] || 'bg-gray-500'} text-white`}>
+      <Badge className={colors[grade] || 'bg-muted text-muted-foreground'}>
         {grade} ({score}%)
       </Badge>
     );
@@ -250,8 +250,8 @@ export default function KaliteDenetimi() {
     const colors: Record<string, string> = {
       'critical': 'bg-red-500 text-white',
       'high': 'bg-orange-500 text-white',
-      'medium': 'bg-yellow-500 text-black',
-      'low': 'bg-gray-500 text-white',
+      'medium': 'bg-yellow-500 text-foreground',
+      'low': 'bg-muted text-muted-foreground',
     };
     const labels: Record<string, string> = {
       'critical': 'Kritik',

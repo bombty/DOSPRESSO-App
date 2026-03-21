@@ -832,7 +832,7 @@ export default function EkipmanServis() {
                         <img src={photo1Preview} alt="Foto 1" className="w-full aspect-square object-cover rounded-lg border" loading="lazy" />
                       ) : (
                         <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
-                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                          <ImageIcon className="w-6 h-6 text-muted-foreground" />
                         </div>
                       )}
                       <Button
@@ -858,7 +858,7 @@ export default function EkipmanServis() {
                         <img src={photo2Preview} alt="Foto 2" className="w-full aspect-square object-cover rounded-lg border" loading="lazy" />
                       ) : (
                         <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed flex items-center justify-center">
-                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                          <ImageIcon className="w-6 h-6 text-muted-foreground" />
                         </div>
                       )}
                       <Button

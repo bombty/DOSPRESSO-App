@@ -79,7 +79,7 @@ const phaseStatusConfig: Record<string, { label: string; color: string; bgColor:
 };
 
 const projectStatusConfig: Record<string, { label: string; color: string }> = {
-  planning: { label: "Planlama", color: "bg-slate-500" },
+  planning: { label: "Planlama", color: "bg-muted" },
   in_progress: { label: "Devam Ediyor", color: "bg-blue-500" },
   completed: { label: "Tamamlandı", color: "bg-green-500" },
   on_hold: { label: "Beklemede", color: "bg-yellow-500" },

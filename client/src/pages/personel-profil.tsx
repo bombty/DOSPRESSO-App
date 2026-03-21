@@ -1522,7 +1522,7 @@ export default function PersonelProfilPage() {
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                <Clock className="w-4 h-4 text-slate-600" />
+                                <Clock className="w-4 h-4 text-muted-foreground" />
                               </div>
                               <div>
                                 <h4 className="font-medium text-sm">Ekipman Bakım</h4>

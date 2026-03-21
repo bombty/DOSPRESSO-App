@@ -137,7 +137,7 @@ const ROLE_GROUPS = {
   ...(uncategorizedRoles.length > 0 && {
     uncategorized: {
       label: "Kategorize Edilmemiş",
-      color: "bg-gray-500",
+      color: "bg-muted-foreground",
       roles: uncategorizedRoles,
       scope: "hq" as const
     }
@@ -303,7 +303,7 @@ const MEGA_MODULE_CONFIG = [
   { id: "factory", title: "Fabrika & Üretim", icon: Factory, color: "bg-indigo-600" },
   { id: "reports", title: "Raporlar & Analitik", icon: BarChart3, color: "bg-cyan-500" },
   { id: "newshop", title: "Yeni Mağaza Açılışı", icon: FolderKanban, color: "bg-violet-600" },
-  { id: "admin", title: "Yönetim & Ayarlar", icon: Shield, color: "bg-slate-600" },
+  { id: "admin", title: "Yönetim & Ayarlar", icon: Shield, color: "bg-muted-foreground" },
 ];
 
 // Varsayılan modül-mega modül eşleştirmeleri (9 mega modül)

@@ -49,7 +49,7 @@ export function NavRail() {
               {item.badge && (
                 <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#cc1f1f] border-2 border-[#122549]" />
               )}
-              <span className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+              <span className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 border border-border shadow-md">
                 {item.label}
               </span>
             </button>

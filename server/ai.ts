@@ -601,7 +601,6 @@ export async function analyzeTaskPhoto(
   if (!skipCache) {
     const cached = cache.get<TaskPhotoAnalysis>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - Task photo analysis (cost saved!)');
       // Log cache hit
       storage.logAiUsage({
         feature: 'task_photo',
@@ -637,7 +636,6 @@ export async function analyzeTaskPhoto(
     let imageDataUrl = photoUrl;
     if (photoUrl.startsWith('https://storage.googleapis.com/')) {
       try {
-        console.log(`[AI] Attempting to download photo from GCS: ${photoUrl}`);
         const { objectStorageClient } = await import('./objectStorage');
         
         // Parse GCS URL: https://storage.googleapis.com/bucket/path
@@ -646,7 +644,6 @@ export async function analyzeTaskPhoto(
         const bucketName = pathParts[0];
         const objectPath = pathParts.slice(1).join('/');
         
-        console.log(`[AI] Parsed GCS URL - bucket: ${bucketName}, path: ${objectPath}`);
         
         // Download file from GCS
         const bucket = objectStorageClient.bucket(bucketName);
@@ -680,7 +677,6 @@ export async function analyzeTaskPhoto(
         // Convert to base64 data URL
         const base64 = fileBuffer.toString('base64');
         imageDataUrl = `data:${mimeType};base64,${base64}`;
-        console.log(`✅ Photo converted to base64 for AI analysis (${Math.round(fileBuffer.length / 1024)}KB, mime: ${mimeType})`);
       } catch (downloadError) {
         console.error('[AI] Failed to download photo from GCS for AI analysis:', downloadError);
         // If image is too small, return clear message instead of attempting OpenAI call
@@ -772,9 +768,7 @@ JSON formatında yanıt verin:
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'photo');
       const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
-      console.log(`💰 AI call made - Task photo analysis (${remaining}/${PHOTO_LIMIT} remaining for user ${userId})`);
     } else {
-      console.log('💰 AI call made - Task photo analysis (no userId, rate limit not tracked)');
     }
 
     return analysis;
@@ -800,7 +794,6 @@ export async function analyzeFaultPhoto(
   if (!skipCache) {
     const cached = cache.get<FaultPhotoAnalysis>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - Fault photo analysis (cost saved!)');
       return cached;
     }
   }
@@ -875,9 +868,7 @@ JSON formatında yanıt verin:
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'photo');
       const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
-      console.log(`💰 AI call made - Fault photo analysis (${remaining}/${PHOTO_LIMIT} remaining for user ${userId})`);
     } else {
-      console.log('💰 AI call made - Fault photo analysis');
     }
 
     return analysis;
@@ -969,7 +960,6 @@ export async function analyzeDressCodePhoto(
   if (!skipCache) {
     const cached = cache.get<DressCodeAnalysis>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - Dress code analysis (cost saved!)');
       return cached;
     }
   }
@@ -1059,9 +1049,7 @@ JSON formatında TÜRKÇE yanıt verin:
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'photo');
       const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
-      console.log(`💰 AI call made - Dress code analysis (${remaining}/${PHOTO_LIMIT} remaining for user ${userId})`);
     } else {
-      console.log('💰 AI call made - Dress code analysis (no userId, rate limit not tracked)');
     }
 
     return analysis;
@@ -1156,7 +1144,6 @@ export async function answerQuestionWithRAG(
   if (!skipCache) {
     const cached = cache.get<RAGResponse>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - RAG Q&A (cost saved!)');
       return cached;
     }
   }
@@ -1198,7 +1185,6 @@ export async function answerQuestionWithRAG(
     cache.set(cacheKey, result, 48 * 60 * 60 * 1000);
     
     // No rate limiting for RAG - embedding costs are minimal
-    console.log('💰 AI call made - RAG Q&A (unlimited with $200/month budget)');
 
     return result;
   } catch (error) {
@@ -1283,7 +1269,6 @@ export async function answerTechnicalQuestion(
       
       aiRateLimiter.incrementRequest(effectiveUserId, 'tech_assist');
       const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'tech_assist', TECH_ASSIST_LIMIT);
-      console.log(`💰 AI call - Tech Assist RAG (${remaining}/${TECH_ASSIST_LIMIT} remaining for user ${effectiveUserId})`);
       
       return {
         ...ragResponse,
@@ -1300,7 +1285,6 @@ export async function answerTechnicalQuestion(
   if (!skipCache) {
     const cached = cache.get<RAGResponse & { usedKnowledgeBase: boolean }>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - Fallback LLM (cost saved!)');
       return { ...cached, systemMessage: "Genel AI bilgisinden cevap verildi" };
     }
   }
@@ -1332,7 +1316,6 @@ export async function answerTechnicalQuestion(
     
     aiRateLimiter.incrementRequest(effectiveUserId, 'tech_assist');
     const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'tech_assist', TECH_ASSIST_LIMIT);
-    console.log(`💰 AI call - Tech Assist Fallback LLM (${remaining}/${TECH_ASSIST_LIMIT} remaining for user ${effectiveUserId})`);
 
     return result;
   } catch (error) {
@@ -1362,7 +1345,6 @@ export async function generateShiftPlan(
   if (!skipCache) {
     const cached = cache.get<ShiftPlanResponse>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - Shift plan (cost saved!)');
       return { ...cached, cached: true };
     }
   }
@@ -1478,9 +1460,7 @@ JSON yanit ver:
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'shift_plan');
       const remaining = aiRateLimiter.getRemainingCalls(userId, 'shift_plan', SHIFT_PLAN_LIMIT);
-      console.log(`💰 AI call made - Shift plan (${remaining}/${SHIFT_PLAN_LIMIT} remaining for user ${userId})`);
     } else {
-      console.log('💰 AI call made - Shift plan');
     }
 
     return planResponse;
@@ -1773,7 +1753,6 @@ export async function generateAISummary(
   if (!skipCache) {
     const cached = cache.get<AISummaryResponse>(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT - AI Summary [${category}] (cost saved!)`);
       return { ...cached, cached: true };
     }
   }
@@ -1829,7 +1808,6 @@ export async function generateAISummary(
     // Increment rate limit counter
     aiRateLimiter.incrementRequest(user.id, 'summary');
     const remaining = aiRateLimiter.getRemainingCalls(user.id, 'summary', SUMMARY_LIMIT);
-    console.log(`💰 AI call made - Summary [${category}] (${remaining}/${SUMMARY_LIMIT} remaining for user ${user.id})`);
 
     return result;
   } catch (error) {
@@ -1927,7 +1905,6 @@ export async function generateDashboardInsights(
   if (!skipCache) {
     const cached = cache.get<DashboardInsightsResponse>(cacheKey);
     if (cached) {
-      console.log(`✅ Cache HIT - Dashboard Insights [${role}] (cost saved, no quota used!)`);
       return { ...cached, cached: true };
     }
   }
@@ -1985,7 +1962,6 @@ export async function generateDashboardInsights(
     // Increment rate limit counter
     aiRateLimiter.incrementRequest(userId.toString(), 'insights');
     const remaining = aiRateLimiter.getRemainingCalls(userId.toString(), 'insights', INSIGHTS_LIMIT);
-    console.log(`💰 AI call made - Dashboard Insights [${role}] (${remaining}/${INSIGHTS_LIMIT} remaining for user ${userId})`);
 
     return result;
   } catch (error) {
@@ -2020,7 +1996,6 @@ export async function generateQuizQuestionsFromLesson(
   // Check cache first (24h TTL)
   const cached = cache.get<GeneratedQuizQuestion[]>(cacheKey);
   if (cached) {
-    console.log('✅ Cache HIT - Quiz generation (cost saved!)');
     return cached;
   }
 
@@ -2073,7 +2048,6 @@ ${lessonContent}
     // Cache for 24 hours
     cache.set(cacheKey, questions, 24 * 60 * 60 * 1000);
 
-    console.log(`🎓 Generated ${questions.length} quiz questions from lesson content`);
     return questions;
   } catch (error) {
     console.error("Quiz generation error:", error);
@@ -2103,7 +2077,6 @@ export async function generateFlashcardsFromLesson(
   // Check cache first (24h TTL)
   const cached = cache.get<GeneratedFlashcard[]>(cacheKey);
   if (cached) {
-    console.log('✅ Cache HIT - Flashcard generation (cost saved!)');
     return cached;
   }
 
@@ -2154,7 +2127,6 @@ ${lessonContent}
     // Cache for 24 hours
     cache.set(cacheKey, flashcards, 24 * 60 * 60 * 1000);
 
-    console.log(`🎓 Generated ${flashcards.length} flashcards from lesson content`);
     return flashcards;
   } catch (error) {
     console.error("Flashcard generation error:", error);
@@ -2185,7 +2157,6 @@ export async function evaluateBranchPerformance(
   if (!skipCache) {
     const cached = cache.get<BranchPerformanceEvaluation>(cacheKey);
     if (cached) {
-      console.log('✅ Cache HIT - Branch performance evaluation (cost saved!)');
       return cached;
     }
   }
@@ -2270,7 +2241,6 @@ export async function evaluateBranchPerformance(
       aiRateLimiter.incrementRequest(userId, 'evaluation');
     }
 
-    console.log(`🎯 Generated AI evaluation for branch: ${branchName}`);
     return evaluation;
   } catch (error) {
     console.error("Branch performance evaluation error:", error);
@@ -2296,7 +2266,6 @@ export async function diagnoseFault(
   // Check cache first
   const cached = cache.get<FaultDiagnosis>(cacheKey);
   if (cached) {
-    console.log('✅ Cache HIT - Fault Diagnosis');
     return cached;
   }
 
@@ -2345,7 +2314,6 @@ JSON formatında yanıt ver: {
     cache.set(cacheKey, diagnosis, 24 * 60 * 60 * 1000);
     aiRateLimiter.incrementRequest(effectiveUserId, 'fault_diagnosis');
     const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'fault_diagnosis', FAULT_DIAGNOSIS_LIMIT);
-    console.log(`💰 AI call - Fault Diagnosis (${remaining}/${FAULT_DIAGNOSIS_LIMIT} remaining)`);
 
     return diagnosis;
   } catch (error) {
@@ -2522,7 +2490,6 @@ ZORUNLU KURALLAR:
 
     aiRateLimiter.incrementRequest(effectiveUserId, 'module_generation');
     const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'module_generation', MODULE_GEN_LIMIT);
-    console.log(`🎓 AI Module Generation (${remaining}/${MODULE_GEN_LIMIT} remaining)`);
 
     return module;
   } catch (error: Error | unknown) {
@@ -2546,7 +2513,6 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
       throw new Error("PDF dosyasından yeterli metin çıkarılamadı");
     }
     
-    console.log(`📄 PDF parsed: ${allText.length} characters extracted`);
     return allText;
   } catch (error: Error | unknown) {
     console.error("PDF parsing error:", error);
@@ -2614,7 +2580,6 @@ Görüntüdeki metni düzenli, okunabilir bir formatta yaz. Eğer tablo veya lis
     }
 
     aiRateLimiter.incrementRequest(effectiveUserId, 'image_extraction');
-    console.log(`📷 Image text extracted: ${extractedText.length} characters`);
     
     return extractedText;
   } catch (error: Error | unknown) {
@@ -2668,7 +2633,6 @@ export async function generateImageWithAI(
   }
 
   try {
-    console.log(`🎨 Generating image with prompt: ${prompt.substring(0, 50)}...`);
     const response = await openai.images.generate({
       model: "dall-e-2",
       prompt: `DOSPRESSO kahvesine uygun, profesyonel görünümlü banner-style fotoğraf: ${prompt}. Fotoğraf 600x400 piksel için optimize edilmiş, profesyonel, yüksek kaliteli ve eğitim materyali için uygun.`,
@@ -2682,7 +2646,6 @@ export async function generateImageWithAI(
     }
 
     aiRateLimiter.incrementRequest(effectiveUserId, 'image_generation');
-    console.log(`✅ AI image generated successfully: ${imageUrl.substring(0, 50)}...`);
     
     return imageUrl;
   } catch (error: Error | unknown) {
@@ -2891,7 +2854,6 @@ JSON formatında yanıt ver:
     const result = JSON.parse(content);
     aiRateLimiter.incrementRequest(effectiveUserId, 'article_draft');
     
-    console.log(`✅ AI article draft generated for topic: ${topic}`);
 
     return {
       title: result.title || `${topic} - ${categoryLabel}`,
@@ -3030,7 +2992,6 @@ export async function verifyChecklistPhoto(
     aiRateLimiter.incrementRequest(effectiveUserId, 'checklist_photo_verify');
     
     // Log AI usage for analytics
-    console.log(`✅ Checklist photo verification: ${passed ? 'PASSED' : 'FAILED'} (${similarityScore}% similarity, ${tolerancePercent}% required)`);
 
     return {
       passed,

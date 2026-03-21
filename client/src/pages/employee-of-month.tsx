@@ -238,12 +238,12 @@ export default function EmployeeOfMonthPage() {
           {topPerformers.map((performer: any, index: number) => {
             const medalColors = [
               "bg-yellow-500/10 border-yellow-500/50",
-              "bg-gray-400/10 border-gray-400/50",
+              "bg-muted border-muted-foreground/30",
               "bg-amber-700/10 border-amber-700/50",
             ];
             const iconColors = [
               "bg-yellow-500 text-white",
-              "bg-gray-400 text-white",
+              "bg-muted text-muted-foreground",
               "bg-amber-700 text-white",
             ];
             return (

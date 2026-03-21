@@ -128,7 +128,6 @@ class RateLimiter {
     
     keysToDelete.forEach(key => this.limits.delete(key));
     if (keysToDelete.length > 0) {
-      console.log(`🧹 Cleaned up ${keysToDelete.length} old rate limit counters`);
     }
   }
 

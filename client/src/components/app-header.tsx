@@ -100,11 +100,11 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
                 <div className="text-left min-w-0 max-w-[120px] sm:max-w-[180px]">
                   <p className="text-xs font-medium text-white truncate" data-testid="text-user-name">
                     <span>{user?.firstName || user?.username || "Kullanıcı"}</span>
-                    <span className="text-gray-300 mx-1">•</span>
+                    <span className="text-white/50 mx-1">•</span>
                     <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
                   </p>
                   {branchName && (
-                    <p className="text-[11px] text-gray-300 truncate" data-testid="text-branch-name">
+                    <p className="text-[11px] text-white/60 truncate" data-testid="text-branch-name">
                       {branchName}
                     </p>
                   )}

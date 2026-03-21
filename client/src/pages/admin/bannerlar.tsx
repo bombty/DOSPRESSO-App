@@ -192,7 +192,7 @@ export default function AdminBannerlar() {
     const start = new Date(banner.startDate);
     const end = new Date(banner.endDate);
     
-    if (!banner.isActive) return { label: "Pasif", color: "bg-gray-500/10 text-gray-500" };
+    if (!banner.isActive) return { label: "Pasif", color: "bg-muted text-muted-foreground" };
     if (now < start) return { label: "Planlandı", color: "bg-blue-500/10 text-blue-600" };
     if (now > end) return { label: "Süresi Dolmuş", color: "bg-orange-500/10 text-orange-600" };
     return { label: "Aktif", color: "bg-green-500/10 text-green-600" };

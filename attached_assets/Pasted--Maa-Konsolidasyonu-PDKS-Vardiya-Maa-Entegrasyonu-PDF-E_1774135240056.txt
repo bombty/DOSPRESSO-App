@@ -1,0 +1,365 @@
+## Maaş Konsolidasyonu + PDKS-Vardiya-Maaş Entegrasyonu + PDF Export
+
+### Context
+DOSPRESSO has 2 separate payroll calculation engines:
+1. `server/services/payroll-engine.ts` — simplified position-based salary
+2. `server/routes/hr.ts` — detailed SGK/tax calculation
+
+This sprint CONSOLIDATES them into one reliable system and connects PDKS → Shift → Salary pipeline.
+Also adds PDF export for PDKS and payroll reports.
+
+PREREQUISITE: Read the PDKS audit document and existing payroll investigation:
+- .local/reports/VARDIYA-MAAS-SYSTEM-DESIGN.md
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+
+### CRITICAL RULES
+- Do NOT delete either payroll engine — consolidate into ONE
+- Do NOT change existing API response formats (backward compatible)
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json
+- Turkish labor law (4857) compliance required
+- All money amounts in TL, 2 decimal precision
+- users.id is VARCHAR, Turkish UI
+
+---
+
+## STEP 0: DEEP INVESTIGATION
+
+```bash
+echo "═══ PAYROLL INVESTIGATION ═══"
+
+# Both engines
+echo "--- payroll-engine.ts ---"
+wc -l server/services/payroll-engine.ts 2>/dev/null
+head -80 server/services/payroll-engine.ts 2>/dev/null
+
+echo "--- hr.ts payroll section ---"
+grep -n "calculatePayroll\|calculateSalary\|brut\|net.*maas\|sgk\|gelir.vergisi" server/routes/hr.ts | head -20
+
+# What each engine calculates
+echo "--- payroll-engine functions ---"
+grep -n "function\|export" server/services/payroll-engine.ts | head -20
+
+echo "--- hr.ts calculation functions ---"
+grep -n "function\|export" server/routes/hr.ts | grep -i "calc\|salary\|payroll\|sgk\|tax\|vergi" | head -20
+
+# Active payroll parameters
+echo "--- 2026 parameters ---"
+echo "SELECT * FROM payroll_parameters WHERE is_active = true;" | psql
+
+# Salary scales
+echo "SELECT position_name, base_salary, cash_register_bonus, performance_bonus, total_salary FROM salary_scales;" | psql
+
+# PDKS engine
+echo "--- PDKS engine ---"
+wc -l server/pdks-engine.ts 2>/dev/null
+grep -n "function\|export" server/pdks-engine.ts 2>/dev/null | head -15
+
+# How PDKS connects to payroll currently
+echo "--- PDKS → Payroll connection ---"
+grep -n "payroll\|salary\|maas\|bordro" server/pdks-engine.ts 2>/dev/null | head -10
+grep -n "pdks\|attendance\|devam" server/services/payroll-engine.ts 2>/dev/null | head -10
+
+# Monthly payroll records
+echo "--- monthly_payrolls table ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='monthly_payrolls' ORDER BY ordinal_position;" | psql
+
+# Payroll routes
+grep -n "router\.\(get\|post\)" server/routes/payroll.ts | head -20
+
+# Excel export
+echo "--- Existing excel export ---"
+grep -rn "excel\|xlsx\|ExcelJS\|exceljs" server/ --include="*.ts" | grep -v node_modules | head -10
+
+# PDF library available?
+echo "--- PDF libraries ---"
+grep "pdfkit\|jspdf\|puppeteer\|pdf-lib\|pdfmake" package.json | head -5
+npm list pdfkit pdf-lib pdfmake 2>/dev/null | head -5
+```
+
+---
+
+## PART 1: CONSOLIDATED PAYROLL SERVICE
+
+Create `server/services/payroll-calculation-service.ts` — THE ONE TRUE ENGINE:
+
+This replaces both payroll-engine.ts logic and hr.ts inline calculations.
+Keep both old files but make them call this new service.
+
+### Core calculation flow:
+
+```typescript
+interface PayrollInput {
+  userId: string;
+  month: number; // 1-12
+  year: number;
+  
+  // From salary_scales or user record
+  baseSalaryGross: number;
+  employmentType: 'tam_zamanli' | 'yari_zamanli' | 'yevmiye';
+  weeklyHours: number; // 45 FT, 25 PT
+  
+  // From PDKS (calculated separately)
+  pdksData: {
+    totalWorkedMinutes: number;
+    expectedMinutes: number;
+    overtimeMinutes: number;
+    deficitMinutes: number;
+    lateCount: number;
+    earlyLeaveCount: number;
+    forgottenCheckoutCount: number;
+    unauthorizedAbsentDays: number;
+    authorizedLeaveDays: number;
+    sickLeaveDays: number;
+    offDayWorkedMinutes: number;    // 1.5x
+    holidayWorkedMinutes: number;   // 2.0x
+    holidayNotWorkedDays: number;   // paid but not worked
+  };
+  
+  // Extras
+  salesBonus: number;
+  cashRegisterBonus: number;
+  performanceBonus: number;
+  otherBonus: number;
+  
+  // Deductions
+  advancePayment: number;          // avans
+  otherDeductions: number;
+  
+  // For cumulative tax calculation
+  cumulativeTaxBaseBeforeThisMonth: number;
+  
+  // Employee info for AGI
+  maritalStatus: 'single' | 'married';
+  childCount: number;
+  spouseWorking: boolean;
+}
+
+interface PayrollResult {
+  // Earnings
+  baseSalary: number;              // Taban maaş (30 gün bazlı)
+  overtimePay: number;             // Fazla mesai ücreti (1.5x)
+  offDayPay: number;               // OFF günü çalışma (1.5x)
+  holidayPay: number;              // Resmi tatil çalışma (2.0x)
+  totalBonuses: number;            // Toplam primler
+  grossTotal: number;              // Brüt toplam
+  
+  // Deductions — employee side
+  deficitDeduction: number;        // Eksik mesai kesintisi
+  sgkEmployee: number;             // SGK işçi (%14)
+  unemploymentEmployee: number;    // İşsizlik işçi (%1)
+  incomeTax: number;               // Gelir vergisi (kümülatif dilim)
+  stampTax: number;                // Damga vergisi (%0.759)
+  advanceDeduction: number;        // Avans kesintisi
+  otherDeductions: number;
+  totalDeductions: number;
+  
+  // Credits
+  agi: number;                     // Asgari geçim indirimi
+  mealAllowance: number;           // Yemek yardımı (vergiden muaf kısım)
+  transportAllowance: number;      // Ulaşım yardımı
+  
+  // Net
+  netSalary: number;
+  
+  // Employer cost
+  sgkEmployer: number;             // SGK işveren (%20.5)
+  unemploymentEmployer: number;    // İşsizlik işveren (%2)
+  totalEmployerCost: number;       // Toplam işveren maliyeti
+  
+  // Updated cumulative
+  newCumulativeTaxBase: number;
+  
+  // Breakdown
+  breakdown: {
+    dailyGross: number;            // Aylık / 30
+    hourlyGross: number;           // Günlük / 7.5
+    overtimeHourlyRate: number;    // Saatlik × 1.5
+    workedDays: number;
+    expectedDays: number;
+    overtimeHours: number;
+    deficitHours: number;
+  };
+}
+```
+
+### Turkish labor law rules:
+1. Monthly salary = always 30 days (even February 28)
+2. Daily gross = monthly gross / 30
+3. Hourly gross = daily gross / 7.5
+4. Overtime: hourly × 1.5 (normal day), hourly × 1.5 (OFF day full), hourly × 2.0 (holiday)
+5. SGK ceiling: payroll_parameters.sgk_ceiling — if gross > ceiling, SGK calculated on ceiling
+6. Income tax: cumulative brackets — must track year-to-date
+7. AGI: based on marital status + children + spouse working
+8. Sick leave: SGK pays (not employer) — handled differently
+
+### Read parameters from DB:
+```typescript
+async function getActivePayrollParams(db): Promise<PayrollParams> {
+  const [params] = await db.select().from(payrollParameters)
+    .where(eq(payrollParameters.isActive, true)).limit(1);
+  
+  if (!params) throw new Error("Aktif bordro parametresi bulunamadı");
+  
+  // Decode integer-stored values
+  return {
+    sgkEmployeeRate: params.sgkWorkerRate / 1000,
+    sgkEmployerRate: params.sgkEmployerRate / 1000,
+    // ... decode all
+  };
+}
+```
+
+---
+
+## PART 2: PDKS → PAYROLL DATA PIPELINE
+
+Create a function that takes a user + month and produces PayrollInput.pdksData:
+
+```typescript
+async function calculateMonthlyPDKSForPayroll(
+  db: any, 
+  userId: string, 
+  month: number, 
+  year: number
+): Promise<PayrollInput['pdksData']> {
+  // 1. Get all PDKS records for this user in this month
+  // 2. Get shift assignments for this month
+  // 3. Get approved leaves
+  // 4. Get public holidays
+  // 5. For each day: calculate worked minutes, expected minutes, overtime, deficit
+  // 6. Apply rules: late > 5min = late, early leave > 5min = early leave
+  // 7. Identify: OFF day work, holiday work
+  // 8. Sum up totals
+  
+  // USE EXISTING pdks-engine.ts logic where possible — don't rewrite from scratch
+  // Just ensure the output format matches PayrollInput.pdksData
+}
+```
+
+---
+
+## PART 3: PAYROLL GENERATION ENDPOINT
+
+```typescript
+// POST /api/payroll/generate — generate monthly payroll for a branch or all
+router.post("/api/payroll/generate", isAuthenticated, async (req, res) => {
+  // Only: admin, muhasebe_ik, ceo, cgo
+  const { month, year, branchId, scope } = req.body;
+  // scope: 'merkez' (HQ + factory + Işıklar) or 'sube' (franchise) or 'all'
+  
+  // For each employee in scope:
+  // 1. Get base salary from salary_scales or user record
+  // 2. Calculate PDKS data (Part 2)
+  // 3. Get bonuses (sales, cash register, performance)
+  // 4. Get cumulative tax base (previous months this year)
+  // 5. Calculate payroll (Part 1)
+  // 6. Save to monthly_payrolls table
+  // 7. Return summary
+});
+
+// GET /api/payroll/monthly/:year/:month — get payroll results
+// GET /api/payroll/monthly/:year/:month/:userId — get individual payroll
+// GET /api/payroll/export/excel/:year/:month — Excel export (3-tab format)
+// GET /api/payroll/export/pdf/:year/:month — PDF export (NEW)
+```
+
+### Merkez vs Şube ayrımı:
+```typescript
+// In Muhasebe-İK page, add filter:
+// [Merkez (HQ+Fabrika+Işıklar)] [Şubeler] [Tümü]
+// Merkez: branchId IN (HQ_ID, FACTORY_ID, ISIKLAR_ID)
+// Şubeler: all other branches
+// This is FILTERING only — calculation is same
+```
+
+---
+
+## PART 4: PDF EXPORT
+
+```bash
+# Check available PDF library
+npm list pdfkit pdf-lib 2>/dev/null
+```
+
+If no PDF library, install pdf-lib (lightweight, no native dependencies):
+```bash
+npm install pdf-lib
+```
+
+Or use the simplest approach — HTML-to-PDF via the existing system:
+
+### Option A: pdf-lib (serverside, no browser needed)
+Create `server/utils/pdf-generator.ts`:
+
+```typescript
+// PDKS Monthly Report PDF:
+// - Header: DOSPRESSO logo + date range + branch name
+// - Summary table: all employees, worked days, hours, overtime, deficit
+// - Detail pages: one per employee with daily breakdown
+// - Footer: page numbers
+
+// Payroll PDF:
+// - Header: DOSPRESSO + month/year + "BORDRO RAPORU"
+// - Per employee: one page with full breakdown
+//   Name, position, branch
+//   Earnings: base + overtime + bonuses = gross
+//   Deductions: SGK + tax + stamp = total
+//   Net salary
+//   Bank info (if available)
+// - Summary page: total cost per branch, per department
+```
+
+### Endpoints:
+```typescript
+// GET /api/pdks/export/pdf/:uploadId — PDKS monthly PDF
+// GET /api/payroll/export/pdf/:year/:month — Payroll monthly PDF
+// GET /api/payroll/export/pdf/:year/:month/:userId — Individual payslip PDF
+```
+
+---
+
+## PART 5: UPDATE EXISTING ENGINES TO USE NEW SERVICE
+
+### payroll-engine.ts:
+```typescript
+// Keep existing function signatures
+// But internally call new calculateMonthlyPayroll()
+// This ensures backward compatibility
+```
+
+### hr.ts:
+```typescript
+// Keep existing endpoints
+// But use new payroll-calculation-service for actual math
+// Remove duplicated SGK/tax code
+```
+
+---
+
+## DO NOT TOUCH:
+- localAuth.ts, vite.ts, vite.config.ts, package.json (except adding pdf-lib)
+- Scoring services
+- PDKS engine core logic (use it, don't rewrite)
+- Existing API response formats
+
+## Testing:
+1. POST /api/payroll/generate with month=3, year=2026 → calculates for all employees
+2. Payroll uses 2026 parameters (sgk 14%, tax brackets, minimum wage 33.030)
+3. Monthly salary = gross / 30 × worked days (always 30-day basis)
+4. Overtime: correctly at 1.5x hourly rate
+5. SGK ceiling applied if gross > ceiling
+6. Income tax uses cumulative brackets
+7. Merkez/şube filter works on payroll page
+8. Excel export: 3 tabs (summary, daily, issues)
+9. PDF export: downloads valid PDF
+10. Individual payslip PDF: one page per employee
+11. PDKS data correctly feeds into payroll
+
+## After:
+1. Report: which engine is now primary?
+2. Report: are both old engines kept as wrappers?
+3. Report: PDF library used
+4. Report: payroll calculation for sample employee (show numbers)
+5. Report: merkez vs şube filter implementation

@@ -83,7 +83,6 @@ export async function generateDailyTaskInstances(): Promise<number> {
     }
   }
 
-  console.log(`[BRANCH-TASKS] Generated ${generated} task instances for ${today}`);
   return generated;
 }
 
@@ -100,7 +99,6 @@ export async function markOverdueInstances(): Promise<number> {
 
   const count = result.rowCount || 0;
   if (count > 0) {
-    console.log(`[BRANCH-TASKS] Marked ${count} instances as overdue`);
   }
   return count;
 }

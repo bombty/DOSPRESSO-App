@@ -3158,23 +3158,44 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         return res.json({ workers: [], isCollaborative: false });
       }
 
-      // For each worker, calculate active time (total time - break time)
-      const workerScores = await Promise.all(sessions.map(async (session) => {
+      // Batch-fetch all break logs and production outputs for all sessions at once
+      const sessionIds = sessions.map(s => s.sessionId);
+      const allBreaks = sessionIds.length > 0
+        ? await db.select({
+            sessionId: factoryBreakLogs.sessionId,
+            startedAt: factoryBreakLogs.startedAt,
+            endedAt: factoryBreakLogs.endedAt,
+            durationMinutes: factoryBreakLogs.durationMinutes,
+            breakReason: factoryBreakLogs.breakReason,
+          }).from(factoryBreakLogs).where(inArray(factoryBreakLogs.sessionId, sessionIds))
+        : [];
+      const allOutputs = sessionIds.length > 0
+        ? await db.select({
+            sessionId: factoryProductionOutputs.sessionId,
+            producedQuantity: factoryProductionOutputs.producedQuantity,
+            wasteQuantity: factoryProductionOutputs.wasteQuantity,
+          }).from(factoryProductionOutputs).where(inArray(factoryProductionOutputs.sessionId, sessionIds))
+        : [];
+
+      const breaksMap = new Map<number, typeof allBreaks>();
+      for (const brk of allBreaks) {
+        const arr = breaksMap.get(brk.sessionId) || [];
+        arr.push(brk);
+        breaksMap.set(brk.sessionId, arr);
+      }
+      const outputsMap = new Map<number, typeof allOutputs>();
+      for (const out of allOutputs) {
+        const arr = outputsMap.get(out.sessionId) || [];
+        arr.push(out);
+        outputsMap.set(out.sessionId, arr);
+      }
+
+      const workerScores = sessions.map(session => {
         const now = new Date();
         const endTime = session.checkOutTime || now;
         const totalMinutes = Math.max(1, Math.round((endTime.getTime() - new Date(session.checkInTime).getTime()) / 60000));
 
-        // Get break logs for this session
-        const breaks = await db.select({
-          startedAt: factoryBreakLogs.startedAt,
-          endedAt: factoryBreakLogs.endedAt,
-          durationMinutes: factoryBreakLogs.durationMinutes,
-          breakReason: factoryBreakLogs.breakReason,
-        })
-          .from(factoryBreakLogs)
-          .where(eq(factoryBreakLogs.sessionId, session.sessionId));
-
-        // Calculate total break minutes
+        const breaks = breaksMap.get(session.sessionId) || [];
         let totalBreakMinutes = 0;
         breaks.forEach(brk => {
           if (brk.durationMinutes) {
@@ -3182,19 +3203,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           } else if (brk.startedAt && brk.endedAt) {
             totalBreakMinutes += Math.round((new Date(brk.endedAt).getTime() - new Date(brk.startedAt).getTime()) / 60000);
           } else if (brk.startedAt && !brk.endedAt) {
-            // Ongoing break - count from start to now
             totalBreakMinutes += Math.round((now.getTime() - new Date(brk.startedAt).getTime()) / 60000);
           }
         });
 
-        // Get production outputs for this session
-        const outputs = await db.select({
-          producedQuantity: factoryProductionOutputs.producedQuantity,
-          wasteQuantity: factoryProductionOutputs.wasteQuantity,
-        })
-          .from(factoryProductionOutputs)
-          .where(eq(factoryProductionOutputs.sessionId, session.sessionId));
-
+        const outputs = outputsMap.get(session.sessionId) || [];
         const totalProduced = outputs.reduce((sum, o) => sum + parseFloat(o.producedQuantity || '0'), 0);
         const totalWaste = outputs.reduce((sum, o) => sum + parseFloat(o.wasteQuantity || '0'), 0);
 
@@ -3214,7 +3227,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           totalWaste,
           status: session.status,
         };
-      }));
+      });
 
       // Calculate collaborative scores
       const totalActiveMinutes = workerScores.reduce((sum, w) => sum + w.activeMinutes, 0);

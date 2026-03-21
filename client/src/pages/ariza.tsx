@@ -45,7 +45,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  bekliyor: "bg-slate-500 text-white",
+  bekliyor: "bg-muted text-muted-foreground",
   isleme_alindi: "bg-blue-500 text-white",
   devam_ediyor: "bg-amber-500 text-white",
   servis_cagrildi: "bg-purple-500 text-white",

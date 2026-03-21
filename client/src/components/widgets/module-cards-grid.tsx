@@ -87,7 +87,7 @@ const MODULE_CONFIG: ModuleConfig[] = [
     title: "Yönetim",
     icon: Settings,
     path: "/admin",
-    color: "bg-slate-500"
+    color: "bg-muted"
   }
 ];
 

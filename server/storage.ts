@@ -1881,7 +1881,6 @@ export class DatabaseStorage implements IStorage {
     
     // No expired photos found - nothing to do
     if (expiredPhotos.length === 0) {
-      console.log(`🗑️ No expired checklist photos found`);
       return 0;
     }
     
@@ -1896,10 +1895,8 @@ export class DatabaseStorage implements IStorage {
         const { Client } = await import("@replit/object-storage");
         client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
       } catch (initError: any) {
-        console.log(`⚠️ Object Storage client init failed: ${initError?.message || initError}, will only update database`);
       }
     } else {
-      console.log("⚠️ Object Storage bucket not configured, will only update database");
     }
     
     // Process each expired photo
@@ -1911,7 +1908,6 @@ export class DatabaseStorage implements IStorage {
             await client.delete(completion.photoUrl);
             storageDeletedCount++;
           } catch (storageError: any) {
-            console.log(`⚠️ Storage delete failed for ${completion.photoUrl}: ${storageError?.message || storageError}`);
           }
         }
         
@@ -1930,9 +1926,7 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (storageDeletedCount > 0) {
-      console.log(`🗑️ Deleted ${deletedCount} expired checklist photos (${storageDeletedCount} from storage, ${deletedCount - storageDeletedCount} DB only)`);
     } else {
-      console.log(`🗑️ Marked ${deletedCount} expired checklist photos as deleted (DB only)`);
     }
     return deletedCount;
   }
@@ -3679,7 +3673,6 @@ export class DatabaseStorage implements IStorage {
         ));
       const DAILY_NOTIFICATION_LIMIT = 50; // increased from 20 — active franchise platform needs higher limit
       if ((countResult?.count || 0) >= DAILY_NOTIFICATION_LIMIT) {
-        console.log(`⚠️ Throttled notification for user ${notification.userId}: daily limit (${DAILY_NOTIFICATION_LIMIT}) reached, type: ${notification.type}`);
         return { id: -1, ...notification, isRead: false, isArchived: false, branchId: notification.branchId ?? null, link: notification.link ?? null, createdAt: new Date() } as Notification;
       }
     }
@@ -5429,7 +5422,6 @@ export class DatabaseStorage implements IStorage {
         .limit(1);
       
       if (adminUser.length === 0) {
-        console.log('[checkSLABreaches] No admin user found, skipping SLA check');
         return;
       }
       
@@ -8040,7 +8032,6 @@ export class DatabaseStorage implements IStorage {
     branches: Array<{ id: number; name: string; address: string | null }>;
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
   }> {
-    console.log("[Search] Starting search for:", query, "isHQ:", isHQ, "userBranchId:", userBranchId);
     const searchPattern = `%${query.toLocaleLowerCase('tr-TR')}%`;
     
     // Use raw SQL queries to avoid Drizzle ORM field ordering issues
@@ -8118,7 +8109,6 @@ export class DatabaseStorage implements IStorage {
     }, "equipment");
 
     // Execute all queries in parallel
-    console.log("[Search] Executing all queries in parallel...");
     const [usersResult, recipesResult, tasksResult, branchesResult, equipmentResult] = await Promise.all([
       usersPromise,
       recipesPromise,
@@ -8126,7 +8116,6 @@ export class DatabaseStorage implements IStorage {
       branchesPromise,
       equipmentPromise,
     ]);
-    console.log("[Search] Queries completed. Users:", usersResult.length, "Recipes:", recipesResult.length, "Tasks:", tasksResult.length, "Branches:", branchesResult.length, "Equipment:", equipmentResult.length);
 
     return {
       users: usersResult,
@@ -8622,7 +8611,6 @@ export class DatabaseStorage implements IStorage {
     branches: Array<{ id: number; name: string; address: string | null }>;
     equipment: Array<{ id: number; name: string; type: string; branchId: number | null }>;
   }> {
-    console.log("[Search] Starting permission-filtered search for:", query, "permissions:", permissions);
     const searchPattern = `%${query.toLocaleLowerCase('tr-TR')}%`;
     
     const safeRawQuery = async <T>(queryFn: () => Promise<T[]>, name: string): Promise<T[]> => {

@@ -28,7 +28,6 @@ export async function optimizeGalleryImage(
       .webp({ quality: GALLERY_IMAGE_CONFIG.quality })
       .toBuffer();
 
-    console.log(`📸 Image optimized: ${imageBuffer.length} → ${optimized.length} bytes`);
     return optimized;
   } catch (error: Error | unknown) {
     console.error("Image optimization error:", error);

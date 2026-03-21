@@ -613,7 +613,6 @@ function startScheduledTaskDeliveryJob() {
           });
         }
       }
-      if (scheduledTasks.length > 0) console.log(`${scheduledTasks.length} zamanlanmis gorev iletildi (ilk calistirma)`);
     } catch (error: any) { console.error("Scheduled task delivery initial run error:", error); }
   })();
 
@@ -651,7 +650,6 @@ function startScheduledTaskDeliveryJob() {
       }
 
       if (scheduledTasks.length > 0) {
-        console.log(`${scheduledTasks.length} zamanlanmis gorev iletildi`);
       }
     } catch (error: any) {
       console.error("Scheduled task delivery error:", error);
@@ -828,7 +826,6 @@ function startDailyGapDetection() {
           }
         }
       }
-      console.log(`[Agent Guidance] Daily: ${gaps.length} total, ${criticalGaps.length} critical`);
     } catch (error) {
       console.error("[Agent Guidance] Daily check failed:", error);
     }

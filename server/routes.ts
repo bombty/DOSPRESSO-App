@@ -749,7 +749,6 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
             isActive: true,
             accountStatus: 'approved',
           });
-          console.log('[TEST] Test HQ superuser created (id: test-hq-superuser-001)');
         }
       } catch (e: any) {
         console.warn('[TEST] Could not create test HQ user:', e.message);
@@ -1104,7 +1103,6 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
           { title: "Arıza Bildir", subtitle: "Yeni arıza kaydı oluştur", type: "link", icon: "Wrench", url: "/ariza", targetRoles: ["supervisor", "mudur", "teknik", "ekipman_teknik"], displayOrder: 4, isActive: true },
           { title: "Raporlar", subtitle: "Performans ve analitik", type: "link", icon: "BarChart3", url: "/raporlar", targetRoles: ["ceo", "cgo", "admin", "coach", "mudur"], displayOrder: 5, isActive: true },
         ]);
-        console.log("Dashboard widget items seeded successfully");
       }
     } catch (error) {
       console.error("Failed to seed dashboard widget items:", error);
@@ -1298,7 +1296,6 @@ async function runCrmSprint1Migration() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS tcm_user_idx ON ticket_cowork_members(user_id)`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS tcm_ticket_user_unique ON ticket_cowork_members(ticket_id, user_id)`);
 
-    console.log("[CRM-SPRINT-1] Migration complete");
 
     const ticketCount = await db.execute(sql`SELECT COUNT(*) as count FROM support_tickets`);
     if (parseInt(ticketCount.rows[0]?.count as string) === 0) {
@@ -1317,7 +1314,6 @@ async function runCrmSprint1Migration() {
           ON CONFLICT DO NOTHING
         `);
       }
-      console.log("[CRM-SPRINT-1] Sample tickets seeded");
     }
   } catch (err) {
     console.error("[CRM-SPRINT-1] Migration error:", err);

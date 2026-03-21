@@ -184,7 +184,7 @@ export default function MegaModulePage() {
   };
 
   const getColor = (moduleId: string | undefined | null) => {
-    if (!moduleId) return "bg-slate-400";
+    if (!moduleId) return "bg-muted";
     const colorMap: Record<string, string> = {
       "akademi": "bg-blue-500",
       "academy": "bg-blue-500",
@@ -214,8 +214,8 @@ export default function MegaModulePage() {
       "performance": "bg-cyan-500",
       "projeler": "bg-violet-600",
       "projects": "bg-violet-600",
-      "ayarlar": "bg-slate-600",
-      "settings": "bg-slate-600",
+      "ayarlar": "bg-muted-foreground",
+      "settings": "bg-muted-foreground",
       "admin": "bg-red-600",
       "yetkilendirme": "bg-red-600",
       "kalite-denetimi": "bg-amber-500",
@@ -240,7 +240,7 @@ export default function MegaModulePage() {
       "mal-kabul": "bg-amber-600",
       "goods-receipt": "bg-amber-600",
     };
-    return colorMap[moduleId.toLocaleLowerCase('tr-TR')] || "bg-slate-400";
+    return colorMap[moduleId.toLocaleLowerCase('tr-TR')] || "bg-muted";
   };
 
   const getBadge = (moduleId: string | undefined | null): number | undefined => {
@@ -290,7 +290,7 @@ export default function MegaModulePage() {
   };
 
   const getSectionColor = (sectionId: string | undefined): string => {
-    if (!sectionId) return "bg-slate-500";
+    if (!sectionId) return "bg-muted";
     const colorMap: Record<string, string> = {
       "dashboard-hq": "bg-indigo-500",
       "dashboard-branch": "bg-indigo-500",
@@ -313,8 +313,8 @@ export default function MegaModulePage() {
       "projects-section": "bg-violet-600",
       "admin": "bg-red-600",
       "admin-section": "bg-red-600",
-      "settings": "bg-slate-600",
-      "settings-section": "bg-slate-600",
+      "settings": "bg-muted-foreground",
+      "settings-section": "bg-muted-foreground",
       "support": "bg-rose-500",
       "support-section": "bg-rose-500",
       "quality": "bg-amber-500",
@@ -352,7 +352,7 @@ export default function MegaModulePage() {
     "reports": { title: megaModuleTitles["reports"] || "Raporlar & Analitik", icon: "BarChart3", color: "bg-cyan-500" },
     "newshop": { title: megaModuleTitles["newshop"] || "Yeni Mağaza Açılışı", icon: "FolderKanban", color: "bg-violet-600" },
     "satinalma": { title: megaModuleTitles["satinalma"] || "Satınalma", icon: "ShoppingCart", color: "bg-amber-500" },
-    "admin": { title: megaModuleTitles["admin"] || "Yönetim & Ayarlar", icon: "Shield", color: "bg-slate-600" },
+    "admin": { title: megaModuleTitles["admin"] || "Yönetim & Ayarlar", icon: "Shield", color: "bg-muted-foreground" },
   };
 
   // Get all menu sections from API

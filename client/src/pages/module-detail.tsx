@@ -2105,7 +2105,7 @@ export default function ModuleDetail() {
                     <Card className="border-l-4 border-l-gray-500">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <Package className="w-4 h-4 text-gray-500" />
+                          <Package className="w-4 h-4 text-muted-foreground" />
                           <h5 className="font-semibold text-sm">Saklama Notları</h5>
                         </div>
                         <p className="text-sm">{(trainingModule?.presentationGuide as any)?.storageNotes}</p>

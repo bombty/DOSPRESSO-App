@@ -2222,7 +2222,6 @@ router.post('/api/admin/ai/logs/cleanup', isAuthenticated, async (req: any, res)
     const result = await cleanupOldAiLogs(dryRun);
     
     if (!dryRun) {
-      console.log(`[AI Log Cleanup] Admin ${req.user.id} triggered cleanup: ${result.deletedCount} rows deleted (cutoff: ${result.cutoffDate.toISOString()})`);
     }
     
     res.json({
@@ -2245,7 +2244,6 @@ function startAiLogCleanupJob() {
     if (istanbulHour === 3 && istanbulMinute >= 25 && istanbulMinute <= 35) {
       try {
         const result = await cleanupOldAiLogs(false);
-        console.log(`[AI Log Cleanup] Scheduled cleanup: ${result.deletedCount} rows deleted (cutoff: ${result.cutoffDate.toISOString()})`);
       } catch (error) {
         console.error('[AI Log Cleanup] Scheduled cleanup error:', error);
       }

@@ -1115,7 +1115,6 @@ const router = Router();
 
       const duration = estimatedMinutes || 15;
       
-      console.log(`🎓 AI Module Generation requested for role: ${roleLevel}, duration: ${duration}min`);
       
       const generatedModule = await generateTrainingModule(
         inputText.trim(),
@@ -1303,7 +1302,6 @@ const router = Router();
         return res.status(400).json({ message: "Dosya yüklenmedi" });
       }
 
-      console.log(`📤 File upload received: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
 
       const extractedText = await processUploadedFile(
         file.buffer,
@@ -3882,7 +3880,6 @@ JSON formatında yanıt ver:
 
       try {
         await storage.addCompletedModuleToCareerProgress(userId, moduleId);
-        console.log(`Training chain: User ${userId} completed module ${moduleId} -> added to completed_module_ids`);
       } catch (chainError: any) {
         console.error("Career progress update error:", chainError);
       }
@@ -6826,7 +6823,6 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
             badgeId: eomBadge.id,
             earnedAt: new Date(),
           }).onConflictDoNothing();
-          console.log(`🏆 Employee of Month badge awarded to user ${awardData.userId}`);
         }
 
         if (winner?.email) {
@@ -6951,7 +6947,6 @@ export async function initOnboardingMigrations() {
   try {
     await db.execute(sql`ALTER TABLE onboarding_template_steps ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false`);
     await db.execute(sql`ALTER TABLE onboarding_template_steps ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
-    console.log("[ONBOARDING] Soft delete columns ensured on onboarding_template_steps.");
   } catch (error) {
     console.error("[ONBOARDING] Migration error:", error);
   }

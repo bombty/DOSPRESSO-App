@@ -58,7 +58,7 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
 };
 
 const projectStatusConfig: Record<string, { label: string; color: string }> = {
-  planning: { label: "Planlama", color: "bg-slate-500" },
+  planning: { label: "Planlama", color: "bg-muted" },
   in_progress: { label: "Devam Ediyor", color: "bg-blue-500" },
   completed: { label: "Tamamlandı", color: "bg-green-500" },
   on_hold: { label: "Beklemede", color: "bg-yellow-500" },
@@ -66,7 +66,7 @@ const projectStatusConfig: Record<string, { label: string; color: string }> = {
 };
 
 const priorityColors: Record<string, string> = {
-  low: "bg-slate-400",
+  low: "bg-muted",
   medium: "bg-blue-400",
   high: "bg-orange-400",
   urgent: "bg-red-500",

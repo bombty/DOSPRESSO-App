@@ -564,9 +564,6 @@ export async function calculateAndSaveDailyScores(): Promise<{ calculated: numbe
   const scores = await calculateAllWorkerScores(yesterday, today, "daily");
   const saved = await saveWorkerScores(scores);
 
-  console.log(
-    `[Factory Scoring] Daily: ${scores.length} calculated, ${saved} saved for ${yesterday.toISOString().split("T")[0]}`
-  );
 
   return { calculated: scores.length, saved };
 }
@@ -582,9 +579,6 @@ export async function calculateAndSaveWeeklyScores(): Promise<{ calculated: numb
   const scores = await calculateAllWorkerScores(weekAgo, today, "weekly");
   const saved = await saveWorkerScores(scores);
 
-  console.log(
-    `[Factory Scoring] Weekly: ${scores.length} calculated, ${saved} saved for week ending ${today.toISOString().split("T")[0]}`
-  );
 
   return { calculated: scores.length, saved };
 }
@@ -641,7 +635,6 @@ export async function backfillNullScores(): Promise<number> {
       }
     }
 
-    console.log(`[Factory Scoring] Backfilled ${filled}/${nullScores.length} NULL scores`);
     return filled;
   } catch (error) {
     console.error("[Factory Scoring] Backfill failed:", error);
@@ -666,7 +659,6 @@ export async function closeOrphanedBreakLogs(): Promise<number> {
 
     const count = Number(result.rowCount || 0);
     if (count > 0) {
-      console.log(`[Factory Scoring] Closed ${count} orphaned break logs older than 8h`);
     }
     return count;
   } catch (error) {
@@ -688,7 +680,6 @@ export async function cleanupStaleShiftSessions(): Promise<number> {
     `);
     const count = Number(result.rowCount || 0);
     if (count > 0) {
-      console.log(`[Factory Kiosk] Cleaned ${count} stale shift sessions (>12h)`);
     }
     return count;
   } catch (error) {

@@ -356,7 +356,6 @@ export async function runEscalationCheck(): Promise<{ results: EscalationResult[
     runId = run?.id ?? null;
 
     if (results.length > 0) {
-      console.log(`[Agent Escalation] ${results.length} escalation işlendi. Run #${runId}`);
     }
 
     return { results, runId };
@@ -428,7 +427,6 @@ export async function checkRoutingEscalations(): Promise<number> {
           link: "/agent-merkezi",
         });
 
-        console.log(`[RoutingEscalation] Action #${action.id} → ${escalationRole} (${escalationUserName})`);
         escalated++;
       } catch (err) {
         console.error(`[RoutingEscalation] Action #${action.id} error:`, err);
@@ -436,7 +434,6 @@ export async function checkRoutingEscalations(): Promise<number> {
     }
 
     if (escalated > 0) {
-      console.log(`[RoutingEscalation] ${escalated} aksiyon eskalasyon yapıldı`);
     }
   } catch (err) {
     console.error("[RoutingEscalation] checkRoutingEscalations error:", err);
@@ -539,7 +536,6 @@ export async function checkActionOutcomes(): Promise<number> {
     }
 
     if (checked > 0) {
-      console.log(`[OutcomeTracking] ${checked} sonuç kontrolü tamamlandı`);
     }
   } catch (err) {
     console.error("[OutcomeTracking] checkActionOutcomes error:", err);

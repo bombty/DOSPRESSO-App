@@ -82,7 +82,7 @@ interface NewShopProjectWithDetails extends Project {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  planning: { label: "Planlama", color: "bg-slate-500", icon: Target },
+  planning: { label: "Planlama", color: "bg-muted", icon: Target },
   in_progress: { label: "Devam Ediyor", color: "bg-blue-500", icon: Clock },
   completed: { label: "Tamamlandı", color: "bg-green-500", icon: CheckCircle2 },
   on_hold: { label: "Beklemede", color: "bg-yellow-500", icon: AlertCircle },
@@ -90,7 +90,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
-  low: { label: "Düşük", color: "bg-slate-400" },
+  low: { label: "Düşük", color: "bg-muted" },
   medium: { label: "Orta", color: "bg-blue-400" },
   high: { label: "Yüksek", color: "bg-orange-400" },
   urgent: { label: "Acil", color: "bg-red-500" },

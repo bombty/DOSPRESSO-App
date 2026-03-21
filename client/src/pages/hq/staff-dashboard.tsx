@@ -85,7 +85,7 @@ export default function HqStaffDashboard() {
       case "active": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case "on_break": return <Coffee className="h-4 w-4 text-yellow-500" />;
       case "outside": return <Briefcase className="h-4 w-4 text-blue-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
+      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 

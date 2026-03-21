@@ -1152,8 +1152,8 @@ export default function ServiceRequestsManagement() {
                   ) : (
                     <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">
-                        <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 1</p>
+                        <ImageIcon className="w-6 h-6 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-xs text-muted-foreground">Fotoğraf 1</p>
                       </div>
                     </div>
                   )}
@@ -1191,8 +1191,8 @@ export default function ServiceRequestsManagement() {
                   ) : (
                     <div className="aspect-square bg-secondary dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center">
                       <div className="text-center">
-                        <ImageIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Fotoğraf 2</p>
+                        <ImageIcon className="w-6 h-6 mx-auto text-muted-foreground mb-1" />
+                        <p className="text-xs text-muted-foreground">Fotoğraf 2</p>
                       </div>
                     </div>
                   )}
@@ -1225,7 +1225,7 @@ export default function ServiceRequestsManagement() {
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Her fotoğraf otomatik olarak WebP formatında sıkıştırılır (1920x1080, %80 kalite)
               </p>
             </div>

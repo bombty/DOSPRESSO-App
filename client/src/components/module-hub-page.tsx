@@ -95,7 +95,7 @@ export function ModuleHubPage({
   };
   
   const bgColorMap: Record<string, string> = {
-    'bg-slate-500': 'bg-slate-500',
+    'bg-slate-500': 'bg-muted',
     'bg-green-500': 'bg-green-500',
     'bg-orange-500': 'bg-orange-500',
     'bg-pink-500': 'bg-pink-500',
@@ -103,7 +103,7 @@ export function ModuleHubPage({
     'bg-indigo-600': 'bg-indigo-600',
     'bg-cyan-500': 'bg-cyan-500',
     'bg-violet-600': 'bg-violet-600',
-    'bg-slate-600': 'bg-slate-600',
+    'bg-slate-600': 'bg-muted-foreground',
   };
 
   if (!megaModule) {
@@ -117,7 +117,7 @@ export function ModuleHubPage({
   }
 
   const MegaIcon = getIcon(megaModule.icon);
-  const bgColor = bgColorMap[megaModule.color] || 'bg-slate-500';
+  const bgColor = bgColorMap[megaModule.color] || 'bg-muted';
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,7 +189,7 @@ export function ModuleHubPage({
 export function ModuleHubSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-slate-500">
+      <div className="bg-muted">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-4">
             <Skeleton className="h-14 w-14 rounded-xl" />

@@ -233,7 +233,7 @@ export default function AksiyonTakipPage() {
         <CardContent className="pt-4 pb-4">
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge className={priorityColors[capa.priority] || "bg-gray-500"}>
+              <Badge className={priorityColors[capa.priority] || "bg-muted text-muted-foreground"}>
                 {priorityLabels[capa.priority] || capa.priority}
               </Badge>
               <Badge variant="outline" className={statusColors[capa.status] || ""}>
@@ -401,7 +401,7 @@ export default function AksiyonTakipPage() {
           {selectedCapa && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge className={priorityColors[selectedCapa.priority] || "bg-gray-500"}>
+                <Badge className={priorityColors[selectedCapa.priority] || "bg-muted text-muted-foreground"}>
                   {priorityLabels[selectedCapa.priority] || selectedCapa.priority}
                 </Badge>
                 <Badge variant="outline" className={statusColors[selectedCapa.status] || ""}>

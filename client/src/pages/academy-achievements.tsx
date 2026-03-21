@@ -169,7 +169,7 @@ export default function AcademyAchievements() {
                     <h3 className="font-semibold text-sm">{achievement.name}</h3>
                     <p className="text-xs text-muted-foreground">{achievement.description}</p>
                   </div>
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${unlocked ? "text-amber-500" : "text-gray-400"}`} />
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${unlocked ? "text-amber-500" : "text-muted-foreground"}`} />
                 </div>
 
                 <div className="grid grid-cols-1 gap-0.5">

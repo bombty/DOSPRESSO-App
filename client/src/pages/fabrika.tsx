@@ -90,7 +90,7 @@ const CATEGORIES = [
 ];
 
 const BATCH_STATUSES = [
-  { value: "planned", label: "Planlandı", color: "bg-gray-500" },
+  { value: "planned", label: "Planlandı", color: "bg-muted text-muted-foreground" },
   { value: "in_progress", label: "Üretimde", color: "bg-blue-500" },
   { value: "completed", label: "Tamamlandı", color: "bg-green-500" },
   { value: "quality_check", label: "Kalite Kontrol", color: "bg-yellow-500" },
@@ -99,7 +99,7 @@ const BATCH_STATUSES = [
 ];
 
 const ORDER_STATUSES = [
-  { value: "pending", label: "Bekliyor", color: "bg-gray-500" },
+  { value: "pending", label: "Bekliyor", color: "bg-muted text-muted-foreground" },
   { value: "confirmed", label: "Onaylandı", color: "bg-blue-500" },
   { value: "preparing", label: "Hazırlanıyor", color: "bg-yellow-500" },
   { value: "shipped", label: "Gönderildi", color: "bg-purple-500" },

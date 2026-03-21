@@ -370,7 +370,7 @@ export default function KaliteKontrolDashboard() {
               <div className="space-y-2 pr-4">
                 {sortedFeedbacks.map((feedback) => {
                   const remaining = getRemainingTime(feedback.responseDeadline);
-                  const sourceInfo = sourceLabels[feedback.source] || { label: feedback.source, icon: MessageSquare, color: 'bg-gray-500' };
+                  const sourceInfo = sourceLabels[feedback.source] || { label: feedback.source, icon: MessageSquare, color: 'bg-muted' };
                   const SourceIcon = sourceInfo.icon;
                   const priorityInfo = priorityLabels[feedback.priority] || priorityLabels.medium;
                   const statusInfo = statusLabels[feedback.status] || statusLabels.new;
@@ -411,7 +411,7 @@ export default function KaliteKontrolDashboard() {
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <Star
                                     key={star}
-                                    className={`h-3 w-3 ${star <= feedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                                    className={`h-3 w-3 ${star <= feedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`}
                                   />
                                 ))}
                               </div>
@@ -527,7 +527,7 @@ export default function KaliteKontrolDashboard() {
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
-                        className={`h-2.5 w-2.5 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                        className={`h-2.5 w-2.5 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`}
                       />
                     ))}
                   </div>
@@ -604,7 +604,7 @@ export default function KaliteKontrolDashboard() {
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star
                         key={star}
-                        className={`h-3 w-3 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                        className={`h-3 w-3 ${star <= selectedFeedback.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`}
                       />
                     ))}
                   </div>

@@ -261,7 +261,7 @@ const phaseStatusConfig: Record<string, { label: string; color: string; bgColor:
 };
 
 const projectStatusConfig: Record<string, { label: string; color: string }> = {
-  planning: { label: "Planlama", color: "bg-slate-500" },
+  planning: { label: "Planlama", color: "bg-muted" },
   in_progress: { label: "Devam Ediyor", color: "bg-blue-500" },
   completed: { label: "Tamamlandı", color: "bg-green-500" },
   on_hold: { label: "Beklemede", color: "bg-yellow-500" },
@@ -1184,7 +1184,7 @@ export default function YeniSubeDetay() {
               <div className="flex items-center gap-2 mb-2">
                 <Store className="h-5 w-5 text-primary" />
                 <CardTitle className="text-xl" data-testid="text-project-title">{project.title}</CardTitle>
-                <Badge className={projectStatusConfig[project.status]?.color || "bg-slate-500"} data-testid="badge-project-status">
+                <Badge className={projectStatusConfig[project.status]?.color || "bg-muted"} data-testid="badge-project-status">
                   {projectStatusConfig[project.status]?.label || project.status}
                 </Badge>
               </div>

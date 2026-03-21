@@ -267,7 +267,7 @@ export default function FabrikaMegaModule() {
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-3">
-            <Factory className="h-6 w-6 text-gray-600" />
+            <Factory className="h-6 w-6 text-muted-foreground" />
             <div>
               <h1 className="text-xl font-semibold">Fabrika & Üretim</h1>
               <p className="text-sm text-muted-foreground">Üretim yönetimi ve kalite kontrol</p>

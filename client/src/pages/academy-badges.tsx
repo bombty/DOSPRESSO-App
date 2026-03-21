@@ -157,7 +157,7 @@ export default function AcademyBadges() {
       {lockedBadges.length > 0 && !isHQRole(user?.role as any) && (
         <div className="col-span-full">
           <h2 className="text-sm font-semibold mb-2 flex items-center gap-1">
-            <Lock className="w-4 h-4 text-gray-400" />
+            <Lock className="w-4 h-4 text-muted-foreground" />
             Kilitli ({lockedBadges.length})
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -169,10 +169,10 @@ export default function AcademyBadges() {
                     <div className="flex items-start justify-between gap-1">
                       <div className="flex items-center gap-1">
                         <div className="p-1 bg-accent dark:bg-gray-700 rounded">
-                          <IconComponent className="w-3 h-3 text-gray-400 dark:text-muted-foreground" />
+                          <IconComponent className="w-3 h-3 text-muted-foreground dark:text-muted-foreground" />
                         </div>
                         <div>
-                          <CardTitle className="text-xs text-gray-500">{badge.titleTr}</CardTitle>
+                          <CardTitle className="text-xs text-muted-foreground">{badge.titleTr}</CardTitle>
                           <Badge variant="outline" className="mt-0.5 text-xs h-4">+{badge.points}</Badge>
                         </div>
                       </div>

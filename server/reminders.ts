@@ -59,7 +59,6 @@ export async function checkAndSendReminders() {
             await storage.updateReminder(existingReminder.id, {
               isActive: false,
             });
-            console.log(`Hatırlatma limiti aşıldı, devre dışı bırakıldı: Görev ${task.id} (${currentCount} hatırlatma)`);
           }
           continue;
         }
@@ -71,7 +70,6 @@ export async function checkAndSendReminders() {
           nextReminderAt: new Date(Date.now() + REMINDER_INTERVAL),
         });
 
-        console.log(`Hatırlatma gönderildi: Görev ${task.id}, Kullanıcı ${task.assignedToId}, Sayı: ${newCount}/${MAX_REMINDERS}`);
       }
     }
 
@@ -272,7 +270,6 @@ DOSPRESSO Franchise Yönetim Sistemi`,
 
       // Update tracking map
       sentCapaNotifications.set(capaKey, now.getTime());
-      console.log(`CAPA gecikme bildirimi gönderildi: CAPA #${capa.id}, Kullanıcı: ${capa.assignedToId}, Gecikme: ${daysOverdue} gün`);
     }
 
     // Update CAPA status to OVERDUE if not already
@@ -769,7 +766,6 @@ async function cleanupExpiredPhotos() {
   try {
     const deletedCount = await storage.deleteExpiredChecklistPhotos();
     if (deletedCount > 0) {
-      console.log(`🗑️ Photo cleanup: ${deletedCount} expired checklist photos deleted`);
     }
   } catch (error) {
     console.error("Photo cleanup error:", error);
@@ -835,7 +831,6 @@ async function cleanupExpiredTicketPhotos() {
       .set({ attachments: [] })
       .where(inArray(hqSupportMessages.id, messagesWithAttachments.map(m => m.id)));
 
-    console.log(`🗑️ Ticket photo cleanup: ${messagesWithAttachments.length} message attachments cleared from closed tickets (${deletedCount} files deleted from storage)`);
   } catch (error) {
     console.error("Ticket photo cleanup error:", error);
   }
@@ -884,15 +879,12 @@ async function checkMonthlyEmployeeOfMonth() {
     const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
     const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
     
-    console.log(`🏆 Automatic Employee of Month reminder for ${prevMonth}/${prevYear}`);
     console.log(`   Admins should run calculation manually from /ayin-elemani page`);
     
     // Log reminder for admins - they should check the Employee of Month page
     // Notification will be shown via the existing notification system
-    console.log(`   Admin bilgilendirmesi: Ayin Elemani hesaplaması için /ayin-elemani sayfasını ziyaret edin`);
     
     lastMonthlyCheck = now;
-    console.log(`🏆 Monthly Employee of Month reminder sent`);
   } catch (error) {
     console.error("Monthly EoM reminder error:", error);
   }
@@ -947,7 +939,6 @@ export async function checkLowStockNotifications() {
       ));
 
     if (satinalmaUsers.length === 0) {
-      console.log("No satınalma users found for stock alerts");
       return;
     }
 
@@ -967,7 +958,6 @@ export async function checkLowStockNotifications() {
       sentStockAlerts.set(product.id, now);
     }
 
-    console.log(`📦 Stock check completed - ${lowStockProducts.length} products with min stock defined`);
   } catch (error) {
     console.error("Stock notification check error:", error);
   }
@@ -995,7 +985,6 @@ export async function notifySatinalmaLowStock(productId: number, productName: st
       });
     }
 
-    console.log(`📦 Low stock notification sent for ${productName} to ${satinalmaUsers.length} satınalma users`);
   } catch (error) {
     console.error("Error sending low stock notification:", error);
   }
@@ -1026,7 +1015,6 @@ export async function notifyTeknikNewFault(faultId: number, faultTitle: string, 
       });
     }
 
-    console.log(`🔧 Fault notification sent for "${faultTitle}" to ${teknikUsers.length} teknik users`);
   } catch (error) {
     console.error("Error sending fault notification to teknik:", error);
   }
@@ -1074,7 +1062,6 @@ export async function checkOnboardingCompletions() {
         )
       );
 
-    console.log(`📋 Onboarding check: found ${completedAssignments.length} completed assignments awaiting manager notification`);
 
     for (const assignment of completedAssignments) {
       try {
@@ -1106,7 +1093,6 @@ export async function checkOnboardingCompletions() {
             link: '/sube/onboarding',
             branchId: assignment.branchId,
           });
-          console.log(`📧 Onboarding completion notification sent to supervisor ${supervisor.firstName} for employee ${employeeName}`);
         }
 
         // Mark assignment as manager notified
@@ -1115,7 +1101,6 @@ export async function checkOnboardingCompletions() {
           .set({ managerNotified: true })
           .where(eq(employeeOnboardingAssignments.id, assignment.id));
 
-        console.log(`✅ Marked onboarding assignment ${assignment.id} as manager notified`);
       } catch (assignmentError) {
         console.error(`Error processing onboarding assignment ${assignment.id}:`, assignmentError);
       }
@@ -1163,7 +1148,6 @@ export async function checkStaleQuoteReminders() {
     const staleCount = rows.length;
 
     if (staleCount === 0) {
-      console.log("No stale quotes found, skipping notification");
       return;
     }
 
@@ -1194,7 +1178,6 @@ export async function checkStaleQuoteReminders() {
       sentCount++;
     }
 
-    console.log(`Stale quote reminder sent to ${sentCount} users (${satinalmaUsers.length - sentCount} already notified) for ${staleCount} products`);
   } catch (error) {
     console.error("Stale quote reminder check error:", error);
   }
@@ -1298,7 +1281,6 @@ export async function checkFeedbackSlaBreaches() {
           });
         }
 
-        console.log(`SLA breach detected for feedback #${feedback.id} at ${branchName}, notified ${notifyUsers.length} users`);
       } catch (err) {
         console.error(`Error processing feedback SLA breach for #${feedback.id}:`, err);
       }
@@ -1383,14 +1365,12 @@ export async function checkFeedbackSlaBreaches() {
           });
         }
 
-        console.log(`SLA breach re-notification for feedback #${feedback.id} at ${branchName}`);
       } catch (err) {
         console.error(`Error re-notifying feedback SLA breach for #${feedback.id}:`, err);
       }
     }
 
     if (breachedFeedbacks.length > 0 || alreadyBreached.length > 0) {
-      console.log(`Feedback SLA check: ${breachedFeedbacks.length} new breaches, ${alreadyBreached.length} ongoing`);
     }
   } catch (error) {
     console.error("Feedback SLA breach check error:", error);
@@ -1426,7 +1406,6 @@ export async function archiveOldNotifications() {
       .returning({ id: notifications.id });
     const archivedCount = result.length;
     if (archivedCount > 0) {
-      console.log(`📦 Archived ${archivedCount} notifications older than 30 days`);
     }
     return archivedCount;
   } catch (error) {
@@ -1672,7 +1651,6 @@ export async function checkFeedbackPatterns() {
       }
     }
 
-    console.log(`Feedback pattern analysis completed: ${activeBranches.length} branches analyzed, ${totalNotifications} notifications sent`);
   } catch (error) {
     console.error("Feedback pattern analysis error:", error);
   }

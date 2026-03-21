@@ -98,11 +98,9 @@ const stockPredictorSkill: AgentSkill = {
             });
           }
         } catch (err) {
-          console.log(`[StockPredictor] Branch ${branch.id} analysis error:`, err);
         }
       }
     } catch (err) {
-      console.log("[StockPredictor] Could not query stock data — tables may not exist yet:", err);
     }
 
     return insights;

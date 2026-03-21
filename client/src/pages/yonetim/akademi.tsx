@@ -887,7 +887,7 @@ function GamificationTab() {
                 <div key={user.id || idx} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     idx === 0 ? 'bg-amber-500 text-white' :
-                    idx === 1 ? 'bg-gray-400 text-white' :
+                    idx === 1 ? 'bg-muted text-muted-foreground' :
                     idx === 2 ? 'bg-amber-700 text-white' :
                     'bg-muted text-muted-foreground'
                   }`}>

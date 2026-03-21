@@ -98,7 +98,7 @@ const statusConfig: Record<string, { label: string; color: string; bgColor: stri
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
-  low: { label: "Düşük", color: "bg-slate-400" },
+  low: { label: "Düşük", color: "bg-muted" },
   medium: { label: "Orta", color: "bg-blue-400" },
   high: { label: "Yüksek", color: "bg-orange-400" },
   urgent: { label: "Acil", color: "bg-red-500" },
