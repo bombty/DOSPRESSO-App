@@ -192,3 +192,9 @@ id = "ZV19iaqU10iZPvSSpWzQV"
 uri = "file://.local/dospresso-audit-report.md"
 type = "text"
 title = "DOSPRESSO Platform Detaylı Audit Raporu"
+
+[[outputs]]
+id = "ksuFEi8hROeFEpxKZWUAY"
+uri = "file://.local/audit-report-21-mart-2026.md"
+type = "text"
+title = "DOSPRESSO IT Audit Raporu - 21 Mart 2026"
