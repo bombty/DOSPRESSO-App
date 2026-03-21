@@ -301,7 +301,7 @@ export default function CEOCommandCenter() {
   const criticalAlerts = dashboardData.urgentAlerts.filter(a => a.severity === 'critical');
 
   return (
-    <div className="p-3 sm:p-4 space-y-4">
+    <div className="p-3 sm:p-4 space-y-4 max-w-7xl mx-auto">
       <DobodyFlowMode
         userId={user?.id || ""}
         userRole={user?.role || ""}

@@ -74,7 +74,7 @@ export default function FranchiseOzet() {
     
 
   return (
-      <div className="p-4 space-y-4 max-w-lg mx-auto" data-testid="franchise-ozet-loading">
+      <div className="p-4 space-y-4 max-w-4xl mx-auto" data-testid="franchise-ozet-loading">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-32" />
       </div>
@@ -83,14 +83,14 @@ export default function FranchiseOzet() {
 
   if (!data) {
     return (
-      <div className="p-4 max-w-lg mx-auto" data-testid="franchise-ozet-error">
+      <div className="p-4 max-w-4xl mx-auto" data-testid="franchise-ozet-error">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="franchise-ozet-page">
+    <div className="p-4 space-y-4 max-w-4xl mx-auto overflow-y-auto h-full" data-testid="franchise-ozet-page">
       <DobodyFlowMode
         userId={user?.id || ""}
         userRole={user?.role || ""}

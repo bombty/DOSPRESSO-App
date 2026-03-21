@@ -604,6 +604,34 @@
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  .page-title {
+    @apply text-xl font-semibold leading-tight tracking-tight;
+  }
+
+  .section-title {
+    @apply text-base font-semibold leading-snug;
+  }
+
+  .subsection-title {
+    @apply text-sm font-medium leading-snug;
+  }
+
+  .stat-number {
+    @apply text-2xl font-bold leading-none tabular-nums;
+  }
+
+  .stat-label {
+    @apply text-[11px] font-normal text-muted-foreground uppercase tracking-wider;
+  }
+
+  .table-compact td {
+    @apply text-[13px] py-1.5 px-2.5;
+  }
+
+  .table-compact th {
+    @apply text-[11px] py-1.5 px-2.5 uppercase tracking-wide font-medium text-muted-foreground;
+  }
 }
 
 /* Mobile Phone (375px) Optimizations */
