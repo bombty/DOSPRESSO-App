@@ -2588,4 +2588,404 @@ router.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req: a
   }
 });
 
+// ===== AI SHIFT PLAN GENERATION =====
+
+// POST /api/shifts/ai-generate — generate weekly plan with break scheduling (preview only, no save)
+router.post('/api/shifts/ai-generate', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const role = user.role as UserRoleType;
+
+    if (!['admin', 'supervisor', 'supervisor_buddy', 'mudur', 'coach', 'ceo', 'cgo'].includes(role) && !isHQRole(role)) {
+      return res.status(403).json({ message: "Vardiya planı oluşturma yetkiniz yok" });
+    }
+
+    const { branchId, weekStartDate } = req.body;
+    if (!branchId || !weekStartDate) {
+      return res.status(400).json({ message: "branchId ve weekStartDate gerekli" });
+    }
+
+    if (isBranchRole(role) && user.branchId !== branchId) {
+      return res.status(403).json({ message: "Sadece kendi şubeniz için plan oluşturabilirsiniz" });
+    }
+
+    const { ShiftScheduler } = await import('../services/shiftScheduler');
+    const { leaveRequests: leaveRequestsTable } = await import('@shared/schema');
+    const { gte, lte, inArray } = await import('drizzle-orm');
+
+    const branchStaff = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      username: users.username,
+      role: users.role,
+      employmentType: users.employmentType,
+    })
+    .from(users)
+    .where(and(
+      eq(users.branchId, branchId),
+      eq(users.isActive, true),
+      isNull(users.deletedAt),
+      sql`${users.role} IN ('barista', 'bar_buddy', 'stajyer', 'supervisor', 'supervisor_buddy', 'mudur')`
+    ));
+
+    if (branchStaff.length === 0) {
+      return res.json({ plan: [], weekStart: weekStartDate, branchId, staffCount: 0, message: "Şubede personel bulunamadı" });
+    }
+
+    const staff = branchStaff.map(s => ({
+      id: s.id,
+      name: [s.firstName, s.lastName].filter(Boolean).join(' ') || s.username || 'Bilinmiyor',
+      role: s.role,
+      employmentType: s.employmentType || 'fulltime',
+    }));
+
+    const weekEnd = new Date(weekStartDate);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    let leaveUserDates = new Set<string>();
+    try {
+      const leaves = await db.select({
+        userId: leaveRequestsTable.userId,
+        startDate: leaveRequestsTable.startDate,
+        endDate: leaveRequestsTable.endDate,
+      })
+      .from(leaveRequestsTable)
+      .where(and(
+        inArray(leaveRequestsTable.userId, staff.map(s => s.id)),
+        eq(leaveRequestsTable.status, 'approved'),
+        lte(leaveRequestsTable.startDate, weekEndStr),
+        gte(leaveRequestsTable.endDate, weekStartDate)
+      ));
+
+      for (const leave of leaves) {
+        const lStart = new Date(leave.startDate);
+        const lEnd = new Date(leave.endDate);
+        for (let d = new Date(lStart); d <= lEnd; d.setDate(d.getDate() + 1)) {
+          leaveUserDates.add(`${leave.userId}_${d.toISOString().split('T')[0]}`);
+        }
+      }
+    } catch (e) {
+      console.error("[Shifts] Leave query error:", e);
+    }
+
+    const branch = await storage.getBranch(branchId);
+    const openingHour = branch?.openingHours || '08:00';
+    const closingHour = branch?.closingHours || '17:00';
+
+    const result = ShiftScheduler.generateWeeklyPlan(staff, weekStartDate, branchId, leaveUserDates, openingHour, closingHour);
+
+    res.json({
+      weekStart: weekStartDate,
+      branchId,
+      staffCount: staff.length,
+      plan: result.plan,
+      weeklyHours: result.weeklyHours,
+      validation: result.validation,
+      offDaysSummary: result.offDaysSummary,
+    });
+  } catch (error: any) {
+    console.error("[Shifts] AI generate error:", error);
+    res.status(500).json({ message: "Vardiya planı oluşturulamadı" });
+  }
+});
+
+// POST /api/shifts/ai-apply — save generated plan to DB (replaces week's shifts for branch)
+router.post('/api/shifts/ai-apply', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const role = user.role as UserRoleType;
+
+    if (!['admin', 'supervisor', 'mudur', 'coach'].includes(role) && !isHQRole(role)) {
+      return res.status(403).json({ message: "Vardiya planı kaydetme yetkiniz yok" });
+    }
+
+    const { plan, weekStartDate, branchId, confirmOverwrite } = req.body;
+    if (!plan || !weekStartDate || !branchId) {
+      return res.status(400).json({ message: "plan, weekStartDate ve branchId gerekli" });
+    }
+
+    if (isBranchRole(role) && user.branchId !== branchId) {
+      return res.status(403).json({ message: "Sadece kendi şubeniz için plan kaydedebilirsiniz" });
+    }
+
+    const weekEnd = new Date(weekStartDate);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    const existingShifts = await storage.getShifts(branchId, undefined, weekStartDate, weekEndStr);
+
+    if (existingShifts.length > 0 && !confirmOverwrite) {
+      return res.status(409).json({
+        message: `Bu hafta için ${existingShifts.length} mevcut vardiya var. Üzerine yazmak için confirmOverwrite: true gönderin.`,
+        existingCount: existingShifts.length,
+        requiresConfirmation: true,
+      });
+    }
+
+    if (existingShifts.length > 0 && confirmOverwrite) {
+      await db.update(shifts)
+        .set({ deletedAt: new Date() })
+        .where(and(
+          eq(shifts.branchId, branchId),
+          sql`${shifts.shiftDate} >= ${weekStartDate}`,
+          sql`${shifts.shiftDate} < ${weekEndStr}`,
+          isNull(shifts.deletedAt)
+        ));
+      console.log(`[Shifts] Soft-deleted ${existingShifts.length} existing shifts for branch ${branchId}, week ${weekStartDate}`);
+    }
+
+    let created = 0;
+    for (const shift of plan) {
+      if (shift.isOff) continue;
+      if (!shift.startTime || !shift.endTime) continue;
+
+      await storage.createShift({
+        branchId,
+        assignedToId: shift.userId,
+        shiftDate: shift.date,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        breakStartTime: shift.breakStartTime || null,
+        breakEndTime: shift.breakEndTime || null,
+        shiftType: shift.shiftType === 'opening' ? 'morning' : shift.shiftType === 'closing' ? 'evening' : 'morning',
+        status: 'scheduled',
+        createdById: user.id,
+      });
+      created++;
+    }
+
+    const offEntries = plan.filter((s: any) => s.isOff);
+    const { scheduledOffs: scheduledOffsTable } = await import('@shared/schema');
+    for (const off of offEntries) {
+      try {
+        await db.insert(scheduledOffsTable).values({
+          userId: off.userId,
+          branchId,
+          offDate: off.date,
+          offType: 'ai_planned',
+        }).onConflictDoNothing();
+      } catch (e) {
+        // ignore duplicates
+      }
+    }
+
+    auditLog(req, {
+      eventType: "shift.ai_apply",
+      action: "created",
+      resource: "shifts",
+      resourceId: `branch-${branchId}-week-${weekStartDate}`,
+      details: { created, offDays: offEntries.length, overwritten: existingShifts.length },
+    });
+
+    res.json({
+      success: true,
+      created,
+      offDaysCreated: offEntries.length,
+      overwrittenCount: existingShifts.length,
+      weekStart: weekStartDate,
+      branchId,
+    });
+  } catch (error: any) {
+    console.error("[Shifts] Apply plan error:", error);
+    res.status(500).json({ message: "Vardiya planı kaydedilemedi" });
+  }
+});
+
+// POST /api/shifts/validate-breaks — validate break schedule for a specific day
+router.post('/api/shifts/validate-breaks', isAuthenticated, async (req: any, res) => {
+  try {
+    const { branchId, date } = req.body;
+    if (!branchId || !date) {
+      return res.status(400).json({ message: "branchId ve date gerekli" });
+    }
+
+    const { ShiftScheduler } = await import('../services/shiftScheduler');
+
+    const dayShifts = await storage.getShifts(branchId, undefined, date, date);
+    const branchStaffCount = dayShifts.length;
+    const branchSize: 'small' | 'medium' | 'large' = branchStaffCount <= 6 ? 'small' : branchStaffCount <= 12 ? 'medium' : 'large';
+
+    const shiftsForValidation = dayShifts.map((s: any) => ({
+      userId: s.assignedToId || '',
+      startTime: s.startTime?.substring(0, 5) || '08:00',
+      endTime: s.endTime?.substring(0, 5) || '17:00',
+      breakStart: s.breakStartTime?.substring(0, 5) || '',
+      breakEnd: s.breakEndTime?.substring(0, 5) || '',
+      isOff: false,
+    }));
+
+    const validation = ShiftScheduler.validateBreakSchedule(shiftsForValidation, branchSize);
+
+    res.json({
+      date,
+      branchId,
+      staffCount: branchStaffCount,
+      branchSize,
+      validation,
+    });
+  } catch (error: any) {
+    console.error("[Shifts] Break validation error:", error);
+    res.status(500).json({ message: "Mola doğrulaması yapılamadı" });
+  }
+});
+
+// GET /api/shifts/compliance — compare planned shifts vs actual PDKS records
+router.get('/api/shifts/compliance', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const role = user.role as UserRoleType;
+
+    const allowedRoles = ['supervisor', 'supervisor_buddy', 'mudur', 'coach', 'admin', 'ceo', 'cgo', 'muhasebe', 'muhasebe_ik', 'destek'];
+    if (!allowedRoles.includes(role) && !isHQRole(role)) {
+      return res.status(403).json({ message: "Uyumluluk verisi görüntüleme yetkiniz yok" });
+    }
+
+    const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : user.branchId;
+    const dateFrom = req.query.dateFrom as string;
+    const dateTo = req.query.dateTo as string;
+
+    if (!branchId || !dateFrom || !dateTo) {
+      return res.status(400).json({ message: "branchId, dateFrom ve dateTo parametreleri gerekli" });
+    }
+
+    if (isBranchRole(role) && user.branchId !== branchId) {
+      return res.status(403).json({ message: "Sadece kendi şubenizin verilerini görebilirsiniz" });
+    }
+
+    const { pdksRecords: pdksTable } = await import('@shared/schema');
+    const { gte, lte } = await import('drizzle-orm');
+
+    const [dayShifts, pdksData] = await Promise.all([
+      storage.getShifts(branchId, undefined, dateFrom, dateTo),
+      db.select({
+        userId: pdksTable.userId,
+        recordDate: pdksTable.recordDate,
+        recordTime: pdksTable.recordTime,
+        recordType: pdksTable.recordType,
+      })
+      .from(pdksTable)
+      .where(and(
+        eq(pdksTable.branchId, branchId),
+        gte(pdksTable.recordDate, dateFrom),
+        lte(pdksTable.recordDate, dateTo)
+      )),
+    ]);
+
+    const pdksByUserDate = new Map<string, Array<{ time: string; type: string }>>();
+    for (const r of pdksData) {
+      const key = `${r.userId}_${r.recordDate}`;
+      if (!pdksByUserDate.has(key)) pdksByUserDate.set(key, []);
+      pdksByUserDate.get(key)!.push({ time: r.recordTime, type: r.recordType });
+    }
+
+    const compliance: Array<{
+      userId: string;
+      date: string;
+      plannedStart: string | null;
+      plannedEnd: string | null;
+      actualStart: string | null;
+      actualEnd: string | null;
+      lateMinutes: number;
+      earlyLeaveMinutes: number;
+      overtimeMinutes: number;
+      status: 'on_time' | 'slightly_off' | 'significantly_off' | 'no_pdks' | 'no_shift';
+      details: string;
+    }> = [];
+
+    for (const shift of dayShifts) {
+      const userId = (shift as any).assignedToId;
+      const shiftDate = (shift as any).shiftDate;
+      if (!userId || !shiftDate) continue;
+
+      const plannedStart = (shift as any).startTime?.substring(0, 5) || null;
+      const plannedEnd = (shift as any).endTime?.substring(0, 5) || null;
+
+      const key = `${userId}_${shiftDate}`;
+      const records = pdksByUserDate.get(key) || [];
+
+      if (records.length === 0) {
+        compliance.push({
+          userId, date: shiftDate, plannedStart, plannedEnd,
+          actualStart: null, actualEnd: null,
+          lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0,
+          status: 'no_pdks', details: 'PDKS kaydı yok',
+        });
+        continue;
+      }
+
+      const sortedRecords = [...records].sort((a, b) => a.time.localeCompare(b.time));
+      const girisRecords = sortedRecords.filter(r => r.type === 'giris');
+      const cikisRecords = sortedRecords.filter(r => r.type === 'cikis');
+
+      const actualStart = girisRecords.length > 0 ? girisRecords[0].time.substring(0, 5) : null;
+      const actualEnd = cikisRecords.length > 0 ? cikisRecords[cikisRecords.length - 1].time.substring(0, 5) : null;
+
+      let lateMinutes = 0;
+      let earlyLeaveMinutes = 0;
+      let overtimeMinutes = 0;
+
+      if (actualStart && plannedStart) {
+        const diff = timeToMin(actualStart) - timeToMin(plannedStart);
+        if (diff > 0) lateMinutes = diff;
+      }
+
+      if (actualEnd && plannedEnd) {
+        const diff = timeToMin(plannedEnd) - timeToMin(actualEnd);
+        if (diff > 0) earlyLeaveMinutes = diff;
+        if (diff < 0) overtimeMinutes = Math.abs(diff);
+      }
+
+      const totalDeviation = lateMinutes + earlyLeaveMinutes;
+      let status: 'on_time' | 'slightly_off' | 'significantly_off' = 'on_time';
+      if (totalDeviation > 15) status = 'significantly_off';
+      else if (totalDeviation > 5) status = 'slightly_off';
+
+      let details = '';
+      if (lateMinutes > 0) details += `${lateMinutes}dk geç başladı. `;
+      if (earlyLeaveMinutes > 0) details += `${earlyLeaveMinutes}dk erken çıktı. `;
+      if (overtimeMinutes > 0) details += `${overtimeMinutes}dk fazla mesai. `;
+      if (!details) details = 'Zamanında';
+
+      compliance.push({
+        userId, date: shiftDate, plannedStart, plannedEnd,
+        actualStart, actualEnd,
+        lateMinutes, earlyLeaveMinutes, overtimeMinutes,
+        status, details: details.trim(),
+      });
+    }
+
+    const onTimeCount = compliance.filter(c => c.status === 'on_time').length;
+    const slightlyOffCount = compliance.filter(c => c.status === 'slightly_off').length;
+    const significantlyOffCount = compliance.filter(c => c.status === 'significantly_off').length;
+    const noPdksCount = compliance.filter(c => c.status === 'no_pdks').length;
+    const totalCount = compliance.length;
+
+    res.json({
+      branchId,
+      dateFrom,
+      dateTo,
+      compliance,
+      summary: {
+        total: totalCount,
+        onTime: onTimeCount,
+        slightlyOff: slightlyOffCount,
+        significantlyOff: significantlyOffCount,
+        noPdks: noPdksCount,
+        onTimeRate: totalCount > 0 ? Math.round((onTimeCount / totalCount) * 100) : 0,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Shifts] Compliance error:", error);
+    res.status(500).json({ message: "Uyumluluk verisi yüklenemedi" });
+  }
+});
+
+function timeToMin(t: string): number {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
 export default router;

@@ -159,7 +159,7 @@ export default function VardiyaPlanlama() {
   );
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'schedule' | 'swap-requests'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'swap-requests' | 'compliance'>('schedule');
 
   // Role-based access: Only these roles can edit shifts
   const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'coach', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin'];
@@ -733,9 +733,9 @@ export default function VardiyaPlanlama() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'schedule' | 'swap-requests')} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'schedule' | 'swap-requests' | 'compliance')} className="w-full">
         <div className="flex items-center gap-2 flex-wrap">
-          <TabsList className="grid max-w-md grid-cols-2">
+          <TabsList className="grid max-w-lg grid-cols-3">
             <TabsTrigger value="schedule" className="gap-2" data-testid="tab-schedule">
               <Calendar className="w-4 h-4" />
               Haftalık Görünüm
@@ -748,6 +748,10 @@ export default function VardiyaPlanlama() {
                   {totalPendingCount}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="compliance" className="gap-2" data-testid="tab-compliance">
+              <CheckCircle2 className="w-4 h-4" />
+              Uyumluluk
             </TabsTrigger>
           </TabsList>
 
@@ -1275,6 +1279,14 @@ export default function VardiyaPlanlama() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Compliance Tab */}
+        <TabsContent value="compliance" className="mt-4">
+          <ComplianceView
+            branchId={user?.branchId || 0}
+            weekStart={weekStart}
+          />
         </TabsContent>
       </Tabs>
 
@@ -2139,5 +2151,179 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ComplianceView({ branchId, weekStart }: { branchId: number; weekStart: Date }) {
+  const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+  const weekEndStr = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+
+  const { data: complianceData, isLoading } = useQuery<any>({
+    queryKey: ['/api/shifts/compliance', branchId, weekStartStr, weekEndStr],
+    queryFn: async () => {
+      if (!branchId) return null;
+      const res = await fetch(`/api/shifts/compliance?branchId=${branchId}&dateFrom=${weekStartStr}&dateTo=${weekEndStr}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!branchId,
+  });
+
+  const { data: branchUsers } = useQuery<any[]>({
+    queryKey: ['/api/users', { branchId }],
+  });
+
+  if (isLoading) {
+    return <LoadingState />;
+  }
+
+  if (!complianceData || !complianceData.compliance || complianceData.compliance.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-muted-foreground">
+          Bu hafta için uyumluluk verisi bulunamadı. PDKS kayıtları veya planlı vardiyalar mevcut değil.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const userMap = new Map<string, string>();
+  if (branchUsers) {
+    for (const u of (branchUsers as any[])) {
+      userMap.set(u.id, [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || 'Bilinmiyor');
+    }
+  }
+
+  const uniqueUsers = [...new Set(complianceData.compliance.map((c: any) => c.userId))];
+  const weekDays: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    weekDays.push(format(addDays(weekStart, i), 'yyyy-MM-dd'));
+  }
+
+  const dayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'on_time': return 'bg-green-500/10 text-green-600 dark:text-green-400';
+      case 'slightly_off': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+      case 'significantly_off': return 'bg-red-500/10 text-red-600 dark:text-red-400';
+      case 'no_pdks': return 'bg-muted/50 text-muted-foreground';
+      default: return 'bg-muted/30 text-muted-foreground';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'on_time': return 'Zamanında';
+      case 'slightly_off': return 'Hafif Sapma';
+      case 'significantly_off': return 'Belirgin Sapma';
+      case 'no_pdks': return 'PDKS Yok';
+      default: return '-';
+    }
+  };
+
+  const summary = complianceData.summary;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-3 flex-wrap">
+        <Card className="flex-1 min-w-[120px]">
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-compliance-rate">{summary.onTimeRate}%</p>
+            <p className="text-xs text-muted-foreground">Uyumluluk Oranı</p>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[120px]">
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.onTime}</p>
+            <p className="text-xs text-muted-foreground">Zamanında</p>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[120px]">
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{summary.slightlyOff}</p>
+            <p className="text-xs text-muted-foreground">Hafif Sapma</p>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[120px]">
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.significantlyOff}</p>
+            <p className="text-xs text-muted-foreground">Belirgin Sapma</p>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[120px]">
+          <CardContent className="p-3 text-center">
+            <p className="text-2xl font-bold text-muted-foreground">{summary.noPdks}</p>
+            <p className="text-xs text-muted-foreground">PDKS Yok</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardContent className="p-2">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr>
+                  <th className="p-2 text-left w-32 text-muted-foreground font-medium">Personel</th>
+                  {weekDays.map((d) => {
+                    const dayOfWeek = new Date(d).getDay();
+                    const isBusy = [0, 5, 6].includes(dayOfWeek);
+                    return (
+                      <th key={d} className={`p-2 text-center text-muted-foreground font-medium ${isBusy ? 'bg-amber-500/5' : ''}`}>
+                        {dayLabels[(dayOfWeek + 6) % 7]}
+                        <br />
+                        <span className="text-[10px]">{d.substring(5)}</span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {uniqueUsers.map((userId: string) => {
+                  const userName = userMap.get(userId) || userId.substring(0, 8);
+                  return (
+                    <tr key={userId} className="border-t border-border" data-testid={`row-compliance-${userId}`}>
+                      <td className="p-2">
+                        <p className="font-medium text-[11px] truncate max-w-[120px]">{userName}</p>
+                      </td>
+                      {weekDays.map(day => {
+                        const entry = complianceData.compliance.find(
+                          (c: any) => c.userId === userId && c.date === day
+                        );
+                        if (!entry) {
+                          return (
+                            <td key={day} className="p-1 text-center">
+                              <span className="text-muted-foreground text-[10px]">-</span>
+                            </td>
+                          );
+                        }
+                        return (
+                          <td key={day} className="p-1 text-center">
+                            <div className={`rounded px-1 py-0.5 ${getStatusColor(entry.status)}`} title={entry.details}>
+                              <p className="font-mono text-[10px]">
+                                {entry.actualStart || '—'}
+                                {entry.actualEnd ? ` → ${entry.actualEnd}` : ''}
+                              </p>
+                              <p className="text-[8px]">{getStatusLabel(entry.status)}</p>
+                              {entry.lateMinutes > 0 && (
+                                <p className="text-[8px] text-red-500">+{entry.lateMinutes}dk geç</p>
+                              )}
+                              {entry.overtimeMinutes > 0 && (
+                                <p className="text-[8px] text-blue-500">+{entry.overtimeMinutes}dk mesai</p>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

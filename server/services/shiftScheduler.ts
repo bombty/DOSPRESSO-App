@@ -24,6 +24,52 @@ interface ShiftRecommendation {
   fairnessScore: number;
 }
 
+export interface BreakTimeResult {
+  breakStart: string;
+  breakEnd: string;
+}
+
+export interface BreakValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ShiftWithBreak {
+  userId: string;
+  userName?: string;
+  branchId: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  breakStartTime: string;
+  breakEndTime: string;
+  breakDurationMinutes: number;
+  isOff: boolean;
+  shiftType: 'opening' | 'standard' | 'closing' | 'off';
+  dayOfWeek: number;
+}
+
+export interface WeeklyPlanResult {
+  plan: ShiftWithBreak[];
+  weeklyHours: Record<string, number>;
+  validation: BreakValidationResult;
+  staffCount: number;
+  offDaysSummary: Record<string, number>;
+}
+
+function timeToMinutes(time: string): number {
+  if (!time) return 0;
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const m = (minutes % 60).toString().padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 export class ShiftScheduler {
   private static calculateHours(startTime: string, endTime: string): number {
     const [startH, startM] = startTime.split(':').map(Number);
@@ -68,6 +114,278 @@ export class ShiftScheduler {
       .forEach((s) => daysSet.add(s.shiftDate));
     
     return daysSet.size;
+  }
+
+  static calculateBreakTime(
+    shiftStart: string,
+    shiftEnd: string,
+    existingBreaks: { start: string; end: string }[],
+    breakDuration: number = 60
+  ): BreakTimeResult {
+    const startMinutes = timeToMinutes(shiftStart);
+    const endMinutes = timeToMinutes(shiftEnd);
+    const shiftDuration = endMinutes - startMinutes;
+
+    if (shiftDuration < 360) {
+      return { breakStart: '', breakEnd: '' };
+    }
+
+    const earliestBreak = startMinutes + 210;
+    const latestBreak = startMinutes + 300;
+
+    for (let candidate = earliestBreak; candidate <= latestBreak; candidate += 10) {
+      const candidateEnd = candidate + breakDuration;
+
+      if (candidateEnd > endMinutes) continue;
+
+      const hasConflict = existingBreaks.some(existing => {
+        if (!existing.start || !existing.end) return false;
+        const existStart = timeToMinutes(existing.start);
+        const existEnd = timeToMinutes(existing.end);
+        return !(candidateEnd + 10 <= existStart || candidate >= existEnd + 10);
+      });
+
+      if (!hasConflict) {
+        return {
+          breakStart: minutesToTime(candidate),
+          breakEnd: minutesToTime(candidateEnd),
+        };
+      }
+    }
+
+    const mid = Math.floor((startMinutes + endMinutes) / 2) - 30;
+    return {
+      breakStart: minutesToTime(mid),
+      breakEnd: minutesToTime(mid + breakDuration),
+    };
+  }
+
+  static validateBreakSchedule(
+    shifts: Array<{
+      userId: string;
+      startTime: string;
+      endTime: string;
+      breakStart: string;
+      breakEnd: string;
+      isOff: boolean;
+    }>,
+    branchSize: 'small' | 'medium' | 'large' = 'small'
+  ): BreakValidationResult {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    const maxSimultaneous = branchSize === 'large' ? 2 : 1;
+    const minGapMinutes = 10;
+
+    const activeShifts = shifts.filter(s => !s.isOff && s.breakStart);
+
+    const sorted = [...activeShifts].sort((a, b) =>
+      timeToMinutes(a.breakStart) - timeToMinutes(b.breakStart)
+    );
+
+    for (let i = 0; i < sorted.length; i++) {
+      let simultaneous = 1;
+      const iStart = timeToMinutes(sorted[i].breakStart);
+      const iEnd = timeToMinutes(sorted[i].breakEnd);
+
+      for (let j = i + 1; j < sorted.length; j++) {
+        const jStart = timeToMinutes(sorted[j].breakStart);
+        const jEnd = timeToMinutes(sorted[j].breakEnd);
+
+        if (jStart < iEnd && jEnd > iStart) {
+          simultaneous++;
+        }
+      }
+
+      if (simultaneous > maxSimultaneous) {
+        errors.push(`Saat ${sorted[i].breakStart}'da ${simultaneous} kişi aynı anda molada — max ${maxSimultaneous}`);
+      }
+    }
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const currentEnd = timeToMinutes(sorted[i].breakEnd);
+      const nextStart = timeToMinutes(sorted[i + 1].breakStart);
+      const gap = nextStart - currentEnd;
+
+      if (gap < minGapMinutes && gap >= 0) {
+        warnings.push(`${sorted[i].breakStart} ve ${sorted[i + 1].breakStart} molaları arası ${gap}dk — min 10dk olmalı`);
+      }
+    }
+
+    const minOnFloor = branchSize === 'small' ? 1 : 2;
+    const earliestShift = Math.min(...activeShifts.map(s => timeToMinutes(s.startTime)));
+    const latestShift = Math.max(...activeShifts.map(s => timeToMinutes(s.endTime)));
+
+    for (let slot = earliestShift; slot <= latestShift; slot += 30) {
+      const working = activeShifts.filter(s => {
+        const sStart = timeToMinutes(s.startTime);
+        const sEnd = timeToMinutes(s.endTime);
+        const bStart = timeToMinutes(s.breakStart);
+        const bEnd = timeToMinutes(s.breakEnd);
+        const onShift = slot >= sStart && slot < sEnd;
+        const onBreak = slot >= bStart && slot < bEnd;
+        return onShift && !onBreak;
+      }).length;
+
+      if (working < minOnFloor && activeShifts.length >= 2) {
+        errors.push(`Saat ${minutesToTime(slot)}'da şubede sadece ${working} kişi çalışıyor — min ${minOnFloor} olmalı`);
+      }
+    }
+
+    return { valid: errors.length === 0, errors, warnings };
+  }
+
+  static generateWeeklyPlan(
+    staff: Array<{ id: string; name: string; role: string; employmentType: string }>,
+    weekStartDate: string,
+    branchId: number,
+    leaveUserDates: Set<string> = new Set(),
+    openingHour: string = '08:00',
+    closingHour: string = '17:00'
+  ): WeeklyPlanResult {
+    const plan: ShiftWithBreak[] = [];
+    const staffCount = staff.length;
+    const branchSize: 'small' | 'medium' | 'large' = staffCount <= 6 ? 'small' : staffCount <= 12 ? 'medium' : 'large';
+
+    const weeklyHoursTracker: Record<string, number> = {};
+    const offDaysTracker: Record<string, number> = {};
+    staff.forEach(s => {
+      weeklyHoursTracker[s.id] = 0;
+      offDaysTracker[s.id] = 0;
+    });
+
+    const openH = parseInt(openingHour.split(':')[0]);
+    const openM = parseInt(openingHour.split(':')[1] || '0');
+    const closeH = parseInt(closingHour.split(':')[0]);
+    const closeM = parseInt(closingHour.split(':')[1] || '0');
+
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const dateObj = new Date(weekStartDate);
+      dateObj.setDate(dateObj.getDate() + dayOffset);
+      const dateStr = dateObj.toISOString().split('T')[0];
+      const dayOfWeek = dateObj.getDay();
+      const isBusyDay = [0, 5, 6].includes(dayOfWeek);
+      const isQuietDay = [1, 2].includes(dayOfWeek);
+
+      const availableToday = staff.filter(s => {
+        const key = `${s.id}_${dateStr}`;
+        return !leaveUserDates.has(key);
+      });
+
+      const needOff = isQuietDay
+        ? Math.ceil(staffCount * 0.3)
+        : isBusyDay
+          ? Math.max(1, Math.floor(staffCount * 0.15))
+          : Math.ceil(staffCount * 0.2);
+
+      const offCandidates = availableToday
+        .filter(s => offDaysTracker[s.id] < 2)
+        .filter(s => !(s.role === 'mudur' && isBusyDay))
+        .sort((a, b) => offDaysTracker[a.id] - offDaysTracker[b.id]);
+
+      const todayOffIds = new Set(offCandidates.slice(0, Math.min(needOff, offCandidates.length)).map(s => s.id));
+      todayOffIds.forEach(id => { offDaysTracker[id]++; });
+
+      const workingToday = availableToday.filter(s => !todayOffIds.has(s.id));
+
+      const dayBreaks: { start: string; end: string }[] = [];
+
+      for (let i = 0; i < workingToday.length; i++) {
+        const person = workingToday[i];
+        const isFT = person.employmentType === 'fulltime' || person.employmentType === 'tam_zamanli' || !person.employmentType;
+        const targetDailyHours = isFT ? 9 : 6;
+
+        let startTime: string;
+        let endTime: string;
+        let shiftType: 'opening' | 'standard' | 'closing' = 'standard';
+
+        if (i < 2) {
+          shiftType = 'opening';
+          startTime = i === 0
+            ? minutesToTime(openH * 60 + openM - 30)
+            : minutesToTime(openH * 60 + openM);
+          endTime = minutesToTime(timeToMinutes(startTime) + targetDailyHours * 60);
+        } else if (i >= workingToday.length - (isBusyDay ? 3 : 2)) {
+          shiftType = 'closing';
+          endTime = minutesToTime(closeH * 60 + closeM + 30);
+          startTime = minutesToTime(timeToMinutes(endTime) - targetDailyHours * 60);
+        } else {
+          startTime = minutesToTime(openH * 60 + openM);
+          endTime = minutesToTime(timeToMinutes(startTime) + targetDailyHours * 60);
+        }
+
+        const breakInfo = this.calculateBreakTime(startTime, endTime, dayBreaks, 60);
+        if (breakInfo.breakStart) {
+          dayBreaks.push({ start: breakInfo.breakStart, end: breakInfo.breakEnd });
+        }
+
+        const shiftMinutes = timeToMinutes(endTime) - timeToMinutes(startTime);
+        const netWorkMinutes = shiftMinutes - 60;
+        weeklyHoursTracker[person.id] += netWorkMinutes / 60;
+
+        plan.push({
+          userId: person.id,
+          userName: person.name,
+          branchId,
+          date: dateStr,
+          startTime,
+          endTime,
+          breakStartTime: breakInfo.breakStart || '',
+          breakEndTime: breakInfo.breakEnd || '',
+          breakDurationMinutes: breakInfo.breakStart ? 60 : 0,
+          isOff: false,
+          shiftType,
+          dayOfWeek,
+        });
+      }
+
+      todayOffIds.forEach(userId => {
+        const person = staff.find(s => s.id === userId);
+        plan.push({
+          userId,
+          userName: person?.name || '',
+          branchId,
+          date: dateStr,
+          startTime: '',
+          endTime: '',
+          breakStartTime: '',
+          breakEndTime: '',
+          breakDurationMinutes: 0,
+          isOff: true,
+          shiftType: 'off',
+          dayOfWeek,
+        });
+      });
+    }
+
+    const allErrors: string[] = [];
+    const allWarnings: string[] = [];
+    const dates = [...new Set(plan.filter(p => !p.isOff).map(p => p.date))];
+    for (const date of dates) {
+      const dayPlan = plan.filter(p => p.date === date && !p.isOff);
+      const daySize: 'small' | 'medium' | 'large' = dayPlan.length <= 6 ? 'small' : dayPlan.length <= 12 ? 'medium' : 'large';
+      const dayValidation = this.validateBreakSchedule(
+        dayPlan.map(p => ({
+          userId: p.userId,
+          startTime: p.startTime,
+          endTime: p.endTime,
+          breakStart: p.breakStartTime,
+          breakEnd: p.breakEndTime,
+          isOff: false,
+        })),
+        daySize
+      );
+      allErrors.push(...dayValidation.errors.map(e => `[${date}] ${e}`));
+      allWarnings.push(...dayValidation.warnings.map(w => `[${date}] ${w}`));
+    }
+
+    return {
+      plan,
+      weeklyHours: weeklyHoursTracker,
+      validation: { valid: allErrors.length === 0, errors: allErrors, warnings: allWarnings },
+      staffCount,
+      offDaysSummary: offDaysTracker,
+    };
   }
 
   static generateRecommendations(
