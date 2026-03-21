@@ -1,0 +1,578 @@
+## DASHBOARD REDESIGN SPRINT 1/3 — Foundation + HQ Mission Control
+
+### Context
+DOSPRESSO is getting a new "Mission Control" dashboard template alongside the existing "Classic" one. This is Sprint 1 of 3:
+- Sprint 1 (THIS): Infrastructure + Toggle + HQ Dashboard + Mr. Dobody Panel + Mobile
+- Sprint 2 (NEXT): Supervisor + Stajyer + Factory dashboards
+- Sprint 3 (POST-LAUNCH): Widget Studio admin editor + drag-drop + thumbnail manager
+
+The Mission Control design is an AI-first "co-pilot" dashboard with:
+- Mr. Dobody as collapsible left panel (44px rail ↔ 240px panel)
+- Compact KPI strip with sparkline trends
+- Task feed with priority indicators
+- Live activity stream
+- Thumbnail support (profile photos, branch images)
+- Role-specific content
+- Mobile responsive (single column + bottom nav)
+
+IMPORTANT: Do NOT delete or modify existing dashboard pages. Create NEW components. Toggle switches between old and new.
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json
+- Do NOT modify existing dashboard pages (hq-dashboard.tsx, sube-ozet.tsx, ceo-command-center.tsx)
+- Do NOT change backend API endpoints — use EXISTING ones only
+- Do NOT change scoring services, payroll, or kiosk
+- Use DOSPRESSO existing CSS variables and dark mode color palette
+- Turkish UI, users.id is VARCHAR
+- All thumbnails use existing profileImageUrl field — no new upload system needed yet
+- Reuse existing useQuery hooks and API calls — same data, different presentation
+
+---
+
+## STEP 0: DEEP INVESTIGATION
+
+This is critical — understand what data sources exist before building.
+
+```bash
+echo "═══════════════════════════════════════"
+echo "STEP 0: DEEP INVESTIGATION"
+echo "═══════════════════════════════════════"
+
+# === 0A: Current dashboard pages and their data sources ===
+echo "--- Dashboard pages ---"
+find client/src/pages -name "*dashboard*" -o -name "*ozet*" -o -name "*command*" | sort
+
+echo "--- HQ dashboard queries ---"
+grep -n "useQuery\|queryKey" client/src/pages/hq-dashboard.tsx | head -20
+
+echo "--- HQ dashboard size ---"
+wc -l client/src/pages/hq-dashboard.tsx
+
+echo "--- Sube dashboard queries ---"
+grep -n "useQuery\|queryKey" client/src/pages/sube-ozet.tsx | head -20
+
+echo "--- CEO dashboard queries ---"
+grep -n "useQuery\|queryKey" client/src/pages/ceo-command-center.tsx | head -20
+
+# === 0B: Mr. Dobody / Guidance data ===
+echo "--- Guidance widget ---"
+wc -l client/src/components/widgets/guidance-widget.tsx 2>/dev/null
+grep -n "useQuery\|queryKey\|/api/agent" client/src/components/widgets/guidance-widget.tsx | head -10
+
+echo "--- Guidance API ---"
+grep -n "guidance\|completeness\|gaps" server/routes/agent.ts server/services/system-completeness-service.ts 2>/dev/null | head -15
+
+# === 0C: Activity/notification data (for live feed) ===
+echo "--- Notification queries ---"
+grep -n "notification" server/routes/misc.ts | head -10
+echo "SELECT count(*) FROM notifications;" | psql
+echo "--- Recent activity ---"
+grep -rn "activity\|audit_log\|event_log\|system_log" server/routes/ --include="*.ts" | head -10
+
+# === 0D: User preferences infrastructure ===
+echo "--- User columns for preferences ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND (column_name LIKE '%pref%' OR column_name LIKE '%setting%' OR column_name LIKE '%layout%' OR column_name LIKE '%theme%' OR column_name LIKE '%dashboard%');" | psql
+
+echo "--- System config table ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%config%' OR table_name LIKE '%setting%';" | psql
+echo "SELECT key, value FROM ai_system_config LIMIT 10;" | psql 2>/dev/null
+
+# === 0E: Profile images ===
+echo "--- Profile image availability ---"
+echo "SELECT count(*) as with_photo FROM users WHERE profile_image_url IS NOT NULL AND profile_image_url != '';" | psql
+echo "SELECT count(*) as total_active FROM users WHERE is_active = true;" | psql
+
+# === 0F: Branch images ===
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='branches' AND (column_name LIKE '%image%' OR column_name LIKE '%photo%' OR column_name LIKE '%logo%' OR column_name LIKE '%thumb%');" | psql
+
+# === 0G: Existing CSS variables and colors ===
+echo "--- DOSPRESSO colors ---"
+grep -n "\-\-.*color\|#122549\|#cc1f1f\|#c9a84c\|hsl(" client/src/index.css | head -20
+
+# === 0H: Role-based routing ===
+echo "--- How dashboard routing works ---"
+grep -n "hq-dashboard\|sube-ozet\|ceo-command\|franchise\|benim-gunum" client/src/App.tsx | head -15
+
+# === 0I: Existing component library ===
+echo "--- Shared components ---"
+ls client/src/components/widgets/ 2>/dev/null
+ls client/src/components/ui/ 2>/dev/null | head -20
+
+# === 0J: Dashboard API endpoints ===
+echo "--- Dashboard data endpoints ---"
+grep -n "router\.\(get\|post\).*\(dashboard\|stats\|summary\|overview\|health\|branch.*list\)" server/routes/misc.ts server/routes/branches.ts server/routes/factory.ts 2>/dev/null | head -20
+
+# === 0K: Task/assignment data ===
+echo "--- Task queries ---"
+grep -n "router.get.*task\|router.get.*gorev\|router.get.*assignment" server/routes/branch-tasks.ts server/routes/misc.ts 2>/dev/null | head -10
+
+echo "═══════════════════════════════════════"
+echo "REPORT ALL FINDINGS BEFORE IMPLEMENTING"
+echo "═══════════════════════════════════════"
+```
+
+---
+
+## PART 1: TOGGLE INFRASTRUCTURE
+
+### 1A: Add dashboard_layout column to users
+
+```bash
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='dashboard_layout';" | psql
+```
+
+If not exists:
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS dashboard_layout VARCHAR(30) DEFAULT 'default';
+-- Values: 'default' (uses system setting), 'classic', 'mission-control'
+```
+
+Also add to shared/schema.ts users table definition:
+```typescript
+dashboardLayout: varchar("dashboard_layout", { length: 30 }).default('default'),
+```
+
+### 1B: System default config
+
+```bash
+# Check if ai_system_config or similar exists
+echo "SELECT * FROM ai_system_config WHERE key LIKE '%dashboard%';" | psql 2>/dev/null
+```
+
+Insert system default:
+```sql
+INSERT INTO ai_system_config (key, value, description) 
+VALUES ('default_dashboard_layout', 'classic', 'Varsayılan dashboard görünümü: classic veya mission-control')
+ON CONFLICT (key) DO NOTHING;
+```
+
+### 1C: API endpoints
+
+Add to an appropriate route file (misc.ts or create new dashboard-layout.ts):
+
+```typescript
+// GET /api/me/dashboard-layout
+// Returns effective layout: user pref > system default > 'classic'
+router.get("/api/me/dashboard-layout", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    let layout = user.dashboardLayout || 'default';
+    
+    if (layout === 'default') {
+      const config = await db.select().from(aiSystemConfig)
+        .where(eq(aiSystemConfig.key, 'default_dashboard_layout')).limit(1);
+      layout = config[0]?.value || 'classic';
+    }
+    
+    res.json({ 
+      layout, 
+      userPreference: user.dashboardLayout || 'default',
+      available: ['classic', 'mission-control']
+    });
+  } catch (error) {
+    res.json({ layout: 'classic', userPreference: 'default', available: ['classic', 'mission-control'] });
+  }
+});
+
+// PATCH /api/me/dashboard-layout
+router.patch("/api/me/dashboard-layout", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const { layout } = req.body;
+    
+    if (!['default', 'classic', 'mission-control'].includes(layout)) {
+      return res.status(400).json({ error: "Geçersiz layout" });
+    }
+    
+    await db.update(users).set({ dashboardLayout: layout }).where(eq(users.id, user.id));
+    res.json({ success: true, layout });
+  } catch (error) {
+    res.status(500).json({ error: "Layout güncellenemedi" });
+  }
+});
+
+// PATCH /api/admin/default-dashboard-layout (admin only)
+router.patch("/api/admin/default-dashboard-layout", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  if (!['admin', 'ceo', 'cgo'].includes(user.role)) {
+    return res.status(403).json({ error: "Yetkiniz yok" });
+  }
+  
+  const { layout } = req.body;
+  if (!['classic', 'mission-control'].includes(layout)) {
+    return res.status(400).json({ error: "Geçersiz layout" });
+  }
+  
+  await db.insert(aiSystemConfig)
+    .values({ key: 'default_dashboard_layout', value: layout })
+    .onConflictDoUpdate({ target: aiSystemConfig.key, set: { value: layout } });
+  
+  res.json({ success: true, defaultLayout: layout });
+});
+```
+
+### 1D: Frontend hook — useDashboardLayout
+
+Create `client/src/hooks/useDashboardLayout.ts`:
+
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+
+export function useDashboardLayout() {
+  const queryClient = useQueryClient();
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ['/api/me/dashboard-layout'],
+    staleTime: 300000, // 5 min cache — layout doesn't change often
+  });
+  
+  const mutation = useMutation({
+    mutationFn: (layout: string) => 
+      apiRequest('PATCH', '/api/me/dashboard-layout', { layout }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/me/dashboard-layout'] });
+    },
+  });
+  
+  return {
+    layout: (data as any)?.layout || 'classic',
+    userPreference: (data as any)?.userPreference || 'default',
+    available: (data as any)?.available || ['classic', 'mission-control'],
+    setLayout: (layout: string) => mutation.mutate(layout),
+    isLoading: isLoading || mutation.isPending,
+  };
+}
+```
+
+### 1E: LayoutToggle component
+
+Create `client/src/components/mission-control/LayoutToggle.tsx`:
+
+```typescript
+import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+import { LayoutDashboard, ArrowLeftRight } from 'lucide-react';
+
+export function LayoutToggle() {
+  const { layout, setLayout, isLoading } = useDashboardLayout();
+  
+  return (
+    <button 
+      onClick={() => setLayout(layout === 'classic' ? 'mission-control' : 'classic')}
+      disabled={isLoading}
+      className="flex items-center gap-1.5 px-2 py-1 text-[10px] border border-border rounded-md hover:bg-muted/50 transition-colors"
+      title="Dashboard görünümünü değiştir"
+    >
+      <LayoutDashboard className="h-3 w-3" />
+      <span>{layout === 'mission-control' ? 'Mission Control' : 'Klasik'}</span>
+      <ArrowLeftRight className="h-3 w-3 text-muted-foreground" />
+    </button>
+  );
+}
+```
+
+---
+
+## PART 2: MR. DOBODY COLLAPSIBLE PANEL
+
+Create `client/src/components/mission-control/DobodyPanel.tsx`
+
+### Design specs:
+- **Rail mode (collapsed):** 44px wide. Shows: Mr. Dobody avatar (32px circle, amber bg, "D"), red badge with critical count, 2-3 severity dots below. Click avatar → expand.
+- **Panel mode (expanded):** 240px wide. Shows: Header (avatar + name + subtitle + ← close button), severity pills (kritik/uyarı/online), scrollable feed of guidance items, search input at bottom.
+- **Mobile:** No side panel. Instead: compact card at top of dashboard.
+- **Panel state persisted in localStorage** key: 'dobody-panel-expanded'
+
+### AI personality by role:
+```
+admin/ceo/cgo → "Operasyon asistanı" — strategic, formal
+supervisor/mudur → "Şube asistanı" — operational, team-focused  
+stajyer/barista → "Kişisel eğitim koçu" — motivational
+fabrika_mudur → "Üretim asistanı" — production-focused
+```
+
+### Feed items from EXISTING guidance data:
+Use the same data source as the current guidance-widget.tsx. Each item shows:
+- Severity label (8px uppercase): "KRİTİK — PERSONEL" in red, "UYARI — SLA" in amber, "BİLGİ — EĞİTİM" in blue, "BAŞARI" in green
+- Title (10px bold): "Batman: Şube yöneticisi yok"
+- Description (9px muted): "Şube operasyonları yönetilemez..."
+- Action link (8px blue): "Düzelt →" — navigates to gap.deepLink
+
+### Search input at bottom:
+- Placeholder: "Mr. Dobody'ye sor..."
+- On Enter: navigate to `/ai-asistan?q=...` (if AI chat page exists) or show toast "Yakında aktif olacak"
+- On focus: placeholder changes to "Örnek: Bu hafta en düşük performanslı şube?"
+
+### Implementation:
+```typescript
+// DobodyPanel.tsx must:
+// 1. Accept: isExpanded, onToggle, role, branchId props
+// 2. Fetch guidance using SAME query as existing guidance-widget
+// 3. Render rail or panel based on isExpanded
+// 4. Sort items: critical first, then high, medium, low
+// 5. Show max 10 items in panel (scrollable)
+// 6. Handle click on "Düzelt →" → navigate to deepLink
+// 7. Animate expand/collapse with CSS transition (width change)
+```
+
+Also create `client/src/components/mission-control/DobodyMobileCard.tsx`:
+- Compact card for mobile (no side panel)
+- Shows: avatar + "Mr. Dobody" + severity pills + summary message + "Tüm önerileri gör →"
+- Summary message: "Batman ve Kilis'te yönetici yok. 3 SLA ihlali acil." (auto-generated from top items)
+- Clicking opens full Mr. Dobody page or expands to show feed
+
+---
+
+## PART 3: HQ MISSION CONTROL DASHBOARD
+
+Create `client/src/components/mission-control/HQDashboard.tsx`
+
+### Structure (top to bottom):
+
+**3A: Header bar (40px fixed)**
+- Left: User avatar (28px, profileImageUrl or initials) + "Merhaba, {firstName}" + date
+- Right: LayoutToggle component + role badge (e.g. "CGO" in blue pill)
+
+**3B: KPI Strip (48px fixed, grid-cols-4, border-bottom)**
+Each KPI cell:
+- Large number (20px, color-coded: red=danger, green=success, amber=warning)
+- Label below (8px uppercase muted)
+- 7-day sparkline bars on the right (24px height, 4px wide bars, 7 bars)
+- Trend indicator: "↑ +3%" or "↓ -2%" (9px, colored)
+
+4 KPIs for HQ:
+1. Şube (total count, neutral)
+2. SLA İhlali (count, red if > 0)
+3. Açık Ticket (count, amber if > 0)  
+4. Aktif Kullanıcı (count, green)
+
+Data sources — use EXISTING queries from hq-dashboard.tsx. Map the data to these 4 metrics.
+
+**Sparkline data:** If historical data isn't available via API, show static bars or hide sparkline. Don't create new endpoints. If branch-health or similar has weekly data, use that.
+
+**3C: Scrollable content area**
+
+Section 1: **Görevler (Task Feed)**
+- Section header: "Bugünün görevleri" + count badge + "Tümünü gör →"
+- Max 4 tasks shown
+- Each task card: priority bar (3px, red/amber/green) + title (12px bold) + meta tags (9px muted: category + context) + time estimate
+- Click task → navigate to task detail or relevant page
+- Data: use existing task/assignment API
+
+Section 2: **Şube Durumu (Branch Status)**
+- Section header: "Şube durumu" + count + "Tümünü gör →"  
+- 2-column grid of branch cards
+- Each branch card: thumbnail (48px, initials if no image) + name + meta (staff count, rating) + health bar + sparkline
+- Health bar: colored fill (green > 80, amber 60-80, red < 60) + percentage
+- Sparkline: 7 mini bars showing health trend
+- Click → navigate to branch detail
+- Data: use existing branches API + branch-health data
+- Max 4 branches shown (sorted by: critical first, then lowest health)
+
+Section 3: **Canlı Akış (Live Feed)**
+- Section header: "Canlı akış"
+- Max 4 items
+- Each item: timestamp (8px muted) + colored dot + bold name + description
+- Data: use existing notifications or audit_log. If no live feed API exists, use recent notifications.
+- Vertical list (default variant)
+
+**3D: Quick Actions (optional)**
+If space allows, 4 icon buttons above tasks:
+- İletişim (purple), Vardiya (teal), Fabrika (coral), Raporlar (blue)
+- Each: 28px icon container + 9px label
+- Click → navigate to respective page
+
+### Mobile responsive (< 768px):
+- Mr. Dobody panel → DobodyMobileCard at top
+- KPI strip → 3 columns (drop least important)
+- Branch cards → single column
+- Quick actions → 4 small icons in a row
+- Everything single-column stacked
+
+---
+
+## PART 4: INTEGRATE TOGGLE INTO EXISTING PAGES
+
+### CRITICAL: Modify existing pages MINIMALLY — only add layout check at the TOP
+
+For each dashboard page, add this pattern:
+
+```typescript
+// At the TOP of the component, BEFORE any existing code:
+import { useDashboardLayout } from '@/hooks/useDashboardLayout';
+
+export default function HQDashboard() {
+  const { layout } = useDashboardLayout();
+  
+  // If Mission Control, render new component
+  if (layout === 'mission-control') {
+    // Lazy import to avoid loading MC code when not needed
+    const HQMissionControl = React.lazy(() => import('@/components/mission-control/HQDashboard'));
+    return (
+      <React.Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <HQMissionControl />
+      </React.Suspense>
+    );
+  }
+  
+  // === EXISTING CLASSIC DASHBOARD CODE BELOW — DO NOT MODIFY ===
+  // ... rest of existing component unchanged
+}
+```
+
+Apply this pattern to:
+1. `hq-dashboard.tsx` → redirects to HQMissionControl
+2. `sube-ozet.tsx` → will redirect to SupervisorMissionControl (Sprint 2 — for now just add the check, return classic)
+3. `ceo-command-center.tsx` → redirects to HQMissionControl (same as HQ for now)
+4. Other dashboard pages → add check but return classic for now
+
+### File structure:
+```
+client/src/
+  components/
+    mission-control/
+      DobodyPanel.tsx          — Collapsible AI panel (rail ↔ expanded)
+      DobodyMobileCard.tsx     — Mobile compact card
+      DobodyFeedItem.tsx       — Single guidance item
+      HQDashboard.tsx          — HQ Mission Control layout
+      LayoutToggle.tsx         — Classic ↔ MC switch button
+      shared/
+        KPICell.tsx            — Single KPI with sparkline
+        Section.tsx            — Section wrapper (title + count + more)
+        TaskFeedItem.tsx       — Task card with priority
+        BranchCard.tsx         — Branch with thumbnail + health
+        LiveFeedItem.tsx       — Activity feed row
+        QuickActions.tsx       — 4 icon action buttons
+  hooks/
+    useDashboardLayout.ts      — Layout preference hook
+```
+
+---
+
+## PART 5: ADMIN SETTINGS
+
+Add "Dashboard Görünüm" section to admin settings page.
+
+```bash
+# Find admin settings page
+find client/src/pages/admin -name "*ayar*" -o -name "*setting*" -o -name "*config*" | head -5
+```
+
+Add a simple card:
+```typescript
+<div className="border border-border rounded-lg p-4 mb-4">
+  <h3 className="text-sm font-medium mb-1">Dashboard Görünüm</h3>
+  <p className="text-xs text-muted-foreground mb-3">Tüm kullanıcılar için varsayılan dashboard template</p>
+  <div className="flex gap-2">
+    <button onClick={() => setDefault('classic')}
+      className={`flex-1 p-3 border rounded-lg text-center text-xs ${
+        defaultLayout === 'classic' ? 'border-blue-500 bg-blue-500/5' : 'border-border'
+      }`}>
+      <p className="font-medium">Klasik</p>
+      <p className="text-[10px] text-muted-foreground mt-1">Mevcut görünüm</p>
+    </button>
+    <button onClick={() => setDefault('mission-control')}
+      className={`flex-1 p-3 border rounded-lg text-center text-xs ${
+        defaultLayout === 'mission-control' ? 'border-blue-500 bg-blue-500/5' : 'border-border'
+      }`}>
+      <p className="font-medium">Mission Control</p>
+      <p className="text-[10px] text-muted-foreground mt-1">AI co-pilot paneli</p>
+    </button>
+  </div>
+  <p className="text-[10px] text-muted-foreground mt-2">Her kullanıcı kendi tercihini override edebilir.</p>
+</div>
+```
+
+---
+
+## DESIGN SPECIFICATIONS — PIXEL PERFECT
+
+### Color usage (DOSPRESSO dark theme):
+- Background: Use existing --background, --muted CSS variables
+- Text: Use existing --foreground, --muted-foreground
+- Status colors:
+  - Active/Success: #1D9E75 (green)
+  - Warning/Late: #EF9F27 (amber)
+  - Danger/Absent: #E24B4A (red)
+  - Break/Purple: #7F77DD (purple)
+  - Info/Blue: #378ADD (blue)
+  - OFF/Inactive: use --muted-foreground
+
+### Spacing:
+- Panel rail: 44px width
+- Panel expanded: 240px width
+- Header: 40px height
+- KPI strip: 48px height (padding 8px 10px)
+- Section padding: 8px 12px
+- Card padding: 8px-10px
+- Gap between sections: 8-10px
+- Gap between cards: 6px
+
+### Typography:
+- Main number (KPI): 20px, font-weight 500, tabular-nums
+- Title: 12px, font-weight 500
+- Body: 10px, normal
+- Label: 8px, uppercase, tracking-wider, muted
+- Micro: 7-8px for timestamps, badges
+
+### Thumbnail sizes:
+- Presence bar avatar: 32px circle
+- Staff list avatar: 40px circle with 2.5px colored ring
+- Branch card image: 48px rounded-md (8px radius)
+- If no image: show initials on colored background
+
+### Touch targets:
+- Minimum 44px height for clickable items on mobile
+- Minimum 36px height on desktop
+
+### Transitions:
+- Panel expand/collapse: width transition 200ms ease
+- Card hover: background-color transition 150ms
+- No heavy animations — keep it snappy
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- server/localAuth.ts
+- Existing dashboard page LOGIC (only add layout check at top)
+- Scoring services
+- Payroll engine
+- Kiosk pages
+- Shift scheduler
+
+## Testing:
+1. App starts without errors
+2. GET /api/me/dashboard-layout → returns { layout: "classic" }
+3. PATCH /api/me/dashboard-layout with { layout: "mission-control" } → success
+4. HQ Dashboard: default shows classic (unchanged)
+5. Click LayoutToggle → page rerenders as Mission Control
+6. Mission Control: Mr. Dobody rail visible (44px left side)
+7. Click Mr. Dobody avatar → panel expands to 240px
+8. Panel shows guidance items sorted by severity
+9. Click ← → panel collapses back to rail
+10. KPI strip shows 4 metrics with correct colors
+11. Tasks section shows tasks with priority bars
+12. Branch status shows branch cards with health scores
+13. Live feed shows recent activity
+14. Mobile (< 768px): single column, Mr. Dobody as top card, no side panel
+15. Admin settings: "Dashboard Görünüm" card visible, can set default
+16. Layout preference persists after page reload
+17. All existing classic dashboard pages still work unchanged
+18. Mr. Dobody "Düzelt →" links navigate to correct pages
+19. LayoutToggle shows current mode name
+20. No console errors, no broken queries
+
+## After:
+1. Report: new files created (list all)
+2. Report: existing files modified (should be minimal — just layout check)
+3. Report: Mr. Dobody panel data source — what API is used?
+4. Report: KPI data source — what queries power the 4 metrics?
+5. Report: branch card data — what API returns health scores?
+6. Report: mobile breakpoint and responsive behavior
+7. Report: admin settings — where was it added?
+8. Report: any issues with existing guidance data format
