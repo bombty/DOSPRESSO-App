@@ -35,11 +35,7 @@ const GUIDANCE_ROLES = [
 
 function GuidanceWidgetWrapper({ user }: { user: any }) {
   if (!user || !GUIDANCE_ROLES.includes(user.role)) return null;
-  return (
-    <div className="px-4 pt-4">
-      <GuidanceWidget />
-    </div>
-  );
+  return <GuidanceWidget />;
 }
 
 function PageLoader() {

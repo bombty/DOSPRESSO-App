@@ -1,4 +1,4 @@
-import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset } from "lucide-react";
+import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset, User as UserIcon } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
@@ -112,6 +112,10 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation(user ? `/personel/${user.id}` : "/login"); }} data-testid="button-profile">
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Profilim</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/hq-destek"); }} data-testid="button-support">
                 <Headset className="mr-2 h-4 w-4" />
                 <span>Destek</span>

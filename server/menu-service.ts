@@ -659,12 +659,14 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   supervisor: [
     'branch-dashboard', 'tasks-list', 'customer-satisfaction', 'notifications', 'ai-assistant', 'branch-stock-orders', 'crm-main', 'iletisim-merkezi',
+    'hr', 'shifts', 'attendance',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'notifications', 'ai-assistant', 'hq-support',
   ],
   mudur: [
     'branch-dashboard', 'tasks-list', 'reports', 'customer-satisfaction', 'notifications', 'branch-stock-orders', 'crm-main', 'iletisim-merkezi',
+    'hr', 'shifts', 'attendance',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'reports', 'notifications',
