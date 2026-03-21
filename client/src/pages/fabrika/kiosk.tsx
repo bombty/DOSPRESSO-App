@@ -115,6 +115,8 @@ interface Station {
   code: string;
   category: string | null;
   targetHourlyOutput: number | null;
+  productTypeId: number | null;
+  productName: string | null;
 }
 
 interface WasteReason {
@@ -411,7 +413,11 @@ export default function FactoryKiosk() {
     onSuccess: (data) => {
       setCurrentSession(data.session);
       setCurrentProductionRun(data.productionRun);
-      setCurrentStationInfo(data.station);
+      const stationInfo = stations.find(s => s.id === data.station?.id) || data.station;
+      setCurrentStationInfo(stationInfo);
+      if (stationInfo?.productTypeId) {
+        setSelectedProductId(stationInfo.productTypeId);
+      }
       setCurrentPhase('hazirlik');
       setPhaseStartTime(new Date());
       setPhaseDurations({ hazirlik: 0, uretim: 0, temizlik: 0 });
@@ -606,6 +612,16 @@ export default function FactoryKiosk() {
     loginByUsernameMutation.mutate({ username: usernameInput.trim(), pin: pinInput });
   };
 
+  const getStationProductId = (): number | null => {
+    const stationInfo = currentStationInfo || stations.find(s => s.id === selectedStation);
+    return stationInfo?.productTypeId ?? null;
+  };
+
+  const resetProductSelection = () => {
+    const stationProduct = getStationProductId();
+    setSelectedProductId(stationProduct);
+  };
+
   const handleAssignStation = () => {
     if (!currentSession || !selectedStation) return;
     assignStationMutation.mutate({ sessionId: currentSession.id, stationId: selectedStation });
@@ -654,7 +670,7 @@ export default function FactoryKiosk() {
     setSelectedWasteReason(null);
     setWasteNotes('');
     setProductionPhotoUrl(null);
-    setSelectedProductId(null);
+    resetProductSelection();
     setProductError('');
     setWasteDoughKg('');
     setWasteProductCount('');
@@ -1321,7 +1337,7 @@ export default function FactoryKiosk() {
                       setSelectedWasteReason(null);
                       setWasteNotes('');
                       setProductionPhotoUrl(null);
-                      setSelectedProductId(null);
+                      resetProductSelection();
                       setProductError('');
                       setWasteDoughKg('');
                       setWasteProductCount('');
@@ -1371,7 +1387,7 @@ export default function FactoryKiosk() {
                   setSelectedWasteReason(null);
                   setWasteNotes('');
                   setProductionPhotoUrl(null);
-                  setSelectedProductId(null);
+                  resetProductSelection();
                   setProductError('');
                   setWasteDoughKg('');
                   setWasteProductCount('');
@@ -1410,6 +1426,9 @@ export default function FactoryKiosk() {
                     >
                       <Settings className="h-8 w-8" />
                       <span className="font-medium text-center">{station.name}</span>
+                      {station.productName && (
+                        <span className="text-xs text-amber-400">{station.productName}</span>
+                      )}
                       {station.targetHourlyOutput && (
                         <Badge variant="secondary" className="text-xs">
                           Hedef: {station.targetHourlyOutput}/saat
@@ -1694,7 +1713,7 @@ export default function FactoryKiosk() {
                   setSelectedWasteReason(null);
                   setWasteNotes('');
                   setProductionPhotoUrl(null);
-                  setSelectedProductId(null);
+                  resetProductSelection();
                   setProductError('');
                   setWasteDoughKg('');
                   setWasteProductCount('');

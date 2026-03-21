@@ -322,10 +322,23 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   router.get('/api/factory/stations', isAuthenticated, async (req, res) => {
     try {
       const showAll = req.query.all === 'true';
-      const stations = await db.select().from(factoryStations)
+      const stationsRaw = await db.select({
+        id: factoryStations.id,
+        name: factoryStations.name,
+        code: factoryStations.code,
+        description: factoryStations.description,
+        category: factoryStations.category,
+        productTypeId: factoryStations.productTypeId,
+        targetHourlyOutput: factoryStations.targetHourlyOutput,
+        isActive: factoryStations.isActive,
+        sortOrder: factoryStations.sortOrder,
+        createdAt: factoryStations.createdAt,
+        productName: factoryProducts.name,
+      }).from(factoryStations)
+        .leftJoin(factoryProducts, eq(factoryStations.productTypeId, factoryProducts.id))
         .where(showAll ? undefined : eq(factoryStations.isActive, true))
         .orderBy(factoryStations.sortOrder);
-      res.json(stations);
+      res.json(stationsRaw);
     } catch (error: any) {
       console.error("Error fetching factory stations:", error);
       res.status(500).json({ message: "İstasyonlar alınamadı" });
