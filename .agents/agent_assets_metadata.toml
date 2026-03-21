@@ -198,3 +198,9 @@ id = "ksuFEi8hROeFEpxKZWUAY"
 uri = "file://.local/audit-report-21-mart-2026.md"
 type = "text"
 title = "DOSPRESSO IT Audit Raporu - 21 Mart 2026"
+
+[[outputs]]
+id = "8jgDrVISy0OPvo9V2LsHn"
+uri = "file://.local/audit-report-bordro-permissions-21-mart-2026.md"
+type = "text"
+title = "Bordro Parametreleri & İzin Sistemi Audit Raporu — 21 Mart 2026"
