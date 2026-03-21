@@ -1,0 +1,537 @@
+## MEGA SPRINT B — İK Modülü + Kod Temizliği + Skills Güncelleme + Final Doğrulama
+
+### Context
+DOSPRESSO pre-launch sprint combining:
+1. İK module enhancement (özlük dosyası, tutanak sistemi)
+2. Code structure cleanup (misc.ts 13K → split, schema.ts 15K → split)
+3. TypeScript :any cleanup (first 100 occurrences)
+4. Agent skill files update
+5. Final E2E launch validation
+
+PREREQUISITE: MEGA SPRINT A (QC + Payroll) should be completed first.
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+### CRITICAL RULES
+- users.id is VARCHAR (UUID), Turkish UI
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Do NOT break existing imports — when splitting files, RE-EXPORT from original
+- Do NOT change business logic or scoring formulas
+- Do NOT change API response formats
+
+---
+
+## STEP 0: INVESTIGATION
+
+```bash
+echo "══════════════════════════════════════════════"
+echo "STEP 0: INVESTIGATION"
+echo "══════════════════════════════════════════════"
+
+# === İK System ===
+echo "--- İK routes ---"
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/hr.ts | head -30
+wc -l server/routes/hr.ts
+
+echo "--- İK pages ---"
+find client/src/pages -name "*ik*" -o -name "*hr*" -o -name "*personel*" | sort
+
+echo "--- Document/tutanak tables ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%document%' OR table_name LIKE '%dosya%' OR table_name LIKE '%tutanak%' OR table_name LIKE '%disciplin%';" | psql
+
+echo "--- Employee leaves ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='employee_leaves';" | psql 2>/dev/null
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='leave_requests';" | psql 2>/dev/null
+
+# === misc.ts ===
+echo "--- misc.ts size ---"
+wc -l server/routes/misc.ts
+echo "--- misc.ts route groups ---"
+grep -n "// ===\|// ---\|// ###\|router\.\(get\|post\|patch\|delete\).*\"/api/" server/routes/misc.ts | head -50
+echo "--- misc.ts route count ---"
+grep -c "router\.\(get\|post\|patch\|delete\)" server/routes/misc.ts
+
+# === schema.ts ===
+echo "--- schema.ts size ---"
+wc -l shared/schema.ts
+echo "--- schema.ts table count ---"
+grep -c "pgTable\b" shared/schema.ts
+echo "--- schema.ts logical groups ---"
+grep -n "// ===\|// ---\|export const.*=.*pgTable" shared/schema.ts | head -40
+
+# === TypeScript :any ===
+echo "--- Total :any count ---"
+grep -rn ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+echo "--- req.user as any count ---"
+grep -rn "(req.user as any)" server/ --include="*.ts" | grep -v node_modules | wc -l
+echo "--- catch error any count ---"
+grep -rn "catch.*: any\|catch.*:any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+echo "--- Top :any files ---"
+grep -rl ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | while read f; do
+  count=$(grep -c ": any\|:any\|as any" "$f")
+  echo "$count $f"
+done | sort -rn | head -15
+
+# === Skills ===
+echo "--- Current skills ---"
+wc -l .agents/skills/dospresso-architecture/SKILL.md
+wc -l .agents/skills/dospresso-quality-gate/SKILL.md
+wc -l .agents/skills/dospresso-debug-guide/SKILL.md
+
+# === Current system stats ===
+echo "--- Tables ---"
+echo "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" | psql
+echo "--- Users ---"
+echo "SELECT count(*) FROM users WHERE is_active = true;" | psql
+echo "--- Routes ---"
+find server/routes -name "*.ts" | wc -l
+grep -c "router\.\(get\|post\|patch\|delete\)" server/routes/*.ts | awk -F: '{sum+=$2} END {print "Total endpoints:", sum}'
+
+echo "══════════════════════════════════════════════"
+echo "REPORT ALL FINDINGS BEFORE IMPLEMENTING"
+echo "══════════════════════════════════════════════"
+```
+
+---
+
+## ═══════════════════════════════════
+## SECTION 1: İK MODULE ENHANCEMENT
+## ═══════════════════════════════════
+
+### 1A: employee_documents table
+
+```sql
+CREATE TABLE IF NOT EXISTS employee_documents (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  document_type VARCHAR(50) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  file_url TEXT,
+  file_type VARCHAR(20),
+  file_size INTEGER,
+  uploaded_by VARCHAR(36) REFERENCES users(id),
+  is_required BOOLEAN DEFAULT false,
+  expiry_date DATE,
+  status VARCHAR(20) DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_emp_docs_user ON employee_documents(user_id, document_type);
+```
+
+Document types: kimlik, adli_sicil, ikametgah, diploma, saglik_raporu, is_sozlesmesi, sgk_bildirge, maas_bordrosu, izin_formu, tutanak, performans, egitim_sertifika, diger
+
+### 1B: disciplinary_records table
+
+```sql
+CREATE TABLE IF NOT EXISTS disciplinary_records (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  record_type VARCHAR(30) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  incident_date DATE NOT NULL,
+  witnesses TEXT,
+  evidence_urls TEXT,
+  response TEXT,
+  response_date DATE,
+  action_taken TEXT,
+  created_by VARCHAR(36) NOT NULL REFERENCES users(id),
+  approved_by VARCHAR(36) REFERENCES users(id),
+  status VARCHAR(20) DEFAULT 'active',
+  severity VARCHAR(20) DEFAULT 'medium',
+  affects_score BOOLEAN DEFAULT true,
+  score_impact INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_disciplinary_user ON disciplinary_records(user_id, status);
+```
+
+Record types: sozlu_uyari, yazili_uyari, ihtar, savunma_talebi, kinama, ucret_kesintisi, fesih, odullendirme, tesekkur
+
+### 1C: API endpoints
+
+Add to server/routes/hr.ts (or create hr-documents.ts if hr.ts is too large):
+
+```typescript
+// DOCUMENTS
+// GET  /api/hr/employees/:userId/documents — list
+// POST /api/hr/employees/:userId/documents — upload (multipart)
+// DELETE /api/hr/employees/:userId/documents/:docId — remove
+// GET  /api/hr/documents/missing — employees with missing required docs
+// GET  /api/hr/documents/expiring — docs expiring within 30 days
+
+// DISCIPLINARY
+// GET  /api/hr/disciplinary — list all (branch-filtered for supervisors)
+// GET  /api/hr/disciplinary/employee/:userId — for specific employee
+// POST /api/hr/disciplinary — create new (supervisor+ only)
+// PATCH /api/hr/disciplinary/:id — update
+// POST /api/hr/disciplinary/:id/respond — employee response
+
+// Auth: 
+// - Documents: admin, muhasebe_ik, supervisor (own branch), mudur (own branch)
+// - Disciplinary create: admin, muhasebe_ik, supervisor, mudur, coach
+// - Disciplinary respond: the employee themselves (user.id === record.userId)
+```
+
+### 1D: İK page enhancements
+
+Add tabs or sections to existing İK page:
+- **Özlük Dosyaları:** Per-employee document list, upload, missing docs alert
+- **Tutanaklar:** Disciplinary record list, create form, response tracking
+- **Dashboard İK KPIs:** Özlük tamamlama %, yaklaşan son kullanma, aktif tutanak sayısı
+
+---
+
+## ═══════════════════════════════════
+## SECTION 2: SPLIT misc.ts
+## ═══════════════════════════════════
+
+### Strategy: Extract logical groups into new files, re-register routes
+
+```bash
+# First, identify logical groups
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/misc.ts | awk -F'"' '{print $2}' | sort | head -50
+```
+
+### Target file structure:
+```
+server/routes/
+  misc.ts                 → KEEP, reduced to <500 lines (truly misc)
+  dashboard-stats.ts      → /api/dashboard/*, /api/stats/*
+  notifications.ts        → /api/notifications/*
+  user-profile.ts         → /api/me/*, /api/profile/*
+  file-uploads.ts         → /api/upload/*, /api/files/*
+  admin-settings.ts       → /api/admin/settings/*, /api/module-flags/*
+```
+
+### Process for EACH extraction:
+1. Identify routes in misc.ts belonging to the group
+2. Create new file with those routes
+3. REMOVE routes from misc.ts
+4. Register new router in server/index.ts
+5. Test: endpoint still works
+
+### CRITICAL — do NOT break imports:
+```bash
+# Check what misc.ts exports besides routes
+grep -n "export\|module.exports" server/routes/misc.ts | head -10
+```
+
+If misc.ts exports helper functions used by other files, keep those in misc.ts or move to a utils file.
+
+### After splitting, verify:
+```bash
+wc -l server/routes/misc.ts  # Should be < 500
+# Test each extracted endpoint
+curl -s http://localhost:5000/api/health
+```
+
+---
+
+## ═══════════════════════════════════
+## SECTION 3: SPLIT schema.ts
+## ═══════════════════════════════════
+
+### Strategy: Move table definitions to sub-files, barrel re-export
+
+Create directory: `shared/schema/`
+
+### Target structure:
+```
+shared/
+  schema.ts              → BARREL FILE (re-exports everything)
+  schema/
+    users.ts             → users, roles, role_templates, sessions, user preferences
+    branches.ts          → branches, branch_health, branch_settings
+    factory.ts           → factory_*, production_lots, qc_*
+    shifts.ts            → shifts, shift_schedules, shift_templates
+    pdks.ts              → pdks_records, attendance
+    payroll.ts           → payroll_*, salary_scales, monthly_payrolls
+    tasks.ts             → tasks, assignments, checklists
+    training.ts          → training_modules, certificates, quizzes
+    messaging.ts         → messages, notifications, conversations
+    crm.ts               → customers, orders, feedback
+    agent.ts             → agent_*, mr_dobody skills, guidance
+    settings.ts          → module_flags, ai_system_config, sla_rules
+    hr.ts                → employee_documents, disciplinary_records, leaves
+    dashboard.ts         → dashboard_layouts, user_dashboard_prefs (if created)
+```
+
+### CRITICAL — barrel re-export pattern:
+```typescript
+// shared/schema.ts becomes:
+export * from './schema/users';
+export * from './schema/branches';
+export * from './schema/factory';
+export * from './schema/shifts';
+export * from './schema/pdks';
+export * from './schema/payroll';
+export * from './schema/tasks';
+export * from './schema/training';
+export * from './schema/messaging';
+export * from './schema/crm';
+export * from './schema/agent';
+export * from './schema/settings';
+export * from './schema/hr';
+// ... etc
+
+// Also keep shared types/enums that are used across modules:
+export * from './schema/shared-types';
+```
+
+This way ALL existing imports still work:
+```typescript
+// This still works — no changes needed anywhere else:
+import { users, branches, shifts } from '@shared/schema';
+```
+
+### Process:
+1. Create shared/schema/ directory
+2. Move ONE group at a time (start with smallest: settings)
+3. Add re-export to schema.ts
+4. Verify: `npx tsc --noEmit` or app starts
+5. Move next group
+6. Repeat until schema.ts is just re-exports (~50 lines)
+
+---
+
+## ═══════════════════════════════════
+## SECTION 4: TypeScript :any CLEANUP
+## ═══════════════════════════════════
+
+### 4A: Create AuthUser type
+
+Create `server/types/auth.ts`:
+```typescript
+export interface AuthUser {
+  id: string;
+  username: string;
+  email?: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  branchId?: number;
+  isActive: boolean;
+  profileImageUrl?: string;
+  dashboardLayout?: string;
+  employmentType?: string;
+}
+```
+
+### 4B: Replace `req.user as any` everywhere
+
+```bash
+# Count
+grep -rn "(req.user as any)" server/ --include="*.ts" | grep -v node_modules | wc -l
+
+# Replace all occurrences
+# Add import at top of each file: import { AuthUser } from '../types/auth';
+# Replace: (req.user as any) → (req.user as AuthUser)
+```
+
+### 4C: Replace `catch (error: any)` → `catch (error: unknown)`
+
+```bash
+grep -rn "catch.*: any\|catch.*:any" server/ --include="*.ts" | grep -v node_modules | head -20
+```
+
+Replace pattern:
+```typescript
+// BEFORE:
+catch (error: any) { console.error(error.message); }
+// AFTER:
+catch (error: unknown) {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  console.error(message);
+}
+```
+
+### 4D: Remove unnecessary `as any` from Drizzle queries
+
+```bash
+grep -rn "as any" server/ --include="*.ts" | grep -v node_modules | grep "db\.\|select\|insert\|update\|delete" | head -15
+```
+
+Drizzle infers types — most `as any` on query results are unnecessary. Remove them.
+
+### Target: Reduce :any count by 100+ occurrences.
+
+---
+
+## ═══════════════════════════════════
+## SECTION 5: SKILL FILES UPDATE
+## ═══════════════════════════════════
+
+### 5A: Update architecture skill
+
+Update `.agents/skills/dospresso-architecture/SKILL.md` with:
+- New platform stats (table count, endpoint count, user count)
+- New modules: QC system, lot tracking, consolidated payroll, Mission Control dashboard
+- New tables: qc_*, production_lots, employee_documents, disciplinary_records, dashboard_layouts
+- New services: payroll-calculation-service, shift-scheduler, lot-number generator
+- Updated file structure (if misc.ts was split, schema.ts modularized)
+
+### 5B: Update quality gate skill
+
+Add to `.agents/skills/dospresso-quality-gate/SKILL.md`:
+- QC inspection form validation rules
+- Payroll calculation verification checks
+- Dashboard layout JSON validation
+- New module integration checklist
+
+### 5C: Update debug guide
+
+Add to `.agents/skills/dospresso-debug-guide/SKILL.md`:
+- QC inspection not saving → check lot exists + inspector assignment
+- Payroll mismatch → check cumulative tax base + parameter decoding
+- Dashboard layout not loading → check user pref + system default
+- Lot number collision → check generateLotNumber sequence
+- PDF export blank → check pdf-lib import + data availability
+
+### 5D: Create new module guide skill
+
+Create `.agents/skills/dospresso-module-guide/SKILL.md`:
+
+```markdown
+# DOSPRESSO — Yeni Modül Ekleme Rehberi
+
+## 1. Veritabanı
+- shared/schema/ altında tablo tanımla (veya schema.ts'e ekle)
+- drizzle-kit push ile migrate et
+- Index: PK + FK + en çok sorgulanan alan
+
+## 2. Backend Route
+- server/routes/yeni-modul.ts oluştur
+- isAuthenticated middleware
+- Rol kontrolü
+- server/index.ts'te register et
+
+## 3. Frontend
+- client/src/pages/yeni-modul.tsx
+- useQuery + useMutation
+- Tailwind + shadcn/ui
+- App.tsx'te route ekle
+
+## 4. Sidebar
+- server/menu-service.ts → SIDEBAR_ALLOWED_ITEMS
+- İlgili rollere erişim
+
+## 5. Module Flag
+- module_flags tablosuna kayıt
+- flag_behavior: 'always_on' veya 'toggleable'
+
+## 6. Mr. Dobody
+- server/agent/skills/ altına skill
+- system-completeness-service.ts'e gap kontrolü
+
+## 7. Kontrol Listesi
+- [ ] Auth zinciri doğru mu?
+- [ ] Türkçe UI tam mı?
+- [ ] Dark mode uyumlu mu?
+- [ ] Mobile responsive mi?
+- [ ] Error handling var mı?
+```
+
+---
+
+## ═══════════════════════════════════
+## SECTION 6: FINAL E2E VALIDATION
+## ═══════════════════════════════════
+
+Update and run `server/scripts/launch-validation.ts`:
+
+### Add new checks:
+
+```typescript
+// === QC SYSTEM ===
+// - qc_assignments table exists
+// - production_lots table exists
+// - qc_inspections table exists
+// - GET /api/factory/qc/stats returns 200
+
+// === PAYROLL ===
+// - 2026 parameters active
+// - All salary_scales >= 33030 (minimum wage)
+// - payroll-calculation-service.ts exists
+
+// === İK ===
+// - employee_documents table exists
+// - disciplinary_records table exists
+
+// === CODE HEALTH ===
+// - misc.ts < 2000 lines
+// - schema.ts is barrel file (< 100 lines) OR total < 16000
+// - No console.log in client code: grep -c "console.log" client/src/**/*.tsx
+// - Server console.log < 100
+
+// === SECURITY ===
+// - All new endpoints require isAuthenticated
+// - No passwords in logs
+
+// === DATA INTEGRITY ===
+// - No users without branches (orphaned)
+// - No duplicate usernames
+// - All branch_ids in users exist in branches
+
+// === FEATURE FLAGS ===
+// - akademi is always_on
+// - All critical modules enabled
+
+// Print final verdict: READY / CONDITIONAL / NOT READY
+```
+
+Run it:
+```bash
+npx tsx server/scripts/launch-validation.ts
+```
+
+---
+
+## DO NOT TOUCH:
+- localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Scoring services
+- Kiosk pages
+- Mission Control components (separate sprint)
+- QC/Payroll code from MEGA SPRINT A (don't modify, only reference in skills)
+
+## Testing:
+
+### İK:
+1. employee_documents table created
+2. disciplinary_records table created
+3. Upload document → file saved, record created
+4. Create tutanak → saved with severity + witnesses
+5. İK page shows new tabs/sections
+
+### Code cleanup:
+6. misc.ts < 500 lines (or significantly reduced)
+7. All extracted routes still work
+8. schema.ts → barrel file, all imports resolve
+9. TypeScript :any reduced by 100+
+10. App starts without TypeScript errors
+
+### Skills:
+11. Architecture skill updated with new stats
+12. Quality gate has new checks
+13. Debug guide has new scenarios
+14. Module guide skill created
+
+### Validation:
+15. launch-validation.ts runs
+16. All critical tests PASS
+17. Verdict: READY or CONDITIONAL
+
+## After:
+1. Report: misc.ts before/after line count + files extracted
+2. Report: schema.ts before/after + schema files created
+3. Report: TypeScript :any before/after count
+4. Report: İK tables + endpoints created
+5. Report: skill files updated (sizes before/after)
+6. Report: validation PASS/FAIL/WARN counts
+7. Report: LAUNCH VERDICT
