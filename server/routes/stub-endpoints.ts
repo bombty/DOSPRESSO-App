@@ -142,27 +142,27 @@ router.patch("/api/salary/employee/:id", isAuthenticated, async (_req: any, res:
   res.json({ success: true, message: "Henüz aktif değil" });
 });
 
-router.get("/api/academy/achievement-stats", isAuthenticated, (_req, res) => res.json({ totalBadges: 0, earnedBadges: 0, achievements: [] }));
-router.get("/api/academy/adaptive-recommendations", isAuthenticated, (_req, res) => res.json({ recommendations: [] }));
-router.get("/api/academy/advanced-analytics", isAuthenticated, (_req, res) => res.json({ moduleStats: [], branchStats: [], trends: [] }));
-router.get("/api/academy/ai-assistant", isAuthenticated, (_req, res) => res.json({ suggestions: [] }));
-router.get("/api/academy/career-progress", isAuthenticated, (req: any, res) => res.json({ userId: req.user?.id, currentLevel: 1, progress: 0, milestones: [] }));
+router.get("/api/academy/achievement-stats", isAuthenticated, (_req, res) => res.json({ totalBadges: 0, earnedBadges: 0, achievements: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+router.get("/api/academy/adaptive-recommendations", isAuthenticated, (_req, res) => res.json({ recommendations: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+router.get("/api/academy/advanced-analytics", isAuthenticated, (_req, res) => res.json({ moduleStats: [], branchStats: [], trends: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+router.get("/api/academy/ai-assistant", isAuthenticated, (_req, res) => res.json({ suggestions: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+router.get("/api/academy/career-progress", isAuthenticated, (req: any, res) => res.json({ userId: req.user?.id, currentLevel: 1, progress: 0, milestones: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/exam-requests-approved", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/exam-requests-pending", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/exam-requests-team", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/academy/progress-overview", isAuthenticated, (_req, res) => res.json({ totalModules: 0, completedModules: 0, inProgress: 0, completionRate: 0 }));
+router.get("/api/academy/progress-overview", isAuthenticated, (_req, res) => res.json({ totalModules: 0, completedModules: 0, inProgress: 0, completionRate: 0, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/quiz-results", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/academy/streak-tracker", isAuthenticated, (_req, res) => res.json({ currentStreak: 0, longestStreak: 0, lastActivity: null }));
+router.get("/api/academy/streak-tracker", isAuthenticated, (_req, res) => res.json({ currentStreak: 0, longestStreak: 0, lastActivity: null, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/study-groups", isAuthenticated, (_req, res) => res.json([]));
-router.post("/api/academy/ai-generate-onboarding", isAuthenticated, (_req, res) => res.json({ success: false, message: "Henüz aktif değil" }));
-router.post("/api/academy/ai-generate-program", isAuthenticated, (_req, res) => res.json({ success: false, message: "Henüz aktif değil" }));
+router.post("/api/academy/ai-generate-onboarding", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/academy/ai-generate-program", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 router.get("/api/academy/question", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/quiz", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/quiz-result", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/recipe", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/recipe-versions", isAuthenticated, (_req, res) => res.json([]));
 router.post("/api/academy/recipe-notifications/mark-all-read", isAuthenticated, (_req, res) => res.json({ success: true }));
-router.post("/api/academy/recipes/generate-marketing-preview", isAuthenticated, (_req, res) => res.json({ preview: "" }));
+router.post("/api/academy/recipes/generate-marketing-preview", isAuthenticated, (_req, res) => res.status(202).json({ preview: "", _stub: true, _message: "Bu özellik henüz aktif değil" }));
 
 router.get("/api/admin/roles", isAuthenticated, (_req, res) => res.json([
   { id: "admin", name: "Admin" }, { id: "ceo", name: "CEO" }, { id: "cgo", name: "CGO" },
@@ -177,21 +177,21 @@ router.get("/api/admin/roles", isAuthenticated, (_req, res) => res.json([
   { id: "yatirimci_branch", name: "Yatırımcı (Şube)" },
 ]));
 router.get("/api/admin/role-grants", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/admin/mega-modules/config", isAuthenticated, (_req, res) => res.json({ modules: [] }));
+router.get("/api/admin/mega-modules/config", isAuthenticated, (_req, res) => res.json({ modules: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/admin/mega-modules/items", isAuthenticated, (_req, res) => res.json([]));
-router.post("/api/admin/mega-modules/add-module", isAuthenticated, (_req, res) => res.json({ success: false, message: "Henüz aktif değil" }));
+router.post("/api/admin/mega-modules/add-module", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 router.get("/api/admin/menu/items", isAuthenticated, (_req, res) => res.json([]));
 router.post("/api/admin/menu/items/order", isAuthenticated, (_req, res) => res.json({ success: true }));
 router.get("/api/admin/menu/sections", isAuthenticated, (_req, res) => res.json([]));
 router.post("/api/admin/menu/sections/order", isAuthenticated, (_req, res) => res.json({ success: true }));
 router.get("/api/admin/menu/visibility-rules", isAuthenticated, (_req, res) => res.json([]));
-router.post("/api/admin/dobody/avatars/upload", isAuthenticated, (_req, res) => res.json({ success: false, message: "Henüz aktif değil" }));
-router.post("/api/admin/dobody/avatars/bulk-update", isAuthenticated, (_req, res) => res.json({ success: false, message: "Henüz aktif değil" }));
-router.post("/api/admin/ai-settings/test", isAuthenticated, (_req, res) => res.json({ success: false, message: "Test henüz aktif değil" }));
-router.post("/api/admin/email-settings/test", isAuthenticated, (_req, res) => res.json({ success: false, message: "Test henüz aktif değil" }));
-router.post("/api/admin/service-email-settings/test", isAuthenticated, (_req, res) => res.json({ success: false, message: "Test henüz aktif değil" }));
-router.post("/api/admin/users/bulk-import", isAuthenticated, (_req, res) => res.json({ imported: 0, message: "Henüz aktif değil" }));
-router.post("/api/admin/ai/re-embed", isAuthenticated, (_req, res) => res.json({ success: false, message: "Henüz aktif değil" }));
+router.post("/api/admin/dobody/avatars/upload", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/admin/dobody/avatars/bulk-update", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/admin/ai-settings/test", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/admin/email-settings/test", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/admin/service-email-settings/test", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/admin/users/bulk-import", isAuthenticated, (_req, res) => res.status(202).json({ imported: 0, _stub: true, _message: "Bu özellik henüz aktif değil" }));
+router.post("/api/admin/ai/re-embed", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 
 router.get("/api/admin/pending-approvals", isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -232,13 +232,13 @@ router.get("/api/backups", isAuthenticated, async (_req, res) => {
     res.json([]);
   }
 });
-router.post("/api/action-cards/generate", isAuthenticated, (_req, res) => res.json({ generated: 0 }));
+router.post("/api/action-cards/generate", isAuthenticated, (_req, res) => res.status(202).json({ generated: 0, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 
 router.get("/api/factory/raw-materials", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/factory/recipes", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/factory/kavurma", isAuthenticated, (_req, res) => res.json({ batches: [], stats: { totalToday: 0, completed: 0 } }));
-router.get("/api/factory/sayim", isAuthenticated, (_req, res) => res.json({ counts: [], lastCount: null }));
+router.get("/api/factory/kavurma", isAuthenticated, (_req, res) => res.json({ batches: [], stats: { totalToday: 0, completed: 0 }, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+router.get("/api/factory/sayim", isAuthenticated, (_req, res) => res.json({ counts: [], lastCount: null, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 
-router.get("/api/franchise/performance", isAuthenticated, (_req, res) => res.json({ branches: [], overallScore: 0 }));
+router.get("/api/franchise/performance", isAuthenticated, (_req, res) => res.json({ branches: [], overallScore: 0, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 
 export default router;
