@@ -186,3 +186,9 @@ id = "gZSJKeLc40wFNln9Sx62u"
 uri = "file://PRELAUNCH_AUDIT_REPORT.md"
 type = "text"
 title = "DOSPRESSO Pre-Launch Final Audit Raporu"
+
+[[outputs]]
+id = "ZV19iaqU10iZPvSSpWzQV"
+uri = "file://.local/dospresso-audit-report.md"
+type = "text"
+title = "DOSPRESSO Platform Detaylı Audit Raporu"
