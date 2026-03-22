@@ -222,3 +222,9 @@ id = "sNkSgifbzo6Y3dfEt9ED4"
 uri = "file://.local/audit-report-structural-cleanup.md"
 type = "text"
 title = "IT Audit Report - Structural Cleanup Sprint"
+
+[[outputs]]
+id = "CF31NbcbQSvsTtNq1EdPE"
+uri = "file://.local/tasks/dobody-deeplink-audit-report.md"
+type = "text"
+title = "Mr. Dobody Deep Link Audit Raporu"
