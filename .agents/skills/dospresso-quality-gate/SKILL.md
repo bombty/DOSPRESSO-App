@@ -254,6 +254,22 @@ grep -rn "grid.*col.*[3-5]" client/src/pages/ --include="*.tsx" | grep -v "Compa
 
 ---
 
+## 18. Payroll/QC Service Integrity
+New payroll and QC services must use existing engines, not duplicate logic.
+
+```bash
+ls -la server/lib/payroll-engine.ts server/lib/pdks-engine.ts server/services/payroll-calculation-service.ts server/utils/pdf-generator.ts server/agent/skills/qc-tracker.ts 2>/dev/null
+```
+
+```bash
+grep -rn "createAutoLot" server/routes/factory.ts | head -5
+```
+
+**PASS**: All service files exist. `createAutoLot()` called at production insert points. No duplicate payroll logic.
+**FAIL**: Missing service files or duplicate calculation logic found.
+
+---
+
 After running all checks, report:
 
 ```
@@ -276,5 +292,7 @@ DOSPRESSO Quality Gate — [DATE]
 16. Module Flags:       PASS / FAIL (details)
 17. Mobile Compactness: PASS / FAIL (details)
 
-Score: X/17 PASS
+18. Payroll/QC Svc:   PASS / FAIL (details)
+
+Score: X/18 PASS
 ```

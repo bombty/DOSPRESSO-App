@@ -410,6 +410,16 @@ export default function IKPage() {
     enabled: isHQRole(user?.role as any),
   });
 
+  // Fetch IK Dashboard KPIs
+  interface IKDashboardData {
+    documents: { total: number; verified: number; completionRate: number; expiringSoon: number };
+    disciplinary: { total: number; open: number };
+  }
+  const { data: ikDashboard } = useQuery<IKDashboardData>({
+    queryKey: ["/api/hr/ik-dashboard"],
+    enabled: !!user && (isHQRole(user.role as any) || user.role === 'admin'),
+  });
+
   // Monthly Attendance Summary Query
   interface AttendanceSummary {
     userId: string;
@@ -740,6 +750,60 @@ export default function IKPage() {
             )}
           </div>
         </div>
+
+      {/* IK Dashboard KPI Strip */}
+      {ikDashboard && (isHQRole(user?.role as any) || user?.role === 'admin') && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="ik-kpi-strip">
+          <Card>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="p-2 rounded-md bg-primary/10">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Aktif Personel</p>
+                <p className="text-lg font-bold" data-testid="text-kpi-active-employees">{employees.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="p-2 rounded-md bg-blue-500/10">
+                <FolderOpen className="h-4 w-4 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Özlük Dosyaları</p>
+                <p className="text-lg font-bold" data-testid="text-kpi-documents">{ikDashboard.documents.total}
+                  {ikDashboard.documents.completionRate > 0 && (
+                    <span className="text-xs font-normal text-muted-foreground ml-1">(%{ikDashboard.documents.completionRate})</span>
+                  )}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="p-2 rounded-md bg-orange-500/10">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Süresi Dolan Belge</p>
+                <p className="text-lg font-bold" data-testid="text-kpi-expiring">{ikDashboard.documents.expiringSoon}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="p-2 rounded-md bg-red-500/10">
+                <FileWarning className="h-4 w-4 text-red-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Açık Tutanak</p>
+                <p className="text-lg font-bold" data-testid="text-kpi-open-disciplinary">{ikDashboard.disciplinary.open}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Tabs Navigation - Grouped */}
       <Tabs value={activeTab} onValueChange={(v) => {

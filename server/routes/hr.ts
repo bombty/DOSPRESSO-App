@@ -64,6 +64,9 @@ import {
   insertUserSchema,
   updateUserSchema,
   type UpdateUser,
+  employeeDocuments,
+  disciplinaryReports,
+  notifications,
 } from "../../shared/schema";
 
 class AuthorizationError extends Error {
@@ -6938,6 +6941,331 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     } catch (error: any) {
       console.error("Error updating salary scale:", error);
       res.status(500).json({ message: "Maaş skalası güncellenemedi" });
+    }
+  });
+
+  router.get('/api/hr/employees/:userId/documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const targetUserId = req.params.userId;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      const branchRoles = ['mudur', 'supervisor', 'coach'];
+      if (!allowedRoles.includes(user.role) && user.id !== targetUserId) {
+        if (branchRoles.includes(user.role)) {
+          const [targetUser] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, targetUserId));
+          if (!targetUser || targetUser.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu belgelere erişim yetkiniz yok" });
+          }
+        } else {
+          return res.status(403).json({ message: "Bu belgelere erişim yetkiniz yok" });
+        }
+      }
+      const docs = await db.select().from(employeeDocuments)
+        .where(eq(employeeDocuments.userId, targetUserId))
+        .orderBy(desc(employeeDocuments.createdAt));
+      res.json(docs);
+    } catch (error: unknown) {
+      console.error("Error fetching employee documents:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Belgeler getirilemedi" });
+    }
+  });
+
+  router.post('/api/hr/employees/:userId/documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const targetUserId = req.params.userId;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo', 'mudur', 'supervisor'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Belge ekleme yetkiniz yok" });
+      }
+      const { documentType, documentName, fileUrl, description, expiryDate, notes } = req.body;
+      if (!documentType || !documentName) {
+        return res.status(400).json({ message: "Belge türü ve adı zorunlu" });
+      }
+      const [doc] = await db.insert(employeeDocuments).values({
+        userId: targetUserId,
+        documentType,
+        documentName,
+        fileUrl: fileUrl || null,
+        description: description || null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        uploadedById: user.id,
+        uploadedAt: new Date(),
+        notes: notes || null,
+      }).returning();
+      res.status(201).json(doc);
+    } catch (error: unknown) {
+      console.error("Error creating employee document:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Belge eklenemedi" });
+    }
+  });
+
+  router.patch('/api/hr/documents/:docId/verify', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Belge doğrulama yetkiniz yok" });
+      }
+      const docId = parseInt(req.params.docId);
+      const [doc] = await db.update(employeeDocuments)
+        .set({ isVerified: true, verifiedById: user.id, verifiedAt: new Date(), updatedAt: new Date() })
+        .where(eq(employeeDocuments.id, docId))
+        .returning();
+      if (!doc) return res.status(404).json({ message: "Belge bulunamadı" });
+      res.json(doc);
+    } catch (error: unknown) {
+      console.error("Error verifying document:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Belge doğrulanamadı" });
+    }
+  });
+
+  router.delete('/api/hr/documents/:docId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Belge silme yetkiniz yok" });
+      }
+      const docId = parseInt(req.params.docId);
+      await db.delete(employeeDocuments).where(eq(employeeDocuments.id, docId));
+      res.json({ success: true });
+    } catch (error: unknown) {
+      console.error("Error deleting document:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Belge silinemedi" });
+    }
+  });
+
+  router.get('/api/hr/documents/expiring', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+      const docs = await db.select({
+        doc: employeeDocuments,
+        user: { id: users.id, firstName: users.firstName, lastName: users.lastName },
+      }).from(employeeDocuments)
+        .leftJoin(users, eq(employeeDocuments.userId, users.id))
+        .where(
+          and(
+            isNotNull(employeeDocuments.expiryDate),
+            lte(employeeDocuments.expiryDate, thirtyDaysLater),
+            gte(employeeDocuments.expiryDate, new Date())
+          )
+        )
+        .orderBy(asc(employeeDocuments.expiryDate));
+      res.json(docs);
+    } catch (error: unknown) {
+      console.error("Error fetching expiring documents:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Süresi dolan belgeler getirilemedi" });
+    }
+  });
+
+  router.get('/api/hr/disciplinary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      const branchRoles = ['mudur', 'supervisor', 'coach'];
+      let query = db.select({
+        report: disciplinaryReports,
+        employee: { id: users.id, firstName: users.firstName, lastName: users.lastName },
+      }).from(disciplinaryReports)
+        .leftJoin(users, eq(disciplinaryReports.userId, users.id));
+
+      if (branchRoles.includes(user.role) && user.branchId) {
+        query = query.where(eq(disciplinaryReports.branchId, user.branchId)) as any;
+      } else if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+
+      const reports = await query.orderBy(desc(disciplinaryReports.createdAt));
+      res.json(reports);
+    } catch (error: unknown) {
+      console.error("Error fetching disciplinary reports:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Tutanaklar getirilemedi" });
+    }
+  });
+
+  router.get('/api/hr/disciplinary/employee/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const targetUserId = req.params.userId;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      const branchRoles = ['mudur', 'supervisor', 'coach'];
+      if (!allowedRoles.includes(user.role) && user.id !== targetUserId) {
+        if (branchRoles.includes(user.role)) {
+          const [targetUser] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, targetUserId));
+          if (!targetUser || targetUser.branchId !== user.branchId) {
+            return res.status(403).json({ message: "Bu tutanaklara erişim yetkiniz yok" });
+          }
+        } else {
+          return res.status(403).json({ message: "Bu tutanaklara erişim yetkiniz yok" });
+        }
+      }
+      const reports = await db.select().from(disciplinaryReports)
+        .where(eq(disciplinaryReports.userId, targetUserId))
+        .orderBy(desc(disciplinaryReports.createdAt));
+      res.json(reports);
+    } catch (error: unknown) {
+      console.error("Error fetching employee disciplinary:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Tutanaklar getirilemedi" });
+    }
+  });
+
+  router.post('/api/hr/disciplinary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'mudur', 'supervisor', 'coach'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Tutanak oluşturma yetkiniz yok" });
+      }
+      const { userId, branchId, reportType, severity, subject, description, incidentDate, incidentTime, location, witnessIds, attachmentUrls, notes } = req.body;
+      if (!userId || !reportType || !subject) {
+        return res.status(400).json({ message: "Personel, tutanak türü ve konu zorunlu" });
+      }
+      const [report] = await db.insert(disciplinaryReports).values({
+        userId,
+        branchId: branchId || user.branchId || null,
+        reportType,
+        severity: severity || 'warning',
+        subject,
+        description: description || null,
+        incidentDate: incidentDate ? new Date(incidentDate) : new Date(),
+        incidentTime: incidentTime || null,
+        location: location || null,
+        witnessIds: witnessIds || [],
+        attachmentUrls: attachmentUrls || [],
+        createdById: user.id,
+        status: 'open',
+        notes: notes || null,
+      }).returning();
+
+      try {
+        await db.insert(notifications).values({
+          userId,
+          title: 'Yeni Tutanak',
+          message: `Hakkınızda "${subject}" konulu tutanak oluşturuldu.`,
+          type: 'disciplinary',
+        });
+      } catch (notifErr) {
+        console.error("[HR] Notification error:", notifErr);
+      }
+
+      res.status(201).json(report);
+    } catch (error: unknown) {
+      console.error("Error creating disciplinary report:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Tutanak oluşturulamadı" });
+    }
+  });
+
+  router.patch('/api/hr/disciplinary/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'mudur', 'supervisor'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Tutanak güncelleme yetkiniz yok" });
+      }
+      const reportId = parseInt(req.params.id);
+      const { status, resolution, actionTaken, followUpRequired, followUpDate, notes } = req.body;
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (status) updates.status = status;
+      if (resolution) updates.resolution = resolution;
+      if (actionTaken) updates.actionTaken = actionTaken;
+      if (followUpRequired !== undefined) updates.followUpRequired = followUpRequired;
+      if (followUpDate) updates.followUpDate = new Date(followUpDate);
+      if (notes) updates.notes = notes;
+      if (status === 'resolved') {
+        updates.resolvedById = user.id;
+        updates.resolvedAt = new Date();
+      }
+      const [report] = await db.update(disciplinaryReports)
+        .set(updates)
+        .where(eq(disciplinaryReports.id, reportId))
+        .returning();
+      if (!report) return res.status(404).json({ message: "Tutanak bulunamadı" });
+      res.json(report);
+    } catch (error: unknown) {
+      console.error("Error updating disciplinary report:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Tutanak güncellenemedi" });
+    }
+  });
+
+  router.post('/api/hr/disciplinary/:id/respond', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const reportId = parseInt(req.params.id);
+      const [existing] = await db.select().from(disciplinaryReports)
+        .where(eq(disciplinaryReports.id, reportId)).limit(1);
+      if (!existing) return res.status(404).json({ message: "Tutanak bulunamadı" });
+      if (existing.userId !== user.id) {
+        return res.status(403).json({ message: "Sadece ilgili personel yanıt verebilir" });
+      }
+      const { employeeResponse, attachmentUrls } = req.body;
+      if (!employeeResponse) {
+        return res.status(400).json({ message: "Yanıt metni zorunlu" });
+      }
+      const [report] = await db.update(disciplinaryReports)
+        .set({
+          employeeResponse,
+          employeeResponseDate: new Date(),
+          employeeResponseAttachments: attachmentUrls || [],
+          updatedAt: new Date(),
+        })
+        .where(eq(disciplinaryReports.id, reportId))
+        .returning();
+      res.json(report);
+    } catch (error: unknown) {
+      console.error("Error responding to disciplinary:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Yanıt gönderilemedi" });
+    }
+  });
+
+  router.get('/api/hr/ik-dashboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const allDocs = await db.select({ cnt: sql<number>`count(*)` }).from(employeeDocuments);
+      const verifiedDocs = await db.select({ cnt: sql<number>`count(*)` }).from(employeeDocuments)
+        .where(eq(employeeDocuments.isVerified, true));
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+      const expiringDocs = await db.select({ cnt: sql<number>`count(*)` }).from(employeeDocuments)
+        .where(
+          and(
+            isNotNull(employeeDocuments.expiryDate),
+            lte(employeeDocuments.expiryDate, thirtyDaysLater),
+            gte(employeeDocuments.expiryDate, new Date())
+          )
+        );
+      const openReports = await db.select({ cnt: sql<number>`count(*)` }).from(disciplinaryReports)
+        .where(eq(disciplinaryReports.status, 'open'));
+      const totalReports = await db.select({ cnt: sql<number>`count(*)` }).from(disciplinaryReports);
+
+      const totalDocCount = Number(allDocs[0]?.cnt || 0);
+      const verifiedCount = Number(verifiedDocs[0]?.cnt || 0);
+
+      res.json({
+        documents: {
+          total: totalDocCount,
+          verified: verifiedCount,
+          completionRate: totalDocCount > 0 ? Math.round((verifiedCount / totalDocCount) * 100) : 0,
+          expiringSoon: Number(expiringDocs[0]?.cnt || 0),
+        },
+        disciplinary: {
+          total: Number(totalReports[0]?.cnt || 0),
+          open: Number(openReports[0]?.cnt || 0),
+        },
+      });
+    } catch (error: unknown) {
+      console.error("Error fetching IK dashboard:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "İK dashboard verileri getirilemedi" });
     }
   });
 

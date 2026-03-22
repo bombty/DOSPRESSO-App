@@ -39,6 +39,7 @@ import {
   factoryBatchVerifications,
   factoryManagementScores,
   factoryQualityChecks,
+  factoryQualityAssignments,
   haccpCheckRecords,
   factoryShipments,
   factoryShipmentItems,
@@ -66,6 +67,53 @@ import {
 } from "../../shared/schema";
 
 const router = Router();
+
+import { like } from "drizzle-orm";
+
+async function createAutoLot(params: {
+  productId: number | null;
+  productName?: string | null;
+  quantity: number;
+  unit?: string;
+  producedBy: string;
+  stationId: number;
+}): Promise<void> {
+  if (!params.productId || params.quantity <= 0) return;
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const prefix = `LOT-${dateStr}-`;
+      const existing = await db.select({ lotNumber: productionLots.lotNumber })
+        .from(productionLots)
+        .where(like(productionLots.lotNumber, `${prefix}%`))
+        .orderBy(desc(productionLots.lotNumber))
+        .limit(1);
+      const nextNum = existing.length > 0
+        ? parseInt(existing[0].lotNumber.split('-').pop() || '0') + 1 + attempt
+        : 1 + attempt;
+      const lotNumber = `${prefix}${nextNum.toString().padStart(3, '0')}`;
+
+      await db.insert(productionLots).values({
+        lotNumber,
+        productId: params.productId,
+        quantity: String(params.quantity),
+        unit: params.unit || 'adet',
+        producedBy: params.producedBy,
+        stationId: params.stationId,
+        status: 'kalite_bekliyor',
+        productionDate: new Date(),
+      });
+      return;
+    } catch (lotErr) {
+      const errMsg = lotErr instanceof Error ? lotErr.message : String(lotErr);
+      if (errMsg.includes('unique') && attempt < maxRetries - 1) {
+        continue;
+      }
+      console.error("[QC] Auto-lot creation failed:", errMsg);
+    }
+  }
+}
 
 const kioskLoginAttempts = new Map<string, { count: number; lastAttempt: number; blockedUntil?: number }>();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
@@ -1260,6 +1308,15 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           qualityStatus: 'pending',
         });
 
+        await createAutoLot({
+          productId: productId || null,
+          productName: productName || null,
+          quantity: produced,
+          unit: producedUnit || 'adet',
+          producedBy: session.userId,
+          stationId: session.stationId!,
+        });
+
         await db.update(factoryShiftSessions)
           .set({
             totalProduced: (session.totalProduced || 0) + produced,
@@ -1410,6 +1467,15 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           wasteProductCount: wasteProductCount || null,
           photoUrl: photoUrl || null,
           qualityStatus: 'pending',
+        });
+
+        await createAutoLot({
+          productId: productId || null,
+          productName: productName || null,
+          quantity: quantityProduced || 0,
+          unit: producedUnit || 'adet',
+          producedBy: session.userId,
+          stationId: session.stationId!,
         });
       }
 
@@ -3025,6 +3091,15 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           productName: productName || null,
           wasteDoughKg: parsedDoughKg > 0 ? parsedDoughKg.toString() : null,
           wasteProductCount: parsedProductCount > 0 ? parsedProductCount : null,
+        });
+
+        await createAutoLot({
+          productId: productId || null,
+          productName: productName || null,
+          quantity: parsedProduced,
+          unit: producedUnit || 'adet',
+          producedBy: session.userId,
+          stationId: session.stationId!,
         });
       }
 
@@ -6670,6 +6745,85 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: any) {
       console.error("Error fetching station benchmarks:", error);
       res.status(500).json({ message: "Benchmark verileri getirilemedi" });
+    }
+  });
+
+  router.get('/api/factory/qc/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const now = new Date();
+      const todayStart = new Date(now.toISOString().slice(0, 10));
+      const weekStart = new Date(todayStart);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+      const todayOutputs = await db.select({
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+        cnt: count(),
+      }).from(factoryProductionOutputs)
+        .where(gte(factoryProductionOutputs.createdAt, todayStart))
+        .groupBy(factoryProductionOutputs.qualityStatus);
+
+      const weekOutputs = await db.select({
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+        cnt: count(),
+      }).from(factoryProductionOutputs)
+        .where(gte(factoryProductionOutputs.createdAt, weekStart))
+        .groupBy(factoryProductionOutputs.qualityStatus);
+
+      const todayLots = await db.select({
+        status: productionLots.status,
+        cnt: count(),
+      }).from(productionLots)
+        .where(gte(productionLots.productionDate, todayStart))
+        .groupBy(productionLots.status);
+
+      const weekLots = await db.select({
+        status: productionLots.status,
+        cnt: count(),
+      }).from(productionLots)
+        .where(gte(productionLots.productionDate, weekStart))
+        .groupBy(productionLots.status);
+
+      function summarize(rows: Array<{ qualityStatus: string | null; cnt: number }>) {
+        const map: Record<string, number> = {};
+        rows.forEach(r => { map[r.qualityStatus || 'unknown'] = Number(r.cnt); });
+        const approved = map['approved'] || 0;
+        const total = Object.values(map).reduce((a, b) => a + b, 0);
+        return {
+          total,
+          pending: map['pending'] || 0,
+          pendingEngineer: map['pending_engineer'] || 0,
+          approved,
+          rejected: map['rejected'] || 0,
+          passRate: total > 0 ? Math.round((approved / total) * 100) : 0,
+        };
+      }
+
+      function summarizeLots(rows: Array<{ status: string | null; cnt: number }>) {
+        const map: Record<string, number> = {};
+        rows.forEach(r => { map[r.status || 'unknown'] = Number(r.cnt); });
+        const total = Object.values(map).reduce((a, b) => a + b, 0);
+        return {
+          total,
+          kaliteBekliyor: map['kalite_bekliyor'] || 0,
+          onaylandi: map['onaylandi'] || 0,
+          reddedildi: map['reddedildi'] || 0,
+          uretildi: map['uretildi'] || 0,
+        };
+      }
+
+      const activeAssignments = await db.select({ cnt: count() }).from(factoryQualityAssignments)
+        .where(eq(factoryQualityAssignments.isActive, true));
+
+      res.json({
+        today: summarize(todayOutputs as any),
+        week: summarize(weekOutputs as any),
+        todayLots: summarizeLots(todayLots as any),
+        weekLots: summarizeLots(weekLots as any),
+        activeInspectors: Number(activeAssignments[0]?.cnt || 0),
+      });
+    } catch (error: unknown) {
+      console.error("Error fetching QC stats:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "QC istatistikleri getirilemedi" });
     }
   });
 

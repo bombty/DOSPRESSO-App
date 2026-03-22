@@ -308,4 +308,93 @@ router.patch('/api/pdks-payroll/:id/approve', isAuthenticated, async (req: any, 
   }
 });
 
+router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canViewPayroll(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+    const year = Number(req.params.year);
+    const month = Number(req.params.month);
+
+    const payrolls = await db.select({
+      payroll: monthlyPayroll,
+      user: { id: users.id, firstName: users.firstName, lastName: users.lastName },
+      branch: { id: branches.id, name: branches.name },
+    }).from(monthlyPayroll)
+      .leftJoin(users, eq(monthlyPayroll.userId, users.id))
+      .leftJoin(branches, eq(monthlyPayroll.branchId, branches.id))
+      .where(and(
+        eq(monthlyPayroll.year, year),
+        eq(monthlyPayroll.month, month)
+      ))
+      .orderBy(desc(monthlyPayroll.netPay));
+
+    if (payrolls.length === 0) {
+      return res.status(404).json({ error: 'Bu dönem için bordro bulunamadı' });
+    }
+
+    const pdfGen = await import('../utils/pdf-generator');
+
+    const employees: pdfGen.PayslipData[] = payrolls.map(p => {
+      const pr = p.payroll;
+      const base = Number(pr.baseSalary || 0);
+      const bonus = Number(pr.bonus || 0);
+      const overtime = Number(pr.overtimePay || 0);
+      const absenceDed = Number(pr.absenceDeduction || 0);
+      const bonusDed = Number(pr.bonusDeduction || 0);
+      const net = Number(pr.netPay || 0);
+      const total = Number(pr.totalSalary || 0);
+      const gross = base + bonus + overtime;
+      const totalDed = absenceDed + bonusDed;
+
+      return {
+        firstName: p.user?.firstName || '',
+        lastName: p.user?.lastName || '',
+        position: pr.positionCode || '',
+        branch: p.branch?.name || '',
+        month,
+        year,
+        baseSalary: base,
+        overtimePay: overtime,
+        offDayPay: 0,
+        holidayPay: 0,
+        totalBonuses: bonus,
+        grossTotal: gross,
+        deficitDeduction: absenceDed,
+        sgkEmployee: 0,
+        unemploymentEmployee: 0,
+        incomeTax: 0,
+        stampTax: 0,
+        totalDeductions: totalDed,
+        agi: 0,
+        netSalary: net,
+        sgkEmployer: 0,
+        unemploymentEmployer: 0,
+        totalEmployerCost: total,
+      };
+    });
+
+    const totalGross = employees.reduce((sum, e) => sum + e.grossTotal, 0);
+    const totalNet = employees.reduce((sum, e) => sum + e.netSalary, 0);
+    const totalCost = employees.reduce((sum, e) => sum + e.totalEmployerCost, 0);
+
+    const pdfBuffer = await pdfGen.generatePayrollPDF({
+      month,
+      year,
+      employees,
+      totalGross,
+      totalNet,
+      totalEmployerCost: totalCost,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="bordro-${year}-${month}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Payroll PDF export error:", error);
+    res.status(500).json({ error: 'PDF oluşturulamadı' });
+  }
+});
+
 export default router;

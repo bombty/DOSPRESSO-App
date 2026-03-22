@@ -134,8 +134,8 @@ const branchId = user.branchId;
 
 ## Agent System (Mr. Dobody)
 
-### 16 Agent Skills:
-ai-enrichment, burnout-predictor, contract-tracker, cost-analyzer, customer-watcher, daily-coach, food-safety, performance-coach, production-director, security-monitor, stock-assistant, stock-predictor, supplier-tracker, team-tracker, training-optimizer, waste-analyzer
+### 17 Agent Skills:
+ai-enrichment, burnout-predictor, contract-tracker, cost-analyzer, customer-watcher, daily-coach, food-safety, performance-coach, production-director, qc-tracker, security-monitor, stock-assistant, stock-predictor, supplier-tracker, team-tracker, training-optimizer, waste-analyzer
 
 ### training-optimizer (Enhanced):
 Weekly skill targeting trainer/coach/ceo/cgo/admin. 11 insight types:
@@ -176,6 +176,12 @@ Production → QC (2-stage) → LOT → Shipment → Branch Inventory
 ### Shift → PDKS → Payroll:
 Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - Daily = monthly/30, absent days deducted, overtime ×1.5
+- Payroll calculation service: `server/services/payroll-calculation-service.ts`
+- PDKS engine: `server/lib/pdks-engine.ts` (188 lines)
+- Payroll engine: `server/lib/payroll-engine.ts` (217 lines)
+- SGK rates: integers ÷1000 (14%=140), amounts ÷100 (33030TL=3303000)
+- PDF generator: `server/utils/pdf-generator.ts` (pdf-lib)
+- PDF export: `GET /api/payroll/:periodId/pdf` (payslip), `GET /api/payroll/:periodId/pdf?type=pdks` (PDKS report)
 
 ## Module Connections (Key Dependencies)
 - Composite Score depends on: checklist, training, attendance, feedback, tasks
@@ -203,6 +209,15 @@ Franchise/Investor: Investor profiles, contract tracking, branch performance —
 Webinar: Webinar management and registration system
 Communication: HQ Support, Notifications, AI Assistant, Agent Center
 System: Admin Panel, Content Studio, Projects, Security/Backups
+
+### İK Module Enhancement:
+- İK Dashboard KPIs: `GET /api/hr/ik-dashboard` (document stats, disciplinary stats)
+- Document CRUD: `GET/POST /api/hr/employees/:userId/documents`, `PATCH .../verify`, `DELETE`
+- Disciplinary CRUD: `GET/POST /api/hr/disciplinary`, `PATCH .../status`, `POST .../respond`
+- Auto-lot creation: `createAutoLot()` in factory.ts (3 production insert points)
+- QC Stats: `GET /api/factory/qc/stats` (today/week quality checks and lots)
+- QC Tracker skill: `server/agent/skills/qc-tracker.ts` (daily, targets gida_muhendisi/kalite_kontrol/fabrika_mudur)
+- AuthUser type: `server/types/auth.ts` (centralized type for req.user)
 
 ## New Tables (Recent Sprints)
 - `support_tickets` — İletişim Merkezi tickets with SLA tracking
