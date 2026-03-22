@@ -246,3 +246,9 @@ id = "gLVAubPOqpUMdUr3FKZnY"
 uri = "file://.local/dospresso-tam-sistem-audit-raporu-23-mart-2026.md"
 type = "text"
 title = "DOSPRESSO Kapsamlı Sistem Audit Raporu (23 Mart 2026)"
+
+[[outputs]]
+id = "9dNx2NSluUWp3fEAXrD87"
+uri = "file://.local/agent-sistemi-bilgi-akis-hiyerarsisi-raporu.md"
+type = "text"
+title = "Agent Sistemi + Bilgi Akış Hiyerarşisi Araştırma Raporu"
