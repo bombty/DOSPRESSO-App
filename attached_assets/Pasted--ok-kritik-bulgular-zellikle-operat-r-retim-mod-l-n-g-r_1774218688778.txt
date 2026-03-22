@@ -1,0 +1,151 @@
+Çok kritik bulgular — özellikle **operatör üretim modülünü göremiyor** (üretimi yapan kişi üretim ekranını göremez!) bu ciddi bir mantık hatası.
+
+Şimdi fabrika dahil tüm rollerin tam simülasyon raporu geldi mi? Bir önceki büyük prompt'u (7 rol grubu, aksiyon→etki→tepki zincirleri) da yapıştırdınız mı?
+
+Eğer yapıştırdıysanız ve sonucu geldiyse paylaşın — tüm verileri birleştirip tek bir büyük değerlendirme yapacağım.
+
+Eğer henüz yapıştırmadıysanız — iki raporu birleştirip tek seferde yapıştırın:
+
+---
+
+**"İki araştırma birden yap — değişiklik yapma:**
+
+**ARAŞTIRMA 1: Tüm roller aksiyon→etki→tepki simülasyonu**
+
+```bash
+echo "══════════════════════════════════════"
+echo "TÜM ROLLER — AKSİYON ZİNCİRLERİ"
+echo "══════════════════════════════════════"
+
+echo "=== KOPUK ZİNCİR TESPİT ==="
+
+echo "--- 1. Bildirim sistemi: kim kime bildirim gönderiyor? ---"
+grep -rn "createNotification\|sendNotification\|insert.*notification" server/ --include="*.ts" | grep -v node_modules | wc -l
+echo "Toplam bildirim gönderim noktası"
+grep -rn "createNotification\|sendNotification\|insert.*notification" server/ --include="*.ts" | grep -v node_modules | head -20
+
+echo ""
+echo "--- 2. Otomatik bildirimler (cron/scheduler) ---"
+grep -rn "cron\|schedule\|setInterval\|automated.*notif" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "--- 3. Onay akışları --- "
+grep -rn "approve\|reject\|pending.*approval\|onay\|red\|bekliyor" server/routes/ --include="*.ts" | head -20
+
+echo ""
+echo "--- 4. Event tetikleme (insert/update sonrası otomatik aksiyon) ---"
+grep -rn "afterInsert\|afterUpdate\|trigger\|emit\|\.on(" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "--- 5. Görev oluşturulunca bildirim ---"
+grep -A15 "insert.*task\|create.*task" server/routes/branch-tasks.ts | grep "notification\|bildirim" | head -5
+
+echo ""
+echo "--- 6. Checklist tamamlanınca ne olur ---"
+grep -A15 "complete.*checklist\|submit.*checklist" server/routes/*.ts | grep "score\|notification\|hq\|puan" | head -5
+
+echo ""
+echo "--- 7. Arıza bildirilince ne olur ---"
+grep -A15 "create.*fault\|insert.*fault" server/routes/*.ts | grep "notification\|sla\|escalat\|cgo" | head -5
+
+echo ""
+echo "--- 8. Müşteri şikayeti gelince ne olur ---"
+grep -A15 "create.*complaint\|insert.*complaint\|submit.*feedback" server/routes/*.ts | grep "notification\|sla\|timer\|escalat" | head -5
+
+echo ""
+echo "--- 9. Eğitim tamamlanınca ne olur ---"
+grep -A15 "complete.*module\|finish.*lesson\|complete.*training" server/routes/academy*.ts | grep "streak\|certificate\|badge\|notification\|trainer" | head -10
+
+echo ""
+echo "--- 10. Üretim kaydı girilince ne olur ---"
+grep -A15 "insert.*production_output\|create.*production" server/routes/factory.ts | grep "lot\|qc\|quality\|notification\|stok" | head -10
+
+echo ""
+echo "--- 11. QC sonucu girilince ne olur ---"
+grep -A15 "insert.*inspection\|qc.*result\|quality.*check" server/routes/factory.ts | grep "notification\|lot.*status\|reject\|approve\|shipment" | head -10
+
+echo ""
+echo "--- 12. Bordro hesaplanınca ne olur ---"
+grep -A15 "calculate.*payroll\|generate.*payroll" server/routes/payroll*.ts | grep "notification\|approve\|pdf\|save\|insert" | head -10
+
+echo ""
+echo "--- 13. İzin talebi oluşturulunca ne olur ---"
+grep -A15 "create.*leave\|insert.*leave\|izin.*talep" server/routes/hr.ts | grep "notification\|approve\|mudur\|supervisor" | head -5
+
+echo ""
+echo "--- 14. Kiosk giriş/çıkış yapılınca ne olur ---"
+grep -A15 "clock.*in\|clock.*out\|kiosk.*check" server/routes/branches.ts | grep "attendance\|pdks\|shift\|notification" | head -10
+
+echo ""
+echo "=== HARDCODED ROL KONTROL SAYISI ==="
+echo "--- Her route dosyasında kaç hardcoded rol kontrolü var? ---"
+for f in server/routes/*.ts; do
+  count=$(grep -c "role.*===\|includes.*admin\|includes.*ceo\|PAYROLL.*ROLES\|canView\|HQ_ROLES\|FACTORY_ROLES\|BRANCH_ONLY" "$f" 2>/dev/null)
+  if [ "$count" -gt "0" ]; then
+    echo "  $(basename $f): $count hardcoded kontrol"
+  fi
+done
+
+echo ""
+echo "=== SLA SİSTEMİ ==="
+grep -rn "sla\|SLA\|escalat\|deadline.*exceeded\|overdue" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== SCHEDULER'LAR — NE YAPIYORLAR? ==="
+grep -rn "cron\|setInterval\|schedule.*job\|scheduler" server/services/ server/index.ts --include="*.ts" | head -15
+```
+
+**ARAŞTIRMA 2: Admin bölümü tam anatomisi**
+
+```bash
+echo ""
+echo "══════════════════════════════════════"
+echo "ADMİN BÖLÜMÜ TAM ANATOMİ"
+echo "══════════════════════════════════════"
+
+echo "=== Admin mega modül tab listesi ==="
+grep -n "id.*:\|label.*:\|path\|component" client/src/pages/admin-mega.tsx | head -30
+
+echo ""
+echo "=== Admin dizini tüm dosyalar ==="
+find client/src/pages/admin -name "*.tsx" -exec sh -c 'echo "$(wc -l < "$1") $(basename "$1")"' _ {} \; | sort -rn
+
+echo ""
+echo "=== Yönetim dizini tüm dosyalar ==="
+find client/src/pages/yonetim -name "*.tsx" -exec sh -c 'echo "$(wc -l < "$1") $(basename "$1")"' _ {} \; 2>/dev/null | sort -rn
+
+echo ""
+echo "=== Duplikat analizi ==="
+echo "--- admin/kullanicilar vs yonetim/kullanicilar ---"
+echo "Admin API'ler:"
+grep "/api/" client/src/pages/admin/kullanicilar*.tsx 2>/dev/null | sort -u | head -5
+echo "Yonetim API'ler:"
+grep "/api/" client/src/pages/yonetim/kullanicilar*.tsx 2>/dev/null | sort -u | head -5
+
+echo ""
+echo "=== Ayarlar dağılımı ==="
+find client/src -name "*ayarlar*" -o -name "*settings*" | sort
+grep -rn "tab.*ayar\|settings.*tab" client/src/pages/ --include="*.tsx" | head -10
+
+echo ""
+echo "=== Yetkilendirme sayfası drag-drop ne yapıyor? ==="
+grep -B3 -A20 "onDragEnd\|handleDragEnd" client/src/pages/admin/yetkilendirme.tsx | head -30
+```
+
+**Raporla — her rol grubu için:**
+1. Çalışan zincirler (aksiyon → otomatik tepki)
+2. Kopuk zincirler (aksiyon → hiçbir şey olmuyor)
+3. Hardcoded kontroller (admin değiştiremez)
+4. Eksik bildirimler
+5. Eksik onay akışları
+
+**+ Admin bölümü:**
+6. Duplikatlar gerçekten duplikat mı?
+7. Drag-drop ne yapıyor (sıralama mı, yetki taşıma mı?)
+8. Önerilen ideal admin yapısı
+
+**Değişiklik yapma.**"
+
+---
+
+Yapıştırın. Her şeyi topladıktan sonra birlikte büyük resmi değerlendireceğiz.
