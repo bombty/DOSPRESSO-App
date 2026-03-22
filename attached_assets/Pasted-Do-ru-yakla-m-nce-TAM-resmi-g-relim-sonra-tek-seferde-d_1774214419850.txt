@@ -1,0 +1,177 @@
+Doğru yaklaşım — önce TAM resmi görelim, sonra tek seferde düzeltelim. Yapıştırın:
+
+---
+
+**"Menü konsolidasyonu yapmadan önce TÜM uygulamayı tara. Gereksiz ekranları, birleştirilebilir sayfaları, tekrarlayan bileşenleri bul. Değişiklik yapma — sadece araştır.**
+
+```bash
+echo "══════════════════════════════════════"
+echo "DOSPRESSO FULL APP AUDIT — SAYFA & EKRAN ANALİZİ"
+echo "══════════════════════════════════════"
+
+echo ""
+echo "=== 1. TÜM SAYFA DOSYALARI VE BOYUTLARI ==="
+find client/src/pages -name "*.tsx" | while read f; do
+  lines=$(wc -l < "$f")
+  echo "$lines $f"
+done | sort -rn | head -50
+
+echo ""
+echo "=== 2. TÜM ROUTE TANIMLARI ==="
+grep -n "Route\|path=" client/src/App.tsx | head -80
+
+echo ""
+echo "=== 3. BENZERLİK ANALİZİ — AYNI API'Yİ KULLANAN SAYFALAR ==="
+echo "--- Hangi sayfalar aynı endpoint'i çağırıyor? ---"
+for endpoint in "hq-support" "notifications" "messages" "crm" "feedback" "complaints" "tickets" "announcements" "tasks" "checklist" "shifts" "pdks" "payroll" "academy" "equipment" "quality" "branches"; do
+  files=$(grep -rl "/api/$endpoint\|/api/${endpoint}/" client/src/pages/ --include="*.tsx" 2>/dev/null | wc -l)
+  if [ "$files" -gt "1" ]; then
+    echo ""
+    echo "  /api/$endpoint → $files sayfa kullanıyor:"
+    grep -rl "/api/$endpoint\|/api/${endpoint}/" client/src/pages/ --include="*.tsx" 2>/dev/null | while read f; do
+      echo "    $(basename $f)"
+    done
+  fi
+done
+
+echo ""
+echo "=== 4. MEGA MODÜLLER — HER BİRİNİN TAB YAPISI ==="
+for mega in "admin-mega" "crm-mega" "satinalma-mega" "ekipman-mega" "yeni-sube-mega"; do
+  found=$(find client/src/pages -name "${mega}.tsx" | head -1)
+  if [ -n "$found" ]; then
+    echo ""
+    echo "--- $mega ($(wc -l < $found) satır) ---"
+    echo "Tab'lar:"
+    grep -n "id.*:\|label.*:\|tab.*:" "$found" | grep -i "tab\|section\|panel" | head -15
+  fi
+done
+
+echo ""
+echo "=== 5. TEKİL SAYFALAR vs MEGA MODÜL ÇAKIŞMASI ==="
+echo "--- Ayrı sayfa olup mega modülde de tab olan konular ---"
+echo "CRM mega tab'ları:"
+grep -n "kampanya\|ticket\|feedback\|complaint\|analiz" client/src/pages/crm-mega.tsx 2>/dev/null | head -10
+echo ""
+echo "Aynı konuların tekil sayfaları:"
+find client/src/pages -name "*kampanya*" -o -name "*ticket*" -o -name "*feedback*" -o -name "*complaint*" -o -name "*sikayet*" | sort
+
+echo ""
+echo "=== 6. İLETİŞİM / MESAJLAŞMA DAĞINIMI ==="
+find client/src/pages -name "*iletisim*" -o -name "*mesaj*" -o -name "*bildirim*" -o -name "*notification*" -o -name "*destek*" -o -name "*support*" -o -name "*duyuru*" -o -name "*announce*" | sort | while read f; do
+  echo "$(wc -l < $f) $(basename $f)"
+done
+
+echo ""
+echo "=== 7. RAPORLAMA DAĞINIMI ==="
+find client/src/pages -name "*rapor*" -o -name "*report*" -o -name "*analiz*" -o -name "*analytics*" -o -name "*performans*" -o -name "*istatistik*" | sort | while read f; do
+  echo "$(wc -l < $f) $(basename $f)"
+done
+
+echo ""
+echo "=== 8. KULLANILMAYAN / ÖKSüZ SAYFALAR ==="
+echo "--- App.tsx'te route'u olmayan sayfa dosyaları ---"
+find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  if ! grep -q "$base" client/src/App.tsx 2>/dev/null; then
+    size=$(wc -l < "$f")
+    echo "  ROUTE YOK: $base ($size satır)"
+  fi
+done | head -30
+
+echo ""
+echo "=== 9. BOŞ / STUB SAYFALAR ==="
+echo "--- 50 satırdan kısa sayfalar (muhtemelen placeholder) ---"
+find client/src/pages -name "*.tsx" | while read f; do
+  lines=$(wc -l < "$f")
+  if [ "$lines" -lt "50" ]; then
+    echo "  $lines satır — $(basename $f)"
+  fi
+done | sort -n
+
+echo ""
+echo "=== 10. AYNI İSİMLİ FARKLI SAYFA DOSYALARI ==="
+find client/src/pages -name "*.tsx" | xargs -I{} basename {} | sort | uniq -d | while read dup; do
+  echo "  DUPLİKAT: $dup"
+  find client/src/pages -name "$dup" | while read f; do
+    echo "    $(wc -l < $f) satır — $f"
+  done
+done
+
+echo ""
+echo "=== 11. HUB / INDEX SAYFALARI ==="
+find client/src/pages -name "index.tsx" -o -name "*hub*" -o -name "*overview*" -o -name "*ozet*" | sort | while read f; do
+  echo "$(wc -l < $f) $(basename $(dirname $f))/$(basename $f)"
+done
+
+echo ""
+echo "=== 12. FABRİKA ALT SAYFALARI ==="
+find client/src/pages/fabrika -name "*.tsx" 2>/dev/null | while read f; do
+  echo "$(wc -l < $f) $(basename $f)"
+done | sort -rn
+
+echo ""
+echo "=== 13. CRM ALT SAYFALARI ==="
+find client/src/pages/crm -name "*.tsx" 2>/dev/null | while read f; do
+  echo "$(wc -l < $f) $(basename $f)"
+done | sort -rn
+
+echo ""
+echo "=== 14. SUBE ALT SAYFALARI ==="
+find client/src/pages/sube -name "*.tsx" 2>/dev/null | while read f; do
+  echo "$(wc -l < $f) $(basename $f)"
+done | sort -rn
+
+echo ""
+echo "=== 15. ADMIN ALT SAYFALARI ==="
+find client/src/pages/admin -name "*.tsx" 2>/dev/null | while read f; do
+  echo "$(wc -l < $f) $(basename $f)"
+done | sort -rn
+
+echo ""
+echo "=== 16. ROUTE SAYISI vs SAYFA SAYISI ==="
+route_count=$(grep -c "Route\|path=" client/src/App.tsx)
+page_count=$(find client/src/pages -name "*.tsx" -not -path "*/components/*" | wc -l)
+echo "Route sayısı: $route_count"
+echo "Sayfa dosyası: $page_count"
+echo "Fark: $((page_count - route_count)) (route'suz sayfalar)"
+
+echo ""
+echo "=== 17. BACKEND ROUTE — FRONTEND SAYFA EŞLEŞMESİ ==="
+echo "--- Menüde olup sayfası OLMAYAN linkler ---"
+curl -s http://localhost:5000/api/me/menu -b /tmp/anal_cookie.txt 2>/dev/null | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+const paths=[];
+d.forEach(s=>{if(s.items)s.items.forEach(i=>{if(i.path)paths.push(i.path)})});
+const fs=require('fs');
+const appTsx=fs.readFileSync('client/src/App.tsx','utf8');
+paths.forEach(p=>{
+  const short=p.replace(/^\//,'').split('/')[0];
+  if(!appTsx.includes(short)) console.log('  KIRIK: '+p);
+});
+" 2>/dev/null
+
+echo ""
+echo "══════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. Toplam sayfa sayısı ve route sayısı — uyumsuzluk var mı?"
+echo "2. Aynı API'yi kullanan çakışan sayfalar listesi"  
+echo "3. Mega modül tab'ı olup ayrıca tekil sayfası da olan konular"
+echo "4. Kullanılmayan / route'suz / öksüz sayfalar"
+echo "5. Boş / stub / placeholder sayfalar"
+echo "6. Duplikat isimli dosyalar"
+echo "7. İletişim/mesajlaşma/bildirim dağılımı — kaç ayrı sayfa?"
+echo "8. Raporlama/analitik dağılımı — kaç ayrı sayfa?"
+echo "9. Her dizin altındaki sayfa sayıları"
+echo "10. Birleştirme önerileri — hangi sayfalar tek sayfa olabilir?"
+echo "11. Kaldırılabilecek sayfalar — artık kullanılmayan"
+echo "12. Önerilen ideal sayfa yapısı — benchmark'a göre"
+echo "══════════════════════════════════════"
+```
+
+**Bu rapor menü konsolidasyonundan DAHA BÜYÜK — tüm uygulama haritası. Bunu gördükten sonra menü + sayfa yapısını birlikte optimize edeceğiz.**
+
+**Sadece araştır — değişiklik yapma.**"
+
+---
+
+Yapıştırın. Bu rapor tüm uygulamanın röntgenini çekecek — gereksiz sayfalar, tekrarlar, öksüz dosyalar hepsini göreceğiz. Sonucu paylaşın.
