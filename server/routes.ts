@@ -893,16 +893,39 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(miscSmallRouter);
 
   app.get('/api/health', async (req, res) => {
+    const startTime = Date.now();
+    let dbConnected = false;
+    let dbLatencyMs = 0;
+    let activeUserCount = 0;
+
     try {
-      await db.execute(sql`SELECT 1`);
-      res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        dbConnected: true,
-      });
-    } catch (error: unknown) {
-      res.status(503).json({ status: 'error', dbConnected: false });
-    }
+      const dbStart = Date.now();
+      const dbResult = await db.execute(sql`SELECT count(*) as cnt FROM sessions`);
+      dbLatencyMs = Date.now() - dbStart;
+      dbConnected = true;
+      activeUserCount = Number((dbResult as any).rows?.[0]?.cnt ?? 0);
+    } catch {}
+
+    const mem = process.memoryUsage();
+    const uptimeSec = process.uptime();
+    const hours = Math.floor(uptimeSec / 3600);
+    const minutes = Math.floor((uptimeSec % 3600) / 60);
+    const uptimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+    const status = dbConnected ? 'healthy' : 'degraded';
+    const statusCode = dbConnected ? 200 : 503;
+
+    res.status(statusCode).json({
+      status,
+      timestamp: new Date().toISOString(),
+      db: dbConnected ? 'connected' : 'disconnected',
+      dbLatencyMs,
+      uptime: uptimeStr,
+      memory: `${Math.round(mem.rss / 1024 / 1024)}MB`,
+      heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
+      activeUsers: activeUserCount,
+      nodeVersion: process.version,
+    });
   });
 
 
