@@ -40,6 +40,7 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **Type Augmentation:** Centralized `AuthUser` type and Express type augmentation for improved type safety.
 - **Structural Cleanup:** Original `misc.ts` split into 42 domain-specific route files.
 - **Mission Control Dashboard:** Infrastructure for toggling between Classic and Mission Control dashboard modes with a Dobody Panel for guidance.
+- **Collapsible Sidebar:** Desktop sidebar replaces NavRail — toggles between 50px (icons only) and 200px (icons + labels + categories). Server-driven menu from `/api/me/menu` API. State persisted in localStorage. Mobile unchanged (hamburger overlay + bottom nav).
 
 ## External Dependencies
 - **OpenAI API**: For AI vision, chat, embeddings, and summarization.

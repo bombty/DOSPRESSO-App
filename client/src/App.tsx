@@ -24,7 +24,8 @@ import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
 import { ModuleGuard } from "@/components/module-guard";
-import { NavRail } from "@/components/nav-rail";
+import { CollapsibleSidebar } from "@/components/collapsible-sidebar";
+import { useSidebarState } from "@/hooks/useSidebarState";
 import { GuidanceWidget } from "@/components/widgets/guidance-widget";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
 
@@ -500,6 +501,7 @@ function AppContent() {
   useLanguageSync();
   const [location, setLocation] = useLocation();
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const sidebarState = useSidebarState();
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: isAuthenticated && !!user,
@@ -576,14 +578,15 @@ function AppContent() {
         user={user}
         branchName={branchName}
         onQRClick={() => setQrModalOpen(true)}
+        onSidebarToggle={sidebarState.toggle}
       />
       
       {/* QR Scanner Modal */}
       <QRScannerModal open={qrModalOpen} onOpenChange={setQrModalOpen} />
       
-      {/* Below header: rail + content side by side on md+ */}
+      {/* Below header: sidebar + content side by side on md+ */}
       <div className="flex flex-1 overflow-hidden">
-        <NavRail />
+        <CollapsibleSidebar isExpanded={sidebarState.isExpanded} />
         
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Breadcrumb Navigation */}
@@ -604,7 +607,7 @@ function AppContent() {
         </div>
       </div>
       
-      {/* Bottom Navigation - hidden on md+ where NavRail takes over */}
+      {/* Bottom Navigation - hidden on md+ where sidebar takes over */}
       <BottomNav />
       
       {/* Global Search (Ctrl+K) */}
