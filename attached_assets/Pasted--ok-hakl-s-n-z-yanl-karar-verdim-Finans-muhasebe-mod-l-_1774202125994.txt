@@ -1,0 +1,107 @@
+Çok haklısınız — yanlış karar verdim. Finans/muhasebe modülünü kapatmak yanlıştı çünkü:
+
+- Veri olmaması **geçici** — app yapım aşamasında
+- Mahmut bey (muhasebe_ik) kendi dashboard'ında muhasebe görmeli
+- Modül çalışıyor — bordro, maaş hesaplama, PDF export aktif
+- "Veri yok" ≠ "modül kapatılmalı"
+
+Replit'ten detaylı audit alalım. Yapıştırın:
+
+---
+
+**"Finans/muhasebe modülüyle ilgili detaylı audit yap — değişiklik yapma:**
+
+```bash
+echo "══════════════════════════════════════"
+echo "FİNANS / MUHASEBE FULL AUDIT"
+echo "══════════════════════════════════════"
+
+echo "=== 1. FİNANS MODÜL FLAG DURUMU ==="
+echo "SELECT module_key, flag_behavior, is_enabled, display_name FROM module_flags WHERE module_key LIKE '%finans%' OR module_key LIKE '%muhasebe%' OR module_key LIKE '%bordro%' OR module_key LIKE '%maas%' OR module_key LIKE '%pdks%';" | psql
+
+echo ""
+echo "=== 2. MUHASEBE İLE İLGİLİ MENÜ ÖĞELERİ ==="
+grep -in "accounting\|muhasebe\|mali\|finans\|maaş\|maas\|bordro\|pdks\|salary" server/menu-service.ts | head -25
+
+echo ""
+echo "=== 3. BU MENÜ ÖĞELERİ HANGİ MODÜL KEY'E BAĞLI? ==="
+grep -B5 -A10 "accounting-main\|mali-yonetim\|maas-hesaplama\|pdks-kayit\|bordro" server/menu-service.ts | head -50
+
+echo ""
+echo "=== 4. MUHASEBE_IK ROLÜ MENÜ TESTİ ==="
+echo "--- muhasebe_ik kullanıcı bul ---"
+echo "SELECT username, first_name, last_name, role FROM users WHERE role='muhasebe_ik' AND is_active=true;" | psql
+
+echo ""
+echo "=== 5. MUHASEBE_IK WHİTELİST ==="
+grep -A20 "muhasebe_ik:" server/menu-service.ts | head -25
+
+echo ""
+echo "=== 6. FİNANS KAPATILINCA ETKİLENEN ROLLER ==="
+echo "--- Hangi roller finans modülüne erişim var? ---"
+echo "SELECT role, can_view FROM role_module_permissions WHERE module_key='finans' AND can_view=true;" | psql
+
+echo ""
+echo "=== 7. BORDRO/MAAS TABLOLARI VERİ DURUMU ==="
+echo "--- payroll_parameters ---"
+echo "SELECT id, year, is_active FROM payroll_parameters;" | psql
+echo "--- salary_scales ---"
+echo "SELECT count(*) FROM salary_scales;" | psql -t
+echo "--- monthly_payrolls ---"
+echo "SELECT count(*) FROM monthly_payrolls;" | psql -t 2>/dev/null || echo "tablo yok"
+echo "--- payroll_records ---"
+echo "SELECT count(*) FROM payroll_records;" | psql -t 2>/dev/null || echo "tablo yok"
+
+echo ""
+echo "=== 8. FİNANS SAYFALARI ==="
+find client/src/pages -name "*muhasebe*" -o -name "*bordro*" -o -name "*maas*" -o -name "*finans*" -o -name "*mali*" -o -name "*pdks*" -o -name "*salary*" | sort
+
+echo ""
+echo "=== 9. BU SAYFALAR ÇALIŞIYOR MU? ==="
+grep -n "muhasebe\|bordro\|maas\|finans\|mali\|pdks\|salary" client/src/App.tsx | head -15
+
+echo ""
+echo "=== 10. FİNANS ŞU AN KAPALI — NE ETKİLENDİ? ==="
+echo "finans is_enabled şu an:"
+echo "SELECT is_enabled FROM module_flags WHERE module_key='finans';" | psql -t
+
+echo ""
+echo "--- muhasebe_ik kullanıcısının menüsü (finans kapalıyken) ---"
+MUHASEBE_USER=$(echo "SELECT username FROM users WHERE role='muhasebe_ik' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+if [ -n "$MUHASEBE_USER" ]; then
+  curl -s -X POST http://localhost:5000/api/login \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$MUHASEBE_USER\",\"password\":\"0000\"}" \
+    -c /tmp/muh_cookie.txt > /dev/null 2>&1
+  
+  echo "Muhasebe ($MUHASEBE_USER) menüsü:"
+  curl -s http://localhost:5000/api/me/menu -b /tmp/muh_cookie.txt | node -e "
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  let total=0;
+  d.forEach(s=>{
+    console.log('['+s.label+']');
+    if(s.items) s.items.forEach(i=>{console.log('  '+i.label+' → '+i.path);total++});
+  });
+  console.log('TOPLAM: '+total);
+  " 2>/dev/null
+  
+  echo ""
+  echo "--- Muhasebe/finans menüde var mı? ---"
+  curl -s http://localhost:5000/api/me/menu -b /tmp/muh_cookie.txt | grep -i "muhasebe\|mali\|finans\|bordro\|maaş\|maas\|pdks\|salary"
+fi
+
+echo ""
+echo "══════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. finans kapalıyken muhasebe_ik neyi göremez?"
+echo "2. Bordro/maaş hesaplama verileri gerçekten var mı?"
+echo "3. Finans'ı açarsak risk ne?"
+echo "4. Önerisi: finans açık mı kapalı mı kalmalı?"
+echo "══════════════════════════════════════"
+```
+
+**Sadece araştır — değişiklik yapma.**"
+
+---
+
+Yapıştırın. Sonucu birlikte değerlendirip doğru kararı vereceğiz.
