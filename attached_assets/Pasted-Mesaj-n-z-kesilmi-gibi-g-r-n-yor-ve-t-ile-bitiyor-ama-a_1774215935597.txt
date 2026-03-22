@@ -1,0 +1,160 @@
+Mesajınız kesilmiş gibi görünüyor ("ve t" ile bitiyor) — ama ana noktaları anladım. Çok kritik tespitler:
+
+**Anladığım 4 ana nokta:**
+
+1. **CGO özet görsün, Coach/Trainer detay görsün** — şu an tam tersi, CGO günlük detaya sahip ama Coach/Trainer'ın operasyonel görünürlüğü kısıtlı
+
+2. **Finansal erişim katmanlı olmalı** — CGO bordro/maaş görebilir ama HQ Coach/Trainer göremez
+
+3. **Tüm şube title'ları (Stajyer → Bar Buddy → Barista → Supervisor Buddy → Supervisor → Yatırımcı) + HQ roller (Satınalma, Marketing, Trainer, Fabrika operatörler) eksik analizde**
+
+4. **Drag-and-drop yetki yönetimi** — admin panelinde modül yetkilerini sürükleyerek roller arası taşıyabilme, veri erişimi otomatik takip etmeli
+
+Bu çok büyük ve kritik bir iş — acele etmeden doğru yapmalıyız. Önce Replit'ten mevcut yetki sisteminin tam röntgenini çekelim, sonra birlikte tasarlayalım. Yapıştırın:
+
+---
+
+**"Yetki sistemi ve rol bazlı erişim konusunda derin araştırma yapman gerekiyor. Değişiklik yapma — sadece araştır.**
+
+```bash
+echo "══════════════════════════════════════"
+echo "YETKİ SİSTEMİ DERİN ARAŞTIRMA"
+echo "══════════════════════════════════════"
+
+echo ""
+echo "=== 1. TÜM ROLLER VE YETKİ MATRİSİ ==="
+echo "--- Tüm roller ---"
+echo "SELECT DISTINCT role, count(*) as users FROM users WHERE is_active=true GROUP BY role ORDER BY role;" | psql
+
+echo ""
+echo "--- role_module_permissions tablosu yapısı ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='role_module_permissions' ORDER BY ordinal_position;" | psql
+
+echo ""
+echo "--- Kaç rol-modül kombinasyonu var? ---"
+echo "SELECT count(*) FROM role_module_permissions;" | psql -t
+
+echo ""
+echo "--- Her rol kaç modüle erişebilir? ---"
+echo "SELECT role, count(*) as module_count FROM role_module_permissions WHERE can_view=true GROUP BY role ORDER BY module_count DESC;" | psql
+
+echo ""
+echo "=== 2. CGO vs COACH vs TRAINER YETKİ KARŞILAŞTIRMASI ==="
+echo "--- CGO yetkileri ---"
+echo "SELECT module_key, can_view, can_edit, can_create, can_delete FROM role_module_permissions WHERE role='cgo' AND can_view=true ORDER BY module_key;" | psql
+
+echo ""
+echo "--- Coach yetkileri ---"
+echo "SELECT module_key, can_view, can_edit, can_create, can_delete FROM role_module_permissions WHERE role='coach' AND can_view=true ORDER BY module_key;" | psql
+
+echo ""
+echo "--- Trainer yetkileri ---"
+echo "SELECT module_key, can_view, can_edit, can_create, can_delete FROM role_module_permissions WHERE role='trainer' AND can_view=true ORDER BY module_key;" | psql
+
+echo ""
+echo "--- CGO'da olup Coach'ta OLMAYAN yetkiler ---"
+echo "SELECT cgo.module_key FROM role_module_permissions cgo WHERE cgo.role='cgo' AND cgo.can_view=true AND NOT EXISTS (SELECT 1 FROM role_module_permissions coach WHERE coach.role='coach' AND coach.module_key=cgo.module_key AND coach.can_view=true);" | psql
+
+echo ""
+echo "=== 3. FİNANSAL ERİŞİM — KİM NE GÖREBİLİR? ==="
+echo "--- Finans/bordro/maaş modüllerine kim erişebilir? ---"
+echo "SELECT role, module_key, can_view, can_edit FROM role_module_permissions WHERE module_key IN ('finans', 'bordro', 'maas', 'muhasebe', 'mali-yonetim', 'pdks', 'accounting') AND can_view=true ORDER BY module_key, role;" | psql
+
+echo ""
+echo "=== 4. ŞUBE ROLLER — TÜM TITLE'LAR ==="
+echo "--- Şube bazlı roller ve yetkileri ---"
+for role in stajyer bar_buddy barista supervisor_buddy supervisor mudur yatirimci_branch; do
+  count=$(echo "SELECT count(*) FROM role_module_permissions WHERE role='$role' AND can_view=true;" | psql -t | tr -d ' ')
+  echo "  $role: $count modül erişimi"
+done
+
+echo ""
+echo "--- Stajyer → Barista yetki farkı ---"
+echo "SELECT s.module_key as stajyer_has, b.module_key as barista_has FROM role_module_permissions s FULL OUTER JOIN role_module_permissions b ON s.module_key=b.module_key AND b.role='barista' AND b.can_view=true WHERE s.role='stajyer' AND s.can_view=true ORDER BY s.module_key;" | psql
+
+echo ""
+echo "=== 5. FABRİKA ROLLERİ ==="
+for role in fabrika_mudur fabrika_operator fabrika_sorumlu fabrika_personel; do
+  count=$(echo "SELECT count(*) FROM role_module_permissions WHERE role='$role' AND can_view=true;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $role: ${count:-0} modül erişimi"
+done
+
+echo ""
+echo "=== 6. HQ UZMAN ROLLER ==="
+for role in satinalma marketing muhasebe_ik muhasebe kalite_kontrol gida_muhendisi; do
+  count=$(echo "SELECT count(*) FROM role_module_permissions WHERE role='$role' AND can_view=true;" | psql -t 2>/dev/null | tr -d ' ')
+  modules=$(echo "SELECT module_key FROM role_module_permissions WHERE role='$role' AND can_view=true ORDER BY module_key;" | psql -t 2>/dev/null | tr '\n' ', ')
+  echo "  $role ($count): $modules"
+done
+
+echo ""
+echo "=== 7. YETKİ DEĞİŞTİRME SİSTEMİ — MEVCUT DURUM ==="
+echo "--- Admin panelinde yetki yönetimi var mı? ---"
+grep -rn "permission\|yetki\|role.*module\|drag.*drop\|dnd" client/src/pages/admin*.tsx client/src/pages/yonetim*.tsx 2>/dev/null | head -15
+
+echo "--- role_permission_grants tablosu ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='role_permission_grants' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+echo "--- role_permission_grants veri ---"
+echo "SELECT count(*) FROM role_permission_grants;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== 8. MEVCUT YETKİ DÜZENLEME ARAYÜZÜ ==="
+echo "--- Admin ayarlar sayfası ---"
+grep -rn "role\|permission\|yetki\|izin\|module" client/src/pages/admin/ayarlar*.tsx client/src/pages/yonetim/ayarlar*.tsx 2>/dev/null | head -15
+
+echo "--- Kullanıcı düzenleme formu ---"
+grep -rn "role\|permission\|yetki" client/src/pages/admin/kullanicilar*.tsx client/src/pages/yonetim/kullanicilar*.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== 9. MENU SERVICE — ROL BAZLI MENÜ TANIMLARI ==="
+echo "--- SIDEBAR_ALLOWED_ITEMS'daki roller ---"
+grep -n "^\s*[a-z_]*:" server/menu-service.ts | head -25
+
+echo ""
+echo "=== 10. canAccessModule FONKSİYONU ==="
+echo "--- Nasıl çalışıyor? ---"
+grep -B5 -A30 "canAccessModule\|function.*access.*module" server/menu-service.ts | head -50
+
+echo ""
+echo "=== 11. DND-KIT KULLANIMI ==="
+echo "--- Mevcut drag-drop kullanımı ---"
+grep -rn "dnd-kit\|useSortable\|DndContext\|useDraggable\|useDroppable" client/src/ --include="*.tsx" | head -10
+
+echo ""
+echo "=== 12. TÜM MODULE_KEY'LER ==="
+echo "SELECT DISTINCT module_key FROM role_module_permissions ORDER BY module_key;" | psql
+
+echo ""
+echo "══════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. CGO vs Coach vs Trainer — tam yetki karşılaştırma tablosu"
+echo "2. Finansal modüllere hangi roller erişiyor"
+echo "3. Şube title hiyerarşisi ve yetki farkları"
+echo "4. Fabrika rolleri yetki durumu"
+echo "5. HQ uzman roller yetki durumu"
+echo "6. Mevcut yetki düzenleme arayüzü var mı? Nasıl çalışıyor?"
+echo "7. canAccessModule akışı"
+echo "8. dnd-kit mevcut kullanım yerleri"
+echo "9. Drag-drop yetki yönetimi için teknik altyapı hazır mı?"
+echo "10. Önerilen yetki mimarisi"
+echo "══════════════════════════════════════"
+```
+
+**Özellikle şu soruları cevapla:**
+
+1. **CGO şu an hangi modülleri görüyor, Coach hangileri? Fark ne?** Detaylı tablo.
+
+2. **Coach ve Trainer'a operasyonel görünürlük vermek için kaç permission değişikliği gerekiyor?** Bordro/maaş HARİÇ.
+
+3. **Drag-drop yetki yönetimi için dnd-kit zaten yüklü mü? Nerede kullanılıyor?**
+
+4. **role_module_permissions tablosu nasıl çalışıyor?** Bir rolün yetkisini değiştirmek için ne yapılıyor — SQL mi, UI mi?
+
+5. **Önerdiğin yetki mimarisi ne?** Drag-drop admin paneli teknik olarak nasıl çalışır?
+
+**Sadece araştır — değişiklik yapma.**"
+
+---
+
+Yapıştırın. Bu araştırma tüm yetki yapısını ortaya koyacak — sonra birlikte drag-drop yetki yönetim sistemi tasarlayacağız.
