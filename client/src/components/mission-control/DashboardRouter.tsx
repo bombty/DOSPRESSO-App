@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const MissionControlHQ = lazy(() => import("./MissionControlHQ"));
 const MissionControlSupervisor = lazy(() => import("./MissionControlSupervisor"));
 const MissionControlStajyer = lazy(() => import("./MissionControlStajyer"));
+const MissionControlFabrika = lazy(() => import("./MissionControlFabrika"));
 
 const HQ_ROLES = [
   "ceo", "cgo", "admin", "coach", "trainer",
@@ -64,15 +65,9 @@ export function DashboardRouter() {
 
   if (FACTORY_ROLES.includes(role)) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4" data-testid="mc-factory-placeholder">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <span className="text-2xl">🏭</span>
-        </div>
-        <div className="text-center space-y-2">
-          <h2 className="text-lg font-bold">Fabrika Mission Control</h2>
-          <p className="text-sm text-muted-foreground">Yakında aktif olacak.</p>
-        </div>
-      </div>
+      <Suspense fallback={<MCLoading />}>
+        <MissionControlFabrika />
+      </Suspense>
     );
   }
 
