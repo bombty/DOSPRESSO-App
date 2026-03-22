@@ -2323,7 +2323,7 @@ Sadece JSON döndür, başka metin ekleme.`;
         allMaterials: allMaterials,
         allRecipes: allRecipes,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in AI recipe parse:", error);
       res.status(500).json({ error: "AI reçete analizi başarısız: " + (error.message || "Bilinmeyen hata") });
     }
@@ -2395,7 +2395,7 @@ Sadece JSON döndür, başka metin ekleme.`;
         recipe: newRecipe, 
         message: `Reçete "${recipeName}" başarıyla oluşturuldu (v${maxVersion})` 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating AI recipe:", error);
       res.status(500).json({ error: "Reçete oluşturulamadı: " + (error.message || "Bilinmeyen hata") });
     }
@@ -2468,7 +2468,7 @@ Sadece JSON döndür, başka metin ekleme.`;
         recipe: updatedRecipe, 
         message: `Reçete "${updatedRecipe.name}" AI ile güncellendi (v${updateData.version})` 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating recipe with AI:", error);
       res.status(500).json({ error: "Reçete güncellenemedi: " + (error.message || "Bilinmeyen hata") });
     }

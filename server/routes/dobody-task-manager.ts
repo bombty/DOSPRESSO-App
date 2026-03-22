@@ -57,7 +57,7 @@ function getStartOfWeek(): string {
   return monday.toISOString().split("T")[0];
 }
 
-router.get("/api/admin/dobody-tasks/summary", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/dobody-tasks/summary", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -128,13 +128,13 @@ router.get("/api/admin/dobody-tasks/summary", isAuthenticated, async (req: any, 
       avgCompletion: Math.min(avgCompletion, 100),
       totalCompletions: totalCompletions?.cnt || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task summary error:", error);
     res.status(500).json({ message: "Özet veriler yüklenemedi" });
   }
 });
 
-router.get("/api/admin/dobody-tasks", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/dobody-tasks", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -225,13 +225,13 @@ router.get("/api/admin/dobody-tasks", isAuthenticated, async (req: any, res) => 
       limit,
       totalPages: Math.ceil((totalResult?.cnt || 0) / limit),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task list error:", error);
     res.status(500).json({ message: "Görevler yüklenemedi" });
   }
 });
 
-router.get("/api/admin/dobody-tasks/:id", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/dobody-tasks/:id", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -262,13 +262,13 @@ router.get("/api/admin/dobody-tasks/:id", isAuthenticated, async (req: any, res)
       ...task,
       completionCount: completionCount?.cnt || 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task detail error:", error);
     res.status(500).json({ message: "Görev detayı yüklenemedi" });
   }
 });
 
-router.post("/api/admin/dobody-tasks", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/dobody-tasks", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -333,13 +333,13 @@ router.post("/api/admin/dobody-tasks", isAuthenticated, async (req: any, res) =>
       .returning();
 
     res.status(201).json(task);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task create error:", error);
     res.status(500).json({ message: "Görev oluşturulamadı" });
   }
 });
 
-router.patch("/api/admin/dobody-tasks/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/dobody-tasks/:id", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -376,13 +376,13 @@ router.patch("/api/admin/dobody-tasks/:id", isAuthenticated, async (req: any, re
       .returning();
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task update error:", error);
     res.status(500).json({ message: "Görev güncellenemedi" });
   }
 });
 
-router.delete("/api/admin/dobody-tasks/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/dobody-tasks/:id", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -410,13 +410,13 @@ router.delete("/api/admin/dobody-tasks/:id", isAuthenticated, async (req: any, r
       .returning();
 
     res.json({ success: true, task: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task delete error:", error);
     res.status(500).json({ message: "Görev silinemedi" });
   }
 });
 
-router.get("/api/admin/dobody-tasks/:id/stats", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/dobody-tasks/:id/stats", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -547,13 +547,13 @@ router.get("/api/admin/dobody-tasks/:id/stats", isAuthenticated, async (req: any
       totalTarget,
       totalCompleted: completedUsers.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task stats error:", error);
     res.status(500).json({ message: "İstatistikler yüklenemedi" });
   }
 });
 
-router.post("/api/admin/dobody-tasks/:id/remind", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/dobody-tasks/:id/remind", isAuthenticated, async (req, res) => {
   try {
     const role = req.user.role as string;
     if (!canManageTasks(role)) {
@@ -625,7 +625,7 @@ router.post("/api/admin/dobody-tasks/:id/remind", isAuthenticated, async (req: a
       sentCount,
       message: `${sentCount} kişiye hatırlatma gönderildi`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody task remind error:", error);
     res.status(500).json({ message: "Hatırlatma gönderilemedi" });
   }

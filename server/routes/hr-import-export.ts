@@ -134,7 +134,7 @@ const IMPORT_FIELD_MAP: Record<string, string> = {
   "Category": "category",
 };
 
-function isAdminUser(u: any): boolean {
+function isAdminUser(u): boolean {
   return u.role === "admin" || u.isSystemUser === true;
 }
 
@@ -155,7 +155,7 @@ function validateRowData(row: Record<string, any>, rowNum: number): string[] {
   return errors;
 }
 
-function parseExcelDate(val: any): string | null {
+function parseExcelDate(val): string | null {
   if (!val) return null;
   if (val instanceof Date) {
     return val.toISOString().split("T")[0];
@@ -171,7 +171,7 @@ function parseExcelDate(val: any): string | null {
 
 // ─── EXPORT ──────────────────────────────────────────────
 
-function getEmployeeCategory(emp: any): string {
+function getEmployeeCategory(emp): string {
   if (!emp.branchId || emp.branchId === HQ_BRANCH_ID) return "HQ";
   if (emp.branchId === FACTORY_BRANCH_ID) return "Fabrika";
   return "Şube";
@@ -186,7 +186,7 @@ function styleHeaderRow(sheet: ExcelJS.Worksheet) {
   };
 }
 
-router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) => {
+router.post("/api/hr/employees/export", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -435,7 +435,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
       resource: "employees",
       details: { scope, count: employees.length, exportType, titleFilter, hireDateFrom, hireDateTo },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Export error:", error);
     res.status(500).json({ message: "Export sırasında hata oluştu" });
   }
@@ -443,7 +443,7 @@ router.post("/api/hr/employees/export", isAuthenticated, async (req: any, res) =
 
 // ─── IMPORT DRY-RUN ──────────────────────────────────────
 
-router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("file"), async (req: any, res) => {
+router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("file"), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -621,7 +621,7 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       columnMapping,
       preview: rows.slice(0, 5).map(r => r.data),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Import dry-run error:", error);
     res.status(500).json({ message: "Import simülasyonu sırasında hata oluştu" });
   }
@@ -629,7 +629,7 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
 
 // ─── IMPORT APPLY ────────────────────────────────────────
 
-router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("file"), async (req: any, res) => {
+router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("file"), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -833,7 +833,7 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
               });
               createdCount++;
             }
-          } catch (rowError: any) {
+          } catch (rowError) {
             resultRows.push({ rowNumber, status: "error", message: rowError.message || "Bilinmeyen hata" });
             errorCount++;
           }
@@ -868,7 +868,7 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
           }
         }
       });
-    } catch (txError: any) {
+    } catch (txError) {
       await db.update(importBatches).set({
         status: "failed",
         errorCount,
@@ -933,7 +933,7 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       deactivatedCount,
       results: resultRows.map(r => ({ rowNumber: r.rowNumber, status: r.status, message: r.message, employeeId: r.employeeId })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Import apply error:", error);
     res.status(500).json({ message: "Import sırasında hata oluştu" });
   }
@@ -941,7 +941,7 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
 
 // ─── ROLLBACK ────────────────────────────────────────────
 
-router.post("/api/hr/employees/import/:batchId/rollback", isAuthenticated, async (req: any, res) => {
+router.post("/api/hr/employees/import/:batchId/rollback", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (user.role !== "admin" && !isHQRole(user.role as UserRoleTypeSchema)) {
@@ -997,7 +997,7 @@ router.post("/api/hr/employees/import/:batchId/rollback", isAuthenticated, async
     });
 
     res.json({ message: `Rollback tamamlandı. ${rolledBack} kayıt geri alındı.`, rolledBack });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Rollback error:", error);
     res.status(500).json({ message: "Rollback sırasında hata oluştu" });
   }
@@ -1005,7 +1005,7 @@ router.post("/api/hr/employees/import/:batchId/rollback", isAuthenticated, async
 
 // ─── BATCH HISTORY ───────────────────────────────────────
 
-router.get("/api/hr/employees/import/batches", isAuthenticated, async (req: any, res) => {
+router.get("/api/hr/employees/import/batches", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -1030,7 +1030,7 @@ router.get("/api/hr/employees/import/batches", isAuthenticated, async (req: any,
     }));
 
     res.json(enriched);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Batch history error:", error);
     res.status(500).json({ message: "Geçmiş yüklenirken hata oluştu" });
   }
@@ -1038,7 +1038,7 @@ router.get("/api/hr/employees/import/batches", isAuthenticated, async (req: any,
 
 // ─── BATCH DETAIL ────────────────────────────────────────
 
-router.get("/api/hr/employees/import/batches/:batchId", isAuthenticated, async (req: any, res) => {
+router.get("/api/hr/employees/import/batches/:batchId", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -1067,7 +1067,7 @@ router.get("/api/hr/employees/import/batches/:batchId", isAuthenticated, async (
       },
       results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Batch detail error:", error);
     res.status(500).json({ message: "Batch detayı yüklenirken hata oluştu" });
   }
@@ -1075,7 +1075,7 @@ router.get("/api/hr/employees/import/batches/:batchId", isAuthenticated, async (
 
 // ─── ERROR REPORT DOWNLOAD ──────────────────────────────
 
-router.get("/api/hr/employees/import/batches/:batchId/error-report", isAuthenticated, async (req: any, res) => {
+router.get("/api/hr/employees/import/batches/:batchId/error-report", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -1130,7 +1130,7 @@ router.get("/api/hr/employees/import/batches/:batchId/error-report", isAuthentic
     res.setHeader("Content-Disposition", `attachment; filename=import_hata_raporu_${batchId}.xlsx`);
     await workbook.xlsx.write(res);
     res.end();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error report error:", error);
     res.status(500).json({ message: "Hata raporu oluşturulurken hata oluştu" });
   }
@@ -1216,7 +1216,7 @@ function validateRowDetailed(row: Record<string, any>, rowNum: number): { errors
   return { errors, warnings };
 }
 
-router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single("file"), async (req: any, res) => {
+router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single("file"), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -1396,7 +1396,7 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
       previewRows,
       hasBlockingErrors: totalErrors > 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Validate error:", error);
     res.status(500).json({ message: "Doğrulama sırasında hata oluştu" });
   }
@@ -1404,7 +1404,7 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
 
 // ─── FILE PREVIEW (column mapping) ──────────────────────
 
-router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("file"), async (req: any, res) => {
+router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("file"), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -1458,7 +1458,7 @@ router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("
       previewRows,
       systemFields,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Preview error:", error);
     res.status(500).json({ message: "Dosya önizleme sırasında hata oluştu" });
   }
@@ -1466,7 +1466,7 @@ router.post("/api/hr/employees/import/preview", isAuthenticated, upload.single("
 
 // ─── EXPORT TEMPLATE ─────────────────────────────────────
 
-router.get("/api/hr/employees/import/template", isAuthenticated, async (req: any, res) => {
+router.get("/api/hr/employees/import/template", isAuthenticated, async (req, res) => {
   try {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Import Şablonu");
@@ -1504,7 +1504,7 @@ router.get("/api/hr/employees/import/template", isAuthenticated, async (req: any
     res.setHeader("Content-Disposition", "attachment; filename=dospresso_import_sablonu.xlsx");
     await workbook.xlsx.write(res);
     res.end();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Template error:", error);
     res.status(500).json({ message: "Şablon oluşturulurken hata oluştu" });
   }

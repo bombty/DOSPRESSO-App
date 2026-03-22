@@ -75,7 +75,7 @@ async function getBranchName(branchId: number): Promise<string> {
   }
 }
 
-router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req: any, res) => {
+router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req, res) => {
   const startTime = Date.now();
   try {
     const parsed = quickActionSchema.safeParse(req.body);
@@ -244,7 +244,7 @@ router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req: 
     });
 
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     const executionTime = Date.now() - startTime;
     try {
       await db.insert(aiAgentLogs).values({

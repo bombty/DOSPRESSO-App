@@ -63,7 +63,7 @@ function requireAcademyCoachOrSupervisor(req: any, res: any, next: any) {
 // GATE SYSTEM ENDPOINTS
 // ========================================
 
-router.get('/api/academy/gates', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/gates', isAuthenticated, async (req, res) => {
   try {
     const gates = await db.select({
       gate: careerGates,
@@ -81,33 +81,33 @@ router.get('/api/academy/gates', isAuthenticated, async (req: any, res) => {
     }));
 
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate listesi alınamadı");
   }
 });
 
-router.get('/api/academy/gates/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/gates/:id', isAuthenticated, async (req, res) => {
   try {
     const gateId = parseInt(req.params.id);
     const [gate] = await db.select().from(careerGates).where(eq(careerGates.id, gateId));
     if (!gate) return res.status(404).json({ message: "Gate bulunamadı" });
     res.json(gate);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate detayı alınamadı");
   }
 });
 
-router.post('/api/academy/gates', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/gates', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const parsed = insertCareerGateSchema.parse(req.body);
     const [gate] = await db.insert(careerGates).values(parsed).returning();
     res.status(201).json(gate);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate oluşturulamadı");
   }
 });
 
-router.patch('/api/academy/gates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.patch('/api/academy/gates/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const gateId = parseInt(req.params.id);
     const [updated] = await db.update(careerGates)
@@ -116,12 +116,12 @@ router.patch('/api/academy/gates/:id', isAuthenticated, requireAcademyCoach, asy
       .returning();
     if (!updated) return res.status(404).json({ message: "Gate bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate güncellenemedi");
   }
 });
 
-router.get('/api/academy/gates/:id/eligibility/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/gates/:id/eligibility/:userId', isAuthenticated, async (req, res) => {
   try {
     const gateId = parseInt(req.params.id);
     const targetUserId = req.params.userId;
@@ -186,12 +186,12 @@ router.get('/api/academy/gates/:id/eligibility/:userId', isAuthenticated, async 
       attemptCount: existingAttempts.length,
       maxRetries: gate.maxRetries,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Yetkinlik kontrolü yapılamadı");
   }
 });
 
-router.post('/api/academy/gates/:id/attempt', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/gates/:id/attempt', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const gateId = parseInt(req.params.id);
@@ -250,7 +250,7 @@ router.post('/api/academy/gates/:id/attempt', isAuthenticated, async (req: any, 
     }
 
     res.status(201).json(attempt);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate denemesi başlatılamadı");
   }
 });
@@ -265,7 +265,7 @@ const gateAttemptUpdateSchema = z.object({
   evaluatorNotes: z.string().optional(),
 }).strict();
 
-router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (req, res) => {
   try {
     const attemptId = parseInt(req.params.attemptId);
     const parsed = gateAttemptUpdateSchema.safeParse(req.body);
@@ -430,12 +430,12 @@ router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (re
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate denemesi güncellenemedi");
   }
 });
 
-router.post('/api/academy/gates/:id/approve', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/gates/:id/approve', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const user = req.user!;
     const gateId = parseInt(req.params.id);
@@ -456,12 +456,12 @@ router.post('/api/academy/gates/:id/approve', isAuthenticated, requireAcademyCoa
       .returning();
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate onayı verilemedi");
   }
 });
 
-router.get('/api/academy/gate-attempts/user/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/gate-attempts/user/:userId', isAuthenticated, async (req, res) => {
   try {
     const targetUserId = req.params.userId;
     const attempts = await db.select({
@@ -478,12 +478,12 @@ router.get('/api/academy/gate-attempts/user/:userId', isAuthenticated, async (re
       gateTitleTr: a.gate?.titleTr,
       gateNumber: a.gate?.gateNumber,
     })));
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Gate denemeleri alınamadı");
   }
 });
 
-router.get('/api/academy/gate-attempts/pending', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.get('/api/academy/gate-attempts/pending', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const user = req.user!;
     const attempts = await db.select({
@@ -514,7 +514,7 @@ router.get('/api/academy/gate-attempts/pending', isAuthenticated, requireAcademy
       userRole: a.userRole,
       userBranchId: a.userBranchId,
     })));
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Bekleyen gate talepleri alınamadı");
   }
 });
@@ -523,7 +523,7 @@ router.get('/api/academy/gate-attempts/pending', isAuthenticated, requireAcademy
 // CONTENT PACK ENDPOINTS
 // ========================================
 
-router.get('/api/academy/packs', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/packs', isAuthenticated, async (req, res) => {
   try {
     const { targetRole, packType } = req.query;
     let query = db.select().from(contentPacks).where(eq(contentPacks.isActive, true));
@@ -537,12 +537,12 @@ router.get('/api/academy/packs', isAuthenticated, async (req: any, res) => {
     });
 
     res.json(filtered);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Paket listesi alınamadı");
   }
 });
 
-router.get('/api/academy/packs/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/packs/:id', isAuthenticated, async (req, res) => {
   try {
     const packId = parseInt(req.params.id);
     const [pack] = await db.select().from(contentPacks).where(eq(contentPacks.id, packId));
@@ -553,12 +553,12 @@ router.get('/api/academy/packs/:id', isAuthenticated, async (req: any, res) => {
       .orderBy(asc(contentPackItems.dayNumber), asc(contentPackItems.sortOrder));
 
     res.json({ ...pack, items });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Paket detayı alınamadı");
   }
 });
 
-router.post('/api/academy/packs', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/packs', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any) && user.role !== 'admin' && user.role !== 'trainer') {
@@ -583,12 +583,12 @@ router.post('/api/academy/packs', isAuthenticated, async (req: any, res) => {
       .orderBy(asc(contentPackItems.dayNumber), asc(contentPackItems.sortOrder));
 
     res.status(201).json({ ...pack, items: createdItems });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Paket oluşturulamadı");
   }
 });
 
-router.put('/api/academy/packs/:id', isAuthenticated, async (req: any, res) => {
+router.put('/api/academy/packs/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any) && user.role !== 'admin' && user.role !== 'trainer') {
@@ -620,12 +620,12 @@ router.put('/api/academy/packs/:id', isAuthenticated, async (req: any, res) => {
       .orderBy(asc(contentPackItems.dayNumber), asc(contentPackItems.sortOrder));
 
     res.json({ ...updated, items: updatedItems });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Paket güncellenemedi");
   }
 });
 
-router.post('/api/academy/packs/:id/assign', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/packs/:id/assign', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const packId = parseInt(req.params.id);
@@ -652,12 +652,12 @@ router.post('/api/academy/packs/:id/assign', isAuthenticated, async (req: any, r
     }
 
     res.status(201).json({ message: "Paket atandı", itemCount: progressRecords.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Paket atanamadı");
   }
 });
 
-router.get('/api/academy/packs/:id/progress/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/packs/:id/progress/:userId', isAuthenticated, async (req, res) => {
   try {
     const packId = parseInt(req.params.id);
     const targetUserId = req.params.userId;
@@ -683,12 +683,12 @@ router.get('/api/academy/packs/:id/progress/:userId', isAuthenticated, async (re
       isRequired: p.item?.isRequired,
       requiresApproval: p.item?.requiresApproval,
     })));
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Paket ilerlemesi alınamadı");
   }
 });
 
-router.post('/api/academy/pack-progress/:progressId/complete', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/pack-progress/:progressId/complete', isAuthenticated, async (req, res) => {
   try {
     const progressId = parseInt(req.params.progressId);
     const { score } = req.body;
@@ -704,7 +704,7 @@ router.post('/api/academy/pack-progress/:progressId/complete', isAuthenticated, 
 
     if (!updated) return res.status(404).json({ message: "İlerleme kaydı bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım tamamlanamadı");
   }
 });
@@ -713,7 +713,7 @@ router.post('/api/academy/pack-progress/:progressId/complete', isAuthenticated, 
 // MY PATH (NBA ENGINE) ENDPOINT
 // ========================================
 
-router.get('/api/academy/my-path', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/my-path', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user!.id;
     const userRole = req.user!.role;
@@ -967,12 +967,12 @@ router.get('/api/academy/my-path', isAuthenticated, async (req: any, res) => {
       actions,
       completedModuleCount: (progress?.completedModuleIds || []).length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "My Path verisi alınamadı");
   }
 });
 
-router.get('/api/academy/my-path/progress', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/my-path/progress', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user!.id;
 
@@ -1014,12 +1014,12 @@ router.get('/api/academy/my-path/progress', isAuthenticated, async (req: any, re
       totalRequiredModules: requiredModules.length,
       progressPercent,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "İlerleme bilgisi alınamadı");
   }
 });
 
-router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user!.id;
     const { progressId, type, score } = req.body;
@@ -1041,7 +1041,7 @@ router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: a
     }
 
     res.json({ message: "Adım tamamlandı" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım tamamlanamadı");
   }
 });
@@ -1050,7 +1050,7 @@ router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: a
 // TEAM PROGRESS (Coach/Trainer/Supervisor)
 // ========================================
 
-router.get('/api/academy/team-progress', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.get('/api/academy/team-progress', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const user = req.user!;
     const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : null;
@@ -1162,7 +1162,7 @@ router.get('/api/academy/team-progress', isAuthenticated, requireAcademyCoachOrS
     }));
 
     res.json({ team, mentorOnboardings });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Ekip ilerleme verisi alınamadı");
   }
 });
@@ -1176,7 +1176,7 @@ const completeItemSchema = z.object({
   type: z.enum(['module', 'quiz', 'practical', 'recipe']),
 });
 
-router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const parsed = completeItemSchema.safeParse(req.body);
@@ -1209,7 +1209,7 @@ router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: a
       .returning();
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım tamamlanamadı");
   }
 });
@@ -1218,13 +1218,13 @@ router.post('/api/academy/my-path/complete-item', isAuthenticated, async (req: a
 // KPI SIGNAL RULES (Admin/Coach)
 // ========================================
 
-router.get('/api/academy/kpi-signals', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.get('/api/academy/kpi-signals', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const signals = await db.select().from(kpiSignalRules)
       .where(eq(kpiSignalRules.isActive, true))
       .orderBy(asc(kpiSignalRules.signalKey));
     res.json(signals);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "KPI sinyalleri alınamadı");
   }
 });
@@ -1233,7 +1233,7 @@ router.get('/api/academy/kpi-signals', isAuthenticated, requireAcademyCoach, asy
 // CONTENT PACKS (Admin/Coach)
 // ========================================
 
-router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const packs = await db.select({
       id: contentPacks.id,
@@ -1248,7 +1248,7 @@ router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, a
     }).from(contentPacks)
       .orderBy(asc(contentPacks.packType), asc(contentPacks.name));
     res.json(packs);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "İçerik paketleri alınamadı");
   }
 });
@@ -1257,7 +1257,7 @@ router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, a
 // ONBOARDING STUDIO - Templates (Coach)
 // ========================================
 
-router.get('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.get('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const templates = await db.select({
       id: onboardingTemplates.id,
@@ -1275,12 +1275,12 @@ router.get('/api/academy/onboarding/templates', isAuthenticated, requireAcademyC
     }).from(onboardingTemplates)
       .orderBy(desc(onboardingTemplates.updatedAt));
     res.json(templates);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Onboarding şablonları alınamadı");
   }
 });
 
-router.get('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.get('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const templateId = parseInt(req.params.id);
     const [template] = await db.select().from(onboardingTemplates)
@@ -1292,12 +1292,12 @@ router.get('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcad
       .orderBy(asc(onboardingTemplateSteps.startDay), asc(onboardingTemplateSteps.stepOrder));
 
     res.json({ ...template, steps });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Şablon detayı alınamadı");
   }
 });
 
-router.post('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const parsed = insertOnboardingTemplateSchema.parse({
       ...req.body,
@@ -1305,12 +1305,12 @@ router.post('/api/academy/onboarding/templates', isAuthenticated, requireAcademy
     });
     const [template] = await db.insert(onboardingTemplates).values(parsed).returning();
     res.status(201).json(template);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Şablon oluşturulamadı");
   }
 });
 
-router.patch('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.patch('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const templateId = parseInt(req.params.id);
     const [updated] = await db.update(onboardingTemplates)
@@ -1319,12 +1319,12 @@ router.patch('/api/academy/onboarding/templates/:id', isAuthenticated, requireAc
       .returning();
     if (!updated) return res.status(404).json({ message: "Şablon bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Şablon güncellenemedi");
   }
 });
 
-router.delete('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.delete('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const templateId = parseInt(req.params.id);
     const activeAssignments = await db.select({ count: count() }).from(employeeOnboardingAssignments)
@@ -1346,7 +1346,7 @@ router.delete('/api/academy/onboarding/templates/:id', isAuthenticated, requireA
       details: { softDelete: true },
     });
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Şablon silinemedi");
   }
 });
@@ -1355,7 +1355,7 @@ router.delete('/api/academy/onboarding/templates/:id', isAuthenticated, requireA
 // ONBOARDING STUDIO - Steps (Coach)
 // ========================================
 
-router.post('/api/academy/onboarding/templates/:id/steps', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/onboarding/templates/:id/steps', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const templateId = parseInt(req.params.id);
     const parsed = insertOnboardingTemplateStepSchema.parse({
@@ -1365,12 +1365,12 @@ router.post('/api/academy/onboarding/templates/:id/steps', isAuthenticated, requ
     const [step] = await db.insert(onboardingTemplateSteps).values(parsed).returning();
     await db.update(onboardingTemplates).set({ updatedAt: new Date() }).where(eq(onboardingTemplates.id, templateId));
     res.status(201).json(step);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım oluşturulamadı");
   }
 });
 
-router.patch('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.patch('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const stepId = parseInt(req.params.id);
     const [updated] = await db.update(onboardingTemplateSteps)
@@ -1379,22 +1379,22 @@ router.patch('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcadem
       .returning();
     if (!updated) return res.status(404).json({ message: "Adım bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım güncellenemedi");
   }
 });
 
-router.delete('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.delete('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const stepId = parseInt(req.params.id);
     await db.delete(onboardingTemplateSteps).where(eq(onboardingTemplateSteps.id, stepId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım silinemedi");
   }
 });
 
-router.post('/api/academy/onboarding/templates/:id/steps/reorder', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/onboarding/templates/:id/steps/reorder', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const { stepOrders } = req.body;
     if (!Array.isArray(stepOrders)) return res.status(400).json({ message: "stepOrders dizisi gerekli" });
@@ -1404,7 +1404,7 @@ router.post('/api/academy/onboarding/templates/:id/steps/reorder', isAuthenticat
         .where(eq(onboardingTemplateSteps.id, item.id));
     }
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Sıralama güncellenemedi");
   }
 });
@@ -1413,7 +1413,7 @@ router.post('/api/academy/onboarding/templates/:id/steps/reorder', isAuthenticat
 // ONBOARDING ASSIGNMENTS (Coach)
 // ========================================
 
-router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const user = req.user!;
     let query = db.select({
@@ -1444,12 +1444,12 @@ router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcadem
       return res.json(filtered);
     }
     res.json(mapped);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Atamalar alınamadı");
   }
 });
 
-router.post('/api/academy/onboarding/assignments', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/onboarding/assignments', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const { userId, branchId, templateId, mentorId, startDate } = req.body;
     if (!userId || !branchId || !templateId) {
@@ -1500,12 +1500,12 @@ router.post('/api/academy/onboarding/assignments', isAuthenticated, requireAcade
     }
 
     res.status(201).json(assignment);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Atama oluşturulamadı");
   }
 });
 
-router.patch('/api/academy/onboarding/assignments/:id', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.patch('/api/academy/onboarding/assignments/:id', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const assignmentId = parseInt(req.params.id);
     const [updated] = await db.update(employeeOnboardingAssignments)
@@ -1514,7 +1514,7 @@ router.patch('/api/academy/onboarding/assignments/:id', isAuthenticated, require
       .returning();
     if (!updated) return res.status(404).json({ message: "Atama bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Atama güncellenemedi");
   }
 });
@@ -1523,7 +1523,7 @@ router.patch('/api/academy/onboarding/assignments/:id', isAuthenticated, require
 // EMPLOYEE ONBOARDING (Self)
 // ========================================
 
-router.get('/api/academy/onboarding/my-assignment', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/onboarding/my-assignment', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user!.id;
     const [assignment] = await db.select({
@@ -1595,12 +1595,12 @@ router.get('/api/academy/onboarding/my-assignment', isAuthenticated, async (req:
       mentorId: assignment.assignment.mentorId,
       stepsByDay,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Onboarding bilgisi alınamadı");
   }
 });
 
-router.post('/api/academy/onboarding/progress/:id/complete', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/onboarding/progress/:id/complete', isAuthenticated, async (req, res) => {
   try {
     const progressId = parseInt(req.params.id);
     const [prog] = await db.select({
@@ -1659,7 +1659,7 @@ router.post('/api/academy/onboarding/progress/:id/complete', isAuthenticated, as
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Adım tamamlanamadı");
   }
 });
@@ -1668,7 +1668,7 @@ router.post('/api/academy/onboarding/progress/:id/complete', isAuthenticated, as
 // SUPERVISOR ONBOARDING APPROVAL
 // ========================================
 
-router.get('/api/academy/onboarding/team-progress', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.get('/api/academy/onboarding/team-progress', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const user = req.user!;
     const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : null;
@@ -1730,12 +1730,12 @@ router.get('/api/academy/onboarding/team-progress', isAuthenticated, requireAcad
     }));
 
     res.json(enrichedResults);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Ekip onboarding ilerlemesi alınamadı");
   }
 });
 
-router.get('/api/academy/onboarding/pending-approvals', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.get('/api/academy/onboarding/pending-approvals', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const user = req.user!;
 
@@ -1770,12 +1770,12 @@ router.get('/api/academy/onboarding/pending-approvals', isAuthenticated, require
     }));
 
     res.json(mapped);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Onay bekleyen adımlar alınamadı");
   }
 });
 
-router.post('/api/academy/onboarding/progress/:id/approve', isAuthenticated, requireAcademyCoachOrSupervisor, async (req: any, res) => {
+router.post('/api/academy/onboarding/progress/:id/approve', isAuthenticated, requireAcademyCoachOrSupervisor, async (req, res) => {
   try {
     const progressId = parseInt(req.params.id);
     const { approved, notes, rating } = req.body;
@@ -1820,7 +1820,7 @@ router.post('/api/academy/onboarding/progress/:id/approve', isAuthenticated, req
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Onay işlemi başarısız");
   }
 });
@@ -1829,7 +1829,7 @@ router.post('/api/academy/onboarding/progress/:id/approve', isAuthenticated, req
 // HELPER: Available branches + users for assignment
 // ========================================
 
-router.get('/api/academy/onboarding/available-users', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.get('/api/academy/onboarding/available-users', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : null;
     const role = req.query.role as string | undefined;
@@ -1850,7 +1850,7 @@ router.get('/api/academy/onboarding/available-users', isAuthenticated, requireAc
     .orderBy(asc(users.firstName));
 
     res.json(availableUsers);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Kullanıcılar alınamadı");
   }
 });
@@ -1859,7 +1859,7 @@ router.get('/api/academy/onboarding/available-users', isAuthenticated, requireAc
 // AI AGENT PANEL ENDPOINTS
 // ========================================
 
-router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/ai-panel', isAuthenticated, async (req, res) => {
   try {
     const startTime = Date.now();
     const userId = req.user.id;
@@ -2141,12 +2141,12 @@ router.get('/api/academy/ai-panel', isAuthenticated, async (req: any, res) => {
     }
 
     res.status(400).json({ message: 'Invalid view mode' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "AI panel verisi alınamadı");
   }
 });
 
-router.get('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.get('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const offset = parseInt(req.query.offset as string) || 0;
@@ -2176,19 +2176,19 @@ router.get('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (
         hasMore: offset + limit < Number(totalResult.count),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "AI logları alınamadı");
   }
 });
 
-router.post('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req: any, res) => {
+router.post('/api/academy/ai-logs', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const parsed = insertAiAgentLogSchema.parse(req.body);
     if (parsed.inputSummary) parsed.inputSummary = redactPII(parsed.inputSummary);
     if (parsed.outputSummary) parsed.outputSummary = redactPII(parsed.outputSummary);
     const [inserted] = await db.insert(aiAgentLogs).values(parsed).returning();
     res.status(201).json(inserted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "AI log kaydı oluşturulamadı");
   }
 });
@@ -2212,7 +2212,7 @@ async function cleanupOldAiLogs(dryRun: boolean = false): Promise<{ deletedCount
   return { deletedCount: deleted.length, cutoffDate };
 }
 
-router.post('/api/admin/ai/logs/cleanup', isAuthenticated, async (req: any, res) => {
+router.post('/api/admin/ai/logs/cleanup', isAuthenticated, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: "Bu işlem için admin yetkisi gereklidir" });
@@ -2230,7 +2230,7 @@ router.post('/api/admin/ai/logs/cleanup', isAuthenticated, async (req: any, res)
       cutoffDate: result.cutoffDate.toISOString(),
       retentionDays: AI_LOG_RETENTION_DAYS,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "AI log temizliği yapılamadı");
   }
 });

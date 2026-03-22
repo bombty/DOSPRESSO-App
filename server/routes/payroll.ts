@@ -339,7 +339,7 @@ router.post('/api/payroll/calculate-detailed', isAuthenticated, async (req: any,
 
     const result = await calculateDetailedPayroll(parsed.data);
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Detailed payroll calculation error:", error);
     res.status(500).json({ error: error.message || 'Detaylı maaş hesaplanamadı' });
   }

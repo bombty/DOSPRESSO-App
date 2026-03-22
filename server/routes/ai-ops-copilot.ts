@@ -193,7 +193,7 @@ En riskli şubeler: ${JSON.stringify(topRiskBranches)}`;
     await logRun(user.id, role, user.branchId, rangeUsed, report.branches.length, "success", Date.now() - startTime, false, tokenUsage);
     return res.json(result);
 
-  } catch (err: any) {
+  } catch (err) {
     const fallback = buildFallback(report, rangeUsed);
     await logRun(user.id, role, user.branchId, rangeUsed, report.branches.length, "fallback_error", Date.now() - startTime, true);
     return res.json(fallback);

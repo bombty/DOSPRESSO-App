@@ -29,7 +29,7 @@ function canAccessBranch(user: any, branchId: number): boolean {
   return false;
 }
 
-router.get("/api/branch-summary/:branchId", isAuthenticated, async (req: any, res) => {
+router.get("/api/branch-summary/:branchId", isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     if (isNaN(branchId)) {
@@ -184,7 +184,7 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req: any, re
       lowStockItems,
       suggestions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Branch summary error:", error);
     res.status(500).json({ message: "Sube ozeti yuklenemedi" });
   }

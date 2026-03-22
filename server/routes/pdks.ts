@@ -236,7 +236,7 @@ router.post('/api/pdks/scheduled-offs', isAuthenticated, async (req: any, res: R
           offType: off.offType || 'program_off',
         }).returning();
         inserted.push(record);
-      } catch (e: any) {
+      } catch (e) {
         if (e.code === '23505') continue;
         throw e;
       }

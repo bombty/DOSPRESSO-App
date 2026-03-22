@@ -3165,7 +3165,7 @@ ${manualText.substring(0, 8000)}`;
       items: result.items || [],
       summary: result.summary || "Bilgiler oluşturuldu"
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Knowledge generation error:", error);
     throw new Error(error.message || "Bilgi oluşturulamadı");
   }
@@ -3266,7 +3266,7 @@ JSON formatında yanıt ver:
       items: result.items,
       summary: result.summary || `${typeLabel} için ${result.items.length} bilgi kaydı oluşturuldu`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Bulk equipment knowledge generation error:", error);
     throw new Error(error.message || "Toplu bilgi üretimi yapılamadı");
   }
@@ -3371,7 +3371,7 @@ En az 4 farklı kategori için içerik oluştur (bakım, arıza giderme, kullan�
       items: result.items,
       summary: result.summary || `${brand} ${model} için ${result.items.length} bilgi kaydı oluşturuldu`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Equipment research error:", error);
     throw new Error(error.message || "Ekipman araştırması yapılamadı");
   }

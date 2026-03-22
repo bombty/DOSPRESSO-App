@@ -58,7 +58,7 @@ function getGreeting(): string {
   return "İyi Akşamlar";
 }
 
-function getPersonalMessage(streakData: any): string {
+function getPersonalMessage(streakData): string {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const lastActivity = streakData.lastActivityDate;
@@ -713,7 +713,7 @@ async function getManualFlowTasks(userId: string, userRole: string, branchId: nu
   }
 }
 
-router.get("/api/dobody/flow-tasks", isAuthenticated, async (req: any, res) => {
+router.get("/api/dobody/flow-tasks", isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role as UserRoleType;
@@ -780,7 +780,7 @@ router.get("/api/dobody/flow-tasks", isAuthenticated, async (req: any, res) => {
       streak: streakData.currentStreak || 0,
       score,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Dobody flow-tasks error:", error);
     res.status(500).json({ message: "Flow görevleri yüklenemedi" });
   }

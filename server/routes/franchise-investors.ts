@@ -68,7 +68,7 @@ router.get("/api/franchise/investors", isAuthenticated, async (req, res) => {
     );
 
     res.json(investorsWithBranches);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching investors:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -122,7 +122,7 @@ router.get("/api/franchise/investors/:id", isAuthenticated, async (req, res) => 
       branches: investorBranches,
       notes,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching investor detail:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -183,7 +183,7 @@ router.get("/api/franchise/investors/:id/performance", isAuthenticated, async (r
       totalStaff,
       avgHealth: Number(avgHealth.toFixed(0)),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching investor performance:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -213,7 +213,7 @@ router.post("/api/franchise/investors", isAuthenticated, async (req, res) => {
     }
 
     res.status(201).json(newInvestor);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating investor:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -250,7 +250,7 @@ router.patch("/api/franchise/investors/:id", isAuthenticated, async (req, res) =
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating investor:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -286,7 +286,7 @@ router.post("/api/franchise/investors/:id/notes", isAuthenticated, async (req, r
 
     const [note] = await db.insert(franchiseInvestorNotes).values(parsed.data).returning();
     res.status(201).json(note);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating note:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -311,7 +311,7 @@ router.delete("/api/franchise/investors/:id", isAuthenticated, async (req, res) 
     }
 
     res.json({ message: "Yatırımcı silindi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting investor:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }

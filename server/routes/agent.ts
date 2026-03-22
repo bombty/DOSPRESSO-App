@@ -33,7 +33,7 @@ function isAdminCgoCeo(req: any, res: any, next: any) {
   next();
 }
 
-router.get("/api/agent/actions", isAuthenticated, async (req: any, res) => {
+router.get("/api/agent/actions", isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { status, limit: limitParam, offset: offsetParam, skillId } = req.query;
@@ -88,13 +88,13 @@ router.get("/api/agent/actions", isAuthenticated, async (req: any, res) => {
     const paged = deduped.slice(offset, offset + limit);
 
     res.json({ data: paged, total, limit, offset });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent actions list error:", error);
     res.status(500).json({ message: "Agent önerileri alınamadı" });
   }
 });
 
-router.get("/api/agent/actions/summary", isAuthenticated, async (req: any, res) => {
+router.get("/api/agent/actions/summary", isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const conditions: any[] = [];
@@ -135,13 +135,13 @@ router.get("/api/agent/actions/summary", isAuthenticated, async (req: any, res) 
       today: todayResult[0]?.count ?? 0,
       critical: criticalResult[0]?.count ?? 0,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent summary error:", error);
     res.status(500).json({ message: "Agent özeti alınamadı" });
   }
 });
 
-router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, res) => {
+router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req, res) => {
   try {
     const actionId = parseInt(req.params.id);
     const user = req.user;
@@ -324,13 +324,13 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req: any, 
       actionId,
       ...chainResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent approve error:", error);
     res.status(500).json({ message: "Onaylama hatası" });
   }
 });
 
-router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req: any, res) => {
+router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req, res) => {
   try {
     const actionId = parseInt(req.params.id);
     const user = req.user;
@@ -386,13 +386,13 @@ router.post("/api/agent/actions/:id/reject", isAuthenticated, async (req: any, r
     });
 
     res.json({ message: "Öneri reddedildi", actionId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent reject error:", error);
     res.status(500).json({ message: "Reddetme hatası" });
   }
 });
 
-router.post("/api/agent/run-now", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+router.post("/api/agent/run-now", isAuthenticated, isHQOrAdmin, async (req, res) => {
   try {
     const user = req.user;
     const result = await runAgentAnalysis(String(user.id), "daily_analysis", "manual");
@@ -401,46 +401,46 @@ router.post("/api/agent/run-now", isAuthenticated, isHQOrAdmin, async (req: any,
       actionsGenerated: result.actionsCreated,
       runId: result.run?.id ?? null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent run-now error:", error);
     res.status(500).json({ message: "Agent analizi çalıştırılamadı" });
   }
 });
 
-router.get("/api/agent/escalations", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+router.get("/api/agent/escalations", isAuthenticated, isHQOrAdmin, async (req, res) => {
   try {
     const unresolved = await getUnresolvedEscalations();
     res.json({ data: unresolved });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent escalations error:", error);
     res.status(500).json({ message: "Escalation listesi alınamadı" });
   }
 });
 
-router.get("/api/agent/escalations/:actionId", isAuthenticated, async (req: any, res) => {
+router.get("/api/agent/escalations/:actionId", isAuthenticated, async (req, res) => {
   try {
     const actionId = parseInt(req.params.actionId);
     const history = await getEscalationHistory(actionId);
     res.json({ data: history });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Escalation history error:", error);
     res.status(500).json({ message: "Escalation geçmişi alınamadı" });
   }
 });
 
-router.post("/api/agent/escalations/:actionId/resolve", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+router.post("/api/agent/escalations/:actionId/resolve", isAuthenticated, isHQOrAdmin, async (req, res) => {
   try {
     const actionId = parseInt(req.params.actionId);
     const { resolution } = req.body;
     await resolveEscalation(actionId, resolution || "Manuel olarak çözüldü");
     res.json({ message: "Escalation çözüldü" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Resolve escalation error:", error);
     res.status(500).json({ message: "Escalation çözülemedi" });
   }
 });
 
-router.get("/api/agent-center/stats", isAuthenticated, async (req: any, res) => {
+router.get("/api/agent-center/stats", isAuthenticated, async (req, res) => {
   try {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
@@ -539,13 +539,13 @@ router.get("/api/agent-center/stats", isAuthenticated, async (req: any, res) => 
         timezone: "Europe/Istanbul",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent center stats error:", error);
     res.status(500).json({ message: "Agent merkezi istatistikleri alınamadı" });
   }
 });
 
-router.get("/api/agent/admin/stats", isAuthenticated, isHQOrAdmin, async (req: any, res) => {
+router.get("/api/agent/admin/stats", isAuthenticated, isHQOrAdmin, async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -599,23 +599,23 @@ router.get("/api/agent/admin/stats", isAuthenticated, isHQOrAdmin, async (req: a
       schedulerStatus,
       period: "30d",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent admin stats error:", error);
     res.status(500).json({ message: "Agent istatistikleri alınamadı" });
   }
 });
 
-router.get("/api/admin/agent-routing-rules", isAuthenticated, isAdminCgoCeo, async (req: any, res) => {
+router.get("/api/admin/agent-routing-rules", isAuthenticated, isAdminCgoCeo, async (req, res) => {
   try {
     const rules = await db.select().from(agentRoutingRules).orderBy(agentRoutingRules.category, agentRoutingRules.subcategory);
     res.json(rules);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get routing rules error:", error);
     res.status(500).json({ message: "Yönlendirme kuralları alınamadı" });
   }
 });
 
-router.patch("/api/admin/agent-routing-rules/:id", isAuthenticated, isAdminCgoCeo, async (req: any, res) => {
+router.patch("/api/admin/agent-routing-rules/:id", isAuthenticated, isAdminCgoCeo, async (req, res) => {
   try {
     const ruleId = Number(req.params.id);
     const { primaryRole, secondaryRole, escalationRole, escalationDays, isActive, notifyBranchSupervisor, sendHqSummary } = req.body;
@@ -634,13 +634,13 @@ router.patch("/api/admin/agent-routing-rules/:id", isAuthenticated, isAdminCgoCe
       .where(eq(agentRoutingRules.id, ruleId));
 
     res.json({ message: "Kural güncellendi", ruleId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update routing rule error:", error);
     res.status(500).json({ message: "Kural güncellenemedi" });
   }
 });
 
-router.get("/api/agent/cgo-summary", isAuthenticated, isAdminCgoCeo, async (req: any, res) => {
+router.get("/api/agent/cgo-summary", isAuthenticated, isAdminCgoCeo, async (req, res) => {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -696,20 +696,20 @@ router.get("/api/agent/cgo-summary", isAuthenticated, isAdminCgoCeo, async (req:
       outcomeStats: outcomeStats.rows,
       strategicActions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("CGO summary error:", error);
     res.status(500).json({ message: "CGO özeti alınamadı" });
   }
 });
 
-router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req: any, res) => {
+router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req, res) => {
   const user = req.user;
   if (user.role !== "admin") return res.status(403).json({ error: "Admin only" });
 
   try {
     const { ensureSkillsLoaded, SKILL_REGISTRY } = await import("../agent/skills/skill-registry");
     await ensureSkillsLoaded();
-    const skill = SKILL_REGISTRY.find((s: any) => s.id === req.params.skillId);
+    const skill = SKILL_REGISTRY.find((s) => s.id === req.params.skillId);
     if (!skill) return res.status(404).json({ error: "Skill bulunamadı" });
 
     const now = new Date();
@@ -721,7 +721,7 @@ router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req: any, r
     const actions = skill.generateActions(insights, context);
 
     res.json({ skillId: skill.id, insightCount: insights.length, actionCount: actions.length, insights, actions });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Test skill error:", error);
     res.status(500).json({ error: error.message });
   }
@@ -741,13 +741,13 @@ async function getCachedGaps() {
   return cachedGaps;
 }
 
-router.get("/api/agent/guidance", isAuthenticated, async (req: any, res) => {
+router.get("/api/agent/guidance", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const allGaps = await getCachedGaps();
 
     const dismissals = await db.select().from(guidanceDismissals).where(eq(guidanceDismissals.userId, user.id));
-    const dismissedIds = new Set(dismissals.map((d: any) => d.guidanceId));
+    const dismissedIds = new Set(dismissals.map((d) => d.guidanceId));
 
     const isHQ = HQ_ROLES.includes(user.role);
     const myGuidance = allGaps.filter(gap => {
@@ -784,7 +784,7 @@ router.get("/api/agent/guidance", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.post("/api/agent/guidance/:id/dismiss", isAuthenticated, async (req: any, res) => {
+router.post("/api/agent/guidance/:id/dismiss", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const guidanceId = req.params.id;

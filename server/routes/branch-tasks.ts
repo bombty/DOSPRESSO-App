@@ -30,7 +30,7 @@ router.get("/api/branch-tasks/categories", isAuthenticated, moduleGuard, async (
       .where(eq(branchTaskCategories.isActive, true))
       .orderBy(asc(branchTaskCategories.sortOrder));
     res.json(cats);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Kategoriler yüklenemedi" });
   }
 });
@@ -69,7 +69,7 @@ router.get("/api/branch-tasks/templates", isAuthenticated, moduleGuard, async (r
     }
 
     res.json(result.rows || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Şablonlar yüklenemedi" });
   }
 });
@@ -93,7 +93,7 @@ router.get("/api/branch-tasks/templates/:id", isAuthenticated, moduleGuard, asyn
     }
 
     res.json(template);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Şablon yüklenemedi" });
   }
 });
@@ -131,7 +131,7 @@ router.post("/api/branch-tasks/templates", isAuthenticated, moduleGuard, async (
     `);
 
     res.status(201).json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Şablon oluşturulamadı" });
   }
 });
@@ -188,7 +188,7 @@ router.patch("/api/branch-tasks/templates/:id", isAuthenticated, moduleGuard, as
     `);
 
     res.json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Şablon güncellenemedi" });
   }
 });
@@ -224,7 +224,7 @@ router.delete("/api/branch-tasks/templates/:id", isAuthenticated, moduleGuard, a
     `);
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Şablon silinemedi" });
   }
 });
@@ -281,7 +281,7 @@ router.get("/api/branch-tasks/instances", isAuthenticated, moduleGuard, async (r
 
     const result = await db.execute(query);
     res.json(result.rows || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Görevler yüklenemedi" });
   }
 });
@@ -308,7 +308,7 @@ router.get("/api/branch-tasks/instances/:id", isAuthenticated, moduleGuard, asyn
     }
 
     res.json(instance);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Görev yüklenemedi" });
   }
 });
@@ -356,7 +356,7 @@ router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuar
     `);
 
     res.json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Görev sahiplenilemedi" });
   }
 });
@@ -409,7 +409,7 @@ router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleG
     `);
 
     res.json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Görev tamamlanamadı" });
   }
 });
@@ -453,7 +453,7 @@ router.post("/api/branch-tasks/instances/:id/unclaim", isAuthenticated, moduleGu
     `);
 
     res.json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Görev bırakılamadı" });
   }
 });
@@ -516,7 +516,7 @@ router.get("/api/branch-tasks/stats", isAuthenticated, moduleGuard, async (req, 
     }
 
     res.json(stats);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "İstatistikler yüklenemedi" });
   }
 });
@@ -555,7 +555,7 @@ router.get("/api/branch-tasks/templates/:id/overrides", isAuthenticated, moduleG
     }
     const result = await query;
     res.json(result.rows || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Override listesi yüklenemedi" });
   }
 });
@@ -593,7 +593,7 @@ router.post("/api/branch-tasks/templates/:id/overrides", isAuthenticated, module
     `);
 
     res.status(201).json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Override oluşturulamadı" });
   }
 });
@@ -625,7 +625,7 @@ router.delete("/api/branch-tasks/overrides/:id", isAuthenticated, moduleGuard, a
     `);
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Override silinemedi" });
   }
 });
@@ -659,7 +659,7 @@ router.get("/api/branch-tasks/stats/user/:userId", isAuthenticated, moduleGuard,
     `);
 
     res.json(result.rows?.[0] || { total: 0, completed: 0, pending: 0, claimed: 0, overdue: 0, completion_rate: 0 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Kullanıcı istatistikleri yüklenemedi" });
   }
 });
@@ -682,7 +682,7 @@ router.get("/api/branch-tasks/kiosk/instances", isKioskAuthenticated, moduleGuar
       ORDER BY i.is_overdue DESC, CASE i.status WHEN 'pending' THEN 1 WHEN 'claimed' THEN 2 WHEN 'completed' THEN 3 END, r.title ASC
     `);
     res.json(result.rows || []);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Kiosk görevleri yüklenemedi" });
   }
 });
@@ -712,7 +712,7 @@ router.post("/api/branch-tasks/kiosk/:id/claim", isKioskAuthenticated, moduleGua
       WHERE id = ${id} RETURNING *
     `);
     res.json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Kiosk görev sahiplenilemedi" });
   }
 });
@@ -745,7 +745,7 @@ router.post("/api/branch-tasks/kiosk/:id/complete", isKioskAuthenticated, module
       WHERE id = ${id} RETURNING *
     `);
     res.json(result.rows[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ message: "Kiosk görev tamamlanamadı" });
   }
 });
@@ -771,7 +771,7 @@ router.get("/api/branch-tasks/score", isAuthenticated, moduleGuard, async (req, 
 
     const result = await calculateBranchTaskScore(branchId, undefined, { start, end });
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Branch task score error:", error);
     res.status(500).json({ message: "Puan hesaplanamadı" });
   }
@@ -799,7 +799,7 @@ router.get("/api/branch-tasks/score/user/:userId", isAuthenticated, moduleGuard,
 
     const result = await calculateBranchTaskScore(branchId, targetUserId, { start, end });
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("User task score error:", error);
     res.status(500).json({ message: "Kullanıcı puanı hesaplanamadı" });
   }

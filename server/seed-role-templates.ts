@@ -289,7 +289,7 @@ export async function seedRoleTemplates(): Promise<void> {
       }).onConflictDoNothing();
       
       insertedCount++;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.code === '23505') {
         skippedCount++;
       } else {

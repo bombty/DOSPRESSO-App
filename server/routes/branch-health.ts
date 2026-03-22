@@ -55,13 +55,13 @@ router.get("/api/reports/branch-health", isAuthenticated, async (req, res) => {
     });
 
     res.json(report);
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Şube sağlık skorları hesaplanırken hata oluştu",
     });
   }
 });
 
-export function registerBranchHealthRoutes(app: any) {
+export function registerBranchHealthRoutes(app) {
   app.use(router);
 }

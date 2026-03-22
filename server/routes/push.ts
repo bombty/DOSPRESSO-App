@@ -47,7 +47,7 @@ router.post('/api/push/subscribe', isAuthenticated, async (req: Request, res: Re
     }
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Push] Subscribe error:', error.message);
     res.status(500).json({ error: 'Subscription kaydedilemedi' });
   }
@@ -68,7 +68,7 @@ router.post('/api/push/unsubscribe', isAuthenticated, async (req: Request, res: 
         eq(pushSubscriptions.endpoint, endpoint)
       ));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Push] Unsubscribe error:', error.message);
     res.status(500).json({ error: 'Unsubscribe başarısız' });
   }
@@ -86,7 +86,7 @@ router.post('/api/push/test', isAuthenticated, async (req: Request, res: Respons
       link: '/',
     });
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Push] Test error:', error.message);
     res.status(500).json({ error: 'Test bildirimi gönderilemedi' });
   }
@@ -101,7 +101,7 @@ router.post('/api/push/cleanup', isAuthenticated, async (req: Request, res: Resp
   try {
     const cleaned = await cleanExpiredSubscriptions();
     res.json({ success: true, cleaned });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ error: 'Temizleme başarısız' });
   }
 });

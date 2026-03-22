@@ -123,7 +123,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       }));
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get factory shifts error:", error);
       res.status(500).json({ error: "Vardiyalar alınamadı" });
     }
@@ -173,7 +173,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       });
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create factory shift error:", error);
       res.status(500).json({ error: "Vardiya oluşturulamadı" });
     }
@@ -188,7 +188,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .returning();
       if (!updated) return res.status(404).json({ error: "Vardiya bulunamadı" });
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update factory shift error:", error);
       res.status(500).json({ error: "Vardiya güncellenemedi" });
     }
@@ -199,7 +199,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       const id = parseInt(req.params.id);
       await db.delete(factoryShifts).where(eq(factoryShifts.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete factory shift error:", error);
       res.status(500).json({ error: "Vardiya silinemedi" });
     }
@@ -233,7 +233,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         notes,
       }).returning();
       res.json(worker);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Add shift worker error:", error);
       res.status(500).json({ error: "Çalışan atanamadı" });
     }
@@ -244,7 +244,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       const id = parseInt(req.params.id);
       await db.delete(factoryShiftWorkers).where(eq(factoryShiftWorkers.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Remove shift worker error:", error);
       res.status(500).json({ error: "Çalışan kaldırılamadı" });
     }
@@ -258,7 +258,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .where(eq(factoryShiftWorkers.id, id))
         .returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update shift worker error:", error);
       res.status(500).json({ error: "Çalışan ataması güncellenemedi" });
     }
@@ -281,7 +281,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         notes,
       }).returning();
       res.json(production);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Add shift production error:", error);
       res.status(500).json({ error: "Üretim planı eklenemedi" });
     }
@@ -292,7 +292,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       const id = parseInt(req.params.id);
       await db.delete(factoryShiftProductions).where(eq(factoryShiftProductions.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Remove shift production error:", error);
       res.status(500).json({ error: "Üretim planı kaldırılamadı" });
     }
@@ -325,7 +325,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .leftJoin(factoryMachines, eq(factoryBatchSpecs.machineId, factoryMachines.id))
         .orderBy(desc(factoryBatchSpecs.createdAt));
       res.json(specs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get batch specs error:", error);
       res.status(500).json({ error: "Batch spesifikasyonları alınamadı" });
     }
@@ -397,7 +397,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         expectedUnitWeightUnit,
         productionTimeMinutes: recipe.productionTimeMinutes,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get recipe info error:", error);
       res.status(500).json({ error: "Reçete bilgisi alınamadı" });
     }
@@ -411,7 +411,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       }
       const [spec] = await db.insert(factoryBatchSpecs).values(parseResult.data).returning();
       res.json(spec);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create batch spec error:", error);
       res.status(500).json({ error: "Batch spesifikasyonu oluşturulamadı" });
     }
@@ -426,7 +426,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .returning();
       if (!updated) return res.status(404).json({ error: "Batch spesifikasyonu bulunamadı" });
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update batch spec error:", error);
       res.status(500).json({ error: "Batch spesifikasyonu güncellenemedi" });
     }
@@ -437,7 +437,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       const id = parseInt(req.params.id);
       await db.delete(factoryBatchSpecs).where(eq(factoryBatchSpecs.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete batch spec error:", error);
       res.status(500).json({ error: "Batch spesifikasyonu silinemedi" });
     }
@@ -495,7 +495,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .orderBy(desc(factoryProductionBatches.startTime));
 
       res.json(batches);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get production batches error:", error);
       res.status(500).json({ error: "Üretim batch'leri alınamadı" });
     }
@@ -543,7 +543,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       }).returning();
 
       res.json(batch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Start batch error:", error);
       res.status(500).json({ error: "Batch başlatılamadı" });
     }
@@ -729,7 +729,7 @@ export function registerFactoryShiftRoutes(app: Express) {
           status: result.wasteDeviationPercent > tolerancePercent ? "over" : result.wasteDeviationPercent < -5 ? "under" : "normal"
         } : null
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Complete batch error:", error);
       res.status(404).json({ error: error.message || "Batch tamamlanamadı" });
     }
@@ -774,7 +774,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .orderBy(asc(factoryProductionBatches.endTime));
 
       res.json(pendingBatches);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get pending verifications error:", error);
       res.status(500).json({ error: "Doğrulama bekleyenler alınamadı" });
     }
@@ -806,7 +806,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       });
 
       res.json(verification);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create verification error:", error);
       res.status(500).json({ error: "Doğrulama kaydedilemedi" });
     }
@@ -863,7 +863,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         .where(eq(factoryShiftProductions.shiftId, assignment.shiftId));
 
       res.json({ assigned: true, assignment, productions });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get my assignment error:", error);
       res.status(500).json({ error: "Atama bilgisi alınamadı" });
     }
@@ -901,7 +901,7 @@ export function registerFactoryShiftRoutes(app: Express) {
       });
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Self-select machine error:", error);
       res.status(500).json({ error: "Makine seçilemedi" });
     }
@@ -967,7 +967,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         productBreakdown,
         workerBreakdown,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get production stats error:", error);
       res.status(500).json({ error: "Üretim istatistikleri alınamadı" });
     }
@@ -1160,7 +1160,7 @@ export function registerFactoryShiftRoutes(app: Express) {
         totalBatches: batches.length,
         analyzedShifts: shiftIds.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Team analysis error:", error);
       res.status(500).json({ error: "Takım analizi alınamadı" });
     }
@@ -1319,7 +1319,7 @@ JSON formatında yanıt ver:
         productSummary: productSummary.filter(p => p.monthlyProduction.batches > 0 || (p.minStock || 0) > 0),
         generatedAt: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("AI recommendations error:", error);
       res.status(500).json({ error: "AI önerileri alınamadı" });
     }
@@ -1394,7 +1394,7 @@ JSON formatında yanıt ver:
         todayBatches,
         weeklyStats: weeklyStats[0],
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get worker dashboard error:", error);
       res.status(500).json({ error: "Dashboard verisi alınamadı" });
     }

@@ -22,7 +22,7 @@ router.get('/api/setup/status', async (_req: Request, res: Response) => {
       isFirstSetup: userCount === 0,
       stats: { users: userCount, branches: branchCount, roles: roleCount },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -86,7 +86,7 @@ router.post('/api/setup/initialize', isAuthenticated, async (req: Request, res: 
     }
 
     res.json({ success: true, adminId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({ error: 'Kurulum hatası: ' + error.message });
   }
 });

@@ -137,7 +137,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
           count: Number(c.count),
         })),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CRM dashboard stats error:", error);
       res.status(500).json({ message: "Dashboard verileri yüklenemedi" });
     }
@@ -227,7 +227,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
         .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
 
       res.json(combined);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CRM complaints error:", error);
       res.status(500).json({ message: "Şikayetler yüklenemedi" });
     }
@@ -265,7 +265,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
       } else {
         res.status(400).json({ message: "Geçersiz şikayet türü" });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CRM complaint detail error:", error);
       res.status(500).json({ message: "Şikayet detayı yüklenemedi" });
     }
@@ -291,7 +291,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
           .where(eq(productComplaints.id, Number(id)));
       }
       res.json({ message: "Atama yapıldı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Atama başarısız" });
     }
   });
@@ -317,7 +317,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
           .where(eq(productComplaints.id, Number(id)));
       }
       res.json({ message: "Şikayet çözümlendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Çözümleme başarısız" });
     }
   });
@@ -397,7 +397,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
           feedbackCount: Number(b.feedbackCount),
         })),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CRM analytics error:", error);
       res.status(500).json({ message: "Analiz verileri yüklenemedi" });
     }
@@ -470,7 +470,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
           onTrack: items.filter(i => i.slaStatus === 'green').length,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CRM SLA tracking error:", error);
       res.status(500).json({ message: "SLA verileri yüklenemedi" });
     }
@@ -503,7 +503,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
           guler_yuzluluk: 'bireysel',
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Ayarlar yüklenemedi" });
     }
   });
@@ -513,7 +513,7 @@ export function registerCRMRoutes(app: Express, isAuthenticated: any) {
       const allBranches = await db.select({ id: branches.id, name: branches.name })
         .from(branches).orderBy(branches.name);
       res.json(allBranches);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Şubeler yüklenemedi" });
     }
   });

@@ -27,7 +27,7 @@ import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/
 
 const router = Router();
 
-router.get("/api/hq-summary", isAuthenticated, async (req: any, res) => {
+router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user.role as UserRoleType;
     if (!isHQRole(userRole) && userRole !== "admin" && userRole !== "ceo" && userRole !== "cgo") {
@@ -204,7 +204,7 @@ router.get("/api/hq-summary", isAuthenticated, async (req: any, res) => {
       activeUsers,
       suggestions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ summary error:", error);
     res.status(500).json({ message: "HQ ozeti yuklenemedi" });
   }

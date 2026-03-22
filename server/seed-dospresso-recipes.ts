@@ -529,7 +529,7 @@ export async function seedDospressoRecipes() {
     }
 
     console.log(`\n✅ DOSPRESSO recipe seed complete: ${totalInserted} recipes inserted across ${CATEGORIES.length} categories`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Recipe seed error:", error);
     throw error;
   }

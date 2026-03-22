@@ -42,7 +42,7 @@ import { handleApiError } from "./helpers";
 const router = Router();
 
 // POST /api/academy/ai-generate-onboarding - AI ile onboarding şablonu oluştur
-router.post('/api/academy/ai-generate-onboarding', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/ai-generate-onboarding', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any)) {
@@ -131,14 +131,14 @@ En az 6, en fazla 12 adım oluştur. Sadece JSON array döndür, başka açıkla
       durationDays: duration,
       steps,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating onboarding template:", error);
     res.status(500).json({ message: "AI onboarding şablonu oluşturulamadı" });
   }
 });
 
 // POST /api/academy/ai-generate-program - AI ile eğitim programı oluştur
-router.post('/api/academy/ai-generate-program', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/ai-generate-program', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any)) {
@@ -225,24 +225,24 @@ Her modül şu formatta olmalı (JSON array):
       scope,
       modules,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating training program:", error);
     res.status(500).json({ message: "AI eğitim programı oluşturulamadı" });
   }
 });
 
 // GET /api/academy/career-levels - Kariyer seviyeleri
-router.get('/api/academy/career-levels', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/career-levels', isAuthenticated, async (req, res) => {
   try {
     const levels = await storage.getCareerLevels();
     res.json(levels);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchCareerLevels");
   }
 });
 
 // GET /api/academy/career-progress/:userId - Kullanıcı kariyer durumu
-router.get('/api/academy/career-progress/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/career-progress/:userId', isAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     const progress = await storage.getUserCareerProgress(userId);
@@ -250,13 +250,13 @@ router.get('/api/academy/career-progress/:userId', isAuthenticated, async (req: 
       return res.json({ averageQuizScore: 0, completedModuleIds: [] });
     }
     res.json(progress);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchCareerProgress");
   }
 });
 
 // GET /api/academy/user-dashboard - Dashboard için kullanıcı Academy özeti
-router.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/user-dashboard', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -265,7 +265,7 @@ router.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res)
     let careerProgress = await storage.getUserCareerProgress(userId);
     
     if (!careerProgress && levels.length > 0) {
-      const stajyerLevel = levels.find((l: any) => l.levelNumber === 1);
+      const stajyerLevel = levels.find((l) => l.levelNumber === 1);
       if (stajyerLevel) {
         careerProgress = await storage.createUserCareerProgress(userId, stajyerLevel.id);
       }
@@ -273,7 +273,7 @@ router.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res)
     
     let careerLevel = null;
     if (careerProgress?.currentCareerLevelId && levels.length > 0) {
-      careerLevel = levels.find((l: any) => l.id === careerProgress.currentCareerLevelId);
+      careerLevel = levels.find((l) => l.id === careerProgress.currentCareerLevelId);
     }
     
     const userBadgesList = await storage.getUserBadges(userId);
@@ -282,7 +282,7 @@ router.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res)
     const quizStats = {
       totalAttempts: quizAttempts?.length || 0,
       averageScore: careerProgress?.averageQuizScore || 0,
-      recentScores: quizAttempts?.slice(0, 5).map((q: any) => q.score || 0) || []
+      recentScores: quizAttempts?.slice(0, 5).map((q) => q.score || 0) || []
     };
     
     res.json({
@@ -292,13 +292,13 @@ router.get('/api/academy/user-dashboard', isAuthenticated, async (req: any, res)
       quizStats,
       totalBadgesEarned: userBadgesList?.length || 0
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchUserDashboard");
   }
 });
 
 // GET /api/academy/exam-requests - Sınav talepleri listesi
-router.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/exam-requests', isAuthenticated, async (req, res) => {
   try {
     const { status, supervisorId } = req.query;
     const requests = await storage.getExamRequests({ 
@@ -306,13 +306,13 @@ router.get('/api/academy/exam-requests', isAuthenticated, async (req: any, res) 
       userId: supervisorId as string 
     });
     res.json(requests);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchExamRequests");
   }
 });
 
 // GET /api/academy/team-members - Supervisor'un ekip üyeleri
-router.get('/api/academy/team-members', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/team-members', isAuthenticated, async (req, res) => {
   try {
     const supervisorId = req.user.id;
     const branchId = req.user.branchId;
@@ -333,13 +333,13 @@ router.get('/api/academy/team-members', isAuthenticated, async (req: any, res) =
       }));
 
     res.json(teamMembers);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchTeamMembers");
   }
 });
 
 // PATCH /api/academy/exam-request/:id/approve - Sınav onayı (HQ only)
-router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (req, res) => {
   try {
     if (!isHQRole(req.user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
@@ -375,18 +375,18 @@ router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (re
         }
         
       }
-    } catch (promotionError: any) {
+    } catch (promotionError) {
       console.error("Auto-promotion error:", promotionError);
     }
 
     res.json(updatedRequest);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "ApproveExamRequest");
   }
 });
 
 // PATCH /api/academy/exam-request/:id/reject - Sınav reddi
-router.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     const { rejectionReason } = req.body;
@@ -397,13 +397,13 @@ router.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req
     });
 
     res.json(request);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "RejectExamRequest");
   }
 });
 
 // POST /api/academy/exam-request - Sınav talep et (Supervisor)
-router.post('/api/academy/exam-request', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/exam-request', isAuthenticated, async (req, res) => {
   try {
     const { userId, targetRoleId, supervisorNotes } = req.body;
     const supervisorId = req.user.id;
@@ -421,24 +421,24 @@ router.post('/api/academy/exam-request', isAuthenticated, async (req: any, res) 
     });
 
     res.json(request);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "CreateExamRequest");
   }
 });
 
 // AI Motor: Module content endpoint
-router.get('/api/academy/module-content/:materialId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/module-content/:materialId', isAuthenticated, async (req, res) => {
   try {
     const material = await storage.getTrainingMaterial(Number(req.params.materialId));
     if (!material) return res.status(404).json({ message: "Bulunamadı" });
     res.json(material);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchModuleContent");
   }
 });
 
 // GET /api/academy/stats - Analytics statistics
-router.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/stats', isAuthenticated, async (req, res) => {
   try {
     const traineeRoles = ['barista', 'bar_buddy', 'stajyer', 'supervisor_buddy', 'supervisor', 'mudur'];
 
@@ -501,13 +501,13 @@ router.get('/api/academy/stats', isAuthenticated, async (req: any, res) => {
       activeStudents: Number(studentCount?.count ?? 0),
       roleCompletion,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchAcademyStats");
   }
 });
 
 // POST /api/academy/quiz-result - Submit quiz result + Auto-unlock badges + Training completion chain + Anti-cheat metadata
-router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/quiz-result', isAuthenticated, async (req, res) => {
   try {
     const { quizId, score, answers, metadata } = req.body;
     if (!quizId || score === undefined) {
@@ -551,7 +551,7 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
         attemptNumber,
         completedAt: new Date(),
       });
-    } catch (attemptError: any) {
+    } catch (attemptError) {
       console.error("Quiz attempt record error:", attemptError);
     }
 
@@ -583,7 +583,7 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
           moduleCompleted = true;
         }
       }
-    } catch (chainError: any) {
+    } catch (chainError) {
       console.error("Training completion chain error:", chainError);
     }
 
@@ -641,38 +641,38 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req: any, res) =
           }
         }
       }
-    } catch (notifError: any) {
+    } catch (notifError) {
       console.error("Quiz notification error:", notifError);
     }
 
     res.json({ success: true, result, unlockedBadges, moduleCompleted, completedModuleId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "SubmitQuizResult");
   }
 });
 
 // GET /api/academy/badges - Get all available badges
-router.get('/api/academy/badges', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/badges', isAuthenticated, async (req, res) => {
   try {
     const badgesList = await storage.getBadges();
     res.json(badgesList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchBadges");
   }
 });
 
 // GET /api/academy/user-badges - Get user's unlocked badges
-router.get('/api/academy/user-badges', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/user-badges', isAuthenticated, async (req, res) => {
   try {
     const userBadgesList = await storage.getUserBadges(req.user.id);
     res.json(userBadgesList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchUserBadges");
   }
 });
 
 // POST /api/academy/ai-assistant - Academy AI Assistant for chat
-router.post('/api/academy/ai-assistant', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/ai-assistant', isAuthenticated, async (req, res) => {
   try {
     const { message, conversationHistory } = req.body;
     const userId = req.user!.id;
@@ -697,7 +697,7 @@ router.post('/api/academy/ai-assistant', isAuthenticated, async (req: any, res) 
         .where(eq(quizResults.userId, userId))
         .orderBy(desc(quizResults.completedAt))
         .limit(5);
-    } catch (dbError: any) {
+    } catch (dbError) {
       console.warn("Database fetch warning:", dbError);
     }
 
@@ -752,23 +752,23 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
     }
 
     res.json({ response: assistantMessage });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "AcademyAIAssistant");
   }
 });
 
 // GET /api/academy/quiz/:quizId/questions - Get quiz questions
-router.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req, res) => {
   try {
     const questions = await storage.getQuizQuestions(req.params.quizId);
     res.json(questions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchQuizQuestions");
   }
 });
 
 // GET /api/academy/quiz/:quizId/attempts - Get user's quiz attempts with retry info
-router.get('/api/academy/quiz/:quizId/attempts', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/quiz/:quizId/attempts', isAuthenticated, async (req, res) => {
   try {
     const quizId = parseInt(req.params.quizId);
     const attempts = await db.select().from(userQuizAttempts)
@@ -804,38 +804,38 @@ router.get('/api/academy/quiz/:quizId/attempts', isAuthenticated, async (req: an
       retryAvailableAt,
       maxAttempts: 3
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchQuizAttempts");
   }
 });
 
 // POST /api/academy/question - Create new question
-router.post('/api/academy/question', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/question', isAuthenticated, async (req, res) => {
   try {
     const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
     if (!isHQRole(roleStr )) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
     const question = await storage.createQuizQuestion(req.body);
     res.json(question);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "CreateQuestion");
   }
 });
 
 // DELETE /api/academy/question/:id - Delete question
-router.delete('/api/academy/question/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/academy/question/:id', isAuthenticated, async (req, res) => {
   try {
     const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
     if (!isHQRole(roleStr )) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
     const { id } = req.params;
     await db.delete(quizQuestions).where(eq(quizQuestions.id, parseInt(id)));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "DeleteQuestion");
   }
 });
 
 // GET /api/academy/quiz-stats/:userId - Get user's quiz performance stats
-router.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     const stats = await storage.getUserQuizStats(userId);
@@ -849,13 +849,13 @@ router.get('/api/academy/quiz-stats/:userId', isAuthenticated, async (req: any, 
         targetRole: r.targetRoleId
       }))
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchQuizStats");
   }
 });
 
 // GET /api/academy/exam-leaderboard - Top exam performers
-router.get('/api/academy/exam-leaderboard', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/exam-leaderboard', isAuthenticated, async (req, res) => {
   try {
     const approvedExams = await storage.getExamRequests({ status: 'approved' });
     
@@ -874,13 +874,13 @@ router.get('/api/academy/exam-leaderboard', isAuthenticated, async (req: any, re
       }));
 
     res.json(topPerformers);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchExamLeaderboard");
   }
 });
 
 // POST /api/academy/generate-quiz - AI Motor: Generate quiz from article content
-router.post('/api/academy/generate-quiz', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/generate-quiz', isAuthenticated, async (req, res) => {
   try {
     const { articleContent, articleTitle, quizId } = req.body;
     
@@ -891,7 +891,7 @@ router.post('/api/academy/generate-quiz', isAuthenticated, async (req: any, res)
     const generatedQuestions = await generateQuizQuestionsFromLesson(articleContent, 5);
     
     const savedQuestions = await Promise.all(
-      generatedQuestions.map(async (q: any) => {
+      generatedQuestions.map(async (q) => {
         return storage.createQuizQuestion({
           quizId: quizId.toString(),
           questionText: q.question,
@@ -908,22 +908,22 @@ router.post('/api/academy/generate-quiz', isAuthenticated, async (req: any, res)
       message: `${savedQuestions.length} soru başarıyla oluşturuldu`,
       questions: savedQuestions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "GenerateQuiz");
   }
 });
 
 // GET /api/academy/branch-analytics - Branch-level training metrics
-router.get('/api/academy/branch-analytics', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/branch-analytics', isAuthenticated, async (req, res) => {
   try {
     const branches = await storage.getBranches();
     
     const branchMetrics = await Promise.all(
-      branches.map(async (branch: any) => {
+      branches.map(async (branch) => {
         const branchUsers = await storage.getUsersByBranch?.(branch.id) || [];
         
         const userStats = await Promise.all(
-          branchUsers.map(async (user: any) => {
+          branchUsers.map(async (user) => {
             const stats = await storage.getUserQuizStats?.(user.id) || {};
             return stats;
           })
@@ -935,7 +935,7 @@ router.get('/api/academy/branch-analytics', isAuthenticated, async (req: any, re
           : 0;
         
         const completionRate = branchUsers.length > 0
-          ? Math.round((userStats.filter((s: any) => s.completedQuizzes > 0).length / branchUsers.length) * 100)
+          ? Math.round((userStats.filter((s) => s.completedQuizzes > 0).length / branchUsers.length) * 100)
           : 0;
 
         return {
@@ -950,14 +950,14 @@ router.get('/api/academy/branch-analytics', isAuthenticated, async (req: any, re
     );
 
     res.json(branchMetrics);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Branch analytics error:', error);
     res.json([]);
   }
 });
 
 // GET /api/academy/team-competitions - Active and completed team competitions
-router.get('/api/academy/team-competitions', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/team-competitions', isAuthenticated, async (req, res) => {
   try {
     const branches = await storage.getBranches() || [];
     
@@ -1011,14 +1011,14 @@ router.get('/api/academy/team-competitions', isAuthenticated, async (req: any, r
     ];
 
     res.json(competitions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Team competitions error:', error);
     res.json([]);
   }
 });
 
 // GET /api/academy/monthly-challenge - Current monthly challenge
-router.get('/api/academy/monthly-challenge', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/monthly-challenge', isAuthenticated, async (req, res) => {
   try {
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -1037,20 +1037,20 @@ router.get('/api/academy/monthly-challenge', isAuthenticated, async (req: any, r
     };
 
     res.json(challenge);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Monthly challenge error:', error);
     res.json(null);
   }
 });
 
 // GET /api/academy/adaptive-recommendation/:quizId - Adaptive difficulty progression
-router.get('/api/academy/adaptive-recommendation/:quizId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/adaptive-recommendation/:quizId', isAuthenticated, async (req, res) => {
   try {
     const { quizId } = req.params;
     const userId = req.user.id;
 
     const results = await storage.getQuizResults?.() || [];
-    const userResults = results.filter((r: any) => r.userId === userId && r.quizId === quizId);
+    const userResults = results.filter((r) => r.userId === userId && r.quizId === quizId);
     const lastResult = userResults.length > 0 ? userResults[userResults.length - 1] : null;
 
     if (!lastResult) {
@@ -1082,18 +1082,18 @@ router.get('/api/academy/adaptive-recommendation/:quizId', isAuthenticated, asyn
       currentScore: score,
       progressionPath: ['easy', 'medium', 'hard'],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Adaptive recommendation error:', error);
     res.json({ recommendation: null });
   }
 });
 
 // GET /api/academy/cohort-analytics - Cohort analysis for HQ leadership
-router.get('/api/academy/cohort-analytics', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/cohort-analytics', isAuthenticated, async (req, res) => {
   try {
     const branches = await storage.getBranches() || [];
     
-    const cohortData = branches.map((branch: any) => ({
+    const cohortData = branches.map((branch) => ({
       id: branch.id,
       name: branch.name,
       totalStudents: Math.floor(Math.random() * 150) + 30,
@@ -1104,14 +1104,14 @@ router.get('/api/academy/cohort-analytics', isAuthenticated, async (req: any, re
     }));
 
     res.json(cohortData);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Cohort analytics error:', error);
     res.json([]);
   }
 });
 
 // GET /api/academy/learning-paths - AI-generated personalized learning paths
-router.get('/api/academy/learning-paths', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/learning-paths', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     const stats = await storage.getUserQuizStats?.(userId) || {};
@@ -1147,14 +1147,14 @@ router.get('/api/academy/learning-paths', isAuthenticated, async (req: any, res)
     ];
 
     res.json(paths);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Learning paths error:', error);
     res.json([]);
   }
 });
 
 // GET /api/academy/learning-path-detail/:pathId - Get detailed learning path with recommended quizzes
-router.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (req, res) => {
   try {
     const { pathId } = req.params;
     const userId = req.user.id;
@@ -1168,7 +1168,7 @@ router.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (
       title: q.title || `Quiz ${idx + 1}`,
       difficulty: q.difficulty || 'easy',
       duration: Math.floor(Math.random() * 20) + 10,
-      completion: userQuizzes.some((uq: any) => uq.quizId === q.id) ? 100 : 0,
+      completion: userQuizzes.some((uq) => uq.quizId === q.id) ? 100 : 0,
       status: idx === 0 ? 'completed' : idx === 1 ? 'recommended' : idx < 4 ? 'available' : 'locked',
     })).slice(0, 5);
 
@@ -1177,44 +1177,44 @@ router.get('/api/academy/learning-path-detail/:pathId', isAuthenticated, async (
       title: pathId === '1' ? 'Hızlı Kariyer Yolu' : pathId === '2' ? 'Barista Ustası Yolu' : 'Temel Beceriler Yolu',
       quizzes: recommendedQuizzes,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Learning path detail error:', error);
     res.json({ quizzes: [] });
   }
 });
 
 // Achievement stats
-router.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/achievement-stats/:userId', isAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     const userResults = await storage.getQuizResults?.() || [];
-    const userQuizzes = userResults.filter((r: any) => r.userId === userId);
+    const userQuizzes = userResults.filter((r) => r.userId === userId);
     const careerProgress = await storage.getUserCareerProgress?.(userId);
 
     res.json({
       completedQuizzes: userQuizzes.length,
-      maxScore: Math.max(...userQuizzes.map((q: any) => q.score || 0), 0),
+      maxScore: Math.max(...userQuizzes.map((q) => q.score || 0), 0),
       currentLevel: careerProgress?.currentCareerLevelId || 1,
       currentStreak: Math.floor(Math.random() * 7) + 1,
       leaderboardRank: Math.floor(Math.random() * 50) + 1,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.json({ completedQuizzes: 0, maxScore: 0, currentLevel: 1, currentStreak: 0, leaderboardRank: 0 });
   }
 });
 
 // GET /api/academy/progress-overview/:userId - Comprehensive progress dashboard
-router.get('/api/academy/progress-overview/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/progress-overview/:userId', isAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     const userResults = await storage.getQuizResults?.() || [];
     const careerProgress = await storage.getUserCareerProgress?.(userId);
     const userBadgesList = await storage.getUserBadges?.() || [];
 
-    const userQuizzes = userResults.filter((r: any) => r.userId === userId);
+    const userQuizzes = userResults.filter((r) => r.userId === userId);
     const completedCount = userQuizzes.length;
     const avgScore = userQuizzes.length > 0 
-      ? Math.round(userQuizzes.reduce((s: number, q: any) => s + (q.score || 0), 0) / userQuizzes.length)
+      ? Math.round(userQuizzes.reduce((s: number, q) => s + (q.score || 0), 0) / userQuizzes.length)
       : 0;
 
     res.json({
@@ -1224,7 +1224,7 @@ router.get('/api/academy/progress-overview/:userId', isAuthenticated, async (req
       earnedBadges: (userBadgesList || []).length,
       nextMilestone: Math.min(completedCount + 3, 40),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.json({
       careerLevel: 1,
       completedQuizzes: 0,
@@ -1235,7 +1235,7 @@ router.get('/api/academy/progress-overview/:userId', isAuthenticated, async (req
 });
 
 // GET /api/academy/streak-tracker/:userId - Get user learning streak data
-router.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     const streakData = await db.select().from(learningStreaks).where(eq(learningStreaks.userId, userId)).limit(1);
@@ -1255,13 +1255,13 @@ router.get('/api/academy/streak-tracker/:userId', isAuthenticated, async (req: a
       }).returning();
       res.json(newStreak[0]);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.json({ currentStreak: 0, bestStreak: 0, totalActiveDays: 0, weeklyGoalTarget: 5, weeklyGoalProgress: 0, monthlyXp: 0, totalXp: 0 });
   }
 });
 
 // POST /api/academy/streak-activity - Record daily streak activity
-router.post('/api/academy/streak-activity', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/streak-activity', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().split('T')[0];
@@ -1327,14 +1327,14 @@ router.post('/api/academy/streak-activity', isAuthenticated, async (req: any, re
     }
 
     res.json(updated[0]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Streak activity error:', error);
     res.status(500).json({ error: 'Internal error' });
   }
 });
 
 // Phase 23-25 APIs
-router.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, async (req, res) => {
   const user = req.user;
   if (user && isHQRole(user.role)) {
     return res.json([]);
@@ -1345,41 +1345,41 @@ router.get('/api/academy/adaptive-recommendations/:userId', isAuthenticated, asy
   ]);
 });
 
-router.get('/api/academy/study-groups/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/study-groups/:userId', isAuthenticated, async (req, res) => {
   res.json([
     { id: '1', name: 'Kahve Eksperleri', topic: 'Teknik', memberCount: 12 },
     { id: '2', name: 'Kariyer Yolu', topic: 'Gelişim', memberCount: 8 },
   ]);
 });
 
-router.get('/api/academy/advanced-analytics/:userId', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/advanced-analytics/:userId', isAuthenticated, async (req, res) => {
   res.json({ totalScore: 85, quizzesCompleted: 24, learningHours: 42, successRate: 92 });
 });
 
 // GET /api/academy/hub-categories
-router.get('/api/academy/hub-categories', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/hub-categories', isAuthenticated, async (req, res) => {
   try {
     const categories = await db.select().from(academyHubCategories).orderBy(academyHubCategories.displayOrder);
     res.json(categories);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Hub categories error:", error);
     res.status(500).json({ message: "Hub kategorileri yüklenemedi" });
   }
 });
 
 // GET /api/academy/recipe-categories - Tüm reçete kategorileri
-router.get('/api/academy/recipe-categories', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/recipe-categories', isAuthenticated, async (req, res) => {
   try {
     const categories = await db.select().from(recipeCategories).orderBy(recipeCategories.displayOrder);
     res.json(categories);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Recipe categories error:", error);
     res.status(500).json({ message: "Reçete kategorileri yüklenemedi" });
   }
 });
 
 // POST /api/academy/recipe-categories - Yeni kategori ekle (HQ only)
-router.post('/api/academy/recipe-categories', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/recipe-categories', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role)) {
@@ -1395,7 +1395,7 @@ router.post('/api/academy/recipe-categories', isAuthenticated, async (req: any, 
     }).returning();
     
     res.json(category);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }
@@ -1405,7 +1405,7 @@ router.post('/api/academy/recipe-categories', isAuthenticated, async (req: any, 
 });
 
 // PATCH /api/academy/recipe-categories/:id - Kategori güncelle (HQ only)
-router.patch('/api/academy/recipe-categories/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/recipe-categories/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role)) {
@@ -1424,7 +1424,7 @@ router.patch('/api/academy/recipe-categories/:id', isAuthenticated, async (req: 
     }
     
     res.json(category);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }
@@ -1434,7 +1434,7 @@ router.patch('/api/academy/recipe-categories/:id', isAuthenticated, async (req: 
 });
 
 // DELETE /api/academy/recipe-categories/:id - Kategori sil (HQ only)
-router.delete('/api/academy/recipe-categories/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/academy/recipe-categories/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role)) {
@@ -1450,14 +1450,14 @@ router.delete('/api/academy/recipe-categories/:id', isAuthenticated, async (req:
     
     await db.delete(recipeCategories).where(eq(recipeCategories.id, parseInt(id)));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete recipe category error:", error);
     res.status(500).json({ message: "Kategori silinemedi" });
   }
 });
 
 // GET /api/academy/quiz-stats - Genel quiz istatistikleri (HQ only)
-router.get('/api/academy/quiz-stats', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/quiz-stats', isAuthenticated, async (req, res) => {
   try {
     const totalAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts);
     const passedAttempts = await db.select({ count: sql<number>`count(*)` }).from(userQuizAttempts).where(eq(userQuizAttempts.isPassed, true));
@@ -1467,14 +1467,14 @@ router.get('/api/academy/quiz-stats', isAuthenticated, async (req: any, res) => 
     const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
     
     res.json({ totalAttempts: total, passRate });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Quiz stats error:", error);
     res.json({ totalAttempts: 0, passRate: 0 });
   }
 });
 
 // GET /api/academy/quizzes - Tüm quizler
-router.get('/api/academy/quizzes', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/quizzes', isAuthenticated, async (req, res) => {
   try {
     const allQuizzes = await db.select().from(quizzes).orderBy(quizzes.createdAt);
     
@@ -1489,14 +1489,14 @@ router.get('/api/academy/quizzes', isAuthenticated, async (req: any, res) => {
     }));
     
     res.json(quizzesWithCount);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get quizzes error:", error);
     res.status(500).json({ message: "Quizler yüklenemedi" });
   }
 });
 
 // POST /api/academy/quizzes - Yeni quiz oluştur (HQ only)
-router.post('/api/academy/quizzes', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/quizzes', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role)) {
@@ -1516,14 +1516,14 @@ router.post('/api/academy/quizzes', isAuthenticated, async (req: any, res) => {
     }).returning();
     
     res.status(201).json(newQuiz);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create quiz error:", error);
     res.status(500).json({ message: "Quiz oluşturulamadı" });
   }
 });
 
 // PATCH /api/academy/quizzes/:id - Quiz güncelle (HQ only)
-router.patch('/api/academy/quizzes/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/quizzes/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role)) {
@@ -1539,14 +1539,14 @@ router.patch('/api/academy/quizzes/:id', isAuthenticated, async (req: any, res) 
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update quiz error:", error);
     res.status(500).json({ message: "Quiz güncellenemedi" });
   }
 });
 
 // POST /api/academy/quiz/:quizId/questions - Quiz'e soru ekle (HQ only)
-router.post('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role)) {
@@ -1570,14 +1570,14 @@ router.post('/api/academy/quiz/:quizId/questions', isAuthenticated, async (req: 
     }).returning();
     
     res.status(201).json(newQuestion);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add question error:", error);
     res.status(500).json({ message: "Soru eklenemedi" });
   }
 });
 
 // GET /api/academy/recipes - Tüm reçeteler veya kategoriye göre
-router.get('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/recipes', isAuthenticated, async (req, res) => {
   try {
     const { categoryId, search } = req.query;
     let query = db.select().from(recipes);
@@ -1590,14 +1590,14 @@ router.get('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
     
     const allRecipes = await query.orderBy(recipes.displayOrder);
     res.json(allRecipes);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Recipes error:", error);
     res.status(500).json({ message: "Reçeteler yüklenemedi" });
   }
 });
 
 // GET /api/academy/recipe/:id - Reçete detayı
-router.get('/api/academy/recipe/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/recipe/:id', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     const recipe = await db.select().from(recipes).where(eq(recipes.id, parseInt(id)));
@@ -1619,25 +1619,25 @@ router.get('/api/academy/recipe/:id', isAuthenticated, async (req: any, res) => 
       currentVersion,
       sizes 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Recipe detail error:", error);
     res.status(500).json({ message: "Reçete detayı yüklenemedi" });
   }
 });
 
 // GET /api/academy/daily-missions - Günlük görevler
-router.get('/api/academy/daily-missions', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/daily-missions', isAuthenticated, async (req, res) => {
   try {
     const missions = await db.select().from(dailyMissions).where(eq(dailyMissions.isActive, true));
     res.json(missions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Daily missions error:", error);
     res.status(500).json({ message: "Günlük görevler yüklenemedi" });
   }
 });
 
 // GET /api/academy/user-missions - Kullanıcı görev ilerlemesi
-router.get('/api/academy/user-missions', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/user-missions', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const today = new Date().toISOString().split('T')[0];
@@ -1649,14 +1649,14 @@ router.get('/api/academy/user-missions', isAuthenticated, async (req: any, res) 
       ));
     
     res.json(progress);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("User missions error:", error);
     res.status(500).json({ message: "Görev ilerlemesi yüklenemedi" });
   }
 });
 
 // GET /api/academy/leaderboard - Liderlik tablosu
-router.get('/api/academy/leaderboard', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/leaderboard', isAuthenticated, async (req, res) => {
   try {
     const { period = 'weekly' } = req.query;
     const now = new Date();
@@ -1673,14 +1673,14 @@ router.get('/api/academy/leaderboard', isAuthenticated, async (req: any, res) =>
       .limit(20);
     
     res.json(leaderboard);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Leaderboard error:", error);
     res.status(500).json({ message: "Liderlik tablosu yüklenemedi" });
   }
 });
 
 // POST /api/academy/recipe - Yeni reçete ekle (HQ only)
-router.post('/api/academy/recipe', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/recipe', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1694,14 +1694,14 @@ router.post('/api/academy/recipe', isAuthenticated, async (req: any, res) => {
     }).returning();
     
     res.status(201).json(recipe);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create recipe error:", error);
     res.status(500).json({ message: "Reçete oluşturulamadı" });
   }
 });
 
 // POST /api/academy/recipes - Admin panelden reçete ekleme
-router.post('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/recipes', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1747,7 +1747,7 @@ router.post('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
     })();
 
     res.status(201).json(recipe);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create recipe error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: error.errors[0].message });
@@ -1757,7 +1757,7 @@ router.post('/api/academy/recipes', isAuthenticated, async (req: any, res) => {
 });
 
 // PATCH /api/academy/recipes/:id - Reçete güncelleme
-router.patch('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/recipes/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1834,7 +1834,7 @@ router.patch('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) 
     })();
     
     res.json(recipe);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update recipe error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: error.errors[0].message });
@@ -1844,7 +1844,7 @@ router.patch('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) 
 });
 
 // POST /api/academy/recipes/generate-marketing-preview - AI pazarlama içeriği (kayıtlı olmayan reçete için)
-router.post('/api/academy/recipes/generate-marketing-preview', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/recipes/generate-marketing-preview', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1898,14 +1898,14 @@ Süt İçerir: ${hasMilk ? 'Evet' : 'Hayır'}`;
 
     const parsed = JSON.parse(content);
     res.json(parsed);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Generate marketing preview error:", error);
     res.status(500).json({ message: "Pazarlama içeriği oluşturulamadı" });
   }
 });
 
 // POST /api/academy/recipes/:id/generate-marketing - AI pazarlama içeriği oluşturma
-router.post('/api/academy/recipes/:id/generate-marketing', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/recipes/:id/generate-marketing', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1972,14 +1972,14 @@ Süt İçerir: ${recipe.hasMilk ? 'Evet' : 'Hayır'}`;
       .where(eq(recipes.id, parseInt(id)));
 
     res.json(updateData);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Generate marketing error:", error);
     res.status(500).json({ message: "Pazarlama içeriği oluşturulamadı" });
   }
 });
 
 // DELETE /api/academy/recipes/:id - Reçete silme
-router.delete('/api/academy/recipes/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/academy/recipes/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1998,14 +1998,14 @@ router.delete('/api/academy/recipes/:id', isAuthenticated, async (req: any, res)
       details: { softDelete: true },
     });
     res.json({ success: true, message: "Reçete silindi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete recipe error:", error);
     res.status(500).json({ message: "Reçete silinemedi" });
   }
 });
 
 // POST /api/academy/recipe-version - Yeni reçete versiyonu (HQ only)
-router.post('/api/academy/recipe-version', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/recipe-version', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -2062,14 +2062,14 @@ router.post('/api/academy/recipe-version', isAuthenticated, async (req: any, res
     }
     
     res.status(201).json(version);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create recipe version error:", error);
     res.status(500).json({ message: "Reçete versiyonu oluşturulamadı" });
   }
 });
 
 // GET /api/academy/recipe-notifications - Kullanıcının okunmamış reçete bildirimlerini getir
-router.get('/api/academy/recipe-notifications', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/recipe-notifications', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     const unreadNotifs = await db.select({
@@ -2090,14 +2090,14 @@ router.get('/api/academy/recipe-notifications', isAuthenticated, async (req: any
       .limit(50);
     
     res.json(unreadNotifs);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Recipe notifications error:", error);
     res.status(500).json({ message: "Bildirimler getirilemedi" });
   }
 });
 
 // PATCH /api/academy/recipe-notifications/:id/read - Bildirimi okundu olarak işaretle
-router.patch('/api/academy/recipe-notifications/:id/read', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/recipe-notifications/:id/read', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     await db.update(recipeNotifications)
@@ -2105,14 +2105,14 @@ router.patch('/api/academy/recipe-notifications/:id/read', isAuthenticated, asyn
       .where(eq(recipeNotifications.id, parseInt(id)));
     
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Mark recipe notification read error:", error);
     res.status(500).json({ message: "Bildirim güncellenemedi" });
   }
 });
 
 // PATCH /api/academy/recipe-notifications/mark-all-read - Tüm bildirimleri okundu yap
-router.patch('/api/academy/recipe-notifications/mark-all-read', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/recipe-notifications/mark-all-read', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     await db.update(recipeNotifications)
@@ -2120,13 +2120,13 @@ router.patch('/api/academy/recipe-notifications/mark-all-read', isAuthenticated,
       .where(and(eq(recipeNotifications.userId, userId), eq(recipeNotifications.isRead, false)));
     
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Mark all recipe notifications read error:", error);
     res.status(500).json({ message: "Bildirimler güncellenemedi" });
   }
 });
 
-router.post('/api/academy/ai-generate-quiz/:moduleId', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/ai-generate-quiz/:moduleId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any)) {
@@ -2186,7 +2186,7 @@ router.post('/api/academy/ai-generate-quiz/:moduleId', isAuthenticated, async (r
           points: q.points || 1,
         });
         savedCount++;
-      } catch (saveErr: any) {
+      } catch (saveErr) {
         console.error(`Soru kaydetme hatası (modül ${moduleId}):`, saveErr.message);
       }
     }
@@ -2200,13 +2200,13 @@ router.post('/api/academy/ai-generate-quiz/:moduleId', isAuthenticated, async (r
       generatedCount: generatedQuestions.length,
       savedCount,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI quiz generation error:", error);
     handleApiError(res, error, "AIGenerateQuiz");
   }
 });
 
-router.post('/api/academy/ai-generate-all-quizzes', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/ai-generate-all-quizzes', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any)) {
@@ -2262,14 +2262,14 @@ router.post('/api/academy/ai-generate-all-quizzes', isAuthenticated, async (req:
               points: q.points || 1,
             });
             savedCount++;
-          } catch (saveErr: any) {
+          } catch (saveErr) {
             console.error(`Soru kaydetme hatası (modül ${mod.id}):`, saveErr.message);
           }
         }
 
         totalGenerated += savedCount;
         results.push({ moduleId: mod.id, title: mod.title, status: 'generated', questionCount: savedCount });
-      } catch (moduleErr: any) {
+      } catch (moduleErr) {
         console.error(`AI quiz generation failed for module ${mod.id}:`, moduleErr.message);
         results.push({ moduleId: mod.id, title: mod.title, status: 'failed' });
         failed++;
@@ -2284,13 +2284,13 @@ router.post('/api/academy/ai-generate-all-quizzes', isAuthenticated, async (req:
       failed,
       results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Bulk AI quiz generation error:", error);
     handleApiError(res, error, "AIGenerateAllQuizzes");
   }
 });
 
-router.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/recommended-quizzes', isAuthenticated, async (req, res) => {
   try {
     const quizzesList = await db.select().from(quizzes).limit(5);
     const recommended = quizzesList.map(q => ({
@@ -2301,7 +2301,7 @@ router.get('/api/academy/recommended-quizzes', isAuthenticated, async (req: any,
       estimated_minutes: q.estimatedMinutes || 5
     }));
     res.json(recommended);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Recommended quizzes error:", error);
     res.json([]);
   }
@@ -2320,7 +2320,7 @@ function canApproveContent(role: string) {
 }
 
 // GET /api/academy/modules/management - Tüm modüller (yönetim paneli)
-router.get('/api/academy/modules/management', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/modules/management', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isContentManager(user.role)) {
@@ -2391,13 +2391,13 @@ router.get('/api/academy/modules/management', isAuthenticated, async (req: any, 
     }));
 
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Modül listesi alınamadı");
   }
 });
 
 // POST /api/academy/modules - Yeni modül oluştur
-router.post('/api/academy/modules', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/modules', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isContentManager(user.role)) {
@@ -2423,13 +2423,13 @@ router.post('/api/academy/modules', isAuthenticated, async (req: any, res) => {
     }).returning();
 
     res.json(newModule);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Modül oluşturulamadı");
   }
 });
 
 // PATCH /api/academy/modules/:id - Modül düzenle
-router.patch('/api/academy/modules/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/modules/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const moduleId = parseInt(req.params.id);
@@ -2456,13 +2456,13 @@ router.patch('/api/academy/modules/:id', isAuthenticated, async (req: any, res) 
       .returning();
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Modül güncellenemedi");
   }
 });
 
 // PATCH /api/academy/modules/:id/status - Modül statüsü değiştir
-router.patch('/api/academy/modules/:id/status', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/modules/:id/status', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const moduleId = parseInt(req.params.id);
@@ -2542,13 +2542,13 @@ router.patch('/api/academy/modules/:id/status', isAuthenticated, async (req: any
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Modül statüsü güncellenemedi");
   }
 });
 
 // DELETE /api/academy/modules/:id - Modül sil (soft delete)
-router.delete('/api/academy/modules/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/academy/modules/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!['admin', 'cgo'].includes(user.role)) {
@@ -2561,13 +2561,13 @@ router.delete('/api/academy/modules/:id', isAuthenticated, async (req: any, res)
       .where(eq(trainingModules.id, moduleId));
 
     res.json({ message: "Modül silindi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Modül silinemedi");
   }
 });
 
 // POST /api/academy/modules/:id/ai-enrich - AI ile içerik zenginleştir
-router.post('/api/academy/modules/:id/ai-enrich', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/modules/:id/ai-enrich', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isContentManager(user.role)) {
@@ -2617,13 +2617,13 @@ JSON formatında döndür:
     }).where(eq(trainingModules.id, moduleId));
 
     res.json({ message: "İçerik zenginleştirildi", ...parsed });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "AI içerik üretilemedi");
   }
 });
 
 // POST /api/academy/modules/:id/questions - Soru ekle
-router.post('/api/academy/modules/:id/questions', isAuthenticated, async (req: any, res) => {
+router.post('/api/academy/modules/:id/questions', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isContentManager(user.role)) {
@@ -2658,13 +2658,13 @@ router.post('/api/academy/modules/:id/questions', isAuthenticated, async (req: a
     }).returning();
 
     res.json(newQuestion);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Soru eklenemedi");
   }
 });
 
 // PATCH /api/academy/questions/:id - Soru düzenle
-router.patch('/api/academy/questions/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/academy/questions/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isContentManager(user.role)) {
@@ -2688,13 +2688,13 @@ router.patch('/api/academy/questions/:id', isAuthenticated, async (req: any, res
 
     if (!updated) return res.status(404).json({ message: "Soru bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Soru güncellenemedi");
   }
 });
 
 // DELETE /api/academy/questions/:id - Soru sil
-router.delete('/api/academy/questions/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/academy/questions/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isContentManager(user.role)) {
@@ -2704,13 +2704,13 @@ router.delete('/api/academy/questions/:id', isAuthenticated, async (req: any, re
     const questionId = parseInt(req.params.id);
     await db.delete(quizQuestions).where(eq(quizQuestions.id, questionId));
     res.json({ message: "Soru silindi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Soru silinemedi");
   }
 });
 
 // GET /api/academy/modules/:id/questions - Modül soruları
-router.get('/api/academy/modules/:id/questions', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/modules/:id/questions', isAuthenticated, async (req, res) => {
   try {
     const moduleId = parseInt(req.params.id);
     const quiz = await db.select().from(moduleQuizzes).where(eq(moduleQuizzes.moduleId, moduleId));
@@ -2721,13 +2721,13 @@ router.get('/api/academy/modules/:id/questions', isAuthenticated, async (req: an
       .orderBy(asc(quizQuestions.id));
 
     res.json({ quiz: quiz[0], questions });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Sorular alınamadı");
   }
 });
 
 // GET /api/academy/daily-recommendation - Bugünün önerilen eğitimi
-router.get('/api/academy/daily-recommendation', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/daily-recommendation', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const userId = user.id;
@@ -2805,13 +2805,13 @@ router.get('/api/academy/daily-recommendation', isAuthenticated, async (req: any
       alreadyCompletedToday,
       totalCompleted: completedModuleIds.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Günlük öneri alınamadı");
   }
 });
 
 // GET /api/academy/weekly-progress - Haftalık ilerleme ve streak
-router.get('/api/academy/weekly-progress', isAuthenticated, async (req: any, res) => {
+router.get('/api/academy/weekly-progress', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const userId = user.id;
@@ -2887,7 +2887,7 @@ router.get('/api/academy/weekly-progress', isAuthenticated, async (req: any, res
       streakDays,
       lastCompletedDate,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Haftalık ilerleme alınamadı");
   }
 });

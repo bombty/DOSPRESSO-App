@@ -59,7 +59,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }));
 
       res.json(tasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching daily tasks:", error);
       res.status(500).json({ message: "Görevler alınamadı" });
     }
@@ -103,7 +103,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }).returning();
 
       res.json(completion);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error completing task:", error);
       res.status(500).json({ message: "Görev tamamlanamadı" });
     }
@@ -135,7 +135,7 @@ export function registerDailyTaskRoutes(app: Express) {
         ));
 
       res.json({ message: "Görev geri alındı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uncompleting task:", error);
       res.status(500).json({ message: "İşlem yapılamadı" });
     }
@@ -182,7 +182,7 @@ export function registerDailyTaskRoutes(app: Express) {
         monthly: { total: monthlyTemplates.length, completed: monthlyCompletions.length },
         events: { total: eventTotal, completed: eventCompleted },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task summary:", error);
       res.status(500).json({ message: "Özet alınamadı" });
     }
@@ -202,7 +202,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .limit(50);
 
       res.json(tasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching event tasks:", error);
       res.status(500).json({ message: "Sistem gorevleri alinamadi" });
     }
@@ -227,7 +227,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error completing event task:", error);
       res.status(500).json({ message: "Gorev tamamlanamadi" });
     }
@@ -252,7 +252,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uncompleting event task:", error);
       res.status(500).json({ message: "Islem yapilamadi" });
     }
@@ -271,7 +271,7 @@ export function registerDailyTaskRoutes(app: Express) {
         ));
 
       res.json({ message: "Gorev silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting event task:", error);
       res.status(500).json({ message: "Gorev silinemedi" });
     }
@@ -291,7 +291,7 @@ export function registerDailyTaskRoutes(app: Express) {
         : await db.select().from(roleTaskTemplates).orderBy(roleTaskTemplates.role, roleTaskTemplates.sortOrder);
       
       res.json(templates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task templates:", error);
       res.status(500).json({ message: "Şablonlar alınamadı" });
     }
@@ -304,7 +304,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }
       const [template] = await db.insert(roleTaskTemplates).values(req.body).returning();
       res.json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating task template:", error);
       res.status(500).json({ message: "Şablon oluşturulamadı" });
     }
@@ -320,7 +320,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .where(eq(roleTaskTemplates.id, parseInt(req.params.id)))
         .returning();
       res.json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating task template:", error);
       res.status(500).json({ message: "Şablon güncellenemedi" });
     }
@@ -333,7 +333,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }
       await db.delete(roleTaskTemplates).where(eq(roleTaskTemplates.id, parseInt(req.params.id)));
       res.json({ message: "Şablon silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting task template:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
     }
@@ -344,7 +344,7 @@ export function registerDailyTaskRoutes(app: Express) {
     try {
       const counts = await db.select().from(stockCounts).orderBy(desc(stockCounts.createdAt)).limit(50);
       res.json(counts);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Stok sayımları alınamadı" });
     }
   });
@@ -410,7 +410,7 @@ export function registerDailyTaskRoutes(app: Express) {
       const itemCount = await autoPopulateItems(count.id, count.countType, count.scope, count.requestedCategory);
 
       res.json({ ...count, itemCount });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating stock count:", error);
       res.status(500).json({ message: "Stok sayımı oluşturulamadı" });
     }
@@ -421,7 +421,7 @@ export function registerDailyTaskRoutes(app: Express) {
       const items = await db.select().from(stockCountItems)
         .where(eq(stockCountItems.stockCountId, parseInt(req.params.id)));
       res.json(items);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Sayım kalemleri alınamadı" });
     }
   });
@@ -438,7 +438,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .where(eq(stockCountItems.id, parseInt(req.params.itemId)))
         .returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Kalem güncellenemedi" });
     }
   });
@@ -482,7 +482,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .where(eq(stockCounts.id, countId))
         .returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error completing stock count:", error);
       res.status(500).json({ message: "Sayım tamamlanamadı" });
     }
@@ -499,7 +499,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .where(eq(stockCounts.id, parseInt(req.params.id)))
         .returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Sayım onaylanamadı" });
     }
   });
@@ -526,7 +526,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }).returning();
 
       res.json(count);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error requesting stock count:", error);
       res.status(500).json({ message: "Sayım talebi oluşturulamadı" });
     }
@@ -560,7 +560,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .returning();
 
       res.json({ ...updated, itemCount });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting stock count:", error);
       res.status(500).json({ message: "Sayım başlatılamadı" });
     }
@@ -584,7 +584,7 @@ export function registerDailyTaskRoutes(app: Express) {
         qrData,
         qrCodeUrl,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating QR:", error);
       res.status(500).json({ message: "QR oluşturulamadı" });
     }
@@ -617,7 +617,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }
 
       res.status(404).json({ message: "Ürün bulunamadı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error looking up by QR:", error);
       res.status(500).json({ message: "QR ile arama yapılamadı" });
     }
@@ -638,7 +638,7 @@ export function registerDailyTaskRoutes(app: Express) {
       }
       const movements = await query.orderBy(desc(inventoryMovements.createdAt)).limit(limit);
       res.json(movements);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Hareketler alınamadı" });
     }
   });
@@ -683,7 +683,7 @@ export function registerDailyTaskRoutes(app: Express) {
         .where(eq(inventory.id, inventoryId));
 
       res.json(movement);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating stock exit:", error);
       res.status(500).json({ message: "Stok çıkışı oluşturulamadı" });
     }

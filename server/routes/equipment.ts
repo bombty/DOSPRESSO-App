@@ -100,7 +100,7 @@ const router = Router();
       const equipmentList = await storage.getEquipment(requestedBranchId);
       setCachedResponse(cacheKey, equipmentList, 30);
       res.json(equipmentList);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching equipment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -120,17 +120,17 @@ const router = Router();
       
       const allEquipment = await storage.getEquipment();
       
-      const criticalEquipment = allEquipment.filter((item: any) => (item.healthScore ?? 100) < 50);
+      const criticalEquipment = allEquipment.filter((item) => (item.healthScore ?? 100) < 50);
       
       if (user.role && isBranchRole(user.role as UserRoleType) && user.branchId) {
-        const filtered = criticalEquipment.filter((item: any) => item.branchId === user.branchId);
+        const filtered = criticalEquipment.filter((item) => item.branchId === user.branchId);
         setCachedResponse(cacheKey, filtered, 30);
         return res.json(filtered);
       }
       
       setCachedResponse(cacheKey, criticalEquipment, 30);
       res.json(criticalEquipment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching critical equipment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -171,7 +171,7 @@ const router = Router();
         faults: equipmentFaultsList,
         comments
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching equipment:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -207,7 +207,7 @@ const router = Router();
       
       auditLog(req, { eventType: "equipment.created", action: "created", resource: "equipment", resourceId: String(equipmentItem.id), after: { name: validatedData.name, branchId: equipmentBranchId } });
       res.json({ ...equipmentItem, qrCodeUrl });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating equipment:", error);
       res.status(500).json({ message: "Ekipman oluşturulurken hata oluştu" });
     }
@@ -246,7 +246,7 @@ const router = Router();
       
       auditLog(req, { eventType: "equipment.updated", action: "updated", resource: "equipment", resourceId: String(id), before: { name: existingEquipment.name, status: existingEquipment.status }, after: validatedData });
       res.json(equipmentItem);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating equipment:", error);
       res.status(500).json({ message: "Ekipman güncellenirken hata oluştu" });
     }
@@ -270,7 +270,7 @@ const router = Router();
           const qrCodeUrl = await generateEquipmentQR(item.id);
           await storage.updateEquipment(item.id, { qrCodeUrl });
           successCount++;
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`QR generation failed for equipment ${item.id}:`, error);
         }
       }
@@ -280,13 +280,13 @@ const router = Router();
         generated: successCount,
         total: allEquipment.length
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Bulk QR generation error:", error);
       res.status(500).json({ message: "QR kod oluşturma başarısız" });
     }
   });
 
-  router.post('/api/equipment/:id/maintenance', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment/:id/maintenance', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -316,7 +316,7 @@ const router = Router();
       await storage.logMaintenance(id, intervalDays);
       
       res.json(maintenanceLog);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error logging maintenance:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz bakım kaydı verisi", errors: error.errors });
@@ -325,7 +325,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/equipment/:id/comments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment/:id/comments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -351,7 +351,7 @@ const router = Router();
         userId,
       });
       res.json(comment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating equipment comment:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz yorum verisi", errors: error.errors });
@@ -380,13 +380,13 @@ const router = Router();
       
       const serviceRequests = await storage.listServiceRequests(id);
       res.json(serviceRequests);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching service requests:", error);
       res.status(500).json({ message: "Servis talepleri alınırken hata oluştu" });
     }
   });
 
-  router.post('/api/equipment/:id/service-requests', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment/:id/service-requests', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -413,7 +413,7 @@ const router = Router();
       });
       auditLog(req, { eventType: "equipment.fault_created", action: "created", resource: "service_requests", resourceId: String(serviceRequest.id), after: { equipmentId: id, type: validatedData.requestType } });
       res.json(serviceRequest);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating service request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz servis talebi verisi", errors: error.errors });
@@ -445,13 +445,13 @@ const router = Router();
       }
       
       res.json(serviceRequest);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching service request:", error);
       res.status(500).json({ message: "Servis talebi alınırken hata oluştu" });
     }
   });
 
-  router.patch('/api/equipment/service-requests/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/equipment/service-requests/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -475,7 +475,7 @@ const router = Router();
       
       const updated = await storage.updateServiceRequest(id, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating service request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz servis talebi verisi", errors: error.errors });
@@ -508,13 +508,13 @@ const router = Router();
       
       await storage.deleteServiceRequest(id);
       res.json({ message: "Servis talebi başarıyla silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting service request:", error);
       res.status(500).json({ message: "Servis talebi silinirken hata oluştu" });
     }
   });
 
-  router.patch('/api/equipment/service-requests/:id/status', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/equipment/service-requests/:id/status', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -545,7 +545,7 @@ const router = Router();
       const updated = await storage.updateServiceRequestStatus(id, newStatus, userId, notes);
       auditLog(req, { eventType: newStatus === "resolved" ? "equipment.fault_resolved" : "equipment.fault_created", action: newStatus === "resolved" ? "resolved" : "status_changed", resource: "service_requests", resourceId: String(id), before: { status: serviceRequest.status }, after: { status: newStatus }, details: { equipmentId: serviceRequest.equipmentId, notes } });
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating service request status:", error);
       if (error.message?.includes("Invalid status transition")) {
         return res.status(400).json({ message: error.message });
@@ -554,7 +554,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/equipment/service-requests/:id/timeline', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment/service-requests/:id/timeline', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -586,7 +586,7 @@ const router = Router();
         meta: meta || {},
       });
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding timeline entry:", error);
       res.status(500).json({ message: "Zaman çizelgesi kaydı eklenirken hata oluştu" });
     }
@@ -621,7 +621,7 @@ const router = Router();
       }
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching equipment catalog:", error);
       res.status(500).json({ message: "Ekipman kataloğu yüklenirken hata oluştu" });
     }
@@ -636,7 +636,7 @@ const router = Router();
       if (!item) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
 
       res.json(item);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching catalog item:", error);
       res.status(500).json({ message: "Katalog öğesi yüklenirken hata oluştu" });
     }
@@ -656,7 +656,7 @@ const router = Router();
 
       const [created] = await db.insert(equipmentCatalog).values(parsed).returning();
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating catalog item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -697,7 +697,7 @@ const router = Router();
         .returning();
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating catalog item:", error);
       res.status(500).json({ message: "Katalog öğesi güncellenirken hata oluştu" });
     }
@@ -721,7 +721,7 @@ const router = Router();
       if (!updated) return res.status(404).json({ message: "Katalog öğesi bulunamadı" });
 
       res.json({ message: "Katalog öğesi devre dışı bırakıldı", item: updated });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting catalog item:", error);
       res.status(500).json({ message: "Katalog öğesi silinirken hata oluştu" });
     }
@@ -764,7 +764,7 @@ const router = Router();
       }).returning();
 
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error assigning catalog item to branch:", error);
       res.status(500).json({ message: "Ekipman şubeye atanırken hata oluştu" });
     }
@@ -858,14 +858,14 @@ const router = Router();
       timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       res.json(timeline);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching equipment timeline:", error);
       res.status(500).json({ message: "Ekipman zaman çizelgesi yüklenirken hata oluştu" });
     }
   });
 
   // Equipment Knowledge by equipment type (for all authenticated users)
-  router.get('/api/equipment-knowledge/by-equipment', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-knowledge/by-equipment', isAuthenticated, async (req, res) => {
     try {
       const { type, brand, model } = req.query;
       
@@ -921,14 +921,14 @@ const router = Router();
       filtered.sort((a, b) => b.priority - a.priority);
       
       res.json(filtered);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchEquipmentKnowledgeByType");
     }
   });
 
 
   // Equipment Knowledge CRUD (Admin only)
-  router.get('/api/equipment-knowledge', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-knowledge', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -936,12 +936,12 @@ const router = Router();
       }
       const items = await storage.getEquipmentKnowledge();
       res.json(items);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchEquipmentKnowledge");
     }
   });
 
-  router.post('/api/equipment-knowledge', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment-knowledge', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -965,12 +965,12 @@ const router = Router();
         isActive: isActive !== false,
       });
       res.json(item);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "CreateEquipmentKnowledge");
     }
   });
 
-  router.patch('/api/equipment-knowledge/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/equipment-knowledge/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -984,12 +984,12 @@ const router = Router();
         return res.status(404).json({ message: "Bilgi bulunamadı" });
       }
       res.json(item);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "UpdateEquipmentKnowledge");
     }
   });
 
-  router.delete('/api/equipment-knowledge/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/equipment-knowledge/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -998,13 +998,13 @@ const router = Router();
       const id = parseInt(req.params.id);
       await storage.deleteEquipmentKnowledge(id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "DeleteEquipmentKnowledge");
     }
   });
 
   // AI Equipment Knowledge Generator from Manual
-  router.post('/api/equipment-knowledge/generate-from-manual', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment-knowledge/generate-from-manual', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1030,13 +1030,13 @@ const router = Router();
       );
       
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "GenerateEquipmentKnowledge");
     }
   });
 
   // Auto-research equipment troubleshooting from AI knowledge
-  router.post('/api/equipment-knowledge/auto-research', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment-knowledge/auto-research', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1065,12 +1065,12 @@ const router = Router();
       );
       
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "ResearchEquipment");
     }
   });
 
-  router.post('/api/equipment-knowledge/bulk-generate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment-knowledge/bulk-generate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1139,7 +1139,7 @@ const router = Router();
           }
 
           results.push({ type: eqType, itemCount: result.items.length });
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error(`Bulk generate failed for type ${eqType}:`, error);
           results.push({ type: eqType, itemCount: 0, error: error.message });
         }
@@ -1153,13 +1153,13 @@ const router = Router();
         total: missingTypes.length,
         results
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "BulkGenerateKnowledge");
     }
   });
 
   // Check for missing equipment knowledge
-  router.get('/api/equipment-knowledge/missing', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-knowledge/missing', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1220,7 +1220,7 @@ const router = Router();
         missingKnowledgeCount: missingKnowledge.length,
         groups: Object.values(groupedMissing)
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "CheckMissingKnowledge");
     }
   });
@@ -1229,7 +1229,7 @@ const router = Router();
   // EQUIPMENT CALIBRATIONS CRUD APIs
   // ========================================
 
-  router.get('/api/equipment-calibrations', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-calibrations', isAuthenticated, async (req, res) => {
     try {
       const { equipmentId, result, upcoming } = req.query;
       
@@ -1268,13 +1268,13 @@ const router = Router();
         equipment: c.equipment,
         calibratedBy: c.calibratedBy,
       })));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching calibrations:", error);
       res.status(500).json({ message: "Kalibrasyon kayıtları yüklenirken hata oluştu" });
     }
   });
 
-  router.get('/api/equipment-calibrations/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-calibrations/:id', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -1296,13 +1296,13 @@ const router = Router();
         equipment: calibration.equipment,
         calibratedBy: calibration.calibratedBy,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching calibration:", error);
       res.status(500).json({ message: "Kalibrasyon kaydı yüklenirken hata oluştu" });
     }
   });
 
-  router.post('/api/equipment-calibrations', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment-calibrations', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1325,7 +1325,7 @@ const router = Router();
         .where(eq(equipment.id, validatedData.equipmentId));
       
       res.status(201).json(calibration);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating calibration:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1334,7 +1334,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/equipment-calibrations/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/equipment-calibrations/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -1359,13 +1359,13 @@ const router = Router();
         .returning();
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating calibration:", error);
       res.status(500).json({ message: "Kalibrasyon güncellenirken hata oluştu" });
     }
   });
 
-  router.delete('/api/equipment-calibrations/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/equipment-calibrations/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -1377,13 +1377,13 @@ const router = Router();
       await db.delete(equipmentCalibrations).where(eq(equipmentCalibrations.id, parseInt(id)));
       
       res.json({ message: "Kalibrasyon kaydı silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting calibration:", error);
       res.status(500).json({ message: "Kalibrasyon silinirken hata oluştu" });
     }
   });
 
-  router.get('/api/equipment-calibrations-due-soon', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-calibrations-due-soon', isAuthenticated, async (req, res) => {
     try {
       const thirtyDaysLater = new Date();
       thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
@@ -1403,7 +1403,7 @@ const router = Router();
         equipment: d.equipment,
         branch: d.branch,
       })));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching due calibrations:", error);
       res.status(500).json({ message: "Yaklaşan kalibrasyonlar yüklenirken hata oluştu" });
     }
@@ -1413,7 +1413,7 @@ const router = Router();
   // EQUIPMENT TROUBLESHOOTING STEPS
   // ========================================
 
-  router.get('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: any, res) => {
+  router.get('/api/equipment-troubleshooting-steps', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { equipmentType } = req.query;
@@ -1426,7 +1426,7 @@ const router = Router();
       
       const steps = await storage.getEquipmentTroubleshootingSteps(equipmentType as string);
       res.json(steps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching troubleshooting steps:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1435,7 +1435,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/equipment-troubleshooting-steps', isAuthenticated, async (req: any, res) => {
+  router.post('/api/equipment-troubleshooting-steps', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1449,7 +1449,7 @@ const router = Router();
       
       const step = await storage.createEquipmentTroubleshootingStep(validatedData);
       res.status(201).json(step);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating troubleshooting step:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1461,7 +1461,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -1478,7 +1478,7 @@ const router = Router();
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating troubleshooting step:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1490,7 +1490,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/equipment-troubleshooting-steps/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -1499,7 +1499,7 @@ const router = Router();
       
       await storage.deleteEquipmentTroubleshootingStep(parseInt(id));
       res.json({ message: "Adım silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting troubleshooting step:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });

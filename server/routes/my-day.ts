@@ -25,7 +25,7 @@ function getGreeting(): string {
   return "Iyi aksamlar";
 }
 
-router.get("/api/my-day", isAuthenticated, async (req: any, res) => {
+router.get("/api/my-day", isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     const userRole = req.user.role;
@@ -260,7 +260,7 @@ router.get("/api/my-day", isAuthenticated, async (req: any, res) => {
       onboarding,
       suggestions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("My day error:", error);
     res.status(500).json({ message: "Veri yuklenemedi" });
   }

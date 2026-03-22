@@ -148,7 +148,7 @@ async function querySignalCount(
   }
 }
 
-router.get('/api/ai/dashboard-nba', isAuthenticated, async (req: any, res) => {
+router.get('/api/ai/dashboard-nba', isAuthenticated, async (req, res) => {
   const startTime = Date.now();
   try {
     const role: string = req.user.role;
@@ -220,7 +220,7 @@ router.get('/api/ai/dashboard-nba', isAuthenticated, async (req: any, res) => {
       employeeTypeKey = policyResult.employeeTypeKey;
       const hiddenBuckets = policyResult.restrictions.hiddenBuckets;
       if (hiddenBuckets.length > 0) {
-        actions = actions.filter((a: any) => {
+        actions = actions.filter((a) => {
           const tpl = config.actions.find((t: ActionTemplate) => t.type === a.type);
           return !tpl || !hiddenBuckets.includes(tpl.bucket);
         });
@@ -256,7 +256,7 @@ router.get('/api/ai/dashboard-nba', isAuthenticated, async (req: any, res) => {
       actions,
       analyzedAt: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "NBA dashboard hatası");
   }
 });

@@ -68,7 +68,7 @@ const updatePageContentSchema = (insertPageContentSchema as any).partial().omit(
 });
 const router = Router();
 
-  router.get('/api/mega-module-mapping', isAuthenticated, async (req: any, res) => {
+  router.get('/api/mega-module-mapping', isAuthenticated, async (req, res) => {
     try {
       // Get mega-module items from database
       const items = await db.select().from(megaModuleItems).orderBy(megaModuleItems.megaModuleId, megaModuleItems.sortOrder);
@@ -103,13 +103,13 @@ const router = Router();
           name: i.subModuleName
         }))
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching mega-module mapping:", error);
       res.status(500).json({ message: "Mega modül mapping alınamadı" });
     }
   });
 
-  router.get('/api/admin/menu', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/menu', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -117,13 +117,13 @@ const router = Router();
       }
       const menu = await storage.listMenu();
       res.json(menu);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching menu:", error);
       res.status(500).json({ message: "Menü alınırken hata oluştu" });
     }
   });
 
-  router.post('/api/admin/menu/sections', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/menu/sections', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -132,7 +132,7 @@ const router = Router();
       const data = insertMenuSectionSchema.parse(req.body);
       const section = await storage.createMenuSection(data);
       res.status(201).json(section);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating menu section:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz menü bölümü verisi", errors: error.errors });
@@ -141,7 +141,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/menu/sections/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/menu/sections/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -151,7 +151,7 @@ const router = Router();
       const data = insertMenuSectionSchema.partial().parse(req.body);
       const section = await storage.updateMenuSection(id, data);
       res.json(section);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating menu section:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz menü bölümü verisi", errors: error.errors });
@@ -160,7 +160,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/admin/menu/sections/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/menu/sections/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -169,13 +169,13 @@ const router = Router();
       const id = parseInt(req.params.id);
       await storage.deleteMenuSection(id);
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting menu section:", error);
       res.status(500).json({ message: "Menü bölümü silinirken hata oluştu" });
     }
   });
 
-  router.patch('/api/admin/menu/sections/order', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/menu/sections/order', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -187,13 +187,13 @@ const router = Router();
       }
       await storage.reorderMenuSections(sectionIds);
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error reordering menu sections:", error);
       res.status(500).json({ message: "Menü bölümleri sıralanırken hata oluştu" });
     }
   });
 
-  router.post('/api/admin/menu/items', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/menu/items', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -202,7 +202,7 @@ const router = Router();
       const data = insertMenuItemSchema.parse(req.body);
       const item = await storage.createMenuItem(data);
       res.status(201).json(item);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating menu item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz menü öğesi verisi", errors: error.errors });
@@ -211,7 +211,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/menu/items/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/menu/items/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -221,7 +221,7 @@ const router = Router();
       const data = insertMenuItemSchema.partial().parse(req.body);
       const item = await storage.updateMenuItem(id, data);
       res.json(item);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating menu item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz menü öğesi verisi", errors: error.errors });
@@ -230,7 +230,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/admin/menu/items/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/menu/items/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -239,13 +239,13 @@ const router = Router();
       const id = parseInt(req.params.id);
       await storage.deleteMenuItem(id);
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting menu item:", error);
       res.status(500).json({ message: "Menü öğesi silinirken hata oluştu" });
     }
   });
 
-  router.patch('/api/admin/menu/items/order', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/menu/items/order', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -257,13 +257,13 @@ const router = Router();
       }
       await storage.reorderMenuItems(sectionId, itemIds);
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error reordering menu items:", error);
       res.status(500).json({ message: "Menü öğeleri sıralanırken hata oluştu" });
     }
   });
 
-  router.post('/api/admin/menu/visibility-rules', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/menu/visibility-rules', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -272,7 +272,7 @@ const router = Router();
       const data = insertMenuVisibilityRuleSchema.parse(req.body);
       const rule = await storage.createVisibilityRule(data);
       res.status(201).json(rule);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating visibility rule:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz görünürlük kuralı verisi", errors: error.errors });
@@ -281,7 +281,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/admin/menu/visibility-rules/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/menu/visibility-rules/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -290,13 +290,13 @@ const router = Router();
       const id = parseInt(req.params.id);
       await storage.deleteVisibilityRule(id);
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting visibility rule:", error);
       res.status(500).json({ message: "Görünürlük kuralı silinirken hata oluştu" });
     }
   });
 
-  router.get('/api/admin/page-content', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/page-content', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -305,13 +305,13 @@ const router = Router();
 
       const contents = await storage.listPageContent();
       res.json(contents);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching page content:", error);
       res.status(500).json({ message: "Sayfa içeriği alınırken hata oluştu" });
     }
   });
 
-  router.get('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/page-content/:slug', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -323,13 +323,13 @@ const router = Router();
         return res.status(404).json({ message: "İçerik bulunamadı" });
       }
       res.json(content);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching page content:", error);
       res.status(500).json({ message: "Sayfa içeriği alınırken hata oluştu" });
     }
   });
 
-  router.post('/api/admin/page-content', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/page-content', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -344,7 +344,7 @@ const router = Router();
       
       const newContent = await storage.createPageContent(validatedData);
       res.status(201).json(newContent);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating page content:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -353,7 +353,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/page-content/:slug', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -370,7 +370,7 @@ const router = Router();
       
       const updated = await storage.updatePageContent(req.params.slug, updateData);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating page content:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -382,7 +382,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/admin/page-content/:slug', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/page-content/:slug', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -391,13 +391,13 @@ const router = Router();
 
       await storage.deletePageContent(req.params.slug);
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting page content:", error);
       res.status(500).json({ message: "Sayfa içeriği silinirken hata oluştu" });
     }
   });
 
-  router.get('/api/admin/branding', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/branding', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -410,13 +410,13 @@ const router = Router();
         logoUrl: branding?.logoUrl || null,
         updatedAt: branding?.updatedAt || null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching branding:", error);
       res.status(500).json({ message: "Marka bilgileri alınırken hata oluştu" });
     }
   });
 
-  router.post('/api/admin/branding/logo', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/branding/logo', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -436,7 +436,7 @@ const router = Router();
         logoUrl: updated.logoUrl,
         updatedAt: updated.updatedAt,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating logo:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -445,7 +445,7 @@ const router = Router();
     }
   });
 
-  router.get('/api/admin/ai-costs', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/ai-costs', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -468,7 +468,7 @@ const router = Router();
 
       const aggregates = await storage.getAiUsageAggregates(filters);
       res.json(aggregates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching AI cost aggregates:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz tarih formatı", errors: error.errors });
@@ -477,7 +477,7 @@ const router = Router();
     }
   });
 
-  router.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/users', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userRole = user.role as UserRoleType;
@@ -523,13 +523,13 @@ const router = Router();
       }
       
       res.json(filteredUsers);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Kullanıcılar alınırken hata oluştu" });
     }
   });
 
-  router.patch('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/users/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -554,7 +554,7 @@ const router = Router();
       auditLog(req, { eventType: "user.updated", action: "updated", resource: "users", resourceId: id, before: existingUser ? { role: existingUser.role, branchId: existingUser.branchId } : undefined, after: validatedData });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating user:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -563,7 +563,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/users/:id/status', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/users/:id/status', isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user!;
       if (!currentUser.role || !isHQRole(currentUser.role as UserRoleType)) {
@@ -595,7 +595,7 @@ const router = Router();
         message: validatedData.isActive ? "Kullanıcı aktif edildi" : "Kullanıcı deaktif edildi",
         user: updated 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating user status:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -604,7 +604,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/users/bulk-import', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/users/bulk-import', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -630,10 +630,10 @@ const router = Router();
       const validatedUsers = csvUsers.map(u => userSchema.parse(u));
       const imported = await storage.bulkImportUsers(validatedUsers);
 
-      auditLog(req, { eventType: "user.bulk_import", action: "bulk_import", resource: "users", details: { importedCount: imported.length, roles: [...new Set(validatedUsers.map((u: any) => u.role))] } });
+      auditLog(req, { eventType: "user.bulk_import", action: "bulk_import", resource: "users", details: { importedCount: imported.length, roles: [...new Set(validatedUsers.map((u) => u.role))] } });
 
       res.json({ imported: imported.length, users: imported });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error bulk importing users:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz CSV verisi", errors: error.errors });
@@ -642,7 +642,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/users/approve/:id', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/users/approve/:id', isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user!;
       const { sendWelcomeEmail } = await import('../email');
@@ -694,13 +694,13 @@ const router = Router();
       auditLog(req, { eventType: "user.updated", action: "approved", resource: "users", resourceId: id, before: { accountStatus: targetUser.accountStatus }, after: { accountStatus: "approved" }, details: { action: "approved" } });
 
       res.json({ message: "Kullanıcı onaylandı", user: updated });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving user:", error);
       res.status(500).json({ message: "Onay işlemi sırasında hata oluştu" });
     }
   });
 
-  router.post('/api/admin/users/reject/:id', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/users/reject/:id', isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user!;
       const { sendRejectionEmail } = await import('../email');
@@ -747,13 +747,13 @@ const router = Router();
       auditLog(req, { eventType: "user.updated", action: "rejected", resource: "users", resourceId: id, before: { accountStatus: targetUser.accountStatus }, after: { accountStatus: "rejected" }, details: { action: "rejected", reason } });
 
       res.json({ message: "Kullanıcı reddedildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error rejecting user:", error);
       res.status(500).json({ message: "Red işlemi sırasında hata oluştu" });
     }
   });
 
-  router.get('/api/admin/users/pending', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/users/pending', isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user!;
 
@@ -772,13 +772,13 @@ const router = Router();
 
       const pendingUsers = await storage.getAllUsersWithFilters(filters);
       res.json(pendingUsers);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching pending users:", error);
       res.status(500).json({ message: "Bekleyen kullanıcılar yüklenemedi" });
     }
   });
 
-  router.get('/api/admin/users/export', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/users/export', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -815,13 +815,13 @@ const router = Router();
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=users_${Date.now()}.csv`);
       res.send('\uFEFF' + csv); // Add BOM for Excel UTF-8 support
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error exporting users:", error);
       res.status(500).json({ message: "Export başarısız" });
     }
   });
 
-  router.delete('/api/admin/users/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/users/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -846,13 +846,13 @@ const router = Router();
         details: { softDelete: true },
       });
       res.json({ message: "Kullanıcı silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Kullanıcı silinemedi" });
     }
   });
 
-  router.post('/api/admin/users', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/users', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -906,7 +906,7 @@ const router = Router();
       auditLog(req, { eventType: "user.created", action: "created", resource: "users", resourceId: newUser.id, after: { email: data.email, role: data.role, branchId: data.branchId } });
 
       res.json(newUser);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating user:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -915,7 +915,7 @@ const router = Router();
     }
   });
 
-  router.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -928,13 +928,13 @@ const router = Router();
       const settings = await storage.getSiteSettings(category as string | undefined);
       
       res.json(settings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching site settings:", error);
       res.status(500).json({ message: "Ayarlar yüklenirken hata oluştu" });
     }
   });
 
-  router.get('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/settings/:key', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -951,13 +951,13 @@ const router = Router();
       }
       
       res.json(setting);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching site setting:", error);
       res.status(500).json({ message: "Ayar yüklenirken hata oluştu" });
     }
   });
 
-  router.post('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -976,7 +976,7 @@ const router = Router();
       auditLog(req, { eventType: "settings.changed", action: "created", resource: "settings", resourceId: validatedData.key, after: validatedData });
 
       res.status(201).json(setting);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating site setting:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -985,7 +985,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/settings/:key', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1007,13 +1007,13 @@ const router = Router();
       auditLog(req, { eventType: "settings.changed", action: "updated", resource: "settings", resourceId: key, before: existingSetting ? { value: existingSetting.value } : undefined, after: { value } });
 
       res.json(setting);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating site setting:", error);
       res.status(500).json({ message: "Ayar güncellenirken hata oluştu" });
     }
   });
 
-  router.delete('/api/admin/settings/:key', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/settings/:key', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1028,13 +1028,13 @@ const router = Router();
       auditLog(req, { eventType: "settings.changed", action: "deleted", resource: "settings", resourceId: key });
 
       res.json({ message: "Ayar silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting site setting:", error);
       res.status(500).json({ message: "Ayar silinirken hata oluştu" });
     }
   });
 
-  router.get('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/role-permissions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { role: roleFilter } = req.query;
@@ -1141,12 +1141,12 @@ const router = Router();
       // Fetch explicit permissions from database (overrides)
       const dbPermissions = await storage.getRolePermissions();
       const dbFiltered = roleFilter 
-        ? dbPermissions.filter((p: any) => p.role === roleFilter)
+        ? dbPermissions.filter((p) => p.role === roleFilter)
         : dbPermissions;
 
       // Create map of DB permissions for easy lookup
       const dbPermMap = new Map<string, string[]>();
-      dbFiltered.forEach((p: any) => {
+      dbFiltered.forEach((p) => {
         dbPermMap.set(p.module, p.actions || []);
       });
 
@@ -1177,13 +1177,13 @@ const router = Router();
       }
       
       res.json(mergedPerms);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching role permissions:", error);
       res.status(500).json({ message: "Rol yetkileri yüklenirken hata oluştu" });
     }
   });
 
-  router.put('/api/admin/role-permissions', isAuthenticated, async (req: any, res) => {
+  router.put('/api/admin/role-permissions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1206,7 +1206,7 @@ const router = Router();
       auditLog(req, { eventType: "role.permission_changed", action: "updated", resource: "role_permissions", details: { updates } });
 
       res.json({ message: "Rol yetkileri güncellendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating role permissions:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1215,7 +1215,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/roles', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/roles', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1226,13 +1226,13 @@ const router = Router();
         return res.status(400).json({ message: "Rol adı gerekli" });
       }
       res.json({ id: roleName, name: roleName, scope: scope || 'hq', description: description || '', createdAt: new Date() });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating role:", error);
       res.status(500).json({ message: "Rol oluşturulamadı" });
     }
   });
 
-  router.get('/api/system/health', isAuthenticated, async (req: any, res) => {
+  router.get('/api/system/health', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1255,13 +1255,13 @@ const router = Router();
         dataStats,
         serverTime: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching system health:", error);
       res.status(500).json({ message: "Sistem durumu alınırken hata oluştu" });
     }
   });
 
-  router.get('/api/system/backup-status', isAuthenticated, async (req: any, res) => {
+  router.get('/api/system/backup-status', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin' && user.role !== 'genel_mudur') {
@@ -1307,13 +1307,13 @@ const router = Router();
           };
         }),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching backup status:", error);
       res.status(500).json({ message: "Backup durumu alınırken hata oluştu" });
     }
   });
 
-  router.post('/api/system/backup', isAuthenticated, async (req: any, res) => {
+  router.post('/api/system/backup', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1332,14 +1332,14 @@ const router = Router();
         durationMs: backupRecord.durationMs,
         errorMessage: backupRecord.errorMessage,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error triggering manual backup:", error);
       res.status(500).json({ message: "Backup tetiklenirken hata oluştu" });
     }
   });
 
 
-  router.post('/api/system/restore', isAuthenticated, async (req: any, res) => {
+  router.post('/api/system/restore', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1352,13 +1352,13 @@ const router = Router();
       const { restoreFromBackup } = await import('../backup');
       const result = await restoreFromBackup(backupId);
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error restoring backup:", error);
       res.status(500).json({ message: "Geri yükleme sırasında hata oluştu" });
     }
   });
 
-  router.get('/api/system/restore-points', isAuthenticated, async (req: any, res) => {
+  router.get('/api/system/restore-points', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -1367,13 +1367,13 @@ const router = Router();
       const { getAvailableRestorePoints } = await import('../backup');
       const restorePoints = await getAvailableRestorePoints();
       res.json({ restorePoints });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching restore points:", error);
       res.status(500).json({ message: "Restore noktaları alınırken hata oluştu" });
     }
   });
 
-  router.get('/api/admin/support-assignments', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/support-assignments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       
@@ -1385,7 +1385,7 @@ const router = Router();
       
       // Enrich with user info
       const allUsers = await db.select().from(users);
-      const enriched = assignments.map((a: any) => {
+      const enriched = assignments.map((a) => {
         const assignedUser = allUsers.find(u => u.id === a.userId);
         return {
           ...a,
@@ -1399,13 +1399,13 @@ const router = Router();
       });
       
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get category assignments error:", error);
       res.status(500).json({ message: "Kategori atamaları alınamadı" });
     }
   });
 
-  router.post('/api/admin/support-assignments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/support-assignments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       
@@ -1419,13 +1419,13 @@ const router = Router();
       });
       
       res.status(201).json(assignment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create category assignment error:", error);
       res.status(500).json({ message: "Kategori ataması oluşturulamadı" });
     }
   });
 
-  router.delete('/api/admin/support-assignments/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/support-assignments/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       
@@ -1435,13 +1435,13 @@ const router = Router();
       
       await storage.deleteHQSupportCategoryAssignment(parseInt(req.params.id));
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete category assignment error:", error);
       res.status(500).json({ message: "Kategori ataması silinemedi" });
     }
   });
 
-  router.get('/api/admin/email-settings', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/email-settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1462,13 +1462,13 @@ const router = Router();
         });
       }
       res.json({ ...result, smtpPassword: result.smtpPassword ? "********" : "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get email settings error:", error);
       res.status(500).json({ message: "Ayarlar alınamadı" });
     }
   });
 
-  router.post('/api/admin/email-settings', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/email-settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1495,13 +1495,13 @@ const router = Router();
       auditLog(req, { eventType: "settings.changed", action: "updated", resource: "email_settings" });
 
       res.json({ message: "Ayarlar kaydedildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Save email settings error:", error);
       res.status(500).json({ message: "Ayarlar kaydedilemedi" });
     }
   });
 
-  router.post('/api/admin/email-settings/test', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/email-settings/test', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1509,13 +1509,13 @@ const router = Router();
       }
       
       res.json({ message: "Test e-postası gönderildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Test email error:", error);
       res.status(500).json({ message: "Test e-postası gönderilemedi" });
     }
   });
 
-  router.get('/api/admin/service-email-settings', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/service-email-settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1536,13 +1536,13 @@ const router = Router();
         });
       }
       res.json({ ...result, smtpPassword: result.smtpPassword ? "********" : "" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get service email settings error:", error);
       res.status(500).json({ message: "Servis mail ayarları alınamadı" });
     }
   });
 
-  router.post('/api/admin/service-email-settings', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/service-email-settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1569,13 +1569,13 @@ const router = Router();
       auditLog(req, { eventType: "settings.changed", action: "updated", resource: "service_email_settings" });
 
       res.json({ message: "Servis mail ayarları kaydedildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Save service email settings error:", error);
       res.status(500).json({ message: "Servis mail ayarları kaydedilemedi" });
     }
   });
 
-  router.post('/api/admin/service-email-settings/test', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/service-email-settings/test', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1583,13 +1583,13 @@ const router = Router();
       }
       
       res.json({ message: "Test e-postası servis adresine gönderildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Test service email error:", error);
       res.status(500).json({ message: "Test e-postası gönderilemedi" });
     }
   });
 
-  router.get('/api/admin/banners', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/banners', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1600,13 +1600,13 @@ const router = Router();
         orderBy: (b, { desc }) => [desc(b.createdAt)],
       });
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get banners error:", error);
       res.status(500).json({ message: "Bannerlar alınamadı" });
     }
   });
 
-  router.post('/api/admin/banners', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/banners', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1653,13 +1653,13 @@ const router = Router();
       }).returning();
       
       res.status(201).json(banner);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create banner error:", error);
       res.status(500).json({ message: "Banner oluşturulamadı" });
     }
   });
 
-  router.patch('/api/admin/banners/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/banners/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1699,13 +1699,13 @@ const router = Router();
         .returning();
       
       res.json(banner);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update banner error:", error);
       res.status(500).json({ message: "Banner güncellenemedi" });
     }
   });
 
-  router.delete('/api/admin/banners/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/banners/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1714,13 +1714,13 @@ const router = Router();
       
       await db.delete(banners).where(eq(banners.id, parseInt(req.params.id)));
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete banner error:", error);
       res.status(500).json({ message: "Banner silinemedi" });
     }
   });
 
-  router.get('/api/admin/ai-settings', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/ai-settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1761,13 +1761,13 @@ const router = Router();
       };
       
       res.json(maskedSettings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get AI settings error:", error);
       res.status(500).json({ message: "AI ayarları alınamadı" });
     }
   });
 
-  router.post('/api/admin/ai-settings', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/ai-settings', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1826,13 +1826,13 @@ const router = Router();
       clearAIConfigCache();
 
       res.json({ success: true, id: result.id });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Save AI settings error:", error);
       res.status(500).json({ message: "AI ayarları kaydedilemedi" });
     }
   });
 
-  router.post('/api/admin/ai-settings/test', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/ai-settings/test', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -1870,7 +1870,7 @@ const router = Router();
             actualModel: resp.model || model, latencyMs,
             message: `OpenAI bağlantısı başarılı (${latencyMs}ms)` 
           });
-        } catch (e: any) {
+        } catch (e) {
           const hint = e.status === 401 ? "API anahtarı geçersiz" : e.status === 429 ? "Rate limit / kota aşıldı" : "Bağlantı hatası";
           return res.json({ ok: false, provider: "openai", error: e.message, hint });
         }
@@ -1897,7 +1897,7 @@ const router = Router();
             actualModel: resp.model || model, latencyMs,
             message: `Gemini bağlantısı başarılı (${latencyMs}ms)`
           });
-        } catch (e: any) {
+        } catch (e) {
           const hint = e.status === 401 || e.status === 403 ? "API anahtarı geçersiz" : e.status === 429 ? "Kota aşıldı" : "Bağlantı hatası";
           return res.json({ ok: false, provider: "gemini", error: e.message, hint });
         }
@@ -1934,13 +1934,13 @@ const router = Router();
             actualModel: data?.model || model, latencyMs,
             message: `Anthropic bağlantısı başarılı (${latencyMs}ms)`
           });
-        } catch (e: any) {
+        } catch (e) {
           return res.json({ ok: false, provider: "anthropic", error: e.message, hint: "Ağ bağlantısı hatası" });
         }
       }
       
       res.json({ ok: false, provider: "unknown", error: "Bilinmeyen sağlayıcı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Test AI connection error:", error);
       res.status(500).json({ success: false, message: "Bağlantı testi başarısız" });
     }
@@ -1967,7 +1967,7 @@ const router = Router();
   let _modelsCacheTime: Record<string, number> = {};
   const MODELS_CACHE_TTL = 6 * 60 * 60 * 1000;
 
-  router.get('/api/admin/ai/models', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/ai/models', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -2009,7 +2009,7 @@ const router = Router();
             const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
             if (resp.ok) {
               const data = await resp.json() as any;
-              liveModels = (data.models || []).map((m: any) => m.name?.replace("models/", "") || m.name);
+              liveModels = (data.models || []).map((m) => m.name?.replace("models/", "") || m.name);
               source = "live_api";
             }
           }
@@ -2048,13 +2048,13 @@ const router = Router();
       _modelsCacheTime[provider] = now;
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get AI models error:", error);
       res.status(500).json({ message: "Model listesi alınamadı" });
     }
   });
 
-  router.post('/api/admin/ai/re-embed', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/ai/re-embed', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin') {
@@ -2081,7 +2081,7 @@ const router = Router();
             embedding: e.embedding,
           })));
           processed++;
-        } catch (err: any) {
+        } catch (err) {
           failed++;
           errors.push(`Makale #${article.id} (${article.title}): ${err.message}`);
           console.error(`Re-embed failed for article ${article.id}:`, err.message);
@@ -2108,12 +2108,12 @@ const router = Router();
           ? `${processed} makale başarıyla yeniden indexlendi`
           : `${processed}/${articles.length} makale işlendi, ${failed} başarısız`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "ReEmbedArticles");
     }
   });
 
-  router.patch('/api/admin/update-employee-terminations', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/update-employee-terminations', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && !isHQRole(user.role)) {
@@ -2151,13 +2151,13 @@ const router = Router();
       }
 
       res.json({ success: true, updated: updated.length, details: updated });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update terminations error:", error);
       res.status(500).json({ message: "İşten ayrılma güncelleme hatası" });
     }
   });
 
-  router.post('/api/admin/import-employees', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/import-employees', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && !isHQRole(user.role)) {
@@ -2215,19 +2215,19 @@ const router = Router();
         try {
           const user = await storage.createUser(userData as any);
           created.push({ id: user.id, name: `${user.firstName} ${user.lastName}` });
-        } catch (err: any) {
+        } catch (err) {
           console.error(`Personel ekleme hatası: ${emp.firstName} ${emp.lastName}`, err.message);
         }
       }
 
       res.json({ success: true, imported: created.length, details: created });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Import employees error:", error);
       res.status(500).json({ message: "Personel ekleme hatası" });
     }
   });
 
-  router.get('/api/system-health-check', isAuthenticated, async (req: any, res) => {
+  router.get('/api/system-health-check', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2241,7 +2241,7 @@ const router = Router();
       try {
         await db.select({ count: sql`1` }).from(users);
         checks.push({ name: 'Veritabanı Bağlantısı', status: 'ok', latency: Date.now() - dbStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Veritabanı Bağlantısı', status: 'error', error: 'Bağlantı hatası' });
       }
 
@@ -2250,7 +2250,7 @@ const router = Router();
       try {
         const empCount = await db.select({ count: sql`COUNT(*)` }).from(users);
         checks.push({ name: 'Personel Verileri', status: 'ok', latency: Date.now() - empStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Personel Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2259,7 +2259,7 @@ const router = Router();
       try {
         const branchCount = await db.select({ count: sql`COUNT(*)` }).from(branches);
         checks.push({ name: 'Şube Verileri', status: 'ok', latency: Date.now() - branchStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Şube Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2268,7 +2268,7 @@ const router = Router();
       try {
         const eqCount = await db.select({ count: sql`COUNT(*)` }).from(equipment);
         checks.push({ name: 'Ekipman Verileri', status: 'ok', latency: Date.now() - eqStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Ekipman Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2277,7 +2277,7 @@ const router = Router();
       try {
         const taskCount = await db.select({ count: sql`COUNT(*)` }).from(tasks);
         checks.push({ name: 'Görev Verileri', status: 'ok', latency: Date.now() - taskStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Görev Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2286,7 +2286,7 @@ const router = Router();
       try {
         const attCount = await db.select({ count: sql`COUNT(*)` }).from(shiftAttendance);
         checks.push({ name: 'Mesai Verileri', status: 'ok', latency: Date.now() - attendanceStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Mesai Verileri', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2295,7 +2295,7 @@ const router = Router();
       try {
         const leaveCount = await db.select({ count: sql`COUNT(*)` }).from(employeeLeaves);
         checks.push({ name: 'İzin Bakiyeleri', status: 'ok', latency: Date.now() - leaveStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'İzin Bakiyeleri', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2304,7 +2304,7 @@ const router = Router();
       try {
         const holidayCount = await db.select({ count: sql`COUNT(*)` }).from(publicHolidays);
         checks.push({ name: 'Resmi Tatiller', status: 'ok', latency: Date.now() - holidayStart });
-      } catch (e: any) {
+      } catch (e) {
         checks.push({ name: 'Resmi Tatiller', status: 'error', error: 'Sorgu hatası' });
       }
 
@@ -2317,12 +2317,12 @@ const router = Router();
         avgLatency: Math.round(avgLatency),
         checks,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "SystemHealthCheck");
     }
   });
 
-  router.get('/api/admin/permission-actions', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/permission-actions', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2331,13 +2331,13 @@ const router = Router();
       
       const groupedActions = await getAllActionsGroupedByModule();
       res.json(groupedActions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get permission actions error:", error);
       res.status(500).json({ message: "Aksiyon listesi alınamadı" });
     }
   });
 
-  router.get('/api/admin/role-grants/:role', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/role-grants/:role', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2347,13 +2347,13 @@ const router = Router();
       const { role } = req.params;
       const grants = await getRoleGrants(role);
       res.json(grants);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get role grants error:", error);
       res.status(500).json({ message: "Rol izinleri alınamadı" });
     }
   });
 
-  router.post('/api/admin/role-grants', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/role-grants', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2373,13 +2373,13 @@ const router = Router();
       
       const grantId = await upsertPermissionGrant(role, actionId, scope, isActive ?? true);
       res.json({ success: true, grantId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Upsert role grant error:", error);
       res.status(500).json({ message: "İzin güncellenemedi" });
     }
   });
 
-  router.delete('/api/admin/role-grants/:role/:actionId', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/role-grants/:role/:actionId', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2389,13 +2389,13 @@ const router = Router();
       const { role, actionId } = req.params;
       await deletePermissionGrant(role, parseInt(actionId));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete role grant error:", error);
       res.status(500).json({ message: "İzin silinemedi" });
     }
   });
 
-  router.get('/api/admin/announcements', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/announcements', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const allowedRoles = ['admin', 'coach', 'destek'];
@@ -2408,13 +2408,13 @@ const router = Router();
         .orderBy(desc(announcements.createdAt));
       
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Admin get announcements error:", error);
       res.status(500).json({ message: "Duyurular alınamadı" });
     }
   });
 
-  router.post('/api/admin/announcements', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/announcements', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const allowedRoles = ['admin', 'coach', 'destek'];
@@ -2451,13 +2451,13 @@ const router = Router();
         .returning();
       
       res.json(newAnnouncement);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create announcement error:", error);
       res.status(500).json({ message: "Duyuru oluşturulamadı" });
     }
   });
 
-  router.patch('/api/admin/announcements/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/announcements/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const allowedRoles = ['admin', 'coach', 'destek'];
@@ -2484,13 +2484,13 @@ const router = Router();
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update announcement error:", error);
       res.status(500).json({ message: "Duyuru güncellenemedi" });
     }
   });
 
-  router.delete('/api/admin/announcements/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/announcements/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const allowedRoles = ['admin', 'coach', 'destek'];
@@ -2514,36 +2514,36 @@ const router = Router();
       });
       
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete announcement error:", error);
       res.status(500).json({ message: "Duyuru silinemedi" });
     }
   });
 
-  router.get('/api/role-templates', isAuthenticated, async (req: any, res) => {
+  router.get('/api/role-templates', isAuthenticated, async (req, res) => {
     try {
       const domain = req.query.domain as string | undefined;
       const templates = await storage.getRoleTemplates(domain);
       res.json(templates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get role templates error:", error);
       res.status(500).json({ message: "Şablonlar getirilemedi" });
     }
   });
 
-  router.get('/api/role-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/role-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const template = await storage.getRoleTemplate(id);
       if (!template) return res.status(404).json({ message: "Şablon bulunamadı" });
       res.json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get role template error:", error);
       res.status(500).json({ message: "Şablon getirilemedi" });
     }
   });
 
-  router.post('/api/role-templates', isAuthenticated, async (req: any, res) => {
+  router.post('/api/role-templates', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -2551,13 +2551,13 @@ const router = Router();
       }
       const template = await storage.createRoleTemplate(req.body);
       res.json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create role template error:", error);
       res.status(500).json({ message: "Şablon oluşturulamadı" });
     }
   });
 
-  router.patch('/api/role-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/role-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -2566,13 +2566,13 @@ const router = Router();
       const id = parseInt(req.params.id);
       const template = await storage.updateRoleTemplate(id, req.body);
       res.json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update role template error:", error);
       res.status(500).json({ message: "Şablon güncellenemedi" });
     }
   });
 
-  router.delete('/api/role-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/role-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -2581,13 +2581,13 @@ const router = Router();
       const id = parseInt(req.params.id);
       await storage.deleteRoleTemplate(id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete role template error:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
     }
   });
 
-  router.get('/api/admin/mega-modules', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/mega-modules', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2596,13 +2596,13 @@ const router = Router();
       const configs = await db.select().from(megaModuleConfig).orderBy(megaModuleConfig.sortOrder);
       const items = await db.select().from(megaModuleItems).orderBy(megaModuleItems.sortOrder);
       res.json({ configs, items });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching mega modules:", error);
       res.status(500).json({ message: "Mega modül verileri alınamadı" });
     }
   });
 
-  router.post('/api/admin/mega-modules/config', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/mega-modules/config', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2637,13 +2637,13 @@ const router = Router();
         }
       }
       res.json({ success: true, message: "Mega modül konfigürasyonu kaydedildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving mega module config:", error);
       res.status(500).json({ message: "Mega modül konfigürasyonu kaydedilemedi" });
     }
   });
 
-  router.post('/api/admin/mega-modules/items', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/mega-modules/items', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2670,13 +2670,13 @@ const router = Router();
         }
       });
       res.json({ success: true, message: "Modül atamaları kaydedildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving mega module items:", error);
       res.status(500).json({ message: "Modül atamaları kaydedilemedi" });
     }
   });
 
-  router.post("/api/admin/mega-modules/add-module", isAuthenticated, async (req: any, res) => {
+  router.post("/api/admin/mega-modules/add-module", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== "admin") {
@@ -2705,13 +2705,13 @@ const router = Router();
         isActive: true,
       });
       res.json({ success: true, message: "Modül eklendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding module:", error);
       res.status(500).json({ message: "Modül eklenemedi" });
     }
   });
 
-  router.put('/api/admin/mega-modules/items/:subModuleId', isAuthenticated, async (req: any, res) => {
+  router.put('/api/admin/mega-modules/items/:subModuleId', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -2729,13 +2729,13 @@ const router = Router();
       } else {
         res.status(404).json({ message: "Modül ataması bulunamadı" });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating mega module item:", error);
       res.status(500).json({ message: "Modül ataması güncellenemedi" });
     }
   });
 
-  router.get('/api/admin/widgets', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/widgets', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2743,13 +2743,13 @@ const router = Router();
       }
       const widgets = await db.select().from(dashboardWidgets).orderBy(asc(dashboardWidgets.sortOrder));
       res.json(widgets);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching widgets:', error);
       res.status(500).json({ message: 'Widget listesi alınamadı' });
     }
   });
 
-  router.post('/api/admin/widgets', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/widgets', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2758,13 +2758,13 @@ const router = Router();
       const parsed = insertDashboardWidgetSchema.parse({ ...req.body, createdBy: user.id });
       const [widget] = await db.insert(dashboardWidgets).values(parsed).returning();
       res.json(widget);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating widget:', error);
       res.status(500).json({ message: 'Widget oluşturulamadı' });
     }
   });
 
-  router.patch('/api/admin/widgets/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/widgets/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2779,13 +2779,13 @@ const router = Router();
         return res.status(404).json({ message: 'Widget bulunamadı' });
       }
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating widget:', error);
       res.status(500).json({ message: 'Widget güncellenemedi' });
     }
   });
 
-  router.delete('/api/admin/widgets/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/widgets/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2799,13 +2799,13 @@ const router = Router();
         return res.status(404).json({ message: 'Widget bulunamadı' });
       }
       res.json({ message: 'Widget silindi' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting widget:', error);
       res.status(500).json({ message: 'Widget silinemedi' });
     }
   });
 
-  router.get('/api/admin/module-visibility', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/module-visibility', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2813,13 +2813,13 @@ const router = Router();
       }
       const visibility = await db.select().from(dashboardModuleVisibility);
       res.json(visibility);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching module visibility:', error);
       res.status(500).json({ message: 'Modül görünürlük ayarları alınamadı' });
     }
   });
 
-  router.patch('/api/admin/module-visibility/:moduleId', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/module-visibility/:moduleId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -2841,13 +2841,13 @@ const router = Router();
           .returning();
       }
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating module visibility:', error);
       res.status(500).json({ message: 'Modül görünürlük ayarları güncellenemedi' });
     }
   });
 
-  router.get('/api/admin/dashboard-widgets', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/dashboard-widgets', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin' && user.role !== 'ceo') {
@@ -2858,13 +2858,13 @@ const router = Router();
         .orderBy(asc(dashboardWidgetItems.displayOrder));
 
       res.json(allWidgets);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching admin dashboard widgets:", error);
       res.status(500).json({ message: "Dashboard widget'ları yüklenemedi" });
     }
   });
 
-  router.post('/api/admin/dashboard-widgets', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/dashboard-widgets', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin' && user.role !== 'ceo') {
@@ -2874,7 +2874,7 @@ const router = Router();
       const parsed = insertDashboardWidgetItemSchema.parse(req.body);
       const [created] = await db.insert(dashboardWidgetItems).values(parsed).returning();
       res.json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating dashboard widget:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -2883,7 +2883,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/dashboard-widgets/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/dashboard-widgets/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin' && user.role !== 'ceo') {
@@ -2920,13 +2920,13 @@ const router = Router();
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating dashboard widget:", error);
       res.status(500).json({ message: "Widget güncellenemedi" });
     }
   });
 
-  router.delete('/api/admin/dashboard-widgets/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/dashboard-widgets/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin' && user.role !== 'ceo') {
@@ -2940,13 +2940,13 @@ const router = Router();
 
       await db.delete(dashboardWidgetItems).where(eq(dashboardWidgetItems.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting dashboard widget:", error);
       res.status(500).json({ message: "Widget silinemedi" });
     }
   });
 
-  router.post("/api/admin/test-notification", isAuthenticated, async (req: any, res) => {
+  router.post("/api/admin/test-notification", isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -2973,7 +2973,7 @@ const router = Router();
       }
 
       res.json({ ok: true, userId, insertedId: created.id, countForUser });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Test notification error:", err);
       res.status(500).json({ error: "Test bildirimi oluşturulurken hata oluştu" });
     }
@@ -2984,7 +2984,7 @@ const router = Router();
   // ===============================================
 
   // IMPORTANT: /export and /stats routes MUST come before /:id to avoid Express matching them as :id param
-  router.get('/api/audit-logs/export', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-logs/export', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -3064,7 +3064,7 @@ const router = Router();
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=denetim-gunlugu-${new Date().toISOString().split('T')[0]}.csv`);
       res.send('\ufeff' + csvHeader + csvRows);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AuditLog] Export error:', error);
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename=denetim-gunlugu-hata.csv`);
@@ -3072,7 +3072,7 @@ const router = Router();
     }
   });
 
-  router.get('/api/audit-logs/stats/event-types', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-logs/stats/event-types', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -3088,12 +3088,12 @@ const router = Router();
         .orderBy(desc(count()));
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(500).json({ error: 'İstatistik yüklenemedi' });
     }
   });
 
-  router.get('/api/audit-logs/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-logs/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -3134,13 +3134,13 @@ const router = Router();
       }
 
       res.json(log);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AuditLog] Detail error:', error);
       res.status(500).json({ error: 'Denetim kaydı yüklenemedi' });
     }
   });
 
-  router.get('/api/admin/audit-logs', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/audit-logs', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -3223,7 +3223,7 @@ const router = Router();
           totalPages: Math.ceil((countResult?.cnt ?? 0) / limit),
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AuditLog] List error:', error);
       res.status(500).json({ error: 'Denetim günlüğü yüklenemedi' });
     }
@@ -3233,20 +3233,20 @@ const router = Router();
   // TITLES CRUD - Ünvan Yönetimi
   // ========================================
 
-  router.get('/api/admin/titles', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/titles', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
       }
       const allTitles = await db.select().from(titles).orderBy(asc(titles.name));
       res.json(allTitles);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get titles error:", error);
       res.status(500).json({ message: "Ünvanlar yüklenemedi" });
     }
   });
 
-  router.post('/api/admin/titles', isAuthenticated, async (req: any, res) => {
+  router.post('/api/admin/titles', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3254,7 +3254,7 @@ const router = Router();
       const parsed = insertTitleSchema.parse(req.body);
       const [created] = await db.insert(titles).values(parsed).returning();
       res.json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create title error:", error);
       if (error.code === '23505') {
         return res.status(400).json({ message: "Bu ünvan adı zaten mevcut" });
@@ -3263,7 +3263,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/titles/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/titles/:id', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3278,13 +3278,13 @@ const router = Router();
       }
       const [updated] = await db.update(titles).set({ ...req.body, updatedAt: new Date() }).where(eq(titles.id, id)).returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update title error:", error);
       res.status(500).json({ message: "Ünvan güncellenemedi" });
     }
   });
 
-  router.delete('/api/admin/titles/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/titles/:id', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3298,7 +3298,7 @@ const router = Router();
       await db.update(users).set({ titleId: null }).where(eq(users.titleId, id));
       await db.delete(titles).where(eq(titles.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete title error:", error);
       res.status(500).json({ message: "Ünvan silinemedi" });
     }
@@ -3308,7 +3308,7 @@ const router = Router();
   // ROLE TEMPLATES EXTENDED - Admin koruma
   // ========================================
 
-  router.patch('/api/admin/role-templates/:id/permissions', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/role-templates/:id/permissions', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3322,13 +3322,13 @@ const router = Router();
       }
       const [updated] = await db.update(roleTemplates).set({ permissions, updatedAt: new Date() }).where(eq(roleTemplates.id, id)).returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update role template permissions error:", error);
       res.status(500).json({ message: "Rol izinleri güncellenemedi" });
     }
   });
 
-  router.delete('/api/admin/role-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/admin/role-templates/:id', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3341,7 +3341,7 @@ const router = Router();
       }
       await db.delete(roleTemplates).where(eq(roleTemplates.id, id));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete role template error:", error);
       res.status(500).json({ message: "Rol şablonu silinemedi" });
     }
@@ -3351,7 +3351,7 @@ const router = Router();
   // USER TITLE & ROLE ASSIGNMENT
   // ========================================
 
-  router.patch('/api/admin/users/:id/title', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/users/:id/title', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3361,13 +3361,13 @@ const router = Router();
       const [updated] = await db.update(users).set({ titleId: titleId || null, updatedAt: new Date() }).where(eq(users.id, userId)).returning();
       if (!updated) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
       res.json({ success: true, titleId: updated.titleId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Assign user title error:", error);
       res.status(500).json({ message: "Ünvan atanamadı" });
     }
   });
 
-  router.patch('/api/admin/users/:id/role', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/users/:id/role', isAuthenticated, async (req, res) => {
     try {
       if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
@@ -3388,13 +3388,13 @@ const router = Router();
 
       const [updated] = await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId)).returning();
       res.json({ success: true, role: updated.role });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Assign user role error:", error);
       res.status(500).json({ message: "Rol atanamadı" });
     }
   });
 
-  router.get('/api/revisions/:tableName/:recordId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/revisions/:tableName/:recordId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -3408,13 +3408,13 @@ const router = Router();
         ))
         .orderBy(desc(recordRevisions.revisionNumber));
       res.json(revisions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get revisions error:", error);
       res.status(500).json({ message: "Revizyon geçmişi alınamadı" });
     }
   });
 
-  router.get('/api/admin/data-lock-rules', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/data-lock-rules', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -3422,13 +3422,13 @@ const router = Router();
       }
       const rules = await db.select().from(dataLockRules).orderBy(asc(dataLockRules.id));
       res.json(rules);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get data lock rules error:", error);
       res.status(500).json({ message: "Kilit kuralları alınamadı" });
     }
   });
 
-  router.patch('/api/admin/data-lock-rules/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/admin/data-lock-rules/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -3460,14 +3460,14 @@ const router = Router();
       });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update data lock rule error:", error);
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri" });
       res.status(500).json({ message: "Kilit kuralı güncellenemedi" });
     }
   });
 
-  router.get('/api/admin/notification-stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/admin/notification-stats', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!userRole || !['admin', 'ceo'].includes(userRole)) {
@@ -3493,7 +3493,7 @@ const router = Router();
         unread: unreadRow.cnt,
         oldReadCount: oldReadRow.cnt,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Notification stats error:", error);
       res.status(500).json({ message: "Bildirim istatistikleri alınamadı" });
     }

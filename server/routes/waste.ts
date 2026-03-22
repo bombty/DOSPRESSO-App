@@ -110,7 +110,7 @@ const createWasteEventSchema = z.object({
   supplierBatch: z.string().nullable().optional(),
 });
 
-router.post("/api/waste/events", isAuthenticated, async (req: any, res) => {
+router.post("/api/waste/events", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canCreateWasteEvent(user.role)) {
@@ -195,7 +195,7 @@ router.post("/api/waste/events", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.get("/api/waste/events", isAuthenticated, async (req: any, res) => {
+router.get("/api/waste/events", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as string;
@@ -263,7 +263,7 @@ router.get("/api/waste/events", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.get("/api/waste/events/:id", isAuthenticated, async (req: any, res) => {
+router.get("/api/waste/events/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const eventId = Number(req.params.id);
@@ -303,7 +303,7 @@ router.get("/api/waste/events/:id", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.patch("/api/waste/events/:id/status", isAuthenticated, async (req: any, res) => {
+router.patch("/api/waste/events/:id/status", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canViewAllBranches(user.role)) {
@@ -337,7 +337,7 @@ router.patch("/api/waste/events/:id/status", isAuthenticated, async (req: any, r
   }
 });
 
-router.post("/api/waste/lots", isAuthenticated, async (req: any, res) => {
+router.post("/api/waste/lots", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canManageLots(user.role)) {
@@ -386,7 +386,7 @@ router.post("/api/waste/lots", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.get("/api/waste/lots", isAuthenticated, async (req: any, res) => {
+router.get("/api/waste/lots", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canManageLots(user.role) && !canViewAllBranches(user.role)) {
@@ -411,7 +411,7 @@ router.get("/api/waste/lots", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.patch("/api/waste/lots/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/waste/lots/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canManageLots(user.role)) {
@@ -456,7 +456,7 @@ router.patch("/api/waste/lots/:id", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.post("/api/waste/action-links", isAuthenticated, async (req: any, res) => {
+router.post("/api/waste/action-links", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canCreateActions(user.role)) {
@@ -499,7 +499,7 @@ router.post("/api/waste/action-links", isAuthenticated, async (req: any, res) =>
   }
 });
 
-router.get("/api/waste/insights/weekly", isAuthenticated, async (req: any, res) => {
+router.get("/api/waste/insights/weekly", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!canViewAllBranches(user.role)) {
@@ -633,7 +633,7 @@ router.get("/api/waste/insights/weekly", isAuthenticated, async (req: any, res) 
   }
 });
 
-router.get("/api/waste/signals", isAuthenticated, async (req: any, res) => {
+router.get("/api/waste/signals", isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const role = user?.role as string;

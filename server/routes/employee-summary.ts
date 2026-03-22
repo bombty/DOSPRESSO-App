@@ -36,7 +36,7 @@ router.get('/api/employee-summary/:userId', isAuthenticated, async (req, res) =>
     }
 
     res.json(summary);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching employee summary:", error);
     res.status(500).json({ message: "Personel özeti alınırken hata oluştu" });
   }
@@ -64,7 +64,7 @@ router.get('/api/employee-summary/branch/:branchId', isAuthenticated, async (req
 
     const summaries = await getBranchEmployeeSummaries(branchId, days);
     res.json(summaries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching branch employee summaries:", error);
     res.status(500).json({ message: "Şube personel özetleri alınırken hata oluştu" });
   }
@@ -102,7 +102,7 @@ router.get('/api/employee-summary/branch/:branchId/quick', isAuthenticated, asyn
     }));
 
     res.json(quickSummaries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching quick employee summaries:", error);
     res.status(500).json({ message: "Personel özetleri alınırken hata oluştu" });
   }

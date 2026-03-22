@@ -38,6 +38,8 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **Auth Security:** `/api/auth/user` endpoint strips `hashedPassword` from response. Login via `POST /api/login` (Passport.js local strategy, bcrypt, 10-attempt lockout).
 - **İK Module Enhancement:** İK Dashboard KPIs (`GET /api/hr/ik-dashboard`), Document CRUD (`/api/hr/employees/:userId/documents`), Disciplinary CRUD (`/api/hr/disciplinary`). Frontend KPI strip added to İK page header.
 - **AuthUser Type:** Centralized type at `server/types/auth.ts` for typed req.user access.
+- **Express Type Augmentation:** `server/types/express.d.ts` — `Express.User extends AuthUser`, eliminating `req: any` patterns across all route files.
+- **Structural Cleanup (misc.ts Split):** Original `server/routes/misc.ts` (13,221 lines, 286 routes) split into 42 domain-specific route files under `server/routes/*-routes.ts`. Remaining misc.ts has ~1,368 lines (QR, uploads, files, user settings, menu management). Shared helpers (`ensurePermission`, `assertBranchScope`, `generateBranchSummary`, `responseCache`, `normalizeTimeGlobal`) centralized in `server/routes/helpers.ts`. All new routers registered in `server/routes.ts`.
 
 ## External Dependencies
 - **OpenAI API**: For AI vision, chat, embeddings, and summarization capabilities.

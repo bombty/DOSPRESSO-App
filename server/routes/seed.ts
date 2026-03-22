@@ -13,7 +13,7 @@ function requireAdmin(req: any, res: any, next: any) {
   next();
 }
 
-router.post('/api/admin/seed-checklists', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-checklists', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const templates = [
       {
@@ -148,13 +148,13 @@ router.post('/api/admin/seed-checklists', isAuthenticated, requireAdmin, async (
     }
 
     res.json({ success: true, created: createdCount, assignments: assignmentCount, checklistIds: createdIds });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed checklists error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-quiz-questions', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-quiz-questions', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const modules = await db.execute(sql`SELECT id, title FROM training_modules LIMIT 51`);
     const moduleList = modules.rows as any[];
@@ -295,13 +295,13 @@ router.post('/api/admin/seed-quiz-questions', isAuthenticated, requireAdmin, asy
     }
 
     res.json({ success: true, questionsInserted: insertedCount, totalModuleQuizzes: Object.keys(quizMap).length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed quiz questions error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-salaries', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-salaries', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const salaries = [
       { code: 'stajyer', name: 'Stajyer', total: 3300000, base: 3100000, bonus: 200000 },
@@ -343,13 +343,13 @@ router.post('/api/admin/seed-salaries', isAuthenticated, requireAdmin, async (re
     }
 
     res.json({ success: true, inserted, skipped });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed salaries error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-pdks', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-pdks', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const branchId = 5;
     const usersResult = await db.execute(sql`
@@ -413,13 +413,13 @@ router.post('/api/admin/seed-pdks', isAuthenticated, requireAdmin, async (req: a
     }
 
     res.json({ success: true, records: insertedCount, users: activeUsers.length, branch: 'Işıklar' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed PDKS error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-factory-chain', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-factory-chain', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const products = await db.execute(sql`SELECT id, name, category FROM factory_products WHERE id IN (1, 3, 8, 12, 6) LIMIT 5`);
     const productList = products.rows as any[];
@@ -435,13 +435,13 @@ router.post('/api/admin/seed-factory-chain', isAuthenticated, requireAdmin, asyn
     }
 
     const operators = await db.execute(sql`SELECT id FROM users WHERE role = 'fabrika_operator' AND is_active = true LIMIT 3`);
-    const operatorIds = (operators.rows as any[]).map((r: any) => r.id);
+    const operatorIds = (operators.rows as any[]).map((r) => r.id);
     if (operatorIds.length === 0) {
       return res.status(400).json({ error: 'Aktif fabrika operatörü bulunamadı' });
     }
 
     const inspectors = await db.execute(sql`SELECT id FROM users WHERE role IN ('kalite_kontrol', 'gida_muhendisi') AND is_active = true LIMIT 2`);
-    const inspectorIds = (inspectors.rows as any[]).map((r: any) => r.id);
+    const inspectorIds = (inspectors.rows as any[]).map((r) => r.id);
     if (inspectorIds.length === 0) inspectorIds.push(operatorIds[0]);
 
     const stations = await db.execute(sql`SELECT id, name FROM factory_stations LIMIT 5`);
@@ -560,13 +560,13 @@ router.post('/api/admin/seed-factory-chain', isAuthenticated, requireAdmin, asyn
       shipments: 2,
       haccpRecords: 3,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed factory chain error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-training-completions', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-training-completions', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const usersResult = await db.execute(sql`
       SELECT id, role FROM users WHERE branch_id = 5 AND is_active = true
@@ -589,7 +589,7 @@ router.post('/api/admin/seed-training-completions', isAuthenticated, requireAdmi
     }
 
     const materialsResult = await db.execute(sql`SELECT id FROM training_materials LIMIT 10`);
-    const materialIds = (materialsResult.rows as any[]).map((r: any) => r.id);
+    const materialIds = (materialsResult.rows as any[]).map((r) => r.id);
 
     const assignmentsResult = await db.execute(sql`SELECT id, material_id, user_id FROM training_assignments LIMIT 50`);
     const assignmentMap: Record<string, number> = {};
@@ -660,13 +660,13 @@ router.post('/api/admin/seed-training-completions', isAuthenticated, requireAdmi
     }
 
     res.json({ success: true, trainees: trainees.length, progressUpdates, quizAttempts, completions });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed training completions error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const branchId = 5;
     const feedbackData = [
@@ -695,7 +695,7 @@ router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (re
     const supervisors = await db.execute(sql`
       SELECT id FROM users WHERE branch_id = ${branchId} AND role IN ('supervisor', 'mudur') AND is_active = true LIMIT 2
     `);
-    const reviewerIds = (supervisors.rows as any[]).map((r: any) => r.id);
+    const reviewerIds = (supervisors.rows as any[]).map((r) => r.id);
 
     let inserted = 0;
 
@@ -720,13 +720,13 @@ router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (re
     }
 
     res.json({ success: true, inserted, branch: 'Işıklar' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed feedback error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM branch_inventory`);
     if (parseInt((existing.rows[0] as any).c) > 10) {
@@ -735,7 +735,7 @@ router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, a
 
     const branches = await db.execute(sql`SELECT id FROM branches WHERE is_active = true ORDER BY id`);
     const products = await db.execute(sql`SELECT id, name FROM factory_products ORDER BY id LIMIT 15`);
-    const branchIds = branches.rows.map((b: any) => b.id);
+    const branchIds = branches.rows.map((b) => b.id);
     const productList = products.rows as any[];
 
     let inserted = 0;
@@ -764,13 +764,13 @@ router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, a
     }
 
     res.json({ success: true, inserted, branches: branchIds.slice(0, 10).length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed branch inventory error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM dobody_flow_completions`);
     if (parseInt((existing.rows[0] as any).c) > 0) {
@@ -778,13 +778,13 @@ router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, a
     }
 
     const flowTasks = await db.execute(sql`SELECT id FROM dobody_flow_tasks`);
-    const taskIds = flowTasks.rows.map((t: any) => t.id);
+    const taskIds = flowTasks.rows.map((t) => t.id);
     if (taskIds.length === 0) {
       return res.json({ success: true, message: 'No flow tasks found', inserted: 0 });
     }
 
     const users = await db.execute(sql`SELECT id FROM users WHERE branch_id = 5 AND is_active = true AND role = 'barista' LIMIT 4`);
-    const userIds = users.rows.map((u: any) => u.id);
+    const userIds = users.rows.map((u) => u.id);
 
     let inserted = 0;
     for (const userId of userIds) {
@@ -801,13 +801,13 @@ router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, a
     }
 
     res.json({ success: true, inserted });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed flow completions error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM training_assignments`);
     if (parseInt((existing.rows[0] as any).c) > 0) {
@@ -839,7 +839,7 @@ router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmi
     }
 
     const users = await db.execute(sql`SELECT id FROM users WHERE branch_id = 5 AND is_active = true AND role IN ('barista','stajyer') LIMIT 4`);
-    const userIds = users.rows.map((u: any) => u.id);
+    const userIds = users.rows.map((u) => u.id);
 
     let assignmentCount = 0;
     for (const userId of userIds) {
@@ -864,13 +864,13 @@ router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmi
     }
 
     res.json({ success: true, materials: materialCount, assignments: assignmentCount });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed training assignments error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-announcements', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-announcements', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM announcements`);
     if (parseInt((existing.rows[0] as any).c) >= 3) {
@@ -935,13 +935,13 @@ router.post('/api/admin/seed-announcements', isAuthenticated, requireAdmin, asyn
     }
 
     res.json({ success: true, inserted });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed announcements error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const existingBatches = await db.execute(sql`SELECT COUNT(*)::text as c FROM production_batches`);
     if (parseInt((existingBatches.rows[0] as any).c) > 20) {
@@ -1000,13 +1000,13 @@ router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, a
     }
 
     res.json({ success: true, batches: batchCount, outputs: outputCount, qualityChecks: qcCount, days: 10 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed factory extended error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const existingCount = await db.execute(sql`SELECT COUNT(*) as cnt FROM agent_routing_rules`);
     const cnt = Number((existingCount.rows[0] as any).cnt);
@@ -1042,13 +1042,13 @@ router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, asyn
     }
 
     res.json({ success: true, inserted, message: `${inserted} yönlendirme kuralı eklendi` });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed agent routing error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const results: Record<string, any> = {};
 
@@ -1329,13 +1329,13 @@ router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async
       inserted: results,
       finalCounts: finalCounts.rows[0],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed factory full error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, async (req: any, res) => {
+router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, async (req, res) => {
   try {
     const { seedAllKioskAccounts } = await import('../lib/kiosk-accounts');
     const results = await seedAllKioskAccounts();
@@ -1347,7 +1347,7 @@ router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, asy
       updated: results.filter(r => r.status === 'updated').length,
       accounts: results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[SeedKiosk] Error:', error);
     res.status(500).json({ error: error.message });
   }

@@ -209,7 +209,7 @@ router.get("/home-data", isAuthenticated, async (req, res) => {
     });
 
     res.json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 home-data error:", error);
     res.status(500).json({ error: "Veriler yüklenirken hata oluştu" });
   }
@@ -264,7 +264,7 @@ router.get("/modules", isAuthenticated, async (req, res) => {
       .orderBy(desc(trainingModules.isMandatory), trainingModules.title);
 
     res.json(modules);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 modules error:", error);
     res.status(500).json({ error: "Modüller yüklenirken hata oluştu" });
   }
@@ -309,7 +309,7 @@ router.get("/webinars", isAuthenticated, async (req, res) => {
       .limit(limit);
 
     res.json(list);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinars list error:", error);
     res.status(500).json({ error: "Webinarlar yüklenirken hata oluştu" });
   }
@@ -333,7 +333,7 @@ router.post("/webinars", isAuthenticated, async (req, res) => {
 
     const [webinar] = await db.insert(webinars).values(parsed.data).returning();
     res.status(201).json(webinar);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar create error:", error);
     res.status(500).json({ error: "Webinar oluşturulurken hata oluştu" });
   }
@@ -369,7 +369,7 @@ router.patch("/webinars/:id", isAuthenticated, async (req, res) => {
 
     const [updated] = await db.update(webinars).set(updateData).where(eq(webinars.id, id)).returning();
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar update error:", error);
     res.status(500).json({ error: "Webinar güncellenirken hata oluştu" });
   }
@@ -411,7 +411,7 @@ router.post("/webinars/:id/cancel", isAuthenticated, async (req, res) => {
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar cancel error:", error);
     res.status(500).json({ error: "Webinar iptal edilirken hata oluştu" });
   }
@@ -450,7 +450,7 @@ router.post("/webinars/:id/complete", isAuthenticated, async (req, res) => {
       );
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar complete error:", error);
     res.status(500).json({ error: "Webinar tamamlanırken hata oluştu" });
   }
@@ -494,7 +494,7 @@ router.post("/webinars/:id/register", isAuthenticated, async (req, res) => {
     }
 
     res.status(201).json(reg);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar register error:", error);
     res.status(500).json({ error: "Kayıt olurken hata oluştu" });
   }
@@ -516,7 +516,7 @@ router.delete("/webinars/:id/register", isAuthenticated, async (req, res) => {
       );
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar unregister error:", error);
     res.status(500).json({ error: "Kayıt silinirken hata oluştu" });
   }
@@ -549,7 +549,7 @@ router.get("/webinars/:id/participants", isAuthenticated, async (req, res) => {
       .orderBy(webinarRegistrations.registeredAt);
 
     res.json(participants);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar participants error:", error);
     res.status(500).json({ error: "Katılımcılar yüklenirken hata oluştu" });
   }
@@ -587,7 +587,7 @@ router.patch("/webinars/:id/attendance", isAuthenticated, async (req, res) => {
       );
 
     res.json({ success: true, updated: userIds.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 webinar attendance error:", error);
     res.status(500).json({ error: "Katılım durumu güncellenirken hata oluştu" });
   }
@@ -628,7 +628,7 @@ router.get("/webinars/admin/all", isAuthenticated, async (req, res) => {
       .orderBy(desc(webinars.webinarDate));
 
     res.json(list);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 admin webinars error:", error);
     res.status(500).json({ error: "Webinarlar yüklenirken hata oluştu" });
   }
@@ -748,7 +748,7 @@ router.post("/seed-webinars", isAuthenticated, async (req, res) => {
     }
 
     res.json({ message: "3 webinar seed edildi", count: 3 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 seed-webinars error:", error);
     res.status(500).json({ error: "Seed işlemi başarısız" });
   }
@@ -775,7 +775,7 @@ router.get("/category-counts", isAuthenticated, async (req, res) => {
       result[row.category || "genel"] = row.count;
     }
     res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("academy-v3 category-counts error:", error);
     res.status(500).json({ error: "Kategori sayıları yüklenirken hata oluştu" });
   }

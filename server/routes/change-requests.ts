@@ -35,7 +35,7 @@ router.post('/api/change-requests', isAuthenticated, async (req: Request, res: R
     });
 
     return res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[change-requests] POST error:', error);
     return res.status(500).json({ error: 'Sunucu hatası' });
   }
@@ -60,7 +60,7 @@ router.get('/api/change-requests', isAuthenticated, async (req: Request, res: Re
       .orderBy(desc(dataChangeRequests.createdAt));
 
     return res.json(results);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[change-requests] GET list error:', error);
     return res.status(500).json({ error: 'Sunucu hatası' });
   }
@@ -80,7 +80,7 @@ router.get('/api/change-requests/:id', isAuthenticated, async (req: Request, res
     }
 
     return res.json(record);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[change-requests] GET detail error:', error);
     return res.status(500).json({ error: 'Sunucu hatası' });
   }
@@ -161,7 +161,7 @@ router.patch('/api/admin/change-requests/:id', isAuthenticated, async (req: Requ
           'change_request',
           record.id,
         );
-      } catch (updateErr: any) {
+      } catch (updateErr) {
         console.error('[change-requests] Update error:', updateErr);
         return res.status(500).json({ error: 'Hedef kayıt güncellenemedi' });
       }
@@ -197,7 +197,7 @@ router.patch('/api/admin/change-requests/:id', isAuthenticated, async (req: Requ
     });
 
     return res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[change-requests] PATCH error:', error);
     return res.status(500).json({ error: 'Sunucu hatası' });
   }

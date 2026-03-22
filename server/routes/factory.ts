@@ -132,31 +132,31 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   return { allowed: true, remainingAttempts: MAX_ATTEMPTS - record.count };
 }
 
-  router.get('/api/factory/products', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/products', isAuthenticated, async (req, res) => {
     try {
       const category = req.query.category as string | undefined;
       const products = await storage.getFactoryProducts(category);
       res.json(products);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get factory products error:", error);
       res.status(500).json({ message: "Ürünler getirilemedi" });
     }
   });
 
-  router.get('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/products/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const product = await storage.getFactoryProduct(id);
       if (!product) return res.status(404).json({ message: "Ürün bulunamadı" });
       res.json(product);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get factory product error:", error);
       res.status(500).json({ message: "Ürün getirilemedi" });
     }
   });
 
-  router.post('/api/factory/products', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/products', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -164,13 +164,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
       const product = await storage.createFactoryProduct(req.body);
       res.json(product);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create factory product error:", error);
       res.status(500).json({ message: "Ürün oluşturulamadı" });
     }
   });
 
-  router.patch('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/factory/products/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -180,13 +180,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const product = await storage.updateFactoryProduct(id, req.body);
       res.json(product);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update factory product error:", error);
       res.status(500).json({ message: "Ürün güncellenemedi" });
     }
   });
 
-  router.delete('/api/factory/products/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/factory/products/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -196,40 +196,40 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       await storage.deleteFactoryProduct(id);
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete factory product error:", error);
       res.status(500).json({ message: "Ürün silinemedi" });
     }
   });
 
   // Production Batches
-  router.get('/api/factory/batches', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/batches', isAuthenticated, async (req, res) => {
     try {
       const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
       if (productId !== undefined && isNaN(productId)) return res.status(400).json({ message: "Geçersiz productId" });
       const status = req.query.status as string | undefined;
       const batches = await storage.getProductionBatches(productId, status);
       res.json(batches);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get production batches error:", error);
       res.status(500).json({ message: "Partiler getirilemedi" });
     }
   });
 
-  router.get('/api/factory/batches/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/batches/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const batch = await storage.getProductionBatch(id);
       if (!batch) return res.status(404).json({ message: "Parti bulunamadı" });
       res.json(batch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get production batch error:", error);
       res.status(500).json({ message: "Parti getirilemedi" });
     }
   });
 
-  router.post('/api/factory/batches', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/batches', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -240,13 +240,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         producedById: req.user.id
       });
       res.json(batch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create production batch error:", error);
       res.status(500).json({ message: "Parti oluşturulamadı" });
     }
   });
 
-  router.patch('/api/factory/batches/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/factory/batches/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -256,27 +256,27 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
       const batch = await storage.updateProductionBatch(id, req.body);
       res.json(batch);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update production batch error:", error);
       res.status(500).json({ message: "Parti güncellenemedi" });
     }
   });
 
   // Branch Orders
-  router.get('/api/factory/orders', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/orders', isAuthenticated, async (req, res) => {
     try {
       const branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
       if (branchId !== undefined && isNaN(branchId)) return res.status(400).json({ message: "Geçersiz branchId" });
       const status = req.query.status as string | undefined;
       const orders = await storage.getBranchOrders(branchId, status);
       res.json(orders);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get branch orders error:", error);
       res.status(500).json({ message: "Siparişler getirilemedi" });
     }
   });
 
-  router.get('/api/factory/orders/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/orders/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -284,13 +284,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       if (!order) return res.status(404).json({ message: "Sipariş bulunamadı" });
       const items = await storage.getBranchOrderItems(id);
       res.json({ ...order, items });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get branch order error:", error);
       res.status(500).json({ message: "Sipariş getirilemedi" });
     }
   });
 
-  router.post('/api/factory/orders', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/orders', isAuthenticated, async (req, res) => {
     try {
       const { items, ...orderData } = req.body;
       const orderNumber = `ORD-${Date.now()}`;
@@ -310,13 +310,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
       
       res.json(order);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create branch order error:", error);
       res.status(500).json({ message: "Sipariş oluşturulamadı" });
     }
   });
 
-  router.patch('/api/factory/orders/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/factory/orders/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -328,26 +328,26 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       
       const order = await storage.updateBranchOrder(id, updates);
       res.json(order);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update branch order error:", error);
       res.status(500).json({ message: "Sipariş güncellenemedi" });
     }
   });
 
   // Factory Inventory
-  router.get('/api/factory/inventory', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/inventory', isAuthenticated, async (req, res) => {
     try {
       const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
       if (productId !== undefined && isNaN(productId)) return res.status(400).json({ message: "Geçersiz productId" });
       const inventory = await storage.getFactoryInventory(productId);
       res.json(inventory);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get factory inventory error:", error);
       res.status(500).json({ message: "Stok bilgisi getirilemedi" });
     }
   });
 
-  router.post('/api/factory/inventory', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/inventory', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -356,7 +356,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const { productId, batchId, quantity } = req.body;
       const inventory = await storage.updateFactoryInventory(productId, batchId, quantity, req.user.id);
       res.json(inventory);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update factory inventory error:", error);
       res.status(500).json({ message: "Stok güncellenemedi" });
     }
@@ -387,7 +387,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(showAll ? undefined : eq(factoryStations.isActive, true))
         .orderBy(factoryStations.sortOrder);
       res.json(stationsRaw);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory stations:", error);
       res.status(500).json({ message: "İstasyonlar alınamadı" });
     }
@@ -414,7 +414,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).returning();
 
       res.status(201).json(newStation);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating station:", error);
       res.status(500).json({ message: "İstasyon oluşturulamadı" });
     }
@@ -446,7 +446,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating station:", error);
       res.status(500).json({ message: "İstasyon güncellenemedi" });
     }
@@ -469,7 +469,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, message: "İstasyon silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting station:", error);
       res.status(500).json({ message: "İstasyon silinemedi" });
     }
@@ -494,7 +494,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).from(factoryStaffPins)
         .orderBy(factoryStaffPins.createdAt);
       res.json(pinRecords);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching pins:", error);
       res.status(500).json({ message: "PIN kayıtları alınamadı" });
     }
@@ -536,7 +536,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).returning();
 
       res.status(201).json({ success: true, id: newPin.id });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating PIN:", error);
       res.status(500).json({ message: "PIN oluşturulamadı" });
     }
@@ -572,7 +572,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error resetting PIN:", error);
       res.status(500).json({ message: "PIN sıfırlanamadı" });
     }
@@ -600,7 +600,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error unlocking account:", error);
       res.status(500).json({ message: "Hesap kilidi açılamadı" });
     }
@@ -624,7 +624,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, message: "PIN silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting PIN:", error);
       res.status(500).json({ message: "PIN silinemedi" });
     }
@@ -654,7 +654,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(users.firstName);
       
       res.json(factoryStaff);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory staff:", error);
       res.status(500).json({ message: "Fabrika personeli alınamadı" });
     }
@@ -765,7 +765,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         activeSession: activeSession || null,
         kioskToken,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in kiosk login:", error);
       res.status(500).json({ message: "Giriş yapılamadı" });
     }
@@ -851,13 +851,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         activeSession: activeSession || null,
         kioskToken,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in kiosk login-by-username:", error);
       res.status(500).json({ message: "Giriş yapılamadı" });
     }
   });
 
-  const activeSessionsHandler = async (req: any, res: any) => {
+  const activeSessionsHandler = async (req, res) => {
     try {
       const user = req.user as any;
       if (!isHQRole(user.role)) {
@@ -935,7 +935,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in device auth:", error);
       res.status(500).json({ message: "Doğrulama başarısız" });
     }
@@ -963,7 +963,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         username: usernameConfig?.configValue || 'Fabrika',
         password: '****',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching device credentials:", error);
       res.status(500).json({ message: "Bilgiler alınamadı" });
     }
@@ -1006,7 +1006,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, message: "Kiosk giriş bilgileri güncellendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating device credentials:", error);
       res.status(500).json({ message: "Bilgiler güncellenemedi" });
     }
@@ -1074,7 +1074,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
             source: 'kiosk',
             deviceInfo: 'factory-kiosk',
           });
-        } catch (pdksErr: any) {
+        } catch (pdksErr) {
           console.warn("[FAB-KIOSK] PDKS clock-in write failed (non-blocking):", pdksErr.message);
         }
       }
@@ -1102,7 +1102,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         productionRun,
         station,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting shift:", error);
       res.status(500).json({ message: "Vardiya başlatılamadı" });
     }
@@ -1162,7 +1162,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         productionRun,
         station,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error assigning station:", error);
       res.status(500).json({ message: "İstasyon atanamadı" });
     }
@@ -1254,7 +1254,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         breakCount: breaks.length,
         shiftCount: sessions.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching worker today stats:", error);
       res.status(500).json({ message: "İstatistikler alınamadı" });
     }
@@ -1331,7 +1331,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         totalProduced: (session.totalProduced || 0) + produced,
         totalWaste: (session.totalWaste || 0) + waste,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error logging production:", error);
       res.status(500).json({ message: "Üretim kaydedilemedi" });
     }
@@ -1402,7 +1402,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         newProductionRun,
         station,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error switching station:", error);
       res.status(500).json({ message: "İstasyon değiştirilemedi" });
     }
@@ -1661,7 +1661,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           complianceStatus,
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error ending shift:", error);
       res.status(500).json({ message: "Vardiya sonlandırılamadı" });
     }
@@ -1701,7 +1701,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, message: "PIN güncellendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error setting PIN:", error);
       res.status(500).json({ message: "PIN ayarlanamadı" });
     }
@@ -1750,7 +1750,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         efficiency: totalProduced > 0 ? ((totalProduced - totalWaste) / totalProduced * 100).toFixed(1) : 0,
         stationProduction,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory dashboard:", error);
       res.status(500).json({ message: "Dashboard verileri alınamadı" });
     }
@@ -1758,7 +1758,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
 
   // Cost dashboard stats for fabrika dashboard - admin & fabrika_mudur only
-  router.get('/api/factory/cost-dashboard-stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/cost-dashboard-stats', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       if (user.role !== 'admin' && user.role !== 'fabrika_mudur') {
@@ -1790,13 +1790,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         avgProfitMargin: (Number((marginResult as any)?.avg_margin || 1) - 1) * 100,
         calculationsThisMonth: Number((calcCount as any)?.count || 0),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching cost dashboard stats:", error);
       res.status(500).json({ message: "Maliyet istatistikleri alınamadı" });
     }
   });
   // Quality Control Overview for fabrika dashboard
-  router.get('/api/factory/quality-overview', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/quality-overview', isAuthenticated, async (req, res) => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -1826,14 +1826,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         pendingCheck,
         qualityRate,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching quality overview:", error);
       res.status(500).json({ message: "Kalite kontrol özeti alınamadı" });
     }
   });
 
   // Stock Overview for fabrika dashboard
-  router.get('/api/factory/stock-overview', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/stock-overview', isAuthenticated, async (req, res) => {
     try {
       const rawMaterialCountRes = await db.execute(sql`
         SELECT COUNT(*) as count FROM raw_materials WHERE is_active = true
@@ -1856,7 +1856,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         lowStockCount: Number(lowStockRes.rows[0]?.count || 0),
         lastCountDate: lastCountRes.rows[0]?.last_count || null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching stock overview:", error);
       res.json({
         totalRawMaterials: 0,
@@ -1868,7 +1868,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Waste dashboard stats for fabrika dashboard
-  router.get('/api/factory/waste-dashboard-stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/waste-dashboard-stats', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const canSeeCostData = userRole === 'admin' || userRole === 'fabrika_mudur';
@@ -1927,26 +1927,26 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         totalWasteCostTl: canSeeCostData ? Number(row.total_waste_cost_tl || 0) : null,
         overToleranceCount,
         overToleranceRate: totalBatches > 0 ? ((overToleranceCount / totalBatches) * 100).toFixed(1) : '0',
-        trend: (trendData.rows as any[]).map((t: any) => ({
+        trend: (trendData.rows as any[]).map((t) => ({
           date: t.date,
           wastePercent: Number(t.waste_percent || 0),
           batchCount: Number(t.batch_count || 0),
         })),
-        productRanking: (productRanking.rows as any[]).map((p: any) => ({
+        productRanking: (productRanking.rows as any[]).map((p) => ({
           productId: p.product_id,
           name: p.name,
           wastePercent: Number(p.waste_percent || 0),
           batchCount: Number(p.batch_count || 0),
         })),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching waste dashboard stats:", error);
       res.status(500).json({ message: "Fire istatistikleri alınamadı" });
     }
   });
 
   // GET /api/factory/product-recipe-info/:productId - Get recipe info for production planning auto-fill
-  router.get('/api/factory/product-recipe-info/:productId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/product-recipe-info/:productId', isAuthenticated, async (req, res) => {
     try {
       const productId = parseInt(req.params.productId);
       if (isNaN(productId)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -2009,7 +2009,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         } : null,
         stationId,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching product recipe info:", error);
       res.status(500).json({ message: "Ürün reçete bilgisi alınamadı" });
     }
@@ -2052,7 +2052,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         productionRun,
         station,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching session:", error);
       res.status(500).json({ message: "Oturum bilgisi alınamadı" });
     }
@@ -2111,21 +2111,21 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(factoryShiftSessions.id, sessionId));
 
       res.json({ success: true, phase, updatedAt: now });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating phase:", error);
       res.status(500).json({ message: "Faz güncellenemedi" });
     }
   });
 
   // Fire/Zayiat Sebepleri listesi
-  router.get('/api/factory/waste-reasons', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/waste-reasons', isAuthenticated, async (req, res) => {
     try {
       const showAll = req.query.all === 'true';
       const reasons = await db.select().from(factoryWasteReasons)
         .where(showAll ? undefined : eq(factoryWasteReasons.isActive, true))
         .orderBy(factoryWasteReasons.category, factoryWasteReasons.name);
       res.json(reasons);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching waste reasons:", error);
       res.status(500).json({ message: "Zaiyat sebepleri alınamadı" });
     }
@@ -2149,7 +2149,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).returning();
 
       res.status(201).json(newReason);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating waste reason:", error);
       res.status(500).json({ message: "Fire sebebi oluşturulamadı" });
     }
@@ -2178,7 +2178,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating waste reason:", error);
       res.status(500).json({ message: "Fire sebebi güncellenemedi" });
     }
@@ -2200,7 +2200,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, message: "Fire sebebi silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting waste reason:", error);
       res.status(500).json({ message: "Fire sebebi silinemedi" });
     }
@@ -2216,7 +2216,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const specs = await db.select().from(factoryQualitySpecs)
         .orderBy(factoryQualitySpecs.stationId, factoryQualitySpecs.sortOrder);
       res.json(specs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching quality specs:", error);
       res.status(500).json({ message: "Kalite kriterleri alınamadı" });
     }
@@ -2245,7 +2245,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).returning();
 
       res.json(spec);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating quality spec:", error);
       res.status(500).json({ message: "Kalite kriteri oluşturulamadı" });
     }
@@ -2283,7 +2283,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating quality spec:", error);
       res.status(500).json({ message: "Kalite kriteri güncellenemedi" });
     }
@@ -2305,7 +2305,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, message: "Kalite kriteri silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting quality spec:", error);
       res.status(500).json({ message: "Kalite kriteri silinemedi" });
     }
@@ -2328,7 +2328,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(factoryQualitySpecs.sortOrder);
 
       res.json(specs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching station quality specs:", error);
       res.status(500).json({ message: "İstasyon kalite kriterleri alınamadı" });
     }
@@ -2354,7 +2354,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       .leftJoin(factoryStations, eq(factoryTeams.stationId, factoryStations.id))
       .orderBy(factoryTeams.name);
       res.json(teams);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching teams:", error);
       res.status(500).json({ message: "Takımlar alınamadı" });
     }
@@ -2370,7 +2370,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         leaderId,
       }).returning();
       res.json(team);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating team:", error);
       res.status(500).json({ message: "Takım oluşturulamadı" });
     }
@@ -2395,7 +2395,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       .innerJoin(users, eq(factoryTeamMembers.userId, users.id))
       .where(and(eq(factoryTeamMembers.teamId, teamId), eq(factoryTeamMembers.isActive, true)));
       res.json(members);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching team members:", error);
       res.status(500).json({ message: "Takım üyeleri alınamadı" });
     }
@@ -2413,7 +2413,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         role: role || 'member',
       }).returning();
       res.json(member);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding team member:", error);
       res.status(500).json({ message: "Üye eklenemedi" });
     }
@@ -2471,7 +2471,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       .orderBy(factoryProductionPlans.planDate);
 
       res.json(plans);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching production plans:", error);
       res.status(500).json({ message: "Üretim planları alınamadı" });
     }
@@ -2520,7 +2520,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       .orderBy(factoryProductionPlans.planDate);
 
       res.json(plans);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching today plans:", error);
       res.status(500).json({ message: "Bugünkü planlar alınamadı" });
     }
@@ -2550,7 +2550,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         createdBy: req.user?.id,
       }).returning();
       res.json(plan);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating production plan:", error);
       res.status(500).json({ message: "Üretim planı oluşturulamadı" });
     }
@@ -2615,7 +2615,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         rejectionRate: parseFloat(rejectionRate as string) || 0,
         avgEfficiency: parseFloat(efficiency as string) || 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory analytics stats:", error);
       res.status(500).json({ message: "İstatistikler alınamadı" });
     }
@@ -2655,7 +2655,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }));
 
       res.json(performance);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching station performance:", error);
       res.status(500).json({ message: "İstasyon performansı alınamadı" });
     }
@@ -2700,7 +2700,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching daily production:", error);
       res.status(500).json({ message: "Günlük üretim verileri alınamadı" });
     }
@@ -2737,7 +2737,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(factoryProductionPlans.id, planId))
         .returning();
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating production plan:", error);
       res.status(500).json({ message: "Üretim planı güncellenemedi" });
     }
@@ -2836,7 +2836,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         weeklySummary: weeklySummary || null,
         complianceScore: todayCompliance?.complianceScore || 100,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching shift compliance warnings:", error);
       res.status(500).json({ message: "Vardiya uyumluluk verileri alınamadı" });
     }
@@ -2878,7 +2878,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(factoryShiftCompliance.id, complianceId));
 
       res.json({ suggestion });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating compliance suggestion:", error);
       res.status(500).json({ message: "Öneri oluşturulamadı" });
     }
@@ -2914,11 +2914,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const records = await query;
 
       const filtered = statusFilter 
-        ? records.filter((r: any) => r.compliance.complianceStatus === statusFilter)
+        ? records.filter((r) => r.compliance.complianceStatus === statusFilter)
         : records;
 
       res.json(filtered);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching shift compliance list:", error);
       res.status(500).json({ message: "Liste alınamadı" });
     }
@@ -2952,7 +2952,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const summaries = await query;
 
       // Eksik saati olanları filtrele
-      const withMissing = summaries.filter((s: any) => 
+      const withMissing = summaries.filter((s) => 
         s.summary.missingMinutes && s.summary.missingMinutes > 0
       );
 
@@ -2963,7 +2963,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           sum + (s.summary.missingMinutes || 0), 0
         ),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching weekly summaries:", error);
       res.status(500).json({ message: "Haftalık özetler alınamadı" });
     }
@@ -2989,20 +2989,20 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(inArray(factoryWeeklyAttendanceSummary.id, summaryIds));
 
       res.json({ success: true, message: "Muhasebe bildirimi gönderildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error reporting to accounting:", error);
       res.status(500).json({ message: "Bildirim gönderilemedi" });
     }
   });
 
   // Fabrika ürünleri listesi (duplicate kaldırıldı - yukarıda mevcut)
-  router.get('/api/factory/catalog/products', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/catalog/products', isAuthenticated, async (req, res) => {
     try {
       const products = await db.select().from(factoryProducts)
         .where(eq(factoryProducts.isActive, true))
         .orderBy(factoryProducts.category, factoryProducts.name);
       res.json(products);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory products:", error);
       res.status(500).json({ message: "Ürünler alınamadı" });
     }
@@ -3137,7 +3137,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         breakLogId: breakLog.id,
         message: breakReason === 'gorev_bitis' ? 'Görev tamamlandı' : 'Mola kaydedildi'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error logging break:", error);
       res.status(500).json({ message: "Mola kaydedilemedi" });
     }
@@ -3191,7 +3191,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json({ success: true, durationMinutes, message: "Mola sonlandırıldı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error ending break:", error);
       res.status(500).json({ message: "Mola sonlandırılamadı" });
     }
@@ -3333,7 +3333,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         totalActiveMinutes,
         workers: scoredWorkers,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error calculating collaborative scores:', error);
       res.status(500).json({ message: 'Ortak skor hesaplanamadı' });
     }
@@ -3417,14 +3417,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           ? `Arıza bildirildi, ${notifiedPerson} bilgilendirildi`
           : 'Arıza bildirildi ancak yetkili bulunamadı',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reporting fault:', error);
       res.status(500).json({ message: 'Arıza bildirilemedi' });
     }
   });
 
   // Aktif çalışanlar listesi (dashboard için)
-  router.get('/api/factory/active-workers', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/active-workers', isAuthenticated, async (req, res) => {
     try {
       const activeSessions = await db.select({
         sessionId: factoryShiftSessions.id,
@@ -3443,14 +3443,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(factoryShiftSessions.status, 'active'));
 
       res.json(activeSessions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching active workers:", error);
       res.status(500).json({ message: "Aktif çalışanlar alınamadı" });
     }
   });
 
   // Kalite Kontrol - Bekleyen üretim çıktıları
-  router.get('/api/factory/quality/pending', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/quality/pending', isAuthenticated, async (req, res) => {
     try {
       const outputs = await db.select({
         id: factoryProductionOutputs.id,
@@ -3475,14 +3475,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(desc(factoryProductionOutputs.createdAt));
 
       res.json(outputs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching pending outputs:", error);
       res.status(500).json({ message: "Bekleyen çıktılar alınamadı" });
     }
   });
 
   // Kalite Kontrol - Onaylanan üretim çıktıları
-  router.get('/api/factory/quality/approved', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/quality/approved', isAuthenticated, async (req, res) => {
     try {
       // Parse date range from query params
       const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
@@ -3519,14 +3519,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .limit(50);
 
       res.json(outputs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching approved outputs:", error);
       res.status(500).json({ message: "Onaylanan çıktılar alınamadı" });
     }
   });
 
   // Kalite Kontrol - Reddedilen üretim çıktıları
-  router.get('/api/factory/quality/rejected', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/quality/rejected', isAuthenticated, async (req, res) => {
     try {
       // Parse date range from query params
       const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
@@ -3563,14 +3563,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .limit(50);
 
       res.json(outputs);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching rejected outputs:", error);
       res.status(500).json({ message: "Reddedilen çıktılar alınamadı" });
     }
   });
 
   // Kalite Kontrol - Onay/Red işlemi
-  router.post('/api/factory/quality/review', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/quality/review', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const allowedRoles = ['admin', 'fabrika_mudur', 'fabrika_sorumlu', 'inspector'];
@@ -3606,13 +3606,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         output: updated,
         message: decision === 'approved' ? 'Üretim onaylandı' : 'Üretim reddedildi'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error reviewing output:", error);
       res.status(500).json({ message: "Kalite kontrolü kaydedilemedi" });
     }
   });
 
-  router.post('/api/factory/quality/technician-review', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/quality/technician-review', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const allowedRoles = ['admin', 'fabrika_mudur', 'fabrika_sorumlu', 'inspector', 'fabrika_operator', 'kalite_kontrol'];
@@ -3716,13 +3716,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           ? 'Teknisyen kontrolü tamamlandı, gıda mühendisi onayı bekleniyor'
           : finalDecision === 'approved' ? 'Üretim onaylandı' : 'Üretim reddedildi'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in technician review:", error);
       res.status(500).json({ message: "Teknisyen kontrolü kaydedilemedi" });
     }
   });
 
-  router.patch('/api/factory/quality/engineer-approve/:checkId', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/factory/quality/engineer-approve/:checkId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       if (user.role !== 'gida_muhendisi' && user.role !== 'admin') {
@@ -3796,13 +3796,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           : decision === 'hold' ? 'Ürün beklemeye alındı'
           : 'Ürün reddedildi'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error in engineer approval:", error);
       res.status(500).json({ message: "Gıda mühendisi onayı kaydedilemedi" });
     }
   });
 
-  router.get('/api/factory/quality/pending-engineer', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/quality/pending-engineer', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_quality', 'view')) {
@@ -3840,14 +3840,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(desc(factoryQualityChecks.checkedAt));
 
       res.json(checks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching pending engineer checks:", error);
       res.status(500).json({ message: "Mühendis onayı bekleyen kayıtlar alınamadı" });
     }
   });
 
   // Fabrika Analitiği - Personel performansı
-  router.get('/api/factory/analytics/workers', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/analytics/workers', isAuthenticated, async (req, res) => {
     try {
       const period = req.query.period as string || 'weekly';
       
@@ -3917,14 +3917,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }));
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching worker analytics:", error);
       res.status(500).json({ message: "Personel analitiği alınamadı" });
     }
   });
 
   // Fabrika Analitiği - İstasyon performansı
-  router.get('/api/factory/analytics/stations', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/analytics/stations', isAuthenticated, async (req, res) => {
     try {
       const period = req.query.period as string || 'weekly';
       
@@ -3960,14 +3960,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }));
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching station analytics:", error);
       res.status(500).json({ message: "İstasyon analitiği alınamadı" });
     }
   });
 
   // Fabrika Analitiği - Zaiyat analizi
-  router.get('/api/factory/analytics/waste', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/analytics/waste', isAuthenticated, async (req, res) => {
     try {
       const period = req.query.period as string || 'weekly';
       
@@ -4004,7 +4004,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }));
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching waste analytics:", error);
       res.status(500).json({ message: "Zaiyat analitiği alınamadı" });
     }
@@ -4213,7 +4213,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           waste: Math.round(Number(d.waste) * 100) / 100,
         })),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching production stats:", error);
       res.status(500).json({ message: "Üretim istatistikleri alınamadı" });
     }
@@ -4334,7 +4334,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         productName: product?.name || 'Bilinmeyen',
         workers: workersRaw,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching worker comparison:", error);
       res.status(500).json({ message: "Çalışan karşılaştırması alınamadı" });
     }
@@ -4510,7 +4510,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         peakHours,
         monthlyDataPoints,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching worker score:", error);
       res.status(500).json({ message: "Çalışan skoru alınamadı" });
     }
@@ -4615,7 +4615,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         updated: results.length,
         workers: results,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating worker scores:", error);
       res.status(500).json({ message: "Çalışan skorları güncellenemedi" });
     }
@@ -4693,7 +4693,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         recommendations,
         generatedAt: new Date().toISOString()
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating rotation report:", error);
       res.status(500).json({ message: "Rotasyon raporu oluşturulamadı" });
     }
@@ -4781,7 +4781,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         recommendations,
         generatedAt: new Date().toISOString()
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating error report:", error);
       res.status(500).json({ message: "Hata raporu oluşturulamadı" });
     }
@@ -4874,7 +4874,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         recommendations,
         generatedAt: new Date().toISOString()
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating efficiency report:", error);
       res.status(500).json({ message: "Verimlilik raporu oluşturulamadı" });
     }
@@ -4887,7 +4887,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       
       // Simply redirect to GET endpoints - they generate reports on demand
       res.json({ success: true, message: "Rapor oluşturuldu" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating AI report:", error);
       res.status(500).json({ message: "Rapor oluşturulamadı" });
     }
@@ -4898,7 +4898,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // ========================================
 
   // Şube kiosk ayarlarını getir veya oluştur
-  router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req: any, res) => {
+  router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
       if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -4917,13 +4917,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
       
       res.json(settings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching kiosk settings:", error);
       res.status(500).json({ message: "Kiosk ayarları yüklenirken hata oluştu" });
     }
   });
 
-  router.get('/api/factory-workers', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory-workers', isAuthenticated, async (req, res) => {
     try {
       const result = await db.execute(sql`
         SELECT id, first_name, last_name, role, username
@@ -4934,12 +4934,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       `);
       const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
       res.json(rows);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory workers:", error);
       res.status(500).json({ message: "Fabrika çalışanları alınamadı" });
     }
   });
-  router.get('/api/factory-management-scores', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory-management-scores', isAuthenticated, async (req, res) => {
     try {
       const { year } = req.query;
       const targetYear = year ? parseInt(year as string) : new Date().getFullYear();
@@ -4950,14 +4950,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       `);
       const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
       res.json(rows);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching factory scores:", error);
       res.status(500).json({ message: "Fabrika yönetim skorları alınamadı" });
     }
   });
 
   // Calculate/update factory management score for a month
-  router.post('/api/factory-management-scores/calculate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory-management-scores/calculate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const role = user.role as string;
@@ -5072,7 +5072,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.json(scoreRecord);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error calculating factory score:", error);
       res.status(500).json({ message: "Fabrika skoru hesaplanamadı" });
     }
@@ -5082,7 +5082,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // HACCP CHECK RECORDS
   // ========================================
 
-  router.post('/api/factory/haccp', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/haccp', isAuthenticated, async (req, res) => {
     try {
       const { checkPoint, stationId, result, temperatureValue, correctiveAction, notes, productionOutputId, checkDate } = req.body;
 
@@ -5128,13 +5128,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
 
       res.status(201).json(record);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating HACCP record:", error);
       res.status(500).json({ message: "HACCP kaydı oluşturulamadı" });
     }
   });
 
-  router.get('/api/factory/haccp', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/haccp', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_food_safety', 'view')) {
@@ -5180,13 +5180,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(desc(haccpCheckRecords.checkDate));
 
       res.json(records);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching HACCP records:", error);
       res.status(500).json({ message: "HACCP kayıtları getirilemedi" });
     }
   });
 
-  router.get('/api/factory/haccp/summary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/haccp/summary', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_food_safety', 'view')) {
@@ -5218,7 +5218,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         complianceRate: total > 0 ? Math.round((summaryMap.pass / total) * 100) : 100,
         period: '30_days',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching HACCP summary:", error);
       res.status(500).json({ message: "HACCP özeti getirilemedi" });
     }
@@ -5228,7 +5228,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // SEVKİYAT SİSTEMİ — Shipment Management
   // ========================================
 
-  router.get('/api/factory/shipments', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/shipments', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_shipments', 'view')) {
@@ -5268,13 +5268,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .orderBy(desc(factoryShipments.createdAt));
 
       res.json(shipments);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get shipments error:", error);
       res.status(500).json({ message: "Sevkiyatlar getirilemedi" });
     }
   });
 
-  router.get('/api/factory/shipments/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/shipments/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_shipments', 'view')) {
@@ -5325,13 +5325,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(factoryShipmentItems.shipmentId, id));
 
       res.json({ ...shipment, items });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get shipment detail error:", error);
       res.status(500).json({ message: "Sevkiyat detayı getirilemedi" });
     }
   });
 
-  router.post('/api/factory/shipments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/shipments', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'fabrika_mudur', 'coach'].includes(userRole)) {
@@ -5487,13 +5487,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       auditLog(req, { eventType: "shipment.created", action: "created", resource: "factory_shipments", resourceId: String(shipment.id), after: { shipmentNumber, branchId, itemCount: resolvedItems.length, transferType, totalCost, totalSalePrice } });
 
       res.status(201).json(shipment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create shipment error:", error);
       res.status(500).json({ message: "Sevkiyat oluşturulamadı" });
     }
   });
 
-  router.patch('/api/factory/shipments/:id/status', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/factory/shipments/:id/status', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'fabrika_mudur', 'coach'].includes(userRole)) {
@@ -5770,7 +5770,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .returning();
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.message?.startsWith('INSUFFICIENT_STOCK:')) {
         return res.status(400).json({
           message: "Yetersiz stok: " + error.message.replace('INSUFFICIENT_STOCK:', '')
@@ -5786,7 +5786,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.delete('/api/factory/shipments/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/factory/shipments/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'fabrika_mudur', 'coach'].includes(userRole)) {
@@ -5825,13 +5825,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       });
 
       res.json({ success: true, message: "Sevkiyat silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete shipment error:", error);
       res.status(500).json({ message: "Sevkiyat silinemedi" });
     }
   });
 
-  router.get('/api/factory/dashboard/food-engineer-stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/dashboard/food-engineer-stats', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_quality', 'view')) {
@@ -5934,13 +5934,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           lowStockCount,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Food engineer stats error:", error);
       res.status(500).json({ message: "İstatistikler getirilemedi" });
     }
   });
 
-  router.post('/api/factory/seed-data', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/seed-data', isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       if (user.role !== 'admin') {
@@ -5991,7 +5991,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         stations: insertedStations.length,
         products: insertedProducts.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Factory seed error:", error);
       res.status(500).json({ message: "Seed data oluşturulamadı" });
     }
@@ -6001,7 +6001,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // T007: KAHVE KAVURMA KAYIT SİSTEMİ
   // ========================================
 
-  router.post("/api/factory/roasting", isAuthenticated, async (req: any, res) => {
+  router.post("/api/factory/roasting", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_production', 'create')) {
@@ -6086,13 +6086,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       });
 
       res.status(201).json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Roasting log create error:", error);
       res.status(500).json({ message: "Kavurma kaydı oluşturulamadı" });
     }
   });
 
-  router.get("/api/factory/roasting", isAuthenticated, async (req: any, res) => {
+  router.get("/api/factory/roasting", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_production', 'view')) {
@@ -6137,13 +6137,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }));
 
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Roasting list error:", error);
       res.status(500).json({ message: "Kavurma kayıtları listelenemedi" });
     }
   });
 
-  router.get("/api/factory/roasting/stats", isAuthenticated, async (req: any, res) => {
+  router.get("/api/factory/roasting/stats", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_production', 'view')) {
@@ -6169,7 +6169,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .groupBy(coffeeRoastingLogs.roastDegree);
 
       res.json({ stats: stats[0], degreeBreakdown });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Roasting stats error:", error);
       res.status(500).json({ message: "Kavurma istatistikleri alınamadı" });
     }
@@ -6179,7 +6179,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // T005: LOT/PARTİ İZLENEBİLİRLİK SİSTEMİ
   // ========================================
 
-  router.post("/api/factory/lots", isAuthenticated, async (req: any, res) => {
+  router.post("/api/factory/lots", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_production', 'create')) {
@@ -6213,13 +6213,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).returning();
 
       res.status(201).json(lot);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("LOT create error:", error);
       res.status(500).json({ message: "LOT oluşturulamadı" });
     }
   });
 
-  router.get("/api/factory/lots", isAuthenticated, async (req: any, res) => {
+  router.get("/api/factory/lots", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_production', 'view')) {
@@ -6264,13 +6264,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }));
 
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("LOT list error:", error);
       res.status(500).json({ message: "LOT listesi alınamadı" });
     }
   });
 
-  router.get("/api/factory/lots/:lotNumber/trace", isAuthenticated, async (req: any, res) => {
+  router.get("/api/factory/lots/:lotNumber/trace", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!hasPermission(userRole, 'factory_production', 'view')) {
@@ -6310,7 +6310,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         qualityCheck: qualityCheck[0] || null,
         shipments: shipmentItems,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("LOT trace error:", error);
       res.status(500).json({ message: "LOT izlenebilirlik bilgisi alınamadı" });
     }
@@ -6320,7 +6320,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // T009: KİOSK BASİTLEŞTİRME (3 BUTON AKIŞI)
   // ========================================
 
-  router.post("/api/factory/kiosk/quick-start", isKioskAuthenticated, async (req: any, res) => {
+  router.post("/api/factory/kiosk/quick-start", isKioskAuthenticated, async (req, res) => {
     try {
       const { stationId } = req.body;
       const userId = (req as any).kioskUserId || req.user?.id;
@@ -6347,13 +6347,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }).returning();
 
       res.status(201).json({ session, message: "Vardiya başlatıldı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Quick start error:", error);
       res.status(500).json({ message: "Vardiya başlatılamadı" });
     }
   });
 
-  router.post("/api/factory/kiosk/quick-complete", isKioskAuthenticated, async (req: any, res) => {
+  router.post("/api/factory/kiosk/quick-complete", isKioskAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).kioskUserId || req.user?.id;
       const { productId, quantity, wasteQuantity, notes } = req.body;
@@ -6462,7 +6462,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         output: result.output,
         lot: result.lot,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.message?.startsWith('INSUFFICIENT_SEMI:')) {
         return res.status(400).json({ message: "Yetersiz yarı mamul stoku" });
       }
@@ -6471,7 +6471,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.post("/api/factory/kiosk/quick-end", isKioskAuthenticated, async (req: any, res) => {
+  router.post("/api/factory/kiosk/quick-end", isKioskAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).kioskUserId || req.user?.id;
 
@@ -6515,7 +6515,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         totalWaste,
         workMinutes: Math.max(0, workMinutes),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Quick end error:", error);
       res.status(500).json({ message: "Vardiya sonlandırılamadı" });
     }
@@ -6525,7 +6525,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // FACTORY WORKER SCORING ENDPOINTS
   // ========================================
 
-  router.post('/api/factory/scoring/calculate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/scoring/calculate', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (!['admin', 'fabrika_mudur', 'fabrika_operator'].includes(userRole)) {
@@ -6572,13 +6572,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           details: s.details,
         })),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Factory Scoring] Calculate error:", error);
       res.status(500).json({ message: "Skor hesaplama hatası", error: error.message });
     }
   });
 
-  router.post('/api/factory/scoring/backfill', isAuthenticated, async (req: any, res) => {
+  router.post('/api/factory/scoring/backfill', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role as UserRoleType;
       if (userRole !== 'admin') {
@@ -6595,13 +6595,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         closedBreaks,
         filledScores,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Factory Scoring] Backfill error:", error);
       res.status(500).json({ message: "Backfill hatası", error: error.message });
     }
   });
 
-  router.get('/api/factory/scoring/worker/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/scoring/worker/:userId', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
       const days = parseInt(req.query.days as string) || 30;
@@ -6635,7 +6635,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           totalBreakMinutes: s.totalBreakMinutes,
         })),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[Factory Scoring] Worker score error:", error);
       res.status(500).json({ message: "Skor getirme hatası" });
     }
@@ -6645,7 +6645,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   // T004: TEST SEED DATA (Üretim + HACCP)
   // ========================================
 
-  router.post("/api/factory/seed-test-data", isAuthenticated, async (req: any, res) => {
+  router.post("/api/factory/seed-test-data", isAuthenticated, async (req, res) => {
     try {
       if (process.env.NODE_ENV === 'production') {
         return res.status(403).json({ message: "Seed data üretim ortamında kullanılamaz" });
@@ -6727,14 +6727,14 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         haccpRecords: insertedHaccp.length,
         lots: insertedLots.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Test seed error:", error);
       res.status(500).json({ message: "Test seed data oluşturulamadı" });
     }
   });
 
   // GET /api/factory/station-benchmarks
-  router.get('/api/factory/station-benchmarks', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/station-benchmarks', isAuthenticated, async (req, res) => {
     try {
       const benchmarks = await db
         .select()
@@ -6742,13 +6742,13 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(factoryStationBenchmarks.isActive, true))
         .orderBy(asc(factoryStationBenchmarks.id));
       res.json(benchmarks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching station benchmarks:", error);
       res.status(500).json({ message: "Benchmark verileri getirilemedi" });
     }
   });
 
-  router.get('/api/factory/qc/stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/factory/qc/stats', isAuthenticated, async (req, res) => {
     try {
       const now = new Date();
       const todayStart = new Date(now.toISOString().slice(0, 10));

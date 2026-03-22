@@ -13,7 +13,7 @@ import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/
 
 const router = Router();
 
-router.get("/api/coach-summary", isAuthenticated, async (req: any, res) => {
+router.get("/api/coach-summary", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user.role;
     if (!["coach", "admin", "ceo", "cgo", "trainer"].includes(userRole)) {
@@ -83,7 +83,7 @@ router.get("/api/coach-summary", isAuthenticated, async (req: any, res) => {
       totalBranches: allBranches.length,
       suggestions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Coach summary error:", error);
     res.status(500).json({ message: "Kocluk paneli yuklenemedi" });
   }

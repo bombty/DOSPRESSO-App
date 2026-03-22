@@ -165,7 +165,7 @@ router.get('/api/branches', isAuthenticated, async (req, res) => {
     
     const branches = await storage.getBranches();
     res.json(branches);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching branches:", error);
     res.status(500).json({ message: "Şubeler alınırken hata oluştu" });
   }
@@ -187,7 +187,7 @@ router.get('/api/branches/:id', isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: "Şube bulunamadı" });
     }
     res.json(branch);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching branch:", error);
     res.status(500).json({ message: "Şube bilgisi alınırken hata oluştu" });
   }
@@ -228,13 +228,13 @@ router.get('/api/branches/:branchId/detail', isAuthenticated, async (req, res) =
     
     setCachedResponse(cacheKey, response, 60);
     res.json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching branch details:", error);
     res.status(500).json({ message: "Şube detayları alınırken hata oluştu" });
   }
 });
 
-router.get('/api/branches/:id/staff-scores', isAuthenticated, async (req: any, res) => {
+router.get('/api/branches/:id/staff-scores', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const branchId = parseInt(req.params.id);
@@ -253,7 +253,7 @@ router.get('/api/branches/:id/staff-scores', isAuthenticated, async (req: any, r
     const validDays = Math.min(Math.max(days, 7), 365);
     const scores = await storage.getTeamPerformanceAggregates(branchId, validDays);
     res.json(scores);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching staff scores:", error);
     res.status(500).json({ message: "Personel skorları yüklenirken hata oluştu" });
   }
@@ -282,7 +282,7 @@ router.post('/api/branches', isAuthenticated, async (req, res) => {
     const branch = await storage.createBranch(branchData);
     auditLog(req, { eventType: "branch.created", action: "created", resource: "branches", resourceId: String(branch.id), after: { name: branchData.name, city: branchData.city } });
     res.json(branch);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating branch:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz şube verisi", errors: error.errors });
@@ -308,7 +308,7 @@ router.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
     }
     auditLog(req, { eventType: "branch.updated", action: "updated", resource: "branches", resourceId: String(id), before: existingBranch ? { name: existingBranch.name } : undefined, after: validatedData });
     res.json(branch);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating branch:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz şube verisi", errors: error.errors });
@@ -317,7 +317,7 @@ router.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-router.patch('/api/branches/:id/settings', isAuthenticated, async (req: any, res) => {
+router.patch('/api/branches/:id/settings', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -356,7 +356,7 @@ router.patch('/api/branches/:id/settings', isAuthenticated, async (req: any, res
     });
 
     res.json(branch);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating branch settings:", error);
     res.status(500).json({ message: "Şube ayarları güncellenemedi" });
   }
@@ -382,7 +382,7 @@ router.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
       details: { softDelete: true },
     });
     res.json({ message: "Şube başarıyla silindi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting branch:", error);
     res.status(500).json({ message: "Şube silinirken hata oluştu" });
   }
@@ -406,7 +406,7 @@ router.post('/api/branches/:id/generate-qr', isAuthenticated, async (req, res) =
     }
     
     res.json({ success: true, qrCodeToken });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating QR code:", error);
     res.status(500).json({ message: "QR kod oluşturulamadı" });
   }
@@ -442,7 +442,7 @@ router.get('/api/branches/:branchId/top-performers', isAuthenticated, async (req
     }));
     
     res.json(enriched);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching top performers:", error);
     res.status(500).json({ message: "En iyi performanslar alınamadı" });
   }
@@ -459,13 +459,13 @@ router.get('/api/branches/:id/task-stats', isAuthenticated, async (req, res) => 
 
     const stats = await storage.getBranchTaskStats(branchId);
     res.json(stats);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching branch task stats:', error);
     res.status(500).json({ message: 'Görev istatistikleri alınamadı' });
   }
 });
 
-router.get('/api/branches/:id/feedback-qr', isAuthenticated, async (req: any, res) => {
+router.get('/api/branches/:id/feedback-qr', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     const userRole = req.user?.role;
@@ -495,7 +495,7 @@ router.get('/api/branches/:id/feedback-qr', isAuthenticated, async (req: any, re
       qrCode: qrDataUrl,
       branchName: branch[0].name 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating feedback QR:", error);
     res.status(500).json({ message: "QR kod oluşturulamadı" });
   }
@@ -505,7 +505,7 @@ router.get('/api/branches/:id/feedback-qr', isAuthenticated, async (req: any, re
 // HQ PROJECT MANAGEMENT API
 // ==========================================
 
-router.get('/api/projects', isAuthenticated, async (req: any, res) => {
+router.get('/api/projects', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     
@@ -573,13 +573,13 @@ router.get('/api/projects', isAuthenticated, async (req: any, res) => {
     }));
     
     res.json(projectsWithStats);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get projects error:", error);
     res.status(500).json({ message: "Projeler alınamadı" });
   }
 });
 
-router.post('/api/projects', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     
@@ -619,13 +619,13 @@ router.post('/api/projects', isAuthenticated, async (req: any, res) => {
     }
     
     res.status(201).json(project);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create project error:", error);
     res.status(500).json({ message: "Proje oluşturulamadı" });
   }
 });
 
-router.get('/api/projects/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/projects/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -699,13 +699,13 @@ router.get('/api/projects/:id', isAuthenticated, async (req: any, res) => {
       comments: commentList.map(c => ({ ...c.comment, user: c.user })),
       milestones: milestoneList,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get project detail error:", error);
     res.status(500).json({ message: "Proje detayları alınamadı" });
   }
 });
 
-router.patch('/api/projects/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/projects/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -732,13 +732,13 @@ router.patch('/api/projects/:id', isAuthenticated, async (req: any, res) => {
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update project error:", error);
     res.status(500).json({ message: "Proje güncellenemedi" });
   }
 });
 
-router.post('/api/projects/:id/members', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/members', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -783,13 +783,13 @@ router.post('/api/projects/:id/members', isAuthenticated, async (req: any, res) 
     });
     
     res.status(201).json(member);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add project member error:", error);
     res.status(500).json({ message: "Üye eklenemedi" });
   }
 });
 
-router.delete('/api/projects/:id/members/:memberId', isAuthenticated, async (req: any, res) => {
+router.delete('/api/projects/:id/members/:memberId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id, memberId } = req.params;
@@ -806,13 +806,13 @@ router.delete('/api/projects/:id/members/:memberId', isAuthenticated, async (req
       .where(eq(projectMembers.id, parseInt(memberId)));
     
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Remove project member error:", error);
     res.status(500).json({ message: "Üye çıkarılamadı" });
   }
 });
 
-router.post('/api/projects/:id/tasks', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/tasks', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -851,13 +851,13 @@ router.post('/api/projects/:id/tasks', isAuthenticated, async (req: any, res) =>
     });
     
     res.status(201).json(task);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create project task error:", error);
     res.status(500).json({ message: "Görev oluşturulamadı" });
   }
 });
 
-router.patch('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/project-tasks/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -880,25 +880,25 @@ router.patch('/api/project-tasks/:id', isAuthenticated, async (req: any, res) =>
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update project task error:", error);
     res.status(500).json({ message: "Görev güncellenemedi" });
   }
 });
 
-router.delete('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/project-tasks/:id', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
     await db.delete(projectTasks).where(eq(projectTasks.id, parseInt(id)));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete project task error:", error);
     res.status(500).json({ message: "Görev silinemedi" });
   }
 });
 
-router.post('/api/projects/:id/comments', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/comments', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -920,13 +920,13 @@ router.post('/api/projects/:id/comments', isAuthenticated, async (req: any, res)
     }).from(users).where(eq(users.id, user.id));
     
     res.status(201).json({ ...comment, user: commentUser });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add comment error:", error);
     res.status(500).json({ message: "Yorum eklenemedi" });
   }
 });
 
-router.get('/api/projects/:id/milestones', isAuthenticated, async (req: any, res) => {
+router.get('/api/projects/:id/milestones', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -936,13 +936,13 @@ router.get('/api/projects/:id/milestones', isAuthenticated, async (req: any, res
       .orderBy(projectMilestones.dueDate);
     
     res.json(milestones);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get milestones error:", error);
     res.status(500).json({ message: "Kilometre taşları alınamadı" });
   }
 });
 
-router.post('/api/projects/:id/milestones', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/milestones', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -962,13 +962,13 @@ router.post('/api/projects/:id/milestones', isAuthenticated, async (req: any, re
     });
     
     res.status(201).json(milestone);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add milestone error:", error);
     res.status(500).json({ message: "Kilometre taşı eklenemedi" });
   }
 });
 
-router.get('/api/project-tasks/:id/subtasks', isAuthenticated, async (req: any, res) => {
+router.get('/api/project-tasks/:id/subtasks', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -987,13 +987,13 @@ router.get('/api/project-tasks/:id/subtasks', isAuthenticated, async (req: any, 
       .orderBy(projectTasks.orderIndex);
     
     res.json(subtasks.map(s => ({ ...s.task, assignee: s.assignee })));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get subtasks error:", error);
     res.status(500).json({ message: "Alt görevler alınamadı" });
   }
 });
 
-router.post('/api/project-tasks/:id/subtasks', isAuthenticated, async (req: any, res) => {
+router.post('/api/project-tasks/:id/subtasks', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -1014,13 +1014,13 @@ router.post('/api/project-tasks/:id/subtasks', isAuthenticated, async (req: any,
     
     const [subtask] = await db.insert(projectTasks).values(data).returning();
     res.status(201).json(subtask);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create subtask error:", error);
     res.status(500).json({ message: "Alt görev oluşturulamadı" });
   }
 });
 
-router.get('/api/project-tasks/:id/dependencies', isAuthenticated, async (req: any, res) => {
+router.get('/api/project-tasks/:id/dependencies', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1037,13 +1037,13 @@ router.get('/api/project-tasks/:id/dependencies', isAuthenticated, async (req: a
       .where(eq(projectTaskDependencies.taskId, parseInt(id)));
     
     res.json(dependencies.map(d => ({ ...d.dependency, dependsOnTask: d.dependsOnTask })));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get dependencies error:", error);
     res.status(500).json({ message: "Bağımlılıklar alınamadı" });
   }
 });
 
-router.post('/api/project-tasks/:id/dependencies', isAuthenticated, async (req: any, res) => {
+router.post('/api/project-tasks/:id/dependencies', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1054,26 +1054,26 @@ router.post('/api/project-tasks/:id/dependencies', isAuthenticated, async (req: 
     
     const [dep] = await db.insert(projectTaskDependencies).values(data).returning();
     res.status(201).json(dep);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add dependency error:", error);
     res.status(500).json({ message: "Bağımlılık eklenemedi" });
   }
 });
 
-router.delete('/api/task-dependencies/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/task-dependencies/:id', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
     await db.delete(projectTaskDependencies).where(eq(projectTaskDependencies.id, parseInt(id)));
     
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete dependency error:", error);
     res.status(500).json({ message: "Bağımlılık silinemedi" });
   }
 });
 
-router.get('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/project-tasks/:id', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1131,13 +1131,13 @@ router.get('/api/project-tasks/:id', isAuthenticated, async (req: any, res) => {
       dependencies: dependencies.map(d => ({ ...d.dependency, dependsOnTask: d.dependsOnTask })),
       comments: comments.map(c => ({ ...c.comment, user: c.user })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get task details error:", error);
     res.status(500).json({ message: "Görev detayları alınamadı" });
   }
 });
 
-router.post('/api/project-tasks/:id/comments', isAuthenticated, async (req: any, res) => {
+router.post('/api/project-tasks/:id/comments', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
@@ -1165,13 +1165,13 @@ router.post('/api/project-tasks/:id/comments', isAuthenticated, async (req: any,
     }).from(users).where(eq(users.id, user.id));
     
     res.status(201).json({ ...comment, user: commentUser });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add task comment error:", error);
     res.status(500).json({ message: "Yorum eklenemedi" });
   }
 });
 
-router.get('/api/hq-users', isAuthenticated, async (req: any, res) => {
+router.get('/api/hq-users', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     
@@ -1202,7 +1202,7 @@ router.get('/api/hq-users', isAuthenticated, async (req: any, res) => {
       .orderBy(users.firstName);
     
     res.json(hqUsers);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get HQ users error:", error);
     res.status(500).json({ message: "HQ kullanıcıları alınamadı" });
   }
@@ -1212,7 +1212,7 @@ router.get('/api/hq-users', isAuthenticated, async (req: any, res) => {
 // NEW SHOP OPENING MANAGEMENT ROUTES
 // =============================================
 
-router.get('/api/new-shop-projects', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     
@@ -1260,13 +1260,13 @@ router.get('/api/new-shop-projects', isAuthenticated, async (req: any, res) => {
     }));
     
     res.json(projectsWithProgress);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get new shop projects error:", error);
     res.status(500).json({ message: "Projeler alınamadı" });
   }
 });
 
-router.post('/api/new-shop-projects', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     
@@ -1314,13 +1314,13 @@ router.post('/api/new-shop-projects', isAuthenticated, async (req: any, res) => 
     }
     
     res.status(201).json(newProject);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create new shop project error:", error);
     res.status(500).json({ message: "Proje oluşturulamadı" });
   }
 });
 
-router.get('/api/new-shop-projects/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1396,13 +1396,13 @@ router.get('/api/new-shop-projects/:id', isAuthenticated, async (req: any, res) 
       vendors,
       risks,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get new shop project error:", error);
     res.status(500).json({ message: "Proje detayı alınamadı" });
   }
 });
 
-router.patch('/api/project-phases/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/project-phases/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const phaseId = parseInt(req.params.id);
@@ -1444,13 +1444,13 @@ router.patch('/api/project-phases/:id', isAuthenticated, async (req: any, res) =
     }
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update phase error:", error);
     res.status(500).json({ message: "Faz güncellenemedi" });
   }
 });
 
-router.post('/api/new-shop-projects/:projectId/phases', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects/:projectId/phases', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1477,7 +1477,7 @@ router.post('/api/new-shop-projects/:projectId/phases', isAuthenticated, async (
     
     const [newPhase] = await db.insert(projectPhases).values(phaseData).returning();
     res.status(201).json(newPhase);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create phase error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1488,7 +1488,7 @@ router.post('/api/new-shop-projects/:projectId/phases', isAuthenticated, async (
 
 // ---- Budget Lines ----
 
-router.get('/api/projects/:id/budget', isAuthenticated, async (req: any, res) => {
+router.get('/api/projects/:id/budget', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1502,13 +1502,13 @@ router.get('/api/projects/:id/budget', isAuthenticated, async (req: any, res) =>
       .orderBy(projectBudgetLines.category, projectBudgetLines.createdAt);
     
     res.json(lines);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get budget lines error:", error);
     res.status(500).json({ message: "Bütçe kalemleri alınamadı" });
   }
 });
 
-router.post('/api/projects/:id/budget', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/budget', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1525,13 +1525,13 @@ router.post('/api/projects/:id/budget', isAuthenticated, async (req: any, res) =
     
     const [line] = await db.insert(projectBudgetLines).values(data).returning();
     res.status(201).json(line);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add budget line error:", error);
     res.status(500).json({ message: "Bütçe kalemi eklenemedi" });
   }
 });
 
-router.patch('/api/budget-lines/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/budget-lines/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const lineId = parseInt(req.params.id);
@@ -1546,13 +1546,13 @@ router.patch('/api/budget-lines/:id', isAuthenticated, async (req: any, res) => 
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update budget line error:", error);
     res.status(500).json({ message: "Bütçe kalemi güncellenemedi" });
   }
 });
 
-router.delete('/api/budget-lines/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/budget-lines/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const lineId = parseInt(req.params.id);
@@ -1563,7 +1563,7 @@ router.delete('/api/budget-lines/:id', isAuthenticated, async (req: any, res) =>
     
     await db.delete(projectBudgetLines).where(eq(projectBudgetLines.id, lineId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete budget line error:", error);
     res.status(500).json({ message: "Bütçe kalemi silinemedi" });
   }
@@ -1571,7 +1571,7 @@ router.delete('/api/budget-lines/:id', isAuthenticated, async (req: any, res) =>
 
 // ---- Vendors ----
 
-router.get('/api/projects/:id/vendors', isAuthenticated, async (req: any, res) => {
+router.get('/api/projects/:id/vendors', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1585,13 +1585,13 @@ router.get('/api/projects/:id/vendors', isAuthenticated, async (req: any, res) =
       .orderBy(projectVendors.vendorType);
     
     res.json(vendorList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get vendors error:", error);
     res.status(500).json({ message: "Tedarikçiler alınamadı" });
   }
 });
 
-router.post('/api/projects/:id/vendors', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/vendors', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1608,13 +1608,13 @@ router.post('/api/projects/:id/vendors', isAuthenticated, async (req: any, res) 
     
     const [vendor] = await db.insert(projectVendors).values(data).returning();
     res.status(201).json(vendor);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add vendor error:", error);
     res.status(500).json({ message: "Tedarikçi eklenemedi" });
   }
 });
 
-router.patch('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/vendors/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const vendorId = parseInt(req.params.id);
@@ -1629,13 +1629,13 @@ router.patch('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update vendor error:", error);
     res.status(500).json({ message: "Tedarikçi güncellenemedi" });
   }
 });
 
-router.delete('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/vendors/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const vendorId = parseInt(req.params.id);
@@ -1646,7 +1646,7 @@ router.delete('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
     
     await db.delete(projectVendors).where(eq(projectVendors.id, vendorId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete vendor error:", error);
     res.status(500).json({ message: "Tedarikçi silinemedi" });
   }
@@ -1654,7 +1654,7 @@ router.delete('/api/vendors/:id', isAuthenticated, async (req: any, res) => {
 
 // ---- Risks ----
 
-router.get('/api/projects/:id/risks', isAuthenticated, async (req: any, res) => {
+router.get('/api/projects/:id/risks', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1668,13 +1668,13 @@ router.get('/api/projects/:id/risks', isAuthenticated, async (req: any, res) => 
       .orderBy(desc(projectRisks.severity));
     
     res.json(riskList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get risks error:", error);
     res.status(500).json({ message: "Riskler alınamadı" });
   }
 });
 
-router.post('/api/projects/:id/risks', isAuthenticated, async (req: any, res) => {
+router.post('/api/projects/:id/risks', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.id);
@@ -1700,13 +1700,13 @@ router.post('/api/projects/:id/risks', isAuthenticated, async (req: any, res) =>
     
     const [risk] = await db.insert(projectRisks).values(data).returning();
     res.status(201).json(risk);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Add risk error:", error);
     res.status(500).json({ message: "Risk eklenemedi" });
   }
 });
 
-router.patch('/api/risks/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/risks/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const riskId = parseInt(req.params.id);
@@ -1740,13 +1740,13 @@ router.patch('/api/risks/:id', isAuthenticated, async (req: any, res) => {
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update risk error:", error);
     res.status(500).json({ message: "Risk güncellenemedi" });
   }
 });
 
-router.delete('/api/risks/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/risks/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const riskId = parseInt(req.params.id);
@@ -1757,7 +1757,7 @@ router.delete('/api/risks/:id', isAuthenticated, async (req: any, res) => {
     
     await db.delete(projectRisks).where(eq(projectRisks.id, riskId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete risk error:", error);
     res.status(500).json({ message: "Risk silinemedi" });
   }
@@ -1767,7 +1767,7 @@ router.delete('/api/risks/:id', isAuthenticated, async (req: any, res) => {
 // PHASE MANAGEMENT SYSTEM ROUTES
 // ========================================
 
-router.get('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const phaseId = parseInt(req.params.phaseId);
@@ -1789,13 +1789,13 @@ router.get('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthe
     }));
     
     res.json(subtasks);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get phase subtasks error:", error);
     res.status(500).json({ message: "Alt görevler alınamadı" });
   }
 });
 
-router.post('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1817,7 +1817,7 @@ router.post('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuth
     
     const [subtask] = await db.insert(phaseSubTasks).values(data).returning();
     res.status(201).json(subtask);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create phase subtask error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1826,7 +1826,7 @@ router.post('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks', isAuth
   }
 });
 
-router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req: any, res) => {
+router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1853,13 +1853,13 @@ router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtas
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update phase subtask error:", error);
     res.status(500).json({ message: "Alt görev güncellenemedi" });
   }
 });
 
-router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId/reorder', isAuthenticated, async (req: any, res) => {
+router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId/reorder', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1878,13 +1878,13 @@ router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtas
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Reorder phase subtask error:", error);
     res.status(500).json({ message: "Sıralama güncellenemedi" });
   }
 });
 
-router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req: any, res) => {
+router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subtaskId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1897,7 +1897,7 @@ router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subta
     
     await db.delete(phaseSubTasks).where(eq(phaseSubTasks.id, subtaskId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete phase subtask error:", error);
     res.status(500).json({ message: "Alt görev silinemedi" });
   }
@@ -1905,7 +1905,7 @@ router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/subtasks/:subta
 
 // ---- Phase Assignments ----
 
-router.get('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const phaseId = parseInt(req.params.phaseId);
@@ -1938,13 +1938,13 @@ router.get('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAu
       .where(eq(phaseAssignments.phaseId, phaseId));
     
     res.json(assignments);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get phase assignments error:", error);
     res.status(500).json({ message: "Atamalar alınamadı" });
   }
 });
 
-router.post('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1967,7 +1967,7 @@ router.post('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isA
     
     const [assignment] = await db.insert(phaseAssignments).values(data).returning();
     res.status(201).json(assignment);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create phase assignment error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1976,7 +1976,7 @@ router.post('/api/new-shop-projects/:projectId/phases/:phaseId/assignments', isA
   }
 });
 
-router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req: any, res) => {
+router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -1993,13 +1993,13 @@ router.patch('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:ass
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update phase assignment error:", error);
     res.status(500).json({ message: "Atama güncellenemedi" });
   }
 });
 
-router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req: any, res) => {
+router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:assignmentId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2012,7 +2012,7 @@ router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:as
     
     await db.delete(phaseAssignments).where(eq(phaseAssignments.id, assignmentId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete phase assignment error:", error);
     res.status(500).json({ message: "Atama silinemedi" });
   }
@@ -2020,7 +2020,7 @@ router.delete('/api/new-shop-projects/:projectId/phases/:phaseId/assignments/:as
 
 // ---- Procurement Items and Proposals ----
 
-router.get('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2044,13 +2044,13 @@ router.get('/api/new-shop-projects/:projectId/procurement/items', isAuthenticate
       .orderBy(desc(procurementItems.createdAt));
     
     res.json(items);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get procurement items error:", error);
     res.status(500).json({ message: "Tedarik kalemleri alınamadı" });
   }
 });
 
-router.get('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const itemId = parseInt(req.params.itemId);
@@ -2071,13 +2071,13 @@ router.get('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuth
       .orderBy(procurementProposals.proposedPrice);
     
     res.json({ ...item, proposals });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get procurement item error:", error);
     res.status(500).json({ message: "Tedarik kalemi alınamadı" });
   }
 });
 
-router.post('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects/:projectId/procurement/items', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2094,7 +2094,7 @@ router.post('/api/new-shop-projects/:projectId/procurement/items', isAuthenticat
     
     const [item] = await db.insert(procurementItems).values(data).returning();
     res.status(201).json(item);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create procurement item error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -2103,7 +2103,7 @@ router.post('/api/new-shop-projects/:projectId/procurement/items', isAuthenticat
   }
 });
 
-router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req: any, res) => {
+router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2120,13 +2120,13 @@ router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId', isAu
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update procurement item error:", error);
     res.status(500).json({ message: "Tedarik kalemi güncellenemedi" });
   }
 });
 
-router.post('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2144,7 +2144,7 @@ router.post('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposa
     
     const [proposal] = await db.insert(procurementProposals).values(data).returning();
     res.status(201).json(proposal);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create procurement proposal error:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -2153,7 +2153,7 @@ router.post('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposa
   }
 });
 
-router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req: any, res) => {
+router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2170,13 +2170,13 @@ router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/propos
       .returning();
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update procurement proposal error:", error);
     res.status(500).json({ message: "Teklif güncellenemedi" });
   }
 });
 
-router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId/select', isAuthenticated, async (req: any, res) => {
+router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId/select', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2212,13 +2212,13 @@ router.patch('/api/new-shop-projects/:projectId/procurement/items/:itemId/propos
       .returning();
     
     res.json(updatedItem);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Select proposal error:", error);
     res.status(500).json({ message: "Teklif seçilemedi" });
   }
 });
 
-router.delete('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req: any, res) => {
+router.delete('/api/new-shop-projects/:projectId/procurement/items/:itemId/proposals/:proposalId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2231,7 +2231,7 @@ router.delete('/api/new-shop-projects/:projectId/procurement/items/:itemId/propo
     
     await db.delete(procurementProposals).where(eq(procurementProposals.id, proposalId));
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete procurement proposal error:", error);
     res.status(500).json({ message: "Teklif silinemedi" });
   }
@@ -2239,7 +2239,7 @@ router.delete('/api/new-shop-projects/:projectId/procurement/items/:itemId/propo
 
 // ---- External Users for Project ----
 
-router.get('/api/new-shop-projects/:projectId/external-users', isAuthenticated, async (req: any, res) => {
+router.get('/api/new-shop-projects/:projectId/external-users', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2260,13 +2260,13 @@ router.get('/api/new-shop-projects/:projectId/external-users', isAuthenticated, 
       ));
     
     res.json(externalUsersList);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get external users error:", error);
     res.status(500).json({ message: "Dış kullanıcılar alınamadı" });
   }
 });
 
-router.post('/api/new-shop-projects/:projectId/external-users', isAuthenticated, async (req: any, res) => {
+router.post('/api/new-shop-projects/:projectId/external-users', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2327,13 +2327,13 @@ router.post('/api/new-shop-projects/:projectId/external-users', isAuthenticated,
       .where(eq(externalUsers.id, externalUserId));
     
     res.status(201).json({ access, user: fullExternalUser });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Invite external user error:", error);
     res.status(500).json({ message: "Dış kullanıcı davet edilemedi" });
   }
 });
 
-router.delete('/api/new-shop-projects/:projectId/external-users/:externalUserId', isAuthenticated, async (req: any, res) => {
+router.delete('/api/new-shop-projects/:projectId/external-users/:externalUserId', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     const projectId = parseInt(req.params.projectId);
@@ -2351,7 +2351,7 @@ router.delete('/api/new-shop-projects/:projectId/external-users/:externalUserId'
       ));
     
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Remove external user error:", error);
     res.status(500).json({ message: "Dış kullanıcı kaldırılamadı" });
   }
@@ -2361,7 +2361,7 @@ router.delete('/api/new-shop-projects/:projectId/external-users/:externalUserId'
 // ŞUBE KIOSK SİSTEMİ API'LERİ
 // ========================================
 
-router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req: any, res) => {
+router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     
@@ -2378,7 +2378,7 @@ router.get('/api/branches/:branchId/kiosk/settings', isAuthenticated, async (req
     }
     
     res.json(settings);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting kiosk settings:", error);
     res.status(500).json({ message: "Kiosk ayarları alınamadı" });
   }
@@ -2434,7 +2434,7 @@ router.post('/api/branches/:branchId/kiosk/verify-password', async (req, res) =>
     }
     
     res.json({ success: true, branchName: branch.name });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error verifying kiosk password:", error);
     res.status(500).json({ message: "Parola doğrulanamadı" });
   }
@@ -2474,7 +2474,7 @@ router.get('/api/branches/:branchId/kiosk/staff', async (req, res) => {
     }));
     
     res.json(staffWithPinStatus);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching branch staff:", error);
     res.status(500).json({ message: "Şube personeli alınamadı" });
   }
@@ -2588,7 +2588,7 @@ router.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
       activeSession: activeSession || null,
       kioskToken,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in branch kiosk login:", error);
     res.status(500).json({ message: "Giriş yapılamadı" });
   }
@@ -2708,7 +2708,7 @@ router.post('/api/branches/:branchId/kiosk/shift-start', async (req, res) => {
       success: true,
       session,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error starting branch shift:", error);
     res.status(500).json({ message: "Vardiya başlatılamadı" });
   }
@@ -2761,7 +2761,7 @@ router.post('/api/branches/:branchId/kiosk/break-start', async (req, res) => {
       success: true,
       breakLog,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error starting break:", error);
     res.status(500).json({ message: "Mola başlatılamadı" });
   }
@@ -2829,7 +2829,7 @@ router.post('/api/branches/:branchId/kiosk/break-end', async (req, res) => {
     });
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error ending break:", error);
     res.status(500).json({ message: "Mola bitirilemedi" });
   }
@@ -2974,7 +2974,7 @@ router.post('/api/branches/:branchId/kiosk/shift-end', async (req, res) => {
         netWorkMinutes,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error ending branch shift:", error);
     res.status(500).json({ message: "Vardiya bitirilemedi" });
   }
@@ -3039,7 +3039,7 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
       tasks: userTasks,
       checklists: userChecklists,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error getting session:", error);
     res.status(500).json({ message: "Oturum bilgisi alınamadı" });
   }
@@ -3088,7 +3088,7 @@ router.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req
     }
 
     res.json({ success: true, message: "PIN ayarlandı" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error setting PIN:", error);
     res.status(500).json({ message: "PIN ayarlanamadı" });
   }
@@ -3119,7 +3119,7 @@ router.get('/api/branches/:branchId/kiosk/active-shifts', async (req, res) => {
       .orderBy(branchShiftSessions.checkInTime);
 
     res.json(activeSessions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching active shifts:", error);
     res.status(500).json({ message: "Aktif vardiyalar alınamadı" });
   }
@@ -3127,7 +3127,7 @@ router.get('/api/branches/:branchId/kiosk/active-shifts', async (req, res) => {
 
 // =================== HQ KIOSK ENDPOINTS ===================
 
-router.get('/api/hq/kiosk/staff', async (req: any, res: any) => {
+router.get('/api/hq/kiosk/staff', async (req, res) => {
   try {
     const hqStaff = await db.select({
       id: users.id,
@@ -3142,17 +3142,17 @@ router.get('/api/hq/kiosk/staff', async (req: any, res: any) => {
         sql`${users.role} NOT IN ('barista', 'stajyer')`
       ));
     
-    res.json(hqStaff.map((s: any) => ({
+    res.json(hqStaff.map((s) => ({
       ...s,
       hasPin: true,
     })));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ kiosk staff error:", error);
     res.status(500).json({ message: "HQ personel listesi alinamadi" });
   }
 });
 
-router.post('/api/hq/kiosk/login', async (req: any, res: any) => {
+router.post('/api/hq/kiosk/login', async (req, res) => {
   try {
     const { userId, pin } = req.body;
     if (!userId || !pin) {
@@ -3189,13 +3189,13 @@ router.post('/api/hq/kiosk/login', async (req: any, res: any) => {
       user: { id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role },
       activeSession: activeSession || breakSession || null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ kiosk login error:", error);
     res.status(500).json({ message: "HQ giris hatasi" });
   }
 });
 
-router.post('/api/hq/kiosk/shift-start', async (req: any, res: any) => {
+router.post('/api/hq/kiosk/shift-start', async (req, res) => {
   try {
     const { userId, latitude, longitude } = req.body;
     if (!userId) {
@@ -3229,13 +3229,13 @@ router.post('/api/hq/kiosk/shift-start', async (req: any, res: any) => {
     });
     
     res.json({ session });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ shift start error:", error);
     res.status(500).json({ message: "Vardiya baslatilamadi" });
   }
 });
 
-router.post('/api/hq/kiosk/exit', async (req: any, res: any) => {
+router.post('/api/hq/kiosk/exit', async (req, res) => {
   try {
     const { sessionId, exitReason, exitDescription, estimatedReturnTime, latitude, longitude } = req.body;
     if (!sessionId || !exitReason) {
@@ -3319,13 +3319,13 @@ router.post('/api/hq/kiosk/exit', async (req: any, res: any) => {
       .where(eq(hqShiftSessions.id, sessionId));
     
     res.json({ session: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ exit error:", error);
     res.status(500).json({ message: "Cikis islemi basarisiz" });
   }
 });
 
-router.post('/api/hq/kiosk/return', async (req: any, res: any) => {
+router.post('/api/hq/kiosk/return', async (req, res) => {
   try {
     const { sessionId, latitude, longitude } = req.body;
     if (!sessionId) {
@@ -3379,13 +3379,13 @@ router.post('/api/hq/kiosk/return', async (req: any, res: any) => {
       .where(eq(hqShiftSessions.id, sessionId));
     
     res.json({ session: updated, exitDuration });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ return error:", error);
     res.status(500).json({ message: "Donus islemi basarisiz" });
   }
 });
 
-router.get('/api/hq/kiosk/session/:userId', async (req: any, res: any) => {
+router.get('/api/hq/kiosk/session/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     
@@ -3402,13 +3402,13 @@ router.get('/api/hq/kiosk/session/:userId', async (req: any, res: any) => {
       .orderBy(desc(hqShiftEvents.eventTime)) : [];
     
     res.json({ activeSession, events });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ session error:", error);
     res.status(500).json({ message: "Oturum bilgisi alinamadi" });
   }
 });
 
-router.get('/api/hq/kiosk/active-sessions', isAuthenticated, async (req: any, res: any) => {
+router.get('/api/hq/kiosk/active-sessions', isAuthenticated, async (req, res) => {
   try {
     const hqSessions = await db.select({
       session: hqShiftSessions,
@@ -3424,14 +3424,14 @@ router.get('/api/hq/kiosk/active-sessions', isAuthenticated, async (req: any, re
       .where(inArray(hqShiftSessions.status, ['active', 'on_break', 'outside']));
     
     res.json(hqSessions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("HQ active sessions error:", error);
     res.status(500).json({ message: "Aktif oturumlar alinamadi" });
   }
 });
 
 // Şube günlük puantaj özeti
-router.get('/api/branches/:branchId/attendance/daily', isAuthenticated, async (req: any, res) => {
+router.get('/api/branches/:branchId/attendance/daily', isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { date } = req.query;
@@ -3454,13 +3454,13 @@ router.get('/api/branches/:branchId/attendance/daily', isAuthenticated, async (r
       .orderBy(users.firstName);
 
     res.json(summaries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching daily attendance:", error);
     res.status(500).json({ message: "Günlük puantaj alınamadı" });
   }
 });
 
-router.get('/api/branches/:branchId/attendance/weekly', isAuthenticated, async (req: any, res) => {
+router.get('/api/branches/:branchId/attendance/weekly', isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { weekStart } = req.query;
@@ -3490,13 +3490,13 @@ router.get('/api/branches/:branchId/attendance/weekly', isAuthenticated, async (
       .orderBy(users.firstName);
 
     res.json(summaries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching weekly attendance:", error);
     res.status(500).json({ message: "Haftalık puantaj alınamadı" });
   }
 });
 
-router.get('/api/branches/:branchId/attendance/monthly', isAuthenticated, async (req: any, res) => {
+router.get('/api/branches/:branchId/attendance/monthly', isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { month, year } = req.query;
@@ -3523,13 +3523,13 @@ router.get('/api/branches/:branchId/attendance/monthly', isAuthenticated, async 
       .orderBy(users.firstName);
 
     res.json(summaries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching monthly payroll:", error);
     res.status(500).json({ message: "Aylık puantaj alınamadı" });
   }
 });
 
-router.post('/api/branches/:branchId/attendance/calculate-weekly', isAuthenticated, async (req: any, res) => {
+router.post('/api/branches/:branchId/attendance/calculate-weekly', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -3632,13 +3632,13 @@ router.post('/api/branches/:branchId/attendance/calculate-weekly', isAuthenticat
       summaries: results,
       weekInfo: { weekNumber, year: weekStart.getFullYear(), start: weekStartDate, end: weekEnd.toISOString().split('T')[0] }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error calculating weekly attendance:", error);
     res.status(500).json({ message: "Haftalık özet hesaplanamadı" });
   }
 });
 
-router.post('/api/branches/:branchId/attendance/calculate-monthly', isAuthenticated, async (req: any, res) => {
+router.post('/api/branches/:branchId/attendance/calculate-monthly', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -3764,13 +3764,13 @@ router.post('/api/branches/:branchId/attendance/calculate-monthly', isAuthentica
       summaries: results,
       monthInfo: { month: targetMonth, year: targetYear }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error calculating monthly payroll:", error);
     res.status(500).json({ message: "Aylık puantaj hesaplanamadı" });
   }
 });
 
-router.post('/api/branches/:branchId/attendance/approve-overtime', isAuthenticated, async (req: any, res) => {
+router.post('/api/branches/:branchId/attendance/approve-overtime', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -3801,13 +3801,13 @@ router.post('/api/branches/:branchId/attendance/approve-overtime', isAuthenticat
     }
 
     res.json({ success: true, summary: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error approving overtime:", error);
     res.status(500).json({ message: "Fazla mesai onaylanamadı" });
   }
 });
 
-router.post('/api/branches/:branchId/attendance/approve-monthly', isAuthenticated, async (req: any, res) => {
+router.post('/api/branches/:branchId/attendance/approve-monthly', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -3838,14 +3838,14 @@ router.post('/api/branches/:branchId/attendance/approve-monthly', isAuthenticate
     }
 
     res.json({ success: true, summary: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error approving monthly payroll:", error);
     res.status(500).json({ message: "Puantaj onaylanamadı" });
   }
 });
 
 // Branch Dashboard
-router.get('/api/branch-dashboard/:branchId', isAuthenticated, async (req: any, res) => {
+router.get('/api/branch-dashboard/:branchId', isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     if (isNaN(branchId)) {
@@ -3871,12 +3871,12 @@ router.get('/api/branch-dashboard/:branchId', isAuthenticated, async (req: any, 
     const todayTasks = await db.select({ id: tasks.id, title: tasks.description, status: tasks.status, priority: tasks.priority, dueDate: tasks.dueDate, assignedToId: tasks.assignedToId }).from(tasks).where(and(eq(tasks.branchId, branchId), sql`DATE(${tasks.dueDate}) = ${today}`)).orderBy(desc(tasks.priority)).limit(50);
     const todayChecklistItems = await db.select({ id: checklistCompletions.id, checklistId: checklistCompletions.checklistId, userId: checklistCompletions.userId, status: checklistCompletions.status, scheduledDate: checklistCompletions.scheduledDate, score: checklistCompletions.score }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, branchId), eq(checklistCompletions.scheduledDate, today))).limit(50);
     res.json({ branch, stats: { activeStaff, totalShifts, completedTasks, pendingTasks, completedChecklists, pendingChecklists, activeAlerts, criticalAlerts }, alerts: alertsResult, todayShifts, todayTasks, todayChecklists: todayChecklistItems });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchBranchDashboard");
   }
 });
 
-router.get('/api/branch-dashboard-v2/:branchId', isAuthenticated, async (req: any, res) => {
+router.get('/api/branch-dashboard-v2/:branchId', isAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     if (isNaN(branchId)) {
@@ -3970,7 +3970,7 @@ router.get('/api/branch-dashboard-v2/:branchId', isAuthenticated, async (req: an
       },
       alerts: alertsResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "FetchBranchDashboardV2");
   }
 });
@@ -4013,7 +4013,7 @@ setInterval(async () => {
   }
 }, NONCE_CLEANUP_INTERVAL);
 
-router.get('/api/qr-checkin/generate', isAuthenticated, async (req: any, res) => {
+router.get('/api/qr-checkin/generate', isAuthenticated, async (req, res) => {
   try {
     const userId = req.user.id;
     const payload = generateQrPayload(userId);
@@ -4022,7 +4022,7 @@ router.get('/api/qr-checkin/generate', isAuthenticated, async (req: any, res) =>
       userId,
     });
     res.json(payload);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('QR generate error:', error);
     res.status(500).json({ message: 'QR kodu oluşturulamadı' });
   }
@@ -4304,7 +4304,7 @@ router.post('/api/kiosk/qr-checkin', async (req, res) => {
     }
 
     res.status(400).json({ message: 'Geçersiz işlem' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('QR checkin error:', error);
     res.status(500).json({ message: 'QR giriş işlemi başarısız' });
   }
@@ -4339,13 +4339,13 @@ router.get('/api/kiosk/qr-status/:userId/:branchId', async (req, res) => {
       hasActiveShift: !!activeSession,
       currentStatus: activeSession?.status || 'none',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('QR status error:', error);
     res.status(500).json({ message: 'Durum sorgulanamadı' });
   }
 });
 
-router.patch('/api/branches/:branchId/kiosk/mode', isAuthenticated, async (req: any, res) => {
+router.patch('/api/branches/:branchId/kiosk/mode', isAuthenticated, async (req, res) => {
   try {
     const user = req.user;
     if (!['admin', 'ceo', 'cgo'].includes(user.role)) {
@@ -4376,7 +4376,7 @@ router.patch('/api/branches/:branchId/kiosk/mode', isAuthenticated, async (req: 
     }
 
     res.json({ success: true, kioskMode });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Kiosk mode update error:', error);
     res.status(500).json({ message: 'Kiosk modu güncellenemedi' });
   }

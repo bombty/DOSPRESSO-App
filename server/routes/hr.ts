@@ -128,11 +128,11 @@ const router = Router();
         const faultList = (branchId ? await db.select().from(equipmentFaults).where(eq(equipmentFaults.branchId, branchId)).limit(100) : await db.select().from(equipmentFaults).limit(100));
         
         const tasksTotal = taskList.length;
-        const tasksCompleted = taskList.filter((t: any) => t.status === 'completed').length;
+        const tasksCompleted = taskList.filter((t) => t.status === 'completed').length;
         const completionRate = tasksTotal > 0 ? Math.round((tasksCompleted / tasksTotal) * 100) : 0;
         
         const faultsReported = faultList.length;
-        const faultsResolved = faultList.filter((f: any) => f.stage === 'resolved').length;
+        const faultsResolved = faultList.filter((f) => f.stage === 'resolved').length;
         
         // Create a synthetic performance metric from real data
         const now = new Date();
@@ -157,7 +157,7 @@ const router = Router();
       }
       
       res.json(storedMetrics);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching performance metrics:", error);
       res.status(500).json({ message: "Performans metrikleri alınırken hata oluştu" });
     }
@@ -168,7 +168,7 @@ const router = Router();
       const metrics = await storage.getPerformanceMetrics();
       const latest = metrics.slice(0, 10);
       res.json(latest);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching latest performance metrics:", error);
       res.status(500).json({ message: "Son performans metrikleri alınırken hata oluştu" });
     }
@@ -208,7 +208,7 @@ const router = Router();
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUsersForRole(employees, role as UserRoleType));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employees:", error);
       res.status(500).json({ message: "Çalışanlar yüklenirken hata oluştu" });
     }
@@ -232,7 +232,7 @@ const router = Router();
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUsersForRole(terminatedEmployees, role as UserRoleType));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching terminated employees:", error);
       res.status(500).json({ message: "Ayrılan personeller yüklenirken hata oluştu" });
     }
@@ -262,7 +262,7 @@ const router = Router();
 
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUserForRole(employee, role as UserRoleType));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employee:", error);
       res.status(500).json({ message: "Çalışan bilgileri yüklenirken hata oluştu" });
     }
@@ -320,7 +320,7 @@ const router = Router();
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.json(sanitizeUserForRole(updated, role as UserRoleType));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating employee:", error);
       res.status(500).json({ message: "Çalışan güncellenirken hata oluştu" });
     }
@@ -350,7 +350,7 @@ const router = Router();
 
       const warnings = await storage.getEmployeeWarnings(employeeId);
       res.json(warnings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employee warnings:", error);
       res.status(500).json({ message: "Uyarı kayıtları yüklenirken hata oluştu" });
     }
@@ -380,7 +380,7 @@ const router = Router();
 
       const trainingProgress = await storage.getUserTrainingProgress(employeeId);
       res.json(trainingProgress);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employee training:", error);
       res.status(500).json({ message: "Eğitim bilgileri yüklenirken hata oluştu" });
     }
@@ -412,7 +412,7 @@ const router = Router();
       const status = req.query.status as string | undefined;
       const tasks = await storage.getTasks(employee.branchId!, employeeId, status);
       res.json(tasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employee tasks:", error);
       res.status(500).json({ message: "Görev kayıtları yüklenirken hata oluştu" });
     }
@@ -493,7 +493,7 @@ const router = Router();
         trainingProgress,
         recentTasks: allTasks.slice(0, 10), // Last 10 tasks
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employee detail:", error);
       res.status(500).json({ message: "Çalışan detayları yüklenirken hata oluştu" });
     }
@@ -550,7 +550,7 @@ const router = Router();
       
       // Sanitize: Remove sensitive fields - HQ users get more details
       res.status(201).json(sanitizeUserForRole(newEmployee, role as UserRoleType));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating employee:", error);
       res.status(500).json({ message: "Çalışan eklenirken hata oluştu" });
     }
@@ -587,7 +587,7 @@ const router = Router();
         details: { softDelete: true },
       });
       res.json({ message: "Çalışan silindi", deletedId: employeeId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting employee:", error);
       res.status(500).json({ message: "Çalışan silinirken hata oluştu" });
     }
@@ -649,7 +649,7 @@ const router = Router();
       });
 
       res.json({ message: "Şifre başarıyla sıfırlandı" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error resetting password:", error);
       res.status(500).json({ message: "Şifre sıfırlanırken hata oluştu" });
     }
@@ -838,7 +838,7 @@ const router = Router();
 
       const warning = await storage.createEmployeeWarning(parsed.data);
       res.status(201).json(warning);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating employee warning:", error);
       res.status(500).json({ message: "Uyarı kaydedilirken hata oluştu" });
     }
@@ -861,7 +861,7 @@ const router = Router();
 
       const summary = await storage.getAllTrainingProgressSummary();
       res.json(summary);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching training progress summary:", error);
       res.status(500).json({ message: "Eğitim durumu getirilemedi" });
     }
@@ -889,13 +889,13 @@ const router = Router();
       }
       
       const userRole = (user.role as string).toLocaleLowerCase('tr-TR');
-      const filtered = modules.filter((m: any) => {
+      const filtered = modules.filter((m) => {
         if (!m.targetRoles || m.targetRoles.length === 0) return true;
         return m.targetRoles.includes(userRole);
       });
       
       res.json(filtered);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching training modules:", error);
       res.status(500).json({ message: "Eğitim modülleri alınırken hata oluştu" });
     }
@@ -920,7 +920,7 @@ const router = Router();
 
       // Module already contains all JSONB fields (steps, scenarioTasks, supervisorChecklist, learningObjectives)
       res.json(module);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching training module:", error);
       res.status(500).json({ message: "Eğitim modülü alınırken hata oluştu" });
     }
@@ -941,7 +941,7 @@ const router = Router();
       });
       
       res.status(201).json(module);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -967,7 +967,7 @@ const router = Router();
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -995,7 +995,7 @@ const router = Router();
         details: { softDelete: true },
       });
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting training module:", error);
       res.status(500).json({ message: "Eğitim modülü silinirken hata oluştu" });
     }
@@ -1055,20 +1055,20 @@ const router = Router();
               isPublished: false,
               requiredForRole: [role.name],
               learningObjectives: moduleData.learning_objectives || [],
-              steps: (moduleData.steps || []).map((s: any) => ({
+              steps: (moduleData.steps || []).map((s) => ({
                 stepNumber: s.step_number,
                 title: s.title,
                 content: s.content,
                 mediaSuggestions: s.media_suggestions,
               })),
-              scenarioTasks: (moduleData.scenario_tasks || []).map((sc: any) => ({
+              scenarioTasks: (moduleData.scenario_tasks || []).map((sc) => ({
                 scenarioId: sc.scenario_id,
                 title: sc.title,
                 description: sc.description,
                 expectedActions: sc.expected_actions,
               })),
               supervisorChecklist: moduleData.supervisor_checklist || [],
-              quiz: (moduleData.quiz || []).map((q: any) => ({
+              quiz: (moduleData.quiz || []).map((q) => ({
                 questionId: q.question_id,
                 questionType: q.question_type,
                 questionText: q.question_text,
@@ -1079,7 +1079,7 @@ const router = Router();
               createdBy: user.id,
             });
             createdModules.push(module);
-          } catch (err: any) {
+          } catch (err) {
             console.error(`Error importing module ${moduleData.code}:`, err);
           }
         }
@@ -1090,7 +1090,7 @@ const router = Router();
         imported: createdModules.length, 
         modules: createdModules 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error importing training modules:", error);
       res.status(500).json({ message: "Eğitim modülleri içe aktarılırken hata oluştu" });
     }
@@ -1130,7 +1130,7 @@ const router = Router();
         success: true,
         module: generatedModule
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("AI Module generation error:", error);
       res.status(500).json({ 
         message: error.message || "Modül oluşturma başarısız" 
@@ -1171,7 +1171,7 @@ const router = Router();
         success: true,
         module: savedModule
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving AI-generated module:", error);
       res.status(500).json({ message: "Modül kaydedilemedi" });
     }
@@ -1206,7 +1206,7 @@ const router = Router();
         originalSize: file.size,
         optimizedSize: optimized.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "UploadAcademyImage");
     }
   });
@@ -1254,7 +1254,7 @@ const router = Router();
         fileName: file.originalname,
         size: optimized.length
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "UploadModuleImage");
     }
   });
@@ -1287,7 +1287,7 @@ const router = Router();
       await storage.updateTrainingModule(moduleId, { galleryImages: updatedGallery });
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "DeleteModuleImage");
     }
   });
@@ -1326,7 +1326,7 @@ const router = Router();
         fileType: file.mimetype,
         fileSize: file.size
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("File upload/processing error:", error);
       res.status(500).json({ 
         message: error.message || "Dosya işlenemedi" 
@@ -1358,7 +1358,7 @@ const router = Router();
       ];
 
       res.json({ objectives });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating objectives:", error);
       res.status(500).json({ message: "Hedefler oluşturulurken hata oluştu" });
     }
@@ -1366,7 +1366,7 @@ const router = Router();
 
 
   // Generate sales tips with AI
-  router.post('/api/training/modules/:id/generate-sales-tips', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/modules/:id/generate-sales-tips', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1418,14 +1418,14 @@ En az 5 satış cümlesi ve 5 soru-cevap oluştur. Türkçe olmalı.`;
         .where(eq(trainingModules.id, moduleId));
 
       res.json({ success: true, salesTips: parsed.salesTips, customerQA: parsed.customerQA });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Generate sales tips error:", error);
       res.status(500).json({ message: "Satış ipuçları oluşturulamadı" });
     }
   });
 
   // Generate presentation guide with AI
-  router.post('/api/training/modules/:id/generate-presentation', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/modules/:id/generate-presentation', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1475,14 +1475,14 @@ Türkçe ve profesyonel olmalı.`;
         .where(eq(trainingModules.id, moduleId));
 
       res.json({ success: true, presentationGuide: parsed });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Generate presentation error:", error);
       res.status(500).json({ message: "Sunum rehberi oluşturulamadı" });
     }
   });
 
   // Generate marketing content with AI
-  router.post('/api/training/modules/:id/generate-marketing', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/modules/:id/generate-marketing', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1535,14 +1535,14 @@ Türkçe, samimi ve çağdaş bir dil kullan.`;
         .where(eq(trainingModules.id, moduleId));
 
       res.json({ success: true, marketingContent: parsed });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Generate marketing error:", error);
       res.status(500).json({ message: "Pazarlama içerikleri oluşturulamadı" });
     }
   });
 
   // Generate roleplay scenarios with AI
-  router.post('/api/training/modules/:id/generate-roleplay', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/modules/:id/generate-roleplay', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1594,7 +1594,7 @@ JSON formatında yanıt ver:
         .where(eq(trainingModules.id, moduleId));
 
       res.json({ success: true, scenarios: parsed.scenarios });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Generate roleplay error:", error);
       res.status(500).json({ message: "Senaryolar oluşturulamadı" });
     }
@@ -1616,7 +1616,7 @@ JSON formatında yanıt ver:
       });
       
       res.status(201).json(video);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -1645,7 +1645,7 @@ JSON formatında yanıt ver:
 
       const lessons = await storage.getModuleLessons(moduleId);
       res.json(lessons);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching module lessons:", error);
       res.status(500).json({ message: "Ders listesi getirilemedi" });
     }
@@ -1668,7 +1668,7 @@ JSON formatında yanıt ver:
       });
       
       res.status(201).json(lesson);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -1694,7 +1694,7 @@ JSON formatında yanıt ver:
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -1715,7 +1715,7 @@ JSON formatında yanıt ver:
       await storage.deleteModuleLesson(lessonId);
       
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting module lesson:", error);
       res.status(500).json({ message: "Ders silinemedi" });
     }
@@ -1786,7 +1786,7 @@ JSON formatında yanıt ver:
         flashcardCount: flashcards.length,
         message: `${quizQuestions.length} quiz sorusu ve ${flashcards.length} flashcard oluşturuldu`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating AI materials:", error);
       res.status(500).json({ message: "AI materyal oluşturulamadı" });
     }
@@ -1808,7 +1808,7 @@ JSON formatında yanıt ver:
       });
       
       res.status(201).json(quiz);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -1824,7 +1824,7 @@ JSON formatında yanıt ver:
       const userId = req.user!.id;
       const progress = await storage.getUserTrainingProgress(userId);
       res.json(progress);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching training progress:", error);
       res.status(500).json({ message: "Eğitim ilerlemesi alınırken hata oluştu" });
     }
@@ -1839,7 +1839,7 @@ JSON formatında yanıt ver:
       const validated = insertUserTrainingProgressSchema.partial().parse(req.body);
       const updated = await storage.updateUserProgress(userId, moduleId, validated);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -1859,7 +1859,7 @@ JSON formatında yanıt ver:
       });
       
       res.status(201).json(attempt);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Doğrulama hatası", errors: error.errors });
       }
@@ -1886,14 +1886,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "ApproveQuizAttempt");
     }
   });
 
 
   // POST /api/onboarding-documents - Upload onboarding document
-  router.post('/api/onboarding-documents', isAuthenticated, async (req: any, res) => {
+  router.post('/api/onboarding-documents', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1905,7 +1905,7 @@ JSON formatında yanıt ver:
       }).returning();
 
       res.status(201).json(document);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading onboarding document:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1920,7 +1920,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // POST /api/performance/calculate - Calculate daily performance score
-  router.post('/api/performance/calculate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/performance/calculate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { userId, branchId, date } = req.body;
@@ -1937,7 +1937,7 @@ JSON formatında yanıt ver:
 
       const score = await storage.calculateAndSaveDailyPerformanceScore(userId, branchId, date);
       res.json(score);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error calculating performance score:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1948,7 +1948,7 @@ JSON formatında yanıt ver:
 
   // GET /api/performance/team - Get team performance aggregates (supervisor only)
   // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
-  router.get('/api/performance/team', isAuthenticated, async (req: any, res) => {
+  router.get('/api/performance/team', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1966,7 +1966,7 @@ JSON formatında yanıt ver:
       res.setHeader('Cache-Control', 'no-store');
       const teamPerformance = await storage.getTeamPerformanceAggregates(user.branchId);
       res.json(teamPerformance);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching team performance:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1977,7 +1977,7 @@ JSON formatında yanıt ver:
 
   // GET /api/performance/branches/composite - Get composite branch scores (HQ only)
   // NOTE: Must come BEFORE /api/performance/branches to avoid route matching issues
-  router.get('/api/performance/branches/composite', isAuthenticated, async (req: any, res) => {
+  router.get('/api/performance/branches/composite', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -2002,7 +2002,7 @@ JSON formatında yanıt ver:
       // Cache for 60 seconds
       setCachedResponse(cacheKey, compositeScores, 60);
       res.json(compositeScores);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching composite branch scores:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2013,7 +2013,7 @@ JSON formatında yanıt ver:
 
   // GET /api/performance/branches - Get all branches performance aggregates (HQ only)
   // NOTE: Must come BEFORE /api/performance/:userId to avoid route matching issues
-  router.get('/api/performance/branches', isAuthenticated, async (req: any, res) => {
+  router.get('/api/performance/branches', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -2027,7 +2027,7 @@ JSON formatında yanıt ver:
       res.setHeader('Cache-Control', 'no-store');
       const branchesPerformance = await storage.getAllBranchesPerformanceAggregates();
       res.json(branchesPerformance);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching branches performance:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2037,7 +2037,7 @@ JSON formatında yanıt ver:
   });
 
   // POST /api/performance/branches/:branchId/evaluation - Generate AI evaluation for branch performance (HQ only)
-  router.post('/api/performance/branches/:branchId/evaluation', isAuthenticated, async (req: any, res) => {
+  router.post('/api/performance/branches/:branchId/evaluation', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.params;
@@ -2076,7 +2076,7 @@ JSON formatında yanıt ver:
       );
       
       res.json(evaluation);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating branch evaluation:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2086,7 +2086,7 @@ JSON formatında yanıt ver:
   });
 
   // GET /api/performance/:userId - Get performance scores for a user
-  router.get('/api/performance/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/performance/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { userId } = req.params;
@@ -2100,7 +2100,7 @@ JSON formatında yanıt ver:
       res.setHeader('Cache-Control', 'no-store');
       const scores = await storage.getPerformanceScores(userId, startDate as string, endDate as string);
       res.json(scores);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching performance scores:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2110,7 +2110,7 @@ JSON formatında yanıt ver:
   });
 
   // GET /api/performance/:userId/week/:week - Get weekly performance summary
-  router.get('/api/performance/:userId/week/:week', isAuthenticated, async (req: any, res) => {
+  router.get('/api/performance/:userId/week/:week', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { userId, week } = req.params;
@@ -2122,7 +2122,7 @@ JSON formatında yanıt ver:
 
       const summary = await storage.getWeeklyPerformanceSummary(userId, week);
       res.json(summary);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching weekly performance summary:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2137,7 +2137,7 @@ JSON formatında yanıt ver:
   // ========================
 
   // GET /api/leave-requests - Get leave requests (filtered by role)
-  router.get('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+  router.get('/api/leave-requests', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { userId, status, leaveType, startDate, endDate } = req.query;
@@ -2203,19 +2203,19 @@ JSON formatında yanıt ver:
         ? await query.where(and(...conditions)).orderBy(desc(leaveRequests.createdAt))
         : await query.orderBy(desc(leaveRequests.createdAt));
 
-      const enriched = results.map((r: any) => ({
+      const enriched = results.map((r) => ({
         ...r,
         userName: ((r.userFirstName || '') + ' ' + (r.userLastName || '')).trim() || null,
       }));
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching leave requests:", error);
       res.status(500).json({ message: "İzin talepleri yüklenirken hata oluştu" });
     }
   });
 
   // GET /api/leave-requests/my - Get current user's leave requests
-  router.get('/api/leave-requests/my', isAuthenticated, async (req: any, res) => {
+  router.get('/api/leave-requests/my', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
 
@@ -2238,14 +2238,14 @@ JSON formatında yanıt ver:
         .orderBy(desc(leaveRequests.createdAt));
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching my leave requests:", error);
       res.status(500).json({ message: "İzin talepleriniz yüklenirken hata oluştu" });
     }
   });
 
   // POST /api/leave-requests - Create a new leave request
-  router.post('/api/leave-requests', isAuthenticated, async (req: any, res) => {
+  router.post('/api/leave-requests', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { userId, leaveType, startDate, endDate, totalDays, reason } = req.body;
@@ -2387,19 +2387,19 @@ JSON formatında yanıt ver:
             }
           }
         }
-      } catch (notifError: any) {
+      } catch (notifError) {
         console.error("Error sending leave request notifications:", notifError);
       }
 
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating leave request:", error);
       res.status(500).json({ message: "İzin talebi oluşturulurken hata oluştu" });
     }
   });
 
   // PATCH /api/leave-requests/:id/approve - Approve a leave request (CEO-only for HQ/factory/Işıklar)
-  router.patch('/api/leave-requests/:id/approve', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/leave-requests/:id/approve', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const requestId = parseInt(req.params.id);
@@ -2465,14 +2465,14 @@ JSON formatında yanıt ver:
       });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving leave request:", error);
       res.status(500).json({ message: "İzin talebi onaylanırken hata oluştu" });
     }
   });
 
   // PATCH /api/leave-requests/:id/reject - Reject a leave request (CEO-only for HQ/factory/Işıklar)
-  router.patch('/api/leave-requests/:id/reject', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/leave-requests/:id/reject', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const requestId = parseInt(req.params.id);
@@ -2538,7 +2538,7 @@ JSON formatında yanıt ver:
       });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error rejecting leave request:", error);
       res.status(500).json({ message: "İzin talebi reddedilirken hata oluştu" });
     }
@@ -2547,7 +2547,7 @@ JSON formatında yanıt ver:
 
   // Employee Onboarding
   // Get all onboarding records (with optional branch filter via query param)
-  router.get('/api/employee-onboarding', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-onboarding', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { branchId } = req.query;
@@ -2591,7 +2591,7 @@ JSON formatında yanıt ver:
       });
       
       res.json(recordsWithUsers);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching all onboarding records:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2600,7 +2600,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/employee-onboarding/mentor/my-mentees', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-onboarding/mentor/my-mentees', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'view', 'Mentee kayıtlarını görüntüleme yetkiniz yok');
@@ -2641,7 +2641,7 @@ JSON formatında yanıt ver:
       }
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching mentee records:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2650,7 +2650,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/employee-onboarding/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-onboarding/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const targetUserId = req.params.userId;
@@ -2667,7 +2667,7 @@ JSON formatında yanıt ver:
       
       const onboarding = await storage.getEmployeeOnboarding(targetUserId);
       res.json(onboarding);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching employee onboarding:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2676,7 +2676,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/employee-onboarding', isAuthenticated, async (req: any, res) => {
+  router.post('/api/employee-onboarding', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Onboarding kaydı oluşturma yetkiniz yok');
@@ -2697,7 +2697,7 @@ JSON formatında yanıt ver:
       // Use getOrCreate for idempotent operation - it handles all defaults internally
       const onboarding = await storage.getOrCreateEmployeeOnboarding(userId, branchId, user.id);
       res.json(onboarding);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating employee onboarding:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2709,7 +2709,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/employee-onboarding/start-from-template', isAuthenticated, async (req: any, res) => {
+  router.post('/api/employee-onboarding/start-from-template', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Şablondan onboarding başlatma yetkiniz yok');
@@ -2787,7 +2787,7 @@ JSON formatında yanıt ver:
       });
 
       res.json({ onboarding: updated, tasks: createdTasks });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting onboarding from template:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2799,7 +2799,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/employee-onboarding/:id/mentor-note', isAuthenticated, async (req: any, res) => {
+  router.post('/api/employee-onboarding/:id/mentor-note', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const onboardingId = parseInt(req.params.id);
@@ -2839,7 +2839,7 @@ JSON formatında yanıt ver:
       });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding mentor note:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2851,7 +2851,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.patch('/api/employee-onboarding/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/employee-onboarding/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const onboardingId = parseInt(req.params.id);
@@ -2870,7 +2870,7 @@ JSON formatında yanıt ver:
       
       const updated = await storage.updateEmployeeOnboarding(onboardingId, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating employee onboarding:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2880,7 +2880,7 @@ JSON formatında yanıt ver:
   });
 
   // Onboarding Tasks
-  router.get('/api/onboarding-tasks/:onboardingId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/onboarding-tasks/:onboardingId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const onboardingId = parseInt(req.params.onboardingId);
@@ -2889,7 +2889,7 @@ JSON formatında yanıt ver:
       
       const tasks = await storage.getOnboardingTasks(onboardingId);
       res.json(tasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching onboarding tasks:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2898,7 +2898,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/onboarding-tasks', isAuthenticated, async (req: any, res) => {
+  router.post('/api/onboarding-tasks', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Onboarding görevi oluşturma yetkiniz yok');
@@ -2907,7 +2907,7 @@ JSON formatında yanıt ver:
       
       const task = await storage.createOnboardingTask(validatedData);
       res.json(task);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating onboarding task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2919,7 +2919,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.patch('/api/onboarding-tasks/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/onboarding-tasks/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -2928,7 +2928,7 @@ JSON formatında yanıt ver:
       
       const updated = await storage.updateOnboardingTask(taskId, req.body);
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating onboarding task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2937,7 +2937,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/onboarding-tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+  router.post('/api/onboarding-tasks/:id/complete', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -2947,7 +2947,7 @@ JSON formatında yanıt ver:
       
       const completed = await storage.completeOnboardingTask(taskId, user.id, attachments);
       res.json(completed);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error completing onboarding task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -2956,7 +2956,7 @@ JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/onboarding-tasks/:id/verify', isAuthenticated, async (req: any, res) => {
+  router.post('/api/onboarding-tasks/:id/verify', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -2968,7 +2968,7 @@ JSON formatında yanıt ver:
       
       const verified = await storage.verifyOnboardingTask(taskId, user.id);
       res.json(verified);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error verifying onboarding task:", error);
       res.status(500).json({ message: "Görev onaylanırken hata oluştu" });
     }
@@ -2979,7 +2979,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // GET /api/onboarding-templates - Get all active templates (coach/HQ only)
-  router.get('/api/onboarding-templates', isAuthenticated, async (req: any, res) => {
+  router.get('/api/onboarding-templates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -2992,14 +2992,14 @@ JSON formatında yanıt ver:
         .orderBy(desc(onboardingTemplates.createdAt));
       
       res.json(templates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching onboarding templates:", error);
       res.status(500).json({ message: "Şablonlar yüklenirken hata oluştu" });
     }
   });
 
   // POST /api/onboarding-templates - Create a new template (coach/HQ only)
-  router.post('/api/onboarding-templates', isAuthenticated, async (req: any, res) => {
+  router.post('/api/onboarding-templates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3017,14 +3017,14 @@ JSON formatında yanıt ver:
 
       const [template] = await db.insert(onboardingTemplates).values(parsed.data).returning();
       res.status(201).json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating onboarding template:", error);
       res.status(500).json({ message: "Şablon oluşturulurken hata oluştu" });
     }
   });
 
   // GET /api/onboarding-templates/:id - Get template with steps
-  router.get('/api/onboarding-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/onboarding-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3053,14 +3053,14 @@ JSON formatında yanıt ver:
         .orderBy(onboardingTemplateSteps.stepOrder);
 
       res.json({ ...template, steps });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching onboarding template:", error);
       res.status(500).json({ message: "Şablon yüklenirken hata oluştu" });
     }
   });
 
   // PUT /api/onboarding-templates/:id - Update template
-  router.put('/api/onboarding-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/onboarding-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3091,14 +3091,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating onboarding template:", error);
       res.status(500).json({ message: "Şablon güncellenirken hata oluştu" });
     }
   });
 
   // DELETE /api/onboarding-templates/:id - Soft delete (set isActive=false)
-  router.delete('/api/onboarding-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/onboarding-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3120,7 +3120,7 @@ JSON formatında yanıt ver:
       }
 
       res.json({ message: "Şablon silindi", template: updated });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting onboarding template:", error);
       res.status(500).json({ message: "Şablon silinirken hata oluştu" });
     }
@@ -3131,7 +3131,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // GET /api/onboarding-templates/:id/steps - Get template steps
-  router.get('/api/onboarding-templates/:id/steps', isAuthenticated, async (req: any, res) => {
+  router.get('/api/onboarding-templates/:id/steps', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3151,14 +3151,14 @@ JSON formatında yanıt ver:
         .orderBy(onboardingTemplateSteps.stepOrder);
 
       res.json(steps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching template steps:", error);
       res.status(500).json({ message: "Adımlar yüklenirken hata oluştu" });
     }
   });
 
   // POST /api/onboarding-templates/:id/steps - Add step to template
-  router.post('/api/onboarding-templates/:id/steps', isAuthenticated, async (req: any, res) => {
+  router.post('/api/onboarding-templates/:id/steps', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3181,14 +3181,14 @@ JSON formatında yanıt ver:
 
       const [step] = await db.insert(onboardingTemplateSteps).values(parsed.data).returning();
       res.status(201).json(step);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating template step:", error);
       res.status(500).json({ message: "Adım oluşturulurken hata oluştu" });
     }
   });
 
   // PUT /api/onboarding-template-steps/:id - Update step
-  router.put('/api/onboarding-template-steps/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/onboarding-template-steps/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3222,14 +3222,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating template step:", error);
       res.status(500).json({ message: "Adım güncellenirken hata oluştu" });
     }
   });
 
   // DELETE /api/onboarding-template-steps/:id - Delete step
-  router.delete('/api/onboarding-template-steps/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/onboarding-template-steps/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3251,7 +3251,7 @@ JSON formatında yanıt ver:
       }
 
       res.json({ message: "Adım silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting template step:", error);
       res.status(500).json({ message: "Adım silinirken hata oluştu" });
     }
@@ -3262,7 +3262,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // POST /api/employee-onboarding-assignments - Start onboarding for employee
-  router.post('/api/employee-onboarding-assignments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/employee-onboarding-assignments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3320,14 +3320,14 @@ JSON formatında yanıt ver:
       }
 
       res.status(201).json(assignment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating onboarding assignment:", error);
       res.status(500).json({ message: "Atama oluşturulurken hata oluştu" });
     }
   });
 
   // GET /api/employee-onboarding-assignments/user/:userId - Get employee's onboarding assignment
-  router.get('/api/employee-onboarding-assignments/user/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-onboarding-assignments/user/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const targetUserId = req.params.userId;
@@ -3343,14 +3343,14 @@ JSON formatında yanıt ver:
         .orderBy(desc(employeeOnboardingAssignments.createdAt));
 
       res.json(assignments);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching user onboarding assignments:", error);
       res.status(500).json({ message: "Atamalar yüklenirken hata oluştu" });
     }
   });
 
   // GET /api/employee-onboarding-assignments/branch/:branchId - Get all onboarding assignments for branch
-  router.get('/api/employee-onboarding-assignments/branch/:branchId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-onboarding-assignments/branch/:branchId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const branchId = parseInt(req.params.branchId);
@@ -3389,14 +3389,14 @@ JSON formatında yanıt ver:
         .orderBy(desc(employeeOnboardingAssignments.createdAt));
 
       res.json(assignments);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching branch onboarding assignments:", error);
       res.status(500).json({ message: "Atamalar yüklenirken hata oluştu" });
     }
   });
 
   // PUT /api/employee-onboarding-assignments/:id - Update assignment status
-  router.put('/api/employee-onboarding-assignments/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/employee-onboarding-assignments/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role)) {
@@ -3428,7 +3428,7 @@ JSON formatında yanıt ver:
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating onboarding assignment:", error);
       res.status(500).json({ message: "Atama güncellenirken hata oluştu" });
     }
@@ -3439,7 +3439,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // GET /api/employee-onboarding-progress/:assignmentId - Get progress for assignment
-  router.get('/api/employee-onboarding-progress/:assignmentId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-onboarding-progress/:assignmentId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const assignmentId = parseInt(req.params.assignmentId);
@@ -3490,14 +3490,14 @@ JSON formatında yanıt ver:
       }));
 
       res.json(progressWithSteps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching onboarding progress:", error);
       res.status(500).json({ message: "İlerleme yüklenirken hata oluştu" });
     }
   });
 
   // PUT /api/employee-onboarding-progress/:id - Update step progress (mentor marks complete)
-  router.put('/api/employee-onboarding-progress/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/employee-onboarding-progress/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const progressId = parseInt(req.params.id);
@@ -3567,7 +3567,7 @@ JSON formatında yanıt ver:
         .where(eq(employeeOnboardingAssignments.id, progressRecord.assignmentId));
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating onboarding progress:", error);
       res.status(500).json({ message: "İlerleme güncellenirken hata oluştu" });
     }
@@ -3579,7 +3579,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // Hook: Create training material when knowledge base article is published
-  router.post('/api/training/materials/generate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/materials/generate', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user.role, 'training', 'create')) {
         return res.status(403).json({ message: "İzniniz yok" });
@@ -3605,35 +3605,35 @@ JSON formatında yanıt ver:
       });
 
       res.status(201).json({ material, message: "Eğitim materyali oluşturuldu" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(400).json({ message: error.message || "Oluşturulamadı" });
     }
   });
 
   // GET /api/training/materials - List published training materials
-  router.get('/api/training/materials', isAuthenticated, async (req: any, res) => {
+  router.get('/api/training/materials', isAuthenticated, async (req, res) => {
     try {
       const { status } = req.query;
       const materials = await storage.getTrainingMaterials(status || 'published');
       res.json(materials);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchTrainingMaterials");
     }
   });
 
   // GET /api/training/assignments/:userId - Get user's training assignments
-  router.get('/api/training/assignments/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/training/assignments/:userId', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
       const assignments = await storage.getTrainingAssignments({ userId });
       res.json(assignments);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchTrainingAssignments");
     }
   });
 
   // POST /api/training/assignments - Bulk assign training to users/roles
-  router.post('/api/training/assignments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/assignments', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user.role, 'training', 'create')) {
         return res.status(403).json({ message: "Eğitim ataması yapma izniniz yok" });
@@ -3656,24 +3656,24 @@ JSON formatında yanıt ver:
             link: '/akademi',
           });
         }
-      } catch (notifErr: any) {
+      } catch (notifErr) {
         console.error("Training assignment notification error:", notifErr);
       }
 
       res.status(201).json(assignment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(400).json({ message: error.message || "Atama oluşturulamadı" });
     }
   });
 
   // POST /api/training/assignments/:id/complete - Mark assignment complete with score
-  router.post('/api/training/assignments/:id/complete', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/assignments/:id/complete', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const { score, timeSpentSeconds, notes } = req.body;
       
       const assignment = await storage.getTrainingAssignments({ userId: req.user.id });
-      const target = assignment.find((a: any) => a.id === parseInt(id));
+      const target = assignment.find((a) => a.id === parseInt(id));
       if (!target) return res.status(404).json({ message: "Atama bulunamadı" });
 
       // Create completion record
@@ -3706,19 +3706,19 @@ JSON formatında yanıt ver:
               supervisorScore: 0,
             });
           }
-        } catch (e: any) {
+        } catch (e) {
           console.error("Score recording failed:", e);
         }
       }
       
       res.json({ completion, assignment: target });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(400).json({ message: error.message || "Tamamlanmadı" });
     }
   });
 
   // GET /api/training/progress/:userId - Get user's training progress
-  router.get('/api/training/progress/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/training/progress/:userId', isAuthenticated, async (req, res) => {
     try {
       const { userId } = req.params;
       const progress = await storage.getUserTrainingProgress(userId);
@@ -3733,13 +3733,13 @@ JSON formatında yanıt ver:
           ? Math.round(completions.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / completions.length)
           : 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchTrainingProgress");
     }
   });
 
   // GET /api/training/stats - Training statistics for HQ/Supervisor
-  router.get('/api/training/stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/training/stats', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user.role, 'training', 'view')) {
         return res.status(403).json({ message: "İzniniz yok" });
@@ -3750,9 +3750,9 @@ JSON formatında yanıt ver:
 
       const stats = {
         totalAssigned: allAssignments.length,
-        completed: allCompletions.filter((c: any) => c.status === 'passed').length,
-        inProgress: allAssignments.filter((a: any) => a.status === 'in_progress').length,
-        overdue: allAssignments.filter((a: any) => a.status === 'overdue').length,
+        completed: allCompletions.filter((c) => c.status === 'passed').length,
+        inProgress: allAssignments.filter((a) => a.status === 'in_progress').length,
+        overdue: allAssignments.filter((a) => a.status === 'overdue').length,
         averageScore: allCompletions.length > 0
           ? Math.round(allCompletions.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / allCompletions.length)
           : 0,
@@ -3761,19 +3761,19 @@ JSON formatında yanıt ver:
 
       // Group by role
       const roleStats = new Map<string, any>();
-      allAssignments.forEach((a: any) => {
+      allAssignments.forEach((a) => {
         const key = a.targetRole || 'unassigned';
         if (!roleStats.has(key)) {
           roleStats.set(key, { assigned: 0, completed: 0 });
         }
         roleStats.get(key).assigned++;
-        const completed = allCompletions.filter((c: any) => c.assignmentId === a.id && c.status === 'passed').length;
+        const completed = allCompletions.filter((c) => c.assignmentId === a.id && c.status === 'passed').length;
         if (completed) roleStats.get(key).completed += completed;
       });
       stats.byRole = Object.fromEntries(roleStats);
 
       res.json(stats);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchTrainingStats");
     }
   });
@@ -3784,7 +3784,7 @@ JSON formatında yanıt ver:
   // ========================================
   
   // POST /api/training/modules/ai-generate - Generate module with AI
-  router.post('/api/training/modules/ai-generate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/modules/ai-generate', isAuthenticated, async (req, res) => {
     try {
       const { prompt } = req.body;
       if (!prompt) return res.status(400).json({ message: "Prompt gerekli" });
@@ -3821,14 +3821,14 @@ JSON formatında yanıt ver:
       });
 
       res.json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("AI module generation error:", error);
       res.status(500).json({ message: "Modül oluşturulamadı" });
     }
   });
   
   // POST /api/training/modules/:id/complete - Mark module as completed
-  router.post('/api/training/modules/:id/complete', isAuthenticated, async (req: any, res) => {
+  router.post('/api/training/modules/:id/complete', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const moduleId = parseInt(id);
@@ -3883,7 +3883,7 @@ JSON formatında yanıt ver:
 
       try {
         await storage.addCompletedModuleToCareerProgress(userId, moduleId);
-      } catch (chainError: any) {
+      } catch (chainError) {
         console.error("Career progress update error:", chainError);
       }
 
@@ -3892,20 +3892,20 @@ JSON formatında yanıt ver:
         badge: awardedBadge,
         module 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Module completion error:', error);
       res.status(400).json({ message: error.message || "Modül tamamlanamadı" });
     }
   });
 
   // GET /api/training/user-modules-stats - Get user's completed modules count
-  router.get('/api/training/user-modules-stats', isAuthenticated, async (req: any, res) => {
+  router.get('/api/training/user-modules-stats', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user.id;
       const allModules = await storage.getTrainingModules();
       const userProgress = await storage.getUserTrainingProgress(userId);
       
-      const completedCount = userProgress.filter((p: any) => p.status === 'completed').length;
+      const completedCount = userProgress.filter((p) => p.status === 'completed').length;
       const totalCount = allModules.length;
       
       res.json({
@@ -3913,13 +3913,13 @@ JSON formatında yanıt ver:
         totalCount,
         percentage: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.json({ completedCount: 0, totalCount: 0, percentage: 0 });
     }
   });
 
   // GET /api/training/modules/:id/completion-status - Get module completion status and earned badges
-  router.get('/api/training/modules/:id/completion-status', isAuthenticated, async (req: any, res) => {
+  router.get('/api/training/modules/:id/completion-status', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const moduleId = parseInt(id);
@@ -3933,7 +3933,7 @@ JSON formatında yanıt ver:
         completedAt: progress?.completedAt,
         badges: userBadgeList,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "FetchModuleProgress");
     }
   });
@@ -3946,7 +3946,7 @@ JSON formatında yanıt ver:
   // ========================================
 
   // GET /api/job-positions - List all job positions
-  router.get('/api/job-positions', isAuthenticated, async (req: any, res) => {
+  router.get('/api/job-positions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { status, branchId } = req.query;
@@ -3986,14 +3986,14 @@ JSON formatında yanıt ver:
       }));
       
       res.json(enrichedPositions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching job positions:", error);
       res.status(500).json({ message: "Pozisyonlar yüklenirken hata oluştu" });
     }
   });
 
   // POST /api/job-positions - Create a new job position
-  router.post('/api/job-positions', isAuthenticated, async (req: any, res) => {
+  router.post('/api/job-positions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
 
@@ -4009,14 +4009,14 @@ JSON formatında yanıt ver:
 
       const result = await db.insert(jobPositions).values(data).returning();
       res.status(201).json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating job position:", error);
       res.status(500).json({ message: "Pozisyon oluşturulurken hata oluştu" });
     }
   });
 
   // GET /api/job-positions/:id - Get single job position
-  router.get('/api/job-positions/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/job-positions/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -4031,14 +4031,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching job position:", error);
       res.status(500).json({ message: "Pozisyon yüklenirken hata oluştu" });
     }
   });
 
   // PATCH /api/job-positions/:id - Update job position
-  router.patch('/api/job-positions/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/job-positions/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -4057,14 +4057,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating job position:", error);
       res.status(500).json({ message: "Pozisyon güncellenirken hata oluştu" });
     }
   });
 
   // DELETE /api/job-positions/:id - Delete job position
-  router.delete('/api/job-positions/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/job-positions/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -4083,14 +4083,14 @@ JSON formatında yanıt ver:
         details: { softDelete: true },
       });
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting job position:", error);
       res.status(500).json({ message: "Pozisyon silinirken hata oluştu" });
     }
   });
 
   // POST /api/job-positions/:id/close - Close job position and send rejection emails
-  router.post('/api/job-positions/:id/close', isAuthenticated, async (req: any, res) => {
+  router.post('/api/job-positions/:id/close', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -4141,14 +4141,14 @@ JSON formatında yanıt ver:
               'DOSPRESSO - Başvuru Sonucu',
               emailBody
             );
-          } catch (emailError: any) {
+          } catch (emailError) {
             console.error(`Failed to send rejection email to ${candidate.email}:`, emailError);
           }
         }
       }
 
       res.json({ success: true, message: 'Pozisyon kapatıldı ve ret mailleri gönderildi' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error closing job position:", error);
       res.status(500).json({ message: "Pozisyon kapatılırken hata oluştu" });
     }
@@ -4156,7 +4156,7 @@ JSON formatında yanıt ver:
 
 
   // GET /api/interviews - List all interviews
-  router.get('/api/interviews', isAuthenticated, async (req: any, res) => {
+  router.get('/api/interviews', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { applicationId, status } = req.query;
@@ -4186,14 +4186,14 @@ JSON formatında yanıt ver:
       // Extract just the interviews part
       const interviewList = results.map(r => r.interviews);
       res.json(interviewList);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching interviews:", error);
       res.status(500).json({ message: "Mülakatlar yüklenirken hata oluştu" });
     }
   });
 
   // POST /api/interviews - Create a new interview
-  router.post('/api/interviews', isAuthenticated, async (req: any, res) => {
+  router.post('/api/interviews', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
 
@@ -4218,14 +4218,14 @@ JSON formatında yanıt ver:
         .where(eq(jobApplications.id, data.applicationId));
 
       res.status(201).json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating interview:", error);
       res.status(500).json({ message: "Mülakat oluşturulurken hata oluştu" });
     }
   });
 
   // PATCH /api/interviews/:id - Update interview
-  router.patch('/api/interviews/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/interviews/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -4252,7 +4252,7 @@ JSON formatında yanıt ver:
       }
 
       res.json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating interview:", error);
       res.status(500).json({ message: "Mülakat güncellenirken hata oluştu" });
     }
@@ -4260,7 +4260,7 @@ JSON formatında yanıt ver:
 
 
   // POST /api/interviews/:id/start - Start interview (change status to in_progress)
-  router.post('/api/interviews/:id/start', isAuthenticated, async (req: any, res) => {
+  router.post('/api/interviews/:id/start', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
@@ -4277,14 +4277,14 @@ JSON formatında yanıt ver:
         return res.status(404).json({ message: 'Mülakat bulunamadı' });
       }
       res.json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting interview:", error);
       res.status(500).json({ message: "Mülakat başlatılırken hata oluştu" });
     }
   });
 
   // GET /api/interviews/:id/responses - Get all responses for an interview
-  router.get('/api/interviews/:id/responses', isAuthenticated, async (req: any, res) => {
+  router.get('/api/interviews/:id/responses', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
@@ -4312,14 +4312,14 @@ JSON formatında yanıt ver:
       }));
 
       res.json(flatResponses);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching interview responses:", error);
       res.status(500).json({ message: "Mülakat cevapları yüklenirken hata oluştu" });
     }
   });
 
   // POST /api/interviews/:id/respond - Add or update a response
-  router.post('/api/interviews/:id/respond', isAuthenticated, async (req: any, res) => {
+  router.post('/api/interviews/:id/respond', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
@@ -4352,14 +4352,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving interview response:", error);
       res.status(500).json({ message: "Cevap kaydedilirken hata oluştu" });
     }
   });
 
   // PATCH /api/interviews/:id/result - Update interview result (pending/positive/finalist/negative)
-  router.patch('/api/interviews/:id/result', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/interviews/:id/result', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -4402,14 +4402,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(resultData[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating interview result:", error);
       res.status(500).json({ message: "Mülakat sonucu güncellenirken hata oluştu" });
     }
   });
 
   // POST /api/interviews/:id/complete - Complete interview with overall result
-  router.post('/api/interviews/:id/complete', isAuthenticated, async (req: any, res) => {
+  router.post('/api/interviews/:id/complete', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType) && user.role !== 'supervisor' && user.role !== 'admin') {
@@ -4449,14 +4449,14 @@ JSON formatında yanıt ver:
       }
 
       res.json(result[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error completing interview:", error);
       res.status(500).json({ message: "Mülakat tamamlanırken hata oluştu" });
     }
   });
 
   // POST /api/interviews/:id/hire - Hire candidate and send rejection emails to others
-  router.post('/api/interviews/:id/hire', isAuthenticated, async (req: any, res) => {
+  router.post('/api/interviews/:id/hire', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType) && user.role !== 'admin') {
@@ -4531,7 +4531,7 @@ Gösterdiğiniz ilgi ve ayırdığınız zaman için teşekkür ederiz. Gelecekt
 Başarılar dileriz,
 DOSPRESSO İnsan Kaynakları Ekibi`
             );
-          } catch (emailError: any) {
+          } catch (emailError) {
             console.error(`Failed to send rejection email to ${otherApp.email}:`, emailError);
           }
         }
@@ -4548,7 +4548,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         rejectedCount: otherApplications.length,
         message: `${application.fullName} işe alındı. ${otherApplications.length} diğer adaya ret maili gönderildi.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error hiring candidate:", error);
       res.status(500).json({ message: "İşe alım sırasında hata oluştu" });
     }
@@ -4569,7 +4569,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
   };
 
   // GET /api/salary/deduction-types - Kesinti tiplerini getir
-  router.get('/api/salary/deduction-types', isAuthenticated, async (req: any, res) => {
+  router.get('/api/salary/deduction-types', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
@@ -4577,14 +4577,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
       const types = await db.select().from(salaryDeductionTypes).where(eq(salaryDeductionTypes.isActive, true));
       res.json(types);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get deduction types error:", error);
       res.status(500).json({ message: "Kesinti tipleri alınamadı" });
     }
   });
 
   // POST /api/salary/deduction-types - Yeni kesinti tipi oluştur (sadece admin)
-  router.post('/api/salary/deduction-types', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/deduction-types', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -4593,14 +4593,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const validated = insertSalaryDeductionTypeSchema.parse(req.body);
       const [newType] = await db.insert(salaryDeductionTypes).values(validated).returning();
       res.json(newType);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create deduction type error:", error);
       res.status(500).json({ message: "Kesinti tipi oluşturulamadı" });
     }
   });
 
   // GET /api/salary/employee/:userId - Personelin maaş bilgilerini getir
-  router.get('/api/salary/employee/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/salary/employee/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
@@ -4626,14 +4626,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .limit(1);
 
       res.json(salary || null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get employee salary error:", error);
       res.status(500).json({ message: "Maaş bilgileri alınamadı" });
     }
   });
 
   // POST /api/salary/employee - Personele maaş bilgisi ekle
-  router.post('/api/salary/employee', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/employee', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -4655,14 +4655,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const [newSalary] = await db.insert(employeeSalaries).values(validated).returning();
       res.json(newSalary);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create employee salary error:", error);
       res.status(500).json({ message: "Maaş bilgisi eklenemedi" });
     }
   });
 
   // PATCH /api/salary/employee/:id - Maaş bilgisini güncelle
-  router.patch('/api/salary/employee/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/salary/employee/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -4681,14 +4681,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Maaş kaydı bulunamadı" });
       }
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update employee salary error:", error);
       res.status(500).json({ message: "Maaş bilgisi güncellenemedi" });
     }
   });
 
   // GET /api/salary/deductions/:userId - Personelin kesintilerini getir
-  router.get('/api/salary/deductions/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/salary/deductions/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
@@ -4724,14 +4724,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(desc(salaryDeductions.referenceDate));
 
       res.json(deductions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get salary deductions error:", error);
       res.status(500).json({ message: "Kesinti bilgileri alınamadı" });
     }
   });
 
   // POST /api/salary/deductions - Manuel kesinti ekle
-  router.post('/api/salary/deductions', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/deductions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik' && user.role !== 'yatirimci_branch') {
@@ -4754,14 +4754,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const [newDeduction] = await db.insert(salaryDeductions).values(validated).returning();
       res.json(newDeduction);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create salary deduction error:", error);
       res.status(500).json({ message: "Kesinti eklenemedi" });
     }
   });
 
   // DELETE /api/salary/deductions/:id - Kesinti sil (sadece onaysız olanlar)
-  router.delete('/api/salary/deductions/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/salary/deductions/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -4780,14 +4780,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       await db.delete(salaryDeductions).where(eq(salaryDeductions.id, deductionId));
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete salary deduction error:", error);
       res.status(500).json({ message: "Kesinti silinemedi" });
     }
   });
 
   // GET /api/salary/payroll/:userId - Personelin bordro geçmişini getir
-  router.get('/api/salary/payroll/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/salary/payroll/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
@@ -4814,14 +4814,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         .orderBy(desc(monthlyPayrolls.year), desc(monthlyPayrolls.month));
 
       res.json(payrolls);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get payroll history error:", error);
       res.status(500).json({ message: "Bordro geçmişi alınamadı" });
     }
   });
 
   // POST /api/salary/payroll/calculate - Aylık bordro hesapla
-  router.post('/api/salary/payroll/calculate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/payroll/calculate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -4983,14 +4983,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       }
 
       res.json(payroll);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Calculate payroll error:", error);
       res.status(500).json({ message: "Bordro hesaplanamadı" });
     }
   });
 
   // POST /api/salary/payroll/:id/approve - Bordro onayla
-  router.post('/api/salary/payroll/:id/approve', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/payroll/:id/approve', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -5012,14 +5012,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Bordro bulunamadı" });
       }
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Approve payroll error:", error);
       res.status(500).json({ message: "Bordro onaylanamadı" });
     }
   });
 
   // POST /api/salary/payroll/:id/pay - Bordro ödendi olarak işaretle
-  router.post('/api/salary/payroll/:id/pay', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/payroll/:id/pay', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -5043,14 +5043,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Bordro bulunamadı" });
       }
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Mark paid error:", error);
       res.status(500).json({ message: "Ödeme işlemi yapılamadı" });
     }
   });
 
   // GET /api/salary/branch/:branchId/summary - Şube maaş özeti
-  router.get('/api/salary/branch/:branchId/summary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/salary/branch/:branchId/summary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const branchId = parseInt(req.params.branchId);
@@ -5102,14 +5102,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       };
 
       res.json(summary);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get branch salary summary error:", error);
       res.status(500).json({ message: "Şube maaş özeti alınamadı" });
     }
   });
 
   // POST /api/salary/auto-deductions/calculate - Otomatik kesinti hesapla (geç kalma vb.)
-  router.post('/api/salary/auto-deductions/calculate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/salary/auto-deductions/calculate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -5188,7 +5188,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         createdDeductions,
         message: `${createdDeductions} otomatik kesinti oluşturuldu` 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Calculate auto deductions error:", error);
       res.status(500).json({ message: "Otomatik kesinti hesaplanamadı" });
     }
@@ -5201,7 +5201,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     str.replace(/_([a-z0-9])/g, (_, char) => char.toUpperCase());
 
   // Helper function to transform object keys from snake_case to camelCase
-  const transformPayrollParams = (row: any) => {
+  const transformPayrollParams = (row) => {
     const result: any = {};
     for (const key in row) {
       result[snakeToCamel(key)] = row[key];
@@ -5217,13 +5217,13 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
     // Check dynamic permissions for other roles
     const permissions = await storage.getRolePermissions();
-    return permissions.some((p: any) => 
+    return permissions.some((p) => 
       p.role === userRole && p.module === 'accounting' && (p.actions || []).includes('view')
     );
   };
 
   // GET /api/payroll/parameters - Tüm bordro parametrelerini getir
-  router.get('/api/payroll/parameters', isAuthenticated, async (req: any, res) => {
+  router.get('/api/payroll/parameters', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const canAccess = await hasAccountingAccess(user.role);
@@ -5235,14 +5235,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         SELECT * FROM payroll_parameters ORDER BY year DESC, effective_from DESC
       `);
       res.json(params.rows.map(transformPayrollParams));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get payroll parameters error:", error);
       res.status(500).json({ message: "Bordro parametreleri alınamadı" });
     }
   });
 
   // GET /api/payroll/parameters/:year - Belirli yılın parametrelerini getir
-  router.get('/api/payroll/parameters/:year', isAuthenticated, async (req: any, res) => {
+  router.get('/api/payroll/parameters/:year', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const canAccess = await hasAccountingAccess(user.role);
@@ -5259,7 +5259,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         return res.status(404).json({ message: "Belirtilen yıl için parametre bulunamadı" });
       }
       res.json(transformPayrollParams(params.rows[0]));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get payroll parameters by year error:", error);
       res.status(500).json({ message: "Bordro parametreleri alınamadı" });
     }
@@ -5294,7 +5294,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     notes: z.string().max(1000).optional(),
   });
 
-  router.patch('/api/payroll/parameters/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/payroll/parameters/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -5355,14 +5355,14 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
       const result = await db.execute(sql`SELECT * FROM payroll_parameters WHERE id = ${id}`);
       res.json(transformPayrollParams(result.rows[0]));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update payroll parameters error:", error);
       res.status(500).json({ message: "Bordro parametreleri güncellenemedi" });
     }
   });
 
   // POST /api/payroll/ai-regulation-check - AI ile güncel mevzuat kontrolü
-  router.post('/api/payroll/ai-regulation-check', isAuthenticated, async (req: any, res) => {
+  router.post('/api/payroll/ai-regulation-check', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -5460,13 +5460,13 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         parameterId,
         checkedAt: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "AIRegulationCheck");
     }
   });
 
   // POST /api/payroll/apply-ai-suggestions - AI önerilerini uygula
-  router.post('/api/payroll/apply-ai-suggestions', isAuthenticated, async (req: any, res) => {
+  router.post('/api/payroll/apply-ai-suggestions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (user.role !== 'admin' && user.role !== 'muhasebe' && user.role !== 'muhasebe_ik') {
@@ -5546,7 +5546,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         message: `${changes.length} parametre başarıyla güncellendi`,
         updatedParams: transformPayrollParams(result.rows[0]),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "ApplyAISuggestions");
     }
   });
@@ -5562,7 +5562,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     message: "Brüt veya net maaş belirtilmeli",
   });
 
-  router.post('/api/payroll/calculate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/payroll/calculate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
@@ -5755,7 +5755,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       } else {
         res.status(400).json({ message: "Brüt veya net maaş belirtilmeli" });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Calculate payroll error:", error);
       res.status(500).json({ message: "Bordro hesaplanamadı" });
     }
@@ -5763,7 +5763,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
 
 
   // GET /api/employees-with-salary - Maaş bilgileri ile personel listesi (SCOPE-AWARE)
-  router.get('/api/employees-with-salary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employees-with-salary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const userRole = user?.role;
@@ -5823,7 +5823,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       `);
       
       res.json(result.rows);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get employees with salary error:", error);
       res.status(500).json({ message: "Personel maaş listesi alınamadı" });
     }
@@ -5835,7 +5835,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   // ========================================
 
   // GET /api/payroll/records - Bordro kayıtlarını listele (SCOPE-AWARE)
-  router.get('/api/payroll/records', isAuthenticated, async (req: any, res) => {
+  router.get('/api/payroll/records', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const userRole = user?.role;
@@ -5904,14 +5904,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         ORDER BY pr.period_year DESC, pr.period_month DESC, u.first_name
       `);
       res.json(result.rows);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get payroll records error:", error);
       res.status(500).json({ message: "Bordro kayıtları alınamadı" });
     }
   });
 
   // GET /api/payroll/records/:id - Tek bordro kaydı (SCOPE-AWARE)
-  router.get('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/payroll/records/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const userRole = user?.role;
@@ -5964,14 +5964,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       res.json(record);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı alınamadı" });
     }
   });
 
   // GET /api/payroll/employee/:userId/overtime - Personelin onaylı mesai dakikaları
-  router.get('/api/payroll/employee/:userId/overtime', isAuthenticated, async (req: any, res) => {
+  router.get('/api/payroll/employee/:userId/overtime', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
@@ -5998,14 +5998,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       `);
       
       res.json(result.rows[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get employee overtime error:", error);
       res.status(500).json({ message: "Mesai bilgisi alınamadı" });
     }
   });
 
   // GET /api/payroll/employee/:userId/attendance - Personelin çalışma saatleri
-  router.get('/api/payroll/employee/:userId/attendance', isAuthenticated, async (req: any, res) => {
+  router.get('/api/payroll/employee/:userId/attendance', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
@@ -6051,14 +6051,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         undertimeMinutes,
         undertimePercentage: undertimeMinutes > 0 ? Math.round((undertimeMinutes / expectedMonthlyMinutes) * 100) : 0
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get employee attendance error:", error);
       res.status(500).json({ message: "Çalışma saati bilgisi alınamadı" });
     }
   });
 
   // POST /api/payroll/calculate - Bordro hesaplama (kaydetmeden)
-  router.post('/api/payroll/calculate-employee', isAuthenticated, async (req: any, res) => {
+  router.post('/api/payroll/calculate-employee', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
@@ -6249,14 +6249,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         incomeTax,
         stampTax
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Calculate employee payroll error:", error);
       res.status(500).json({ message: "Bordro hesaplanamadı" });
     }
   });
 
   // POST /api/payroll/records - Yeni bordro kaydı oluştur
-  router.post('/api/payroll/records', isAuthenticated, async (req: any, res) => {
+  router.post('/api/payroll/records', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const createdById = req.user?.id;
@@ -6339,14 +6339,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       `);
       
       res.status(201).json(result.rows[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı oluşturulamadı" });
     }
   });
 
   // PATCH /api/payroll/records/:id - Bordro kaydını güncelle
-  router.patch('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/payroll/records/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!isHQRole(userRole) && userRole !== 'admin' && userRole !== 'muhasebe') {
@@ -6414,14 +6414,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       `);
       
       res.json(result.rows[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı güncellenemedi" });
     }
   });
 
   // PATCH /api/payroll/records/:id/approve - Bordro onaylama
-  router.patch('/api/payroll/records/:id/approve', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/payroll/records/:id/approve', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const approverId = req.user?.id;
@@ -6462,14 +6462,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       res.json(result.rows[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Approve payroll record error:", error);
       res.status(500).json({ message: "Bordro onaylanamadı" });
     }
   });
 
   // PATCH /api/payroll/records/:id/pay - Bordro ödendi olarak işaretle
-  router.patch('/api/payroll/records/:id/pay', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/payroll/records/:id/pay', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       
@@ -6507,14 +6507,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       res.json(result.rows[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Pay payroll record error:", error);
       res.status(500).json({ message: "Ödeme işaretlenemedi" });
     }
   });
 
   // DELETE /api/payroll/records/:id - Bordro kaydını sil
-  router.delete('/api/payroll/records/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/payroll/records/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       
@@ -6552,7 +6552,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       await db.execute(sql`DELETE FROM payroll_records WHERE id = ${recordId}`);
       
       res.json({ message: "Bordro kaydı silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete payroll record error:", error);
       res.status(500).json({ message: "Bordro kaydı silinemedi" });
     }
@@ -6560,7 +6560,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
 
 
   // GET /api/employee-of-month/weights - Ayın Elemanı ağırlıklarını getir
-  router.get('/api/employee-of-month/weights', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-of-month/weights', isAuthenticated, async (req, res) => {
     try {
       const { branchId } = req.query;
       
@@ -6589,14 +6589,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
 
       res.json(weights[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching EoM weights:", error);
       res.status(500).json({ message: "Ağırlıklar alınamadı" });
     }
   });
 
   // PUT /api/employee-of-month/weights - Ayın Elemanı ağırlıklarını güncelle
-  router.put('/api/employee-of-month/weights', isAuthenticated, async (req: any, res) => {
+  router.put('/api/employee-of-month/weights', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -6640,7 +6640,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
 
       res.json({ success: true, message: "Ağırlıklar güncellendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating EoM weights:", error);
       res.status(500).json({ message: "Ağırlıklar güncellenemedi" });
     }
@@ -6649,7 +6649,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   // POST /api/employee-of-month/calculate - Ayın Elemanı hesaplama
 
   // GET /api/employee-of-month/performance - Aylık performans listesi
-  router.get('/api/employee-of-month/performance', isAuthenticated, async (req: any, res) => {
+  router.get('/api/employee-of-month/performance', isAuthenticated, async (req, res) => {
     try {
       const { branchId, month, year } = req.query;
       const userRole = req.user?.role;
@@ -6676,14 +6676,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }));
 
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching performances:", error);
       res.status(500).json({ message: "Performans listesi alınamadı" });
     }
   });
 
   // POST /api/employee-of-month/award - Ayın Elemanı ödülü ver
-  router.post('/api/employee-of-month/award', isAuthenticated, async (req: any, res) => {
+  router.post('/api/employee-of-month/award', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -6721,7 +6721,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         .where(eq(monthlyEmployeePerformance.id, perf[0].id));
 
       res.json({ success: true, award });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating award:", error);
       if (error.code === '23505') {
         return res.status(400).json({ message: "Bu dönem için zaten ödül mevcut" });
@@ -6730,7 +6730,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
   // GET /api/employee-of-month/current-winner - Dashboard widget icin guncel kazanan
-  router.get("/api/employee-of-month/current-winner", isAuthenticated, async (req: any, res) => {
+  router.get("/api/employee-of-month/current-winner", isAuthenticated, async (req, res) => {
     try {
       const userBranchId = req.user?.branchId;
       const userRole = req.user?.role;
@@ -6771,7 +6771,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         branchId: award.branchId,
         branchName: branch?.name || "Bilinmiyor",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching current winner:", error);
       res.status(500).json({ message: "Kazanan alinamadi" });
     }
@@ -6781,7 +6781,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   // GET /api/employee-of-month/awards - Ayın Elemanı ödüllerini listele
 
   // PUT /api/employee-of-month/awards/:id/approve - Ödülü onayla
-  router.put('/api/employee-of-month/awards/:id/approve', isAuthenticated, async (req: any, res) => {
+  router.put('/api/employee-of-month/awards/:id/approve', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -6841,12 +6841,12 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
             awardData.finalScore || 0
           );
         }
-      } catch (emailError: any) {
+      } catch (emailError) {
         console.error("Email/badge error (non-critical):", emailError);
       }
 
       res.json({ success: true, message: "Ödül onaylandı ve tebrik emaili gönderildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving award:", error);
       res.status(500).json({ message: "Ödül onaylanamadı" });
     }
@@ -6862,7 +6862,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   // ============================================
 
   // GET /api/salary-scales - Get all active salary scales
-  router.get('/api/salary-scales', isAuthenticated, async (req: any, res) => {
+  router.get('/api/salary-scales', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const allowedRoles = ['admin', 'muhasebe', 'muhasebe_ik', 'yatirimci_hq', 'yatirimci_branch', 'supervisor'];
@@ -6872,7 +6872,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
 
       const result = await db.execute(sql`SELECT * FROM salary_scales WHERE is_active = true ORDER BY location_type, level`);
 
-      const scales = result.rows.map((row: any) => ({
+      const scales = result.rows.map((row) => ({
         id: row.id,
         locationType: row.location_type,
         positionName: row.position_name,
@@ -6886,14 +6886,14 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }));
 
       res.json(scales);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching salary scales:", error);
       res.status(500).json({ message: "Maaş tablosu alınamadı" });
     }
   });
 
   // PUT /api/salary-scales/:id - Update a salary scale
-  router.put('/api/salary-scales/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/salary-scales/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const allowedRoles = ['admin', 'muhasebe', 'muhasebe_ik'];
@@ -6938,13 +6938,13 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
         totalSalary: row.total_salary,
         isActive: row.is_active,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating salary scale:", error);
       res.status(500).json({ message: "Maaş skalası güncellenemedi" });
     }
   });
 
-  router.get('/api/hr/employees/:userId/documents', isAuthenticated, async (req: any, res) => {
+  router.get('/api/hr/employees/:userId/documents', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
@@ -6970,7 +6970,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/hr/employees/:userId/documents', isAuthenticated, async (req: any, res) => {
+  router.post('/api/hr/employees/:userId/documents', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
@@ -7000,7 +7000,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.patch('/api/hr/documents/:docId/verify', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/hr/documents/:docId/verify', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur'];
@@ -7020,7 +7020,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.delete('/api/hr/documents/:docId', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/hr/documents/:docId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik'];
@@ -7036,7 +7036,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/hr/documents/expiring', isAuthenticated, async (req: any, res) => {
+  router.get('/api/hr/documents/expiring', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
@@ -7065,7 +7065,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/hr/disciplinary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/hr/disciplinary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
@@ -7090,7 +7090,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/hr/disciplinary/employee/:userId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/hr/disciplinary/employee/:userId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
@@ -7116,7 +7116,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/hr/disciplinary', isAuthenticated, async (req: any, res) => {
+  router.post('/api/hr/disciplinary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik', 'mudur', 'supervisor', 'coach'];
@@ -7162,7 +7162,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.patch('/api/hr/disciplinary/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/hr/disciplinary/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik', 'mudur', 'supervisor'];
@@ -7194,7 +7194,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.post('/api/hr/disciplinary/:id/respond', isAuthenticated, async (req: any, res) => {
+  router.post('/api/hr/disciplinary/:id/respond', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const reportId = parseInt(req.params.id);
@@ -7224,7 +7224,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/hr/ik-dashboard', isAuthenticated, async (req: any, res) => {
+  router.get('/api/hr/ik-dashboard', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];

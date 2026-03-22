@@ -216,3 +216,9 @@ id = "-V_Rrwjpx3c-G_DhqVAet"
 uri = "file://.local/audit-report-hotfix-session.md"
 type = "text"
 title = "DOSPRESSO IT Audit Raporu — Hotfix Session (22 Mart 2026)"
+
+[[outputs]]
+id = "sNkSgifbzo6Y3dfEt9ED4"
+uri = "file://.local/audit-report-structural-cleanup.md"
+type = "text"
+title = "IT Audit Report - Structural Cleanup Sprint"

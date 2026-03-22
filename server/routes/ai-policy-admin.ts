@@ -12,7 +12,7 @@ const VALID_REDACTION_MODES = ["none", "no_names", "initials_only", "numeric_onl
 
 const router = Router();
 
-function ensureAdmin(user: any): void {
+function ensureAdmin(user): void {
   const role = user?.role;
   if (role !== "admin" && role !== "ceo") {
     throw Object.assign(new Error("Admin yetkisi gerekli"), { statusCode: 403 });
@@ -36,7 +36,7 @@ async function logAdminAction(userId: string, role: string, action: string, deta
   }
 }
 
-router.get("/api/admin/ai-role-groups", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/ai-role-groups", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     res.json({
@@ -46,34 +46,34 @@ router.get("/api/admin/ai-role-groups", isAuthenticated, async (req: any, res) =
         members: ROLE_GROUP_MEMBERS[key] || [],
       })),
     });
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 });
 
-router.get("/api/admin/ai-domains", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/ai-domains", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const domains = await db.select().from(aiDataDomains).orderBy(aiDataDomains.id);
     res.json(domains);
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 });
 
-router.post("/api/admin/ai-domains", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/ai-domains", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const parsed = insertAiDataDomainSchema.parse(req.body);
     const [domain] = await db.insert(aiDataDomains).values(parsed).returning();
     invalidatePolicyCache();
     res.json(domain);
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 400).json({ message: err.message });
   }
 });
 
-router.patch("/api/admin/ai-domains/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/ai-domains/:id", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const id = parseInt(req.params.id);
@@ -89,12 +89,12 @@ router.patch("/api/admin/ai-domains/:id", isAuthenticated, async (req: any, res)
     const [updated] = await db.update(aiDataDomains).set(updates).where(eq(aiDataDomains.id, id)).returning();
     invalidatePolicyCache();
     res.json(updated);
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 400).json({ message: err.message });
   }
 });
 
-router.delete("/api/admin/ai-domains/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/ai-domains/:id", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const id = parseInt(req.params.id);
@@ -102,12 +102,12 @@ router.delete("/api/admin/ai-domains/:id", isAuthenticated, async (req: any, res
     await db.delete(aiDataDomains).where(eq(aiDataDomains.id, id));
     invalidatePolicyCache();
     res.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 });
 
-router.get("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/ai-policies", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const { domainId, role } = req.query;
@@ -134,12 +134,12 @@ router.get("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(aiDomainPolicies.domainId, aiDomainPolicies.role);
     res.json(policies);
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 });
 
-router.post("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/ai-policies", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const { domainId, role, decision, scope, employeeType, redactionMode } = req.body;
@@ -182,12 +182,12 @@ router.post("/api/admin/ai-policies", isAuthenticated, async (req: any, res) => 
     invalidatePolicyCache();
     await logAdminAction(String(req.user.id), req.user.role, "policy_create", `domain:${domainId} role:${role} decision:${decision} scope:${scope || 'global'} redaction:${redactionMode || 'none'}`);
     res.json(policy);
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 400).json({ message: err.message });
   }
 });
 
-router.patch("/api/admin/ai-policies/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/ai-policies/:id", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const id = parseInt(req.params.id);
@@ -211,12 +211,12 @@ router.patch("/api/admin/ai-policies/:id", isAuthenticated, async (req: any, res
     invalidatePolicyCache();
     await logAdminAction(String(req.user.id), req.user.role, "policy_patch", `id:${id} ${JSON.stringify(updates)}`);
     res.json(updated);
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 400).json({ message: err.message });
   }
 });
 
-router.delete("/api/admin/ai-policies/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/ai-policies/:id", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const id = parseInt(req.params.id);
@@ -224,12 +224,12 @@ router.delete("/api/admin/ai-policies/:id", isAuthenticated, async (req: any, re
     invalidatePolicyCache();
     await logAdminAction(String(req.user.id), req.user.role, "policy_delete", `id:${id}`);
     res.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 });
 
-router.get("/api/admin/ai-logs", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/ai-logs", isAuthenticated, async (req, res) => {
   try {
     ensureAdmin(req.user);
     const { page = "1", limit = "50", status, role } = req.query;
@@ -253,7 +253,7 @@ router.get("/api/admin/ai-logs", isAuthenticated, async (req: any, res) => {
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     res.json({ logs, total: Number(total), page: parseInt(page as string), limit: parseInt(limit as string) });
-  } catch (err: any) {
+  } catch (err) {
     res.status(err.statusCode || 500).json({ message: err.message });
   }
 });

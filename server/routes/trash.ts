@@ -37,7 +37,7 @@ router.get("/api/trash/tables", isAuthenticated, async (req: Request, res: Respo
       counts.push({ key, label, count: result[0]?.count || 0 });
     }
     res.json(counts);
-  } catch (err: any) {
+  } catch (err) {
     handleApiError(res, err, "FetchTrashTables");
   }
 });
@@ -57,7 +57,7 @@ router.get("/api/trash/:tableName", isAuthenticated, async (req: Request, res: R
       .orderBy(desc(entry.table.deletedAt))
       .limit(100);
     res.json(rows);
-  } catch (err: any) {
+  } catch (err) {
     handleApiError(res, err, "FetchTrashItems");
   }
 });
@@ -89,7 +89,7 @@ router.patch("/api/trash/:tableName/:id/restore", isAuthenticated, async (req: R
     });
 
     res.json({ success: true, message: "Kayıt geri yüklendi" });
-  } catch (err: any) {
+  } catch (err) {
     handleApiError(res, err, "RestoreTrashItem");
   }
 });
@@ -122,7 +122,7 @@ router.delete("/api/trash/:tableName/:id", isAuthenticated, async (req: Request,
     });
 
     res.json({ success: true, message: "Kayıt kalıcı olarak silindi" });
-  } catch (err: any) {
+  } catch (err) {
     handleApiError(res, err, "DeleteTrashItem");
   }
 });

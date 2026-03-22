@@ -54,7 +54,7 @@ export async function seedEquipmentForBranches() {
           isActive: true,
         });
         created++;
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (error.code === '23505') { // Unique constraint violation
           skipped++;
         } else {

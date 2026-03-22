@@ -53,7 +53,7 @@ router.get("/api/ops-rules/evaluate", isAuthenticated, async (req, res) => {
     } catch {}
 
     return res.json(issues);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[OpsRules] Evaluation error:", error);
     return res.status(500).json({ error: "Kurallar değerlendirilemedi" });
   }
@@ -71,7 +71,7 @@ router.get("/api/ops-rules", isAuthenticated, async (req, res) => {
 
     const rules = await db.select().from(opsRules).orderBy(opsRules.id);
     return res.json(rules);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[OpsRules] List error:", error);
     return res.status(500).json({ error: "Kurallar yüklenemedi" });
   }

@@ -40,7 +40,7 @@ const normalizeTime = (timeStr: string): string => {
 };
 
 // Update attendance record (check-out, break times)
-router.patch('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-attendance/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -101,7 +101,7 @@ router.patch('/api/shift-attendance/:id', isAuthenticated, async (req: any, res)
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating attendance record:", error);
     if ((error as any).name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz yoklama verisi", errors: (error as any).errors });
@@ -111,7 +111,7 @@ router.patch('/api/shift-attendance/:id', isAuthenticated, async (req: any, res)
 });
 
 // Delete attendance record (supervisor + HQ only)
-router.delete('/api/shift-attendance/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/shift-attendance/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -136,7 +136,7 @@ router.delete('/api/shift-attendance/:id', isAuthenticated, async (req: any, res
     
     await storage.deleteShiftAttendance(id);
     res.status(204).send();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting attendance record:", error);
     res.status(500).json({ message: "Yoklama kaydı silinemedi" });
   }
@@ -145,7 +145,7 @@ router.delete('/api/shift-attendance/:id', isAuthenticated, async (req: any, res
 // ===== SHIFT TRADE REQUEST ENDPOINTS =====
 
 // POST /api/shift-trades - Create a shift trade request
-router.post('/api/shift-trades', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-trades', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { insertShiftTradeRequestSchema } = await import('@shared/schema');
@@ -197,7 +197,7 @@ router.post('/api/shift-trades', isAuthenticated, async (req: any, res) => {
     
     const created = await storage.createShiftTradeRequest(validatedData);
     res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating shift trade request:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz takas talebi verisi", errors: error.errors });
@@ -207,7 +207,7 @@ router.post('/api/shift-trades', isAuthenticated, async (req: any, res) => {
 });
 
 // GET /api/shift-trades - List shift trade requests with filters
-router.get('/api/shift-trades', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-trades', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -234,14 +234,14 @@ router.get('/api/shift-trades', isAuthenticated, async (req: any, res) => {
     
     const trades = await storage.getShiftTradeRequests(filters);
     res.json(trades);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shift trade requests:", error);
     res.status(500).json({ message: "Takas talepleri alınamadı" });
   }
 });
 
 // PATCH /api/shift-trades/:id/respond - Responder confirms the trade
-router.patch('/api/shift-trades/:id/respond', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-trades/:id/respond', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const id = parseInt(req.params.id);
@@ -267,14 +267,14 @@ router.patch('/api/shift-trades/:id/respond', isAuthenticated, async (req: any, 
     const updatedTrade = updated.find(t => t.id === id);
     
     res.json(updatedTrade);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error responding to shift trade request:", error);
     res.status(500).json({ message: "Takas talebi yanıtlanamadı" });
   }
 });
 
 // PATCH /api/shift-trades/:id/approve - Supervisor approves or rejects the trade
-router.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -318,7 +318,7 @@ router.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req: any, 
     const updatedTrade = updatedTrades.find(t => t.id === id);
     
     res.json(updatedTrade);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error approving shift trade request:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz onay verisi", errors: error.errors });
@@ -330,7 +330,7 @@ router.patch('/api/shift-trades/:id/approve', isAuthenticated, async (req: any, 
 // ===== SHIFT TEMPLATE ENDPOINTS =====
 
 // GET /api/shift-templates - List shift templates
-router.get('/api/shift-templates', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-templates', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -348,14 +348,14 @@ router.get('/api/shift-templates', isAuthenticated, async (req: any, res) => {
     
     const templates = await storage.getShiftTemplates(user.branchId);
     res.json(templates);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shift templates:", error);
     res.status(500).json({ message: "Şablonlar getirilemedi" });
   }
 });
 
 // GET /api/shift-templates/:id - Get single shift template
-router.get('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-templates/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -371,14 +371,14 @@ router.get('/api/shift-templates/:id', isAuthenticated, async (req: any, res) =>
     }
     
     res.json(template);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shift template:", error);
     res.status(500).json({ message: "Şablon getirilemedi" });
   }
 });
 
 // POST /api/shift-templates - Create shift template
-router.post('/api/shift-templates', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-templates', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -400,7 +400,7 @@ router.post('/api/shift-templates', isAuthenticated, async (req: any, res) => {
     });
     
     res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating shift template:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz şablon verisi", errors: error.errors });
@@ -410,7 +410,7 @@ router.post('/api/shift-templates', isAuthenticated, async (req: any, res) => {
 });
 
 // PATCH /api/shift-templates/:id - Update shift template
-router.patch('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-templates/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -434,7 +434,7 @@ router.patch('/api/shift-templates/:id', isAuthenticated, async (req: any, res) 
     
     const updated = await storage.updateShiftTemplate(id, validatedData);
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating shift template:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz şablon verisi", errors: error.errors });
@@ -444,7 +444,7 @@ router.patch('/api/shift-templates/:id', isAuthenticated, async (req: any, res) 
 });
 
 // DELETE /api/shift-templates/:id - Delete shift template
-router.delete('/api/shift-templates/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/shift-templates/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -465,14 +465,14 @@ router.delete('/api/shift-templates/:id', isAuthenticated, async (req: any, res)
     
     await storage.deleteShiftTemplate(id);
     res.status(204).send();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting shift template:", error);
     res.status(500).json({ message: "Şablon silinemedi" });
   }
 });
 
 // POST /api/shift-templates/:id/create-shifts - Create shifts from template
-router.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -504,7 +504,7 @@ router.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (re
       message: `${created.length} vardiya oluşturuldu`,
       shifts: created 
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating shifts from template:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz tarih aralığı", errors: error.errors });
@@ -514,7 +514,7 @@ router.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (re
 });
 
 // POST /api/shift-attendance/manual-check-in - Manual check-in with location verification (with optional shift)
-router.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { z } = await import('zod');
@@ -619,7 +619,7 @@ router.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req
     }
     
     res.status(201).json(attendance);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error manual check-in:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -629,7 +629,7 @@ router.post('/api/shift-attendance/manual-check-in', isAuthenticated, async (req
 });
 
 // POST /api/shift-attendance/manual-check-out - Manual check-out 
-router.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { z } = await import('zod');
@@ -659,7 +659,7 @@ router.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (re
     });
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error manual check-out:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -669,7 +669,7 @@ router.post('/api/shift-attendance/manual-check-out', isAuthenticated, async (re
 });
 
 // POST /api/shift-attendance/check-in - Check in with QR code, photo & location
-router.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-attendance/check-in', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { z } = await import('zod');
@@ -745,7 +745,7 @@ router.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, 
             aiDressCodeTimestamp: new Date(),
           });
           
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error("Error analyzing dress code:", error);
           await storage.updateShiftAttendance(attendance.id, {
             aiDressCodeStatus: 'error',
@@ -756,7 +756,7 @@ router.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, 
     }
     
     res.status(201).json(attendance);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error checking in:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz QR kod", errors: error.errors });
@@ -766,7 +766,7 @@ router.post('/api/shift-attendance/check-in', isAuthenticated, async (req: any, 
 });
 
 // POST /api/shift-attendance/check-out - Check out with QR code + photo + location
-router.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-attendance/check-out', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { z } = await import('zod');
@@ -826,7 +826,7 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any,
     let approvedOvertimeMinutes = 0;
     try {
       const allOvertimeRequests = await storage.getOvertimeRequests({});
-      const approvedRequests = allOvertimeRequests.filter((req: any) => 
+      const approvedRequests = allOvertimeRequests.filter((req) => 
         req.shiftAttendanceId === userAttendance.id && req.status === 'approved'
       );
       approvedOvertimeMinutes = approvedRequests.reduce((sum: number, req: any) => sum + (req.requestedMinutes || 0), 0);
@@ -869,7 +869,7 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any,
           : undefined,
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error checking out:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz QR kod", errors: error.errors });
@@ -883,7 +883,7 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req: any,
 // ========================
 
 // Get all shift swap requests (filtered by branch/user/status)
-router.get('/api/shift-swap-requests', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-swap-requests', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { branchId, requesterId, targetUserId, status } = req.query;
@@ -903,26 +903,26 @@ router.get('/api/shift-swap-requests', isAuthenticated, async (req: any, res) =>
     
     const requests = await storage.getShiftSwapRequests(filters);
     res.json(requests);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shift swap requests:", error);
     res.status(500).json({ message: "Takas talepleri yüklenirken hata oluştu" });
   }
 });
 
 // Get pending swap requests for current user (as target)
-router.get('/api/shift-swap-requests/pending-for-me', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-swap-requests/pending-for-me', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const requests = await storage.getPendingSwapRequestsForUser(user.id);
     res.json(requests);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching pending swap requests:", error);
     res.status(500).json({ message: "Bekleyen talepler yüklenirken hata oluştu" });
   }
 });
 
 // Get pending swap requests for supervisor approval
-router.get('/api/shift-swap-requests/pending-supervisor', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-swap-requests/pending-supervisor', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     
@@ -938,14 +938,14 @@ router.get('/api/shift-swap-requests/pending-supervisor', isAuthenticated, async
     
     const requests = await storage.getPendingSwapRequestsForSupervisor(branchId);
     res.json(requests);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching supervisor pending requests:", error);
     res.status(500).json({ message: "Bekleyen talepler yüklenirken hata oluştu" });
   }
 });
 
 // Create a new shift swap request
-router.post('/api/shift-swap-requests', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-swap-requests', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { requesterShiftId, targetShiftId, targetUserId, branchId, swapDate, reason } = req.body;
@@ -975,14 +975,14 @@ router.post('/api/shift-swap-requests', isAuthenticated, async (req: any, res) =
     });
     
     res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating shift swap request:", error);
     res.status(500).json({ message: "Takas talebi oluşturulurken hata oluştu" });
   }
 });
 
 // Target employee approves the swap request
-router.patch('/api/shift-swap-requests/:id/target-approve', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-swap-requests/:id/target-approve', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const requestId = parseInt(req.params.id);
@@ -1026,14 +1026,14 @@ router.patch('/api/shift-swap-requests/:id/target-approve', isAuthenticated, asy
     }
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error approving swap request by target:", error);
     res.status(500).json({ message: "Talep onaylanırken hata oluştu" });
   }
 });
 
 // Target employee rejects the swap request
-router.patch('/api/shift-swap-requests/:id/target-reject', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-swap-requests/:id/target-reject', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const requestId = parseInt(req.params.id);
@@ -1065,14 +1065,14 @@ router.patch('/api/shift-swap-requests/:id/target-reject', isAuthenticated, asyn
     });
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error rejecting swap request by target:", error);
     res.status(500).json({ message: "Talep reddedilirken hata oluştu" });
   }
 });
 
 // Supervisor approves the swap request
-router.patch('/api/shift-swap-requests/:id/supervisor-approve', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-swap-requests/:id/supervisor-approve', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const requestId = parseInt(req.params.id);
@@ -1120,14 +1120,14 @@ router.patch('/api/shift-swap-requests/:id/supervisor-approve', isAuthenticated,
     });
     
     res.json({ request: updated, swapResult });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error approving swap request by supervisor:", error);
     res.status(500).json({ message: "Talep onaylanırken hata oluştu" });
   }
 });
 
 // Supervisor rejects the swap request
-router.patch('/api/shift-swap-requests/:id/supervisor-reject', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-swap-requests/:id/supervisor-reject', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const requestId = parseInt(req.params.id);
@@ -1174,14 +1174,14 @@ router.patch('/api/shift-swap-requests/:id/supervisor-reject', isAuthenticated, 
     });
     
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error rejecting swap request by supervisor:", error);
     res.status(500).json({ message: "Talep reddedilirken hata oluştu" });
   }
 });
 
 // Get single swap request details
-router.get('/api/shift-swap-requests/:id', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-swap-requests/:id', isAuthenticated, async (req, res) => {
   try {
     const requestId = parseInt(req.params.id);
     const request = await storage.getShiftSwapRequest(requestId);
@@ -1191,19 +1191,19 @@ router.get('/api/shift-swap-requests/:id', isAuthenticated, async (req: any, res
     }
     
     res.json(request);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shift swap request:", error);
     res.status(500).json({ message: "Takas talebi yüklenirken hata oluştu" });
   }
 });
 
-router.get('/api/shift-attendances/my-recent', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-attendances/my-recent', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     
     const attendances = await storage.getRecentShiftAttendances(user.id, 30);
     res.json(attendances);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching recent shift attendances:", error);
     res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
   }
@@ -1212,7 +1212,7 @@ router.get('/api/shift-attendances/my-recent', isAuthenticated, async (req: any,
 // ===== SHIFTS CRUD ROUTES =====
 
 // GET /api/shifts - Get all shifts
-router.get('/api/shifts', isAuthenticated, async (req: any, res) => {
+router.get('/api/shifts', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1237,14 +1237,14 @@ router.get('/api/shifts', isAuthenticated, async (req: any, res) => {
     } else {
       res.json(allShifts);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shifts:", error);
     res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
   }
 });
 
 // GET /api/shifts/my - Get current user's shifts
-router.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
+router.get('/api/shifts/my', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const dateFrom = req.query.dateFrom as string | undefined;
@@ -1252,14 +1252,14 @@ router.get('/api/shifts/my', isAuthenticated, async (req: any, res) => {
     
     const myShifts = await storage.getShifts(undefined, user.id, dateFrom, dateTo);
     res.json(myShifts);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching user shifts:", error);
     res.status(500).json({ message: "Vardiyalar yüklenirken hata oluştu" });
   }
 });
 
 // POST /api/shifts - Create a new shift
-router.post('/api/shifts', isAuthenticated, async (req: any, res) => {
+router.post('/api/shifts', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1331,7 +1331,7 @@ router.post('/api/shifts', isAuthenticated, async (req: any, res) => {
             issues: blockIssues,
           });
         }
-      } catch (blockErr: any) {
+      } catch (blockErr) {
         console.error("[RulesEngine] Block check error:", blockErr.message);
       }
     }
@@ -1373,7 +1373,7 @@ router.post('/api/shifts', isAuthenticated, async (req: any, res) => {
     auditLog(req, { eventType: "shift.created", action: "created", resource: "shifts", resourceId: String(shift.id), after: { shiftDate: validated.shiftDate, startTime: validated.startTime, endTime: validated.endTime, branchId: validated.branchId, assignedToId: validated.assignedToId } });
 
     res.status(201).json(shift);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating shift:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1383,7 +1383,7 @@ router.post('/api/shifts', isAuthenticated, async (req: any, res) => {
 });
 
 // POST /api/shifts/bulk-create - Create multiple shifts at once
-router.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) => {
+router.post('/api/shifts/bulk-create', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1504,7 +1504,7 @@ router.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) =>
       shifts: createdShifts,
       notifiedCount: notifiedEmployees.size
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error?.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri formatı", errors: error.errors });
     }
@@ -1513,7 +1513,7 @@ router.post('/api/shifts/bulk-create', isAuthenticated, async (req: any, res) =>
 });
 
 // PATCH /api/shifts/:id - Update a shift
-router.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shifts/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1581,7 +1581,7 @@ router.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
     auditLog(req, { eventType: "shift.updated", action: "updated", resource: "shifts", resourceId: String(id), before: { shiftDate: shift.shiftDate, startTime: shift.startTime, endTime: shift.endTime, assignedToId: shift.assignedToId }, after: validated });
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating shift:", error);
     if (error.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1591,7 +1591,7 @@ router.patch('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
 });
 
 // DELETE /api/shifts/reset-weekly - Reset weekly shifts (MUST be before :id route)
-router.delete('/api/shifts/reset-weekly', isAuthenticated, async (req: any, res) => {
+router.delete('/api/shifts/reset-weekly', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1628,14 +1628,14 @@ router.delete('/api/shifts/reset-weekly', isAuthenticated, async (req: any, res)
     }
     
     res.json({ message: `${deletedCount} vardiya silindi` });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error resetting weekly shifts:", error);
     res.status(500).json({ message: "Vardiyalar sıfırlanamadı" });
   }
 });
 
 // PATCH /api/shift-checklists/:id - Update shift checklist completion status
-router.patch('/api/shift-checklists/:id', isAuthenticated, async (req: any, res) => {
+router.patch('/api/shift-checklists/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const id = parseInt(req.params.id);
@@ -1657,14 +1657,14 @@ router.patch('/api/shift-checklists/:id', isAuthenticated, async (req: any, res)
     });
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Shift checklist guncelleme hatasi:', error);
     res.status(500).json({ message: "Sunucu hatasi" });
   }
 });
 
 // DELETE /api/shifts/:id - Delete a shift (AFTER reset-weekly to avoid :id matching reset-weekly)
-router.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
+router.delete('/api/shifts/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1697,14 +1697,14 @@ router.delete('/api/shifts/:id', isAuthenticated, async (req: any, res) => {
       details: { softDelete: true },
     });
     res.json({ message: "Vardiya silindi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting shift:", error);
     res.status(500).json({ message: "Vardiya silinemedi" });
   }
 });
 
 // POST /api/shifts/validate-plan - Validate weekly shift plan against DOSPRESSO rules
-router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) => {
+router.post('/api/shifts/validate-plan', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1759,7 +1759,7 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
       return parts[0] * 60 + parts[1];
     };
 
-    const getShiftDurationHours = (s: any): number => {
+    const getShiftDurationHours = (s): number => {
       const start = timeToMinutes(s.startTime);
       const end = timeToMinutes(s.endTime);
       let diff = end - start;
@@ -1778,9 +1778,9 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
     const experiencedRoles = ['supervisor', 'supervisor_buddy', 'barista', 'admin'];
 
     // 1. 45-Hour Weekly Minimum for full-time employees
-    const fulltimeEmployees = allEmployees.filter((e: any) => e.employmentType !== 'parttime');
+    const fulltimeEmployees = allEmployees.filter((e) => e.employmentType !== 'parttime');
     for (const emp of fulltimeEmployees) {
-      const empShifts = weekShifts.filter((s: any) => String(s.assignedToId) === String(emp.id));
+      const empShifts = weekShifts.filter((s) => String(s.assignedToId) === String(emp.id));
       const totalHours = empShifts.reduce((sum: number, s: any) => sum + getShiftDurationHours(s), 0);
       if (totalHours < 45) {
         validations.push({
@@ -1794,12 +1794,12 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
 
     // 2. Weekly Rotation Fairness
     for (const emp of allEmployees) {
-      const currentShifts = weekShifts.filter((s: any) => String(s.assignedToId) === String(emp.id));
-      const prevShifts = prevWeekShifts.filter((s: any) => String(s.assignedToId) === String(emp.id));
+      const currentShifts = weekShifts.filter((s) => String(s.assignedToId) === String(emp.id));
+      const prevShifts = prevWeekShifts.filter((s) => String(s.assignedToId) === String(emp.id));
 
       if (currentShifts.length > 0 && prevShifts.length > 0) {
-        const currentTypes = new Set(currentShifts.map((s: any) => getDospressoType(s.startTime)));
-        const prevTypes = new Set(prevShifts.map((s: any) => getDospressoType(s.startTime)));
+        const currentTypes = new Set(currentShifts.map((s) => getDospressoType(s.startTime)));
+        const prevTypes = new Set(prevShifts.map((s) => getDospressoType(s.startTime)));
 
         if (currentTypes.size === 1 && prevTypes.size === 1) {
           const currentType = [...currentTypes][0];
@@ -1829,7 +1829,7 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
       const dayStr = dayDate.toISOString().split('T')[0];
       const dayOfWeek = dayDate.getDay();
       const dayName = dayNames[dayOfWeek];
-      const dayShifts = weekShifts.filter((s: any) => s.shiftDate === dayStr);
+      const dayShifts = weekShifts.filter((s) => s.shiftDate === dayStr);
 
       // 3. Power Balance checks
       const shiftSlots: Record<string, any[]> = {};
@@ -1840,41 +1840,41 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
       }
 
       for (const [slotType, slotShifts] of Object.entries(shiftSlots)) {
-        const slotEmps = slotShifts.map((s: any) => {
-          const emp = allEmployees.find((e: any) => String(e.id) === String(s.assignedToId));
+        const slotEmps = slotShifts.map((s) => {
+          const emp = allEmployees.find((e) => String(e.id) === String(s.assignedToId));
           return emp;
         }).filter(Boolean);
 
-        const trainees = slotEmps.filter((e: any) => e.role === 'stajyer');
+        const trainees = slotEmps.filter((e) => e.role === 'stajyer');
         if (trainees.length >= 2 && slotEmps.length === trainees.length) {
           validations.push({
             type: 'error',
             message: `${dayName}: ${slotType} vardiyasında yalnızca stajyerler var`,
             category: 'power_balance',
-            affectedEmployees: trainees.map((e: any) => String(e.id)),
+            affectedEmployees: trainees.map((e) => String(e.id)),
             day: dayStr,
           });
         }
 
-        const hasExperienced = slotEmps.some((e: any) => experiencedRoles.includes(e.role));
+        const hasExperienced = slotEmps.some((e) => experiencedRoles.includes(e.role));
         if (slotEmps.length > 0 && !hasExperienced) {
           validations.push({
             type: 'error',
             message: `${dayName}: ${slotType} vardiyasında deneyimli personel yok`,
             category: 'power_balance',
-            affectedEmployees: slotEmps.map((e: any) => String(e.id)),
+            affectedEmployees: slotEmps.map((e) => String(e.id)),
             day: dayStr,
           });
         }
 
-        const supervisors = slotEmps.filter((e: any) => e.role === 'supervisor');
-        const buddies = slotEmps.filter((e: any) => e.role === 'supervisor_buddy');
+        const supervisors = slotEmps.filter((e) => e.role === 'supervisor');
+        const buddies = slotEmps.filter((e) => e.role === 'supervisor_buddy');
         if (supervisors.length > 0 && buddies.length > 0) {
           validations.push({
             type: 'warning',
             message: `${dayName}: ${slotType} vardiyasında supervisor ve buddy aynı anda çalışıyor`,
             category: 'power_balance',
-            affectedEmployees: [...supervisors, ...buddies].map((e: any) => String(e.id)),
+            affectedEmployees: [...supervisors, ...buddies].map((e) => String(e.id)),
             day: dayStr,
           });
         }
@@ -1895,7 +1895,7 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
       // 5. Peak Hour Break Check (13:00-17:30)
       const peakStart = 13 * 60;
       const peakEnd = 17 * 60 + 30;
-      const peakBreaks = dayShifts.filter((s: any) => {
+      const peakBreaks = dayShifts.filter((s) => {
         const breakMin = timeToMinutes(s.breakStartTime);
         return breakMin >= peakStart && breakMin <= peakEnd;
       });
@@ -1905,13 +1905,13 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
           type: 'warning',
           message: `${dayName}: Yoğun saatlerde (13:00-17:30) ${peakBreaks.length} kişi aynı anda molada`,
           category: 'peak_hours',
-          affectedEmployees: peakBreaks.map((s: any) => String(s.assignedToId)),
+          affectedEmployees: peakBreaks.map((s) => String(s.assignedToId)),
           day: dayStr,
         });
       }
 
       // 6. Opening Shift Check (must have exactly 2 people at 07:30, one experienced)
-      const openingShifts = dayShifts.filter((s: any) => {
+      const openingShifts = dayShifts.filter((s) => {
         const startMin = timeToMinutes(s.startTime);
         return startMin <= 8 * 60;
       });
@@ -1921,22 +1921,22 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
           type: 'error',
           message: `${dayName}: Açılış vardiyasında ${openingShifts.length} kişi var (minimum 2 olmalı)`,
           category: 'opening',
-          affectedEmployees: openingShifts.map((s: any) => String(s.assignedToId)),
+          affectedEmployees: openingShifts.map((s) => String(s.assignedToId)),
           day: dayStr,
         });
       }
 
       if (openingShifts.length > 0) {
-        const openingEmps = openingShifts.map((s: any) =>
-          allEmployees.find((e: any) => String(e.id) === String(s.assignedToId))
+        const openingEmps = openingShifts.map((s) =>
+          allEmployees.find((e) => String(e.id) === String(s.assignedToId))
         ).filter(Boolean);
-        const hasExpOpening = openingEmps.some((e: any) => experiencedRoles.includes(e.role));
+        const hasExpOpening = openingEmps.some((e) => experiencedRoles.includes(e.role));
         if (!hasExpOpening) {
           validations.push({
             type: 'error',
             message: `${dayName}: Açılış vardiyasında deneyimli personel yok`,
             category: 'opening',
-            affectedEmployees: openingEmps.map((e: any) => String(e.id)),
+            affectedEmployees: openingEmps.map((e) => String(e.id)),
             day: dayStr,
           });
         }
@@ -1951,7 +1951,7 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
         total: validations.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error validating shift plan:", error);
     if (error?.name === 'ZodError') {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1961,7 +1961,7 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req: any, res) 
 });
 
 // GET /api/shifts/recommendations - Get AI shift recommendations using OpenAI
-router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res) => {
+router.get('/api/shifts/recommendations', isAuthenticated, async (req, res) => {
   try {
     const { generateShiftPlan } = await import('../ai');
     const user = req.user!;
@@ -2007,7 +2007,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
     };
 
     const allEmployees = await storage.getAllEmployees(bid);
-    const employees = allEmployees.map((e: any) => ({
+    const employees = allEmployees.map((e) => ({
       id: String(e.id),
       name: e.fullName || `${e.firstName} ${e.lastName}`,
       role: e.role || 'barista',
@@ -2015,7 +2015,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
       weeklyHours: e.weeklyHours || (e.employmentType === 'parttime' ? 25 : 45),
     }));
 
-    const formattedHistorical = historicalShifts.map((s: any) => ({
+    const formattedHistorical = historicalShifts.map((s) => ({
       shiftDate: s.shiftDate,
       shiftType: s.shiftType || 'morning',
       assignedToId: s.assignedToId ? String(s.assignedToId) : null,
@@ -2046,7 +2046,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
 
     const existingShifts = await storage.getShifts(bid, undefined, weekStart, weekEnd);
     const existingShiftsByDayAndEmployee = new Map<string, Set<string>>();
-    existingShifts.forEach((s: any) => {
+    existingShifts.forEach((s) => {
       const key = s.shiftDate;
       if (!existingShiftsByDayAndEmployee.has(key)) {
         existingShiftsByDayAndEmployee.set(key, new Set());
@@ -2063,13 +2063,13 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
     const newShiftsByDayAndEmployee = new Map<string, Set<string>>();
     
     const validatedShifts = (aiPlan.shifts || [])
-      .filter((shift: any) => {
+      .filter((shift) => {
         if (!shift.shiftDate || !/^\d{4}-\d{2}-\d{2}$/.test(shift.shiftDate)) {
           return false;
         }
         return true;
       })
-      .map((shift: any) => {
+      .map((shift) => {
         let assignedToId = String(shift.assignedToId);
         if (!shift.assignedToId || !validEmployeeIds.has(assignedToId)) {
           assignedToId = employeeIdArray[fallbackIndex % employeeIdArray.length];
@@ -2077,7 +2077,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
         }
         return { ...shift, assignedToId };
       })
-      .filter((shift: any) => {
+      .filter((shift) => {
         const dayKey = shift.shiftDate;
         const employeeId = String(shift.assignedToId);
         
@@ -2097,7 +2097,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
         newForDay.add(employeeId);
         return true;
       })
-      .map((shift: any) => {
+      .map((shift) => {
         const shiftType = shift.shiftType || 'morning';
         return {
           shiftDate: shift.shiftDate,
@@ -2332,7 +2332,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
       weekStart,
       weekEnd,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating shift recommendations:", error);
     const message = error instanceof Error ? error.message : "Vardiya önerileri oluşturulamadı";
     res.status(500).json({ message });
@@ -2340,7 +2340,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req: any, res)
 });
 
 // POST /api/shift-attendance/check-in/nfc - NFC check-in
-router.post('/api/shift-attendance/check-in/nfc', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-attendance/check-in/nfc', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const { location } = req.body;
@@ -2383,14 +2383,14 @@ router.post('/api/shift-attendance/check-in/nfc', isAuthenticated, async (req: a
     }
 
     res.status(201).json(attendance);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error NFC check-in:", error);
     res.status(500).json({ message: "NFC giriş yapılamadı" });
   }
 });
 
 // POST /api/shift-corrections - Create shift correction
-router.post('/api/shift-corrections', isAuthenticated, async (req: any, res) => {
+router.post('/api/shift-corrections', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2432,14 +2432,14 @@ router.post('/api/shift-corrections', isAuthenticated, async (req: any, res) => 
     } catch (e) { console.error("Shift correction notification error:", e); }
     
     res.status(201).json(correction);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating shift correction:", error);
     res.status(500).json({ message: "Vardiya düzeltmesi kaydedilemedi" });
   }
 });
 
 // GET /api/shift-corrections - Get shift correction history
-router.get('/api/shift-corrections', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-corrections', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2473,14 +2473,14 @@ router.get('/api/shift-corrections', isAuthenticated, async (req: any, res) => {
     
     const results = await (query as any).orderBy(desc(shiftCorrections.createdAt)).limit(100);
     res.json(results);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching shift corrections:", error);
     res.status(500).json({ message: "Vardiya düzeltme geçmişi yüklenemedi" });
   }
 });
 
 // GET /api/shift-corrections/abuse-report - Get abuse report
-router.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req: any, res) => {
+router.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2570,7 +2570,7 @@ router.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req: a
       alerts,
       totalAlerts: alerts.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error generating abuse report:", error);
     res.status(500).json({ message: "Suistimal raporu oluşturulamadı" });
   }
@@ -2579,7 +2579,7 @@ router.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req: a
 // ===== AI SHIFT PLAN GENERATION =====
 
 // POST /api/shifts/ai-generate — generate weekly plan with break scheduling (preview only, no save)
-router.post('/api/shifts/ai-generate', isAuthenticated, async (req: any, res) => {
+router.post('/api/shifts/ai-generate', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2673,14 +2673,14 @@ router.post('/api/shifts/ai-generate', isAuthenticated, async (req: any, res) =>
       validation: result.validation,
       offDaysSummary: result.offDaysSummary,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Shifts] AI generate error:", error);
     res.status(500).json({ message: "Vardiya planı oluşturulamadı" });
   }
 });
 
 // POST /api/shifts/ai-apply — save generated plan to DB (replaces week's shifts for branch)
-router.post('/api/shifts/ai-apply', isAuthenticated, async (req: any, res) => {
+router.post('/api/shifts/ai-apply', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2743,7 +2743,7 @@ router.post('/api/shifts/ai-apply', isAuthenticated, async (req: any, res) => {
       created++;
     }
 
-    const offEntries = plan.filter((s: any) => s.isOff);
+    const offEntries = plan.filter((s) => s.isOff);
     const { scheduledOffs: scheduledOffsTable } = await import('@shared/schema');
     for (const off of offEntries) {
       try {
@@ -2774,14 +2774,14 @@ router.post('/api/shifts/ai-apply', isAuthenticated, async (req: any, res) => {
       weekStart: weekStartDate,
       branchId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Shifts] Apply plan error:", error);
     res.status(500).json({ message: "Vardiya planı kaydedilemedi" });
   }
 });
 
 // POST /api/shifts/validate-breaks — validate break schedule for a specific day
-router.post('/api/shifts/validate-breaks', isAuthenticated, async (req: any, res) => {
+router.post('/api/shifts/validate-breaks', isAuthenticated, async (req, res) => {
   try {
     const { branchId, date } = req.body;
     if (!branchId || !date) {
@@ -2794,7 +2794,7 @@ router.post('/api/shifts/validate-breaks', isAuthenticated, async (req: any, res
     const branchStaffCount = dayShifts.length;
     const branchSize: 'small' | 'medium' | 'large' = branchStaffCount <= 6 ? 'small' : branchStaffCount <= 12 ? 'medium' : 'large';
 
-    const shiftsForValidation = dayShifts.map((s: any) => ({
+    const shiftsForValidation = dayShifts.map((s) => ({
       userId: s.assignedToId || '',
       startTime: s.startTime?.substring(0, 5) || '08:00',
       endTime: s.endTime?.substring(0, 5) || '17:00',
@@ -2812,14 +2812,14 @@ router.post('/api/shifts/validate-breaks', isAuthenticated, async (req: any, res
       branchSize,
       validation,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Shifts] Break validation error:", error);
     res.status(500).json({ message: "Mola doğrulaması yapılamadı" });
   }
 });
 
 // GET /api/shifts/compliance — compare planned shifts vs actual PDKS records
-router.get('/api/shifts/compliance', isAuthenticated, async (req: any, res) => {
+router.get('/api/shifts/compliance', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2963,7 +2963,7 @@ router.get('/api/shifts/compliance', isAuthenticated, async (req: any, res) => {
         onTimeRate: totalCount > 0 ? Math.round((onTimeCount / totalCount) * 100) : 0,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Shifts] Compliance error:", error);
     res.status(500).json({ message: "Uyumluluk verisi yüklenemedi" });
   }

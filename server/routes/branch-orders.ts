@@ -28,7 +28,7 @@ function generateOrderNumber(): string {
   return `ORD-${y}${m}${d}-${seq}`;
 }
 
-router.post("/api/branch-orders", isAuthenticated, async (req: any, res) => {
+router.post("/api/branch-orders", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user?.role as UserRoleType;
     if (!hasPermission(userRole, "branch_orders", "create")) {
@@ -94,13 +94,13 @@ router.post("/api/branch-orders", isAuthenticated, async (req: any, res) => {
     auditLog(req, { eventType: "branch_order.created", action: "created", resource: "branch_orders", resourceId: String(order.id), after: { orderNumber, branchId, itemCount: items.length, totalAmount } });
 
     res.status(201).json({ ...order, totalAmount, items: createdItems });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create branch order error:", error);
     res.status(500).json({ message: "Sipariş oluşturulamadı" });
   }
 });
 
-router.get("/api/branch-orders", isAuthenticated, async (req: any, res) => {
+router.get("/api/branch-orders", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user?.role as UserRoleType;
     if (!hasPermission(userRole, "branch_orders", "view")) {
@@ -150,13 +150,13 @@ router.get("/api/branch-orders", isAuthenticated, async (req: any, res) => {
       .orderBy(desc(branchOrders.createdAt));
 
     res.json(orders);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get branch orders error:", error);
     res.status(500).json({ message: "Siparişler getirilemedi" });
   }
 });
 
-router.get("/api/branch-orders/:id", isAuthenticated, async (req: any, res) => {
+router.get("/api/branch-orders/:id", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user?.role as UserRoleType;
     if (!hasPermission(userRole, "branch_orders", "view")) {
@@ -212,13 +212,13 @@ router.get("/api/branch-orders/:id", isAuthenticated, async (req: any, res) => {
         : "Bilinmiyor",
       items: enrichedItems,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get branch order detail error:", error);
     res.status(500).json({ message: "Sipariş detayı getirilemedi" });
   }
 });
 
-router.patch("/api/branch-orders/:id/approve", isAuthenticated, async (req: any, res) => {
+router.patch("/api/branch-orders/:id/approve", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user?.role as UserRoleType;
     if (!["admin", "fabrika_mudur", "fabrika"].includes(userRole)) {
@@ -291,13 +291,13 @@ router.patch("/api/branch-orders/:id/approve", isAuthenticated, async (req: any,
       ...updated,
       stockWarnings: stockWarnings.length > 0 ? stockWarnings : undefined,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Approve branch order error:", error);
     res.status(500).json({ message: "Sipariş onaylanamadı" });
   }
 });
 
-router.patch("/api/branch-orders/:id/cancel", isAuthenticated, async (req: any, res) => {
+router.patch("/api/branch-orders/:id/cancel", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user?.role as UserRoleType;
     if (!hasPermission(userRole, "branch_orders", "edit")) {
@@ -346,7 +346,7 @@ router.patch("/api/branch-orders/:id/cancel", isAuthenticated, async (req: any, 
     }
 
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Cancel branch order error:", error);
     res.status(500).json({ message: "Sipariş iptal edilemedi" });
   }

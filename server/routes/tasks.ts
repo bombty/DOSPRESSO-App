@@ -67,17 +67,17 @@ const router = Router();
         if (!isSupervisorRole) {
           const myAssigneeRows = await db.select().from(taskAssignees).where(eq(taskAssignees.userId, user.id));
           if (myAssigneeRows.length > 0) {
-            const existingIds = new Set(branchTasks.map((t: any) => t.id));
+            const existingIds = new Set(branchTasks.map((t) => t.id));
             const additionalTaskIds = myAssigneeRows.map(r => r.taskId).filter(tid => !existingIds.has(tid));
             if (additionalTaskIds.length > 0) {
               const allBranchTasks = await storage.getTasks(user.branchId);
-              const extraTasks = allBranchTasks.filter((t: any) => additionalTaskIds.includes(t.id));
+              const extraTasks = allBranchTasks.filter((t) => additionalTaskIds.includes(t.id));
               branchTasks = [...branchTasks, ...extraTasks];
             }
           }
         }
 
-        let deliveredTasks = branchTasks.filter((t: any) => t.isDelivered !== false);
+        let deliveredTasks = branchTasks.filter((t) => t.isDelivered !== false);
 
         const today = new Date().toISOString().split('T')[0];
         const activeLeaves = await db.select().from(leaveRequests)
@@ -89,7 +89,7 @@ const router = Router();
           ));
         if (activeLeaves.length > 0) {
           const hideStatuses = ['beklemede', 'goruldu', 'devam_ediyor', 'cevap_bekliyor', 'sure_uzatma_talebi'];
-          deliveredTasks = deliveredTasks.filter((t: any) => !hideStatuses.includes(t.status));
+          deliveredTasks = deliveredTasks.filter((t) => !hideStatuses.includes(t.status));
         }
 
         if (pag.wantsPagination) {
@@ -106,7 +106,7 @@ const router = Router();
         const myAssigneeTaskIds = new Set(myAssigneeRows.map(r => r.taskId));
         const userBranchId = user.branchId;
 
-        allTasks = allTasks.filter((t: any) => {
+        allTasks = allTasks.filter((t) => {
           if (t.assignedToId === user.id) return true;
           if (t.createdById === user.id) return true;
           if (myAssigneeTaskIds.has(t.id)) return true;
@@ -120,7 +120,7 @@ const router = Router();
         return res.json(wrapPaginatedResponse(sliced, total, pag));
       }
       res.json(allTasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching tasks:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -129,31 +129,31 @@ const router = Router();
     }
   });
 
-  router.get('/api/tasks/my', isAuthenticated, async (req: any, res) => {
+  router.get('/api/tasks/my', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'tasks', 'view');
       const allTasks = await storage.getTasks();
-      const myDirectTasks = allTasks.filter((task: any) => task.assignedToId === user.id);
+      const myDirectTasks = allTasks.filter((task) => task.assignedToId === user.id);
 
       const myAssigneeRows = await db.select().from(taskAssignees).where(eq(taskAssignees.userId, user.id));
       const additionalTaskIds = myAssigneeRows
         .map(r => r.taskId)
-        .filter(tid => !myDirectTasks.some((t: any) => t.id === tid));
+        .filter(tid => !myDirectTasks.some((t) => t.id === tid));
 
       let additionalTasks: any[] = [];
       if (additionalTaskIds.length > 0) {
-        additionalTasks = allTasks.filter((task: any) => additionalTaskIds.includes(task.id));
+        additionalTasks = allTasks.filter((task) => additionalTaskIds.includes(task.id));
       }
 
       res.json([...myDirectTasks, ...additionalTasks]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error getting my tasks:', error);
       res.status(500).json({ message: 'Görevler alınamadı' });
     }
   });
 
-  router.get('/api/tasks/assigned-by-me', isAuthenticated, async (req: any, res) => {
+  router.get('/api/tasks/assigned-by-me', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'tasks', 'view');
@@ -200,19 +200,19 @@ const router = Router();
       });
 
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error getting assigned-by-me tasks:', error);
       res.status(500).json({ message: 'Atanan görevler alınamadı' });
     }
   });
 
-  router.get('/api/tasks/pending-checks', isAuthenticated, async (req: any, res) => {
+  router.get('/api/tasks/pending-checks', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
       const pendingChecks = await storage.getTasksByChecker(user.id, 'kontrol_bekliyor');
       
-      const enrichedTasks = await Promise.all(pendingChecks.map(async (task: any) => {
+      const enrichedTasks = await Promise.all(pendingChecks.map(async (task) => {
         let assigneeName = 'Bilinmiyor';
         if (task.assignedToId) {
           const assignee = await storage.getUser(task.assignedToId);
@@ -224,13 +224,13 @@ const router = Router();
       }));
       
       res.json(enrichedTasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error getting pending checks:", error);
       res.status(500).json({ message: "Kontrol bekleyen görevler alınamadı" });
     }
   });
 
-  router.get('/api/tasks/fairness-report', isAuthenticated, async (req: any, res) => {
+  router.get('/api/tasks/fairness-report', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userRole = user.role as string;
@@ -329,7 +329,7 @@ const router = Router();
         branchId: userBranchId,
         report,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating fairness report:", error);
       res.status(500).json({ message: "Adalet raporu oluşturulamadı" });
     }
@@ -404,13 +404,13 @@ const router = Router();
       }
 
       res.json(enrichedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task:", error);
       res.status(500).json({ message: "Görev alınamadı" });
     }
   });
 
-  router.post('/api/tasks/bulk', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/bulk', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = user.id;
@@ -510,7 +510,7 @@ const router = Router();
       }
 
       res.json({ created: createdTasks.length, tasks: createdTasks });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating bulk tasks:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -519,7 +519,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/tasks', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -724,7 +724,7 @@ const router = Router();
         onTaskAssigned(task.id, task.description || 'Gorev', assigneeId, assignerName2);
       }
       res.json({ ...task, additionalAssignees: additionalAssigneeIds });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -790,7 +790,7 @@ const router = Router();
       }
       
       res.json(task);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error verifying task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -862,7 +862,7 @@ const router = Router();
       }
       
       res.json(task);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error rejecting task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -871,7 +871,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/tasks/:id/request-check', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/request-check', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -934,13 +934,13 @@ const router = Router();
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error requesting check:", error);
       res.status(500).json({ message: "Kontrol isteği gönderilemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/checker-verify', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/checker-verify', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -994,13 +994,13 @@ const router = Router();
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error verifying task by checker:", error);
       res.status(500).json({ message: "Görev onaylanamadı" });
     }
   });
 
-  router.post('/api/tasks/:id/checker-reject', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/checker-reject', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1055,7 +1055,7 @@ const router = Router();
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error rejecting task by checker:", error);
       res.status(500).json({ message: "Görev reddedilemedi" });
     }
@@ -1073,7 +1073,7 @@ const router = Router();
 
       const rating = await storage.rateTask(id, score, user.id);
       res.json(rating);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error rating task:", error);
       res.status(500).json({ message: "Görev değerlendirilemedi" });
     }
@@ -1124,13 +1124,13 @@ const router = Router();
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating task status:", error);
       res.status(500).json({ message: "Görev durumu güncellenemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/start', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/start', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1235,13 +1235,13 @@ const router = Router();
       
       const updatedTask = await storage.getTask(taskId);
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error starting task:", error);
       res.status(500).json({ message: "Görev başlatılamadı" });
     }
   });
 
-  router.get('/api/tasks/:id/participant-statuses', isAuthenticated, async (req: any, res) => {
+  router.get('/api/tasks/:id/participant-statuses', isAuthenticated, async (req, res) => {
     try {
       const taskId = parseInt(req.params.id);
       const user = req.user!;
@@ -1272,7 +1272,7 @@ const router = Router();
         .where(eq(taskAssignees.taskId, taskId));
 
       res.json(statuses);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching participant statuses:", error);
       res.status(500).json({ message: "Katılımcı durumları yüklenemedi" });
     }
@@ -1422,7 +1422,7 @@ const router = Router();
       }
       resolveEventTask('task_assigned', task.id);
       res.json({ ...updatedTask, message: transitionMessage });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating task status:", error);
       res.status(500).json({ message: "Görev durumu güncellenemedi" });
     }
@@ -1464,13 +1464,13 @@ const router = Router();
       await storage.addNoteToTask(taskId, note.trim(), user.id);
       
       res.json({ success: true, message: "Not eklendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding note to task:", error);
       res.status(500).json({ message: "Not eklenemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/photo', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/photo', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1507,13 +1507,13 @@ const router = Router();
       });
 
       res.json({ success: true, message: "Fotoğraf kaydedildi", task: updatedTask });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving task photo:", error);
       res.status(500).json({ message: "Fotoğraf kaydedilemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/ask-question', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/ask-question', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1570,13 +1570,13 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error asking question on task:", error);
       res.status(500).json({ message: "Soru gönderilemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/answer-question', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/answer-question', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1634,13 +1634,13 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error answering question on task:", error);
       res.status(500).json({ message: "Yanıt gönderilemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/request-extension', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/request-extension', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1702,13 +1702,13 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error requesting extension on task:", error);
       res.status(500).json({ message: "Süre uzatma talebi gönderilemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/approve-extension', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/approve-extension', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1777,13 +1777,13 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving extension on task:", error);
       res.status(500).json({ message: "Uzatma onayı işlenemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/submit-for-approval', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/submit-for-approval', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1836,13 +1836,13 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error submitting task for approval:", error);
       res.status(500).json({ message: "Görev onaya gönderilemedi" });
     }
   });
 
-  router.post('/api/tasks/:id/approve-closure', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/approve-closure', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1898,13 +1898,13 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error approving task closure:", error);
       res.status(500).json({ message: "Görev onaylanamadı" });
     }
   });
 
-  router.post('/api/tasks/:id/reactivate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:id/reactivate', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.id);
@@ -1961,7 +1961,7 @@ const router = Router();
       }
 
       res.json(updatedTask);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error reactivating task:", error);
       res.status(500).json({ message: "Görev tekrar aktif edilemedi" });
     }
@@ -2022,7 +2022,7 @@ const router = Router();
       }));
       
       res.json(enrichedHistory);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task history:", error);
       res.status(500).json({ message: "Görev geçmişi alınamadı" });
     }
@@ -2099,7 +2099,7 @@ const router = Router();
         maxRating,
         message: penaltyApplied ? 'Geç teslim nedeniyle puan sınırlandırıldı (max: ' + maxRating + ')' : undefined,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error rating task:", error);
       res.status(500).json({ message: "Görev puanlanamadı" });
     }
@@ -2134,24 +2134,24 @@ const router = Router();
         canRate: task.assignedById === user.id && task.status === 'onaylandi' && !rating,
         isLate: task.dueDate && task.completedAt && new Date(task.completedAt) > new Date(task.dueDate),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching task rating:", error);
       res.status(500).json({ message: "Görev puanı alınamadı" });
     }
   });
 
-  router.get('/api/tasks/:taskId/steps', isAuthenticated, async (req: any, res) => {
+  router.get('/api/tasks/:taskId/steps', isAuthenticated, async (req, res) => {
     try {
       const taskId = parseInt(req.params.taskId);
       const steps = await storage.getTaskSteps(taskId);
       
-      const userIds = [...new Set(steps.map((s: any) => s.assignedToId).filter(Boolean))];
+      const userIds = [...new Set(steps.map((s) => s.assignedToId).filter(Boolean))];
       let usersMap = new Map<string, any>();
       if (userIds.length > 0) {
         usersMap = await storage.getUsersByIds(userIds as string[]);
       }
       
-      const enrichedSteps = steps.map((s: any) => {
+      const enrichedSteps = steps.map((s) => {
         const assignee = s.assignedToId ? usersMap.get(s.assignedToId) : null;
         return {
           ...s,
@@ -2168,24 +2168,24 @@ const router = Router();
       });
       
       res.json(enrichedSteps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get task steps error:", error);
       res.status(500).json({ message: "Adımlar getirilemedi" });
     }
   });
 
-  router.post('/api/tasks/:taskId/steps', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:taskId/steps', isAuthenticated, async (req, res) => {
     try {
       const taskId = parseInt(req.params.taskId);
       const step = await storage.createTaskStep({ ...req.body, taskId, authorId: req.user.id });
       res.json(step);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create task step error:", error);
       res.status(500).json({ message: "Adım oluşturulamadı" });
     }
   });
 
-  router.post('/api/tasks/:taskId/steps/:stepId/claim', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:taskId/steps/:stepId/claim', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const taskId = parseInt(req.params.taskId);
@@ -2213,19 +2213,19 @@ const router = Router();
       });
       
       res.json(step);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Claim step error:", error);
       res.status(500).json({ message: "Adım alınamadı" });
     }
   });
 
-  router.post('/api/tasks/:taskId/steps/:stepId/unclaim', isAuthenticated, async (req: any, res) => {
+  router.post('/api/tasks/:taskId/steps/:stepId/unclaim', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const stepId = parseInt(req.params.stepId);
       
       const steps = await storage.getTaskSteps(parseInt(req.params.taskId));
-      const step = steps.find((s: any) => s.id === stepId);
+      const step = steps.find((s) => s.id === stepId);
       if (!step) return res.status(404).json({ message: "Adım bulunamadı" });
       
       if (step.assignedToId !== user.id && !isHQRole(user.role as UserRoleType)) {
@@ -2240,7 +2240,7 @@ const router = Router();
       });
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Unclaim step error:", error);
       res.status(500).json({ message: "Adım bırakılamadı" });
     }
@@ -2310,7 +2310,7 @@ const router = Router();
         archivedCount: eligible.length,
         skippedCount: taskIds.length - eligible.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Bulk archive error:", error);
       res.status(500).json({ message: "Toplu arşivleme başarısız" });
     }

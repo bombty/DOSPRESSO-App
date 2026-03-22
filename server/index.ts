@@ -613,7 +613,7 @@ function startScheduledTaskDeliveryJob() {
           });
         }
       }
-    } catch (error: any) { console.error("Scheduled task delivery initial run error:", error); }
+    } catch (error: unknown) { console.error("Scheduled task delivery initial run error:", error); }
   })();
 
   schedulerManager.registerInterval('task-delivery', async () => {
@@ -651,7 +651,7 @@ function startScheduledTaskDeliveryJob() {
 
       if (scheduledTasks.length > 0) {
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Scheduled task delivery error:", error);
     }
   }, 5 * 60 * 1000);

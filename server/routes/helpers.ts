@@ -1,4 +1,6 @@
 import type { Response } from "express";
+import { hasPermission, type UserRoleType } from "../permission-service";
+import { generateBranchSummaryReport } from "../ai";
 
 export function handleApiError(res: Response, error: unknown, context: string): void {
   const message = error instanceof Error ? error.message : String(error);
@@ -60,3 +62,113 @@ export function sliceForPagination<T>(items: T[], params: PaginationParams): { s
   const sliced = items.slice(params.offset, params.offset + params.limit);
   return { sliced, total };
 }
+
+export interface SummaryContext {
+  pendingTasks: number;
+  activeFaults: number;
+  overdueChecklists: number;
+  maintenanceReminders: number;
+  criticalEquipment: number;
+  avgHealth: number;
+  period: 'daily' | 'weekly' | 'monthly';
+  userId: string;
+  role: string;
+  branchId?: number;
+  branchName?: string;
+  totalBranches?: number;
+  factoryStats?: { pendingOrders: number; qualityIssues: number };
+}
+
+export async function generateBranchSummary(ctx: SummaryContext): Promise<string> {
+  try {
+    const isHQ = !ctx.branchId || ['admin', 'owner', 'hq_manager', 'finance', 'coach'].includes(ctx.role);
+    let scopeName: string;
+    if (isHQ) {
+      scopeName = "DOSPRESSO Genel Merkez (Tüm Şubeler)";
+    } else {
+      scopeName = ctx.branchName || `Şube #${ctx.branchId}`;
+    }
+    return await generateBranchSummaryReport(ctx.period, {
+      activeFaults: ctx.activeFaults,
+      pendingTasks: ctx.pendingTasks,
+      overdueChecklists: ctx.overdueChecklists,
+      maintenanceReminders: ctx.maintenanceReminders,
+      criticalEquipment: ctx.criticalEquipment,
+      totalAbsences: 0,
+      slaBreaches: 0,
+      averageEquipmentHealth: ctx.avgHealth,
+      branchName: scopeName,
+      isHQ,
+      role: ctx.role,
+      totalBranches: ctx.totalBranches,
+      factoryStats: ctx.factoryStats
+    }, ctx.userId);
+  } catch (error: unknown) {
+    const periodLabel = ctx.period === 'daily' ? 'Günlük' : ctx.period === 'weekly' ? 'Haftalık' : 'Aylık';
+    return `${periodLabel}: ${ctx.activeFaults} arıza, ${ctx.pendingTasks} görev`;
+  }
+}
+
+const CACHE_MAX_SIZE = 1000;
+export const responseCache = new Map<string, { data: any; expiresAt: number }>();
+
+export const getCachedResponse = (key: string) => {
+  const cached = responseCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+  responseCache.delete(key);
+  return null;
+};
+
+export const setCachedResponse = (key: string, data: unknown, ttlSeconds: number = 60) => {
+  if (responseCache.size >= CACHE_MAX_SIZE) {
+    const now = Date.now();
+    for (const [k, v] of responseCache) {
+      if (v.expiresAt <= now) responseCache.delete(k);
+    }
+    if (responseCache.size >= CACHE_MAX_SIZE) {
+      const oldest = responseCache.keys().next().value;
+      if (oldest) responseCache.delete(oldest);
+    }
+  }
+  responseCache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
+};
+
+export const invalidateCache = (pattern: string) => {
+  const keysToDelete: string[] = [];
+  responseCache.forEach((_, key) => {
+    if (key.includes(pattern)) {
+      keysToDelete.push(key);
+    }
+  });
+  keysToDelete.forEach(key => responseCache.delete(key));
+};
+
+export class AuthorizationError extends Error {
+  constructor(message?: string) {
+    super(message || 'Yetkisiz işlem');
+    this.name = 'AuthorizationError';
+  }
+}
+
+export function ensurePermission(user: any, mod: string, action: string, errorMessage?: string): void {
+  if (!hasPermission(user.role as UserRoleType, mod, action)) {
+    throw new AuthorizationError(errorMessage || `Bu işlem için ${mod} ${action} yetkiniz yok`);
+  }
+}
+
+export function assertBranchScope(user): number {
+  if (!user.branchId) {
+    throw new Error("Şube ataması yapılmamış");
+  }
+  return user.branchId;
+}
+
+export const normalizeTimeGlobal = (timeStr: string): string => {
+  if (!timeStr) return '08:00';
+  const parts = timeStr.split(':');
+  const hh = String(parts[0] || '0').padStart(2, '0');
+  const mm = String(parts[1] || '0').padStart(2, '0');
+  return `${hh}:${mm}`;
+};

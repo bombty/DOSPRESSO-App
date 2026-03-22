@@ -23,7 +23,7 @@ function isAdmin(req: any, res: any): boolean {
   return true;
 }
 
-router.get("/api/admin/employee-types", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/employee-types", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -47,12 +47,12 @@ router.get("/api/admin/employee-types", isAuthenticated, async (req: any, res) =
       .orderBy(employeeTypes.name);
 
     res.json(types);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee types list error");
   }
 });
 
-router.post("/api/admin/employee-types", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/employee-types", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -62,12 +62,12 @@ router.post("/api/admin/employee-types", isAuthenticated, async (req: any, res) 
       allowedGroups: parsed.allowedGroups as string[] | undefined,
     }]).returning();
     res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type create error");
   }
 });
 
-router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -82,12 +82,12 @@ router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req: any, 
 
     if (!updated) return res.status(404).json({ message: "Çalışan tipi bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type update error");
   }
 });
 
-router.delete("/api/admin/employee-types/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/employee-types/:id", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -102,12 +102,12 @@ router.delete("/api/admin/employee-types/:id", isAuthenticated, async (req: any,
 
     if (!updated) return res.status(404).json({ message: "Çalışan tipi bulunamadı" });
     res.json({ message: "Çalışan tipi devre dışı bırakıldı", id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type soft delete error");
   }
 });
 
-router.get("/api/admin/employee-types/:typeId/policies", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/employee-types/:typeId/policies", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -121,12 +121,12 @@ router.get("/api/admin/employee-types/:typeId/policies", isAuthenticated, async 
       .orderBy(employeeTypePolicies.policyKey);
 
     res.json(policies);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type policies list error");
   }
 });
 
-router.post("/api/admin/employee-types/:typeId/policies", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/employee-types/:typeId/policies", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -139,12 +139,12 @@ router.post("/api/admin/employee-types/:typeId/policies", isAuthenticated, async
     });
     const [created] = await db.insert(employeeTypePolicies).values(parsed).returning();
     res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type policy create error");
   }
 });
 
-router.patch("/api/admin/employee-type-policies/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/employee-type-policies/:id", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -159,12 +159,12 @@ router.patch("/api/admin/employee-type-policies/:id", isAuthenticated, async (re
 
     if (!updated) return res.status(404).json({ message: "Politika bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type policy update error");
   }
 });
 
-router.delete("/api/admin/employee-type-policies/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/employee-type-policies/:id", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -178,12 +178,12 @@ router.delete("/api/admin/employee-type-policies/:id", isAuthenticated, async (r
 
     if (!deleted) return res.status(404).json({ message: "Politika bulunamadı" });
     res.json({ message: "Politika silindi", id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Employee type policy delete error");
   }
 });
 
-router.get("/api/admin/org-assignments", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/org-assignments", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -203,24 +203,24 @@ router.get("/api/admin/org-assignments", isAuthenticated, async (req: any, res) 
       .orderBy(orgEmployeeTypeAssignments.orgScope, orgEmployeeTypeAssignments.orgId);
 
     res.json(assignments);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Org assignments list error");
   }
 });
 
-router.post("/api/admin/org-assignments", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/org-assignments", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
     const parsed = insertOrgEmployeeTypeAssignmentSchema.parse(req.body);
     const [created] = await db.insert(orgEmployeeTypeAssignments).values(parsed).returning();
     res.status(201).json(created);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Org assignment create error");
   }
 });
 
-router.patch("/api/admin/org-assignments/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/org-assignments/:id", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -235,12 +235,12 @@ router.patch("/api/admin/org-assignments/:id", isAuthenticated, async (req: any,
 
     if (!updated) return res.status(404).json({ message: "Atama bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Org assignment update error");
   }
 });
 
-router.delete("/api/admin/org-assignments/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/org-assignments/:id", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -254,12 +254,12 @@ router.delete("/api/admin/org-assignments/:id", isAuthenticated, async (req: any
 
     if (!deleted) return res.status(404).json({ message: "Atama bulunamadı" });
     res.json({ message: "Atama silindi", id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Org assignment delete error");
   }
 });
 
-router.patch("/api/admin/users/:userId/employee-type", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/users/:userId/employee-type", isAuthenticated, async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -276,12 +276,12 @@ router.patch("/api/admin/users/:userId/employee-type", isAuthenticated, async (r
 
     if (!updated) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "User employee type assign error");
   }
 });
 
-router.get("/api/employee-types/active", isAuthenticated, async (req: any, res) => {
+router.get("/api/employee-types/active", isAuthenticated, async (req, res) => {
   try {
     const activeTypes = await db
       .select({
@@ -295,7 +295,7 @@ router.get("/api/employee-types/active", isAuthenticated, async (req: any, res) 
       .orderBy(employeeTypes.name);
 
     res.json(activeTypes);
-  } catch (error: any) {
+  } catch (error: unknown) {
     handleApiError(res, error, "Active employee types list error");
   }
 });

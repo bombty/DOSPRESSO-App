@@ -12,7 +12,7 @@ import { getLatestSkillInsights, deduplicateSuggestions } from "../agent/skills/
 
 const router = Router();
 
-router.get("/api/franchise-summary", isAuthenticated, async (req: any, res) => {
+router.get("/api/franchise-summary", isAuthenticated, async (req, res) => {
   try {
     const userRole = req.user.role;
     const userBranchId = req.user.branchId ? Number(req.user.branchId) : null;
@@ -105,7 +105,7 @@ router.get("/api/franchise-summary", isAuthenticated, async (req: any, res) => {
       totalBranches: targetBranches.length,
       suggestions,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Franchise summary error:", error);
     res.status(500).json({ message: "Franchise ozeti yuklenemedi" });
   }

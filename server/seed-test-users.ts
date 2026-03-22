@@ -177,7 +177,7 @@ async function main() {
 
         created++;
         process.stdout.write(`\r   Created: ${created}, Skipped: ${skipped}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (error.code === '23505') { // Unique violation
           skipped++;
         } else {

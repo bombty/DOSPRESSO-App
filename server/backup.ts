@@ -170,7 +170,7 @@ async function exportTableToStorage(tableName: string, backupId: string): Promis
     }
 
     return { success: true, rowCount: rows.length };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, rowCount: 0, error: error.message };
   }
 }
@@ -378,7 +378,7 @@ async function createBackupSnapshot(backupType: 'hourly' | 'daily' | 'weekly' | 
     }
     
     return backupRecord;
-  } catch (error: any) {
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     
     // Insert failed backup record to database
@@ -533,7 +533,7 @@ async function deleteBackupFiles(backupId: string): Promise<boolean> {
       }
     }
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`⚠️ Object storage dosyaları silinemedi (${backupId}):`, error?.message);
     return false;
   }
@@ -564,7 +564,7 @@ async function enforceRetentionPolicy(): Promise<void> {
       }
       
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('⚠️ Retention politikası uygulanırken hata:', error?.message);
   }
 }
@@ -579,7 +579,7 @@ async function runBackupWithNotification(type: 'hourly' | 'daily' | 'manual' = '
       await notifyAdminsAboutBackup(backupRecord);
     }
     return backupRecord;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Backup sırasında hata oluştu:', error?.message || error);
     return null;
   }
@@ -696,7 +696,7 @@ export async function performHealthCheck(): Promise<{
     }
     
     return { status, checks, details };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       status: 'critical',
       checks: { database: false, integrity: false, recentBackup: false },
@@ -804,7 +804,7 @@ export async function restoreFromBackup(backupId: string): Promise<{
     });
     
     return { success: true, tablesRestored, totalRecords, errors };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, tablesRestored: [], totalRecords: 0, errors: [error?.message || String(error)] };
   }
 }

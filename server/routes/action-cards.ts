@@ -77,7 +77,7 @@ router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
     });
 
     return res.json(enriched);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ActionCards] Error fetching today:", error);
     return res.status(500).json({ error: "Görevler yüklenemedi" });
   }
@@ -163,7 +163,7 @@ router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) =>
     } catch {}
 
     return res.json({ success: true, message: "Kanıt gönderildi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ActionCards] Error submitting:", error);
     return res.status(500).json({ error: "Gönderilemedi" });
   }
@@ -216,7 +216,7 @@ router.post("/api/action-cards/:id/approve", isAuthenticated, async (req, res) =
     } catch {}
 
     return res.json({ success: true, message: "Görev onaylandı" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ActionCards] Error approving:", error);
     return res.status(500).json({ error: "Onaylanamadı" });
   }
@@ -269,7 +269,7 @@ router.post("/api/action-cards/:id/reject", isAuthenticated, async (req, res) =>
     } catch {}
 
     return res.json({ success: true, message: "Görev reddedildi" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ActionCards] Error rejecting:", error);
     return res.status(500).json({ error: "Reddedilemedi" });
   }
@@ -347,7 +347,7 @@ router.get("/api/action-cards/pending-approvals", isAuthenticated, async (req, r
     });
 
     return res.json(enriched);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ActionCards] Error fetching pending approvals:", error);
     return res.status(500).json({ error: "Onay bekleyenler yüklenemedi" });
   }
@@ -360,7 +360,7 @@ router.post("/api/action-cards/generate", isAuthenticated, async (req, res) => {
 
     const result = await generateTasksForUser(userId);
     return res.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ActionCards] Error generating:", error);
     return res.status(500).json({ error: "Oluşturulamadı" });
   }
@@ -370,7 +370,7 @@ router.get("/api/task-triggers", isAuthenticated, async (req, res) => {
   try {
     const triggers = await db.select().from(taskTriggers).orderBy(taskTriggers.roleCode);
     return res.json(triggers);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[TaskTriggers] Error fetching:", error);
     return res.status(500).json({ error: "Trigger listesi yüklenemedi" });
   }

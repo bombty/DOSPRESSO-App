@@ -402,6 +402,46 @@ import delegationRouter from "./routes/delegation-routes";
 import moduleContentRouter from "./routes/module-content-routes";
 import moduleFlagsRouter from "./routes/module-flags";
 import branchTasksRouter from "./routes/branch-tasks";
+import lostFoundRouter from "./routes/lost-found-routes";
+import employeeSatisfactionRouter from "./routes/employee-satisfaction-routes";
+import staffEvaluationsRouter from "./routes/staff-evaluations-routes";
+import certificateRouter from "./routes/certificate-routes";
+import hrManagementRouter from "./routes/hr-management-routes";
+import franchiseOnboardingRouter from "./routes/franchise-onboarding-routes";
+import ceoCommandCenterRouter from "./routes/ceo-command-center-routes";
+import personalPerformanceRouter from "./routes/personal-performance-routes";
+import interviewQuestionsRouter from "./routes/interview-questions-routes";
+import employeeBenefitsRouter from "./routes/employee-benefits-routes";
+import announcementsRouter from "./routes/announcements-routes";
+import trainingProgramRouter from "./routes/training-program-routes";
+import cgoRouter from "./routes/cgo-routes";
+import qualityAuditsRouter from "./routes/quality-audits-routes";
+import systemHealthRouter from "./routes/system-health-routes";
+import hqSupportRouter from "./routes/hq-support-routes";
+import adminAnnouncementsRouter from "./routes/admin-announcements-routes";
+import franchiseProjectsRouter from "./routes/franchise-projects-routes";
+import bannersRouter from "./routes/banners-routes";
+import inventoryCountRouter from "./routes/inventory-count-routes";
+import supplierPerformanceRouter from "./routes/supplier-performance-routes";
+import dashboardWidgetsRouter from "./routes/dashboard-widgets-routes";
+import messagingRouter from "./routes/messaging-routes";
+import dashboardsRouter from "./routes/dashboards-routes";
+import managerPerformanceRouter from "./routes/manager-performance-routes";
+import trackingCareerRouter from "./routes/tracking-career-routes";
+import maintenanceRouter from "./routes/maintenance-routes";
+import campaignsRouter from "./routes/campaigns-routes";
+import guestComplaintsRouter from "./routes/guest-complaints-routes";
+import knowledgeBaseSearchRouter from "./routes/knowledge-base-search-routes";
+import globalSearchRouter from "./routes/global-search-routes";
+import megaModuleRouter from "./routes/mega-module-routes";
+import staffQrRouter from "./routes/staff-qr-routes";
+import employeeOfMonthRouter from "./routes/employee-of-month-routes";
+import inventoryReportsRouter from "./routes/inventory-reports-routes";
+import usageGuideRouter from "./routes/usage-guide-routes";
+import guideDocsRouter from "./routes/guide-docs-routes";
+import onboardingV2Router from "./routes/onboarding-v2-routes";
+import dashboardItemsRouter from "./routes/dashboard-items-routes";
+import miscSmallRouter from "./routes/misc-small-routes";
 import { checkSlaBreaches } from "./services/ticket-routing-engine";
 import { schedulerManager } from "./scheduler-manager";
 
@@ -811,6 +851,46 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(payrollRouter);
   app.use(changeRequestsRouter);
   app.use(stubEndpointsRouter);
+  app.use(lostFoundRouter);
+  app.use(employeeSatisfactionRouter);
+  app.use(staffEvaluationsRouter);
+  app.use(certificateRouter);
+  app.use(hrManagementRouter);
+  app.use(franchiseOnboardingRouter);
+  app.use(ceoCommandCenterRouter);
+  app.use(personalPerformanceRouter);
+  app.use(interviewQuestionsRouter);
+  app.use(employeeBenefitsRouter);
+  app.use(announcementsRouter);
+  app.use(trainingProgramRouter);
+  app.use(cgoRouter);
+  app.use(qualityAuditsRouter);
+  app.use(systemHealthRouter);
+  app.use(hqSupportRouter);
+  app.use(adminAnnouncementsRouter);
+  app.use(franchiseProjectsRouter);
+  app.use(bannersRouter);
+  app.use(inventoryCountRouter);
+  app.use(supplierPerformanceRouter);
+  app.use(dashboardWidgetsRouter);
+  app.use(messagingRouter);
+  app.use(dashboardsRouter);
+  app.use(managerPerformanceRouter);
+  app.use(trackingCareerRouter);
+  app.use(maintenanceRouter);
+  app.use(campaignsRouter);
+  app.use(guestComplaintsRouter);
+  app.use(knowledgeBaseSearchRouter);
+  app.use(globalSearchRouter);
+  app.use(megaModuleRouter);
+  app.use(staffQrRouter);
+  app.use(employeeOfMonthRouter);
+  app.use(inventoryReportsRouter);
+  app.use(usageGuideRouter);
+  app.use(guideDocsRouter);
+  app.use(onboardingV2Router);
+  app.use(dashboardItemsRouter);
+  app.use(miscSmallRouter);
 
   app.get('/api/health', async (req, res) => {
     try {
@@ -820,7 +900,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
         timestamp: new Date().toISOString(),
         dbConnected: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       res.status(503).json({ status: 'error', dbConnected: false });
     }
   });
@@ -1063,7 +1143,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
       }
       const { hashedPassword, ...safeUser } = user;
       res.json(safeUser);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }

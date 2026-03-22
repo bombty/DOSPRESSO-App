@@ -89,11 +89,11 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       const scope = req.query.scope as string | undefined;
       if (scope && (scope === 'branch' || scope === 'factory')) {
-        checklistsResult = checklistsResult.filter((c: any) => c.scope === scope);
+        checklistsResult = checklistsResult.filter((c) => c.scope === scope);
       }
 
       res.json(checklistsResult);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching checklists:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -113,13 +113,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       if (tasksArray && Array.isArray(tasksArray) && tasksArray.length > 0) {
         const { insertChecklistTaskSchema } = await import('@shared/schema');
         
-        const orders = tasksArray.map((t: any) => t.order);
+        const orders = tasksArray.map((t) => t.order);
         const duplicateOrders = orders.filter((order: number, index: number) => orders.indexOf(order) !== index);
         if (duplicateOrders.length > 0) {
           return res.status(400).json({ message: `Duplicate order values: ${duplicateOrders.join(', ')}` });
         }
         
-        const validatedTasks = tasksArray.map((task: any) => 
+        const validatedTasks = tasksArray.map((task) => 
           insertChecklistTaskSchema.parse({
             taskDescription: task.taskDescription,
             requiresPhoto: task.requiresPhoto,
@@ -139,7 +139,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         const checklist = await storage.createChecklist(validatedChecklistData);
         res.json(checklist);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating checklist:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz checklist verisi", errors: error.errors });
@@ -152,7 +152,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // Update checklist with tasks (Admin/CEO/CGO/Coach/Trainer always, supervisors only if isEditable=true)
-  router.patch('/api/checklists/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/checklists/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -189,7 +189,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const checklist = await storage.updateChecklistWithTasks(id, validatedData);
 
       res.json(checklist!);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating checklist:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz checklist verisi", errors: error.errors });
@@ -199,7 +199,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // GET /api/checklists/my-daily - Get user's daily checklists based on shift and leave status
-  router.get('/api/checklists/my-daily', isAuthenticated, async (req: any, res) => {
+  router.get('/api/checklists/my-daily', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const today = new Date().toISOString().split('T')[0];
@@ -284,7 +284,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       const userScope = user.role && isBranchRole(user.role as UserRoleType) ? 'branch' : 'factory';
-      checklistsData = checklistsData.filter((c: any) => !c.scope || c.scope === userScope);
+      checklistsData = checklistsData.filter((c) => !c.scope || c.scope === userScope);
 
       res.json({
         onLeave: false,
@@ -298,14 +298,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         } : null,
         checklists: checklistsData,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching daily checklists:", error);
       res.status(500).json({ message: "Günlük checklist verisi alınamadı" });
     }
   });
 
   // GET /api/checklists/my-assignments - Get checklists assigned to current user
-  router.get('/api/checklists/my-assignments', isAuthenticated, async (req: any, res) => {
+  router.get('/api/checklists/my-assignments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -334,7 +334,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }));
       
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error getting my checklist assignments:', error);
       res.status(500).json({ message: 'Checklist atamaları alınamadı' });
     }
@@ -345,21 +345,21 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // ========================================
 
   // GET /api/checklist-assignments - Get all assignments (admin/supervisor)
-  router.get('/api/checklist-assignments', isAuthenticated, async (req: any, res) => {
+  router.get('/api/checklist-assignments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'view');
       const checklistId = req.query.checklistId ? parseInt(req.query.checklistId) : undefined;
       const assignments = await storage.getChecklistAssignments(checklistId);
       res.json(assignments);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error getting checklist assignments:', error);
       res.status(500).json({ message: 'Atamalar alınamadı' });
     }
   });
 
   // POST /api/checklist-assignments - Create new assignment
-  router.post('/api/checklist-assignments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/checklist-assignments', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
@@ -418,7 +418,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         }
       } catch (e) { console.error("Event task error:", e); }
       res.status(201).json(assignment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       console.error('Error creating checklist assignment:', error);
       res.status(500).json({ message: 'Atama oluşturulamadı' });
@@ -426,7 +426,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // PATCH /api/checklist-assignments/:id - Update assignment
-  router.patch('/api/checklist-assignments/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/checklist-assignments/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
@@ -441,7 +441,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       console.error('Error updating checklist assignment:', error);
       res.status(500).json({ message: 'Atama güncellenemedi' });
@@ -449,7 +449,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // DELETE /api/checklist-assignments/:id - Delete assignment
-  router.delete('/api/checklist-assignments/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/checklist-assignments/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'delete');
@@ -458,7 +458,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       await storage.deleteChecklistAssignment(id);
       
       res.status(204).send();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting checklist assignment:', error);
       res.status(500).json({ message: 'Atama silinemedi' });
     }
@@ -470,7 +470,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // ========================================
 
   // POST /api/checklist-completions/start - Start a checklist
-  router.post('/api/checklist-completions/start', isAuthenticated, async (req: any, res) => {
+  router.post('/api/checklist-completions/start', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const completionStartSchema = z.object({
@@ -504,7 +504,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       
       const completionWithTasks = await storage.getChecklistCompletionWithTasks(completion.id);
       res.status(201).json(completionWithTasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       console.error('Error starting checklist completion:', error);
       res.status(500).json({ message: 'Checklist başlatılamadı' });
@@ -512,7 +512,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // GET /api/checklist-completions/:id - Get completion with tasks
-  router.get('/api/checklist-completions/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/checklist-completions/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const completion = await storage.getChecklistCompletionWithTasks(id);
@@ -522,27 +522,27 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       
       res.json(completion);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching checklist completion:', error);
       res.status(500).json({ message: 'Veri getirilemedi' });
     }
   });
 
   // GET /api/checklist-completions/my/today - Get user's completions for today
-  router.get('/api/checklist-completions/my/today', isAuthenticated, async (req: any, res) => {
+  router.get('/api/checklist-completions/my/today', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const date = req.query.date as string || new Date().toISOString().split('T')[0];
       const completions = await storage.getUserChecklistCompletions(user.id, date);
       res.json(completions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching user completions:', error);
       res.status(500).json({ message: 'Veri getirilemedi' });
     }
   });
 
   // POST /api/checklist-completions/:completionId/tasks/:taskId/complete - Complete a task
-  router.post('/api/checklist-completions/:completionId/tasks/:taskId/complete', isAuthenticated, async (req: any, res) => {
+  router.post('/api/checklist-completions/:completionId/tasks/:taskId/complete', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const completionId = parseInt(req.params.completionId);
@@ -563,7 +563,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       });
       
       res.json(taskCompletion);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error completing task:', error);
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: 'Görev tamamlanamadı' });
@@ -571,7 +571,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // POST /api/checklist-completions/:completionId/tasks/:taskId/verify-photo - AI verify photo for task
-  router.post('/api/checklist-completions/:completionId/tasks/:taskId/verify-photo', isAuthenticated, async (req: any, res) => {
+  router.post('/api/checklist-completions/:completionId/tasks/:taskId/verify-photo', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const completionId = parseInt(req.params.completionId);
@@ -695,13 +695,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         taskCompletion,
         verification: verificationResult,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "VerifyTaskPhoto");
     }
   });
 
   // POST /api/checklist-completions/:id/submit - Submit completed checklist
-  router.post('/api/checklist-completions/:id/submit', isAuthenticated, async (req: any, res) => {
+  router.post('/api/checklist-completions/:id/submit', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const completion = await storage.submitChecklistCompletion(id);
@@ -722,14 +722,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       
       res.json(completion);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting checklist:', error);
       res.status(500).json({ message: 'Checklist gönderilemedi' });
     }
   });
 
   // GET /api/checklist-completions/manager/all - Manager view of all completions
-  router.get('/api/checklist-completions/manager/all', isAuthenticated, async (req: any, res) => {
+  router.get('/api/checklist-completions/manager/all', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'view');
@@ -748,14 +748,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       );
       
       res.json(completions);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching manager completions:', error);
       res.status(500).json({ message: 'Veri getirilemedi' });
     }
   });
 
   // PATCH /api/checklist-completions/:id/review - Manager review and score update
-  router.patch('/api/checklist-completions/:id/review', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/checklist-completions/:id/review', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
@@ -775,7 +775,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error reviewing completion:', error);
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       res.status(500).json({ message: 'Değerlendirme kaydedilemedi' });
@@ -794,7 +794,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       const tasks = await storage.getChecklistTasks(id);
       res.json({ ...checklist, tasks });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching checklist:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -818,7 +818,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         details: { softDelete: true },
       });
       res.json({ message: "Checklist silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting checklist:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -832,14 +832,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const checklistId = req.query.checklistId ? parseInt(req.query.checklistId as string) : undefined;
       const tasks = await storage.getChecklistTasks(checklistId);
       res.json(tasks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching checklist tasks:", error);
       res.status(500).json({ message: "Checklist görevleri alınırken hata oluştu" });
     }
   });
 
   // PATCH /api/checklist-tasks/reorder - Reorder checklist tasks
-  router.patch('/api/checklist-tasks/reorder', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/checklist-tasks/reorder', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
@@ -865,7 +865,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       
       res.json({ success: true, message: "Görev sırası güncellendi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "ReorderChecklistTasks");
     }
   });
@@ -886,7 +886,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       
       const task = await storage.createChecklistTask(validatedData);
       res.json(task);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating checklist task:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -940,7 +940,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         return res.status(404).json({ message: "Task bulunamadı" });
       }
       res.json(task);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating checklist task:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -959,7 +959,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const taskId = parseInt(req.params.taskId);
       await storage.deleteChecklistTask(taskId);
       res.json({ message: "Task silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting checklist task:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -973,7 +973,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const equipmentType = req.params.equipmentType;
       const steps = await storage.getEquipmentTroubleshootingSteps(equipmentType);
       res.json(steps);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching troubleshooting steps:", error);
       res.status(500).json({ message: "Sorun giderme adımları yüklenirken hata oluştu" });
     }
@@ -1004,7 +1004,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const faults = await storage.getFaultsWithDetails(requestedBranchId);
       const paginated = faults.slice(offset, offset + limit);
       res.json({ data: paginated, total: faults.length, limit, offset });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching faults:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1013,7 +1013,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.post('/api/faults', isAuthenticated, async (req: any, res) => {
+  router.post('/api/faults', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -1134,7 +1134,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         }
       } catch (e) { console.error("Event task error:", e); }
       res.json(fault);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating fault:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz arıza verisi", errors: error.errors });
@@ -1146,7 +1146,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.post('/api/faults/ai-diagnose', isAuthenticated, async (req: any, res) => {
+  router.post('/api/faults/ai-diagnose', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const diagnoseSchema = z.object({
@@ -1161,12 +1161,12 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       const diagnosis = await diagnoseFault(equipmentType, faultDescription, user.id);
       res.json(diagnosis);
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "DiagnoseFault");
     }
   });
 
-  router.post('/api/faults/:id/photo', isAuthenticated, async (req: any, res) => {
+  router.post('/api/faults/:id/photo', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -1216,13 +1216,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         // If no photo URL provided, just return existing fault
         res.json(existingFault);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating fault photo:", error);
       res.status(500).json({ message: "Arıza fotoğrafı güncellenirken hata oluştu" });
     }
   });
 
-  router.post('/api/faults/:id/service-notification', isAuthenticated, async (req: any, res) => {
+  router.post('/api/faults/:id/service-notification', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -1261,7 +1261,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(eq(equipmentFaults.id, id));
 
       res.json({ success: true, message: "Servis bildirim tarihi kaydedildi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Service notification save error:", error);
       res.status(500).json({ message: "Bildirim tarihi kaydedilemedi" });
     }
@@ -1293,13 +1293,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       resolveEventTask('fault_reported', parseInt(req.params.id));
       resolveEventTask('fault_assigned', parseInt(req.params.id));
       res.json(fault);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error resolving fault:", error);
       res.status(500).json({ message: "Arıza çözülürken hata oluştu" });
     }
   });
 
-  router.put('/api/faults/:id/stage', isAuthenticated, async (req: any, res) => {
+  router.put('/api/faults/:id/stage', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -1349,13 +1349,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       invalidateCache('critical-equipment');
       
       res.json(fault);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error changing fault stage:", error);
       res.status(500).json({ message: "Arıza aşaması değiştirilirken hata oluştu" });
     }
   });
 
-  router.patch('/api/faults/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/faults/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { currentStage, assignedTo, notes, actualCost } = req.body;
@@ -1403,13 +1403,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       invalidateCache('critical-equipment');
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating fault:", error);
       res.status(500).json({ message: "Arıza güncellenirken hata oluştu" });
     }
   });
 
-  router.get('/api/faults/:id/history', isAuthenticated, async (req: any, res) => {
+  router.get('/api/faults/:id/history', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const userRole = req.user.role;
@@ -1434,13 +1434,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       
       const history = await storage.getFaultStageHistory(id);
       res.json(history);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching fault history:", error);
       res.status(500).json({ message: "Arıza geçmişi alınırken hata oluştu" });
     }
   });
 
-  router.get('/api/faults/:id/comments', isAuthenticated, async (req: any, res) => {
+  router.get('/api/faults/:id/comments', isAuthenticated, async (req, res) => {
     try {
       const faultId = parseInt(req.params.id);
       const fault = await storage.getFault(faultId);
@@ -1459,13 +1459,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         return { ...c, userName: u ? `${u.firstName} ${u.lastName}` : "Bilinmeyen", userRole: u?.role || "" };
       });
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching fault comments:", error);
       res.status(500).json({ message: "Arıza yorumları alınırken hata oluştu" });
     }
   });
 
-  router.post('/api/faults/:id/comments', isAuthenticated, async (req: any, res) => {
+  router.post('/api/faults/:id/comments', isAuthenticated, async (req, res) => {
     try {
       const faultId = parseInt(req.params.id);
       const user = req.user!;
@@ -1487,13 +1487,13 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       res.json(comment);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating fault comment:", error);
       res.status(500).json({ message: "Yorum oluşturulurken hata oluştu" });
     }
   });
 
-  router.get('/api/faults/:id/detail', isAuthenticated, async (req: any, res) => {
+  router.get('/api/faults/:id/detail', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const fault = await storage.getFault(id);
@@ -1515,7 +1515,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       let equipmentInfo = null;
       if (fault.equipmentId) {
         const allEquipment = await storage.getEquipment();
-        equipmentInfo = allEquipment.find((e: any) => e.id === fault.equipmentId) || null;
+        equipmentInfo = allEquipment.find((e) => e.id === fault.equipmentId) || null;
       }
 
       const reporter = await storage.getUser(fault.reportedById);
@@ -1533,7 +1533,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         history,
         comments: enrichedComments,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching fault detail:", error);
       res.status(500).json({ message: "Arıza detayı alınırken hata oluştu" });
     }
@@ -1553,7 +1553,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .orderBy(desc(faultServiceTracking.createdAt));
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching fault service tracking:", error);
       res.status(500).json({ message: "Servis takibi yüklenirken hata oluştu" });
     }
@@ -1579,7 +1579,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       });
 
       res.status(201).json(created);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating fault service tracking:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -1623,7 +1623,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating fault service tracking status:", error);
       res.status(500).json({ message: "Servis durumu güncellenirken hata oluştu" });
     }
@@ -1666,7 +1666,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       });
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating delivery form:", error);
       res.status(500).json({ message: "Teslim formu güncellenirken hata oluştu" });
     }
@@ -1696,7 +1696,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json(enrichedUpdates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching service tracking updates:", error);
       res.status(500).json({ message: "Durum güncellemeleri yüklenirken hata oluştu" });
     }
@@ -1760,7 +1760,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .orderBy(desc(equipmentServiceRequests.createdAt));
       
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching service requests:", error);
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
@@ -1796,14 +1796,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json({ success: true, photoUrl, photoNumber });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Foto yükleme hatası:', error);
       res.status(500).json({ message: 'Foto yükleme başarısız' });
     }
   });
 
   // Create new service request endpoint (from form with machine templates)
-  router.post('/api/service-requests/', isAuthenticated, async (req: any, res) => {
+  router.post('/api/service-requests/', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -1874,7 +1874,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json(serviceRequest);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating service request:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz servis talebi verisi", errors: error.errors });
@@ -1886,7 +1886,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // QUALITY AUDIT MODULE - Kalite Kontrol API
 
   // GET /api/audit-templates - List all templates
-  router.get('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-templates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'supervisor') {
@@ -1895,14 +1895,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       const templates = await db.select().from(auditTemplates).orderBy(desc(auditTemplates.createdAt));
       res.json(templates);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get audit templates error:", error);
       res.status(500).json({ message: "Şablonlar alınamadı" });
     }
   });
 
   // GET /api/audit-templates/:id - Get single template with items
-  router.get('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const templateId = parseInt(req.params.id);
       const [template] = await db.select().from(auditTemplates).where(eq(auditTemplates.id, templateId));
@@ -1916,14 +1916,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .orderBy(auditTemplateItems.sectionOrder, auditTemplateItems.itemOrder);
 
       res.json({ ...template, items });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get audit template error:", error);
       res.status(500).json({ message: "Şablon alınamadı" });
     }
   });
 
   // POST /api/audit-templates - Create new template
-  router.post('/api/audit-templates', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audit-templates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1937,14 +1937,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       res.status(201).json(template);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create audit template error:", error);
       res.status(500).json({ message: "Şablon oluşturulamadı" });
     }
   });
 
   // POST /api/audit-templates/import - Import template from JSON
-  router.post('/api/audit-templates/import', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audit-templates/import', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -1993,14 +1993,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(eq(auditTemplateItems.templateId, template.id));
 
       res.status(201).json({ ...template, items: createdItems });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Import audit template error:", error);
       res.status(500).json({ message: "Şablon import edilemedi" });
     }
   });
 
   // PUT /api/audit-templates/:id - Update template
-  router.put('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/audit-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -2020,14 +2020,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update audit template error:", error);
       res.status(500).json({ message: "Şablon güncellenemedi" });
     }
   });
 
   // DELETE /api/audit-templates/:id - Delete template
-  router.delete('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/audit-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -2045,7 +2045,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         details: { softDelete: true },
       });
       res.json({ message: "Şablon silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete audit template error:", error);
       res.status(500).json({ message: "Şablon silinemedi" });
     }
@@ -2099,7 +2099,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   }
 
   // POST /api/audit-templates/:id/items - Add new item to template
-  router.post('/api/audit-templates/:id/items', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audit-templates/:id/items', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const templateId = parseInt(req.params.id);
@@ -2131,14 +2131,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       res.status(201).json(newItem);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Add audit template item error:", error);
       res.status(500).json({ message: "Madde eklenemedi" });
     }
   });
 
   // PUT /api/audit-templates/:id/items/:itemId - Update item
-  router.put('/api/audit-templates/:id/items/:itemId', isAuthenticated, async (req: any, res) => {
+  router.put('/api/audit-templates/:id/items/:itemId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const templateId = parseInt(req.params.id);
@@ -2183,14 +2183,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update audit template item error:", error);
       res.status(500).json({ message: "Madde güncellenemedi" });
     }
   });
 
   // DELETE /api/audit-templates/:id/items/:itemId - Delete item
-  router.delete('/api/audit-templates/:id/items/:itemId', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/audit-templates/:id/items/:itemId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const templateId = parseInt(req.params.id);
@@ -2210,7 +2210,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       await db.delete(auditTemplateItems).where(eq(auditTemplateItems.id, itemId));
       res.json({ message: "Madde silindi" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Delete audit template item error:", error);
       res.status(500).json({ message: "Madde silinemedi" });
     }
@@ -2221,7 +2221,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // ============================================================
 
   // GET /api/audits - List audits with filters
-  router.get('/api/audits', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audits', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const { branchId, status, dateFrom, dateTo, auditorId } = req.query;
@@ -2286,14 +2286,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .orderBy(desc(auditInstances.auditDate));
 
       res.json(audits);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get audits error:", error);
       res.status(500).json({ message: "Denetimler alınamadı" });
     }
   });
 
   // GET /api/audits/:id - Get single audit with responses
-  router.get('/api/audits/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audits/:id', isAuthenticated, async (req, res) => {
     try {
       const auditId = parseInt(req.params.id);
       const [audit] = await db.select().from(auditInstances).where(eq(auditInstances.id, auditId));
@@ -2323,14 +2323,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         responses,
         correctiveActions: capas 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get audit error:", error);
       res.status(500).json({ message: "Denetim alınamadı" });
     }
   });
 
   // POST /api/audits - Start new audit
-  router.post('/api/audits', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audits', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'supervisor') {
@@ -2363,14 +2363,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       res.status(201).json(audit);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create audit error:", error);
       res.status(500).json({ message: "Denetim oluşturulamadı" });
     }
   });
 
   // POST /api/audits/:id/responses - Submit audit responses and calculate score
-  router.post('/api/audits/:id/responses', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audits/:id/responses', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const auditId = parseInt(req.params.id);
@@ -2397,7 +2397,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
             items: []
           });
         }
-        const response = responses.find((r: any) => r.templateItemId === item.id);
+        const response = responses.find((r) => r.templateItemId === item.id);
         sectionMap.get(item.sectionName).items.push({
           itemId: item.id,
           itemCode: item.itemCode,
@@ -2462,14 +2462,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         score: scoreResult,
         capaCount: scoreResult.capaItems.length,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submit audit responses error:", error);
       res.status(500).json({ message: "Yanıtlar kaydedilemedi" });
     }
   });
 
   // PUT /api/audits/:id - Update audit status
-  router.put('/api/audits/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/audits/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const auditId = parseInt(req.params.id);
@@ -2483,7 +2483,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).where(eq(auditInstances.id, auditId)).returning();
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update audit error:", error);
       res.status(500).json({ message: "Denetim güncellenemedi" });
     }
@@ -2494,7 +2494,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // ============================================================
 
   // GET /api/corrective-actions - List CAPAs with filters
-  router.get('/api/corrective-actions', isAuthenticated, async (req: any, res) => {
+  router.get('/api/corrective-actions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const { status, priority, branchId, assignedToId } = req.query;
@@ -2572,14 +2572,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       });
 
       res.json(capasWithSLA);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get corrective actions error:", error);
       res.status(500).json({ message: "Aksiyonlar alınamadı" });
     }
   });
 
   // GET /api/corrective-actions/:id - Get single CAPA with updates and relations
-  router.get('/api/corrective-actions/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/corrective-actions/:id', isAuthenticated, async (req, res) => {
     try {
       const capaId = parseInt(req.params.id);
       const [capa] = await db.select().from(correctiveActions).where(eq(correctiveActions.id, capaId));
@@ -2647,14 +2647,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         auditItem,
         updates: updatesWithUsers,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get corrective action error:", error);
       res.status(500).json({ message: "Aksiyon alınamadı" });
     }
   });
 
   // POST /api/corrective-actions - Create manual CAPA
-  router.post('/api/corrective-actions', isAuthenticated, async (req: any, res) => {
+  router.post('/api/corrective-actions', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const data = insertCorrectiveActionSchema.parse(req.body);
@@ -2670,14 +2670,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       res.status(201).json(capa);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create corrective action error:", error);
       res.status(500).json({ message: "Aksiyon oluşturulamadı" });
     }
   });
 
   // PUT /api/corrective-actions/:id - Update CAPA status
-  router.put('/api/corrective-actions/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/corrective-actions/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const capaId = parseInt(req.params.id);
@@ -2725,14 +2725,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Update corrective action error:", error);
       res.status(500).json({ message: "Aksiyon güncellenemedi" });
     }
   });
 
   // POST /api/corrective-actions/:id/updates - Add CAPA update with status change
-  router.post('/api/corrective-actions/:id/updates', isAuthenticated, async (req: any, res) => {
+  router.post('/api/corrective-actions/:id/updates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const capaId = parseInt(req.params.id);
@@ -2778,7 +2778,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.status(201).json(update);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Add CAPA update error:", error);
       res.status(500).json({ message: "Güncelleme eklenemedi" });
     }
@@ -2786,7 +2786,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
 
   // GET /api/corrective-actions/reports/branch-performance - Branch CAPA performance report
-  router.get('/api/corrective-actions/reports/branch-performance', isAuthenticated, async (req: any, res) => {
+  router.get('/api/corrective-actions/reports/branch-performance', isAuthenticated, async (req, res) => {
     try {
       // Get all CAPAs with audit/branch info
       const capas = await db.select({
@@ -2915,7 +2915,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       };
 
       res.json({ branches: report, totals });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CAPA branch report error:", error);
       res.status(500).json({ message: "Rapor oluşturulamadı" });
     }
@@ -2925,7 +2925,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // ============================================================
 
   // GET /api/audits/analytics/dashboard - Dashboard statistics
-  router.get('/api/audits/analytics/dashboard', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audits/analytics/dashboard', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const { branchId, dateFrom, dateTo } = req.query;
@@ -2992,14 +2992,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         recentAudits,
         overdueCAPAs,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get audit analytics error:", error);
       res.status(500).json({ message: "Analitik verileri alınamadı" });
     }
   });
 
   // GET /api/audits/analytics/trends - Score trends over time
-  router.get('/api/audits/analytics/trends', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audits/analytics/trends', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       const { branchId, months } = req.query;
@@ -3025,14 +3025,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .orderBy(sql`to_char(${auditInstances.auditDate}, 'YYYY-MM')`);
 
       res.json(trends);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get audit trends error:", error);
       res.status(500).json({ message: "Trend verileri alınamadı" });
     }
   });
 
   // GET /api/audits/analytics/branch-comparison - Compare branches
-  router.get('/api/audits/analytics/branch-comparison', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audits/analytics/branch-comparison', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
       if (!isHQRole(user.role) && user.role !== 'admin') {
@@ -3062,7 +3062,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }));
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Get branch comparison error:", error);
       res.status(500).json({ message: "Şube karşılaştırması alınamadı" });
     }
@@ -3072,7 +3072,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // ========================================
 
   // Download Excel template for equipment
-  router.get('/api/bulk/template/equipment', isAuthenticated, async (req: any, res) => {
+  router.get('/api/bulk/template/equipment', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'teknik'].includes(userRole)) {
@@ -3124,14 +3124,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=ekipman_sablonu.xlsx');
       res.send(buffer);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Download equipment template error:", error);
       res.status(500).json({ message: "Şablon indirilemedi" });
     }
   });
 
   // Download Excel template for personnel
-  router.get('/api/bulk/template/personnel', isAuthenticated, async (req: any, res) => {
+  router.get('/api/bulk/template/personnel', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'muhasebe'].includes(userRole)) {
@@ -3186,14 +3186,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=personel_sablonu.xlsx');
       res.send(buffer);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Download personnel template error:", error);
       res.status(500).json({ message: "Şablon indirilemedi" });
     }
   });
 
   // Download Excel template for branches
-  router.get('/api/bulk/template/branches', isAuthenticated, async (req: any, res) => {
+  router.get('/api/bulk/template/branches', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -3221,14 +3221,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename=sube_sablonu.xlsx');
       res.send(buffer);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Download branch template error:", error);
       res.status(500).json({ message: "Şablon indirilemedi" });
     }
   });
 
   // Export equipment data
-  router.get('/api/bulk/export/equipment', isAuthenticated, async (req: any, res) => {
+  router.get('/api/bulk/export/equipment', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'teknik'].includes(userRole)) {
@@ -3266,14 +3266,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename=ekipman_listesi_${new Date().toISOString().split('T')[0]}.xlsx`);
       res.send(buffer);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Export equipment error:", error);
       res.status(500).json({ message: "Dışa aktarma başarısız" });
     }
   });
 
   // Export personnel data
-  router.get('/api/bulk/export/personnel', isAuthenticated, async (req: any, res) => {
+  router.get('/api/bulk/export/personnel', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'muhasebe'].includes(userRole)) {
@@ -3311,14 +3311,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename=personel_listesi_${new Date().toISOString().split('T')[0]}.xlsx`);
       res.send(buffer);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Export personnel error:", error);
       res.status(500).json({ message: "Dışa aktarma başarısız" });
     }
   });
 
   // Export branch data
-  router.get('/api/bulk/export/branches', isAuthenticated, async (req: any, res) => {
+  router.get('/api/bulk/export/branches', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach'].includes(userRole)) {
@@ -3353,14 +3353,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename=sube_listesi_${new Date().toISOString().split('T')[0]}.xlsx`);
       res.send(buffer);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Export branches error:", error);
       res.status(500).json({ message: "Dışa aktarma başarısız" });
     }
   });
 
   // Import equipment data
-  router.post('/api/bulk/import/equipment', isAuthenticated, async (req: any, res) => {
+  router.post('/api/bulk/import/equipment', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'teknik'].includes(userRole)) {
@@ -3416,21 +3416,21 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
           await storage.createEquipment(equipmentData);
           results.success++;
-        } catch (err: any) {
+        } catch (err) {
           results.errors.push(`Satır ${i + 2}: ${err.message || 'Bilinmeyen hata'}`);
           results.failed++;
         }
       }
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Import equipment error:", error);
       res.status(500).json({ message: "İçe aktarma başarısız" });
     }
   });
 
   // Import personnel data
-  router.post('/api/bulk/import/personnel', isAuthenticated, async (req: any, res) => {
+  router.post('/api/bulk/import/personnel', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'muhasebe'].includes(userRole)) {
@@ -3518,21 +3518,21 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
           await storage.createUser(userData);
           results.success++;
-        } catch (err: any) {
+        } catch (err) {
           results.errors.push(`Satır ${i + 2}: ${err.message || 'Bilinmeyen hata'}`);
           results.failed++;
         }
       }
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Import personnel error:", error);
       res.status(500).json({ message: "İçe aktarma başarısız" });
     }
   });
 
   // Import branch data
-  router.post('/api/bulk/import/branches', isAuthenticated, async (req: any, res) => {
+  router.post('/api/bulk/import/branches', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (userRole !== 'admin') {
@@ -3613,21 +3613,21 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
           await storage.createBranch(branchData);
           results.success++;
-        } catch (err: any) {
+        } catch (err) {
           results.errors.push(`Satır ${i + 2}: ${err.message || 'Bilinmeyen hata'}`);
           results.failed++;
         }
       }
 
       res.json(results);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Import branches error:", error);
       res.status(500).json({ message: "İçe aktarma başarısız" });
     }
   });
 
   // Parse uploaded Excel file
-  router.post('/api/bulk/parse', isAuthenticated, async (req: any, res) => {
+  router.post('/api/bulk/parse', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'teknik', 'muhasebe'].includes(userRole)) {
@@ -3653,7 +3653,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         headers: data.length > 0 ? Object.keys(data[0] as object) : [],
         rowCount: data.length
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(res, error, "ParseExcelFile");
     }
   });
@@ -3722,7 +3722,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json({ branch: branch[0], staff });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching branch by token:", error);
       res.status(500).json({ message: "Sunucu hatası" });
     }
@@ -4186,14 +4186,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         message: "Geri bildiriminiz alındı. Teşekkür ederiz!",
         feedbackId: feedback.id 
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error submitting feedback:", error);
       res.status(500).json({ message: "Geri bildirim gönderilemedi" });
     }
   });
 
   // Get all feedback (HQ sees all, branch manager sees own branch)
-  router.get('/api/customer-feedback', isAuthenticated, async (req: any, res) => {
+  router.get('/api/customer-feedback', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const userBranchId = req.user?.branchId;
@@ -4265,14 +4265,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         : await query;
 
       res.json(result);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback:", error);
       res.status(500).json({ message: "Geri bildirimler yüklenemedi" });
     }
   });
 
   // Get feedback statistics - MUST be before /:id route
-  router.get('/api/customer-feedback/stats/summary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/customer-feedback/stats/summary', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       const userBranchId = req.user?.branchId;
@@ -4322,14 +4322,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         sourceCounts: sourceCounts.reduce((acc, item) => ({ ...acc, [item.source]: item.count }), {}),
         ...avgRatings[0],
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "İstatistikler yüklenemedi" });
     }
   });
 
   // Get single feedback with responses
-  router.get('/api/customer-feedback/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/customer-feedback/:id', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const userRole = req.user?.role;
@@ -4408,14 +4408,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json({ ...feedback[0], staffName, responses });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback detail:", error);
       res.status(500).json({ message: "Detay yüklenemedi" });
     }
   });
 
   // Add response/defense to feedback
-  router.post('/api/customer-feedback/:id/response', isAuthenticated, async (req: any, res) => {
+  router.post('/api/customer-feedback/:id/response', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const { responseType, content, isVisibleToCustomer = false } = req.body;
@@ -4454,14 +4454,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(eq(customerFeedback.id, parseInt(id)));
 
       res.json({ success: true, response });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding response:", error);
       res.status(500).json({ message: "Yanıt eklenemedi" });
     }
   });
 
   // Update feedback status
-  router.patch('/api/customer-feedback/:id/status', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/customer-feedback/:id/status', isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
       const { status, reviewNotes } = req.body;
@@ -4502,14 +4502,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(eq(customerFeedback.id, parseInt(id)));
 
       res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating status:", error);
       res.status(500).json({ message: "Durum güncellenemedi" });
     }
   });
 
   // Add manual external review (Google/Instagram)
-  router.post('/api/customer-feedback/external', isAuthenticated, async (req: any, res) => {
+  router.post('/api/customer-feedback/external', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
 
@@ -4559,7 +4559,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       res.json({ success: true, feedback });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding external review:", error);
       res.status(500).json({ message: "Harici yorum eklenemedi" });
     }
@@ -4567,7 +4567,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
 
   // Check and update SLA breaches (can be called periodically)
-  router.post('/api/customer-feedback/check-sla', isAuthenticated, async (req: any, res) => {
+  router.post('/api/customer-feedback/check-sla', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'coach', 'destek'].includes(userRole)) {
@@ -4587,7 +4587,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .returning({ id: customerFeedback.id });
 
       res.json({ updated: result.length });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error checking SLA:", error);
       res.status(500).json({ message: "SLA kontrolü başarısız" });
     }
@@ -4651,7 +4651,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
       const globalSettings = await getGlobalFormSettings();
       res.json({ ...globalSettings, branchId: branchIdNum });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback form settings:", error);
       res.status(500).json({ message: "Form ayarları yüklenemedi" });
     }
@@ -4672,28 +4672,28 @@ function ensurePermission(user: Express.User, module: string, action: string, er
 
       const globalSettings = await getGlobalFormSettings();
       res.json({ ...globalSettings, branchId: branch[0].id, branchName: branch[0].name });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback form settings by token:", error);
       res.status(500).json({ message: "Form ayarları yüklenemedi" });
     }
   });
 
   // Get global feedback form settings (admin)
-  router.get('/api/feedback-form-settings', isAuthenticated, async (req: any, res) => {
+  router.get('/api/feedback-form-settings', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'view')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       const globalSettings = await getGlobalFormSettings();
       res.json(globalSettings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback form settings:", error);
       res.status(500).json({ message: "Form ayarları yüklenemedi" });
     }
   });
 
   // Update global feedback form settings
-  router.put('/api/feedback-form-settings/global', isAuthenticated, async (req: any, res) => {
+  router.put('/api/feedback-form-settings/global', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role;
@@ -4753,14 +4753,14 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json({ success: true, settings: result });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving feedback form settings:", error);
       res.status(500).json({ message: "Form ayarları kaydedilemedi" });
     }
   });
 
   // Legacy: Keep branch-specific PUT for backward compatibility (redirects to global)
-  router.put('/api/feedback-form-settings/:branchId', isAuthenticated, async (req: any, res) => {
+  router.put('/api/feedback-form-settings/:branchId', isAuthenticated, async (req, res) => {
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role;
@@ -4819,7 +4819,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }
 
       res.json({ success: true, settings: result });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving feedback form settings:", error);
       res.status(500).json({ message: "Form ayarları kaydedilemedi" });
     }
@@ -4829,7 +4829,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   // FEEDBACK CUSTOM QUESTIONS
   // ========================================
 
-  router.get('/api/feedback-custom-questions/:branchId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/feedback-custom-questions/:branchId', isAuthenticated, async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
       if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz şube ID" });
@@ -4849,7 +4849,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.get('/api/feedback-custom-questions/public/:branchId', async (req: any, res) => {
+  router.get('/api/feedback-custom-questions/public/:branchId', async (req, res) => {
     try {
       const branchId = parseInt(req.params.branchId);
       if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz şube ID" });
@@ -4862,7 +4862,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.post('/api/feedback-custom-questions', isAuthenticated, async (req: any, res) => {
+  router.post('/api/feedback-custom-questions', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -4896,7 +4896,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.put('/api/feedback-custom-questions/:id', isAuthenticated, async (req: any, res) => {
+  router.put('/api/feedback-custom-questions/:id', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -4933,7 +4933,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.delete('/api/feedback-custom-questions/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/feedback-custom-questions/:id', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -4953,7 +4953,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.post('/api/feedback-custom-questions/:id/translate', isAuthenticated, async (req: any, res) => {
+  router.post('/api/feedback-custom-questions/:id/translate', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -4992,7 +4992,7 @@ Turkish question: "${question.questionTr}"`;
       }).where(eq(feedbackCustomQuestions.id, id)).returning();
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error translating question:", error);
       res.status(500).json({ message: "Çeviri yapılamadı" });
     }
@@ -5002,7 +5002,7 @@ Turkish question: "${question.questionTr}"`;
   // FEEDBACK IP BLOCKS
   // ========================================
 
-  router.get('/api/feedback-ip-blocks', isAuthenticated, async (req: any, res) => {
+  router.get('/api/feedback-ip-blocks', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'view')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -5025,7 +5025,7 @@ Turkish question: "${question.questionTr}"`;
     }
   });
 
-  router.delete('/api/feedback-ip-blocks/:id', isAuthenticated, async (req: any, res) => {
+  router.delete('/api/feedback-ip-blocks/:id', isAuthenticated, async (req, res) => {
     try {
       if (!hasPermission(req.user?.role, 'customer_satisfaction', 'edit')) {
         return res.status(403).json({ message: "Yetkiniz yok" });
@@ -5064,7 +5064,7 @@ Turkish question: "${question.questionTr}"`;
       
       const [feedback] = await db.insert(customerFeedback).values(validatedData).returning();
       res.status(201).json({ message: "Geri bildiriminiz için teşekkürler!", id: feedback.id });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating customer feedback:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -5074,7 +5074,7 @@ Turkish question: "${question.questionTr}"`;
   });
 
   // PATCH /api/customer-feedback/:id/review - Mark feedback as reviewed
-  router.patch('/api/customer-feedback/:id/review', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/customer-feedback/:id/review', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -5103,14 +5103,14 @@ Turkish question: "${question.questionTr}"`;
       }
 
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error reviewing feedback:", error);
       res.status(500).json({ message: "Geri bildirim güncellenirken hata oluştu" });
     }
   });
 
   // GET /api/customer-feedback/stats/:branchId - Get branch feedback statistics
-  router.get('/api/customer-feedback/stats/:branchId', isAuthenticated, async (req: any, res) => {
+  router.get('/api/customer-feedback/stats/:branchId', isAuthenticated, async (req, res) => {
     try {
       const { branchId } = req.params;
       
@@ -5127,7 +5127,7 @@ Turkish question: "${question.questionTr}"`;
       .where(eq(customerFeedback.branchId, parseInt(branchId)));
 
       res.json(stats[0] || { avgRating: 0, totalCount: 0, rating5: 0, rating4: 0, rating3: 0, rating2: 0, rating1: 0 });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback stats:", error);
       res.status(500).json({ message: "İstatistikler yüklenirken hata oluştu" });
     }
@@ -5139,7 +5139,7 @@ Turkish question: "${question.questionTr}"`;
 
 
 
-  router.patch('/api/audit-templates/:id', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/audit-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -5201,7 +5201,7 @@ Turkish question: "${question.questionTr}"`;
             }
           }
         });
-        validatedItems = items.map((item: any) =>
+        validatedItems = items.map((item) =>
           itemSchema.parse(item)
         ) as Omit<InsertAuditTemplateItem, 'templateId'>[];
       }
@@ -5213,7 +5213,7 @@ Turkish question: "${question.questionTr}"`;
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating audit template:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -5227,7 +5227,7 @@ Turkish question: "${question.questionTr}"`;
   // AUDIT INSTANCE ROUTES
   // ===============================================
 
-  router.get('/api/audit-instances', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-instances', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { branchId, userId, auditorId, status, auditType } = req.query;
@@ -5259,13 +5259,13 @@ Turkish question: "${question.questionTr}"`;
       
       const instances = await storage.getAuditInstances(filters);
       res.json(instances);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching audit instances:", error);
       res.status(500).json({ message: "Denetim kayıtları yüklenirken hata oluştu" });
     }
   });
 
-  router.get('/api/audit-instances/:id', isAuthenticated, async (req: any, res) => {
+  router.get('/api/audit-instances/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -5284,13 +5284,13 @@ Turkish question: "${question.questionTr}"`;
       }
       
       res.json(instance);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching audit instance:", error);
       res.status(500).json({ message: "Denetim kaydı yüklenirken hata oluştu" });
     }
   });
 
-  router.post('/api/audit-instances', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audit-instances', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       
@@ -5309,7 +5309,7 @@ Turkish question: "${question.questionTr}"`;
       
       const newInstance = await storage.createAuditInstance(validatedInstance);
       res.status(201).json(newInstance);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating audit instance:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -5318,7 +5318,7 @@ Turkish question: "${question.questionTr}"`;
     }
   });
 
-  router.patch('/api/audit-instances/:instanceId/items/:templateItemId', isAuthenticated, async (req: any, res) => {
+  router.patch('/api/audit-instances/:instanceId/items/:templateItemId', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { instanceId, templateItemId } = req.params;
@@ -5359,7 +5359,7 @@ Turkish question: "${question.questionTr}"`;
       }
       
       res.json(updated);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating audit instance item:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
@@ -5368,7 +5368,7 @@ Turkish question: "${question.questionTr}"`;
     }
   });
 
-  router.post('/api/audit-instances/:id/complete', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audit-instances/:id/complete', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -5481,13 +5481,13 @@ Turkish question: "${question.questionTr}"`;
       }
       
       res.json(completed);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error completing audit instance:", error);
       res.status(500).json({ message: "Denetim tamamlanırken hata oluştu" });
     }
   });
 
-  router.get('/api/dashboard/feedback-summary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/dashboard/feedback-summary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const branchId = user.branchId;
@@ -5560,13 +5560,13 @@ Turkish question: "${question.questionTr}"`;
         pendingComplaints: Number(pendingComplaints[0]?.count || 0),
         categoryScores,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching feedback summary:", error);
       res.status(500).json({ message: "Feedback özeti alınamadı" });
     }
   });
 
-  router.get('/api/dashboard/feedback-hq-summary', isAuthenticated, async (req: any, res) => {
+  router.get('/api/dashboard/feedback-hq-summary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -5633,13 +5633,13 @@ Turkish question: "${question.questionTr}"`;
         bottom3,
         allBranches: branchScores,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching HQ feedback summary:", error);
       res.status(500).json({ message: "HQ feedback özeti alınamadı" });
     }
   });
 
-  router.post('/api/audit-instances/:id/cancel', isAuthenticated, async (req: any, res) => {
+  router.post('/api/audit-instances/:id/cancel', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
       const { id } = req.params;
@@ -5662,7 +5662,7 @@ Turkish question: "${question.questionTr}"`;
       }
       
       res.json(cancelled);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error cancelling audit instance:", error);
       res.status(500).json({ message: "Denetim iptal edilirken hata oluştu" });
     }

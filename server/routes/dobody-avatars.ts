@@ -71,7 +71,7 @@ function isForRole(
   return roles.includes(userRole);
 }
 
-router.get("/api/dobody/avatars", isAuthenticated, async (req: any, res) => {
+router.get("/api/dobody/avatars", isAuthenticated, async (req, res) => {
   try {
     const avatars = await getActiveAvatars();
     const userRole = req.user?.role as string | undefined;
@@ -96,7 +96,7 @@ router.get("/api/dobody/avatars", isAuthenticated, async (req: any, res) => {
   }
 });
 
-router.get("/api/dobody/avatars/random", isAuthenticated, async (req: any, res) => {
+router.get("/api/dobody/avatars/random", isAuthenticated, async (req, res) => {
   try {
     const category = req.query.category as string | undefined;
     const userRole = req.user?.role as string | undefined;
@@ -123,7 +123,7 @@ router.get("/api/dobody/avatars/random", isAuthenticated, async (req: any, res) 
   }
 });
 
-router.get("/api/admin/dobody/avatars", isAuthenticated, async (req: any, res) => {
+router.get("/api/admin/dobody/avatars", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleType)) {
@@ -139,7 +139,7 @@ router.get("/api/admin/dobody/avatars", isAuthenticated, async (req: any, res) =
   }
 });
 
-router.post("/api/admin/dobody/avatars", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/dobody/avatars", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleType)) {
@@ -149,7 +149,7 @@ router.post("/api/admin/dobody/avatars", isAuthenticated, async (req: any, res) 
     const [avatar] = await db.insert(dobodyAvatars).values(data).returning();
     invalidateAvatarCache();
     res.status(201).json(avatar);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }
@@ -157,7 +157,7 @@ router.post("/api/admin/dobody/avatars", isAuthenticated, async (req: any, res) 
   }
 });
 
-router.patch("/api/admin/dobody/avatars/:id", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/dobody/avatars/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleType)) {
@@ -192,7 +192,7 @@ router.patch("/api/admin/dobody/avatars/:id", isAuthenticated, async (req: any, 
     }
     invalidateAvatarCache();
     res.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }
@@ -200,7 +200,7 @@ router.patch("/api/admin/dobody/avatars/:id", isAuthenticated, async (req: any, 
   }
 });
 
-router.delete("/api/admin/dobody/avatars/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/api/admin/dobody/avatars/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleType)) {
@@ -244,7 +244,7 @@ router.delete("/api/admin/dobody/avatars/:id", isAuthenticated, async (req: any,
   }
 });
 
-router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req: any, res) => {
+router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleType)) {
@@ -279,7 +279,7 @@ router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req: any
 
     invalidateAvatarCache();
     res.status(201).json(avatar);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }
@@ -287,7 +287,7 @@ router.post("/api/admin/dobody/avatars/upload", isAuthenticated, async (req: any
   }
 });
 
-router.patch("/api/admin/dobody/avatars/bulk-update", isAuthenticated, async (req: any, res) => {
+router.patch("/api/admin/dobody/avatars/bulk-update", isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleType)) {
@@ -316,7 +316,7 @@ router.patch("/api/admin/dobody/avatars/bulk-update", isAuthenticated, async (re
 
     invalidateAvatarCache();
     res.json({ updated: ids.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.name === "ZodError") {
       return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
     }

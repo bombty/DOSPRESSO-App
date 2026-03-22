@@ -155,7 +155,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         revenueCategoryBreakdown,
         monthlyTrend,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Financial dashboard error:", error);
       res.status(500).json({ message: "Mali dashboard verisi alınamadı" });
     }
@@ -184,7 +184,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
       }));
 
       res.json(enriched);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Financial records error:", error);
       res.status(500).json({ message: "Kayıtlar alınamadı" });
     }
@@ -209,7 +209,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         createdBy: req.user?.id || null,
       }).returning();
       res.json(record[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Financial record create error:", error);
       res.status(500).json({ message: "Kayıt oluşturulamadı" });
     }
@@ -263,7 +263,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         wasteByProduct,
         monthlyTrend: Object.values(wasteByMonth).sort((a, b) => a.month.localeCompare(b.month)),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Waste report error:", error);
       res.json({ summary: { totalBatches: 0, totalWasteCost: 0, averageWastePerBatch: 0 }, wasteByProduct: [], monthlyTrend: [] });
     }
@@ -319,7 +319,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         allProducts: products.sort((a, b) => b.profitMargin - a.profitMargin),
         marginDistribution: marginRanges,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Product profitability error:", error);
       res.json({ totalProducts: 0, averageMargin: 0, mostProfitable: [], leastProfitable: [], allProducts: [], marginDistribution: [] });
     }
@@ -376,7 +376,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         lowStockItems: lowStockItems.sort((a: any, b: any) => b.deficit - a.deficit).slice(0, 20),
         highValueItems: highValueItems.sort((a, b) => b.stockValue - a.stockValue).slice(0, 20),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Inventory cost error:", error);
       res.json({ summary: { totalItems: 0, totalStockValue: 0, categoryCount: 0, lowStockCount: 0 }, categoryBreakdown: [], lowStockItems: [], highValueItems: [] });
     }
@@ -460,7 +460,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
         branchBreakdown,
         roleDistribution: Object.entries(roleCount).map(([role, count]) => ({ role, count })).sort((a, b) => b.count - a.count),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Personnel cost error:", error);
       res.json({ period: {}, summary: { totalEmployees: 0, totalGross: 0, totalNet: 0, totalSgk: 0, totalTax: 0, totalCost: 0, avgSalary: 0 }, branchBreakdown: [], roleDistribution: [] });
     }
@@ -491,7 +491,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
           percentage: totalMonthly > 0 ? (amount / totalMonthly * 100) : 0,
         })).sort((a, b) => b.amount - a.amount),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Fixed costs error:", error);
       res.json({ totalMonthly: 0, totalAnnual: 0, costs: [], byCategory: [] });
     }
@@ -603,7 +603,7 @@ export function registerFinancialRoutes(app: Express, isAuthenticated: any) {
           batchCount: thisMonthBatches.length,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("CEO financial summary error:", error);
       res.status(500).json({ message: "Mali özet verisi alınamadı" });
     }
