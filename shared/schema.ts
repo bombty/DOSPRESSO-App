@@ -9334,8 +9334,8 @@ export const payrollParameters = pgTable("payroll_parameters", {
   unemploymentEmployeeRate: integer("unemployment_employee_rate").notNull().default(10), // %1 - İşsizlik işçi
   unemploymentEmployerRate: integer("unemployment_employer_rate").notNull().default(20), // %2 - İşsizlik işveren
   
-  // Damga Vergisi (onbinde cinsinden - 759 = %0.0759)
-  stampTaxRate: integer("stamp_tax_rate").notNull().default(759), // Binde 7.59
+  // Damga Vergisi — 759 = binde 7.59 = %0.759 (÷100000 ile orana çevrilir)
+  stampTaxRate: integer("stamp_tax_rate").notNull().default(759),
   
   // Gelir Vergisi Dilimleri (kuruş cinsinden)
   taxBracket1Limit: integer("tax_bracket_1_limit").notNull(), // İlk dilim üst sınırı

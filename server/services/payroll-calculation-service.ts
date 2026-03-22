@@ -66,6 +66,7 @@ async function getPayrollParams(): Promise<PayrollParams> {
   if (!row) throw new Error("Aktif bordro parametresi bulunamadı");
 
   const toRate = (val: number) => val / 1000;
+  const toPerMilleRate = (val: number) => val / 100000;
   const toAmount = (val: number) => val / 100;
 
   const brackets: Array<{ limit: number; rate: number }> = [];
@@ -86,7 +87,7 @@ async function getPayrollParams(): Promise<PayrollParams> {
     sgkEmployerRate: toRate(Number(row.sgk_employer_rate)),
     unemploymentEmployeeRate: toRate(Number(row.unemployment_employee_rate)),
     unemploymentEmployerRate: toRate(Number(row.unemployment_employer_rate)),
-    stampTaxRate: toRate(Number(row.stamp_tax_rate)),
+    stampTaxRate: toPerMilleRate(Number(row.stamp_tax_rate)),
     taxBrackets: brackets,
     workingDaysPerMonth: Number(row.working_days_per_month) || 30,
     workingHoursPerDay: Number(row.working_hours_per_day) || 7.5,

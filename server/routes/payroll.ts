@@ -6,6 +6,8 @@ import { isAuthenticated } from '../localAuth';
 import { checkDataLock } from '../services/data-lock';
 import { calculateBranchPayroll, savePayrollResults, calculatePayroll } from '../lib/payroll-engine';
 import { getMonthClassification } from '../lib/pdks-engine';
+import { calculatePayroll as calculateDetailedPayroll, type PayrollInput } from '../services/payroll-calculation-service';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -308,6 +310,41 @@ router.patch('/api/pdks-payroll/:id/approve', isAuthenticated, async (req: any, 
   }
 });
 
+const detailedPayrollSchema = z.object({
+  baseSalaryGross: z.number().positive('baseSalaryGross 0\'dan büyük olmalı'),
+  workedMinutes: z.number().min(0).default(0),
+  expectedMinutes: z.number().min(0).default(0),
+  overtimeMinutes: z.number().min(0).default(0),
+  deficitMinutes: z.number().min(0).default(0),
+  unauthorizedAbsentDays: z.number().min(0).default(0),
+  offDayWorkedMinutes: z.number().min(0).default(0),
+  holidayWorkedMinutes: z.number().min(0).default(0),
+  salesBonus: z.number().min(0).default(0),
+  cashBonus: z.number().min(0).default(0),
+  performanceBonus: z.number().min(0).default(0),
+  cumulativeTaxBase: z.number().min(0).default(0),
+});
+
+router.post('/api/payroll/calculate-detailed', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canAdminPayroll(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+
+    const parsed = detailedPayrollSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Geçersiz girdi', details: parsed.error.errors });
+    }
+
+    const result = await calculateDetailedPayroll(parsed.data);
+    res.json(result);
+  } catch (error: any) {
+    console.error("Detailed payroll calculation error:", error);
+    res.status(500).json({ error: error.message || 'Detaylı maaş hesaplanamadı' });
+  }
+});
+
 router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
@@ -317,6 +354,26 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
     const year = Number(req.params.year);
     const month = Number(req.params.month);
 
+    const conditions = [
+      eq(monthlyPayroll.year, year),
+      eq(monthlyPayroll.month, month),
+    ];
+
+    if (['mudur', 'yatirimci_branch', 'supervisor'].includes(user.role)) {
+      if (!user.branchId) {
+        return res.status(403).json({ error: 'Şube atamanız yapılmamış, bordro dışa aktarılamaz' });
+      }
+      conditions.push(eq(monthlyPayroll.branchId, user.branchId));
+    }
+
+    const branchIdFilter = req.query.branchId ? Number(req.query.branchId) : null;
+    if (branchIdFilter) {
+      if (['mudur', 'yatirimci_branch', 'supervisor'].includes(user.role) && user.branchId !== branchIdFilter) {
+        return res.status(403).json({ error: 'Sadece kendi şubenizin bordrosunu dışa aktarabilirsiniz' });
+      }
+      conditions.push(eq(monthlyPayroll.branchId, branchIdFilter));
+    }
+
     const payrolls = await db.select({
       payroll: monthlyPayroll,
       user: { id: users.id, firstName: users.firstName, lastName: users.lastName },
@@ -324,10 +381,7 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
     }).from(monthlyPayroll)
       .leftJoin(users, eq(monthlyPayroll.userId, users.id))
       .leftJoin(branches, eq(monthlyPayroll.branchId, branches.id))
-      .where(and(
-        eq(monthlyPayroll.year, year),
-        eq(monthlyPayroll.month, month)
-      ))
+      .where(and(...conditions))
       .orderBy(desc(monthlyPayroll.netPay));
 
     if (payrolls.length === 0) {
@@ -336,7 +390,8 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
 
     const pdfGen = await import('../utils/pdf-generator');
 
-    const employees: pdfGen.PayslipData[] = payrolls.map(p => {
+    const employees: pdfGen.PayslipData[] = [];
+    for (const p of payrolls) {
       const pr = p.payroll;
       const base = Number(pr.baseSalary || 0);
       const bonus = Number(pr.bonus || 0);
@@ -345,10 +400,44 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
       const bonusDed = Number(pr.bonusDeduction || 0);
       const net = Number(pr.netPay || 0);
       const total = Number(pr.totalSalary || 0);
-      const gross = base + bonus + overtime;
-      const totalDed = absenceDed + bonusDed;
 
-      return {
+      let sgkEmp = 0, unemploymentEmp = 0, incomeTaxVal = 0, stampTaxVal = 0, agiVal = 0;
+      let sgkEr = 0, unemploymentEr = 0, employerCost = total;
+      let grossTotal = base + bonus + overtime;
+      let totalDed = absenceDed + bonusDed;
+
+      if (base > 0) {
+        try {
+          const detailed = await calculateDetailedPayroll({
+            baseSalaryGross: base,
+            workedMinutes: 0,
+            expectedMinutes: 0,
+            overtimeMinutes: Number(pr.overtimeMinutes || 0),
+            deficitMinutes: 0,
+            unauthorizedAbsentDays: Number(pr.absentDays || 0),
+            offDayWorkedMinutes: 0,
+            holidayWorkedMinutes: 0,
+            salesBonus: bonus,
+            cashBonus: 0,
+            performanceBonus: 0,
+            cumulativeTaxBase: 0,
+          });
+          sgkEmp = detailed.sgkEmployee;
+          unemploymentEmp = detailed.unemploymentEmployee;
+          incomeTaxVal = detailed.incomeTax;
+          stampTaxVal = detailed.stampTax;
+          agiVal = detailed.agi;
+          sgkEr = detailed.sgkEmployer;
+          unemploymentEr = detailed.unemploymentEmployer;
+          grossTotal = detailed.grossTotal;
+          totalDed = detailed.totalDeductions;
+          employerCost = detailed.totalEmployerCost;
+        } catch (calcErr) {
+          console.warn(`PDF: SGK/vergi hesaplama atlandı (${p.user?.firstName}):`, (calcErr as Error).message);
+        }
+      }
+
+      employees.push({
         firstName: p.user?.firstName || '',
         lastName: p.user?.lastName || '',
         position: pr.positionCode || '',
@@ -360,20 +449,20 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
         offDayPay: 0,
         holidayPay: 0,
         totalBonuses: bonus,
-        grossTotal: gross,
+        grossTotal,
         deficitDeduction: absenceDed,
-        sgkEmployee: 0,
-        unemploymentEmployee: 0,
-        incomeTax: 0,
-        stampTax: 0,
+        sgkEmployee: sgkEmp,
+        unemploymentEmployee: unemploymentEmp,
+        incomeTax: incomeTaxVal,
+        stampTax: stampTaxVal,
         totalDeductions: totalDed,
-        agi: 0,
+        agi: agiVal,
         netSalary: net,
-        sgkEmployer: 0,
-        unemploymentEmployer: 0,
-        totalEmployerCost: total,
-      };
-    });
+        sgkEmployer: sgkEr,
+        unemploymentEmployer: unemploymentEr,
+        totalEmployerCost: employerCost,
+      });
+    }
 
     const totalGross = employees.reduce((sum, e) => sum + e.grossTotal, 0);
     const totalNet = employees.reduce((sum, e) => sum + e.netSalary, 0);

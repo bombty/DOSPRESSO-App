@@ -1058,7 +1058,11 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
-      res.json(user);
+      if (!user) {
+        return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      }
+      const { hashedPassword, ...safeUser } = user;
+      res.json(safeUser);
     } catch (error: any) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
