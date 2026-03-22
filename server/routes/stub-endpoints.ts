@@ -1,158 +1,266 @@
-import { Router, Request, Response } from "express";
+import { Router, Response } from "express";
 import { isAuthenticated } from "../localAuth";
 import { db } from "../db";
-import { payrollRecords, payrollParameters, users, branches, leaveRequests, changeRequests } from "@shared/schema";
-import { eq, and, desc, sql, isNull } from "drizzle-orm";
+import { 
+  users, leaveRequests, knowledgeBaseArticles, learningStreaks,
+  branches, employeePerformanceScores, trainingModules, quizResults,
+  trainingAssignments
+} from "@shared/schema";
+import { eq, and, desc, sql, ilike, or, count, avg } from "drizzle-orm";
 
 const router = Router();
 
 const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol', 'gida_muhendisi', 'muhasebe_ik', 'satinalma', 'marketing', 'fabrika_mudur'];
 
-router.get("/api/payroll/parameters", isAuthenticated, async (req: any, res: Response) => {
+router.get("/api/knowledge-base/articles", isAuthenticated, async (req: any, res: Response) => {
   try {
-    const params = await db.select().from(payrollParameters).orderBy(desc(payrollParameters.year));
-    res.json(params);
-  } catch (error) {
-    console.error("[payroll/parameters] Error:", error);
+    const { category, search, published } = req.query;
+    let query = db.select().from(knowledgeBaseArticles);
+    
+    const conditions: any[] = [];
+    if (category) conditions.push(eq(knowledgeBaseArticles.category, category as string));
+    if (published === 'true') conditions.push(eq(knowledgeBaseArticles.isPublished, true));
+    if (search) {
+      conditions.push(
+        or(
+          ilike(knowledgeBaseArticles.title, `%${search}%`),
+          ilike(knowledgeBaseArticles.content, `%${search}%`)
+        )
+      );
+    }
+    
+    const articles = await db.select().from(knowledgeBaseArticles)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(knowledgeBaseArticles.createdAt))
+      .limit(100);
+    
+    res.json(articles);
+  } catch (error: unknown) {
+    console.error("[knowledge-base/articles] Error:", error instanceof Error ? error.message : error);
     res.json([]);
   }
 });
 
-router.get("/api/payroll/records", isAuthenticated, async (req: any, res: Response) => {
+router.get("/api/knowledge-base/categories", isAuthenticated, async (_req: any, res: Response) => {
+  try {
+    const categories = await db
+      .select({ 
+        category: knowledgeBaseArticles.category, 
+        count: count() 
+      })
+      .from(knowledgeBaseArticles)
+      .groupBy(knowledgeBaseArticles.category)
+      .orderBy(desc(count()));
+    res.json(categories);
+  } catch (error: unknown) {
+    console.error("[knowledge-base/categories] Error:", error instanceof Error ? error.message : error);
+    res.json([]);
+  }
+});
+
+router.get("/api/academy/streak-tracker", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.json({ currentStreak: 0, longestStreak: 0, lastActivity: null, totalXp: 0, weeklyGoalTarget: 5, weeklyGoalProgress: 0 });
+    
+    const [streak] = await db.select().from(learningStreaks)
+      .where(eq(learningStreaks.userId, userId));
+    
+    if (!streak) {
+      return res.json({ 
+        currentStreak: 0, 
+        longestStreak: 0, 
+        lastActivity: null, 
+        totalXp: 0,
+        monthlyXp: 0,
+        weeklyGoalTarget: 5,
+        weeklyGoalProgress: 0,
+        totalActiveDays: 0
+      });
+    }
+    
+    res.json({
+      currentStreak: streak.currentStreak,
+      longestStreak: streak.bestStreak,
+      lastActivity: streak.lastActivityDate,
+      totalXp: streak.totalXp,
+      monthlyXp: streak.monthlyXp,
+      weeklyGoalTarget: streak.weeklyGoalTarget,
+      weeklyGoalProgress: streak.weeklyGoalProgress,
+      totalActiveDays: streak.totalActiveDays
+    });
+  } catch (error: unknown) {
+    console.error("[academy/streak-tracker] Error:", error instanceof Error ? error.message : error);
+    res.json({ currentStreak: 0, longestStreak: 0, lastActivity: null, totalXp: 0 });
+  }
+});
+
+router.get("/api/academy/achievement-stats", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    const [quizStats] = await db.select({
+      totalQuizzes: count(),
+      avgScore: avg(quizResults.score)
+    }).from(quizResults)
+      .where(userId ? eq(quizResults.userId, userId) : undefined);
+
+    const [assignmentStats] = await db.select({
+      totalAssignments: count(),
+      completed: sql<number>`count(case when ${trainingAssignments.status} = 'completed' then 1 end)`,
+    }).from(trainingAssignments)
+      .where(userId ? eq(trainingAssignments.userId, userId) : undefined);
+
+    const [streakData] = userId ? await db.select().from(learningStreaks)
+      .where(eq(learningStreaks.userId, userId)) : [null];
+
+    const achievements = [];
+    const completedCount = Number(assignmentStats?.completed || 0);
+    const quizCount = Number(quizStats?.totalQuizzes || 0);
+    const avgScoreVal = Number(quizStats?.avgScore || 0);
+
+    if (completedCount >= 1) achievements.push({ id: 'first_module', title: 'İlk Adım', description: 'İlk eğitim modülünü tamamladın', earned: true, icon: 'award' });
+    if (completedCount >= 5) achievements.push({ id: 'five_modules', title: 'Öğrenme Yolcusu', description: '5 eğitim modülünü tamamladın', earned: true, icon: 'book' });
+    if (completedCount >= 10) achievements.push({ id: 'ten_modules', title: 'Bilgi Ustası', description: '10 eğitim modülünü tamamladın', earned: true, icon: 'star' });
+    if (quizCount >= 1) achievements.push({ id: 'first_quiz', title: 'İlk Sınav', description: 'İlk quizi tamamladın', earned: true, icon: 'check' });
+    if (avgScoreVal >= 90) achievements.push({ id: 'high_scorer', title: 'Yüksek Başarı', description: 'Quiz ortalaması %90+', earned: true, icon: 'trophy' });
+    if (streakData && streakData.bestStreak >= 7) achievements.push({ id: 'week_streak', title: 'Haftalık Seri', description: '7 gün üst üste öğrendin', earned: true, icon: 'flame' });
+
+    res.json({
+      totalBadges: 6,
+      earnedBadges: achievements.length,
+      achievements,
+      stats: {
+        completedModules: completedCount,
+        totalQuizzes: quizCount,
+        averageScore: Math.round(avgScoreVal),
+        totalXp: streakData?.totalXp || 0,
+      }
+    });
+  } catch (error: unknown) {
+    console.error("[academy/achievement-stats] Error:", error instanceof Error ? error.message : error);
+    res.json({ totalBadges: 0, earnedBadges: 0, achievements: [] });
+  }
+});
+
+router.get("/api/academy/progress-overview", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    const [moduleCount] = await db.select({ total: count() }).from(trainingModules);
+    
+    const [assignmentStats] = await db.select({
+      total: count(),
+      completed: sql<number>`count(case when ${trainingAssignments.status} = 'completed' then 1 end)`,
+      inProgress: sql<number>`count(case when ${trainingAssignments.status} = 'in_progress' then 1 end)`,
+    }).from(trainingAssignments)
+      .where(userId ? eq(trainingAssignments.userId, userId) : undefined);
+
+    const totalModules = Number(moduleCount?.total || 0);
+    const completed = Number(assignmentStats?.completed || 0);
+    const inProgress = Number(assignmentStats?.inProgress || 0);
+
+    res.json({
+      totalModules,
+      completedModules: completed,
+      inProgress,
+      completionRate: totalModules > 0 ? Math.round((completed / totalModules) * 100) : 0,
+    });
+  } catch (error: unknown) {
+    console.error("[academy/progress-overview] Error:", error instanceof Error ? error.message : error);
+    res.json({ totalModules: 0, completedModules: 0, inProgress: 0, completionRate: 0 });
+  }
+});
+
+router.get("/api/academy/career-progress", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    const [assignmentStats] = await db.select({
+      completed: sql<number>`count(case when ${trainingAssignments.status} = 'completed' then 1 end)`,
+    }).from(trainingAssignments)
+      .where(userId ? eq(trainingAssignments.userId, userId) : undefined);
+
+    const [streakData] = userId ? await db.select().from(learningStreaks)
+      .where(eq(learningStreaks.userId, userId)) : [null];
+
+    const completedCount = Number(assignmentStats?.completed || 0);
+    const xp = streakData?.totalXp || 0;
+    const level = Math.floor(xp / 100) + 1;
+    const progress = xp % 100;
+
+    const milestones = [
+      { level: 1, title: 'Başlangıç', xpRequired: 0, reached: level >= 1 },
+      { level: 2, title: 'Öğrenci', xpRequired: 100, reached: level >= 2 },
+      { level: 3, title: 'Deneyimli', xpRequired: 200, reached: level >= 3 },
+      { level: 5, title: 'Uzman', xpRequired: 400, reached: level >= 5 },
+      { level: 10, title: 'Usta', xpRequired: 900, reached: level >= 10 },
+    ];
+
+    res.json({ userId, currentLevel: level, progress, totalXp: xp, completedModules: completedCount, milestones });
+  } catch (error: unknown) {
+    console.error("[academy/career-progress] Error:", error instanceof Error ? error.message : error);
+    res.json({ userId: req.user?.id, currentLevel: 1, progress: 0, milestones: [] });
+  }
+});
+
+router.get("/api/franchise/performance", isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    const { year, month } = req.query;
-
-    const conditions: any[] = [];
-    if (year) conditions.push(eq(payrollRecords.periodYear, Number(year)));
-    if (month) conditions.push(eq(payrollRecords.periodMonth, Number(month)));
-
-    if (!HQ_ROLES.includes(user.role) && user.branchId) {
-      conditions.push(eq(payrollRecords.branchId, user.branchId));
+    if (!HQ_ROLES.includes(user.role) && user.role !== 'yatirimci_branch') {
+      return res.json({ branches: [], overallScore: 0 });
     }
 
-    const records = await db
-      .select({
-        id: payrollRecords.id,
-        userId: payrollRecords.userId,
-        branchId: payrollRecords.branchId,
-        periodYear: payrollRecords.periodYear,
-        periodMonth: payrollRecords.periodMonth,
-        baseSalary: payrollRecords.baseSalary,
-        grossSalary: payrollRecords.grossSalary,
-        totalNetPayable: payrollRecords.totalNetPayable,
-        status: payrollRecords.status,
-        createdAt: payrollRecords.createdAt,
-        firstName: users.firstName,
-        lastName: users.lastName,
-      })
-      .from(payrollRecords)
-      .innerJoin(users, eq(payrollRecords.userId, users.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(payrollRecords.createdAt))
-      .limit(200);
+    const branchList = await db.select({
+      id: branches.id,
+      name: branches.name,
+      city: branches.city,
+    }).from(branches)
+      .where(eq(branches.isActive, true));
 
-    res.json(records.map(r => ({
-      ...r,
-      userName: [r.firstName, r.lastName].filter(Boolean).join(" ") || "Bilinmiyor",
-    })));
-  } catch (error) {
-    console.error("[payroll/records] Error:", error);
-    res.json([]);
+    const perfScores = await db.select({
+      branchId: employeePerformanceScores.branchId,
+      avgScore: avg(employeePerformanceScores.dailyTotalScore),
+      employeeCount: count(),
+    }).from(employeePerformanceScores)
+      .groupBy(employeePerformanceScores.branchId);
+
+    const scoreMap = new Map(perfScores.map(p => [p.branchId, p]));
+
+    const branchPerformance = branchList.map(b => {
+      const perf = scoreMap.get(b.id);
+      return {
+        branchId: b.id,
+        branchName: b.name,
+        city: b.city,
+        averageScore: perf ? Math.round(Number(perf.avgScore)) : 0,
+        employeeCount: perf ? Number(perf.employeeCount) : 0,
+      };
+    }).sort((a, b) => b.averageScore - a.averageScore);
+
+    const overallScore = branchPerformance.length > 0
+      ? Math.round(branchPerformance.reduce((sum, b) => sum + b.averageScore, 0) / branchPerformance.length)
+      : 0;
+
+    res.json({ branches: branchPerformance, overallScore });
+  } catch (error: unknown) {
+    console.error("[franchise/performance] Error:", error instanceof Error ? error.message : error);
+    res.json({ branches: [], overallScore: 0 });
   }
 });
 
-router.post("/api/payroll/calculate-employee", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    res.json({ success: true, message: "Hesaplama henüz aktif değil" });
-  } catch {
-    res.json({ success: false });
-  }
-});
+router.get("/api/coaching/sessions", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/salary/records", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/crm/customers", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/shift-rules", isAuthenticated, (_req, res) => res.json([]));
 
-router.post("/api/payroll/records", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    res.json({ success: true, message: "Kayıt henüz aktif değil" });
-  } catch {
-    res.json({ success: false });
-  }
-});
-
-router.patch("/api/payroll/records/:recordId/approve", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const id = Number(req.params.recordId);
-    const [updated] = await db.update(payrollRecords)
-      .set({ status: "approved", approvedById: req.user.id, approvedAt: new Date(), updatedAt: new Date() })
-      .where(eq(payrollRecords.id, id))
-      .returning();
-    res.json(updated || { success: false });
-  } catch (error) {
-    console.error("[payroll/approve] Error:", error);
-    res.status(500).json({ error: "Onay işlemi başarısız" });
-  }
-});
-
-router.patch("/api/payroll/records/:recordId/pay", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const id = Number(req.params.recordId);
-    const [updated] = await db.update(payrollRecords)
-      .set({ status: "paid", paidAt: new Date(), updatedAt: new Date() })
-      .where(eq(payrollRecords.id, id))
-      .returning();
-    res.json(updated || { success: false });
-  } catch (error) {
-    console.error("[payroll/pay] Error:", error);
-    res.status(500).json({ error: "Ödeme işlemi başarısız" });
-  }
-});
-
-router.patch("/api/payroll/parameters/:id", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    const [updated] = await db.update(payrollParameters)
-      .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(payrollParameters.id, id))
-      .returning();
-    res.json(updated || { success: false });
-  } catch (error) {
-    console.error("[payroll/params update] Error:", error);
-    res.status(500).json({ error: "Güncelleme başarısız" });
-  }
-});
-
-router.get("/api/salary/employee/:userId", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const targetUserId = req.params.userId;
-    const records = await db.select().from(payrollRecords)
-      .where(eq(payrollRecords.userId, targetUserId))
-      .orderBy(desc(payrollRecords.periodYear), desc(payrollRecords.periodMonth))
-      .limit(12);
-    res.json(records);
-  } catch (error) {
-    console.error("[salary/employee] Error:", error);
-    res.json([]);
-  }
-});
-
-router.post("/api/salary/employee", isAuthenticated, async (_req: any, res: Response) => {
-  res.json({ success: true, message: "Henüz aktif değil" });
-});
-
-router.patch("/api/salary/employee/:id", isAuthenticated, async (_req: any, res: Response) => {
-  res.json({ success: true, message: "Henüz aktif değil" });
-});
-
-router.get("/api/academy/achievement-stats", isAuthenticated, (_req, res) => res.json({ totalBadges: 0, earnedBadges: 0, achievements: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/adaptive-recommendations", isAuthenticated, (_req, res) => res.json({ recommendations: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/advanced-analytics", isAuthenticated, (_req, res) => res.json({ moduleStats: [], branchStats: [], trends: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/ai-assistant", isAuthenticated, (_req, res) => res.json({ suggestions: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
-router.get("/api/academy/career-progress", isAuthenticated, (req: any, res) => res.json({ userId: req.user?.id, currentLevel: 1, progress: 0, milestones: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/exam-requests-approved", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/exam-requests-pending", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/exam-requests-team", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/academy/progress-overview", isAuthenticated, (_req, res) => res.json({ totalModules: 0, completedModules: 0, inProgress: 0, completionRate: 0, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/quiz-results", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/academy/streak-tracker", isAuthenticated, (_req, res) => res.json({ currentStreak: 0, longestStreak: 0, lastActivity: null, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/study-groups", isAuthenticated, (_req, res) => res.json([]));
 router.post("/api/academy/ai-generate-onboarding", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 router.post("/api/academy/ai-generate-program", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
@@ -211,18 +319,12 @@ router.get("/api/admin/pending-approvals", isAuthenticated, async (req: any, res
     }));
 
     res.json(items);
-  } catch (error) {
-    console.error("[pending-approvals] Error:", error);
+  } catch (error: unknown) {
+    console.error("[pending-approvals] Error:", error instanceof Error ? error.message : error);
     res.json([]);
   }
 });
 
-router.get("/api/knowledge-base/articles", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/knowledge-base/categories", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/coaching/sessions", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/salary/records", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/crm/customers", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/shift-rules", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/backups", isAuthenticated, async (_req, res) => {
   try {
     const { backupRecords } = await import("@shared/schema");
@@ -238,7 +340,5 @@ router.get("/api/factory/raw-materials", isAuthenticated, (_req, res) => res.jso
 router.get("/api/factory/recipes", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/factory/kavurma", isAuthenticated, (_req, res) => res.json({ batches: [], stats: { totalToday: 0, completed: 0 }, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/factory/sayim", isAuthenticated, (_req, res) => res.json({ counts: [], lastCount: null, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
-
-router.get("/api/franchise/performance", isAuthenticated, (_req, res) => res.json({ branches: [], overallScore: 0, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 
 export default router;
