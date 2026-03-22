@@ -210,3 +210,9 @@ id = "ca32tJC7T7GrVDT3We10M"
 uri = "file://.local/audit-report-mega-sprint.md"
 type = "text"
 title = "DOSPRESSO Mega Sprint — IT Audit Raporu"
+
+[[outputs]]
+id = "-V_Rrwjpx3c-G_DhqVAet"
+uri = "file://.local/audit-report-hotfix-session.md"
+type = "text"
+title = "DOSPRESSO IT Audit Raporu — Hotfix Session (22 Mart 2026)"
