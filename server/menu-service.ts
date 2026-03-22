@@ -710,7 +710,8 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   trainer: [
     'dashboard', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
-    'knowledge-base', 'notifications', 'iletisim-merkezi', 'hq-support', 'usage-guide',
+    'knowledge-base', 'reports', 'performance-dashboard',
+    'notifications', 'iletisim-merkezi', 'hq-support', 'usage-guide',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety',
