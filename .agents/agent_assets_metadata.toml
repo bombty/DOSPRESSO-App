@@ -204,3 +204,9 @@ id = "8jgDrVISy0OPvo9V2LsHn"
 uri = "file://.local/audit-report-bordro-permissions-21-mart-2026.md"
 type = "text"
 title = "Bordro Parametreleri & İzin Sistemi Audit Raporu — 21 Mart 2026"
+
+[[outputs]]
+id = "ca32tJC7T7GrVDT3We10M"
+uri = "file://.local/audit-report-mega-sprint.md"
+type = "text"
+title = "DOSPRESSO Mega Sprint — IT Audit Raporu"

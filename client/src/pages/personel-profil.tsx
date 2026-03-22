@@ -29,7 +29,6 @@ import { tr } from "date-fns/locale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
