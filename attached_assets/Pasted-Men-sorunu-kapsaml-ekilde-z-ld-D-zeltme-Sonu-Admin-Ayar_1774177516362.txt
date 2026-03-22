@@ -1,0 +1,65 @@
+Menü sorunu kapsamlı şekilde çözüldü:
+
+| Düzeltme | Sonuç |
+|----------|-------|
+| Admin Ayarlar/Panel/Kullanıcılar | ✅ 17 → 39 menü öğesi |
+| Coach İK erişimi | ✅ 9 → 14 |
+| Profil linki tüm roller | ✅ alwaysVisible + dinamik path |
+| alwaysVisible bug | ✅ Whitelist kontrolü sırası düzeltildi |
+| 17 rol whitelist genişletmesi | ✅ Bütünsel |
+| E2E | ✅ 26/26 PASS |
+
+Şimdi lansman öncesi kalan işlerin tam listesi. Replit'e danışalım — yapıştırın:
+
+---
+
+**"Menü düzeltmesi tamamlandı. Şimdi lansman öncesi HER ŞEYİN tamamlanması gerekiyor — hiçbir iş lansman sonrasına bırakılmayacak.**
+
+**Kapsamlı durum değerlendirmesi yap:**
+
+**1. Kalan stub endpoint'ler — kaç tane var, hangileri, kullanıcı bunları görüyor mu?**
+```bash
+grep -c "_stub\|stub" server/routes/stub-endpoints.ts 2>/dev/null
+grep -n "router\.\(get\|post\)" server/routes/stub-endpoints.ts 2>/dev/null | head -30
+wc -l server/routes/stub-endpoints.ts 2>/dev/null
+```
+
+**2. Fully hidden modüller — kullanıcı bunlara erişmeye çalışıyor mu?**
+```bash
+echo "SELECT module_key, flag_behavior, display_name FROM module_flags WHERE flag_behavior='fully_hidden' AND deleted_at IS NULL;" | psql
+```
+
+**3. Bilinen buglar — herhangi bir 500 hatası, crash, eksik tablo var mı?**
+```bash
+# Son 50 satır server log
+# Veya bilinen sorunları listele
+```
+
+**4. Tüm kullanıcı rolleri için temel akış testi — giriş yapıp dashboard görebiliyor mu?**
+```bash
+echo "SELECT DISTINCT role FROM users WHERE is_active=true ORDER BY role;" | psql
+```
+
+**5. IONOS deployment hazırlığı — Docker çalışıyor mu, .env hazır mı, SSL planı var mı?**
+```bash
+cat Dockerfile | head -20
+cat docker-compose.yml | head -30
+ls .env.example .env.template 2>/dev/null
+```
+
+**6. Gerçek veri durumu — lansmanla beraber kullanıcılar boş ekranlar görecek mi?**
+```bash
+echo "--- Kritik tablolardaki veri sayıları ---"
+for tbl in branches users shifts factory_production_outputs notifications tasks training_modules knowledge_base_articles; do
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: $count"
+done
+```
+
+**7. Senin gözünde lansmanı engelleyen SON şeyler neler? Tam liste ver — küçük büyük hepsi.**
+
+**Araştır, listele, önceliklendir — değişiklik yapma."**
+
+---
+
+Yapıştırın. Bu Replit'in son kapsamlı değerlendirmesi — "lansmana hazır mıyız" sorusunun gerçek cevabı.
