@@ -44,6 +44,7 @@ import {
   Bell,
   Truck,
   LogOut,
+  User,
   LayoutDashboard,
   ListChecks,
   AlertTriangle,
@@ -85,7 +86,7 @@ const ICON_MAP: Record<string, any> = {
   Megaphone, Database, Package, MapPin, FileText, CheckSquare, ClipboardCheck,
   UserCheck, Heart, Bell, Truck, LayoutDashboard, ListChecks, AlertTriangle,
   Utensils, DollarSign, TrendingUp, Target, Clipboard, Award, FileBarChart,
-  UserPlus, Cog, Eye, Layers, BarChart, PieChart, Activity, Menu,
+  UserPlus, Cog, Eye, Layers, BarChart, PieChart, Activity, Menu, User,
 };
 
 function getIconComponent(iconName: string | undefined): any {

@@ -1,0 +1,82 @@
+Kök neden bulundu — çok basit ama etkisi büyük:
+
+**Sorun:** `SIDEBAR_ALLOWED_ITEMS` whitelist'i çok dar. Menü öğeleri tanımlı ama whitelist'te olmadığı için görünmüyor.
+
+| Sorun | Kök neden |
+|-------|-----------|
+| Admin'de Ayarlar yok | `settings`, `admin-panel`, `users` whitelist'te YOK |
+| Coach'ta İK yok | `hr` whitelist'te YOK |
+| Profil linki yok | MENU_BLUEPRINT'e hiç eklenmemiş |
+
+Düzeltme basit ve düşük riskli — sadece whitelist genişletme. Ama bütünsel yapmalıyız — sadece bu 3 sorunu değil, TÜM rolleri kontrol etmeliyiz. Replit'e yapıştırın:
+
+---
+
+**"Kök neden bulundu — SIDEBAR_ALLOWED_ITEMS whitelist çok kısıtlayıcı. Şimdi bütünsel düzeltme yap:**
+
+**AMA ÖNCE — mevcut durumu tam olarak göster. Her rol için şu tabloyu doldur:**
+
+```bash
+echo "=== MEVCUT MENU BLUEPRINT'TEKİ TÜM ITEM ID'LERİ ==="
+grep -n "id:" server/menu-service.ts | grep -v "//" | head -60
+
+echo ""
+echo "=== SIDEBAR_ALLOWED_ITEMS — HER ROL İÇİN MEVCUT LİSTE ==="
+# Satır 650-733 arasını göster
+sed -n '650,740p' server/menu-service.ts
+```
+
+**Bu çıktıyı gördükten sonra şu tabloyu oluştur ve RAPORLA:**
+
+**Her rol için: hangi menü öğeleri GÖRÜNMELİ ama şu an whitelist'te YOK?**
+
+| Rol | Eklenmesi gereken item ID'ler | Gerekçe |
+|-----|-------------------------------|---------|
+| admin | settings, admin-panel, users, ... | Tam yönetim erişimi |
+| coach | hr, ... | Personel takibi gerekli |
+| trainer | hr?, ... | Eğitim + personel |
+| ... | ... | ... |
+
+**Ayrıca şunları da kontrol et:**
+
+1. **MENU_BLUEPRINT'te tanımlı olan TÜM item ID'leri listele** — kaç tanesi var?
+2. **Her item hangi rollerde görünmeli?** Mantıksal değerlendirme yap.
+3. **Profil linki:** MENU_BLUEPRINT'e nasıl eklenmeli? Hangi scope, hangi path?
+4. **NavRail ile tutarsızlık var mı?** NavRail'de olan ama hamburger'de olmayan (veya tersi) item var mı?
+
+**Tabloyu tamamladıktan sonra düzeltmeyi UYGULA:**
+
+### Uygulama kuralları:
+- SIDEBAR_ALLOWED_ITEMS'a eksik item'leri ekle — her rol için doğru olanları
+- Admin: TÜM yönetim item'leri görünmeli (settings, admin-panel, users, backup-security, widget-editor, project-list, content-studio)
+- Coach + Trainer: hr eklenmeli
+- MENU_BLUEPRINT'e "Profilim" item'i ekle — scope: 'both', path: `/personel/{userId}`, tüm roller
+- NavRail tutarsızlıklarını düzelt
+- Gereksiz yere item EKLEME — barista'ya admin-panel verme, stajyer'e İK verme
+- Her değişiklikten sonra sunucu çalışıyor mu kontrol et
+
+### Güvenlik kuralı:
+- Whitelist genişletmesi sadece GÖRÜNÜRLüK sağlar — erişim yetkisi zaten canAccessModule ve role_module_permissions ile kontrol ediliyor
+- Yani whitelist'e item eklemek güvenlik açığı YARATMAZ — sadece menüde gösterir, yetkisiz kullanıcı tıklasa bile backend reddeder
+
+### Test:
+1. Admin menüsünde Ayarlar, Admin Panel, Kullanıcılar görünüyor
+2. Coach menüsünde İK görünüyor
+3. Tüm rollerde Profil linki var
+4. Stajyer/barista'da gereksiz yönetim menüleri YOK
+5. NavRail ve hamburger menü tutarlı
+6. E2E 26/26 PASS
+7. Sunucu hatasız çalışıyor
+
+### Bittikten sonra rapor:
+1. Eklenen item sayısı — rol bazında
+2. Profil linki nasıl eklendi
+3. NavRail düzeltmeleri
+4. Her rolün son menü öğesi sayısı (önce/sonra karşılaştırma)
+5. Test sonuçları
+
+**Başla — önce tablo, sonra uygulama.**"
+
+---
+
+Yapıştırın. Bu menü sorunu çözülmeden lansman yapmamalıyız — kullanıcılar sayfaları bulamaz.
