@@ -728,7 +728,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   muhasebe_ik: [
     'dashboard', 'hr', 'shifts', 'attendance', 'pdks', 'maas',
-    'financial-management', 'financial-reports', 'reports',
+    'accounting-main', 'financial-management', 'financial-reports', 'reports',
     'notifications', 'iletisim-merkezi', 'hq-support', 'usage-guide',
   ],
   muhasebe: [
