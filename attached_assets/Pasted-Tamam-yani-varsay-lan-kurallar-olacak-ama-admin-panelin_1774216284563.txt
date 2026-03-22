@@ -1,0 +1,140 @@
+Tamam — yani varsayılan kurallar olacak ama admin panelinde toggle ile değiştirilebilecek. Örneğin:
+
+- Varsayılan: Coach şube maaşını görür
+- Admin toggle'ı kapatırsa: Coach artık göremez
+- Admin toggle'ı Trainer'a açarsa: Trainer da görebilir
+
+Bu kuralı Replit araştırma promptuna ekliyorum. Yapıştırın:
+
+---
+
+**"Yetki sistemi derin araştırma — değişiklik yapma, sadece araştır.**
+
+**ÖNEMLİ İŞ KURALI (kullanıcıdan gelen):**
+
+**Maaş/bordro görünürlük kuralları:**
+- CGO: Şube personeli maaşını GÖREBİLİR, HQ personeli maaşını GÖREMEZ
+- Coach: Şube personeli maaşını GÖREBİLİR, HQ personeli maaşını GÖREMEZ
+- Trainer: Hiçbir maaş bilgisini GÖREMEZ (şube dahil)
+- Muhasebe: HER ŞEYİ görebilir (şube + HQ — TEK tam yetkili)
+- Diğer tüm HQ roller (satınalma, marketing, fabrika müdür, kalite kontrol, gıda mühendisi): Hiçbir maaş bilgisini GÖREMEZ
+- HQ'da kimse birbirinin maaşını göremez — SADECE Muhasebe görür
+
+**Detay görünürlük (maaş HARİÇ):**
+- CGO: Tüm şubelerin TÜM detaylarını görür (operasyon, personel, checklist, vardiya, eğitim, performans, kalite — sadece bordro/maaş kısmı yukarıdaki kurala tabi)
+- Coach: CGO ile AYNI görünürlük (tüm şubeler, tüm operasyonel detaylar — maaş kısmı yukarıdaki kurala tabi)
+- Trainer: CGO ile AYNI görünürlük ama maaş bilgisi tamamen gizli
+
+**KRİTİK: Bu kurallar VARSAYILAN olacak ama admin panelinde toggle ile değiştirilebilir olmalı.** Yani admin isterse Coach'un maaş yetkisini kapatabilir veya Trainer'a açabilir. Drag-and-drop + toggle sistemiyle.
+
+**Şimdi mevcut durumu araştır:**
+
+```bash
+echo "══════════════════════════════════════"
+echo "YETKİ SİSTEMİ DERİN ARAŞTIRMA"
+echo "══════════════════════════════════════"
+
+echo "=== 1. TÜM ROLLER VE KULLANICI SAYILARI ==="
+echo "SELECT role, count(*) FROM users WHERE is_active=true GROUP BY role ORDER BY role;" | psql
+
+echo ""
+echo "=== 2. ROLE_MODULE_PERMISSIONS YAPISI ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='role_module_permissions' ORDER BY ordinal_position;" | psql
+echo "Toplam kayıt:"
+echo "SELECT count(*) FROM role_module_permissions;" | psql -t
+
+echo ""
+echo "=== 3. CGO vs COACH vs TRAINER — TAM YETKİ KARŞILAŞTIRMASI ==="
+echo "--- CGO ---"
+echo "SELECT module_key, can_view, can_edit, can_create, can_delete FROM role_module_permissions WHERE role='cgo' AND can_view=true ORDER BY module_key;" | psql
+echo ""
+echo "--- Coach ---"
+echo "SELECT module_key, can_view, can_edit, can_create, can_delete FROM role_module_permissions WHERE role='coach' AND can_view=true ORDER BY module_key;" | psql
+echo ""
+echo "--- Trainer ---"
+echo "SELECT module_key, can_view, can_edit, can_create, can_delete FROM role_module_permissions WHERE role='trainer' AND can_view=true ORDER BY module_key;" | psql
+
+echo ""
+echo "=== 4. CGO'DA OLUP COACH'TA OLMAYAN ==="
+echo "SELECT cgo.module_key FROM role_module_permissions cgo WHERE cgo.role='cgo' AND cgo.can_view=true AND cgo.module_key NOT IN (SELECT module_key FROM role_module_permissions WHERE role='coach' AND can_view=true);" | psql
+
+echo ""
+echo "=== 5. FİNANS/MAAS ERİŞİMİ — KİM GÖREBİLİYOR? ==="
+echo "SELECT role, module_key, can_view, can_edit FROM role_module_permissions WHERE module_key IN ('finans','bordro','maas','muhasebe','mali-yonetim','pdks','accounting','payroll','salary') AND can_view=true ORDER BY module_key, role;" | psql
+
+echo ""
+echo "=== 6. ŞUBE ROLLERİ — HİYERARŞİ VE YETKİLER ==="
+for role in stajyer bar_buddy barista supervisor_buddy supervisor mudur yatirimci_branch; do
+  modules=$(echo "SELECT module_key FROM role_module_permissions WHERE role='$role' AND can_view=true ORDER BY module_key;" | psql -t 2>/dev/null | tr '\n' ', ')
+  echo "  $role: $modules"
+done
+
+echo ""
+echo "=== 7. FABRİKA ROLLERİ ==="
+for role in fabrika_mudur fabrika_operator fabrika_sorumlu fabrika_personel; do
+  modules=$(echo "SELECT module_key FROM role_module_permissions WHERE role='$role' AND can_view=true ORDER BY module_key;" | psql -t 2>/dev/null | tr '\n' ', ')
+  echo "  $role: ${modules:-YOK}"
+done
+
+echo ""
+echo "=== 8. HQ UZMAN ROLLER ==="
+for role in satinalma marketing muhasebe_ik kalite_kontrol gida_muhendisi; do
+  modules=$(echo "SELECT module_key FROM role_module_permissions WHERE role='$role' AND can_view=true ORDER BY module_key;" | psql -t 2>/dev/null | tr '\n' ', ')
+  echo "  $role: $modules"
+done
+
+echo ""
+echo "=== 9. MEVCUT YETKİ DÜZENLEME ARAYÜZÜ ==="
+echo "--- Admin sayfalarında yetki/permission ile ilgili UI ---"
+grep -rn "permission\|yetki\|izin\|role.*edit\|role.*manage\|drag.*drop\|DndContext" client/src/pages/admin*.tsx client/src/pages/yonetim*.tsx 2>/dev/null | head -20
+
+echo "--- Kullanıcı düzenleme formunda rol/yetki alanları ---"
+grep -rn "role\|permission\|module.*access" client/src/pages/admin/kullanicilar*.tsx client/src/pages/yonetim/kullanicilar*.tsx 2>/dev/null | head -15
+
+echo ""
+echo "=== 10. canAccessModule FONKSİYONU ==="
+grep -B3 -A40 "function canAccessModule\|async function canAccessModule\|canAccessModule" server/menu-service.ts | head -60
+
+echo ""
+echo "=== 11. BORDRO ENDPOINT GÜVENLİĞİ ==="
+echo "--- Bordro endpoint'lerinde rol kontrolü ---"
+grep -n "role\|isAuthenticated\|permission\|authorize" server/routes/payroll.ts | head -15
+grep -n "role\|isAuthenticated\|permission" server/routes/hr.ts | grep -i "maas\|salary\|bordro\|payroll" | head -10
+
+echo ""
+echo "=== 12. DND-KIT KULLANIM YERLERİ ==="
+grep -rn "dnd-kit\|useSortable\|DndContext\|useDraggable\|useDroppable\|SortableContext" client/src/ --include="*.tsx" | head -15
+
+echo ""
+echo "=== 13. ROLE_PERMISSION_GRANTS (override tablosu?) ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='role_permission_grants' ORDER BY ordinal_position;" | psql 2>/dev/null
+echo "Kayıt sayısı:"
+echo "SELECT count(*) FROM role_permission_grants;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== 14. TÜM MODULE_KEY LİSTESİ ==="
+echo "SELECT DISTINCT module_key FROM role_module_permissions ORDER BY module_key;" | psql
+
+echo ""
+echo "=== 15. MEVCUT TOGGLE/FLAG SİSTEMİ ==="
+echo "--- Module flags'te toggle mekanizması ---"
+echo "SELECT module_key, flag_behavior, is_enabled FROM module_flags WHERE deleted_at IS NULL ORDER BY module_key;" | psql
+
+echo "══════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. CGO vs Coach vs Trainer tam yetki tablosu (modül modül)"
+echo "2. Şu an Coach'un göremediği ama görmesi gereken modüller"
+echo "3. Maaş/bordro endpoint'lerine kim erişiyor — güvenlik yeterli mi?"
+echo "4. role_module_permissions nasıl değiştiriliyor — UI var mı?"
+echo "5. role_permission_grants tablosu ne işe yarıyor?"
+echo "6. dnd-kit nerede kullanılıyor — yetki drag-drop için hazır mı?"
+echo "7. Toggle bazlı yetki değiştirme için mevcut altyapı var mı?"
+echo "8. Önerilen yetki yönetim mimarisi — drag-drop + toggle nasıl çalışır?"
+echo "══════════════════════════════════════"
+```
+
+**Sadece araştır — değişiklik yapma.**"
+
+---
+
+Yapıştırın. Bu araştırma geldiğinde mevcut yetki altyapısını tam göreceğiz — neyi kullanabiliriz, neyi sıfırdan yapmamız gerekiyor. Sonra birlikte drag-drop yetki yönetimi tasarlayacağız.
