@@ -1,0 +1,52 @@
+Neredeyse hazırız. 2 karar + 1 küçük fix kaldı:
+
+**Fix gerekli:**
+- TaskTrigger null branch_id (10dk)
+
+**Karar gerekli:**
+- 23 modül `fully_hidden` ama hepsi açık — hangilerini gerçekten kapatmalı?
+- 52 stub endpoint — lansmanda "Henüz kayıt yok" göstermesi kabul edilebilir mi?
+
+Module flags kararı sizin — hangi modüller lansmanla birlikte aktif olmalı, hangilerini kapatmalı? Yapıştırın:
+
+---
+
+**"2 iş kaldı. Başla:**
+
+**1. TaskTrigger null branch_id bugını düzelt (10dk):**
+- `task-trigger-service.ts` satır 102 civarı
+- HQ kullanıcıları (branch_id NULL) için recurring task oluşturma denemesini atla
+- `if (!user.branchId) return;` veya benzeri kontrol ekle
+- Crash yok ama log kirliliği var — temizle
+
+**2. Module flags değerlendirmesi:**
+- 23 modül `fully_hidden` + `is_enabled=true` — yani hepsi fiilen açık
+- Bu 23 modülü listele ve her biri için şunu değerlendir:
+  - Modülün frontend sayfası var mı ve çalışıyor mu?
+  - Gerçek veri dönüyor mu yoksa stub/boş mu?
+  - Kullanıcı bu sayfaya gidince anlamlı bir şey görüyor mu?
+
+```bash
+echo "=== 23 FULLY_HIDDEN MODÜL DETAYI ==="
+echo "SELECT module_key, display_name FROM module_flags WHERE flag_behavior='fully_hidden' AND is_enabled=true AND deleted_at IS NULL ORDER BY module_key;" | psql
+
+# Her modül için frontend sayfası var mı?
+echo ""
+echo "=== HER MODÜL İÇİN SAYFA KONTROLÜ ==="
+for key in $(echo "SELECT module_key FROM module_flags WHERE flag_behavior='fully_hidden' AND is_enabled=true AND deleted_at IS NULL;" | psql -t | tr -d ' '); do
+  found=$(grep -rl "$key" client/src/App.tsx client/src/pages/ 2>/dev/null | head -1)
+  if [ -n "$found" ]; then
+    echo "  $key → SAYFA VAR ($(basename $found))"
+  else
+    echo "  $key → SAYFA YOK"
+  fi
+done
+```
+
+**Bu listeyi raporla. Her modül için önerisini yaz: AÇIK KALSIN / KAPATILSIN / KARAR GEREKİYOR.**
+
+**Değişiklik olarak sadece TaskTrigger fix'ini uygula. Module flags için sadece rapor ver — kapama kararını biz vereceğiz.**"
+
+---
+
+Yapıştırın. Module flags raporu geldiğinde birlikte karar vereceğiz — hangileri açık kalacak, hangileri kapatılacak.

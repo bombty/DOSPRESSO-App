@@ -63,6 +63,10 @@ export async function generateTasksForUser(userId: string): Promise<{ created: n
       return { created: 0, skipped: 0 };
     }
 
+    if (!user.branchId) {
+      return { created: 0, skipped: 0 };
+    }
+
     const userRole = user.role as UserRoleType;
     const userScope = getScopeForRole(userRole);
 
