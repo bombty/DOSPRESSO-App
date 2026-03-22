@@ -1,6 +1,6 @@
 import { db } from "../server/db";
 import { users } from "../shared/schema";
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 async function resetTestPasswords() {
@@ -13,6 +13,9 @@ async function resetTestPasswords() {
     .where(inArray(users.username, targetUsers))
     .returning({ username: users.username, role: users.role });
 
+  if (result.length !== targetUsers.length) {
+    console.warn(`WARNING: Expected ${targetUsers.length} users but updated ${result.length}`);
+  }
   console.log(`Reset passwords for ${result.length} users:`);
   for (const u of result) {
     console.log(`  ${u.username} (${u.role})`);
