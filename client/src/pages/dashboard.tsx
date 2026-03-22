@@ -3,6 +3,10 @@ import { DashboardWidgets } from "@/components/dashboard-widgets";
 import { ModuleCard } from "@/components/module-card";
 import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
+import { DashboardModeToggle } from "@/components/mission-control/DashboardModeToggle";
+import { MissionControlPlaceholder } from "@/components/mission-control/MissionControlPlaceholder";
+import { DobodyPanel, DobodyMobileCard } from "@/components/mission-control/DobodyPanel";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useEffect, useMemo, lazy, Suspense } from "react";
@@ -162,9 +166,26 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
   );
 }
 
+function MissionControlWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-full" data-testid="mission-control-wrapper">
+      <div className="hidden md:flex">
+        <DobodyPanel />
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="md:hidden">
+          <DobodyMobileCard />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
 
   useEffect(() => {
     if (user && isFactoryFloorRole(user.role as any)) {
@@ -177,6 +198,18 @@ export default function Dashboard() {
 
   if (user && (isFactoryFloorRole(user.role as any) || user.role === 'ceo' || user.role === 'cgo' || user.role === 'admin')) {
     return null;
+  }
+
+  if (modeLoading) {
+    return <div className="flex items-center justify-center h-screen">Yukleniyor...</div>;
+  }
+
+  if (isMissionControl) {
+    return (
+      <MissionControlWrapper>
+        <MissionControlPlaceholder />
+      </MissionControlWrapper>
+    );
   }
 
   const userRole = user?.role;
@@ -206,11 +239,21 @@ export default function Dashboard() {
   }
 
   if (userRole && BRANCH_ROLES.includes(userRole) && (user as any)?.branchId) {
-    return <BranchDashboard userRole={userRole} branchId={(user as any).branchId} />;
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end px-4 pt-2">
+          <DashboardModeToggle />
+        </div>
+        <BranchDashboard userRole={userRole} branchId={(user as any).branchId} />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end px-4 pt-2">
+        <DashboardModeToggle />
+      </div>
       <DashboardWidgets />
       <CardGridHub />
     </div>

@@ -41,6 +41,10 @@ import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-aler
 import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { DashboardModeToggle } from "@/components/mission-control/DashboardModeToggle";
+import { MissionControlPlaceholder } from "@/components/mission-control/MissionControlPlaceholder";
+import { DobodyPanel, DobodyMobileCard } from "@/components/mission-control/DobodyPanel";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
 
@@ -113,10 +117,12 @@ function getDelegatedModulePath(moduleKey: string): string {
 export default function HQOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
   const [pendingAction, setPendingAction] = useState<{ suggestion: DobodySuggestion; actionPayload: any } | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-summary"],
+    enabled: !isMissionControl && !modeLoading,
   });
 
   const { data: activeDelegations = [] } = useQuery<any[]>({
@@ -171,6 +177,31 @@ export default function HQOzet() {
     }
   }, [pendingAction, quickAction]);
 
+  if (modeLoading) {
+    return (
+      <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="hq-ozet-loading">
+        <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="h-14 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (isMissionControl) {
+    return (
+      <div className="flex h-full" data-testid="hq-mission-control-wrapper">
+        <div className="hidden md:flex">
+          <DobodyPanel />
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="md:hidden">
+            <DobodyMobileCard />
+          </div>
+          <MissionControlPlaceholder />
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="hq-ozet-loading">
@@ -201,6 +232,9 @@ export default function HQOzet() {
 
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="hq-ozet-page">
+      <div className="flex justify-end">
+        <DashboardModeToggle />
+      </div>
       <DobodyFlowMode
         userId={user?.id || ""}
         userRole={user?.role || ""}

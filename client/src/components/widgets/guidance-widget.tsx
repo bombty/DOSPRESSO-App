@@ -1,38 +1,9 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { AlertTriangle, ChevronRight, ChevronDown, ChevronUp, Sparkles, X, Users, CheckSquare, Calendar, GraduationCap, Factory, Settings, ClipboardList, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState, useMemo } from "react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-
-const MANAGEMENT_ROLES = [
-  "admin", "ceo", "cgo", "coach", "trainer", "muhasebe_ik",
-  "satinalma", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur",
-  "mudur", "supervisor", "supervisor_buddy",
-];
-
-interface GuidanceItem {
-  id: string;
-  category: string;
-  severity: "critical" | "high" | "medium" | "low";
-  title: string;
-  description: string;
-  deepLink: string;
-}
-
-interface GuidanceData {
-  totalGaps: number;
-  criticalCount: number;
-  items: GuidanceItem[];
-  grouped: {
-    critical: GuidanceItem[];
-    high: GuidanceItem[];
-    medium: GuidanceItem[];
-    low: GuidanceItem[];
-  };
-}
+import { useState } from "react";
+import { useGuidanceData, type GuidanceItem } from "@/hooks/useGuidanceData";
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Users }> = {
   personnel: { label: "Personel", icon: Users },
@@ -51,28 +22,14 @@ function getCategoryConfig(category: string) {
 }
 
 export function GuidanceWidget() {
-  const { user } = useAuth();
   const [, navigate] = useLocation();
   const [expanded, setExpanded] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [dismissedLocal, setDismissedLocal] = useState<Set<string>>(new Set());
 
-  const { data: guidance } = useQuery<GuidanceData>({
-    queryKey: ["/api/agent/guidance"],
-    refetchInterval: 5 * 60 * 1000,
-    enabled: !!user && MANAGEMENT_ROLES.includes(user.role),
-  });
+  const { guidance, isEligible, dismissGuidance } = useGuidanceData();
 
-  const dismissMutation = useMutation({
-    mutationFn: async (guidanceId: string) => {
-      await apiRequest("POST", `/api/agent/guidance/${encodeURIComponent(guidanceId)}/dismiss`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/agent/guidance"] });
-    },
-  });
-
-  if (!user || !MANAGEMENT_ROLES.includes(user.role)) return null;
+  if (!isEligible) return null;
   if (!guidance || guidance.totalGaps === 0) return null;
 
   const allItems = [
@@ -89,7 +46,7 @@ export function GuidanceWidget() {
 
   const handleDismiss = (id: string) => {
     setDismissedLocal(prev => new Set(prev).add(id));
-    dismissMutation.mutate(id);
+    dismissGuidance(id);
   };
 
   const toggleCategory = (cat: string) => {
@@ -101,7 +58,7 @@ export function GuidanceWidget() {
     });
   };
 
-  const categoryGroups = useMemo(() => {
+  const categoryGroups = (() => {
     const groups: Record<string, GuidanceItem[]> = {};
     allItems.forEach(item => {
       const cat = item.category || "other";
@@ -113,7 +70,7 @@ export function GuidanceWidget() {
       const bCrit = b[1].filter(i => i.severity === "critical").length;
       return bCrit - aCrit;
     });
-  }, [allItems]);
+  })();
 
   const severityConfig = {
     critical: { dot: "bg-destructive", bg: "bg-destructive/5 border border-destructive/20" },
