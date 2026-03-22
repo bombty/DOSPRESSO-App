@@ -240,3 +240,9 @@ id = "eZIzydLJg1AXqNZXXlZ_E"
 uri = "file://.local/fabrika-modulu-lansman-audit-raporu-22-mart-2026.md"
 type = "text"
 title = "DOSPRESSO Fabrika Modülü — Lansman Hazırlık Audit Raporu (22 Mart 2026)"
+
+[[outputs]]
+id = "gLVAubPOqpUMdUr3FKZnY"
+uri = "file://.local/dospresso-tam-sistem-audit-raporu-23-mart-2026.md"
+type = "text"
+title = "DOSPRESSO Kapsamlı Sistem Audit Raporu (23 Mart 2026)"
