@@ -17,14 +17,14 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   BarChart2, CheckSquare, Timer, User,
 };
 
-export function NavRail() {
+export function NavRail({ className }: { className?: string }) {
   const { user } = useAuth();
   const [location] = useLocation();
   const items = getNavRailItems(user?.role);
 
   return (
     <aside
-      className="hidden md:flex flex-col items-center bg-[#122549] w-[50px] py-3 gap-1 flex-shrink-0 z-40 overflow-y-auto"
+      className={cn("hidden md:flex flex-col items-center bg-[#122549] w-[50px] py-3 gap-1 flex-shrink-0 z-40 overflow-y-auto", className)}
       data-testid="nav-rail"
     >
       {items.map((item) => {
