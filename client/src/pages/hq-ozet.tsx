@@ -42,7 +42,7 @@ import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-stri
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { DashboardModeToggle } from "@/components/mission-control/DashboardModeToggle";
-import { MissionControlPlaceholder } from "@/components/mission-control/MissionControlPlaceholder";
+import { DashboardRouter } from "@/components/mission-control/DashboardRouter";
 import { DobodyPanel, DobodyMobileCard } from "@/components/mission-control/DobodyPanel";
 import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { ErrorState } from "../components/error-state";
@@ -196,7 +196,7 @@ export default function HQOzet() {
           <div className="md:hidden">
             <DobodyMobileCard />
           </div>
-          <MissionControlPlaceholder />
+          <DashboardRouter />
         </div>
       </div>
     );

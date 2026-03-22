@@ -4,7 +4,7 @@ import { ModuleCard } from "@/components/module-card";
 import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
 import { DashboardModeToggle } from "@/components/mission-control/DashboardModeToggle";
-import { MissionControlPlaceholder } from "@/components/mission-control/MissionControlPlaceholder";
+import { DashboardRouter } from "@/components/mission-control/DashboardRouter";
 import { DobodyPanel, DobodyMobileCard } from "@/components/mission-control/DobodyPanel";
 import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { useAuth } from "@/hooks/useAuth";
@@ -207,7 +207,7 @@ export default function Dashboard() {
   if (isMissionControl) {
     return (
       <MissionControlWrapper>
-        <MissionControlPlaceholder />
+        <DashboardRouter />
       </MissionControlWrapper>
     );
   }
