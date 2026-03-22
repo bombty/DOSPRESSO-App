@@ -356,7 +356,9 @@ export function BreadcrumbNavigation() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  if (location === '/' || breadcrumbs.length === 0) {
+  const HIDDEN_PATHS = ['/', '/hq-ozet', '/fabrika/dashboard', '/sube/dashboard'];
+  const isHidden = HIDDEN_PATHS.includes(location) || location.startsWith('/hub/');
+  if (isHidden || breadcrumbs.length === 0) {
     return null;
   }
 

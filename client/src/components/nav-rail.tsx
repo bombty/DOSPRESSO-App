@@ -6,6 +6,11 @@ import {
 import { getNavRailItems } from "@/lib/navigation-config";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Home, MessageSquare, GraduationCap, Building2, Factory,
@@ -29,44 +34,53 @@ export function NavRail() {
           (item.path !== "/" && location.startsWith(item.path));
 
         return (
-          <Link key={item.key} href={item.path}>
-            <button
-              title={item.label}
-              data-testid={`rail-${item.key}`}
-              className={cn(
-                "relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150 group",
-                isActive
-                  ? "bg-[#cc1f1f]"
-                  : "bg-transparent hover:bg-white/10"
-              )}
-            >
-              <IconComponent
-                className={cn(
-                  "w-[18px] h-[18px] transition-opacity",
-                  isActive ? "text-white opacity-100" : "text-white opacity-50"
-                )}
-              />
-              {item.badge && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#cc1f1f] border-2 border-[#122549]" />
-              )}
-              <span className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 border border-border shadow-md">
-                {item.label}
-              </span>
-            </button>
-          </Link>
+          <Tooltip key={item.key} delayDuration={200}>
+            <TooltipTrigger asChild>
+              <Link href={item.path}>
+                <button
+                  data-testid={`rail-${item.key}`}
+                  className={cn(
+                    "relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150",
+                    isActive
+                      ? "bg-[#cc1f1f]"
+                      : "bg-transparent hover:bg-white/10"
+                  )}
+                >
+                  <IconComponent
+                    className={cn(
+                      "w-[18px] h-[18px] transition-opacity",
+                      isActive ? "text-white opacity-100" : "text-white opacity-50"
+                    )}
+                  />
+                  {item.badge && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#cc1f1f] border-2 border-[#122549]" />
+                  )}
+                </button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
         );
       })}
 
       <div className="mt-auto">
-        <Link href={user ? `/personel/${user.id}` : "/login"}>
-          <button
-            title="Profil"
-            data-testid="rail-profile"
-            className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-all"
-          >
-            <User className="w-[18px] h-[18px] text-white opacity-40" />
-          </button>
-        </Link>
+        <Tooltip delayDuration={200}>
+          <TooltipTrigger asChild>
+            <Link href={user ? `/personel/${user.id}` : "/login"}>
+              <button
+                data-testid="rail-profile"
+                className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-all"
+              >
+                <User className="w-[18px] h-[18px] text-white opacity-40" />
+              </button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            Profilim
+          </TooltipContent>
+        </Tooltip>
       </div>
     </aside>
   );
