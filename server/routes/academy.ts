@@ -827,7 +827,7 @@ router.delete('/api/academy/question/:id', isAuthenticated, async (req, res) => 
     const roleStr = Array.isArray(req.user.role) ? req.user.role[0] : req.user.role;
     if (!isHQRole(roleStr )) return res.status(403).json({ message: "Yalnızca HQ erişebilir" });
     const { id } = req.params;
-    await db.delete(quizQuestions).where(eq(quizQuestions.id, parseInt(id)));
+    await db.update(quizQuestions).set({ deletedAt: new Date() }).where(eq(quizQuestions.id, parseInt(id)));
     res.json({ success: true });
   } catch (error: unknown) {
     handleApiError(res, error, "DeleteQuestion");
@@ -1370,7 +1370,7 @@ router.get('/api/academy/hub-categories', isAuthenticated, async (req, res) => {
 // GET /api/academy/recipe-categories - Tüm reçete kategorileri
 router.get('/api/academy/recipe-categories', isAuthenticated, async (req, res) => {
   try {
-    const categories = await db.select().from(recipeCategories).orderBy(recipeCategories.displayOrder);
+    const categories = await db.select().from(recipeCategories).where(eq(recipeCategories.isActive, true)).orderBy(recipeCategories.displayOrder);
     res.json(categories);
   } catch (error: unknown) {
     console.error("Recipe categories error:", error);
@@ -1448,7 +1448,7 @@ router.delete('/api/academy/recipe-categories/:id', isAuthenticated, async (req,
       return res.status(400).json({ message: `Bu kategoride ${categoryRecipes.length} reçete var. Önce reçeteleri taşıyın.` });
     }
     
-    await db.delete(recipeCategories).where(eq(recipeCategories.id, parseInt(id)));
+    await db.update(recipeCategories).set({ isActive: false, updatedAt: new Date() }).where(eq(recipeCategories.id, parseInt(id)));
     res.json({ success: true });
   } catch (error: unknown) {
     console.error("Delete recipe category error:", error);
@@ -1481,7 +1481,7 @@ router.get('/api/academy/quizzes', isAuthenticated, async (req, res) => {
     const quizzesWithCount = await Promise.all(allQuizzes.map(async (quiz) => {
       const questions = await db.select({ count: sql<number>`count(*)` })
         .from(quizQuestions)
-        .where(eq(quizQuestions.careerQuizId, quiz.id));
+        .where(and(eq(quizQuestions.careerQuizId, quiz.id), isNull(quizQuestions.deletedAt)));
       return {
         ...quiz,
         questionCount: Number(questions[0]?.count || 0),
@@ -2360,7 +2360,7 @@ router.get('/api/academy/modules/management', isAuthenticated, async (req, res) 
           quizId: quizQuestions.quizId,
           count: count(),
         }).from(quizQuestions)
-          .where(inArray(quizQuestions.quizId, quizIds))
+          .where(and(inArray(quizQuestions.quizId, quizIds), isNull(quizQuestions.deletedAt)))
           .groupBy(quizQuestions.quizId);
 
         const quizToModule: Record<number, number> = {};
@@ -2702,7 +2702,7 @@ router.delete('/api/academy/questions/:id', isAuthenticated, async (req, res) =>
     }
 
     const questionId = parseInt(req.params.id);
-    await db.delete(quizQuestions).where(eq(quizQuestions.id, questionId));
+    await db.update(quizQuestions).set({ deletedAt: new Date() }).where(eq(quizQuestions.id, questionId));
     res.json({ message: "Soru silindi" });
   } catch (error: unknown) {
     handleApiError(res, error, "Soru silinemedi");
@@ -2717,7 +2717,7 @@ router.get('/api/academy/modules/:id/questions', isAuthenticated, async (req, re
     if (quiz.length === 0) return res.json({ quiz: null, questions: [] });
 
     const questions = await db.select().from(quizQuestions)
-      .where(eq(quizQuestions.quizId, quiz[0].id))
+      .where(and(eq(quizQuestions.quizId, quiz[0].id), isNull(quizQuestions.deletedAt)))
       .orderBy(asc(quizQuestions.id));
 
     res.json({ quiz: quiz[0], questions });

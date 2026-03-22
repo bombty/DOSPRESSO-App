@@ -158,10 +158,10 @@ export async function calculateBranchPayroll(
   return results;
 }
 
-export async function savePayrollResults(results: PayrollResult[]): Promise<number> {
+export async function savePayrollResults(results: PayrollResult[], dbClient: typeof db = db): Promise<number> {
   let saved = 0;
   for (const r of results) {
-    await db.insert(monthlyPayroll)
+    await dbClient.insert(monthlyPayroll)
       .values({
         userId: r.userId,
         branchId: r.branchId,

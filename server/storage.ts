@@ -2649,22 +2649,18 @@ export class DatabaseStorage implements IStorage {
   async getQuizQuestions(quizId: string | number): Promise<QuizQuestion[]> {
     const numericId = typeof quizId === 'string' ? parseInt(quizId, 10) : quizId;
     
-    // If numeric ID, try both module quiz and career quiz
     if (!isNaN(numericId)) {
-      // First try module quiz questions
-      const moduleQuestions = await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, numericId));
+      const moduleQuestions = await db.select().from(quizQuestions).where(and(eq(quizQuestions.quizId, numericId), isNull(quizQuestions.deletedAt)));
       if (moduleQuestions.length > 0) {
         return moduleQuestions;
       }
-      // Then try career quiz questions
-      const careerQuestions = await db.select().from(quizQuestions).where(eq(quizQuestions.careerQuizId, numericId));
+      const careerQuestions = await db.select().from(quizQuestions).where(and(eq(quizQuestions.careerQuizId, numericId), isNull(quizQuestions.deletedAt)));
       return careerQuestions;
     }
     
-    // If string (slug like "espresso-101"), look up quizzes table first
     const [quiz] = await db.select().from(quizzes).where(eq(quizzes.quizId, quizId as string));
     if (quiz) {
-      return db.select().from(quizQuestions).where(eq(quizQuestions.careerQuizId, quiz.id));
+      return db.select().from(quizQuestions).where(and(eq(quizQuestions.careerQuizId, quiz.id), isNull(quizQuestions.deletedAt)));
     }
     
     return [];

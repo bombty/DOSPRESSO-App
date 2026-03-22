@@ -338,6 +338,7 @@ export const quizQuestions = pgTable("quiz_questions", {
   explanation: text("explanation"),
   points: integer("points").default(1),
   reviewStatus: varchar("review_status", { length: 20 }).default("manual"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

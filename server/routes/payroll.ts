@@ -34,13 +34,16 @@ router.post('/api/pdks-payroll/calculate', isAuthenticated, async (req: any, res
       return res.status(400).json({ error: 'branchId, year ve month gerekli' });
     }
 
-    const results = await calculateBranchPayroll(Number(branchId), Number(year), Number(month));
-    const saved = await savePayrollResults(results);
+    const result = await db.transaction(async (tx) => {
+      const results = await calculateBranchPayroll(Number(branchId), Number(year), Number(month));
+      const saved = await savePayrollResults(results, tx);
+      return { results, saved };
+    });
 
     res.json({
-      calculated: results.length,
-      saved,
-      results: results.map(r => ({
+      calculated: result.results.length,
+      saved: result.saved,
+      results: result.results.map(r => ({
         userId: r.userId,
         userName: r.userName,
         positionName: r.positionName,
@@ -54,7 +57,7 @@ router.post('/api/pdks-payroll/calculate', isAuthenticated, async (req: any, res
         netPay: r.netPay,
       }))
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Payroll calculate error:", error);
     res.status(500).json({ error: 'Maaş hesaplanamadı' });
   }
@@ -289,22 +292,24 @@ router.patch('/api/pdks-payroll/:id/approve', isAuthenticated, async (req: any, 
       }
     }
 
-    const [updated] = await db.update(monthlyPayroll)
-      .set({
-        status: 'approved',
-        approvedBy: user.id,
-        approvedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(monthlyPayroll.id, id))
-      .returning();
+    const [updated] = await db.transaction(async (tx) => {
+      return tx.update(monthlyPayroll)
+        .set({
+          status: 'approved',
+          approvedBy: user.id,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(monthlyPayroll.id, id))
+        .returning();
+    });
 
     if (!updated) {
       return res.status(404).json({ error: 'Bordro bulunamadı' });
     }
 
     res.json(updated);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Payroll approve error:", error);
     res.status(500).json({ error: 'Onay işlemi başarısız' });
   }
@@ -337,11 +342,14 @@ router.post('/api/payroll/calculate-detailed', isAuthenticated, async (req: any,
       return res.status(400).json({ error: 'Geçersiz girdi', details: parsed.error.errors });
     }
 
-    const result = await calculateDetailedPayroll(parsed.data);
+    const result = await db.transaction(async (tx) => {
+      return calculateDetailedPayroll(parsed.data);
+    });
     res.json(result);
   } catch (error: unknown) {
     console.error("Detailed payroll calculation error:", error);
-    res.status(500).json({ error: error.message || 'Detaylı maaş hesaplanamadı' });
+    const errMsg = error instanceof Error ? error.message : 'Detaylı maaş hesaplanamadı';
+    res.status(500).json({ error: errMsg });
   }
 });
 

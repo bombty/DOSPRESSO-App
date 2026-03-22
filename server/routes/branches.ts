@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { isAuthenticated, createKioskSession } from "../localAuth";
+import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../localAuth";
 import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";
@@ -2594,7 +2594,7 @@ router.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
   }
 });
 
-router.post('/api/branches/:branchId/kiosk/shift-start', async (req, res) => {
+router.post('/api/branches/:branchId/kiosk/shift-start', isKioskAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { userId } = req.body;
@@ -2714,7 +2714,7 @@ router.post('/api/branches/:branchId/kiosk/shift-start', async (req, res) => {
   }
 });
 
-router.post('/api/branches/:branchId/kiosk/break-start', async (req, res) => {
+router.post('/api/branches/:branchId/kiosk/break-start', isKioskAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { sessionId, breakType } = req.body;
@@ -2767,7 +2767,7 @@ router.post('/api/branches/:branchId/kiosk/break-start', async (req, res) => {
   }
 });
 
-router.post('/api/branches/:branchId/kiosk/break-end', async (req, res) => {
+router.post('/api/branches/:branchId/kiosk/break-end', isKioskAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { sessionId } = req.body;
@@ -2835,7 +2835,7 @@ router.post('/api/branches/:branchId/kiosk/break-end', async (req, res) => {
   }
 });
 
-router.post('/api/branches/:branchId/kiosk/shift-end', async (req, res) => {
+router.post('/api/branches/:branchId/kiosk/shift-end', isKioskAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const { sessionId, notes, latitude, longitude } = req.body;
@@ -2980,7 +2980,7 @@ router.post('/api/branches/:branchId/kiosk/shift-end', async (req, res) => {
   }
 });
 
-router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => {
+router.get('/api/branches/:branchId/kiosk/session/:userId', isKioskAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const userId = req.params.userId;
@@ -3094,7 +3094,7 @@ router.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req
   }
 });
 
-router.get('/api/branches/:branchId/kiosk/active-shifts', async (req, res) => {
+router.get('/api/branches/:branchId/kiosk/active-shifts', isKioskAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     
@@ -3185,9 +3185,12 @@ router.post('/api/hq/kiosk/login', async (req, res) => {
       .orderBy(desc(hqShiftSessions.checkInTime))
       .limit(1);
     
+    const kioskToken = await createKioskSession(userId);
+
     res.json({
       user: { id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role },
       activeSession: activeSession || breakSession || null,
+      kioskToken,
     });
   } catch (error: unknown) {
     console.error("HQ kiosk login error:", error);
@@ -3195,7 +3198,7 @@ router.post('/api/hq/kiosk/login', async (req, res) => {
   }
 });
 
-router.post('/api/hq/kiosk/shift-start', async (req, res) => {
+router.post('/api/hq/kiosk/shift-start', isKioskAuthenticated, async (req, res) => {
   try {
     const { userId, latitude, longitude } = req.body;
     if (!userId) {
@@ -3235,7 +3238,7 @@ router.post('/api/hq/kiosk/shift-start', async (req, res) => {
   }
 });
 
-router.post('/api/hq/kiosk/exit', async (req, res) => {
+router.post('/api/hq/kiosk/exit', isKioskAuthenticated, async (req, res) => {
   try {
     const { sessionId, exitReason, exitDescription, estimatedReturnTime, latitude, longitude } = req.body;
     if (!sessionId || !exitReason) {
@@ -3325,7 +3328,7 @@ router.post('/api/hq/kiosk/exit', async (req, res) => {
   }
 });
 
-router.post('/api/hq/kiosk/return', async (req, res) => {
+router.post('/api/hq/kiosk/return', isKioskAuthenticated, async (req, res) => {
   try {
     const { sessionId, latitude, longitude } = req.body;
     if (!sessionId) {
@@ -3385,7 +3388,7 @@ router.post('/api/hq/kiosk/return', async (req, res) => {
   }
 });
 
-router.get('/api/hq/kiosk/session/:userId', async (req, res) => {
+router.get('/api/hq/kiosk/session/:userId', isKioskAuthenticated, async (req, res) => {
   try {
     const { userId } = req.params;
     

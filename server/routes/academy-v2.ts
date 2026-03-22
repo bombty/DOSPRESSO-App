@@ -1288,7 +1288,7 @@ router.get('/api/academy/onboarding/templates/:id', isAuthenticated, requireAcad
     if (!template) return res.status(404).json({ message: "Şablon bulunamadı" });
 
     const steps = await db.select().from(onboardingTemplateSteps)
-      .where(eq(onboardingTemplateSteps.templateId, templateId))
+      .where(and(eq(onboardingTemplateSteps.templateId, templateId), eq(onboardingTemplateSteps.isDeleted, false)))
       .orderBy(asc(onboardingTemplateSteps.startDay), asc(onboardingTemplateSteps.stepOrder));
 
     res.json({ ...template, steps });
@@ -1387,7 +1387,7 @@ router.patch('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcadem
 router.delete('/api/academy/onboarding/steps/:id', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
     const stepId = parseInt(req.params.id);
-    await db.delete(onboardingTemplateSteps).where(eq(onboardingTemplateSteps.id, stepId));
+    await db.update(onboardingTemplateSteps).set({ isDeleted: true, deletedAt: new Date(), updatedAt: new Date() }).where(eq(onboardingTemplateSteps.id, stepId));
     res.json({ success: true });
   } catch (error: unknown) {
     handleApiError(res, error, "Adım silinemedi");
@@ -1485,7 +1485,7 @@ router.post('/api/academy/onboarding/assignments', isAuthenticated, requireAcade
     }).returning();
 
     const steps = await db.select().from(onboardingTemplateSteps)
-      .where(eq(onboardingTemplateSteps.templateId, templateId))
+      .where(and(eq(onboardingTemplateSteps.templateId, templateId), eq(onboardingTemplateSteps.isDeleted, false)))
       .orderBy(asc(onboardingTemplateSteps.startDay), asc(onboardingTemplateSteps.stepOrder));
 
     if (steps.length > 0) {
