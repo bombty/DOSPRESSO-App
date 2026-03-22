@@ -6827,6 +6827,104 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  router.get('/api/factory/qc/assignments/check', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) {
+        return res.status(400).json({ message: "userId gerekli" });
+      }
+      const [assignment] = await db.select().from(factoryQualityAssignments)
+        .where(and(
+          eq(factoryQualityAssignments.userId, userId),
+          eq(factoryQualityAssignments.isActive, true)
+        ));
+      res.json({ isQcAssigned: !!assignment, assignment: assignment || null });
+    } catch (error: unknown) {
+      console.error("Error checking QC assignment:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "QC atama kontrolü başarısız" });
+    }
+  });
+
+  router.get('/api/factory/qc/pending-outputs', isAuthenticated, async (req, res) => {
+    try {
+      const stationId = req.query.stationId ? Number(req.query.stationId) : undefined;
+      const baseCondition = or(
+        eq(factoryProductionOutputs.qualityStatus, 'pending'),
+        isNull(factoryProductionOutputs.qualityStatus)
+      );
+      const whereClause = stationId
+        ? and(baseCondition, eq(factoryProductionOutputs.stationId, stationId))
+        : baseCondition;
+
+      const outputs = await db.select({
+        id: factoryProductionOutputs.id,
+        sessionId: factoryProductionOutputs.sessionId,
+        stationId: factoryProductionOutputs.stationId,
+        productId: factoryProductionOutputs.productId,
+        quantity: factoryProductionOutputs.producedQuantity,
+        productName: factoryProductionOutputs.productName,
+        qualityStatus: factoryProductionOutputs.qualityStatus,
+        createdAt: factoryProductionOutputs.createdAt,
+        userId: factoryProductionOutputs.userId,
+        stationName: factoryStations.name,
+      })
+        .from(factoryProductionOutputs)
+        .leftJoin(factoryStations, eq(factoryProductionOutputs.stationId, factoryStations.id))
+        .where(whereClause)
+        .orderBy(desc(factoryProductionOutputs.createdAt))
+        .limit(50);
+      res.json(outputs);
+    } catch (error: unknown) {
+      console.error("Error fetching pending QC outputs:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Bekleyen QC çıktıları alınamadı" });
+    }
+  });
+
+  router.post('/api/factory/qc/inspections', isAuthenticated, async (req, res) => {
+    try {
+      const { productionOutputId, decision, visualInspection, tasteTest, textureCheck, weightCheck, temperatureCheck, packagingIntegrity, allergenCheck, haccpCompliance, notes, correctiveAction } = req.body;
+      const user = req.user;
+
+      if (!productionOutputId || !decision) {
+        return res.status(400).json({ message: "productionOutputId ve decision zorunludur" });
+      }
+
+      const [output] = await db.select().from(factoryProductionOutputs)
+        .where(eq(factoryProductionOutputs.id, productionOutputId));
+      if (!output) {
+        return res.status(404).json({ message: "Üretim çıktısı bulunamadı" });
+      }
+
+      const [check] = await db.insert(factoryQualityChecks).values({
+        productionOutputId,
+        inspectorId: user.id,
+        producerId: output.userId || user.id,
+        stationId: output.stationId,
+        decision,
+        visualInspection: visualInspection || null,
+        tasteTest: tasteTest || null,
+        textureCheck: textureCheck || null,
+        weightCheck: weightCheck || null,
+        temperatureCheck: temperatureCheck || null,
+        packagingIntegrity: packagingIntegrity || null,
+        allergenCheck: allergenCheck ?? false,
+        haccpCompliance: haccpCompliance ?? true,
+        notes: notes || null,
+        correctiveAction: correctiveAction || null,
+        inspectorNotes: notes || null,
+      }).returning();
+
+      await db.update(factoryProductionOutputs)
+        .set({ qualityStatus: decision === 'approved' ? 'approved' : decision === 'rejected' ? 'rejected' : 'pending_engineer' })
+        .where(eq(factoryProductionOutputs.id, productionOutputId));
+
+      res.json({ success: true, check });
+    } catch (error: unknown) {
+      console.error("Error creating QC inspection:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Kalite kontrol kaydı oluşturulamadı" });
+    }
+  });
+
 export default router;
 
 // Seed functions — called once on startup

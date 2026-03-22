@@ -65,6 +65,7 @@ import {
   Repeat,
   ClipboardCheck,
   ShieldAlert,
+  XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
@@ -85,7 +86,7 @@ interface GuidanceResponse {
   grouped: { critical: GuidanceItem[]; high: GuidanceItem[]; medium: GuidanceItem[]; low: GuidanceItem[] };
 }
 
-type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'log-production' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break';
+type KioskStep = 'device-password' | 'enter-credentials' | 'select-user' | 'enter-pin' | 'worker-home' | 'select-station' | 'working' | 'stop-options' | 'log-production' | 'production-entry' | 'end-shift-summary' | 'fault-report' | 'on-break' | 'qc-pending' | 'qc-inspect' | 'qc-result';
 type BreakReason = 'mola' | 'ozel_ihtiyac';
 type KioskPhase = 'hazirlik' | 'uretim' | 'temizlik' | 'tamamlandi';
 const PHASE_ORDER: KioskPhase[] = ['hazirlik', 'uretim', 'temizlik', 'tamamlandi'];
@@ -218,6 +219,21 @@ export default function FactoryKiosk() {
   const [currentBreakLogId, setCurrentBreakLogId] = useState<number | null>(null);
   const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
 
+  const [qcMode, setQcMode] = useState(false);
+  const [selectedQcOutput, setSelectedQcOutput] = useState<any>(null);
+  const [qcDecision, setQcDecision] = useState<'approved' | 'rejected' | 'pending_engineer' | null>(null);
+  const [qcNotes, setQcNotes] = useState('');
+  const [qcChecks, setQcChecks] = useState({
+    visualInspection: '' as string,
+    tasteTest: '' as string,
+    textureCheck: '' as string,
+    weightCheck: '' as string,
+    temperatureCheck: '' as string,
+    packagingIntegrity: '' as string,
+    allergenCheck: false,
+    haccpCompliance: true,
+  });
+
   const inactivityRef = useRef<NodeJS.Timeout | null>(null);
   const INACTIVITY_MS = 30000;
   const AUTO_RETURN_STEPS: KioskStep[] = ['worker-home', 'end-shift-summary'];
@@ -307,6 +323,32 @@ export default function FactoryKiosk() {
     });
   }, [guidanceData]);
 
+  const { data: pendingQcOutputs = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory/qc/pending-outputs'],
+    queryFn: () => kioskFetchJson<any[]>('/api/factory/qc/pending-outputs', []),
+    enabled: step === 'qc-pending',
+    refetchInterval: 10000,
+  });
+
+  const qcInspectionMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await kioskFetch('/api/factory/qc/inspections', 'POST', data);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Kalite kontrol kaydı oluşturulamadı');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Kalite Kontrol Tamamlandı", description: "Denetim kaydedildi" });
+      setStep('qc-result');
+      queryClient.invalidateQueries({ queryKey: ['/api/factory/qc/pending-outputs'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
   const { data: collaborativeScores } = useQuery<any>({
     queryKey: ['/api/factory/collaborative-scores', currentStationInfo?.id],
     queryFn: () => {
@@ -387,7 +429,11 @@ export default function FactoryKiosk() {
       }
       const userData: StaffMember = { id: data.user.id, firstName: data.user.firstName, lastName: data.user.lastName, avatarUrl: data.user.avatarUrl, role: data.user.role };
       setSelectedUser(userData);
-      autoStartShift(userData);
+      if (qcMode) {
+        setStep('qc-pending');
+      } else {
+        autoStartShift(userData);
+      }
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
@@ -399,10 +445,14 @@ export default function FactoryKiosk() {
     if (pinInput.length >= 4) return;
     const newPin = pinInput + digit;
     setPinInput(newPin);
-    if (newPin.length === 4 && selectedUser?.username) {
-      loginByUsernameMutation.mutate({ username: selectedUser.username, pin: newPin });
+    if (newPin.length === 4) {
+      if (qcMode && !selectedUser && usernameInput.trim()) {
+        loginByUsernameMutation.mutate({ username: usernameInput.trim(), pin: newPin });
+      } else if (selectedUser?.username) {
+        loginByUsernameMutation.mutate({ username: selectedUser.username, pin: newPin });
+      }
     }
-  }, [pinInput, selectedUser, loginByUsernameMutation]);
+  }, [pinInput, selectedUser, loginByUsernameMutation, qcMode, usernameInput]);
 
   const assignStationMutation = useMutation({
     mutationFn: async (data: { sessionId: number; stationId: number }) => {
@@ -756,6 +806,20 @@ export default function FactoryKiosk() {
     setBreakStartTime(null);
     setBreakElapsed(0);
     setCurrentBreakLogId(null);
+    setQcMode(false);
+    setSelectedQcOutput(null);
+    setQcDecision(null);
+    setQcNotes('');
+    setQcChecks({
+      visualInspection: '',
+      tasteTest: '',
+      textureCheck: '',
+      weightCheck: '',
+      temperatureCheck: '',
+      packagingIntegrity: '',
+      allergenCheck: false,
+      haccpCompliance: true,
+    });
   };
 
   const handleKioskExit = async () => {
@@ -1090,6 +1154,23 @@ export default function FactoryKiosk() {
                   })}
                 </div>
 
+                <button
+                  className="w-full mt-3 p-3 bg-cyan-600/20 border border-cyan-500/30 rounded-lg text-center active:scale-95 transition-all"
+                  onClick={() => {
+                    setQcMode(true);
+                    setStep('enter-pin');
+                    setSelectedUser(null);
+                    setPinInput('');
+                  }}
+                  data-testid="button-qc-mode"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <ClipboardCheck className="h-5 w-5 text-cyan-400" />
+                    <span className="font-bold text-sm text-cyan-300">Kalite Kontrol Modu</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">QC sorumlusu girişi</p>
+                </button>
+
                 <div className="mt-3 p-3 bg-slate-700/50 rounded-lg" data-testid="kiosk-guidance-widget">
                   <div className="flex items-center gap-2 mb-2">
                     <ShieldAlert className="h-4 w-4 text-amber-400" />
@@ -1152,13 +1233,15 @@ export default function FactoryKiosk() {
             </div>
           )}
 
-          {step === 'enter-pin' && selectedUser && (
+          {step === 'enter-pin' && (selectedUser || qcMode) && (
             <div className="flex flex-col items-center justify-center py-8 px-6">
               <button
                 className="absolute top-20 left-10 text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1"
                 onClick={() => {
                   setSelectedUser(null);
                   setPinInput('');
+                  setUsernameInput('');
+                  if (qcMode) setQcMode(false);
                   setStep('select-user');
                 }}
                 data-testid="button-back-to-select-user"
@@ -1167,13 +1250,37 @@ export default function FactoryKiosk() {
                 Geri
               </button>
 
-              <div className="w-14 h-14 rounded-full bg-amber-600/20 flex items-center justify-center mb-3">
-                <span className="text-xl font-bold text-amber-400">
-                  {selectedUser.firstName?.[0]}{selectedUser.lastName?.[0]}
-                </span>
-              </div>
-              <h2 className="text-lg font-bold text-slate-100">{selectedUser.firstName} {selectedUser.lastName}</h2>
-              <p className="text-sm text-slate-400 mb-6">PIN kodunuzu girin</p>
+              {qcMode && (
+                <Badge className="bg-cyan-600 mb-3" data-testid="badge-qc-mode">
+                  <ClipboardCheck className="h-3 w-3 mr-1" /> Kalite Kontrol Modu
+                </Badge>
+              )}
+
+              {selectedUser ? (
+                <>
+                  <div className={cn("w-14 h-14 rounded-full flex items-center justify-center mb-3", qcMode ? "bg-cyan-600/20" : "bg-amber-600/20")}>
+                    <span className={cn("text-xl font-bold", qcMode ? "text-cyan-400" : "text-amber-400")}>
+                      {selectedUser.firstName?.[0]}{selectedUser.lastName?.[0]}
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-100">{selectedUser.firstName} {selectedUser.lastName}</h2>
+                </>
+              ) : qcMode ? (
+                <div className="w-14 h-14 rounded-full bg-cyan-600/20 flex items-center justify-center mb-3">
+                  <ClipboardCheck className="h-7 w-7 text-cyan-400" />
+                </div>
+              ) : null}
+              <p className="text-sm text-slate-400 mb-2">{qcMode && !selectedUser ? 'Kullanıcı adınızı ve PIN kodunuzu girin' : 'PIN kodunuzu girin'}</p>
+
+              {qcMode && !selectedUser && (
+                <Input
+                  placeholder="Kullanıcı adı"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  className="w-56 mb-4 bg-slate-700 border-slate-600 text-slate-100"
+                  data-testid="input-qc-username"
+                />
+              )}
 
               <div className="flex gap-3 mb-6">
                 {[0, 1, 2, 3].map(i => (
@@ -2065,6 +2172,237 @@ export default function FactoryKiosk() {
                     {endShiftMutation.isPending ? "Kaydediliyor..." : "Vardiyayı Sonlandır"}
                   </Button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {step === 'qc-pending' && selectedUser && (
+            <div className="space-y-4" data-testid="qc-pending-screen">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-6 w-6 text-cyan-400" />
+                  <h2 className="text-xl font-bold text-slate-100">Kalite Kontrol</h2>
+                  <Badge className="bg-cyan-600" data-testid="badge-qc-pending-count">{pendingQcOutputs.length} bekleyen</Badge>
+                </div>
+                <Button variant="ghost" size="sm" onClick={resetWorker} data-testid="button-qc-exit">
+                  <ArrowRight className="h-4 w-4 rotate-180 mr-1" /> Çıkış
+                </Button>
+              </div>
+
+              <p className="text-sm text-slate-400">Merhaba {selectedUser.firstName}, denetlenecek üretim çıktılarını seçin.</p>
+
+              {pendingQcOutputs.length === 0 ? (
+                <Card className="bg-slate-800 border-slate-700">
+                  <CardContent className="py-12 text-center">
+                    <Check className="h-12 w-12 text-green-400 mx-auto mb-3" />
+                    <p className="text-lg text-slate-300">Bekleyen denetim yok</p>
+                    <p className="text-sm text-slate-500 mt-1">Tüm üretim çıktıları kontrol edildi</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-3 max-h-[60vh] overflow-y-auto">
+                  {pendingQcOutputs.map((output: any) => (
+                    <Card
+                      key={output.id}
+                      className="bg-slate-800 border-slate-700 cursor-pointer hover-elevate active-elevate-2"
+                      onClick={() => {
+                        setSelectedQcOutput(output);
+                        setQcDecision(null);
+                        setQcNotes('');
+                        setQcChecks({
+                          visualInspection: '',
+                          tasteTest: '',
+                          textureCheck: '',
+                          weightCheck: '',
+                          temperatureCheck: '',
+                          packagingIntegrity: '',
+                          allergenCheck: false,
+                          haccpCompliance: true,
+                        });
+                        setStep('qc-inspect');
+                      }}
+                      data-testid={`card-qc-output-${output.id}`}
+                    >
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div>
+                            <p className="font-semibold text-slate-200">Çıktı #{output.id}</p>
+                            <p className="text-xs text-slate-400">{output.stationName || `İstasyon #${output.stationId}`}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-mono text-slate-300">{output.quantity} adet</p>
+                            <p className="text-[10px] text-slate-500">
+                              {output.createdAt ? new Date(output.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 'qc-inspect' && selectedQcOutput && (
+            <div className="space-y-4" data-testid="qc-inspect-screen">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-cyan-400" />
+                  Denetim: Çıktı #{selectedQcOutput.id}
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => setStep('qc-pending')} data-testid="button-qc-back">
+                  <ArrowRight className="h-4 w-4 rotate-180 mr-1" /> Geri
+                </Button>
+              </div>
+
+              <Card className="bg-slate-800 border-slate-700">
+                <CardContent className="py-3 px-4 space-y-1">
+                  <div className="flex justify-between gap-2 flex-wrap text-sm">
+                    <span className="text-slate-400">İstasyon:</span>
+                    <span className="text-slate-200 font-medium">{selectedQcOutput.stationName || `#${selectedQcOutput.stationId}`}</span>
+                  </div>
+                  <div className="flex justify-between gap-2 flex-wrap text-sm">
+                    <span className="text-slate-400">Miktar:</span>
+                    <span className="text-slate-200 font-medium">{selectedQcOutput.quantity} adet</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-3 max-h-[45vh] overflow-y-auto">
+                <Label className="text-slate-300 text-sm font-semibold">Kontrol Maddeleri</Label>
+
+                {[
+                  { key: 'visualInspection', label: 'Görsel Kontrol', placeholder: 'Renk, şekil, boyut...' },
+                  { key: 'tasteTest', label: 'Tat Testi', placeholder: 'Tat, lezzet değerlendirmesi...' },
+                  { key: 'textureCheck', label: 'Doku Kontrolü', placeholder: 'Kıvam, pürüzsüzlük...' },
+                  { key: 'weightCheck', label: 'Ağırlık Kontrolü', placeholder: 'Gramaj, tolerans...' },
+                  { key: 'temperatureCheck', label: 'Sıcaklık Kontrolü', placeholder: 'Derece, uygunluk...' },
+                  { key: 'packagingIntegrity', label: 'Ambalaj Bütünlüğü', placeholder: 'Sızdırmazlık, etiket...' },
+                ].map(item => (
+                  <div key={item.key} className="space-y-1">
+                    <Label className="text-xs text-slate-400">{item.label}</Label>
+                    <Input
+                      placeholder={item.placeholder}
+                      value={(qcChecks as any)[item.key]}
+                      onChange={(e) => setQcChecks(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      className="bg-slate-700 border-slate-600 text-slate-100 h-9"
+                      data-testid={`input-qc-${item.key}`}
+                    />
+                  </div>
+                ))}
+
+                <div className="flex items-center gap-4 flex-wrap py-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={qcChecks.allergenCheck}
+                      onChange={(e) => setQcChecks(prev => ({ ...prev, allergenCheck: e.target.checked }))}
+                      className="rounded border-slate-600"
+                      data-testid="checkbox-qc-allergen"
+                    />
+                    Alerjen Kontrol
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={qcChecks.haccpCompliance}
+                      onChange={(e) => setQcChecks(prev => ({ ...prev, haccpCompliance: e.target.checked }))}
+                      className="rounded border-slate-600"
+                      data-testid="checkbox-qc-haccp"
+                    />
+                    HACCP Uyum
+                  </label>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-400">Notlar</Label>
+                  <Textarea
+                    placeholder="Ek notlar..."
+                    value={qcNotes}
+                    onChange={(e) => setQcNotes(e.target.value)}
+                    className="bg-slate-700 border-slate-600 text-slate-100"
+                    rows={2}
+                    data-testid="input-qc-notes"
+                  />
+                </div>
+              </div>
+
+              <Separator className="bg-slate-700" />
+
+              <Label className="text-slate-300 text-sm font-semibold">Karar</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={qcDecision === 'approved' ? 'default' : 'outline'}
+                  className={cn("h-14 text-sm", qcDecision === 'approved' && "bg-green-600 border-green-600")}
+                  onClick={() => setQcDecision('approved')}
+                  data-testid="button-qc-approved"
+                >
+                  <Check className="h-5 w-5 mr-1" />
+                  Onay
+                </Button>
+                <Button
+                  variant={qcDecision === 'rejected' ? 'default' : 'outline'}
+                  className={cn("h-14 text-sm", qcDecision === 'rejected' && "bg-red-600 border-red-600")}
+                  onClick={() => setQcDecision('rejected')}
+                  data-testid="button-qc-rejected"
+                >
+                  <XCircle className="h-5 w-5 mr-1" />
+                  Red
+                </Button>
+                <Button
+                  variant={qcDecision === 'pending_engineer' ? 'default' : 'outline'}
+                  className={cn("h-14 text-sm", qcDecision === 'pending_engineer' && "bg-amber-600 border-amber-600")}
+                  onClick={() => setQcDecision('pending_engineer')}
+                  data-testid="button-qc-pending-engineer"
+                >
+                  <AlertTriangle className="h-5 w-5 mr-1" />
+                  Mühendise
+                </Button>
+              </div>
+
+              <Button
+                className="w-full mt-2 bg-cyan-600"
+                disabled={!qcDecision || qcInspectionMutation.isPending}
+                onClick={() => {
+                  qcInspectionMutation.mutate({
+                    productionOutputId: selectedQcOutput.id,
+                    decision: qcDecision,
+                    ...qcChecks,
+                    notes: qcNotes,
+                    correctiveAction: qcDecision === 'rejected' ? qcNotes : null,
+                  });
+                }}
+                data-testid="button-qc-submit"
+              >
+                {qcInspectionMutation.isPending ? 'Kaydediliyor...' : 'Denetimi Kaydet'}
+              </Button>
+            </div>
+          )}
+
+          {step === 'qc-result' && (
+            <div className="space-y-6 text-center py-8" data-testid="qc-result-screen">
+              <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mx-auto",
+                qcDecision === 'approved' ? 'bg-green-600' : qcDecision === 'rejected' ? 'bg-red-600' : 'bg-amber-600'
+              )}>
+                {qcDecision === 'approved' ? <Check className="h-10 w-10 text-white" /> :
+                 qcDecision === 'rejected' ? <XCircle className="h-10 w-10 text-white" /> :
+                 <AlertTriangle className="h-10 w-10 text-white" />}
+              </div>
+              <h2 className="text-2xl font-bold text-slate-100">
+                {qcDecision === 'approved' ? 'Onaylandı' : qcDecision === 'rejected' ? 'Reddedildi' : 'Mühendise Yönlendirildi'}
+              </h2>
+              <p className="text-sm text-slate-400">
+                Çıktı #{selectedQcOutput?.id} denetimi başarıyla kaydedildi.
+              </p>
+
+              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                <Button className="bg-cyan-600" onClick={() => setStep('qc-pending')} data-testid="button-qc-continue">
+                  Sonraki Denetim
+                </Button>
+                <Button variant="outline" onClick={resetWorker} data-testid="button-qc-finish">
+                  Çıkış
+                </Button>
               </div>
             </div>
           )}

@@ -25,12 +25,14 @@ const router = Router();
       let tickets: any[];
       
       if (isHQRole(user.role) || user.role === 'admin') {
-        // Admin sees all, HQ users see their assigned categories or all if no assignments
         if (user.role === 'admin') {
           tickets = await storage.getHQSupportTickets(undefined, status, category);
         } else {
-          tickets = await storage.getHQSupportTicketsByUser(user.id);
-          // If user has no assigned categories, show all tickets (for triage)
+          try {
+            tickets = await storage.getHQSupportTicketsByUser(user.id);
+          } catch {
+            tickets = [];
+          }
           if (tickets.length === 0) {
             tickets = await storage.getHQSupportTickets(undefined, status, category);
           } else if (status) {

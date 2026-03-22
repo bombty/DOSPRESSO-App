@@ -173,6 +173,9 @@ const router = Router();
   router.get('/api/certificates/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Geçersiz sertifika ID" });
+      }
       const [cert] = await db.select().from(issuedCertificates)
         .where(and(eq(issuedCertificates.id, id), eq(issuedCertificates.isActive, true)));
       if (!cert) {
