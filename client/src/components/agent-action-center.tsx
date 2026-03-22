@@ -84,13 +84,32 @@ const SEVERITY_CONFIG: Record<string, { label: string; variant: "default" | "sec
 
 const INVALID_DEEP_LINKS = ["/sube-ozet", "/sube/employee-dashboard"];
 
+const LEGACY_DEEP_LINK_MAP: Record<string, string> = {
+  "/admin?tab=sla": "/iletisim-merkezi",
+  "/bordro?tab=parametreler": "/bordrom",
+  "/crm?tab=feedback": "/misafir-memnuniyeti",
+  "/satinalma?tab=tedarikciler": "/satinalma/tedarikci",
+  "/satinalma?tab=siparisler": "/satinalma/siparis",
+  "/fabrika?tab=hedefler": "/fabrika/uretim-planlama",
+  "/akademi-hq?tab=training": "/akademi-hq",
+  "/akademi-hq?tab=certs": "/akademi-hq?tab=certs",
+};
+
+function normalizeLegacyDeepLink(link: string): string {
+  if (LEGACY_DEEP_LINK_MAP[link]) return LEGACY_DEEP_LINK_MAP[link];
+  const adminTabMatch = link.match(/^\/admin\?tab=users/);
+  if (adminTabMatch) return "/admin/kullanicilar";
+  return link;
+}
+
 function getActionDeepLink(action: AgentAction): string | null {
   const meta = action.metadata || {};
   if (meta.targetUserId && (meta.insightType === "score_dropping" || meta.insightType === "low_performance")) {
     return `/personel-detay/${meta.targetUserId}`;
   }
   if (action.deepLink && !INVALID_DEEP_LINKS.includes(action.deepLink)) {
-    const fixed = action.deepLink.replace(/^\/personel\/([^/]+)$/, "/personel-detay/$1");
+    let fixed = action.deepLink.replace(/^\/personel\/([^/]+)$/, "/personel-detay/$1");
+    fixed = normalizeLegacyDeepLink(fixed);
     return fixed;
   }
   return null;

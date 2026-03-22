@@ -18,7 +18,15 @@ import { SertifikaTab } from "./SertifikaTab";
 export default function AcademyHQ() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("training");
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    const VALID_TABS = ["training", "quiz", "webinar", "stats", "branch", "exams", "certs"];
+    if (tabParam && VALID_TABS.includes(tabParam)) {
+      return tabParam;
+    }
+    return "training";
+  });
 
   const canManageTraining = user && hasPermission(user.role as UserRoleType, 'training', 'edit');
 

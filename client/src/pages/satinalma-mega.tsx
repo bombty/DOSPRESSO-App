@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,25 @@ export default function SatinalmaMega() {
     });
   }, [user?.role]);
   
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [, params] = useRoute("/satinalma/:tab?");
+  const tabFromUrl = params?.tab || null;
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (tabFromUrl) {
+      const matchingTab = tabs.find(t => t.id === tabFromUrl);
+      if (matchingTab) return matchingTab.id;
+    }
+    return "dashboard";
+  });
+
+  useEffect(() => {
+    if (tabFromUrl) {
+      const matchingTab = tabs.find(t => t.id === tabFromUrl);
+      if (matchingTab && matchingTab.id !== activeTab) {
+        setActiveTab(matchingTab.id);
+      }
+    }
+  }, [tabFromUrl]);
 
   const renderTabContent = () => {
     switch (activeTab) {
