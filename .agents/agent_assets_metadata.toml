@@ -228,3 +228,9 @@ id = "CF31NbcbQSvsTtNq1EdPE"
 uri = "file://.local/tasks/dobody-deeplink-audit-report.md"
 type = "text"
 title = "Mr. Dobody Deep Link Audit Raporu"
+
+[[outputs]]
+id = "UXb3s2WPdS1oxb8o4jxXP"
+uri = "file://.local/dospresso-kapsamli-audit-raporu-22-mart-2026.md"
+type = "text"
+title = "DOSPRESSO Kapsamlı Sistem Audit Raporu — 22 Mart 2026"
