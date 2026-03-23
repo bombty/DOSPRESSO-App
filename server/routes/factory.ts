@@ -1323,6 +1323,50 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
             totalWaste: (session.totalWaste || 0) + waste,
           })
           .where(eq(factoryShiftSessions.id, sessionId));
+
+        try {
+          const [sessionUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, session.userId)).limit(1);
+          const userName = sessionUser ? `${sessionUser.firstName} ${sessionUser.lastName}` : 'Personel';
+          const pName = productName || 'Ürün';
+
+          const wasteRatio = (produced + waste) > 0 ? waste / (produced + waste) : 0;
+
+          if (wasteRatio > 0.05 && waste > 0) {
+            const alertTargets = await db.select({ id: users.id })
+              .from(users)
+              .where(and(
+                inArray(users.role, ['fabrika_mudur', 'gida_muhendisi']),
+                eq(users.isActive, true)
+              ));
+            for (const t of alertTargets) {
+              await db.insert(notifications).values({
+                userId: t.id,
+                type: 'factory_high_waste_alert',
+                title: 'Yüksek fire uyarısı',
+                message: `${userName} — ${pName}: %${(wasteRatio * 100).toFixed(1)} fire oranı (${waste} ${wasteUnit || 'adet'})`,
+                link: '/fabrika/uretim-planlama',
+                isRead: false,
+              });
+            }
+          } else if (produced > 0) {
+            const fabrikaMudurler = await db.select({ id: users.id })
+              .from(users)
+              .where(and(eq(users.role, 'fabrika_mudur'), eq(users.isActive, true)));
+            for (const m of fabrikaMudurler) {
+              await db.insert(notifications).values({
+                userId: m.id,
+                type: 'factory_production_log',
+                title: 'Yeni üretim kaydı',
+                message: `${userName} — ${pName}: ${produced} ${producedUnit || 'adet'} üretildi${waste > 0 ? `, ${waste} ${wasteUnit || 'adet'} fire` : ''}`,
+                link: '/fabrika/uretim-planlama',
+                isRead: false,
+              });
+            }
+          }
+        } catch (notifErr) {
+          console.error("Production notification error:", notifErr);
+        }
       }
 
       res.json({
@@ -3398,6 +3442,30 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           await db.insert(notifications).values(notifValues);
           notifiedPerson = supervisors.map(s => `${s.firstName} ${s.lastName}`).join(', ');
         }
+      }
+
+      try {
+        const teknikDestek = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(and(
+            inArray(users.role, ['teknik', 'destek']),
+            eq(users.isActive, true)
+          ));
+        if (teknikDestek.length > 0) {
+          await db.insert(notifications).values(teknikDestek.map(t => ({
+            userId: t.id,
+            type: 'factory_fault_report',
+            title: `Fabrika: ${faultTypeLabel}`,
+            message: `${reporterName} — ${stationName}: ${description.substring(0, 120)}`,
+            link: '/fabrika/dashboard',
+            isRead: false,
+          })));
+          if (!notifiedPerson) {
+            notifiedPerson = teknikDestek.map(t => `${t.firstName} ${t.lastName}`).join(', ');
+          }
+        }
+      } catch (teknikErr) {
+        console.error("Teknik fault notification error:", teknikErr);
       }
 
       if (sessionId && effectiveUserId) {
@@ -6917,6 +6985,55 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       await db.update(factoryProductionOutputs)
         .set({ qualityStatus: decision === 'approved' ? 'approved' : decision === 'rejected' ? 'rejected' : 'pending_engineer' })
         .where(eq(factoryProductionOutputs.id, productionOutputId));
+
+      try {
+        const inspectorName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username;
+        const pName = output.productName || 'Ürün';
+        const decisionLabel = decision === 'approved' ? 'Onaylandı' : decision === 'rejected' ? 'Reddedildi' : 'Mühendise yönlendirildi';
+
+        if (output.userId && output.userId !== user.id) {
+          await db.insert(notifications).values({
+            userId: output.userId,
+            type: 'qc_result',
+            title: decision === 'approved' ? 'QC onaylandı' : decision === 'rejected' ? 'QC reddedildi' : 'QC mühendis incelemesine yönlendirildi',
+            message: `${pName} — ${notes || decisionLabel}`,
+            link: '/fabrika/kalite-kontrol',
+            isRead: false,
+          });
+        }
+
+        const fabrikaMudurler = await db.select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.role, 'fabrika_mudur'), eq(users.isActive, true)));
+        for (const m of fabrikaMudurler) {
+          await db.insert(notifications).values({
+            userId: m.id,
+            type: 'qc_result',
+            title: `QC: ${decisionLabel}`,
+            message: `${pName} — Denetçi: ${inspectorName}`,
+            link: '/fabrika/kalite-kontrol',
+            isRead: false,
+          });
+        }
+
+        if (decision === 'pending_engineer') {
+          const gidaMuhendisleri = await db.select({ id: users.id })
+            .from(users)
+            .where(and(eq(users.role, 'gida_muhendisi'), eq(users.isActive, true)));
+          for (const muh of gidaMuhendisleri) {
+            await db.insert(notifications).values({
+              userId: muh.id,
+              type: 'qc_engineer_review',
+              title: 'QC inceleme bekliyor',
+              message: `${pName} — gıda mühendisi onayı gerekiyor`,
+              link: '/fabrika/kalite-kontrol',
+              isRead: false,
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error("QC notification error:", notifErr);
+      }
 
       res.json({ success: true, check });
     } catch (error: unknown) {

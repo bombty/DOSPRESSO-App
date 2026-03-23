@@ -7,6 +7,7 @@ import {
   factoryQualityChecks,
   factoryStationBenchmarks,
   users,
+  notifications,
 } from "@shared/schema";
 import { eq, and, gte, lte, sql, inArray, isNull, isNotNull } from "drizzle-orm";
 
@@ -553,6 +554,47 @@ export async function saveWorkerScores(scores: WorkerScoreResult[]): Promise<num
   return saved;
 }
 
+async function sendLowScoreNotifications(scores: WorkerScoreResult[], periodType: string): Promise<void> {
+  try {
+    const lowScores = scores.filter(s => s.totalScore < 60);
+    if (lowScores.length === 0) return;
+
+    const periodLabel = periodType === 'daily' ? 'Günlük' : 'Haftalık';
+
+    const fabrikaMudurler = await db.select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.role, 'fabrika_mudur'), eq(users.isActive, true)));
+
+    for (const score of lowScores) {
+      const [worker] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, score.userId)).limit(1);
+      const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'Personel';
+
+      await db.insert(notifications).values({
+        userId: score.userId,
+        type: 'factory_low_score',
+        title: 'Performans skoru düşük',
+        message: `${periodLabel} skorunuz: ${score.totalScore.toFixed(1)}/100`,
+        link: '/fabrika/performans',
+        isRead: false,
+      });
+
+      for (const m of fabrikaMudurler) {
+        await db.insert(notifications).values({
+          userId: m.id,
+          type: 'factory_low_score_alert',
+          title: 'Düşük performans uyarısı',
+          message: `${workerName} — ${periodLabel} skor: ${score.totalScore.toFixed(1)}/100`,
+          link: '/fabrika/performans',
+          isRead: false,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[Factory Scoring] Low score notification error:", err);
+  }
+}
+
 export async function calculateAndSaveDailyScores(): Promise<{ calculated: number; saved: number }> {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -564,6 +606,7 @@ export async function calculateAndSaveDailyScores(): Promise<{ calculated: numbe
   const scores = await calculateAllWorkerScores(yesterday, today, "daily");
   const saved = await saveWorkerScores(scores);
 
+  await sendLowScoreNotifications(scores, 'daily');
 
   return { calculated: scores.length, saved };
 }
@@ -579,6 +622,7 @@ export async function calculateAndSaveWeeklyScores(): Promise<{ calculated: numb
   const scores = await calculateAllWorkerScores(weekAgo, today, "weekly");
   const saved = await saveWorkerScores(scores);
 
+  await sendLowScoreNotifications(scores, 'weekly');
 
   return { calculated: scores.length, saved };
 }

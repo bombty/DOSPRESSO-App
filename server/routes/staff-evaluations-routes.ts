@@ -324,6 +324,21 @@ const router = Router();
       };
 
       const [result] = await db.insert(staffEvaluations).values(evalData).returning();
+
+      try {
+        const evaluatorName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username;
+        await storage.createNotification({
+          userId: body.employeeId,
+          type: 'evaluation_result',
+          title: 'Performans değerlendirmesi yapıldı',
+          message: `${evaluatorName} tarafından değerlendirildiniz. Genel skor: ${overallScore.toFixed(0)}/100`,
+          link: '/profilim',
+          isRead: false,
+        });
+      } catch (notifErr) {
+        console.error("Evaluation notification error:", notifErr);
+      }
+
       res.status(201).json(result);
     } catch (error: unknown) {
       console.error("Error creating staff evaluation:", error);

@@ -4982,6 +4982,53 @@ DOSPRESSO İnsan Kaynakları Ekibi`
         [payroll] = await db.insert(monthlyPayrolls).values(payrollData).returning();
       }
 
+      try {
+        const targetName = `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim() || targetUser.username;
+        const [branchInfo] = targetUser.branchId
+          ? await db.select({ name: branches.name }).from(branches).where(eq(branches.id, targetUser.branchId)).limit(1)
+          : [null];
+        const branchName = branchInfo?.name || '';
+
+        const muhasebeKullanicilari = await db.select({ id: users.id })
+          .from(users)
+          .where(and(
+            inArray(users.role, ['muhasebe', 'muhasebe_ik']),
+            eq(users.isActive, true)
+          ));
+
+        for (const muh of muhasebeKullanicilari) {
+          if (muh.id !== user.id) {
+            await storage.createNotification({
+              userId: muh.id,
+              type: 'payroll_calculated',
+              title: 'Bordro hesaplandı',
+              message: `${targetName}${branchName ? ` (${branchName})` : ''} — ${month}/${year} bordrosu hesaplandı`,
+              link: '/bordrom',
+              isRead: false,
+            });
+          }
+        }
+
+        const ustYonetim = await db.select({ id: users.id })
+          .from(users)
+          .where(and(
+            inArray(users.role, ['ceo', 'cgo']),
+            eq(users.isActive, true)
+          ));
+        for (const y of ustYonetim) {
+          await storage.createNotification({
+            userId: y.id,
+            type: 'payroll_calculated',
+            title: 'Bordro onay bekliyor',
+            message: `${targetName}${branchName ? ` (${branchName})` : ''} — ${month}/${year} bordrosu hazır`,
+            link: '/bordrom',
+            isRead: false,
+          });
+        }
+      } catch (notifErr) {
+        console.error("Payroll notification error:", notifErr);
+      }
+
       res.json(payroll);
     } catch (error: unknown) {
       console.error("Calculate payroll error:", error);

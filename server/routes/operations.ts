@@ -1087,31 +1087,75 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         }
       }
 
-      // CRITICAL FAULT NOTIFICATION: Auto-notify HQ Tech team if critical priority
-      if (fault.priority === "kritik") {
-        try {
-          const hqTechUsers = await storage.getUsersByRole("teknik");
-          const branch = faultBranchId ? await storage.getBranch(faultBranchId) : null;
-          const equipment = fault.equipmentId ? await storage.getEquipmentById(fault.equipmentId) : null;
+      // FAULT NOTIFICATION: Notify relevant roles based on priority and location
+      try {
+        const branch = faultBranchId ? await storage.getBranch(faultBranchId) : null;
+        const equipmentItem = fault.equipmentId ? await storage.getEquipmentById(fault.equipmentId) : null;
+        const faultDesc = fault.description || 'Arıza bildirildi';
+        const equipmentLabel = equipmentItem?.equipmentType || 'Ekipman';
+        const branchLabel = branch?.name || 'Şube';
+        const isCritical = fault.priority === "kritik";
+        const notifType = isCritical ? "critical_fault" : "equipment_fault";
+        const notifTitle = isCritical ? "KRİTİK ARIZA UYARISI" : "Yeni arıza bildirimi";
 
-          // Send in-app notifications to all HQ tech team members
-          for (const techUser of hqTechUsers) {
+        const hqTechUsers = await storage.getUsersByRole("teknik");
+        for (const techUser of hqTechUsers) {
+          await storage.createNotification({
+            userId: techUser.id,
+            type: notifType,
+            title: notifTitle,
+            message: `${branchLabel} — ${equipmentLabel}: ${faultDesc.substring(0, 120)}`,
+            link: `/ariza-yonetim`,
+            isRead: false,
+            branchId: faultBranchId,
+          });
+        }
+
+        const destekUsers = await storage.getUsersByRole("destek");
+        for (const destekUser of destekUsers) {
+          await storage.createNotification({
+            userId: destekUser.id,
+            type: notifType,
+            title: notifTitle,
+            message: `${branchLabel} — ${equipmentLabel}: ${faultDesc.substring(0, 120)}`,
+            link: `/ariza-yonetim`,
+            isRead: false,
+            branchId: faultBranchId,
+          });
+        }
+
+        if (faultBranchId) {
+          const subeMudurleri = await storage.getUsersByBranchAndRole(faultBranchId, 'mudur');
+          for (const mudur of subeMudurleri) {
             await storage.createNotification({
-              userId: techUser.id,
-              type: "critical_fault",
-              title: "KRİTİK ARIZA UYARISI",
-              message: `${branch?.name || "Şube"} - ${equipment?.equipmentType || "Ekipman"} için kritik arıza rapor edildi (#${fault.id})`,
+              userId: mudur.id,
+              type: notifType,
+              title: 'Ekipman arızası',
+              message: `${equipmentLabel}: ${faultDesc.substring(0, 120)}`,
               link: `/ariza-yonetim`,
               isRead: false,
               branchId: faultBranchId,
             });
           }
-
-          // Log for monitoring
-        } catch (notificationError) {
-          console.error("Error sending critical fault notifications:", notificationError);
-          // Don't fail the fault creation if notifications fail
         }
+
+        const isFabrika = faultBranchId ? (branch?.name || '').toLowerCase().includes('fabrika') : false;
+        if (isFabrika) {
+          const fabrikaMudurler = await storage.getUsersByRole('fabrika_mudur');
+          for (const fm of fabrikaMudurler) {
+            await storage.createNotification({
+              userId: fm.id,
+              type: notifType,
+              title: 'Fabrika ekipman arızası',
+              message: `${equipmentLabel}: ${faultDesc.substring(0, 120)}`,
+              link: `/ariza-yonetim`,
+              isRead: false,
+              branchId: faultBranchId,
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error("Error sending fault notifications:", notificationError);
       }
       
       // Invalidate equipment cache as health scores may change

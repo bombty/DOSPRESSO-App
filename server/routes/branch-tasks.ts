@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { db } from "../db";
-import { sql, eq, and, desc, asc } from "drizzle-orm";
+import { sql, eq, and, desc, asc, inArray } from "drizzle-orm";
 import { isAuthenticated, isKioskAuthenticated } from "../localAuth";
 import { requireModuleEnabled } from "../services/module-flag-service";
 import { calculateBranchTaskScore } from "../services/branch-health-scoring";
-import { branchRecurringTasks, branchTaskInstances, branchTaskCategories, branchRecurringTaskOverrides, isHQRole } from "@shared/schema";
+import { branchRecurringTasks, branchTaskInstances, branchTaskCategories, branchRecurringTaskOverrides, isHQRole, users, notifications, branches } from "@shared/schema";
 
 const router = Router();
 
@@ -354,6 +354,52 @@ router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuar
       RETURNING *
     `);
 
+    try {
+      const claimerName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username;
+      const taskTitle = task.title || 'Görev';
+      const branchId = task.branch_id;
+
+      const subeYoneticileri = await db.select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.branchId, branchId),
+          eq(users.isActive, true),
+          inArray(users.role, ['supervisor', 'mudur'])
+        ));
+
+      const [branchInfo] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
+      const branchName = branchInfo?.name || 'Şube';
+
+      for (const y of subeYoneticileri) {
+        if (y.id !== user.id) {
+          await db.insert(notifications).values({
+            userId: y.id,
+            type: 'branch_task_claimed',
+            title: 'Görev sahiplenildi',
+            message: `${claimerName} "${taskTitle}" görevini üstlendi`,
+            link: `/sube-gorevler`,
+            isRead: false,
+          });
+        }
+      }
+
+      const coaches = await db.select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.role, 'coach'), eq(users.isActive, true)));
+      for (const c of coaches) {
+        await db.insert(notifications).values({
+          userId: c.id,
+          type: 'branch_task_claimed',
+          title: `${branchName}: Görev sahiplenildi`,
+          message: `${claimerName} "${taskTitle}" görevini üstlendi`,
+          link: `/sube-gorevler`,
+          isRead: false,
+        });
+      }
+    } catch (notifErr) {
+      console.error("Branch task claim notification error:", notifErr);
+    }
+
     res.json(result.rows[0]);
   } catch (error: unknown) {
     res.status(500).json({ message: "Görev sahiplenilemedi" });
@@ -406,6 +452,52 @@ router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleG
       WHERE id = ${id}
       RETURNING *
     `);
+
+    try {
+      const completerName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username;
+      const taskTitle = task.title || 'Görev';
+      const branchId = task.branch_id;
+
+      const [branchInfo] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
+      const branchName = branchInfo?.name || 'Şube';
+
+      const subeYoneticileri = await db.select({ id: users.id })
+        .from(users)
+        .where(and(
+          eq(users.branchId, branchId),
+          eq(users.isActive, true),
+          inArray(users.role, ['supervisor', 'mudur'])
+        ));
+
+      for (const y of subeYoneticileri) {
+        if (y.id !== user.id) {
+          await db.insert(notifications).values({
+            userId: y.id,
+            type: 'branch_task_completed',
+            title: 'Görev tamamlandı',
+            message: `${completerName} "${taskTitle}" görevini tamamladı`,
+            link: `/sube-gorevler`,
+            isRead: false,
+          });
+        }
+      }
+
+      const coaches = await db.select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.role, 'coach'), eq(users.isActive, true)));
+      for (const c of coaches) {
+        await db.insert(notifications).values({
+          userId: c.id,
+          type: 'branch_task_completed',
+          title: `${branchName}: Görev tamamlandı`,
+          message: `${completerName} "${taskTitle}" görevini tamamladı`,
+          link: `/sube-gorevler`,
+          isRead: false,
+        });
+      }
+    } catch (notifErr) {
+      console.error("Branch task complete notification error:", notifErr);
+    }
 
     res.json(result.rows[0]);
   } catch (error: unknown) {
