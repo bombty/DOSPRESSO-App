@@ -70,6 +70,15 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     group: "operations",
     items: [
       {
+        id: "notifications",
+        titleTr: "Bildirimler",
+        path: "/bildirimler",
+        icon: "Bell",
+        moduleKey: "notifications",
+        scope: "both",
+        badge: "notifications",
+      },
+      {
         id: "tasks-list",
         titleTr: "Görevler",
         path: "/gorevler",
@@ -491,35 +500,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // GROUP: SETTINGS — Sistem ayarları, iletişim, yönetim
   // ========================================
 
-  // 8. İletişim (AI Asistan → Eğitim, Agent Merkezi → Yönetim)
-  {
-    id: "communication",
-    titleTr: "İletişim",
-    icon: "MessageSquare",
-    scope: "both",
-    group: "settings",
-    items: [
-      {
-        id: "notifications",
-        titleTr: "Bildirimler",
-        path: "/bildirimler",
-        icon: "Bell",
-        moduleKey: "notifications",
-        scope: "both",
-        badge: "notifications",
-      },
-      {
-        id: "hq-support",
-        titleTr: "Destek Merkezi",
-        path: "/hq-destek",
-        icon: "Headphones",
-        moduleKey: "support",
-        scope: "both",
-      },
-    ],
-  },
-
-  // 9. Yönetim (Admin + Branches + Projects merged)
+  // 8. Yönetim (Admin + Branches + Projects merged)
   {
     id: "management",
     titleTr: "Yönetim",
@@ -559,6 +540,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "support",
         scope: "hq",
         badge: "agent",
+      },
+      {
+        id: "hq-support",
+        titleTr: "Destek Merkezi",
+        path: "/hq-destek",
+        icon: "Headphones",
+        moduleKey: "support",
+        scope: "both",
       },
     ],
   },
