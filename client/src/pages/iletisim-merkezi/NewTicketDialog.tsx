@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DEPARTMENTS, PRIORITIES, isHQRole } from "./categoryConfig";
 import { apiRequest } from "@/lib/queryClient";
-import { Check, X, Paperclip, Loader2 } from "lucide-react";
+import { Check, X, Paperclip, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 interface NewTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  channel?: "franchise" | "misafir";
 }
 
 interface EquipmentItem {
@@ -30,14 +31,47 @@ interface TicketCreatePayload {
   relatedEquipmentId?: number;
   equipmentDescription?: string;
   attachmentUrls?: string[];
+  channel?: string;
+  ticketType?: string;
+  source?: string;
+  rating?: number;
+  ratingHizmet?: number;
+  ratingTemizlik?: number;
+  ratingUrun?: number;
+  ratingPersonel?: number;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
 }
 
-export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
+function StarRating({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-muted-foreground min-w-[80px]">{label}</span>
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(s)}
+            className="p-0.5"
+            data-testid={`star-${label}-${s}`}
+          >
+            <Star className={cn("h-5 w-5 transition-colors", s <= value ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30")} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function NewTicketDialog({ open, onOpenChange, channel }: NewTicketDialogProps) {
   const qc = useQueryClient();
   const { user } = useAuth();
   const isHQ = isHQRole(user?.role ?? "");
+  const isMisafir = channel === "misafir";
 
-  const [dept, setDept] = useState("");
+  const [dept, setDept] = useState(isMisafir ? "musteri_hizmetleri" : "");
   const [priority, setPriority] = useState("normal");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -47,6 +81,25 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [ratingHizmet, setRatingHizmet] = useState(0);
+  const [ratingTemizlik, setRatingTemizlik] = useState(0);
+  const [ratingUrun, setRatingUrun] = useState(0);
+  const [ratingPersonel, setRatingPersonel] = useState(0);
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [branchId, setBranchId] = useState<number | undefined>(undefined);
+
+  const { data: branchList = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['/api/branches/list'],
+    queryFn: async () => {
+      const res = await fetch('/api/branches/list', { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isMisafir && isHQ,
+  });
 
   const { data: equipmentList = [] } = useQuery<EquipmentItem[]>({
     queryKey: ['/api/equipment', user?.branchId],
@@ -101,7 +154,23 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
           priority,
         };
 
-        if (dept === 'teknik' && !isHQ) {
+        if (isMisafir) {
+          payload.channel = 'misafir';
+          payload.ticketType = 'musteri_geri_bildirim';
+          payload.source = 'manual';
+          if (branchId) payload.relatedEquipmentId = undefined;
+          const avgRating = Math.round(([ratingHizmet, ratingTemizlik, ratingUrun, ratingPersonel].filter(r => r > 0).reduce((a, b) => a + b, 0)) / Math.max(1, [ratingHizmet, ratingTemizlik, ratingUrun, ratingPersonel].filter(r => r > 0).length));
+          if (avgRating > 0) payload.rating = avgRating;
+          if (ratingHizmet > 0) payload.ratingHizmet = ratingHizmet;
+          if (ratingTemizlik > 0) payload.ratingTemizlik = ratingTemizlik;
+          if (ratingUrun > 0) payload.ratingUrun = ratingUrun;
+          if (ratingPersonel > 0) payload.ratingPersonel = ratingPersonel;
+          if (customerName.trim()) payload.customerName = customerName.trim();
+          if (customerEmail.trim()) payload.customerEmail = customerEmail.trim();
+          if (customerPhone.trim()) payload.customerPhone = customerPhone.trim();
+        }
+
+        if (dept === 'teknik' && !isHQ && !isMisafir) {
           if (selectedEquipmentId) {
             payload.relatedEquipmentId = selectedEquipmentId;
           }
@@ -114,7 +183,12 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
           payload.attachmentUrls = photoUrls;
         }
 
-        return apiRequest("POST", "/api/iletisim/tickets", payload);
+        const body = { ...payload };
+        if (isMisafir && branchId) {
+          (body as any).branchId = branchId;
+        }
+
+        return apiRequest("POST", "/api/iletisim/tickets", body);
       } finally {
         setIsUploading(false);
       }
@@ -128,7 +202,7 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
   });
 
   function resetForm() {
-    setDept("");
+    setDept(isMisafir ? "musteri_hizmetleri" : "");
     setPriority("normal");
     setTitle("");
     setDescription("");
@@ -136,51 +210,100 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
     setEquipmentOther("");
     setShowEquipmentOther(false);
     setPhotos([]);
+    setRatingHizmet(0);
+    setRatingTemizlik(0);
+    setRatingUrun(0);
+    setRatingPersonel(0);
+    setCustomerName("");
+    setCustomerEmail("");
+    setCustomerPhone("");
+    setBranchId(undefined);
   }
 
-  const canSubmit = dept && title.trim().length >= 5 && description.trim().length >= 10;
+  const canSubmit = dept && title.trim().length >= 5 && description.trim().length >= 10
+    && (!isMisafir || (isMisafir && (branchId || !isHQ)));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="new-ticket-dialog">
         <DialogHeader>
-          <DialogTitle>Yeni Destek Talebi</DialogTitle>
+          <DialogTitle>{isMisafir ? "Yeni Misafir Geri Bildirimi" : "Yeni Destek Talebi"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <p className="text-xs font-medium mb-2 text-muted-foreground">Departman Secin</p>
-            <div className="grid grid-cols-3 gap-2">
-              {DEPARTMENTS.map(d => {
-                const DIcon = d.icon;
-                return (
-                  <button
-                    key={d.key}
-                    onClick={() => {
-                      setDept(d.key);
-                      if (d.key !== 'teknik') {
-                        setSelectedEquipmentId(null);
-                        setEquipmentOther("");
-                        setShowEquipmentOther(false);
-                      }
-                    }}
-                    className={cn(
-                      "p-3 rounded-md border text-left transition-all",
-                      dept === d.key
-                        ? "border-red-500 bg-red-50 dark:bg-red-950/20"
-                        : "border-border bg-muted/30 hover-elevate"
-                    )}
-                    data-testid={`dept-btn-${d.key}`}
-                  >
-                    <DIcon className="h-4 w-4 mb-1 text-muted-foreground" />
-                    <div className="text-xs font-medium leading-tight">{d.label}</div>
-                  </button>
-                );
-              })}
+          {isMisafir && isHQ && (
+            <div>
+              <p className="text-xs font-medium mb-1.5 text-muted-foreground">Sube</p>
+              <select
+                value={branchId ?? ''}
+                onChange={(e) => setBranchId(e.target.value ? parseInt(e.target.value) : undefined)}
+                className="w-full text-sm px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                data-testid="select-branch-misafir"
+              >
+                <option value="">Sube secin...</option>
+                {branchList.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
             </div>
-          </div>
+          )}
 
-          {selectedDept && (
+          {isMisafir && (
+            <div className="space-y-2 p-3 rounded-md border border-border bg-muted/30" data-testid="rating-section">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Puanlama</p>
+              <StarRating value={ratingHizmet} onChange={setRatingHizmet} label="Hizmet" />
+              <StarRating value={ratingTemizlik} onChange={setRatingTemizlik} label="Temizlik" />
+              <StarRating value={ratingUrun} onChange={setRatingUrun} label="Urun" />
+              <StarRating value={ratingPersonel} onChange={setRatingPersonel} label="Personel" />
+            </div>
+          )}
+
+          {isMisafir && (
+            <div className="space-y-2" data-testid="customer-info-section">
+              <p className="text-xs font-medium text-muted-foreground">Musteri Bilgileri (opsiyonel)</p>
+              <Input placeholder="Ad Soyad" value={customerName} onChange={e => setCustomerName(e.target.value)} className="text-sm" data-testid="input-customer-name" />
+              <div className="grid grid-cols-2 gap-2">
+                <Input placeholder="Telefon" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="text-sm" data-testid="input-customer-phone" />
+                <Input placeholder="E-posta" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} className="text-sm" data-testid="input-customer-email" />
+              </div>
+            </div>
+          )}
+
+          {!isMisafir && (
+            <div>
+              <p className="text-xs font-medium mb-2 text-muted-foreground">Departman Secin</p>
+              <div className="grid grid-cols-3 gap-2">
+                {DEPARTMENTS.map(d => {
+                  const DIcon = d.icon;
+                  return (
+                    <button
+                      key={d.key}
+                      onClick={() => {
+                        setDept(d.key);
+                        if (d.key !== 'teknik') {
+                          setSelectedEquipmentId(null);
+                          setEquipmentOther("");
+                          setShowEquipmentOther(false);
+                        }
+                      }}
+                      className={cn(
+                        "p-3 rounded-md border text-left transition-all",
+                        dept === d.key
+                          ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+                          : "border-border bg-muted/30 hover-elevate"
+                      )}
+                      data-testid={`dept-btn-${d.key}`}
+                    >
+                      <DIcon className="h-4 w-4 mb-1 text-muted-foreground" />
+                      <div className="text-xs font-medium leading-tight">{d.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {!isMisafir && selectedDept && (
             <div className="flex items-center gap-2 p-2.5 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800" data-testid="auto-assign-info">
               <Check className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
               <div className="text-xs text-green-700 dark:text-green-300">
@@ -189,7 +312,7 @@ export function NewTicketDialog({ open, onOpenChange }: NewTicketDialogProps) {
             </div>
           )}
 
-          {dept === 'teknik' && !isHQ && (
+          {!isMisafir && dept === 'teknik' && !isHQ && (
             <div className="space-y-2" data-testid="equipment-selection">
               <p className="text-xs font-medium text-muted-foreground">Cihaz / Ekipman</p>
               <select

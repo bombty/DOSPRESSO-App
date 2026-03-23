@@ -541,7 +541,7 @@ export default function CRMMegaModule() {
         )}
       </div>
 
-      <NewTicketDialog open={showNewTicket} onOpenChange={setShowNewTicket} />
+      <NewTicketDialog open={showNewTicket} onOpenChange={setShowNewTicket} channel={channel} />
     </div>
   );
 }

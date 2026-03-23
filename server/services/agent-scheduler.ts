@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { users, branches, agentPendingActions, agentRuns, inventory, customerFeedback, equipmentFaults, productComplaints } from "@shared/schema";
+import { users, branches, agentPendingActions, agentRuns, inventory, customerFeedback, equipmentFaults, productComplaints, notifications } from "@shared/schema";
 import { eq, and, or, gte, lte, sql, count, isNull, notInArray, lt } from "drizzle-orm";
 import { getRoleGroup, ROLE_GROUP_MAP } from "./ai-policy-engine";
 import { runAgentAnalysis, runBatchAnalysis } from "./agent-engine";
@@ -530,7 +530,37 @@ export function startAgentScheduler(): void {
 
   cleanupOrphanedShiftSessions();
 
+  const archiveDelayMs = getMillisUntilTurkeyTime(3, 30);
+  console.log(`[AgentScheduler] Notification archive ${Math.round(archiveDelayMs / 60000)} dakika sonra calisacak (03:30 TR)`);
+  schedulerManager.registerTimeout('notif-archive-delay', () => {
+    archiveOldNotifications();
+    schedulerManager.registerInterval('notif-archive', archiveOldNotifications, 24 * 60 * 60 * 1000);
+  }, archiveDelayMs);
+
   console.log("[AgentScheduler] Agent Scheduler basariyla baslatildi.");
+}
+
+async function archiveOldNotifications(): Promise<void> {
+  try {
+    const result = await db.execute(sql`
+      WITH moved AS (
+        DELETE FROM notifications
+        WHERE id IN (
+          SELECT id FROM notifications
+          WHERE created_at < NOW() - INTERVAL '30 days' AND is_read = true
+          ORDER BY id LIMIT 5000
+        )
+        RETURNING *
+      )
+      INSERT INTO notifications_archive SELECT * FROM moved
+    `);
+    const movedCount = (result as any).rowCount || 0;
+    if (movedCount > 0) {
+      console.log(`[NotifArchive] ${movedCount} eski bildirim arsive tasinid.`);
+    }
+  } catch (err) {
+    console.error("[NotifArchive] Arsivleme hatasi:", err);
+  }
 }
 
 export function stopAgentScheduler(): void {

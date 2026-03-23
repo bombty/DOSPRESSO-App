@@ -26,6 +26,7 @@ import {
   feedbackFormSettings,
   feedbackCustomQuestions,
   feedbackIpBlocks,
+  supportTickets,
   branches,
   users,
   guestComplaints,
@@ -4029,6 +4030,50 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       }).returning();
 
       // ========================================
+      // SUPPORT TICKET CREATION (QR → CRM)
+      // ========================================
+      try {
+        const { generateTicketNumber } = await import("../services/ticket-routing-engine");
+        const ticketNumber = await generateTicketNumber();
+        const avgRating = rating || 3;
+        const ticketPriority = avgRating <= 2 ? 'kritik' : avgRating <= 3 ? 'yuksek' : 'normal';
+
+        const slaHours = avgRating <= 2 ? 4 : avgRating <= 3 ? 24 : 72;
+        const slaDeadline = new Date();
+        slaDeadline.setHours(slaDeadline.getHours() + slaHours);
+
+        const ticketTitle = feedbackType === 'complaint'
+          ? `Müşteri Şikayeti - ${branch[0].name} (QR)`
+          : `Müşteri Geri Bildirimi - ${branch[0].name} (QR)`;
+
+        await db.insert(supportTickets).values({
+          ticketNumber,
+          branchId: branch[0].id,
+          department: 'musteri_hizmetleri',
+          title: ticketTitle,
+          description: comment || `QR geri bildirim: ${rating}/5 puan`,
+          priority: ticketPriority,
+          status: 'acik',
+          channel: 'misafir',
+          ticketType: feedbackType === 'complaint' ? 'musteri_sikayet' : 'musteri_geri_bildirim',
+          source: 'qr',
+          rating: rating || null,
+          ratingHizmet: serviceRating || null,
+          ratingTemizlik: cleanlinessRating || null,
+          ratingUrun: productRating || null,
+          ratingPersonel: staffRating || null,
+          customerName: isAnonymous ? null : (customerName || null),
+          customerEmail: isAnonymous ? null : (customerEmail || null),
+          customerPhone: isAnonymous ? null : (customerPhone || null),
+          isAnonymous,
+          photoUrls: photoUrls.length > 0 ? photoUrls : null,
+          slaDeadline,
+        });
+      } catch (ticketErr) {
+        console.error("QR feedback → support_ticket creation error:", ticketErr);
+      }
+
+      // ========================================
       // NOTIFICATION INTEGRATION (T002)
       // ========================================
       try {
@@ -4067,7 +4112,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               type: 'complaint',
               title: `Müşteri Şikayeti - ${branchName}`,
               message: `${branchName} şubesine yeni müşteri şikayeti geldi. Puan: ${rating}/5${comment ? ` - "${comment.substring(0, 100)}"` : ''}`,
-              link: '/musteri-memnuniyeti',
+              link: '/crm?channel=misafir',
               isRead: false,
               branchId,
             });
@@ -4080,7 +4125,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               type: 'feedback_alert',
               title: `Düşük Puan Uyarısı - ${branchName}`,
               message: `${branchName} şubesine düşük puan (${rating}/5) verildi.${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
-              link: '/musteri-memnuniyeti',
+              link: '/crm?channel=misafir',
               isRead: false,
               branchId,
             });
@@ -4092,7 +4137,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               type: 'feedback_info',
               title: `Orta Puan Bildirimi - ${branchName}`,
               message: `${branchName} şubesine orta puan (3/5) verildi.${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
-              link: '/musteri-memnuniyeti',
+              link: '/crm?channel=misafir',
               isRead: false,
               branchId,
             });
@@ -4104,7 +4149,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               type: 'feedback_positive',
               title: `Pozitif Geri Bildirim - ${branchName}`,
               message: `${branchName} şubesine yüksek puan (${rating}/5) verildi!${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
-              link: '/musteri-memnuniyeti',
+              link: '/crm?channel=misafir',
               isRead: false,
               branchId,
             });
@@ -4119,7 +4164,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
                 type: 'feedback_positive',
                 title: 'Müşteriden Teşekkür!',
                 message: `Bir müşteri size ${staffRating || rating}/5 puan verdi!${comment ? ` Yorum: "${comment.substring(0, 100)}"` : ''}`,
-                link: '/musteri-memnuniyeti',
+                link: '/crm?channel=misafir',
                 isRead: false,
                 branchId,
               });
@@ -4141,7 +4186,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               type: 'feedback_alert',
               title: `Cevap Bekleniyor - ${branchName}`,
               message: `Bir müşteri geri bildirim sonrası iletişim bekliyor. 24 saat içinde yanıt verilmelidir.`,
-              link: '/musteri-memnuniyeti',
+              link: '/crm?channel=misafir',
               isRead: false,
               branchId,
             });

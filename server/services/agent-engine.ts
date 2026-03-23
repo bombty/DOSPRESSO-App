@@ -203,7 +203,7 @@ export async function analyzeForBranchMgmt(userId: string): Promise<AnalysisResu
         targetUserId: user.id as any,
         targetRoleScope: user.role,
         branchId,
-        deepLink: "/misafir-memnuniyeti",
+        deepLink: "/crm?channel=misafir",
         metadata: { feedbackCount: unansweredFeedback.length },
       }));
     }
@@ -297,7 +297,7 @@ export async function analyzeForHQOps(userId: string): Promise<AnalysisResult> {
       actions.push(makeAction("report", `Son 7 günde ${lowRatingFeedback.length} düşük puanlı geri bildirim`, `Son 7 günde ${lowRatingFeedback.length} müşteri 1-2 puan vermiş. Trend analizi ve kök neden incelemesi gerekli.`, "med", {
         targetUserId: user.id as any,
         targetRoleScope: user.role,
-        deepLink: "/misafir-memnuniyeti",
+        deepLink: "/crm?channel=misafir",
         metadata: { lowRatingCount: lowRatingFeedback.length },
       }));
     }

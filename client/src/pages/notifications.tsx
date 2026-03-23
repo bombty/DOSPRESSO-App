@@ -190,12 +190,14 @@ const notificationTypeLabels: Record<string, string> = {
 const NOTIFICATION_CATEGORIES: Record<string, { label: string; icon: any; types: string[] }> = {
   all: { label: "Tümü", icon: Bell, types: [] },
   tasks: { label: "Görevler", icon: ClipboardCheck, types: ["task_assigned", "task_started", "task_complete", "task_completed", "task_verified", "task_rejected", "task_overdue", "task_acknowledged", "task_overdue_assigner", "task_check_requested", "task_check_approved", "task_check_rejected", "task_status_changed"] },
+  crm: { label: "CRM", icon: MessageSquare, types: ["ticket_assigned", "ticket_resolved", "sla_breach", "complaint", "feedback_alert", "feedback_info", "feedback_positive", "stale_quote_reminder"] },
   faults: { label: "Arızalar", icon: Wrench, types: ["fault_reported", "fault_assigned", "fault_resolved", "fault_updated", "fault_alert", "critical_fault", "critical_service_request", "maintenance_reminder", "recipe_updated", "recipe_update"] },
   checklists: { label: "Checklistler", icon: CheckSquare, types: ["checklist_reminder", "checklist_overdue", "capa_overdue"] },
   announcements: { label: "Duyurular", icon: Megaphone, types: ["announcement", "info", "warning", "alert", "system"] },
   egitim: { label: "Eğitim", icon: GraduationCap, types: ["quiz_passed", "quiz_failed", "module_completed", "badge_earned", "gate_passed", "gate_failed", "gate_request", "gate_result", "certificate_earned", "streak_milestone", "score_change", "training_assigned", "training_overdue", "training_reminder", "module_approval_pending", "module_approved", "module_rejected"] },
-  hr: { label: "IK", icon: Clock, types: ["shift_change", "shift_assigned", "shift_swap_request", "shift_swap_approved", "shift_swap_rejected", "shift_swap_completed", "shift_swap_pending_supervisor", "leave_request", "onboarding_complete"] },
-  stock: { label: "Stok", icon: Package, types: ["stock_alert"] },
+  hr: { label: "IK", icon: Clock, types: ["shift_change", "shift_assigned", "shift_swap_request", "shift_swap_approved", "shift_swap_rejected", "shift_swap_completed", "shift_swap_pending_supervisor", "leave_request", "onboarding_complete", "evaluation_reminder"] },
+  dobody: { label: "Dobody", icon: AlertCircle, types: ["agent_guidance", "agent_escalation", "agent_escalation_info", "agent_suggestion"] },
+  stock: { label: "Stok", icon: Package, types: ["stock_alert", "factory_fault_report"] },
 };
 
 interface TaskSummary {
@@ -1274,9 +1276,9 @@ export default function Notifications() {
         <TabsContent value="notifications" className="mt-4 space-y-3">
           <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
             {Object.entries(NOTIFICATION_CATEGORIES).map(([key, cat]) => {
-              const count = key === "all" 
-                ? notifications?.length || 0
-                : (notifications || []).filter(n => cat.types.includes(n.type)).length;
+              const unreadCount = key === "all" 
+                ? (notifications || []).filter(n => !n.isRead).length
+                : (notifications || []).filter(n => cat.types.includes(n.type) && !n.isRead).length;
               
               return (
                 <Badge
@@ -1288,7 +1290,7 @@ export default function Notifications() {
                 >
                   <cat.icon className="w-3 h-3" />
                   {cat.label}
-                  {count > 0 && <span>({count})</span>}
+                  {unreadCount > 0 && <span className="bg-destructive text-destructive-foreground rounded-full min-w-[16px] h-4 px-1 text-[10px] flex items-center justify-center">{unreadCount}</span>}
                 </Badge>
               );
             })}
