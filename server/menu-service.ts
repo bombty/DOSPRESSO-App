@@ -112,6 +112,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         badge: "faults",
       },
       {
+        id: "hq-support",
+        titleTr: "Destek Merkezi",
+        path: "/hq-destek",
+        icon: "Headphones",
+        moduleKey: "support",
+        scope: "both",
+      },
+      {
         id: "qr-scan",
         titleTr: "QR Tara",
         path: "/qr-tara",
@@ -541,14 +549,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
         badge: "agent",
       },
-      {
-        id: "hq-support",
-        titleTr: "Destek Merkezi",
-        path: "/hq-destek",
-        icon: "Headphones",
-        moduleKey: "support",
-        scope: "both",
-      },
     ],
   },
 ];
@@ -562,7 +562,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
 
 const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   barista: [
-    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications',
+    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications', 'hq-support',
   ],
   stajyer: [
     'branch-dashboard', 'training-academy', 'notifications', 'hq-support',
