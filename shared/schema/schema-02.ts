@@ -125,6 +125,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
       crm_campaigns: ['view', 'create', 'edit', 'delete', 'approve'],
       crm_analytics: ['view'],
       crm_settings: ['view', 'edit'],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   // HQ ROLES
   muhasebe: {
@@ -293,6 +294,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     branch_inspection: [],
     product_complaints: [],
     food_safety: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   coach: {
     dashboard: ['view'],
@@ -377,6 +379,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     goods_receipt: [],
     cost_management: [],
     food_safety: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   teknik: {
     dashboard: ['view'],
@@ -795,6 +798,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
       crm_campaigns: [],
       crm_analytics: [],
       crm_settings: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   supervisor_buddy: {
     dashboard: ['view'],
@@ -1207,6 +1211,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
       crm_campaigns: [],
       crm_analytics: [],
       crm_settings: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   yatirimci_branch: {
     dashboard: ['view'],
@@ -1368,6 +1373,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     branch_inspection: ['view'],
     product_complaints: ['view'],
     food_safety: ['view'],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   // CGO - Chief Growth Officer
   cgo: {
@@ -1449,6 +1455,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     branch_inspection: ['view'],
     product_complaints: ['view'],
     food_safety: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   // MUHASEBE_IK - Muhasebe & İK
   muhasebe_ik: {
@@ -1530,6 +1537,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     branch_inspection: [],
     product_complaints: [],
     food_safety: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   // MARKETING - Pazarlama
   marketing: {
@@ -1692,6 +1700,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     branch_inspection: [],
     product_complaints: [],
     food_safety: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   // KALITE_KONTROL - Kalite Kontrol
   kalite_kontrol: {
@@ -1935,6 +1944,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     branch_inspection: [],
     product_complaints: [],
     food_safety: [],
+    ajanda: ['view', 'create', 'edit', 'delete'],
   },
   // FABRIKA_OPERATOR - Fabrika Operatör
   fabrika_operator: {

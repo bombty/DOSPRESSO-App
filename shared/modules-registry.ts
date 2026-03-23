@@ -312,6 +312,8 @@ export const MODULES: ModuleDefinition[] = [
   { moduleKey: 'goods_receipt', moduleName: 'Mal Kabul', category: 'hq', megaModule: 'satinalma', description: 'Mal kabul ve kalite kontrol', icon: 'ClipboardCheck', route: '/satinalma/mal-kabul', sortOrder: 204 },
   { moduleKey: 'cari_takip', moduleName: 'Cari Takip', category: 'hq', megaModule: 'satinalma', description: 'Cari hesap ve muhasebe takibi', icon: 'CreditCard', route: '/satinalma/cari-takip', sortOrder: 205 },
   { moduleKey: 'urun_maliyetleri', moduleName: 'Ürün Maliyetleri', category: 'hq', megaModule: 'satinalma', description: 'Ürün maliyet hesaplama, hammadde ve kar marjı yönetimi', icon: 'Calculator', route: '/satinalma/urun-maliyetleri', sortOrder: 206 },
+
+  { moduleKey: 'ajanda', moduleName: 'Ajanda', category: 'shared', megaModule: 'operasyon', description: 'Kişisel takvim, yapılacaklar ve notlar', icon: 'CalendarDays', route: '/ajanda', sortOrder: 5 },
 ];
 
 // ═══════════════════════════════════════════════════════════════

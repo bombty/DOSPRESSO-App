@@ -31,6 +31,7 @@ const MODULE_DEFINITIONS: ModuleDefinition[] = [
   { key: "finans", level: "module", behavior: "fully_hidden", parent: null },
   { key: "delegasyon", level: "module", behavior: "fully_hidden", parent: null },
   { key: "franchise", level: "module", behavior: "fully_hidden", parent: null },
+  { key: "ajanda", level: "module", behavior: "standard", parent: null },
 
   { key: "fabrika.sevkiyat", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
   { key: "fabrika.sayim", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },

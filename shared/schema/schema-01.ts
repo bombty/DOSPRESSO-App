@@ -324,7 +324,8 @@ export type PermissionModule =
   | 'crm_analytics'
   | 'crm_settings'
   | 'branch_orders'
-  | 'branch_inventory';
+  | 'branch_inventory'
+  | 'ajanda';
 
 // Path to Permission Module mapping - Merkezi tanım
 // Dashboard modülleri için URL path'lerini permission modüllerine eşleştirir

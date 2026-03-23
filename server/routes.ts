@@ -402,6 +402,7 @@ import delegationRouter from "./routes/delegation-routes";
 import moduleContentRouter from "./routes/module-content-routes";
 import moduleFlagsRouter from "./routes/module-flags";
 import branchTasksRouter from "./routes/branch-tasks";
+import { ajandaRouter } from "./routes/ajanda-routes";
 import lostFoundRouter from "./routes/lost-found-routes";
 import employeeSatisfactionRouter from "./routes/employee-satisfaction-routes";
 import staffEvaluationsRouter from "./routes/staff-evaluations-routes";
@@ -1227,6 +1228,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use("/api/module-content", moduleContentRouter);
   app.use(moduleFlagsRouter);
   app.use(branchTasksRouter);
+  app.use(ajandaRouter);
 
   schedulerManager.registerInterval('sla-breach-checker', async () => {
     try {

@@ -195,6 +195,7 @@ const AdminMegaModule = lazyWithRetry(() => import("@/pages/admin-mega"));
 const AkademiMegaModule = lazyWithRetry(() => import("@/pages/akademi-mega"));
 const AkademiV3 = lazyWithRetry(() => import("@/pages/akademi-v3/index"));
 const CRMMegaModule = lazyWithRetry(() => import("@/pages/crm-mega"));
+const AjandaPage = lazyWithRetry(() => import("@/pages/ajanda"));
 const MisafirMemnuniyetiModul = lazyWithRetry(() => import("@/pages/misafir-memnuniyeti-modul"));
 const CEOCommandCenter = lazyWithRetry(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"));
@@ -452,6 +453,7 @@ function Router() {
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
+          <Route path="/ajanda">{() => <ModuleGuard moduleKey="ajanda"><AjandaPage /></ModuleGuard>}</Route>
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <HQOnly><CEOCommandCenter /></HQOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>

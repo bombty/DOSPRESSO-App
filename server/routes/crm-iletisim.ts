@@ -358,6 +358,25 @@ router.patch("/tickets/:id", async (req: AuthRequest, res: Response) => {
     if (status === "cozuldu") { updates.resolvedAt = new Date(); updates.resolvedByUserId = user.id; }
 
     await db.update(supportTickets).set(updates).where(eq(supportTickets.id, ticketId));
+
+    if (assignedToUserId && assignedToUserId !== ticket.assignedToUserId) {
+      try {
+        const { createTodoFromTicket } = await import("../../agent/skills/auto-todo-from-ticket");
+        await createTodoFromTicket({
+          assignedToUserId,
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber || `TKT-${ticket.id}`,
+          ticketTitle: ticket.title,
+          channel: ticket.channel || undefined,
+          department: ticket.department || undefined,
+          priority: ticket.priority || undefined,
+          slaDeadline: ticket.slaDeadlineAt ? new Date(ticket.slaDeadlineAt) : null,
+        });
+      } catch (hookErr) {
+        console.error("[CRM→Todo] Hook error:", hookErr);
+      }
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error("Error updating ticket:", error);

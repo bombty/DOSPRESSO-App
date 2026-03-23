@@ -61,6 +61,25 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
+  // 1c. Ajanda (Kişisel takvim + todo + notlar)
+  {
+    id: "ajanda-section",
+    titleTr: "Ajanda",
+    icon: "CalendarDays",
+    scope: "both",
+    group: "operations",
+    items: [
+      {
+        id: "ajanda",
+        titleTr: "Ajanda",
+        path: "/ajanda",
+        icon: "CalendarDays",
+        moduleKey: "ajanda",
+        scope: "both",
+      },
+    ],
+  },
+
   // 2. Operasyon (Görevler + Checklistler + Kayıp Eşya + Ekipman + Arıza + QR)
   {
     id: "operations",
@@ -571,7 +590,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'tasks-list', 'training-academy', 'notifications',
   ],
   supervisor: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'faults', 'equipment',
+    'branch-dashboard', 'ajanda', 'tasks-list', 'checklists', 'faults', 'equipment',
     'customer-satisfaction', 'reports', 'knowledge-base', 'performance-dashboard',
     'notifications', 'ai-assistant', 'branch-stock-orders', 'crm-main',
     'hr', 'shifts', 'attendance', 'iletisim-merkezi',
@@ -581,7 +600,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications', 'ai-assistant', 'iletisim-merkezi',
   ],
   mudur: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'equipment', 'faults',
+    'branch-dashboard', 'ajanda', 'tasks-list', 'checklists', 'equipment', 'faults',
     'reports', 'customer-satisfaction', 'knowledge-base', 'performance-dashboard',
     'notifications', 'branch-stock-orders', 'crm-main',
     'hr', 'shifts', 'attendance', 'iletisim-merkezi',
@@ -590,12 +609,12 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
   ],
   ceo: [
-    'dashboard', 'branches-list', 'hr', 'reports', 'performance-dashboard',
+    'dashboard', 'ajanda', 'branches-list', 'hr', 'reports', 'performance-dashboard',
     'knowledge-base', 'ai-assistant', 'training-academy-hq', 'notifications', 'crm-main',
     'franchise-investors', 'iletisim-merkezi',
   ],
   cgo: [
-    'dashboard', 'branches-list', 'hr', 'reports', 'performance-dashboard',
+    'dashboard', 'ajanda', 'branches-list', 'hr', 'reports', 'performance-dashboard',
     'customer-satisfaction', 'knowledge-base', 'ai-assistant',
     'franchise-investors', 'notifications', 'crm-main',
     'iletisim-merkezi',
@@ -604,7 +623,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
-    'dashboard', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
+    'dashboard', 'ajanda', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
     'reports', 'knowledge-base', 'training-academy-hq', 'tasks-list',
     'notifications', 'crm-main', 'iletisim-merkezi',
   ],
@@ -613,7 +632,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'iletisim-merkezi', 'notifications',
   ],
   trainer: [
-    'dashboard', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
+    'dashboard', 'ajanda', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
     'knowledge-base', 'reports', 'performance-dashboard',
     'notifications', 'iletisim-merkezi',
   ],
@@ -632,7 +651,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications', 'crm-main', 'iletisim-merkezi',
   ],
   muhasebe_ik: [
-    'dashboard', 'hr', 'shifts', 'attendance', 'pdks', 'maas',
+    'dashboard', 'ajanda', 'hr', 'shifts', 'attendance', 'pdks', 'maas',
     'accounting-main', 'financial-management', 'financial-reports', 'reports',
     'notifications', 'iletisim-merkezi',
   ],
@@ -642,7 +661,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'iletisim-merkezi',
   ],
   satinalma: [
-    'dashboard', 'procurement-dashboard', 'stock-management', 'supplier-management',
+    'dashboard', 'ajanda', 'procurement-dashboard', 'stock-management', 'supplier-management',
     'order-management', 'goods-receipt', 'reports',
     'notifications', 'iletisim-merkezi',
   ],
@@ -651,7 +670,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications', 'iletisim-merkezi',
   ],
   fabrika_mudur: [
-    'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
     'factory-analytics', 'factory-compliance', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'iletisim-merkezi',
   ],
@@ -662,7 +681,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'factory-dashboard', 'factory-kiosk', 'notifications',
   ],
   admin: [
-    'dashboard', 'tasks-list', 'checklists', 'equipment', 'faults',
+    'dashboard', 'ajanda', 'tasks-list', 'checklists', 'equipment', 'faults',
     'branches-list', 'hr', 'shifts', 'attendance',
     'reports', 'performance-dashboard', 'quality-control', 'food-safety',
     'branch-inspection', 'branch-health', 'customer-satisfaction',
