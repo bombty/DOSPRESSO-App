@@ -213,6 +213,7 @@ const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazyWithRetry(() => import("@/pages/pdks"));
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
+const IletisimMerkezi = lazyWithRetry(() => import("@/pages/iletisim-merkezi"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -468,7 +469,7 @@ function Router() {
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
-          <Route path="/iletisim-merkezi">{() => { window.location.replace("/hq-destek"); return null; }}</Route>
+          <Route path="/iletisim-merkezi" component={IletisimMerkezi} />
         </>
       )}
       

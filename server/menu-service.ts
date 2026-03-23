@@ -112,10 +112,10 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         badge: "faults",
       },
       {
-        id: "hq-support",
-        titleTr: "Destek Merkezi",
-        path: "/hq-destek",
-        icon: "Headphones",
+        id: "iletisim-merkezi",
+        titleTr: "İletişim Merkezi",
+        path: "/iletisim-merkezi",
+        icon: "MessageSquare",
         moduleKey: "support",
         scope: "both",
       },
@@ -562,10 +562,10 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
 
 const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   barista: [
-    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications', 'hq-support',
+    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications', 'iletisim-merkezi',
   ],
   stajyer: [
-    'branch-dashboard', 'training-academy', 'notifications', 'hq-support',
+    'branch-dashboard', 'training-academy', 'notifications', 'iletisim-merkezi',
   ],
   bar_buddy: [
     'branch-dashboard', 'tasks-list', 'training-academy', 'notifications',
@@ -574,17 +574,17 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'tasks-list', 'checklists', 'faults', 'equipment',
     'customer-satisfaction', 'reports', 'knowledge-base', 'performance-dashboard',
     'notifications', 'ai-assistant', 'branch-stock-orders', 'crm-main',
-    'hr', 'shifts', 'attendance', 'hq-support',
+    'hr', 'shifts', 'attendance', 'iletisim-merkezi',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'checklists', 'knowledge-base',
-    'notifications', 'ai-assistant', 'hq-support',
+    'notifications', 'ai-assistant', 'iletisim-merkezi',
   ],
   mudur: [
     'branch-dashboard', 'tasks-list', 'checklists', 'equipment', 'faults',
     'reports', 'customer-satisfaction', 'knowledge-base', 'performance-dashboard',
     'notifications', 'branch-stock-orders', 'crm-main',
-    'hr', 'shifts', 'attendance', 'hq-support',
+    'hr', 'shifts', 'attendance', 'iletisim-merkezi',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
@@ -592,13 +592,13 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ceo: [
     'dashboard', 'branches-list', 'hr', 'reports', 'performance-dashboard',
     'knowledge-base', 'ai-assistant', 'training-academy-hq', 'notifications', 'crm-main',
-    'franchise-investors', 'hq-support',
+    'franchise-investors', 'iletisim-merkezi',
   ],
   cgo: [
     'dashboard', 'branches-list', 'hr', 'reports', 'performance-dashboard',
     'customer-satisfaction', 'knowledge-base', 'ai-assistant',
     'franchise-investors', 'notifications', 'crm-main',
-    'hq-support',
+    'iletisim-merkezi',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'financial-management', 'notifications',
@@ -606,54 +606,54 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   coach: [
     'dashboard', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
     'reports', 'knowledge-base', 'training-academy-hq', 'tasks-list',
-    'notifications', 'crm-main', 'hq-support',
+    'notifications', 'crm-main', 'iletisim-merkezi',
   ],
   destek: [
     'dashboard', 'branches-list', 'equipment', 'faults',
-    'hq-support', 'notifications',
+    'iletisim-merkezi', 'notifications',
   ],
   trainer: [
     'dashboard', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
     'knowledge-base', 'reports', 'performance-dashboard',
-    'notifications', 'hq-support',
+    'notifications', 'iletisim-merkezi',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety',
     'factory-quality', 'reports', 'notifications',
-    'hq-support',
+    'iletisim-merkezi',
   ],
   gida_muhendisi: [
     'dashboard', 'food-safety', 'quality-control', 'factory-quality',
     'factory-dashboard', 'reports', 'notifications',
-    'hq-support',
+    'iletisim-merkezi',
   ],
   marketing: [
     'dashboard', 'customer-satisfaction', 'reports',
-    'notifications', 'crm-main', 'hq-support',
+    'notifications', 'crm-main', 'iletisim-merkezi',
   ],
   muhasebe_ik: [
     'dashboard', 'hr', 'shifts', 'attendance', 'pdks', 'maas',
     'accounting-main', 'financial-management', 'financial-reports', 'reports',
-    'notifications', 'hq-support',
+    'notifications', 'iletisim-merkezi',
   ],
   muhasebe: [
     'dashboard', 'accounting-main', 'financial-management', 'financial-reports',
     'pdks', 'maas', 'reports', 'notifications',
-    'hq-support',
+    'iletisim-merkezi',
   ],
   satinalma: [
     'dashboard', 'procurement-dashboard', 'stock-management', 'supplier-management',
     'order-management', 'goods-receipt', 'reports',
-    'notifications', 'hq-support',
+    'notifications', 'iletisim-merkezi',
   ],
   teknik: [
     'dashboard', 'equipment', 'faults', 'reports',
-    'notifications', 'hq-support',
+    'notifications', 'iletisim-merkezi',
   ],
   fabrika_mudur: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
     'factory-analytics', 'factory-compliance', 'hr', 'shifts', 'reports',
-    'performance-dashboard', 'notifications', 'hq-support',
+    'performance-dashboard', 'notifications', 'iletisim-merkezi',
   ],
   fabrika: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations', 'notifications',
@@ -670,7 +670,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'accounting-main', 'financial-management', 'pdks', 'maas',
     'procurement-dashboard', 'stock-management',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
-    'notifications', 'hq-support',
+    'notifications', 'iletisim-merkezi',
     'admin-panel', 'project-list',
   ],
   fabrika_sorumlu: [
