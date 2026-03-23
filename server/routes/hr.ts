@@ -7272,6 +7272,66 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
+  router.delete('/api/hr/employees/:userId/documents/:docId', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      const { userId, docId } = req.params;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'supervisor', 'mudur', 'ceo', 'cgo'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const [deleted] = await db.delete(employeeDocuments)
+        .where(and(
+          eq(employeeDocuments.id, Number(docId)),
+          eq(employeeDocuments.userId, userId)
+        ))
+        .returning();
+      if (!deleted) return res.status(404).json({ message: "Belge bulunamadı" });
+      res.json({ message: "Belge silindi", id: deleted.id });
+    } catch (error: unknown) {
+      console.error("Error deleting document:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Belge silinemedi" });
+    }
+  });
+
+  router.get('/api/hr/documents/missing', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      const allowedRoles = ['admin', 'muhasebe_ik', 'supervisor', 'mudur', 'ceo', 'cgo'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const requiredTypes = ['kimlik', 'adli_sicil', 'saglik_raporu', 'is_sozlesmesi', 'sgk_bildirge'];
+      const activeUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, branchId: users.branchId })
+        .from(users)
+        .where(eq(users.isActive, true));
+      const allDocs = await db.select({ userId: employeeDocuments.userId, documentType: employeeDocuments.documentType })
+        .from(employeeDocuments);
+      const docMap = new Map<string, Set<string>>();
+      allDocs.forEach(d => {
+        if (!docMap.has(d.userId)) docMap.set(d.userId, new Set());
+        docMap.get(d.userId)!.add(d.documentType);
+      });
+      const missing: Array<{ userId: string; name: string; branchId: number | null; missingTypes: string[] }> = [];
+      for (const u of activeUsers) {
+        const userDocs = docMap.get(u.id) || new Set();
+        const missingTypes = requiredTypes.filter(t => !userDocs.has(t));
+        if (missingTypes.length > 0) {
+          missing.push({
+            userId: u.id,
+            name: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+            branchId: u.branchId,
+            missingTypes,
+          });
+        }
+      }
+      res.json({ missing, requiredTypes, totalUsers: activeUsers.length, usersWithAllDocs: activeUsers.length - missing.length });
+    } catch (error: unknown) {
+      console.error("Error fetching missing documents:", error instanceof Error ? error.message : error);
+      res.status(500).json({ message: "Eksik belgeler getirilemedi" });
+    }
+  });
+
   router.get('/api/hr/ik-dashboard', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;

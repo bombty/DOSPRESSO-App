@@ -5,17 +5,27 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DashboardModeToggle } from "./DashboardModeToggle";
-import { UnifiedHero } from "@/components/widgets/unified-hero";
+import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { PresenceBar, type PresenceMember } from "./shared/PresenceBar";
+import { StaffCard, type StaffMember } from "./shared/StaffCard";
+import { ShiftTimeline, type ShiftEntry } from "./shared/ShiftTimeline";
 import { TodaysTasksWidget } from "@/components/widgets/todays-tasks-widget";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
-import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
 import { Link } from "wouter";
 import {
   Users,
   AlertTriangle,
   ArrowRight,
   UserCheck,
+  Clock,
+  ClipboardCheck,
+  TrendingUp,
+  Coffee,
+  UserX,
+  MessageSquare,
+  CalendarClock,
+  Factory,
+  BarChart3,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -26,56 +36,37 @@ interface BranchSummaryKpis {
   customerAvg: number;
   feedbackCount: number;
   warnings: number;
+  lateCount?: number;
+  onBreakCount?: number;
+  absentCount?: number;
+  healthScore?: number;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  checklistStatus: string;
+  score?: number;
+  trend?: number;
+  shiftStart?: string;
+  shiftEnd?: string;
+  status?: string;
 }
 
 interface BranchSummaryResponse {
   branch: { id: number; name: string };
   kpis: BranchSummaryKpis;
-  teamStatus: Array<{ id: string; name: string; role: string; checklistStatus: string }>;
+  teamStatus: TeamMember[];
   lowStockItems: Array<{ productName: string; currentStock: number; minimumStock: number; unit: string }>;
   suggestions: string[];
-}
-
-function StaffStatusCard({ member }: { member: { id: string; name: string; role: string; checklistStatus: string } }) {
-  const statusConfig: Record<string, { label: string; color: string }> = {
-    tamamlandi: { label: "Tamamlandı", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-    devam_ediyor: { label: "Devam Ediyor", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-    beklemede: { label: "Beklemede", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-    yapilmadi: { label: "Yapılmadı", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-  };
-
-  const status = statusConfig[member.checklistStatus] || { label: member.checklistStatus || "—", color: "bg-muted text-muted-foreground" };
-
-  const roleLabels: Record<string, string> = {
-    barista: "Barista",
-    stajyer: "Stajyer",
-    bar_buddy: "Bar Buddy",
-    supervisor: "Supervisor",
-    supervisor_buddy: "Sup. Buddy",
-    mudur: "Müdür",
-  };
-
-  return (
-    <div className="flex items-center justify-between px-2.5 py-2 rounded-md bg-muted/30" data-testid={`mc-staff-${member.id}`}>
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <UserCheck className="w-3.5 h-3.5 text-primary" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-medium truncate">{member.name}</p>
-          <p className="text-[10px] text-muted-foreground">{roleLabels[member.role] || member.role}</p>
-        </div>
-      </div>
-      <Badge className={`text-[9px] h-4 px-1.5 ${status.color} border-0`}>
-        {status.label}
-      </Badge>
-    </div>
-  );
+  checklists?: Array<{ id: number; name: string; done: boolean }>;
 }
 
 export default function MissionControlSupervisor() {
   const { user } = useAuth();
   const branchId = (user as any)?.branchId;
+  const firstName = user?.firstName || user?.username?.split(" ")[0] || "Kullanıcı";
 
   const { data: branchSummary, isLoading } = useQuery<BranchSummaryResponse>({
     queryKey: ["/api/branch-summary", branchId],
@@ -90,52 +81,62 @@ export default function MissionControlSupervisor() {
   });
 
   const kpiItems = useMemo((): KpiItem[] => {
-    const kpis = branchSummary?.kpis;
+    const k = branchSummary?.kpis;
     return [
-      {
-        value: kpis?.activeStaff?.toString() ?? "—",
-        label: "Aktif Personel",
-        color: undefined,
-      },
-      {
-        value: kpis?.checklistCompletion != null ? `%${Math.round(kpis.checklistCompletion)}` : "—",
-        label: "Checklist",
-        color: kpis?.checklistCompletion != null && kpis.checklistCompletion < 70 ? "#dc2626" : undefined,
-      },
-      {
-        value: kpis?.customerAvg != null && kpis.customerAvg > 0 ? `${Number(kpis.customerAvg).toFixed(1)}/5` : "—",
-        label: "Müşteri",
-        color: kpis?.customerAvg != null && kpis.customerAvg > 0 ? (kpis.customerAvg < 3.5 ? "#dc2626" : "#16a34a") : undefined,
-      },
-      {
-        value: kpis?.warnings != null ? kpis.warnings.toString() : "—",
-        label: "Uyarı",
-        color: kpis?.warnings != null && kpis.warnings > 0 ? "#dc2626" : undefined,
-      },
+      { value: k?.activeStaff?.toString() ?? "—", label: "Burada", color: "#16a34a" },
+      { value: k?.lateCount?.toString() ?? "0", label: "Geç", color: (k?.lateCount ?? 0) > 0 ? "#d97706" : undefined },
+      { value: k?.onBreakCount?.toString() ?? "0", label: "Molada", color: "#7c3aed" },
+      { value: k?.absentCount?.toString() ?? "0", label: "Gelmedi", color: (k?.absentCount ?? 0) > 0 ? "#dc2626" : undefined },
+      { value: k?.checklistCompletion != null ? `%${Math.round(k.checklistCompletion)}` : "—", label: "Checklist", color: (k?.checklistCompletion ?? 100) >= 80 ? "#16a34a" : "#dc2626" },
+      { value: k?.healthScore != null ? `%${Math.round(k.healthScore)}` : k?.customerAvg ? `${Number(k.customerAvg).toFixed(1)}` : "—", label: "Performans", color: (k?.healthScore ?? k?.customerAvg ?? 80) >= 80 ? "#16a34a" : "#d97706" },
     ];
   }, [branchSummary]);
 
-  const alertPills = useMemo((): AlertPill[] => {
-    const pills: AlertPill[] = [];
-    const kpis = branchSummary?.kpis;
-
-    if ((kpis?.warnings ?? 0) > 0) {
-      pills.push({ label: `${kpis?.warnings} uyarı`, variant: "red", dot: true });
-    }
-    if (kpis?.checklistCompletion != null && kpis.checklistCompletion < 70) {
-      pills.push({ label: `Checklist %${Math.round(kpis.checklistCompletion)}`, variant: "orange", dot: true });
-    }
-    if ((branchSummary?.lowStockItems?.length ?? 0) > 0) {
-      pills.push({ label: `${branchSummary!.lowStockItems.length} düşük stok`, variant: "orange", dot: true });
-    }
-    if (kpis?.customerAvg != null && kpis.customerAvg >= 4.0) {
-      pills.push({ label: `Müşteri ${Number(kpis.customerAvg).toFixed(1)}/5`, variant: "green", dot: true });
-    }
-    if (pills.length === 0) {
-      pills.push({ label: "Şube normal", variant: "green", dot: true });
-    }
-    return pills;
+  const presenceMembers = useMemo((): PresenceMember[] => {
+    if (!branchSummary?.teamStatus) return [];
+    return branchSummary.teamStatus.map((m) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      status: (m.status as PresenceMember["status"]) || (m.checklistStatus === "yapilmadi" ? "absent" : "active"),
+      shiftLabel: m.shiftStart && m.shiftEnd ? `${m.shiftStart}-${m.shiftEnd}` : undefined,
+    }));
   }, [branchSummary]);
+
+  const staffMembers = useMemo((): StaffMember[] => {
+    if (!branchSummary?.teamStatus) return [];
+    return branchSummary.teamStatus.map((m) => ({
+      id: m.id,
+      name: m.name,
+      role: m.role,
+      status: m.status || (m.checklistStatus === "yapilmadi" ? "absent" : "active"),
+      score: m.score,
+      trend: m.trend,
+      shiftLabel: m.shiftStart && m.shiftEnd ? `${m.shiftStart}-${m.shiftEnd}` : undefined,
+    }));
+  }, [branchSummary]);
+
+  const shiftEntries = useMemo((): ShiftEntry[] => {
+    if (!branchSummary?.teamStatus) return [];
+    return branchSummary.teamStatus
+      .filter((m) => m.shiftStart && m.shiftEnd)
+      .map((m) => {
+        const parseHour = (t: string) => {
+          const [h, min] = t.split(":").map(Number);
+          return h + (min || 0) / 60;
+        };
+        return {
+          id: m.id,
+          name: m.name,
+          startHour: parseHour(m.shiftStart!),
+          endHour: parseHour(m.shiftEnd!),
+          status: (m.status as ShiftEntry["status"]) || "active",
+        };
+      });
+  }, [branchSummary]);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
   if (!branchId) {
     return (
@@ -152,44 +153,122 @@ export default function MissionControlSupervisor() {
   return (
     <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-supervisor">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-lg font-bold">Mission Control</h1>
-          {branchSummary?.branch && (
-            <p className="text-xs text-muted-foreground">{branchSummary.branch.name}</p>
-          )}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-bold text-primary">
+              {firstName[0]?.toUpperCase()}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-base font-bold truncate" data-testid="mc-sup-greeting">Merhaba, {firstName}</h1>
+            <p className="text-[11px] text-muted-foreground">{dateStr}</p>
+          </div>
         </div>
-        <DashboardModeToggle />
+        <div className="flex items-center gap-2">
+          {branchSummary?.branch && (
+            <Badge variant="outline" className="text-[10px] h-5">{branchSummary.branch.name}</Badge>
+          )}
+          <DashboardModeToggle />
+        </div>
       </div>
 
-      <UnifiedHero />
-
       {isLoading ? (
-        <div className="grid grid-cols-4 gap-1.5">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-lg" />
-          ))}
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
         </div>
       ) : (
-        <>
-          <DashboardAlertPills pills={alertPills} />
-          <DashboardKpiStrip items={kpiItems} />
-        </>
+        <DashboardKpiStrip items={kpiItems} />
       )}
 
-      {branchSummary?.teamStatus && branchSummary.teamStatus.length > 0 && (
-        <Card data-testid="mc-team-status">
+      {presenceMembers.length > 0 && (
+        <Card data-testid="mc-presence">
           <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
               <Users className="w-4 h-4" />
-              Ekip Durumu
+              Personel Durumu
             </CardTitle>
             <Badge variant="outline" className="text-[10px] h-5">
-              {branchSummary.teamStatus.length} kişi
+              {presenceMembers.length} kişi
+            </Badge>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <PresenceBar members={presenceMembers} />
+          </CardContent>
+        </Card>
+      )}
+
+      {staffMembers.length > 0 && (
+        <Card data-testid="mc-staff-grid">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+              <UserCheck className="w-4 h-4" />
+              Ekip Kartları
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {staffMembers.map((m) => (
+                <StaffCard key={m.id} member={m} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {shiftEntries.length > 0 && (
+        <Card className="hidden md:block" data-testid="mc-shift-timeline-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+              <CalendarClock className="w-4 h-4" />
+              Vardiya Zaman Çizelgesi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3">
+            <ShiftTimeline shifts={shiftEntries} />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="md:hidden">
+        {staffMembers.length > 0 && shiftEntries.length > 0 && (
+          <Card data-testid="mc-shift-list-mobile">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                Vardiyalar
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-1">
+              {staffMembers.slice(0, 6).map((m) => (
+                <div key={m.id} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/30">
+                  <span className="text-[10px] font-medium">{m.name.split(" ")[0]}</span>
+                  <span className="text-[10px] text-muted-foreground">{m.shiftLabel || "—"}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {branchSummary?.checklists && branchSummary.checklists.length > 0 && (
+        <Card data-testid="mc-checklists">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+              <ClipboardCheck className="w-4 h-4" />
+              Bugünkü Checklist
+            </CardTitle>
+            <Badge variant="outline" className="text-[10px] h-5">
+              {branchSummary.checklists.filter((c) => c.done).length}/{branchSummary.checklists.length}
             </Badge>
           </CardHeader>
           <CardContent className="px-3 pb-3 space-y-1">
-            {branchSummary.teamStatus.map(member => (
-              <StaffStatusCard key={member.id} member={member} />
+            {branchSummary.checklists.map((c) => (
+              <div key={c.id} className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/30">
+                <div className={`w-4 h-4 rounded-sm flex items-center justify-center text-[10px] ${c.done ? "bg-emerald-500 text-white" : "border border-muted-foreground/30"}`}>
+                  {c.done ? "✓" : ""}
+                </div>
+                <span className={`text-xs ${c.done ? "text-muted-foreground line-through" : "font-medium"}`}>{c.name}</span>
+              </div>
             ))}
           </CardContent>
         </Card>
@@ -221,8 +300,42 @@ export default function MissionControlSupervisor() {
         </Card>
       )}
 
-      <TodaysTasksWidget />
+      <div className="grid grid-cols-4 gap-2" data-testid="mc-sup-quick-actions">
+        <Link href="/iletisim">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-2 flex flex-col items-center gap-1">
+              <MessageSquare className="w-5 h-5 text-blue-500" />
+              <span className="text-[9px] font-medium text-center">İletişim</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/vardiya">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-2 flex flex-col items-center gap-1">
+              <CalendarClock className="w-5 h-5 text-violet-500" />
+              <span className="text-[9px] font-medium text-center">Vardiya</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/stok">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-2 flex flex-col items-center gap-1">
+              <Factory className="w-5 h-5 text-amber-500" />
+              <span className="text-[9px] font-medium text-center">Stok</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/raporlar">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-2 flex flex-col items-center gap-1">
+              <BarChart3 className="w-5 h-5 text-emerald-500" />
+              <span className="text-[9px] font-medium text-center">Raporlar</span>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
+      <TodaysTasksWidget />
       <ActivityTimeline />
     </div>
   );
