@@ -313,7 +313,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // 6. Denetim & Analitik (Quality + Analytics merged)
   {
     id: "audit-analytics",
-    titleTr: "Denetim & Analitik",
+    titleTr: "Kalite & Denetim",
     icon: "Star",
     scope: "both",
     group: "management",
@@ -477,14 +477,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
-        id: "campaign-management",
-        titleTr: "Kampanyalar",
-        path: "/crm/kampanyalar",
-        icon: "Megaphone",
-        moduleKey: "crm_campaigns",
-        scope: "hq",
-      },
-      {
         id: "customer-satisfaction",
         titleTr: "Misafir Memnuniyeti",
         path: "/misafir-memnuniyeti",
@@ -544,14 +536,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
-        id: "users",
-        titleTr: "Kullanıcılar",
-        path: "/admin/kullanicilar",
-        icon: "Users",
-        moduleKey: "users",
-        scope: "hq",
-      },
-      {
         id: "branches-list",
         titleTr: "Şubeler",
         path: "/subeler",
@@ -565,38 +549,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         path: "/projeler",
         icon: "FolderKanban",
         moduleKey: "projects",
-        scope: "hq",
-      },
-      {
-        id: "content-studio",
-        titleTr: "İçerik Stüdyosu",
-        path: "/admin/icerik-studyosu",
-        icon: "FileText",
-        moduleKey: "admin_settings",
-        scope: "hq",
-      },
-      {
-        id: "settings",
-        titleTr: "Ayarlar",
-        path: "/admin/ayarlar",
-        icon: "Settings",
-        moduleKey: "settings",
-        scope: "hq",
-      },
-      {
-        id: "backup-security",
-        titleTr: "Yedekleme",
-        path: "/admin/yedekleme",
-        icon: "HardDrive",
-        moduleKey: "admin_settings",
-        scope: "hq",
-      },
-      {
-        id: "widget-editor",
-        titleTr: "Widget Editör",
-        path: "/admin/widget-editor",
-        icon: "LayoutGrid",
-        moduleKey: "admin_settings",
         scope: "hq",
       },
       {
@@ -687,7 +639,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'hq-support',
   ],
   marketing: [
-    'dashboard', 'campaign-management', 'customer-satisfaction', 'reports',
+    'dashboard', 'customer-satisfaction', 'reports',
     'notifications', 'crm-main', 'hq-support',
   ],
   muhasebe_ik: [
@@ -727,11 +679,10 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-inspection', 'branch-health', 'customer-satisfaction',
     'training-academy-hq', 'knowledge-base',
     'accounting-main', 'financial-management', 'pdks', 'maas',
-    'procurement-dashboard', 'stock-management', 'campaign-management',
+    'procurement-dashboard', 'stock-management',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
     'notifications', 'hq-support',
-    'admin-panel', 'users', 'settings', 'project-list', 'content-studio',
-    'backup-security', 'widget-editor',
+    'admin-panel', 'project-list',
   ],
   fabrika_sorumlu: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'notifications',
