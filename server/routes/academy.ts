@@ -32,6 +32,7 @@ import {
   trainingCompletions,
   careerLevels,
   userTrainingProgress,
+  isHQRole,
 } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
 import { z } from "zod";
@@ -2831,7 +2832,6 @@ router.get('/api/academy/weekly-progress', isAuthenticated, async (req, res) => 
         gte(trainingCompletions.completedAt, weekStart)
       ));
 
-    const HQ_ROLES = ['ceo', 'cgo', 'admin', 'marketing', 'muhasebe_ik', 'satinalma', 'gida_muhendisi', 'yatirimci_hq'];
     const weeklyTargets: Record<string, number> = {
       stajyer: 4,
       bar_buddy: 2,
@@ -2840,7 +2840,7 @@ router.get('/api/academy/weekly-progress', isAuthenticated, async (req, res) => 
       supervisor: 2,
       mudur: 2,
     };
-    const weeklyTarget = HQ_ROLES.includes(userRole) ? 1 : (weeklyTargets[userRole] || 2);
+    const weeklyTarget = isHQRole(userRole as any) ? 1 : (weeklyTargets[userRole] || 2);
 
     const allCompletions = await db.select({ completedAt: trainingCompletions.completedAt })
       .from(trainingCompletions)

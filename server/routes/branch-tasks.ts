@@ -4,15 +4,14 @@ import { sql, eq, and, desc, asc } from "drizzle-orm";
 import { isAuthenticated, isKioskAuthenticated } from "../localAuth";
 import { requireModuleEnabled } from "../services/module-flag-service";
 import { calculateBranchTaskScore } from "../services/branch-health-scoring";
-import { branchRecurringTasks, branchTaskInstances, branchTaskCategories, branchRecurringTaskOverrides } from "@shared/schema";
+import { branchRecurringTasks, branchTaskInstances, branchTaskCategories, branchRecurringTaskOverrides, isHQRole } from "@shared/schema";
 
 const router = Router();
 
 const TEMPLATE_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur", "supervisor"];
-const HQ_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "muhasebe_ik", "satinalma", "marketing", "kalite_kontrol", "gida_muhendisi", "fabrika_mudur"];
 
 function isBranchRole(role: string): boolean {
-  return !HQ_ROLES.includes(role);
+  return !isHQRole(role as any);
 }
 
 function canAccessBranch(user: any, branchId: number): boolean {

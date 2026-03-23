@@ -4,13 +4,11 @@ import { db } from "../db";
 import { 
   users, leaveRequests, knowledgeBaseArticles, learningStreaks,
   branches, employeePerformanceScores, trainingModules, quizResults,
-  trainingAssignments
+  trainingAssignments, isHQRole
 } from "@shared/schema";
 import { eq, and, desc, sql, ilike, or, count, avg } from "drizzle-orm";
 
 const router = Router();
-
-const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol', 'gida_muhendisi', 'muhasebe_ik', 'satinalma', 'marketing', 'fabrika_mudur'];
 
 router.get("/api/knowledge-base/articles", isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -207,7 +205,7 @@ router.get("/api/academy/career-progress", isAuthenticated, async (req: any, res
 router.get("/api/franchise/performance", isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!HQ_ROLES.includes(user.role) && user.role !== 'yatirimci_branch') {
+    if (!isHQRole(user.role) && user.role !== 'yatirimci_branch') {
       return res.json({ branches: [], overallScore: 0 });
     }
 
@@ -304,7 +302,7 @@ router.post("/api/admin/ai/re-embed", isAuthenticated, (_req, res) => res.status
 router.get("/api/admin/pending-approvals", isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!HQ_ROLES.includes(user.role)) return res.json([]);
+    if (!isHQRole(user.role)) return res.json([]);
 
     const pendingLeaves = await db.select({ id: leaveRequests.id, type: sql<string>`'leave'` })
       .from(leaveRequests)

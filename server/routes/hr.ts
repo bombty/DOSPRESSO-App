@@ -4556,15 +4556,15 @@ DOSPRESSO İnsan Kaynakları Ekibi`
 
   // ========== MAAŞ YÖNETİMİ API'LERİ ==========
 
-  // Maaş görüntüleme yetki kontrol fonksiyonu
   const canViewSalary = (viewerRole: string, targetUserId: string, viewerUserId: string, viewerBranchId: number | null, targetBranchId: number | null): boolean => {
-    // Admin ve muhasebe her maaşı görebilir
-    if (viewerRole === 'admin' || viewerRole === 'muhasebe') return true;
-    // Yatırımcı sadece kendi şubesindeki personelin maaşını görebilir
+    if (['admin', 'muhasebe', 'ceo', 'cgo', 'muhasebe_ik'].includes(viewerRole)) return true;
+    if (viewerRole === 'coach') {
+      return targetBranchId !== null;
+    }
     if (viewerRole === 'yatirimci_branch') {
       return viewerBranchId === targetBranchId;
     }
-    // Diğer roller maaş göremez
+    if (viewerUserId === targetUserId) return true;
     return false;
   };
 

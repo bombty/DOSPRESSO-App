@@ -2,12 +2,10 @@ import { Router } from "express";
 import { isAuthenticated } from "../localAuth";
 import { getEmployeeSummary, getBranchEmployeeSummaries } from "../services/employee-summary-service";
 import { db } from "../db";
-import { users } from "@shared/schema";
+import { users, isHQRole } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 const router = Router();
-
-const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol', 'gida_muhendisi'];
 const BRANCH_MANAGER_ROLES = ['mudur', 'supervisor'];
 
 router.get('/api/employee-summary/:userId', isAuthenticated, async (req, res) => {
@@ -16,7 +14,7 @@ router.get('/api/employee-summary/:userId', isAuthenticated, async (req, res) =>
     const { userId } = req.params;
     const days = parseInt(req.query.days as string) || 30;
 
-    if (!HQ_ROLES.includes(reqUser.role) && !BRANCH_MANAGER_ROLES.includes(reqUser.role)) {
+    if (!isHQRole(reqUser.role) && !BRANCH_MANAGER_ROLES.includes(reqUser.role)) {
       if (reqUser.id !== userId) {
         return res.status(403).json({ message: "Bu bilgilere erişim yetkiniz yok" });
       }
@@ -52,7 +50,7 @@ router.get('/api/employee-summary/branch/:branchId', isAuthenticated, async (req
       return res.status(400).json({ message: "Geçersiz şube ID" });
     }
 
-    if (!HQ_ROLES.includes(reqUser.role)) {
+    if (!isHQRole(reqUser.role)) {
       if (BRANCH_MANAGER_ROLES.includes(reqUser.role)) {
         if (reqUser.branchId !== branchId) {
           return res.status(403).json({ message: "Sadece kendi şubenizin verilerini görüntüleyebilirsiniz" });
@@ -80,7 +78,7 @@ router.get('/api/employee-summary/branch/:branchId/quick', isAuthenticated, asyn
       return res.status(400).json({ message: "Geçersiz şube ID" });
     }
 
-    if (!HQ_ROLES.includes(reqUser.role)) {
+    if (!isHQRole(reqUser.role)) {
       if (BRANCH_MANAGER_ROLES.includes(reqUser.role)) {
         if (reqUser.branchId !== branchId) {
           return res.status(403).json({ message: "Sadece kendi şubenizin verilerini görüntüleyebilirsiniz" });

@@ -5,6 +5,7 @@ import { optimizeGalleryImage } from "./imageProcessor";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
 import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
+import { isHQRole } from "@shared/schema";
 
 let openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -1831,16 +1832,13 @@ interface DashboardInsightsResponse {
 }
 
 async function buildDashboardPrompt(role: string, branchId?: number | null): Promise<string> {
-  const isHQ = !branchId;
+  const isHQ = isHQRole(role as any) || !branchId;
   const scope = isHQ ? 'tüm şubeler' : 'şube';
 
   // Fetch data based on role
   let prompt = `DOSPRESSO ${scope} için ${role} rolüne özel dashboard içgörüleri oluştur.\n\n`;
 
-  const HQ_ROLES = ['admin', 'muhasebe', 'satinalma', 'coach', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
-  const isHQRole = HQ_ROLES.includes(role);
-
-  if (isHQRole) {
+  if (isHQ) {
     // HQ roles: Cross-branch analysis
     const branches = await storage.getBranches();
     const tasks = await storage.getTasks();

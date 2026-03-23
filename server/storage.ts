@@ -310,6 +310,7 @@ import {
   aiSystemConfig,
   AiSystemConfig,
   InsertAiSystemConfig,
+  isHQRole,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -7421,12 +7422,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async runAllCompositeScoreUpdates(): Promise<{ processed: number; dangerCount: number; warningCount: number }> {
-    const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe_ik', 'satinalma', 'gida_muhendisi', 'marketing', 'yatirimci_hq', 'destek', 'teknik', 'kalite_kontrol'];
     const allActiveUsers = await db.select({ id: users.id, role: users.role })
       .from(users)
       .where(eq(users.isActive, true));
 
-    const branchFactoryUsers = allActiveUsers.filter(u => !HQ_ROLES.includes(u.role || ''));
+    const branchFactoryUsers = allActiveUsers.filter(u => !isHQRole((u.role || '') as any));
 
     let processed = 0;
     let dangerCount = 0;

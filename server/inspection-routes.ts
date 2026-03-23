@@ -1,6 +1,6 @@
 import { Express, Response } from "express";
 import { db } from "./db";
-import { branchQualityAudits, productComplaints, branches, users, PERMISSIONS, type PermissionModule, type PermissionAction, type UserRoleType } from "@shared/schema";
+import { branchQualityAudits, productComplaints, branches, users, PERMISSIONS, type PermissionModule, type PermissionAction, type UserRoleType, isHQRole } from "@shared/schema";
 import { eq, and, desc, sql, gte, count, avg } from "drizzle-orm";
 import { insertBranchQualityAuditSchema, insertProductComplaintSchema } from "@shared/schema";
 
@@ -17,9 +17,8 @@ function hasPermission(role: string, module: PermissionModule, action: Permissio
   return (modulePerms as readonly string[]).includes(action);
 }
 
-const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'kalite_kontrol'] as const;
 function isHqRole(role: string): boolean {
-  return (HQ_ROLES as readonly string[]).includes(role);
+  return isHQRole(role as any);
 }
 
 const INSPECTION_CATEGORIES = [

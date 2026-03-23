@@ -5,7 +5,7 @@ import {
   agentPendingActions, agentRuns, agentEscalationHistory, 
   agentActionOutcomes, agentRejectionPatterns, agentRoutingRules,
   users, notifications, aiAgentLogs, tasks, dobodyFlowTasks,
-  guidanceDismissals
+  guidanceDismissals, isHQRole
 } from "@shared/schema";
 import { eq, desc, and, count, sql, gte, or, inArray, ne } from "drizzle-orm";
 import { runAgentAnalysis } from "../services/agent-engine";
@@ -727,8 +727,6 @@ router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req, res) =
   }
 });
 
-const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe_ik', 'kalite_kontrol', 'gida_muhendisi', 'fabrika_mudur', 'satinalma'];
-
 let cachedGaps: any[] | null = null;
 let cachedGapsAt = 0;
 const GAP_CACHE_TTL = 3 * 60 * 1000;
@@ -749,7 +747,7 @@ router.get("/api/agent/guidance", isAuthenticated, async (req, res) => {
     const dismissals = await db.select().from(guidanceDismissals).where(eq(guidanceDismissals.userId, user.id));
     const dismissedIds = new Set(dismissals.map((d) => d.guidanceId));
 
-    const isHQ = HQ_ROLES.includes(user.role);
+    const isHQ = isHQRole(user.role);
     const myGuidance = allGaps.filter(gap => {
       if (dismissedIds.has(gap.id)) return false;
       if (!gap.targetRoles.includes(user.role)) return false;
