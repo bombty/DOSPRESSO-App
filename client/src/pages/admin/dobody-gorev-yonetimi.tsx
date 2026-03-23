@@ -83,7 +83,7 @@ const NAVIGATE_OPTIONS = [
   { value: "/gorevler", label: "Görevler" },
   { value: "/raporlar", label: "Raporlar" },
   { value: "/fabrika/dashboard", label: "Fabrika" },
-  { value: "/misafir-memnuniyeti", label: "Müşteri Memnuniyeti" },
+  { value: "/crm?channel=misafir", label: "Müşteri Memnuniyeti" },
   { value: "/stok-yonetimi", label: "Stok Yönetimi" },
   { value: "custom", label: "Özel URL..." },
 ];

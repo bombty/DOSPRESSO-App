@@ -154,7 +154,7 @@ const PATH_LABELS: Record<string, string> = {
   '/proje-gorev': 'Proje Görev',
   '/sikayetler': 'Şikayetler',
   '/urun-sikayet': 'Ürün Şikayeti',
-  '/misafir-memnuniyeti': 'Misafir Memnuniyeti',
+  '/crm?channel=misafir': 'Misafir Memnuniyeti',
   '/misafir-geri-bildirim': 'Misafir Geri Bildirim',
   '/sube-saglik-skoru': 'Şube Sağlık Skoru',
   '/sube-karsilastirma': 'Şube Karşılaştırma',

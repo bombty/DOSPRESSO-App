@@ -1006,11 +1006,25 @@ export const supportTickets = pgTable("support_tickets", {
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  ticketType: varchar("ticket_type", { length: 50 }).default("franchise_talep"),
+  source: varchar("source", { length: 30 }).default("manual"),
+  channel: varchar("channel", { length: 20 }).default("franchise"),
+  rating: integer("rating"),
+  ratingHizmet: integer("rating_hizmet"),
+  ratingTemizlik: integer("rating_temizlik"),
+  ratingUrun: integer("rating_urun"),
+  ratingPersonel: integer("rating_personel"),
+  customerName: varchar("customer_name", { length: 200 }),
+  customerEmail: varchar("customer_email", { length: 200 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  isAnonymous: boolean("is_anonymous").default(false),
+  photoUrls: text("photo_urls").array(),
 }, (table) => [
   index("st_branch_idx").on(table.branchId),
   index("st_dept_idx").on(table.department),
   index("st_status_idx").on(table.status),
   index("st_assigned_idx").on(table.assignedToUserId),
+  index("st_channel_idx").on(table.channel),
 ]);
 
 export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, updatedAt: true });

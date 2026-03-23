@@ -60,7 +60,7 @@ export function InboxDialog() {
 
   const handleThreadClick = (thread: Thread) => {
     setOpen(false);
-    setLocation("/iletisim-merkezi");
+    setLocation("/crm?channel=franchise");
   };
 
   return (

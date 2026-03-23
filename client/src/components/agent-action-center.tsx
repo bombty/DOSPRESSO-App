@@ -87,7 +87,7 @@ const INVALID_DEEP_LINKS = ["/sube-ozet", "/sube/employee-dashboard"];
 const LEGACY_DEEP_LINK_MAP: Record<string, string> = {
   "/admin?tab=sla": "/hq-destek",
   "/bordro?tab=parametreler": "/bordrom",
-  "/crm?tab=feedback": "/misafir-memnuniyeti",
+  "/crm?tab=feedback": "/crm?channel=misafir",
   "/satinalma?tab=tedarikciler": "/satinalma/tedarikci",
   "/satinalma?tab=siparisler": "/satinalma/siparis",
   "/fabrika?tab=hedefler": "/fabrika/uretim-planlama",

@@ -498,7 +498,7 @@ export const NAV_ITEMS: NavItem[] = [
     getRoute: (user) => {
       if (!user) return "/crm";
       switch (user.role) {
-        case "coach": return "/misafir-memnuniyeti";
+        case "coach": return "/crm?channel=misafir";
         case "satinalma": return "/crm";
         case "muhasebe":
         case "muhasebe_ik": return "/crm";

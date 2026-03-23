@@ -27,13 +27,25 @@ const router = Router();
 router.use(isAuthenticated);
 
 const createTicketSchema = z.object({
-  department: z.enum(["teknik", "lojistik", "muhasebe", "marketing", "trainer", "hr"]),
+  department: z.enum(["teknik", "lojistik", "muhasebe", "marketing", "trainer", "hr", "musteri_hizmetleri"]),
   title: z.string().min(5).max(300),
   description: z.string().min(10),
   priority: z.enum(["dusuk", "normal", "yuksek", "kritik"]).default("normal"),
   relatedEquipmentId: z.number().optional(),
   equipmentDescription: z.string().max(500).optional(),
   attachmentUrls: z.array(z.string()).max(5).optional(),
+  channel: z.enum(["franchise", "misafir"]).default("franchise"),
+  ticketType: z.string().max(50).default("franchise_talep"),
+  source: z.enum(["manual", "qr", "web", "escalation"]).default("manual"),
+  rating: z.number().min(1).max(5).optional(),
+  ratingHizmet: z.number().min(1).max(5).optional(),
+  ratingTemizlik: z.number().min(1).max(5).optional(),
+  ratingUrun: z.number().min(1).max(5).optional(),
+  ratingPersonel: z.number().min(1).max(5).optional(),
+  customerName: z.string().max(200).optional(),
+  customerEmail: z.string().email().max(200).optional(),
+  customerPhone: z.string().max(50).optional(),
+  isAnonymous: z.boolean().optional(),
 });
 
 const updateTicketSchema = z.object({
@@ -114,13 +126,20 @@ function canAccessTicket(user: AuthenticatedUser, ticket: TicketAccessFields): b
 router.get("/tickets", async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    const { department, status, priority, branchId, page = "1" } = req.query;
+    const { department, status, priority, branchId, channel, ticketType, page = "1" } = req.query;
     const pageNum = parseInt(page as string);
     if (isNaN(pageNum) || pageNum < 1) return res.status(400).json({ error: "Invalid page" });
     const pageLimit = 20;
     const pageOffset = (pageNum - 1) * pageLimit;
 
     const conditions: ReturnType<typeof sql>[] = [sql`st.is_deleted = false`];
+
+    if (channel && ["misafir", "franchise"].includes(channel as string)) {
+      conditions.push(sql`st.channel = ${channel}`);
+    }
+    if (ticketType) {
+      conditions.push(sql`st.ticket_type = ${ticketType}`);
+    }
 
     if (!isHQRole(user.role)) {
       conditions.push(sql`st.branch_id = ${user.branchId}`);
@@ -219,7 +238,7 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
 
     const parsed = createTicketSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
-    const { department, title, description, priority, relatedEquipmentId, equipmentDescription, attachmentUrls } = parsed.data;
+    const { department, title, description, priority, relatedEquipmentId, equipmentDescription, attachmentUrls, channel: ticketChannel, ticketType, source: ticketSource, rating: ticketRating, ratingHizmet, ratingTemizlik, ratingUrun, ratingPersonel, customerName, customerEmail, customerPhone, isAnonymous } = parsed.data;
 
     if (relatedEquipmentId && isBranchRole(user.role) && user.branchId) {
       const eqCheck = await db.execute(
@@ -248,6 +267,18 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
       priority,
       status: "acik",
       relatedEquipmentId: relatedEquipmentId ?? null,
+      channel: ticketChannel ?? "franchise",
+      ticketType: ticketType ?? "franchise_talep",
+      source: ticketSource ?? "manual",
+      rating: ticketRating ?? null,
+      ratingHizmet: ratingHizmet ?? null,
+      ratingTemizlik: ratingTemizlik ?? null,
+      ratingUrun: ratingUrun ?? null,
+      ratingPersonel: ratingPersonel ?? null,
+      customerName: customerName ?? null,
+      customerEmail: customerEmail ?? null,
+      customerPhone: customerPhone ?? null,
+      isAnonymous: isAnonymous ?? false,
     }).returning();
 
     const newTicket = result[0];
@@ -372,8 +403,11 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
     const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
     if (!ticket || ticket.isDeleted) return res.status(404).json({ error: "Ticket not found" });
 
-    if (!isHQRole(user.role) && ticket.branchId !== user.branchId) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!canAccessTicket(user, { department: ticket.department, branchId: ticket.branchId, assignedToUserId: ticket.assignedToUserId })) {
+      const coworkCheck = await db.select({ userId: ticketCoworkMembers.userId }).from(ticketCoworkMembers).where(eq(ticketCoworkMembers.ticketId, ticketId));
+      if (!coworkCheck.some(m => m.userId === user.id)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
 
     let finalCommentType = commentType;
@@ -545,44 +579,59 @@ router.delete("/tickets/:id/cowork/members/:userId", async (req: AuthRequest, re
 router.get("/dashboard", async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user!;
-    if (BRANCH_ONLY_ROLES.includes(user.role)) {
-      return res.status(403).json({ error: "Access denied" });
-    }
+
+    const channelParam = req.query.channel as string | undefined;
+    const channelFilter = channelParam && ["misafir", "franchise"].includes(channelParam)
+      ? sql`AND channel = ${channelParam}`
+      : sql``;
+    const channelFilterSt = channelParam && ["misafir", "franchise"].includes(channelParam)
+      ? sql`AND st.channel = ${channelParam}`
+      : sql``;
 
     const branchFilter = !isHQRole(user.role) ? sql`AND st.branch_id = ${user.branchId}` : sql``;
     const branchFilterSimple = !isHQRole(user.role) ? sql`AND branch_id = ${user.branchId}` : sql``;
 
-    const [openTickets, slaBreaches, slaRisk, hqTaskStats, b2cStats] = await Promise.all([
-      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple}`),
-      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE sla_breached = true AND status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple}`),
-      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE sla_deadline < NOW() + INTERVAL '2 hours' AND sla_breached = false AND status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple}`),
+    const [openTickets, slaBreaches, slaRisk, resolvedThisWeek, avgRating, hqTaskStats] = await Promise.all([
+      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple} ${channelFilter}`),
+      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE sla_breached = true AND status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple} ${channelFilter}`),
+      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE sla_deadline < NOW() + INTERVAL '2 hours' AND sla_breached = false AND status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple} ${channelFilter}`),
+      db.execute(sql`SELECT COUNT(*) as count FROM support_tickets WHERE status = 'cozuldu' AND resolved_at > NOW() - INTERVAL '7 days' AND is_deleted = false ${branchFilterSimple} ${channelFilter}`),
+      db.execute(sql`SELECT ROUND(AVG(rating)::numeric, 1) as avg_rating, COUNT(*) as count FROM support_tickets WHERE rating IS NOT NULL AND is_deleted = false ${branchFilterSimple} ${channelFilter}`),
       isHQRole(user.role)
         ? db.execute(sql`SELECT status, COUNT(*) as count FROM hq_tasks WHERE is_deleted = false GROUP BY status`)
         : Promise.resolve({ rows: [] }),
-      db.execute(sql`SELECT COUNT(*) as count FROM customer_feedback WHERE created_at > NOW() - INTERVAL '30 days'`),
     ]);
 
     const deptBreakdown = await db.execute(
       sql`SELECT department, COUNT(*) as count, SUM(CASE WHEN sla_breached THEN 1 ELSE 0 END) as sla_breached_count
           FROM support_tickets 
-          WHERE status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple}
+          WHERE status NOT IN ('cozuldu','kapatildi') AND is_deleted = false ${branchFilterSimple} ${channelFilter}
           GROUP BY department ORDER BY count DESC`
     );
 
     const recentTickets = await db.execute(
-      sql`SELECT st.id, st.ticket_number, st.title, st.department, st.priority, st.status, st.sla_breached, st.created_at, b.name as branch_name
+      sql`SELECT st.id, st.ticket_number, st.title, st.department, st.priority, st.status, st.sla_breached, st.created_at, st.channel, st.ticket_type, st.rating, b.name as branch_name
           FROM support_tickets st LEFT JOIN branches b ON st.branch_id = b.id
-          WHERE st.is_deleted = false ${branchFilter} ORDER BY st.created_at DESC LIMIT 10`
+          WHERE st.is_deleted = false ${branchFilter} ${channelFilterSt} ORDER BY st.created_at DESC LIMIT 10`
+    );
+
+    const avgResolveTime = await db.execute(
+      sql`SELECT ROUND(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)::numeric, 1) as avg_hours
+          FROM support_tickets WHERE resolved_at IS NOT NULL AND is_deleted = false ${branchFilterSimple} ${channelFilter}`
     );
 
     res.json({
       openTickets: parseInt(openTickets.rows[0]?.count as string ?? "0"),
       slaBreaches: parseInt(slaBreaches.rows[0]?.count as string ?? "0"),
       slaRisk: parseInt(slaRisk.rows[0]?.count as string ?? "0"),
+      resolvedThisWeek: parseInt(resolvedThisWeek.rows[0]?.count as string ?? "0"),
+      avgRating: parseFloat(avgRating.rows[0]?.avg_rating as string ?? "0") || null,
+      ratingCount: parseInt(avgRating.rows[0]?.count as string ?? "0"),
+      avgResolveTimeHours: parseFloat(avgResolveTime.rows[0]?.avg_hours as string ?? "0") || null,
       hqTaskStats: hqTaskStats.rows,
-      b2cFeedbackCount: parseInt(b2cStats.rows[0]?.count as string ?? "0"),
       deptBreakdown: deptBreakdown.rows,
       recentTickets: recentTickets.rows,
+      channel: channelParam || "all",
     });
   } catch (error) {
     console.error("Error fetching dashboard:", error);

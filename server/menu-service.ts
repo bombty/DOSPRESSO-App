@@ -113,8 +113,8 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "iletisim-merkezi",
-        titleTr: "İletişim Merkezi",
-        path: "/iletisim-merkezi",
+        titleTr: "CRM / Destek",
+        path: "/crm?channel=franchise",
         icon: "MessageSquare",
         moduleKey: "support",
         scope: "both",
@@ -496,7 +496,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "customer-satisfaction",
         titleTr: "Misafir Memnuniyeti",
-        path: "/misafir-memnuniyeti",
+        path: "/crm?channel=misafir",
         icon: "MessageSquareHeart",
         moduleKey: "crm_feedback",
         scope: "hq",

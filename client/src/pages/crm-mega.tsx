@@ -1,196 +1,547 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { HQ_ROLES } from "@shared/schema";
 import {
-  LayoutDashboard,
-  Megaphone,
+  Plus,
+  ShieldAlert,
+  Users,
+  Coffee,
+  Building2,
   TicketCheck,
-  BarChart3,
-  Settings,
+  AlertTriangle,
+  Clock,
+  Star,
+  TrendingUp,
+  CheckCircle2,
 } from "lucide-react";
 
-const CRMDashboard = lazy(() => import("@/pages/crm/dashboard"));
-const CRMComplaints = lazy(() => import("@/pages/crm/complaints"));
-const CRMCampaigns = lazy(() => import("@/pages/crm/campaigns"));
-const CRMAnalytics = lazy(() => import("@/pages/crm/analytics"));
-const CRMSettings = lazy(() => import("@/pages/crm/settings"));
-const EmployeeDashboard = lazy(() => import("@/pages/crm/employee-dashboard"));
+import { CrmNav } from "@/pages/iletisim-merkezi/crm-nav";
+import { TicketListPanel } from "@/pages/iletisim-merkezi/ticket-list-panel";
+import type { TicketListItem } from "@/pages/iletisim-merkezi/ticket-list-panel";
+import { TicketChatPanel } from "@/pages/iletisim-merkezi/ticket-chat-panel";
+import { NewTicketDialog } from "@/pages/iletisim-merkezi/NewTicketDialog";
+import { SlaRulesPanel } from "@/pages/iletisim-merkezi/sla-rules-panel";
+import {
+  isHQRole,
+  canAccessIletisimMerkezi,
+  canCreateTicket,
+  DEPARTMENTS,
+  getDeptConfig,
+} from "@/pages/iletisim-merkezi/categoryConfig";
 
-interface TabConfig {
-  id: string;
-  labelTr: string;
-  icon: React.ReactNode;
-  permissionModule: string;
-  component: React.LazyExoticComponent<React.ComponentType<any>>;
+const DashboardTab = lazy(() => import("@/pages/iletisim-merkezi/DashboardTab"));
+const HqTasksTab = lazy(() => import("@/pages/iletisim-merkezi/HqTasksTab"));
+const BroadcastTab = lazy(() => import("@/pages/iletisim-merkezi/BroadcastTab"));
+
+type Channel = "franchise" | "misafir";
+
+interface DashboardData {
+  openTickets: number;
+  slaBreaches: number;
+  slaRisk: number;
+  resolvedThisWeek: number;
+  avgRating: number | null;
+  ratingCount: number;
+  avgResolveTimeHours: number | null;
+  hqTaskStats: Array<{ status: string; count: string }>;
+  deptBreakdown: Array<{ department: string; count: string; sla_breached_count: string }>;
+  recentTickets: Array<{
+    id: number;
+    ticket_number: string;
+    title: string;
+    department: string;
+    priority: string;
+    status: string;
+    sla_breached: boolean;
+    created_at: string;
+    branch_name: string;
+    channel: string;
+    ticket_type: string;
+    rating: number | null;
+  }>;
+  channel: string;
 }
 
-const CRM_TABS: TabConfig[] = [
-  {
-    id: "dashboard",
-    labelTr: "Dashboard",
-    icon: <LayoutDashboard className="h-4 w-4" />,
-    permissionModule: "crm_dashboard",
-    component: CRMDashboard,
-  },
-  {
-    id: "kampanyalar",
-    labelTr: "Kampanyalar",
-    icon: <Megaphone className="h-4 w-4" />,
-    permissionModule: "crm_campaigns",
-    component: CRMCampaigns,
-  },
-  {
-    id: "ticket-talepler",
-    labelTr: "Ticket / Talepler",
-    icon: <TicketCheck className="h-4 w-4" />,
-    permissionModule: "crm_complaints",
-    component: CRMComplaints,
-  },
-  {
-    id: "analizler",
-    labelTr: "Analizler",
-    icon: <BarChart3 className="h-4 w-4" />,
-    permissionModule: "crm_analytics",
-    component: CRMAnalytics,
-  },
-  {
-    id: "ayarlar",
-    labelTr: "Ayarlar",
-    icon: <Settings className="h-4 w-4" />,
-    permissionModule: "crm_settings",
-    component: CRMSettings,
-  },
-];
-
-const TAB_URL_MAP: Record<string, string> = {
-  dashboard: "/crm",
-  kampanyalar: "/crm/kampanyalar",
-  "ticket-talepler": "/crm/ticket-talepler",
-  analizler: "/crm/analizler",
-  ayarlar: "/crm/ayarlar",
-};
-
-function getTabFromUrl(pathname: string): string | null {
-  if (pathname === "/crm" || pathname === "/crm/") return "dashboard";
-  for (const [tabId, url] of Object.entries(TAB_URL_MAP)) {
-    if (tabId !== "dashboard" && pathname.startsWith(url)) return tabId;
-  }
-  return null;
+interface TicketDetailResponse {
+  id: number;
+  ticket_number: string;
+  title: string;
+  description: string;
+  department: string;
+  priority: string;
+  status: string;
+  branch_name: string | null;
+  created_by_name: string | null;
+  assigned_to_name: string | null;
+  resolved_by_name: string | null;
+  resolved_at: string | null;
+  sla_deadline: string | null;
+  sla_breached: boolean;
+  created_at: string;
+  related_equipment_id: number | null;
+  comments: { id: number; content: string; author_name: string; created_at: string; is_internal: boolean; comment_type: string }[];
+  attachments?: { id: number; fileName: string; storageKey: string; mimeType: string; fileSize: number }[];
+  isCoworkMember: boolean;
+  assigned_to_user_id: string | null;
 }
+
+const HQ_TICKET_NAV_KEYS = ["talepler", "teknik", "lojistik", "muhasebe", "marketing", "trainer", "hr"];
+const BRANCH_TICKET_NAV_KEYS = ["taleplerim", "teknik", "lojistik", "muhasebe", "marketing", "hr"];
 
 function TabSkeleton() {
   return (
     <div className="space-y-4 p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
       </div>
-      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+}
+
+function ChannelToggle({
+  channel,
+  onChange,
+  className,
+}: {
+  channel: Channel;
+  onChange: (c: Channel) => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex rounded-lg border border-border p-0.5 bg-muted/50", className)} role="radiogroup" aria-label="Kanal secimi" data-testid="channel-toggle">
+      <button
+        role="radio"
+        aria-checked={channel === "franchise"}
+        onClick={() => onChange("franchise")}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+          channel === "franchise"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground"
+        )}
+        data-testid="channel-btn-franchise"
+      >
+        <Building2 className="h-3.5 w-3.5" />
+        <span>Franchise</span>
+      </button>
+      <button
+        role="radio"
+        aria-checked={channel === "misafir"}
+        onClick={() => onChange("misafir")}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+          channel === "misafir"
+            ? "bg-background text-foreground shadow-sm"
+            : "text-muted-foreground"
+        )}
+        data-testid="channel-btn-misafir"
+      >
+        <Coffee className="h-3.5 w-3.5" />
+        <span>Misafir</span>
+      </button>
+    </div>
+  );
+}
+
+function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; channel: Channel }) {
+  if (!data) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 py-3">
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[72px]" />)}
+      </div>
+    );
+  }
+
+  const kpis = channel === "franchise"
+    ? [
+        {
+          label: "Acik Talepler",
+          value: data.openTickets,
+          icon: TicketCheck,
+          color: data.openTickets > 5 ? "text-amber-500" : "text-foreground",
+          sub: data.slaRisk > 0 ? `${data.slaRisk} SLA riski` : "Tumü zamanında",
+        },
+        {
+          label: "SLA Ihlali",
+          value: data.slaBreaches,
+          icon: AlertTriangle,
+          color: data.slaBreaches > 0 ? "text-red-500" : "text-foreground",
+          sub: data.slaBreaches > 0 ? "Acil aksiyon" : "Ihlal yok",
+        },
+        {
+          label: "Bu Hafta Cozulen",
+          value: data.resolvedThisWeek,
+          icon: CheckCircle2,
+          color: "text-green-600 dark:text-green-400",
+          sub: data.avgResolveTimeHours ? `Ort. ${data.avgResolveTimeHours}s` : "—",
+        },
+        {
+          label: "SLA Risk",
+          value: data.slaRisk,
+          icon: Clock,
+          color: data.slaRisk > 0 ? "text-amber-500" : "text-foreground",
+          sub: "2 saat icinde",
+        },
+      ]
+    : [
+        {
+          label: "Acik Geri Bildirimler",
+          value: data.openTickets,
+          icon: TicketCheck,
+          color: data.openTickets > 5 ? "text-amber-500" : "text-foreground",
+          sub: `${data.ratingCount} degerlendirilmis`,
+        },
+        {
+          label: "Ort. Puan",
+          value: data.avgRating ?? "—",
+          icon: Star,
+          color: (data.avgRating ?? 0) >= 4 ? "text-green-600 dark:text-green-400" : (data.avgRating ?? 0) >= 3 ? "text-amber-500" : "text-red-500",
+          sub: `${data.ratingCount} degerlendirme`,
+        },
+        {
+          label: "Bu Hafta Cozulen",
+          value: data.resolvedThisWeek,
+          icon: CheckCircle2,
+          color: "text-green-600 dark:text-green-400",
+          sub: data.avgResolveTimeHours ? `Ort. ${data.avgResolveTimeHours}s` : "—",
+        },
+        {
+          label: "SLA Ihlali",
+          value: data.slaBreaches,
+          icon: AlertTriangle,
+          color: data.slaBreaches > 0 ? "text-red-500" : "text-foreground",
+          sub: data.slaBreaches > 0 ? "Acil aksiyon" : "Ihlal yok",
+        },
+      ];
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 py-3" data-testid="channel-kpi-strip">
+      {kpis.map((kpi, i) => {
+        const Icon = kpi.icon;
+        return (
+          <Card key={i} className="bg-muted/50 border-0" data-testid={`kpi-card-${i}`}>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground uppercase tracking-wide truncate">{kpi.label}</p>
+              </div>
+              <p className={cn("text-xl font-medium", kpi.color)}>{kpi.value}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
 
 export default function CRMMegaModule() {
   const { user } = useAuth();
-  const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
 
   const userIsHQ = user ? (HQ_ROLES.has(user.role as any) || user.role === "admin") : false;
+  const isHQ = isHQRole(user?.role ?? "");
 
-  const allowedTabs = CRM_TABS.filter((tab) => {
-    if (!user) return false;
-    if (user.role === "admin") return true;
-    return canAccess(tab.permissionModule, "view");
+  const [channel, setChannel] = useState<Channel>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ch = params.get("channel");
+    return ch === "misafir" ? "misafir" : "franchise";
   });
 
-  useEffect(() => {
-    if (!userIsHQ) return;
-    const tabFromUrl = getTabFromUrl(location);
-    if (tabFromUrl && allowedTabs.some((t) => t.id === tabFromUrl)) {
-      setActiveTab(tabFromUrl);
-    } else if (allowedTabs.length > 0 && !allowedTabs.some((t) => t.id === activeTab)) {
-      const first = allowedTabs[0];
-      setActiveTab(first.id);
-      const newUrl = TAB_URL_MAP[first.id] || `/crm/${first.id}`;
-      if (location !== newUrl) setLocation(newUrl);
-    }
-  }, [location, allowedTabs, userIsHQ]);
+  const [activeTab, setActiveTab] = useState(isHQ ? "dashboard" : "tickets");
+  const [showNewTicket, setShowNewTicket] = useState(false);
+  const [crmNavKey, setCrmNavKey] = useState(isHQ ? "talepler" : "taleplerim");
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    const newUrl = TAB_URL_MAP[tabId] || `/crm/${tabId}`;
-    if (location !== newUrl) setLocation(newUrl);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("channel", channel);
+    window.history.replaceState({}, "", url.toString());
+  }, [channel]);
+
+  const handleChannelChange = (newChannel: Channel) => {
+    setChannel(newChannel);
+    setSelectedTicketId(null);
+    setCrmNavKey(isHQ ? "talepler" : "taleplerim");
+  };
+
+  const TICKET_NAV_KEYS = isHQ ? HQ_TICKET_NAV_KEYS : BRANCH_TICKET_NAV_KEYS;
+
+  const { data: dashStats } = useQuery<DashboardData>({
+    queryKey: ["/api/iletisim/dashboard", channel],
+    queryFn: async () => {
+      const res = await fetch(`/api/iletisim/dashboard?channel=${channel}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    refetchInterval: 60_000,
+    enabled: canAccessIletisimMerkezi(user?.role ?? "") && isHQ,
+  });
+
+  const { data: allTickets = [], isLoading: ticketsLoading } = useQuery<TicketListItem[]>({
+    queryKey: ["/api/iletisim/tickets", "channel", channel],
+    queryFn: async () => {
+      const res = await fetch(`/api/iletisim/tickets?channel=${channel}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: canAccessIletisimMerkezi(user?.role ?? ""),
+  });
+
+  const safeTickets: TicketListItem[] = Array.isArray(allTickets) ? allTickets : [];
+
+  const filteredTickets = useMemo(() => {
+    const allKey = isHQ ? "talepler" : "taleplerim";
+    if (crmNavKey === allKey) return safeTickets;
+    return safeTickets.filter((t) => t.department === crmNavKey);
+  }, [crmNavKey, safeTickets, isHQ]);
+
+  const ticketCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const openStatuses = ["acik", "islemde", "beklemede"];
+    const allKey = isHQ ? "talepler" : "taleplerim";
+    counts[allKey] = safeTickets.filter((t) => openStatuses.includes(t.status)).length;
+    for (const dept of DEPARTMENTS) {
+      counts[dept.key] = safeTickets.filter((t) => t.department === dept.key && openStatuses.includes(t.status)).length;
+    }
+    return counts;
+  }, [safeTickets, isHQ]);
+
+  const { data: selectedTicketDetail, isLoading: ticketDetailLoading } = useQuery<TicketDetailResponse>({
+    queryKey: ["/api/iletisim/tickets", selectedTicketId],
+    queryFn: async () => {
+      const res = await fetch(`/api/iletisim/tickets/${selectedTicketId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!selectedTicketId,
+  });
+
+  const { data: branchInfo } = useQuery<{ id: number; name: string }>({
+    queryKey: ["/api/branches", user?.branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/branches/${user?.branchId}`, { credentials: "include" });
+      if (!res.ok) return { id: 0, name: "Subem" };
+      return res.json();
+    },
+    enabled: !isHQ && !!user?.branchId,
+  });
+
+  interface DelegationItem {
+    moduleKey: string;
+    delegatedToUserId?: string;
+  }
+
+  const { data: activeDelegations = [] } = useQuery<DelegationItem[]>({
+    queryKey: ["/api/delegations/active"],
+    enabled: isHQ,
+  });
+
+  const delegatedDepts = useMemo(() => {
+    if (!isHQ) return [];
+    const keyToDept: Record<string, string> = {
+      crm_teknik: "teknik",
+      crm_lojistik: "lojistik",
+      crm_muhasebe: "muhasebe",
+      crm_marketing: "marketing",
+      crm_ik: "hr",
+    };
+    return activeDelegations.map((d) => keyToDept[d.moduleKey]).filter(Boolean) as string[];
+  }, [activeDelegations, isHQ]);
+
+  const openCount = dashStats?.openTickets ?? 0;
+  const hqPending = dashStats?.hqTaskStats?.find((s) => s.status === "beklemede")?.count ?? 0;
+
+  const tabsForRole = useMemo(() => {
+    if (isHQ) {
+      return [
+        { key: "dashboard", label: "Dashboard", badge: null },
+        { key: "tickets", label: channel === "franchise" ? "Sube Talepleri" : "Misafir GB", badge: openCount > 0 ? openCount : null },
+        ...(channel === "franchise"
+          ? [
+              { key: "hq-tasks", label: "HQ Gorevler", badge: Number(hqPending) > 0 ? Number(hqPending) : null },
+              { key: "broadcast", label: "Duyurular", badge: null },
+            ]
+          : []),
+      ];
+    }
+    return [{ key: "tickets", label: channel === "franchise" ? "Taleplerim" : "Misafir Geri Bildirimleri", badge: null }];
+  }, [isHQ, openCount, hqPending, channel]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
   };
 
   if (!user) return null;
 
-  if (!userIsHQ) {
+  if (!canAccessIletisimMerkezi(user.role)) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="px-4 pt-3 pb-2 border-b">
-          <h1 className="text-xl font-semibold" data-testid="text-crm-title">Kişisel Dashboard</h1>
-          <p className="text-sm text-muted-foreground">İstatistikleriniz ve performansınız</p>
-        </div>
-        <div className="flex-1 overflow-auto">
-          <Suspense fallback={<TabSkeleton />}>
-            <EmployeeDashboard />
-          </Suspense>
+      <div className="max-w-5xl mx-auto px-4 py-6" data-testid="crm-unauthorized">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <ShieldAlert className="h-10 w-10 text-muted-foreground mb-4" />
+          <h2 className="text-lg font-medium mb-1">Erisim Yetkisi Yok</h2>
+          <p className="text-sm text-muted-foreground">Bu sayfaya erisim yetkiniz bulunmamaktadir.</p>
         </div>
       </div>
     );
   }
 
-  if (allowedTabs.length === 0) return null;
-
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 pt-3 pb-2">
-        <h1 className="text-xl font-semibold" data-testid="text-crm-title">CRM — Müşteri İlişkileri</h1>
-        <p className="text-sm text-muted-foreground">Kampanya, ticket/talep yönetimi ve müşteri etkileşimleri</p>
+    <div className="h-full flex flex-col" data-testid="crm-page">
+      <div className="px-4 pt-3 pb-2 border-b flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-semibold" data-testid="text-crm-title">
+            CRM
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {channel === "franchise" ? "Franchise talep ve destek yonetimi" : "Misafir geri bildirim ve memnuniyet"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ChannelToggle channel={channel} onChange={handleChannelChange} />
+          {canCreateTicket(user.role) && (
+            <Button onClick={() => setShowNewTicket(true)} size="sm" data-testid="button-new-ticket">
+              <Plus className="h-4 w-4 mr-1.5" />
+              {channel === "franchise" ? "Yeni Ticket" : "Yeni GB"}
+            </Button>
+          )}
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
-        <div className="px-4 border-b">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <TabsList className="inline-flex h-10 w-max items-center justify-start gap-1 bg-transparent p-0">
-              {allowedTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
-                  data-testid={`tab-crm-${tab.id}`}
-                >
-                  {tab.icon}
-                  <span className="hidden sm:inline">{tab.labelTr}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
+      {isHQ && <ChannelKPIStrip data={dashStats} channel={channel} />}
 
-        <div className="flex-1 overflow-auto">
-          {allowedTabs.map((tab) => (
-            <TabsContent
-              key={tab.id}
-              value={tab.id}
-              className="h-full m-0 p-0 data-[state=inactive]:hidden"
-            >
-              <Suspense fallback={<TabSkeleton />}>
-                <tab.component />
-              </Suspense>
-            </TabsContent>
-          ))}
+      {/* MOBILE LAYOUT */}
+      <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+        <div className="px-4 w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            {tabsForRole.length > 1 && (
+              <TabsList className="mb-3 h-auto flex-wrap gap-1 bg-transparent p-0 border-b border-border rounded-none w-full justify-start">
+                {tabsForRole.map((tab) => (
+                  <TabsTrigger
+                    key={tab.key}
+                    value={tab.key}
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground px-4 py-2 text-sm"
+                    data-testid={`tab-${tab.key}`}
+                  >
+                    {tab.label}
+                    {tab.badge != null && (
+                      <Badge variant="destructive" className="ml-2 text-xs">
+                        {tab.badge}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            )}
+
+            <Suspense fallback={<TabSkeleton />}>
+              {isHQ && (
+                <TabsContent value="dashboard" className="mt-0">
+                  <DashboardTab stats={dashStats as any} />
+                </TabsContent>
+              )}
+              <TabsContent value="tickets" className="mt-0">
+                <div className="space-y-2">
+                  {safeTickets.length === 0 && !ticketsLoading && (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      {channel === "franchise" ? "Henuz talep yok" : "Henuz geri bildirim yok"}
+                    </p>
+                  )}
+                  {ticketsLoading && <TabSkeleton />}
+                  {safeTickets.map((ticket) => (
+                    <Card
+                      key={ticket.id}
+                      className="hover-elevate cursor-pointer"
+                      onClick={() => setSelectedTicketId(ticket.id)}
+                      data-testid={`mobile-ticket-${ticket.id}`}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-muted-foreground">{ticket.ticket_number}</span>
+                          <Badge variant={ticket.sla_breached ? "destructive" : "secondary"} className="text-xs">
+                            {getDeptConfig(ticket.department)?.label?.split(" ")[0] ?? ticket.department}
+                          </Badge>
+                        </div>
+                        <p className="text-sm font-medium truncate">{ticket.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {ticket.branch_name ?? "—"} · {ticket.status}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+              {isHQ && channel === "franchise" && (
+                <>
+                  <TabsContent value="hq-tasks" className="mt-0">
+                    <HqTasksTab />
+                  </TabsContent>
+                  <TabsContent value="broadcast" className="mt-0">
+                    <BroadcastTab />
+                  </TabsContent>
+                </>
+              )}
+            </Suspense>
+          </Tabs>
         </div>
-      </Tabs>
+      </div>
+
+      {/* DESKTOP 3-COLUMN SPLIT PANEL */}
+      <div className="hidden md:flex flex-1 overflow-hidden">
+        <CrmNav
+          activeKey={crmNavKey}
+          onSelect={(key) => {
+            setCrmNavKey(key);
+            setSelectedTicketId(null);
+          }}
+          ticketCounts={ticketCounts}
+          delegatedDepts={delegatedDepts}
+          isHQ={isHQ}
+          branchName={branchInfo?.name}
+        />
+
+        {TICKET_NAV_KEYS.includes(crmNavKey) && (
+          <TicketListPanel
+            tickets={filteredTickets}
+            selectedId={selectedTicketId}
+            onSelect={setSelectedTicketId}
+            isLoading={ticketsLoading}
+            onNewTicket={canCreateTicket(user.role) ? () => setShowNewTicket(true) : undefined}
+          />
+        )}
+
+        {TICKET_NAV_KEYS.includes(crmNavKey) ? (
+          <TicketChatPanel
+            ticket={selectedTicketDetail ?? null}
+            isLoading={ticketDetailLoading && !!selectedTicketId}
+          />
+        ) : crmNavKey === "dashboard" ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <Suspense fallback={<TabSkeleton />}>
+              <DashboardTab stats={dashStats as any} />
+            </Suspense>
+          </div>
+        ) : crmNavKey === "sla" ? (
+          <SlaRulesPanel isAdmin={["admin", "ceo", "cgo"].includes(user.role)} />
+        ) : (
+          <div className="flex-1 overflow-y-auto p-6" />
+        )}
+      </div>
+
+      <NewTicketDialog open={showNewTicket} onOpenChange={setShowNewTicket} />
     </div>
   );
 }

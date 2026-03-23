@@ -422,8 +422,9 @@ function Router() {
           <Route path="/denetimler">{() => <ModuleGuard moduleKey="denetim"><Denetimler /></ModuleGuard>}</Route>
           <Route path="/denetim/:id">{() => <ModuleGuard moduleKey="denetim"><DenetimYurutme /></ModuleGuard>}</Route>
           <Route path="/capa/:id">{() => <ModuleGuard moduleKey="denetim"><CapaDetay /></ModuleGuard>}</Route>
-          <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/misafir-memnuniyeti"); return null; }}</Route>
-          <Route path="/misafir-memnuniyeti/:tab?" component={MisafirMemnuniyetiModul} />
+          <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
+          <Route path="/misafir-memnuniyeti/:tab?">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
+          <Route path="/misafir-memnuniyeti">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
           <Route path="/sikayetler">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/hq-destek" component={HQSupport} />
           <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
@@ -473,7 +474,7 @@ function Router() {
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
-          <Route path="/iletisim-merkezi" component={IletisimMerkezi} />
+          <Route path="/iletisim-merkezi">{() => { window.location.replace("/crm?channel=franchise"); return null; }}</Route>
         </>
       )}
       

@@ -335,7 +335,7 @@ const allActions: QuickAction[] = [
     defaultLabelTR: "Misafir Geri Bildirim",
     defaultLabelEN: "Guest Feedback",
     icon: MessageSquare, 
-    path: "/misafir-memnuniyeti",
+    path: "/crm?channel=misafir",
     color: "text-purple-600 dark:text-purple-400",
     bgColor: "bg-purple-100 dark:bg-purple-900/40"
   }
