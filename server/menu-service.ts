@@ -16,7 +16,7 @@ import { isModuleEnabled, getModuleKeyForPath } from "./services/module-flag-ser
 // STATIC MENU BLUEPRINT
 // Single source of truth for all menu items
 // 3 functional groups: operations / management / settings
-// Consolidated from 13 → 9 → 8 sections (marketing merged into CRM, iletisim-merkezi/usage-guide/my-profile removed from sidebar)
+// Consolidated from 13 → 9 sections. PDKS+Maaş→İK, AI Asistan→Eğitim, Agent→Yönetim, MisafirMemn→Müşteri İlişkileri
 // ========================================
 
 const MENU_BLUEPRINT: SidebarMenuSection[] = [
@@ -137,10 +137,10 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     ],
   },
 
-  // 3. İK & Vardiya
+  // 3. İK & Personel (PDKS + Maaş taşındı — Finans'tan)
   {
     id: "hr-shifts",
-    titleTr: "İK & Vardiya",
+    titleTr: "İK & Personel",
     icon: "Users",
     scope: "both",
     group: "operations",
@@ -184,6 +184,22 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         icon: "GraduationCap",
         moduleKey: "hr",
         scope: "both",
+      },
+      {
+        id: "pdks",
+        titleTr: "PDKS",
+        path: "/pdks",
+        icon: "Fingerprint",
+        moduleKey: "attendance",
+        scope: "hq",
+      },
+      {
+        id: "maas",
+        titleTr: "Maaş Hesaplama",
+        path: "/maas",
+        icon: "Banknote",
+        moduleKey: "accounting",
+        scope: "hq",
       },
     ],
   },
@@ -251,7 +267,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // GROUP: MANAGEMENT — Yönetim, denetim, eğitim, finans
   // ========================================
 
-  // 5. Eğitim
+  // 5. Eğitim (AI Asistan taşındı — İletişim'den)
   {
     id: "training-academy-section",
     titleTr: "Eğitim",
@@ -280,6 +296,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         titleTr: "Bilgi Bankası",
         path: "/bilgi-bankasi",
         icon: "BookOpen",
+        moduleKey: "knowledge_base",
+        scope: "both",
+      },
+      {
+        id: "ai-assistant",
+        titleTr: "AI Asistan",
+        path: "/akademi-ai-assistant",
+        icon: "Brain",
         moduleKey: "knowledge_base",
         scope: "both",
       },
@@ -316,14 +340,6 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         path: "/kalite-denetimi",
         icon: "Star",
         moduleKey: "quality_audit",
-        scope: "hq",
-      },
-      {
-        id: "customer-satisfaction",
-        titleTr: "Misafir Memnuniyeti",
-        path: "/misafir-memnuniyeti",
-        icon: "MessageSquareHeart",
-        moduleKey: "crm_feedback",
         scope: "hq",
       },
       {
@@ -433,29 +449,13 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "goods_receipt",
         scope: "hq",
       },
-      {
-        id: "pdks",
-        titleTr: "PDKS",
-        path: "/pdks",
-        icon: "Fingerprint",
-        moduleKey: "attendance",
-        scope: "hq",
-      },
-      {
-        id: "maas",
-        titleTr: "Maaş Hesaplama",
-        path: "/maas",
-        icon: "Banknote",
-        moduleKey: "accounting",
-        scope: "hq",
-      },
     ],
   },
 
-  // 7b. CRM — Müşteri İlişkileri Yönetimi
+  // 7b. Müşteri İlişkileri (Misafir Memnuniyeti taşındı — Denetim'den)
   {
     id: "crm",
-    titleTr: "CRM & Pazarlama",
+    titleTr: "Müşteri İlişkileri",
     icon: "Users",
     scope: "hq",
     group: "management",
@@ -484,6 +484,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "crm_campaigns",
         scope: "hq",
       },
+      {
+        id: "customer-satisfaction",
+        titleTr: "Misafir Memnuniyeti",
+        path: "/misafir-memnuniyeti",
+        icon: "MessageSquareHeart",
+        moduleKey: "crm_feedback",
+        scope: "hq",
+      },
     ],
   },
 
@@ -491,22 +499,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
   // GROUP: SETTINGS — Sistem ayarları, iletişim, yönetim
   // ========================================
 
-  // 8. İletişim & Destek
+  // 8. İletişim (AI Asistan → Eğitim, Agent Merkezi → Yönetim)
   {
     id: "communication",
-    titleTr: "İletişim & Destek",
+    titleTr: "İletişim",
     icon: "MessageSquare",
     scope: "both",
     group: "settings",
     items: [
-      {
-        id: "hq-support",
-        titleTr: "Destek Merkezi",
-        path: "/hq-destek",
-        icon: "Headphones",
-        moduleKey: "support",
-        scope: "both",
-      },
       {
         id: "notifications",
         titleTr: "Bildirimler",
@@ -517,21 +517,12 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         badge: "notifications",
       },
       {
-        id: "ai-assistant",
-        titleTr: "AI Asistan",
-        path: "/akademi-ai-assistant",
-        icon: "Brain",
-        moduleKey: "knowledge_base",
-        scope: "both",
-      },
-      {
-        id: "agent-center",
-        titleTr: "Agent Merkezi",
-        path: "/agent-merkezi",
-        icon: "Shield",
+        id: "hq-support",
+        titleTr: "Destek Merkezi",
+        path: "/hq-destek",
+        icon: "Headphones",
         moduleKey: "support",
         scope: "both",
-        badge: "agent",
       },
     ],
   },
@@ -608,6 +599,15 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "admin_settings",
         scope: "hq",
       },
+      {
+        id: "agent-center",
+        titleTr: "Agent Merkezi",
+        path: "/agent-merkezi",
+        icon: "Shield",
+        moduleKey: "support",
+        scope: "hq",
+        badge: "agent",
+      },
     ],
   },
 ];
@@ -646,11 +646,11 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'hr', 'shifts', 'attendance', 'hq-support',
   ],
   yatirimci_branch: [
-    'branch-dashboard', 'reports', 'notifications',
+    'branch-dashboard', 'reports', 'financial-management', 'notifications',
   ],
   ceo: [
     'dashboard', 'branches-list', 'hr', 'reports', 'performance-dashboard',
-    'knowledge-base', 'ai-assistant', 'notifications', 'crm-main',
+    'knowledge-base', 'ai-assistant', 'training-academy-hq', 'notifications', 'crm-main',
     'franchise-investors', 'hq-support',
   ],
   cgo: [
@@ -660,7 +660,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'hq-support',
   ],
   yatirimci_hq: [
-    'dashboard', 'reports', 'notifications',
+    'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
     'dashboard', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
@@ -712,7 +712,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   fabrika_mudur: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations',
     'factory-analytics', 'factory-compliance', 'hr', 'shifts', 'reports',
-    'notifications', 'hq-support',
+    'performance-dashboard', 'notifications', 'hq-support',
   ],
   fabrika: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations', 'notifications',
