@@ -77,6 +77,10 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./branch-task-tracker");
   await import("./factory-daily-summary");
   await import("./late-arrival-tracker");
+  await import("./payroll-reminder");
+  await import("./career-progression-tracker");
+  await import("./equipment-lifecycle-tracker");
+  await import("./supply-chain-monitor");
 }
 
 export function registerSkill(skill: AgentSkill): void {

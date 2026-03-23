@@ -500,6 +500,27 @@ router.post('/api/shift-templates/:id/create-shifts', isAuthenticated, async (re
     const { startDate, endDate } = createShiftsSchema.parse(req.body);
     
     const created = await storage.createShiftsFromTemplate(id, startDate, endDate, user.id);
+    
+    try {
+      const uniqueUserIds = [...new Set(created.filter(s => s.assignedToId).map(s => s.assignedToId!))];
+      for (const assignedUserId of uniqueUserIds) {
+        const userShifts = created.filter(s => s.assignedToId === assignedUserId);
+        const dateRange = userShifts.length === 1
+          ? userShifts[0].shiftDate || ""
+          : `${userShifts[0].shiftDate || ""} - ${userShifts[userShifts.length - 1].shiftDate || ""}`;
+        await storage.createNotification({
+          userId: assignedUserId,
+          type: "shift_assigned",
+          title: "Yeni vardiya atandı",
+          message: `${dateRange} tarihlerinde ${userShifts.length} vardiya atandı`,
+          link: "/vardiyalar",
+          branchId: template.branchId ?? undefined,
+        });
+      }
+    } catch (notifErr) {
+      console.error("Shift assignment notification error:", notifErr);
+    }
+    
     res.status(201).json({ 
       message: `${created.length} vardiya oluşturuldu`,
       shifts: created 

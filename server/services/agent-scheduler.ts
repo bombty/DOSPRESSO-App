@@ -537,6 +537,19 @@ export function startAgentScheduler(): void {
     schedulerManager.registerInterval('notif-archive', archiveOldNotifications, 24 * 60 * 60 * 1000);
   }, archiveDelayMs);
 
+  schedulerManager.registerInterval('fault-escalation', async () => {
+    try {
+      const { escalateUnresolvedFaults } = await import("../agent/skills/equipment-lifecycle-tracker");
+      const count = await escalateUnresolvedFaults();
+      if (count > 0) {
+        console.log(`[AgentScheduler] ${count} arıza CRM'e escalate edildi`);
+      }
+    } catch (err) {
+      console.error("[AgentScheduler] Fault escalation error:", err);
+    }
+  }, 6 * 60 * 60 * 1000);
+  console.log("[AgentScheduler] Fault escalation her 6 saatte bir calisacak");
+
   console.log("[AgentScheduler] Agent Scheduler basariyla baslatildi.");
 }
 

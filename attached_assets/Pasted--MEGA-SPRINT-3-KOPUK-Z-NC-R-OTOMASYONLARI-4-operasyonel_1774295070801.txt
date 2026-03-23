@@ -1,0 +1,514 @@
+# MEGA SPRINT 3: KOPUK ZİNCİR OTOMASYONLARI
+# 4 operasyonel zinciri Mr. Dobody skill'leri ile bağla
+# Tahmini: 4-5 saat
+# Bağımlılık: Sprint 1-2 tamamlandı (CRM birleşik, bildirimler temiz)
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts
+- Do NOT modify existing scoring services — sadece bildirim/trigger ekle
+- Do NOT break mevcut iş akışları — üzerine otomasyon ekle
+- AuthUser type kullan, Turkish UI, users.id VARCHAR
+
+**DANIŞMA MEKANİZMASI:**
+1. Mevcut endpoint davranışı değişecekse → eski/yeni davranışı açıkla, onay al
+2. Yeni scheduler eklenecekse → çalışma sıklığı ve yükünü açıkla
+3. Mevcut bildirim tiplerini değiştirecekse → DUR
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+---
+
+## STEP 0: ÖN ARAŞTIRMA
+
+```bash
+echo "═══ SPRINT 3: KOPUK ZİNCİR ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "████ ZİNCİR 1: VARDİYA → DEVAM → BORDRO ████"
+echo "=== Vardiya oluşturma ==="
+grep -rn "router.post.*shift\|router.post.*vardiya" server/routes/ --include="*.ts" | head -5
+echo "--- Vardiya oluşturulunca bildirim gidiyor mu? ---"
+grep -rn "createNotification\|sendNotification" server/routes/shift*.ts server/routes/vardiya*.ts 2>/dev/null | head -5
+echo "--- PDKS gecikme tespiti ---"
+grep -rn "late\|gecikme\|delay\|tardiness" server/routes/ --include="*.ts" | head -10
+echo "--- Bordro hesaplama tetikleme ---"
+grep -rn "calculate.*payroll\|bordro.*hesapla\|payroll.*trigger" server/ --include="*.ts" | head -5
+echo "--- Mevcut bordro scheduler ---"
+grep -rn "payroll\|bordro" server/scheduler*.ts server/services/scheduler*.ts 2>/dev/null | head -10
+
+echo ""
+echo "████ ZİNCİR 2: EĞİTİM → ROL YÜKSELTME ████"
+echo "=== Eğitim tamamlama tespiti ==="
+grep -rn "module.*complete\|training.*complete\|modul.*tamamla" server/routes/academy*.ts 2>/dev/null | head -10
+echo "--- Mevcut kariyer yolu tanımı ---"
+grep -rn "career\|kariyer\|progression\|yukseltme\|promote" server/ --include="*.ts" | head -10
+echo "--- Quiz ortalaması hesaplama ---"
+grep -rn "quiz.*average\|quiz.*score\|quiz.*ortalama" server/routes/academy*.ts 2>/dev/null | head -5
+echo "--- Sertifika otomatik oluşturma ---"
+grep -rn "certificate\|sertifika" server/routes/academy*.ts 2>/dev/null | head -10
+echo "--- Rol tanımları (kariyer basamakları) ---"
+echo "SELECT DISTINCT role FROM users WHERE is_active=true ORDER BY role;" | psql
+
+echo ""
+echo "████ ZİNCİR 3: ARIZA → SATIN ALMA → TEDARİKÇİ ████"
+echo "=== Arıza kayıt endpoint'i ==="
+grep -rn "router.post.*fault\|router.post.*ariza\|router.post.*maintenance\|router.post.*equipment" server/routes/ --include="*.ts" | head -10
+echo "--- Arıza bildirim gidiyor mu? ---"
+grep -rn "createNotification.*fault\|createNotification.*ariza\|createNotification.*equipment\|createNotification.*maintenance" server/ --include="*.ts" | head -10
+echo "--- Aynı ekipmanın tekrar arıza sayısı sorgulama ---"
+echo "SELECT equipment_id, count(*) FROM equipment_maintenance_records WHERE equipment_id IS NOT NULL GROUP BY equipment_id HAVING count(*) > 1 ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+echo "--- Satınalma modülü endpoint'leri ---"
+grep -rn "router.post.*purchase\|router.post.*satinalma\|router.post.*procurement" server/routes/ --include="*.ts" | head -5
+echo "--- Mevcut ekipman tabloları ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%equipment%' OR table_name LIKE '%maintenance%' ORDER BY table_name;" | psql
+
+echo ""
+echo "████ ZİNCİR 4: STOK → ÜRETİM → SEVKİYAT ████"
+echo "=== Stok seviye kontrol ==="
+grep -rn "stock.*level\|stok.*seviye\|inventory.*threshold\|minimum.*stock\|critical.*stock" server/ --include="*.ts" | head -10
+echo "--- Fabrika üretim talebi ---"
+grep -rn "production.*request\|uretim.*talep\|production.*order" server/ --include="*.ts" | head -5
+echo "--- Sevkiyat bildirimi ---"
+grep -rn "shipment\|sevkiyat\|dispatch" server/ --include="*.ts" | head -10
+echo "--- Stok tabloları ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%stock%' OR table_name LIKE '%stok%' OR table_name LIKE '%inventory%' ORDER BY table_name;" | psql
+echo "--- Şube stok verileri var mı? ---"
+echo "SELECT count(*) FROM branch_stock_items;" | psql 2>/dev/null
+echo "SELECT count(*) FROM inventory_items;" | psql 2>/dev/null
+
+echo ""
+echo "████ MR. DOBODY MEVCUT DURUM ████"
+echo "=== Mevcut skill'ler ==="
+find server -name "*.ts" -path "*skill*" 2>/dev/null | sort
+ls server/services/skills/ 2>/dev/null | sort
+echo "--- Skill registry ---"
+grep -rn "registerSkill\|skills.*push\|skill.*register\|SKILLS\[" server/ --include="*.ts" | head -15
+echo "--- Agent aksiyonu oluşturma pattern ---"
+grep -rn "createAgentAction\|agent_actions.*insert\|agentActions.*insert" server/ --include="*.ts" | head -5
+echo "--- Mevcut skill dosya yapısı (örnek) ---"
+ls server/services/skills/ 2>/dev/null | head -5
+if [ -f "$(ls server/services/skills/*.ts 2>/dev/null | head -1)" ]; then
+  head -30 "$(ls server/services/skills/*.ts 2>/dev/null | head -1)"
+fi
+
+echo ""
+echo "████ SCHEDULER YAPISI ████"
+grep -n "cron\|schedule\|setInterval\|setTimeout.*repeat" server/scheduler*.ts server/services/scheduler*.ts 2>/dev/null | head -20
+```
+
+---
+
+## ZİNCİR 1: VARDİYA → DEVAM → BORDRO
+
+### Problem:
+- Vardiya oluşturulunca çalışana bildirim gitmiyor
+- PDKS gecikmeli giriş supervisor'a uyarı vermiyor (veya yetersiz)
+- Ay sonu bordro hesaplama manuel tetikleniyor
+
+### Çözüm — 3 otomasyon:
+
+#### 1a: Vardiya atanınca → çalışana bildirim
+
+Vardiya oluşturma/güncelleme endpoint'ini bul. Başarılı kayıt SONRASINA ekle:
+
+```typescript
+// Vardiya oluşturuldu → çalışana bildirim
+await createNotification({
+  userId: assignedUserId,
+  type: 'shift_assigned',
+  title: 'Yeni vardiya atandı',
+  message: `${formatDate(shiftDate)} tarihinde ${startTime}-${endTime} vardiyası atandı`,
+  deepLink: `/vardiyalar`,
+  priority: 'medium'
+});
+```
+
+#### 1b: PDKS gecikme → supervisor + müdür bildirim
+
+Kiosk giriş endpoint'ini bul. Giriş zamanı > vardiya başlangıç + 15dk ise:
+
+```typescript
+// Gecikmeli giriş tespit edildi
+if (minutesLate > 15) {
+  // Supervisor'a bildirim
+  await createNotification({
+    userId: supervisorId,
+    type: 'late_arrival',
+    title: `Gecikmeli giriş: ${employeeName}`,
+    message: `${employeeName} ${minutesLate} dakika geç giriş yaptı`,
+    deepLink: `/pdks`,
+    priority: minutesLate > 60 ? 'high' : 'medium'
+  });
+}
+```
+
+**⚠ Mevcut late-arrival-tracker skill'i bunu zaten yapıyor olabilir — ÖN ARAŞTIRMADA KONTROL ET. Yapıyorsa tekrar ekleme, sadece doğrula.**
+
+#### 1c: Ay sonu bordro hatırlatma
+
+Mr. Dobody skill: `payroll-reminder`
+
+```typescript
+// Skill tanımı
+{
+  id: 'payroll-reminder',
+  name: 'Bordro Hatırlatma',
+  description: 'Her ayın 25\'inde muhasebe ekibine bordro hesaplama hatırlatması gönderir',
+  trigger: 'scheduled', // her ayın 25'i
+  action: async () => {
+    // Muhasebe rolündeki kullanıcılara bildirim
+    const accountingUsers = await getAccountingUsers();
+    for (const user of accountingUsers) {
+      await createAgentAction({
+        userId: user.id,
+        skillId: 'payroll-reminder',
+        type: 'reminder',
+        title: 'Bordro hesaplama zamanı',
+        message: `Bu ay için bordro hesaplama henüz yapılmadı. PDKS verileri hazır.`,
+        deepLink: '/bordro',
+        priority: 'high',
+        expiresAt: endOfMonth()
+      });
+    }
+  }
+}
+```
+
+---
+
+## ZİNCİR 2: EĞİTİM → ROL YÜKSELTME
+
+### Problem:
+- Stajyer tüm modülleri bitirdi ama "Bar Buddy'ye yükselt" önerisi gelmiyor
+- Quiz ortalaması yüksek ama sertifika otomatik oluşmuyor
+- Kariyer ilerlemesi tamamen manuel
+
+### Çözüm — Mr. Dobody skill: `career-progression-tracker`
+
+#### 2a: Kariyer basamakları tanımı
+
+```typescript
+const CAREER_PATH = [
+  { role: 'stajyer', requiredModules: 8, minQuizAvg: 70, minDays: 30 },
+  { role: 'bar_buddy', requiredModules: 12, minQuizAvg: 75, minDays: 60 },
+  { role: 'barista', requiredModules: 16, minQuizAvg: 80, minDays: 90 },
+  { role: 'supervisor_buddy', requiredModules: 20, minQuizAvg: 85, minDays: 180 },
+  { role: 'supervisor', requiredModules: 24, minQuizAvg: 90, minDays: 365 },
+];
+```
+
+#### 2b: Modül tamamlama sonrası kontrol
+
+Eğitim modülü tamamlama endpoint'ini bul. Başarılı tamamlama SONRASINA ekle:
+
+```typescript
+// Modül tamamlandı → kariyer ilerlemesi kontrol et
+const completedModules = await getCompletedModuleCount(userId);
+const quizAvg = await getQuizAverage(userId);
+const currentRole = user.role;
+const nextLevel = CAREER_PATH.find(p => p.role === getNextRole(currentRole));
+
+if (nextLevel && completedModules >= nextLevel.requiredModules && quizAvg >= nextLevel.minQuizAvg) {
+  await createAgentAction({
+    userId: getSupervisorId(user.branchId), // supervisor'a gönder
+    skillId: 'career-progression-tracker',
+    type: 'recommendation',
+    title: `Rol yükseltme önerisi: ${user.firstName}`,
+    message: `${user.firstName} ${user.lastName} ${nextLevel.role} seviyesine yükseltilebilir. ${completedModules} modül tamamladı, quiz ortalaması ${quizAvg}%.`,
+    deepLink: `/personel/${userId}`,
+    priority: 'medium'
+  });
+}
+```
+
+#### 2c: Otomatik sertifika
+
+Quiz ortalaması > 85% ve tüm zorunlu modüller tamamlandıysa:
+
+```typescript
+// Sertifika oluştur (mevcut sertifika sistemi varsa kullan)
+if (quizAvg >= 85 && allRequiredModulesCompleted) {
+  // Sertifika kaydı oluştur
+  // Çalışana bildirim
+  await createNotification({
+    userId,
+    type: 'certificate_earned',
+    title: 'Tebrikler! Yeni sertifika',
+    message: `${moduleName} sertifikasını kazandınız`,
+    deepLink: '/akademi',
+    priority: 'low'
+  });
+}
+```
+
+---
+
+## ZİNCİR 3: ARIZA → SATIN ALMA → CRM ESCALATION
+
+### Problem:
+- Arıza kaydedilince supervisor'a bildirim eksik (veya yetersiz)
+- Aynı ekipman tekrar arızalanınca uyarı yok
+- Çözülemezse HQ'ya escalation yok
+- Yedek parça gerekince satınalmaya otomatik talep yok
+
+### Çözüm — Mr. Dobody skill: `equipment-lifecycle-tracker`
+
+#### 3a: Arıza kayıt sonrası bildirim zinciri
+
+Arıza kayıt endpoint'ini bul. Başarılı kayıt SONRASINA ekle:
+
+```typescript
+// Arıza kaydedildi → supervisor'a bildirim
+await createNotification({
+  userId: branchSupervisorId,
+  type: 'equipment_fault',
+  title: `Arıza bildirimi: ${equipmentName}`,
+  message: `${reporterName} tarafından arıza bildirildi: ${description}`,
+  deepLink: `/ekipman/${equipmentId}`,
+  priority: 'high'
+});
+```
+
+#### 3b: Tekrar arıza tespiti (Mr. Dobody)
+
+```typescript
+// Skill: equipment-lifecycle-tracker
+// Trigger: arıza kaydedildiğinde
+action: async (context) => {
+  const { equipmentId, branchId } = context;
+  
+  // Son 30 günde aynı ekipmanın arıza sayısı
+  const recentFaults = await db.select()
+    .from(equipmentMaintenanceRecords)
+    .where(and(
+      eq(equipmentMaintenanceRecords.equipmentId, equipmentId),
+      gte(equipmentMaintenanceRecords.createdAt, thirtyDaysAgo)
+    ));
+  
+  if (recentFaults.length >= 3) {
+    // CEO/CGO + fabrika müdüre uyarı
+    await createAgentAction({
+      userId: getCEOId(),
+      skillId: 'equipment-lifecycle-tracker',
+      type: 'alert',
+      title: `Tekrar eden arıza: ${equipmentName}`,
+      message: `${equipmentName} son 30 günde ${recentFaults.length}. kez arızalandı. Ekipman değişimi veya kapsamlı bakım öneriyorum.`,
+      deepLink: `/ekipman/${equipmentId}`,
+      priority: 'high'
+    });
+  }
+}
+```
+
+#### 3c: CRM'e otomatik escalation
+
+Arıza 48 saat içinde çözülmezse → CRM Franchise kanalına otomatik ticket:
+
+```typescript
+// Scheduler veya skill trigger
+// 48 saat geçmiş çözülmemiş arızaları tara
+const unresolvedFaults = await getUnresolvedFaults(48); // saat
+
+for (const fault of unresolvedFaults) {
+  // Zaten escalation ticket var mı?
+  const existingTicket = await findTicket({
+    ticketType: 'ariza_escalation',
+    sourceId: fault.id
+  });
+  
+  if (!existingTicket) {
+    await createTicket({
+      channel: 'franchise',
+      ticketType: 'ariza_escalation',
+      department: 'Teknik',
+      title: `Arıza escalation: ${fault.equipmentName}`,
+      description: `${fault.branchName} şubesinde ${fault.equipmentName} 48 saattir çözülemedi. Orijinal arıza: ${fault.description}`,
+      branchId: fault.branchId,
+      source: 'system',
+      priority: 'high'
+    });
+  }
+}
+```
+
+---
+
+## ZİNCİR 4: STOK → ÜRETİM → SEVKİYAT
+
+### Problem:
+- Şube stoku kritik seviyeye düşünce fabrikaya otomatik talep gitmiyor
+- Üretim tamamlanınca sevkiyat bildirimi yok
+
+### Çözüm — Mr. Dobody skill: `supply-chain-monitor`
+
+**⚠ ÖN ARAŞTIRMADA KONTROL ET:** Stok tabloları ve verileri mevcut mu? Eğer branch_stock_items veya inventory_items tablosu boş/yoksa, bu zincir şimdilik ATLANMALI — veri olmadan otomasyon çalışmaz.
+
+#### 4a: Stok kritik seviye uyarısı
+
+```typescript
+// Skill: supply-chain-monitor
+// Trigger: günlük scheduler (sabah 08:00)
+action: async () => {
+  // Kritik stok seviyesindeki şube ürünlerini bul
+  const criticalItems = await db.select()
+    .from(branchStockItems)
+    .where(lte(branchStockItems.currentStock, branchStockItems.minimumStock));
+  
+  if (criticalItems.length > 0) {
+    // Şube müdürüne + fabrika müdürüne bildirim
+    for (const item of criticalItems) {
+      await createAgentAction({
+        userId: getBranchManagerId(item.branchId),
+        skillId: 'supply-chain-monitor',
+        type: 'warning',
+        title: `Stok kritik: ${item.productName}`,
+        message: `${item.branchName}'da ${item.productName} stoku ${item.currentStock} adet — minimum ${item.minimumStock}`,
+        deepLink: `/stok`,
+        priority: 'high'
+      });
+    }
+    
+    // Fabrika müdürüne özet
+    await createAgentAction({
+      userId: getFactoryManagerId(),
+      skillId: 'supply-chain-monitor',
+      type: 'summary',
+      title: `${criticalItems.length} üründe stok kritik`,
+      message: `${criticalItems.map(i => i.productName).join(', ')} — üretim planı güncellenmeli`,
+      deepLink: `/fabrika`,
+      priority: 'high'
+    });
+  }
+}
+```
+
+#### 4b: Üretim tamamlanınca sevkiyat bildirimi
+
+Üretim kayıt endpoint'ini bul. Başarılı kayıt SONRASINA:
+
+```typescript
+// Üretim kaydedildi → ilgili şubelere sevkiyat bildirimi
+await createNotification({
+  userId: logisticsManagerId,
+  type: 'production_complete',
+  title: `Üretim tamamlandı: ${productName}`,
+  message: `${quantity} adet ${productName} üretildi. Sevkiyat planlanabilir.`,
+  deepLink: `/fabrika/sevkiyat`,
+  priority: 'medium'
+});
+```
+
+---
+
+## SKİLL KAYIT VE ENTEGRASYON
+
+### Yeni skill'leri registry'ye kaydet
+
+Mevcut skill kayıt pattern'ini kullanarak 4 yeni skill'i ekle:
+
+```typescript
+// Skill listesi:
+// 1. payroll-reminder — Her ayın 25'inde bordro hatırlatma
+// 2. career-progression-tracker — Eğitim tamamlama → rol yükseltme önerisi
+// 3. equipment-lifecycle-tracker — Tekrar arıza tespiti + escalation
+// 4. supply-chain-monitor — Stok kritik seviye uyarısı
+```
+
+Her skill için:
+1. Skill dosyası oluştur (mevcut pattern'i takip et)
+2. Registry'ye kaydet
+3. Scheduler'a trigger ekle (scheduled skill'ler için)
+4. Mevcut endpoint'lere hook ekle (event-triggered skill'ler için)
+
+---
+
+## DOĞRULAMA
+
+```bash
+echo "═══ SPRINT 3 DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+
+echo ""
+echo "=== Yeni skill dosyaları ==="
+for skill in payroll-reminder career-progression-tracker equipment-lifecycle-tracker supply-chain-monitor; do
+  find server -name "*${skill}*" 2>/dev/null && echo "✅ $skill" || echo "❌ $skill EKSİK"
+done
+
+echo ""
+echo "=== Skill registry'de kayıtlı mı? ==="
+grep -rn "payroll-reminder\|career-progression\|equipment-lifecycle\|supply-chain" server/ --include="*.ts" | grep -i "register\|skill" | head -8
+
+echo ""
+echo "=== Zincir 1: Vardiya bildirimi ==="
+echo "--- Vardiya oluşturma endpoint'inde bildirim var mı? ---"
+grep -A5 "createNotification.*shift\|createNotification.*vardiya" server/routes/shift*.ts server/routes/vardiya*.ts 2>/dev/null | head -5
+
+echo ""
+echo "=== Zincir 2: Eğitim → kariyer ==="
+echo "--- Modül tamamlama endpoint'inde kariyer kontrolü var mı? ---"
+grep -rn "career\|kariyer\|progression\|yukselt\|CAREER_PATH" server/routes/academy*.ts server/services/skills/ 2>/dev/null | head -5
+
+echo ""
+echo "=== Zincir 3: Arıza → CRM escalation ==="
+echo "--- Arıza endpoint'inde bildirim var mı? ---"
+grep -A5 "createNotification.*fault\|createNotification.*ariza\|createNotification.*equipment" server/ --include="*.ts" | head -10
+echo "--- 48 saat escalation scheduler var mı? ---"
+grep -rn "48.*hour\|ariza.*escalat\|fault.*escalat\|unresolvedFault" server/ --include="*.ts" | head -5
+
+echo ""
+echo "=== Zincir 4: Stok → üretim ==="
+echo "--- Stok tablosu veri var mı? ---"
+echo "SELECT count(*) FROM branch_stock_items;" | psql -t 2>/dev/null
+echo "SELECT count(*) FROM inventory_items;" | psql -t 2>/dev/null
+echo "--- Stok uyarı scheduler var mı? ---"
+grep -rn "supply.chain\|stock.*critical\|stok.*kritik" server/ --include="*.ts" | head -5
+
+echo ""
+echo "=== Mevcut scheduler'lara eklendi mi? ==="
+grep -n "payroll-reminder\|career-progression\|equipment-lifecycle\|supply-chain" server/scheduler*.ts server/services/scheduler*.ts 2>/dev/null | head -8
+
+echo ""
+echo "=== Bildirim tipleri (yeni eklenenler) ==="
+echo "SELECT DISTINCT type FROM notifications WHERE type IN ('shift_assigned','late_arrival','equipment_fault','production_complete','certificate_earned') ORDER BY type;" | psql 2>/dev/null
+
+echo ""
+echo "═══ SONUÇ RAPORU ═══"
+echo ""
+echo "Zincir 1 (Vardiya→Bordro):"
+echo "  Vardiya bildirim: ✅/❌"
+echo "  Gecikme uyarısı: ✅/❌ (veya mevcut skill zaten yapıyor)"
+echo "  Bordro hatırlatma skill: ✅/❌"
+echo ""
+echo "Zincir 2 (Eğitim→Yükseltme):"
+echo "  Kariyer kontrol hook: ✅/❌"
+echo "  Sertifika otomatik: ✅/❌"
+echo "  Yükseltme önerisi: ✅/❌"
+echo ""
+echo "Zincir 3 (Arıza→Escalation):"
+echo "  Arıza bildirim: ✅/❌"
+echo "  Tekrar arıza tespiti: ✅/❌"
+echo "  48s CRM escalation: ✅/❌"
+echo ""
+echo "Zincir 4 (Stok→Üretim):"
+echo "  Stok uyarı: ✅/❌ (veya veri yoksa ATLANMIŞ)"
+echo "  Üretim→sevkiyat bildirim: ✅/❌"
+echo ""
+echo "Toplam yeni skill: X"
+echo "Toplam yeni bildirim tipi: Y"
+echo "Server: hatasız ✅/❌"
+echo "Sonraki sprint: Sprint 4 (Ajanda modülü)"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts
+- ❌ Mevcut scoring servislerini değiştirme
+- ❌ Mevcut skill'lerin mantığını bozma
+- ❌ Stok verisi yoksa Zincir 4'ü ZORLA uygulama — veri gelince aktif olacak şekilde yaz
+- ❌ Vardiya/PDKS/bordro temel mantığını değiştirme — sadece üzerine bildirim ekle

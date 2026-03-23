@@ -641,6 +641,13 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req, res) => {
             });
           }
         }
+
+        try {
+          const { checkCareerProgressionForUser } = await import('../agent/skills/career-progression-tracker');
+          await checkCareerProgressionForUser(req.user.id, currentUser?.branchId ?? undefined);
+        } catch (careerErr) {
+          console.error("Career progression check error:", careerErr);
+        }
       }
     } catch (notifError) {
       console.error("Quiz notification error:", notifError);

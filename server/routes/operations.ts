@@ -1159,7 +1159,17 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         console.error("Error sending fault notifications:", notificationError);
       }
       
-      // Invalidate equipment cache as health scores may change
+      try {
+        const { checkRepeatFaultForEquipment } = await import('../agent/skills/equipment-lifecycle-tracker');
+        await checkRepeatFaultForEquipment(
+          fault.equipmentName || fault.description || "Ekipman",
+          fault.equipmentId ?? null,
+          faultBranchId ?? null
+        );
+      } catch (repeatErr) {
+        console.error("Repeat fault check error:", repeatErr);
+      }
+
       invalidateCache('equipment');
       invalidateCache('critical-equipment');
       
