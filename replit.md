@@ -39,7 +39,7 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **İK Module Enhancement:** Includes an İK Dashboard with KPIs, Document CRUD, and Disciplinary CRUD.
 - **Type Augmentation:** Centralized `AuthUser` type and Express type augmentation for improved type safety.
 - **Structural Cleanup:** Original `misc.ts` split into 42 domain-specific route files.
-- **Mission Control Dashboard:** Infrastructure for toggling between Classic and Mission Control dashboard modes with a Dobody Panel for guidance.
+- **Mission Control Dashboard:** Full HQ Mission Control with 5 KPI strip (Şube, SLA, Ticket, Aktif Kullanıcı, QC Bekleyen), Factory+QC section, İK conditional section, branch health grid, quick actions, live feed. Toggle between Classic/MC modes via `useDashboardMode` hook. Admin can set system default via `/api/admin/default-dashboard-layout`. Standalone pages (hq-dashboard, ceo-command-center, sube-ozet) respect MC toggle. Mr. Dobody panel shows role-based AI personality labels.
 - **Collapsible Sidebar:** Desktop sidebar replaces NavRail — toggles between 50px (icons only) and 200px (icons + labels + categories). Server-driven menu from `/api/me/menu` API. State persisted in localStorage. Mobile unchanged (hamburger overlay + bottom nav).
 
 ## External Dependencies

@@ -54,5 +54,6 @@ export function useGuidanceData() {
     isEligible,
     dismissGuidance: dismissMutation.mutate,
     isDismissing: dismissMutation.isPending,
+    userRole: user?.role,
   };
 }

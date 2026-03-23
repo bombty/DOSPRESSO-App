@@ -53,6 +53,28 @@ const SEVERITY_CONFIG = {
   low: { dot: "bg-muted-foreground", text: "text-muted-foreground", label: "Düşük" },
 };
 
+const ROLE_PERSONALITY: Record<string, string> = {
+  admin: "Operasyon asistanı",
+  ceo: "Operasyon asistanı",
+  cgo: "Operasyon asistanı",
+  coach: "Operasyon asistanı",
+  trainer: "Operasyon asistanı",
+  supervisor: "Şube asistanı",
+  supervisor_buddy: "Şube asistanı",
+  mudur: "Şube asistanı",
+  stajyer: "Kişisel eğitim koçu",
+  barista: "Kişisel eğitim koçu",
+  bar_buddy: "Kişisel eğitim koçu",
+  fabrika_mudur: "Üretim asistanı",
+  fabrika_sorumlu: "Üretim asistanı",
+  fabrika_personel: "Üretim asistanı",
+  fabrika_pisman: "Üretim asistanı",
+  fabrika_depo: "Üretim asistanı",
+  fabrika_kalite: "Üretim asistanı",
+  muhasebe_ik: "İK ve finans asistanı",
+  muhasebe: "İK ve finans asistanı",
+};
+
 export function DobodyPanel() {
   const [expanded, setExpanded] = useState(() => {
     try {
@@ -65,7 +87,8 @@ export function DobodyPanel() {
   const [dismissedLocal, setDismissedLocal] = useState<Set<string>>(new Set());
   const [, navigate] = useLocation();
 
-  const { guidance, isEligible, dismissGuidance } = useGuidanceData();
+  const { guidance, isEligible, dismissGuidance, userRole } = useGuidanceData();
+  const personality = ROLE_PERSONALITY[userRole || ""] || "Asistan";
 
   useEffect(() => {
     try {
@@ -128,7 +151,10 @@ export function DobodyPanel() {
       <div className="flex items-center justify-between px-3 py-2.5 border-b">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-500" />
-          <span className="text-sm font-semibold">Mr. Dobody</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold leading-tight">Mr. Dobody</span>
+            <span className="text-[9px] text-muted-foreground leading-tight">{personality}</span>
+          </div>
           {allItems.length > 0 && (
             <Badge variant="outline" className="text-[10px] h-5">
               {allItems.length}
@@ -165,7 +191,7 @@ export function DobodyPanel() {
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input
-            placeholder="Ara..."
+            placeholder="Mr. Dobody'ye sor..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-7 pl-7 text-xs"

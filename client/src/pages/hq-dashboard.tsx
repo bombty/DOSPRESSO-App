@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
 import { canSeeWidget } from "@/lib/role-visibility";
 import { MuhasebeIKDashboard } from "@/components/dashboards/muhasebe-ik-dashboard";
@@ -22,6 +23,7 @@ import { MrDobody } from "@/components/mr-dobody";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { ModuleCard } from "@/components/module-card";
 import { motion } from "framer-motion";
+import { lazy, Suspense } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -1854,9 +1856,20 @@ function GidaMuhendisiDashboard() {
   );
 }
 
+const MissionControlHQ = lazy(() => import("@/components/mission-control/MissionControlHQ"));
+
 export default function HQDashboard() {
   const { user } = useAuth();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
   const userRole = user?.role || '';
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlHQ />
+      </Suspense>
+    );
+  }
   
   const cgoRoles = ['cgo', 'ceo', 'yatirimci_hq'];
   const isCGO = cgoRoles.includes(userRole);

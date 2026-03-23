@@ -19,6 +19,7 @@ import {
   certificateSettings,
   issuedCertificates,
   isHQRole,
+  aiSystemConfig,
   type UserRoleType as SchemaUserRoleType,
 } from "@shared/schema";
 
@@ -854,5 +855,45 @@ const router = Router();
   // GET /api/admin/users/export - Export users to CSV
   // DELETE /api/admin/users/:id - Delete user
   // POST /api/admin/users - Create new user
+
+  router.get("/api/admin/default-dashboard-layout", isAuthenticated, async (req, res) => {
+    try {
+      const [config] = await db.select().from(aiSystemConfig)
+        .where(eq(aiSystemConfig.configKey, "default_dashboard_layout")).limit(1);
+      res.json({ defaultLayout: config?.configValue || "classic" });
+    } catch (error: unknown) {
+      res.json({ defaultLayout: "classic" });
+    }
+  });
+
+  router.patch("/api/admin/default-dashboard-layout", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (!["admin", "ceo", "cgo"].includes(user.role)) {
+        return res.status(403).json({ error: "Yetkiniz yok" });
+      }
+      const { layout } = req.body;
+      if (!["classic", "mission-control"].includes(layout)) {
+        return res.status(400).json({ error: "Geçersiz layout" });
+      }
+      const [existing] = await db.select().from(aiSystemConfig)
+        .where(eq(aiSystemConfig.configKey, "default_dashboard_layout")).limit(1);
+      if (existing) {
+        await db.update(aiSystemConfig)
+          .set({ configValue: layout, updatedAt: new Date() })
+          .where(eq(aiSystemConfig.configKey, "default_dashboard_layout"));
+      } else {
+        await db.insert(aiSystemConfig).values({
+          configKey: "default_dashboard_layout",
+          configValue: layout,
+          description: "Varsayılan dashboard görünümü",
+          isActive: true,
+        });
+      }
+      res.json({ success: true, defaultLayout: layout });
+    } catch (error: unknown) {
+      res.status(500).json({ error: error instanceof Error ? error.message : "Layout güncellenemedi" });
+    }
+  });
 
 export default router;

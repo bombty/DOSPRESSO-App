@@ -27,7 +27,8 @@ import {
   TrendingUp,
   ShieldAlert
 } from "lucide-react";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { Textarea } from "@/components/ui/textarea";
 import { CEOFinancialCard } from "@/components/ceo-financial-card";
 import { Progress } from "@/components/ui/progress";
@@ -233,10 +234,21 @@ interface AbuseReport {
   totalAlerts: number;
 }
 
+const MissionControlHQ = lazy(() => import("@/components/mission-control/MissionControlHQ"));
+
 export default function CEOCommandCenter() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlHQ />
+      </Suspense>
+    );
+  }
 
   const isHQRole = user?.role ? HQ_ROLES_LIST.includes(user.role) : false;
   const isCeoOrCgo = user?.role === 'ceo' || user?.role === 'cgo';

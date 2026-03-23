@@ -20,7 +20,8 @@ import {
   ExternalLink,
   ChevronRight,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { QuickTaskModal } from "@/components/quick-task-modal";
@@ -87,11 +88,22 @@ function KPICard({ icon: Icon, label, value, sub, variant = "default" }: {
   );
 }
 
+const MissionControlSupervisor = lazy(() => import("@/components/mission-control/MissionControlSupervisor"));
+
 export default function SubeOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
   const branchId = user?.branchId ? Number(user.branchId) : null;
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlSupervisor />
+      </Suspense>
+    );
+  }
 
   const { data, isLoading, isError, refetch } = useQuery<BranchSummaryData>({
     queryKey: ["/api/branch-summary", branchId],
