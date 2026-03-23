@@ -258,3 +258,9 @@ id = "vR18PHUVgHLnPRQeKZbYY"
 uri = "file://.local/DOSPRESSO-IT-Danismanlik-Audit-Raporu-23-Mart-2026.md"
 type = "text"
 title = "DOSPRESSO IT Danismanlik Tam Sistem Audit Raporu (23 Mart 2026)"
+
+[[outputs]]
+id = "i3bSaVjen2UkA4p_DgM-U"
+uri = "file://.local/DOSPRESSO_IT_AUDIT_REPORT.md"
+type = "text"
+title = "DOSPRESSO IT Denetim Raporu"
