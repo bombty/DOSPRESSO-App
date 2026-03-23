@@ -22,6 +22,9 @@ import {
   Star,
   TrendingUp,
   CheckCircle2,
+  ListTodo,
+  Timer,
+  PlayCircle,
 } from "lucide-react";
 
 import { CrmNav } from "@/pages/iletisim-merkezi/crm-nav";
@@ -42,7 +45,7 @@ const DashboardTab = lazy(() => import("@/pages/iletisim-merkezi/DashboardTab"))
 const HqTasksTab = lazy(() => import("@/pages/iletisim-merkezi/HqTasksTab"));
 const BroadcastTab = lazy(() => import("@/pages/iletisim-merkezi/BroadcastTab"));
 
-type Channel = "franchise" | "misafir";
+type Channel = "franchise" | "misafir" | "task";
 
 interface DashboardData {
   openTickets: number;
@@ -120,38 +123,32 @@ function ChannelToggle({
   onChange: (c: Channel) => void;
   className?: string;
 }) {
+  const channels: { key: Channel; label: string; icon: typeof Building2 }[] = [
+    { key: "franchise", label: "Franchise", icon: Building2 },
+    { key: "misafir", label: "Misafir", icon: Coffee },
+    { key: "task", label: "Gorevler", icon: ListTodo },
+  ];
+
   return (
     <div className={cn("flex rounded-lg border border-border p-0.5 bg-muted/50", className)} role="radiogroup" aria-label="Kanal secimi" data-testid="channel-toggle">
-      <button
-        role="radio"
-        aria-checked={channel === "franchise"}
-        onClick={() => onChange("franchise")}
-        className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-          channel === "franchise"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground"
-        )}
-        data-testid="channel-btn-franchise"
-      >
-        <Building2 className="h-3.5 w-3.5" />
-        <span>Franchise</span>
-      </button>
-      <button
-        role="radio"
-        aria-checked={channel === "misafir"}
-        onClick={() => onChange("misafir")}
-        className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-          channel === "misafir"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground"
-        )}
-        data-testid="channel-btn-misafir"
-      >
-        <Coffee className="h-3.5 w-3.5" />
-        <span>Misafir</span>
-      </button>
+      {channels.map(ch => (
+        <button
+          key={ch.key}
+          role="radio"
+          aria-checked={channel === ch.key}
+          onClick={() => onChange(ch.key)}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+            channel === ch.key
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground"
+          )}
+          data-testid={`channel-btn-${ch.key}`}
+        >
+          <ch.icon className="h-3.5 w-3.5" />
+          <span>{ch.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -248,6 +245,152 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
   );
 }
 
+interface TaskItem {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  dueDate: string | null;
+  assignedUserName: string | null;
+  branchName: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+const TASK_STATUS_LABELS: Record<string, string> = {
+  pending: "Bekleyen",
+  in_progress: "Devam",
+  done: "Tamamlanan",
+  completed: "Tamamlanan",
+  overdue: "Gecikmis",
+};
+
+const TASK_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  in_progress: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  done: "bg-green-500/10 text-green-700 dark:text-green-400",
+  completed: "bg-green-500/10 text-green-700 dark:text-green-400",
+  overdue: "bg-red-500/10 text-red-700 dark:text-red-400",
+};
+
+function TaskChannelContent() {
+  const [taskFilter, setTaskFilter] = useState<string>("all");
+
+  const { data: tasks = [], isLoading } = useQuery<TaskItem[]>({
+    queryKey: ["/api/ajanda/todos", "crm-task-channel"],
+    queryFn: async () => {
+      const res = await fetch("/api/ajanda/todos?status=all");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const overdue = tasks.filter(t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < new Date());
+  const pending = tasks.filter(t => t.status === "pending" && (!t.dueDate || new Date(t.dueDate) >= new Date()));
+  const done = tasks.filter(t => t.status === "done");
+
+  const kpis = [
+    { label: "Gecikmis", value: overdue.length, icon: AlertTriangle, color: overdue.length > 0 ? "text-red-500" : "text-foreground" },
+    { label: "Bekleyen", value: pending.length, icon: Clock, color: pending.length > 3 ? "text-amber-500" : "text-foreground" },
+    { label: "Devam", value: tasks.filter(t => t.status === "in_progress").length, icon: PlayCircle, color: "text-blue-500" },
+    { label: "Tamamlanan", value: done.length, icon: CheckCircle2, color: "text-green-600 dark:text-green-400" },
+  ];
+
+  const displayTasks = taskFilter === "overdue"
+    ? overdue
+    : taskFilter === "pending"
+    ? pending
+    : taskFilter === "done"
+    ? done
+    : tasks;
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="task-channel">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {kpis.map((kpi, i) => {
+          const Icon = kpi.icon;
+          return (
+            <Card key={i} className="bg-muted/50 border-0" data-testid={`task-kpi-${i}`}>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{kpi.label}</p>
+                </div>
+                <p className={cn("text-xl font-medium", kpi.color)}>{kpi.value}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-1 flex-wrap">
+        {[
+          { key: "all", label: "Tumu" },
+          { key: "overdue", label: "Gecikmis" },
+          { key: "pending", label: "Bekleyen" },
+          { key: "done", label: "Tamamlanan" },
+        ].map(f => (
+          <Button
+            key={f.key}
+            size="sm"
+            variant={taskFilter === f.key ? "default" : "ghost"}
+            onClick={() => setTaskFilter(f.key)}
+            data-testid={`task-filter-${f.key}`}
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
+        </div>
+      ) : displayTasks.length === 0 ? (
+        <div className="text-center py-8">
+          <ListTodo className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Gorev bulunamadi</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {displayTasks.map(task => {
+            const isTaskOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "done";
+            return (
+              <Card key={task.id} className="hover-elevate" data-testid={`task-item-${task.id}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-sm font-medium flex-1">{task.title}</span>
+                    <Badge variant="secondary" className={`text-[10px] ${TASK_STATUS_COLORS[isTaskOverdue ? "overdue" : task.status] || ""}`}>
+                      {isTaskOverdue ? "Gecikmis" : TASK_STATUS_LABELS[task.status] || task.status}
+                    </Badge>
+                  </div>
+                  {task.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                    {task.dueDate && (
+                      <span className={`flex items-center gap-1 ${isTaskOverdue ? "text-red-500 font-medium" : ""}`}>
+                        <Timer className="h-3 w-3" />
+                        {new Date(task.dueDate).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                      </span>
+                    )}
+                    {task.priority && (
+                      <Badge variant="secondary" className="text-[10px] py-0">
+                        {task.priority}
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CRMMegaModule() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
@@ -258,7 +401,9 @@ export default function CRMMegaModule() {
   const [channel, setChannel] = useState<Channel>(() => {
     const params = new URLSearchParams(window.location.search);
     const ch = params.get("channel");
-    return ch === "misafir" ? "misafir" : "franchise";
+    if (ch === "misafir") return "misafir";
+    if (ch === "task") return "task";
+    return "franchise";
   });
 
   const [activeTab, setActiveTab] = useState(isHQ ? "dashboard" : "tickets");
@@ -407,12 +552,12 @@ export default function CRMMegaModule() {
             CRM
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {channel === "franchise" ? "Franchise talep ve destek yonetimi" : "Misafir geri bildirim ve memnuniyet"}
+            {channel === "franchise" ? "Franchise talep ve destek yonetimi" : channel === "misafir" ? "Misafir geri bildirim ve memnuniyet" : "Gorev takibi ve yonetimi"}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <ChannelToggle channel={channel} onChange={handleChannelChange} />
-          {canCreateTicket(user.role) && (
+          {channel !== "task" && canCreateTicket(user.role) && (
             <Button onClick={() => setShowNewTicket(true)} size="sm" data-testid="button-new-ticket">
               <Plus className="h-4 w-4 mr-1.5" />
               {channel === "franchise" ? "Yeni Ticket" : "Yeni GB"}
@@ -421,8 +566,12 @@ export default function CRMMegaModule() {
         </div>
       </div>
 
-      {isHQ && <ChannelKPIStrip data={dashStats} channel={channel} />}
+      {isHQ && channel !== "task" && <ChannelKPIStrip data={dashStats} channel={channel} />}
 
+      {channel === "task" ? (
+        <TaskChannelContent />
+      ) : (
+      <>
       {/* MOBILE LAYOUT */}
       <div className="md:hidden flex flex-col flex-1 overflow-hidden">
         <div className="px-4 w-full">
@@ -540,6 +689,9 @@ export default function CRMMegaModule() {
           <div className="flex-1 overflow-y-auto p-6" />
         )}
       </div>
+
+      </>
+      )}
 
       <NewTicketDialog open={showNewTicket} onOpenChange={setShowNewTicket} channel={channel} />
     </div>

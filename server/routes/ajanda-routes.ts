@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { userTodos, userCalendarEvents, userNotes } from "@shared/schema";
-import { eq, and, sql, desc, asc, gte, lte, ilike, or } from "drizzle-orm";
+import { eq, and, sql, desc, asc, gte, lte, ilike, or, isNull, isNotNull } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { z } from "zod";
 
@@ -92,7 +92,7 @@ router.get("/api/ajanda/todos", isAuthenticated, async (req, res) => {
     const user = req.user as AuthUser;
     const { status, source, priority, due } = req.query;
 
-    const conditions: any[] = [eq(userTodos.userId, user.id)];
+    const conditions: any[] = [eq(userTodos.userId, user.id), isNull(userTodos.archivedAt)];
 
     if (status && status !== "all") {
       conditions.push(eq(userTodos.status, status as string));
@@ -256,6 +256,65 @@ router.post("/api/ajanda/todos/:id/snooze", isAuthenticated, async (req, res) =>
   } catch (err: any) {
     console.error("[Ajanda] Todo snooze error:", err.message);
     res.status(500).json({ error: "Todo ertelenemedi" });
+  }
+});
+
+router.post("/api/ajanda/todos/:id/archive", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+
+    const existing = await db.select().from(userTodos).where(and(eq(userTodos.id, id), eq(userTodos.userId, user.id))).limit(1);
+    if (existing.length === 0) return res.status(404).json({ error: "Todo bulunamadı" });
+
+    const [updated] = await db.update(userTodos).set({
+      archivedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(userTodos.id, id)).returning();
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error("[Ajanda] Todo archive error:", err.message);
+    res.status(500).json({ error: "Todo arşivlenemedi" });
+  }
+});
+
+router.post("/api/ajanda/todos/:id/unarchive", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+
+    const existing = await db.select().from(userTodos).where(and(eq(userTodos.id, id), eq(userTodos.userId, user.id))).limit(1);
+    if (existing.length === 0) return res.status(404).json({ error: "Todo bulunamadı" });
+
+    const [updated] = await db.update(userTodos).set({
+      archivedAt: null,
+      updatedAt: new Date(),
+    }).where(eq(userTodos.id, id)).returning();
+
+    res.json(updated);
+  } catch (err: any) {
+    console.error("[Ajanda] Todo unarchive error:", err.message);
+    res.status(500).json({ error: "Todo arşivden çıkarılamadı" });
+  }
+});
+
+router.get("/api/ajanda/archive", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+
+    const todos = await db
+      .select()
+      .from(userTodos)
+      .where(and(eq(userTodos.userId, user.id), isNotNull(userTodos.archivedAt)))
+      .orderBy(desc(userTodos.archivedAt));
+
+    res.json(todos);
+  } catch (err: any) {
+    console.error("[Ajanda] Archive list error:", err.message);
+    res.status(500).json({ error: "Arşiv listesi alınamadı" });
   }
 });
 

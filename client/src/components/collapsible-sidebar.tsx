@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +17,8 @@ import {
   Wrench, AlertTriangle, Calendar, UserCheck, BookOpen,
   FileText, Megaphone, Bell, Shield, Headphones,
   FolderKanban, ClipboardList, LayoutDashboard, Brain,
-  ChevronRight,
+  ChevronRight, ChevronDown, QrCode, Tablet, Grid, Clock,
+  Truck, ClipboardCheck, Briefcase,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -25,13 +27,15 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   User, Users, Settings, Star, Calculator, ShoppingCart, Package,
   Wrench, AlertTriangle, Calendar, UserCheck, BookOpen, FileText,
   Megaphone, Bell, Shield, Headphones, FolderKanban, ClipboardList,
-  Brain, ChevronRight,
+  Brain, ChevronRight, QrCode, Tablet, Grid, Clock, Truck,
+  ClipboardCheck, Briefcase,
   MessageSquareHeart: MessageSquare,
   ShieldCheck: Shield,
   Fingerprint: UserCheck,
   Banknote: Calculator,
   HardDrive: Settings,
   LayoutGrid: Settings,
+  CalendarDays: Calendar,
 };
 
 interface MenuSection {
@@ -72,9 +76,15 @@ const ROLE_LABELS: Record<string, string> = {
   fabrika_personel: "Fabrika Personel", gida_muhendisi: "Gida Muhendisi",
 };
 
+const STORAGE_KEY = "dospresso_sidebar_groups";
+
+function isSingleItemSection(section: MenuSection): boolean {
+  return section.items.length === 1 && section.titleTr === section.items[0].titleTr;
+}
+
 export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
   const { user } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const { data: menuData } = useQuery<{ sections: MenuSection[] }>({
     queryKey: ["/api/me/menu"],
@@ -84,14 +94,60 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
 
   const sections = menuData?.sections || [];
 
-  const isItemActive = (path: string) =>
-    location === path || (path !== "/" && location.startsWith(path));
+  const isItemActive = useCallback((path: string) =>
+    location === path || (path !== "/" && location.startsWith(path.split("?")[0])), [location]);
+
+  const getActiveSectionId = useCallback(() => {
+    for (const section of sections) {
+      for (const item of section.items) {
+        if (isItemActive(item.path)) return section.id;
+      }
+    }
+    return null;
+  }, [sections, isItemActive]);
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set<string>();
+  });
+
+  useEffect(() => {
+    const activeSectionId = getActiveSectionId();
+    if (activeSectionId && !expandedGroups.has(activeSectionId)) {
+      setExpandedGroups(prev => {
+        const next = new Set(prev);
+        next.add(activeSectionId);
+        return next;
+      });
+    }
+  }, [location, sections]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...expandedGroups]));
+    } catch {}
+  }, [expandedGroups]);
+
+  const toggleGroup = (sectionId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  };
 
   return (
     <aside
       className={cn(
         "hidden md:flex flex-col bg-[#122549] flex-shrink-0 z-40 transition-[width] duration-200 ease-in-out overflow-hidden",
-        isExpanded ? "w-[200px]" : "w-[50px]"
+        isExpanded ? "w-[220px]" : "w-[50px]"
       )}
       data-testid="collapsible-sidebar"
     >
@@ -116,67 +172,141 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
         )}
       </div>
 
-      <ScrollArea className="flex-1 py-2">
-        {sections.map((section) => (
-          <div key={section.id} className="mb-1">
-            {isExpanded && (
-              <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-white/30 uppercase tracking-wider truncate">
-                {section.titleTr}
-              </p>
-            )}
-            {section.items.map((item) => {
-              const IconComp = ICON_MAP[item.icon] || Home;
-              const active = isItemActive(item.path);
+      <ScrollArea className="flex-1 py-1">
+        {sections.map((section) => {
+          const SectionIcon = ICON_MAP[section.icon] || Home;
+          const singleItem = isSingleItemSection(section);
+          const isGroupOpen = expandedGroups.has(section.id);
+          const hasActiveItem = section.items.some(item => isItemActive(item.path));
 
-              if (!isExpanded) {
-                return (
-                  <Tooltip key={item.id} delayDuration={200}>
-                    <TooltipTrigger asChild>
-                      <Link href={item.path}>
-                        <button
-                          data-testid={`sidebar-${item.id}`}
-                          className={cn(
-                            "w-full flex items-center justify-center h-9 transition-all duration-150",
-                            active
-                              ? "bg-amber-500/20"
-                              : "hover:bg-white/10"
-                          )}
-                        >
-                          <IconComp
-                            className={cn(
-                              "w-[18px] h-[18px]",
-                              active ? "text-amber-400" : "text-white/50"
-                            )}
-                          />
-                        </button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      {item.titleTr}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
+          if (singleItem) {
+            const item = section.items[0];
+            const IconComp = ICON_MAP[item.icon] || Home;
+            const active = isItemActive(item.path);
 
+            if (!isExpanded) {
               return (
-                <Link key={item.id} href={item.path}>
+                <Tooltip key={section.id} delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <Link href={item.path}>
+                      <button
+                        data-testid={`sidebar-${item.id}`}
+                        className={cn(
+                          "w-full flex items-center justify-center h-9 transition-all duration-150",
+                          active ? "bg-amber-500/20" : "hover:bg-white/10"
+                        )}
+                      >
+                        <IconComp className={cn("w-[18px] h-[18px]", active ? "text-amber-400" : "text-white/50")} />
+                      </button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>{item.titleTr}</TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return (
+              <Link key={section.id} href={item.path}>
+                <button
+                  data-testid={`sidebar-${item.id}`}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-3 h-8 text-left transition-all duration-150",
+                    active ? "bg-amber-500/20 text-amber-400" : "text-white/60 hover:bg-white/10 hover:text-white/80"
+                  )}
+                >
+                  <IconComp className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs truncate">{item.titleTr}</span>
+                </button>
+              </Link>
+            );
+          }
+
+          if (!isExpanded) {
+            return (
+              <Tooltip key={section.id} delayDuration={200}>
+                <TooltipTrigger asChild>
                   <button
-                    data-testid={`sidebar-${item.id}`}
+                    data-testid={`sidebar-group-${section.id}`}
+                    onClick={() => {
+                      const firstItem = section.items[0];
+                      if (firstItem) {
+                        setLocation(firstItem.path);
+                      }
+                    }}
                     className={cn(
-                      "w-full flex items-center gap-2.5 px-3 h-8 text-left transition-all duration-150",
-                      active
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "text-white/60 hover:bg-white/10 hover:text-white/80"
+                      "w-full flex items-center justify-center h-9 transition-all duration-150",
+                      hasActiveItem ? "bg-amber-500/20" : "hover:bg-white/10"
                     )}
                   >
-                    <IconComp className="w-4 h-4 flex-shrink-0" />
-                    <span className="text-xs truncate">{item.titleTr}</span>
+                    <SectionIcon className={cn("w-[18px] h-[18px]", hasActiveItem ? "text-amber-400" : "text-white/50")} />
                   </button>
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  <div className="space-y-1">
+                    <p className="font-medium text-xs">{section.titleTr}</p>
+                    {section.items.map(item => (
+                      <Link key={item.id} href={item.path}>
+                        <p className={cn(
+                          "text-xs cursor-pointer hover:text-amber-400 py-0.5",
+                          isItemActive(item.path) ? "text-amber-400" : ""
+                        )}>
+                          {item.titleTr}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
+
+          return (
+            <div key={section.id} className="mb-0.5">
+              <button
+                data-testid={`sidebar-group-${section.id}`}
+                onClick={() => toggleGroup(section.id)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-3 h-8 text-left transition-all duration-150",
+                  hasActiveItem ? "text-amber-400" : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                )}
+              >
+                <SectionIcon className="w-4 h-4 flex-shrink-0" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider truncate flex-1">{section.titleTr}</span>
+                <ChevronDown className={cn(
+                  "w-3 h-3 flex-shrink-0 transition-transform duration-200",
+                  isGroupOpen ? "rotate-0" : "-rotate-90"
+                )} />
+              </button>
+
+              <div className={cn(
+                "overflow-hidden transition-all duration-200",
+                isGroupOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+              )}>
+                {section.items.map((item) => {
+                  const IconComp = ICON_MAP[item.icon] || Home;
+                  const active = isItemActive(item.path);
+
+                  return (
+                    <Link key={item.id} href={item.path}>
+                      <button
+                        data-testid={`sidebar-${item.id}`}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 pl-7 pr-3 h-7 text-left transition-all duration-150",
+                          active
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "text-white/55 hover:bg-white/10 hover:text-white/80"
+                        )}
+                      >
+                        <IconComp className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="text-[11px] truncate">{item.titleTr}</span>
+                      </button>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </ScrollArea>
 
       <div className={cn(

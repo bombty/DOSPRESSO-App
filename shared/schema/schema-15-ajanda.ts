@@ -29,6 +29,7 @@ export const userTodos = pgTable("user_todos", {
   isRecurring: boolean("is_recurring").default(false),
   recurrencePattern: varchar("recurrence_pattern", { length: 30 }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
@@ -37,7 +38,7 @@ export const userTodos = pgTable("user_todos", {
 ]);
 
 export const insertUserTodoSchema = createInsertSchema(userTodos).omit({
-  id: true, createdAt: true, updatedAt: true, completedAt: true,
+  id: true, createdAt: true, updatedAt: true, completedAt: true, archivedAt: true,
 });
 export type UserTodo = typeof userTodos.$inferSelect;
 export type InsertUserTodo = z.infer<typeof insertUserTodoSchema>;

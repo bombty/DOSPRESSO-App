@@ -40,7 +40,7 @@ export default function AjandaPage() {
           <div className="flex items-center gap-1 ml-2">
             {[
               { key: "calendar" as ViewMode, label: "Takvim", icon: Calendar },
-              { key: "todos" as ViewMode, label: "Yapılacaklar", icon: CheckSquare },
+              { key: "todos" as ViewMode, label: "Todo", icon: CheckSquare },
               { key: "notes" as ViewMode, label: "Notlar", icon: StickyNote },
             ].map(v => (
               <Button
