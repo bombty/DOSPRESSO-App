@@ -81,6 +81,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { ModuleLayout, type KPIMetric } from "@/components/module-layout/ModuleLayout";
+import type { SidebarSection } from "@/components/module-layout/ModuleSidebar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -706,168 +708,88 @@ export default function IKPage() {
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
+  const ikKpiMetrics: KPIMetric[] = ikDashboard && (isHQRole(user?.role as any) || user?.role === 'admin') ? [
+    { label: "Aktif Personel", value: employees.length, icon: <Users className="h-4 w-4" /> },
+    { label: "Özlük Dosyaları", value: ikDashboard.documents.total, icon: <FolderOpen className="h-4 w-4" /> },
+    { label: "Süresi Dolan Belge", value: ikDashboard.documents.expiringSoon, color: ikDashboard.documents.expiringSoon > 0 ? "text-orange-500" : undefined, icon: <AlertTriangle className="h-4 w-4" /> },
+    { label: "Açık Tutanak", value: ikDashboard.disciplinary.open, color: ikDashboard.disciplinary.open > 0 ? "text-red-500" : undefined, icon: <FileWarning className="h-4 w-4" /> },
+  ] : [];
+
+  const ikSidebarSections: SidebarSection[] = visibleGroups.map((group) => {
+    const GroupIcon = group.icon;
+    return {
+      title: group.label.toUpperCase(),
+      items: group.tabs
+        .filter((t) => tabVisibility.has(t))
+        .map((tabValue) => {
+          const tabDef = TAB_LABELS[tabValue];
+          const TabIcon = tabDef?.icon || Users;
+          return {
+            id: tabValue,
+            label: tabDef?.label || tabValue,
+            icon: <TabIcon className="h-4 w-4" />,
+            badge: tabValue === "personel" ? filteredEmployees.length : undefined,
+          };
+        }),
+    };
+  }).filter(s => s.items.length > 0);
+
+  const handleSidebarViewChange = (viewId: string) => {
+    navigate(`/ik/${viewId}`, { replace: true });
+    setActiveGroup(getGroupForTab(viewId));
+  };
+
   return (
-    <div className="w-full min-h-screen bg-background p-3 sm:p-4">
-      <div className="max-w-full mx-auto space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">İK Yönetimi</h1>
-            <p className="text-sm text-muted-foreground">Personel yönetimi ve deneme süresi takibi</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {(isHQRole(user?.role as any) || user?.role === 'admin') && (
-              <>
-                <Button variant="outline" onClick={() => setExportDialogOpen(true)} data-testid="button-export-employees">
-                  <Download className="mr-2 h-4 w-4" />
-                  Excel Dışa Aktar
-                </Button>
-                <Button variant="outline" onClick={() => setImportDialogOpen(true)} data-testid="button-import-employees">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Excel İçe Aktar
-                </Button>
-              </>
-            )}
-            {canCreate ? (
-              <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Yeni Personel Ekle
+    <ModuleLayout
+      title="İK Yönetimi"
+      description="Personel yönetimi ve deneme süresi takibi"
+      icon={<Users className="h-6 w-6" />}
+      kpiMetrics={ikKpiMetrics}
+      sidebarSections={ikSidebarSections}
+      activeView={activeTab}
+      onViewChange={handleSidebarViewChange}
+    >
+      <div className="space-y-4">
+        <div className="flex gap-2 flex-wrap">
+          {(isHQRole(user?.role as any) || user?.role === 'admin') && (
+            <>
+              <Button variant="outline" onClick={() => setExportDialogOpen(true)} data-testid="button-export-employees">
+                <Download className="mr-2 h-4 w-4" />
+                Excel Dışa Aktar
               </Button>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Button disabled data-testid="button-add-employee-disabled">
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Yeni Personel Ekle
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Yetkiniz yok</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+              <Button variant="outline" onClick={() => setImportDialogOpen(true)} data-testid="button-import-employees">
+                <Upload className="mr-2 h-4 w-4" />
+                Excel İçe Aktar
+              </Button>
+            </>
+          )}
+          {canCreate ? (
+            <Button onClick={() => setAddDialogOpen(true)} data-testid="button-add-employee">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Yeni Personel Ekle
+            </Button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button disabled data-testid="button-add-employee-disabled">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Yeni Personel Ekle
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Yetkiniz yok</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
-      {/* IK Dashboard KPI Strip */}
-      {ikDashboard && (isHQRole(user?.role as any) || user?.role === 'admin') && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="ik-kpi-strip">
-          <Card>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="p-2 rounded-md bg-primary/10">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Aktif Personel</p>
-                <p className="text-lg font-bold" data-testid="text-kpi-active-employees">{employees.length}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="p-2 rounded-md bg-blue-500/10">
-                <FolderOpen className="h-4 w-4 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Özlük Dosyaları</p>
-                <p className="text-lg font-bold" data-testid="text-kpi-documents">{ikDashboard.documents.total}
-                  {ikDashboard.documents.completionRate > 0 && (
-                    <span className="text-xs font-normal text-muted-foreground ml-1">(%{ikDashboard.documents.completionRate})</span>
-                  )}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="p-2 rounded-md bg-orange-500/10">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Süresi Dolan Belge</p>
-                <p className="text-lg font-bold" data-testid="text-kpi-expiring">{ikDashboard.documents.expiringSoon}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="p-2 rounded-md bg-red-500/10">
-                <FileWarning className="h-4 w-4 text-red-500" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Açık Tutanak</p>
-                <p className="text-lg font-bold" data-testid="text-kpi-open-disciplinary">{ikDashboard.disciplinary.open}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Main Tabs Navigation - Grouped */}
       <Tabs value={activeTab} onValueChange={(v) => {
         navigate(`/ik/${v}`, { replace: true });
         setActiveGroup(getGroupForTab(v));
       }} className="w-full space-y-4">
-        <div className="space-y-2">
-          <div className="overflow-x-auto -mx-1 px-1">
-            <div className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-group-tabs">
-              {visibleGroups.map((group) => {
-                const GroupIcon = group.icon;
-                return (
-                  <Button
-                    key={group.key}
-                    variant={activeGroup === group.key ? "default" : "ghost"}
-                    size="sm"
-                    className="flex items-center gap-1.5 text-xs sm:text-sm"
-                    onClick={() => {
-                      setActiveGroup(group.key);
-                      const firstVisible = group.tabs.find(t => tabVisibility.has(t));
-                      if (firstVisible) {
-                        navigate(`/ik/${firstVisible}`, { replace: true });
-                      }
-                    }}
-                    data-testid={`group-${group.key}`}
-                  >
-                    <GroupIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                    {group.label}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-          {(() => {
-            const currentGroup = TAB_GROUPS.find(g => g.key === activeGroup);
-            const groupTabs = (currentGroup?.tabs || []).filter(t => tabVisibility.has(t));
-            if (groupTabs.length === 0) return null;
-            return (
-              <div className="overflow-x-auto -mx-1 px-1">
-                <TabsList className="inline-flex h-auto gap-1 p-1 bg-muted/50 rounded-lg whitespace-nowrap" data-testid="ik-main-tabs">
-                  {groupTabs.map((tabValue) => {
-                    const tabDef = TAB_LABELS[tabValue];
-                    if (!tabDef) return null;
-                    const TabIcon = tabDef.icon;
-                    return (
-                      <TabsTrigger
-                        key={tabValue}
-                        value={tabValue}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm"
-                        data-testid={`tab-${tabValue}`}
-                      >
-                        <TabIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                        {tabDef.label}
-                        {tabValue === "personel" && (
-                          <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0">{filteredEmployees.length}</Badge>
-                        )}
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-              </div>
-            );
-          })()}
-        </div>
+        <div className="hidden"></div>
 
         {/* Tab 1: Personel Listesi */}
         <TabsContent value="personel" data-testid="content-personel">
@@ -1903,7 +1825,7 @@ export default function IKPage() {
         />
       )}
       </div>
-    </div>
+    </ModuleLayout>
   );
 }
 

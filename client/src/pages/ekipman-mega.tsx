@@ -2,16 +2,20 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useDynamicPermissions } from "@/hooks/useDynamicPermissions";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ModuleLayout, type KPIMetric } from "@/components/module-layout/ModuleLayout";
+import type { SidebarSection } from "@/components/module-layout/ModuleSidebar";
 import {
   Wrench,
   AlertTriangle,
   BarChart3,
+  BookOpen,
+  LayoutDashboard,
   Settings2,
-  BookOpen
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 
 const EkipmanKatalog = lazy(() => import("./ekipman-katalog"));
@@ -19,53 +23,40 @@ const Equipment = lazy(() => import("./equipment"));
 const FaultHub = lazy(() => import("./ariza"));
 const EquipmentAnalytics = lazy(() => import("./ekipman-analitics"));
 
-interface TabConfig {
+interface ViewConfig {
   id: string;
-  label: string;
   labelTr: string;
   icon: React.ReactNode;
   permissionModule?: string;
+  section: string;
   component: React.LazyExoticComponent<React.ComponentType<any>>;
 }
 
-const EKIPMAN_TABS: TabConfig[] = [
-  {
-    id: "katalog",
-    label: "Catalog",
-    labelTr: "Merkez Katalog",
-    icon: <BookOpen className="h-4 w-4" />,
-    permissionModule: "equipment",
-    component: EkipmanKatalog
-  },
-  {
-    id: "ekipman",
-    label: "Equipment",
-    labelTr: "Ekipman",
-    icon: <Wrench className="h-4 w-4" />,
-    permissionModule: "equipment",
-    component: Equipment
-  },
-  {
-    id: "ariza",
-    label: "Faults",
-    labelTr: "Arıza Yönetimi",
-    icon: <AlertTriangle className="h-4 w-4" />,
-    permissionModule: "faults",
-    component: FaultHub
-  },
-  {
-    id: "analitik",
-    label: "Analytics",
-    labelTr: "Ekipman Analitik",
-    icon: <BarChart3 className="h-4 w-4" />,
-    permissionModule: "equipment_analytics",
-    component: EquipmentAnalytics
-  }
+const VIEWS: ViewConfig[] = [
+  { id: "katalog", labelTr: "Merkez Katalog", icon: <BookOpen />, permissionModule: "equipment", section: "genel", component: EkipmanKatalog },
+  { id: "ekipman", labelTr: "Ekipman Listesi", icon: <Wrench />, permissionModule: "equipment", section: "genel", component: Equipment },
+  { id: "ariza", labelTr: "Arıza Yönetimi", icon: <AlertTriangle />, permissionModule: "faults", section: "genel", component: FaultHub },
+  { id: "analitik", labelTr: "Ekipman Analitik", icon: <BarChart3 />, permissionModule: "equipment_analytics", section: "analitik", component: EquipmentAnalytics },
 ];
 
-function TabSkeleton() {
+const VIEW_URL_MAP: Record<string, string> = {
+  katalog: "/ekipman/katalog",
+  ekipman: "/ekipman",
+  ariza: "/ekipman/ariza",
+  analitik: "/ekipman/analitik",
+};
+
+function getViewFromUrl(pathname: string): string | null {
+  if (pathname.startsWith("/ekipman/katalog")) return "katalog";
+  if (pathname.startsWith("/ekipman/ariza")) return "ariza";
+  if (pathname.startsWith("/ekipman/analitik")) return "analitik";
+  if (pathname === "/ekipman" || pathname === "/ekipman/") return "ekipman";
+  return null;
+}
+
+function ContentSkeleton() {
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4">
       <div className="flex gap-4">
         <Skeleton className="h-24 w-48" />
         <Skeleton className="h-24 w-48" />
@@ -76,66 +67,79 @@ function TabSkeleton() {
   );
 }
 
-const TAB_URL_MAP: Record<string, string> = {
-  "katalog": "/ekipman/katalog",
-  "ekipman": "/ekipman",
-  "ariza": "/ekipman/ariza",
-  "analitik": "/ekipman/analitik"
-};
-
-function getTabFromUrl(pathname: string): string | null {
-  if (pathname.startsWith("/ekipman/katalog")) return "katalog";
-  if (pathname === "/ekipman" || pathname === "/ekipman/") return "ekipman";
-  if (pathname.startsWith("/ekipman/ariza")) return "ariza";
-  if (pathname.startsWith("/ekipman/analitik")) return "analitik";
-  return null;
-}
-
 export default function EkipmanMegaModule() {
   const { user } = useAuth();
   const { canAccess } = useDynamicPermissions();
   const [location, setLocation] = useLocation();
 
-  const visibleTabs = EKIPMAN_TABS.filter(tab => {
-    if (!tab.permissionModule) return true;
+  const visibleViews = VIEWS.filter((v) => {
+    if (!v.permissionModule) return true;
     if (!user?.role) return false;
-    if (user.role === 'admin') return true;
-    return canAccess(tab.permissionModule!, 'view');
+    if (user.role === "admin") return true;
+    return canAccess(v.permissionModule!, "view");
   });
 
-  const firstVisibleTab = visibleTabs[0]?.id || "ekipman";
-  
-  const initialTab = getTabFromUrl(location);
-  const [activeTab, setActiveTab] = useState(
-    initialTab && visibleTabs.find(t => t.id === initialTab) ? initialTab : firstVisibleTab
-  );
-  
-  useEffect(() => {
-    if (!visibleTabs.find(t => t.id === activeTab)) {
-      setActiveTab(firstVisibleTab);
-      const url = TAB_URL_MAP[firstVisibleTab];
-      if (url && location !== url) {
-        setLocation(url);
-      }
-    }
-  }, [visibleTabs, activeTab, firstVisibleTab]);
-  
-  useEffect(() => {
-    const tabFromUrl = getTabFromUrl(location);
-    if (tabFromUrl && tabFromUrl !== activeTab && visibleTabs.find(t => t.id === tabFromUrl)) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [location, visibleTabs]);
+  const firstVisible = visibleViews[0]?.id || "ekipman";
 
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    const url = TAB_URL_MAP[tabId];
+  const initialView = getViewFromUrl(location);
+  const [activeView, setActiveView] = useState(
+    initialView && visibleViews.find((v) => v.id === initialView) ? initialView : firstVisible
+  );
+
+  useEffect(() => {
+    const vFromUrl = getViewFromUrl(location);
+    if (vFromUrl && vFromUrl !== activeView && visibleViews.find((v) => v.id === vFromUrl)) {
+      setActiveView(vFromUrl);
+    }
+  }, [location, visibleViews]);
+
+  useEffect(() => {
+    if (!visibleViews.find((v) => v.id === activeView)) {
+      setActiveView(firstVisible);
+    }
+  }, [visibleViews, activeView, firstVisible]);
+
+  const handleViewChange = (viewId: string) => {
+    setActiveView(viewId);
+    const url = VIEW_URL_MAP[viewId];
     if (url && location !== url) {
       setLocation(url);
     }
   };
 
-  if (visibleTabs.length === 0) {
+  const { data: equipmentStats } = useQuery<{
+    total?: number;
+    activeFaults?: number;
+    maintenanceDue?: number;
+    avgResolutionHours?: number;
+  }>({
+    queryKey: ["/api/equipment/stats"],
+    enabled: !!user,
+  });
+
+  const kpiMetrics: KPIMetric[] = [
+    { label: "Toplam Ekipman", value: equipmentStats?.total ?? "—", icon: <Wrench className="h-4 w-4" /> },
+    { label: "Aktif Arıza", value: equipmentStats?.activeFaults ?? "—", color: (equipmentStats?.activeFaults ?? 0) > 0 ? "text-red-500" : undefined, icon: <AlertTriangle className="h-4 w-4" /> },
+    { label: "Bakım Gereken", value: equipmentStats?.maintenanceDue ?? "—", icon: <CheckCircle2 className="h-4 w-4" /> },
+    { label: "Ort. Çözüm (saat)", value: equipmentStats?.avgResolutionHours != null ? `${equipmentStats.avgResolutionHours}s` : "—", icon: <Clock className="h-4 w-4" /> },
+  ];
+
+  const sidebarSections: SidebarSection[] = [
+    {
+      title: "GENEL",
+      items: visibleViews
+        .filter((v) => v.section === "genel")
+        .map((v) => ({ id: v.id, label: v.labelTr, icon: v.icon })),
+    },
+    {
+      title: "ANALİTİK",
+      items: visibleViews
+        .filter((v) => v.section === "analitik")
+        .map((v) => ({ id: v.id, label: v.labelTr, icon: v.icon })),
+    },
+  ];
+
+  if (visibleViews.length === 0) {
     return (
       <div className="p-6">
         <Card>
@@ -153,59 +157,23 @@ export default function EkipmanMegaModule() {
     );
   }
 
+  const activeConfig = visibleViews.find((v) => v.id === activeView);
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-2 mb-3">
-            <Settings2 className="h-6 w-6 text-blue-600" />
-            <div>
-              <h1 className="text-xl font-semibold">Ekipman & Bakım</h1>
-              <p className="text-sm text-muted-foreground">Ekipman yönetimi ve arıza takibi</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <Tabs 
-        value={activeTab} 
-        onValueChange={handleTabChange} 
-        className="flex-1 flex flex-col"
-      >
-        <div className="border-b px-4">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <TabsList className="inline-flex h-auto p-1 bg-transparent gap-1">
-              {visibleTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex items-center gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
-                  data-testid={`tab-ekipman-${tab.id}`}
-                >
-                  {tab.icon}
-                  <span className="hidden sm:inline">{tab.labelTr}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
-
-        <div className="flex-1 overflow-auto">
-          {visibleTabs.map((tab) => (
-            <TabsContent 
-              key={tab.id} 
-              value={tab.id} 
-              className="h-full m-0 p-0"
-              data-testid={`content-ekipman-${tab.id}`}
-            >
-              <Suspense fallback={<TabSkeleton />}>
-                <tab.component />
-              </Suspense>
-            </TabsContent>
-          ))}
-        </div>
-      </Tabs>
-    </div>
+    <ModuleLayout
+      title="Ekipman & Bakım"
+      description="Ekipman yönetimi ve arıza takibi"
+      icon={<Settings2 className="h-6 w-6" />}
+      kpiMetrics={kpiMetrics}
+      sidebarSections={sidebarSections}
+      activeView={activeView}
+      onViewChange={handleViewChange}
+    >
+      {activeConfig && (
+        <Suspense fallback={<ContentSkeleton />}>
+          <activeConfig.component />
+        </Suspense>
+      )}
+    </ModuleLayout>
   );
 }
