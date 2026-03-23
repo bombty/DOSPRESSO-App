@@ -92,12 +92,7 @@ export function NewTicketDialog({ open, onOpenChange, channel }: NewTicketDialog
   const [branchId, setBranchId] = useState<number | undefined>(undefined);
 
   const { data: branchList = [] } = useQuery<{ id: number; name: string }[]>({
-    queryKey: ['/api/branches/list'],
-    queryFn: async () => {
-      const res = await fetch('/api/branches/list', { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryKey: ['/api/branches'],
     enabled: isMisafir && isHQ,
   });
 
