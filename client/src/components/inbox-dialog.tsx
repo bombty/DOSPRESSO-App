@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Mail, Upload, User } from "lucide-react";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { OfflineQueuePanel } from "@/components/offline-queue-panel";
 import { Button } from "@/components/ui/button";
@@ -13,61 +13,55 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { useLocation } from "wouter";
 
-type Message = {
-  id: number;
-  senderId: string;
-  recipientId: string | null;
-  recipientRole: string | null;
+type ThreadParticipant = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  profileImageUrl: string | null;
+};
+
+type Thread = {
+  threadId: string;
   subject: string;
-  body: string;
-  type: string;
-  isRead: boolean;
-  createdAt: string;
+  participants: ThreadParticipant[];
+  lastMessageBody: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  sentByMe: boolean;
 };
 
 export function InboxDialog() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { queueSize } = useOfflineQueue();
+  const [, setLocation] = useLocation();
 
   const pollingInterval = useAdaptivePolling(5000, 60000);
 
-  const { data: unreadData } = useQuery<{ count: number }>({
+  const { data: unreadData } = useQuery<{ unreadCount: number }>({
     queryKey: ['/api/messages/unread-count'],
     refetchInterval: pollingInterval,
   });
 
-  const { data: messages, isLoading } = useQuery<Message[]>({
+  const { data: threads, isLoading } = useQuery<Thread[]>({
     queryKey: ['/api/messages'],
     enabled: open,
   });
 
-  const markAsReadMutation = useMutation({
-    mutationFn: async (messageId: number) => {
-      return apiRequest('PATCH', `/api/messages/${messageId}/read`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
-    },
-  });
-
-  const handleMessageClick = (message: Message) => {
-    if (!message.isRead) {
-      markAsReadMutation.mutate(message.id);
-    }
-  };
-
-  const unreadCount = unreadData?.count || 0;
+  const unreadCount = unreadData?.unreadCount || 0;
   const totalBadge = unreadCount + queueSize;
+
+  const handleThreadClick = (thread: Thread) => {
+    setOpen(false);
+    setLocation("/iletisim-merkezi");
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -106,68 +100,94 @@ export function InboxDialog() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="messages">
-              <MessageList messages={messages} isLoading={isLoading} onMessageClick={handleMessageClick} />
+              <ThreadList threads={threads} isLoading={isLoading} userId={user?.id} onThreadClick={handleThreadClick} />
             </TabsContent>
             <TabsContent value="queue">
               <OfflineQueuePanel />
             </TabsContent>
           </Tabs>
         ) : (
-          <MessageList messages={messages} isLoading={isLoading} onMessageClick={handleMessageClick} />
+          <ThreadList threads={threads} isLoading={isLoading} userId={user?.id} onThreadClick={handleThreadClick} />
         )}
       </DialogContent>
     </Dialog>
   );
 }
 
-function MessageList({ messages, isLoading, onMessageClick }: { 
-  messages: Message[] | undefined; 
+function ThreadList({ threads, isLoading, userId, onThreadClick }: { 
+  threads: Thread[] | undefined; 
   isLoading: boolean; 
-  onMessageClick: (m: Message) => void;
+  userId?: string;
+  onThreadClick: (t: Thread) => void;
 }) {
   return (
     <ScrollArea className="max-h-[70vh] pr-4">
       {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">
+        <div className="text-center py-8 text-muted-foreground" data-testid="text-loading">
           Yükleniyor...
         </div>
-      ) : !messages || messages.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
+      ) : !threads || threads.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground" data-testid="text-empty-inbox">
           Henüz mesajınız yok
         </div>
       ) : (
-        <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`p-4 rounded-lg border cursor-pointer hover-elevate ${
-                !message.isRead ? 'bg-accent/50' : 'bg-background'
-              }`}
-              onClick={() => onMessageClick(message)}
-              data-testid={`message-${message.id}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className={`font-medium truncate ${!message.isRead ? 'font-semibold' : ''}`}>
-                      {message.subject}
-                    </h4>
-                    {!message.isRead && (
-                      <Badge variant="default" className="text-xs">
-                        Yeni
-                      </Badge>
-                    )}
+        <div className="space-y-2">
+          {threads.map((thread) => {
+            const otherParticipants = thread.participants.filter(p => p.id !== userId);
+            const displayName = otherParticipants.length > 0
+              ? otherParticipants.map(p => `${p.firstName} ${p.lastName}`).join(", ")
+              : "Bilinmeyen";
+            const hasUnread = thread.unreadCount > 0;
+
+            let formattedDate = "";
+            try {
+              formattedDate = format(new Date(thread.lastMessageAt), 'dd MMM HH:mm', { locale: tr });
+            } catch {
+              formattedDate = "";
+            }
+
+            return (
+              <div
+                key={thread.threadId}
+                className={`p-3 rounded-lg border cursor-pointer hover-elevate ${
+                  hasUnread ? 'bg-accent/50' : 'bg-background'
+                }`}
+                onClick={() => onThreadClick(thread)}
+                data-testid={`thread-${thread.threadId}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                          {displayName}
+                        </span>
+                        {hasUnread && (
+                          <Badge variant="default" className="text-xs">
+                            {thread.unreadCount}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className={`text-sm truncate ${hasUnread ? 'font-medium' : 'text-muted-foreground'}`}>
+                        {thread.subject}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {thread.sentByMe ? "Sen: " : ""}{thread.lastMessageBody}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                    {message.body}
-                  </p>
+                  {formattedDate && (
+                    <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                      {formattedDate}
+                    </span>
+                  )}
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {format(new Date(message.createdAt), 'dd MMM HH:mm', { locale: tr })}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </ScrollArea>

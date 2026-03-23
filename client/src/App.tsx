@@ -11,7 +11,7 @@ import { ThemeProvider } from "@/contexts/theme-context";
 import { BottomNav } from "@/components/bottom-nav";
 import { BreadcrumbNavigation, BreadcrumbProvider } from "@/components/breadcrumb-navigation";
 import { GlobalSearch } from "@/components/global-search";
-import { InboxDialog } from "@/components/inbox-dialog";
+
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
