@@ -5096,6 +5096,8 @@ DOSPRESSO İnsan Kaynakları Ekibi`
     }
   });
 
+  const SALARY_VIEWER_ROLES = ['admin', 'ceo', 'cgo', 'muhasebe', 'muhasebe_ik', 'coach', 'yatirimci_branch'];
+
   // GET /api/salary/branch/:branchId/summary - Şube maaş özeti
   router.get('/api/salary/branch/:branchId/summary', isAuthenticated, async (req, res) => {
     try {
@@ -5103,12 +5105,11 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const branchId = parseInt(req.params.branchId);
       const { month, year } = req.query;
 
-      // Yetki kontrolü
+      if (!SALARY_VIEWER_ROLES.includes(user.role)) {
+        return res.status(403).json({ message: "Maaş özetine erişim yetkiniz yok" });
+      }
       if (user.role === 'yatirimci_branch' && user.branchId !== branchId) {
         return res.status(403).json({ message: "Bu şubenin maaş özetine erişim yetkiniz yok" });
-      }
-      if (!isHQRole(user.role) && user.role !== 'admin' && user.role !== 'yatirimci_branch') {
-        return res.status(403).json({ message: "Maaş özetine erişim yetkiniz yok" });
       }
 
       const currentMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;

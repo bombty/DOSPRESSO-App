@@ -1883,7 +1883,7 @@ export default function HQDashboard() {
   const DepartmentComponent = roleToDashboard[userRole] || CGODashboard;
 
   const HQ_DEPT_MODULES = [
-    { label: 'İletişim M.', sublabel: 'Şube Talepleri', path: '/iletisim-merkezi', icon: <MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />, gradient: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900' },
+    { label: 'İletişim M.', sublabel: 'Şube Talepleri', path: '/hq-destek', icon: <MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />, gradient: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900' },
     { label: 'Akademi', sublabel: 'Eğitim & Gelişim', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
     { label: 'Şubeler', sublabel: 'Şube Yönetimi', path: '/subeler', icon: <Store className="w-8 h-8 text-purple-600 dark:text-purple-400" />, gradient: 'bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900' },
     { label: 'Raporlar', sublabel: 'Analiz & KPI', path: '/raporlar', icon: <BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },

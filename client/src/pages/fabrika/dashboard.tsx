@@ -265,7 +265,7 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
               <span className="text-[11px] font-semibold text-foreground">Görevlerim</span>
             </div>
           </Link>
-          <Link href="/iletisim-merkezi">
+          <Link href="/hq-destek">
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer" data-testid="quick-access-iletisim">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900 flex items-center justify-center">
                 <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />

@@ -106,7 +106,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
       type: "task_assigned",
       title: `Yeni Şube Talebi: ${ticket.department.toUpperCase()}`,
       message: `${ticket.title} — SLA: ${slaHours} saat`,
-      link: `/iletisim-merkezi/ticket/${ticketId}`,
+      link: `/hq-destek`,
     });
   }
 
@@ -123,7 +123,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
           type: "critical_fault",
           title: `KRİTİK Şube Talebi — ${ticket.department.toUpperCase()}`,
           message: `${ticket.title} — SLA: ${slaHours} saat`,
-          link: `/iletisim-merkezi/ticket/${ticketId}`,
+          link: `/hq-destek`,
         });
       }
     }
@@ -139,7 +139,7 @@ export async function routeTicket(ticketId: number): Promise<void> {
         type: "critical_fault",
         title: `Tekrarlayan Talep (${recurrenceCount}. kez) — ${ticket.department}`,
         message: `Şube ${ticket.branchId} bu departmana ${recurrenceCount}. kez talep açtı`,
-        link: `/iletisim-merkezi?tab=b2b&branch=${ticket.branchId}`,
+        link: `/hq-destek`,
       });
     }
   }

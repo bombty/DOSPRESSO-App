@@ -16,7 +16,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
     roles: ['admin', 'ceo', 'cgo'],
     items: [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/' },
-      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi', badge: true },
+      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek', badge: true },
       { key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi' },
       { key: 'sube', icon: 'Building2', label: 'Şubeler', path: '/subeler' },
       { key: 'fabrika', icon: 'Factory', label: 'Fabrika', path: '/fabrika' },
@@ -29,7 +29,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/' },
       { key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi', badge: true },
       { key: 'sube', icon: 'Building2', label: 'Şubeler', path: '/subeler' },
-      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi' },
+      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek' },
       { key: 'raporlar', icon: 'BarChart2', label: 'Raporlar', path: '/raporlar' },
     ],
   },
@@ -37,7 +37,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
     roles: ['muhasebe', 'muhasebe_ik', 'satinalma', 'marketing', 'pazarlama', 'teknik', 'destek', 'kalite_kontrol', 'gida_muhendisi', 'ekipman_teknik', 'ik', 'yatirimci_hq', 'fabrika'],
     items: [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/' },
-      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi' },
+      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek' },
       { key: 'raporlar', icon: 'BarChart2', label: 'Raporlar', path: '/raporlar' },
     ],
   },
@@ -47,7 +47,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/' },
       { key: 'gorev', icon: 'CheckSquare', label: 'Görevler', path: '/gorevler', badge: true },
       { key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi' },
-      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi' },
+      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek' },
       { key: 'raporlar', icon: 'BarChart2', label: 'Raporlar', path: '/raporlar' },
     ],
   },
@@ -64,7 +64,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
     items: [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/fabrika' },
       { key: 'gorev', icon: 'CheckSquare', label: 'Görevler', path: '/gorevler' },
-      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/iletisim-merkezi' },
+      { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek' },
     ],
   },
   {

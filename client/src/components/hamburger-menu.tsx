@@ -319,7 +319,7 @@ export function HamburgerMenu() {
 
             {!isFlat && (
               <button
-                onClick={() => handleNavigate("/iletisim-merkezi")}
+                onClick={() => handleNavigate("/hq-destek")}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover-elevate transition-colors"
                 data-testid="menu-item-notifications-footer"
               >

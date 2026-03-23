@@ -103,11 +103,11 @@ function StatusCard({ icon: Icon, label, value, color }: {
 
 function getDelegatedModulePath(moduleKey: string): string {
   const pathMap: Record<string, string> = {
-    crm_teknik:    '/iletisim-merkezi',
-    crm_lojistik:  '/iletisim-merkezi',
-    crm_muhasebe:  '/iletisim-merkezi',
-    crm_marketing: '/iletisim-merkezi',
-    crm_ik:        '/iletisim-merkezi',
+    crm_teknik:    '/hq-destek',
+    crm_lojistik:  '/hq-destek',
+    crm_muhasebe:  '/hq-destek',
+    crm_marketing: '/hq-destek',
+    crm_ik:        '/hq-destek',
     akademi:       '/akademi',
     raporlar:      '/raporlar',
   };
@@ -263,7 +263,7 @@ export default function HQOzet() {
             Hızlı Erişim
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-            <ModuleCard label="İletişim M." sublabel="Şube Talepleri" path="/iletisim-merkezi" icon={<MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />} gradient="bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900" />
+            <ModuleCard label="İletişim M." sublabel="Şube Talepleri" path="/hq-destek" icon={<MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />} gradient="bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900" />
             <ModuleCard label="Akademi" sublabel="Eğitim & Gelişim" path="/akademi" icon={<GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />} gradient="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900" />
             <ModuleCard label="Şubeler" sublabel={`${data.branchStatus.total} Şube`} path="/subeler" icon={<Store className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
             <ModuleCard label="Raporlar" sublabel="Analiz & KPI" path="/raporlar" icon={<BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />} gradient="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900" />

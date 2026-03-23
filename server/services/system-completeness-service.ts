@@ -214,7 +214,7 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
         severity: "medium",
         title: "SLA kuralları tanımlı değil",
         description: "Servis seviyesi anlaşma kuralları oluşturulmamış. Görev tamamlama süreleri ve ihlal bildirimleri çalışmaz.",
-        deepLink: "/iletisim-merkezi",
+        deepLink: "/hq-destek",
         targetRoles: ["admin", "coach"],
         autoResolvable: false,
         checkFn: "config-sla",

@@ -319,7 +319,10 @@ router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuar
 
     const id = Number(req.params.id);
     const instance = await db.execute(sql`
-      SELECT * FROM branch_task_instances WHERE id = ${id}
+      SELECT bti.*, brt.title as task_title
+      FROM branch_task_instances bti
+      LEFT JOIN branch_recurring_tasks brt ON bti.recurring_task_id = brt.id
+      WHERE bti.id = ${id}
     `);
 
     if (!instance.rows || instance.rows.length === 0) {
@@ -356,7 +359,7 @@ router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuar
 
     try {
       const claimerName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username;
-      const taskTitle = task.title || 'Görev';
+      const taskTitle = task.task_title || 'Görev';
       const branchId = task.branch_id;
 
       const subeYoneticileri = await db.select({ id: users.id })
@@ -377,7 +380,7 @@ router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuar
             type: 'branch_task_claimed',
             title: 'Görev sahiplenildi',
             message: `${claimerName} "${taskTitle}" görevini üstlendi`,
-            link: `/sube-gorevler`,
+            link: `/sube-gorevler/${id}`,
             isRead: false,
           });
         }
@@ -392,7 +395,7 @@ router.post("/api/branch-tasks/instances/:id/claim", isAuthenticated, moduleGuar
           type: 'branch_task_claimed',
           title: `${branchName}: Görev sahiplenildi`,
           message: `${claimerName} "${taskTitle}" görevini üstlendi`,
-          link: `/sube-gorevler`,
+          link: `/sube-gorevler/${id}`,
           isRead: false,
         });
       }
@@ -413,7 +416,10 @@ router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleG
 
     const id = Number(req.params.id);
     const instance = await db.execute(sql`
-      SELECT * FROM branch_task_instances WHERE id = ${id}
+      SELECT bti.*, brt.title as task_title
+      FROM branch_task_instances bti
+      LEFT JOIN branch_recurring_tasks brt ON bti.recurring_task_id = brt.id
+      WHERE bti.id = ${id}
     `);
 
     if (!instance.rows || instance.rows.length === 0) {
@@ -455,7 +461,7 @@ router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleG
 
     try {
       const completerName = user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username;
-      const taskTitle = task.title || 'Görev';
+      const taskTitle = task.task_title || 'Görev';
       const branchId = task.branch_id;
 
       const [branchInfo] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
@@ -476,7 +482,7 @@ router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleG
             type: 'branch_task_completed',
             title: 'Görev tamamlandı',
             message: `${completerName} "${taskTitle}" görevini tamamladı`,
-            link: `/sube-gorevler`,
+            link: `/sube-gorevler/${id}`,
             isRead: false,
           });
         }
@@ -491,7 +497,7 @@ router.post("/api/branch-tasks/instances/:id/complete", isAuthenticated, moduleG
           type: 'branch_task_completed',
           title: `${branchName}: Görev tamamlandı`,
           message: `${completerName} "${taskTitle}" görevini tamamladı`,
-          link: `/sube-gorevler`,
+          link: `/sube-gorevler/${id}`,
           isRead: false,
         });
       }

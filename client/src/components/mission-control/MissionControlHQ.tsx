@@ -211,14 +211,14 @@ export default function MissionControlHQ() {
           icon={AlertTriangle}
           color={(hqSummary?.slaBreaches ?? 0) > 0 ? "bg-destructive" : "bg-emerald-500 dark:bg-emerald-600"}
           subtext={(hqSummary?.slaBreaches ?? 0) > 0 ? "Acil müdahale" : "Temiz"}
-          link="/iletisim-merkezi"
+          link="/hq-destek"
         />
         <MCKpiCard
           label="Açık Ticket"
           value={hqSummary?.openTickets ?? 0}
           icon={CheckCircle2}
           color="bg-amber-500 dark:bg-amber-600"
-          link="/iletisim-merkezi"
+          link="/hq-destek"
         />
       </div>
 
