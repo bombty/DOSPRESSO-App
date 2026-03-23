@@ -174,7 +174,7 @@ export async function checkSlaBreaches(): Promise<void> {
           type: "sla_breach",
           title: `SLA İhlali: ${(ticket.department as string).toUpperCase()}`,
           message: `${ticket.title} — Süre aşıldı`,
-          link: `/iletisim-merkezi/ticket/${ticket.id}`,
+          link: `/hq-destek`,
         });
       }
     }

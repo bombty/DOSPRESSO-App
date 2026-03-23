@@ -416,7 +416,7 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
           type: "task_assigned",
           title: `Cowork Mesajı: ${ticket.title.substring(0, 50)}`,
           message: content.substring(0, 100),
-          link: `/iletisim-merkezi/ticket/${ticketId}`,
+          link: `/hq-destek`,
         });
       }
     } else if (ticket) {
@@ -427,7 +427,7 @@ router.post("/tickets/:id/comments", async (req: AuthRequest, res: Response) => 
           type: "task_assigned",
           title: `Ticket Yanıtı: ${ticket.title.substring(0, 50)}`,
           message: content.substring(0, 100),
-          link: `/iletisim-merkezi/ticket/${ticketId}`,
+          link: `/hq-destek`,
         });
       }
     }
@@ -507,7 +507,7 @@ router.post("/tickets/:id/cowork/invite", async (req: AuthRequest, res: Response
       type: "task_assigned",
       title: `Cowork Daveti: ${ticket.title.substring(0, 50)}`,
       message: `${user.name ?? 'Bir kullanıcı'} sizi bir ticket cowork sohbetine davet etti`,
-      link: `/iletisim-merkezi/ticket/${ticketId}`,
+      link: `/hq-destek`,
     });
 
     res.status(201).json(result[0]);
@@ -653,7 +653,7 @@ router.post("/hq-tasks", async (req: AuthRequest, res: Response) => {
       type: "task_assigned",
       title: `HQ Görev Atandı: ${title.substring(0, 60)}`,
       message: `${user.name ?? "HQ"} tarafından atandı`,
-      link: `/iletisim-merkezi?tab=hq-tasks`,
+      link: `/hq-destek`,
     });
 
     res.status(201).json(result[0]);
@@ -1004,7 +1004,7 @@ router.patch("/tickets/:id/assign", async (req: any, res: Response) => {
       type: "task_assigned",
       title: `Ticket Atandı: ${ticket.title.substring(0, 50)}`,
       message: `${ticket.department.toUpperCase()} departmanı ticket'ı size atandı`,
-      link: `/iletisim-merkezi`,
+      link: `/hq-destek`,
     });
 
     res.json(updated);
@@ -1091,7 +1091,7 @@ router.post("/tickets/:id/sla-remind", async (req: any, res: Response) => {
         type: "sla_breach",
         title: `SLA Hatırlatma: ${ticket.department.toUpperCase()}`,
         message: `${ticket.title.substring(0, 80)} — Manuel hatırlatma gönderildi`,
-        link: `/iletisim-merkezi`,
+        link: `/hq-destek`,
       });
     }
 
@@ -1101,7 +1101,7 @@ router.post("/tickets/:id/sla-remind", async (req: any, res: Response) => {
         type: "sla_breach",
         title: `SLA Hatırlatma: ${ticket.title.substring(0, 60)}`,
         message: `Bu ticket için SLA hatırlatması yapıldı`,
-        link: `/iletisim-merkezi`,
+        link: `/hq-destek`,
       });
     }
 
