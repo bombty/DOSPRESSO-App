@@ -79,6 +79,7 @@ export const UserRole = {
   MUDUR: "mudur", // Şube Müdürü - Branch Manager
   YATIRIMCI_BRANCH: "yatirimci_branch", // Branch investor (read-only)
   // Factory Floor Roles
+  URETIM_SEFI: "uretim_sefi",
   FABRIKA_OPERATOR: "fabrika_operator",
   FABRIKA_SORUMLU: "fabrika_sorumlu",
   FABRIKA_PERSONEL: "fabrika_personel",

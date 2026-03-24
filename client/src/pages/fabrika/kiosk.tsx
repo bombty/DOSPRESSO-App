@@ -1458,6 +1458,17 @@ export default function FactoryKiosk() {
                 )}
 
                 <Button
+                  className="h-24 text-lg flex flex-col items-center gap-2 bg-indigo-600"
+                  onClick={() => {
+                    window.open('/fabrika/uretim-planlama', '_blank');
+                  }}
+                  data-testid="button-uretim-planla"
+                >
+                  <ClipboardCheck className="h-8 w-8" />
+                  Üretim Planla
+                </Button>
+
+                <Button
                   className="h-24 text-lg flex flex-col items-center gap-2 bg-orange-500 hover:bg-orange-600"
                   onClick={() => {
                     if (!currentSession) return;

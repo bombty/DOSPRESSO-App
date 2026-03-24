@@ -14,7 +14,7 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **Soft Deletion:** All business-critical data employs soft deletion.
 - **Data Locking:** Records are subject to time/status-based locking, with a change request workflow.
 - **Internationalization:** The UI supports multiple languages including Turkish, English, Arabic, and German, with emphasis on proper Turkish character usage.
-- **Role-Based Access Control (RBAC):** A granular role system with 27 distinct roles dictates access and permissions.
+- **Role-Based Access Control (RBAC):** A granular role system with 28 distinct roles dictates access and permissions.
 - **Kiosk System:** Dedicated PIN-based authentication for factory and branch kiosks.
 - **Module Feature Flags:** A dynamic system allows for global, branch-level, and role-specific toggling of features and modules.
 - **Mobile Compactness:** UI components are designed for an optimized mobile experience.
@@ -41,6 +41,7 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **Tab-less Dashboard Transformation & UX Vision:** Core modules (Equipment, Factory, Academy, HR) transitioned to a sidebar + KPI strip + dashboard layout for improved navigation. UI/UX enhancements include a hierarchical, collapsible sidebar, detailed Todo modals, and standardized KPI pill components.
 - **Mobile Quick Action Mode:** Role-based shortcut buttons and kiosk improvements, including BaristaQuickActions, SupervisorQuickBar, and Kiosk Fault Reporting.
 - **Cross-Module Intelligence & Branch P&L:** Introduced a Cross-Module Analyzer service for identifying correlations across various operational data, and a Branch Financial Service for calculating and reporting branch profitability. These are supported by new Mr. Dobody skills and dedicated reporting interfaces.
+- **Production Planning (Üretim Planlama):** Weekly production plan system with `weekly_production_plans`, `production_plan_items`, `daily_production_records`, and `production_responsibilities` tables. Features include weekly plan CRUD, copy-from-last-week, plan-vs-actual comparison, Coach/Trainer approval hierarchy (draft → suggested → approved), product-based reporting (weekly/monthly), and `uretim_sefi` role. API routes at `/api/production-planning/*`. UI integrated as "Haftalık Plan" and "Karşılaştırma" tabs in the existing Üretim Planlama page. Kiosk has "Üretim Planla" button linking to the planning interface.
 
 ## External Dependencies
 - **OpenAI API**: For AI vision, chat, embeddings, and summarization.

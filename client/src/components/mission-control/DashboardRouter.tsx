@@ -22,7 +22,7 @@ const HQ_ROLES = [
 const SUPERVISOR_ROLES = ["supervisor", "supervisor_buddy", "mudur"];
 const STAFF_ROLES = ["stajyer", "bar_buddy", "barista", "yatirimci_branch"];
 const FACTORY_ROLES = [
-  "fabrika_mudur", "fabrika_sorumlu", "fabrika_personel",
+  "fabrika_mudur", "uretim_sefi", "fabrika_sorumlu", "fabrika_personel",
   "fabrika_pisman", "fabrika_depo", "fabrika_kalite",
 ];
 

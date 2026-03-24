@@ -21,6 +21,7 @@ const SYSTEM_ROLES = [
   { name: "bar_buddy", displayName: "Bar Buddy", description: "Barista yardımcısı" },
   { name: "supervisor_buddy", displayName: "Supervisor Buddy", description: "Supervisor yardımcısı" },
   { name: "yatirimci_branch", displayName: "Şube Yatırımcısı", description: "Şube yatırımcısı, salt okuma erişimi" },
+  { name: "uretim_sefi", displayName: "Üretim Şefi", description: "Fabrika üretim planlama ve takip sorumlusu" },
   { name: "fabrika_operator", displayName: "Fabrika Operatör", description: "Fabrika üretim operatörü" },
   { name: "fabrika_sorumlu", displayName: "Fabrika Sorumlu", description: "Fabrika vardiya sorumlusu" },
   { name: "fabrika_personel", displayName: "Fabrika Personel", description: "Fabrika genel personel" },

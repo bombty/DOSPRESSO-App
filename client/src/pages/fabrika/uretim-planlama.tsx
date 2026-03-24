@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import WeeklyPlanTab from "@/components/fabrika/WeeklyPlanTab";
+import PlanComparisonTab from "@/components/fabrika/PlanComparisonTab";
 
 interface ProductionPlan {
   id: number;
@@ -538,6 +540,14 @@ export default function FabrikaUretimPlanlama() {
           <TabsTrigger value="ai-analiz" data-testid="tab-ai-analiz">
             <Brain className="h-4 w-4 mr-1" />
             AI Analiz
+          </TabsTrigger>
+          <TabsTrigger value="haftalik" data-testid="tab-haftalik">
+            <Boxes className="h-4 w-4 mr-1" />
+            Haftalık Plan
+          </TabsTrigger>
+          <TabsTrigger value="karsilastirma" data-testid="tab-karsilastirma">
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Karşılaştırma
           </TabsTrigger>
         </TabsList>
 
@@ -1083,6 +1093,14 @@ export default function FabrikaUretimPlanlama() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="haftalik" className="mt-4">
+          <WeeklyPlanTab />
+        </TabsContent>
+
+        <TabsContent value="karsilastirma" className="mt-4">
+          <PlanComparisonTab />
         </TabsContent>
       </Tabs>
 
