@@ -7116,7 +7116,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   router.get('/api/hr/disciplinary', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
-      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'cgo', 'coo'];
       const branchRoles = ['mudur', 'supervisor', 'coach'];
       let query = db.select({
         report: disciplinaryReports,
@@ -7142,7 +7142,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     try {
       const user = req.user;
       const targetUserId = req.params.userId;
-      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'cgo', 'coo'];
       const branchRoles = ['mudur', 'supervisor', 'coach'];
       if (!allowedRoles.includes(user.role) && user.id !== targetUserId) {
         if (branchRoles.includes(user.role)) {
@@ -7335,7 +7335,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
   router.get('/api/hr/ik-dashboard', isAuthenticated, async (req, res) => {
     try {
       const user = req.user;
-      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'coo'];
+      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'cgo', 'coo', 'coach', 'mudur'];
       if (!allowedRoles.includes(user.role)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }

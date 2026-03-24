@@ -319,7 +319,7 @@ async function runExport(jobId: string, options: ExportOptions): Promise<void> {
       if (rows.length > 0) {
         zip.file(`data/${category}/${tableName}.json`, JSON.stringify(rows, null, 2));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn(`[Export] Table ${tableName} skipped: ${err.message}`);
       tableRecordCounts[tableName] = -1;
     }

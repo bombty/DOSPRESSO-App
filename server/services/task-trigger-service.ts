@@ -118,7 +118,7 @@ export async function generateTasksForUser(userId: string): Promise<{ created: n
           DO NOTHING
         `);
         created++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err.code === "23505") {
           skipped++;
         } else {

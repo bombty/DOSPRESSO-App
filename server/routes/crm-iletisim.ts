@@ -236,7 +236,11 @@ router.post("/tickets", async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const parsed = createTicketSchema.safeParse(req.body);
+    const normalizedBody = { ...req.body };
+    if (normalizedBody.department && typeof normalizedBody.department === 'string') {
+      normalizedBody.department = normalizedBody.department.toLowerCase();
+    }
+    const parsed = createTicketSchema.safeParse(normalizedBody);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
     const { department, title, description, priority, relatedEquipmentId, equipmentDescription, attachmentUrls, channel: ticketChannel, ticketType, source: ticketSource, rating: ticketRating, ratingHizmet, ratingTemizlik, ratingUrun, ratingPersonel, customerName, customerEmail, customerPhone, isAnonymous } = parsed.data;
 

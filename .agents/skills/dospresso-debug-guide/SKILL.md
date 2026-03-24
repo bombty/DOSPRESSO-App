@@ -148,11 +148,12 @@ Checklist:
 `Property 'branchId' does not exist on type 'User'`
 
 ```typescript
-const user = req.user as Express.User;
+import { AuthUser } from "../types/auth";
+const user = req.user as AuthUser;
 const branchId = user.branchId;
 ```
 
-Always cast `req.user` before accessing custom properties. The Express User type is extended in the project but TypeScript sometimes loses the augmentation.
+Always cast `req.user` to `AuthUser` (from `server/types/auth.ts`) before accessing custom properties. NEVER use `req.user as any`. The `AuthUser` type is centralized and covers all user fields (id, username, role, branchId, etc.).
 
 ---
 

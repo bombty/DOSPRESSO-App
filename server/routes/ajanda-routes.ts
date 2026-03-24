@@ -129,8 +129,8 @@ router.get("/api/ajanda/todos", isAuthenticated, async (req, res) => {
       );
 
     res.json(todos);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo list error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo list error:", err instanceof Error ? err instanceof Error ? err.message : String(err) : err);
     res.status(500).json({ error: "Todo listesi alınamadı" });
   }
 });
@@ -156,8 +156,8 @@ router.post("/api/ajanda/todos", isAuthenticated, async (req, res) => {
     }).returning();
 
     res.status(201).json(todo);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo create error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo create error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo oluşturulamadı" });
   }
 });
@@ -189,8 +189,8 @@ router.patch("/api/ajanda/todos/:id", isAuthenticated, async (req, res) => {
 
     const [updated] = await db.update(userTodos).set(updates).where(eq(userTodos.id, id)).returning();
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo update error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo update error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo güncellenemedi" });
   }
 });
@@ -206,8 +206,8 @@ router.delete("/api/ajanda/todos/:id", isAuthenticated, async (req, res) => {
 
     await db.delete(userTodos).where(eq(userTodos.id, id));
     res.json({ success: true });
-  } catch (err: any) {
-    console.error("[Ajanda] Todo delete error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo delete error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo silinemedi" });
   }
 });
@@ -229,8 +229,8 @@ router.post("/api/ajanda/todos/:id/complete", isAuthenticated, async (req, res) 
     }).where(eq(userTodos.id, id)).returning();
 
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo complete error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo complete error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo tamamlanamadı" });
   }
 });
@@ -253,8 +253,8 @@ router.post("/api/ajanda/todos/:id/snooze", isAuthenticated, async (req, res) =>
     }).where(eq(userTodos.id, id)).returning();
 
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo snooze error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo snooze error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo ertelenemedi" });
   }
 });
@@ -274,8 +274,8 @@ router.post("/api/ajanda/todos/:id/archive", isAuthenticated, async (req, res) =
     }).where(eq(userTodos.id, id)).returning();
 
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo archive error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo archive error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo arşivlenemedi" });
   }
 });
@@ -295,8 +295,8 @@ router.post("/api/ajanda/todos/:id/unarchive", isAuthenticated, async (req, res)
     }).where(eq(userTodos.id, id)).returning();
 
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Todo unarchive error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Todo unarchive error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Todo arşivden çıkarılamadı" });
   }
 });
@@ -312,8 +312,8 @@ router.get("/api/ajanda/archive", isAuthenticated, async (req, res) => {
       .orderBy(desc(userTodos.archivedAt));
 
     res.json(todos);
-  } catch (err: any) {
-    console.error("[Ajanda] Archive list error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Archive list error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Arşiv listesi alınamadı" });
   }
 });
@@ -342,8 +342,8 @@ router.get("/api/ajanda/events", isAuthenticated, async (req, res) => {
       .orderBy(asc(userCalendarEvents.startTime));
 
     res.json(events);
-  } catch (err: any) {
-    console.error("[Ajanda] Event list error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Event list error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Etkinlik listesi alınamadı" });
   }
 });
@@ -373,8 +373,8 @@ router.post("/api/ajanda/events", isAuthenticated, async (req, res) => {
     }).returning();
 
     res.status(201).json(event);
-  } catch (err: any) {
-    console.error("[Ajanda] Event create error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Event create error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Etkinlik oluşturulamadı" });
   }
 });
@@ -405,8 +405,8 @@ router.patch("/api/ajanda/events/:id", isAuthenticated, async (req, res) => {
 
     const [updated] = await db.update(userCalendarEvents).set(updates).where(eq(userCalendarEvents.id, id)).returning();
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Event update error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Event update error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Etkinlik güncellenemedi" });
   }
 });
@@ -422,8 +422,8 @@ router.delete("/api/ajanda/events/:id", isAuthenticated, async (req, res) => {
 
     await db.delete(userCalendarEvents).where(eq(userCalendarEvents.id, id));
     res.json({ success: true });
-  } catch (err: any) {
-    console.error("[Ajanda] Event delete error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Event delete error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Etkinlik silinemedi" });
   }
 });
@@ -466,8 +466,8 @@ router.get("/api/ajanda/notes", isAuthenticated, async (req, res) => {
     }
 
     res.json(notes);
-  } catch (err: any) {
-    console.error("[Ajanda] Note list error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Note list error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Not listesi alınamadı" });
   }
 });
@@ -492,8 +492,8 @@ router.post("/api/ajanda/notes", isAuthenticated, async (req, res) => {
     }).returning();
 
     res.status(201).json(note);
-  } catch (err: any) {
-    console.error("[Ajanda] Note create error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Note create error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Not oluşturulamadı" });
   }
 });
@@ -523,8 +523,8 @@ router.patch("/api/ajanda/notes/:id", isAuthenticated, async (req, res) => {
 
     const [updated] = await db.update(userNotes).set(updates).where(eq(userNotes.id, id)).returning();
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Note update error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Note update error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Not güncellenemedi" });
   }
 });
@@ -540,8 +540,8 @@ router.delete("/api/ajanda/notes/:id", isAuthenticated, async (req, res) => {
 
     await db.delete(userNotes).where(eq(userNotes.id, id));
     res.json({ success: true });
-  } catch (err: any) {
-    console.error("[Ajanda] Note delete error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Note delete error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Not silinemedi" });
   }
 });
@@ -561,8 +561,8 @@ router.post("/api/ajanda/notes/:id/pin", isAuthenticated, async (req, res) => {
     }).where(eq(userNotes.id, id)).returning();
 
     res.json(updated);
-  } catch (err: any) {
-    console.error("[Ajanda] Note pin error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Note pin error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Not sabitlenirken hata" });
   }
 });
@@ -642,8 +642,8 @@ router.get("/api/ajanda/briefing", isAuthenticated, async (req, res) => {
       openTickets,
       pendingApprovals: 0,
     });
-  } catch (err: any) {
-    console.error("[Ajanda] Briefing error:", err.message);
+  } catch (err: unknown) {
+    console.error("[Ajanda] Briefing error:", err instanceof Error ? err.message : String(err));
     res.status(500).json({ error: "Briefing alınamadı" });
   }
 });

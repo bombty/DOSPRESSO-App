@@ -5,6 +5,7 @@ import { eq, and, sql, desc, gte, lte, isNull, inArray } from "drizzle-orm";
 import { tasks, taskTriggers, taskEvidence, users, isHQRole } from "@shared/schema";
 import { generateTasksForUser } from "../services/task-trigger-service";
 import { createAuditEntry, getAuditContext } from "../audit";
+import { AuthUser } from "../types/auth";
 
 const APPROVER_ROLES = ["supervisor", "mudur", "bolge_mudur", "ceo", "coo", "cgo", "fabrika_mudur", "kalite_kontrol"];
 
@@ -12,7 +13,7 @@ const router = Router();
 
 router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = (req.user as AuthUser)?.id;
     if (!userId) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const nowTR = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
@@ -85,7 +86,7 @@ router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
 
 router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = (req.user as AuthUser)?.id;
     if (!userId) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const taskId = parseInt(req.params.id);
@@ -355,7 +356,7 @@ router.get("/api/action-cards/pending-approvals", isAuthenticated, async (req, r
 
 router.post("/api/action-cards/generate", isAuthenticated, async (req, res) => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = (req.user as AuthUser)?.id;
     if (!userId) return res.status(401).json({ error: "Yetkilendirme gerekli" });
 
     const result = await generateTasksForUser(userId);

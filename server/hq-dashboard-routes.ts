@@ -86,7 +86,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       return await buildGenericCommandCenter(res, role);
     } catch (error: unknown) {
       console.error("Error in HQ command center:", error);
-      res.status(500).json({ message: "Veriler alinamadi", error: error.message });
+      res.status(500).json({ message: "Veriler alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -881,7 +881,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: unknown) {
       console.error("Error in CGO dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
+      res.status(500).json({ message: "Veri alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
   
@@ -937,7 +937,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: unknown) {
       console.error("Error in Fabrika dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
+      res.status(500).json({ message: "Veri alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
   
@@ -1144,7 +1144,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(coachResult);
     } catch (error: unknown) {
       console.error("Error in Coach dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
+      res.status(500).json({ message: "Veri alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
   
@@ -1188,7 +1188,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: unknown) {
       console.error("Error in Marketing dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
+      res.status(500).json({ message: "Veri alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
   
@@ -1252,7 +1252,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: unknown) {
       console.error("Error in Kalite dashboard:", error);
-      res.status(500).json({ message: "Veri alinamadi", error: error.message });
+      res.status(500).json({ message: "Veri alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1299,7 +1299,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: unknown) {
       console.error("Error in Destek dashboard:", error);
-      res.status(500).json({ message: "Destek verisi alınamadı", error: error.message });
+      res.status(500).json({ message: "Destek verisi alınamadı", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1427,7 +1427,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       const data = await db.select().from(haccpControlPoints).orderBy(haccpControlPoints.category);
       res.json(data);
     } catch (error: unknown) {
-      res.status(500).json({ message: "HACCP kontrol noktalari alinamadi", error: error.message });
+      res.status(500).json({ message: "HACCP kontrol noktalari alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1442,7 +1442,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(cp);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "HACCP kontrol noktasi olusturulamadi", error: error.message });
+      res.status(500).json({ message: "HACCP kontrol noktasi olusturulamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1456,7 +1456,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       const data = await db.select().from(haccpRecords).orderBy(sql`${haccpRecords.recordedAt} DESC`);
       res.json(data);
     } catch (error: unknown) {
-      res.status(500).json({ message: "HACCP kayitlari alinamadi", error: error.message });
+      res.status(500).json({ message: "HACCP kayitlari alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1471,7 +1471,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(record);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "HACCP kaydi olusturulamadi", error: error.message });
+      res.status(500).json({ message: "HACCP kaydi olusturulamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1485,7 +1485,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       const data = await db.select().from(hygieneAudits).orderBy(sql`${hygieneAudits.auditDate} DESC`);
       res.json(data);
     } catch (error: unknown) {
-      res.status(500).json({ message: "Hijyen denetimleri alinamadi", error: error.message });
+      res.status(500).json({ message: "Hijyen denetimleri alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1500,7 +1500,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(audit);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "Hijyen denetimi olusturulamadi", error: error.message });
+      res.status(500).json({ message: "Hijyen denetimi olusturulamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1514,7 +1514,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       const data = await db.select().from(supplierCertifications).orderBy(supplierCertifications.expiryDate);
       res.json(data);
     } catch (error: unknown) {
-      res.status(500).json({ message: "Tedarikci sertifikalari alinamadi", error: error.message });
+      res.status(500).json({ message: "Tedarikci sertifikalari alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1529,7 +1529,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(cert);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "Sertifika olusturulamadi", error: error.message });
+      res.status(500).json({ message: "Sertifika olusturulamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1546,7 +1546,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(cert);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "Sertifika guncellenemedi", error: error.message });
+      res.status(500).json({ message: "Sertifika guncellenemedi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1560,7 +1560,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       const data = await db.select().from(foodSafetyTrainings).orderBy(sql`${foodSafetyTrainings.scheduledDate} DESC`);
       res.json(data);
     } catch (error: unknown) {
-      res.status(500).json({ message: "Egitimler alinamadi", error: error.message });
+      res.status(500).json({ message: "Egitimler alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1575,7 +1575,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(training);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "Egitim olusturulamadi", error: error.message });
+      res.status(500).json({ message: "Egitim olusturulamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1589,7 +1589,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       const data = await db.select().from(foodSafetyDocuments).orderBy(sql`${foodSafetyDocuments.createdAt} DESC`);
       res.json(data);
     } catch (error: unknown) {
-      res.status(500).json({ message: "Dokumanlar alinamadi", error: error.message });
+      res.status(500).json({ message: "Dokumanlar alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1604,7 +1604,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       res.json(doc);
     } catch (error: unknown) {
       if (error.name === 'ZodError') return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
-      res.status(500).json({ message: "Dokuman olusturulamadi", error: error.message });
+      res.status(500).json({ message: "Dokuman olusturulamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1696,7 +1696,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       });
     } catch (error: unknown) {
       console.error("Error in food safety dashboard summary:", error);
-      res.status(500).json({ message: "Gida guvenligi ozeti alinamadi", error: error.message });
+      res.status(500).json({ message: "Gida guvenligi ozeti alinamadi", error: (error instanceof Error ? error.message : String(error)) });
     }
   });
 
@@ -1752,7 +1752,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (payrollThisMonth === 0) alerts.push({ message: "Bu ay bordro hesaplanmamış", severity: "warning" });
 
       res.json({ metrics, alerts, totalStaff: total, branchStaff: branch, inactiveStaff: inactive, newHiresThisMonth: hires, pendingLeaveRequests: pendingLeaves, monthlyPayrollTotal: payrollThisMonth });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("IK dashboard error:", err);
       res.status(500).json({ error: "İK dashboard verisi alınamadı" });
     }
@@ -1786,7 +1786,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (pendingCerts > 5) alerts.push({ message: `${pendingCerts} sertifika onay bekliyor`, severity: "warning" });
 
       res.json({ metrics, alerts, totalTrainees: trainees, completionRate, averageQuizScore: avgScore, pendingCertifications: pendingCerts });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Trainer dashboard error:", err);
       res.status(500).json({ error: "Trainer dashboard verisi alınamadı" });
     }
@@ -1822,7 +1822,7 @@ export function registerHQDashboardRoutes(app: Express, isAuthenticated: any) {
       if (supplierCnt === 0) alerts.push({ message: "Aktif tedarikçi bulunamadı", severity: "critical" });
 
       res.json({ metrics, alerts, activeSuppliers: supplierCnt, pendingOrders: orderCnt, monthlyPurchaseTotal: purchaseTotal, avgDeliveryDays });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Satinalma dashboard error:", err);
       res.status(500).json({ error: "Satınalma dashboard verisi alınamadı" });
     }

@@ -293,7 +293,7 @@ async function runImport(jobId: string, zipBuffer: Buffer, options: ImportOption
       if (failedRows > 0) {
         job.warnings.push(`${tableName}: ${failedRows} satır aktarılamadı`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       job.errors.push(`${tableName}: ${err.message?.substring(0, 150)}`);
     }
 

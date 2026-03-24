@@ -64,7 +64,7 @@ export async function sendPushNotification(userId: string, payload: PushPayload)
         pushPayload,
         { TTL: 86400 }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.statusCode === 410 || error.statusCode === 404) {
         await db.update(pushSubscriptions)
           .set({ isActive: false })

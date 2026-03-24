@@ -130,9 +130,10 @@ comm -23 /tmp/route_tables.txt /tmp/schema_tables.txt | head -10
 ## 10. TypeScript & React Patterns
 Check for known anti-patterns:
 
-a) `req.user` must be cast:
+a) `req.user` must be cast to AuthUser (NEVER `as any`):
 ```bash
-grep -rn "req\.user\." server/routes/ --include="*.ts" | grep -v "as Express\|as any\|req\.user\?" | head -10
+grep -rn "req\.user as any" server/ --include="*.ts" | head -10
+grep -rn "req\.user\." server/routes/ --include="*.ts" | grep -v "as AuthUser\|as Express\|req\.user\?" | head -10
 ```
 
 b) useEffect must not contain JSX returns:

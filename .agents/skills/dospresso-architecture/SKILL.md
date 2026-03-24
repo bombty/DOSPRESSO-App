@@ -26,23 +26,23 @@ DOSPRESSO uses a Navy Blue + Light Blue Gradient + Red Accent corporate palette.
 ## Project Structure
 ```
 client/src/
-├── pages/          # 267 page components
+├── pages/          # 273 page components
 ├── components/     # 148 components (custom + Shadcn UI)
 ├── contexts/       # DobodyFlow, Theme, Auth
 ├── hooks/          # Custom React hooks
 ├── lib/            # Utilities, role-routes.ts
-└── App.tsx         # Root with providers + lazy route definitions
+└── App.tsx         # Root with providers + 155 lazy route definitions
 
 server/
-├── routes/         # 46 route files, ~1320 endpoints
+├── routes/         # 92 route files, ~1700+ endpoints
 ├── agent/          # Mr. Dobody agent system
-│   ├── skills/     # 16 agent skills + 2 utilities
+│   ├── skills/     # 29 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
 ├── services/       # agent-scheduler, data-lock, change-tracking, business-hours
 ├── lib/            # Business logic (pdks-engine, payroll-engine)
 ├── menu-service.ts # Sidebar blueprint + RBAC menu config
 ├── seed-sla-rules.ts # SLA defaults seeded on startup
-└── shared/schema.ts # 375 tables, 15533 lines
+└── shared/schema/  # 379 tables across 15 modular schema files (barrel: shared/schema.ts)
 ```
 
 ## Role System (27 Roles)
@@ -90,10 +90,12 @@ sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out
 ```typescript
 router.get("/api/resource", isAuthenticated, async (req, res) => {
   try {
-    const branchId = req.user.role === 'admin' ? req.query.branchId : req.user.branchId;
+    const user = req.user as AuthUser;
+    const branchId = user.role === 'admin' ? req.query.branchId : user.branchId;
     const data = await db.select().from(table).where(eq(table.branchId, branchId));
     res.json(data);
-  } catch (error) {
+  } catch (err: unknown) {
+    console.error("[Module] error:", err instanceof Error ? err.message : err);
     res.status(500).json({ error: "Veriler yüklenirken bir hata oluştu." });
   }
 });
@@ -123,9 +125,11 @@ router.post('/api/factory/kiosk/start-shift', isKioskAuthenticated, async (req, 
 
 ### TypeScript req.user Pattern:
 ```typescript
-const user = req.user as Express.User;
+import { AuthUser } from "../types/auth";
+const user = req.user as AuthUser;
 const branchId = user.branchId;
 ```
+NEVER use `(req.user as any)` — always use `AuthUser` type from `server/types/auth.ts`.
 
 ### Error Responses (always Turkish, never stack traces):
 ```json
@@ -134,8 +138,8 @@ const branchId = user.branchId;
 
 ## Agent System (Mr. Dobody)
 
-### 17 Agent Skills:
-ai-enrichment, burnout-predictor, contract-tracker, cost-analyzer, customer-watcher, daily-coach, food-safety, performance-coach, production-director, qc-tracker, security-monitor, stock-assistant, stock-predictor, supplier-tracker, team-tracker, training-optimizer, waste-analyzer
+### 29 Agent Skills:
+ai-enrichment, burnout-predictor, contract-tracker, cost-analyzer, customer-watcher, daily-coach, food-safety, performance-coach, production-director, qc-tracker, security-monitor, stock-assistant, stock-predictor, supplier-tracker, team-tracker, training-optimizer, waste-analyzer, payroll-reminder, career-progression-tracker, equipment-lifecycle-tracker, supply-chain-monitor, daily-briefing, smart-reminder, auto-todo-from-ticket, plus additional skills added in recent sprints
 
 ### training-optimizer (Enhanced):
 Weekly skill targeting trainer/coach/ceo/cgo/admin. 11 insight types:
