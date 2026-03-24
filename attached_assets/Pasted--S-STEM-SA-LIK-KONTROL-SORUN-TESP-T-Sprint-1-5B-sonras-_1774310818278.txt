@@ -1,0 +1,515 @@
+# SİSTEM SAĞLIK KONTROLÜ + SORUN TESPİT
+# Sprint 1-5B sonrası kapsamlı test — DEĞİŞİKLİK YAPMA, SADECE RAPORLA
+# Tahmini: 30-45 dakika
+
+---
+
+## ⚠ KRİTİK: HİÇBİR DEĞİŞİKLİK YAPMA. SADECE TEST ET VE RAPORLA.
+
+---
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "DOSPRESSO SİSTEM SAĞLIK KONTROLÜ"
+echo "Sprint 1-5B sonrası kapsamlı test"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 1: SUNUCU + DERLENMe DURUMU"
+echo "████████████████████████████████████████████████"
+
+echo "=== 1.1 Server durumu ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+echo ""
+
+echo "=== 1.2 Server loglarında hata var mı? ==="
+# Son 50 satır log
+timeout 5 bash -c 'cat /proc/$(pgrep -f "tsx server" | head -1)/fd/2 2>/dev/null' | tail -50 | grep -i "error\|fail\|crash\|exception\|cannot\|undefined\|null.*reference" | head -20
+echo "--- Vite compile hatası ---"
+timeout 5 bash -c 'cat /proc/$(pgrep -f "vite" | head -1)/fd/2 2>/dev/null' | tail -30 | grep -i "error\|fail\|warning" | head -10
+
+echo ""
+echo "=== 1.3 Scheduler durumu ==="
+echo "--- Toplam scheduler job sayısı ---"
+grep -c "schedule\|cron\|setInterval" server/scheduler*.ts server/services/scheduler*.ts 2>/dev/null
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 2: TÜM ROL MENÜLERİ TESTİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== Her rol için menü kontrolü ==="
+for ROLE in admin ceo cgo coach trainer supervisor mudur barista stajyer muhasebe_ik fabrika_mudur satinalma marketing kalite_kontrol gida_muhendisi yatirimci_branch; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    curl -s -X POST http://localhost:5000/api/login \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"$USER\",\"password\":\"0000\"}" \
+      -c /tmp/test_${ROLE}.txt > /dev/null 2>&1
+    
+    LOGIN_STATUS=$?
+    if [ $LOGIN_STATUS -ne 0 ]; then
+      echo "  ❌ $ROLE: LOGIN BAŞARISIZ"
+      continue
+    fi
+    
+    MENU_DATA=$(curl -s http://localhost:5000/api/me/menu -b /tmp/test_${ROLE}.txt 2>/dev/null)
+    
+    if [ -z "$MENU_DATA" ] || echo "$MENU_DATA" | grep -q "error\|unauthorized"; then
+      echo "  ❌ $ROLE: MENÜ ALINAMADI"
+      continue
+    fi
+    
+    echo "$MENU_DATA" | node -e "
+      try {
+        const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+        let sections=0, items=0, issues=[];
+        d.forEach(s=>{
+          sections++;
+          if(s.items) {
+            items += s.items.length;
+            s.items.forEach(i=>{
+              // Kritik kontroller
+              if(i.id && i.id.includes('iletisim-merkezi')) issues.push('iletisim-merkezi HALA MENÜDE');
+              if(i.id && i.id.includes('hq-support')) issues.push('hq-support HALA MENÜDE');
+              if(!i.path && !i.url) issues.push(i.id+' PATH YOK');
+            });
+          }
+        });
+        const status = issues.length > 0 ? '⚠️' : '✅';
+        console.log('  '+status+' $ROLE: '+sections+' bölüm, '+items+' öğe' + (issues.length>0 ? ' — SORUNLAR: '+issues.join(', ') : ''));
+      } catch(e) {
+        console.log('  ❌ $ROLE: MENÜ PARSE HATASI');
+      }
+    " 2>/dev/null
+  fi
+done
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 3: CRM SİSTEMİ TESTİ"
+echo "████████████████████████████████████████████████"
+
+# Admin login
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/syscheck.txt > /dev/null 2>&1
+
+echo ""
+echo "=== 3.1 CRM kanal endpoint'leri ==="
+for channel in franchise misafir; do
+  echo "--- Kanal: $channel ---"
+  DASH=$(curl -s -b /tmp/syscheck.txt "http://localhost:5000/api/iletisim/dashboard?channel=$channel" 2>/dev/null)
+  if echo "$DASH" | grep -q "error\|500\|Internal"; then
+    echo "  ❌ Dashboard HATALI: $DASH"
+  else
+    echo "  ✅ Dashboard OK: $(echo $DASH | head -c 200)"
+  fi
+  
+  TICKETS=$(curl -s -b /tmp/syscheck.txt "http://localhost:5000/api/iletisim/tickets?channel=$channel" 2>/dev/null)
+  COUNT=$(echo "$TICKETS" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(Array.isArray(d)?d.length:d.tickets?d.tickets.length:'?')}catch(e){console.log('PARSE_ERROR')}" 2>/dev/null)
+  echo "  Ticket sayısı: $COUNT"
+done
+
+echo ""
+echo "=== 3.2 CRM Task kanalı ==="
+TASKS=$(curl -s -b /tmp/syscheck.txt "http://localhost:5000/api/tasks" 2>/dev/null)
+TASK_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/tasks")
+echo "  Task API: HTTP $TASK_STATUS"
+echo "  Task sayısı: $(echo "$TASKS" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(Array.isArray(d)?d.length:'?')}catch(e){console.log('PARSE_ERROR')}" 2>/dev/null)"
+
+echo ""
+echo "=== 3.3 Ticket oluşturma testi ==="
+# Franchise ticket
+FR_RESULT=$(curl -s -X POST http://localhost:5000/api/iletisim/tickets \
+  -H "Content-Type: application/json" -b /tmp/syscheck.txt \
+  -d '{"title":"TEST-franchise-kontrol","description":"Sistem testi","channel":"franchise","ticketType":"franchise_talep","department":"Teknik","branchId":5}' 2>/dev/null)
+echo "  Franchise ticket: $(echo $FR_RESULT | head -c 150)"
+
+# Misafir ticket
+MS_RESULT=$(curl -s -X POST http://localhost:5000/api/iletisim/tickets \
+  -H "Content-Type: application/json" -b /tmp/syscheck.txt \
+  -d '{"title":"TEST-misafir-kontrol","description":"Kahve harika","channel":"misafir","ticketType":"musteri_geri_bildirim","source":"manual","branchId":5,"rating":5,"ratingHizmet":5,"ratingTemizlik":5,"ratingUrun":5,"ratingPersonel":5}' 2>/dev/null)
+echo "  Misafir ticket: $(echo $MS_RESULT | head -c 150)"
+
+echo ""
+echo "=== 3.4 Eski URL redirect'leri ==="
+for url in "/iletisim-merkezi" "/hq-destek" "/misafir-memnuniyeti" "/gorevler" "/mesajlar"; do
+  # App.tsx'te route tanımı var mı?
+  ROUTE=$(grep -c "$url" client/src/App.tsx 2>/dev/null)
+  echo "  $url → route tanımı: $ROUTE (>0 olmalı)"
+done
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 4: AJANDA SİSTEMİ TESTİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 4.1 Todo CRUD ==="
+# Oluştur
+TODO_CREATE=$(curl -s -X POST http://localhost:5000/api/ajanda/todos \
+  -H "Content-Type: application/json" -b /tmp/syscheck.txt \
+  -d '{"title":"SYSCHECK todo testi","priority":"medium","dueDate":"2026-03-30"}' 2>/dev/null)
+TODO_ID=$(echo "$TODO_CREATE" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(d.id||d.todo?.id||'?')}catch(e){console.log('FAIL')}" 2>/dev/null)
+echo "  Todo oluştur: ID=$TODO_ID"
+
+# Listele
+TODO_LIST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/ajanda/todos")
+echo "  Todo listele: HTTP $TODO_LIST_STATUS"
+
+# Arşivle
+if [ "$TODO_ID" != "FAIL" ] && [ "$TODO_ID" != "?" ]; then
+  ARCHIVE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X PATCH -b /tmp/syscheck.txt "http://localhost:5000/api/ajanda/todos/$TODO_ID/archive")
+  echo "  Todo arşivle: HTTP $ARCHIVE_STATUS"
+fi
+
+# Arşiv listesi
+ARCHIVE_LIST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/ajanda/archive")
+echo "  Arşiv listele: HTTP $ARCHIVE_LIST_STATUS"
+
+echo ""
+echo "=== 4.2 Event CRUD ==="
+EVENT_CREATE=$(curl -s -X POST http://localhost:5000/api/ajanda/events \
+  -H "Content-Type: application/json" -b /tmp/syscheck.txt \
+  -d '{"title":"SYSCHECK event testi","startTime":"2026-03-30T14:00:00","eventType":"meeting"}' 2>/dev/null)
+EVENT_STATUS=$(echo "$EVENT_CREATE" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(d.id?'OK':'FAIL')}catch(e){console.log('FAIL')}" 2>/dev/null)
+echo "  Event oluştur: $EVENT_STATUS"
+
+EVENT_LIST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/ajanda/events?start=2026-03-01&end=2026-04-30")
+echo "  Event listele: HTTP $EVENT_LIST_STATUS"
+
+echo ""
+echo "=== 4.3 Not CRUD ==="
+NOTE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:5000/api/ajanda/notes \
+  -H "Content-Type: application/json" -b /tmp/syscheck.txt \
+  -d '{"title":"SYSCHECK not testi","content":"Test notu"}')
+echo "  Not oluştur: HTTP $NOTE_STATUS"
+
+NOTE_LIST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/ajanda/notes")
+echo "  Not listele: HTTP $NOTE_LIST_STATUS"
+
+echo ""
+echo "=== 4.4 Briefing ==="
+BRIEFING_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/ajanda/briefing")
+echo "  Briefing: HTTP $BRIEFING_STATUS"
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 5: BİLDİRİM SİSTEMİ TESTİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 5.1 Bildirim sayıları ==="
+echo "  Aktif: $(echo 'SELECT count(*) FROM notifications;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Arşiv: $(echo 'SELECT count(*) FROM notifications_archive;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Okunmamış: $(echo 'SELECT count(*) FROM notifications WHERE is_read=false;' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo ""
+echo "=== 5.2 Bildirim deep link kontrolü ==="
+echo "--- Eski deep link'ler kalmış mı? ---"
+ESKI_DEEP=$(grep -rn "deepLink.*iletisim-merkezi\|deepLink.*hq-destek\|actionUrl.*iletisim-merkezi\|actionUrl.*hq-destek" server/ --include="*.ts" | grep -v node_modules | grep -v "redirect\|archive" | wc -l)
+echo "  Eski deep link sayısı: $ESKI_DEEP (0 olmalı)"
+if [ "$ESKI_DEEP" -gt "0" ]; then
+  grep -rn "deepLink.*iletisim-merkezi\|deepLink.*hq-destek" server/ --include="*.ts" | grep -v node_modules | grep -v "redirect\|archive" | head -5
+fi
+
+echo ""
+echo "=== 5.3 Header bell kontrolü ==="
+grep -n "bildirimler\|notification.*route\|notification.*navigate\|bell.*click\|bell.*href" client/src/components/app-header*.tsx client/src/components/app-layout*.tsx client/src/components/*sidebar*.tsx 2>/dev/null | head -5
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 6: MR. DOBODY + SKİLL TESTİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 6.1 Skill sayısı ==="
+SKILL_COUNT=$(ls server/services/skills/*.ts 2>/dev/null | wc -l)
+echo "  Skill dosyası: $SKILL_COUNT"
+
+echo ""
+echo "=== 6.2 Skill registry kontrolü ==="
+grep -c "registerSkill\|allSkills\|skills\.\|SKILLS\[" server/services/agent-skill-registry.ts 2>/dev/null
+echo "  (registry kayıt sayısı)"
+
+echo ""
+echo "=== 6.3 Agent endpoint'leri ==="
+for ep in "/api/agent/guidance" "/api/agent/chat" "/api/dobody/skills"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000${ep}" 2>/dev/null)
+  echo "  $ep → HTTP $STATUS"
+done
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 7: MODÜL SAYFA ERİŞİM TESTİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 7.1 Kritik API endpoint'leri ==="
+ENDPOINTS=(
+  "/api/me/menu"
+  "/api/me/dashboard-layout"
+  "/api/iletisim/tickets"
+  "/api/iletisim/dashboard"
+  "/api/ajanda/todos"
+  "/api/ajanda/events"
+  "/api/ajanda/notes"
+  "/api/ajanda/briefing"
+  "/api/tasks"
+  "/api/branches"
+  "/api/hr/ik-dashboard"
+  "/api/hr/documents/missing"
+  "/api/hr/disciplinary"
+  "/api/equipment"
+  "/api/factory/production-logs"
+  "/api/academy/modules"
+  "/api/notifications"
+  "/api/announcements"
+  "/api/dashboard/widget-registry"
+)
+
+for ep in "${ENDPOINTS[@]}"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000${ep}" 2>/dev/null)
+  if [ "$STATUS" = "200" ]; then
+    echo "  ✅ $ep"
+  else
+    echo "  ❌ $ep → HTTP $STATUS"
+  fi
+done
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 8: VERİTABANI SAĞLIK KONTROLÜ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 8.1 Tablo sayıları ==="
+echo "  Toplam tablo: $(echo "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" | psql -t | tr -d ' ')"
+echo "  Toplam index: $(echo "SELECT count(*) FROM pg_indexes WHERE schemaname='public';" | psql -t | tr -d ' ')"
+
+echo ""
+echo "=== 8.2 Kritik tablo kayıt sayıları ==="
+for tbl in users branches notifications notifications_archive support_tickets user_todos user_calendar_events user_notes agent_pending_actions equipment_faults; do
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: $count"
+done
+
+echo ""
+echo "=== 8.3 CRM veri bütünlüğü ==="
+echo "  support_tickets kanal dağılımı:"
+echo "SELECT channel, ticket_type, count(*) FROM support_tickets GROUP BY channel, ticket_type ORDER BY count DESC;" | psql 2>/dev/null
+
+echo ""
+echo "=== 8.4 Boş/kullanılmayan tablolar (0 kayıt) ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name;" | psql -t 2>/dev/null | while read tbl; do
+  tbl=$(echo "$tbl" | tr -d ' ')
+  if [ -n "$tbl" ]; then
+    count=$(echo "SELECT count(*) FROM \"$tbl\";" | psql -t 2>/dev/null | tr -d ' ')
+    if [ "$count" = "0" ] 2>/dev/null; then
+      echo "  BOŞ: $tbl"
+    fi
+  fi
+done 2>/dev/null | head -30
+echo "  (ilk 30 boş tablo gösterildi)"
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 9: FRONTEND SAYFALABAR KONTROLü"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 9.1 Öksüz sayfalar (route'suz) ==="
+find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  ROUTE=$(grep -c "$base" client/src/App.tsx 2>/dev/null)
+  IMPORT=$(grep -rl "$base" client/src/ --include="*.tsx" --include="*.ts" 2>/dev/null | grep -v "$f" | grep -v node_modules | wc -l)
+  if [ "$ROUTE" = "0" ] && [ "$IMPORT" = "0" ]; then
+    echo "  ÖKSÜZ: $f ($(wc -l < "$f") satır)"
+  fi
+done | sort -t'(' -k2 -rn | head -15
+
+echo ""
+echo "=== 9.2 Duplikat dosya isimleri ==="
+find client/src/pages -name "*.tsx" | xargs -I{} basename {} | sort | uniq -d | while read dup; do
+  echo "  DUP: $dup"
+  find client/src/pages -name "$dup" | while read f; do echo "    $(wc -l < "$f") satır — $f"; done
+done | head -20
+
+echo ""
+echo "=== 9.3 Kullanılmayan import'lar (App.tsx) ==="
+grep "lazy\|import.*from" client/src/App.tsx | grep -i "const\|import" | while read line; do
+  COMPONENT=$(echo "$line" | grep -oP "const\s+(\w+)" | awk '{print $2}')
+  if [ -n "$COMPONENT" ]; then
+    USAGE=$(grep -c "$COMPONENT" client/src/App.tsx)
+    if [ "$USAGE" -le "1" ]; then
+      echo "  KULLANILMIYOR: $COMPONENT"
+    fi
+  fi
+done | head -15
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 10: ŞUBECİ PERSPEKTİF TESTİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 10.1 Supervisor tam senaryo ==="
+SUP_USER=$(echo "SELECT username FROM users WHERE role='supervisor' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+if [ -n "$SUP_USER" ]; then
+  curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$SUP_USER\",\"password\":\"0000\"}" -c /tmp/sup_test.txt > /dev/null 2>&1
+  
+  echo "  Supervisor ($SUP_USER) login: OK"
+  
+  # Menü
+  echo "  Menü öğeleri:"
+  curl -s http://localhost:5000/api/me/menu -b /tmp/sup_test.txt | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    d.forEach(s=>{if(s.items)s.items.forEach(i=>console.log('    '+i.label+' → '+(i.path||'')))});
+  " 2>/dev/null
+  
+  # CRM erişimi
+  echo "  CRM erişimi:"
+  CRM_S=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sup_test.txt "http://localhost:5000/api/iletisim/tickets?channel=franchise")
+  echo "    Franchise tickets: HTTP $CRM_S"
+  
+  # Ajanda erişimi
+  echo "  Ajanda erişimi:"
+  AJ_S=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sup_test.txt "http://localhost:5000/api/ajanda/todos")
+  echo "    Todo listesi: HTTP $AJ_S"
+  
+  # Bildirimler
+  echo "  Bildirimler:"
+  NOT_S=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sup_test.txt "http://localhost:5000/api/notifications")
+  echo "    Bildirimler: HTTP $NOT_S"
+fi
+
+echo ""
+echo "=== 10.2 Barista basit senaryo ==="
+BAR_USER=$(echo "SELECT username FROM users WHERE role='barista' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+if [ -n "$BAR_USER" ]; then
+  curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$BAR_USER\",\"password\":\"0000\"}" -c /tmp/bar_test.txt > /dev/null 2>&1
+  
+  echo "  Barista ($BAR_USER) login: OK"
+  
+  # Menü
+  echo "  Menü öğeleri:"
+  curl -s http://localhost:5000/api/me/menu -b /tmp/bar_test.txt | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    d.forEach(s=>{if(s.items)s.items.forEach(i=>console.log('    '+i.label+' → '+(i.path||'')))});
+  " 2>/dev/null
+  
+  # CRM erişimi (talep oluşturabilmeli)
+  echo "  CRM erişimi:"
+  CRM_B=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/bar_test.txt "http://localhost:5000/api/iletisim/tickets?channel=franchise")
+  echo "    Franchise tickets: HTTP $CRM_B"
+fi
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 11: KOPUK ZİNCİR DOĞRULAMA"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 11.1 Sprint 3 skill'leri kayıtlı mı? ==="
+for skill in payroll-reminder career-progression-tracker equipment-lifecycle-tracker supply-chain-monitor daily-briefing smart-reminder natural-language-todo auto-todo-from-ticket; do
+  EXISTS=$(find server/services/skills -name "*${skill}*" 2>/dev/null | wc -l)
+  if [ "$EXISTS" -gt "0" ]; then
+    echo "  ✅ $skill"
+  else
+    echo "  ❌ $skill EKSİK"
+  fi
+done
+
+echo ""
+echo "=== 11.2 Arıza escalation scheduler ==="
+grep -rn "fault.*escalat\|ariza.*escalat\|48.*hour\|unresolvedFault" server/ --include="*.ts" | grep -v node_modules | head -5
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 12: SIDEBAR/UI KONTROLLERİ"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 12.1 Sidebar bileşeni ==="
+wc -l client/src/components/collapsible-sidebar.tsx 2>/dev/null
+echo "--- Accordion/collapse davranışı ---"
+grep -c "accordion\|collapse\|expand\|toggle\|openSection\|expandedGroup" client/src/components/collapsible-sidebar.tsx 2>/dev/null
+
+echo ""
+echo "=== 12.2 KPI pill bileşeni ==="
+find client/src/components -name "*KPI*" -o -name "*kpi*" -o -name "*pill*" | sort
+grep -rn "KPIPill\|KpiPill\|kpi.*pill" client/src/components/ --include="*.tsx" | head -5
+
+echo ""
+echo "=== 12.3 ModuleLayout bileşeni ==="
+wc -l client/src/components/shared/ModuleLayout.tsx 2>/dev/null
+grep -c "sidebar\|Sidebar\|KPI\|kpi\|metric" client/src/components/shared/ModuleLayout.tsx 2>/dev/null
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 13: MODULE FLAG TUTARLILIĞI"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 13.1 Module flag durumu ==="
+echo "SELECT module_key, is_enabled FROM module_flags WHERE deleted_at IS NULL ORDER BY module_key;" | psql
+
+echo ""
+echo "=== 13.2 İletişim Merkezi flag ==="
+echo "SELECT module_key, is_enabled FROM module_flags WHERE module_key='iletisim_merkezi';" | psql -t
+
+echo ""
+echo "████████████████████████████████████████████████"
+echo "BÖLÜM 14: GENEL METRİKLER"
+echo "████████████████████████████████████████████████"
+
+echo ""
+echo "=== 14.1 Kod metrikleri ==="
+echo "  Toplam satır (server): $(find server -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+echo "  Toplam satır (client): $(find client/src -name '*.tsx' -o -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+echo "  Route dosyası: $(find server/routes -name '*.ts' | wc -l)"
+echo "  Frontend sayfa: $(find client/src/pages -name '*.tsx' -not -path '*/components/*' | wc -l)"
+echo "  Bileşen: $(find client/src/components -name '*.tsx' | wc -l)"
+echo "  Skill: $(ls server/services/skills/*.ts 2>/dev/null | wc -l)"
+echo "  misc.ts: $(wc -l < server/routes/misc.ts 2>/dev/null || echo 'N/A') satır"
+echo "  schema.ts: $(wc -l < shared/schema.ts 2>/dev/null || echo 'N/A') satır"
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPOR FORMATI — Aşağıdaki başlıklarda özetle:"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "1. KRİTİK HATALAR (hemen düzeltilmesi gereken)"
+echo "   - Server 500 veren endpoint'ler"
+echo "   - Login yapamayan roller"
+echo "   - Menüde görünmeyen kritik öğeler"
+echo "   - Veri kaybı/bozulması"
+echo ""
+echo "2. ORTA SEVİYE SORUNLAR (yakında düzeltilmesi gereken)"
+echo "   - Eski link/deep link kalıntıları"
+echo "   - Tutarsız UI davranışları"
+echo "   - Eksik endpoint'ler"
+echo "   - Module flag tutarsızlıkları"
+echo ""
+echo "3. KÜÇÜK İYİLEŞTİRMELER (nice-to-have)"
+echo "   - Öksüz sayfalar"
+echo "   - Kullanılmayan import'lar"
+echo "   - Boş tablolar"
+echo "   - Performans önerileri"
+echo ""
+echo "4. SPRINT 1-5B DOĞRULAMA ÖZETİ"
+echo "   Sprint 1 (CRM birleştirme): ✅/❌ + detay"
+echo "   Sprint 2 (bildirim arşiv): ✅/❌ + detay"
+echo "   Sprint 3 (kopuk zincirler): ✅/❌ + detay"
+echo "   Sprint 4 (ajanda): ✅/❌ + detay"
+echo "   Sprint 5A (tab→sidebar): ✅/❌ + detay"
+echo "   Sprint 5B (UX vizyon): ✅/❌ + detay"
+echo ""
+echo "5. SONRAKİ SPRİNT İÇİN ÖNCELİKLER"
+echo "   - Bu testte bulunan sorunların düzeltme öncelik sırası"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```
+
+**Bu scriptin tamamını çalıştır ve sonuçları raporla. Değişiklik yapma.**
