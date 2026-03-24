@@ -3,10 +3,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const MissionControlHQ = lazy(() => import("./MissionControlHQ"));
+const MissionControlCoach = lazy(() => import("./MissionControlCoach"));
+const MissionControlMuhasebe = lazy(() => import("./MissionControlMuhasebe"));
 const MissionControlSupervisor = lazy(() => import("./MissionControlSupervisor"));
 const MissionControlStajyer = lazy(() => import("./MissionControlStajyer"));
 const MissionControlFabrika = lazy(() => import("./MissionControlFabrika"));
 
+const EXEC_ROLES = ["ceo", "cgo", "admin"];
+const COACH_ROLES = ["coach", "trainer"];
+const FINANCE_ROLES = ["muhasebe_ik", "muhasebe"];
 const HQ_ROLES = [
   "ceo", "cgo", "admin", "coach", "trainer",
   "muhasebe_ik", "muhasebe", "satinalma", "kalite_kontrol",
@@ -39,10 +44,26 @@ export function DashboardRouter() {
   const { user } = useAuth();
   const role = user?.role || "";
 
-  if (HQ_ROLES.includes(role)) {
+  if (EXEC_ROLES.includes(role)) {
     return (
       <Suspense fallback={<MCLoading />}>
         <MissionControlHQ />
+      </Suspense>
+    );
+  }
+
+  if (COACH_ROLES.includes(role)) {
+    return (
+      <Suspense fallback={<MCLoading />}>
+        <MissionControlCoach />
+      </Suspense>
+    );
+  }
+
+  if (FINANCE_ROLES.includes(role)) {
+    return (
+      <Suspense fallback={<MCLoading />}>
+        <MissionControlMuhasebe />
       </Suspense>
     );
   }
@@ -67,6 +88,14 @@ export function DashboardRouter() {
     return (
       <Suspense fallback={<MCLoading />}>
         <MissionControlFabrika />
+      </Suspense>
+    );
+  }
+
+  if (HQ_ROLES.includes(role)) {
+    return (
+      <Suspense fallback={<MCLoading />}>
+        <MissionControlHQ />
       </Suspense>
     );
   }

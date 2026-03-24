@@ -22,6 +22,7 @@ import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } f
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
 import { calculateAndSaveDailyScores, calculateAndSaveWeeklyScores, backfillNullScores, closeOrphanedBreakLogs, cleanupStaleShiftSessions } from "./services/factory-scoring-service";
+import { calculateMonthlySnapshots, calculateFactorySnapshot } from "./services/monthly-snapshot-service";
 import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
@@ -481,8 +482,18 @@ function startConsolidatedHourlyJobs() {
         log(`Danger zone check: ${result.processed} processed, ${result.warnings} warnings, ${result.demotions} demotions`);
       } catch (e) { console.error("Error in danger zone check:", e); }
     }
+
+    if (now.getDate() === 1 && now.getHours() === 2) {
+      try {
+        const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+        const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+        const results = await calculateMonthlySnapshots(prevMonth, prevYear);
+        await calculateFactorySnapshot(prevMonth, prevYear);
+        log(`Monthly snapshots calculated: ${results.filter(r => r.status === "ok").length}/${results.length} branches`);
+      } catch (e) { console.error("Error in monthly snapshot calculation:", e); }
+    }
   }, 60 * 60 * 1000);
-  log("Consolidated hourly tick started (stock-alert + feedback-sla + danger-zone@1st)");
+  log("Consolidated hourly tick started (stock-alert + feedback-sla + danger-zone@1st + snapshots@1st-02:00)");
 }
 
 function startFactoryScoringScheduler() {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DashboardModeToggle } from "./DashboardModeToggle";
 import { TodaysTasksWidget } from "@/components/widgets/todays-tasks-widget";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
+import DateRangeFilter, { type PeriodType } from "@/components/dashboard/DateRangeFilter";
+import BranchComparisonTable from "@/components/dashboard/BranchComparisonTable";
+import TrendChart from "@/components/dashboard/TrendChart";
+import AlertPanel from "@/components/dashboard/AlertPanel";
 import {
   Building2,
   AlertTriangle,
@@ -50,6 +55,33 @@ interface IKDashboardData {
   disciplinary: { total: number; open: number };
 }
 
+interface ExecutiveDashboardData {
+  _meta: { dataAvailable: boolean; lastDataDate: string };
+  kpis: {
+    totalBranches: number;
+    totalStaff: number;
+    avgHealthScore: number | null;
+    totalTickets: number;
+    slaBreaches: number;
+    avgCustomerRating: number | null;
+    totalFaults: number;
+    totalRevenue: number | null;
+  };
+  branchComparison: Array<{
+    branchId: number;
+    name: string;
+    healthScore: number | null;
+    staffCount: number;
+    attendanceRate: number | null;
+    taskCompletionRate: number | null;
+    customerRating: number | null;
+    slaBreaches: number;
+    faultCount: number;
+  }>;
+  trends: Array<{ month: string; tickets: number; faults: number }>;
+  alerts: Array<{ type: "critical" | "warning" | "positive"; message: string; branchId?: number }>;
+}
+
 const ROLE_LABELS: Record<string, string> = {
   admin: "Sistem Yöneticisi",
   ceo: "CEO",
@@ -66,6 +98,7 @@ const ROLE_LABELS: Record<string, string> = {
   marketing: "Pazarlama",
 };
 
+const EXEC_ROLES = ["admin", "ceo", "cgo"];
 const IK_ACCESS_ROLES = ["admin", "muhasebe_ik", "ceo", "cgo"];
 
 function KPICell({ label, value, color, subtext }: {
@@ -263,6 +296,11 @@ export default function MissionControlHQ() {
   const { user } = useAuth();
   const role = user?.role || "";
   const hasIKAccess = IK_ACCESS_ROLES.includes(role);
+  const isExec = EXEC_ROLES.includes(role);
+
+  const [period, setPeriod] = useState<PeriodType>("this_month");
+  const [customStart, setCustomStart] = useState<string>();
+  const [customEnd, setCustomEnd] = useState<string>();
 
   const { data: hqSummary, isLoading } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-summary"],
@@ -280,6 +318,23 @@ export default function MissionControlHQ() {
     enabled: hasIKAccess,
   });
 
+  const execQueryParams = new URLSearchParams({ period });
+  if (period === "custom" && customStart && customEnd) {
+    execQueryParams.set("startDate", customStart);
+    execQueryParams.set("endDate", customEnd);
+  }
+
+  const { data: execData, isLoading: execLoading } = useQuery<ExecutiveDashboardData>({
+    queryKey: ["/api/dashboard/executive", period, customStart, customEnd],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/executive?${execQueryParams.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Dashboard fetch failed");
+      return res.json();
+    },
+    staleTime: 2 * 60 * 1000,
+    enabled: isExec,
+  });
+
   const branchStatus = hqSummary?.branchStatus;
   const totalBranches = (branchStatus?.normal ?? 0) + (branchStatus?.warning ?? 0) + (branchStatus?.critical ?? 0);
   const firstName = user?.firstName || "Kullanıcı";
@@ -287,6 +342,12 @@ export default function MissionControlHQ() {
   const roleLabel = ROLE_LABELS[role] || role;
   const now = new Date();
   const dateStr = now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+
+  const handlePeriodChange = (p: PeriodType, start?: string, end?: string) => {
+    setPeriod(p);
+    setCustomStart(start);
+    setCustomEnd(end);
+  };
 
   if (isLoading) {
     return (
@@ -319,6 +380,14 @@ export default function MissionControlHQ() {
         </div>
       </div>
 
+      {isExec && (
+        <DateRangeFilter
+          period={period}
+          onPeriodChange={handlePeriodChange}
+          data-testid="mc-date-filter"
+        />
+      )}
+
       <div className="grid grid-cols-3 md:grid-cols-5 gap-2" data-testid="mc-hq-kpis">
         <KPICell
           label="Şube"
@@ -327,24 +396,32 @@ export default function MissionControlHQ() {
         />
         <KPICell
           label="SLA İhlali"
-          value={hqSummary?.slaBreaches ?? 0}
-          color={(hqSummary?.slaBreaches ?? 0) > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}
+          value={isExec && execData ? execData.kpis.slaBreaches : (hqSummary?.slaBreaches ?? 0)}
+          color={(isExec && execData ? execData.kpis.slaBreaches : (hqSummary?.slaBreaches ?? 0)) > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}
         />
         <KPICell
-          label="Açık Ticket"
-          value={hqSummary?.openTickets ?? 0}
-          color={(hqSummary?.openTickets ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
+          label={isExec ? "Toplam Ticket" : "Açık Ticket"}
+          value={isExec && execData ? execData.kpis.totalTickets : (hqSummary?.openTickets ?? 0)}
+          color={(isExec && execData ? execData.kpis.totalTickets : (hqSummary?.openTickets ?? 0)) > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
         />
         <KPICell
-          label="Aktif Kullanıcı"
-          value={hqSummary?.activeUsers ?? "—"}
+          label="Personel"
+          value={isExec && execData ? execData.kpis.totalStaff : (hqSummary?.activeUsers ?? "—")}
           color="text-emerald-600 dark:text-emerald-400"
         />
-        <KPICell
-          label="QC Bekleyen"
-          value={qcStats?.today?.pending ?? 0}
-          color={(qcStats?.today?.pending ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
-        />
+        {isExec && execData ? (
+          <KPICell
+            label="Müşteri Puan"
+            value={execData.kpis.avgCustomerRating ? `${execData.kpis.avgCustomerRating}` : "—"}
+            color={execData.kpis.avgCustomerRating && execData.kpis.avgCustomerRating >= 4 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}
+          />
+        ) : (
+          <KPICell
+            label="QC Bekleyen"
+            value={qcStats?.today?.pending ?? 0}
+            color={(qcStats?.today?.pending ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : undefined}
+          />
+        )}
       </div>
 
       <div>
@@ -354,21 +431,48 @@ export default function MissionControlHQ() {
         </div>
       </div>
 
-      <div>
-        <SectionHeader title="Şube durumu" count={totalBranches} link="/operasyon" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2" data-testid="mc-branch-grid">
-          {(hqSummary?.branchRanking || []).slice(0, 6).map(b => (
-            <BranchCard key={b.id} branch={b} />
-          ))}
-          {(!hqSummary?.branchRanking || hqSummary.branchRanking.length === 0) && (
-            <Card>
-              <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                Şube verisi henüz yok
-              </CardContent>
-            </Card>
-          )}
+      {isExec && execData && (
+        <>
+          <AlertPanel
+            alerts={execData.alerts}
+            data-testid="mc-exec-alerts"
+          />
+
+          <TrendChart
+            title="6 Aylık Trend"
+            data={execData.trends}
+            xKey="month"
+            lines={[
+              { key: "tickets", color: "#f59e0b", name: "Ticket" },
+              { key: "faults", color: "#ef4444", name: "Arıza" },
+            ]}
+            data-testid="mc-exec-trend"
+          />
+
+          <BranchComparisonTable
+            data={execData.branchComparison}
+            data-testid="mc-branch-comparison"
+          />
+        </>
+      )}
+
+      {!isExec && (
+        <div>
+          <SectionHeader title="Şube durumu" count={totalBranches} link="/operasyon" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2" data-testid="mc-branch-grid">
+            {(hqSummary?.branchRanking || []).slice(0, 6).map(b => (
+              <BranchCard key={b.id} branch={b} />
+            ))}
+            {(!hqSummary?.branchRanking || hqSummary.branchRanking.length === 0) && (
+              <Card>
+                <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                  Şube verisi henüz yok
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <FactoryQCSection factorySummary={hqSummary?.factorySummary} qcStats={qcStats} />
 

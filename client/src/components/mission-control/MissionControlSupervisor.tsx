@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DashboardModeToggle } from "./DashboardModeToggle";
 import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import AlertPanel from "@/components/dashboard/AlertPanel";
 import { PresenceBar, type PresenceMember } from "./shared/PresenceBar";
 import { StaffCard, type StaffMember } from "./shared/StaffCard";
 import { ShiftTimeline, type ShiftEntry } from "./shared/ShiftTimeline";
@@ -19,9 +20,6 @@ import {
   UserCheck,
   Clock,
   ClipboardCheck,
-  TrendingUp,
-  Coffee,
-  UserX,
   MessageSquare,
   CalendarClock,
   Factory,
@@ -81,6 +79,17 @@ export default function MissionControlSupervisor() {
     enabled: !!branchId,
     staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+  });
+
+  const { data: dashboardAlerts } = useQuery<{ alerts: Array<{ type: string; message: string }> }>({
+    queryKey: ["/api/dashboard/branch", branchId],
+    queryFn: async () => {
+      const r = await fetch(`/api/dashboard/branch/${branchId}`, { credentials: "include" });
+      if (!r.ok) return { alerts: [] };
+      return r.json();
+    },
+    enabled: !!branchId,
+    staleTime: 3 * 60 * 1000,
   });
 
   const kpiItems = useMemo((): KpiItem[] => {
@@ -182,6 +191,13 @@ export default function MissionControlSupervisor() {
         </div>
       ) : (
         <DashboardKpiStrip items={kpiItems} />
+      )}
+
+      {dashboardAlerts?.alerts && dashboardAlerts.alerts.length > 0 && (
+        <AlertPanel alerts={dashboardAlerts.alerts.map(a => ({
+          type: a.type === "equipment" ? "critical" as const : "warning" as const,
+          message: a.message,
+        }))} />
       )}
 
       {presenceMembers.length > 0 && (

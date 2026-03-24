@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { handleApiError, parsePagination, wrapPaginatedResponse } from "./helpers";
 import { eq, desc, and, count, sum, max } from "drizzle-orm";
+import { filterNotificationsForRole } from "../services/notification-level-filter";
 import { gatherAIAssistantContext } from "../ai-assistant-context";
 import { checkAndEnforcePolicy } from "../services/ai-policy-engine";
 import { z } from "zod";
@@ -451,11 +452,19 @@ const router = Router();
       
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
       
-      const results = await db.select().from(notifications)
+      const levelFilter = req.query.level as string | undefined;
+      const extraLimit = levelFilter ? pag.limit * 3 : pag.limit;
+
+      let results = await db.select().from(notifications)
         .where(whereClause)
         .orderBy(desc(notifications.createdAt))
-        .limit(pag.limit)
+        .limit(extraLimit)
         .offset(pag.offset);
+
+      if (levelFilter === "role") {
+        results = filterNotificationsForRole(results, userRole) as typeof results;
+        results = results.slice(0, pag.limit);
+      }
 
       if (pag.wantsPagination) {
         const [totalResult] = await db.select({ count: count() }).from(notifications).where(whereClause);

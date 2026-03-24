@@ -29,7 +29,11 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **Payroll Calculation Service:** Consolidates SGK/tax calculations with PDF export.
 - **Auth Security:** Enhanced login security with password stripping and lockout mechanisms.
 - **İK Module:** Includes Dashboard with KPIs, Document CRUD, and Disciplinary CRUD.
-- **Mission Control Dashboards:** Four role-based dashboards (HQ, Supervisor, Stajyer, Factory) with role-specific KPIs and quick actions.
+- **Mission Control Dashboards:** Six role-based dashboards (Executive/HQ, Coach, Muhasebe, Supervisor, Stajyer, Factory) with role-specific KPIs, date filtering, trend charts, branch comparison tables, and alert panels. Monthly snapshot scheduler calculates branch health scores on the 1st of each month.
+- **Dashboard Data API:** Six API endpoints (`/api/dashboard/executive`, `/coach`, `/branch/:id`, `/finance`, `/factory`, `/barista`) with date range filtering (today/week/month/quarter/custom) and `_meta.dataAvailable` empty state support.
+- **Monthly Snapshots:** `branch_monthly_snapshots` and `factory_monthly_snapshots` tables track 30+ KPIs per branch per month including staff, attendance, tasks, customer satisfaction, equipment, training, and financial metrics.
+- **Notification Level Filtering:** Role-based notification filtering with 4 levels (operational/tactical/strategic/personal). CEO receives only strategic notifications, operational staff receive operational+personal.
+- **Shared Dashboard Components:** Reusable DateRangeFilter, EmptyStateCard, TrendChart, BranchComparisonTable, AlertPanel in `client/src/components/dashboard/`.
 - **Collapsible Sidebar:** Desktop sidebar with server-driven menu, state persisted locally.
 - **Unified CRM:** Merged İletişim Merkezi, CRM, and Misafir Memnuniyeti into a single interface with two channels (Franchise/Misafir) and support for QR feedback. Includes a new "Gorevler" (Tasks) channel showing user todos.
 - **Automation (Kopuk Zincir Otomasyonları):** Introduced Mr. Dobody skills for payroll reminders, career progression tracking, equipment lifecycle monitoring (fault escalation), and supply chain monitoring.
