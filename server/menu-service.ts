@@ -683,6 +683,11 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications',
     'admin-panel', 'project-list',
   ],
+  uretim_sefi: [
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'factory-analytics', 'hr', 'shifts', 'reports',
+    'performance-dashboard', 'notifications', 'crm-main',
+  ],
   fabrika_sorumlu: [
     'factory-dashboard', 'factory-kiosk', 'factory-quality', 'notifications',
   ],
