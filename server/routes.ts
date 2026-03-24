@@ -15,6 +15,7 @@ import { registerBranchHealthRoutes } from "./routes/branch-health";
 import { registerAiOpsCopilotRoutes } from "./routes/ai-ops-copilot";
 import { registerAgentRoutes } from "./routes/agent";
 import { registerQuickActionRoutes } from "./routes/quick-action";
+import { registerNotificationPreferenceRoutes } from "./routes/notification-preferences";
 import myDayRoutes from "./routes/my-day";
 import branchSummaryRoutes from "./routes/branch-summary";
 import hqSummaryRoutes from "./routes/hq-summary";
@@ -1190,6 +1191,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   registerAiOpsCopilotRoutes(app);
   registerAgentRoutes(app);
   registerQuickActionRoutes(app);
+  registerNotificationPreferenceRoutes(app);
   app.use(myDayRoutes);
   app.use(branchSummaryRoutes);
   app.use(hqSummaryRoutes);

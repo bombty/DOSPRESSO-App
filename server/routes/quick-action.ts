@@ -38,13 +38,16 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const quickActionSchema = z.object({
-  actionType: z.enum(["send_notification", "create_task", "redirect", "send_message", "info"]),
+  actionType: z.enum(["send_notification", "create_task", "redirect", "send_message", "info", "dobody_action"]),
   targetUserId: z.string().optional(),
   title: z.string().optional(),
   message: z.string().optional(),
   route: z.string().optional(),
   payload: z.record(z.any()).optional(),
   suggestionId: z.string().optional(),
+  templateKey: z.string().optional(),
+  templateVariables: z.record(z.string()).optional(),
+  subActions: z.array(z.enum(["send_notification", "create_task"])).optional(),
 });
 
 async function findBranchSupervisor(branchId: number) {
@@ -222,6 +225,128 @@ router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req, 
       result = { success: true };
     } else if (actionType === "info") {
       result = { success: true, message: message || "Bilgi alındı" };
+    } else if (actionType === "dobody_action") {
+      const { resolveTemplate, ACTION_TEMPLATES } = await import("../lib/dobody-action-templates");
+
+      const HQ_ROLES = new Set(["admin", "ceo", "cgo", "coach", "trainer"]);
+      const isHQ = HQ_ROLES.has(user.role);
+      
+      let resolvedTargetUserId = targetUserId;
+      let recipientName = "";
+      let recipientRole = "";
+      let branchName = "";
+      let targetBranchId: number | null = null;
+
+      if (!resolvedTargetUserId && payload?.branchId) {
+        const branchId = Number(payload.branchId);
+        if (!Number.isFinite(branchId) || branchId <= 0) {
+          return res.status(400).json({ message: "Geçersiz branchId" });
+        }
+        const supervisor = await findBranchSupervisor(branchId);
+        if (!supervisor) {
+          branchName = await getBranchName(branchId);
+          return res.status(404).json({ message: `${branchName} şubesinde supervisor bulunamadı` });
+        }
+        resolvedTargetUserId = supervisor.id;
+        recipientName = [supervisor.firstName, supervisor.lastName].filter(Boolean).join(" ") || "Bilinmiyor";
+        recipientRole = supervisor.role || "";
+        targetBranchId = supervisor.branchId ? Number(supervisor.branchId) : null;
+        branchName = await getBranchName(branchId);
+      }
+
+      if (resolvedTargetUserId && !recipientName) {
+        const [targetUser] = await db.select({
+          id: users.id, firstName: users.firstName, lastName: users.lastName,
+          role: users.role, branchId: users.branchId,
+        }).from(users).where(eq(users.id, resolvedTargetUserId));
+        if (targetUser) {
+          recipientName = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(" ") || "Bilinmiyor";
+          recipientRole = targetUser.role || "";
+          targetBranchId = targetUser.branchId ? Number(targetUser.branchId) : null;
+          if (targetUser.branchId && !branchName) {
+            branchName = await getBranchName(Number(targetUser.branchId));
+          }
+        }
+      }
+
+      if (resolvedTargetUserId && !isHQ) {
+        const userBranchId = user.branchId ? Number(user.branchId) : null;
+        if (targetBranchId && userBranchId && targetBranchId !== userBranchId) {
+          return res.status(403).json({ message: "Bu kullanıcıya aksiyon gönderme yetkiniz yok" });
+        }
+      }
+
+      const templateKey = req.body.templateKey || 'generic_reminder';
+      const templateVars = {
+        targetName: recipientName || 'İlgili Kişi',
+        branchName: branchName || '',
+        details: payload?.details || '',
+        ...(req.body.templateVariables || {}),
+      };
+
+      const resolvedMessage = message || resolveTemplate(templateKey, templateVars);
+      const resolvedTitle = title || ACTION_TEMPLATES[templateKey]?.labelTr || 'Hatırlatma';
+
+      const actions = req.body.subActions || ['send_notification'];
+      const actionResults: any = { success: true };
+
+      if (actions.includes('send_notification') && resolvedTargetUserId) {
+        const notification = await storage.createNotification({
+          userId: resolvedTargetUserId,
+          type: "quick_action",
+          title: resolvedTitle,
+          message: resolvedMessage,
+          link: route || undefined,
+          isRead: false,
+        });
+        actionResults.notificationId = notification.id;
+        actionResults.notificationSent = true;
+      }
+
+      if (actions.includes('create_task')) {
+        const taskData: any = {
+          description: resolvedMessage,
+          assignedById: user.id,
+          status: "beklemede",
+          priority: payload?.priority || "yüksek",
+          branchId: targetBranchId || payload?.branchId || user.branchId || null,
+        };
+        if (resolvedTargetUserId) {
+          taskData.assignedToId = resolvedTargetUserId;
+        }
+        if (payload?.dueDate) {
+          taskData.dueDate = new Date(payload.dueDate);
+        } else {
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 3);
+          taskData.dueDate = dueDate;
+        }
+        const task = await storage.createTask(taskData);
+        actionResults.taskId = task.id;
+        actionResults.taskCreated = true;
+
+        if (resolvedTargetUserId) {
+          await storage.createNotification({
+            userId: resolvedTargetUserId,
+            type: "task_assigned",
+            title: "Yeni Görev Atandı",
+            message: resolvedMessage.substring(0, 200),
+            link: `/gorevler`,
+            isRead: false,
+          });
+        }
+      }
+
+      actionResults.details = {
+        recipientName,
+        recipientRole: ROLE_LABELS[recipientRole] || recipientRole,
+        branch: branchName,
+        sentAt: new Date().toISOString(),
+        templateKey,
+        resolvedMessage,
+      };
+
+      result = actionResults;
     }
 
     const executionTime = Date.now() - startTime;

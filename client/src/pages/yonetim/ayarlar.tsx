@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Mail, Upload, Image } from "lucide-react";
+import { Loader2, Save, Mail, Upload, Image, Bell } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
@@ -221,6 +221,10 @@ export default function Settings() {
           <TabsTrigger value="tema" data-testid="tab-trigger-tema">Tema</TabsTrigger>
           <TabsTrigger value="gorsel" data-testid="tab-trigger-gorsel">Görsel</TabsTrigger>
           <TabsTrigger value="icerik" data-testid="tab-trigger-icerik">İçerik</TabsTrigger>
+          <TabsTrigger value="bildirim" data-testid="tab-trigger-bildirim">
+            <Bell className="w-3.5 h-3.5 mr-1" />
+            Bildirim
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab 1 - Genel */}
@@ -760,7 +764,161 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="bildirim">
+          <NotificationPoliciesPanel />
+        </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+const POLICY_ROLES = [
+  { key: 'admin', label: 'Admin' },
+  { key: 'ceo', label: 'CEO' },
+  { key: 'cgo', label: 'CGO' },
+  { key: 'coach', label: 'Koç' },
+  { key: 'trainer', label: 'Eğitmen' },
+  { key: 'mudur', label: 'Müdür' },
+  { key: 'supervisor', label: 'Supervisor' },
+  { key: 'barista', label: 'Barista' },
+];
+
+const POLICY_CATEGORIES = [
+  { key: 'tasks', label: 'Görevler' },
+  { key: 'crm', label: 'CRM' },
+  { key: 'stock', label: 'Stok' },
+  { key: 'dobody', label: 'Mr. Dobody' },
+  { key: 'faults', label: 'Arızalar' },
+  { key: 'checklist', label: 'Checklist' },
+  { key: 'training', label: 'Eğitim' },
+  { key: 'hr', label: 'İK' },
+];
+
+interface NotificationPolicy {
+  id: number;
+  role: string;
+  category: string;
+  defaultFrequency: string;
+}
+
+function NotificationPoliciesPanel() {
+  const { toast } = useToast();
+  const [localPolicies, setLocalPolicies] = useState<Record<string, string>>({});
+
+  const { data: policies, isLoading } = useQuery<NotificationPolicy[]>({
+    queryKey: ['/api/notification-policies'],
+  });
+
+  useEffect(() => {
+    if (policies) {
+      const map: Record<string, string> = {};
+      policies.forEach(p => {
+        map[`${p.role}__${p.category}`] = p.defaultFrequency;
+      });
+      setLocalPolicies(map);
+    }
+  }, [policies]);
+
+  const bulkMutation = useMutation({
+    mutationFn: async (items: Array<{ role: string; category: string; defaultFrequency: string }>) => {
+      await apiRequest('PUT', '/api/notification-policies/bulk', items);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notification-policies'] });
+      toast({ title: "Başarılı", description: "Bildirim politikaları güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Politikalar güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const handleChange = (role: string, category: string, frequency: string) => {
+    setLocalPolicies(prev => ({ ...prev, [`${role}__${category}`]: frequency }));
+  };
+
+  const getFrequency = (role: string, category: string) => {
+    return localPolicies[`${role}__${category}`] || 'instant';
+  };
+
+  const handleSave = () => {
+    const items: Array<{ role: string; category: string; defaultFrequency: string }> = [];
+    for (const [key, val] of Object.entries(localPolicies)) {
+      const [role, category] = key.split('__');
+      items.push({ role, category, defaultFrequency: val });
+    }
+    if (items.length === 0) {
+      POLICY_ROLES.forEach(r => {
+        POLICY_CATEGORIES.forEach(c => {
+          items.push({ role: r.key, category: c.key, defaultFrequency: 'instant' });
+        });
+      });
+    }
+    bulkMutation.mutate(items);
+  };
+
+  if (isLoading) return <LoadingState />;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base" data-testid="text-policy-title">Bildirim Politikaları</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Her rol için varsayılan bildirim sıklığını belirleyin. Kullanıcılar kendi tercihlerini değiştirebilir.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="overflow-x-auto" data-testid="policy-matrix">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 pr-4 font-medium text-muted-foreground min-w-[100px]">Rol</th>
+                {POLICY_CATEGORIES.map(c => (
+                  <th key={c.key} className="text-center py-2 px-1 font-medium text-muted-foreground min-w-[90px]">
+                    {c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {POLICY_ROLES.map(r => (
+                <tr key={r.key} className="border-b last:border-b-0">
+                  <td className="py-2 pr-4 font-medium">{r.label}</td>
+                  {POLICY_CATEGORIES.map(c => (
+                    <td key={c.key} className="py-2 px-1 text-center">
+                      <Select
+                        value={getFrequency(r.key, c.key)}
+                        onValueChange={(v) => handleChange(r.key, c.key, v)}
+                      >
+                        <SelectTrigger
+                          className="w-full text-xs"
+                          data-testid={`policy-${r.key}-${c.key}`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="instant">Anında</SelectItem>
+                          <SelectItem value="daily_digest">Günlük Özet</SelectItem>
+                          <SelectItem value="off">Kapalı</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <Button
+          onClick={handleSave}
+          disabled={bulkMutation.isPending}
+          data-testid="button-save-policies"
+        >
+          {bulkMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Politikaları Kaydet
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

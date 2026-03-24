@@ -15,7 +15,8 @@ import {
   Star,
 } from "lucide-react";
 import { useState } from "react";
-import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
+import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
+import { DobodyActionDialog } from "@/components/dobody-action-dialog";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { QuickTaskModal } from "@/components/quick-task-modal";
 import { Bot } from "lucide-react";
@@ -50,6 +51,8 @@ interface CoachSummaryData {
 export default function KoclukPaneli() {
   const { user } = useAuth();
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionSuggestion, setActionSuggestion] = useState<DobodySuggestion | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<CoachSummaryData>({
     queryKey: ["/api/coach-summary"],
@@ -162,7 +165,10 @@ export default function KoclukPaneli() {
         </Card>
       )}
 
-      <DobodySuggestionList suggestions={data.suggestions || []} />
+      <DobodySuggestionList
+        suggestions={data.suggestions || []}
+        onAction={(s) => { setActionSuggestion(s); setActionDialogOpen(true); }}
+      />
 
       <div className="pb-4 space-y-2">
         <Button variant="outline" className="w-full" onClick={() => setShowAssignDialog(true)} data-testid="btn-assign-task">
@@ -181,6 +187,19 @@ export default function KoclukPaneli() {
         open={showAssignDialog}
         onOpenChange={setShowAssignDialog}
         allowedBranchIds={data.branches.map((b) => b.id)}
+      />
+
+      <DobodyActionDialog
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        suggestion={actionSuggestion ? {
+          id: actionSuggestion.id,
+          message: actionSuggestion.message,
+          targetUserId: actionSuggestion.targetUserId,
+          payload: actionSuggestion.payload,
+          branchId: actionSuggestion.payload?.branchId,
+          branchName: actionSuggestion.payload?.branchName,
+        } : null}
       />
     </div>
   );

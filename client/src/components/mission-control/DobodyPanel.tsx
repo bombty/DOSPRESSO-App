@@ -19,8 +19,10 @@ import {
   ClipboardList,
   ShieldCheck,
   Search,
+  Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { DobodyActionDialog } from "@/components/dobody-action-dialog";
 
 const CATEGORY_ICONS: Record<string, typeof Users> = {
   personnel: Users,
@@ -76,6 +78,8 @@ const ROLE_PERSONALITY: Record<string, string> = {
 };
 
 export function DobodyPanel() {
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionItem, setActionItem] = useState<GuidanceItem | null>(null);
   const [expanded, setExpanded] = useState(() => {
     try {
       return localStorage.getItem("dobody-panel-expanded") === "true";
@@ -213,11 +217,24 @@ export function DobodyPanel() {
                 item={item}
                 onNavigate={navigate}
                 onDismiss={handleDismiss}
+                onAction={(gi) => { setActionItem(gi); setActionDialogOpen(true); }}
               />
             ))
           )}
         </div>
       </ScrollArea>
+      <DobodyActionDialog
+        open={actionDialogOpen}
+        onOpenChange={setActionDialogOpen}
+        suggestion={actionItem ? {
+          id: actionItem.id,
+          message: actionItem.description,
+          title: actionItem.title,
+          branchId: actionItem.branchId,
+          category: actionItem.category,
+          severity: actionItem.severity,
+        } : null}
+      />
     </div>
   );
 }
@@ -226,10 +243,12 @@ function DobodyFeedItem({
   item,
   onNavigate,
   onDismiss,
+  onAction,
 }: {
   item: GuidanceItem;
   onNavigate: (path: string) => void;
   onDismiss: (id: string) => void;
+  onAction?: (item: GuidanceItem) => void;
 }) {
   const config = SEVERITY_CONFIG[item.severity];
   const CatIcon = CATEGORY_ICONS[item.category] || ClipboardList;
@@ -272,16 +291,30 @@ function DobodyFeedItem({
           <CatIcon className="h-2.5 w-2.5 text-muted-foreground" />
           <span className="text-[9px] text-muted-foreground">{catLabel}</span>
         </div>
-        <Button
-          size="sm"
-          variant={item.severity === "critical" ? "outline" : "ghost"}
-          className="h-5 px-1.5 text-[10px]"
-          onClick={() => onNavigate(item.deepLink)}
-          data-testid={`dobody-fix-${item.id}`}
-        >
-          {item.severity === "critical" ? "Düzelt" : "Git"}
-          <ChevronRight className="h-2.5 w-2.5 ml-0.5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onAction && (item.severity === "critical" || item.severity === "high") && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-5 px-1.5 text-[10px]"
+              onClick={() => onAction(item)}
+              data-testid={`dobody-action-${item.id}`}
+            >
+              <Zap className="h-2.5 w-2.5 mr-0.5" />
+              Aksiyon Al
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={item.severity === "critical" ? "outline" : "ghost"}
+            className="h-5 px-1.5 text-[10px]"
+            onClick={() => onNavigate(item.deepLink)}
+            data-testid={`dobody-fix-${item.id}`}
+          >
+            {item.severity === "critical" ? "Düzelt" : "Git"}
+            <ChevronRight className="h-2.5 w-2.5 ml-0.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

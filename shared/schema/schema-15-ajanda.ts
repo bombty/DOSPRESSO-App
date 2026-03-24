@@ -93,3 +93,80 @@ export const insertUserNoteSchema = createInsertSchema(userNotes).omit({
 });
 export type UserNote = typeof userNotes.$inferSelect;
 export type InsertUserNote = z.infer<typeof insertUserNoteSchema>;
+
+export const NOTIFICATION_CATEGORY_KEYS = [
+  'tasks', 'crm', 'stock', 'dobody', 'faults', 'checklist', 'training', 'hr'
+] as const;
+export type NotificationCategoryKey = typeof NOTIFICATION_CATEGORY_KEYS[number];
+
+export const NOTIFICATION_FREQUENCY_OPTIONS = ['instant', 'daily_digest', 'off'] as const;
+export type NotificationFrequency = typeof NOTIFICATION_FREQUENCY_OPTIONS[number];
+
+export const notificationPolicies = pgTable("notification_policies", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  defaultFrequency: varchar("default_frequency", { length: 20 }).notNull().default("instant"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_notif_policies_role").on(table.role, table.category),
+]);
+
+export const insertNotificationPolicySchema = createInsertSchema(notificationPolicies).omit({
+  id: true, updatedAt: true,
+});
+export type NotificationPolicy = typeof notificationPolicies.$inferSelect;
+export type InsertNotificationPolicy = z.infer<typeof insertNotificationPolicySchema>;
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  frequency: varchar("frequency", { length: 20 }).notNull().default("instant"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_notif_prefs_user").on(table.userId, table.category),
+]);
+
+export const insertNotificationPreferenceSchema = createInsertSchema(notificationPreferences).omit({
+  id: true, updatedAt: true,
+});
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = z.infer<typeof insertNotificationPreferenceSchema>;
+
+export const notificationDigestQueue = pgTable("notification_digest_queue", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id, { onDelete: "cascade" }).notNull(),
+  type: varchar("type", { length: 100 }).notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"),
+  branchId: integer("branch_id"),
+  category: varchar("category", { length: 50 }).notNull(),
+  processed: boolean("processed").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("idx_digest_queue_user").on(table.userId, table.processed),
+]);
+
+export const insertNotificationDigestQueueSchema = createInsertSchema(notificationDigestQueue).omit({
+  id: true, createdAt: true,
+});
+export type NotificationDigestQueue = typeof notificationDigestQueue.$inferSelect;
+export type InsertNotificationDigestQueue = z.infer<typeof insertNotificationDigestQueueSchema>;
+
+export const dobodyActionTemplates = pgTable("dobody_action_templates", {
+  id: serial("id").primaryKey(),
+  templateKey: varchar("template_key", { length: 100 }).notNull().unique(),
+  labelTr: varchar("label_tr", { length: 200 }).notNull(),
+  messageTemplate: text("message_template").notNull(),
+  defaultActionType: varchar("default_action_type", { length: 30 }).notNull().default("send_notification"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertDobodyActionTemplateSchema = createInsertSchema(dobodyActionTemplates).omit({
+  id: true, createdAt: true,
+});
+export type DobodyActionTemplate = typeof dobodyActionTemplates.$inferSelect;
+export type InsertDobodyActionTemplate = z.infer<typeof insertDobodyActionTemplateSchema>;

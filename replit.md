@@ -29,7 +29,8 @@ The platform utilizes a modern web stack with React 18, TypeScript, and Vite for
 - **Agent Dedup:** Global title-based deduplication for agent notifications.
 - **Permission Service:** Provides scope-based data filtering for payroll and HR routes.
 - **Self-Service Password Change:** Users can change their own password, and admins can bulk reset passwords.
-- **Notification Preferences:** Users can manage notification preferences stored as JSONB.
+- **Notification Preferences:** Users can manage notification preferences stored as JSONB. Enhanced with category-based frequency system (instant/daily_digest/off) via `notification_preferences` table.
+- **Notification System Revision (Task #55):** HQ notification consolidation, admin notification policies (role×category matrix in /ayarlar), category-based user preferences (in İletişim Merkezi dialog), Mr. Dobody "Aksiyon Al" one-click action dialog with Turkish message templates, `dobody_action` quick-action type supporting composite send_notification+create_task actions. New tables: `notification_policies`, `notification_preferences`, `notification_digest_queue`, `dobody_action_templates`. New files: `server/routes/notification-preferences.ts`, `server/lib/dobody-action-templates.ts`, `server/lib/notification-category-map.ts`, `client/src/components/dobody-action-dialog.tsx`.
 - **Shift AI Planner:** Enhanced with automatic break calculation, validation, and weekly plan generation, including PDKS compliance checks.
 - **Mr. Dobody Guidance System:** Proactive gap detection and user guidance system scanning 15 categories across branches, with role-based targeting and dismissal capabilities.
 - **QC + Lot Tracking Enhancement:** Automatic lot creation and QC stats endpoint with a dedicated QC Tracker Dobody skill.

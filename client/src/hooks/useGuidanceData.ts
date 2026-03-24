@@ -15,6 +15,8 @@ export interface GuidanceItem {
   title: string;
   description: string;
   deepLink: string;
+  branchId?: number;
+  branchName?: string;
 }
 
 export interface GuidanceData {

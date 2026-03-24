@@ -60,6 +60,8 @@ import {
   AlertCircle,
   Settings,
   BellOff,
+  Users,
+  Sparkles,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { format, formatDistanceToNow } from "date-fns";
@@ -1590,6 +1592,29 @@ const PREF_CATEGORIES = [
 
 const NEVER_DISABLE = ['sla_breach', 'pin_lockout', 'critical_fault', 'security_alert', 'fault_alert'];
 
+const FREQUENCY_CATEGORY_LIST = [
+  { key: 'tasks', label: 'Görevler', icon: ClipboardCheck },
+  { key: 'crm', label: 'CRM', icon: Users },
+  { key: 'stock', label: 'Stok', icon: Package },
+  { key: 'dobody', label: 'Mr. Dobody', icon: Sparkles },
+  { key: 'faults', label: 'Arızalar', icon: AlertTriangle },
+  { key: 'checklist', label: 'Checklist', icon: ClipboardCheck },
+  { key: 'training', label: 'Eğitim', icon: GraduationCap },
+  { key: 'hr', label: 'İK', icon: Users },
+];
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  instant: 'Anında',
+  daily_digest: 'Günlük Özet',
+  off: 'Kapalı',
+};
+
+interface EffectivePref {
+  category: string;
+  frequency: string;
+  source: string;
+}
+
 function NotificationPreferencesContent({
   prefs,
   onSave,
@@ -1600,6 +1625,31 @@ function NotificationPreferencesContent({
   isPending: boolean;
 }) {
   const [localPrefs, setLocalPrefs] = useState<Record<string, boolean>>({ ...prefs });
+  const [activeTab, setActiveTab] = useState<'category' | 'detail'>('category');
+
+  const { data: effectivePrefs } = useQuery<EffectivePref[]>({
+    queryKey: ['/api/notification-preferences/effective'],
+  });
+
+  const bulkPrefMutation = useMutation({
+    mutationFn: async (items: Array<{ category: string; frequency: string }>) => {
+      await apiRequest('PUT', '/api/notification-preferences/bulk', items);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notification-preferences/effective'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notification-preferences'] });
+    },
+  });
+
+  const [localCategoryPrefs, setLocalCategoryPrefs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (effectivePrefs) {
+      const map: Record<string, string> = {};
+      effectivePrefs.forEach(p => { map[p.category] = p.frequency; });
+      setLocalCategoryPrefs(map);
+    }
+  }, [effectivePrefs]);
 
   useEffect(() => {
     setLocalPrefs({ ...prefs });
@@ -1615,56 +1665,148 @@ function NotificationPreferencesContent({
     return localPrefs[key] !== false;
   };
 
+  const handleCategoryFreqChange = (category: string, frequency: string) => {
+    setLocalCategoryPrefs(prev => ({ ...prev, [category]: frequency }));
+  };
+
+  const handleSaveCategories = () => {
+    const items = Object.entries(localCategoryPrefs).map(([category, frequency]) => ({
+      category,
+      frequency,
+    }));
+    bulkPrefMutation.mutate(items);
+  };
+
   return (
     <div className="space-y-4" data-testid="notification-preferences-content">
-      {PREF_CATEGORIES.map((cat) => {
-        const CatIcon = cat.icon;
-        return (
-          <div key={cat.key} className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <CatIcon className="w-4 h-4 text-muted-foreground" />
-              <span>{cat.label}</span>
-            </div>
-            <div className="space-y-1 pl-6">
-              {cat.types.map((type) => (
-                <div
-                  key={type.key}
-                  className="flex items-center justify-between py-1.5"
-                  data-testid={`pref-row-${type.key}`}
-                >
-                  <span className="text-sm">{type.label}</span>
-                  <Switch
-                    checked={isEnabled(type.key)}
-                    onCheckedChange={() => togglePref(type.key)}
-                    disabled={NEVER_DISABLE.includes(type.key)}
-                    data-testid={`switch-pref-${type.key}`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-
-      <div className="space-y-2 border-t pt-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-destructive">
-          <BellOff className="w-4 h-4" />
-          <span>Kapatılamaz Bildirimler</span>
-        </div>
-        <p className="text-xs text-muted-foreground pl-6">
-          SLA ihlali, guvenlik uyarisi ve kritik ariza bildirimleri her zaman aktiftir.
-        </p>
+      <div className="flex gap-1 border-b pb-2">
+        <Button
+          variant={activeTab === 'category' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('category')}
+          data-testid="tab-category-prefs"
+        >
+          Kategori Bazlı
+        </Button>
+        <Button
+          variant={activeTab === 'detail' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('detail')}
+          data-testid="tab-detail-prefs"
+        >
+          Detaylı Ayarlar
+        </Button>
       </div>
 
-      <Button
-        onClick={() => onSave(localPrefs)}
-        disabled={isPending}
-        className="w-full"
-        data-testid="button-save-preferences"
-      >
-        {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-        Tercihleri Kaydet
-      </Button>
+      {activeTab === 'category' && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Her kategori için bildirim sıklığını ayarlayın.
+          </p>
+          {FREQUENCY_CATEGORY_LIST.map((cat) => {
+            const CatIcon = cat.icon;
+            const currentFreq = localCategoryPrefs[cat.key] || 'instant';
+            return (
+              <div
+                key={cat.key}
+                className="flex items-center justify-between gap-2 py-1.5"
+                data-testid={`category-pref-${cat.key}`}
+              >
+                <div className="flex items-center gap-2">
+                  <CatIcon className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm">{cat.label}</span>
+                </div>
+                <Select
+                  value={currentFreq}
+                  onValueChange={(v) => handleCategoryFreqChange(cat.key, v)}
+                >
+                  <SelectTrigger className="w-[130px]" data-testid={`select-freq-${cat.key}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instant">Anında</SelectItem>
+                    <SelectItem value="daily_digest">Günlük Özet</SelectItem>
+                    <SelectItem value="off">Kapalı</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          })}
+
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <BellOff className="w-4 h-4" />
+              <span>Kapatılamaz Bildirimler</span>
+            </div>
+            <p className="text-xs text-muted-foreground pl-6">
+              SLA ihlali, güvenlik uyarısı ve kritik arıza bildirimleri her zaman aktiftir.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleSaveCategories}
+            disabled={bulkPrefMutation.isPending}
+            className="w-full"
+            data-testid="button-save-category-prefs"
+          >
+            {bulkPrefMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            Kategori Tercihlerini Kaydet
+          </Button>
+        </div>
+      )}
+
+      {activeTab === 'detail' && (
+        <div className="space-y-4">
+          {PREF_CATEGORIES.map((cat) => {
+            const CatIcon = cat.icon;
+            return (
+              <div key={cat.key} className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <CatIcon className="w-4 h-4 text-muted-foreground" />
+                  <span>{cat.label}</span>
+                </div>
+                <div className="space-y-1 pl-6">
+                  {cat.types.map((type) => (
+                    <div
+                      key={type.key}
+                      className="flex items-center justify-between py-1.5"
+                      data-testid={`pref-row-${type.key}`}
+                    >
+                      <span className="text-sm">{type.label}</span>
+                      <Switch
+                        checked={isEnabled(type.key)}
+                        onCheckedChange={() => togglePref(type.key)}
+                        disabled={NEVER_DISABLE.includes(type.key)}
+                        data-testid={`switch-pref-${type.key}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <BellOff className="w-4 h-4" />
+              <span>Kapatılamaz Bildirimler</span>
+            </div>
+            <p className="text-xs text-muted-foreground pl-6">
+              SLA ihlali, güvenlik uyarısı ve kritik arıza bildirimleri her zaman aktiftir.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => onSave(localPrefs)}
+            disabled={isPending}
+            className="w-full"
+            data-testid="button-save-preferences"
+          >
+            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            Tercihleri Kaydet
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
