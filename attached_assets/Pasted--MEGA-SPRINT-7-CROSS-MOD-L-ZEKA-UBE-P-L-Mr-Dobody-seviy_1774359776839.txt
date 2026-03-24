@@ -1,0 +1,712 @@
+# MEGA SPRINT 7: CROSS-MODÜL ZEKA + ŞUBE P&L
+# Mr. Dobody seviye 2 + şube kar/zarar raporu + haftalık insight
+# Tahmini: 6-8 saat
+# Bağımlılık: Sprint 1-6+8 tamamlandı (tüm modüller stabil)
+# SON SPRİNT — platform optimizasyonunun kapanışı
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- Do NOT modify existing Mr. Dobody skill mantığını — yeni skill'ler EKLE
+- Do NOT change mevcut scoring/performans hesaplamalarını — üzerine insight katmanı ekle
+- AuthUser type, Turkish UI, users.id VARCHAR
+- Tüm yeni skill'ler mevcut skill pattern'ini takip etmeli
+
+**DANIŞMA MEKANİZMASI:**
+1. Yeni DB tablosu → SQL göster, onay al
+2. Yeni scheduler → sıklık ve yükü açıkla
+3. Mevcut endpoint davranışı değişecekse → açıkla
+4. Performans endişesi (çok fazla query) → sorgu planı göster
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+---
+
+## STEP 0: ÖN ARAŞTIRMA
+
+```bash
+echo "═══ SPRINT 7: CROSS-MODÜL ZEKA ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "████ 1. MEVCUT SKOR/PERFORMANS SİSTEMLERİ ████"
+echo "=== Şube sağlık skoru ==="
+grep -rn "branch.*health\|branch.*score\|sube.*skor\|branch_health" server/ --include="*.ts" | head -10
+echo "--- branch_health tablosu ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='branch_health_scores' OR table_name='branch_health' ORDER BY table_name, ordinal_position;" | psql 2>/dev/null | head -20
+
+echo ""
+echo "=== Çalışan performans skoru ==="
+grep -rn "employee.*score\|performance.*score\|calisan.*skor\|staff.*score" server/ --include="*.ts" | head -10
+echo "--- Performans tabloları ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%performance%' OR table_name LIKE '%score%' ORDER BY table_name;" | psql 2>/dev/null
+
+echo ""
+echo "=== Fabrika verimlilik ==="
+grep -rn "factory.*efficiency\|factory.*score\|production.*rate\|fire.*rate\|waste.*rate" server/ --include="*.ts" | head -10
+
+echo ""
+echo "████ 2. MEVCUT FİNANSAL VERİLER ████"
+echo "=== Bordro verileri ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='payroll_records' ORDER BY ordinal_position;" | psql 2>/dev/null | head -15
+echo "--- Son bordro kayıtları ---"
+echo "SELECT count(*), branch_id FROM payroll_records GROUP BY branch_id ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+echo "--- Aylık bordro özeti ---"
+echo "SELECT count(*) FROM monthly_payrolls;" | psql -t 2>/dev/null
+echo "SELECT count(*) FROM branch_monthly_payroll_summary;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== Satınalma/maliyet verileri ==="
+echo "--- Cari hesaplar ---"
+echo "SELECT count(*) FROM cari_accounts;" | psql -t 2>/dev/null
+echo "SELECT count(*) FROM cari_transactions;" | psql -t 2>/dev/null
+echo "--- Sipariş verileri ---"
+echo "SELECT count(*) FROM branch_orders;" | psql -t 2>/dev/null
+echo "--- Stok hareketleri ---"
+echo "SELECT count(*) FROM branch_stock_movements;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== Gelir verileri (POS/satış) ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%sale%' OR table_name LIKE '%revenue%' OR table_name LIKE '%pos%' OR table_name LIKE '%income%' OR table_name LIKE '%gelir%' ORDER BY table_name;" | psql 2>/dev/null
+echo "--- Şube bazlı gelir verisi var mı? ---"
+grep -rn "revenue\|gelir\|income\|satis.*toplam\|daily.*sale" server/ --include="*.ts" | head -10
+
+echo ""
+echo "████ 3. MEVCUT MR. DOBODY SKİLL'LERİ ████"
+echo "=== Skill listesi ==="
+ls server/services/skills/*.ts 2>/dev/null | sort
+echo "--- Mevcut skill sayısı ---"
+ls server/services/skills/*.ts 2>/dev/null | wc -l
+echo "--- Skill registry yapısı ---"
+grep -n "registerSkill\|allSkills\|skills\.\|SKILLS\[" server/services/agent-skill-registry.ts 2>/dev/null | head -10
+echo "--- Skill çalıştırma pattern ---"
+head -30 server/services/skills/daily-briefing.ts 2>/dev/null
+
+echo ""
+echo "████ 4. MEVCUT BİLDİRİM TİPLERİ ████"
+echo "SELECT type, count(*) FROM notifications GROUP BY type ORDER BY count DESC LIMIT 20;" | psql 2>/dev/null
+
+echo ""
+echo "████ 5. ŞUBE VERİLERİ ████"
+echo "=== Aktif şubeler ==="
+echo "SELECT id, name FROM branches WHERE is_active=true ORDER BY id;" | psql 2>/dev/null
+echo "--- Şube sayısı ---"
+echo "SELECT count(*) FROM branches WHERE is_active=true;" | psql -t 2>/dev/null
+
+echo ""
+echo "████ 6. CRM + EKİPMAN + EĞİTİM VERİLERİ (KORELASYON İÇİN) ████"
+echo "=== Son 30 gün CRM ticket dağılımı (şube bazlı) ==="
+echo "SELECT branch_id, channel, count(*) FROM support_tickets WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY branch_id, channel ORDER BY count DESC LIMIT 15;" | psql 2>/dev/null
+echo ""
+echo "=== Son 30 gün arıza dağılımı (şube bazlı) ==="
+echo "SELECT branch_id, count(*) FROM equipment_faults WHERE created_at > NOW() - INTERVAL '30 days' GROUP BY branch_id ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+echo ""
+echo "=== Eğitim tamamlama (şube bazlı) ==="
+echo "SELECT u.branch_id, count(*) FROM training_completions tc JOIN users u ON tc.user_id = u.id WHERE tc.completed_at > NOW() - INTERVAL '30 days' GROUP BY u.branch_id ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+echo ""
+echo "=== Personel değişimi (son 30 gün) ==="
+echo "SELECT branch_id, count(*) FROM users WHERE created_at > NOW() - INTERVAL '30 days' AND is_active=true GROUP BY branch_id ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+
+echo ""
+echo "████ 7. MEVCUT RAPORLAMA SİSTEMİ ████"
+echo "=== Rapor sayfaları ==="
+find client/src/pages -name "*rapor*" -o -name "*report*" | sort
+echo "--- Rapor endpoint'leri ---"
+grep -rn "router\.\(get\|post\).*report\|router\.\(get\|post\).*rapor" server/routes/ --include="*.ts" | head -10
+echo "--- Dashboard summary endpoint'leri ---"
+grep -rn "router.get.*summary\|router.get.*ozet" server/routes/ --include="*.ts" | head -10
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM A: CROSS-MODÜL KORELASYON ENGİNE (2-3 saat)
+# Mr. Dobody seviye 2 — farklı modüllerdeki verileri bağla
+# ████████████████████████████████████████████████
+
+## A1: Korelasyon veri toplama servisi
+
+`server/services/cross-module-analyzer.ts` oluştur:
+
+Bu servis farklı modüllerden veri toplayıp korelasyon arar.
+
+### Toplanan veri noktaları (şube bazlı, son 30 gün):
+
+```typescript
+interface BranchInsightData {
+  branchId: number;
+  branchName: string;
+  
+  // CRM
+  customerComplaints: number;      // misafir şikayet sayısı
+  avgCustomerRating: number;       // ortalama müşteri puanı
+  franchiseTickets: number;        // şube talep sayısı
+  slaBreaches: number;             // SLA ihlali
+  
+  // Ekipman
+  equipmentFaults: number;         // arıza sayısı
+  repeatFaults: number;            // tekrar eden arıza (aynı ekipman)
+  avgRepairTime: number;           // ortalama tamir süresi (saat)
+  
+  // Personel
+  staffCount: number;              // aktif personel
+  newHires: number;                // yeni işe alınan (30 gün)
+  terminations: number;            // ayrılan (30 gün)
+  turnoverRate: number;            // devir oranı %
+  avgAttendanceRate: number;       // ortalama devam oranı %
+  lateArrivals: number;            // gecikme sayısı
+  
+  // Eğitim
+  trainingCompletions: number;     // tamamlanan modül
+  avgQuizScore: number;            // ortalama quiz puanı
+  incompleteTraining: number;      // tamamlanmamış zorunlu eğitim
+  
+  // Operasyon
+  checklistCompletion: number;     // checklist tamamlama %
+  taskCompletion: number;          // görev tamamlama %
+  
+  // Fabrika (varsa)
+  wasteRate: number;               // fire oranı %
+  productionTarget: number;        // hedef tamamlama %
+}
+```
+
+### Korelasyon kuralları:
+
+```typescript
+interface CorrelationRule {
+  id: string;
+  name: string;
+  description: string;
+  condition: (data: BranchInsightData) => boolean;
+  severity: 'info' | 'warning' | 'critical';
+  recommendation: (data: BranchInsightData) => string;
+}
+
+const CORRELATION_RULES: CorrelationRule[] = [
+  {
+    id: 'complaint-turnover',
+    name: 'Şikayet + Personel Değişimi',
+    description: 'Müşteri şikayeti artışı ile personel değişimi korelasyonu',
+    condition: (d) => d.customerComplaints > 3 && d.turnoverRate > 15,
+    severity: 'critical',
+    recommendation: (d) => 
+      `${d.branchName}'da müşteri şikayetleri (${d.customerComplaints}) yüksek ve ` +
+      `personel devir oranı %${d.turnoverRate}. Deneyimli personel kaybı hizmet kalitesini etkiliyor olabilir. ` +
+      `Öneri: Kalan personele ek eğitim + yeni personel hızlandırılmış onboarding.`
+  },
+  {
+    id: 'fault-complaint',
+    name: 'Arıza + Şikayet',
+    description: 'Ekipman arızası ile müşteri şikayeti korelasyonu',
+    condition: (d) => d.equipmentFaults > 3 && d.customerComplaints > 2,
+    severity: 'warning',
+    recommendation: (d) =>
+      `${d.branchName}'da ${d.equipmentFaults} arıza + ${d.customerComplaints} şikayet. ` +
+      `Ekipman sorunları müşteri deneyimini etkiliyor olabilir. ` +
+      `Öneri: Kritik ekipman bakım planı + geçici çözüm prosedürü.`
+  },
+  {
+    id: 'training-quality',
+    name: 'Eğitim Eksikliği + Kalite',
+    description: 'Tamamlanmamış eğitim ile kalite sorunları korelasyonu',
+    condition: (d) => d.incompleteTraining > 2 && (d.customerComplaints > 2 || d.checklistCompletion < 70),
+    severity: 'warning',
+    recommendation: (d) =>
+      `${d.branchName}'da ${d.incompleteTraining} tamamlanmamış zorunlu eğitim var ` +
+      `ve kalite metrikleri düşük (checklist %${d.checklistCompletion}). ` +
+      `Öneri: Zorunlu eğitimleri tamamlatın, quiz puanlarını takip edin.`
+  },
+  {
+    id: 'late-complaint',
+    name: 'Gecikme + Şikayet',
+    description: 'Personel gecikmeleri ile müşteri memnuniyetsizliği',
+    condition: (d) => d.lateArrivals > 10 && d.avgCustomerRating < 3.5,
+    severity: 'warning',
+    recommendation: (d) =>
+      `${d.branchName}'da bu ay ${d.lateArrivals} gecikme. Müşteri puanı ${d.avgCustomerRating}/5. ` +
+      `Yetersiz kadro ile hizmet kalitesi düşüyor olabilir. ` +
+      `Öneri: Vardiya planlamasını gözden geçirin.`
+  },
+  {
+    id: 'repeat-fault-cost',
+    name: 'Tekrar Arıza + Maliyet',
+    description: 'Aynı ekipmanın tekrar arızalanması — değişim önerisi',
+    condition: (d) => d.repeatFaults > 2,
+    severity: 'critical',
+    recommendation: (d) =>
+      `${d.branchName}'da ${d.repeatFaults} tekrar eden arıza. ` +
+      `Tamir maliyeti ekipman değişim maliyetini geçiyor olabilir. ` +
+      `Öneri: Maliyet analizi yapıp değişim kararı verin.`
+  },
+  {
+    id: 'high-performer',
+    name: 'Yüksek Performans',
+    description: 'Tüm metriklerde iyi olan şube — örnek göster',
+    condition: (d) => d.avgCustomerRating >= 4.5 && d.checklistCompletion >= 90 && d.lateArrivals <= 2 && d.customerComplaints <= 1,
+    severity: 'info',
+    recommendation: (d) =>
+      `${d.branchName} bu ay örnek performans gösterdi! ` +
+      `Müşteri puanı ${d.avgCustomerRating}/5, checklist %${d.checklistCompletion}, ` +
+      `sadece ${d.lateArrivals} gecikme. Tebrik bildirimi gönderilebilir.`
+  }
+];
+```
+
+### Ana fonksiyon:
+
+```typescript
+export async function analyzeAllBranches(): Promise<BranchInsight[]> {
+  const branches = await getActiveBranches();
+  const insights: BranchInsight[] = [];
+  
+  for (const branch of branches) {
+    const data = await collectBranchData(branch.id, 30); // 30 gün
+    
+    for (const rule of CORRELATION_RULES) {
+      if (rule.condition(data)) {
+        insights.push({
+          branchId: branch.id,
+          branchName: branch.name,
+          ruleId: rule.id,
+          ruleName: rule.name,
+          severity: rule.severity,
+          recommendation: rule.recommendation(data),
+          data: data, // ham veri (detay için)
+          createdAt: new Date()
+        });
+      }
+    }
+  }
+  
+  return insights;
+}
+```
+
+## A2: Cross-module insight skill
+
+`server/services/skills/cross-module-insight.ts` oluştur:
+
+```typescript
+// Trigger: Haftalık (Pazartesi 08:00)
+// Hedef: CEO, CGO, Coach
+
+action: async () => {
+  const insights = await analyzeAllBranches();
+  
+  if (insights.length === 0) return;
+  
+  // Severity'ye göre grupla
+  const critical = insights.filter(i => i.severity === 'critical');
+  const warnings = insights.filter(i => i.severity === 'warning');
+  const info = insights.filter(i => i.severity === 'info');
+  
+  // CEO/CGO'ya özet gönder
+  const hqUsers = await getHQLeaders(); // ceo, cgo rolleri
+  
+  for (const user of hqUsers) {
+    const summary = [
+      critical.length > 0 ? `🔴 ${critical.length} kritik bulgu` : null,
+      warnings.length > 0 ? `🟡 ${warnings.length} uyarı` : null,
+      info.length > 0 ? `🟢 ${info.length} olumlu gelişme` : null,
+    ].filter(Boolean).join(' | ');
+    
+    await createAgentAction({
+      userId: user.id,
+      skillId: 'cross-module-insight',
+      type: 'weekly_report',
+      title: 'Haftalık şube insight raporu',
+      message: summary + '\n\n' + insights.slice(0, 5).map(i => `• ${i.recommendation}`).join('\n'),
+      deepLink: '/raporlar/insight',
+      priority: critical.length > 0 ? 'high' : 'medium',
+      expiresAt: addDays(new Date(), 7)
+    });
+  }
+  
+  // Coach'lara kendi şubelerine özel insight
+  const coaches = await getCoaches();
+  for (const coach of coaches) {
+    const coachInsights = insights.filter(i => 
+      coach.branchIds?.includes(i.branchId)
+    );
+    if (coachInsights.length > 0) {
+      await createAgentAction({
+        userId: coach.id,
+        skillId: 'cross-module-insight',
+        type: 'coach_insight',
+        title: `Şubeleriniz için ${coachInsights.length} insight`,
+        message: coachInsights.map(i => `• ${i.recommendation}`).join('\n'),
+        deepLink: '/raporlar/insight',
+        priority: 'medium',
+        expiresAt: addDays(new Date(), 7)
+      });
+    }
+  }
+}
+```
+
+## A3: Insight API endpoint'leri
+
+Yeni route dosyası veya mevcut raporlama route'una ekle:
+
+```
+GET /api/reports/insights                — tüm güncel insight'lar
+  ?severity=critical|warning|info
+  ?branchId=X
+  
+GET /api/reports/insights/branch/:id     — tek şubenin insight'ları
+GET /api/reports/insights/summary        — genel özet (KPI sayılar)
+POST /api/reports/insights/refresh       — manuel tetikleme (admin only)
+```
+
+## A4: Insight sayfası
+
+`client/src/pages/raporlar/insight.tsx` oluştur (veya mevcut rapor sayfasına section ekle):
+
+### Layout:
+```
+Şube Insight Raporu
+├── KPI pills: [Kritik: X] [Uyarı: Y] [Olumlu: Z]
+├── Şube filtre (dropdown)
+├── Insight kartları listesi
+│   ├── Her kart: severity badge + şube adı + kural adı + öneri metni
+│   ├── Tıklanınca: detay panel (ham veriler, grafikler)
+│   └── "Aksiyon al" butonu → todo oluştur (ajanda entegrasyonu)
+└── Şube karşılaştırma tablosu (tüm metrikler yan yana)
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM B: ŞUBE P&L RAPORU (2-3 saat)
+# Kar/zarar hesaplama + karşılaştırma
+# ████████████████████████████████████████████████
+
+## B0: Veri kaynağı analizi
+
+**⚠ ÖN ARAŞTIRMADA kontrol et — gelir verisi var mı?**
+
+Muhtemelen POS/satış verisi YOK (DOSPRESSO platformunda POS entegrasyonu olmayabilir). Bu durumda P&L raporu şu şekilde çalışır:
+
+### Senaryo 1: Gelir verisi VAR
+- Gelir = POS/satış tablosundan
+- Gider = bordro + satınalma + sabit gider
+- Kar = Gelir - Gider
+
+### Senaryo 2: Gelir verisi YOK (büyük ihtimalle bu)
+- Gelir = Manuel giriş (admin tarafından aylık) VEYA tahmini (şube kapasitesi × doluluk)
+- Gider = bordro + satınalma + sabit gider (bunlar mevcut)
+- P&L = sınırlı ama gider analizi yapılabilir
+
+**⚠ DANIŞMA: Gelir verisi yoksa P&L yerine "Gider Analizi + Maliyet Karşılaştırma" raporu oluştur. Bu da çok değerli.**
+
+## B1: P&L veri modeli
+
+### Yeni tablo (⚠ DANIŞMA):
+
+```sql
+CREATE TABLE IF NOT EXISTS branch_financial_summary (
+  id SERIAL PRIMARY KEY,
+  branch_id INTEGER NOT NULL REFERENCES branches(id),
+  period_month INTEGER NOT NULL,      -- 1-12
+  period_year INTEGER NOT NULL,        -- 2026
+  
+  -- Gelir (varsa veya manuel giriş)
+  revenue_total NUMERIC(12,2) DEFAULT 0,
+  revenue_source VARCHAR(20) DEFAULT 'manual', -- pos, manual, estimated
+  
+  -- Personel maliyeti (bordro verisinden otomatik)
+  cost_payroll NUMERIC(12,2) DEFAULT 0,
+  staff_count INTEGER DEFAULT 0,
+  cost_per_employee NUMERIC(10,2) DEFAULT 0,
+  
+  -- Hammadde/stok maliyeti (satınalma verisinden)
+  cost_supplies NUMERIC(12,2) DEFAULT 0,
+  
+  -- Sabit giderler (kira, faturalar — admin girer)
+  cost_rent NUMERIC(12,2) DEFAULT 0,
+  cost_utilities NUMERIC(12,2) DEFAULT 0,
+  cost_other NUMERIC(12,2) DEFAULT 0,
+  
+  -- Ekipman bakım maliyeti
+  cost_maintenance NUMERIC(12,2) DEFAULT 0,
+  
+  -- Hesaplanan
+  total_cost NUMERIC(12,2) DEFAULT 0,
+  net_profit NUMERIC(12,2) DEFAULT 0,
+  profit_margin NUMERIC(5,2) DEFAULT 0,  -- %
+  
+  -- Meta
+  calculated_at TIMESTAMP DEFAULT NOW(),
+  calculated_by VARCHAR(36),
+  notes TEXT,
+  
+  UNIQUE(branch_id, period_month, period_year)
+);
+CREATE INDEX IF NOT EXISTS idx_branch_financial ON branch_financial_summary(branch_id, period_year, period_month);
+```
+
+## B2: Otomatik maliyet hesaplama servisi
+
+`server/services/branch-financial-service.ts` oluştur:
+
+```typescript
+export async function calculateBranchFinancials(branchId: number, month: number, year: number) {
+  // 1. Bordro maliyeti (payroll_records'tan)
+  const payrollCost = await db.select({ total: sum(payrollRecords.netSalary) })
+    .from(payrollRecords)
+    .where(and(
+      eq(payrollRecords.branchId, branchId),
+      eq(payrollRecords.month, month),
+      eq(payrollRecords.year, year)
+    ));
+  
+  // 2. Satınalma maliyeti (branch_orders veya cari_transactions'tan)
+  const supplyCost = await db.select({ total: sum(branchOrders.totalAmount) })
+    .from(branchOrders)
+    .where(and(
+      eq(branchOrders.branchId, branchId),
+      // tarih filtresi
+    ));
+  
+  // 3. Bakım maliyeti (equipment_maintenance_logs'tan — varsa maliyet kolonu)
+  const maintenanceCost = await getMaintenanceCost(branchId, month, year);
+  
+  // 4. Sabit giderler (branch ayarlarından veya manuel giriş)
+  const fixedCosts = await getBranchFixedCosts(branchId);
+  
+  // 5. Gelir (varsa POS, yoksa manual/estimated)
+  const revenue = await getBranchRevenue(branchId, month, year);
+  
+  // Hesapla
+  const totalCost = payrollCost + supplyCost + maintenanceCost + fixedCosts.rent + fixedCosts.utilities + fixedCosts.other;
+  const netProfit = revenue - totalCost;
+  const profitMargin = revenue > 0 ? (netProfit / revenue * 100) : 0;
+  
+  // Kaydet (upsert)
+  await db.insert(branchFinancialSummary).values({
+    branchId, periodMonth: month, periodYear: year,
+    costPayroll: payrollCost,
+    costSupplies: supplyCost,
+    costMaintenance: maintenanceCost,
+    costRent: fixedCosts.rent,
+    costUtilities: fixedCosts.utilities,
+    costOther: fixedCosts.other,
+    revenueTotal: revenue,
+    totalCost, netProfit, profitMargin,
+    staffCount: await getBranchStaffCount(branchId),
+    costPerEmployee: payrollCost / await getBranchStaffCount(branchId),
+    calculatedAt: new Date()
+  }).onConflictDoUpdate({
+    target: [branchFinancialSummary.branchId, branchFinancialSummary.periodMonth, branchFinancialSummary.periodYear],
+    set: { /* aynı alanlar */ }
+  });
+}
+```
+
+## B3: P&L API endpoint'leri
+
+```
+GET /api/reports/financial/branches         — tüm şubelerin son ay özeti
+GET /api/reports/financial/branch/:id       — tek şubenin aylık detayı
+  ?months=6                                 — son 6 ay trend
+GET /api/reports/financial/compare           — şube karşılaştırma tablosu
+POST /api/reports/financial/calculate        — yeniden hesapla (admin)
+PATCH /api/reports/financial/branch/:id     — manuel veri girişi (gelir, sabit gider)
+```
+
+## B4: P&L rapor sayfası
+
+`client/src/pages/raporlar/sube-finansal.tsx` oluştur (veya mevcut rapor sayfasına ekle):
+
+### Layout:
+```
+Şube Finansal Raporu
+├── Dönem seçimi (ay/yıl dropdown)
+├── KPI pills: [Toplam Gelir] [Toplam Gider] [Net Kâr] [En Kârlı Şube]
+├── Şube karşılaştırma tablosu
+│   ├── Sütunlar: Şube | Gelir | Personel | Hammadde | Kira | Toplam Gider | Kâr | Marj%
+│   ├── Sıralama: kâra göre (en yüksekten en düşüğe)
+│   ├── Renk kodlu: yeşil=kârlı, kırmızı=zararlı
+│   └── Tıklanınca → şube detay (aylık trend grafik)
+├── Maliyet dağılımı pasta grafik (tüm şubeler toplam)
+│   └── Personel %X | Hammadde %Y | Kira %Z | Bakım %W | Diğer %V
+└── Trend grafik (son 6 ay — gelir vs gider çizgi grafik)
+```
+
+### Şube detay (tıklanınca):
+- Aylık gelir/gider trend çizgi grafik
+- Maliyet kalem detayı (personel, hammadde, kira, bakım, diğer)
+- Personel başına maliyet
+- Önceki aya göre değişim (% artış/azalış)
+- Mr. Dobody yorumu: "Bu şube 3 aydır zarar ediyor — personel maliyeti gelirin %65'i"
+
+## B5: Mr. Dobody P&L skill
+
+`server/services/skills/financial-insight.ts` oluştur:
+
+```typescript
+// Trigger: Aylık (her ayın 5'i — bordro hesaplandıktan sonra)
+// Hedef: CEO, CGO
+
+action: async () => {
+  const currentMonth = new Date().getMonth(); // önceki ay
+  const currentYear = new Date().getFullYear();
+  
+  // Tüm şubeler için hesapla
+  const branches = await getActiveBranches();
+  for (const branch of branches) {
+    await calculateBranchFinancials(branch.id, currentMonth, currentYear);
+  }
+  
+  // Analiz
+  const summaries = await getAllBranchFinancials(currentMonth, currentYear);
+  const unprofitable = summaries.filter(s => s.netProfit < 0);
+  const highCost = summaries.filter(s => s.costPerEmployee > threshold);
+  
+  // CEO'ya rapor
+  if (unprofitable.length > 0 || highCost.length > 0) {
+    await createAgentAction({
+      userId: getCEOId(),
+      skillId: 'financial-insight',
+      type: 'monthly_financial',
+      title: `Aylık finansal rapor hazır`,
+      message: [
+        unprofitable.length > 0 ? `${unprofitable.length} şube zararda: ${unprofitable.map(s => s.branchName).join(', ')}` : null,
+        highCost.length > 0 ? `${highCost.length} şubede personel maliyeti yüksek` : null,
+        `En kârlı: ${summaries.sort((a,b) => b.netProfit - a.netProfit)[0]?.branchName}`
+      ].filter(Boolean).join('\n'),
+      deepLink: '/raporlar/sube-finansal',
+      priority: unprofitable.length > 0 ? 'high' : 'medium'
+    });
+  }
+}
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM C: MENÜ + ROUTE + SKİLL KAYIT (30dk)
+# ████████████████████████████████████████████████
+
+## C1: Route'ları kaydet
+
+App.tsx'e:
+```
+/raporlar/insight → InsightRaporu component
+/raporlar/sube-finansal → SubeFinansalRapor component
+```
+
+## C2: Menü güncelleme
+
+Rapor/Finans bölümüne ekle:
+- "Şube Insight" → /raporlar/insight (CEO, CGO, Coach)
+- "Şube Finansal" → /raporlar/sube-finansal (CEO, CGO, Muhasebe)
+
+## C3: Skill'leri registry'ye kaydet
+
+2 yeni skill:
+1. `cross-module-insight` — haftalık (Pazartesi 08:00)
+2. `financial-insight` — aylık (her ayın 5'i)
+
+Mevcut skill registry pattern'ini takip et.
+
+## C4: Scheduler'a ekle
+
+Agent scheduler'a 2 yeni zamanlanmış görev ekle.
+
+---
+
+# ████████████████████████████████████████████████
+# DOĞRULAMA
+# ████████████████████████████████████████████████
+
+```bash
+echo "═══ SPRINT 7 DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+
+echo ""
+echo "=== Yeni dosyalar ==="
+echo "--- Cross-module analyzer ---"
+wc -l server/services/cross-module-analyzer.ts 2>/dev/null
+echo "--- Financial service ---"
+wc -l server/services/branch-financial-service.ts 2>/dev/null
+echo "--- Yeni skill'ler ---"
+for skill in cross-module-insight financial-insight; do
+  find server/services/skills -name "*${skill}*" 2>/dev/null && echo "✅ $skill" || echo "❌ $skill"
+done
+
+echo ""
+echo "=== DB tablosu ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name = 'branch_financial_summary';" | psql
+
+echo ""
+echo "=== API endpoint'leri ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/s7.txt > /dev/null 2>&1
+
+for ep in "/api/reports/insights" "/api/reports/insights/summary" "/api/reports/financial/branches"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/s7.txt "http://localhost:5000${ep}" 2>/dev/null)
+  echo "  $ep → $STATUS"
+done
+
+echo ""
+echo "=== Insight tetikleme (manuel) ==="
+curl -s -X POST -b /tmp/s7.txt "http://localhost:5000/api/reports/insights/refresh" | head -5
+
+echo ""
+echo "=== Skill registry ==="
+ls server/services/skills/*.ts 2>/dev/null | wc -l
+echo "skill dosyası (önceki: 29)"
+
+echo ""
+echo "=== Frontend sayfaları ==="
+for f in "raporlar/insight" "raporlar/sube-finansal"; do
+  find client/src/pages -path "*$f*" 2>/dev/null && echo "✅ $f" || echo "❌ $f"
+done
+
+echo ""
+echo "=== Menü güncelleme ==="
+curl -s http://localhost:5000/api/me/menu -b /tmp/s7.txt | grep -i "insight\|finansal" && echo "✅ Menüde" || echo "❌ Menüde yok"
+
+echo ""
+echo "═══ FİNAL SONUÇ RAPORU ═══"
+echo ""
+echo "BÖLÜM A (Cross-modül zeka):"
+echo "  Korelasyon engine: ✅/❌"
+echo "  Kural sayısı: X"
+echo "  cross-module-insight skill: ✅/❌"
+echo "  Insight API: ✅/❌"
+echo "  Insight sayfası: ✅/❌"
+echo ""
+echo "BÖLÜM B (Şube P&L):"
+echo "  branch_financial_summary tablosu: ✅/❌"
+echo "  Hesaplama servisi: ✅/❌"
+echo "  financial-insight skill: ✅/❌"
+echo "  P&L API: ✅/❌"
+echo "  P&L rapor sayfası: ✅/❌"
+echo ""
+echo "BÖLÜM C (Menü + route + skill kayıt):"
+echo "  Route'lar: ✅/❌"
+echo "  Menü öğeleri: ✅/❌"
+echo "  Skill registry: ✅/❌"
+echo "  Scheduler: ✅/❌"
+echo ""
+echo "GENEL:"
+echo "  Toplam skill sayısı: $(ls server/services/skills/*.ts 2>/dev/null | wc -l)"
+echo "  Server: hatasız ✅/❌"
+echo ""
+echo "═══ TÜM 8 SPRİNT TAMAMLANDI ═══"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- ❌ Mevcut scoring/performans hesaplamalarını değiştirme
+- ❌ Mevcut Mr. Dobody skill mantığını bozma
+- ❌ Gelir verisi yoksa sahte gelir üretme — gider analizi yap
+- ❌ Çok fazla scheduler query'si ekleme — performans düşürür
+- ❌ Insight'ları bildirim olarak spam'leme — haftalık özet yeterli
