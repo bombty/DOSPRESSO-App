@@ -28,6 +28,8 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { SupervisorQuickBar } from "@/components/mobile/SupervisorQuickBar";
 
 interface BranchSummaryKpis {
   activeStaff: number;
@@ -65,6 +67,7 @@ interface BranchSummaryResponse {
 
 export default function MissionControlSupervisor() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const branchId = (user as any)?.branchId;
   const firstName = user?.firstName || user?.username?.split(" ")[0] || "Kullanıcı";
 
@@ -151,7 +154,8 @@ export default function MissionControlSupervisor() {
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-supervisor">
+    <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full pb-24 md:pb-4" data-testid="mission-control-supervisor">
+      {!isMobile && <SupervisorQuickBar />}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -337,6 +341,8 @@ export default function MissionControlSupervisor() {
 
       <TodaysTasksWidget />
       <ActivityTimeline />
+
+      {isMobile && <SupervisorQuickBar />}
     </div>
   );
 }

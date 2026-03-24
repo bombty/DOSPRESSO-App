@@ -38,8 +38,12 @@ import {
   QrCode,
   Camera,
   Scan,
-  UserCheck
+  UserCheck,
+  AlertOctagon,
+  Loader2,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
@@ -158,6 +162,9 @@ export default function BranchKiosk() {
   const [showBreakConfirm1, setShowBreakConfirm1] = useState(false);
   const [showBreakConfirm2, setShowBreakConfirm2] = useState(false);
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
+  const [showKioskFaultReport, setShowKioskFaultReport] = useState(false);
+  const [kioskFaultCategory, setKioskFaultCategory] = useState("");
+  const [kioskFaultDesc, setKioskFaultDesc] = useState("");
   const [locationStatus, setLocationStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [kioskMode, setKioskMode] = useState<'pin' | 'qr'>('pin');
   const [qrScannedUser, setQrScannedUser] = useState<{ id: string; firstName: string; lastName: string; profileImageUrl?: string | null } | null>(null);
@@ -460,6 +467,28 @@ export default function BranchKiosk() {
     },
     onError: (error: any) => {
       toast({ title: "Vardiya sonlandırılamadı", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const kioskFaultMutation = useMutation({
+    mutationFn: async (body: { category: string; description: string }) => {
+      const res = await apiRequest("POST", "/api/faults", {
+        description: `[Kiosk] [${body.category}] ${body.description}`,
+        equipmentName: body.category,
+        priority: "orta",
+        branchId: Number(branchId),
+        reportedById: selectedUser?.id,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Sorun bildirildi", description: "Yöneticinize iletilecek." });
+      setShowKioskFaultReport(false);
+      setKioskFaultCategory("");
+      setKioskFaultDesc("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Bildirilemedi", description: error.message, variant: "destructive" });
     },
   });
 
@@ -982,6 +1011,56 @@ export default function BranchKiosk() {
             )}
           </CardContent>
         </Card>
+
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => setShowKioskFaultReport(true)}
+          data-testid="button-kiosk-report-fault"
+        >
+          <AlertOctagon className="h-5 w-5 text-orange-500" />
+          Sorun Bildir
+        </Button>
+
+        <Dialog open={showKioskFaultReport} onOpenChange={setShowKioskFaultReport}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Sorun Bildir</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {["Ekipman", "Hijyen", "Stok", "Diğer"].map((cat) => (
+                  <Button
+                    key={cat}
+                    variant={kioskFaultCategory === cat ? "default" : "outline"}
+                    className="toggle-elevate"
+                    onClick={() => setKioskFaultCategory(cat)}
+                    data-testid={`button-fault-cat-${cat.toLowerCase()}`}
+                  >
+                    {cat}
+                  </Button>
+                ))}
+              </div>
+              <Textarea
+                placeholder="Sorunu kısaca açıklayın..."
+                value={kioskFaultDesc}
+                onChange={(e) => setKioskFaultDesc(e.target.value)}
+                className="min-h-[80px]"
+                data-testid="input-kiosk-fault-desc"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => kioskFaultMutation.mutate({ category: kioskFaultCategory, description: kioskFaultDesc })}
+                disabled={!kioskFaultCategory || !kioskFaultDesc.trim() || kioskFaultMutation.isPending}
+                data-testid="button-kiosk-fault-submit"
+              >
+                {kioskFaultMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Gönder
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <KioskBranchTasks />
 

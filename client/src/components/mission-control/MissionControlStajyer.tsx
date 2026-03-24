@@ -25,6 +25,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { BaristaQuickActions } from "@/components/mobile/BaristaQuickActions";
 
 function getGreetingMessage(streak: number, firstName: string): string {
   const hour = new Date().getHours();
@@ -37,6 +39,7 @@ function getGreetingMessage(streak: number, firstName: string): string {
 
 export default function MissionControlStajyer() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const userId = user?.id || "";
   const firstName = user?.firstName || user?.username?.split(" ")[0] || "Kullanıcı";
   const role = user?.role || "stajyer";
@@ -166,6 +169,10 @@ export default function MissionControlStajyer() {
           <p className="text-sm font-medium" data-testid="mc-motivation">{getGreetingMessage(streak, firstName)}</p>
         </CardContent>
       </Card>
+
+      {isMobile && (role === "barista" || role === "bar_buddy" || role === "stajyer") && (
+        <BaristaQuickActions />
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-3 gap-1.5">
