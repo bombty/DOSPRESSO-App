@@ -1,9 +1,10 @@
-import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset, User as UserIcon, PanelLeftClose, PanelLeft } from "lucide-react";
+import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset, User as UserIcon, PanelLeftClose, PanelLeft, ListPlus } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useState } from "react";
+import { NewTaskDialog } from "@/components/new-task-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ interface AppHeaderProps {
 export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppHeaderProps) {
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [showNewTask, setShowNewTask] = useState(false);
   const { effectiveTheme, setTheme } = useTheme();
 
   const toggleTheme = () => {
@@ -84,6 +86,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
   const hideHamburgerOnMobile = user?.role ? SMALL_SIDEBAR_ROLES.includes(user.role) : false;
 
   return (
+    <>
     <div className="flex-shrink-0 z-50 bg-background border-b">
       <div className="px-3 py-2 border-b bg-[#122549] dark:bg-[#122549] flex items-center gap-3 relative">
         
@@ -128,6 +131,10 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
               <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation(user ? `/personel/${user.id}` : "/login"); }} data-testid="button-profile">
                 <UserIcon className="mr-2 h-4 w-4" />
                 <span>Profilim</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setIsOpen(false); setShowNewTask(true); }} data-testid="button-assign-task">
+                <ListPlus className="mr-2 h-4 w-4" />
+                <span>Görev Ata</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/hq-destek"); }} data-testid="button-support">
                 <Headset className="mr-2 h-4 w-4" />
@@ -192,5 +199,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
         </div>
       </div>
     </div>
+    <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} source="header" />
+    </>
   );
 }

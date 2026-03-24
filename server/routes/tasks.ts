@@ -15,6 +15,8 @@ import {
   users,
   leaveRequests,
   taskAssignees,
+  taskComments,
+  insertTaskCommentSchema,
 } from "@shared/schema";
 import { sendNotificationEmail } from "../email";
 import { auditLog } from "../audit";
@@ -401,6 +403,26 @@ const router = Router();
         });
       } else {
         enrichedTask.assignees = [];
+      }
+
+      const comments = await db.select().from(taskComments)
+        .where(eq(taskComments.taskId, taskId))
+        .orderBy(asc(taskComments.createdAt));
+      
+      if (comments.length > 0) {
+        const commentUserIds = [...new Set(comments.map(c => c.userId))].filter(id => !userIdsToFetch.includes(id));
+        let allUsersMap = userIdsToFetch.length > 0 ? await storage.getUsersByIds([...userIdsToFetch, ...commentUserIds]) : await storage.getUsersByIds(commentUserIds);
+        enrichedTask.comments = comments.map(c => {
+          const u = allUsersMap.get(c.userId);
+          return {
+            ...c,
+            userName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : 'Bilinmiyor',
+            userRole: u?.role || null,
+            userProfileImage: u?.profileImageUrl || null,
+          };
+        });
+      } else {
+        enrichedTask.comments = [];
       }
 
       res.json(enrichedTask);
@@ -2313,6 +2335,284 @@ const router = Router();
     } catch (error: unknown) {
       console.error("Bulk archive error:", error);
       res.status(500).json({ message: "Toplu arşivleme başarısız" });
+    }
+  });
+
+  // ========================================
+  // TASK ACCEPT / REJECT / EXTENSION ENDPOINTS (Sprint 11)
+  // ========================================
+
+  router.post('/api/tasks/:id/accept', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz görev ID" });
+
+      const task = await storage.getTask(taskId);
+      if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
+
+      const assigneeRow = await db.select().from(taskAssignees)
+        .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+        .then(rows => rows[0]);
+
+      const isDirectAssignee = task.assignedToId === user.id;
+      
+      if (!assigneeRow && !isDirectAssignee) {
+        return res.status(403).json({ message: "Bu görev size atanmamış" });
+      }
+
+      if (assigneeRow) {
+        await db.update(taskAssignees)
+          .set({ acceptanceStatus: 'accepted', acceptedAt: new Date() })
+          .where(eq(taskAssignees.id, assigneeRow.id));
+      }
+
+      if (isDirectAssignee && task.status === 'beklemede') {
+        await db.update(tasks)
+          .set({ status: 'devam_ediyor', startedAt: new Date(), updatedAt: new Date() })
+          .where(eq(tasks.id, taskId));
+      }
+
+      if (task.assignedById && task.assignedById !== user.id) {
+        const accepter = await storage.getUser(user.id);
+        const accepterName = accepter ? `${accepter.firstName || ''} ${accepter.lastName || ''}`.trim() : 'Bir çalışan';
+        await storage.createNotification({
+          userId: task.assignedById,
+          type: 'task_accepted',
+          title: 'Görev Kabul Edildi',
+          message: `${accepterName} görevi kabul etti: "${task.description?.substring(0, 50)}..."`,
+          link: `/gorevler?taskId=${taskId}`,
+          branchId: task.branchId,
+        });
+      }
+
+      res.json({ message: "Görev kabul edildi" });
+    } catch (error) {
+      console.error("Task accept error:", error);
+      res.status(500).json({ message: "Kabul işlemi başarısız" });
+    }
+  });
+
+  router.post('/api/tasks/:id/reject-assignment', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { reason } = req.body;
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz görev ID" });
+      if (!reason || reason.trim().length === 0) return res.status(400).json({ message: "Red sebebi zorunludur" });
+
+      const task = await storage.getTask(taskId);
+      if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
+
+      const assigneeRow = await db.select().from(taskAssignees)
+        .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+        .then(rows => rows[0]);
+
+      const isDirectAssignee = task.assignedToId === user.id;
+      
+      if (!assigneeRow && !isDirectAssignee) {
+        return res.status(403).json({ message: "Bu görev size atanmamış" });
+      }
+
+      if (assigneeRow) {
+        await db.update(taskAssignees)
+          .set({ acceptanceStatus: 'rejected', rejectedAt: new Date(), rejectionReason: reason })
+          .where(eq(taskAssignees.id, assigneeRow.id));
+      }
+
+      if (task.assignedById && task.assignedById !== user.id) {
+        const rejecter = await storage.getUser(user.id);
+        const rejecterName = rejecter ? `${rejecter.firstName || ''} ${rejecter.lastName || ''}`.trim() : 'Bir çalışan';
+        await storage.createNotification({
+          userId: task.assignedById,
+          type: 'task_rejected',
+          title: 'Görev Reddedildi',
+          message: `${rejecterName} görevi reddetti: "${task.description?.substring(0, 50)}..." Sebep: ${reason}`,
+          link: `/gorevler?taskId=${taskId}`,
+          branchId: task.branchId,
+        });
+      }
+
+      res.json({ message: "Görev atama reddedildi" });
+    } catch (error) {
+      console.error("Task reject-assignment error:", error);
+      res.status(500).json({ message: "Red işlemi başarısız" });
+    }
+  });
+
+  router.post('/api/tasks/:id/request-extension', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      const { reason, days } = req.body;
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz görev ID" });
+      if (!reason || !days) return res.status(400).json({ message: "Sebep ve gün sayısı zorunludur" });
+
+      const task = await storage.getTask(taskId);
+      if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
+
+      const isAssignedTo = task.assignedToId === user.id;
+      const assigneeRow = await db.select().from(taskAssignees)
+        .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+        .then(rows => rows[0]);
+
+      if (!isAssignedTo && !assigneeRow) {
+        return res.status(403).json({ message: "Bu görev size atanmamış, uzatma talebi gönderemezsiniz" });
+      }
+
+      if (assigneeRow) {
+        await db.update(taskAssignees)
+          .set({ extensionRequestedAt: new Date(), extensionReason: reason, extensionDays: days })
+          .where(eq(taskAssignees.id, assigneeRow.id));
+      }
+
+      await db.update(tasks)
+        .set({ extensionReason: reason, requestedDueDate: task.dueDate ? new Date(new Date(task.dueDate).getTime() + days * 86400000) : null, updatedAt: new Date() })
+        .where(eq(tasks.id, taskId));
+
+      if (task.assignedById && task.assignedById !== user.id) {
+        const requester = await storage.getUser(user.id);
+        const requesterName = requester ? `${requester.firstName || ''} ${requester.lastName || ''}`.trim() : 'Bir çalışan';
+        await storage.createNotification({
+          userId: task.assignedById,
+          type: 'task_extension_requested',
+          title: 'Süre Uzatma Talebi',
+          message: `${requesterName} görev için ${days} gün uzatma talep etti: "${task.description?.substring(0, 50)}..."`,
+          link: `/gorevler?taskId=${taskId}`,
+          branchId: task.branchId,
+        });
+      }
+
+      res.json({ message: "Süre uzatma talebi gönderildi" });
+    } catch (error) {
+      console.error("Task extension request error:", error);
+      res.status(500).json({ message: "Uzatma talebi başarısız" });
+    }
+  });
+
+  // ========================================
+  // TASK COMMENTS CRUD (Sprint 11)
+  // ========================================
+
+  router.get('/api/tasks/:id/comments', isAuthenticated, async (req, res) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz görev ID" });
+
+      const commentRows = await db.select().from(taskComments)
+        .where(eq(taskComments.taskId, taskId))
+        .orderBy(asc(taskComments.createdAt));
+
+      if (commentRows.length === 0) return res.json([]);
+
+      const userIds = [...new Set(commentRows.map(c => c.userId))];
+      const usersMap = await storage.getUsersByIds(userIds);
+
+      const enriched = commentRows.map(c => {
+        const u = usersMap.get(c.userId);
+        return {
+          ...c,
+          userName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : 'Bilinmiyor',
+          userRole: u?.role || null,
+          userProfileImage: u?.profileImageUrl || null,
+        };
+      });
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Task comments fetch error:", error);
+      res.status(500).json({ message: "Yorumlar alınamadı" });
+    }
+  });
+
+  router.post('/api/tasks/:id/comments', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const taskId = parseInt(req.params.id);
+      if (isNaN(taskId)) return res.status(400).json({ message: "Geçersiz görev ID" });
+
+      const task = await storage.getTask(taskId);
+      if (!task) return res.status(404).json({ message: "Görev bulunamadı" });
+
+      const isParticipant = task.assignedToId === user.id || task.assignedById === user.id || task.createdById === user.id;
+      const isHQ = user.role && isHQRole(user.role as UserRoleType);
+      if (!isParticipant && !isHQ) {
+        const assigneeCheck = await db.select().from(taskAssignees)
+          .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, user.id)))
+          .then(rows => rows.length > 0);
+        if (!assigneeCheck) {
+          return res.status(403).json({ message: "Bu göreve yorum yapma yetkiniz yok" });
+        }
+      }
+
+      const { message, commentType, attachmentUrl, isInternal } = req.body;
+      if (!message || message.trim().length === 0) return res.status(400).json({ message: "Mesaj boş olamaz" });
+
+      const [comment] = await db.insert(taskComments).values({
+        taskId,
+        userId: user.id,
+        message: message.trim(),
+        commentType: commentType || 'message',
+        attachmentUrl: attachmentUrl || null,
+        isInternal: isInternal || false,
+      }).returning();
+
+      const commenter = await storage.getUser(user.id);
+      const commenterName = commenter ? `${commenter.firstName || ''} ${commenter.lastName || ''}`.trim() : 'Bir çalışan';
+
+      const notifyIds = new Set<string>();
+      if (task.assignedToId && task.assignedToId !== user.id) notifyIds.add(task.assignedToId);
+      if (task.assignedById && task.assignedById !== user.id) notifyIds.add(task.assignedById);
+
+      const assigneeRows = await db.select().from(taskAssignees)
+        .where(eq(taskAssignees.taskId, taskId));
+      for (const a of assigneeRows) {
+        if (a.userId !== user.id) notifyIds.add(a.userId);
+      }
+
+      for (const nId of notifyIds) {
+        try {
+          await storage.createNotification({
+            userId: nId,
+            type: 'task_comment',
+            title: 'Görevde Yeni Yorum',
+            message: `${commenterName}: "${message.substring(0, 60)}${message.length > 60 ? '...' : ''}"`,
+            link: `/gorevler?taskId=${taskId}`,
+            branchId: task.branchId,
+          });
+        } catch (e) {}
+      }
+
+      res.json({
+        ...comment,
+        userName: commenterName,
+        userRole: commenter?.role || null,
+        userProfileImage: commenter?.profileImageUrl || null,
+      });
+    } catch (error) {
+      console.error("Task comment create error:", error);
+      res.status(500).json({ message: "Yorum eklenemedi" });
+    }
+  });
+
+  router.delete('/api/tasks/:taskId/comments/:commentId', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const commentId = parseInt(req.params.commentId);
+      if (isNaN(commentId)) return res.status(400).json({ message: "Geçersiz yorum ID" });
+
+      const [comment] = await db.select().from(taskComments).where(eq(taskComments.id, commentId));
+      if (!comment) return res.status(404).json({ message: "Yorum bulunamadı" });
+
+      if (comment.userId !== user.id && !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu yorumu silme yetkiniz yok" });
+      }
+
+      await db.delete(taskComments).where(eq(taskComments.id, commentId));
+      res.json({ message: "Yorum silindi" });
+    } catch (error) {
+      console.error("Task comment delete error:", error);
+      res.status(500).json({ message: "Yorum silinemedi" });
     }
   });
 

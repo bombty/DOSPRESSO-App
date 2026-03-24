@@ -78,6 +78,12 @@ export default function GorevDetay() {
   const [showSubmitApprovalDialog, setShowSubmitApprovalDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showExtRequestDialog, setShowExtRequestDialog] = useState(false);
+  const [extRequestReason, setExtRequestReason] = useState("");
+  const [extRequestDays, setExtRequestDays] = useState("");
 
   const { data: task, isLoading, isError, refetch } = useQuery<Task>({
     queryKey: ["/api/tasks", id],
@@ -162,11 +168,70 @@ export default function GorevDetay() {
     enabled: !!id,
   });
 
+  const taskComments = (task as any)?.comments || [];
+
+  const acceptMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/tasks/${id}/accept`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Görev kabul edildi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+    },
+    onError: () => toast({ title: "Hata", description: "Kabul işlemi başarısız", variant: "destructive" }),
+  });
+
+  const rejectAssignmentMutation = useMutation({
+    mutationFn: async (reason: string) => {
+      const res = await apiRequest("POST", `/api/tasks/${id}/reject-assignment`, { reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Görev reddedildi" });
+      setShowRejectDialog(false);
+      setRejectReason("");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+    },
+    onError: () => toast({ title: "Hata", description: "Red işlemi başarısız", variant: "destructive" }),
+  });
+
+  const requestExtensionMutation = useMutation({
+    mutationFn: async ({ reason, days }: { reason: string; days: number }) => {
+      const res = await apiRequest("POST", `/api/tasks/${id}/request-extension`, { reason, days });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Süre uzatma talebi gönderildi" });
+      setShowExtRequestDialog(false);
+      setExtRequestReason("");
+      setExtRequestDays("");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+    },
+    onError: () => toast({ title: "Hata", description: "Uzatma talebi başarısız", variant: "destructive" }),
+  });
+
+  const addCommentMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await apiRequest("POST", `/api/tasks/${id}/comments`, { message });
+      return res.json();
+    },
+    onSuccess: () => {
+      setCommentText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", id] });
+    },
+    onError: () => toast({ title: "Hata", description: "Yorum eklenemedi", variant: "destructive" }),
+  });
+
   useBreadcrumb(task ? `Görev #${task.id}` : '');
 
   const myParticipantStatus = participantStatuses.find((p: any) => p.userId === currentUser?.id);
   const taskAssigneesList = (task as any)?.assignees || [];
   const isInAssigneesList = taskAssigneesList.some((a: any) => a.userId === currentUser?.id);
+  const myAssignee = taskAssigneesList.find((a: any) => a.userId === currentUser?.id);
+  const isMyTask = task?.assignedToId === currentUser?.id || isInAssigneesList;
+  const needsAcceptance = (task as any)?.acceptanceRequired && myAssignee?.acceptanceStatus === 'pending';
+  const wasRejected = myAssignee?.acceptanceStatus === 'rejected';
   const isPrimaryAssigneeEarly = currentUser?.id === task?.assignedToId;
   const isAdditionalAssignee = !isPrimaryAssigneeEarly && (!!myParticipantStatus || isInAssigneesList);
   const myStarted = !!myParticipantStatus?.startedAt;
@@ -1002,6 +1067,66 @@ export default function GorevDetay() {
         </Card>
       )}
 
+      {/* Accept/Reject Assignment Banner */}
+      {isMyTask && needsAcceptance && (
+        <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-900/10">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3 mb-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="text-sm font-medium">Bu görev kabul/red onayınızı bekliyor</p>
+                <p className="text-xs text-muted-foreground">Göreve başlamak için kabul edin veya reddedin</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => acceptMutation.mutate()}
+                disabled={acceptMutation.isPending}
+                data-testid="button-accept-task"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Kabul Et
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowRejectDialog(true)}
+                data-testid="button-reject-task"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reddet
+              </Button>
+              {(task as any)?.allowExtension && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowExtRequestDialog(true)}
+                  data-testid="button-request-extension"
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Süre Uzat
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Rejected Assignment Banner */}
+      {isMyTask && wasRejected && (
+        <Card className="border-red-500/50 bg-red-50/50 dark:bg-red-900/10">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <XCircle className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm font-medium">Bu görevi reddettiniz</p>
+                {myAssignee?.rejectionReason && (
+                  <p className="text-xs text-muted-foreground">Sebep: {myAssignee.rejectionReason}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Request Check Section - Shows for assignee when task is completed and has checker */}
       {isAssignee && hasChecker && task.status === "tamamlandi" && (
         <Card className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/10">
@@ -1745,6 +1870,145 @@ export default function GorevDetay() {
           </CardContent>
         </Card>
       )}
+
+      {/* Comments / Chat Panel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Yorumlar
+            {taskComments.length > 0 && (
+              <Badge variant="secondary" className="ml-auto text-xs">{taskComments.length}</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {taskComments.length > 0 ? (
+            <div className="space-y-3 max-h-[300px] overflow-y-auto mb-3">
+              {taskComments.map((comment: any) => {
+                const isMe = comment.userId === currentUser?.id;
+                return (
+                  <div key={comment.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} gap-2`} data-testid={`comment-${comment.id}`}>
+                    {!isMe && (
+                      <Avatar className="h-6 w-6 mt-1 shrink-0">
+                        <AvatarImage src={comment.userProfileImage} />
+                        <AvatarFallback className="text-[8px]">
+                          {comment.userName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div className={`max-w-[80%] rounded-lg p-3 ${
+                      isMe
+                        ? 'bg-primary text-primary-foreground rounded-br-sm'
+                        : 'bg-muted rounded-bl-sm'
+                    }`}>
+                      {!isMe && (
+                        <p className="text-xs font-medium mb-1">{comment.userName}</p>
+                      )}
+                      <p className="text-sm whitespace-pre-wrap">{comment.message}</p>
+                      <p className={`text-[10px] mt-1 ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                        {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString("tr-TR", {day:'numeric',month:'short'}) + ' ' + new Date(comment.createdAt).toLocaleTimeString("tr-TR", {hour:'2-digit',minute:'2-digit'}) : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-2 mb-3">Henüz yorum yok</p>
+          )}
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="Yorum yazın..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="min-h-[40px] max-h-[80px] resize-none flex-1 text-sm"
+              data-testid="input-comment"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && commentText.trim()) {
+                  e.preventDefault();
+                  addCommentMutation.mutate(commentText.trim());
+                }
+              }}
+            />
+            <Button
+              size="icon"
+              onClick={() => commentText.trim() && addCommentMutation.mutate(commentText.trim())}
+              disabled={addCommentMutation.isPending || !commentText.trim()}
+              data-testid="button-send-comment"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reject Assignment Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Görevi Reddet</DialogTitle>
+            <DialogDescription>Bu görevi neden reddettiğinizi açıklayın.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Red sebebi..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="min-h-[80px]"
+            data-testid="input-reject-reason"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>İptal</Button>
+            <Button
+              variant="destructive"
+              onClick={() => rejectAssignmentMutation.mutate(rejectReason)}
+              disabled={rejectAssignmentMutation.isPending || !rejectReason.trim()}
+              data-testid="button-confirm-reject"
+            >
+              Reddet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extension Request Dialog */}
+      <Dialog open={showExtRequestDialog} onOpenChange={setShowExtRequestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Süre Uzatma Talebi</DialogTitle>
+            <DialogDescription>Ne kadar süre uzatma talep ediyorsunuz?</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="number"
+              placeholder="Gün sayısı"
+              value={extRequestDays}
+              onChange={(e) => setExtRequestDays(e.target.value)}
+              min={1}
+              max={30}
+              data-testid="input-extension-days"
+            />
+            <Textarea
+              placeholder="Uzatma sebebi..."
+              value={extRequestReason}
+              onChange={(e) => setExtRequestReason(e.target.value)}
+              className="min-h-[80px]"
+              data-testid="input-extension-reason"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExtRequestDialog(false)}>İptal</Button>
+            <Button
+              onClick={() => requestExtensionMutation.mutate({ reason: extRequestReason, days: parseInt(extRequestDays) })}
+              disabled={requestExtensionMutation.isPending || !extRequestReason.trim() || !extRequestDays}
+              data-testid="button-confirm-extension"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Talep Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Complete Confirmation Dialog */}
       <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
