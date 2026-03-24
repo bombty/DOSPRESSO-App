@@ -84,6 +84,8 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./daily-briefing");
   await import("./smart-reminder");
   await import("./auto-todo-from-ticket");
+  await import("./cross-module-insight");
+  await import("./financial-insight");
 }
 
 export function registerSkill(skill: AgentSkill): void {

@@ -13,3 +13,4 @@ export * from './schema/schema-12';
 export * from './schema/schema-13';
 export * from './schema/schema-14-relations';
 export * from './schema/schema-15-ajanda';
+export * from './schema/schema-16-financial';

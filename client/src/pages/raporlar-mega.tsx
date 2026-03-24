@@ -19,7 +19,8 @@ import {
   FileSearch,
   CheckCircle2,
   Target,
-  Activity
+  Activity,
+  Brain
 } from "lucide-react";
 
 const Raporlar = lazy(() => import("./raporlar"));
@@ -37,6 +38,8 @@ const Sikayetler = lazy(() => import("./sikayetler"));
 const AdvancedReports = lazy(() => import("./advanced-reports"));
 const SubeKarsilastirma = lazy(() => import("./sube-karsilastirma"));
 const SubeSaglikSkoru = lazy(() => import("./sube-saglik-skoru"));
+const RaporlarInsight = lazy(() => import("./raporlar-insight"));
+const RaporlarFinansal = lazy(() => import("./raporlar-finansal"));
 
 interface TabConfig {
   id: string;
@@ -184,6 +187,24 @@ const RAPORLAR_TABS: TabConfig[] = [
     permissionModule: "quality_audit",
     scope: "hq",
     component: SubeKarsilastirma
+  },
+  {
+    id: "insight",
+    label: "Insights",
+    labelTr: "Insight",
+    icon: <Brain className="h-4 w-4" />,
+    permissionModule: "reports",
+    scope: "hq",
+    component: RaporlarInsight
+  },
+  {
+    id: "finansal",
+    label: "Financial",
+    labelTr: "Finansal",
+    icon: <Wallet className="h-4 w-4" />,
+    permissionModule: "reports",
+    scope: "hq",
+    component: RaporlarFinansal
   }
 ];
 

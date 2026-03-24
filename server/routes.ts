@@ -25,6 +25,7 @@ import franchiseInvestorRoutes from "./routes/franchise-investors";
 import dobodyFlowRoutes from "./routes/dobody-flow";
 import dobodyAvatarRoutes from "./routes/dobody-avatars";
 import dobodyTaskManagerRoutes from "./routes/dobody-task-manager";
+import insightReportRoutes from "./routes/insight-reports";
 import employeeSummaryRoutes from "./routes/employee-summary";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -1202,6 +1203,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(dobodyAvatarRoutes);
   app.use(dobodyTaskManagerRoutes);
   app.use(employeeSummaryRoutes);
+  app.use(insightReportRoutes);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);
