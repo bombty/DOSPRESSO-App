@@ -136,7 +136,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
                 <ListPlus className="mr-2 h-4 w-4" />
                 <span>Görev Ata</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/hq-destek"); }} data-testid="button-support">
+              <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/crm?channel=franchise"); }} data-testid="button-support">
                 <Headset className="mr-2 h-4 w-4" />
                 <span>Destek</span>
               </DropdownMenuItem>

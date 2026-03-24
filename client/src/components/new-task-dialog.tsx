@@ -52,6 +52,7 @@ interface Employee {
   lastName?: string;
   role: string;
   branchId?: number;
+  department?: string;
   profilePhoto?: string;
   profileImageUrl?: string;
 }
@@ -93,6 +94,7 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
   const [subTasks, setSubTasks] = useState<string[]>([]);
   const [newSubTask, setNewSubTask] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
@@ -119,6 +121,14 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
       filtered = filtered.filter(e => FACTORY_ROLES.includes(e.role));
     }
 
+    if (targetDepartment && targetDepartment !== 'all') {
+      filtered = filtered.filter(e => e.department === targetDepartment);
+    }
+
+    if (roleFilter && roleFilter !== 'all') {
+      filtered = filtered.filter(e => e.role === roleFilter);
+    }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(e =>
@@ -129,7 +139,24 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
     }
 
     return filtered;
-  }, [employees, taskScope, selectedBranchIds, searchTerm]);
+  }, [employees, taskScope, selectedBranchIds, targetDepartment, searchTerm, roleFilter]);
+
+  const availableRoles = useMemo(() => {
+    if (!employees.length) return [];
+    let scopeEmployees = employees;
+    if (taskScope === 'branch') {
+      if (selectedBranchIds.length > 0) {
+        scopeEmployees = scopeEmployees.filter(e => e.branchId && selectedBranchIds.includes(e.branchId));
+      }
+      scopeEmployees = scopeEmployees.filter(e => BRANCH_ROLES.includes(e.role));
+    } else if (taskScope === 'hq') {
+      scopeEmployees = scopeEmployees.filter(e => HQ_ROLES.includes(e.role));
+    } else if (taskScope === 'factory') {
+      scopeEmployees = scopeEmployees.filter(e => FACTORY_ROLES.includes(e.role));
+    }
+    const roles = [...new Set(scopeEmployees.map(e => e.role))].sort();
+    return roles;
+  }, [employees, taskScope, selectedBranchIds]);
 
   const resetForm = useCallback(() => {
     setStep('scope');
@@ -146,6 +173,7 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
     setSubTasks([]);
     setNewSubTask('');
     setSearchTerm('');
+    setRoleFilter('');
   }, [defaultScope, defaultBranchId]);
 
   const createMutation = useMutation({
@@ -283,6 +311,8 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
                     setTaskScope(opt.value);
                     setSelectedBranchIds([]);
                     setSelectedAssigneeIds([]);
+                    setTargetDepartment('');
+                    setRoleFilter('');
                   }}
                   className={`flex flex-col items-start gap-1 p-4 rounded-md border text-left transition-colors ${
                     taskScope === opt.value
@@ -299,23 +329,6 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
                 </button>
               ))}
             </div>
-
-            {taskScope === 'branch' && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Departman (opsiyonel)</Label>
-                <Select value={targetDepartment} onValueChange={setTargetDepartment}>
-                  <SelectTrigger data-testid="select-department">
-                    <SelectValue placeholder="Departman seçin..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tümü</SelectItem>
-                    {DEPARTMENTS.map(d => (
-                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         )}
 
@@ -323,7 +336,32 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
           <div className="space-y-4" data-testid="step-target">
             {taskScope === 'branch' && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Şube Seçimi</Label>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <Label className="text-sm font-medium">Şube Seçimi</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const branchOnly = branches.filter(b => b.id !== 23 && b.id !== 24);
+                        setSelectedBranchIds(branchOnly.map(b => b.id));
+                      }}
+                      data-testid="button-select-all-branches"
+                    >
+                      Tümünü Seç
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => { setSelectedBranchIds([]); setSelectedAssigneeIds([]); }}
+                      data-testid="button-clear-branches"
+                    >
+                      Temizle
+                    </Button>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border rounded-md">
                   {branches.filter(b => b.id !== 23 && b.id !== 24).map(b => (
                     <Badge
@@ -343,14 +381,45 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
               </div>
             )}
 
+            {(taskScope === 'branch' || taskScope === 'hq') && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Departman (opsiyonel)</Label>
+                <Select value={targetDepartment} onValueChange={setTargetDepartment}>
+                  <SelectTrigger data-testid="select-department">
+                    <SelectValue placeholder="Tüm departmanlar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tümü</SelectItem>
+                    {DEPARTMENTS.map(d => (
+                      <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="text-sm font-medium">Kişi Seçimi</Label>
-              <Input
-                placeholder="İsim veya rol ara..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                data-testid="input-search-assignee"
-              />
+              <div className="flex gap-2">
+                <Input
+                  placeholder="İsim veya rol ara..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="flex-1"
+                  data-testid="input-search-assignee"
+                />
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="w-[140px]" data-testid="select-role-filter">
+                    <SelectValue placeholder="Rol filtresi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm roller</SelectItem>
+                    {availableRoles.map(r => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="max-h-48 overflow-y-auto border rounded-md">
                 {filteredEmployees.length === 0 ? (
                   <p className="text-sm text-muted-foreground p-3 text-center">
