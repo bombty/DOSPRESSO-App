@@ -270,3 +270,9 @@ id = "uDGSoQzXzr3bACm7qM3i6"
 uri = "file://.local/sprint13-audit-report.md"
 type = "text"
 title = "Sprint 13 Detaylı Audit Raporu"
+
+[[outputs]]
+id = "nhH_8BBzT19NI-scYHIOQ"
+uri = "file://.local/tasks/bildirim-sistemi-v2-audit-raporu.md"
+type = "text"
+title = "Bildirim Sistemi V2 — IT Denetim Raporu"
