@@ -264,3 +264,9 @@ id = "i3bSaVjen2UkA4p_DgM-U"
 uri = "file://.local/DOSPRESSO_IT_AUDIT_REPORT.md"
 type = "text"
 title = "DOSPRESSO IT Denetim Raporu"
+
+[[outputs]]
+id = "uDGSoQzXzr3bACm7qM3i6"
+uri = "file://.local/sprint13-audit-report.md"
+type = "text"
+title = "Sprint 13 Detaylı Audit Raporu"
