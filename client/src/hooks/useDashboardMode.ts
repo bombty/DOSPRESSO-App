@@ -26,7 +26,7 @@ export function useDashboardMode() {
     },
   });
 
-  const mode = data?.mode || "classic";
+  const mode = data?.mode || "mission-control";
   const isMissionControl = mode === "mission-control";
 
   const setMode = (newMode: "classic" | "mission-control") => {

@@ -281,10 +281,8 @@ Puanlar (100 uzerinden):
 Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak yanit ver: ["oneri1", "oneri2", ...]`;
       
       try {
-        const OpenAI = require("openai");
-        const openai = new OpenAI();
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+        const { chat } = await import('../services/ai-client');
+        const completion = await chat({
           messages: [{ role: "user", content: prompt }],
           max_tokens: 500
         });

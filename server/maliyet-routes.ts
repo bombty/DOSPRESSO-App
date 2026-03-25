@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import OpenAI from "openai";
+import aiClient from "./services/ai-client";
 import { 
   rawMaterials,
   productRecipes,
@@ -36,10 +36,6 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull, inArray } from "drizzle-orm";
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
-});
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
@@ -2257,8 +2253,7 @@ Sadece JSON döndür, başka metin ekleme.`;
         });
       }
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const response = await aiClient.chat({
         messages,
         max_tokens: 2000,
         temperature: 0.1,

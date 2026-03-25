@@ -498,14 +498,7 @@ export function registerInspectionRoutes(app: Express) {
         ? Math.round(audits.reduce((s, a) => s + a.overallScore, 0) / audits.length)
         : 0;
 
-      let OpenAI: any;
-      try {
-        OpenAI = (await import("openai")).default;
-      } catch {
-        return res.json({ summary: "AI servisi kullanılamıyor. Lütfen OpenAI API anahtarını kontrol edin." });
-      }
-
-      const openai = new OpenAI();
+      const { chat } = await import("./services/ai-client");
 
       const prompt = `Sen bir kahve zinciri franchise danışmanısın. Aşağıdaki verilere göre "${branch?.name}" şubesi hakkında kısa bir Türkçe analiz yaz (max 200 kelime):
 
@@ -516,8 +509,7 @@ Toplam Şikayet: ${complaintStats?.total ?? 0}
 
 Güçlü yönleri, zayıf yönleri ve iyileştirme önerilerini belirt. Kısa ve net ol.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const response = await chat({
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
         temperature: 0.7,

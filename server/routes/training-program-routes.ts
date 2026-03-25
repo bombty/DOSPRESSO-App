@@ -62,9 +62,8 @@ const router = Router();
       if (existing.length > 0) {
         return res.json({ message: "Dersler zaten mevcut", lessons: existing });
       }
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI();
-      const completion = await openai.chat.completions.create({
+      const { chat } = await import('../services/ai-client');
+      const completion = await chat({
         model: "gpt-4o",
         messages: [
           {
@@ -182,9 +181,8 @@ const router = Router();
         return res.status(400).json({ message: "Önce dersleri oluşturmalısınız" });
       }
       const lessonSummaries = lessons.map(l => l.title + ': ' + l.content.substring(0, 300)).join('\n');
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI();
-      const completion = await openai.chat.completions.create({
+      const { chat } = await import('../services/ai-client');
+      const completion = await chat({
         model: "gpt-4o",
         messages: [
           {
@@ -193,7 +191,7 @@ const router = Router();
           },
           {
             role: "user",
-            content: 'Aşağıdaki ders içeriklerine dayalı 5 sınav sorusu oluştur:\n\n' + lessonSummaries + '\n\nJSON formatı: [{ "question": "Soru metni", "options": ["A) Seçenek", "B) Seçenek", "C) Seçenek", "D) Seçenek"], "correctAnswer": 0 }] Sadece JSON array döndür.'
+            content: 'Aşağıdaki ders içeriklerine dayalı 5 sınav soruları oluştur:\n\n' + lessonSummaries + '\n\nJSON formatı: [{ "question": "Soru metni", "options": ["A) Seçenek", "B) Seçenek", "C) Seçenek", "D) Seçenek"], "correctAnswer": 0 }] Sadece JSON array döndür.'
           }
         ],
         temperature: 0.5,

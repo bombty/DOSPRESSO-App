@@ -325,10 +325,8 @@ const router = Router();
       const dataContext = 'DOSPRESSO ' + targetYear + ' Mali Verileri:\n- Toplam Gelir: ' + totalRevenue.toLocaleString('tr-TR') + ' TL\n- Toplam Gider: ' + totalExpenses.toLocaleString('tr-TR') + ' TL\n- Net Kar: ' + totalProfit.toLocaleString('tr-TR') + ' TL\n- Kar Marji: %' + margin + '\n- Rapor Sayisi: ' + reports.length + '\n\nSube Bazli Performans:\n' + dataLines;
 
       try {
-        const OpenAI = (await import('openai')).default;
-        const openai = new OpenAI();
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        const { chat } = await import('../services/ai-client');
+        const completion = await chat({
           messages: [
             { role: 'system', content: 'Sen DOSPRESSO kahve zinciri icin mali analiz uzmanisin. Turkce yanit ver.' },
             { role: 'user', content: 'Asagidaki mali verileri analiz et:\n' + dataContext }

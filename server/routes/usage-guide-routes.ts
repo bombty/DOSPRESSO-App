@@ -48,11 +48,7 @@ const router = Router();
       const role = req.user?.role || 'stajyer';
       const guideContent = getRoleGuideContent(role);
 
-      const OpenAI = (await import("openai")).default;
-      const openai = new OpenAI({
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      });
+      const { chat } = await import('../services/ai-client');
 
       const moduleList = guideContent.availableModules.map(m => `- ${m.name}: ${m.description} (${m.path})`).join('\n');
       const restrictionList = guideContent.restrictions.length > 0 ? guideContent.restrictions.join(', ') : 'Yok';
@@ -73,7 +69,7 @@ Kurallar:
 - Erişemediği modüller hakkında yönlendirme yapma
 - Sistemi nasıl kullanacağını adım adım anlat`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await chat({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },

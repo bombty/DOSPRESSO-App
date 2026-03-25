@@ -220,7 +220,7 @@ async function refreshAIConfig() {
   console.log(`🤖 AI provider: ${provider}, chat: ${CHAT_MODEL}, vision: ${VISION_MODEL}`);
 }
 
-async function aiChatCall(params: any) {
+export async function aiChatCall(params: any) {
   await refreshAIConfig();
   if (_activeProvider === "anthropic") {
     return anthropicFetchChat(params);
@@ -228,7 +228,7 @@ async function aiChatCall(params: any) {
   return openai.chat.completions.create(params);
 }
 
-async function aiEmbeddingCall(params: any) {
+export async function aiEmbeddingCall(params: any) {
   await refreshAIConfig();
   if (_activeProvider === "anthropic") {
     const config = await getAIConfig();

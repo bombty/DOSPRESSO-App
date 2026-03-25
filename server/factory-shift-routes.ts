@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { db } from "./db";
 import { eq, and, desc, asc, gte, lte, sql, inArray, isNull, count } from "drizzle-orm";
-import OpenAI from "openai";
+import aiClient from "./services/ai-client";
 import {
   factoryShifts,
   factoryShiftWorkers,
@@ -1265,11 +1265,6 @@ export function registerFactoryShiftRoutes(app: Express) {
       });
 
       // Generate AI recommendation
-      const openai = new OpenAI({
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      });
-
       const prompt = `Sen bir fabrika üretim planlama uzmanısın. Aşağıdaki verilere göre bugünkü üretim önceliklerini belirle.
 
 ÜRÜN VERİLERİ:
@@ -1297,8 +1292,7 @@ JSON formatında yanıt ver:
   "summary": "string (Türkçe genel özet, max 2 cümle)"
 }`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const completion = await aiClient.chat({
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.3,
@@ -1329,6 +1323,11 @@ JSON formatında yanıt ver:
   app.get("/api/factory-worker-dashboard/:userId", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const { userId } = req.params;
+      const currentUser = req.user as any;
+      const supervisorRoles = ["super_admin", "factory_director", "factory_supervisor", "factory_quality_manager", "genel_mudur", "operasyon_muduru"];
+      if (currentUser.id !== userId && !supervisorRoles.includes(currentUser.role)) {
+        return res.status(403).json({ error: "Bu veriye erişim yetkiniz yok" });
+      }
       const today = new Date().toISOString().split("T")[0];
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 

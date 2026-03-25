@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DashboardModeToggle } from "./DashboardModeToggle";
 import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
+import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { CareerRoadmap } from "./shared/CareerRoadmap";
 import { LearningStreak } from "./shared/LearningStreak";
 import { ModuleCard, type ModuleInfo } from "./shared/ModuleCard";
@@ -22,7 +23,7 @@ import {
   Award,
   BookOpen,
   Target,
-  Calendar,
+  ClipboardList,
 } from "lucide-react";
 import { useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -147,26 +148,26 @@ export default function MissionControlStajyer() {
   const isLoading = loadingStreak || loadingProgress;
 
   return (
-    <div className="p-4 space-y-4 max-w-lg mx-auto overflow-y-auto h-full" data-testid="mission-control-stajyer">
+    <div className="p-3 md:p-4 space-y-3 max-w-lg md:max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-stajyer">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-bold text-primary">{firstName[0]?.toUpperCase()}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span className="text-xs md:text-sm font-bold text-primary">{firstName[0]?.toUpperCase()}</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-base font-bold truncate" data-testid="mc-stj-greeting">Merhaba, {firstName}</h1>
-            <p className="text-[11px] text-muted-foreground">{dateStr}</p>
+            <h1 className="text-sm md:text-base font-bold truncate" data-testid="mc-stj-greeting">Merhaba, {firstName}</h1>
+            <p className="text-[10px] md:text-[11px] text-muted-foreground">{dateStr}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2">
           <Badge variant="outline" className="text-[10px] h-5 capitalize">{role.replace("_", " ")}</Badge>
           <DashboardModeToggle />
         </div>
       </div>
 
       <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
-        <CardContent className="p-3">
-          <p className="text-sm font-medium" data-testid="mc-motivation">{getGreetingMessage(streak, firstName)}</p>
+        <CardContent className="p-2.5 md:p-3">
+          <p className="text-xs md:text-sm font-medium" data-testid="mc-motivation">{getGreetingMessage(streak, firstName)}</p>
         </CardContent>
       </Card>
 
@@ -182,79 +183,88 @@ export default function MissionControlStajyer() {
         <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
       )}
 
-      <Card data-testid="mc-career-path">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-            <Target className="w-4 h-4" />
-            Kariyer Yol Haritası
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <CareerRoadmap currentRole={role} />
-        </CardContent>
-      </Card>
-
       {activeModule && (
         <Link href="/akademi">
           <Card className="border-primary/30 bg-primary/5 hover-elevate cursor-pointer" data-testid="mc-continue-module">
-            <CardContent className="p-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-5 h-5 text-primary" />
+            <CardContent className="p-2.5 md:p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Devam Et</p>
+                  <p className="text-[9px] md:text-[10px] text-primary font-medium uppercase tracking-wide">Devam Et</p>
                   <p className="text-xs font-bold truncate">{activeModule.title || activeModule.name || "Aktif Modül"}</p>
                 </div>
               </div>
-              <ArrowRight className="w-5 h-5 text-primary flex-shrink-0" />
+              <ArrowRight className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
             </CardContent>
           </Card>
         </Link>
       )}
 
-      <Card data-testid="mc-streak-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-            <Flame className="w-4 h-4" />
-            Öğrenme Serisi
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 pb-3">
-          <LearningStreak currentStreak={streak} longestStreak={longestStreak} />
-        </CardContent>
-      </Card>
+      <CollapsibleSection
+        title="Bugünün Görevleri"
+        icon={<ClipboardList className="w-3.5 h-3.5" />}
+        defaultOpen={true}
+        data-testid="mc-stj-tasks-section"
+      >
+        <TodaysTasksWidget />
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Kariyer Yol Haritası"
+        icon={<Target className="w-3.5 h-3.5" />}
+        defaultOpen={false}
+        data-testid="mc-career-path"
+      >
+        <CareerRoadmap currentRole={role} />
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Öğrenme Serisi"
+        icon={<Flame className="w-3.5 h-3.5" />}
+        badge={streak > 0 ? `${streak} gün` : undefined}
+        badgeVariant={streak >= 7 ? "success" : streak >= 3 ? "info" : "muted"}
+        defaultOpen={streak > 0}
+        data-testid="mc-streak-section"
+      >
+        <LearningStreak currentStreak={streak} longestStreak={longestStreak} />
+      </CollapsibleSection>
 
       {modules.length > 0 && (
-        <Card data-testid="mc-modules">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4" />
-              Modüller
-            </CardTitle>
+        <CollapsibleSection
+          title="Modüller"
+          icon={<GraduationCap className="w-3.5 h-3.5" />}
+          badge={`${completedModules}/${totalModules}`}
+          badgeVariant={progressPct >= 80 ? "success" : progressPct >= 40 ? "info" : "warning"}
+          defaultOpen={true}
+          headerRight={
             <Link href="/akademi">
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1">
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={e => e.stopPropagation()}>
                 Tümü <ArrowRight className="w-3 h-3" />
               </Button>
             </Link>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1.5">
+          }
+          data-testid="mc-modules"
+        >
+          <div className="space-y-1.5">
             {modules.map((m) => (
               <ModuleCard key={m.id} module={m} />
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </CollapsibleSection>
       )}
 
       {quizResults && Array.isArray(quizResults) && quizResults.length > 0 && (
-        <Card data-testid="mc-quiz-results">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              Quiz Sonuçları
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1">
+        <CollapsibleSection
+          title="Quiz Sonuçları"
+          icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+          badge={avgQuizScore > 0 ? `Ort: ${avgQuizScore}` : undefined}
+          badgeVariant={avgQuizScore >= 80 ? "success" : avgQuizScore >= 60 ? "warning" : "danger"}
+          defaultOpen={false}
+          data-testid="mc-quiz-results"
+        >
+          <div className="space-y-1">
             {quizResults.slice(0, 5).map((q: any, i: number) => {
               const score = q.score ?? q.percentage ?? 0;
               return (
@@ -275,40 +285,37 @@ export default function MissionControlStajyer() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </CollapsibleSection>
       )}
 
       {badges.length > 0 && (
-        <Card data-testid="mc-badges">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Award className="w-4 h-4" />
-              Rozet Koleksiyonu
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <BadgeGrid badges={badges} />
-          </CardContent>
-        </Card>
+        <CollapsibleSection
+          title="Rozet Koleksiyonu"
+          icon={<Award className="w-3.5 h-3.5" />}
+          badge={`${badges.filter(b => b.earned).length}/${badges.length}`}
+          badgeVariant="info"
+          defaultOpen={false}
+          data-testid="mc-badges"
+        >
+          <BadgeGrid badges={badges} />
+        </CollapsibleSection>
       )}
-
-      <TodaysTasksWidget />
 
       <div className="grid grid-cols-2 gap-2" data-testid="mc-stj-quick-nav">
         <Link href="/akademi">
           <Card className="hover-elevate cursor-pointer">
-            <CardContent className="p-3 flex flex-col items-center gap-1.5">
-              <GraduationCap className="w-6 h-6 text-blue-500" />
-              <span className="text-xs font-medium">Akademi</span>
+            <CardContent className="p-2.5 md:p-3 flex flex-col items-center gap-1 md:gap-1.5">
+              <GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
+              <span className="text-[10px] md:text-xs font-medium">Akademi</span>
             </CardContent>
           </Card>
         </Link>
         <Link href="/akademi-leaderboard">
           <Card className="hover-elevate cursor-pointer">
-            <CardContent className="p-3 flex flex-col items-center gap-1.5">
-              <Trophy className="w-6 h-6 text-amber-500" />
-              <span className="text-xs font-medium">Sıralama</span>
+            <CardContent className="p-2.5 md:p-3 flex flex-col items-center gap-1 md:gap-1.5">
+              <Trophy className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+              <span className="text-[10px] md:text-xs font-medium">Sıralama</span>
             </CardContent>
           </Card>
         </Link>

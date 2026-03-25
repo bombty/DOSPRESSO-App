@@ -702,10 +702,8 @@ const router = Router();
         fullName: targetUser?.fullName || '',
       };
 
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI();
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const { chat } = await import('../services/ai-client');
+      const response = await chat({
         messages: [
           {
             role: "system",

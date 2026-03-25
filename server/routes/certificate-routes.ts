@@ -548,6 +548,19 @@ const router = Router();
     }
   });
 
+  // ===== AI DASHBOARD BRIEFING =====
+  router.get('/api/me/dashboard-briefing', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { generateDashboardBriefing } = await import('../services/ai-dashboard-briefing');
+      const briefing = await generateDashboardBriefing(user.id, user.role || 'stajyer', user.branchId);
+      res.json(briefing);
+    } catch (error: unknown) {
+      console.error("[AI Briefing] Error:", error);
+      res.status(500).json({ error: "Brifing oluşturulamadı" });
+    }
+  });
+
   // ===== USER PERSONAL DASHBOARD ENDPOINT =====
   
   // GET /api/me/dashboard-summary - Personal dashboard summary for the authenticated user
