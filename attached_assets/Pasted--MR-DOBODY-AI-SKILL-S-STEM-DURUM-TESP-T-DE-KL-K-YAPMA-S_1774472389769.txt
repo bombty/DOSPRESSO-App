@@ -1,0 +1,180 @@
+# MR. DOBODY + AI + SKILL SİSTEMİ — DURUM TESPİTİ
+# DEĞİŞİKLİK YAPMA, SADECE ARAŞTIR VE RAPORLA
+# Sprint 13'e AI eklemeden önce mevcut durumu anlamak lazım
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "MR. DOBODY / AI / SKILL SİSTEMİ TAM DURUM TESPİTİ"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. SKILL DOSYALARI — NEREDE? ████"
+
+echo "=== /server/services/skills/ klasörü ==="
+ls -la server/services/skills/ 2>/dev/null || echo "  KLASÖR YOK veya BOŞ"
+echo ""
+echo "=== Skill dosyaları başka yerde mi? ==="
+find server -name "*skill*" -type f | sort
+echo ""
+echo "=== Skill registry ==="
+find server -name "*skill*registry*" -o -name "*skillRegistry*" -o -name "*skill-registry*" | sort
+for f in $(find server -name "*skill*registry*" -o -name "*skillRegistry*" -o -name "*skill-registry*" -type f 2>/dev/null); do
+  echo "--- $(basename $f) — $(wc -l < "$f") satır ---"
+  grep -n "register\|name\|key\|skill\|Skill" "$f" | head -20
+done
+
+echo ""
+echo "=== Skill tanımları (DB'de mi?) ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%skill%';" | psql 2>/dev/null
+echo ""
+echo "--- agent_runs tablosu (skill çalışma logları) ---"
+echo "SELECT skill_key, count(*) FROM agent_runs GROUP BY skill_key ORDER BY count DESC LIMIT 15;" | psql 2>/dev/null
+echo ""
+echo "--- Son 7 gün skill çalışmaları ---"
+echo "SELECT skill_key, status, count(*) FROM agent_runs WHERE created_at > NOW() - INTERVAL '7 days' GROUP BY skill_key, status ORDER BY count DESC LIMIT 15;" | psql 2>/dev/null
+
+echo ""
+echo "████ 2. AGENT SİSTEMİ YAPISI ████"
+
+echo "=== Agent scheduler ==="
+find server -name "*agent*scheduler*" -o -name "*agent-scheduler*" | sort
+for f in $(find server -name "*agent*scheduler*" -type f 2>/dev/null | head -3); do
+  echo "--- $(basename $f) — $(wc -l < "$f") satır ---"
+  grep -n "schedule\|job\|tick\|cron\|skill\|agent\|interval" "$f" | head -15
+done
+
+echo ""
+echo "=== Agent runner / executor ==="
+find server -name "*agent*runner*" -o -name "*agent*executor*" -o -name "*skill*runner*" | sort
+for f in $(find server -name "*agent*runner*" -o -name "*agent*executor*" -type f 2>/dev/null | head -3); do
+  echo "--- $(basename $f) — $(wc -l < "$f") satır ---"
+  head -30 "$f"
+done
+
+echo ""
+echo "=== Agent servisleri ==="
+find server/services -name "*agent*" -type f | sort
+for f in $(find server/services -name "*agent*" -type f 2>/dev/null); do
+  echo "  $(wc -l < "$f") — $(basename $f)"
+done
+
+echo ""
+echo "████ 3. OPENAI ENTEGRASYONU ████"
+
+echo "=== OpenAI import/kullanım ==="
+grep -rln "openai\|OpenAI\|OPENAI" server/ --include="*.ts" | sort
+echo ""
+echo "--- OpenAI client oluşturma ---"
+grep -rn "new OpenAI\|openai.*create\|createCompletion\|chat.*completions" server/ --include="*.ts" | head -10
+echo ""
+echo "--- API key ==="
+grep -rn "OPENAI_API_KEY\|openai.*key" server/ --include="*.ts" | head -5
+echo ""
+echo "--- Model kullanımı ---"
+grep -rn "gpt-4o\|gpt-4\|gpt-3.5\|model.*gpt" server/ --include="*.ts" | head -10
+
+echo ""
+echo "████ 4. AI AGENT LOGLAR + USAGE ████"
+
+echo "=== ai_agent_logs ==="
+echo "SELECT count(*) FROM ai_agent_logs;" | psql -t 2>/dev/null
+echo "--- Son 7 gün ---"
+echo "SELECT date_trunc('day', created_at), count(*) FROM ai_agent_logs WHERE created_at > NOW() - INTERVAL '7 days' GROUP BY 1 ORDER BY 1 DESC;" | psql 2>/dev/null
+echo ""
+echo "=== ai_usage_logs ==="
+echo "SELECT count(*) FROM ai_usage_logs;" | psql -t 2>/dev/null
+echo ""
+echo "=== ai_settings ==="
+echo "SELECT * FROM ai_settings LIMIT 1;" | psql 2>/dev/null
+
+echo ""
+echo "████ 5. MR. DOBODY GUIDANCE SİSTEMİ ████"
+
+echo "=== Dobody guidance dosyaları ==="
+find server -name "*dobody*" -o -name "*Dobody*" -o -name "*guidance*" | sort
+for f in $(find server -name "*dobody*" -o -name "*guidance*" -type f 2>/dev/null | head -5); do
+  echo "  $(wc -l < "$f") — $(basename $f)"
+done
+
+echo ""
+echo "=== Dobody frontend bileşenleri ==="
+find client/src -name "*dobody*" -o -name "*Dobody*" | sort
+for f in $(find client/src -name "*Dobody*" -name "*.tsx" 2>/dev/null); do
+  echo "  $(wc -l < "$f") — $(basename $f)"
+done
+
+echo ""
+echo "=== Dobody API endpoint'leri ==="
+grep -rn "router\.\(get\|post\).*dobody\|router\.\(get\|post\).*guidance\|router\.\(get\|post\).*briefing" server/routes/ --include="*.ts" | head -10
+
+echo ""
+echo "████ 6. KPI SIGNAL RULES (AI tetikleyicileri) ████"
+
+echo "=== kpi_signal_rules ==="
+echo "SELECT * FROM kpi_signal_rules;" | psql 2>/dev/null
+
+echo ""
+echo "████ 7. CROSS-MODULE ANALYZER (Sprint 7) ████"
+
+echo "=== Cross-module analyzer ==="
+find server -name "*cross*module*" -o -name "*correlation*" | sort
+for f in $(find server -name "*cross*module*" -type f 2>/dev/null); do
+  echo "  $(wc -l < "$f") — $(basename $f)"
+done
+
+echo ""
+echo "=== Insight API ==="
+grep -rn "router\.\(get\|post\).*insight" server/routes/ --include="*.ts" | head -5
+
+echo ""
+echo "████ 8. MEVCUT AI-POWERED ÖZELLİKLER ████"
+
+echo "=== AI Asistan sayfası ==="
+wc -l client/src/pages/ai-asistan.tsx 2>/dev/null
+echo ""
+echo "=== AI ile üretilen içerik ==="
+grep -rn "generateAI\|aiGenerate\|aiAssist\|openai.*chat\|GPT" server/ --include="*.ts" | head -15
+
+echo ""
+echo "████ 9. NOTIFICATION OLUŞTURMA NOKTLARI ████"
+
+echo "=== createNotification fonksiyonu tanımı ==="
+grep -rn "function createNotification\|async function.*createNotif\|export.*createNotif" server/ --include="*.ts" | head -5
+echo ""
+echo "--- Çağrıldığı yerler (ilk 20) ---"
+grep -rn "createNotification\|addNotification" server/ --include="*.ts" | grep -v "function\|import\|export\|interface\|type" | head -20
+
+echo ""
+echo "████ 10. MEVCUT DASHBOARD DATA API'LERİ ████"
+
+echo "=== Dashboard API'leri (Sprint 9) ==="
+grep -rn "router\.\(get\|post\).*dashboard" server/routes/ --include="*.ts" | head -15
+echo ""
+echo "--- executive API response shape ---"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/ai.txt > /dev/null 2>&1
+curl -s -b /tmp/ai.txt "http://localhost:5000/api/dashboard/executive" | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log('Keys:', Object.keys(d));
+  if(d.kpis) console.log('KPIs:', Object.keys(d.kpis));
+  if(d.alerts) console.log('Alerts:', d.alerts.length);
+  if(d.trends) console.log('Trends:', Object.keys(d.trends));
+  if(d.branchComparison) console.log('Branches:', d.branchComparison.length);
+} catch(e) { console.log('PARSE_ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. Skill dosyaları var mı, nerede, kaç tane, aktif çalışıyor mu?"
+echo "2. Agent scheduler ne sıklıkta ne çalıştırıyor?"
+echo "3. OpenAI API aktif mi, hangi model, günlük kaç çağrı?"
+echo "4. Mr. Dobody guidance: mevcut akış, frontend bileşen"
+echo "5. Cross-module analyzer çalışıyor mu?"
+echo "6. createNotification kaç yerde çağrılıyor?"
+echo "7. Dashboard executive API hangi veriyi dönüyor?"
+echo "8. Eksik/kırık AI bileşenleri"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```
