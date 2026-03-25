@@ -88,7 +88,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
   return (
     <>
     <div className="flex-shrink-0 z-50 bg-background border-b">
-      <div className="px-3 py-2 border-b bg-[#122549] dark:bg-[#122549] flex items-center gap-3 relative">
+      <div className="px-3 py-2 border-b bg-sidebar flex items-center gap-3 relative">
         
         <div className="flex items-center gap-1 flex-shrink-0">
           <div className={hideHamburgerOnMobile ? 'hidden' : 'md:hidden'}>

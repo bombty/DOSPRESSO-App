@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -74,14 +74,26 @@ const PATTERN_PRESETS = [
 ];
 
 const FONT_OPTIONS = [
-  { name: "Inter", value: "Inter, sans-serif" },
-  { name: "Poppins", value: "'Poppins', sans-serif" },
-  { name: "Playfair", value: "'Playfair Display', serif" },
-  { name: "Bebas Neue", value: "'Bebas Neue', sans-serif" },
-  { name: "Rubik", value: "'Rubik', sans-serif" },
-  { name: "Lora", value: "'Lora', serif" },
-  { name: "Montserrat", value: "'Montserrat', sans-serif" },
+  { name: "Inter", value: "Inter, sans-serif", gfName: "Inter" },
+  { name: "Poppins", value: "'Poppins', sans-serif", gfName: "Poppins" },
+  { name: "Playfair", value: "'Playfair Display', serif", gfName: "Playfair+Display" },
+  { name: "Bebas Neue", value: "'Bebas Neue', sans-serif", gfName: "Bebas+Neue" },
+  { name: "Rubik", value: "'Rubik', sans-serif", gfName: "Rubik" },
+  { name: "Lora", value: "'Lora', serif", gfName: "Lora" },
+  { name: "Montserrat", value: "'Montserrat', sans-serif", gfName: "Montserrat" },
 ];
+
+const loadedFonts = new Set<string>(["Inter"]);
+
+function loadGoogleFont(fontName: string) {
+  const option = FONT_OPTIONS.find((f) => f.value.includes(fontName) || f.name === fontName);
+  if (!option || loadedFonts.has(option.name)) return;
+  loadedFonts.add(option.name);
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = `https://fonts.googleapis.com/css2?family=${option.gfName}:wght@400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+}
 
 type TextEffect = {
   shadow: boolean;
@@ -295,7 +307,10 @@ export default function BannerEditor() {
   const [validFrom, setValidFrom] = useState<string>("");
   const [expiresAt, setExpiresAt] = useState<string>("");
 
-  // Fetch branches for targeting
+  useEffect(() => {
+    textElements.forEach((el) => loadGoogleFont(el.fontFamily));
+  }, [textElements]);
+
   const { data: branches, isLoading, isError, refetch } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
   });
@@ -1086,7 +1101,7 @@ export default function BannerEditor() {
                           <Label className="text-xs">Font Ailesi</Label>
                           <Select 
                             value={selectedText.fontFamily} 
-                            onValueChange={(v) => updateTextElement(selectedText.id, { fontFamily: v })}
+                            onValueChange={(v) => { loadGoogleFont(v); updateTextElement(selectedText.id, { fontFamily: v }); }}
                           >
                             <SelectTrigger data-testid="select-font-family">
                               <SelectValue />

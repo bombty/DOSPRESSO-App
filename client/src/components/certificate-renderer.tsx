@@ -1,4 +1,15 @@
+import { useEffect } from "react";
 import dospressoLogoCert from "@assets/IMG_7142_1773875710595.png";
+
+let _dancingScriptLoaded = false;
+function loadDancingScript() {
+  if (_dancingScriptLoaded) return;
+  _dancingScriptLoaded = true;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap";
+  document.head.appendChild(link);
+}
 
 export interface CertificateTemplate {
   id: string;
@@ -117,6 +128,7 @@ export function CertificateRenderer({
   customTitle,
   customDescription,
 }: CertificateProps) {
+  useEffect(() => { loadDancingScript(); }, []);
   const displayTitle = customTitle || template.title;
   const displayDescription = customDescription || template.description;
 
