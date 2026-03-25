@@ -276,3 +276,9 @@ id = "nhH_8BBzT19NI-scYHIOQ"
 uri = "file://.local/tasks/bildirim-sistemi-v2-audit-raporu.md"
 type = "text"
 title = "Bildirim Sistemi V2 — IT Denetim Raporu"
+
+[[outputs]]
+id = "3o6hiOpcvQxP1V445A9Wm"
+uri = "file://.local/sprint13-final-temizlik-audit.md"
+type = "text"
+title = "Sprint 13 Final Temizlik — IT Danışman Audit Raporu"
