@@ -222,9 +222,8 @@ Guncel veriler:
 Buyume odakli, stratejik ve aksiyona yonelik cevaplar ver. Turkce yanit ver.`;
 
       try {
-        const openai = (await import('./openai-client')).default;
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        const { chat } = await import('../services/ai-client');
+        const completion = await chat({
           messages: [
             { role: 'system', content: systemContext },
             { role: 'user', content: question }

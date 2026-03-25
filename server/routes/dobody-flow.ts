@@ -36,6 +36,7 @@ import {
   getFactorySuggestions,
   getTrainerSuggestions,
   getMuhasebeSuggestions,
+  filterSuggestionsForRole,
 } from "../lib/dobody-suggestions";
 
 const router = Router();
@@ -424,9 +425,10 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
   } catch {}
 
   try {
-    const suggestions = await getHQSuggestions();
-    if (suggestions.length > 0) {
-      const topSuggestion = suggestions[0];
+    const allSuggestions = await getHQSuggestions();
+    const filtered = filterSuggestionsForRole(allSuggestions, "ceo");
+    if (filtered.length > 0) {
+      const topSuggestion = filtered[0];
       flowTasks.push({
         id: `dobody-suggestion-${topSuggestion.id}`,
         title: "Mr. Dobody Önerisi",

@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import type { SkillInsight, EnrichedInsight, SkillContext } from "./skill-registry";
 
 const DOBODY_SYSTEM_PROMPT = `Sen DOSPRESSO kahve zincirinin AI asistanı Mr. Dobody'sin.
@@ -14,17 +13,6 @@ KURALLAR:
 - Finansal talimat verme
 - Maliyet düşürme önerileri kaliteyi düşürmemeli`;
 
-let openaiClient: OpenAI | null = null;
-
-function getOpenAI(): OpenAI | null {
-  if (!openaiClient) {
-    const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    if (!apiKey) return null;
-    openaiClient = new OpenAI({ apiKey });
-  }
-  return openaiClient;
-}
-
 export async function enrichInsightsWithAI(
   insights: SkillInsight[],
   context: SkillContext
@@ -35,10 +23,7 @@ export async function enrichInsightsWithAI(
   }
 
   try {
-    const client = getOpenAI();
-    if (!client) {
-      return insights.map((i) => ({ ...i, aiMessage: undefined }));
-    }
+    const { chat } = await import("../../services/ai-client");
 
     const insightDescriptions = aiInsights
       .map((i, idx) => `${idx + 1}. [${i.severity}] ${i.message}`)
@@ -53,8 +38,7 @@ Her bulgu için 1-2 cümlelik öneri ver. Numaralandırılmış olarak yanıt ve
 Bulgular:
 ${insightDescriptions}`;
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+    const response = await chat({
       messages: [
         { role: "system", content: DOBODY_SYSTEM_PROMPT },
         { role: "user", content: prompt },

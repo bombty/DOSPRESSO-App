@@ -5063,14 +5063,12 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(eq(feedbackCustomQuestions.id, id)).limit(1);
       if (!question) return res.status(404).json({ message: "Soru bulunamadı" });
 
-      const { OpenAI } = await import("openai");
-      const openai = new OpenAI();
+      const { chat } = await import("../services/ai-client");
       const prompt = `Translate the following Turkish survey question to these languages. Return ONLY a valid JSON object with keys: en, de, ar, zh, ko, fr. No markdown, no explanation.
 
 Turkish question: "${question.questionTr}"`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+      const completion = await chat({
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 500,

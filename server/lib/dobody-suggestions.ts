@@ -1340,3 +1340,35 @@ export async function getMarketingSuggestions(): Promise<DobodySuggestion[]> {
 
   return suggestions.slice(0, MAX_ROLE_SUGGESTIONS);
 }
+
+const OPERATIONAL_DETAIL_PATTERNS = [
+  /^branch-inactive-\d+$/,
+  /^coach-branch-inactive-\d+$/,
+  /^coach-compliance-branch-\d+$/,
+  /^stock-low-branch-\d+$/,
+  /^feedback-low-\d+$/,
+  /^training-overdue-branch-\d+$/,
+  /^score-dropping-/,
+  /^gate-ready-/,
+];
+
+function isOperationalDetail(suggestion: DobodySuggestion): boolean {
+  return OPERATIONAL_DETAIL_PATTERNS.some((p) => p.test(suggestion.id));
+}
+
+export function filterSuggestionsForRole(
+  suggestions: DobodySuggestion[],
+  role: string
+): DobodySuggestion[] {
+  if (role === "ceo") {
+    return suggestions.filter(
+      (s) => (s.priority === "critical" || s.priority === "high") && !isOperationalDetail(s)
+    );
+  }
+
+  if (role === "cgo") {
+    return suggestions.filter((s) => !isOperationalDetail(s));
+  }
+
+  return suggestions;
+}

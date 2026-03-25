@@ -72,14 +72,9 @@ router.post('/api/academy/ai-generate-onboarding', isAuthenticated, async (req, 
     const roleLabel = roleLabels[targetRole] || targetRole;
     const duration = durationDays || 60;
 
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI();
-    if (!openai) {
-      return res.status(503).json({ message: "AI servisi kullanılamıyor" });
-    }
+    const { chat } = await import('../services/ai-client');
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await chat({
       messages: [
         {
           role: "system",
@@ -170,14 +165,9 @@ router.post('/api/academy/ai-generate-program', isAuthenticated, async (req, res
       typePrompt = `${roleLabel} pozisyonu için ${scopeLabel} ortamında temel eğitim modülleri oluştur.`;
     }
 
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI();
-    if (!openai) {
-      return res.status(503).json({ message: "AI servisi kullanılamıyor" });
-    }
+    const { chat } = await import('../services/ai-client');
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await chat({
       messages: [
         {
           role: "system",
@@ -709,8 +699,7 @@ router.post('/api/academy/ai-assistant', isAuthenticated, async (req, res) => {
       console.warn("Database fetch warning:", dbError);
     }
 
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI();
+    const { chat } = await import('../services/ai-client');
 
     const systemPrompt = `Siz DOSPRESSO Academy Uzmanısınız. DOSPRESSO Academy'nin kariyer sisteminde uzmanlaşmış bir danışmandır.
 
@@ -741,8 +730,7 @@ Cevaplarınız kısa, faydalı ve türkçe olmalıdır.`;
       { role: "user", content: message }
     ];
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
+    const response = await chat({
       messages: [
         { role: "system", content: systemPrompt },
         ...messages
@@ -1864,13 +1852,7 @@ router.post('/api/academy/recipes/generate-marketing-preview', isAuthenticated, 
       return res.status(400).json({ message: "Reçete adı gerekli" });
     }
 
-    const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ message: "OpenAI API anahtarı yapılandırılmamış" });
-    }
-
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
+    const { chat } = await import('../services/ai-client');
 
     const systemPrompt = `Sen DOSPRESSO kahve zinciri için pazarlama içerik uzmanısın. Verilen reçete bilgilerine göre Türkçe olarak aşağıdaki içerikleri oluştur:
 1. **Pazarlama Metni** (marketingText): Müşteriye yönelik çekici, duygusal bir tanım cümlesi (1-2 cümle)
@@ -1889,8 +1871,7 @@ Etiketler: ${Array.isArray(tags) ? tags.join(', ') : 'Belirtilmemiş'}
 Kahve İçerir: ${hasCoffee ? 'Evet' : 'Hayır'}
 Süt İçerir: ${hasMilk ? 'Evet' : 'Hayır'}`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const response = await chat({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -1926,13 +1907,7 @@ router.post('/api/academy/recipes/:id/generate-marketing', isAuthenticated, asyn
       return res.status(404).json({ message: "Reçete bulunamadı" });
     }
 
-    const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ message: "OpenAI API anahtarı yapılandırılmamış" });
-    }
-
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
+    const { chat: chatAI } = await import('../services/ai-client');
 
     const systemPrompt = `Sen DOSPRESSO kahve zinciri için pazarlama içerik uzmanısın. Verilen reçete bilgilerine göre Türkçe olarak aşağıdaki içerikleri oluştur:
 1. **Pazarlama Metni** (marketingText): Müşteriye yönelik çekici, duygusal bir tanım cümlesi (1-2 cümle)
@@ -1950,8 +1925,7 @@ Kahve Türü: ${recipe.coffeeType || 'Belirtilmemiş'}
 Kahve İçerir: ${recipe.hasCoffee ? 'Evet' : 'Hayır'}
 Süt İçerir: ${recipe.hasMilk ? 'Evet' : 'Hayır'}`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const response = await chatAI({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -2586,8 +2560,7 @@ router.post('/api/academy/modules/:id/ai-enrich', isAuthenticated, async (req, r
     const [mod] = await db.select().from(trainingModules).where(eq(trainingModules.id, moduleId));
     if (!mod) return res.status(404).json({ message: "Modül bulunamadı" });
 
-    const OpenAI = (await import("openai")).default;
-    const openai = new OpenAI();
+    const { chat: chatAI } = await import('../services/ai-client');
 
     const prompt = `Sen bir kahve franchise eğitim içeriği yazarısın. DOSPRESSO markası için "${mod.title}" başlıklı bir eğitim modülü yazıyorsun.
 Açıklama: ${mod.description || 'Belirtilmemiş'}
@@ -2605,8 +2578,7 @@ JSON formatında döndür:
   "steps": [{"stepNumber": 1, "title": "Başlık", "content": "İçerik..."}, ...]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const completion = await chatAI({
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       temperature: 0.7,

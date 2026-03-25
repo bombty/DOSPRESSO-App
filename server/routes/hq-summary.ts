@@ -15,6 +15,7 @@ import {
 import { eq, and, sql, count, avg, sum, desc, ne, isNull } from "drizzle-orm";
 import {
   getHQSuggestions,
+  filterSuggestionsForRole,
   getTrainerSuggestions,
   getMuhasebeSuggestions,
   getKaliteKontrolSuggestions,
@@ -188,6 +189,8 @@ router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
       const skillInsights = await getLatestSkillInsights(userId, userRole);
       suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
     } catch {}
+
+    suggestions = filterSuggestionsForRole(suggestions, userRole);
 
     res.json({
       branchStatus: {

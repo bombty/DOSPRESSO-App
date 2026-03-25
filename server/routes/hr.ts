@@ -1396,8 +1396,8 @@ JSON formatında yanıt ver:
 
 En az 5 satış cümlesi ve 5 soru-cevap oluştur. Türkçe olmalı.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const { chat } = await import('../services/ai-client');
+      const response = await chat({
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.7,
@@ -1457,8 +1457,8 @@ JSON formatında yanıt ver:
 
 Türkçe ve profesyonel olmalı.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const { chat: chatAI2 } = await import('../services/ai-client');
+      const response = await chatAI2({
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.7,
@@ -1510,8 +1510,8 @@ JSON formatında yanıt ver:
 
 Türkçe, samimi ve çağdaş bir dil kullan.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const { chat: chatAI3 } = await import('../services/ai-client');
+      const response = await chatAI3({
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.8,
@@ -1576,8 +1576,8 @@ JSON formatında yanıt ver:
 
 4 farklı senaryo oluştur. Türkçe ve gerçekçi olmalı.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const { chat: chatAI4 } = await import('../services/ai-client');
+      const response = await chatAI4({
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.8,
@@ -5430,8 +5430,7 @@ DOSPRESSO İnsan Kaynakları Ekibi`
       const currentParams = paramResult.rows[0] as any;
       const year = currentParams.year;
 
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI();
+      const { chat: chatAI } = await import('../services/ai-client');
 
       const currentParamsText = `
 Mevcut Bordro Parametreleri (${year} Yılı):
@@ -5452,8 +5451,7 @@ Mevcut Bordro Parametreleri (${year} Yılı):
 - Yol Muafiyeti (Günlük): ${(currentParams.transport_allowance_exempt_daily / 100).toFixed(2)} TL
 `;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const response = await chatAI({
         messages: [
           {
             role: "system",
