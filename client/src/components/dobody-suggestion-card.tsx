@@ -74,19 +74,7 @@ function DobodySuggestionItem({
     >
       <p className="text-sm flex-1">{s.message}</p>
 
-      {s.actionType === "send_notification" && targetId && onAction && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isPending}
-          onClick={handleAction}
-          data-testid={`btn-action-${s.id}`}
-        >
-          {s.actionLabel}
-        </Button>
-      )}
-
-      {s.actionType === "send_notification" && !targetId && s.payload?.branchId && onAction && (
+      {(s.actionType === "send_notification" || s.actionType === "send_message") && onAction && (targetId || s.payload?.branchId || s.payload?.branchNames) && (
         <Button
           size="sm"
           variant="outline"

@@ -28,6 +28,7 @@ import dobodyTaskManagerRoutes from "./routes/dobody-task-manager";
 import insightReportRoutes from "./routes/insight-reports";
 import dashboardDataRoutes from "./routes/dashboard-data-routes";
 import productionPlanningRoutes from "./routes/production-planning-routes";
+import dobodyGenerateMessageRoutes from "./routes/dobody-generate-message";
 import employeeSummaryRoutes from "./routes/employee-summary";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -1208,6 +1209,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(insightReportRoutes);
   app.use(dashboardDataRoutes);
   app.use(productionPlanningRoutes);
+  app.use(dobodyGenerateMessageRoutes);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);

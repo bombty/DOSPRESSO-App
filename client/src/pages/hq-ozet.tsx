@@ -8,16 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { SmartNotificationDialog } from "@/components/smart-notification-dialog";
 import {
   Building2,
   AlertTriangle,
@@ -29,7 +20,6 @@ import {
   ExternalLink,
   Star,
   TrendingUp,
-  Bell,
   MessageSquare,
   GraduationCap,
   Store,
@@ -118,7 +108,8 @@ export default function HQOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
-  const [pendingAction, setPendingAction] = useState<{ suggestion: DobodySuggestion; actionPayload: any } | null>(null);
+  const [smartNotifOpen, setSmartNotifOpen] = useState(false);
+  const [smartNotifSuggestion, setSmartNotifSuggestion] = useState<DobodySuggestion | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-summary"],
@@ -135,7 +126,6 @@ export default function HQOzet() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      setPendingAction(null);
       if (data?.details) {
         const d = data.details;
         const time = d.sentAt ? new Date(d.sentAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -149,33 +139,26 @@ export default function HQOzet() {
       queryClient.invalidateQueries({ queryKey: ["/api/hq-summary"] });
     },
     onError: () => {
-      setPendingAction(null);
       toast({ title: "Hata", description: "İşlem gerçekleştirilemedi", variant: "destructive" });
     },
   });
 
   const handleSuggestionAction = useCallback((s: DobodySuggestion) => {
-    const actionPayload: any = {
-      actionType: s.actionType,
-      suggestionId: s.id,
-      title: s.actionLabel,
-      message: s.message,
-      ...(s.targetUserId ? { targetUserId: s.targetUserId } : {}),
-      ...(s.payload ? { payload: s.payload } : {}),
-    };
-
-    if (s.actionType === "send_notification") {
-      setPendingAction({ suggestion: s, actionPayload });
+    if (s.actionType === "send_notification" || s.actionType === "send_message") {
+      setSmartNotifSuggestion(s);
+      setSmartNotifOpen(true);
     } else {
+      const actionPayload: any = {
+        actionType: s.actionType,
+        suggestionId: s.id,
+        title: s.actionLabel,
+        message: s.message,
+        ...(s.targetUserId ? { targetUserId: s.targetUserId } : {}),
+        ...(s.payload ? { payload: s.payload } : {}),
+      };
       quickAction.mutate(actionPayload);
     }
   }, [quickAction]);
-
-  const confirmSendNotification = useCallback(() => {
-    if (pendingAction) {
-      quickAction.mutate(pendingAction.actionPayload);
-    }
-  }, [pendingAction, quickAction]);
 
   if (modeLoading) {
     return (
@@ -411,35 +394,20 @@ export default function HQOzet() {
         </Link>
       </div>
 
-      <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
-        <AlertDialogContent data-testid="dialog-confirm-notification">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Bildirim Gönder
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm">
-                <p>{pendingAction?.suggestion.message}</p>
-                <div className="p-3 rounded-md bg-muted/50 space-y-1">
-                  <p className="font-medium">{pendingAction?.actionPayload.title || "Hatırlatma"}</p>
-                  <p className="text-muted-foreground">{pendingAction?.actionPayload.message || "Lütfen kontrol ediniz."}</p>
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="btn-cancel-notification">Vazgeç</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmSendNotification}
-              disabled={quickAction.isPending}
-              data-testid="btn-confirm-notification"
-            >
-              {quickAction.isPending ? "Gönderiliyor..." : "Gönder"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SmartNotificationDialog
+        open={smartNotifOpen}
+        onOpenChange={setSmartNotifOpen}
+        suggestion={smartNotifSuggestion ? {
+          id: smartNotifSuggestion.id,
+          message: smartNotifSuggestion.message,
+          actionLabel: smartNotifSuggestion.actionLabel,
+          priority: smartNotifSuggestion.priority,
+          targetUserId: smartNotifSuggestion.targetUserId,
+          payload: smartNotifSuggestion.payload,
+          branchId: smartNotifSuggestion.payload?.branchId,
+          branchName: smartNotifSuggestion.payload?.branchName,
+        } : null}
+      />
     </div>
   );
 }

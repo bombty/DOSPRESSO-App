@@ -308,20 +308,40 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
       .groupBy(checklistCompletions.branchId);
 
     const activeSet = new Set(activeBranchChecklist.map((r) => r.branchId));
+    const inactiveBranches: string[] = [];
 
     for (const branch of activeBranches) {
-      if (suggestions.length >= MAX_SUGGESTIONS) break;
       if (!activeSet.has(branch.id)) {
-        suggestions.push({
-          id: `branch-inactive-${branch.id}`,
-          message: `${branch.name} son 2 gündür checklist aktivitesi yok. İletişime geçin.`,
-          actionType: "send_notification",
-          actionLabel: "Bildirim Gönder",
-          targetUserId: undefined,
-          payload: { branchId: branch.id, type: "branch_inactive_alert", route: `/subeler/${branch.id}` },
-          priority: "high",
-          icon: "AlertTriangle",
-        });
+        inactiveBranches.push(branch.name);
+      }
+    }
+
+    if (inactiveBranches.length >= 3 && suggestions.length < MAX_SUGGESTIONS) {
+      suggestions.push({
+        id: `consolidated-inactive-checklist`,
+        message: `${inactiveBranches.length} şubede 2+ gündür checklist yapılmıyor: ${inactiveBranches.slice(0, 3).join(", ")}${inactiveBranches.length > 3 ? ` ve ${inactiveBranches.length - 3} şube daha` : ""}. Toplu aksiyon alın.`,
+        actionType: "send_notification",
+        actionLabel: "Toplu Bildirim Gönder",
+        targetUserId: undefined,
+        payload: { type: "consolidated_inactive_alert", branchNames: inactiveBranches },
+        priority: "critical",
+        icon: "AlertTriangle",
+      });
+    } else {
+      for (const branch of activeBranches) {
+        if (suggestions.length >= MAX_SUGGESTIONS) break;
+        if (!activeSet.has(branch.id)) {
+          suggestions.push({
+            id: `branch-inactive-${branch.id}`,
+            message: `${branch.name} son 2 gündür checklist aktivitesi yok. İletişime geçin.`,
+            actionType: "send_notification",
+            actionLabel: "Bildirim Gönder",
+            targetUserId: undefined,
+            payload: { branchId: branch.id, type: "branch_inactive_alert", route: `/subeler/${branch.id}` },
+            priority: "high",
+            icon: "AlertTriangle",
+          });
+        }
       }
     }
 
@@ -353,6 +373,46 @@ export async function getHQSuggestions(): Promise<DobodySuggestion[]> {
         priority: "critical",
         icon: "TrendingDown",
       });
+    }
+
+    try {
+      const { supportTickets } = await import("@shared/schema");
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+      const openComplianceByBranch = await db
+        .select({
+          branchId: supportTickets.branchId,
+          branchName: branches.name,
+          ticketCount: count(),
+        })
+        .from(supportTickets)
+        .innerJoin(branches, eq(supportTickets.branchId, branches.id))
+        .where(
+          and(
+            sql`${supportTickets.ticketType} = 'compliance'`,
+            eq(supportTickets.isDeleted, false),
+            sql`${supportTickets.status} IN ('acik', 'islemde', 'beklemede')`,
+            lte(supportTickets.createdAt, fiveDaysAgo)
+          )
+        )
+        .groupBy(supportTickets.branchId, branches.name);
+
+      if (openComplianceByBranch.length >= 2 && suggestions.length < MAX_SUGGESTIONS) {
+        const branchNames = openComplianceByBranch.map(b => b.branchName).slice(0, 3);
+        const totalTickets = openComplianceByBranch.reduce((s, b) => s + Number(b.ticketCount), 0);
+        suggestions.push({
+          id: `consolidated-compliance-aging`,
+          message: `${openComplianceByBranch.length} şubede 5+ gündür açık uygunsuzluk kaydı var (toplam ${totalTickets} kayıt): ${branchNames.join(", ")}${openComplianceByBranch.length > 3 ? " ve diğerleri" : ""}. Takip gerekli.`,
+          actionType: "redirect",
+          actionLabel: "CRM Uygunsuzlukları Gör",
+          payload: { route: "/hq-destek?ticketType=compliance", type: "consolidated_compliance" },
+          priority: "high",
+          icon: "AlertTriangle",
+        });
+      }
+    } catch (complianceError) {
+      console.error("Compliance consolidation error:", complianceError);
     }
   } catch (error) {
     console.error("getHQSuggestions error:", error);
@@ -434,6 +494,114 @@ export async function getCoachSuggestions(userId: string): Promise<DobodySuggest
     }
   } catch (error) {
     console.error("getCoachSuggestions error:", error);
+  }
+
+  try {
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const twoDaysAgoStr = twoDaysAgo.toISOString().split("T")[0];
+
+    const activeBranchesCoach = await db
+      .select({ id: branches.id, name: branches.name })
+      .from(branches)
+      .where(eq(branches.isActive, true));
+
+    const activeBranchChecklistCoach = await db
+      .select({
+        branchId: checklistCompletions.branchId,
+        cnt: count(),
+      })
+      .from(checklistCompletions)
+      .where(gte(checklistCompletions.scheduledDate, twoDaysAgoStr))
+      .groupBy(checklistCompletions.branchId);
+
+    const activeSetCoach = new Set(activeBranchChecklistCoach.map((r) => r.branchId));
+    const inactiveBranchesCoach: Array<{ id: number; name: string }> = [];
+
+    for (const branch of activeBranchesCoach) {
+      if (!activeSetCoach.has(branch.id)) {
+        inactiveBranchesCoach.push({ id: branch.id, name: branch.name });
+      }
+    }
+
+    if (inactiveBranchesCoach.length >= 3 && suggestions.length < MAX_SUGGESTIONS) {
+      const branchNames = inactiveBranchesCoach.map(b => b.name);
+      suggestions.push({
+        id: `coach-consolidated-inactive-checklist`,
+        message: `${inactiveBranchesCoach.length} şubede 2+ gündür checklist yapılmıyor: ${branchNames.slice(0, 3).join(", ")}${branchNames.length > 3 ? ` ve ${branchNames.length - 3} şube daha` : ""}. Toplu aksiyon alın.`,
+        actionType: "send_notification",
+        actionLabel: "Toplu Bildirim Gönder",
+        payload: { type: "consolidated_inactive_alert", branchNames },
+        priority: "critical",
+        icon: "AlertTriangle",
+      });
+    } else {
+      for (const branch of inactiveBranchesCoach) {
+        if (suggestions.length >= MAX_SUGGESTIONS) break;
+        suggestions.push({
+          id: `coach-branch-inactive-${branch.id}`,
+          message: `${branch.name} son 2 gündür checklist aktivitesi yok. İletişime geçin.`,
+          actionType: "send_notification",
+          actionLabel: "Bildirim Gönder",
+          payload: { branchId: branch.id, branchName: branch.name, type: "branch_inactive_alert" },
+          priority: "high",
+          icon: "AlertTriangle",
+        });
+      }
+    }
+  } catch (checklistError) {
+    console.error("Coach checklist consolidation error:", checklistError);
+  }
+
+  try {
+    const { supportTickets } = await import("@shared/schema");
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+    const openComplianceByBranch = await db
+      .select({
+        branchId: supportTickets.branchId,
+        branchName: branches.name,
+        ticketCount: count(),
+      })
+      .from(supportTickets)
+      .innerJoin(branches, eq(supportTickets.branchId, branches.id))
+      .where(
+        and(
+          sql`${supportTickets.ticketType} = 'compliance'`,
+          eq(supportTickets.isDeleted, false),
+          sql`${supportTickets.status} IN ('acik', 'islemde', 'beklemede')`,
+          lte(supportTickets.createdAt, fiveDaysAgo)
+        )
+      )
+      .groupBy(supportTickets.branchId, branches.name);
+
+    if (openComplianceByBranch.length >= 2 && suggestions.length < MAX_SUGGESTIONS) {
+      const branchNames = openComplianceByBranch.map(b => b.branchName).slice(0, 3);
+      const totalTickets = openComplianceByBranch.reduce((s, b) => s + Number(b.ticketCount), 0);
+      suggestions.push({
+        id: `coach-compliance-aging`,
+        message: `${openComplianceByBranch.length} şubede 5+ gündür açık uygunsuzluk kaydı var (toplam ${totalTickets} kayıt): ${branchNames.join(", ")}${openComplianceByBranch.length > 3 ? " ve diğerleri" : ""}. Koç olarak takip önerilir.`,
+        actionType: "redirect",
+        actionLabel: "Uygunsuzlukları İncele",
+        payload: { route: "/hq-destek?ticketType=compliance", type: "consolidated_compliance" },
+        priority: "high",
+        icon: "AlertTriangle",
+      });
+    } else if (openComplianceByBranch.length === 1 && suggestions.length < MAX_SUGGESTIONS) {
+      const item = openComplianceByBranch[0];
+      suggestions.push({
+        id: `coach-compliance-branch-${item.branchId}`,
+        message: `${item.branchName} şubesinde ${item.ticketCount} açık uygunsuzluk kaydı 5+ gündür bekliyor.`,
+        actionType: "send_notification",
+        actionLabel: "Bildirim Gönder",
+        payload: { branchId: item.branchId, branchName: item.branchName, route: `/subeler/${item.branchId}` },
+        priority: "high",
+        icon: "AlertTriangle",
+      });
+    }
+  } catch (complianceError) {
+    console.error("Coach compliance consolidation error:", complianceError);
   }
 
   return suggestions.slice(0, MAX_SUGGESTIONS);

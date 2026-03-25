@@ -10,6 +10,7 @@ import {
   monthlyEmployeePerformance,
   managerMonthlyRatings,
   staffQrRatings,
+  supportTickets,
 } from "@shared/schema";
 
 const router = Router();
@@ -106,11 +107,28 @@ const router = Router();
           ? ((managerRating.averageRating || 0) / 5) * w.managerRatingWeight
           : 0;
         
-        // Leave deduction (simplified)
         const leaveDeduction = 0;
-        
+
+        let complianceDeduction = 0;
+        if (emp.branchId) {
+          try {
+            const [compRow] = await db
+              .select({ cnt: count() })
+              .from(supportTickets)
+              .where(
+                and(
+                  eq(supportTickets.branchId, emp.branchId),
+                  sql`${supportTickets.ticketType} = 'compliance'`,
+                  eq(supportTickets.isDeleted, false),
+                  sql`${supportTickets.status} IN ('acik', 'islemde', 'beklemede')`
+                )
+              );
+            complianceDeduction = Math.min(Number(compRow?.cnt ?? 0) * 3, 15);
+          } catch {}
+        }
+
         const totalScore = attendanceScore + checklistScore + taskScore +
-          customerRatingScore + managerRatingScore - leaveDeduction;
+          customerRatingScore + managerRatingScore - leaveDeduction - complianceDeduction;
         
         // Upsert performance record
         await db.insert(monthlyEmployeePerformance).values({

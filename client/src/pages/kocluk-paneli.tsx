@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
-import { DobodyActionDialog } from "@/components/dobody-action-dialog";
+import { SmartNotificationDialog } from "@/components/smart-notification-dialog";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { QuickTaskModal } from "@/components/quick-task-modal";
 import { Bot } from "lucide-react";
@@ -189,7 +189,7 @@ export default function KoclukPaneli() {
         allowedBranchIds={data.branches.map((b) => b.id)}
       />
 
-      <DobodyActionDialog
+      <SmartNotificationDialog
         open={actionDialogOpen}
         onOpenChange={setActionDialogOpen}
         suggestion={actionSuggestion ? {

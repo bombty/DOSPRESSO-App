@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DEPARTMENTS, getDeptConfig, getPriorityConfig, getStatusConfig } from "./categoryConfig";
 import { TicketDetailSheet } from "./TicketDetailSheet";
@@ -22,17 +23,37 @@ interface TicketRow {
   assigned_to_name: string | null;
 }
 
+interface BranchOption {
+  id: number;
+  name: string;
+}
+
 export default function TicketsTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
+  const { data: branchOptions = [] } = useQuery<BranchOption[]>({
+    queryKey: ["/api/branches"],
+    queryFn: async () => {
+      const res = await fetch("/api/branches", { credentials: "include" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data.map((b: any) => ({ id: b.id, name: b.name })) : [];
+    },
+    staleTime: 60000,
+  });
+
   const { data: tickets = [], isLoading } = useQuery<TicketRow[]>({
-    queryKey: ["/api/iletisim/tickets", statusFilter, deptFilter],
+    queryKey: ["/api/iletisim/tickets", statusFilter, deptFilter, typeFilter, branchFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== "all" && statusFilter !== "sla") params.set("status", statusFilter);
       if (deptFilter !== "all") params.set("department", deptFilter);
+      if (typeFilter !== "all") params.set("ticketType", typeFilter);
+      if (branchFilter !== "all") params.set("branchId", branchFilter);
       const res = await fetch(`/api/iletisim/tickets?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
@@ -110,6 +131,38 @@ export default function TicketsTab() {
             {f.label}
           </Button>
         ))}
+        <div className="h-5 w-px bg-border mx-1" />
+        {[
+          { key: "all", label: "Tüm Tipler" },
+          { key: "compliance", label: "Uygunsuzluk" },
+          { key: "franchise_talep", label: "Franchise Talep" },
+        ].map(f => (
+          <Button
+            key={`type-${f.key}`}
+            size="sm"
+            variant={typeFilter === f.key ? "default" : "outline"}
+            onClick={() => setTypeFilter(f.key)}
+            className="toggle-elevate"
+            data-testid={`filter-type-${f.key}`}
+          >
+            {f.label}
+          </Button>
+        ))}
+        {branchOptions.length > 0 && (
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="w-[140px] h-8 text-xs" data-testid="select-branch-filter">
+              <SelectValue placeholder="Şube Filtrele" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" data-testid="branch-filter-all">Tüm Şubeler</SelectItem>
+              {branchOptions.map(b => (
+                <SelectItem key={b.id} value={String(b.id)} data-testid={`branch-filter-${b.id}`}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card>

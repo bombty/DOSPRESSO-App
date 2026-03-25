@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
-import { eq, sum } from "drizzle-orm";
+import { eq, and, count, sum, sql } from "drizzle-orm";
 import {
   branches,
   users,
   checklists,
   checklistCompletions,
+  supportTickets,
 } from "@shared/schema";
 
 const router = Router();
@@ -32,7 +33,25 @@ const router = Router();
       const hqStaff = allUsers.filter(u => hqRoles.includes(u.role || '') && !u.branchId);
       const branchSupervisors = allUsers.filter(u => u.role === 'supervisor');
 
-      const getPerformanceMetrics = (userId: string) => {
+      const branchComplianceCounts = new Map<number, number>();
+      try {
+        const complianceRows = await db
+          .select({ branchId: supportTickets.branchId, openCount: count() })
+          .from(supportTickets)
+          .where(
+            and(
+              sql`${supportTickets.ticketType} = 'compliance'`,
+              eq(supportTickets.isDeleted, false),
+              sql`${supportTickets.status} IN ('acik', 'islemde', 'beklemede')`
+            )
+          )
+          .groupBy(supportTickets.branchId);
+        for (const row of complianceRows) {
+          if (row.branchId) branchComplianceCounts.set(row.branchId, Number(row.openCount));
+        }
+      } catch {}
+
+      const getPerformanceMetrics = (userId: string, userBranchId?: number | null) => {
         const assignedFaults = allFaults.filter(f => f.assignedToId === userId);
         const resolvedFaults = assignedFaults.filter(f => f.status === 'resolved' || f.status === 'closed');
         const userChecklists = allChecklists.filter((c) => c.completedBy === userId);
@@ -50,14 +69,18 @@ const router = Router();
         const avgResponseHours = responseTimes.length > 0 ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : 0;
         const avgResponseTime = avgResponseHours < 1 ? `${Math.round(avgResponseHours * 60)}dk` : `${avgResponseHours.toFixed(1)}sa`;
 
+        const openComplianceTickets = userBranchId ? (branchComplianceCounts.get(userBranchId) || 0) : 0;
+        const compliancePenalty = Math.min(openComplianceTickets * 5, 20);
+
         return {
           assignedFaults: assignedFaults.length,
           resolvedFaults: resolvedFaults.length,
           faultResolutionRate,
           checklistsCompleted: userChecklists.length,
-          overallScore: Math.min(100, Math.round(faultResolutionRate * 0.6 + Math.min(userChecklists.length * 2, 40))),
+          overallScore: Math.min(100, Math.max(0, Math.round(faultResolutionRate * 0.6 + Math.min(userChecklists.length * 2, 40) - compliancePenalty))),
           slaComplianceRate,
           avgResponseTime: responseTimes.length > 0 ? avgResponseTime : undefined,
+          openComplianceTickets,
         };
       };
 
@@ -86,7 +109,7 @@ const router = Router();
         hireDate: u.hireDate,
         type: 'hq' as const,
         branchName: null as string | null,
-        metrics: getPerformanceMetrics(u.id),
+        metrics: getPerformanceMetrics(u.id, u.branchId),
       }));
 
       const supervisorManagers = branchSupervisors.map(u => {
@@ -103,7 +126,7 @@ const router = Router();
           type: 'branch' as const,
           branchName: branch?.name || 'Bilinmiyor',
           branchId: u.branchId,
-          metrics: getPerformanceMetrics(u.id),
+          metrics: getPerformanceMetrics(u.id, u.branchId),
         };
       });
 

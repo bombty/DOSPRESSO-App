@@ -193,6 +193,55 @@ router.get('/api/branches/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+router.get('/api/branches/:branchId/recipients', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) {
+      return res.status(400).json({ message: "Geçersiz şube ID" });
+    }
+
+    if (user.role && isBranchRole(user.role as UserRoleType)) {
+      if (!user.branchId || Number(user.branchId) !== branchId) {
+        return res.status(403).json({ message: "Bu şubenin alıcılarını görme yetkiniz yok" });
+      }
+    }
+
+    const ROLE_LABELS: Record<string, string> = {
+      supervisor: "Supervisor",
+      supervisor_buddy: "Yardımcı Supervisor",
+      mudur: "Şube Müdürü",
+      yatirimci_branch: "Yatırımcı (Şube)",
+      yatirimci_hq: "Yatırımcı (Merkez)",
+    };
+
+    const targetRoles = ["supervisor", "supervisor_buddy", "mudur", "yatirimci_branch", "yatirimci_hq"];
+    const recipients = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.branchId, branchId),
+          eq(users.isActive, true),
+          inArray(users.role, targetRoles)
+        )
+      );
+
+    res.json(recipients.map(r => ({
+      name: [r.firstName, r.lastName].filter(Boolean).join(" ") || "Bilinmiyor",
+      role: ROLE_LABELS[r.role || ""] || r.role || "Bilinmiyor",
+    })));
+  } catch (error: any) {
+    console.error("Branch recipients error:", error);
+    res.status(500).json({ message: "Alıcılar alınırken hata oluştu" });
+  }
+});
+
 router.get('/api/branches/:branchId/detail', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;

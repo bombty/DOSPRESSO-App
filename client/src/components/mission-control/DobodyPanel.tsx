@@ -22,7 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { DobodyActionDialog } from "@/components/dobody-action-dialog";
+import { SmartNotificationDialog } from "@/components/smart-notification-dialog";
 
 const CATEGORY_ICONS: Record<string, typeof Users> = {
   personnel: Users,
@@ -223,7 +223,7 @@ export function DobodyPanel() {
           )}
         </div>
       </ScrollArea>
-      <DobodyActionDialog
+      <SmartNotificationDialog
         open={actionDialogOpen}
         onOpenChange={setActionDialogOpen}
         suggestion={actionItem ? {

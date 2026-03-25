@@ -10,6 +10,7 @@ import {
   tasks,
   userCareerProgress,
   users,
+  supportTickets,
 } from "@shared/schema";
 import { eq, and, gte, lte, sql, count, avg, inArray, isNotNull } from "drizzle-orm";
 import { isModuleEnabled } from "./module-flag-service";
@@ -22,6 +23,7 @@ const COMPONENT_MODULE_MAP: Record<string, string[]> = {
   opsHygiene: ["gorevler"],
   customerSatisfaction: ["crm"],
   branchTasks: ["sube_gorevleri"],
+  compliance: ["crm"],
 };
 
 async function isComponentEnabled(componentKey: string, branchId: number): Promise<boolean> {
@@ -60,14 +62,15 @@ export interface BranchHealthReport {
   branches: BranchHealthEntry[];
 }
 
-const WEIGHTS = {
-  inspections: 0.19,
-  complaints: 0.19,
-  equipment: 0.16,
-  training: 0.12,
-  opsHygiene: 0.11,
-  customerSatisfaction: 0.11,
-  branchTasks: 0.12,
+const WEIGHTS: Record<string, number> = {
+  inspections: 0.17,
+  complaints: 0.17,
+  equipment: 0.14,
+  training: 0.11,
+  opsHygiene: 0.10,
+  customerSatisfaction: 0.10,
+  branchTasks: 0.11,
+  compliance: 0.10,
 };
 
 function neutralComponent(key: string, label: string, weight: number): ComponentScore {
@@ -286,7 +289,24 @@ async function scoreTraining(branchId: number, rangeDays: number): Promise<Compo
       const atRisk = careerRows.filter(r => Number(r.compositeScore ?? 0) < 40).length;
       const riskPenalty = Math.min(atRisk * 10, 30);
 
-      const score = clamp(avgComposite * 0.6 + quizParticipationRate * 25 + 15 - riskPenalty);
+      let compliancePenalty = 0;
+      try {
+        const [compRows] = await db
+          .select({ openCount: count() })
+          .from(supportTickets)
+          .where(
+            and(
+              eq(supportTickets.branchId, branchId),
+              sql`${supportTickets.ticketType} = 'compliance'`,
+              eq(supportTickets.isDeleted, false),
+              sql`${supportTickets.status} IN ('acik', 'islemde', 'beklemede')`
+            )
+          );
+        const openCompliance = Number(compRows?.openCount ?? 0);
+        compliancePenalty = Math.min(openCompliance * 5, 15);
+      } catch {}
+
+      const score = clamp(avgComposite * 0.6 + quizParticipationRate * 25 + 15 - riskPenalty - compliancePenalty);
 
       const notes: string[] = [];
       notes.push(`${careerRows.length} personel kariyer verisi`);
@@ -294,6 +314,7 @@ async function scoreTraining(branchId: number, rangeDays: number): Promise<Compo
       notes.push(`Quiz katılım: %${Math.round(quizParticipationRate * 100)}`);
       if (avgQuiz > 0) notes.push(`Ort. quiz skoru: ${Math.round(avgQuiz)}`);
       if (atRisk > 0) notes.push(`${atRisk} personel risk altında (< 40 puan)`);
+      if (compliancePenalty > 0) notes.push(`Açık uygunsuzluk cezası: -${compliancePenalty}`);
 
       return { key, label, score, weight, notes, evidenceCount: careerRows.length };
     }
@@ -371,12 +392,30 @@ async function scoreOpsHygiene(branchId: number, rangeDays: number): Promise<Com
     const overduePenalty = Math.min(overdue * 6, 35);
     const pendingPenalty = Math.min(pending * 2, 15);
 
-    const score = clamp(completionRate * 60 + 40 - overduePenalty - pendingPenalty);
+    let compliancePenalty = 0;
+    try {
+      const [compRows] = await db
+        .select({ openCount: count() })
+        .from(supportTickets)
+        .where(
+          and(
+            eq(supportTickets.branchId, branchId),
+            sql`${supportTickets.ticketType} = 'compliance'`,
+            eq(supportTickets.isDeleted, false),
+            sql`${supportTickets.status} IN ('acik', 'islemde', 'beklemede')`
+          )
+        );
+      const openCompliance = Number(compRows?.openCount ?? 0);
+      compliancePenalty = Math.min(openCompliance * 4, 12);
+    } catch {}
+
+    const score = clamp(completionRate * 60 + 40 - overduePenalty - pendingPenalty - compliancePenalty);
 
     const notes: string[] = [];
     notes.push(`${total} görev, ${completed} tamamlandı`);
     if (overdue > 0) notes.push(`${overdue} gecikmiş/başarısız görev`);
     if (pending > 0) notes.push(`${pending} bekleyen görev`);
+    if (compliancePenalty > 0) notes.push(`Uygunsuzluk cezası: -${compliancePenalty}`);
 
     return { key, label, score, weight, notes, evidenceCount: total };
   } catch {
@@ -600,6 +639,104 @@ export async function calculateBranchTaskScore(
   };
 }
 
+async function scoreCompliance(branchId: number, rangeDays: number): Promise<ComponentScore> {
+  const key = "compliance";
+  const label = "Uygunsuzluk Durumu";
+  const weight = WEIGHTS.compliance;
+
+  try {
+    const { from, to } = dateRange(rangeDays);
+
+    const [rows] = await db
+      .select({
+        total: count(),
+        openCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.status} IN ('acik', 'islemde', 'beklemede'))`,
+        criticalCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.priority} IN ('kritik', 'yuksek') AND ${supportTickets.status} IN ('acik', 'islemde', 'beklemede'))`,
+        resolvedCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.status} IN ('cozuldu', 'kapatildi'))`,
+        oldOpenCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.status} IN ('acik', 'islemde', 'beklemede') AND ${supportTickets.createdAt} < NOW() - INTERVAL '7 days')`,
+      })
+      .from(supportTickets)
+      .where(
+        and(
+          eq(supportTickets.branchId, branchId),
+          sql`${supportTickets.ticketType} = 'compliance'`,
+          eq(supportTickets.isDeleted, false),
+          gte(supportTickets.createdAt, from),
+          lte(supportTickets.createdAt, to)
+        )
+      );
+
+    const total = Number(rows?.total ?? 0);
+    if (total === 0) {
+      return { key, label, score: 100, weight, notes: ["Uygunsuzluk kaydı yok"], evidenceCount: 0 };
+    }
+
+    const openCount = Number(rows?.openCount ?? 0);
+    const criticalCount = Number(rows?.criticalCount ?? 0);
+    const resolvedCount = Number(rows?.resolvedCount ?? 0);
+    const oldOpenCount = Number(rows?.oldOpenCount ?? 0);
+
+    const openPenalty = Math.min(openCount * 12, 40);
+    const criticalPenalty = Math.min(criticalCount * 10, 25);
+    const agingPenalty = Math.min(oldOpenCount * 8, 20);
+    const resolutionBonus = total > 0 ? (resolvedCount / total) * 15 : 0;
+
+    const score = clamp(100 - openPenalty - criticalPenalty - agingPenalty + resolutionBonus);
+
+    const notes: string[] = [];
+    notes.push(`${total} uygunsuzluk kaydı, ${openCount} açık`);
+    if (criticalCount > 0) notes.push(`${criticalCount} yüksek/kritik öncelikli`);
+    if (oldOpenCount > 0) notes.push(`${oldOpenCount} kayıt 7+ gündür açık`);
+    if (resolvedCount > 0) notes.push(`${resolvedCount} çözüldü`);
+
+    return { key, label, score, weight, notes, evidenceCount: total };
+  } catch {
+    return neutralComponent(key, label, weight);
+  }
+}
+
+async function scoreCompliancePrev(branchId: number, rangeDays: number): Promise<ComponentScore> {
+  const key = "compliance";
+  const label = "Uygunsuzluk Durumu";
+  const weight = WEIGHTS.compliance;
+
+  try {
+    const { from, to } = dateRange(rangeDays, rangeDays);
+
+    const [rows] = await db
+      .select({
+        total: count(),
+        openCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.status} IN ('acik', 'islemde', 'beklemede'))`,
+        criticalCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.priority} IN ('kritik', 'yuksek') AND ${supportTickets.status} IN ('acik', 'islemde', 'beklemede'))`,
+        resolvedCount: sql<number>`COUNT(*) FILTER (WHERE ${supportTickets.status} IN ('cozuldu', 'kapatildi'))`,
+      })
+      .from(supportTickets)
+      .where(
+        and(
+          eq(supportTickets.branchId, branchId),
+          sql`${supportTickets.ticketType} = 'compliance'`,
+          eq(supportTickets.isDeleted, false),
+          gte(supportTickets.createdAt, from),
+          lte(supportTickets.createdAt, to)
+        )
+      );
+
+    const total = Number(rows?.total ?? 0);
+    if (total === 0) {
+      return { key, label, score: 100, weight, notes: [], evidenceCount: 0 };
+    }
+
+    const openCount = Number(rows?.openCount ?? 0);
+    const criticalCount = Number(rows?.criticalCount ?? 0);
+    const resolvedCount = Number(rows?.resolvedCount ?? 0);
+
+    const score = clamp(100 - Math.min(openCount * 12, 40) - Math.min(criticalCount * 10, 25) + (total > 0 ? (resolvedCount / total) * 15 : 0));
+    return { key, label, score, weight, notes: [], evidenceCount: total };
+  } catch {
+    return neutralComponent(key, label, weight);
+  }
+}
+
 async function computeTotalForBranch(branchId: number, rangeDays: number): Promise<number> {
   const scoreFns: { key: string; fn: () => Promise<ComponentScore> }[] = [
     { key: "inspections", fn: () => scoreInspections(branchId, rangeDays) },
@@ -609,6 +746,7 @@ async function computeTotalForBranch(branchId: number, rangeDays: number): Promi
     { key: "opsHygiene", fn: () => scoreOpsHygiene(branchId, rangeDays) },
     { key: "customerSatisfaction", fn: () => scoreCustomerSatisfaction(branchId, rangeDays) },
     { key: "branchTasks", fn: () => scoreBranchTasks(branchId, rangeDays) },
+    { key: "compliance", fn: () => scoreCompliance(branchId, rangeDays) },
   ];
 
   const enabledChecks = await Promise.all(
@@ -678,6 +816,7 @@ export async function computeBranchHealthScores(options: {
         { key: "opsHygiene", fn: () => scoreOpsHygiene(branch.id, rangeDays) },
         { key: "customerSatisfaction", fn: () => scoreCustomerSatisfaction(branch.id, rangeDays) },
         { key: "branchTasks", fn: () => scoreBranchTasks(branch.id, rangeDays) },
+        { key: "compliance", fn: () => scoreCompliance(branch.id, rangeDays) },
       ];
 
       const enabledChecks = await Promise.all(
@@ -706,6 +845,7 @@ export async function computeBranchHealthScores(options: {
           scoreOpsHygienePrev(branch.id, rangeDays),
           scoreCustomerSatisfactionPrev(branch.id, rangeDays),
           scoreBranchTasksPrev(branch.id, rangeDays),
+          scoreCompliancePrev(branch.id, rangeDays),
         ]);
         const prevTotal = clamp(
           prevComponents.reduce((sum, c) => sum + c.score * c.weight, 0)
