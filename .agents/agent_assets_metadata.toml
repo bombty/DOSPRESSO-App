@@ -282,3 +282,9 @@ id = "3o6hiOpcvQxP1V445A9Wm"
 uri = "file://.local/sprint13-final-temizlik-audit.md"
 type = "text"
 title = "Sprint 13 Final Temizlik — IT Danışman Audit Raporu"
+
+[[outputs]]
+id = "MFMN6l_pJ0Ga4ZvU8MeVH"
+uri = "file://.local/dashboard-personalization-audit.md"
+type = "text"
+title = "Dashboard Personalizasyon — Güncel Durum Tespit Raporu"

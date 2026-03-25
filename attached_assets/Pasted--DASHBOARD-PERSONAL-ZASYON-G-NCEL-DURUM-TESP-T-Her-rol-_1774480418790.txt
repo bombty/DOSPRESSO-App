@@ -1,0 +1,238 @@
+# DASHBOARD PERSONALİZASYON — GÜNCEL DURUM TESPİTİ
+# Her rolün giriş sayfasında NE gördüğünü tam tespit et
+# DEĞİŞİKLİK YAPMA, SADECE ARAŞTIR VE RAPORLA
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "HER ROLÜN GİRİŞ SAYFASI — GÜNCEL DURUM"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. ROUTE AKIŞI — KİM NEREYE YÖNLENDİRİLİYOR ████"
+
+echo "=== dashboard.tsx — ana dallanma ==="
+grep -n "HQ_ROLES\|BRANCH_ROLES\|FACTORY_ROLES\|STAFF_ROLES\|HQDashboard\|BranchDashboard\|role\|case" client/src/pages/dashboard.tsx | head -30
+
+echo ""
+echo "=== hq-ozet.tsx — MC toggle + DashboardRouter ==="
+grep -n "DashboardRouter\|useDashboardMode\|isMissionControl\|isClassic\|mode" client/src/pages/hq-ozet.tsx | head -15
+
+echo ""
+echo "=== DashboardRouter — rol → MC bileşen eşleştirme ==="
+cat client/src/components/mission-control/DashboardRouter.tsx 2>/dev/null
+
+echo ""
+echo "████ 2. HER MC BİLEŞENİNİN TAM İÇERİĞİ ████"
+
+echo ""
+echo "═══ 2A: MissionControlHQ (CEO/CGO/Admin) ═══"
+echo "--- Satır: $(wc -l < client/src/components/mission-control/MissionControlHQ.tsx) ---"
+echo "--- Section'lar (CollapsibleSection + Card + heading) ---"
+grep -n "CollapsibleSection\|<Card\|heading\|title=\|<h[23]\|section\|Section\|widget\|Widget" client/src/components/mission-control/MissionControlHQ.tsx | head -30
+echo ""
+echo "--- API çağrıları ---"
+grep -n "useQuery\|queryKey\|/api/" client/src/components/mission-control/MissionControlHQ.tsx | head -15
+echo ""
+echo "--- İçerik sırası (return JSX) ---"
+grep -n "Briefing\|KPI\|Alert\|Görev\|Task\|Şube\|Branch\|Fabrika\|Factory\|İK\|HR\|QC\|Quick\|Hızlı\|Dobody\|Mali\|Finance\|Trend\|Chart\|Müşteri\|Customer\|Eğitim\|Training\|Stok\|Stock\|CRM" client/src/components/mission-control/MissionControlHQ.tsx | head -25
+
+echo ""
+echo "═══ 2B: MissionControlCoach (Coach/Trainer) ═══"
+echo "--- Satır: $(wc -l < client/src/components/mission-control/MissionControlCoach.tsx) ---"
+grep -n "CollapsibleSection\|title=\|UnifiedKPI\|heading\|section" client/src/components/mission-control/MissionControlCoach.tsx | head -20
+echo ""
+grep -n "useQuery\|queryKey\|/api/" client/src/components/mission-control/MissionControlCoach.tsx | head -10
+
+echo ""
+echo "═══ 2C: MissionControlSupervisor (Supervisor/Müdür) ═══"
+echo "--- Satır: $(wc -l < client/src/components/mission-control/MissionControlSupervisor.tsx) ---"
+grep -n "CollapsibleSection\|Card\|title=\|heading\|section\|KPI\|Presence\|Staff\|Quick\|Shift\|Vardiya\|Personel\|Checklist\|Arıza\|Fault" client/src/components/mission-control/MissionControlSupervisor.tsx | head -25
+echo ""
+grep -n "useQuery\|queryKey\|/api/" client/src/components/mission-control/MissionControlSupervisor.tsx | head -10
+
+echo ""
+echo "═══ 2D: MissionControlMuhasebe (Muhasebe/Muhasebe_İK) ═══"
+echo "--- Satır: $(wc -l < client/src/components/mission-control/MissionControlMuhasebe.tsx 2>/dev/null) ---"
+grep -n "CollapsibleSection\|Card\|title=\|heading\|section\|KPI\|Bordro\|Payroll\|İzin\|Leave\|Maaş\|Salary\|Gider\|Expense" client/src/components/mission-control/MissionControlMuhasebe.tsx 2>/dev/null | head -20
+echo ""
+grep -n "useQuery\|queryKey\|/api/" client/src/components/mission-control/MissionControlMuhasebe.tsx 2>/dev/null | head -10
+
+echo ""
+echo "═══ 2E: MissionControlStajyer (Barista/Stajyer/Bar Buddy) ═══"
+echo "--- Satır: $(wc -l < client/src/components/mission-control/MissionControlStajyer.tsx) ---"
+grep -n "CollapsibleSection\|Card\|title=\|heading\|section\|KPI\|Eğitim\|Training\|Skor\|Badge\|Rozet\|Career\|Kariyer\|Görev\|Task" client/src/components/mission-control/MissionControlStajyer.tsx | head -20
+
+echo ""
+echo "═══ 2F: MissionControlFabrika (Fabrika Müdür/Üretim Şefi) ═══"
+echo "--- Satır: $(wc -l < client/src/components/mission-control/MissionControlFabrika.tsx 2>/dev/null) ---"
+grep -n "CollapsibleSection\|Card\|title=\|heading\|section\|KPI\|Üretim\|Production\|Vardiya\|Shift\|İstasyon\|Station\|QC\|Kalite\|Quality\|Fire\|Waste" client/src/components/mission-control/MissionControlFabrika.tsx 2>/dev/null | head -20
+echo ""
+grep -n "useQuery\|queryKey\|/api/" client/src/components/mission-control/MissionControlFabrika.tsx 2>/dev/null | head -10
+
+echo ""
+echo "████ 3. KLASİK DASHBOARD (hq-ozet klasik modu) ████"
+
+echo "=== Klasik modda ne görünüyor? ==="
+grep -n "isClassic\|classic.*mode\|klasik" client/src/pages/hq-ozet.tsx | head -10
+echo ""
+echo "--- Klasik moddaki widget/section listesi ---"
+grep -n "DashboardWidgets\|CardGridHub\|QuickAccess\|shortcut\|widget\|Widget" client/src/pages/hq-ozet.tsx | head -15
+
+echo ""
+echo "████ 4. ŞUBE DASHBOARD (BranchDashboard) ████"
+
+echo "=== BranchDashboard bileşeni ==="
+find client/src -name "*BranchDashboard*" -o -name "*branch-dashboard*" | sort
+for f in $(find client/src -name "*BranchDashboard*" -name "*.tsx" 2>/dev/null | head -3); do
+  echo "--- $(basename $f) — $(wc -l < "$f") satır ---"
+  grep -n "KPI\|Card\|section\|widget\|Alert\|Quick\|Personel\|Checklist\|Vardiya\|Arıza\|Müşteri\|Stok" "$f" | head -15
+done
+
+echo ""
+echo "████ 5. YATIRIMCI DENEYIMI ████"
+
+echo "=== HQ Yatırımcı hangi dashboard'u görüyor? ==="
+grep -n "yatirimci_hq\|yatirimci\|investor" client/src/components/mission-control/DashboardRouter.tsx | head -5
+echo ""
+echo "=== Branch Yatırımcı hangi dashboard'u görüyor? ==="
+grep -n "yatirimci_branch\|investor.*branch" client/src/components/mission-control/DashboardRouter.tsx | head -5
+echo ""
+echo "--- Yatırımcıya özel bileşen var mı? ---"
+find client/src -name "*yatirimci*" -o -name "*investor*" | sort
+
+echo ""
+echo "████ 6. WIDGET TOGGLE / CONFİG SİSTEMİ ████"
+
+echo "=== Admin widget sayfaları ==="
+find client/src/pages/admin -name "*widget*" -o -name "*dashboard*" | sort
+echo ""
+echo "--- dashboard_widgets DB durumu ---"
+echo "SELECT id, title, widget_type, is_active FROM dashboard_widgets;" | psql 2>/dev/null
+echo ""
+echo "--- dashboard_widget_items DB durumu ---"
+echo "SELECT id, title, type, target_roles, is_active, display_order FROM dashboard_widget_items ORDER BY display_order;" | psql 2>/dev/null
+
+echo ""
+echo "████ 7. MR. DOBODY PANELİ GÖRÜNÜRLÜĞİ ████"
+
+echo "=== DobodyPanel hangi dashboard'larda? ==="
+grep -rln "DobodyPanel\|DobodyMobile\|dobody-panel\|dobody-mini" client/src/components/mission-control/ --include="*.tsx" | sort
+echo ""
+echo "--- Collapsible mı? Varsayılan açık mı kapalı mı? ---"
+grep -n "collapse\|isOpen\|defaultOpen\|toggle\|visible" client/src/components/DobodyPanel.tsx 2>/dev/null | head -10
+
+echo ""
+echo "████ 8. HIZLI ERİŞİM KARTLARI ████"
+
+echo "=== Her MC bileşenindeki quick action/nav ==="
+echo "--- HQ ---"
+grep -n "Quick\|quick\|Hızlı\|hızlı\|shortcut\|navigate\|Link.*href\|to=" client/src/components/mission-control/MissionControlHQ.tsx | grep -i "akad\|sube\|rapor\|crm\|iletisim\|fabrika\|vardiya\|görev\|task\|stok" | head -10
+echo "--- Coach ---"
+grep -n "Quick\|quick\|Hızlı\|shortcut\|navigate\|Link.*href" client/src/components/mission-control/MissionControlCoach.tsx | head -10
+echo "--- Supervisor ---"
+grep -n "Quick\|quick\|Hızlı\|shortcut\|navigate\|Link.*href" client/src/components/mission-control/MissionControlSupervisor.tsx | head -10
+
+echo ""
+echo "████ 9. MOBİL GÖRÜNÜM FARKLI MI? ████"
+
+echo "=== Hidden/block responsive (mobilde farklı gösterim) ==="
+echo "--- HQ ---"
+grep -c "hidden.*md:block\|md:hidden\|sm:hidden\|lg:hidden" client/src/components/mission-control/MissionControlHQ.tsx
+echo "--- Coach ---"
+grep -c "hidden.*md:block\|md:hidden\|sm:hidden\|lg:hidden" client/src/components/mission-control/MissionControlCoach.tsx
+echo "--- Supervisor ---"
+grep -c "hidden.*md:block\|md:hidden\|sm:hidden\|lg:hidden" client/src/components/mission-control/MissionControlSupervisor.tsx
+
+echo ""
+echo "████ 10. MEVCUT ROL LİSTESİ + KULLANICI SAYISI ████"
+
+echo "SELECT role, count(*) as user_count FROM users WHERE is_active=true GROUP BY role ORDER BY user_count DESC;" | psql 2>/dev/null
+
+echo ""
+echo "████ 11. HER ROL İÇİN İLGİLİ MODÜLLER ████"
+
+echo "=== Sidebar menü — her rol kaç menü öğesi görüyor? ==="
+for ROLE in ceo cgo admin coach trainer supervisor mudur barista stajyer muhasebe_ik fabrika_mudur uretim_sefi yatirimci_branch yatirimci_hq satinalma marketing kalite_kontrol gida_muhendisi; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" -c /tmp/dash_${ROLE}.txt > /dev/null 2>&1
+    MENU=$(curl -s -b /tmp/dash_${ROLE}.txt "http://localhost:5000/api/me/menu" 2>/dev/null | node -e "
+      try {
+        const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+        let total=0;
+        const sections=[];
+        d.forEach(s => {
+          if(s.items) { total+=s.items.length; sections.push(s.label+'('+s.items.length+')'); }
+        });
+        console.log(total+' öğe: '+sections.join(', '));
+      } catch(e) { console.log('?'); }
+    " 2>/dev/null)
+    echo "  $ROLE ($USER): $MENU"
+  fi
+done
+
+echo ""
+echo "████ 12. DASHBOARD API RESPONSE — HER ROL İÇİN ████"
+
+echo "=== CEO dashboard verisi ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"ali","password":"0000"}' -c /tmp/dash_ceo2.txt > /dev/null 2>&1
+curl -s -b /tmp/dash_ceo2.txt "http://localhost:5000/api/dashboard/executive" 2>/dev/null | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    console.log('Keys:', Object.keys(d));
+    if(d.kpis) console.log('KPIs:', Object.keys(d.kpis));
+    if(d.alerts) console.log('Alerts:', d.alerts.length);
+  } catch(e) { console.log('PARSE ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== Coach dashboard verisi ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"yavuz","password":"0000"}' -c /tmp/dash_coach2.txt > /dev/null 2>&1
+curl -s -b /tmp/dash_coach2.txt "http://localhost:5000/api/dashboard/coach" 2>/dev/null | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    console.log('Keys:', Object.keys(d));
+  } catch(e) { console.log('PARSE ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== Supervisor/Branch dashboard verisi ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"mehmet","password":"0000"}' -c /tmp/dash_sup2.txt > /dev/null 2>&1
+curl -s -b /tmp/dash_sup2.txt "http://localhost:5000/api/dashboard/branch/5" 2>/dev/null | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    console.log('Keys:', Object.keys(d));
+  } catch(e) { console.log('PARSE ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== Fabrika dashboard verisi ==="
+curl -s -b /tmp/dash_ceo2.txt "http://localhost:5000/api/dashboard/factory" 2>/dev/null | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    console.log('Keys:', Object.keys(d));
+  } catch(e) { console.log('PARSE ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPORLA — HER ROL İÇİN:"
+echo ""
+echo "ROL: [rol adı]"
+echo "  Giriş sayfası: [hangi bileşen]"
+echo "  Gördüğü section'lar: [liste]"
+echo "  API kaynağı: [endpoint]"
+echo "  CollapsibleSection var mı: evet/hayır"
+echo "  Dobody panel var mı: evet/hayır"
+echo "  Quick action var mı: evet/hayır"
+echo "  Kendini İLGİLENDİRMEYEN section'lar: [liste]"
+echo "  Kendini İLGİLENDİREN ama EKSİK section'lar: [liste]"
+echo ""
+echo "GENEL DEĞERLENDİRME:"
+echo "  - Hangi roller aynı dashboard'u paylaşıyor?"
+echo "  - Hangi roller için özel dashboard gerekiyor?"
+echo "  - Widget toggle sistemi aktif mi?"
+echo "  - Yatırımcı deneyimi yeterli mi?"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```
