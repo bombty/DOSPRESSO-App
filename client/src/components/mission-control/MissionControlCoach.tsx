@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DashboardModeToggle } from "./DashboardModeToggle";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import DateRangeFilter, { type PeriodType } from "@/components/dashboard/DateRangeFilter";
 import EmptyStateCard from "@/components/dashboard/EmptyStateCard";
 import { TodaysTasksWidget } from "@/components/widgets/todays-tasks-widget";
@@ -78,15 +78,15 @@ export default function MissionControlCoach() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const kpiItems = useMemo((): KpiItem[] => {
+  const kpiItems = useMemo((): KPIItem[] => {
     const d = data;
     return [
-      { value: d?.myBranches?.length?.toString() ?? "—", label: "Şubelerim", color: "#0284c7" },
-      { value: d?.myBranches?.reduce((s, b) => s + b.staffCount, 0)?.toString() ?? "—", label: "Personel", color: "#6366f1" },
-      { value: d?.trainingOverview?.totalCompletions?.toString() ?? "—", label: "Eğitim Tamamlama", color: "#16a34a" },
-      { value: d?.trainingOverview?.avgQuizScore ? `${d.trainingOverview.avgQuizScore}` : "—", label: "Ort. Quiz", color: (d?.trainingOverview?.avgQuizScore ?? 0) >= 70 ? "#16a34a" : "#d97706" },
-      { value: d?.myBranches?.reduce((s, b) => s + b.openFaults, 0)?.toString() ?? "0", label: "Açık Arıza", color: (d?.myBranches?.reduce((s, b) => s + b.openFaults, 0) ?? 0) > 0 ? "#dc2626" : "#16a34a" },
-      { value: d?.myBranches?.reduce((s, b) => s + b.openTickets, 0)?.toString() ?? "0", label: "Açık Ticket", color: (d?.myBranches?.reduce((s, b) => s + b.openTickets, 0) ?? 0) > 0 ? "#d97706" : "#16a34a" },
+      { value: d?.myBranches?.length?.toString() ?? "—", label: "Şubelerim", color: "info" as const },
+      { value: d?.myBranches?.reduce((s, b) => s + b.staffCount, 0)?.toString() ?? "—", label: "Personel", color: "info" as const },
+      { value: d?.trainingOverview?.totalCompletions?.toString() ?? "—", label: "Eğitim Tamamlama", color: "success" as const },
+      { value: d?.trainingOverview?.avgQuizScore ? `${d.trainingOverview.avgQuizScore}` : "—", label: "Ort. Quiz", color: (d?.trainingOverview?.avgQuizScore ?? 0) >= 70 ? "success" as const : "warning" as const },
+      { value: d?.myBranches?.reduce((s, b) => s + b.openFaults, 0)?.toString() ?? "0", label: "Açık Arıza", color: (d?.myBranches?.reduce((s, b) => s + b.openFaults, 0) ?? 0) > 0 ? "danger" as const : "success" as const },
+      { value: d?.myBranches?.reduce((s, b) => s + b.openTickets, 0)?.toString() ?? "0", label: "Açık Ticket", color: (d?.myBranches?.reduce((s, b) => s + b.openTickets, 0) ?? 0) > 0 ? "warning" as const : "success" as const },
     ];
   }, [data]);
 
@@ -131,7 +131,7 @@ export default function MissionControlCoach() {
 
       <DateRangeFilter period={period} onPeriodChange={handlePeriodChange} data-testid="mc-coach-date-filter" />
 
-      <DashboardKpiStrip items={kpiItems} />
+      <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
 
       {data?.actionRequired && data.actionRequired.length > 0 && (
         <Card className="border-amber-500/30" data-testid="mc-coach-actions">

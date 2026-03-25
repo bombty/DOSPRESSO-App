@@ -118,7 +118,7 @@ export default function EquipmentAnalytics() {
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-page-title">
+        <h1 className="text-2xl font-semibold" data-testid="text-page-title">
           Ekipman Analitiği
         </h1>
         <p className="text-muted-foreground mt-1">Arıza trendleri, performans metrikleri ve ekipman güvenilirliği analizi</p>
@@ -134,7 +134,7 @@ export default function EquipmentAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{totalFaults}</div>
+            <div className="text-2xl font-bold">{totalFaults}</div>
             <p className="text-xs text-muted-foreground mt-1">Tüm kayıtlar</p>
           </CardContent>
         </Card>
@@ -147,7 +147,7 @@ export default function EquipmentAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-success">{resolutionRate}%</div>
+            <div className="text-2xl font-bold text-success">{resolutionRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">{resolvedFaults} çözüldü</p>
           </CardContent>
         </Card>
@@ -160,7 +160,7 @@ export default function EquipmentAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{avgResolutionTime.toFixed(1)}h</div>
+            <div className="text-2xl font-bold">{avgResolutionTime.toFixed(1)}h</div>
             <p className="text-xs text-muted-foreground mt-1">Kapalı arızalar</p>
           </CardContent>
         </Card>
@@ -173,7 +173,7 @@ export default function EquipmentAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-destructive">{faultsByPriority.kritik}</div>
+            <div className="text-2xl font-bold text-destructive">{faultsByPriority.kritik}</div>
             <p className="text-xs text-muted-foreground mt-1">Acil müdahale</p>
           </CardContent>
         </Card>

@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 
 const MONTHS = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",

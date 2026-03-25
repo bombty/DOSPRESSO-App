@@ -1,7 +1,7 @@
 import { CardGridHub } from "@/components/card-grid-hub";
 import { DashboardWidgets } from "@/components/dashboard-widgets";
 import { ModuleCard } from "@/components/module-card";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
 import { DashboardModeToggle } from "@/components/mission-control/DashboardModeToggle";
 import { DashboardRouter } from "@/components/mission-control/DashboardRouter";
@@ -55,13 +55,13 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const kpiItems = useMemo((): KpiItem[] => {
+  const kpiItems = useMemo((): KPIItem[] => {
     const kpis = branchSummary?.kpis;
     return [
       {
         value: kpis?.activeStaff?.toString() ?? '—',
         label: 'Aktif Personel',
-        color: undefined,
+        color: 'default' as const,
       },
       {
         value: kpis?.checklistCompletion != null
@@ -69,8 +69,8 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
           : '—',
         label: 'Checklist',
         color: kpis?.checklistCompletion != null && kpis.checklistCompletion < 70
-          ? '#dc2626'
-          : undefined,
+          ? 'danger' as const
+          : 'default' as const,
       },
       {
         value: kpis?.customerAvg != null && kpis.customerAvg > 0
@@ -78,13 +78,13 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
           : '—',
         label: 'Musteri Puani',
         color: kpis?.customerAvg != null && kpis.customerAvg > 0
-          ? (kpis.customerAvg < 3.5 ? '#dc2626' : '#16a34a')
-          : undefined,
+          ? (kpis.customerAvg < 3.5 ? 'danger' as const : 'success' as const)
+          : 'default' as const,
       },
       {
         value: kpis?.warnings != null ? kpis.warnings.toString() : '—',
         label: 'Uyari',
-        color: kpis?.warnings != null && kpis.warnings > 0 ? '#dc2626' : undefined,
+        color: kpis?.warnings != null && kpis.warnings > 0 ? 'danger' as const : 'default' as const,
       },
     ];
   }, [branchSummary]);
@@ -118,12 +118,12 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
 
   const BRANCH_MODULES = isBranchManager ? [
     { label: 'Akademi', sublabel: 'Dersler', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
-    { label: 'Gorevlerim', sublabel: 'Bugunku gorevler', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },
+    { label: 'Gorevlerim', sublabel: 'Bugunku gorevler', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />, gradient: 'bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900' },
     { label: 'Iletisim M.', sublabel: 'Talepler', path: '/hq-destek', icon: <MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />, gradient: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900' },
     { label: 'Raporlar', sublabel: 'Sube analiz', path: '/raporlar', icon: <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400" />, gradient: 'bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900' },
   ] : [
     { label: 'Akademi', sublabel: 'Dersler & Sertifika', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
-    { label: 'Gorevlerim', sublabel: 'Bugun', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-green-600 dark:text-green-400" />, gradient: 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900' },
+    { label: 'Gorevlerim', sublabel: 'Bugun', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />, gradient: 'bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900' },
     { label: 'Siralama', sublabel: 'Lider tablosu', path: '/akademi-leaderboard', icon: <Trophy className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />, gradient: 'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900' },
   ];
 
@@ -142,7 +142,7 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
           ) : (
             <>
               <DashboardAlertPills pills={alertPills} />
-              <DashboardKpiStrip items={kpiItems} />
+              <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={4} />
             </>
           )}
         </div>

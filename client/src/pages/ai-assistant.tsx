@@ -62,7 +62,7 @@ export default function AIAssistant() {
   return (
     <div className="flex flex-col gap-3 sm:gap-4 gap-2 sm:gap-3 max-w-6xl mx-auto">
       <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-page-title">AI Asistan</h1>
+        <h1 className="text-2xl font-semibold" data-testid="text-page-title">AI Asistan</h1>
         <p className="text-muted-foreground mt-1">Bilgi bankasından soru sorun ve anında cevap alın</p>
       </div>
 

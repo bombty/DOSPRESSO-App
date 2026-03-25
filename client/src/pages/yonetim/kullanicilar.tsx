@@ -250,7 +250,7 @@ export default function UserCRM() {
       <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">Kullanıcı Yönetimi</h1>
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">Kullanıcı Yönetimi</h1>
             <p className="text-muted-foreground">
               Tüm kullanıcıları görüntüle, filtrele ve toplu içe/dışa aktar
             </p>

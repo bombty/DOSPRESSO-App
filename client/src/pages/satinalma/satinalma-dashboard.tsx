@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 

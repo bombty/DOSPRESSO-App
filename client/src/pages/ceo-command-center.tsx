@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

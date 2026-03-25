@@ -210,7 +210,7 @@ export default function CashReports() {
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
             Günlük Cashier Raporları
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-description">

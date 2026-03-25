@@ -625,7 +625,7 @@ export default function AdminMenuManagement() {
   return (
     <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div className="flex justify-between items-center flex-wrap gap-2 sm:gap-3">
-        <h1 className="text-3xl font-bold">Menü Yönetimi</h1>
+        <h1 className="text-2xl font-bold">Menü Yönetimi</h1>
         <div className="flex gap-2">
           <Button 
             onClick={() => {

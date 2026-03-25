@@ -10,7 +10,7 @@ import { ArrowLeft, TrendingUp, Clock, CheckCircle2, AlertCircle, Users } from "
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 
 type BranchTaskStats = {
   totalTasks: number;
@@ -90,7 +90,7 @@ export default function SubeGorevlerPage() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold">Görev Performansı</h1>
+              <h1 className="text-2xl font-bold">Görev Performansı</h1>
               <p className="text-muted-foreground">Şube görev istatistikleri ve analitik</p>
             </div>
           </div>

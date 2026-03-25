@@ -924,13 +924,13 @@ export default function IKPage() {
                   <Card className="hover-elevate">
                     <CardContent className="p-3 space-y-1">
                       <p className="text-xs text-muted-foreground">Toplam Personel</p>
-                      <p className="text-xl sm:text-2xl font-bold">{filteredEmployees.length}</p>
+                      <p className="text-xl font-bold">{filteredEmployees.length}</p>
                     </CardContent>
                   </Card>
                   <Card className="hover-elevate">
                     <CardContent className="p-3 space-y-1">
                       <p className="text-xs text-muted-foreground">Deneme Süresinde</p>
-                      <p className="text-xl sm:text-2xl font-bold">
+                      <p className="text-xl font-bold">
                         {filteredEmployees.filter(e => e.probationEndDate && differenceInDays(new Date(e.probationEndDate), new Date()) >= 0).length}
                       </p>
                     </CardContent>
@@ -938,7 +938,7 @@ export default function IKPage() {
                   <Card className="hover-elevate">
                     <CardContent className="p-3 space-y-1">
                       <p className="text-xs text-muted-foreground">Eğitim Tamamlı</p>
-                      <p className="text-xl sm:text-2xl font-bold">
+                      <p className="text-xl font-bold">
                         {filteredEmployees.filter(e => {
                           const stats = userTrainingCompletion.get(e.id);
                           return stats && stats.total > 0 && stats.completed === stats.total;
@@ -949,7 +949,7 @@ export default function IKPage() {
                   <Card className="hover-elevate hidden sm:block">
                     <CardContent className="p-3 space-y-1">
                       <p className="text-xs text-muted-foreground">HQ Personel</p>
-                      <p className="text-xl sm:text-2xl font-bold">
+                      <p className="text-xl font-bold">
                         {filteredEmployees.filter(e => isHQRole(e.role as any)).length}
                       </p>
                     </CardContent>
@@ -1501,37 +1501,37 @@ export default function IKPage() {
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-total-employees">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Personel</p>
-                          <p className="text-xl sm:text-2xl font-bold">{attendanceTotals.totalEmployees}</p>
+                          <p className="text-xl font-bold">{attendanceTotals.totalEmployees}</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-total-hours">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Toplam Saat</p>
-                          <p className="text-xl sm:text-2xl font-bold">{(attendanceTotals.totalWorkedHours ?? 0).toFixed(1)}</p>
+                          <p className="text-xl font-bold">{(attendanceTotals.totalWorkedHours ?? 0).toFixed(1)}</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-overtime-hours">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Fazla Mesai</p>
-                          <p className="text-xl sm:text-2xl font-bold text-orange-600">{(attendanceTotals.totalOvertimeHours ?? 0).toFixed(1)}s</p>
+                          <p className="text-xl font-bold text-orange-600">{(attendanceTotals.totalOvertimeHours ?? 0).toFixed(1)}s</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-late-arrivals">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Geç Kalma</p>
-                          <p className="text-xl sm:text-2xl font-bold text-red-600">{attendanceTotals.totalLateArrivals}</p>
+                          <p className="text-xl font-bold text-red-600">{attendanceTotals.totalLateArrivals}</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-absences">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Devamsızlık</p>
-                          <p className="text-xl sm:text-2xl font-bold">{attendanceTotals.totalAbsences}</p>
+                          <p className="text-xl font-bold">{attendanceTotals.totalAbsences}</p>
                         </CardContent>
                       </Card>
                       <Card className="hover-elevate cursor-pointer" data-testid="stat-compliance">
                         <CardContent className="p-3 space-y-1 text-center">
                           <p className="text-xs text-muted-foreground">Uyum Skoru</p>
-                          <p className="text-xl sm:text-2xl font-bold text-green-600">{attendanceTotals.avgComplianceScore}%</p>
+                          <p className="text-xl font-bold text-green-600">{attendanceTotals.avgComplianceScore}%</p>
                         </CardContent>
                       </Card>
                     </div>

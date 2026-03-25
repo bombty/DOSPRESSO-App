@@ -511,7 +511,7 @@ export default function ModuleDetail() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="text-center">
-                          <p className="text-4xl font-bold" data-testid="text-quiz-score">%{quizScore.percentage}</p>
+                          <p className="text-2xl font-bold" data-testid="text-quiz-score">%{quizScore.percentage}</p>
                           <p className="text-sm text-muted-foreground mt-1">{quizScore.correct}/{quizScore.total} do\u011fru</p>
                         </div>
                         {quizTimeRemaining === 0 && trainingModule?.timeLimitMinutes && trainingModule?.timeLimitMinutes > 0 && (
@@ -680,7 +680,7 @@ export default function ModuleDetail() {
       <div>
         <div className="flex justify-between items-start gap-2 sm:gap-3">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">{trainingModule?.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{trainingModule?.title}</h1>
             <p className="text-muted-foreground mt-2">{trainingModule?.description}</p>
             <div className="flex gap-2 mt-4 flex-wrap">
               {trainingModule?.isPublished ? (

@@ -4,7 +4,7 @@ import { useParams, useLocation } from "wouter";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -608,7 +608,7 @@ export default function PersonelProfilPage() {
                       style={{ transition: "stroke-dashoffset 0.5s ease" }} />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className={`text-3xl font-bold ${scoreColor}`} data-testid="performance-score">
+                    <span className={`text-2xl font-bold ${scoreColor}`} data-testid="performance-score">
                       {overall.toFixed(0)}
                     </span>
                     <span className="text-xs text-muted-foreground">Genel Skor</span>

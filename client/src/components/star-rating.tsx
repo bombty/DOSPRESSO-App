@@ -159,7 +159,7 @@ export function CompositeScoreDisplay({
   const sizeClasses = {
     sm: "text-lg",
     md: "text-2xl",
-    lg: "text-3xl",
+    lg: "text-2xl",
   };
 
   return (

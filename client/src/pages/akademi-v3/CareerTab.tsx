@@ -119,7 +119,7 @@ export default function CareerTab() {
             <h2 className="font-semibold text-sm">Kariyer Puanı</h2>
           </div>
           <div className="text-center mb-3">
-            <div className="text-4xl font-bold text-foreground" data-testid="career-score">
+            <div className="text-2xl font-bold text-foreground" data-testid="career-score">
               {Math.round(compositeScore)}
             </div>
             <div className="text-xs text-muted-foreground">/100 puan</div>

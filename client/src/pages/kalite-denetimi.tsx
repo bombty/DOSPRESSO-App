@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { isHQRole } from "@shared/schema";
 import { Link } from "wouter";
 import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

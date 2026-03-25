@@ -245,7 +245,7 @@ export default function NewFaultReport() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-semibold">Yeni Arıza Bildir</h1>
+          <h1 className="text-2xl font-semibold">Yeni Arıza Bildir</h1>
           <p className="text-muted-foreground mt-1">Ekipman arızasını hızlı ve detaylı bir şekilde bildirin</p>
         </div>
       </div>

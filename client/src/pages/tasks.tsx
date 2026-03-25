@@ -27,7 +27,7 @@ import { Check, Clock, AlertCircle, CheckCircle2, PlayCircle, Search, X, Calenda
 import { format } from "date-fns";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { useModuleEnabled } from "@/hooks/use-module-flags";
 
 const TEMPLATE_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur", "supervisor"];
@@ -332,7 +332,7 @@ export default function Tasks() {
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 pb-24 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Görevler</h1>
+        <h1 className="text-xl font-semibold" data-testid="text-page-title">Görevler</h1>
         <div className="flex flex-wrap gap-2 items-center">
           {isHQ && (
             <Button size="sm" variant="outline" onClick={() => setShowFairnessDialog(true)} data-testid="button-fairness-report">

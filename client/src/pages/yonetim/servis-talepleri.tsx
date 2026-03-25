@@ -22,7 +22,7 @@ import machine4 from '@assets/stock_images/coffee_machine_equip_29a816b5.jpg';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 
 const STATUS_LABELS = {
   'talep_edildi': 'Talep Edildi',
@@ -483,7 +483,7 @@ export default function ServiceRequestsManagement() {
     <div className="container mx-auto p-3 lg:p-6 grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">Servis Talepleri</h1>
           <p className="text-muted-foreground mt-1">Ekipman bakım ve servis taleplerini yönetin</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} className="gap-2" data-testid="button-create-service-request">

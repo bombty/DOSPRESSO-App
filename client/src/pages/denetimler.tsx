@@ -146,7 +146,7 @@ export default function DenetimlerPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Denetimler</h1>
+          <h1 className="text-2xl font-bold">Denetimler</h1>
           <p className="text-muted-foreground">Şube denetimlerini görüntüleyin ve yeni denetim başlatın</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-audit">

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertTriangle, Clock, CheckCircle2, Wrench, Search, Building2, User, AlertCircle } from "lucide-react";
 import { EmptyStatePreset } from "@/components/empty-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { format, differenceInHours } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocation } from "wouter";

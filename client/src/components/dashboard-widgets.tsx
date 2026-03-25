@@ -77,7 +77,7 @@ function WidgetDataRenderer({ widget }: { widget: DashboardWidget }) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-3" data-testid={`widget-counter-${widget.id}`}>
         <Icon className={`h-5 w-5 ${colorClass} mb-1`} />
-        <div className="text-3xl font-bold">{value}{unit === "%" ? "%" : ""}</div>
+        <div className="text-2xl font-bold">{value}{unit === "%" ? "%" : ""}</div>
         <div className="text-xs text-muted-foreground mt-1">{label}</div>
       </div>
     );

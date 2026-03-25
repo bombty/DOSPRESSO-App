@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DashboardModeToggle } from "./DashboardModeToggle";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import DateRangeFilter, { type PeriodType } from "@/components/dashboard/DateRangeFilter";
 import TrendChart from "@/components/dashboard/TrendChart";
 import EmptyStateCard from "@/components/dashboard/EmptyStateCard";
@@ -76,13 +76,13 @@ export default function MissionControlMuhasebe() {
     return n.toLocaleString("tr-TR");
   };
 
-  const kpiItems = useMemo((): KpiItem[] => [
-    { value: data?.staffMetrics?.totalActive?.toString() ?? "—", label: "Aktif Personel", color: "#0284c7" },
-    { value: data?.payrollSummary?.currentMonth?.total ? `${fmt(data.payrollSummary.currentMonth.total)} TL` : "—", label: "Bu Ay Maaş", color: "#6366f1" },
-    { value: data?.costAnalysis?.perEmployee ? `${fmt(data.costAnalysis.perEmployee)} TL` : "—", label: "Kişi Başı Maliyet", color: "#d97706" },
-    { value: data?.staffMetrics?.pendingLeaves?.toString() ?? "0", label: "Bekleyen İzin", color: (data?.staffMetrics?.pendingLeaves ?? 0) > 0 ? "#d97706" : "#16a34a" },
-    { value: data?.staffMetrics?.pendingOvertimes?.toString() ?? "0", label: "Bekleyen Mesai", color: (data?.staffMetrics?.pendingOvertimes ?? 0) > 0 ? "#d97706" : "#16a34a" },
-    { value: data?.staffMetrics?.expiringDocuments?.toString() ?? "0", label: "Süresi Dolan Belge", color: (data?.staffMetrics?.expiringDocuments ?? 0) > 0 ? "#dc2626" : "#16a34a" },
+  const kpiItems = useMemo((): KPIItem[] => [
+    { value: data?.staffMetrics?.totalActive?.toString() ?? "—", label: "Aktif Personel", color: "info" as const },
+    { value: data?.payrollSummary?.currentMonth?.total ? `${fmt(data.payrollSummary.currentMonth.total)} TL` : "—", label: "Bu Ay Maaş", color: "info" as const },
+    { value: data?.costAnalysis?.perEmployee ? `${fmt(data.costAnalysis.perEmployee)} TL` : "—", label: "Kişi Başı Maliyet", color: "warning" as const },
+    { value: data?.staffMetrics?.pendingLeaves?.toString() ?? "0", label: "Bekleyen İzin", color: (data?.staffMetrics?.pendingLeaves ?? 0) > 0 ? "warning" as const : "success" as const },
+    { value: data?.staffMetrics?.pendingOvertimes?.toString() ?? "0", label: "Bekleyen Mesai", color: (data?.staffMetrics?.pendingOvertimes ?? 0) > 0 ? "warning" as const : "success" as const },
+    { value: data?.staffMetrics?.expiringDocuments?.toString() ?? "0", label: "Süresi Dolan Belge", color: (data?.staffMetrics?.expiringDocuments ?? 0) > 0 ? "danger" as const : "success" as const },
   ], [data]);
 
   const branchCostData = useMemo(() => {
@@ -134,7 +134,7 @@ export default function MissionControlMuhasebe() {
 
       <DateRangeFilter period={period} onPeriodChange={handlePeriodChange} data-testid="mc-muh-date-filter" />
 
-      <DashboardKpiStrip items={kpiItems} />
+      <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
 
       {data?.payrollSummary?.branchBreakdown && data.payrollSummary.branchBreakdown.length > 0 ? (
         <Card data-testid="mc-muh-payroll">

@@ -28,7 +28,7 @@ import {
   CartesianGrid, Tooltip, Legend, AreaChart, Area
 } from "recharts";
 import { ErrorState } from "../components/error-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { LoadingState } from "../components/loading-state";
 
 type PeriodType = "monthly" | "quarterly" | "yearly" | "all";
@@ -214,7 +214,7 @@ export default function MyPerformancePage() {
                   <CardContent className="pt-6">
                     <div className="flex flex-col items-center">
                       <Trophy className={`h-8 w-8 mb-2 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />
-                      <p className="text-3xl font-bold" data-testid="text-total-score">{totalScore.toFixed(1)}</p>
+                      <p className="text-2xl font-bold" data-testid="text-total-score">{totalScore.toFixed(1)}</p>
                       <p className="text-sm text-muted-foreground">Toplam Puan</p>
                       <Progress value={totalScore} className="h-2 mt-2 w-full" />
                     </div>
@@ -224,7 +224,7 @@ export default function MyPerformancePage() {
                   <CardContent className="pt-6">
                     <div className="flex flex-col items-center">
                       <Medal className="h-8 w-8 mb-2 text-blue-500" />
-                      <p className="text-3xl font-bold" data-testid="text-rank">{rank || "-"}</p>
+                      <p className="text-2xl font-bold" data-testid="text-rank">{rank || "-"}</p>
                       <p className="text-sm text-muted-foreground">Sıralama</p>
                       {rank && rank <= 3 && (
                         <Badge className="mt-2">İlk 3'te!</Badge>
@@ -236,7 +236,7 @@ export default function MyPerformancePage() {
                   <CardContent className="pt-6">
                     <div className="flex flex-col items-center">
                       <Star className="h-8 w-8 mb-2 text-yellow-500" />
-                      <p className="text-3xl font-bold">{perf?.customerRatingAvg?.toFixed(1) || "-"}</p>
+                      <p className="text-2xl font-bold">{perf?.customerRatingAvg?.toFixed(1) || "-"}</p>
                       <p className="text-sm text-muted-foreground">Müşteri Puanı</p>
                     </div>
                   </CardContent>
@@ -245,7 +245,7 @@ export default function MyPerformancePage() {
                   <CardContent className="pt-6">
                     <div className="flex flex-col items-center">
                       <ClipboardCheck className="h-8 w-8 mb-2 text-purple-500" />
-                      <p className="text-3xl font-bold">{perf?.checklistCompletion?.toFixed(0) || 0}%</p>
+                      <p className="text-2xl font-bold">{perf?.checklistCompletion?.toFixed(0) || 0}%</p>
                       <p className="text-sm text-muted-foreground">Checklist</p>
                     </div>
                   </CardContent>
@@ -467,7 +467,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center">
               <p className="text-sm text-muted-foreground mb-1">{PERIOD_LABELS[period]} Puan</p>
-              <p className={`text-4xl font-bold ${currentScore >= 70 ? 'text-green-600 dark:text-green-400' : currentScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-period-score">
+              <p className={`text-2xl font-bold ${currentScore >= 70 ? 'text-green-600 dark:text-green-400' : currentScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-period-score">
                 {currentScore.toFixed(1)}
               </p>
               <Progress value={currentScore} className="h-2 mt-3 w-full" />
@@ -484,7 +484,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
               <p className="text-sm text-muted-foreground mb-1">Önceki Periyod</p>
               {data.previous ? (
                 <>
-                  <p className="text-3xl font-bold text-muted-foreground" data-testid="text-previous-score">
+                  <p className="text-2xl font-bold text-muted-foreground" data-testid="text-previous-score">
                     {(data.previous.totalScore || data.previous.finalScore || 0).toFixed(1)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -504,7 +504,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
           <CardContent className="pt-6">
             <div className="flex flex-col items-center">
               <p className="text-sm text-muted-foreground mb-1">Genel Ortalama</p>
-              <p className="text-3xl font-bold" data-testid="text-avg-score">
+              <p className="text-2xl font-bold" data-testid="text-avg-score">
                 {(data.summary?.avgScore || 0).toFixed(1)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { BookOpen, Users, TrendingUp, Award, BarChart3 } from "lucide-react";
 import type { TrainingModule } from "@shared/schema";
 

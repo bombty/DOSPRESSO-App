@@ -147,7 +147,7 @@ export default function KampanyaYonetimi() {
     <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="heading-kampanya-yonetimi">Kampanya Yönetimi</h1>
+          <h1 className="text-2xl font-bold" data-testid="heading-kampanya-yonetimi">Kampanya Yönetimi</h1>
           <p className="text-muted-foreground mt-1">Pazarlama kampanyalarını oluşturun ve yönetin</p>
         </div>
         {canManageCampaigns && (

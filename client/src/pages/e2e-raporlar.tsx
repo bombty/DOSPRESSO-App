@@ -808,7 +808,7 @@ export default function E2EReportsPage() {
               <CardContent>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <div className="text-4xl font-bold text-primary">
+                    <div className="text-2xl font-bold text-primary">
                       {equipmentStats.avgHealth.toFixed(1)}%
                     </div>
                     <p className="text-sm text-muted-foreground">Ortalama Ekipman Sağlık Skoru</p>
@@ -903,7 +903,7 @@ export default function E2EReportsPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Tamamlanan</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{checklistStats.completed}</div>
+                  <div className="text-2xl font-bold text-green-600">{checklistStats.completed}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -911,7 +911,7 @@ export default function E2EReportsPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Bekleyen</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-yellow-600">{checklistStats.pending}</div>
+                  <div className="text-2xl font-bold text-yellow-600">{checklistStats.pending}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -919,7 +919,7 @@ export default function E2EReportsPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Gecikmiş</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600">{checklistStats.overdue}</div>
+                  <div className="text-2xl font-bold text-red-600">{checklistStats.overdue}</div>
                 </CardContent>
               </Card>
             </div>

@@ -576,7 +576,7 @@ export default function Raporlar() {
     <div className="container mx-auto p-4">
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold">Raporlar</h1>
+          <h1 className="text-2xl font-bold">Raporlar</h1>
           <p className="text-muted-foreground">Şube performansı ve analitik raporları</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

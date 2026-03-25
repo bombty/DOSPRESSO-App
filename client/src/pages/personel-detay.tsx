@@ -524,7 +524,7 @@ export default function PersonelDetay() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Personel Detayı</h1>
+            <h1 className="text-2xl font-bold">Personel Detayı</h1>
             <p className="text-muted-foreground mt-1">
               {employee.firstName} {employee.lastName} - Özlük Dosyası & Bilgiler
             </p>

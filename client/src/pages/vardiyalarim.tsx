@@ -13,7 +13,7 @@ import { format, startOfWeek, addDays, isToday, differenceInDays, startOfMonth, 
 import { tr } from "date-fns/locale";
 import { Clock, Sun, Sunset, Moon, ArrowRightLeft, Calendar, Check, X, Coffee, UserMinus, AlertTriangle, AlertCircle, Timer, FileText, QrCode } from "lucide-react";
 import QrCheckinGenerator from "@/components/qr-checkin-generator";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ErrorState } from "../components/error-state";

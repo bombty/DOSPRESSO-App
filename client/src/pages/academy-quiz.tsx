@@ -581,7 +581,7 @@ export default function AcademyQuiz() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:gap-4">
             <div className="text-center">
-              <p className="text-4xl font-bold mb-1" data-testid="text-quiz-score">{score}%</p>
+              <p className="text-2xl font-bold mb-1" data-testid="text-quiz-score">{score}%</p>
               <Badge variant={isPassed ? "default" : "destructive"} className="text-xs" data-testid="badge-quiz-result">
                 {isPassed ? "BAŞARILI" : "BAŞARISIZ"}
               </Badge>

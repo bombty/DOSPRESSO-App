@@ -22,7 +22,7 @@ import type { Branch, Equipment as EquipmentType, InsertEquipmentServiceRequest 
 import { insertEquipmentServiceRequestSchema } from '@shared/schema';
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 
 interface ServiceRequest {
   id: number;
@@ -417,7 +417,7 @@ export default function EquipmentManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ekipman & Servis Yönetimi</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Ekipman & Servis Yönetimi</h1>
           <p className="text-muted-foreground mt-2">Tüm talepleri, devam eden işleri ve ekipman durumunu merkezi yerde yönetin</p>
         </div>
         <div className="flex gap-2">

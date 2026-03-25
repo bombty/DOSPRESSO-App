@@ -1138,7 +1138,7 @@ export default function BranchKiosk() {
                 <p className="text-sm text-muted-foreground">Mola</p>
               </div>
               <div className="col-span-2 p-4 rounded-lg bg-green-100 dark:bg-green-900">
-                <p className="text-3xl font-bold text-green-700 dark:text-green-300">
+                <p className="text-2xl font-bold text-green-700 dark:text-green-300">
                   {formatMinutes(shiftSummary.netWorkMinutes)}
                 </p>
                 <p className="text-sm text-green-600 dark:text-green-400">Net Çalışma</p>

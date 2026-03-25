@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DashboardModeToggle } from "./DashboardModeToggle";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import AlertPanel from "@/components/dashboard/AlertPanel";
 import { PresenceBar, type PresenceMember } from "./shared/PresenceBar";
 import { StaffCard, type StaffMember } from "./shared/StaffCard";
@@ -92,15 +92,15 @@ export default function MissionControlSupervisor() {
     staleTime: 3 * 60 * 1000,
   });
 
-  const kpiItems = useMemo((): KpiItem[] => {
+  const kpiItems = useMemo((): KPIItem[] => {
     const k = branchSummary?.kpis;
     return [
-      { value: k?.activeStaff?.toString() ?? "—", label: "Burada", color: "#16a34a" },
-      { value: k?.lateCount?.toString() ?? "0", label: "Geç", color: (k?.lateCount ?? 0) > 0 ? "#d97706" : undefined },
-      { value: k?.onBreakCount?.toString() ?? "0", label: "Molada", color: "#7c3aed" },
-      { value: k?.absentCount?.toString() ?? "0", label: "Gelmedi", color: (k?.absentCount ?? 0) > 0 ? "#dc2626" : undefined },
-      { value: k?.checklistCompletion != null ? `%${Math.round(k.checklistCompletion)}` : "—", label: "Checklist", color: (k?.checklistCompletion ?? 100) >= 80 ? "#16a34a" : "#dc2626" },
-      { value: k?.healthScore != null ? `%${Math.round(k.healthScore)}` : k?.customerAvg ? `${Number(k.customerAvg).toFixed(1)}` : "—", label: "Performans", color: (k?.healthScore ?? k?.customerAvg ?? 80) >= 80 ? "#16a34a" : "#d97706" },
+      { value: k?.activeStaff?.toString() ?? "—", label: "Burada", color: "success" as const },
+      { value: k?.lateCount?.toString() ?? "0", label: "Geç", color: (k?.lateCount ?? 0) > 0 ? "warning" as const : "muted" as const },
+      { value: k?.onBreakCount?.toString() ?? "0", label: "Molada", color: "info" as const },
+      { value: k?.absentCount?.toString() ?? "0", label: "Gelmedi", color: (k?.absentCount ?? 0) > 0 ? "danger" as const : "muted" as const },
+      { value: k?.checklistCompletion != null ? `%${Math.round(k.checklistCompletion)}` : "—", label: "Checklist", color: (k?.checklistCompletion ?? 100) >= 80 ? "success" as const : "danger" as const },
+      { value: k?.healthScore != null ? `%${Math.round(k.healthScore)}` : k?.customerAvg ? `${Number(k.customerAvg).toFixed(1)}` : "—", label: "Performans", color: (k?.healthScore ?? k?.customerAvg ?? 80) >= 80 ? "success" as const : "warning" as const },
     ];
   }, [branchSummary]);
 
@@ -190,7 +190,7 @@ export default function MissionControlSupervisor() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
         </div>
       ) : (
-        <DashboardKpiStrip items={kpiItems} />
+        <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={6} />
       )}
 
       {dashboardAlerts?.alerts && dashboardAlerts.alerts.length > 0 && (

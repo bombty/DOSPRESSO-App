@@ -344,7 +344,7 @@ export default function PersonelOnboardingPage() {
     <div className="flex flex-col gap-3 sm:gap-4 p-2 sm:p-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">Personel Onboarding</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">Personel Onboarding</h1>
           <p className="text-sm text-muted-foreground mt-1">Yeni personellerin işe alım ve oryantasyon süreçlerini yönet</p>
         </div>
         <Button onClick={() => setDialogOpen(true)} data-testid="button-start-onboarding" className="gap-2">

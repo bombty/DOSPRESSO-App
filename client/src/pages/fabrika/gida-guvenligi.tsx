@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { MobileFilterCollapsible } from "@/components/mobile-filter-collapsible";
 
 interface HaccpRecord {

@@ -574,7 +574,7 @@ export default function EkipmanKatalog() {
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-3 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-catalog-title">
+          <h1 className="text-xl font-semibold" data-testid="text-catalog-title">
             Ekipman Kataloğu
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, CheckCircle2, Clock, AlertTriangle, MessageSquare, Timer } from "lucide-react";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ErrorState } from "../components/error-state";
@@ -198,7 +198,7 @@ export default function Sikayetler() {
   return (
     <div className="p-3 flex flex-col gap-3 sm:gap-4">
       <div>
-        <h1 className="text-3xl font-bold" data-testid="heading-sikayetler">Misafir Şikayetleri</h1>
+        <h1 className="text-2xl font-bold" data-testid="heading-sikayetler">Misafir Şikayetleri</h1>
         <p className="text-muted-foreground mt-1">SLA takipli şikayet yönetim sistemi</p>
       </div>
 

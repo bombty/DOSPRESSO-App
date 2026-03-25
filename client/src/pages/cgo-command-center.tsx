@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -367,7 +367,7 @@ function DepartmentTab({ data }: { data: CGOData }) {
                   <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="none" strokeDasharray={`${(overallScore / 100) * 251.2} 251.2`} className={overallScore >= 80 ? 'text-green-500' : overallScore >= 60 ? 'text-yellow-500' : 'text-red-500'} strokeLinecap="round" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold">{overallScore}</span>
+                  <span className="text-2xl font-bold">{overallScore}</span>
                   <span className="text-[10px] text-muted-foreground">/100</span>
                 </div>
               </div>

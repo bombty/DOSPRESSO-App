@@ -674,7 +674,7 @@ export default function GorevDetay() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold" data-testid="text-task-title">
+            <h1 className="text-xl font-bold" data-testid="text-task-title">
               {task.description || `Görev #${task.id}`}
             </h1>
             <p className="text-sm text-muted-foreground">ID: {task.id}</p>

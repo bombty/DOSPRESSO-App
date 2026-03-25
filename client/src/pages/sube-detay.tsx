@@ -778,7 +778,7 @@ export default function SubeDetayPage() {
                 <div className="flex items-center justify-between p-4 rounded-lg bg-primary/10">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Genel Kalite Skoru</p>
-                    <p className="text-3xl font-bold text-primary" data-testid="quality-overall-score">
+                    <p className="text-2xl font-bold text-primary" data-testid="quality-overall-score">
                       {auditScoreData?.overallScore !== null && auditScoreData?.overallScore !== undefined 
                         ? Math.round(auditScoreData.overallScore)
                         : scores.qualityAuditScore.toFixed(0)}

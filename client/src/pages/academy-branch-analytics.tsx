@@ -61,7 +61,7 @@ export default function AcademyBranchAnalytics() {
         </Button>
       </div>
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Şube Akademi Analitikleri</h1>
+        <h1 className="text-xl font-bold tracking-tight">Şube Akademi Analitikleri</h1>
         <p className="text-sm text-muted-foreground mt-1">Tüm şubelerin eğitim performansı ve ilerlemesi</p>
       </div>
 

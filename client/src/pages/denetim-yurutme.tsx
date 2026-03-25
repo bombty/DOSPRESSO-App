@@ -479,10 +479,10 @@ export default function DenetimYurutmePage() {
           <div className="flex items-center gap-4 sm:gap-6">
             {/* Grade Circle */}
             <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full ${gradeInfo.bgColor} flex items-center justify-center shrink-0`}>
-              <span className="text-3xl sm:text-4xl font-bold text-white">{finalScore === 0 && totalItems === 0 ? '—' : (audit.grade || (finalScore >= 90 ? 'A' : finalScore >= 80 ? 'B' : finalScore >= 70 ? 'C' : finalScore >= 60 ? 'D' : 'F'))}</span>
+              <span className="text-2xl font-bold text-white">{finalScore === 0 && totalItems === 0 ? '—' : (audit.grade || (finalScore >= 90 ? 'A' : finalScore >= 80 ? 'B' : finalScore >= 70 ? 'C' : finalScore >= 60 ? 'D' : 'F'))}</span>
             </div>
             <div className="flex-1">
-              <p className="text-3xl sm:text-4xl font-bold">{finalScore}%</p>
+              <p className="text-2xl font-bold">{finalScore}%</p>
               <p className={`text-lg font-medium ${gradeInfo.color}`}>{gradeInfo.label}</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {totalItems === 0 ? 'Denetim henüz tamamlanmadı' : `${passedItems.length}/${totalItems} madde başarılı`}
@@ -1109,7 +1109,7 @@ export default function DenetimYurutmePage() {
           </Button>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold truncate">{audit.template.title}</h1>
+          <h1 className="text-xl font-bold truncate">{audit.template.title}</h1>
           <p className="text-sm text-muted-foreground line-clamp-1">{audit.template.description}</p>
         </div>
         <div className="flex items-center gap-2">

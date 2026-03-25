@@ -36,7 +36,7 @@ import {
   Building2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { CompactKPIStrip } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import {
   BarChart,
   Bar,

@@ -99,7 +99,7 @@ export default function BranchFeedback() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary" data-testid="text-page-title">Muhasebe Geribildirimi</h1>
+          <h1 className="text-2xl font-bold text-primary" data-testid="text-page-title">Muhasebe Geribildirimi</h1>
           <p className="text-sm text-muted-foreground">Sipariş, fatura ve lojistik ile ilgili geribildirimleri gönderin</p>
         </div>
       </div>

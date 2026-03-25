@@ -91,7 +91,7 @@ export default function AcademyCohortAnalytics() {
         </Button>
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Kohort Analitikleri</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Kohort Analitikleri</h1>
         <p className="text-muted-foreground mt-2">Kullanıcı gruplarının Akademi içinde ilerleme analizi</p>
       </div>
 

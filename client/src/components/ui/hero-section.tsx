@@ -52,7 +52,7 @@ export function HeroSection({
           transition={{ duration: 0.4, delay: 0.15 }}
           className={cn(
             "font-bold",
-            compact ? "text-xl" : "text-2xl md:text-3xl"
+            compact ? "text-xl" : "text-2xl"
           )}
         >
           {title}

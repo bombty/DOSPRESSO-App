@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isHQRole, type UserRoleType } from "@shared/schema";
 import { MobileFilterCollapse } from "@/components/mobile-filter-collapse";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import {
   Card,
   CardContent,
@@ -216,7 +216,7 @@ export default function HRReportsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">
+            <h1 className="text-2xl font-bold" data-testid="text-page-title">
               İK Raporları
             </h1>
             <p className="text-muted-foreground">

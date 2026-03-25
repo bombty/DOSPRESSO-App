@@ -101,10 +101,10 @@ export function BranchScorecard() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-baseline gap-1.5">
             {scoreData.score === 0 ? (
-              <span className="text-3xl font-bold text-muted-foreground">Henüz veri yok</span>
+              <span className="text-2xl font-bold text-muted-foreground">Henüz veri yok</span>
             ) : (
               <>
-                <span className={`text-3xl font-bold ${getScoreColor(scoreData.score)}`}>
+                <span className={`text-2xl font-bold ${getScoreColor(scoreData.score)}`}>
                   {scoreData.score}
                 </span>
                 <span className="text-sm text-muted-foreground">/100</span>

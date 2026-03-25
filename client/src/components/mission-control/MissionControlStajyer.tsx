@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DashboardModeToggle } from "./DashboardModeToggle";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { CareerRoadmap } from "./shared/CareerRoadmap";
 import { LearningStreak } from "./shared/LearningStreak";
 import { ModuleCard, type ModuleInfo } from "./shared/ModuleCard";
@@ -107,13 +107,13 @@ export default function MissionControlStajyer() {
     return Math.round(total / quizResults.length);
   }, [quizResults]);
 
-  const kpiItems = useMemo((): KpiItem[] => [
-    { value: `%${progressPct}`, label: "Eğitim İlerleme", color: "#7c3aed" },
-    { value: streak.toString(), label: "Gün Serisi", color: streak > 0 ? "#16a34a" : undefined },
-    { value: avgQuizScore > 0 ? avgQuizScore.toString() : "—", label: "Ort. Quiz", color: avgQuizScore >= 80 ? "#16a34a" : avgQuizScore >= 60 ? "#d97706" : "#dc2626" },
-    { value: `${completedModules}/${totalModules}`, label: "Tamamlanan", color: undefined },
-    { value: (totalModules - completedModules - inProgressModules).toString(), label: "Kalan Modül", color: "#d97706" },
-    { value: certificateCount.toString(), label: "Sertifika", color: "#16a34a" },
+  const kpiItems = useMemo((): KPIItem[] => [
+    { value: `%${progressPct}`, label: "Eğitim İlerleme", color: "info" as const },
+    { value: streak.toString(), label: "Gün Serisi", color: streak > 0 ? "success" as const : "muted" as const },
+    { value: avgQuizScore > 0 ? avgQuizScore.toString() : "—", label: "Ort. Quiz", color: avgQuizScore >= 80 ? "success" as const : avgQuizScore >= 60 ? "warning" as const : "danger" as const },
+    { value: `${completedModules}/${totalModules}`, label: "Tamamlanan", color: "default" as const },
+    { value: (totalModules - completedModules - inProgressModules).toString(), label: "Kalan Modül", color: "warning" as const },
+    { value: certificateCount.toString(), label: "Sertifika", color: "success" as const },
   ], [progressPct, streak, avgQuizScore, completedModules, totalModules, inProgressModules, certificateCount]);
 
   const modules = useMemo((): ModuleInfo[] => {
@@ -179,7 +179,7 @@ export default function MissionControlStajyer() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
         </div>
       ) : (
-        <DashboardKpiStrip items={kpiItems} />
+        <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
       )}
 
       <Card data-testid="mc-career-path">

@@ -59,7 +59,7 @@ export default function BadgeCollection() {
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <h1 className="text-3xl font-bold">Badge Collection</h1>
+        <h1 className="text-2xl font-bold">Badge Collection</h1>
       </div>
 
       <Card>

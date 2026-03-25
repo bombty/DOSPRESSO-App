@@ -64,7 +64,7 @@ export default function Performance() {
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">Performans</h1>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Performans</h1>
           <p className="text-muted-foreground mt-1">Şube performansını izleyin ve KPI'ları analiz edin</p>
         </div>
         {/* Only HQ users can see branch selector */}

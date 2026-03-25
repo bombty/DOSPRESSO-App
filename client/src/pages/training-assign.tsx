@@ -81,7 +81,7 @@ export default function TrainingAssign() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Eğitim Ataması</h1>
+          <h1 className="text-2xl font-bold">Eğitim Ataması</h1>
           <p className="text-muted-foreground">Personel ve rollere eğitim materyali atayın</p>
         </div>
       </div>

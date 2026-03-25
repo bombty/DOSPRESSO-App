@@ -190,7 +190,7 @@ export default function OvertimeRequestsPage() {
     <div className="container mx-auto p-3 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">Mesai Talepleri</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">Mesai Talepleri</h1>
           <p className="text-muted-foreground">Fazla mesai taleplerinizi oluşturun ve yönetin</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-overtime">

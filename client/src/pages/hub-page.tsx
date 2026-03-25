@@ -90,7 +90,7 @@ export default function HubPage() {
           <SectionIcon className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold" data-testid="hub-title">
+          <h1 className="text-xl font-bold" data-testid="hub-title">
             {section.titleTr}
           </h1>
           {description && (

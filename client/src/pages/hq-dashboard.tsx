@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardMode } from "@/hooks/useDashboardMode";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { canSeeWidget } from "@/lib/role-visibility";
 import { MuhasebeIKDashboard } from "@/components/dashboards/muhasebe-ik-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { ModuleCard } from "@/components/module-card";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { DashboardModeToggle } from "@/components/mission-control/DashboardModeToggle";
@@ -251,10 +251,10 @@ export default function HQOzet() {
           ...(data.slaBreaches === 0 && data.openTickets === 0 && data.branchStatus.critical === 0 ? [{ label: 'Sistem normal', variant: 'green' as const, dot: true }] : []),
         ]} />
 
-        <DashboardKpiStrip items={[
+        <UnifiedKPI variant="compact" desktopColumns={4} items={[
           { value: String(data.branchStatus.total), label: 'Sube' },
-          { value: String(data.slaBreaches ?? 0), label: 'SLA Ihlali', color: (data.slaBreaches ?? 0) > 0 ? '#dc2626' : undefined },
-          { value: String(data.openTickets ?? 0), label: 'Acik Ticket', color: (data.openTickets ?? 0) > 10 ? '#b45309' : undefined },
+          { value: String(data.slaBreaches ?? 0), label: 'SLA Ihlali', color: (data.slaBreaches ?? 0) > 0 ? 'danger' as const : 'default' as const },
+          { value: String(data.openTickets ?? 0), label: 'Acik Ticket', color: (data.openTickets ?? 0) > 10 ? 'warning' as const : 'default' as const },
           { value: String(data.activeUsers ?? 0), label: 'Aktif Kullanici' },
         ]} />
 
@@ -266,7 +266,7 @@ export default function HQOzet() {
             <ModuleCard label="İletişim M." sublabel="Şube Talepleri" path="/hq-destek" icon={<MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />} gradient="bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900" />
             <ModuleCard label="Akademi" sublabel="Eğitim & Gelişim" path="/akademi" icon={<GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />} gradient="bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900" />
             <ModuleCard label="Şubeler" sublabel={`${data.branchStatus.total} Şube`} path="/subeler" icon={<Store className="w-8 h-8 text-purple-600 dark:text-purple-400" />} gradient="bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900" />
-            <ModuleCard label="Raporlar" sublabel="Analiz & KPI" path="/raporlar" icon={<BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />} gradient="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-950 dark:to-green-900" />
+            <ModuleCard label="Raporlar" sublabel="Analiz & KPI" path="/raporlar" icon={<BarChart3 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />} gradient="bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900" />
             {activeDelegations.map((del: any) => (
               <ModuleCard
                 key={del.moduleKey}
@@ -294,7 +294,7 @@ export default function HQOzet() {
           icon={CheckCircle2}
           label="Normal"
           value={data.branchStatus.normal}
-          color="bg-green-500/10 text-green-500"
+          color="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
         />
         <StatusCard
           icon={AlertTriangle}

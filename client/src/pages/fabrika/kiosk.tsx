@@ -1119,7 +1119,7 @@ export default function FactoryKiosk() {
 
               <div className="md:w-2/5 p-4 border-t md:border-t-0 md:border-l border-slate-700 overflow-y-auto bg-slate-900/30">
                 <div className="text-center mb-4 p-3 bg-slate-700/50 rounded-lg">
-                  <p className="text-3xl font-mono font-bold text-amber-400"><LiveClock /></p>
+                  <p className="text-2xl font-mono font-bold text-amber-400"><LiveClock /></p>
                   <p className="text-xs text-slate-400 mt-1">
                     {new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </p>
@@ -1595,7 +1595,7 @@ export default function FactoryKiosk() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-mono text-amber-500" data-testid="text-elapsed-time">
+                  <div className="text-2xl font-mono text-amber-500" data-testid="text-elapsed-time">
                     <Timer className="h-5 w-5 inline mr-2" />
                     {formatTime(elapsedTime)}
                   </div>

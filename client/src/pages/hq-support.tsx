@@ -143,7 +143,7 @@ export default function HQSupport() {
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">HQ Destek</h1>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">HQ Destek</h1>
           <p className="text-muted-foreground">Merkez ile iletişim taleplerinizi yönetin</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-ticket">

@@ -103,12 +103,12 @@ export default function AcademyCertificates() {
                   </div>
 
                   <div className="relative z-10">
-                    <p className="text-4xl font-bold text-amber-950 mb-1">{currentLevel.titleTr}</p>
+                    <p className="text-2xl font-bold text-amber-950 mb-1">{currentLevel.titleTr}</p>
                     <p className="text-xs text-amber-800 font-semibold">Seviye {currentLevel.levelNumber} / 5</p>
                   </div>
 
                   <div className="flex flex-col gap-2 relative z-10">
-                    <p className="text-4xl text-amber-950 font-bold leading-tight" style={{ fontFamily: "cursive" }}>
+                    <p className="text-2xl text-amber-950 font-bold leading-tight" style={{ fontFamily: "cursive" }}>
                       {user?.firstName ? `${user.firstName} ${user.lastName || ""}` : "Kullanıcı"}
                     </p>
                     <p className="text-xs text-amber-800">tarafından başarıyla tamamlanmış</p>

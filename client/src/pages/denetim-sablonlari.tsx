@@ -366,7 +366,7 @@ export default function DenetimSablonlariPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Denetim Şablonları</h1>
+          <h1 className="text-2xl font-bold">Denetim Şablonları</h1>
           <p className="text-muted-foreground">Şube ve personel denetim şablonlarını yönetin</p>
         </div>
         <Button onClick={handleOpenCreateDialog} data-testid="button-create-template">

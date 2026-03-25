@@ -48,7 +48,7 @@ export function ModuleCard({
               'w-full h-full flex items-center justify-center',
               gradient ?? 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700'
             )}>
-              <span className="text-3xl select-none">{icon}</span>
+              <span className="text-2xl select-none">{icon}</span>
             </div>
           )}
 

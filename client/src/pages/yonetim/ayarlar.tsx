@@ -210,7 +210,7 @@ export default function Settings() {
 
   return (
     <div className="container py-6">
-      <h1 className="text-3xl font-bold mb-6" data-testid="text-page-title">
+      <h1 className="text-2xl font-bold mb-6" data-testid="text-page-title">
         Ayarlar
       </h1>
 

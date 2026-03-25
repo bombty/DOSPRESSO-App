@@ -63,7 +63,7 @@ export default function AcademyAdvancedAnalytics() {
             <CardTitle className="text-sm">Toplam Puan</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">85%</p>
+            <p className="text-2xl font-bold">85%</p>
             <p className="text-xs text-success mt-1">↑ 5% geçen haftaya göre</p>
           </CardContent>
         </Card>
@@ -73,7 +73,7 @@ export default function AcademyAdvancedAnalytics() {
             <CardTitle className="text-sm">Tamamlanan Sınavlar</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">24</p>
+            <p className="text-2xl font-bold">24</p>
             <p className="text-xs text-muted-foreground mt-1">Ortalama 3 gün aralığı</p>
           </CardContent>
         </Card>
@@ -83,7 +83,7 @@ export default function AcademyAdvancedAnalytics() {
             <CardTitle className="text-sm">Öğrenme Süresi</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">42h</p>
+            <p className="text-2xl font-bold">42h</p>
             <p className="text-xs text-muted-foreground mt-1">Toplam yatırılan zaman</p>
           </CardContent>
         </Card>
@@ -93,7 +93,7 @@ export default function AcademyAdvancedAnalytics() {
             <CardTitle className="text-sm">Başarı Oranı</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">92%</p>
+            <p className="text-2xl font-bold">92%</p>
             <p className="text-xs text-primary mt-1">Sınavlarda geçiş oranı</p>
           </CardContent>
         </Card>

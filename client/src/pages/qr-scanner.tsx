@@ -254,7 +254,7 @@ export default function QRScanner() {
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2 sm:gap-3">
+        <h1 className="text-2xl font-bold flex items-center gap-2 sm:gap-3">
           <QrCode className="h-4 w-4" />
           QR Kod Tarayıcı
         </h1>

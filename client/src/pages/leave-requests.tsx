@@ -113,7 +113,7 @@ export default function LeaveRequestsPage() {
     <div className="container mx-auto p-3 space-y-3 sm:space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">İzin Talepleri</h1>
+          <h1 className="text-2xl font-bold" data-testid="text-page-title">İzin Talepleri</h1>
           <p className="text-muted-foreground">İzin taleplerinizi oluşturun ve yönetin</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-leave">

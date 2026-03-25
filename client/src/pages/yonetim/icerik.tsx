@@ -126,7 +126,7 @@ export default function ContentManagement() {
   return (
     <div className="container px-3 sm:px-4 py-4 sm:py-6">
       <div className="flex justify-between items-center gap-2 mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold" data-testid="text-page-title">İçerik Yönetimi</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-page-title">İçerik Yönetimi</h1>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-content">

@@ -1125,7 +1125,7 @@ export default function Notifications() {
       <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
         <div className="flex items-center gap-2">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight" data-testid="text-page-title">
+            <h1 className="text-xl font-bold tracking-tight" data-testid="text-page-title">
               İletişim Merkezi
             </h1>
             <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-description">

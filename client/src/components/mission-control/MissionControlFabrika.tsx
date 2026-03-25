@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DashboardModeToggle } from "./DashboardModeToggle";
-import { DashboardKpiStrip, type KpiItem } from "@/components/dashboard-kpi-strip";
+import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
 import { StationCard, type StationInfo } from "./shared/StationCard";
 import { StaffCard, type StaffMember } from "./shared/StaffCard";
@@ -138,13 +138,13 @@ export default function MissionControlFabrika() {
   const efficiencyNum = Number(stats?.efficiency ?? 0);
   const wastePercent = Number(wasteStats?.avgWastePercent ?? 0);
 
-  const kpiItems = useMemo((): KpiItem[] => [
-    { value: stats?.totalProduced?.toString() ?? "0", label: "Bugün Üretim", color: "#0284c7" },
-    { value: wastePercent > 0 ? `%${wastePercent.toFixed(1)}` : "—", label: "Fire Oranı", color: wastePercent > 2 ? "#dc2626" : "#16a34a" },
-    { value: stats?.activeWorkers?.toString() ?? "0", label: "Aktif Personel", color: "#6366f1" },
-    { value: (qcStats?.today?.pending ?? 0).toString(), label: "QC Bekleyen", color: (qcStats?.today?.pending ?? 0) > 0 ? "#d97706" : "#16a34a" },
-    { value: qcStats?.today?.passRate != null ? `%${qcStats.today.passRate}` : "—", label: "QC Onay Oranı", color: (qcStats?.today?.passRate ?? 100) >= 95 ? "#16a34a" : "#dc2626" },
-    { value: efficiencyNum > 0 ? `%${efficiencyNum}` : "—", label: "Hedef Tamamlama", color: efficiencyNum >= 80 ? "#16a34a" : efficiencyNum >= 50 ? "#d97706" : "#dc2626" },
+  const kpiItems = useMemo((): KPIItem[] => [
+    { value: stats?.totalProduced?.toString() ?? "0", label: "Bugün Üretim", color: "info" as const },
+    { value: wastePercent > 0 ? `%${wastePercent.toFixed(1)}` : "—", label: "Fire Oranı", color: wastePercent > 2 ? "danger" as const : "success" as const },
+    { value: stats?.activeWorkers?.toString() ?? "0", label: "Aktif Personel", color: "info" as const },
+    { value: (qcStats?.today?.pending ?? 0).toString(), label: "QC Bekleyen", color: (qcStats?.today?.pending ?? 0) > 0 ? "warning" as const : "success" as const },
+    { value: qcStats?.today?.passRate != null ? `%${qcStats.today.passRate}` : "—", label: "QC Onay Oranı", color: (qcStats?.today?.passRate ?? 100) >= 95 ? "success" as const : "danger" as const },
+    { value: efficiencyNum > 0 ? `%${efficiencyNum}` : "—", label: "Hedef Tamamlama", color: efficiencyNum >= 80 ? "success" as const : efficiencyNum >= 50 ? "warning" as const : "danger" as const },
   ], [stats, wastePercent, qcStats, efficiencyNum]);
 
   const stationInfos = useMemo((): StationInfo[] => {
@@ -208,7 +208,7 @@ export default function MissionControlFabrika() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
         </div>
       ) : (
-        <DashboardKpiStrip items={kpiItems} />
+        <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
       )}
 
       {stationInfos.length > 0 && (

@@ -373,7 +373,7 @@ export default function Equipment() {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-semibold" data-testid="text-page-title">Ekipman Yönetimi</h1>
+          <h1 className="text-xl font-semibold" data-testid="text-page-title">Ekipman Yönetimi</h1>
           <p className="text-sm text-muted-foreground mt-1">Şube ekipmanlarını ve bakım takibini yönetin</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

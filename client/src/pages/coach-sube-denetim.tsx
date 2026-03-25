@@ -423,7 +423,7 @@ export default function CoachSubeDenetim() {
                   <Target className="w-5 h-5" />
                   <span className="font-semibold text-lg">Genel Skor</span>
                 </div>
-                <span className={`text-3xl font-bold ${getScoreColor(overallScore)}`} data-testid="text-overall-score">
+                <span className={`text-2xl font-bold ${getScoreColor(overallScore)}`} data-testid="text-overall-score">
                   {overallScore}/100
                 </span>
               </div>

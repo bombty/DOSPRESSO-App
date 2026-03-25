@@ -41,7 +41,7 @@ export function TeknikDashboard({
       {/* Header */}
       <div className="flex items-center gap-2">
         <Wrench className="h-6 w-6 text-blue-900" />
-        <h2 className="text-lg md:text-2xl font-bold text-blue-900">Teknik Paneli</h2>
+        <h2 className="text-lg font-bold text-blue-900">Teknik Paneli</h2>
       </div>
 
       {/* System Health Gauges */}

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CompactKPIStrip, type KPIItem } from "@/components/compact-kpi-strip";
+import { CompactKPIStrip, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -68,7 +68,7 @@ export default function AICostDashboard() {
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold" data-testid="text-page-title">
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">
             AI Maliyet Takibi
           </h1>
           <p className="text-muted-foreground mt-1" data-testid="text-page-description">

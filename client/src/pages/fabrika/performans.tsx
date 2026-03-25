@@ -656,7 +656,7 @@ export default function FabrikaPerformans() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="text-3xl font-bold" data-testid="text-current-score">
+                      <div className="text-2xl font-bold" data-testid="text-current-score">
                         {(workerScore.currentScore ?? 0).toFixed(0)}
                       </div>
                       <span className="text-muted-foreground">Genel Skor</span>

@@ -441,7 +441,7 @@ export default function EkipmanServis() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ekipman Servis Yönetimi</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Ekipman Servis Yönetimi</h1>
           <p className="text-muted-foreground mt-1">Arıza raporları ve servis talepleri birleştirilmiş görünüm</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-new">

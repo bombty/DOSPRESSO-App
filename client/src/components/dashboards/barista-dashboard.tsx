@@ -38,7 +38,7 @@ export function BaristaDashboard({
       {/* Header */}
       <div className="flex items-center gap-2">
         <Coffee className="h-6 w-6 text-blue-900" />
-        <h2 className="text-lg md:text-2xl font-bold text-blue-900">Günlük Görevler</h2>
+        <h2 className="text-lg font-bold text-blue-900">Günlük Görevler</h2>
       </div>
 
       {/* Personal Performance Gauges */}

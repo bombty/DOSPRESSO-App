@@ -674,7 +674,7 @@ export default function VardiyaPlanlama() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Vardiya Planlama</h1>
+          <h1 className="text-xl font-bold">Vardiya Planlama</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{format(weekStart, "d MMM", { locale: tr })} - {format(periodEndDate, "d MMM yyyy", { locale: tr })}</span>
             {branchHours && (

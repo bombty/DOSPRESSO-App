@@ -240,7 +240,7 @@ export default function CapaDetayPage() {
           </Button>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold">CAPA #{capa.id}</h1>
+          <h1 className="text-xl font-bold">CAPA #{capa.id}</h1>
           <p className="text-sm text-muted-foreground truncate">{capa.actionType}</p>
         </div>
         <Badge className={statusInfo.badge} data-testid="badge-status">
