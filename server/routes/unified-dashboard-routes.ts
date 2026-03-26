@@ -329,13 +329,18 @@ router.get("/api/me/dashboard-data", isAuthenticated, async (req, res) => {
     }
 
     let userPermissionKeys: Set<string> = new Set();
+    let permissionsLoaded = false;
     try {
       const perms = await getUserPermissions(role);
       perms.forEach((_, key) => userPermissionKeys.add(key));
-    } catch {}
+      permissionsLoaded = true;
+    } catch (err) {
+      console.error("[Dashboard] Permission lookup failed for role:", role, err);
+    }
 
     const authorizedWidgets = widgetConfigs.filter(({ widget }) => {
       if (!widget.requiredPermissions || widget.requiredPermissions.length === 0) return true;
+      if (!permissionsLoaded) return false;
       return widget.requiredPermissions.every(perm => userPermissionKeys.has(perm));
     });
 
@@ -569,13 +574,17 @@ router.post("/api/admin/dashboard-role-widgets", isAuthenticated, async (req, re
       return res.status(404).json({ message: "Widget bulunamadı" });
     }
     if (widget.requiredPermissions && widget.requiredPermissions.length > 0) {
+      let rolePerms: Map<string, any>;
       try {
-        const rolePerms = await getUserPermissions(targetRole);
-        const missingPerms = widget.requiredPermissions.filter(p => !rolePerms.has(p));
-        if (missingPerms.length > 0) {
-          return res.status(400).json({ message: `Bu rol gerekli izinlere sahip değil: ${missingPerms.join(', ')}` });
-        }
-      } catch {}
+        rolePerms = await getUserPermissions(targetRole);
+      } catch (err) {
+        console.error("[Admin/RoleWidgets] Permission check failed:", err);
+        return res.status(500).json({ message: "İzin kontrolü başarısız oldu" });
+      }
+      const missingPerms = widget.requiredPermissions.filter(p => !rolePerms.has(p));
+      if (missingPerms.length > 0) {
+        return res.status(400).json({ message: `Bu rol gerekli izinlere sahip değil: ${missingPerms.join(', ')}` });
+      }
     }
     const [created] = await db.insert(dashboardRoleWidgets).values({
       role: targetRole,
@@ -648,16 +657,21 @@ router.put("/api/admin/dashboard-role-widgets/:role", isAuthenticated, async (re
     const widgetDefMap = new Map(allWidgetDefs.map(w => [w.widgetKey, w]));
 
     let rolePerms: Map<string, any> | null = null;
+    let permsLoaded = false;
     try {
       rolePerms = await getUserPermissions(targetRole);
-    } catch {}
+      permsLoaded = true;
+    } catch (err) {
+      console.error("[Admin/RoleWidgets/BulkUpdate] Permission check failed:", err);
+    }
 
     const authorizedWidgetKeys = new Set<string>();
     for (const w of widgets) {
       if (!w.widgetKey) continue;
       const widgetDef = widgetDefMap.get(w.widgetKey);
       if (!widgetDef) continue;
-      if (widgetDef.requiredPermissions && widgetDef.requiredPermissions.length > 0 && rolePerms) {
+      if (widgetDef.requiredPermissions && widgetDef.requiredPermissions.length > 0) {
+        if (!permsLoaded) continue;
         const missing = widgetDef.requiredPermissions.filter(p => !rolePerms!.has(p));
         if (missing.length > 0) continue;
       }
