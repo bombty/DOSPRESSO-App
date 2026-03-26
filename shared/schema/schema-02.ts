@@ -2478,6 +2478,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  employmentType: z.enum(['fulltime', 'parttime']).optional(),
 });
 
 export const updateUserSchema = createInsertSchema(users).omit({
@@ -2485,6 +2487,8 @@ export const updateUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
   hashedPassword: true, // Password updates handled separately
+}).extend({
+  employmentType: z.enum(['fulltime', 'parttime']).optional(),
 }).partial();
 
 export const loginSchema = z.object({

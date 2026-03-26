@@ -7,10 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { Clock, CalendarDays, UserCheck, UserX, Coffee, AlertTriangle, Plus, ChevronLeft } from "lucide-react";
+import { Clock, CalendarDays, UserCheck, UserX, Coffee, AlertTriangle, Plus, ChevronLeft, Settings } from "lucide-react";
 
 const MONTHS = [
   { value: "1", label: "Ocak" }, { value: "2", label: "Şubat" }, { value: "3", label: "Mart" },
@@ -36,6 +37,131 @@ function formatMinutes(minutes: number): string {
   const m = minutes % 60;
   if (h === 0) return `${m}dk`;
   return `${h}s ${m}dk`;
+}
+
+interface KioskSetting {
+  id: number;
+  branchId: number;
+  branchName: string;
+  defaultShiftStartTime: string | null;
+  defaultShiftEndTime: string | null;
+  lateToleranceMinutes: number | null;
+  earlyLeaveToleranceMinutes: number | null;
+  defaultBreakMinutes: number | null;
+  autoCloseTime: string | null;
+  isKioskEnabled: boolean | null;
+}
+
+function KioskToleranceSettings() {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState<Partial<KioskSetting>>({});
+
+  const settingsQuery = useQuery<KioskSetting[]>({
+    queryKey: ['/api/pdks/kiosk-settings'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ branchId, data }: { branchId: number; data: any }) => {
+      return apiRequest('PATCH', `/api/pdks/kiosk-settings/${branchId}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Ayarlar güncellendi" });
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/pdks/kiosk-settings'] });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Ayarlar güncellenemedi", variant: "destructive" });
+    },
+  });
+
+  const startEdit = (setting: KioskSetting) => {
+    setEditingId(setting.id);
+    setEditValues({
+      defaultShiftStartTime: setting.defaultShiftStartTime || "08:00",
+      defaultShiftEndTime: setting.defaultShiftEndTime || "18:00",
+      lateToleranceMinutes: setting.lateToleranceMinutes ?? 15,
+      earlyLeaveToleranceMinutes: setting.earlyLeaveToleranceMinutes ?? 15,
+      defaultBreakMinutes: setting.defaultBreakMinutes ?? 60,
+      autoCloseTime: setting.autoCloseTime || "22:00",
+    });
+  };
+
+  const saveEdit = (branchId: number) => {
+    updateMutation.mutate({ branchId, data: editValues });
+  };
+
+  if (settingsQuery.isLoading) {
+    return <div className="p-6 text-center text-muted-foreground">Yükleniyor...</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">Şube, Fabrika ve HQ kiosk tolerans ve mesai saati ayarları</p>
+        <p className="text-xs text-muted-foreground">Otomatik kapanış saati şube bazında yapılandırılabilir (Türkiye saati). Scheduler bu değeri kullanarak açık oturumları kapatır.</p>
+      </div>
+      {settingsQuery.data?.map(setting => (
+        <Card key={setting.id}>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-base font-semibold">{setting.branchName}</CardTitle>
+            {editingId !== setting.id ? (
+              <Button size="sm" variant="outline" onClick={() => startEdit(setting)} data-testid={`button-edit-kiosk-${setting.branchId}`}>
+                Düzenle
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => saveEdit(setting.branchId)} disabled={updateMutation.isPending} data-testid={`button-save-kiosk-${setting.branchId}`}>
+                  Kaydet
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} data-testid={`button-cancel-kiosk-${setting.branchId}`}>
+                  İptal
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {editingId === setting.id ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Mesai Başlangıç</Label>
+                  <Input type="time" value={editValues.defaultShiftStartTime || ""} onChange={e => setEditValues(p => ({ ...p, defaultShiftStartTime: e.target.value }))} data-testid={`input-start-${setting.branchId}`} />
+                </div>
+                <div>
+                  <Label className="text-xs">Mesai Bitiş</Label>
+                  <Input type="time" value={editValues.defaultShiftEndTime || ""} onChange={e => setEditValues(p => ({ ...p, defaultShiftEndTime: e.target.value }))} data-testid={`input-end-${setting.branchId}`} />
+                </div>
+                <div>
+                  <Label className="text-xs">Otomatik Kapanış Saati</Label>
+                  <Input type="time" value={editValues.autoCloseTime || "22:00"} onChange={e => setEditValues(p => ({ ...p, autoCloseTime: e.target.value }))} data-testid={`input-auto-close-${setting.branchId}`} />
+                </div>
+                <div>
+                  <Label className="text-xs">Geç Kalma Toleransı (dk)</Label>
+                  <Input type="number" min={0} max={60} value={editValues.lateToleranceMinutes ?? 15} onChange={e => setEditValues(p => ({ ...p, lateToleranceMinutes: Number(e.target.value) }))} data-testid={`input-late-tolerance-${setting.branchId}`} />
+                </div>
+                <div>
+                  <Label className="text-xs">Erken Çıkış Toleransı (dk)</Label>
+                  <Input type="number" min={0} max={60} value={editValues.earlyLeaveToleranceMinutes ?? 15} onChange={e => setEditValues(p => ({ ...p, earlyLeaveToleranceMinutes: Number(e.target.value) }))} data-testid={`input-early-leave-${setting.branchId}`} />
+                </div>
+                <div>
+                  <Label className="text-xs">Mola Süresi (dk)</Label>
+                  <Input type="number" min={0} max={120} value={editValues.defaultBreakMinutes ?? 60} onChange={e => setEditValues(p => ({ ...p, defaultBreakMinutes: Number(e.target.value) }))} data-testid={`input-break-${setting.branchId}`} />
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                <div><span className="text-muted-foreground text-xs">Mesai: </span><span data-testid={`text-shift-hours-${setting.branchId}`}>{setting.defaultShiftStartTime} — {setting.defaultShiftEndTime}</span></div>
+                <div><span className="text-muted-foreground text-xs">Oto. Kapanış: </span><span data-testid={`text-auto-close-${setting.branchId}`}>{setting.autoCloseTime || "22:00"}</span></div>
+                <div><span className="text-muted-foreground text-xs">Geç kalma toleransı: </span><span data-testid={`text-late-tolerance-${setting.branchId}`}>{setting.lateToleranceMinutes} dk</span></div>
+                <div><span className="text-muted-foreground text-xs">Erken çıkış toleransı: </span><span data-testid={`text-early-leave-${setting.branchId}`}>{setting.earlyLeaveToleranceMinutes} dk</span></div>
+                <div><span className="text-muted-foreground text-xs">Mola: </span><span data-testid={`text-break-${setting.branchId}`}>{setting.defaultBreakMinutes} dk</span></div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export default function PdksPage() {
@@ -165,10 +291,9 @@ export default function PdksPage() {
     );
   }
 
-  return (
-    <div className="p-4 max-w-4xl mx-auto space-y-4">
+  const AttendanceContent = () => (
+    <>
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-bold" data-testid="text-pdks-title">PDKS — Devam Takibi</h1>
         {canManage && (
           <Dialog open={manualOpen} onOpenChange={setManualOpen}>
             <DialogTrigger asChild>
@@ -292,6 +417,34 @@ export default function PdksPage() {
           )}
         </CardContent>
       </Card>
+    </>
+  );
+
+  return (
+    <div className="p-4 max-w-4xl mx-auto space-y-4">
+      <h1 className="text-xl font-bold" data-testid="text-pdks-title">PDKS — Devam Takibi</h1>
+      {canManage ? (
+        <Tabs defaultValue="attendance">
+          <TabsList data-testid="tabs-pdks">
+            <TabsTrigger value="attendance" data-testid="tab-attendance">
+              <Clock className="h-4 w-4 mr-1" /> Devam
+            </TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-kiosk-settings">
+              <Settings className="h-4 w-4 mr-1" /> Kiosk Ayarları
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="attendance" className="space-y-4 mt-4">
+            <AttendanceContent />
+          </TabsContent>
+          <TabsContent value="settings" className="mt-4">
+            <KioskToleranceSettings />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="space-y-4">
+          <AttendanceContent />
+        </div>
+      )}
     </div>
   );
 }

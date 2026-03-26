@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { pdksRecords, scheduledOffs, users } from '@shared/schema';
+import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { getMonthClassification } from '../lib/pdks-engine';
@@ -303,6 +303,71 @@ router.delete('/api/pdks/scheduled-offs/:id', isAuthenticated, async (req: any, 
   } catch (error) {
     console.error("Scheduled off delete error:", error);
     res.status(500).json({ error: 'Off günü silinemedi' });
+  }
+});
+
+router.get('/api/pdks/kiosk-settings', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canManagePdks(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+
+    const settings = await db.select({
+      id: branchKioskSettings.id,
+      branchId: branchKioskSettings.branchId,
+      branchName: branches.name,
+      defaultShiftStartTime: branchKioskSettings.defaultShiftStartTime,
+      defaultShiftEndTime: branchKioskSettings.defaultShiftEndTime,
+      lateToleranceMinutes: branchKioskSettings.lateToleranceMinutes,
+      earlyLeaveToleranceMinutes: branchKioskSettings.earlyLeaveToleranceMinutes,
+      defaultBreakMinutes: branchKioskSettings.defaultBreakMinutes,
+      autoCloseTime: branchKioskSettings.autoCloseTime,
+      isKioskEnabled: branchKioskSettings.isKioskEnabled,
+    })
+    .from(branchKioskSettings)
+    .innerJoin(branches, eq(branchKioskSettings.branchId, branches.id))
+    .orderBy(branches.name);
+
+    res.json(settings);
+  } catch (error) {
+    console.error("Kiosk settings get error:", error);
+    res.status(500).json({ error: 'Ayarlar getirilemedi' });
+  }
+});
+
+router.patch('/api/pdks/kiosk-settings/:branchId', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canManagePdks(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+
+    const branchId = Number(req.params.branchId);
+    const { defaultShiftStartTime, defaultShiftEndTime, lateToleranceMinutes, earlyLeaveToleranceMinutes, defaultBreakMinutes, autoCloseTime } = req.body;
+
+    type SettingsUpdate = Partial<Pick<typeof branchKioskSettings.$inferSelect,
+      'defaultShiftStartTime' | 'defaultShiftEndTime' | 'lateToleranceMinutes' |
+      'earlyLeaveToleranceMinutes' | 'defaultBreakMinutes' | 'autoCloseTime' | 'updatedAt'
+    >>;
+
+    const updateData: SettingsUpdate = { updatedAt: new Date() };
+    if (defaultShiftStartTime !== undefined) updateData.defaultShiftStartTime = String(defaultShiftStartTime);
+    if (defaultShiftEndTime !== undefined) updateData.defaultShiftEndTime = String(defaultShiftEndTime);
+    if (lateToleranceMinutes !== undefined) updateData.lateToleranceMinutes = Number(lateToleranceMinutes);
+    if (earlyLeaveToleranceMinutes !== undefined) updateData.earlyLeaveToleranceMinutes = Number(earlyLeaveToleranceMinutes);
+    if (defaultBreakMinutes !== undefined) updateData.defaultBreakMinutes = Number(defaultBreakMinutes);
+    if (autoCloseTime !== undefined) updateData.autoCloseTime = String(autoCloseTime);
+
+    await db.update(branchKioskSettings)
+      .set(updateData)
+      .where(eq(branchKioskSettings.branchId, branchId));
+
+    const [updated] = await db.select().from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId));
+    res.json(updated);
+  } catch (error) {
+    console.error("Kiosk settings update error:", error);
+    res.status(500).json({ error: 'Ayarlar güncellenemedi' });
   }
 });
 

@@ -63,7 +63,7 @@ const employeeFormSchema = z.object({
   department: z.string().optional(),
   hireDate: z.string().optional(),
   probationEndDate: z.string().optional(),
-  employmentType: z.string().optional(),
+  employmentType: z.enum(['fulltime', 'parttime']).optional(),
   weeklyHours: z.coerce.number().min(0).max(60).optional(),
   contractType: z.string().optional(),
   skillScore: z.coerce.number().min(0).max(100).optional(),

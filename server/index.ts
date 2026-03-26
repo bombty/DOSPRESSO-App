@@ -17,6 +17,7 @@ import { generateDailyTaskInstances, markOverdueInstances } from "./services/bra
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
+import { seedPdksSprintA } from "./seed-pdks-sprint-a";
 import { cleanupExpiredKioskSessions } from "./localAuth";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
@@ -27,7 +28,7 @@ import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig, factoryShiftSessions, factoryBreakLogs, kioskSessions, pdksRecords } from "@shared/schema";
+import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig, factoryShiftSessions, factoryBreakLogs, kioskSessions, pdksRecords, branchShiftSessions, hqShiftSessions } from "@shared/schema";
 import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull, isNull } from "drizzle-orm";
 import crypto from "crypto";
 
@@ -289,9 +290,10 @@ app.use((req, res, next) => {
       seedSlaRules(),
       seedModuleFlags(),
       seedBranchTasks(),
+      seedPdksSprintA(),
     ]);
 
-    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate', 'slaRules', 'moduleFlags', 'branchTasks'];
+    const seedNames = ['roleChain', 'adminMenu', 'serviceRequests', 'recipes', 'academyCategories', 'auditTemplate', 'slaRules', 'moduleFlags', 'branchTasks', 'pdksSprintA'];
     allSeedResults.forEach((result, i) => {
       if (result.status === 'rejected') {
         console.error(`Error seeding ${seedNames[i]}:`, result.reason);
@@ -373,6 +375,8 @@ app.use((req, res, next) => {
       cleanupStaleShiftSessions().catch(e => console.error("[Factory Kiosk] Startup stale shift cleanup error:", e));
 
       scheduleFactoryAutoCheckout();
+      scheduleBranchAutoCheckout();
+      scheduleHQAutoCheckout();
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
@@ -658,6 +662,162 @@ function scheduleFactoryAutoCheckout() {
   };
 
   checkAndSchedule();
+}
+
+async function forceCloseAllBranchShifts() {
+  try {
+    const now = new Date();
+    const istanbulNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+    const currentTimeStr = `${String(istanbulNow.getHours()).padStart(2, '0')}:${String(istanbulNow.getMinutes()).padStart(2, '0')}`;
+
+    // Fetch per-branch auto_close_time settings from DB
+    const settingsRows = await db.select({
+      branchId: branchKioskSettings.branchId,
+      autoCloseTime: branchKioskSettings.autoCloseTime,
+    }).from(branchKioskSettings);
+    const settingsMap = new Map<number, string>();
+    for (const s of settingsRows) {
+      settingsMap.set(s.branchId, s.autoCloseTime ?? '22:00');
+    }
+
+    const activeSessions = await db.select()
+      .from(branchShiftSessions)
+      .where(eq(branchShiftSessions.status, 'active'));
+
+    if (activeSessions.length === 0) return;
+
+    let closedCount = 0;
+    for (const session of activeSessions) {
+      const branchCloseTime = settingsMap.get(session.branchId) ?? '22:00';
+      // Only close sessions whose branch auto-close time has been reached
+      if (currentTimeStr < branchCloseTime) continue;
+
+      const workMinutes = Math.round((now.getTime() - new Date(session.checkInTime).getTime()) / 60000);
+      await db.update(branchShiftSessions)
+        .set({
+          status: 'completed',
+          checkOutTime: now,
+          workMinutes,
+          notes: `[Otomatik kapatıldı — ${branchCloseTime} çıkış unutuldu]`,
+        })
+        .where(eq(branchShiftSessions.id, session.id));
+
+      try {
+        await db.insert(pdksRecords).values({
+          userId: session.userId,
+          branchId: session.branchId,
+          recordDate: now.toISOString().split('T')[0],
+          recordTime: now.toTimeString().split(' ')[0],
+          recordType: 'cikis',
+          source: 'auto_close',
+          deviceInfo: `auto_checkout_${branchCloseTime.replace(':', '')}`,
+        });
+      } catch (e) {
+        console.error('[Branch] PDKS auto-checkout error:', e);
+      }
+      closedCount++;
+    }
+
+    if (closedCount > 0) {
+      log(`[Branch] Auto-checkout: ${closedCount} sessions force-closed at ${currentTimeStr}`);
+    }
+  } catch (error) {
+    console.error('[Branch] Auto-checkout failed:', error);
+  }
+}
+
+function scheduleBranchAutoCheckout() {
+  // Run once per hour to pick up any per-branch close times that have passed
+  const runAndReschedule = async () => {
+    await forceCloseAllBranchShifts();
+    // Schedule next run at the top of the next hour
+    const now = new Date();
+    const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+    setTimeout(runAndReschedule, msUntilNextHour);
+  };
+
+  // Start at top of next hour
+  const now = new Date();
+  const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  setTimeout(runAndReschedule, msUntilNextHour);
+  log(`[Branch] Auto-checkout scheduler started (checks per-branch settings, next run in ${Math.round(msUntilNextHour / 60000)} min)`);
+}
+
+async function forceCloseAllHQShifts() {
+  try {
+    const HQ_BRANCH_ID = 23;
+    // Read auto_close_time from settings for HQ branch
+    const [hqSettings] = await db.select({ autoCloseTime: branchKioskSettings.autoCloseTime })
+      .from(branchKioskSettings)
+      .where(eq(branchKioskSettings.branchId, HQ_BRANCH_ID));
+    const hqCloseTime = hqSettings?.autoCloseTime ?? '21:00';
+
+    const now = new Date();
+    const istanbulNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+    const currentTimeStr = `${String(istanbulNow.getHours()).padStart(2, '0')}:${String(istanbulNow.getMinutes()).padStart(2, '0')}`;
+
+    if (currentTimeStr < hqCloseTime) {
+      log(`[HQ] Auto-checkout: current time ${currentTimeStr} < configured close time ${hqCloseTime}, skipping`);
+      return;
+    }
+
+    // Close all open HQ sessions (active, on_break, outside) — any ongoing state
+    const openSessions = await db.select()
+      .from(hqShiftSessions)
+      .where(inArray(hqShiftSessions.status, ['active', 'on_break', 'outside']));
+
+    if (openSessions.length === 0) return;
+
+    for (const session of openSessions) {
+      const totalMinutes = Math.round((now.getTime() - new Date(session.checkInTime).getTime()) / 60000);
+      const breakMins = session.breakMinutes || 0;
+      const outsideMins = session.outsideMinutes || 0;
+      const netMins = Math.max(0, totalMinutes - breakMins - outsideMins);
+
+      await db.update(hqShiftSessions)
+        .set({
+          status: 'completed',
+          checkOutTime: now,
+          workMinutes: totalMinutes,
+          netWorkMinutes: netMins,
+          notes: `[Otomatik kapatıldı — ${hqCloseTime} çıkış unutuldu]`,
+        })
+        .where(eq(hqShiftSessions.id, session.id));
+
+      try {
+        await db.insert(pdksRecords).values({
+          userId: session.userId,
+          branchId: HQ_BRANCH_ID,
+          recordDate: now.toISOString().split('T')[0],
+          recordTime: now.toTimeString().split(' ')[0],
+          recordType: 'cikis',
+          source: 'auto_close',
+          deviceInfo: `auto_checkout_${hqCloseTime.replace(':', '')}`,
+        });
+      } catch (e) {
+        console.error('[HQ] PDKS auto-checkout error:', e);
+      }
+    }
+
+    log(`[HQ] Auto-checkout: ${openSessions.length} sessions force-closed at ${hqCloseTime}`);
+  } catch (error) {
+    console.error('[HQ] Auto-checkout failed:', error);
+  }
+}
+
+function scheduleHQAutoCheckout() {
+  // Run once per hour to pick up DB-configured HQ close time
+  const runAndReschedule = async () => {
+    await forceCloseAllHQShifts();
+    const now = new Date();
+    const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+    setTimeout(runAndReschedule, msUntilNextHour);
+  };
+
+  const now = new Date();
+  const msUntilNextHour = (60 - now.getMinutes()) * 60000 - now.getSeconds() * 1000 - now.getMilliseconds();
+  setTimeout(runAndReschedule, msUntilNextHour);
+  log(`[HQ] Auto-checkout scheduler started (reads DB-configured close time, next run in ${Math.round(msUntilNextHour / 60000)} min)`);
 }
 
 function startScheduledTaskDeliveryJob() {

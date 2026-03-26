@@ -313,6 +313,9 @@ export const branchKioskSettings = pgTable("branch_kiosk_settings", {
   lateToleranceMinutes: integer("late_tolerance_minutes").default(15), // 15 dk tolerans
   earlyLeaveToleranceMinutes: integer("early_leave_tolerance_minutes").default(15),
   
+  // Otomatik kapanış saati (HH:mm formatında, Türkiye saati — varsayılan: 22:00)
+  autoCloseTime: varchar("auto_close_time", { length: 5 }).default("22:00"),
+
   // Aktiflik
   isKioskEnabled: boolean("is_kiosk_enabled").default(true).notNull(),
   
