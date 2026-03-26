@@ -1050,12 +1050,18 @@ export type StockCountItem = typeof stockCountItems.$inferSelect;
 
 export const dashboardWidgets = pgTable("dashboard_widgets", {
   id: serial("id").primaryKey(),
+  widgetKey: varchar("widget_key", { length: 100 }).unique(),
   title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
   widgetType: varchar("widget_type", { length: 50 }).notNull(),
   size: varchar("size", { length: 20 }).notNull().default("medium"),
   dataSource: varchar("data_source", { length: 100 }).notNull(),
   config: text("config"),
   roles: text("roles").array(),
+  requiredPermissions: text("required_permissions").array().default([]),
+  defaultRoles: text("default_roles").array().default([]),
+  category: varchar("category", { length: 50 }).default("genel"),
+  componentKey: varchar("component_key", { length: 100 }),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   createdBy: varchar("created_by").references(() => users.id),
@@ -1066,6 +1072,23 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
 export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
+
+export const dashboardRoleWidgets = pgTable("dashboard_role_widgets", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(),
+  widgetKey: varchar("widget_key", { length: 100 }).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  defaultOpen: boolean("default_open").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique("dashboard_role_widgets_role_widget_key").on(table.role, table.widgetKey),
+]);
+
+export const insertDashboardRoleWidgetSchema = createInsertSchema(dashboardRoleWidgets).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertDashboardRoleWidget = z.infer<typeof insertDashboardRoleWidgetSchema>;
+export type DashboardRoleWidget = typeof dashboardRoleWidgets.$inferSelect;
 
 export const dashboardModuleVisibility = pgTable("dashboard_module_visibility", {
   id: serial("id").primaryKey(),

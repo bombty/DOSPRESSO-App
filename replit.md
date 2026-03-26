@@ -33,6 +33,7 @@ The platform utilizes React 18, TypeScript, and Vite for the frontend, with Shad
 - **Mr. Dobody (AI Agent):** A proactive AI agent for gap detection, task assignment, and workflow completion across various operational categories.
 - **Notification System:** Four-level notification system (operational, tactical, strategic, personal) with role-based filtering, category-based frequency control, archiving, and push notifications.
 - **Mission Control Dashboards:** Six role-based dashboards provide critical KPIs and insights using monthly snapshots of branch and factory performance.
+- **Komuta Merkezi 2.0 (Dynamic Dashboard System):** Widget-based dashboard infrastructure with 19 registered widgets across 7 categories (operasyon, personel, fabrika, finans, egitim, musteri, ekipman). Uses `dashboard_widgets` table for widget registry and `dashboard_role_widgets` table for per-role widget assignments (13 roles configured). Unified endpoint `GET /api/me/dashboard-data` returns role-tailored widgets with real data, KPIs, and quick actions. Admin CRUD via `/api/admin/mc-widgets` and `/api/admin/dashboard-role-widgets`. Route file: `server/routes/unified-dashboard-routes.ts`.
 
 ### Pilot Launch & Branch Onboarding
 - **Pilot Launch Page** (`/pilot-baslat`): Admin-only page for resetting system data before pilot go-live. Supports selective cleanup of notifications, audit logs, performance scores/metrics, and checklist histories. Includes password reset with mustChangePassword enforcement and double confirmation.
