@@ -64,6 +64,36 @@ const ROLE_WIDGET_MAPPINGS: Record<string, { keys: string[]; }> = {
   trainer: {
     keys: ["training_progress","todays_tasks","staff_count","customer_feedback","quick_actions"],
   },
+  uretim_sefi: {
+    keys: ["factory_production","equipment_faults","equipment_maintenance","qc_stats","todays_tasks","staff_count","quick_actions"],
+  },
+  fabrika_mudur: {
+    keys: ["factory_production","equipment_faults","equipment_maintenance","qc_stats","staff_count","pending_shipments","todays_tasks","financial_overview","ai_briefing","quick_actions"],
+  },
+  supervisor: {
+    keys: ["branch_status","staff_count","leave_requests","todays_tasks","customer_feedback","equipment_faults","sla_tracker","quick_actions"],
+  },
+  supervisor_buddy: {
+    keys: ["branch_status","staff_count","todays_tasks","customer_feedback","quick_actions"],
+  },
+  mudur: {
+    keys: ["branch_status","staff_count","leave_requests","todays_tasks","customer_feedback","equipment_faults","financial_overview","sla_tracker","quick_actions"],
+  },
+  yatirimci_branch: {
+    keys: ["branch_status","financial_overview","customer_feedback","equipment_faults","staff_count"],
+  },
+  barista: {
+    keys: ["todays_tasks","training_progress","quick_actions"],
+  },
+  bar_buddy: {
+    keys: ["todays_tasks","training_progress","quick_actions"],
+  },
+  stajyer: {
+    keys: ["todays_tasks","training_progress","quick_actions"],
+  },
+  fabrika_operator: {
+    keys: ["todays_tasks","factory_production","quick_actions"],
+  },
 };
 
 export async function seedDashboardWidgets() {

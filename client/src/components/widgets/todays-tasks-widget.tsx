@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/hooks/useAuth";
 import { useModuleEnabled } from "@/hooks/use-module-flags";
 import { Link } from "wouter";
 import { ClipboardList, ListChecks, CheckCircle2, Clock, AlertCircle, ArrowRight } from "lucide-react";
@@ -19,12 +18,11 @@ interface CombinedTask {
 }
 
 export function TodaysTasksWidget() {
-  const { user } = useAuth();
   const { isEnabled: isBranchTasksEnabled } = useModuleEnabled("sube_gorevleri");
   const today = new Date().toISOString().slice(0, 10);
 
   const { data: adHocTasks } = useQuery<any[]>({
-    queryKey: ["/api/tasks"],
+    queryKey: ["/api/tasks/my"],
   });
 
   const { data: branchInstances } = useQuery<any[]>({
@@ -41,10 +39,9 @@ export function TodaysTasksWidget() {
   if (adHocTasks) {
     const todayDate = new Date(today);
     const myTasks = adHocTasks.filter(t => {
-      const isAssigned = t.assignedToId?.toString() === user?.id?.toString();
       const isActive = !["onaylandi", "iptal_edildi", "reddedildi"].includes(t.status);
       const isDueToday = t.dueDate && new Date(t.dueDate).toISOString().slice(0, 10) === today;
-      return isAssigned && isActive && isDueToday;
+      return isActive && isDueToday;
     });
     myTasks.forEach(t => {
       combined.push({
@@ -80,9 +77,9 @@ export function TodaysTasksWidget() {
   });
 
   const displayTasks = combined.slice(0, 10);
-  const totalTasks = (adHocTasks?.filter(t => t.assignedToId?.toString() === user?.id?.toString() && t.dueDate && new Date(t.dueDate).toISOString().slice(0, 10) === today).length || 0) +
+  const totalTasks = (adHocTasks?.filter(t => t.dueDate && new Date(t.dueDate).toISOString().slice(0, 10) === today).length || 0) +
     (branchInstances?.length || 0);
-  const completedCount = (adHocTasks?.filter(t => t.assignedToId?.toString() === user?.id?.toString() && t.status === "onaylandi" && t.dueDate && new Date(t.dueDate).toISOString().slice(0, 10) === today).length || 0) +
+  const completedCount = (adHocTasks?.filter(t => t.status === "onaylandi" && t.dueDate && new Date(t.dueDate).toISOString().slice(0, 10) === today).length || 0) +
     (branchInstances?.filter((i: any) => i.status === "completed").length || 0);
   const progressPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
