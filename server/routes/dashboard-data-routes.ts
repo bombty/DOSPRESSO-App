@@ -183,12 +183,23 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
       FROM branches b WHERE b.is_active = true AND b.id NOT IN (23,24) ORDER BY b.name
     `);
 
+    const equipmentByBranch = await safeRows(`
+      SELECT b.id as branch_id, b.name,
+        (SELECT count(*) FROM equipment e WHERE e.branch_id = b.id) as total_equipment,
+        (SELECT count(*) FROM equipment_faults ef WHERE ef.branch_id = b.id AND ef.status IN ('open','in_progress')) as open_faults,
+        (SELECT count(*) FROM equipment_faults ef WHERE ef.branch_id = b.id AND ef.status = 'in_progress') as in_progress
+      FROM branches b WHERE b.is_active = true AND b.id NOT IN (23,24) ORDER BY b.name
+    `);
+
     const actionRequired: any[] = [];
     const overdueTraining = await safeCount(`SELECT count(*) FROM training_progress WHERE status = 'in_progress' AND updated_at < NOW() - INTERVAL '14 days'`);
     if (overdueTraining > 0) actionRequired.push({ type: "training_overdue", message: `${overdueTraining} personel eğitimi gecikiyor`, count: overdueTraining });
 
     const openTickets = await safeCount(`SELECT count(*) FROM support_tickets WHERE status NOT IN ('resolved','closed')`);
     if (openTickets > 0) actionRequired.push({ type: "open_tickets", message: `${openTickets} açık destek talebi`, count: openTickets });
+
+    const totalEquipFaults = equipmentByBranch.reduce((s: number, e: any) => s + Number(e.open_faults || 0), 0);
+    if (totalEquipFaults > 0) actionRequired.push({ type: "equipment_faults", message: `${totalEquipFaults} açık ekipman arızası`, count: totalEquipFaults });
 
     res.json({
       _meta: { dataAvailable: myBranches.length > 0, lastDataDate: endDate },
@@ -237,6 +248,12 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
         branchId: t.branch_id, name: t.name,
         openTickets: Number(t.open_tickets || 0),
       })).filter((t: any) => t.openTickets > 0),
+      equipmentByBranch: equipmentByBranch.map((e: any) => ({
+        branchId: e.branch_id, name: e.name,
+        totalEquipment: Number(e.total_equipment || 0),
+        openFaults: Number(e.open_faults || 0),
+        inProgress: Number(e.in_progress || 0),
+      })),
       actionRequired,
     });
   } catch (err: unknown) {

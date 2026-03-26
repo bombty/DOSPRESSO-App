@@ -22,6 +22,7 @@ import {
   Sparkles,
   GraduationCap,
   CalendarClock,
+  ClipboardCheck,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ interface BranchSummaryData {
     customerRating: number;
     openFaults: number;
     todayAttendance: number;
+    customerAvg?: number;
+    totalEquipment?: number;
   };
   teamStatus: Array<{ id: string; name: string; role: string; checklistStatus: string }>;
   lowStockItems: Array<{ name: string; quantity: number }>;
@@ -384,6 +387,61 @@ export default function MissionControlYatirimci() {
               </div>
             ))}
           </div>
+        </CollapsibleSection>
+      )}
+
+      {!isHQ && kpis && (
+        <CollapsibleSection
+          title="Checklist & Uyum"
+          icon={<ClipboardCheck className="w-3.5 h-3.5" />}
+          badge={kpis.checklistCompletion != null ? `%${Math.round(kpis.checklistCompletion)}` : undefined}
+          badgeVariant={(() => {
+            const val = kpis.checklistCompletion ?? 100;
+            return val >= 80 ? "success" as const : val >= 50 ? "warning" as const : "danger" as const;
+          })()}
+          defaultOpen={false}
+          data-testid="mc-yat-checklist"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-2">
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">Tamamlanma</span>
+              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${(kpis.checklistCompletion ?? 0) >= 80 ? "bg-emerald-500" : (kpis.checklistCompletion ?? 0) >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                  style={{ width: `${Math.min(100, Math.round(kpis.checklistCompletion ?? 0))}%` }}
+                />
+              </div>
+              <span className="text-[10px] font-medium flex-shrink-0">%{Math.round(kpis.checklistCompletion ?? 0)}</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              {(kpis.checklistCompletion ?? 0) >= 80 ? "Checklist uyumu iyi durumda" : (kpis.checklistCompletion ?? 0) >= 50 ? "Checklist uyumu orta seviyede" : "Checklist uyumu kritik seviyede"}
+            </p>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {!isHQ && kpis && (
+        <CollapsibleSection
+          title={"Ekipman Sa\u011Fl\u0131k"}
+          icon={<Wrench className="w-3.5 h-3.5" />}
+          badge={`${kpis.openFaults ?? 0} arıza`}
+          badgeVariant={(kpis.openFaults ?? 0) > 0 ? "danger" as const : "success" as const}
+          defaultOpen={false}
+          data-testid="mc-yat-equipment"
+        >
+          <div className="flex items-center gap-3 px-2 py-1">
+            <div className="flex-1 text-center p-2 rounded-md bg-muted/30">
+              <p className="text-lg font-bold">{kpis.openFaults ?? 0}</p>
+              <p className="text-[9px] text-muted-foreground">{"A\u00E7\u0131k Ar\u0131za"}</p>
+            </div>
+            <div className="flex-1 text-center p-2 rounded-md bg-muted/30">
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{(kpis.totalEquipment ?? 0) - (kpis.openFaults ?? 0)}</p>
+              <p className="text-[9px] text-muted-foreground">{"Sa\u011Fl\u0131kl\u0131"}</p>
+            </div>
+          </div>
+          {(kpis.openFaults ?? 0) === 0 && (
+            <p className="text-[10px] text-muted-foreground text-center py-1">{"T\u00FCm ekipmanlar \u00E7al\u0131\u015F\u0131yor"}</p>
+          )}
         </CollapsibleSection>
       )}
 

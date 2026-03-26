@@ -52,6 +52,7 @@ interface CoachDashboardData {
   feedbackByBranch?: Array<{ branchId: number; name: string; feedbackCount: number; avgRating: number }>;
   shiftByBranch?: Array<{ branchId: number; name: string; totalShifts: number; completedShifts: number; complianceRate: number }>;
   ticketsByBranch?: Array<{ branchId: number; name: string; openTickets: number }>;
+  equipmentByBranch?: Array<{ branchId: number; name: string; totalEquipment: number; openFaults: number; inProgress: number }>;
 }
 
 export default function MissionControlCoach() {
@@ -238,6 +239,39 @@ export default function MissionControlCoach() {
         data-testid="mc-coach-tasks"
       >
         <TodaysTasksWidget />
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Ekipman Durumu"
+        icon={<Wrench className="w-3.5 h-3.5" />}
+        badge={(() => {
+          const total = (data?.equipmentByBranch || []).reduce((s, e) => s + e.openFaults, 0);
+          return total > 0 ? `${total} arıza` : "Sorun yok";
+        })()}
+        badgeVariant={(() => {
+          const total = (data?.equipmentByBranch || []).reduce((s, e) => s + e.openFaults, 0);
+          return total > 3 ? "danger" as const : total > 0 ? "warning" as const : "success" as const;
+        })()}
+        defaultOpen={false}
+        data-testid="mc-coach-equipment"
+      >
+        {!(data?.equipmentByBranch || []).some(e => e.openFaults > 0) ? (
+          <p className="text-xs text-muted-foreground text-center py-3">{"T\u00FCm \u015Fubelerde sorun yok"}</p>
+        ) : (
+          <div className="space-y-1">
+            {(data?.equipmentByBranch || []).filter(e => e.openFaults > 0).sort((a, b) => b.openFaults - a.openFaults).map(e => (
+              <div key={e.branchId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`coach-equip-${e.branchId}`}>
+                <span className="text-xs truncate">{e.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{e.totalEquipment} ekipman</span>
+                  <Badge variant={e.openFaults > 2 ? "destructive" : "secondary"} className="text-[9px] h-5">
+                    <Wrench className="w-3 h-3 mr-0.5" />{e.openFaults}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CollapsibleSection>
 
       <CollapsibleSection

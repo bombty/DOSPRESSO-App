@@ -413,6 +413,43 @@ export default function MissionControlSupervisor() {
         </Card>
       )}
 
+      {branchSummary?.kpis && (
+        <Card data-testid="mc-branch-scorecard">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4" />
+              {"Şube Skor Kartı"}
+            </CardTitle>
+            <Badge variant={
+              (branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0) >= 80 ? "default"
+              : (branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0) >= 50 ? "secondary"
+              : "destructive"
+            } className="text-[9px] h-5">
+              %{Math.round(branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0)}
+            </Badge>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1.5">
+            {[
+              { label: "Aktif Personel", value: `${branchSummary.kpis.activeStaff}/${branchSummary.kpis.totalStaff}`, pct: branchSummary.kpis.totalStaff > 0 ? Math.round((branchSummary.kpis.activeStaff / branchSummary.kpis.totalStaff) * 100) : 0 },
+              { label: "Checklist", value: `%${Math.round(branchSummary.kpis.checklistCompletion ?? 0)}`, pct: Math.round(branchSummary.kpis.checklistCompletion ?? 0) },
+              { label: "Müşteri Puanı", value: branchSummary.kpis.customerAvg ? `${Number(branchSummary.kpis.customerAvg).toFixed(1)}/5` : "—", pct: branchSummary.kpis.customerAvg ? Math.round(Number(branchSummary.kpis.customerAvg) * 20) : 0 },
+              { label: "Uyarılar", value: String(branchSummary.kpis.warnings ?? 0), pct: (branchSummary.kpis.warnings ?? 0) === 0 ? 100 : Math.max(0, 100 - (branchSummary.kpis.warnings ?? 0) * 20) },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-24 flex-shrink-0">{item.label}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${item.pct >= 80 ? "bg-emerald-500" : item.pct >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                    style={{ width: `${Math.min(100, item.pct)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-medium w-12 text-right flex-shrink-0">{item.value}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-4 gap-2" data-testid="mc-sup-quick-actions">
         <Link href="/iletisim">
           <Card className="hover-elevate cursor-pointer">
