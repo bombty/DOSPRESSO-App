@@ -1856,7 +1856,7 @@ function GidaMuhendisiDashboard() {
   );
 }
 
-const MissionControlHQ = lazy(() => import("@/components/mission-control/MissionControlHQ"));
+import { DashboardRouter } from "@/components/mission-control/DashboardRouter";
 
 export default function HQDashboard() {
   const { user } = useAuth();
@@ -1864,11 +1864,7 @@ export default function HQDashboard() {
   const userRole = user?.role || '';
 
   if (!modeLoading && isMissionControl) {
-    return (
-      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
-        <MissionControlHQ />
-      </Suspense>
-    );
+    return <DashboardRouter />;
   }
   
   const cgoRoles = ['cgo', 'ceo', 'yatirimci_hq'];

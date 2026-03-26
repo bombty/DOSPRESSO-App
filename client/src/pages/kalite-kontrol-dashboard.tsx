@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
+
+const MissionControlDynamic = lazy(() => import("@/components/mission-control/MissionControlDynamic"));
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +109,7 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
 export default function KaliteKontrolDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [showResponseDialog, setShowResponseDialog] = useState(false);
   const [responseContent, setResponseContent] = useState('');
@@ -114,6 +118,7 @@ export default function KaliteKontrolDashboard() {
 
   const { data: feedbacks = [], isLoading, isError, refetch } = useQuery<Feedback[]>({
     queryKey: ['/api/customer-feedback', 'pending'],
+    enabled: !isMissionControl && !modeLoading,
     queryFn: async () => {
       const res = await fetch('/api/customer-feedback?status=new,in_progress,awaiting_response', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
@@ -123,6 +128,7 @@ export default function KaliteKontrolDashboard() {
 
   const { data: stats } = useQuery<FeedbackStats>({
     queryKey: ['/api/customer-feedback/stats/summary'],
+    enabled: !isMissionControl && !modeLoading,
     queryFn: async () => {
       const res = await fetch('/api/customer-feedback/stats/summary', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
@@ -132,12 +138,21 @@ export default function KaliteKontrolDashboard() {
 
   const { data: allFeedbacks = [] } = useQuery<Feedback[]>({
     queryKey: ['/api/customer-feedback', 'all'],
+    enabled: !isMissionControl && !modeLoading,
     queryFn: async () => {
       const res = await fetch('/api/customer-feedback', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
   });
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlDynamic />
+      </Suspense>
+    );
+  }
 
   const calculatePerformance = (): PerformanceMetrics => {
     const resolved = allFeedbacks.filter(f => f.status === 'resolved' || f.status === 'closed');

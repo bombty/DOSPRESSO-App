@@ -1,7 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
+
+const MissionControlFabrika = lazy(() => import("@/components/mission-control/MissionControlFabrika"));
 import { CompactKPIStrip } from "@/components/shared/UnifiedKPI";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,19 +105,23 @@ interface StockOverview {
 export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = {}) {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
 
   const { data: stats, isLoading: loadingStats, refetch, isError } = useQuery<DashboardStats>({
     queryKey: ['/api/factory/dashboard/stats'],
     refetchInterval: 30000,
+    enabled: !isMissionControl && !modeLoading,
   });
 
   const { data: stations = [] } = useQuery<Station[]>({
     queryKey: ['/api/factory/stations'],
+    enabled: !isMissionControl && !modeLoading,
   });
 
   const { data: activeWorkers = [], isLoading: loadingWorkers } = useQuery<ActiveWorker[]>({
     queryKey: ['/api/factory/active-workers'],
     refetchInterval: 15000,
+    enabled: !isMissionControl && !modeLoading,
   });
 
   const isManagerOrAdmin = user?.role === 'admin' || user?.role === 'fabrika_mudur';
@@ -123,25 +130,34 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
   const { data: costStats } = useQuery<CostStats>({
     queryKey: ['/api/factory/cost-dashboard-stats'],
     refetchInterval: 60000,
-    enabled: isCostRole,
+    enabled: isCostRole && !isMissionControl && !modeLoading,
   });
 
   const { data: wasteStats } = useQuery<any>({
     queryKey: ['/api/factory/waste-dashboard-stats'],
     refetchInterval: 60000,
+    enabled: !isMissionControl && !modeLoading,
   });
 
   const { data: qualityOverview } = useQuery<QualityOverview>({
     queryKey: ['/api/factory/quality-overview'],
     refetchInterval: 60000,
-    enabled: isManagerOrAdmin,
+    enabled: isManagerOrAdmin && !isMissionControl && !modeLoading,
   });
 
   const { data: stockOverview } = useQuery<StockOverview>({
     queryKey: ['/api/factory/stock-overview'],
     refetchInterval: 60000,
-    enabled: isManagerOrAdmin,
+    enabled: isManagerOrAdmin && !isMissionControl && !modeLoading,
   });
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlFabrika />
+      </Suspense>
+    );
+  }
 
   const handleLogout = async () => {
     try {

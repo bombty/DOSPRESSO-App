@@ -26,8 +26,12 @@ import {
   ExternalLink,
   AlertCircle,
 } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
+
+const MissionControlStajyer = lazy(() => import("@/components/mission-control/MissionControlStajyer"));
 
 interface MyDayData {
   greeting: string;
@@ -94,9 +98,11 @@ function ScoreChangeIndicator({ change }: { change: number }) {
 export default function BenimGunum() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
 
   const { data, isLoading, isError, refetch } = useQuery<MyDayData>({
     queryKey: ["/api/my-day"],
+    enabled: !isMissionControl && !modeLoading,
   });
 
   const quickAction = useMutation({
@@ -109,6 +115,14 @@ export default function BenimGunum() {
       queryClient.invalidateQueries({ queryKey: ["/api/my-day"] });
     },
   });
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlStajyer />
+      </Suspense>
+    );
+  }
 
   if (isLoading) {
     return (
