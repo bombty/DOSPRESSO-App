@@ -8,19 +8,20 @@ const MissionControlMuhasebe = lazy(() => import("./MissionControlMuhasebe"));
 const MissionControlSupervisor = lazy(() => import("./MissionControlSupervisor"));
 const MissionControlStajyer = lazy(() => import("./MissionControlStajyer"));
 const MissionControlFabrika = lazy(() => import("./MissionControlFabrika"));
+const MissionControlYatirimci = lazy(() => import("./MissionControlYatirimci"));
 
 const EXEC_ROLES = ["ceo", "cgo", "admin"];
 const COACH_ROLES = ["coach", "trainer"];
 const FINANCE_ROLES = ["muhasebe_ik", "muhasebe"];
+const INVESTOR_ROLES = ["yatirimci_branch", "yatirimci_hq"];
 const HQ_ROLES = [
   "ceo", "cgo", "admin", "coach", "trainer",
   "muhasebe_ik", "muhasebe", "satinalma", "kalite_kontrol",
   "gida_muhendisi", "teknik", "destek", "marketing",
-  "yatirimci_hq",
 ];
 
 const SUPERVISOR_ROLES = ["supervisor", "supervisor_buddy", "mudur"];
-const STAFF_ROLES = ["stajyer", "bar_buddy", "barista", "yatirimci_branch"];
+const STAFF_ROLES = ["stajyer", "bar_buddy", "barista"];
 const FACTORY_ROLES = [
   "fabrika_mudur", "uretim_sefi", "fabrika_sorumlu", "fabrika_personel",
   "fabrika_pisman", "fabrika_depo", "fabrika_kalite",
@@ -64,6 +65,14 @@ export function DashboardRouter() {
     return (
       <Suspense fallback={<MCLoading />}>
         <MissionControlMuhasebe />
+      </Suspense>
+    );
+  }
+
+  if (INVESTOR_ROLES.includes(role)) {
+    return (
+      <Suspense fallback={<MCLoading />}>
+        <MissionControlYatirimci />
       </Suspense>
     );
   }

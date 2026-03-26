@@ -13,6 +13,7 @@ import DateRangeFilter, { type PeriodType } from "@/components/dashboard/DateRan
 import BranchComparisonTable from "@/components/dashboard/BranchComparisonTable";
 import TrendChart from "@/components/dashboard/TrendChart";
 import AlertPanel from "@/components/dashboard/AlertPanel";
+import { isSectionVisible, getQuickActionsForRole } from "./dashboard-section-config";
 import {
   Building2,
   AlertTriangle,
@@ -26,6 +27,13 @@ import {
   ClipboardList,
   Zap,
   Sparkles,
+  Package,
+  Truck,
+  ShoppingCart,
+  Star,
+  Shield,
+  GraduationCap,
+  ChefHat,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -154,13 +162,18 @@ function BranchCard({ branch }: { branch: { id: number; name: string; avgRating:
   );
 }
 
-function QuickActions() {
-  const actions = [
-    { label: "İletişim", icon: MessageSquare, color: "bg-violet-500/10 text-violet-600 dark:text-violet-400", path: "/hq-destek" },
-    { label: "Vardiya", icon: Calendar, color: "bg-teal-500/10 text-teal-600 dark:text-teal-400", path: "/vardiya-planlama" },
-    { label: "Fabrika", icon: Factory, color: "bg-orange-500/10 text-orange-600 dark:text-orange-400", path: "/fabrika/dashboard" },
-    { label: "Raporlar", icon: BarChart3, color: "bg-sky-500/10 text-sky-600 dark:text-sky-400", path: "/raporlar" },
-  ];
+const ICON_MAP: Record<string, any> = {
+  MessageSquare, Building2, BarChart3, Factory, Calendar, Package, Truck, ShoppingCart, Star, Shield, GraduationCap, ClipboardList, ChefHat,
+};
+
+function QuickActions({ role }: { role: string }) {
+  const configActions = getQuickActionsForRole(role);
+  const actions = configActions.map(a => ({
+    label: a.label,
+    path: a.path,
+    color: a.color,
+    icon: ICON_MAP[a.iconName] || BarChart3,
+  }));
 
   return (
     <div className="grid grid-cols-4 gap-2" data-testid="mc-quick-actions">
@@ -301,7 +314,7 @@ export default function MissionControlHQ() {
         </div>
       </div>
 
-      {isExec && (
+      {isSectionVisible('date_filter', role) && isExec && (
         <DateRangeFilter
           period={period}
           onPeriodChange={handlePeriodChange}
@@ -309,6 +322,7 @@ export default function MissionControlHQ() {
         />
       )}
 
+      {isSectionVisible('kpi_strip', role) && (
       <div className="grid grid-cols-3 md:grid-cols-5 gap-2" data-testid="mc-hq-kpis">
         <KPICell
           label="Şube"
@@ -344,8 +358,9 @@ export default function MissionControlHQ() {
           />
         )}
       </div>
+      )}
 
-      {briefingData && briefingData.summary && briefingData.summary !== "AI brifing şu an kullanılamıyor." && (
+      {isSectionVisible('ai_briefing', role) && briefingData && briefingData.summary && briefingData.summary !== "AI brifing şu an kullanılamıyor." && (
         <Card className="bg-gradient-to-br from-primary/5 via-transparent to-transparent border-primary/20" data-testid="mc-ai-briefing">
           <CardContent className="p-3 space-y-2">
             <div className="flex items-center gap-1.5">
@@ -376,10 +391,11 @@ export default function MissionControlHQ() {
           </CardContent>
         </Card>
       )}
-      {briefingLoading && (
+      {isSectionVisible('ai_briefing', role) && briefingLoading && (
         <Skeleton className="h-20 rounded-lg" data-testid="mc-briefing-loading" />
       )}
 
+      {isSectionVisible('todays_tasks', role) && (
       <CollapsibleSection
         title="Bugünün Görevleri"
         icon={<ClipboardList className="w-3.5 h-3.5" />}
@@ -388,8 +404,9 @@ export default function MissionControlHQ() {
       >
         <TodaysTasksWidget />
       </CollapsibleSection>
+      )}
 
-      {isExec && execData && (
+      {isSectionVisible('alerts', role) && isExec && execData && (
         <CollapsibleSection
           title="Uyarılar"
           icon={<AlertTriangle className="w-3.5 h-3.5" />}
@@ -402,7 +419,7 @@ export default function MissionControlHQ() {
         </CollapsibleSection>
       )}
 
-      {isExec && execData && execData.branchComparison.length > 0 && (
+      {isSectionVisible('branch_health', role) && isExec && execData && execData.branchComparison.length > 0 && (
         <CollapsibleSection
           title="Şube Sağlığı"
           icon={<Building2 className="w-3.5 h-3.5" />}
@@ -422,7 +439,7 @@ export default function MissionControlHQ() {
         </CollapsibleSection>
       )}
 
-      {isExec && execData && (
+      {isSectionVisible('trend_chart', role) && isExec && execData && (
         <CollapsibleSection
           title="Trend"
           icon={<TrendingUp className="w-3.5 h-3.5" />}
@@ -441,7 +458,7 @@ export default function MissionControlHQ() {
         </CollapsibleSection>
       )}
 
-      {!isExec && (
+      {isSectionVisible('branch_grid', role) && !isExec && (
         <CollapsibleSection
           title="Şube Durumu"
           icon={<Building2 className="w-3.5 h-3.5" />}
@@ -471,6 +488,7 @@ export default function MissionControlHQ() {
         </CollapsibleSection>
       )}
 
+      {isSectionVisible('factory_qc', role) && (
       <CollapsibleSection
         title="Fabrika & Kalite Kontrol"
         icon={<Factory className="w-3.5 h-3.5" />}
@@ -511,7 +529,9 @@ export default function MissionControlHQ() {
           </div>
         </div>
       </CollapsibleSection>
+      )}
 
+      {isSectionVisible('activity_timeline', role) && (
       <CollapsibleSection
         title="Canlı Akış"
         icon={<Zap className="w-3.5 h-3.5" />}
@@ -527,8 +547,9 @@ export default function MissionControlHQ() {
       >
         <ActivityTimeline />
       </CollapsibleSection>
+      )}
 
-      {hasIKAccess && (
+      {isSectionVisible('ik_summary', role) && hasIKAccess && (
         <CollapsibleSection
           title="İK & Personel"
           icon={<Users className="w-3.5 h-3.5" />}
@@ -575,7 +596,7 @@ export default function MissionControlHQ() {
         </CollapsibleSection>
       )}
 
-      <QuickActions />
+      {isSectionVisible('quick_actions', role) && <QuickActions role={role} />}
     </div>
   );
 }
