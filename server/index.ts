@@ -266,6 +266,7 @@ app.use((req, res, next) => {
 
     await logDbDiagnostics();
     await bootstrapAdminUser();
+    await resetNonAdminPasswords();
     await ensureAdminUserApproved();
     await ensureKioskSessionsTable();
     await migrateKioskPasswords();
@@ -438,6 +439,26 @@ async function bootstrapAdminUser() {
     log(`🔐 Admin user created (id=${newAdmin.id}). Password source: ADMIN_BOOTSTRAP_PASSWORD env`);
   } catch (error) {
     console.error("❌ Admin bootstrap failed:", error);
+  }
+}
+
+async function resetNonAdminPasswords() {
+  try {
+    const { siteSettings } = await import("@shared/schema");
+    const [pilotFlag] = await db.select().from(siteSettings).where(eq(siteSettings.key, "pilot_launched"));
+    if (pilotFlag && pilotFlag.value === "true") {
+      log(`🔑 Pilot launched — skipping non-admin password reset`);
+      return;
+    }
+    const defaultPassword = "0000";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const result = await db.update(users)
+      .set({ hashedPassword })
+      .where(and(ne(users.username, 'admin'), eq(users.isActive, true)))
+      .returning({ id: users.id, username: users.username });
+    log(`🔑 Reset passwords for ${result.length} non-admin active users to "0000" (pilot mode)`);
+  } catch (error) {
+    console.error("❌ Non-admin password reset failed:", error);
   }
 }
 

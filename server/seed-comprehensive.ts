@@ -295,13 +295,12 @@ async function main() {
     );
     console.log(`  Verified ${hqVerify.rows.length}/${HQ_KEEP_IDS.length} HQ users exist.`);
 
-    // STEP 6b: Reset pilot user passwords (Mahmut, Basri, Cihan) to "0000"
-    const pilotUsernames = ['mahmut', 'basri', 'cihan'];
-    const pilotResetResult = await client.query(
-      `UPDATE users SET hashed_password = $1 WHERE username = ANY($2) RETURNING username, first_name, last_name`,
-      [hashedPassword, pilotUsernames]
+    // STEP 6b: Reset all non-admin user passwords to "0000" (pilot mode)
+    const nonAdminResetResult = await client.query(
+      `UPDATE users SET hashed_password = $1 WHERE username != 'admin' AND is_active = true RETURNING username, first_name, last_name`,
+      [hashedPassword]
     );
-    console.log(`  Reset passwords for ${pilotResetResult.rowCount} pilot users: ${pilotResetResult.rows.map((r: any) => r.username).join(', ')}`);
+    console.log(`  Reset passwords for ${nonAdminResetResult.rowCount} non-admin active users to "0000" (pilot mode)`);
 
     // ============================================================
     // STEP 7: Create test users for branches 1,4,6-22
