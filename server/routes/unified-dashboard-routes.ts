@@ -222,7 +222,7 @@ const widgetDataCollectors: Record<string, WidgetDataCollector> = {
   },
 
   quick_actions: async (user: AuthUser) => {
-    return { source: "config", role: user.role };
+    return getQuickActionsForRole(user.role || "");
   },
 };
 
@@ -450,7 +450,7 @@ function extractKPIs(widgets: any[], role: string): any[] {
 router.get("/api/admin/mc-widgets", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const allWidgets = await db
@@ -467,7 +467,7 @@ router.get("/api/admin/mc-widgets", isAuthenticated, async (req, res) => {
 router.post("/api/admin/mc-widgets", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const { widgetKey, title, description, widgetType, size, dataSource, category, componentKey, defaultRoles, sortOrder } = req.body;
@@ -498,7 +498,7 @@ router.post("/api/admin/mc-widgets", isAuthenticated, async (req, res) => {
 router.patch("/api/admin/mc-widgets/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const widgetId = parseInt(req.params.id);
@@ -524,7 +524,7 @@ router.patch("/api/admin/mc-widgets/:id", isAuthenticated, async (req, res) => {
 router.delete("/api/admin/mc-widgets/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const widgetId = parseInt(req.params.id);
@@ -539,10 +539,27 @@ router.delete("/api/admin/mc-widgets/:id", isAuthenticated, async (req, res) => 
   }
 });
 
+router.get("/api/admin/dashboard-role-widgets/:role", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
+      return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+    const targetRole = req.params.role;
+    const results = await db.select().from(dashboardRoleWidgets)
+      .where(eq(dashboardRoleWidgets.role, targetRole))
+      .orderBy(asc(dashboardRoleWidgets.displayOrder));
+    res.json(results);
+  } catch (err: unknown) {
+    console.error("[Admin/RoleWidgets]", err instanceof Error ? err.message : err);
+    res.status(500).json({ message: "Rol-widget listesi alınamadı" });
+  }
+});
+
 router.get("/api/admin/dashboard-role-widgets", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const { role } = req.query;
@@ -562,7 +579,7 @@ router.get("/api/admin/dashboard-role-widgets", isAuthenticated, async (req, res
 router.post("/api/admin/dashboard-role-widgets", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const { role: targetRole, widgetKey, isEnabled, displayOrder, defaultOpen } = req.body;
@@ -603,7 +620,7 @@ router.post("/api/admin/dashboard-role-widgets", isAuthenticated, async (req, re
 router.patch("/api/admin/dashboard-role-widgets/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const id = parseInt(req.params.id);
@@ -626,7 +643,7 @@ router.patch("/api/admin/dashboard-role-widgets/:id", isAuthenticated, async (re
 router.delete("/api/admin/dashboard-role-widgets/:id", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const id = parseInt(req.params.id);
@@ -644,7 +661,7 @@ router.delete("/api/admin/dashboard-role-widgets/:id", isAuthenticated, async (r
 router.put("/api/admin/dashboard-role-widgets/:role", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+    if (!user.role || !["admin", "ceo", "cgo"].includes(user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
     const targetRole = req.params.role;

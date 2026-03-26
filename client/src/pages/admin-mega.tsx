@@ -31,6 +31,7 @@ import {
   BookOpen,
   ListTodo,
   LayoutGrid,
+  LayoutDashboard,
   Trash2,
   Bot,
   ArrowRightLeft,
@@ -78,6 +79,7 @@ const AdminVeriKilitleri = lazy(() => import("./admin/veri-kilitleri"));
 const AdminDegisiklikTalepleri = lazy(() => import("./admin/degisiklik-talepleri"));
 const AdminDelegasyon = lazy(() => import("./admin/delegasyon"));
 const AdminModuleFlags = lazy(() => import("./admin/module-flags"));
+const AdminDashboardAyarlari = lazy(() => import("./admin/dashboard-ayarlari"));
 const PilotLaunch = lazy(() => import("./pilot-launch"));
 
 interface TabConfig {
@@ -322,6 +324,15 @@ const ADMIN_TABS: TabConfig[] = [
     component: AdminWidgetYonetimi
   },
   {
+    id: "dashboard-ayarlari",
+    label: "Dashboard Settings",
+    labelTr: "Dashboard Ayarları",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "operasyon",
+    component: AdminDashboardAyarlari
+  },
+  {
     id: "widget-editor",
     label: "Hero Banner Editor",
     labelTr: "Hero Banner Editör",
@@ -489,6 +500,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "degisiklik-talepleri": "/admin/degisiklik-talepleri",
   "delegasyon": "/admin/delegasyon",
   "modul-bayraklari": "/admin/modul-bayraklari",
+  "dashboard-ayarlari": "/admin/dashboard-ayarlari",
   "pilot-baslat": "/admin/pilot-baslat"
 };
 
@@ -513,7 +525,7 @@ export default function AdminMegaModule() {
   const visibleTabs = ADMIN_TABS.filter(tab => {
     if (!tab.permissionModule) return true;
     if (!user?.role) return false;
-    if (user.role === 'admin') return true;
+    if (['admin', 'ceo', 'cgo'].includes(user.role)) return true;
     return canAccess(tab.permissionModule!, 'view');
   });
 

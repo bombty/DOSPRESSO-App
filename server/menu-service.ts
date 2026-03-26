@@ -560,6 +560,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
         badge: "agent",
       },
+      {
+        id: "dashboard-ayarlari",
+        titleTr: "Dashboard Ayarları",
+        path: "/admin/dashboard-ayarlari",
+        icon: "LayoutDashboard",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
     ],
   },
 ];

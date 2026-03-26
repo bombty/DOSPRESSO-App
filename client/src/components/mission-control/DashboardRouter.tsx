@@ -9,8 +9,10 @@ const MissionControlSupervisor = lazy(() => import("./MissionControlSupervisor")
 const MissionControlStajyer = lazy(() => import("./MissionControlStajyer"));
 const MissionControlFabrika = lazy(() => import("./MissionControlFabrika"));
 const MissionControlYatirimci = lazy(() => import("./MissionControlYatirimci"));
+const MissionControlDynamic = lazy(() => import("./MissionControlDynamic"));
 
 const EXEC_ROLES = ["ceo", "cgo", "admin"];
+const DYNAMIC_ROLES = ["satinalma", "marketing", "kalite_kontrol", "gida_muhendisi", "teknik", "destek"];
 const COACH_ROLES = ["coach", "trainer"];
 const FINANCE_ROLES = ["muhasebe_ik", "muhasebe"];
 const INVESTOR_ROLES = ["yatirimci_branch", "yatirimci_hq"];
@@ -49,6 +51,14 @@ export function DashboardRouter() {
     return (
       <Suspense fallback={<MCLoading />}>
         <MissionControlHQ />
+      </Suspense>
+    );
+  }
+
+  if (DYNAMIC_ROLES.includes(role)) {
+    return (
+      <Suspense fallback={<MCLoading />}>
+        <MissionControlDynamic />
       </Suspense>
     );
   }
@@ -104,14 +114,14 @@ export function DashboardRouter() {
   if (HQ_ROLES.includes(role)) {
     return (
       <Suspense fallback={<MCLoading />}>
-        <MissionControlHQ />
+        <MissionControlDynamic />
       </Suspense>
     );
   }
 
   return (
     <Suspense fallback={<MCLoading />}>
-      <MissionControlHQ />
+      <MissionControlDynamic />
     </Suspense>
   );
 }
