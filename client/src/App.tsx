@@ -210,6 +210,7 @@ const HQOzet = lazyWithRetry(() => import("@/pages/hq-ozet"));
 const KoclukPaneli = lazyWithRetry(() => import("@/pages/kocluk-paneli"));
 const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazyWithRetry(() => import("@/pages/pdks"));
+const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"));
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
@@ -469,6 +470,7 @@ function Router() {
           <Route path="/kocluk-paneli" component={KoclukPaneli} />
           <Route path="/franchise-ozet" component={FranchiseOzet} />
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
+          <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
           <Route path="/iletisim-merkezi" component={CRMMegaModule} />

@@ -222,6 +222,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
+        id: "pdks-izin-gunleri",
+        titleTr: "İzin Günleri",
+        path: "/pdks-izin-gunleri",
+        icon: "CalendarOff",
+        moduleKey: "attendance",
+        scope: "hq",
+      },
+      {
         id: "maas",
         titleTr: "Maaş Hesaplama",
         path: "/maas",
@@ -650,13 +658,13 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications', 'crm-main',
   ],
   muhasebe_ik: [
-    'dashboard', 'ajanda', 'hr', 'shifts', 'attendance', 'pdks', 'maas',
+    'dashboard', 'ajanda', 'hr', 'shifts', 'attendance', 'pdks', 'pdks-izin-gunleri', 'maas',
     'accounting-main', 'financial-management', 'financial-reports', 'reports',
     'notifications', 'crm-main',
   ],
   muhasebe: [
     'dashboard', 'accounting-main', 'financial-management', 'financial-reports',
-    'pdks', 'maas', 'reports', 'notifications',
+    'pdks', 'pdks-izin-gunleri', 'maas', 'reports', 'notifications',
     'crm-main',
   ],
   satinalma: [
@@ -685,7 +693,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'reports', 'performance-dashboard', 'quality-control', 'food-safety',
     'branch-inspection', 'branch-health', 'customer-satisfaction',
     'training-academy-hq', 'knowledge-base',
-    'accounting-main', 'financial-management', 'pdks', 'maas',
+    'accounting-main', 'financial-management', 'pdks', 'pdks-izin-gunleri', 'maas',
     'procurement-dashboard', 'stock-management',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
     'notifications',

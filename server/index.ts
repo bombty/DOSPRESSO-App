@@ -28,7 +28,7 @@ import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig, factoryShiftSessions, factoryBreakLogs, kioskSessions, pdksRecords, branchShiftSessions, hqShiftSessions } from "@shared/schema";
+import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig, factoryShiftSessions, factoryBreakLogs, kioskSessions, pdksRecords, branchShiftSessions, hqShiftSessions, scheduledOffs, branchWeeklyAttendanceSummary, shifts } from "@shared/schema";
 import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull, isNull } from "drizzle-orm";
 import crypto from "crypto";
 
@@ -377,6 +377,11 @@ app.use((req, res, next) => {
       scheduleFactoryAutoCheckout();
       scheduleBranchAutoCheckout();
       scheduleHQAutoCheckout();
+
+      startPdksAutoWeekendScheduler();
+      startPdksWeeklySummaryScheduler();
+      startPdksDailyAbsenceScheduler();
+      startPdksMonthlyPayrollScheduler();
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
@@ -1074,6 +1079,423 @@ function startNotificationCleanupJob() {
   }, 24 * 60 * 60 * 1000);
 
   log("Notification cleanup job started (runs daily, first run in 5 minutes)");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PDKS SPRİNT B: SCHEDULER'LAR
+// ═══════════════════════════════════════════════════════════════
+
+const HQ_BRANCH_IDS = [5, 23, 24]; // Işıklar + Merkez Ofis + Fabrika
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function generateAutoWeekendOffs() {
+  try {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    const targetMonth = now.getMonth() + 1;
+    const targetYear = now.getFullYear();
+    if (targetMonth > 12) return;
+
+    const staff = await db.select({ id: users.id, branchId: users.branchId })
+      .from(users)
+      .where(and(
+        inArray(users.branchId, HQ_BRANCH_IDS),
+        eq(users.isActive, true),
+        ne(users.role, 'sube_kiosk')
+      ));
+
+    const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
+    const weekendDays: string[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(targetYear, targetMonth - 1, d);
+      if (date.getDay() === 0 || date.getDay() === 6) {
+        weekendDays.push(`${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+      }
+    }
+
+    let created = 0;
+    for (const user of staff) {
+      for (const day of weekendDays) {
+        try {
+          await db.insert(scheduledOffs).values({
+            userId: user.id,
+            branchId: user.branchId,
+            offDate: day,
+            offType: 'program_off',
+          }).onConflictDoNothing();
+          created++;
+        } catch (e: any) {
+          if (e.code === '23505') continue;
+        }
+      }
+    }
+
+    log(`[PDKS-B1] Auto weekend offs: ${staff.length} personel × ${weekendDays.length} gün (${targetMonth}/${targetYear}), ${created} kayıt`);
+  } catch (error) {
+    console.error("[PDKS-B1] Auto weekend offs error:", error);
+  }
+}
+
+function startPdksAutoWeekendScheduler() {
+  generateAutoWeekendOffs().catch(e => console.error("[PDKS-B1] Initial weekend offs error:", e));
+
+  schedulerManager.registerInterval('pdks-auto-weekend-offs', async () => {
+    const now = new Date();
+    if (now.getDate() === 1 && now.getHours() === 1 && now.getMinutes() < 10) {
+      await generateAutoWeekendOffs();
+    }
+  }, 10 * 60 * 1000);
+
+  log("[PDKS-B1] Auto weekend off scheduler started (runs on 1st of month 01:00)");
+}
+
+async function calculateWeeklySummaries() {
+  try {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    const weekEnd = new Date(now);
+    weekEnd.setDate(now.getDate() - 1);
+    const weekStart = new Date(weekEnd);
+    weekStart.setDate(weekEnd.getDate() - 6);
+
+    const weekStartStr = toDateStr(weekStart);
+    const weekEndStr = toDateStr(weekEnd);
+
+    const isoYear = weekEnd.getFullYear();
+    const startOfYear = new Date(isoYear, 0, 1);
+    const dayOfYear = Math.floor((weekEnd.getTime() - startOfYear.getTime()) / 86400000);
+    const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+
+    const allStaff = await db.select({
+      id: users.id,
+      branchId: users.branchId,
+      weeklyHours: users.weeklyHours,
+    }).from(users).where(and(
+      eq(users.isActive, true),
+      ne(users.role, 'sube_kiosk'),
+      isNotNull(users.branchId)
+    ));
+
+    let processed = 0;
+    for (const user of allStaff) {
+      try {
+        const records = await db.select({
+          recordDate: pdksRecords.recordDate,
+          recordTime: pdksRecords.recordTime,
+          recordType: pdksRecords.recordType,
+        }).from(pdksRecords).where(and(
+          eq(pdksRecords.userId, user.id),
+          gte(pdksRecords.recordDate, weekStartStr),
+          lte(pdksRecords.recordDate, weekEndStr)
+        )).orderBy(pdksRecords.recordDate, pdksRecords.recordTime);
+
+        let totalMinutes = 0;
+        let workDays = new Set<string>();
+        let lateDays = 0;
+
+        const byDate: Record<string, { time: string; type: string }[]> = {};
+        for (const r of records) {
+          if (!byDate[r.recordDate]) byDate[r.recordDate] = [];
+          byDate[r.recordDate].push({ time: r.recordTime, type: r.recordType });
+        }
+
+        for (const [dateStr, dayRecs] of Object.entries(byDate)) {
+          const sorted = [...dayRecs].sort((a, b) => a.time.localeCompare(b.time));
+          let dayMinutes = 0;
+          let i = 0;
+          while (i < sorted.length) {
+            if (sorted[i].type === 'giris') {
+              const exitIdx = sorted.findIndex((r, j) => j > i && r.type === 'cikis');
+              if (exitIdx !== -1) {
+                const [h1, m1] = sorted[i].time.split(':').map(Number);
+                const [h2, m2] = sorted[exitIdx].time.split(':').map(Number);
+                const diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+                if (diff > 0) dayMinutes += diff;
+                i = exitIdx + 1;
+              } else break;
+            } else i++;
+          }
+          if (dayMinutes > 0) {
+            totalMinutes += dayMinutes;
+            workDays.add(dateStr);
+          }
+        }
+
+        const offs = await db.select({ offDate: scheduledOffs.offDate })
+          .from(scheduledOffs)
+          .where(and(
+            eq(scheduledOffs.userId, user.id),
+            gte(scheduledOffs.offDate, weekStartStr),
+            lte(scheduledOffs.offDate, weekEndStr)
+          ));
+        const offSet = new Set(offs.map(o => o.offDate));
+
+        let absentDays = 0;
+        for (let d = 0; d < 7; d++) {
+          const checkDate = new Date(weekStart);
+          checkDate.setDate(weekStart.getDate() + d);
+          const ds = toDateStr(checkDate);
+          if (!offSet.has(ds) && !workDays.has(ds)) absentDays++;
+        }
+
+        const plannedMinutes = (user.weeklyHours || 45) * 60;
+        const overtimeMinutes = Math.max(0, totalMinutes - plannedMinutes);
+        const missingMinutes = Math.max(0, plannedMinutes - totalMinutes);
+        const complianceScore = plannedMinutes > 0 ? Math.min(100, Math.round((totalMinutes / plannedMinutes) * 100)) : 100;
+
+        await db.insert(branchWeeklyAttendanceSummary).values({
+          userId: user.id,
+          branchId: user.branchId,
+          weekStartDate: weekStartStr,
+          weekEndDate: weekEndStr,
+          weekNumber,
+          year: isoYear,
+          plannedTotalMinutes: plannedMinutes,
+          actualTotalMinutes: totalMinutes,
+          overtimeMinutes,
+          missingMinutes,
+          workDaysCount: workDays.size,
+          absentDaysCount: absentDays,
+          lateDaysCount: lateDays,
+          weeklyComplianceScore: complianceScore,
+        }).onConflictDoNothing();
+
+        processed++;
+      } catch (e) {
+        console.error(`[PDKS-B2] Weekly summary error for user ${user.id}:`, e);
+      }
+    }
+
+    log(`[PDKS-B2] Weekly summaries: ${processed}/${allStaff.length} personel (${weekStartStr} → ${weekEndStr})`);
+    return { processed, weekStartStr, weekEndStr };
+  } catch (error) {
+    console.error("[PDKS-B2] Weekly summary calculation error:", error);
+    return { processed: 0, weekStartStr: '', weekEndStr: '' };
+  }
+}
+
+async function sendWeeklyDeficitNotifications(weekStartStr: string) {
+  try {
+    if (!weekStartStr) return;
+
+    const deficits = await db.select({
+      userId: branchWeeklyAttendanceSummary.userId,
+      branchId: branchWeeklyAttendanceSummary.branchId,
+      missingMinutes: branchWeeklyAttendanceSummary.missingMinutes,
+      actualTotalMinutes: branchWeeklyAttendanceSummary.actualTotalMinutes,
+    }).from(branchWeeklyAttendanceSummary).where(and(
+      eq(branchWeeklyAttendanceSummary.weekStartDate, weekStartStr),
+      sql`${branchWeeklyAttendanceSummary.missingMinutes} > 60`
+    ));
+
+    if (deficits.length === 0) return;
+
+    const byBranch: Record<number, typeof deficits> = {};
+    for (const d of deficits) {
+      if (!d.branchId) continue;
+      if (!byBranch[d.branchId]) byBranch[d.branchId] = [];
+      byBranch[d.branchId].push(d);
+    }
+
+    for (const [branchIdStr, items] of Object.entries(byBranch)) {
+      const branchId = Number(branchIdStr);
+      const supervisors = await db.select({ id: users.id }).from(users).where(and(
+        eq(users.branchId, branchId),
+        sql`${users.role} IN ('supervisor', 'mudur')`,
+        eq(users.isActive, true)
+      ));
+
+      const totalMissing = items.reduce((s, i) => s + (i.missingMinutes || 0), 0);
+      const avgMissingHours = Math.round(totalMissing / items.length / 60 * 10) / 10;
+
+      for (const sup of supervisors) {
+        await storage.createNotification({
+          userId: sup.id,
+          type: 'pdks_weekly_deficit',
+          title: 'Haftalık Çalışma Eksikliği',
+          message: `Geçen hafta ${items.length} personel 45 saati tamamlayamadı. Ortalama eksik: ${avgMissingHours} saat.`,
+          link: '/pdks-izin-gunleri',
+          branchId,
+        });
+      }
+    }
+
+    log(`[PDKS-B2] Weekly deficit notifications: ${deficits.length} deficit, ${Object.keys(byBranch).length} branch notified`);
+  } catch (error) {
+    console.error("[PDKS-B2] Weekly deficit notification error:", error);
+  }
+}
+
+function startPdksWeeklySummaryScheduler() {
+  schedulerManager.registerInterval('pdks-weekly-summary', async () => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    if (now.getDay() === 0 && now.getHours() === 23 && now.getMinutes() < 10) {
+      const result = await calculateWeeklySummaries();
+      if (result.weekStartStr) {
+        setTimeout(async () => {
+          await sendWeeklyDeficitNotifications(result.weekStartStr);
+        }, 5 * 60 * 1000);
+      }
+    }
+  }, 10 * 60 * 1000);
+
+  log("[PDKS-B2] Weekly summary scheduler started (Sunday 23:00, deficit notifications Monday 08:30)");
+}
+
+async function sendDailyAbsenceReport() {
+  try {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = toDateStr(yesterday);
+
+    const plannedShifts = await db.select({
+      id: shifts.id,
+      branchId: shifts.branchId,
+      assignedToId: shifts.assignedToId,
+    }).from(shifts).where(and(
+      eq(shifts.shiftDate, yesterdayStr),
+      sql`${shifts.status} IN ('confirmed', 'completed')`
+    ));
+
+    if (plannedShifts.length === 0) return;
+
+    const yesterdayRecords = await db.select({
+      userId: pdksRecords.userId,
+      recordType: pdksRecords.recordType,
+    }).from(pdksRecords).where(
+      eq(pdksRecords.recordDate, yesterdayStr)
+    );
+    const usersWithEntry = new Set(
+      yesterdayRecords.filter(r => r.recordType === 'giris').map(r => r.userId)
+    );
+
+    const absentByBranch: Record<number, string[]> = {};
+    for (const shift of plannedShifts) {
+      if (!shift.assignedToId || !shift.branchId) continue;
+      if (usersWithEntry.has(shift.assignedToId)) continue;
+
+      const offs = await db.select({ id: scheduledOffs.id }).from(scheduledOffs)
+        .where(and(
+          eq(scheduledOffs.userId, shift.assignedToId),
+          eq(scheduledOffs.offDate, yesterdayStr)
+        )).limit(1);
+      if (offs.length > 0) continue;
+
+      if (!absentByBranch[shift.branchId]) absentByBranch[shift.branchId] = [];
+      absentByBranch[shift.branchId].push(shift.assignedToId);
+    }
+
+    let totalNotified = 0;
+    for (const [branchIdStr, absentUserIds] of Object.entries(absentByBranch)) {
+      const branchId = Number(branchIdStr);
+      const uniqueAbsent = [...new Set(absentUserIds)];
+      if (uniqueAbsent.length === 0) continue;
+
+      const absentNames = await db.select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(inArray(users.id, uniqueAbsent));
+
+      const nameList = absentNames.map(u => [u.firstName, u.lastName].filter(Boolean).join(' ')).join(', ');
+      const supervisors = await db.select({ id: users.id }).from(users).where(and(
+        eq(users.branchId, branchId),
+        sql`${users.role} IN ('supervisor', 'mudur')`,
+        eq(users.isActive, true)
+      ));
+
+      for (const sup of supervisors) {
+        await storage.createNotification({
+          userId: sup.id,
+          type: 'pdks_daily_absence',
+          title: 'Günlük Devamsızlık Raporu',
+          message: `Dün (${yesterdayStr}) ${uniqueAbsent.length} personel vardiyaya gelmedi: ${nameList}`,
+          link: '/pdks-izin-gunleri',
+          branchId,
+        });
+      }
+      totalNotified += supervisors.length;
+    }
+
+    log(`[PDKS-B3] Daily absence report: ${Object.values(absentByBranch).flat().length} absent across ${Object.keys(absentByBranch).length} branches, ${totalNotified} supervisor notified`);
+  } catch (error) {
+    console.error("[PDKS-B3] Daily absence report error:", error);
+  }
+}
+
+function startPdksDailyAbsenceScheduler() {
+  schedulerManager.registerInterval('pdks-daily-absence', async () => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    if (now.getHours() === 8 && now.getMinutes() >= 25 && now.getMinutes() < 35) {
+      await sendDailyAbsenceReport();
+    }
+  }, 10 * 60 * 1000);
+
+  log("[PDKS-B3] Daily absence report scheduler started (runs daily at 08:30)");
+}
+
+async function calculateMonthlyPayrollAuto() {
+  try {
+    const { calculatePayroll, savePayrollResults } = await import("./lib/payroll-engine");
+    const { PayrollResult } = await import("./lib/payroll-engine");
+
+    const now = new Date();
+    const lastMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+    const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+    const hqStaff = await db.select({ id: users.id, role: users.role })
+      .from(users)
+      .where(and(
+        inArray(users.branchId, HQ_BRANCH_IDS),
+        eq(users.isActive, true),
+        ne(users.role, 'sube_kiosk')
+      ));
+
+    const results: any[] = [];
+    let errors = 0;
+    for (const user of hqStaff) {
+      try {
+        const result = await calculatePayroll(user.id, year, lastMonth);
+        if (result) results.push(result);
+      } catch (e) {
+        errors++;
+        console.error(`[PDKS-B4] Payroll error for ${user.id}:`, e);
+      }
+    }
+
+    if (results.length > 0) {
+      await savePayrollResults(results);
+    }
+
+    const muhasebeUsers = await db.select({ id: users.id }).from(users).where(and(
+      sql`${users.role} IN ('muhasebe_ik', 'muhasebe', 'admin')`,
+      eq(users.isActive, true)
+    ));
+
+    for (const muh of muhasebeUsers) {
+      await storage.createNotification({
+        userId: muh.id,
+        type: 'payroll_ready',
+        title: `${lastMonth}/${year} Bordro Hazır`,
+        message: `${results.length} personelin bordrosu otomatik hesaplandı. ${errors > 0 ? `${errors} hata oluştu.` : ''} Kontrol edin.`,
+        link: '/bordrom',
+      });
+    }
+
+    log(`[PDKS-B4] Monthly payroll auto: ${results.length}/${hqStaff.length} calculated, ${errors} errors (${lastMonth}/${year})`);
+  } catch (error) {
+    console.error("[PDKS-B4] Monthly payroll auto error:", error);
+  }
+}
+
+function startPdksMonthlyPayrollScheduler() {
+  schedulerManager.registerInterval('pdks-monthly-payroll', async () => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    if (now.getDate() === 1 && now.getHours() === 4 && now.getMinutes() < 10) {
+      await calculateMonthlyPayrollAuto();
+    }
+  }, 10 * 60 * 1000);
+
+  log("[PDKS-B4] Monthly payroll auto-calculate scheduler started (1st of month at 04:00)");
 }
 
 function forceShutdown(signal: string) {
