@@ -20,6 +20,8 @@ import {
   TrendingUp,
   ArrowRight,
   Sparkles,
+  GraduationCap,
+  CalendarClock,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -84,6 +86,34 @@ export default function MissionControlYatirimci() {
     },
     enabled: !!branchId && !isHQ,
     staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: trainingData } = useQuery<Array<{
+    userId: number; name: string; role: string;
+    completedModules: number; totalAssigned: number; progressRate: number;
+  }>>({
+    queryKey: ["/api/branch-training-progress", branchId],
+    queryFn: async () => {
+      const r = await fetch(`/api/branch-training-progress/${branchId}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!branchId && !isHQ,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: feedbackData } = useQuery<{
+    avgRating: number; totalCount: number;
+    recent: Array<{ id: number; rating: number; comment: string; createdAt: string }>;
+  }>({
+    queryKey: ["/api/branch-feedback-summary", branchId],
+    queryFn: async () => {
+      const r = await fetch(`/api/branch-feedback-summary/${branchId}`, { credentials: "include" });
+      if (!r.ok) return { avgRating: 0, totalCount: 0, recent: [] };
+      return r.json();
+    },
+    enabled: !!branchId && !isHQ,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: briefingData } = useQuery<{
@@ -288,6 +318,71 @@ export default function MissionControlYatirimci() {
                 </div>
               );
             })}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {!isHQ && trainingData && trainingData.length > 0 && (
+        <CollapsibleSection
+          title={"E\u011Fitim \u0130lerlemesi"}
+          icon={<GraduationCap className="w-3.5 h-3.5" />}
+          badge={(() => {
+            const withProgress = trainingData.filter(t => t.totalAssigned > 0);
+            if (withProgress.length === 0) return "0%";
+            const avg = Math.round(withProgress.reduce((s, t) => s + t.progressRate, 0) / withProgress.length);
+            return `%${avg}`;
+          })()}
+          badgeVariant={(() => {
+            const withProgress = trainingData.filter(t => t.totalAssigned > 0);
+            if (withProgress.length === 0) return "info" as const;
+            const avg = Math.round(withProgress.reduce((s, t) => s + t.progressRate, 0) / withProgress.length);
+            return avg >= 70 ? "success" as const : avg >= 40 ? "warning" as const : "danger" as const;
+          })()}
+          defaultOpen={false}
+          data-testid="mc-yat-training"
+        >
+          <div className="space-y-1">
+            {trainingData.slice(0, 8).map((t, idx) => (
+              <div key={t.userId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/20" data-testid={`yat-training-${idx}`}>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-medium truncate block">{t.name}</span>
+                  <span className="text-[9px] text-muted-foreground capitalize">{t.role?.replace("_", " ")}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{t.completedModules}/{t.totalAssigned}</span>
+                  <Badge variant={t.progressRate >= 70 ? "default" : t.progressRate >= 40 ? "secondary" : "destructive"} className="text-[9px] h-4">
+                    %{t.progressRate}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {!isHQ && feedbackData && feedbackData.totalCount > 0 && (
+        <CollapsibleSection
+          title={"M\u00FC\u015Fteri Geri Bildirim"}
+          icon={<Star className="w-3.5 h-3.5" />}
+          badge={feedbackData.avgRating > 0 ? feedbackData.avgRating.toFixed(1) : undefined}
+          badgeVariant={feedbackData.avgRating >= 4 ? "success" : feedbackData.avgRating >= 3 ? "warning" : "danger"}
+          defaultOpen={false}
+          headerRight={
+            <Badge variant="outline" className="text-[10px] h-5">{feedbackData.totalCount} yorum</Badge>
+          }
+          data-testid="mc-yat-feedback"
+        >
+          <div className="space-y-1">
+            {feedbackData.recent.slice(0, 4).map((fb) => (
+              <div key={fb.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-muted/20" data-testid={`yat-feedback-${fb.id}`}>
+                <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-2.5 h-2.5 ${i < fb.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}`} />
+                  ))}
+                </div>
+                <span className="text-[10px] text-muted-foreground line-clamp-2">{fb.comment || "Puan verildi"}</span>
+              </div>
+            ))}
           </div>
         </CollapsibleSection>
       )}

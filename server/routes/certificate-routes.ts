@@ -520,7 +520,7 @@ const router = Router();
     try {
       const user = req.user!;
       const [dbUser] = await db.select({ dashboardPreferences: users.dashboardPreferences }).from(users).where(eq(users.id, user.id));
-      res.json(dbUser?.dashboardPreferences || { mode: "classic" });
+      res.json(dbUser?.dashboardPreferences || { mode: "mission-control" });
     } catch (error: unknown) {
       console.error("[DashboardPrefs] GET error:", error);
       res.status(500).json({ error: "Dashboard tercihleri yüklenemedi" });
@@ -531,12 +531,12 @@ const router = Router();
     try {
       const user = req.user!;
       const { mode, layout } = req.body;
-      const validModes = ["classic", "mission-control"];
+      const validModes = ["mission-control"];
       if (mode && !validModes.includes(mode)) {
         return res.status(400).json({ error: "Geçersiz dashboard modu" });
       }
       const [current] = await db.select({ dashboardPreferences: users.dashboardPreferences }).from(users).where(eq(users.id, user.id));
-      const existing = (current?.dashboardPreferences as any) || { mode: "classic" };
+      const existing = (current?.dashboardPreferences as any) || { mode: "mission-control" };
       const updated = { ...existing };
       if (mode) updated.mode = mode;
       if (layout !== undefined) updated.layout = layout;

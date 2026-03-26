@@ -151,6 +151,38 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
       ORDER BY modules_completed DESC LIMIT 20
     `);
 
+    const checklistByBranch = await safeRows(`
+      SELECT b.id as branch_id, b.name,
+        (SELECT count(*) FROM branch_task_instances bti WHERE bti.branch_id = b.id AND bti.status = 'completed' AND bti.completed_at >= '${startDate}') as completed,
+        (SELECT count(*) FROM branch_task_instances bti WHERE bti.branch_id = b.id AND bti.created_at >= '${startDate}') as total
+      FROM branches b WHERE b.is_active = true AND b.id NOT IN (23,24) ORDER BY b.name
+    `);
+
+    const feedbackByBranch = await safeRows(`
+      SELECT b.id as branch_id, b.name,
+        count(cf.id) as feedback_count,
+        round(coalesce(avg(cf.rating), 0)::numeric, 1) as avg_rating
+      FROM branches b
+      LEFT JOIN customer_feedback cf ON cf.branch_id = b.id AND cf.created_at >= '${startDate}' AND cf.created_at <= '${endDate} 23:59:59'
+      WHERE b.is_active = true AND b.id NOT IN (23,24)
+      GROUP BY b.id, b.name ORDER BY b.name
+    `);
+
+    const today = new Date().toISOString().split('T')[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const shiftByBranch = await safeRows(`
+      SELECT b.id as branch_id, b.name,
+        (SELECT count(*) FROM shifts s WHERE s.branch_id = b.id AND s.shift_date >= '${sevenDaysAgo}' AND s.shift_date <= '${today}') as total_shifts,
+        (SELECT count(*) FROM shifts s WHERE s.branch_id = b.id AND s.shift_date >= '${sevenDaysAgo}' AND s.shift_date <= '${today}' AND s.status = 'completed') as completed_shifts
+      FROM branches b WHERE b.is_active = true AND b.id NOT IN (23,24) ORDER BY b.name
+    `);
+
+    const ticketsByBranch = await safeRows(`
+      SELECT b.id as branch_id, b.name,
+        (SELECT count(*) FROM support_tickets t WHERE t.branch_id = b.id AND t.status NOT IN ('resolved','closed')) as open_tickets
+      FROM branches b WHERE b.is_active = true AND b.id NOT IN (23,24) ORDER BY b.name
+    `);
+
     const actionRequired: any[] = [];
     const overdueTraining = await safeCount(`SELECT count(*) FROM training_progress WHERE status = 'in_progress' AND updated_at < NOW() - INTERVAL '14 days'`);
     if (overdueTraining > 0) actionRequired.push({ type: "training_overdue", message: `${overdueTraining} personel eğitimi gecikiyor`, count: overdueTraining });
@@ -167,6 +199,14 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
         openTickets: Number(b.open_tickets || 0),
         healthScore: null, attendanceRate: null, taskCompletionRate: null, customerRating: null,
       })),
+      kpis: {
+        totalBranches: myBranches.length,
+        totalStaff: myBranches.reduce((s: number, b: any) => s + Number(b.staff_count || 0), 0),
+        openFaults: myBranches.reduce((s: number, b: any) => s + Number(b.open_faults || 0), 0),
+        openTickets: myBranches.reduce((s: number, b: any) => s + Number(b.open_tickets || 0), 0),
+        avgHealthScore: null,
+        avgTrainingProgress: avgQuizScore ? Number(avgQuizScore.toFixed(1)) : null,
+      },
       trainingOverview: {
         totalCompletions: trainingCompletions,
         completionRate: 0,
@@ -177,6 +217,26 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
         userId: s.user_id, name: s.name, role: s.role,
         modulesCompleted: Number(s.modules_completed || 0),
       })),
+      checklistByBranch: checklistByBranch.map((c: any) => ({
+        branchId: c.branch_id, name: c.name,
+        completed: Number(c.completed || 0), total: Number(c.total || 0),
+        rate: c.total > 0 ? Math.round((Number(c.completed || 0) / Number(c.total)) * 100) : 100,
+      })),
+      feedbackByBranch: feedbackByBranch.map((f: any) => ({
+        branchId: f.branch_id, name: f.name,
+        feedbackCount: Number(f.feedback_count || 0),
+        avgRating: Number(f.avg_rating || 0),
+      })),
+      shiftByBranch: shiftByBranch.map((s: any) => ({
+        branchId: s.branch_id, name: s.name,
+        totalShifts: Number(s.total_shifts || 0),
+        completedShifts: Number(s.completed_shifts || 0),
+        complianceRate: s.total_shifts > 0 ? Math.round((Number(s.completed_shifts || 0) / Number(s.total_shifts)) * 100) : 100,
+      })),
+      ticketsByBranch: ticketsByBranch.map((t: any) => ({
+        branchId: t.branch_id, name: t.name,
+        openTickets: Number(t.open_tickets || 0),
+      })).filter((t: any) => t.openTickets > 0),
       actionRequired,
     });
   } catch (err: unknown) {
@@ -334,6 +394,84 @@ router.post("/api/dashboard/snapshots/calculate", isAuthenticated, requireRole(E
   } catch (err: unknown) {
     console.error("[Snapshot/Calculate]", err instanceof Error ? err.message : err);
     res.status(500).json({ message: "Snapshot hesaplama başarısız" });
+  }
+});
+
+const BRANCH_ACCESS_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur", "supervisor", "yatirimci_branch", "yatirimci_hq"];
+
+router.get("/api/branch-training-progress/:branchId", isAuthenticated, requireRole(BRANCH_ACCESS_ROLES), async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) return res.status(400).json({ message: "Invalid branchId" });
+
+    const globalRoles = ["admin", "ceo", "cgo", "coach", "trainer"];
+    if (!globalRoles.includes(user.role || "") && user.branchId !== branchId) {
+      return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+    }
+
+    const rows = await safeRows(`
+      SELECT u.id as user_id, u.first_name || ' ' || u.last_name as name, u.role,
+        (SELECT count(*) FROM training_progress tp WHERE tp.user_id = u.id AND tp.status = 'completed') as completed_modules,
+        (SELECT count(*) FROM training_progress tp WHERE tp.user_id = u.id) as total_assigned
+      FROM users u
+      WHERE u.branch_id = ${branchId} AND u.is_active = true
+        AND u.role IN ('stajyer','bar_buddy','barista','supervisor','supervisor_buddy')
+      ORDER BY completed_modules DESC LIMIT 15
+    `);
+
+    res.json(rows.map((r: any) => ({
+      userId: r.user_id,
+      name: r.name,
+      role: r.role,
+      completedModules: Number(r.completed_modules || 0),
+      totalAssigned: Number(r.total_assigned || 0),
+      progressRate: r.total_assigned > 0 ? Math.round((Number(r.completed_modules || 0) / Number(r.total_assigned)) * 100) : 0,
+    })));
+  } catch (err: unknown) {
+    console.error("[BranchTrainingProgress]", err instanceof Error ? err.message : err);
+    res.status(500).json({ message: "Training progress error" });
+  }
+});
+
+router.get("/api/branch-feedback-summary/:branchId", isAuthenticated, requireRole(BRANCH_ACCESS_ROLES), async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) return res.status(400).json({ message: "Invalid branchId" });
+
+    const globalRoles = ["admin", "ceo", "cgo", "coach", "trainer"];
+    if (!globalRoles.includes(user.role || "") && user.branchId !== branchId) {
+      return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+
+    const avgRow = await safeRows(`
+      SELECT round(coalesce(avg(rating), 0)::numeric, 1) as avg_rating, count(*) as total_count
+      FROM customer_feedback WHERE branch_id = ${branchId} AND created_at >= '${thirtyDaysAgo}'
+    `);
+
+    const recent = await safeRows(`
+      SELECT id, rating, comment, created_at FROM customer_feedback
+      WHERE branch_id = ${branchId} AND created_at >= '${thirtyDaysAgo}'
+      ORDER BY created_at DESC LIMIT 5
+    `);
+
+    const stats = avgRow[0] || { avg_rating: 0, total_count: 0 };
+    res.json({
+      avgRating: Number(stats.avg_rating || 0),
+      totalCount: Number(stats.total_count || 0),
+      recent: recent.map((r: any) => ({
+        id: r.id,
+        rating: Number(r.rating || 0),
+        comment: r.comment || "",
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (err: unknown) {
+    console.error("[BranchFeedbackSummary]", err instanceof Error ? err.message : err);
+    res.status(500).json({ message: "Feedback summary error" });
   }
 });
 

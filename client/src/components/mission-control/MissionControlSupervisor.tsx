@@ -24,6 +24,8 @@ import {
   CalendarClock,
   Factory,
   BarChart3,
+  GraduationCap,
+  Star,
 } from "lucide-react";
 import { useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -90,6 +92,34 @@ export default function MissionControlSupervisor() {
     },
     enabled: !!branchId,
     staleTime: 3 * 60 * 1000,
+  });
+
+  const { data: trainingData } = useQuery<Array<{
+    userId: number; name: string; role: string;
+    completedModules: number; totalAssigned: number; progressRate: number;
+  }>>({
+    queryKey: ["/api/branch-training-progress", branchId],
+    queryFn: async () => {
+      const r = await fetch(`/api/branch-training-progress/${branchId}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: !!branchId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: feedbackData } = useQuery<{
+    avgRating: number; totalCount: number;
+    recent: Array<{ id: number; rating: number; comment: string; createdAt: string }>;
+  }>({
+    queryKey: ["/api/branch-feedback-summary", branchId],
+    queryFn: async () => {
+      const r = await fetch(`/api/branch-feedback-summary/${branchId}`, { credentials: "include" });
+      if (!r.ok) return { avgRating: 0, totalCount: 0, recent: [] };
+      return r.json();
+    },
+    enabled: !!branchId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const kpiItems = useMemo((): KPIItem[] => {
@@ -314,6 +344,69 @@ export default function MissionControlSupervisor() {
                 <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
                   {Number(item.currentStock).toFixed(1)}/{Number(item.minimumStock).toFixed(1)} {item.unit}
                 </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {trainingData && trainingData.length > 0 && (
+        <Card data-testid="mc-training-progress">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+              <GraduationCap className="w-4 h-4" />
+              {"E\u011Fitim \u0130lerlemesi"}
+            </CardTitle>
+            <Link href="/akademi">
+              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" data-testid="btn-training-all">
+                {"T\u00FCm\u00FC"} <ArrowRight className="w-3 h-3" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1">
+            {trainingData.slice(0, 6).map((t, idx) => (
+              <div key={t.userId} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/30" data-testid={`training-item-${idx}`}>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-medium truncate block">{t.name}</span>
+                  <span className="text-[9px] text-muted-foreground capitalize">{t.role?.replace("_", " ")}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{t.completedModules}/{t.totalAssigned}</span>
+                  <Badge variant={t.progressRate >= 80 ? "default" : t.progressRate >= 50 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                    %{t.progressRate}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {feedbackData && feedbackData.totalCount > 0 && (
+        <Card data-testid="mc-feedback-summary">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+              <Star className="w-4 h-4" />
+              {"M\u00FC\u015Fteri Geri Bildirim"}
+            </CardTitle>
+            <div className="flex items-center gap-1.5">
+              <Badge variant={feedbackData.avgRating >= 4 ? "default" : feedbackData.avgRating >= 3 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                <Star className="w-3 h-3 mr-0.5" />{feedbackData.avgRating.toFixed(1)}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] h-5">
+                {feedbackData.totalCount} yorum
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 space-y-1">
+            {feedbackData.recent.slice(0, 4).map((fb) => (
+              <div key={fb.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-muted/30" data-testid={`feedback-item-${fb.id}`}>
+                <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-2.5 h-2.5 ${i < fb.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}`} />
+                  ))}
+                </div>
+                <span className="text-[10px] text-muted-foreground line-clamp-2">{fb.comment || "Puan verildi"}</span>
               </div>
             ))}
           </CardContent>

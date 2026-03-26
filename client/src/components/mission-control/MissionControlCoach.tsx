@@ -21,6 +21,10 @@ import {
   Wrench,
   MessageSquare,
   ClipboardList,
+  ClipboardCheck,
+  Star,
+  CalendarClock,
+  Headphones,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -44,6 +48,10 @@ interface CoachDashboardData {
   };
   actionRequired?: Array<{ message: string; count: number; type?: string }>;
   staffDevelopment?: Array<{ userId: string; name: string; role: string; modulesCompleted: number }>;
+  checklistByBranch?: Array<{ branchId: number; name: string; completed: number; total: number; rate: number }>;
+  feedbackByBranch?: Array<{ branchId: number; name: string; feedbackCount: number; avgRating: number }>;
+  shiftByBranch?: Array<{ branchId: number; name: string; totalShifts: number; completedShifts: number; complianceRate: number }>;
+  ticketsByBranch?: Array<{ branchId: number; name: string; openTickets: number }>;
 }
 
 export default function MissionControlCoach() {
@@ -231,6 +239,125 @@ export default function MissionControlCoach() {
       >
         <TodaysTasksWidget />
       </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Checklist & Denetim"
+        icon={<ClipboardCheck className="w-3.5 h-3.5" />}
+        badge={(() => {
+          const items = data?.checklistByBranch || [];
+          const avgRate = items.length > 0 ? Math.round(items.reduce((s, c) => s + c.rate, 0) / items.length) : 100;
+          return `%${avgRate}`;
+        })()}
+        badgeVariant={(() => {
+          const items = data?.checklistByBranch || [];
+          const avgRate = items.length > 0 ? Math.round(items.reduce((s, c) => s + c.rate, 0) / items.length) : 100;
+          return avgRate >= 80 ? "success" as const : avgRate >= 50 ? "warning" as const : "danger" as const;
+        })()}
+        defaultOpen={false}
+        data-testid="mc-coach-checklists"
+      >
+        {!(data?.checklistByBranch || []).some(c => c.total > 0) ? (
+          <p className="text-xs text-muted-foreground text-center py-3">Veri yok</p>
+        ) : (
+          <div className="space-y-1">
+            {(data?.checklistByBranch || []).filter(c => c.total > 0).map(c => (
+              <div key={c.branchId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`coach-checklist-${c.branchId}`}>
+                <span className="text-xs truncate">{c.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{c.completed}/{c.total}</span>
+                  <Badge variant={c.rate >= 80 ? "default" : c.rate >= 50 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                    %{c.rate}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title={"M\u00FC\u015Fteri Geri Bildirim"}
+        icon={<Star className="w-3.5 h-3.5" />}
+        badge={(() => {
+          const items = (data?.feedbackByBranch || []).filter(f => f.feedbackCount > 0);
+          if (items.length === 0) return "—";
+          const avg = items.reduce((s, f) => s + f.avgRating, 0) / items.length;
+          return avg.toFixed(1);
+        })()}
+        badgeVariant={(() => {
+          const items = (data?.feedbackByBranch || []).filter(f => f.feedbackCount > 0);
+          if (items.length === 0) return "info" as const;
+          const avg = items.reduce((s, f) => s + f.avgRating, 0) / items.length;
+          return avg >= 4 ? "success" as const : avg >= 3 ? "warning" as const : "danger" as const;
+        })()}
+        defaultOpen={false}
+        data-testid="mc-coach-feedback"
+      >
+        {!(data?.feedbackByBranch || []).some(f => f.feedbackCount > 0) ? (
+          <p className="text-xs text-muted-foreground text-center py-3">Veri yok</p>
+        ) : (
+          <div className="space-y-1">
+            {(data?.feedbackByBranch || []).filter(f => f.feedbackCount > 0).sort((a, b) => a.avgRating - b.avgRating).map(f => (
+              <div key={f.branchId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`coach-feedback-${f.branchId}`}>
+                <span className="text-xs truncate">{f.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{f.feedbackCount} yorum</span>
+                  <Badge variant={f.avgRating >= 4 ? "default" : f.avgRating >= 3 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                    <Star className="w-3 h-3 mr-0.5" />{f.avgRating}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Vardiya Uyumu"
+        icon={<CalendarClock className="w-3.5 h-3.5" />}
+        badge={"Son 7 g\u00FCn"}
+        badgeVariant="info"
+        defaultOpen={false}
+        data-testid="mc-coach-shifts"
+      >
+        {!(data?.shiftByBranch || []).some(s => s.totalShifts > 0) ? (
+          <p className="text-xs text-muted-foreground text-center py-3">Veri yok</p>
+        ) : (
+          <div className="space-y-1">
+            {(data?.shiftByBranch || []).filter(s => s.totalShifts > 0).sort((a, b) => a.complianceRate - b.complianceRate).map(s => (
+              <div key={s.branchId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`coach-shift-${s.branchId}`}>
+                <span className="text-xs truncate">{s.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-muted-foreground">{s.completedShifts}/{s.totalShifts}</span>
+                  <Badge variant={s.complianceRate >= 80 ? "default" : s.complianceRate >= 50 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                    %{s.complianceRate}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {(data?.ticketsByBranch || []).length > 0 && (
+        <CollapsibleSection
+          title="SLA & Talepler"
+          icon={<Headphones className="w-3.5 h-3.5" />}
+          badge={`${(data?.ticketsByBranch || []).reduce((s, t) => s + t.openTickets, 0)} a\u00E7\u0131k`}
+          badgeVariant="warning"
+          defaultOpen={false}
+          data-testid="mc-coach-tickets"
+        >
+          <div className="space-y-1">
+            {(data?.ticketsByBranch || []).sort((a, b) => b.openTickets - a.openTickets).map(t => (
+              <div key={t.branchId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`coach-ticket-${t.branchId}`}>
+                <span className="text-xs truncate">{t.name}</span>
+                <Badge variant="destructive" className="text-[9px] h-5">{t.openTickets} ticket</Badge>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
 
       <div className="grid grid-cols-3 gap-2" data-testid="mc-coach-quick-nav">
         <Link href="/akademi-hq">
