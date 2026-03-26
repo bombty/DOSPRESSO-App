@@ -71,12 +71,12 @@ export async function seedDashboardWidgets() {
 
   for (const w of WIDGET_REGISTRY) {
     await db.execute(sql`
-      INSERT INTO dashboard_widgets (title, data_source, type, size, is_active, sort_order, widget_key, category, component_key, description)
+      INSERT INTO dashboard_widgets (title, data_source, widget_type, size, is_active, sort_order, widget_key, category, component_key, description)
       VALUES (${w.title}, ${w.dataSource}, ${w.type}, ${w.size}, true, ${w.sortOrder}, ${w.widgetKey}, ${w.category}, ${w.componentKey}, ${w.description})
       ON CONFLICT (widget_key) DO UPDATE SET
         title = EXCLUDED.title,
         data_source = EXCLUDED.data_source,
-        type = EXCLUDED.type,
+        widget_type = EXCLUDED.widget_type,
         size = EXCLUDED.size,
         sort_order = EXCLUDED.sort_order,
         category = EXCLUDED.category,

@@ -652,6 +652,7 @@ router.put("/api/admin/dashboard-role-widgets/:role", isAuthenticated, async (re
       rolePerms = await getUserPermissions(targetRole);
     } catch {}
 
+    const authorizedWidgetKeys = new Set<string>();
     for (const w of widgets) {
       if (!w.widgetKey) continue;
       const widgetDef = widgetDefMap.get(w.widgetKey);
@@ -660,12 +661,13 @@ router.put("/api/admin/dashboard-role-widgets/:role", isAuthenticated, async (re
         const missing = widgetDef.requiredPermissions.filter(p => !rolePerms!.has(p));
         if (missing.length > 0) continue;
       }
+      authorizedWidgetKeys.add(w.widgetKey);
     }
 
     await db.delete(dashboardRoleWidgets).where(eq(dashboardRoleWidgets.role, targetRole));
 
     const insertRows = widgets
-      .filter((w: any) => w.widgetKey && widgetDefMap.has(w.widgetKey))
+      .filter((w: any) => w.widgetKey && authorizedWidgetKeys.has(w.widgetKey))
       .map((w: any, i: number) => ({
         role: targetRole,
         widgetKey: w.widgetKey,
