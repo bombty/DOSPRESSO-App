@@ -13,10 +13,14 @@ import {
   ExternalLink,
   MessageSquare,
 } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { DobodySuggestionList } from "@/components/dobody-suggestion-card";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
+
+const MissionControlYatirimci = lazy(() => import("@/components/mission-control/MissionControlYatirimci"));
 
 interface FranchiseSummaryData {
   branches: Array<{
@@ -42,10 +46,20 @@ interface FranchiseSummaryData {
 export default function FranchiseOzet() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
 
   const { data, isLoading, isError, refetch } = useQuery<FranchiseSummaryData>({
     queryKey: ["/api/franchise-summary"],
+    enabled: !isMissionControl && !modeLoading,
   });
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlYatirimci />
+      </Suspense>
+    );
+  }
 
   const quickAction = useMutation({
     mutationFn: async (action: any) => {

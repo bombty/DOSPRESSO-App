@@ -14,7 +14,7 @@ import {
   GraduationCap,
   Star,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { DobodySuggestionList, type DobodySuggestion } from "@/components/dobody-suggestion-card";
 import { SmartNotificationDialog } from "@/components/smart-notification-dialog";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
@@ -22,6 +22,9 @@ import { QuickTaskModal } from "@/components/quick-task-modal";
 import { Bot } from "lucide-react";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
+
+const MissionControlCoach = lazy(() => import("@/components/mission-control/MissionControlCoach"));
 
 interface CoachSummaryData {
   branches: Array<{ id: number; name: string }>;
@@ -50,13 +53,23 @@ interface CoachSummaryData {
 
 export default function KoclukPaneli() {
   const { user } = useAuth();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionSuggestion, setActionSuggestion] = useState<DobodySuggestion | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery<CoachSummaryData>({
     queryKey: ["/api/coach-summary"],
+    enabled: !isMissionControl && !modeLoading,
   });
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlCoach />
+      </Suspense>
+    );
+  }
 
   if (isLoading) {
     return (

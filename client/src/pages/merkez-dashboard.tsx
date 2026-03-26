@@ -32,6 +32,10 @@ import { ROLE_LABELS } from "@/lib/turkish-labels";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 import { ErrorState } from "../components/error-state";
 import { LoadingState } from "../components/loading-state";
+import { useDashboardMode } from "@/hooks/useDashboardMode";
+import { lazy, Suspense } from "react";
+
+const MissionControlMuhasebe = lazy(() => import("@/components/mission-control/MissionControlMuhasebe"));
 
 interface BranchInfo {
   branchId: number;
@@ -94,15 +98,25 @@ const shiftTypeLabels: Record<string, string> = {
 export default function MerkezDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { isMissionControl, isLoading: modeLoading } = useDashboardMode();
 
   const { data, isLoading, refetch, isError } = useQuery<HQSummaryData>({
     queryKey: ["/api/hq-dashboard-summary"],
     refetchInterval: 60000,
+    enabled: !isMissionControl && !modeLoading,
   });
 
   if (!user) {
     setLocation("/login");
     return null;
+  }
+
+  if (!modeLoading && isMissionControl) {
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-sm text-muted-foreground">Yükleniyor...</p></div>}>
+        <MissionControlMuhasebe />
+      </Suspense>
+    );
   }
 
   const today = new Date();

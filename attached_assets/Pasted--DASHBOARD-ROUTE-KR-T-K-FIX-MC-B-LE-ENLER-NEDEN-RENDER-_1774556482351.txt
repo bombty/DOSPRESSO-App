@@ -1,0 +1,215 @@
+# DASHBOARD ROUTE KRİTİK FIX — MC BİLEŞENLERİ NEDEN RENDER EDİLMİYOR?
+# Sprint 13'ten bu yana yapılan tüm dashboard değişiklikleri görsel olarak ETKİSİZ
+# MissionControlCoach, zenginleştirilmiş MissionControlHQ vb. hiç render olmuyor
+# ÖNCE TEŞHİS KOY, SONRA DÜZELT
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- ÖNCE teşhis koy — neden render olmuyor?
+- Sonra minimum değişiklikle düzelt
+- Her değişiklikten sonra compile kontrol et
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+---
+
+## STEP 0: TAM TEŞHİS
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "NEDEN MC BİLEŞENLERİ RENDER EDİLMİYOR?"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. KULLANICI GİRİŞ AKIŞI — ADIM ADIM İZLE ████"
+
+echo ""
+echo "=== App.tsx — / path'i nereye gidiyor? ==="
+grep -n 'path.*["\x27]/["\x27]\|path.*["\x27]\/["\x27]\|<Route.*path="/"' client/src/App.tsx | head -10
+
+echo ""
+echo "=== App.tsx — /kocluk-paneli route var mı? ==="
+grep -n "kocluk\|koçluk\|kocluk-paneli\|coach.*panel" client/src/App.tsx | head -5
+
+echo ""
+echo "=== App.tsx — dashboard sayfası hangi bileşen? ==="
+grep -n "dashboard\|Dashboard\|hq-ozet\|HqOzet" client/src/App.tsx | head -10
+
+echo ""
+echo "████ 2. DASHBOARD.TSX TAM AKIŞ ████"
+echo "=== dashboard.tsx — tam dosya ilk 150 satır ==="
+head -150 client/src/pages/dashboard.tsx 2>/dev/null
+
+echo ""
+echo "████ 3. HQ-OZET.TSX TAM AKIŞ ████"
+echo "=== hq-ozet.tsx — tam dosya ilk 100 satır ==="
+head -100 client/src/pages/hq-ozet.tsx 2>/dev/null
+
+echo ""
+echo "████ 4. COACH YÖNLENDIRME — NEDEN ESKİ PANEL? ████"
+
+echo ""
+echo "=== Yavuz giriş yapınca ne oluyor? ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"yavuz","password":"0000"}' -c /tmp/rfix.txt 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log('id:', d.id, 'role:', d.role, 'branchId:', d.branchId);
+  console.log('dashboardPreferences:', JSON.stringify(d.dashboardPreferences));
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== /api/me/dashboard-preferences (Yavuz) ==="
+curl -s -b /tmp/rfix.txt "http://localhost:5000/api/me/dashboard-preferences" 2>/dev/null
+
+echo ""
+echo "=== Coach'ın dashboard.tsx'teki akışı ==="
+echo "--- HQ_ROLES'ta coach var mı? ---"
+grep -n "HQ_ROLES\|hqRoles\|isHQ\|isHqRole" client/src/pages/dashboard.tsx | head -10
+echo ""
+echo "--- BRANCH_ROLES'ta coach var mı? ---"
+grep -n "BRANCH_ROLES\|branchRoles\|isBranch" client/src/pages/dashboard.tsx | head -10
+echo ""
+echo "--- Coach için özel yönlendirme var mı? ---"
+grep -n "coach\|Coach\|COACH" client/src/pages/dashboard.tsx | head -10
+
+echo ""
+echo "=== /kocluk-paneli sayfası hangi bileşeni render ediyor? ==="
+grep -A5 "kocluk-paneli\|koclukPaneli\|CoachPanel\|KoclukPaneli" client/src/App.tsx | head -10
+echo ""
+echo "--- Bu bileşen dosyası ---"
+find client/src -name "*kocluk*" -o -name "*coach-panel*" -o -name "*KoclukPaneli*" | sort
+
+echo ""
+echo "████ 5. CGO YÖNLENDIRME — NEDEN ESKİ WİDGET'LAR? ████"
+
+echo ""
+echo "=== Utku giriş yapınca ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/rfix2.txt 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log('id:', d.id, 'role:', d.role, 'dashboardPreferences:', JSON.stringify(d.dashboardPreferences));
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== CGO hq-ozet'e gidiyor mu? ==="
+grep -n "cgo\|CGO" client/src/pages/dashboard.tsx client/src/pages/hq-ozet.tsx | head -10
+
+echo ""
+echo "████ 6. DashboardRouter GERÇEKTE ÇAĞRILIYOR MU? ████"
+
+echo "=== DashboardRouter tam dosya ==="
+cat client/src/components/mission-control/DashboardRouter.tsx
+
+echo ""
+echo "=== hq-ozet.tsx DashboardRouter'ı import ediyor mu? ==="
+grep -n "DashboardRouter\|dashboardRouter\|import.*DashboardRouter" client/src/pages/hq-ozet.tsx | head -5
+
+echo ""
+echo "=== hq-ozet.tsx MC modu nasıl belirleniyor? ==="
+grep -n "isMissionControl\|isClassic\|useDashboardMode\|dashboardMode\|mode" client/src/pages/hq-ozet.tsx | head -15
+
+echo ""
+echo "████ 7. useDashboardMode HOOK TAM İÇERİK ████"
+cat client/src/hooks/useDashboardMode.ts 2>/dev/null
+echo ""
+echo "--- Yoksa başka bir isimde mi? ---"
+find client/src -name "*dashboard*mode*" -o -name "*DashboardMode*" | sort
+
+echo ""
+echo "████ 8. MissionControlHQ — YENİ WİDGET'LAR GERÇEKTEN VAR MI? ████"
+
+echo "=== MissionControlHQ'daki CollapsibleSection sayısı ==="
+grep -c "CollapsibleSection" client/src/components/mission-control/MissionControlHQ.tsx 2>/dev/null
+
+echo ""
+echo "=== Son eklenen PDKS/CRM widget'lar var mı? ==="
+grep -n "pdks\|PDKS\|crm_summary\|crmSummary\|customer_feedback\|müşteri\|yoklama\|devamsız" client/src/components/mission-control/MissionControlHQ.tsx | head -10
+
+echo ""
+echo "=== isSectionVisible veya widgetConfig kullanılıyor mu? ==="
+grep -n "isSectionVisible\|widgetConfig\|isWidgetEnabled\|useWidgetConfig" client/src/components/mission-control/MissionControlHQ.tsx | head -10
+
+echo ""
+echo "████ 9. MissionControlCoach — YENİ SECTION'LAR VAR MI? ████"
+
+echo "=== MissionControlCoach CollapsibleSection sayısı ==="
+grep -c "CollapsibleSection" client/src/components/mission-control/MissionControlCoach.tsx 2>/dev/null
+
+echo ""
+echo "=== Coach'taki tüm section title'ları ==="
+grep -oP 'title="[^"]*"' client/src/components/mission-control/MissionControlCoach.tsx 2>/dev/null
+
+echo ""
+echo "████ 10. COACH SAYFASI — / PATH VS /kocluk-paneli ████"
+
+echo "=== App.tsx'te coach ile ilgili TÜM route'lar ==="
+grep -B2 -A5 "coach\|Coach\|kocluk\|Kocluk" client/src/App.tsx | head -30
+
+echo ""
+echo "=== Sidebar menüde coach nereye link veriyor? ==="
+grep -rn "kocluk\|coach.*panel\|coach.*dash\|kocluk-paneli" server/services/menu-service.ts server/routes/menu*.ts 2>/dev/null | head -10
+
+echo ""
+echo "████ 11. BranchDashboard VAR MI? ████"
+echo "=== dashboard.tsx'te BranchDashboard ==="
+grep -n "BranchDashboard\|branchDashboard" client/src/pages/dashboard.tsx | head -5
+echo ""
+echo "=== BranchDashboard dosyası ==="
+find client/src -name "*BranchDashboard*" -name "*.tsx" | head -3
+
+echo ""
+echo "████ 12. MEVCUT DASHBOARD MOD DEĞERLERİ (TÜM KULLANICILAR) ████"
+echo "SELECT username, role, dashboard_preferences->>'mode' as mode FROM users WHERE is_active=true AND dashboard_preferences IS NOT NULL ORDER BY role;" | psql 2>/dev/null
+
+echo ""
+echo "=== dashboardPreferences NULL olan aktif kullanıcılar ==="
+echo "SELECT count(*) FROM users WHERE is_active=true AND (dashboard_preferences IS NULL OR dashboard_preferences::text = '{}');" | psql -t 2>/dev/null
+
+echo ""
+echo "████ 13. CGO EKRAN GÖRÜNTÜSÜNDEKİ SECTION'LAR ████"
+echo "CGO ekranında görünen: AI Briefing, Bugünün Görevleri, Uyarılar, Trend, Canlı Akış, Quick Actions"
+echo "Görünmeyen: CRM Özet, Müşteri Feedback, Şube Karşılaştırma, PDKS widget'ları"
+echo ""
+echo "=== MissionControlHQ render sırası (JSX return) ==="
+grep -n "return\|<Collapsible\|<Section\|<Card.*title\|<div.*className.*space\|</div>" client/src/components/mission-control/MissionControlHQ.tsx | tail -40
+
+echo ""
+echo "████ 14. MissionControlDynamic ÇALIŞIYOR MU? ████"
+echo "=== MissionControlDynamic var mı? ==="
+wc -l client/src/components/mission-control/MissionControlDynamic.tsx 2>/dev/null
+echo ""
+echo "=== /api/me/dashboard-data CGO olarak ==="
+curl -s -b /tmp/rfix2.txt "http://localhost:5000/api/me/dashboard-data" 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  if(d.widgets) console.log('Widgets:', d.widgets.length, '→', d.widgets.map(w=>w.key||w.widget_key).join(', '));
+  else console.log('Keys:', Object.keys(d));
+} catch(e) { console.log('ERROR or empty'); }
+" 2>/dev/null
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "RAPORLA — KÖK NEDENLERİ BULDUKTAN SONRA DÜZELT:"
+echo ""
+echo "1. Coach neden /kocluk-paneli sayfasına gidiyor?"
+echo "   → MissionControlCoach'a nasıl yönlendiririz?"
+echo ""
+echo "2. CGO (cgo rolü) MissionControlHQ mu yoksa başka bir şey mi görüyor?"
+echo "   → Yeni widget'lar neden görünmüyor?"
+echo ""
+echo "3. DashboardRouter render ediliyor mu edılmiyor mu?"
+echo "   → useDashboardMode hook ne dönüyor?"
+echo ""
+echo "4. Tüm kullanıcılar mission-control modunda mı?"
+echo "   → NULL olanlar hangi fallback'e düşüyor?"
+echo ""
+echo "SORUNLARI BUL VE DÜZELT. Her düzeltmeden sonra compile kontrol et."
+echo "Sonuçta: Yavuz MissionControlCoach'u, Utku yeni widget'lı MissionControlHQ'yu görmeli."
+```
