@@ -1050,7 +1050,7 @@ export type StockCountItem = typeof stockCountItems.$inferSelect;
 
 export const dashboardWidgets = pgTable("dashboard_widgets", {
   id: serial("id").primaryKey(),
-  widgetKey: varchar("widget_key", { length: 100 }).unique(),
+  widgetKey: varchar("widget_key", { length: 100 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   widgetType: varchar("widget_type", { length: 50 }).notNull(),

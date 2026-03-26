@@ -18,6 +18,7 @@ import {
   branchOrders,
 } from "@shared/schema";
 import type { AuthUser } from "../types/auth";
+import { getUserPermissions } from "../permission-service";
 
 const router = Router();
 
@@ -327,9 +328,15 @@ router.get("/api/me/dashboard-data", isAuthenticated, async (req, res) => {
         }));
     }
 
+    let userPermissionKeys: Set<string> = new Set();
+    try {
+      const perms = await getUserPermissions(role);
+      perms.forEach((_, key) => userPermissionKeys.add(key));
+    } catch {}
+
     const authorizedWidgets = widgetConfigs.filter(({ widget }) => {
       if (!widget.requiredPermissions || widget.requiredPermissions.length === 0) return true;
-      return true;
+      return widget.requiredPermissions.every(perm => userPermissionKeys.has(perm));
     });
 
     const widgetResults = await Promise.allSettled(
@@ -557,6 +564,19 @@ router.post("/api/admin/dashboard-role-widgets", isAuthenticated, async (req, re
     if (!targetRole || !widgetKey) {
       return res.status(400).json({ message: "Zorunlu alanlar eksik: role, widgetKey" });
     }
+    const [widget] = await db.select().from(dashboardWidgets).where(eq(dashboardWidgets.widgetKey, widgetKey));
+    if (!widget) {
+      return res.status(404).json({ message: "Widget bulunamadı" });
+    }
+    if (widget.requiredPermissions && widget.requiredPermissions.length > 0) {
+      try {
+        const rolePerms = await getUserPermissions(targetRole);
+        const missingPerms = widget.requiredPermissions.filter(p => !rolePerms.has(p));
+        if (missingPerms.length > 0) {
+          return res.status(400).json({ message: `Bu rol gerekli izinlere sahip değil: ${missingPerms.join(', ')}` });
+        }
+      } catch {}
+    }
     const [created] = await db.insert(dashboardRoleWidgets).values({
       role: targetRole,
       widgetKey,
@@ -609,6 +629,62 @@ router.delete("/api/admin/dashboard-role-widgets/:id", isAuthenticated, async (r
   } catch (err: unknown) {
     console.error("[Admin/RoleWidgets/Delete]", err instanceof Error ? err.message : err);
     res.status(500).json({ message: "Rol-widget ataması silinemedi" });
+  }
+});
+
+router.put("/api/admin/dashboard-role-widgets/:role", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user.role || !["admin", "ceo"].includes(user.role)) {
+      return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+    const targetRole = req.params.role;
+    const { widgets } = req.body;
+    if (!Array.isArray(widgets)) {
+      return res.status(400).json({ message: "widgets dizisi gerekli" });
+    }
+
+    const allWidgetDefs = await db.select().from(dashboardWidgets).where(eq(dashboardWidgets.isActive, true));
+    const widgetDefMap = new Map(allWidgetDefs.map(w => [w.widgetKey, w]));
+
+    let rolePerms: Map<string, any> | null = null;
+    try {
+      rolePerms = await getUserPermissions(targetRole);
+    } catch {}
+
+    for (const w of widgets) {
+      if (!w.widgetKey) continue;
+      const widgetDef = widgetDefMap.get(w.widgetKey);
+      if (!widgetDef) continue;
+      if (widgetDef.requiredPermissions && widgetDef.requiredPermissions.length > 0 && rolePerms) {
+        const missing = widgetDef.requiredPermissions.filter(p => !rolePerms!.has(p));
+        if (missing.length > 0) continue;
+      }
+    }
+
+    await db.delete(dashboardRoleWidgets).where(eq(dashboardRoleWidgets.role, targetRole));
+
+    const insertRows = widgets
+      .filter((w: any) => w.widgetKey && widgetDefMap.has(w.widgetKey))
+      .map((w: any, i: number) => ({
+        role: targetRole,
+        widgetKey: w.widgetKey,
+        isEnabled: w.isEnabled !== false,
+        displayOrder: w.displayOrder ?? i + 1,
+        defaultOpen: w.defaultOpen !== false,
+      }));
+
+    if (insertRows.length > 0) {
+      await db.insert(dashboardRoleWidgets).values(insertRows);
+    }
+
+    const result = await db.select().from(dashboardRoleWidgets)
+      .where(eq(dashboardRoleWidgets.role, targetRole))
+      .orderBy(asc(dashboardRoleWidgets.displayOrder));
+    res.json(result);
+  } catch (err: unknown) {
+    console.error("[Admin/RoleWidgets/BulkUpdate]", err instanceof Error ? err.message : err);
+    res.status(500).json({ message: "Rol widget yapılandırması güncellenemedi" });
   }
 });
 
