@@ -1,16 +1,27 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, RefreshCw } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LayoutDashboard, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WidgetRenderer } from "./widgets/WidgetRenderer";
 import type { WidgetData } from "./widgets/WidgetRenderer";
 import { queryClient } from "@/lib/queryClient";
 
+interface KPIItem {
+  key: string;
+  label: string;
+  value: number | string;
+  subtext?: string;
+  color?: string;
+}
+
 interface DashboardResponse {
   role: string;
   widgets: WidgetData[];
-  kpis: any[];
+  kpis: KPIItem[];
   quickActions: any[];
 }
 
@@ -37,6 +48,71 @@ function groupByCategory(widgets: WidgetData[]): Record<string, WidgetData[]> {
     groups[cat].sort((a, b) => a.order - b.order);
   }
   return groups;
+}
+
+function KPIStrip({ kpis }: { kpis: KPIItem[] }) {
+  if (!kpis || kpis.length === 0) return null;
+  const colorMap: Record<string, string> = {
+    destructive: "text-destructive",
+    success: "text-emerald-600 dark:text-emerald-400",
+    warning: "text-amber-600 dark:text-amber-400",
+  };
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2" data-testid="kpi-strip">
+      {kpis.map((kpi) => (
+        <Card key={kpi.key} data-testid={`kpi-${kpi.key}`}>
+          <CardContent className="p-3 text-center">
+            <div className={`text-xl font-bold ${kpi.color ? colorMap[kpi.color] || "" : ""}`}>
+              {kpi.value}
+            </div>
+            <div className="text-[10px] text-muted-foreground uppercase">{kpi.label}</div>
+            {kpi.subtext && (
+              <div className="text-[9px] text-muted-foreground mt-0.5">{kpi.subtext}</div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function CollapsibleSection({
+  category,
+  widgets,
+  defaultOpen,
+}: {
+  category: string;
+  widgets: WidgetData[];
+  defaultOpen: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          className="flex items-center gap-1.5 w-full text-left group"
+          data-testid={`collapsible-trigger-${category}`}
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`}
+          />
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {categoryLabels[category] || category}
+          </h2>
+          <Badge variant="outline" className="text-[9px] h-4 ml-1">
+            {widgets.length}
+          </Badge>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
+          {widgets.map((widget) => (
+            <WidgetRenderer key={widget.key} widget={widget} />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
 }
 
 export default function MissionControlDynamic() {
@@ -88,8 +164,14 @@ export default function MissionControlDynamic() {
   }
 
   const grouped = groupByCategory(data.widgets);
-  const categoryOrder = ["operasyon", "personel", "fabrika", "finans", "egitim", "musteri", "ekipman", "ai", "genel"];
+  const categoryOrder = ["ai", "operasyon", "personel", "fabrika", "finans", "egitim", "musteri", "ekipman", "genel"];
   const orderedCategories = categoryOrder.filter((c) => grouped[c]);
+
+  const getCategoryDefaultOpen = (category: string): boolean => {
+    const widgets = grouped[category];
+    if (!widgets || widgets.length === 0) return true;
+    return widgets.some((w) => w.defaultOpen !== false);
+  };
 
   return (
     <div className="p-3 md:p-4 space-y-4 max-w-7xl mx-auto" data-testid="mc-dynamic-dashboard">
@@ -109,17 +191,15 @@ export default function MissionControlDynamic() {
         </Button>
       </div>
 
+      <KPIStrip kpis={data.kpis} />
+
       {orderedCategories.map((category) => (
-        <section key={category} data-testid={`widget-category-${category}`}>
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            {categoryLabels[category] || category}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {grouped[category].map((widget) => (
-              <WidgetRenderer key={widget.key} widget={widget} />
-            ))}
-          </div>
-        </section>
+        <CollapsibleSection
+          key={category}
+          category={category}
+          widgets={grouped[category]}
+          defaultOpen={getCategoryDefaultOpen(category)}
+        />
       ))}
     </div>
   );

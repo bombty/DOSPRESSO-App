@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, Save, RotateCcw, GripVertical,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, Eye,
 } from "lucide-react";
 
 interface Widget {
@@ -138,6 +138,13 @@ export default function DashboardAyarlari() {
   const toggleVisibility = (widgetKey: string) => {
     setLocalAssignments((prev) =>
       prev.map((a) => (a.widgetKey === widgetKey ? { ...a, isEnabled: !a.isEnabled } : a))
+    );
+    setHasChanges(true);
+  };
+
+  const toggleDefaultOpen = (widgetKey: string) => {
+    setLocalAssignments((prev) =>
+      prev.map((a) => (a.widgetKey === widgetKey ? { ...a, defaultOpen: !a.defaultOpen } : a))
     );
     setHasChanges(true);
   };
@@ -282,6 +289,15 @@ export default function DashboardAyarlari() {
                       data-testid={`button-move-down-${widget.widgetKey}`}
                     >
                       <ChevronDown className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant={assignment.defaultOpen ? "default" : "ghost"}
+                      size="icon"
+                      onClick={() => toggleDefaultOpen(assignment.widgetKey)}
+                      title={assignment.defaultOpen ? "Varsayılan açık" : "Varsayılan kapalı"}
+                      data-testid={`button-default-open-${widget.widgetKey}`}
+                    >
+                      <Eye className={`w-3 h-3 ${assignment.defaultOpen ? "" : "opacity-30"}`} />
                     </Button>
                     <Switch
                       checked={assignment.isEnabled}
