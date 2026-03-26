@@ -42,7 +42,15 @@ import {
   insertRoleTemplateSchema,
   dataLockRules,
   recordRevisions,
+  checklistCompletions,
+  performanceMetrics,
+  employeePerformanceScores,
+  branchAuditScores,
+  auditItemScores,
+  siteSettings,
+  customerFeedback,
 } from "@shared/schema";
+import { detectSystemGaps, detectModuleGaps } from "../services/system-completeness-service";
 import { getAllActionsGroupedByModule, getRoleGrants, upsertPermissionGrant, deletePermissionGrant } from "../permission-service";
 import { generateArticleEmbeddings } from "../ai";
 import { sanitizeUser, sanitizeUsers } from "../security";
@@ -3496,6 +3504,643 @@ const router = Router();
     } catch (error: unknown) {
       console.error("Notification stats error:", error);
       res.status(500).json({ message: "Bildirim istatistikleri alınamadı" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // PILOT LAUNCH
+  // ═══════════════════════════════════════════════════════════
+
+  router.post('/api/admin/pilot-launch', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      if (reqUser.role !== 'admin') {
+        return res.status(403).json({ error: "Sadece admin bu işlemi yapabilir" });
+      }
+
+      const {
+        categories,
+        defaultPassword,
+        resetPasswords,
+      } = req.body;
+
+      if ((!categories || !Array.isArray(categories) || categories.length === 0) && !resetPasswords) {
+        return res.status(400).json({ error: "En az bir veri kategorisi veya şifre sıfırlama seçilmelidir" });
+      }
+
+      if (resetPasswords && (!defaultPassword || defaultPassword.length < 6)) {
+        return res.status(400).json({ error: "Şifre sıfırlama seçildi ama varsayılan şifre en az 6 karakter olmalı" });
+      }
+
+      let hashedPassword: string | undefined;
+      if (resetPasswords) {
+        hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      }
+
+      const results: Record<string, { deleted: number }> = {};
+      const cats = Array.isArray(categories) ? categories : [];
+      let passwordResetCount = 0;
+
+      await db.transaction(async (tx) => {
+        if (cats.includes('notifications')) {
+          const r = await tx.delete(notifications).returning({ id: notifications.id });
+          results.notifications = { deleted: r.length };
+        }
+
+        if (cats.includes('audit_logs')) {
+          const r = await tx.delete(auditLogs).returning({ id: auditLogs.id });
+          results.audit_logs = { deleted: r.length };
+        }
+
+        if (cats.includes('performance_scores')) {
+          const r = await tx.delete(employeePerformanceScores).returning({ id: employeePerformanceScores.id });
+          results.performance_scores = { deleted: r.length };
+        }
+
+        if (cats.includes('performance_metrics')) {
+          const r = await tx.delete(performanceMetrics).returning({ id: performanceMetrics.id });
+          results.performance_metrics = { deleted: r.length };
+        }
+
+        if (cats.includes('checklist_history')) {
+          const r = await tx.delete(checklistCompletions).returning({ id: checklistCompletions.id });
+          results.checklist_history = { deleted: r.length };
+        }
+
+        if (cats.includes('crm_scores')) {
+          const r1 = await tx.delete(branchAuditScores).returning({ id: branchAuditScores.id });
+          const r2 = await tx.delete(auditItemScores).returning({ id: auditItemScores.id });
+          results.crm_scores = { deleted: r1.length + r2.length };
+        }
+
+        if (cats.includes('sla_history')) {
+          const r1 = await tx.update(customerFeedback)
+            .set({ slaBreached: false })
+            .where(eq(customerFeedback.slaBreached, true))
+            .returning({ id: customerFeedback.id });
+          results.sla_history = { deleted: r1.length };
+        }
+
+        if (resetPasswords && hashedPassword) {
+          const r = await tx.update(users)
+            .set({ hashedPassword, mustChangePassword: true, updatedAt: new Date() })
+            .where(eq(users.isActive, true))
+            .returning({ id: users.id });
+          passwordResetCount = r.length;
+        }
+
+        await tx.update(users)
+          .set({ onboardingComplete: false })
+          .where(eq(users.isActive, true));
+
+        await tx.update(branches)
+          .set({ setupComplete: false })
+          .where(eq(branches.isActive, true));
+
+        await tx.insert(siteSettings).values({
+          key: "pilot_launched",
+          value: "true",
+          type: "boolean",
+          category: "system",
+          description: "Pilot başlatma işlemi yapıldı - mustChangePassword flags preserved on restart",
+        }).onConflictDoUpdate({
+          target: siteSettings.key,
+          set: { value: "true", updatedAt: new Date() },
+        });
+      });
+
+      const ctx = getAuditContext(req);
+      await createAuditEntry(ctx, {
+        eventType: "system.pilot_launch",
+        action: "pilot_launch",
+        resource: "system",
+        details: {
+          categories,
+          results,
+          passwordResetCount,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: "Pilot başlatma işlemi tamamlandı",
+        results,
+        passwordResetCount,
+      });
+    } catch (error: unknown) {
+      console.error("[Pilot Launch] Error:", error);
+      res.status(500).json({ error: "Pilot başlatma başarısız" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // BRANCH ONBOARDING
+  // ═══════════════════════════════════════════════════════════
+
+  router.get('/api/admin/branch-setup-status/:branchId', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      const branchId = parseInt(req.params.branchId);
+      if (isNaN(branchId)) {
+        return res.status(400).json({ error: "Geçersiz şube ID" });
+      }
+
+      const isAdmin = ['admin', 'coach', 'ceo', 'cgo', 'trainer', 'muhasebe_ik'].includes(reqUser.role);
+      if (!isAdmin && reqUser.branchId !== branchId) {
+        return res.status(403).json({ error: "Bu şubenin bilgilerine erişim yetkiniz yok" });
+      }
+
+      const [branch] = await db.select().from(branches).where(eq(branches.id, branchId));
+      if (!branch) {
+        return res.status(404).json({ error: "Şube bulunamadı" });
+      }
+
+      const branchUsers = await db.select({
+        id: users.id,
+        role: users.role,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      }).from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true)));
+
+      const gaps = await detectSystemGaps();
+      const branchGaps = gaps.filter(g => g.targetBranchId === branchId);
+
+      const staffCount = branchUsers.filter(u =>
+        ['barista', 'bar_buddy', 'stajyer', 'supervisor', 'mudur', 'supervisor_buddy'].includes(u.role)
+      ).length;
+
+      const hasManager = branchUsers.some(u => ['mudur', 'supervisor'].includes(u.role));
+
+      res.json({
+        branch: {
+          id: branch.id,
+          name: branch.name,
+          setupComplete: branch.setupComplete || false,
+          isActive: branch.isActive,
+        },
+        staffCount,
+        hasManager,
+        totalUsers: branchUsers.length,
+        gaps: branchGaps,
+        completionPercentage: Math.max(0, Math.round(100 - (branchGaps.length * 10))),
+      });
+    } catch (error: unknown) {
+      console.error("[Branch Setup Status] Error:", error);
+      res.status(500).json({ error: "Şube kurulum durumu alınamadı" });
+    }
+  });
+
+  router.post('/api/admin/branch-setup-complete/:branchId', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      const branchId = parseInt(req.params.branchId);
+
+      if (!['admin', 'coach', 'mudur', 'supervisor'].includes(reqUser.role)) {
+        return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+      }
+
+      const isHQ = ['admin', 'coach'].includes(reqUser.role);
+      if (!isHQ && reqUser.branchId !== branchId) {
+        return res.status(403).json({ error: "Sadece kendi şubenizin kurulumunu tamamlayabilirsiniz" });
+      }
+
+      await db.update(branches)
+        .set({ setupComplete: true })
+        .where(eq(branches.id, branchId));
+
+      res.json({ success: true, message: "Şube kurulumu tamamlandı olarak işaretlendi" });
+    } catch (error: unknown) {
+      console.error("[Branch Setup Complete] Error:", error);
+      res.status(500).json({ error: "İşlem başarısız" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // MODULE ACTIVATION CHECKLIST
+  // ═══════════════════════════════════════════════════════════
+
+  router.get('/api/admin/module-activation-checklist/:moduleKey', isAuthenticated, async (req, res) => {
+    try {
+      const { moduleKey } = req.params;
+      const reqUser = req.user as any;
+
+      const moduleChecklists: Record<string, { title: string; items: { id: string; title: string; description: string; deepLink: string; required: boolean }[] }> = {
+        satinalma: {
+          title: "Satınalma Modülü Kurulum Kontrol Listesi",
+          items: [
+            { id: "supplier-list", title: "Tedarikçi listesi", description: "En az 3 tedarikçi tanımlayın (ad, iletişim, ürün kategorisi)", deepLink: "/satinalma/tedarikci", required: true },
+            { id: "raw-materials", title: "Hammadde listesi", description: "Temel hammaddeleri sisteme girin (ad, birim, kategori)", deepLink: "/satinalma/hammaddeler", required: true },
+            { id: "approval-flow", title: "Onay akışı", description: "Satınalma onay sürecini yapılandırın", deepLink: "/satinalma/ayarlar", required: false },
+          ],
+        },
+        hr: {
+          title: "İK Modülü Kurulum Kontrol Listesi",
+          items: [
+            { id: "employee-list", title: "Personel listesi", description: "Tüm personeli Excel ile yükleyin (ad, soyad, TC, maaş, izin hakları)", deepLink: "/ik", required: true },
+            { id: "leave-policies", title: "İzin politikaları", description: "Yıllık izin, mazeret izni gibi izin tiplerini yapılandırın", deepLink: "/izin-talepleri", required: true },
+            { id: "payroll-params", title: "Bordro parametreleri", description: "SGK, vergi oranları ve asgari ücret bilgilerini girin", deepLink: "/bordrom", required: true },
+          ],
+        },
+        checklist: {
+          title: "Checklist Modülü Kurulum Kontrol Listesi",
+          items: [
+            { id: "opening-checklist", title: "Açılış checklist'i", description: "Şube açılış kontrol listesini oluşturun ve atayın", deepLink: "/checklistler", required: true },
+            { id: "closing-checklist", title: "Kapanış checklist'i", description: "Şube kapanış kontrol listesini oluşturun ve atayın", deepLink: "/checklistler", required: true },
+            { id: "branch-assignments", title: "Şube atamaları", description: "Checklist'leri tüm aktif şubelere atayın", deepLink: "/admin/checklist-yonetimi", required: true },
+          ],
+        },
+        akademi: {
+          title: "Akademi Modülü Kurulum Kontrol Listesi",
+          items: [
+            { id: "training-modules", title: "Eğitim modülleri", description: "En az 5 eğitim modülü oluşturun", deepLink: "/akademi-hq", required: true },
+            { id: "training-assignments", title: "Eğitim atamaları", description: "Zorunlu eğitimleri roller bazında atayın", deepLink: "/akademi-hq", required: true },
+            { id: "certificate-settings", title: "Sertifika ayarları", description: "Sertifika imzalayan bilgilerini yapılandırın", deepLink: "/akademi-hq?tab=certs", required: false },
+          ],
+        },
+        kalite: {
+          title: "Kalite Kontrol Modülü Kurulum Kontrol Listesi",
+          items: [
+            { id: "haccp-points", title: "HACCP kontrol noktaları", description: "Kritik kontrol noktalarını tanımlayın", deepLink: "/kalite-denetimi", required: true },
+            { id: "audit-templates", title: "Denetim şablonları", description: "Kalite denetim şablonlarını oluşturun", deepLink: "/denetim-sablonlari", required: true },
+          ],
+        },
+        fabrika: {
+          title: "Fabrika Modülü Kurulum Kontrol Listesi",
+          items: [
+            { id: "stations", title: "İstasyonlar", description: "Fabrika üretim istasyonlarını tanımlayın", deepLink: "/fabrika", required: true },
+            { id: "daily-targets", title: "Üretim hedefleri", description: "Günlük üretim hedeflerini belirleyin", deepLink: "/fabrika/uretim-planlama", required: true },
+            { id: "factory-staff", title: "Fabrika personeli", description: "Fabrika çalışanlarını sisteme ekleyin", deepLink: "/admin/kullanicilar", required: true },
+          ],
+        },
+      };
+
+      const checklist = moduleChecklists[moduleKey];
+      if (!checklist) {
+        return res.json({ title: `${moduleKey} Modülü`, items: [], message: "Bu modül için kontrol listesi henüz tanımlı değil" });
+      }
+
+      const moduleGaps = await detectModuleGaps(moduleKey);
+      const enrichedItems = checklist.items.map(item => {
+        const itemKeywords = item.id.split('-');
+        const hasRelatedGap = moduleGaps.some(g =>
+          itemKeywords.some(kw => g.id.includes(kw) || g.checkFn.includes(kw))
+        );
+        return {
+          ...item,
+          completed: !hasRelatedGap,
+        };
+      });
+
+      res.json({
+        ...checklist,
+        items: enrichedItems,
+        completionPercentage: Math.round((enrichedItems.filter(i => i.completed).length / enrichedItems.length) * 100),
+      });
+    } catch (error: unknown) {
+      console.error("[Module Checklist] Error:", error);
+      res.status(500).json({ error: "Modül kontrol listesi alınamadı" });
+    }
+  });
+
+  router.get('/api/admin/onboarding-status', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+      if (!reqUser.branchId) {
+        return res.json({ needsOnboarding: false });
+      }
+
+      const [branch] = await db.select().from(branches).where(eq(branches.id, reqUser.branchId));
+      if (!branch) {
+        return res.json({ needsOnboarding: false });
+      }
+
+      const needsOnboarding = branch.isActive && !branch.setupComplete &&
+        ['mudur', 'supervisor', 'admin', 'coach'].includes(reqUser.role);
+
+      res.json({
+        needsOnboarding,
+        branchId: branch.id,
+        branchName: branch.name,
+      });
+    } catch (error: unknown) {
+      console.error("[Onboarding Status] Error:", error);
+      res.json({ needsOnboarding: false });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // ROLE-BASED ONBOARDING
+  // ═══════════════════════════════════════════════════════════
+
+  const ROLE_ONBOARDING_DEFINITIONS: Record<string, {
+    label: string;
+    steps: Array<{
+      id: string;
+      title: string;
+      description: string;
+      tasks: Array<{ id: string; title: string; description: string; deepLink: string; required: boolean }>;
+    }>;
+  }> = {
+    admin: {
+      label: "Sistem Yöneticisi",
+      steps: [
+        {
+          id: "system-config",
+          title: "Sistem Yapılandırması",
+          description: "Temel sistem ayarlarını yapılandırın",
+          tasks: [
+            { id: "site-settings", title: "Site ayarları", description: "Logo, şirket adı ve temel bilgileri girin", deepLink: "/admin/ayarlar", required: true },
+            { id: "email-settings", title: "E-posta ayarları", description: "Bildirim e-posta sunucusunu yapılandırın", deepLink: "/admin/email-ayarlari", required: false },
+            { id: "module-flags", title: "Modül bayrakları", description: "Aktif olacak modülleri belirleyin", deepLink: "/admin/modul-bayraklari", required: true },
+          ],
+        },
+        {
+          id: "user-setup",
+          title: "Kullanıcı ve Rol Yönetimi",
+          description: "Kullanıcıları ve yetkilendirmeleri düzenleyin",
+          tasks: [
+            { id: "user-management", title: "Kullanıcı listesi", description: "Tüm kullanıcıları oluşturun veya kontrol edin", deepLink: "/admin/kullanicilar", required: true },
+            { id: "role-permissions", title: "Rol yetkileri", description: "Her rol için erişim izinlerini yapılandırın", deepLink: "/admin/yetkilendirme", required: true },
+            { id: "branch-assignments", title: "Şube atamaları", description: "Personeli doğru şubelere atayın", deepLink: "/admin/kullanicilar", required: true },
+          ],
+        },
+      ],
+    },
+    ceo: {
+      label: "CEO",
+      steps: [
+        {
+          id: "overview",
+          title: "Sisteme Genel Bakış",
+          description: "Temel bilgileri inceleyin",
+          tasks: [
+            { id: "dashboard-review", title: "Dashboard inceleme", description: "Ana dashboard'u inceleyin ve widget'ları özelleştirin", deepLink: "/", required: true },
+            { id: "branch-overview", title: "Şube durumları", description: "Tüm şubelerin durumunu kontrol edin", deepLink: "/subeler", required: true },
+            { id: "reports-setup", title: "Raporları keşfedin", description: "Mevcut raporlama araçlarını inceleyin", deepLink: "/raporlar", required: false },
+          ],
+        },
+      ],
+    },
+    mudur: {
+      label: "Şube Müdürü",
+      steps: [
+        {
+          id: "branch-setup",
+          title: "Şube Kurulumu",
+          description: "Şubenizin temel bilgilerini kontrol edin",
+          tasks: [
+            { id: "staff-upload", title: "Personel listesi", description: "Şube personelini Excel ile yükleyin veya kontrol edin", deepLink: "/ik", required: true },
+            { id: "branch-info", title: "Şube bilgileri", description: "Şube adres, telefon ve çalışma saatlerini kontrol edin", deepLink: "/subeler", required: true },
+          ],
+        },
+        {
+          id: "daily-ops",
+          title: "Günlük Operasyonlar",
+          description: "Günlük işlemleri tanıyın",
+          tasks: [
+            { id: "checklist-review", title: "Checklist'leri inceleyin", description: "Açılış/kapanış checklist'lerini kontrol edin", deepLink: "/checklistler", required: true },
+            { id: "shift-planning", title: "Vardiya planlama", description: "Haftalık vardiya planını oluşturun", deepLink: "/vardiya-planlama", required: true },
+            { id: "task-review", title: "Görevleri inceleyin", description: "Atanmış görevleri kontrol edin", deepLink: "/gorevler", required: false },
+          ],
+        },
+      ],
+    },
+    supervisor: {
+      label: "Supervisor",
+      steps: [
+        {
+          id: "team-management",
+          title: "Ekip Yönetimi",
+          description: "Ekibinizi ve görevleri tanıyın",
+          tasks: [
+            { id: "team-review", title: "Ekip listesi", description: "Ekibinizdeki personeli inceleyin", deepLink: "/ik", required: true },
+            { id: "shift-check", title: "Vardiya kontrolü", description: "Bu haftanın vardiya planını kontrol edin", deepLink: "/vardiya-planlama", required: true },
+            { id: "daily-checklist", title: "Günlük checklist", description: "Bugünkü checklist'leri doldurun", deepLink: "/checklistler", required: true },
+          ],
+        },
+        {
+          id: "quality",
+          title: "Kalite ve Performans",
+          description: "Kalite kontrol süreçlerini öğrenin",
+          tasks: [
+            { id: "quality-review", title: "Kalite standartları", description: "Denetim ve kalite kontrol noktalarını inceleyin", deepLink: "/kalite-denetimi", required: false },
+            { id: "performance-targets", title: "Performans hedefleri", description: "Ekip performans hedeflerini inceleyin", deepLink: "/performans", required: false },
+          ],
+        },
+      ],
+    },
+    satinalma: {
+      label: "Satınalma Sorumlusu",
+      steps: [
+        {
+          id: "procurement-data",
+          title: "Satınalma Verileri",
+          description: "Temel satınalma verilerini sisteme girin",
+          tasks: [
+            { id: "supplier-entry", title: "Tedarikçi tanımlama", description: "En az 3 tedarikçi tanımlayın (ad, iletişim, ürün kategorisi)", deepLink: "/satinalma/tedarikci", required: true },
+            { id: "material-entry", title: "Hammadde listesi", description: "Temel hammaddeleri sisteme girin (ad, birim, kategori)", deepLink: "/satinalma/hammaddeler", required: true },
+            { id: "purchase-flow", title: "Satınalma akışı", description: "Sipariş oluşturma ve onay sürecini inceleyin", deepLink: "/satinalma", required: true },
+          ],
+        },
+        {
+          id: "stock-integration",
+          title: "Stok Entegrasyonu",
+          description: "Stok ve depo yönetimi bağlantısını kontrol edin",
+          tasks: [
+            { id: "stock-review", title: "Stok durumu", description: "Mevcut stok durumunu inceleyin", deepLink: "/stok", required: false },
+            { id: "min-stock-levels", title: "Minimum stok seviyeleri", description: "Kritik ürünler için minimum stok seviyelerini ayarlayın", deepLink: "/stok", required: false },
+          ],
+        },
+      ],
+    },
+    muhasebe_ik: {
+      label: "Muhasebe / İK Sorumlusu",
+      steps: [
+        {
+          id: "hr-data",
+          title: "İK Verileri",
+          description: "Personel ve bordro bilgilerini düzenleyin",
+          tasks: [
+            { id: "employee-data", title: "Personel bilgileri", description: "Tüm personelin TC, maaş, izin hakları bilgilerini kontrol edin", deepLink: "/ik", required: true },
+            { id: "leave-policies", title: "İzin politikaları", description: "Yıllık izin, mazeret izni gibi izin tiplerini yapılandırın", deepLink: "/izin-talepleri", required: true },
+            { id: "payroll-params", title: "Bordro parametreleri", description: "SGK oranları, vergi dilimleri ve asgari ücret bilgilerini girin", deepLink: "/bordrom", required: true },
+          ],
+        },
+      ],
+    },
+    coach: {
+      label: "Coach",
+      steps: [
+        {
+          id: "coaching-setup",
+          title: "Koçluk Alanı",
+          description: "Koçluk süreçlerini ve şube durumlarını inceleyin",
+          tasks: [
+            { id: "branch-performance", title: "Şube performansları", description: "Sorumlu olduğunuz şubelerin performansını inceleyin", deepLink: "/performans", required: true },
+            { id: "training-overview", title: "Eğitim durumu", description: "Şube personelinin eğitim tamamlanma oranlarını kontrol edin", deepLink: "/akademi-hq", required: true },
+            { id: "audit-templates", title: "Denetim şablonları", description: "Kalite denetim şablonlarını inceleyin", deepLink: "/denetim-sablonlari", required: false },
+          ],
+        },
+      ],
+    },
+    trainer: {
+      label: "Eğitmen",
+      steps: [
+        {
+          id: "training-setup",
+          title: "Eğitim İçerikleri",
+          description: "Eğitim modüllerini hazırlayın",
+          tasks: [
+            { id: "training-modules", title: "Eğitim modülleri", description: "Eğitim modüllerini oluşturun veya kontrol edin", deepLink: "/akademi-hq", required: true },
+            { id: "training-materials", title: "Eğitim materyalleri", description: "Video, döküman ve quiz içeriklerini yükleyin", deepLink: "/akademi-hq", required: true },
+            { id: "training-assignments", title: "Eğitim atamaları", description: "Zorunlu eğitimleri roller bazında atayın", deepLink: "/akademi-hq", required: false },
+          ],
+        },
+      ],
+    },
+    kalite_kontrol: {
+      label: "Kalite Kontrol Sorumlusu",
+      steps: [
+        {
+          id: "quality-setup",
+          title: "Kalite Kontrol Kurulumu",
+          description: "Kalite ve denetim süreçlerini yapılandırın",
+          tasks: [
+            { id: "haccp-points", title: "HACCP kontrol noktaları", description: "Kritik kontrol noktalarını tanımlayın", deepLink: "/kalite-denetimi", required: true },
+            { id: "audit-templates", title: "Denetim şablonları", description: "Kalite denetim şablonlarını oluşturun", deepLink: "/denetim-sablonlari", required: true },
+            { id: "checklists-review", title: "Checklist standartları", description: "Hijyen ve kalite checklist'lerini kontrol edin", deepLink: "/checklistler", required: true },
+          ],
+        },
+      ],
+    },
+    marketing: {
+      label: "Pazarlama Sorumlusu",
+      steps: [
+        {
+          id: "marketing-setup",
+          title: "Pazarlama Araçları",
+          description: "Duyuru ve içerik araçlarını keşfedin",
+          tasks: [
+            { id: "announcement-review", title: "Duyuru sistemi", description: "Duyuru oluşturma ve yayınlama sürecini inceleyin", deepLink: "/duyurular", required: true },
+            { id: "banner-setup", title: "Banner yönetimi", description: "Uygulama banner'larını tasarlayın", deepLink: "/admin/bannerlar", required: false },
+            { id: "content-studio", title: "İçerik stüdyosu", description: "İçerik oluşturma araçlarını keşfedin", deepLink: "/admin/icerik-studyosu", required: false },
+          ],
+        },
+      ],
+    },
+    fabrika_mudur: {
+      label: "Fabrika Müdürü",
+      steps: [
+        {
+          id: "factory-setup",
+          title: "Fabrika Kurulumu",
+          description: "Fabrika üretim hatlarını yapılandırın",
+          tasks: [
+            { id: "stations", title: "İstasyonlar", description: "Üretim istasyonlarını tanımlayın ve konfigüre edin", deepLink: "/fabrika", required: true },
+            { id: "production-targets", title: "Üretim hedefleri", description: "Günlük üretim hedeflerini belirleyin", deepLink: "/fabrika/uretim-planlama", required: true },
+            { id: "factory-staff", title: "Fabrika personeli", description: "Fabrika çalışanlarını kontrol edin", deepLink: "/admin/kullanicilar", required: true },
+            { id: "quality-criteria", title: "Kalite kriterleri", description: "Ürün kalite kriterlerini tanımlayın", deepLink: "/admin/kalite-kriterleri", required: false },
+          ],
+        },
+      ],
+    },
+    barista: {
+      label: "Barista",
+      steps: [
+        {
+          id: "barista-intro",
+          title: "Sisteme Giriş",
+          description: "Günlük iş süreçlerini tanıyın",
+          tasks: [
+            { id: "recipe-review", title: "Tarifleri inceleyin", description: "Menüdeki ürün tariflerini ve standartlarını öğrenin", deepLink: "/tarifler", required: true },
+            { id: "daily-tasks", title: "Günlük görevler", description: "Size atanan günlük görevleri kontrol edin", deepLink: "/gorevler", required: true },
+            { id: "training-modules", title: "Eğitimler", description: "Zorunlu eğitim modüllerini tamamlayın", deepLink: "/akademi", required: true },
+          ],
+        },
+      ],
+    },
+    teknik: {
+      label: "Teknik Servis",
+      steps: [
+        {
+          id: "technical-setup",
+          title: "Teknik Servis Araçları",
+          description: "Ekipman ve arıza yönetim süreçlerini öğrenin",
+          tasks: [
+            { id: "equipment-list", title: "Ekipman listesi", description: "Şubelerdeki ekipmanları inceleyin", deepLink: "/ekipman", required: true },
+            { id: "service-requests", title: "Servis talepleri", description: "Açık servis taleplerini kontrol edin", deepLink: "/servis-talepleri", required: true },
+            { id: "maintenance-schedule", title: "Bakım takvimi", description: "Periyodik bakım planını gözden geçirin", deepLink: "/ekipman", required: false },
+          ],
+        },
+      ],
+    },
+  };
+
+  const FALLBACK_ONBOARDING = {
+    label: "Kullanıcı",
+    steps: [
+      {
+        id: "general-intro",
+        title: "Sisteme Giriş",
+        description: "Temel sistem özelliklerini keşfedin",
+        tasks: [
+          { id: "dashboard-tour", title: "Dashboard", description: "Ana sayfadaki widget'ları ve bilgileri inceleyin", deepLink: "/", required: true },
+          { id: "profile-check", title: "Profil bilgileri", description: "Profil bilgilerinizi kontrol edin ve güncelleyin", deepLink: "/profil", required: true },
+          { id: "training-check", title: "Eğitimler", description: "Size atanmış eğitimleri kontrol edin", deepLink: "/akademi", required: false },
+        ],
+      },
+    ],
+  };
+
+  router.get('/api/admin/role-onboarding-status', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+
+      if (reqUser.onboardingComplete) {
+        return res.json({ needsOnboarding: false });
+      }
+
+      const role = reqUser.role as string;
+      const definition = ROLE_ONBOARDING_DEFINITIONS[role] || FALLBACK_ONBOARDING;
+
+      const allTasks = definition.steps.flatMap(s => s.tasks);
+      const totalTasks = allTasks.length;
+      const completedTasks = 0;
+      const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
+
+      const steps = definition.steps.map(s => ({
+        ...s,
+        tasks: s.tasks.map(t => ({ ...t, completed: false })),
+      }));
+
+      res.json({
+        needsOnboarding: true,
+        role,
+        roleLabel: definition.label,
+        steps,
+        completionPercentage,
+        totalTasks,
+        completedTasks,
+      });
+    } catch (error: unknown) {
+      console.error("[Role Onboarding Status] Error:", error);
+      res.json({ needsOnboarding: false });
+    }
+  });
+
+  router.post('/api/admin/role-onboarding-complete', isAuthenticated, async (req, res) => {
+    try {
+      const reqUser = req.user as any;
+
+      await db.update(users)
+        .set({ onboardingComplete: true })
+        .where(eq(users.id, reqUser.id));
+
+      res.json({ success: true, message: "Onboarding tamamlandı" });
+    } catch (error: unknown) {
+      console.error("[Role Onboarding Complete] Error:", error);
+      res.status(500).json({ error: "İşlem başarısız" });
     }
   });
 

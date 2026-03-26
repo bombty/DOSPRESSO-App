@@ -515,3 +515,24 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
 
   return gaps;
 }
+
+export async function detectModuleGaps(moduleKey: string): Promise<CompletenessItem[]> {
+  const allGaps = await detectSystemGaps();
+
+  const moduleGapMap: Record<string, string[]> = {
+    satinalma: ["satinalma"],
+    hr: ["personnel", "bordro", "pdks"],
+    checklist: ["checklist"],
+    akademi: ["training", "config-certificates"],
+    kalite: ["kalite", "haccp"],
+    fabrika: ["fabrika"],
+    operasyon: ["shift", "tasks"],
+  };
+
+  const prefixes = moduleGapMap[moduleKey];
+  if (!prefixes) return [];
+
+  return allGaps.filter(gap =>
+    prefixes.some(prefix => gap.id.startsWith(prefix) || gap.checkFn.startsWith(prefix))
+  );
+}

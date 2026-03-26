@@ -34,7 +34,8 @@ import {
   Trash2,
   Bot,
   ArrowRightLeft,
-  ToggleLeft
+  ToggleLeft,
+  Rocket,
 } from "lucide-react";
 
 const AdminDashboard = lazy(() => import("./admin/index"));
@@ -77,6 +78,7 @@ const AdminVeriKilitleri = lazy(() => import("./admin/veri-kilitleri"));
 const AdminDegisiklikTalepleri = lazy(() => import("./admin/degisiklik-talepleri"));
 const AdminDelegasyon = lazy(() => import("./admin/delegasyon"));
 const AdminModuleFlags = lazy(() => import("./admin/module-flags"));
+const PilotLaunch = lazy(() => import("./pilot-launch"));
 
 interface TabConfig {
   id: string;
@@ -425,6 +427,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "admin_panel",
     group: "sistem",
     component: AdminModuleFlags
+  },
+  {
+    id: "pilot-baslat",
+    label: "Pilot Launch",
+    labelTr: "Pilot Başlat",
+    icon: <Rocket className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "sistem",
+    component: PilotLaunch
   }
 ];
 
@@ -476,7 +487,9 @@ const TAB_URL_MAP: Record<string, string> = {
   "dobody-gorevler": "/admin/dobody-gorevler",
   "veri-kilitleri": "/admin/veri-kilitleri",
   "degisiklik-talepleri": "/admin/degisiklik-talepleri",
-  "delegasyon": "/admin/delegasyon"
+  "delegasyon": "/admin/delegasyon",
+  "modul-bayraklari": "/admin/modul-bayraklari",
+  "pilot-baslat": "/admin/pilot-baslat"
 };
 
 function getTabFromUrl(pathname: string): string | null {

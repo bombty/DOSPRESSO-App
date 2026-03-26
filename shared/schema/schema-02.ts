@@ -2393,6 +2393,7 @@ export const branches = pgTable("branches", {
   kioskUsername: varchar("kiosk_username", { length: 50 }), // Şube kiosk giriş kullanıcı adı
   kioskPassword: varchar("kiosk_password", { length: 100 }),
   ownershipType: varchar("ownership_type", { length: 20 }).default("franchise"),
+  setupComplete: boolean("setup_complete").default(false),
   deletedAt: timestamp("deleted_at"),
 });
 
@@ -2464,6 +2465,7 @@ export const users = pgTable("users", {
   notificationPreferences: jsonb("notification_preferences").$type<Record<string, boolean>>(),
   dashboardPreferences: jsonb("dashboard_preferences").$type<{ mode: string; layout?: any }>().default({ mode: "classic" }),
   mustChangePassword: boolean("must_change_password").default(false),
+  onboardingComplete: boolean("onboarding_complete").default(false),
   titleId: integer("title_id"),
   employeeTypeId: integer("employee_type_id"),
   lastLoginAt: timestamp("last_login_at"),

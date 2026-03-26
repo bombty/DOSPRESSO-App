@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ModuleActivationChecklist } from "@/components/module-activation-checklist";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +25,7 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
@@ -146,6 +148,11 @@ export default function AdminModuleFlags() {
   });
 
   const isLoading = isGlobalView ? globalLoading : branchLoading;
+  const selectedBranch = !isGlobalView && branchIdNum;
+  const CHECKLIST_MODULES = ["satinalma", "checklist", "akademi", "kalite", "crm", "stok", "ekipman", "gorevler"];
+  const enabledModules = branchFlags
+    .filter(bf => bf.effectiveEnabled && CHECKLIST_MODULES.includes(bf.moduleKey))
+    .map(bf => bf.moduleKey);
 
   const toggleMutation = useMutation({
     mutationFn: (data: { id: number; isEnabled: boolean }) =>
@@ -624,6 +631,23 @@ export default function AdminModuleFlags() {
           </Table>
         </CardContent>
       </Card>
+
+      {selectedBranch && enabledModules.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              Modül Aktivasyon Kontrol Listeleri
+            </CardTitle>
+            <CardDescription>Aktif modüllerin kurulum durumlarını kontrol edin</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {enabledModules.map(mk => (
+              <ModuleActivationChecklist key={mk} moduleKey={mk} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

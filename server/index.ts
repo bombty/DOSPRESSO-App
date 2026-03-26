@@ -259,6 +259,11 @@ app.use((req, res, next) => {
   async function onServerReady() {
     const startupTime = Date.now();
     
+    try {
+      await db.execute(sql`ALTER TABLE branches ADD COLUMN IF NOT EXISTS setup_complete BOOLEAN DEFAULT false`);
+      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT false`);
+    } catch (e) { console.error("Error adding new columns:", e); }
+
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await ensureAdminUserApproved();
@@ -295,6 +300,39 @@ app.use((req, res, next) => {
     const seedDuration = Date.now() - startupTime;
     log(`Seeds completed in ${seedDuration}ms`);
     
+    try {
+      const backfillCheck = await db.execute(sql`SELECT value FROM site_settings WHERE key = 'setup_complete_backfilled'`);
+      if (!backfillCheck.rows || backfillCheck.rows.length === 0) {
+        await db.execute(sql`UPDATE branches SET setup_complete = true WHERE is_active = true`);
+        await db.execute(sql`INSERT INTO site_settings (key, value, type, category, description) VALUES ('setup_complete_backfilled', 'true', 'boolean', 'system', 'One-time backfill of setup_complete for existing active branches') ON CONFLICT (key) DO NOTHING`);
+        log("[Migration] Backfilled setup_complete=true for existing active branches");
+      }
+    } catch (e) { console.error("Error backfilling setup_complete:", e); }
+
+    try {
+      const onboardingBackfill = await db.execute(sql`SELECT value FROM site_settings WHERE key = 'onboarding_complete_backfilled'`);
+      if (!onboardingBackfill.rows || onboardingBackfill.rows.length === 0) {
+        await db.execute(sql`UPDATE users SET onboarding_complete = true WHERE is_active = true`);
+        await db.execute(sql`INSERT INTO site_settings (key, value, type, category, description) VALUES ('onboarding_complete_backfilled', 'true', 'boolean', 'system', 'One-time backfill of onboarding_complete for existing active users') ON CONFLICT (key) DO NOTHING`);
+        log("[Migration] Backfilled onboarding_complete=true for existing active users");
+      }
+    } catch (e) { console.error("Error backfilling onboarding_complete:", e); }
+
+    try {
+      const { eq } = await import("drizzle-orm");
+      const { users, siteSettings } = await import("@shared/schema");
+      const [pilotFlag] = await db.select().from(siteSettings).where(eq(siteSettings.key, "pilot_launched"));
+      if (!pilotFlag || pilotFlag.value !== "true") {
+        const resetResult = await db.update(users)
+          .set({ mustChangePassword: false })
+          .where(eq(users.mustChangePassword, true))
+          .returning({ id: users.id });
+        if (resetResult.length > 0) {
+          log(`[Pre-Pilot] ${resetResult.length} users' mustChangePassword flag cleared`);
+        }
+      }
+    } catch (e) { console.error("Error clearing mustChangePassword flags:", e); }
+
     try {
       const cleaned = await cleanupExpiredKioskSessions();
       if (cleaned > 0) log(`[Kiosk] Startup cleanup: removed ${cleaned} expired sessions`);

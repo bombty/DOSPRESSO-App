@@ -34,6 +34,14 @@ The platform utilizes React 18, TypeScript, and Vite for the frontend, with Shad
 - **Notification System:** Four-level notification system (operational, tactical, strategic, personal) with role-based filtering, category-based frequency control, archiving, and push notifications.
 - **Mission Control Dashboards:** Six role-based dashboards provide critical KPIs and insights using monthly snapshots of branch and factory performance.
 
+### Pilot Launch & Branch Onboarding
+- **Pilot Launch Page** (`/pilot-baslat`): Admin-only page for resetting system data before pilot go-live. Supports selective cleanup of notifications, audit logs, performance scores/metrics, and checklist histories. Includes password reset with mustChangePassword enforcement and double confirmation.
+- **Branch Onboarding Wizard**: Automatically shown to branch managers/supervisors when a branch has `setupComplete=false`. Three-step wizard: personnel upload, gap analysis, setup completion.
+- **Module Activation Checklist**: Reusable component showing required setup items for newly activated modules (satınalma, hr, checklist, akademi, kalite, fabrika).
+- **Pre-Pilot Migration**: Server startup clears all `mustChangePassword=true` flags, disabling the forced password change dialog during pre-pilot phase.
+- **Schema**: `branches.setup_complete` boolean column added to track branch onboarding status.
+- **API Endpoints**: `POST /api/admin/pilot-launch`, `GET /api/admin/branch-setup-status/:branchId`, `POST /api/admin/branch-setup-complete/:branchId`, `GET /api/admin/module-activation-checklist/:moduleKey`, `GET /api/admin/onboarding-status`
+
 ## External Dependencies
 - **OpenAI API**: Utilized for AI vision, chat, embeddings, and summarization capabilities.
 - **AWS S3 / Replit Object Storage**: Used for cloud-based file storage.

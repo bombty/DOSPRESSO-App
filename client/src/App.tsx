@@ -27,6 +27,8 @@ import { ModuleGuard } from "@/components/module-guard";
 import { CollapsibleSidebar } from "@/components/collapsible-sidebar";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { GuidanceWidget } from "@/components/widgets/guidance-widget";
+import { BranchOnboardingWizard } from "@/components/branch-onboarding-wizard";
+import { RoleOnboardingWizard } from "@/components/role-onboarding-wizard";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
 
 const GUIDANCE_ROLES = [
@@ -210,6 +212,7 @@ const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazyWithRetry(() => import("@/pages/pdks"));
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
+const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -443,6 +446,7 @@ function Router() {
           <Route path="/hub/:sectionId" component={HubPage} />
           <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
+          <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
           <Route path="/ajanda">{() => <ModuleGuard moduleKey="ajanda"><AjandaPage /></ModuleGuard>}</Route>
           <Route path="/admin/*?" component={AdminMegaModule} />
@@ -698,6 +702,8 @@ export default function App() {
               <Toaster />
               <PushPermissionBanner />
               <ForcePasswordChangeDialog />
+              <BranchOnboardingWizard />
+              <RoleOnboardingWizard />
               <GlobalLockDialogHost />
             </TooltipProvider>
           </NetworkStatusProvider>
