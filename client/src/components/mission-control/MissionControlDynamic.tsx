@@ -165,7 +165,9 @@ export default function MissionControlDynamic() {
 
   const grouped = groupByCategory(data.widgets);
   const categoryOrder = ["ai", "operasyon", "personel", "fabrika", "finans", "egitim", "musteri", "ekipman", "genel"];
-  const orderedCategories = categoryOrder.filter((c) => grouped[c]);
+  const knownCategories = categoryOrder.filter((c) => grouped[c]);
+  const unknownCategories = Object.keys(grouped).filter((c) => !categoryOrder.includes(c));
+  const orderedCategories = [...knownCategories, ...unknownCategories];
 
   const getCategoryDefaultOpen = (category: string): boolean => {
     const widgets = grouped[category];
