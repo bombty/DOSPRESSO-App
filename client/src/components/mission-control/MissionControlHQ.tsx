@@ -119,9 +119,9 @@ function KPICell({ label, value, color, subtext }: {
   subtext?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-muted/30" data-testid={`mc-kpi-${label.toLowerCase().replace(/\s/g, '-')}`}>
-      <span className={`text-xl font-semibold leading-tight ${color || ""}`}>{value}</span>
-      <span className="text-[8px] uppercase tracking-wide text-muted-foreground font-medium mt-0.5">{label}</span>
+    <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-card border border-border/40" data-testid={`mc-kpi-${label.toLowerCase().replace(/\s/g, '-')}`}>
+      <span className={`text-lg font-bold leading-tight tabular-nums ${color || ""}`}>{value}</span>
+      <span className="text-[7px] uppercase tracking-wider text-muted-foreground font-medium mt-0.5">{label}</span>
       {subtext && <span className="text-[9px] text-muted-foreground/70">{subtext}</span>}
     </div>
   );
@@ -297,20 +297,20 @@ export default function MissionControlHQ() {
   }
 
   return (
-    <div className="p-4 space-y-3 max-w-4xl mx-auto overflow-y-auto h-full" data-testid="mission-control-hq">
-      <div className="flex items-center justify-between gap-3 flex-wrap" data-testid="mc-header">
+    <div className="p-3 md:p-4 space-y-3 max-w-4xl mx-auto overflow-y-auto h-full" data-testid="mission-control-hq">
+      <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="mc-header">
         <div className="flex items-center gap-2.5">
           <Avatar className="w-7 h-7" data-testid="mc-user-avatar">
             <AvatarImage src={user?.profileImageUrl || undefined} alt={firstName} />
-            <AvatarFallback className="text-[10px] font-bold">{initials}</AvatarFallback>
+            <AvatarFallback className="text-[10px] font-bold bg-primary/15 text-primary">{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-semibold leading-tight">Merhaba, {firstName}</p>
+            <h1 className="text-sm font-bold leading-tight">Merhaba, {firstName}</h1>
             <p className="text-[10px] text-muted-foreground capitalize">{dateStr}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px] h-5" data-testid="mc-role-badge">{roleLabel}</Badge>
+          <Badge variant="secondary" className="text-[10px] h-5" data-testid="mc-role-badge">{roleLabel}</Badge>
           <DashboardModeToggle />
         </div>
       </div>
@@ -506,27 +506,27 @@ export default function MissionControlHQ() {
         data-testid="mc-factory-qc-section"
       >
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-md bg-muted/30 p-2 text-center">
-            <span className="text-lg font-semibold">{factorySummary?.todayProduction ?? 0}</span>
-            <p className="text-[8px] uppercase tracking-wide text-muted-foreground">Bugün üretim</p>
+          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+            <span className="text-lg font-bold tabular-nums">{factorySummary?.todayProduction ?? 0}</span>
+            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Bugün üretim</p>
           </div>
-          <div className="rounded-md bg-muted/30 p-2 text-center">
-            <span className={`text-lg font-semibold ${(factorySummary?.wastePercentage ?? 0) > 5 ? "text-destructive" : ""}`}>
+          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+            <span className={`text-lg font-bold tabular-nums ${(factorySummary?.wastePercentage ?? 0) > 5 ? "text-destructive" : ""}`}>
               %{factorySummary?.wastePercentage ?? 0}
             </span>
-            <p className="text-[8px] uppercase tracking-wide text-muted-foreground">Fire oranı</p>
+            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Fire oranı</p>
           </div>
-          <div className="rounded-md bg-muted/30 p-2 text-center">
-            <span className={`text-lg font-semibold ${(qcToday?.pending ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+            <span className={`text-lg font-bold tabular-nums ${(qcToday?.pending ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
               {qcToday?.pending ?? 0}
             </span>
-            <p className="text-[8px] uppercase tracking-wide text-muted-foreground">QC bekleyen</p>
+            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">QC bekleyen</p>
           </div>
-          <div className="rounded-md bg-muted/30 p-2 text-center">
-            <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+            <span className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
               %{qcToday?.passRate ?? 0}
             </span>
-            <p className="text-[8px] uppercase tracking-wide text-muted-foreground">QC onay oranı</p>
+            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">QC onay oranı</p>
           </div>
         </div>
       </CollapsibleSection>
@@ -570,25 +570,25 @@ export default function MissionControlHQ() {
         >
           {ikData ? (
             <div className="grid grid-cols-4 gap-2">
-              <div className="rounded-md bg-muted/30 p-2 text-center">
-                <span className="text-base font-semibold">{ikData.documents.total}</span>
-                <p className="text-[8px] uppercase tracking-wide text-muted-foreground">Özlük dosya</p>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className="text-base font-bold tabular-nums">{ikData.documents.total}</span>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Özlük dosya</p>
               </div>
-              <div className="rounded-md bg-muted/30 p-2 text-center">
-                <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">{ikData.documents.verified}</span>
-                <p className="text-[8px] uppercase tracking-wide text-muted-foreground">Onaylı</p>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{ikData.documents.verified}</span>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Onaylı</p>
               </div>
-              <div className="rounded-md bg-muted/30 p-2 text-center">
-                <span className={`text-base font-semibold ${ikData.documents.expiringSoon > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className={`text-base font-bold tabular-nums ${ikData.documents.expiringSoon > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
                   {ikData.documents.expiringSoon}
                 </span>
-                <p className="text-[8px] uppercase tracking-wide text-muted-foreground">Süresi dolan</p>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Süresi dolan</p>
               </div>
-              <div className="rounded-md bg-muted/30 p-2 text-center">
-                <span className={`text-base font-semibold ${ikData.disciplinary.open > 0 ? "text-destructive" : ""}`}>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className={`text-base font-bold tabular-nums ${ikData.disciplinary.open > 0 ? "text-destructive" : ""}`}>
                   {ikData.disciplinary.open}
                 </span>
-                <p className="text-[8px] uppercase tracking-wide text-muted-foreground">Açık tutanak</p>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Açık tutanak</p>
               </div>
             </div>
           ) : (

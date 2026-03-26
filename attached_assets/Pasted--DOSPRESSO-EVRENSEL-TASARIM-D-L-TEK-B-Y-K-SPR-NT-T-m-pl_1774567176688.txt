@@ -1,0 +1,680 @@
+# DOSPRESSO EVRENSEL TASARIM DİLİ — TEK BÜYÜK SPRİNT
+# Tüm platform: sidebar + header + kartlar + sayfalar + MC bileşenleri
+# Sadece GÖRSEL katman değişir — backend/API/DB/scheduler hiç dokunulmaz
+# Tahmini: 10-14 saat
+
+---
+
+## ⚠⚠⚠ KRİTİK — DOKUNMA LİSTESİ ⚠⚠⚠
+
+### ASLA DEĞİŞTİRME:
+- ❌ localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- ❌ Hiçbir server/ dosyası (routes, services, lib, agent — SIFIR backend değişikliği)
+- ❌ shared/schema/ dosyaları
+- ❌ API endpoint'leri, response formatları
+- ❌ Agent/scheduler/bildirim iş mantığı
+- ❌ DashboardRouter.tsx rol eşleştirme mantığı
+- ❌ useDashboardMode hook mantığı
+- ❌ Sayfa route yapısı (App.tsx'teki path'ler)
+- ❌ role-routes.ts yönlendirme mantığı
+- ❌ TanStack Query key'leri ve fetch mantığı
+- ❌ Zod validasyon şemaları
+- ❌ Herhangi bir `import ... from 'server/...'` referansı
+
+### SADECE DEĞİŞTİR:
+- ✅ client/src/index.css (veya globals.css) — CSS değişkenleri
+- ✅ tailwind.config.ts — renk/font token'ları
+- ✅ client/src/components/ — UI bileşenleri (görsel)
+- ✅ client/src/pages/ — sayfa bileşenleri (görsel)
+- ✅ Tailwind class'ları (p-4 → p-2.5 gibi)
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+---
+
+## STEP 0: MEVCUT DURUMU ARAŞTIR
+
+```bash
+echo "═══ TASARIM SPRİNT ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "████ 1. MEVCUT RENK SİSTEMİ ████"
+echo "--- globals.css / index.css dark mode değişkenleri ---"
+grep -A50 "\.dark\|dark {" client/src/index.css 2>/dev/null | head -60
+echo ""
+echo "--- tailwind.config renk tanımları ---"
+cat tailwind.config.ts 2>/dev/null | head -60
+
+echo ""
+echo "████ 2. MEVCUT SIDEBAR ████"
+echo "--- Sidebar bileşeni ---"
+find client/src -name "*Sidebar*" -o -name "*sidebar*" -o -name "*side-bar*" | grep -i "\.tsx$" | sort
+echo ""
+echo "--- Sidebar genişlik ---"
+grep -rn "w-\[240\|w-60\|w-64\|width.*240\|sidebar.*width\|SIDEBAR" client/src/ --include="*.tsx" --include="*.css" | head -10
+
+echo ""
+echo "████ 3. MEVCUT HEADER / TOP BAR ████"
+find client/src -name "*Header*" -o -name "*header*" -o -name "*TopBar*" -o -name "*topbar*" | grep -i "\.tsx$" | sort
+echo ""
+grep -rn "header\|Header\|top-bar\|TopBar" client/src/App.tsx | head -5
+
+echo ""
+echo "████ 4. MC BİLEŞENLERİ BOYUTLARI ████"
+for MC in MissionControlHQ MissionControlCoach MissionControlSupervisor MissionControlMuhasebe MissionControlStajyer MissionControlFabrika MissionControlYatirimci MissionControlDynamic; do
+  FILE="client/src/components/mission-control/${MC}.tsx"
+  if [ -f "$FILE" ]; then
+    echo "  $MC: $(wc -l < "$FILE") satır"
+  fi
+done
+
+echo ""
+echo "████ 5. PAYLAŞILAN BİLEŞENLER ████"
+echo "--- UnifiedKPI ---"
+find client/src -name "*UnifiedKPI*" -name "*.tsx" | head -3
+echo ""
+echo "--- CollapsibleSection ---"
+find client/src -name "*CollapsibleSection*" -name "*.tsx" | head -3
+echo ""
+echo "--- Mevcut KPI bileşeni nasıl render ediyor ---"
+grep -A10 "function UnifiedKPI\|const UnifiedKPI\|export.*UnifiedKPI" client/src/components/mission-control/UnifiedKPI.tsx 2>/dev/null | head -15
+
+echo ""
+echo "████ 6. FONT SİSTEMİ ████"
+grep -n "fontFamily\|font-family\|Inter\|font.*import" client/src/index.css client/index.html tailwind.config.ts 2>/dev/null | head -10
+
+echo ""
+echo "████ 7. MEVCUT KART YAPISI ████"
+echo "--- Shadcn Card kullanımı ---"
+grep -rn "from.*components/ui/card\|<Card\b" client/src/components/mission-control/ --include="*.tsx" | wc -l
+echo "dosyada Card import"
+echo ""
+echo "--- bg- class kullanımı (arka plan renkleri) ---"
+grep -oP "bg-\[#[0-9a-fA-F]+\]" client/src/components/mission-control/*.tsx 2>/dev/null | sort -u | head -10
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████████
+# FAZ 1: RENK TOKEN'LARI VE GLOBAL CSS (1-2 saat)
+# Tüm platformu etkileyen temel renk/font değişikliği
+# ██████████████████████████████████████████████████████████████████████
+
+## 1.1: CSS Değişkenleri — Dark Mode Paleti
+
+client/src/index.css (veya globals.css) dosyasındaki `.dark` bloğunu güncelle:
+
+```css
+/* DOSPRESSO Kurumsal Tasarım Dili — Dark Mode */
+.dark {
+  /* Ana yüzeyler — Koyu lacivert */
+  --background: 222 40% 7%;        /* #0a1628 — sayfa arka planı */
+  --card: 216 37% 12%;             /* #0f1d32 — kart yüzeyi */
+  --popover: 216 37% 12%;
+  --muted: 213 33% 16%;            /* #152640 — hover/secondary */
+  
+  /* Metin — Açık bej tonları */
+  --foreground: 30 30% 91%;        /* #f2e6d0 — ana metin */
+  --card-foreground: 30 30% 91%;
+  --popover-foreground: 30 30% 91%;
+  --muted-foreground: 28 15% 48%;  /* #8a7d6d — ikincil metin */
+  
+  /* Vurgu — DOSPRESSO kırmızı */
+  --primary: 4 63% 46%;            /* #c0392b — ana kırmızı */
+  --primary-foreground: 0 0% 100%;
+  
+  /* İkincil — Bej */
+  --secondary: 213 33% 16%;       /* #152640 */
+  --secondary-foreground: 30 20% 75%; /* #c8b698 */
+  
+  /* Yıkıcı/hata */
+  --destructive: 6 78% 57%;       /* #e74c3c */
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Kenar çizgileri */
+  --border: 213 30% 22%;          /* #1e3250 */
+  --input: 213 30% 22%;
+  --ring: 4 63% 46%;              /* Focus ring = kırmızı */
+  
+  /* Accent */
+  --accent: 213 33% 16%;
+  --accent-foreground: 30 30% 91%;
+  
+  /* Ek renkler (custom) */
+  --dospresso-red: #c0392b;
+  --dospresso-red-light: #e74c3c;
+  --dospresso-bej: #f2e6d0;
+  --dospresso-bej-mid: #c8b698;
+  --dospresso-bej-muted: #8a7d6d;
+  --dospresso-green: #27ae60;
+  --dospresso-green-light: #2ecc71;
+  --dospresso-amber: #d4a84b;
+  --dospresso-blue: #2980b9;
+  --dospresso-bg: #0a1628;
+  --dospresso-bg2: #0f1d32;
+  --dospresso-bg3: #152640;
+  --dospresso-border: #1e3250;
+  
+  /* Border radius — daha yumuşak */
+  --radius: 0.5rem;
+}
+```
+
+## 1.2: Tailwind Config Güncelleme
+
+```typescript
+// tailwind.config.ts — extend.colors'a ekle
+dospresso: {
+  bg: '#0a1628',
+  bg2: '#0f1d32',
+  bg3: '#152640',
+  border: '#1e3250',
+  red: '#c0392b',
+  'red-light': '#e74c3c',
+  bej: '#f2e6d0',
+  'bej-mid': '#c8b698',
+  'bej-muted': '#8a7d6d',
+  green: '#27ae60',
+  'green-light': '#2ecc71',
+  amber: '#d4a84b',
+  blue: '#2980b9',
+}
+```
+
+## 1.3: Font sistemi doğrula
+
+```css
+/* Inter zaten yüklü olmalı — kontrol et */
+/* Eğer yoksa index.html'e ekle: */
+/* <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"> */
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+```
+
+**⚠ FAZ 1 SONRASI COMPILE KONTROL ET. Hata varsa devam etme.**
+
+---
+
+# ██████████████████████████████████████████████████████████████████████
+# FAZ 2: SIDEBAR — COLLAPSED ICON-ONLY (2-3 saat)
+# 240px → 48px collapsed varsayılan, hover'da expanded
+# ██████████████████████████████████████████████████████████████████████
+
+## 2.1: Sidebar bileşenini güncelle
+
+Mevcut sidebar bileşenini bul (muhtemelen AppSidebar.tsx veya Sidebar.tsx).
+
+**Hedef davranış:**
+- Varsayılan: 48px genişlik, sadece ikonlar
+- Logo: 28×28px kırmızı kare "D" harfi
+- Menü öğeleri: 32×32px ikon kutuları, 6px radius
+- Aktif öğe: bg-dospresso-bg3, kırmızı ikon rengi, ince border
+- Hover: ikon kutusu bg-dospresso-bg3, bej ikon rengi
+- Alt kısım: ayarlar ikonu (sabit)
+- Expanded durumu: kullanıcı bir toggle butonuyla açabilir (opsiyonel)
+
+```tsx
+// Sidebar temel yapı (pseudo-code, mevcut yapıya adapte et):
+<aside className="w-12 bg-dospresso-bg2 border-r border-dospresso-border 
+  flex flex-col items-center py-3 gap-0.5">
+  
+  {/* Logo */}
+  <div className="w-7 h-7 rounded-md bg-dospresso-red flex items-center 
+    justify-center text-white text-[10px] font-bold mb-4">D</div>
+  
+  {/* Nav items */}
+  {menuItems.map(item => (
+    <Tooltip key={item.path} content={item.label} side="right">
+      <Link href={item.path}
+        className={cn(
+          "w-8 h-8 rounded-md flex items-center justify-center transition-all",
+          isActive ? "bg-dospresso-bg3 text-dospresso-red-light border border-dospresso-border"
+                   : "text-dospresso-bej-muted hover:bg-dospresso-bg3 hover:text-dospresso-bej"
+        )}>
+        <item.icon className="w-3.5 h-3.5" />
+      </Link>
+    </Tooltip>
+  ))}
+  
+  {/* Spacer */}
+  <div className="flex-1" />
+  
+  {/* Settings */}
+  <Link href="/admin/ayarlar" className="w-8 h-8 rounded-md flex items-center 
+    justify-center text-dospresso-bej-muted hover:text-dospresso-bej">
+    <Settings className="w-3.5 h-3.5" />
+  </Link>
+</aside>
+```
+
+**⚠ Sidebar'daki menü öğeleri mevcut menu-service.ts'ten gelmeye devam etmeli. Sadece GÖRÜNÜM değişir, menü mantığı korunur.**
+
+## 2.2: Ana layout'u güncelle
+
+Mevcut layout'ta sidebar genişliğini güncelle:
+
+```tsx
+// Eski: grid-template-columns: 240px 1fr
+// Yeni: grid-template-columns: 48px 1fr
+// VEYA: flex layout ile w-12 sidebar + flex-1 content
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████████
+# FAZ 3: HEADER / TOP BAR (1 saat)
+# Kompakt header — selamlama + location selector + badge
+# ██████████████████████████████████████████████████████████████████████
+
+## 3.1: Header bileşenini güncelle
+
+```tsx
+<header className="flex items-center justify-between px-5 py-3">
+  <div>
+    <h1 className="text-lg font-semibold text-dospresso-bej">
+      Hoş geldiniz, {user.firstName}
+    </h1>
+    <p className="text-[10px] text-dospresso-bej-muted mt-0.5">
+      {roleLabel} komuta merkezi · {format(new Date(), 'dd MMMM yyyy, EEEE', {locale: tr})}
+    </p>
+  </div>
+  <div className="flex items-center gap-2">
+    {/* Location selector */}
+    <div className="bg-dospresso-bg3 border border-dospresso-border rounded-md 
+      px-2.5 py-1 text-[10px] text-dospresso-bej-mid flex items-center gap-1">
+      <MapPin className="w-2.5 h-2.5" />
+      {locationLabel}
+    </div>
+    {/* Rol badge */}
+    <span className="bg-dospresso-red text-white text-[9px] px-2.5 py-0.5 
+      rounded-full font-semibold">{roleName}</span>
+    {/* Bildirim + profil */}
+    <NotificationBell />
+    <UserAvatar />
+  </div>
+</header>
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████████
+# FAZ 4: PAYLAŞILAN BİLEŞENLER — KOMPAKT KIT (3-4 saat)
+# Tüm MC bileşenlerinin kullandığı ortak building block'lar
+# ██████████████████████████████████████████████████████████████████████
+
+## 4.1: ProgressRing bileşeni (YENİ)
+
+KPI kartlarında kullanılacak dairesel ilerleme göstergesi:
+
+```tsx
+// client/src/components/ui/progress-ring.tsx
+interface ProgressRingProps {
+  value: number;        // 0-100
+  size?: number;        // px, default 32
+  strokeWidth?: number; // default 3
+  color?: string;       // tailwind color veya hex
+  children?: ReactNode; // ortadaki değer
+}
+
+export function ProgressRing({ value, size = 32, strokeWidth = 3, color, children }: ProgressRingProps) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (value / 100) * circumference;
+  
+  // Renk otomatik: 0-50 kırmızı, 50-75 amber, 75+ yeşil (eğer color prop yoksa)
+  const autoColor = !color 
+    ? value >= 75 ? 'var(--dospresso-green)' 
+    : value >= 50 ? 'var(--dospresso-amber)' 
+    : 'var(--dospresso-red-light)'
+    : color;
+  
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" 
+          stroke="var(--dospresso-bg3)" strokeWidth={strokeWidth} />
+        <circle cx={size/2} cy={size/2} r={radius} fill="none" 
+          stroke={autoColor} strokeWidth={strokeWidth}
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeLinecap="round" />
+      </svg>
+      <span className="absolute text-[8px] font-bold">{children}</span>
+    </div>
+  );
+}
+```
+
+## 4.2: Sparkline bileşeni (YENİ)
+
+Trend göstergesi — 6 noktalı mini bar veya çizgi:
+
+```tsx
+// client/src/components/ui/sparkline.tsx
+interface SparklineProps {
+  data: number[];      // 6 değer
+  height?: number;     // default 12
+  trend?: 'up' | 'down' | 'stable'; // otomatik hesaplanır
+}
+
+export function Sparkline({ data, height = 12 }: SparklineProps) {
+  const max = Math.max(...data);
+  const lastTwo = data.slice(-2);
+  const trend = lastTwo[1] > lastTwo[0] ? 'up' : lastTwo[1] < lastTwo[0] ? 'down' : 'stable';
+  const color = trend === 'up' ? 'var(--dospresso-green)' 
+    : trend === 'down' ? 'var(--dospresso-red-light)' 
+    : 'var(--dospresso-bej-muted)';
+  
+  return (
+    <span className="inline-flex items-end gap-px" style={{ height }}>
+      {data.map((v, i) => (
+        <span key={i} className="rounded-sm" style={{
+          width: 2, height: Math.max(1, (v / max) * height),
+          background: color, display: 'block',
+        }} />
+      ))}
+    </span>
+  );
+}
+```
+
+## 4.3: MiniBar bileşeni (YENİ)
+
+Tablo hücrelerinde kullanılacak ince renk kodlu bar:
+
+```tsx
+// client/src/components/ui/mini-bar.tsx
+interface MiniBarProps {
+  value: number;  // 0-100
+  width?: number; // default 40
+}
+
+export function MiniBar({ value, width = 40 }: MiniBarProps) {
+  const color = value >= 80 ? 'var(--dospresso-green)' 
+    : value >= 60 ? 'var(--dospresso-amber)' 
+    : 'var(--dospresso-red-light)';
+  
+  return (
+    <span className="inline-block rounded-sm overflow-hidden" 
+      style={{ width, height: 3, background: 'var(--dospresso-bg3)' }}>
+      <span className="block h-full rounded-sm" 
+        style={{ width: `${value}%`, background: color }} />
+    </span>
+  );
+}
+```
+
+## 4.4: CompactKPI bileşeni (YENİ veya UnifiedKPI güncelle)
+
+```tsx
+// KPI kart — ProgressRing + metin yan yana
+interface CompactKPIProps {
+  label: string;
+  value: number | string;
+  unit?: string;       // "%" gibi
+  subtext?: string;
+  trend?: 'up' | 'down' | 'stable';
+  ringValue?: number;  // 0-100
+  color?: string;
+}
+
+export function CompactKPI({ label, value, unit, subtext, trend, ringValue, color }: CompactKPIProps) {
+  return (
+    <div className="bg-dospresso-bg2 border border-dospresso-border rounded-lg 
+      px-2.5 py-2 flex items-center gap-2">
+      {ringValue !== undefined && (
+        <ProgressRing value={ringValue} size={32} color={color}>
+          <span style={{ color: color || 'var(--dospresso-bej)', fontSize: 8 }}>
+            {typeof value === 'number' ? value : ''}
+          </span>
+        </ProgressRing>
+      )}
+      <div>
+        <div className="text-[7px] text-dospresso-bej-muted uppercase tracking-wider">{label}</div>
+        <div className="text-[15px] font-bold tabular-nums" style={{ color: color || 'var(--dospresso-bej)' }}>
+          {unit === '%' ? `%${value}` : value}
+        </div>
+        {subtext && (
+          <div className={cn("text-[7px]", 
+            trend === 'up' ? 'text-dospresso-green-light' : 
+            trend === 'down' ? 'text-dospresso-red-light' : 'text-dospresso-bej-muted'
+          )}>{subtext}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+## 4.5: CollapsibleSection güncelle
+
+Mevcut CollapsibleSection'ın padding/spacing'ini kompaktlaştır:
+
+```
+Eski: padding 16px, gap 12px, title 14px
+Yeni: padding 10-12px, gap 8px, title 10px uppercase tracking-wider
+Badge: daha küçük, pill şeklinde
+```
+
+## 4.6: StatusDot bileşeni (YENİ)
+
+```tsx
+// 5px renkli nokta
+export function StatusDot({ status }: { status: 'good' | 'warning' | 'critical' }) {
+  const colors = { good: 'bg-dospresso-green-light', warning: 'bg-dospresso-amber', critical: 'bg-dospresso-red-light' };
+  return <span className={`w-1.5 h-1.5 rounded-full inline-block ${colors[status]}`} />;
+}
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████████
+# FAZ 5: MC BİLEŞENLERİ GÜNCELLE (3-4 saat)
+# Her MC bileşenine yeni kompakt tasarımı uygula
+# ⚠ Mevcut veri çekme mantığını KORUYARAK sadece JSX/className değiştir
+# ██████████████████████████████████████████████████████████████████████
+
+## 5.1: MissionControlHQ (CEO/CGO/Admin)
+
+Mevcut yapıyı koru, görünümü güncelle:
+
+```
+KPI strip: 5-6 adet CompactKPI → grid-cols-5 veya grid-cols-6, gap-2
+Ana kartlar: padding p-3, border-radius rounded-lg, border border-dospresso-border
+Tablo: kompakt (py-1.5 satırlar), MiniBar ve Sparkline kullan
+Uyarılar: kırmızı sol border (border-l-2 border-dospresso-red), kompakt padding
+AI briefing: gradient arka plan (dospresso-bg → dospresso-bg2), bej border
+Quick actions: thumbnail kartlar (mini bar chart, grid, lines, avatars preview)
+```
+
+## 5.2: MissionControlCoach
+
+```
+KPI strip: 6 adet CompactKPI (ProgressRing'li)
+Şube tablosu: kompakt tablo + MiniBar (checklist/vardiya/eğitim kolonları) + Sparkline (trend)
+Ekipman: StatusDot + şube adı + pill badge
+Vardiya: 3 kutu (uyum/zamanında/devamsız) → ardından en kötü şube listesi
+Uyarı + AI: yan yana, sol border'lı uyarılar + gradient AI kutusu
+Personel: avatar daire + ad + ProgressRing (skor)
+Müşteri: büyük skor + mini bar chart (5-1 yıldız dağılımı)
+Quick actions: thumbnail kartlar
+```
+
+## 5.3: MissionControlSupervisor
+
+```
+KPI: bugün gelen/toplam, görev, checklist %, uyarı sayısı
+Personel listesi: avatar + ad + durum (çalışıyor/izinli/yok) + ProgressRing skor
+Vardiya timeline: kompakt satır görünümü
+Checklist: tamamlanan/kalan progress bar
+Stok: düşük stok uyarı listesi
+```
+
+## 5.4: MissionControlYatirimci
+
+```
+Şube bilgi: şube adı + şehir + kısa KPI strip
+Uyarılar: kompakt liste
+Personel: kısa özet (toplam/aktif/izinli)
+Müşteri feedback: puan + son yorumlar
+Checklist + Ekipman: progress bar + sayı
+```
+
+## 5.5: MissionControlMuhasebe, MissionControlStajyer, MissionControlFabrika, MissionControlDynamic
+
+```
+Aynı kompakt tasarım prensiplerini uygula:
+- Kartlar: bg-dospresso-bg2, border-dospresso-border, rounded-lg, p-3
+- Metin: text-dospresso-bej (ana), text-dospresso-bej-mid (ikincil), text-dospresso-bej-muted (ipucu)
+- KPI'lar: CompactKPI veya ProgressRing
+- Listeler: py-1.5 satırlar, border-b border-dospresso-border
+- Durum: StatusDot + pill badge
+- Her kart title: text-[9px] uppercase tracking-wider text-dospresso-bej-mid
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████████
+# FAZ 6: GENEL SAYFA ŞABLONU (1-2 saat)
+# Tüm sayfalarda ortak görünüm — arka plan, spacing, font
+# ██████████████████████████████████████████████████████████████████████
+
+## 6.1: Sayfa arka planı
+
+```css
+/* Tüm sayfalar koyu lacivert */
+body { background: #0a1628; }
+.dark body { background: #0a1628; }
+```
+
+## 6.2: Shadcn Card bileşeni override
+
+Mevcut Shadcn Card'ın dark mode stillerini güncelle:
+
+```css
+.dark .card, [data-theme="dark"] .card {
+  background: #0f1d32;
+  border-color: #1e3250;
+}
+```
+
+## 6.3: Genel tablo stili
+
+```css
+.dark table th {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dospresso-bej-muted);
+}
+.dark table td {
+  font-size: 10px;
+  padding: 6px 8px;
+}
+```
+
+---
+
+# DOĞRULAMA
+
+```bash
+echo "═══ TASARIM SPRİNT DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "Server: %{http_code}\n" http://localhost:5000/
+
+echo ""
+echo "████ 1. RENK TOKEN'LARI ████"
+echo "--- Dark mode CSS değişkenleri ---"
+grep "dospresso-bg\|--dospresso\|#0a1628\|#0f1d32\|#c0392b\|#f2e6d0" client/src/index.css | head -10
+echo ""
+echo "--- Tailwind config ---"
+grep -c "dospresso" tailwind.config.ts 2>/dev/null
+echo "dospresso token tanımlı (10+ olmalı)"
+
+echo ""
+echo "████ 2. YENİ BİLEŞENLER ████"
+for COMP in progress-ring sparkline mini-bar compact-kpi status-dot; do
+  FILE=$(find client/src/components -name "*${COMP}*" -name "*.tsx" 2>/dev/null | head -1)
+  if [ -n "$FILE" ]; then
+    echo "  ✅ $COMP: $(basename $FILE) ($(wc -l < "$FILE") satır)"
+  else
+    echo "  ❌ $COMP: YOK"
+  fi
+done
+
+echo ""
+echo "████ 3. SIDEBAR BOYUTU ████"
+grep -rn "w-12\|w-\[48px\]\|width.*48" client/src/ --include="*.tsx" | head -3
+echo "(sidebar 48px olmalı)"
+
+echo ""
+echo "████ 4. MC BİLEŞENLERİ GÜNCELLEME ████"
+for MC in MissionControlHQ MissionControlCoach MissionControlSupervisor MissionControlMuhasebe MissionControlYatirimci MissionControlFabrika MissionControlStajyer MissionControlDynamic; do
+  FILE="client/src/components/mission-control/${MC}.tsx"
+  if [ -f "$FILE" ]; then
+    HAS_NEW=$(grep -c "dospresso\|CompactKPI\|ProgressRing\|Sparkline\|MiniBar\|StatusDot" "$FILE" 2>/dev/null)
+    echo "  $MC: $HAS_NEW yeni bileşen referansı (1+ olmalı)"
+  fi
+done
+
+echo ""
+echo "████ 5. REGRESYON — TÜM ROLLER LOGİN ████"
+for ROLE in ceo cgo admin coach trainer supervisor mudur barista stajyer muhasebe_ik fabrika_mudur uretim_sefi satinalma marketing kalite_kontrol gida_muhendisi yatirimci_branch; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    RESULT=$(curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" 2>/dev/null)
+    if echo "$RESULT" | grep -q "id"; then echo "  ✅ $ROLE"; else echo "  ❌ $ROLE"; fi
+  fi
+done
+
+echo ""
+echo "████ 6. API REGRESYON ████"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/design.txt > /dev/null 2>&1
+for ep in "/api/dashboard/executive" "/api/dashboard/coach" "/api/dashboard/branch/5" "/api/hq-summary" "/api/me/dashboard-data" "/api/me/widget-config" "/api/tasks" "/api/pdks/records?branchId=5&month=3&year=2026"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/design.txt "http://localhost:5000${ep}" 2>/dev/null)
+  echo "  $ep → $STATUS"
+done
+
+echo ""
+echo "████ 7. SCHEDULER SAĞLIK ████"
+echo "--- Agent/scheduler çalışıyor mu? ---"
+grep -c "schedule\|registerJob\|setInterval" server/services/agent-scheduler.ts server/index.ts 2>/dev/null
+
+echo ""
+echo "████ 8. BİLDİRİM SİSTEMİ ████"
+echo "  SmartNotificationDialog: $(find client/src -name '*SmartNotification*' | wc -l) dosya"
+echo "  Notifications API: $(curl -s -o /dev/null -w "%{http_code}" -b /tmp/design.txt "http://localhost:5000/api/notifications" 2>/dev/null)"
+
+echo ""
+echo "═══ SONUÇ ═══"
+echo "  Renk token'ları: ✅/❌"
+echo "  Yeni bileşenler (5): ✅/❌"
+echo "  Sidebar kompakt: ✅/❌"
+echo "  MC güncelleme (8): ✅/❌"
+echo "  Tüm roller login: ✅/❌"
+echo "  API regresyon: ✅/❌"
+echo "  Scheduler sağlık: ✅/❌"
+echo "  Bildirim sistemi: ✅/❌"
+echo ""
+echo "  ⚠ BACKEND DEĞİŞİKLİK KONTROLÜ:"
+echo "  Server dosyaları değişti mi?"
+git diff --name-only server/ 2>/dev/null || find server/ -newer client/src/index.css -name "*.ts" 2>/dev/null | head -5
+echo "  (0 olmalı — hiçbir server dosyası değişmemeli)"
+```
+
+## YAPMA LİSTESİ
+- ❌ Hiçbir server/ dosyası
+- ❌ shared/schema/ dosyaları  
+- ❌ localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- ❌ DashboardRouter.tsx rol eşleştirme mantığı
+- ❌ role-routes.ts yönlendirme mantığı
+- ❌ API endpoint'leri ve response formatları
+- ❌ TanStack Query key'leri
+- ❌ Agent/scheduler/bildirim iş mantığı
+- ❌ Mevcut CSS'in light mode bloğu (sadece dark mode güncelle)
+- ❌ Mevcut Shadcn UI bileşen dosyalarını silme (override et, silme)

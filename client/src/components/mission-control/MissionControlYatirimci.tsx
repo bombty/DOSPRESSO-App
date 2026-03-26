@@ -182,18 +182,18 @@ export default function MissionControlYatirimci() {
 
   return (
     <div className="p-3 md:p-4 space-y-3 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-yatirimci">
-      <div className="flex items-center justify-between gap-3 flex-wrap" data-testid="mc-yat-header">
+      <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="mc-yat-header">
         <div className="flex items-center gap-2.5">
           <Avatar className="w-7 h-7">
-            <AvatarFallback className="text-[10px] font-bold">{initials}</AvatarFallback>
+            <AvatarFallback className="text-[10px] font-bold bg-primary/15 text-primary">{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-semibold leading-tight">{getGreeting()}, {firstName}</p>
+            <h1 className="text-sm font-bold leading-tight">{getGreeting()}, {firstName}</h1>
             <p className="text-[10px] text-muted-foreground capitalize">{dateStr}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className="text-[10px] h-5" data-testid="mc-role-badge">
+          <Badge variant="secondary" className="text-[10px] h-5" data-testid="mc-role-badge">
             {isHQ ? "Yatırımcı (HQ)" : "Yatırımcı"}
           </Badge>
           <DashboardModeToggle />

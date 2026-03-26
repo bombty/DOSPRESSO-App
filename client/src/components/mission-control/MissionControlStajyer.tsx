@@ -151,12 +151,12 @@ export default function MissionControlStajyer() {
     <div className="p-3 md:p-4 space-y-3 max-w-lg md:max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-stajyer">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs md:text-sm font-bold text-primary">{firstName[0]?.toUpperCase()}</span>
+          <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-bold text-primary">{firstName[0]?.toUpperCase()}</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm md:text-base font-bold truncate" data-testid="mc-stj-greeting">Merhaba, {firstName}</h1>
-            <p className="text-[10px] md:text-[11px] text-muted-foreground">{dateStr}</p>
+            <h1 className="text-sm font-bold truncate" data-testid="mc-stj-greeting">Merhaba, {firstName}</h1>
+            <p className="text-[10px] text-muted-foreground">{dateStr}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 md:gap-2">

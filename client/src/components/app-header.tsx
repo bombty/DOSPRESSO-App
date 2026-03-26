@@ -52,26 +52,26 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
       "admin": "Admin",
       "ceo": "CEO",
       "cgo": "CGO",
-      "muhasebe_ik": "Muhasebe İK",
-      "satinalma": "Satınalma",
+      "muhasebe_ik": "Muhasebe IK",
+      "satinalma": "Satinalma",
       "coach": "Coach",
       "marketing": "Marketing",
-      "trainer": "Eğitmen",
+      "trainer": "Egitmen",
       "kalite_kontrol": "Kalite Kontrol",
-      "fabrika_mudur": "Fabrika Müdür",
+      "fabrika_mudur": "Fabrika Mudur",
       "muhasebe": "Muhasebe",
       "teknik": "Teknik",
       "destek": "Destek",
       "fabrika": "Fabrika",
-      "yatirimci_hq": "Yatırımcı",
+      "yatirimci_hq": "Yatirimci",
       "stajyer": "Stajyer",
       "bar_buddy": "Bar Buddy",
       "barista": "Barista",
       "supervisor_buddy": "Supervisor Buddy",
       "supervisor": "Supervisor",
-      "mudur": "Müdür",
-      "yatirimci_branch": "Yatırımcı",
-      "fabrika_operator": "Fabrika Operatör",
+      "mudur": "Mudur",
+      "yatirimci_branch": "Yatirimci",
+      "fabrika_operator": "Fabrika Operator",
       "fabrika_sorumlu": "Fabrika Sorumlu",
       "fabrika_personel": "Fabrika Personel",
     };
@@ -88,7 +88,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
   return (
     <>
     <div className="flex-shrink-0 z-50 bg-background border-b">
-      <div className="px-3 py-2 border-b bg-sidebar flex items-center gap-3 relative">
+      <div className="px-3 py-1.5 border-b bg-sidebar flex items-center gap-2 relative">
         
         <div className="flex items-center gap-1 flex-shrink-0">
           <div className={hideHamburgerOnMobile ? 'hidden' : 'md:hidden'}>
@@ -98,12 +98,12 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
             <Button
               variant="ghost"
               size="icon"
-              className="hidden md:inline-flex h-8 w-8"
+              className="hidden md:inline-flex"
               onClick={onSidebarToggle}
               data-testid="button-sidebar-toggle"
-              title="Menüyü Aç/Kapat"
+              title="Menuyy Ac/Kapat"
             >
-              <PanelLeft className="w-4 h-4 text-white" />
+              <PanelLeft className="w-4 h-4 text-sidebar-foreground" />
             </Button>
           )}
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -114,13 +114,13 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
                 data-testid="button-profile-menu"
               >
                 <div className="text-left min-w-0 max-w-[120px] sm:max-w-[180px]">
-                  <p className="text-xs font-medium text-white truncate" data-testid="text-user-name">
-                    <span>{user?.firstName || user?.username || "Kullanıcı"}</span>
-                    <span className="text-white/50 mx-1">•</span>
-                    <span data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
+                  <p className="text-xs font-medium text-sidebar-foreground truncate" data-testid="text-user-name">
+                    <span>{user?.firstName || user?.username || "Kullanici"}</span>
+                    <span className="text-muted-foreground mx-1">·</span>
+                    <span className="text-muted-foreground" data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
                   </p>
                   {branchName && (
-                    <p className="text-[11px] text-white/60 truncate" data-testid="text-branch-name">
+                    <p className="text-[10px] text-muted-foreground truncate" data-testid="text-branch-name">
                       {branchName}
                     </p>
                   )}
@@ -134,7 +134,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setIsOpen(false); setShowNewTask(true); }} data-testid="button-assign-task">
                 <ListPlus className="mr-2 h-4 w-4" />
-                <span>Görev Ata</span>
+                <span>Gorev Ata</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/crm?channel=franchise"); }} data-testid="button-support">
                 <Headset className="mr-2 h-4 w-4" />
@@ -142,7 +142,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Çıkış Yap</span>
+                <span>Cikis Yap</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -152,7 +152,7 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
           <img 
             src={dospressoLogo} 
             alt="DOSPRESSO" 
-            className="h-8 object-contain cursor-pointer"
+            className="h-7 object-contain cursor-pointer"
             onClick={() => {
               setLocation(getRoleHomePath(user?.role, user?.branchId));
             }}
@@ -160,41 +160,38 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
           />
         </div>
 
-        <div className="flex-1 flex justify-end gap-1">
+        <div className="flex-1 flex justify-end gap-0.5">
           <InboxDialog />
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
             onClick={() => setLocation("/kullanim-kilavuzu")}
             data-testid="button-help"
-            title="Kullanım Rehberi"
+            title="Kullanim Rehberi"
           >
-            <CircleHelp className="w-4 h-4 text-white" />
+            <CircleHelp className="w-4 h-4 text-sidebar-foreground" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
             onClick={toggleTheme}
             data-testid="button-theme-toggle"
-            title={effectiveTheme === "dark" ? "Açık Mod" : "Koyu Mod"}
+            title={effectiveTheme === "dark" ? "Acik Mod" : "Koyu Mod"}
           >
             {effectiveTheme === "dark" ? (
-              <Sun className="w-4 h-4 text-white" />
+              <Sun className="w-4 h-4 text-sidebar-foreground" />
             ) : (
-              <Moon className="w-4 h-4 text-white" />
+              <Moon className="w-4 h-4 text-sidebar-foreground" />
             )}
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
             onClick={onQRClick}
             data-testid="button-qr-scanner"
-            title="QR Tarayıcı"
+            title="QR Tarayici"
           >
-            <QrCode className="w-4 h-4 text-white" />
+            <QrCode className="w-4 h-4 text-sidebar-foreground" />
           </Button>
         </div>
       </div>

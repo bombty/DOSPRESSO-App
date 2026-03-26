@@ -146,26 +146,33 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col bg-[#122549] flex-shrink-0 z-40 transition-[width] duration-200 ease-in-out overflow-hidden",
-        isExpanded ? "w-[220px]" : "w-[50px]"
+        "hidden md:flex flex-col flex-shrink-0 z-40 transition-[width] duration-200 ease-in-out overflow-hidden",
+        "bg-sidebar border-r border-sidebar-border",
+        isExpanded ? "w-[220px]" : "w-12"
       )}
       data-testid="collapsible-sidebar"
     >
       <div className={cn(
-        "flex items-center py-3 flex-shrink-0 border-b border-white/10",
+        "flex items-center py-3 flex-shrink-0 border-b border-sidebar-border",
         isExpanded ? "px-3 gap-3" : "justify-center px-0"
       )}>
-        <Avatar className="h-8 w-8 flex-shrink-0">
-          <AvatarFallback className="bg-white/20 text-white text-xs font-medium">
-            {getInitials(user?.firstName, user?.lastName)}
-          </AvatarFallback>
-        </Avatar>
+        {isExpanded ? (
+          <Avatar className="h-8 w-8 flex-shrink-0">
+            <AvatarFallback className="bg-primary/20 text-primary text-xs font-medium">
+              {getInitials(user?.firstName, user?.lastName)}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+            D
+          </div>
+        )}
         {isExpanded && (
           <div className="min-w-0 overflow-hidden">
-            <p className="text-xs font-medium text-white truncate">
+            <p className="text-xs font-medium text-sidebar-foreground truncate">
               {user?.firstName} {user?.lastName}
             </p>
-            <p className="text-[10px] text-white/50 truncate">
+            <p className="text-[10px] text-muted-foreground truncate">
               {ROLE_LABELS[user?.role || ""] || user?.role}
             </p>
           </div>
@@ -193,10 +200,12 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
                         data-testid={`sidebar-${item.id}`}
                         className={cn(
                           "w-full flex items-center justify-center h-9 transition-all duration-150",
-                          active ? "bg-amber-500/20" : "hover:bg-white/10"
+                          active
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         )}
                       >
-                        <IconComp className={cn("w-[18px] h-[18px]", active ? "text-amber-400" : "text-white/50")} />
+                        <IconComp className="w-4 h-4" />
                       </button>
                     </Link>
                   </TooltipTrigger>
@@ -211,7 +220,9 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
                   data-testid={`sidebar-${item.id}`}
                   className={cn(
                     "w-full flex items-center gap-2.5 px-3 h-8 text-left transition-all duration-150",
-                    active ? "bg-amber-500/20 text-amber-400" : "text-white/60 hover:bg-white/10 hover:text-white/80"
+                    active
+                      ? "bg-sidebar-accent text-primary"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   )}
                 >
                   <IconComp className="w-4 h-4 flex-shrink-0" />
@@ -235,10 +246,12 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
                     }}
                     className={cn(
                       "w-full flex items-center justify-center h-9 transition-all duration-150",
-                      hasActiveItem ? "bg-amber-500/20" : "hover:bg-white/10"
+                      hasActiveItem
+                        ? "bg-sidebar-accent text-primary"
+                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                     )}
                   >
-                    <SectionIcon className={cn("w-[18px] h-[18px]", hasActiveItem ? "text-amber-400" : "text-white/50")} />
+                    <SectionIcon className="w-4 h-4" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
@@ -247,8 +260,8 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
                     {section.items.map(item => (
                       <Link key={item.id} href={item.path}>
                         <p className={cn(
-                          "text-xs cursor-pointer hover:text-amber-400 py-0.5",
-                          isItemActive(item.path) ? "text-amber-400" : ""
+                          "text-xs cursor-pointer py-0.5",
+                          isItemActive(item.path) ? "text-primary" : "hover:text-foreground"
                         )}>
                           {item.titleTr}
                         </p>
@@ -267,7 +280,9 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
                 onClick={() => toggleGroup(section.id)}
                 className={cn(
                   "w-full flex items-center gap-2 px-3 h-8 text-left transition-all duration-150",
-                  hasActiveItem ? "text-amber-400" : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                  hasActiveItem
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >
                 <SectionIcon className="w-4 h-4 flex-shrink-0" />
@@ -293,8 +308,8 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
                         className={cn(
                           "w-full flex items-center gap-2.5 pl-7 pr-3 h-7 text-left transition-all duration-150",
                           active
-                            ? "bg-amber-500/20 text-amber-400"
-                            : "text-white/55 hover:bg-white/10 hover:text-white/80"
+                            ? "bg-sidebar-accent text-primary"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
                         )}
                       >
                         <IconComp className="w-3.5 h-3.5 flex-shrink-0" />
@@ -310,7 +325,7 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
       </ScrollArea>
 
       <div className={cn(
-        "flex-shrink-0 border-t border-white/10 py-2",
+        "flex-shrink-0 border-t border-sidebar-border py-2",
         isExpanded ? "px-3" : "flex justify-center"
       )}>
         <Tooltip delayDuration={200}>
@@ -319,13 +334,14 @@ export function CollapsibleSidebar({ isExpanded }: CollapsibleSidebarProps) {
               <button
                 data-testid="sidebar-profile"
                 className={cn(
-                  "flex items-center gap-2.5 h-8 transition-all hover:bg-white/10 rounded-md",
+                  "flex items-center gap-2.5 h-8 transition-all rounded-md",
+                  "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
                   isExpanded ? "w-full px-2" : "w-9 justify-center"
                 )}
               >
-                <User className="w-4 h-4 text-white/40 flex-shrink-0" />
+                <User className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
-                  <span className="text-xs text-white/60 truncate">Profilim</span>
+                  <span className="text-xs truncate">Profilim</span>
                 )}
               </button>
             </Link>

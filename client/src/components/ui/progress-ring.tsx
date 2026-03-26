@@ -1,83 +1,82 @@
-import * as React from "react";
-import { motion } from "framer-motion";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface ProgressRingProps {
-  progress: number;
+  value?: number;
+  progress?: number;
   size?: number;
   strokeWidth?: number;
-  color?: "navy" | "blue" | "red" | "green" | "purple" | "amber";
+  color?: string;
   showPercentage?: boolean;
   label?: string;
   className?: string;
-  delay?: number;
+  children?: ReactNode;
 }
 
-const colorClasses = {
-  navy: "stroke-[hsl(var(--dospresso-navy))]",
-  blue: "stroke-[hsl(var(--dospresso-blue))]",
-  red: "stroke-[hsl(var(--dospresso-red))]",
-  green: "stroke-emerald-500",
-  purple: "stroke-violet-500",
-  amber: "stroke-amber-500",
-};
-
 export function ProgressRing({
+  value,
   progress,
-  size = 80,
-  strokeWidth = 6,
-  color = "blue",
-  showPercentage = true,
+  size = 32,
+  strokeWidth = 3,
+  color,
+  showPercentage,
   label,
   className,
-  delay = 0,
+  children,
 }: ProgressRingProps) {
+  const pct = Math.max(0, Math.min(100, value ?? progress ?? 0));
   const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (pct / 100) * circumference;
+
+  const autoColor = color
+    ? color
+    : pct >= 75
+      ? "var(--dospresso-green, #27ae60)"
+      : pct >= 50
+        ? "var(--dospresso-amber, #d4a84b)"
+        : "var(--dospresso-red-light, #e74c3c)";
 
   return (
-    <div className={cn("relative inline-flex items-center justify-center", className)}>
+    <div
+      className={cn("relative inline-flex items-center justify-center flex-shrink-0", className)}
+      style={{ width: size, height: size }}
+      data-testid="progress-ring"
+    >
       <svg width={size} height={size} className="progress-ring">
-        {/* Background circle */}
         <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
           className="stroke-muted"
-          fill="none"
           strokeWidth={strokeWidth}
-          r={radius}
-          cx={size / 2}
-          cy={size / 2}
         />
-        {/* Progress circle */}
-        <motion.circle
-          className={cn("progress-ring-circle", colorClasses[color])}
-          fill="none"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          r={radius}
+        <circle
           cx={size / 2}
           cy={size / 2}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset }}
-          transition={{ duration: 1, delay, ease: "easeOut" }}
-          style={{ strokeDasharray: circumference }}
+          r={radius}
+          fill="none"
+          stroke={autoColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="progress-ring-circle"
         />
       </svg>
-      
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {showPercentage && (
-          <motion.span
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: delay + 0.5 }}
-            className="text-lg font-bold text-foreground"
-          >
-            {Math.round(progress)}%
-          </motion.span>
+          <span className="font-bold text-foreground" style={{ fontSize: size > 60 ? 18 : size > 40 ? 12 : 8 }}>
+            {Math.round(pct)}%
+          </span>
         )}
         {label && (
-          <span className="text-[10px] text-muted-foreground mt-0.5">
-            {label}
+          <span className="text-[10px] text-muted-foreground mt-0.5">{label}</span>
+        )}
+        {children && (
+          <span className="font-bold" style={{ fontSize: 8, color: autoColor }}>
+            {children}
           </span>
         )}
       </div>

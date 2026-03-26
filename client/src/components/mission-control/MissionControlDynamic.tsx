@@ -61,11 +61,11 @@ function KPIStrip({ kpis }: { kpis: KPIItem[] }) {
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2" data-testid="kpi-strip">
       {kpis.map((kpi) => (
         <Card key={kpi.key} data-testid={`kpi-${kpi.key}`}>
-          <CardContent className="p-3 text-center">
-            <div className={`text-xl font-bold ${kpi.color ? colorMap[kpi.color] || "" : ""}`}>
+          <CardContent className="p-2.5 text-center">
+            <div className={`text-lg font-bold tabular-nums ${kpi.color ? colorMap[kpi.color] || "" : ""}`}>
               {kpi.value}
             </div>
-            <div className="text-[10px] text-muted-foreground uppercase">{kpi.label}</div>
+            <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{kpi.label}</div>
             {kpi.subtext && (
               <div className="text-[9px] text-muted-foreground mt-0.5">{kpi.subtext}</div>
             )}
@@ -176,11 +176,11 @@ export default function MissionControlDynamic() {
   };
 
   return (
-    <div className="p-3 md:p-4 space-y-4 max-w-7xl mx-auto" data-testid="mc-dynamic-dashboard">
+    <div className="p-3 md:p-4 space-y-3 max-w-7xl mx-auto" data-testid="mc-dynamic-dashboard">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <LayoutDashboard className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-base font-semibold">Komuta Merkezi</h1>
+          <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
+          <h1 className="text-sm font-bold">Komuta Merkezi</h1>
           <Badge variant="secondary" className="text-[10px]">{data.role}</Badge>
         </div>
         <Button

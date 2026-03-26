@@ -195,23 +195,23 @@ export default function MissionControlSupervisor() {
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full pb-24 md:pb-4" data-testid="mission-control-supervisor">
+    <div className="p-3 md:p-4 space-y-3 max-w-2xl mx-auto overflow-y-auto h-full pb-24 md:pb-4" data-testid="mission-control-supervisor">
       {!isMobile && <SupervisorQuickBar />}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
             <span className="text-sm font-bold text-primary">
               {firstName[0]?.toUpperCase()}
             </span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-base font-bold truncate" data-testid="mc-sup-greeting">Merhaba, {firstName}</h1>
-            <p className="text-[11px] text-muted-foreground">{dateStr}</p>
+            <h1 className="text-sm font-bold truncate" data-testid="mc-sup-greeting">Merhaba, {firstName}</h1>
+            <p className="text-[10px] text-muted-foreground">{dateStr}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {branchSummary?.branch && (
-            <Badge variant="outline" className="text-[10px] h-5">{branchSummary.branch.name}</Badge>
+            <Badge variant="secondary" className="text-[10px] h-5">{branchSummary.branch.name}</Badge>
           )}
           <DashboardModeToggle />
         </div>

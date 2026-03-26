@@ -163,82 +163,62 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - Modern DOSPRESSO UI */
+/* DARK MODE - DOSPRESSO Kurumsal Tasarım Dili */
 .dark {
   --button-outline: rgba(255,255,255, .08);
   --badge-outline: rgba(255,255,255, .04);
 
   --opaque-button-border-intensity: 8;
 
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
   --elevate-1: rgba(255,255,255, .035);
   --elevate-2: rgba(255,255,255, .08);
 
-  /* Glassmorphism dark mode */
-  --glass-bg: rgba(30, 41, 59, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(10, 22, 40, 0.80);
+  --glass-border: rgba(255, 255, 255, 0.08);
   --glass-blur: 16px;
 
-  --background: 222 47% 7%;
+  --background: 222 40% 7%;
+  --foreground: 30 30% 91%;
+  --border: 213 30% 22%;
 
-  --foreground: 210 40% 96%;
+  --card: 216 37% 12%;
+  --card-foreground: 30 30% 91%;
+  --card-border: 213 30% 22%;
 
-  --border: 217 33% 17%;
-
-  --card: 222 47% 10%;
-
-  --card-foreground: 210 40% 96%;
-
-  --card-border: 217 33% 17%;
-
-  --sidebar: 222 47% 8%;
-
-  --sidebar-foreground: 210 40% 96%;
-
-  --sidebar-border: 217 33% 15%;
-
-  --sidebar-primary: 0 84% 52%;
-
+  --sidebar: 216 37% 10%;
+  --sidebar-foreground: 30 30% 91%;
+  --sidebar-border: 213 30% 18%;
+  --sidebar-primary: 4 63% 46%;
   --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 213 33% 20%;
+  --sidebar-accent-foreground: 30 30% 91%;
+  --sidebar-ring: 4 63% 46%;
 
-  --sidebar-accent: 217 91% 55%;
+  --popover: 216 37% 12%;
+  --popover-foreground: 30 30% 91%;
+  --popover-border: 213 30% 22%;
 
-  --sidebar-accent-foreground: 0 0% 100%;
-
-  --sidebar-ring: 0 84% 52%;
-
-  --popover: 222 47% 12%;
-
-  --popover-foreground: 210 40% 96%;
-
-  --popover-border: 217 33% 17%;
-
-  --primary: 0 84% 55%;
-
+  --primary: 4 63% 46%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 55% 30%;
+  --secondary: 213 33% 16%;
+  --secondary-foreground: 30 20% 75%;
 
-  --secondary-foreground: 210 40% 96%;
+  --muted: 213 33% 16%;
+  --muted-foreground: 28 15% 48%;
 
-  --muted: 217 33% 15%;
+  --accent: 213 33% 20%;
+  --accent-foreground: 30 30% 91%;
 
-  --muted-foreground: 215 20% 60%;
-
-  --accent: 217 91% 55%;
-
-  --accent-foreground: 0 0% 100%;
-
-  --destructive: 0 84% 55%;
-
+  --destructive: 6 78% 57%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 217 33% 25%;
-  --ring: 217 91% 55%;
-  --chart-1: 217 91% 60%;
-  --chart-2: 0 84% 55%;
-  --chart-3: 210 100% 65%;
-  --chart-4: 220 55% 45%;
+  --input: 213 30% 22%;
+  --ring: 4 63% 46%;
+  --chart-1: 4 63% 46%;
+  --chart-2: 140 50% 38%;
+  --chart-3: 42 76% 55%;
+  --chart-4: 207 90% 54%;
   --chart-5: 170 75% 50%;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(220 60% 0% / 0.25);
@@ -250,7 +230,20 @@
   --shadow-xl: 0px 2px 0px 0px hsl(220 60% 0% / 0.55), 0px 8px 10px -1px hsl(220 60% 0% / 0.60);
   --shadow-2xl: 0px 2px 0px 0px hsl(220 60% 0% / 0.65);
 
-  /* Automatically computed borders */
+  --dospresso-red: #c0392b;
+  --dospresso-red-light: #e74c3c;
+  --dospresso-bej: #f2e6d0;
+  --dospresso-bej-mid: #c8b698;
+  --dospresso-bej-muted: #8a7d6d;
+  --dospresso-green: #27ae60;
+  --dospresso-green-light: #2ecc71;
+  --dospresso-amber: #d4a84b;
+  --dospresso-blue: #2980b9;
+  --dospresso-bg: #0a1628;
+  --dospresso-bg2: #0f1d32;
+  --dospresso-bg3: #152640;
+  --dospresso-border: #1e3250;
+
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -632,6 +625,27 @@
   .table-compact th {
     @apply text-[11px] py-1.5 px-2.5 uppercase tracking-wide font-medium text-muted-foreground;
   }
+}
+
+/* DOSPRESSO Dark Mode — Card & Table Overrides */
+.dark .table-compact th,
+.dark table.dospresso-table th {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dospresso-bej-muted, #8a7d6d);
+  padding: 6px 8px;
+}
+
+.dark .table-compact td,
+.dark table.dospresso-table td {
+  font-size: 11px;
+  padding: 6px 8px;
+  color: var(--dospresso-bej, #f2e6d0);
+}
+
+.dark table.dospresso-table tr {
+  border-bottom: 1px solid var(--dospresso-border, #1e3250);
 }
 
 /* Mobile Phone (375px) Optimizations */

@@ -187,15 +187,15 @@ export default function MissionControlFabrika() {
   const dateStr = now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div className="p-4 space-y-4 max-w-3xl mx-auto overflow-y-auto h-full" data-testid="mission-control-fabrika">
+    <div className="p-3 md:p-4 space-y-3 max-w-3xl mx-auto overflow-y-auto h-full" data-testid="mission-control-fabrika">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
-            <Factory className="w-5 h-5 text-indigo-500" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+            <Factory className="w-4 h-4 text-indigo-500" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-base font-bold truncate" data-testid="mc-fab-greeting">Merhaba, {firstName}</h1>
-            <p className="text-[11px] text-muted-foreground">{dateStr}</p>
+            <h1 className="text-sm font-bold truncate" data-testid="mc-fab-greeting">Merhaba, {firstName}</h1>
+            <p className="text-[10px] text-muted-foreground">{dateStr}</p>
           </div>
         </div>
         <DashboardModeToggle />

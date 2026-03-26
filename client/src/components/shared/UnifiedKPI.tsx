@@ -87,7 +87,7 @@ function CardView({ items, className }: { items: KPIItem[]; className?: string }
         >
           <div className="flex items-center justify-center gap-1.5">
             {item.icon && <span className="text-muted-foreground">{item.icon}</span>}
-            <span className={cn("text-xl font-semibold", COLORS[item.color || "default"])}>
+            <span className={cn("text-xl font-bold tabular-nums", COLORS[item.color || "default"])}>
               {displayValue(item.value, item.suffix)}
             </span>
           </div>
@@ -173,7 +173,7 @@ function CompactView({ items, desktopColumns = 4, desktopGridClass, className }:
                 <div className="flex flex-col items-center text-center gap-1">
                   {item.icon && <div className="flex-shrink-0">{item.icon}</div>}
                   <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className={cn("text-lg font-bold", COLORS[clr])}>
+                  <p className={cn("text-lg font-bold tabular-nums", COLORS[clr])}>
                     {displayValue(item.value, item.suffix)}
                   </p>
                   {item.subtitle && (
