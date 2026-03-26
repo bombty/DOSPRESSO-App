@@ -9,6 +9,7 @@ import { UnifiedKPI, type KPIItem } from "@/components/shared/UnifiedKPI";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { TodaysTasksWidget } from "@/components/widgets/todays-tasks-widget";
 import { DashboardModeToggle } from "./DashboardModeToggle";
+import { PdksYatirimciWidget } from "./shared/PdksWidget";
 import {
   Building2,
   AlertTriangle,
@@ -419,6 +420,8 @@ export default function MissionControlYatirimci() {
           </div>
         </CollapsibleSection>
       )}
+
+      <PdksYatirimciWidget branchId={branchId} isHQ={isHQ} />
 
       {!isHQ && kpis && (
         <CollapsibleSection

@@ -12,6 +12,7 @@ import TrendChart from "@/components/dashboard/TrendChart";
 import EmptyStateCard from "@/components/dashboard/EmptyStateCard";
 import { TodaysTasksWidget } from "@/components/widgets/todays-tasks-widget";
 import { Link } from "wouter";
+import { PdksBordroWidget } from "./shared/PdksWidget";
 import {
   DollarSign,
   Users,
@@ -175,6 +176,8 @@ export default function MissionControlMuhasebe() {
         height={180}
         data-testid="mc-muh-cost-chart"
       />
+
+      <PdksBordroWidget />
 
       <TodaysTasksWidget />
 

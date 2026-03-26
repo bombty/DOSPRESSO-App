@@ -419,4 +419,259 @@ router.get('/api/pdks/branch-summary', isAuthenticated, async (req: any, res: Re
   }
 });
 
+router.get('/api/pdks/dashboard-summary', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!PDKS_ROLES.includes(user.role) && !['yatirimci_branch', 'yatirimci_hq'].includes(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+
+    const globalRoles = ['admin', 'ceo', 'cgo', 'coach', 'muhasebe_ik', 'muhasebe'];
+    const branchLimitedRoles = ['supervisor', 'mudur', 'yatirimci_branch'];
+
+    let effectiveScope: string;
+    let effectiveBranchId: number;
+
+    if (globalRoles.includes(user.role) || user.role === 'yatirimci_hq') {
+      effectiveScope = (req.query.scope as string) || 'all';
+    } else if (branchLimitedRoles.includes(user.role)) {
+      effectiveScope = 'branch';
+      effectiveBranchId = user.branchId;
+    } else {
+      effectiveScope = 'branch';
+      effectiveBranchId = user.branchId;
+    }
+
+    if (effectiveScope === 'branch') {
+      effectiveBranchId = effectiveBranchId! || (req.query.branchId ? parseInt(req.query.branchId as string) : user.branchId);
+      if (!globalRoles.includes(user.role) && effectiveBranchId !== user.branchId) {
+        return res.status(403).json({ error: 'Sadece kendi şubenizin verilerine erişebilirsiniz' });
+      }
+    }
+
+    let branchFilter: string;
+    if (effectiveScope === 'hq') {
+      branchFilter = 'AND b.id IN (5, 23, 24)';
+    } else if (effectiveScope === 'all') {
+      branchFilter = 'AND b.id NOT IN (23, 24)';
+    } else {
+      branchFilter = `AND b.id = ${parseInt(String(effectiveBranchId!)) || 0}`;
+    }
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const monthStart = today.substring(0, 7) + '-01';
+
+    const staffRes = await db.execute(sql.raw(`
+      SELECT count(DISTINCT u.id) as total_staff
+      FROM users u JOIN branches b ON b.id = u.branch_id
+      WHERE u.is_active = true AND b.is_active = true ${branchFilter}
+    `));
+    const totalStaff = Number((staffRes.rows as any[])?.[0]?.total_staff || 0);
+
+    const presentRes = await db.execute(sql.raw(`
+      SELECT count(DISTINCT pr.user_id) as present
+      FROM pdks_records pr JOIN branches b ON b.id = pr.branch_id
+      WHERE pr.record_date = '${today}' AND pr.record_type = 'giris'
+      AND b.is_active = true ${branchFilter}
+    `));
+    const todayPresent = Number((presentRes.rows as any[])?.[0]?.present || 0);
+
+    const monthRes = await db.execute(sql.raw(`
+      SELECT pr.record_type, count(*) as cnt
+      FROM pdks_records pr JOIN branches b ON b.id = pr.branch_id
+      WHERE pr.record_date >= '${monthStart}' AND b.is_active = true ${branchFilter}
+      GROUP BY pr.record_type
+    `));
+    const monthRows = monthRes.rows as any[];
+    const monthEntries = monthRows.find((r: any) => r.record_type === 'giris');
+    const monthExits = monthRows.find((r: any) => r.record_type === 'cikis');
+
+    const lateRes = await db.execute(sql.raw(`
+      SELECT count(*) as cnt, coalesce(sum(sa.lateness_minutes), 0) as total_min
+      FROM shift_attendance sa
+      JOIN shifts s ON s.id = sa.shift_id
+      JOIN branches b ON b.id = s.branch_id
+      WHERE sa.lateness_minutes > 0
+      AND s.shift_date >= '${monthStart}'
+      AND b.is_active = true ${branchFilter}
+    `));
+    const lateCount = Number((lateRes.rows as any[])?.[0]?.cnt || 0);
+    const totalLateMinutes = Number((lateRes.rows as any[])?.[0]?.total_min || 0);
+
+    const offRes = await db.execute(sql.raw(`
+      SELECT count(*) as cnt
+      FROM scheduled_offs so
+      JOIN users u ON u.id = so.user_id
+      JOIN branches b ON b.id = u.branch_id
+      WHERE so.off_date >= '${monthStart}' AND so.off_date <= '${today}'
+      AND b.is_active = true ${branchFilter}
+    `));
+    const scheduledOffCount = Number((offRes.rows as any[])?.[0]?.cnt || 0);
+
+    const weeklyRes = await db.execute(sql.raw(`
+      SELECT bwa.branch_id,
+        coalesce(sum(bwa.planned_total_minutes), 0) as planned,
+        coalesce(sum(bwa.actual_total_minutes), 0) as actual,
+        coalesce(avg(bwa.weekly_compliance_score), 0) as avg_score
+      FROM branch_weekly_attendance_summary bwa
+      JOIN branches b ON b.id = bwa.branch_id
+      WHERE b.is_active = true ${branchFilter}
+      GROUP BY bwa.branch_id
+      ORDER BY bwa.branch_id
+    `));
+    const weeklyRows = weeklyRes.rows as any[];
+
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthNum = lastMonth.getMonth() + 1;
+    const lastMonthYear = lastMonth.getFullYear();
+    const payrollRes = await db.execute(sql.raw(`
+      SELECT count(*) as cnt
+      FROM monthly_payroll mp
+      JOIN branches b ON b.id = mp.branch_id
+      WHERE mp.month = ${lastMonthNum} AND mp.year = ${lastMonthYear}
+      AND b.is_active = true ${branchFilter}
+    `));
+    const payrollCount = Number((payrollRes.rows as any[])?.[0]?.cnt || 0);
+
+    let branchBreakdown: any[] = [];
+    if (effectiveScope === 'all' || effectiveScope === 'hq') {
+      const branchRes = await db.execute(sql.raw(`
+        SELECT b.id as branch_id, b.name,
+          (SELECT count(DISTINCT u.id) FROM users u WHERE u.branch_id = b.id AND u.is_active = true) as staff,
+          (SELECT count(DISTINCT pr.user_id) FROM pdks_records pr WHERE pr.branch_id = b.id AND pr.record_date = '${today}' AND pr.record_type = 'giris') as present,
+          (SELECT count(*) FROM shift_attendance sa JOIN shifts s ON s.id = sa.shift_id WHERE s.branch_id = b.id AND s.shift_date >= '${monthStart}' AND sa.lateness_minutes > 0) as late_count
+        FROM branches b WHERE b.is_active = true ${branchFilter}
+        ORDER BY b.name
+      `));
+      branchBreakdown = (branchRes.rows as any[]).map((r: any) => ({
+        branchId: r.branch_id,
+        name: r.name,
+        staffCount: Number(r.staff || 0),
+        todayPresent: Number(r.present || 0),
+        monthLateCount: Number(r.late_count || 0),
+      }));
+    }
+
+    res.json({
+      scope: effectiveScope,
+      today: { present: todayPresent, totalStaff },
+      thisMonth: {
+        totalEntries: Number(monthEntries?.cnt || 0),
+        totalExits: Number(monthExits?.cnt || 0),
+        lateArrivals: lateCount,
+        totalLateMinutes,
+        scheduledOffs: scheduledOffCount,
+      },
+      weeklyCompliance: weeklyRows.map((w: any) => ({
+        branchId: w.branch_id,
+        plannedMinutes: Number(w.planned || 0),
+        actualMinutes: Number(w.actual || 0),
+        complianceScore: Math.round(Number(w.avg_score || 0)),
+      })),
+      payroll: { lastMonthCalculated: payrollCount },
+      branchBreakdown,
+    });
+  } catch (error) {
+    console.error("PDKS dashboard-summary error:", error);
+    res.status(500).json({ error: 'PDKS özet verisi alınamadı' });
+  }
+});
+
+router.get('/api/pdks/branch-attendance', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    const branchId = parseInt(req.query.branchId as string);
+    const month = parseInt(req.query.month as string);
+    const year = parseInt(req.query.year as string);
+
+    if (!branchId || !month || !year) {
+      return res.status(400).json({ error: 'branchId, month, year gerekli' });
+    }
+
+    if (month < 1 || month > 12 || year < 2020 || year > 2030) {
+      return res.status(400).json({ error: 'Geçersiz ay/yıl değeri' });
+    }
+
+    const globalRoles = ['admin', 'ceo', 'cgo', 'coach', 'muhasebe_ik', 'muhasebe'];
+    if (!globalRoles.includes(user.role) && user.branchId !== branchId) {
+      return res.status(403).json({ error: 'Bu şubenin verilerine erişim yetkiniz yok' });
+    }
+
+    const branchUsers = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+    })
+    .from(users)
+    .where(and(
+      eq(users.branchId, branchId),
+      eq(users.isActive, true),
+    ));
+
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    const currentDay = today.getDate();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const maxDay = (year === currentYear && month === currentMonth) ? currentDay : daysInMonth;
+
+    const staffResults = [];
+    for (const person of branchUsers) {
+      const classification = await getMonthClassification(person.id, year, month);
+
+      const relevantDays = classification.days.filter(d => {
+        const dayNum = parseInt(d.date.split('-')[2]);
+        return dayNum <= maxDay;
+      });
+
+      const workedDays = relevantDays.filter(d => d.status === 'worked').length;
+      const offDays = relevantDays.filter(d => ['program_off', 'kapanish_off'].includes(d.status)).length;
+      const absentDays = relevantDays.filter(d => d.status === 'absent').length;
+      const overtimeMinutes = relevantDays.reduce((sum, d) => sum + d.overtimeMinutes, 0);
+
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+      const lateRes2 = await db.execute(sql.raw(`
+        SELECT count(*) as cnt, coalesce(sum(sa.lateness_minutes), 0) as total_min
+        FROM shift_attendance sa
+        JOIN shifts s ON s.id = sa.shift_id
+        WHERE sa.user_id = '${person.id}' AND sa.lateness_minutes > 0
+        AND s.shift_date >= '${startDate}' AND s.shift_date <= '${endDate}'
+      `));
+      const lateRow = (lateRes2.rows as any[])?.[0];
+
+      staffResults.push({
+        userId: person.id,
+        name: [person.firstName, person.lastName].filter(Boolean).join(' ') || 'Bilinmiyor',
+        role: person.role,
+        workedDays,
+        offDays,
+        absentDays,
+        lateArrivals: Number(lateRow?.cnt || 0),
+        totalLateMinutes: Number(lateRow?.total_min || 0),
+        overtimeMinutes,
+      });
+    }
+
+    res.json({
+      branchId,
+      month,
+      year,
+      staffCount: branchUsers.length,
+      summary: {
+        totalWorkedDays: staffResults.reduce((s, r) => s + r.workedDays, 0),
+        totalAbsentDays: staffResults.reduce((s, r) => s + r.absentDays, 0),
+        totalLateArrivals: staffResults.reduce((s, r) => s + r.lateArrivals, 0),
+        totalOvertimeMinutes: staffResults.reduce((s, r) => s + r.overtimeMinutes, 0),
+      },
+      staff: staffResults,
+    });
+  } catch (error) {
+    console.error("PDKS branch-attendance error:", error);
+    res.status(500).json({ error: 'Şube puantaj verisi alınamadı' });
+  }
+});
+
 export default router;

@@ -27,6 +27,7 @@ import {
   Headphones,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { PdksDevamsizlikWidget } from "./shared/PdksWidget";
 
 interface CoachDashboardData {
   _meta: { dataAvailable: boolean; lastDataDate: string };
@@ -345,6 +346,8 @@ export default function MissionControlCoach() {
           </div>
         )}
       </CollapsibleSection>
+
+      <PdksDevamsizlikWidget scope="all" />
 
       <CollapsibleSection
         title="Vardiya Uyumu"

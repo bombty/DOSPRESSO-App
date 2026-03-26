@@ -26,10 +26,12 @@ import {
   BarChart3,
   GraduationCap,
   Star,
+  Fingerprint,
 } from "lucide-react";
 import { useMemo } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SupervisorQuickBar } from "@/components/mobile/SupervisorQuickBar";
+import { PdksYoklamaWidget } from "./shared/PdksWidget";
 
 interface BranchSummaryKpis {
   activeStaff: number;
@@ -449,6 +451,8 @@ export default function MissionControlSupervisor() {
           </CardContent>
         </Card>
       )}
+
+      <PdksYoklamaWidget branchId={branchId} />
 
       <div className="grid grid-cols-4 gap-2" data-testid="mc-sup-quick-actions">
         <Link href="/iletisim">

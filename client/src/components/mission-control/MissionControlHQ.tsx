@@ -14,6 +14,7 @@ import BranchComparisonTable from "@/components/dashboard/BranchComparisonTable"
 import TrendChart from "@/components/dashboard/TrendChart";
 import AlertPanel from "@/components/dashboard/AlertPanel";
 import { isSectionVisible, getQuickActionsForRole } from "./dashboard-section-config";
+import { PdksHQOverviewWidget } from "./shared/PdksWidget";
 import {
   Building2,
   AlertTriangle,
@@ -548,6 +549,8 @@ export default function MissionControlHQ() {
         <ActivityTimeline />
       </CollapsibleSection>
       )}
+
+      {isSectionVisible('ik_summary', role) && <PdksHQOverviewWidget />}
 
       {isSectionVisible('ik_summary', role) && hasIKAccess && (
         <CollapsibleSection
