@@ -10,8 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, Save, RotateCcw, GripVertical,
-  ChevronUp, ChevronDown, Eye,
+  ChevronUp, ChevronDown, Eye, ShieldAlert,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Widget {
   id: number;
@@ -22,6 +23,7 @@ interface Widget {
   dataSource: string;
   size: string;
   isActive: boolean;
+  requiredPermissions?: string[];
 }
 
 interface RoleWidget {
@@ -269,6 +271,18 @@ export default function DashboardAyarlari() {
                       <Badge variant="secondary" className="text-[9px] h-4">
                         {widget.widgetType}
                       </Badge>
+                      {widget.requiredPermissions && widget.requiredPermissions.length > 0 && assignment.isEnabled && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex">
+                              <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <p className="text-[10px]">Bu widget şu izinleri gerektirir: {widget.requiredPermissions.join(", ")}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
