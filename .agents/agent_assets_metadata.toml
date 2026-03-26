@@ -294,3 +294,9 @@ id = "B8M8B-gJvJ4FDiBLOn_nG"
 uri = "file://.local/tasks/it-consultant-full-audit-report.md"
 type = "text"
 title = "DOSPRESSO — IT Danışman Teknik Audit Raporu"
+
+[[outputs]]
+id = "LkBY6bAZd5KJeEeU72I3F"
+uri = "file://docs/DOSPRESSO-IT-AUDIT-REPORT.md"
+type = "text"
+title = "DOSPRESSO IT Audit Raporu"
