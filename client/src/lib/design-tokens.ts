@@ -1,5 +1,14 @@
 export type SemanticColor = "success" | "danger" | "warning" | "info" | "muted" | "default";
 
+// Semantic colors mapped to Tailwind utility classes
+// These use Tailwind's built-in colors for opacity modifier support (/10, /15, /30)
+// DOSPRESSO CSS variable equivalents:
+//   success → --dospresso-green (#27ae60)
+//   danger  → --dospresso-red (#c0392b)
+//   warning → --dospresso-amber (#d4a84b)
+//   info    → --dospresso-blue (#2980b9)
+// New shared components (ProgressRing, StatusDot, MiniBar, etc.) use CSS vars directly
+
 export const COLORS: Record<SemanticColor, string> = {
   success: "text-emerald-600 dark:text-emerald-400",
   danger: "text-destructive",
