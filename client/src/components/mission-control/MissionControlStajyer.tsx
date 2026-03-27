@@ -202,17 +202,19 @@ export default function MissionControlStajyer() {
         </Link>
       )}
 
+      <CollapsibleSection
+        title="Öğrenme Serisi"
+        icon={<Flame className="w-3.5 h-3.5" />}
+        badge={streak > 0 ? `${streak} gün` : undefined}
+        badgeVariant={streak >= 7 ? "success" : streak >= 3 ? "info" : "muted"}
+        defaultOpen={streak > 0}
+        data-testid="mc-streak-section"
+      >
+        <LearningStreak currentStreak={streak} longestStreak={longestStreak} />
+      </CollapsibleSection>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
         <div className="space-y-3">
-          <CollapsibleSection
-            title="Bugünün Görevleri"
-            icon={<ClipboardList className="w-3.5 h-3.5" />}
-            defaultOpen={true}
-            data-testid="mc-stj-tasks-section"
-          >
-            <TodaysTasksWidget />
-          </CollapsibleSection>
-
           <CollapsibleSection
             title="Kariyer Yol Haritası"
             icon={<Target className="w-3.5 h-3.5" />}
@@ -222,19 +224,6 @@ export default function MissionControlStajyer() {
             <CareerRoadmap currentRole={role} />
           </CollapsibleSection>
 
-          <CollapsibleSection
-            title="Öğrenme Serisi"
-            icon={<Flame className="w-3.5 h-3.5" />}
-            badge={streak > 0 ? `${streak} gün` : undefined}
-            badgeVariant={streak >= 7 ? "success" : streak >= 3 ? "info" : "muted"}
-            defaultOpen={streak > 0}
-            data-testid="mc-streak-section"
-          >
-            <LearningStreak currentStreak={streak} longestStreak={longestStreak} />
-          </CollapsibleSection>
-        </div>
-
-        <div className="space-y-3">
           {modules.length > 0 && (
             <CollapsibleSection
               title="Modüller"
@@ -258,6 +247,17 @@ export default function MissionControlStajyer() {
               </div>
             </CollapsibleSection>
           )}
+        </div>
+
+        <div className="space-y-3">
+          <CollapsibleSection
+            title="Bugünün Görevleri"
+            icon={<ClipboardList className="w-3.5 h-3.5" />}
+            defaultOpen={true}
+            data-testid="mc-stj-tasks-section"
+          >
+            <TodaysTasksWidget />
+          </CollapsibleSection>
 
           {quizResults && Array.isArray(quizResults) && quizResults.length > 0 && (
             <CollapsibleSection

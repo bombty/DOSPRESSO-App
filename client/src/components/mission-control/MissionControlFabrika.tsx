@@ -231,6 +231,10 @@ export default function MissionControlFabrika() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        <div className="space-y-3">
+          <QCSummary data={qcData} />
 
           {workerStaff.length > 0 && (
             <Card data-testid="mc-fab-workers">
@@ -253,10 +257,6 @@ export default function MissionControlFabrika() {
               </CardContent>
             </Card>
           )}
-        </div>
-
-        <div className="space-y-3">
-          <QCSummary data={qcData} />
 
           {(stockOverview?.lowStockCount ?? 0) > 0 && (
             <Card className="border-amber-500/30" data-testid="mc-fab-low-stock">
