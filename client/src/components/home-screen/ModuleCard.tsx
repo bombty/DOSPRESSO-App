@@ -32,36 +32,49 @@ export function ModuleCard({ config, badges, statusMessage, className }: ModuleC
       onClick={() => setLocation(config.path)}
       data-testid={`module-card-${config.id}`}
       className={cn(
-        "w-full text-left rounded-lg border border-dospresso-border bg-dospresso-bg2 p-3 transition-all duration-150",
-        "hover:bg-dospresso-bg3 active:scale-[0.98] cursor-pointer",
+        "w-full text-left rounded-[8px] border transition-all duration-150",
+        "active:scale-[0.98] cursor-pointer",
         config.halfWidth && "col-span-1",
         className
       )}
+      style={{
+        padding: 10,
+        backgroundColor: "var(--dospresso-bg2, #0f1d32)",
+        borderColor: "var(--dospresso-border, #1e3250)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "var(--dospresso-bg3, #152640)";
+        e.currentTarget.style.transform = "scale(1.012)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "var(--dospresso-bg2, #0f1d32)";
+        e.currentTarget.style.transform = "scale(1)";
+      }}
     >
       {/* Header: icon + title */}
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-center gap-[7px] mb-[5px]">
         <div
-          className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+          className="w-[28px] h-[28px] rounded-[6px] flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: config.iconBg, color: config.iconColor }}
         >
-          <Icon className="w-4 h-4" />
+          <Icon className="w-[14px] h-[14px]" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-medium text-dospresso-bej truncate">{config.title}</p>
-          <p className="text-[9px] text-dospresso-bej-muted truncate">{config.subtitle}</p>
+          <p className="text-[11px] font-medium truncate" style={{ color: "var(--dospresso-bej, #f2e6d0)" }}>{config.title}</p>
+          <p className="text-[8px] truncate" style={{ color: "var(--dospresso-bej-muted, #8a7d6d)" }}>{config.subtitle}</p>
         </div>
       </div>
 
       {/* Badges */}
       {badges && badges.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-0.5">
+        <div className="flex flex-wrap gap-[3px] mb-[2px]">
           {badges.map((badge, idx) => {
             const style = BADGE_STYLES[badge.color];
             return (
               <span
                 key={idx}
-                className="text-[8px] font-medium px-1.5 py-0.5 rounded"
-                style={{ backgroundColor: style.bg, color: style.text }}
+                className="text-[7px] font-medium rounded-[3px]"
+                style={{ backgroundColor: style.bg, color: style.text, padding: "1px 5px" }}
               >
                 {badge.label}
               </span>
@@ -72,7 +85,7 @@ export function ModuleCard({ config, badges, statusMessage, className }: ModuleC
 
       {/* Status message */}
       {statusMessage && (
-        <p className="text-[8px] text-dospresso-bej-muted truncate">{statusMessage}</p>
+        <p className="text-[8px] truncate" style={{ color: "var(--dospresso-bej-muted, #8a7d6d)" }}>{statusMessage}</p>
       )}
     </button>
   );

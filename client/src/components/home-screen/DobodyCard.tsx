@@ -5,7 +5,6 @@ import { Bot } from "lucide-react";
 export function DobodyCard() {
   const [, setLocation] = useLocation();
 
-  // Fetch AI briefing summary (1-2 sentences)
   const { data: briefing } = useQuery<{ summary?: string; suggestions?: number }>({
     queryKey: ["/api/me/ai-briefing-summary"],
     staleTime: 120_000,
@@ -20,29 +19,45 @@ export function DobodyCard() {
       type="button"
       onClick={() => setLocation("/dobody")}
       data-testid="dobody-home-card"
-      className="w-full text-left rounded-lg border border-dospresso-border bg-dospresso-bg2 p-3 flex gap-2.5 items-start transition-all duration-150 hover:bg-dospresso-bg3 active:scale-[0.99] cursor-pointer"
-      style={{ borderColor: "rgba(192,57,43,0.12)" }}
+      className="w-full text-left rounded-lg p-[10px] flex gap-[10px] items-start cursor-pointer transition-all duration-150 active:scale-[0.99]"
+      style={{
+        backgroundColor: "var(--dospresso-bg2, #0f1d32)",
+        border: "0.5px solid rgba(192,57,43,0.12)",
+        borderRadius: "8px",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--dospresso-bg3, #152640)")}
+      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--dospresso-bg2, #0f1d32)")}
     >
-      {/* Icon */}
       <div
-        className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: "rgba(192,57,43,0.1)" }}
+        className="flex items-center justify-center flex-shrink-0"
+        style={{
+          width: 30, height: 30, borderRadius: 7,
+          backgroundColor: "rgba(192,57,43,0.10)",
+        }}
       >
-        <Bot className="w-4 h-4" style={{ color: "var(--dospresso-red, #c0392b)" }} />
+        <Bot style={{ width: 14, height: 14, color: "var(--dospresso-red, #c0392b)" }} />
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-dospresso-bej mb-0.5">Mr. Dobody</p>
-        <p className="text-[10px] text-dospresso-bej-mid leading-relaxed line-clamp-2 mb-1.5">
+        <p className="text-[11px] font-medium" style={{ color: "var(--dospresso-bej, #f2e6d0)", margin: 0 }}>
+          Mr. Dobody
+        </p>
+        <p
+          className="line-clamp-2"
+          style={{
+            fontSize: 10, lineHeight: 1.4, margin: "2px 0 5px",
+            color: "var(--dospresso-bej-mid, #c8b698)",
+          }}
+        >
           {summary}
         </p>
-        <div className="flex gap-1.5">
+        <div className="flex gap-[5px]">
           {suggestionCount > 0 && (
             <span
-              className="text-[9px] px-2 py-0.5 rounded border cursor-pointer"
+              className="text-[9px] rounded-[4px]"
               style={{
-                borderColor: "rgba(30,50,80,1)",
+                padding: "3px 7px",
+                border: "0.5px solid var(--dospresso-border, #1e3250)",
                 backgroundColor: "rgba(242,230,208,0.03)",
                 color: "var(--dospresso-bej-mid, #c8b698)",
               }}
@@ -51,9 +66,10 @@ export function DobodyCard() {
             </span>
           )}
           <span
-            className="text-[9px] px-2 py-0.5 rounded border cursor-pointer"
+            className="text-[9px] rounded-[4px]"
             style={{
-              borderColor: "rgba(30,50,80,1)",
+              padding: "3px 7px",
+              border: "0.5px solid var(--dospresso-border, #1e3250)",
               backgroundColor: "rgba(242,230,208,0.03)",
               color: "var(--dospresso-bej-mid, #c8b698)",
             }}
