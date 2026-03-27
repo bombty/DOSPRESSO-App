@@ -591,7 +591,7 @@ function AppContent() {
           {/* Main Content */}
           <main className="flex-1 overflow-auto pb-20 md:pb-4">
             <div className="max-w-[1600px] mx-auto w-full">
-              <GuidanceWidgetWrapper user={user} />
+              {location !== "/" && <GuidanceWidgetWrapper user={user} />}
               <Router />
             </div>
           </main>
