@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useModuleEnabled } from "@/hooks/use-module-flags";
+import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
 import { Link } from "wouter";
 import { ClipboardList, ListChecks, CheckCircle2, Clock, AlertCircle, ArrowRight } from "lucide-react";
 import { ListSkeleton } from "@/components/list-skeleton";
@@ -19,7 +21,9 @@ interface CombinedTask {
 
 export function TodaysTasksWidget() {
   const { isEnabled: isBranchTasksEnabled } = useModuleEnabled("sube_gorevleri");
+  const { user } = useAuth();
   const today = new Date().toISOString().slice(0, 10);
+  const userIsHQ = user?.role ? isHQRole(user.role as any) : false;
 
   const { data: adHocTasks } = useQuery<any[]>({
     queryKey: ["/api/tasks/my"],
@@ -31,7 +35,7 @@ export function TodaysTasksWidget() {
       if (!r.ok) return [];
       return r.json();
     }),
-    enabled: !!isBranchTasksEnabled,
+    enabled: !!isBranchTasksEnabled && !userIsHQ,
   });
 
   const combined: CombinedTask[] = [];

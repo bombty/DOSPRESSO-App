@@ -11,7 +11,6 @@ const DEFAULT_CATEGORIES = [
 const SAMPLE_HQ_TASKS = [
   { title: "Vitrin cam temizliği", category: "temizlik", recurrenceType: "weekly", dayOfWeek: 1 },
   { title: "Tezgah dezenfeksiyon kontrolü", category: "temizlik", recurrenceType: "daily" },
-  { title: "Günlük stok sayımı", category: "stok", recurrenceType: "daily" },
   { title: "Aylık ekipman bakım kontrolü", category: "bakim", recurrenceType: "monthly", dayOfMonth: 1 },
 ];
 
