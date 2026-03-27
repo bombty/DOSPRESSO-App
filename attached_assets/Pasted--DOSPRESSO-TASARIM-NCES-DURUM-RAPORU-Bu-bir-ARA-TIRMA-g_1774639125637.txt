@@ -1,0 +1,315 @@
+# DOSPRESSO — TASARIM ÖNCESİ DURUM RAPORU
+# Bu bir ARAŞTIRMA görevidir — HİÇBİR ŞEY DEĞİŞTİRME
+# Amacı: Evrensel tasarım sprint'i öncesi tam baseline oluşturmak
+
+---
+
+## STEP 0: SKILL OKUMA
+```bash
+cat .agents/skills/dospresso-architecture/SKILL.md
+cat .agents/skills/dospresso-debug-guide/SKILL.md
+```
+
+---
+
+## ❌ DOKUNMA LİSTESİ (bu görevde HİÇBİR DOSYA DEĞİŞTİRİLMEYECEK)
+- localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- shared/schema/* — hiçbir schema dosyası
+- server/* — hiçbir backend dosyası
+- Bu görev SADECE OKUMA + RAPOR
+
+---
+
+## BÖLÜM 1: FRONTEND YAPISI TARAMASI
+
+### 1A — CSS Token Baseline
+```bash
+echo "=== index.css .dark bloğu ==="
+grep -A 100 '\.dark' client/src/index.css | head -120
+
+echo "=== Tailwind config custom renkler ==="
+cat tailwind.config.ts | grep -A 30 'colors'
+
+echo "=== Mevcut CSS değişkenleri ==="
+grep -E '--background|--foreground|--card|--primary|--accent|--muted|--border|--destructive' client/src/index.css
+```
+
+### 1B — Sidebar Durumu
+```bash
+echo "=== Sidebar bileşeni hangisi? ==="
+find client/src -name '*sidebar*' -o -name '*Sidebar*' -o -name '*side-bar*' | head -20
+
+echo "=== Sidebar genişliği ==="
+grep -rn 'w-\[.*px\]\|width.*px\|sidebar.*width\|SIDEBAR' client/src/ --include='*.tsx' --include='*.ts' --include='*.css' | grep -i 'sidebar\|side-bar' | head -20
+
+echo "=== App.tsx layout yapısı ==="
+head -80 client/src/App.tsx
+```
+
+### 1C — Header Durumu
+```bash
+echo "=== Header bileşeni ==="
+find client/src -name '*header*' -o -name '*Header*' | head -20
+
+echo "=== Header içeriği (ilk 50 satır) ==="
+find client/src -name '*Header*' -path '*/components/*' -exec head -50 {} \;
+```
+
+### 1D — MC Bileşenleri Envanter
+```bash
+echo "=== Mission Control dosyaları ==="
+ls -la client/src/components/mission-control/
+
+echo "=== Her MC bileşeninin satır sayısı ==="
+wc -l client/src/components/mission-control/MissionControl*.tsx
+
+echo "=== DashboardRouter rol haritası ==="
+cat client/src/components/mission-control/DashboardRouter.tsx
+
+echo "=== UnifiedKPI props ve kullanımı ==="
+cat client/src/components/mission-control/UnifiedKPI.tsx | head -60
+
+echo "=== UnifiedKPI nerede kullanılıyor ==="
+grep -rn 'UnifiedKPI\|<UnifiedKPI' client/src/ --include='*.tsx' | head -30
+
+echo "=== CollapsibleSection props ==="
+cat client/src/components/mission-control/CollapsibleSection.tsx | head -40
+
+echo "=== CollapsibleSection kullanım sayısı ==="
+grep -c 'CollapsibleSection' client/src/components/mission-control/MissionControl*.tsx
+```
+
+### 1E — Hedef Sayfalar MC Check
+```bash
+echo "=== Her hedef sayfa MC kontrolü ==="
+for page in hq-ozet kocluk-paneli sube-ozet merkez-dashboard franchise-ozet benim-gunum hq-dashboard kalite-kontrol-dashboard; do
+  echo "--- $page ---"
+  grep -n 'isMissionControl\|useDashboardMode\|DashboardRouter\|MissionControl' client/src/pages/${page}.tsx 2>/dev/null || echo "DOSYA BULUNAMADI"
+done
+
+echo "--- fabrika/dashboard ---"
+grep -n 'isMissionControl\|useDashboardMode\|MissionControl' client/src/pages/fabrika/dashboard.tsx 2>/dev/null || echo "DOSYA BULUNAMADI"
+```
+
+### 1F — Import Sağlığı
+```bash
+echo "=== TypeScript compile check ==="
+npx tsc --noEmit 2>&1 | tail -30
+
+echo "=== Vite build check ==="
+npx vite build --mode development 2>&1 | tail -20
+```
+
+---
+
+## BÖLÜM 2: ROL → DASHBOARD REGRESYON TESTİ
+
+### 2A — role-routes.ts Tam İçerik
+```bash
+cat client/src/lib/role-routes.ts
+```
+
+### 2B — Canlı API Testi (17 rol)
+```bash
+# Cookie jar temizle
+rm -f /tmp/cookies_*.txt
+
+# Test fonksiyonu
+test_role() {
+  local user=$1
+  local expected_mc=$2
+  local role_name=$3
+  
+  # Login
+  HTTP_CODE=$(curl -s -o /tmp/login_resp.json -w '%{http_code}' \
+    -c /tmp/cookies_${user}.txt \
+    -H 'Content-Type: application/json' \
+    -d "{\"username\":\"${user}\",\"password\":\"0000\"}" \
+    http://localhost:5000/api/login)
+  
+  if [ "$HTTP_CODE" != "200" ]; then
+    echo "❌ ${role_name} (${user}): LOGIN FAILED (${HTTP_CODE})"
+    return
+  fi
+  
+  ROLE=$(cat /tmp/login_resp.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('role','?'))" 2>/dev/null)
+  
+  # Dashboard data
+  DASH_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+    -b /tmp/cookies_${user}.txt \
+    http://localhost:5000/api/me/dashboard-data)
+  
+  # Widget config
+  WIDGET_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+    -b /tmp/cookies_${user}.txt \
+    http://localhost:5000/api/me/widget-config)
+  
+  WIDGET_COUNT=$(curl -s -b /tmp/cookies_${user}.txt \
+    http://localhost:5000/api/me/widget-config | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else '?')" 2>/dev/null)
+  
+  echo "✅ ${role_name} (${user}): role=${ROLE}, dashboard=${DASH_CODE}, widgets=${WIDGET_CODE} (${WIDGET_COUNT} adet), expected_mc=${expected_mc}"
+}
+
+echo "=== 17 ROL LOGIN + DASHBOARD TESTİ ==="
+test_role "ali" "MissionControlHQ" "CEO"
+test_role "utku" "MissionControlHQ" "CGO"
+test_role "admin" "MissionControlHQ" "Admin"
+test_role "yavuz" "MissionControlCoach" "Coach"
+# Trainer kullanıcı adını araştır:
+echo "--- Trainer kullanıcı ---"
+curl -s -H 'Content-Type: application/json' -d '{"username":"admin","password":"0000"}' -c /tmp/cookies_admin2.txt http://localhost:5000/api/login > /dev/null
+curl -s -b /tmp/cookies_admin2.txt "http://localhost:5000/api/users?role=trainer" | python3 -c "import sys,json; [print(f'  {u[\"username\"]} - {u[\"firstName\"]} {u[\"lastName\"]}') for u in json.load(sys.stdin)]" 2>/dev/null || echo "  Trainer bulunamadı"
+test_role "mehmet" "MissionControlSupervisor" "Supervisor"
+# Muhasebe kullanıcı adını araştır:
+echo "--- Muhasebe kullanıcı ---"
+curl -s -b /tmp/cookies_admin2.txt "http://localhost:5000/api/users?role=muhasebe_ik" | python3 -c "import sys,json; [print(f'  {u[\"username\"]} - {u[\"firstName\"]} {u[\"lastName\"]}') for u in json.load(sys.stdin)]" 2>/dev/null || echo "  Muhasebe bulunamadı"
+test_role "umit" "MissionControlFabrika" "Üretim Şefi"
+# Yatırımcı:
+echo "--- Yatırımcı kullanıcı ---"
+curl -s -b /tmp/cookies_admin2.txt "http://localhost:5000/api/users?role=yatirimci_branch" | python3 -c "import sys,json; [print(f'  {u[\"username\"]} - {u[\"firstName\"]} {u[\"lastName\"]}') for u in json.load(sys.stdin)]" 2>/dev/null || echo "  Yatırımcı bulunamadı"
+
+echo ""
+echo "=== KRİTİK API ENDPOINT TESTLERİ ==="
+curl -s -o /dev/null -w "dashboard/coach: %{http_code}\n" -b /tmp/cookies_yavuz.txt http://localhost:5000/api/dashboard/coach
+curl -s -o /dev/null -w "dashboard/executive: %{http_code}\n" -b /tmp/cookies_utku.txt http://localhost:5000/api/dashboard/executive
+curl -s -o /dev/null -w "hq-summary: %{http_code}\n" -b /tmp/cookies_ali.txt http://localhost:5000/api/hq-summary
+```
+
+---
+
+## BÖLÜM 3: AKTIF SORUNLAR TARAMASI
+
+### 3A — Seed Görev Durumu (#67)
+```bash
+echo "=== Aktif recurring tasks ==="
+curl -s -b /tmp/cookies_admin2.txt http://localhost:5000/api/branch-tasks/recurring | python3 -c "
+import sys,json
+tasks = json.load(sys.stdin)
+if isinstance(tasks, list):
+  active = [t for t in tasks if t.get('isActive', t.get('is_active', False))]
+  print(f'Toplam: {len(tasks)}, Aktif: {len(active)}')
+  for t in active:
+    print(f'  - {t.get(\"title\",\"?\")} | branchId={t.get(\"branchId\",t.get(\"branch_id\",\"NULL\"))} | freq={t.get(\"frequency\",\"?\")}')
+else:
+  print(f'Response: {str(tasks)[:200]}')
+" 2>/dev/null
+
+echo "=== Pending task instance sayısı ==="
+curl -s -b /tmp/cookies_admin2.txt "http://localhost:5000/api/branch-tasks/instances?status=pending" | python3 -c "
+import sys,json
+data = json.load(sys.stdin)
+if isinstance(data, list):
+  print(f'Pending instances: {len(data)}')
+else:
+  print(f'Response: {str(data)[:200]}')
+" 2>/dev/null
+```
+
+### 3B — Boş Widget / Render Sorunları
+```bash
+echo "=== CEO dashboard widget sayıları ==="
+curl -s -b /tmp/cookies_ali.txt http://localhost:5000/api/me/dashboard-data | python3 -c "
+import sys,json
+data = json.load(sys.stdin)
+widgets = data.get('widgets', [])
+print(f'Toplam widget: {len(widgets)}')
+for w in widgets:
+  key = w.get('key','?')
+  has_data = bool(w.get('data'))
+  enabled = w.get('enabled', '?')
+  print(f'  {key}: enabled={enabled}, has_data={has_data}')
+" 2>/dev/null
+
+echo ""
+echo "=== CGO dashboard widget sayıları ==="
+curl -s -b /tmp/cookies_utku.txt http://localhost:5000/api/me/dashboard-data | python3 -c "
+import sys,json
+data = json.load(sys.stdin)
+widgets = data.get('widgets', [])
+print(f'Toplam widget: {len(widgets)}')
+for w in widgets:
+  key = w.get('key','?')
+  has_data = bool(w.get('data'))
+  print(f'  {key}: has_data={has_data}')
+" 2>/dev/null
+```
+
+### 3C — Console Error Taraması
+```bash
+echo "=== Server startup hataları ==="
+# Son 50 satır server log (varsa)
+tail -50 /tmp/server.log 2>/dev/null || echo "Server log bulunamadı"
+
+echo "=== Potansiyel import sorunları ==="
+grep -rn 'from.*mission-control.*import' client/src/pages/ --include='*.tsx' | head -20
+```
+
+---
+
+## BÖLÜM 4: TASARIM SPRINT İÇİN KRİTİK BİLGİLER
+
+### 4A — Mevcut Bileşen Boyutları
+```bash
+echo "=== Mevcut padding/gap değerleri MC bileşenlerinde ==="
+grep -E 'className.*p-[0-9]|gap-[0-9]|space-y-[0-9]' client/src/components/mission-control/MissionControl*.tsx | head -30
+
+echo "=== Mevcut font boyutları ==="
+grep -E 'text-\[.*px\]|text-xs|text-sm|text-base|text-lg|text-xl|text-2xl' client/src/components/mission-control/MissionControl*.tsx | head -30
+
+echo "=== Mevcut border-radius ==="
+grep -E 'rounded-|border-radius' client/src/components/mission-control/*.tsx | head -20
+```
+
+### 4B — Shadcn UI Bileşen Listesi
+```bash
+echo "=== Shadcn UI bileşenleri ==="
+ls client/src/components/ui/ | head -40
+
+echo "=== Card bileşeni mevcut stili ==="
+cat client/src/components/ui/card.tsx
+```
+
+### 4C — Mevcut Renk Kullanımı
+```bash
+echo "=== Hardcoded renkler (hex) ==="
+grep -rn '#[0-9a-fA-F]\{6\}' client/src/components/mission-control/ --include='*.tsx' | head -30
+
+echo "=== bg- class kullanımı ==="
+grep -oE 'bg-[a-z]+-[0-9]+|bg-\[[^]]+\]' client/src/components/mission-control/MissionControl*.tsx | sort | uniq -c | sort -rn | head -20
+```
+
+---
+
+## RAPOR FORMATI
+
+Lütfen bulgularını şu yapıda raporla:
+
+```
+# TASARIM ÖNCESİ DURUM RAPORU
+
+## 1. CSS TOKEN BASELINE
+[Mevcut .dark değişkenleri, tailwind custom renkler]
+
+## 2. SIDEBAR DURUMU
+[Dosya adı, genişlik, yapısı]
+
+## 3. HEADER DURUMU
+[Dosya adı, içerik, boyut]
+
+## 4. MC BİLEŞENLERİ
+[Her bileşen: satır sayısı, section sayısı, UnifiedKPI kullanımı]
+
+## 5. ROL REGRESYON TESTİ
+[17 rol: login ✅/❌, dashboard ✅/❌, widget sayısı]
+
+## 6. AKTIF SORUNLAR
+[Seed görevler, boş widget'lar, console error'lar]
+
+## 7. TASARIM İÇİN DİKKAT EDİLECEKLER
+[Hardcoded renkler, mevcut boyutlar, override edilmesi gereken stiller]
+
+## 8. ÖNERİ
+[Tasarım sprint'i öncesi düzeltilmesi gereken şeyler varsa]
+```
+
+⚠ TEKRAR: BU GÖREVDE HİÇBİR DOSYA DEĞİŞTİRME. SADECE OKU VE RAPORLA.
