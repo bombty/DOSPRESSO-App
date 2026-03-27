@@ -62,6 +62,7 @@ const Register = lazyWithRetry(() => import("@/pages/register"));
 const ForgotPassword = lazyWithRetry(() => import("@/pages/forgot-password"));
 const ResetPassword = lazyWithRetry(() => import("@/pages/reset-password"));
 const Dashboard = lazyWithRetry(() => import("@/pages/dashboard"));
+const HomeScreen = lazyWithRetry(() => import("@/components/home-screen/HomeScreen"));
 const Subeler = lazyWithRetry(() => import("@/pages/subeler"));
 const SubeDetay = lazyWithRetry(() => import("@/pages/sube-detay"));
 const SubeNFCDetay = lazyWithRetry(() => import("@/pages/sube-nfc-detay"));
@@ -317,7 +318,8 @@ function Router() {
       {/* Protected routes - only rendered when authenticated */}
       {isAuthenticated && (
         <>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={HomeScreen} />
+          <Route path="/control" component={Dashboard} />
           <Route path="/merkez-dashboard" component={MerkezDashboard} />
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
@@ -574,13 +576,17 @@ function AppContent() {
       
       {/* Below header: sidebar + content side by side on md+ */}
       <div className="flex flex-1 overflow-hidden">
-        <CollapsibleSidebar isExpanded={sidebarState.isExpanded} />
+        {location !== "/" && (
+          <CollapsibleSidebar isExpanded={sidebarState.isExpanded} />
+        )}
         
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Breadcrumb Navigation */}
-          <div className="px-2 pt-1">
-            <BreadcrumbNavigation />
-          </div>
+          {/* Breadcrumb Navigation - hidden on home screen */}
+          {location !== "/" && (
+            <div className="px-2 pt-1">
+              <BreadcrumbNavigation />
+            </div>
+          )}
           
           {/* Main Content */}
           <main className="flex-1 overflow-auto pb-20 md:pb-4">
