@@ -140,7 +140,7 @@ export default function SubeOzet() {
 
   if (!branchId) {
     return (
-      <div className="p-4 max-w-4xl mx-auto">
+      <div className="p-4 max-w-6xl mx-auto">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Şube bilgisi bulunamadı</CardContent></Card>
       </div>
     );
@@ -148,7 +148,7 @@ export default function SubeOzet() {
 
   if (isLoading) {
     return (
-      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-4xl mx-auto" data-testid="sube-ozet-loading">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-6xl mx-auto" data-testid="sube-ozet-loading">
         <Skeleton className="h-8 w-2/3" />
         <div className="grid grid-cols-2 gap-3">
           <Skeleton className="h-24" /><Skeleton className="h-24" />
@@ -161,14 +161,14 @@ export default function SubeOzet() {
 
   if (!data) {
     return (
-      <div className="p-3 sm:p-4 max-w-4xl mx-auto" data-testid="sube-ozet-error">
+      <div className="p-3 sm:p-4 max-w-6xl mx-auto" data-testid="sube-ozet-error">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-4xl mx-auto overflow-y-auto h-full" data-testid="sube-ozet-page">
+    <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-6xl mx-auto overflow-y-auto h-full" data-testid="sube-ozet-page">
       <DobodyFlowMode
         userId={user?.id || ""}
         userRole={user?.role || ""}

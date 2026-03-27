@@ -35,7 +35,7 @@ export default function BordromPage() {
   const payroll = payrollQuery.data?.[0];
 
   return (
-    <div className="p-4 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 max-w-6xl mx-auto space-y-4">
       <h1 className="text-xl font-bold" data-testid="text-bordrom-title">Bordrom</h1>
 
       <Select value={selectedMonth} onValueChange={setSelectedMonth}>

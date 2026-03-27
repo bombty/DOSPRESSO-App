@@ -126,7 +126,7 @@ export default function BenimGunum() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-4xl mx-auto" data-testid="benim-gunum-loading">
+      <div className="p-4 space-y-4 max-w-6xl mx-auto" data-testid="benim-gunum-loading">
         <Skeleton className="h-12 w-3/4" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-24 w-full" />
@@ -148,14 +148,14 @@ export default function BenimGunum() {
 
   if (!data) {
     return (
-      <div className="p-4 max-w-4xl mx-auto" data-testid="benim-gunum-error">
+      <div className="p-4 max-w-6xl mx-auto" data-testid="benim-gunum-error">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-4xl mx-auto overflow-y-auto h-full" data-testid="benim-gunum-page">
+    <div className="p-4 space-y-4 max-w-6xl mx-auto overflow-y-auto h-full" data-testid="benim-gunum-page">
       <DobodyFlowMode
         userId={user?.id || ""}
         userRole={user?.role || ""}

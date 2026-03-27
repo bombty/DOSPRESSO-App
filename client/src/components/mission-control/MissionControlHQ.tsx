@@ -286,7 +286,7 @@ export default function MissionControlHQ() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-4xl mx-auto" data-testid="mc-hq-loading">
+      <div className="p-4 space-y-4 max-w-[1400px] mx-auto" data-testid="mc-hq-loading">
         <Skeleton className="h-10 rounded-lg" />
         <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
@@ -297,7 +297,7 @@ export default function MissionControlHQ() {
   }
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-4xl mx-auto overflow-y-auto h-full" data-testid="mission-control-hq">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1400px] mx-auto overflow-y-auto h-full" data-testid="mission-control-hq">
       <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="mc-header">
         <div className="flex items-center gap-2.5">
           <Avatar className="w-7 h-7" data-testid="mc-user-avatar">
@@ -396,208 +396,214 @@ export default function MissionControlHQ() {
         <Skeleton className="h-20 rounded-lg" data-testid="mc-briefing-loading" />
       )}
 
-      {isSectionVisible('todays_tasks', role) && (
-      <CollapsibleSection
-        title="Bugünün Görevleri"
-        icon={<ClipboardList className="w-3.5 h-3.5" />}
-        defaultOpen={true}
-        data-testid="mc-tasks-section"
-      >
-        <TodaysTasksWidget />
-      </CollapsibleSection>
-      )}
-
-      {isSectionVisible('alerts', role) && isExec && execData && (
-        <CollapsibleSection
-          title="Uyarılar"
-          icon={<AlertTriangle className="w-3.5 h-3.5" />}
-          badge={alertCount > 0 ? (criticalAlerts > 0 ? `${criticalAlerts} kritik` : `${alertCount} uyarı`) : "Yok"}
-          badgeVariant={criticalAlerts > 0 ? "danger" : alertCount > 0 ? "warning" : "success"}
-          defaultOpen={alertCount > 0}
-          data-testid="mc-alerts-section"
-        >
-          <AlertPanel alerts={execData.alerts} grouped={true} />
-        </CollapsibleSection>
-      )}
-
-      {isSectionVisible('branch_health', role) && isExec && execData && execData.branchComparison.length > 0 && (
-        <CollapsibleSection
-          title="Şube Sağlığı"
-          icon={<Building2 className="w-3.5 h-3.5" />}
-          badge={branchHealthBadge.text}
-          badgeVariant={branchHealthBadge.variant}
-          defaultOpen={true}
-          headerRight={
-            <Link href="/operasyon">
-              <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
-                Tümü <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          }
-          data-testid="mc-branch-health-section"
-        >
-          <BranchComparisonTable data={execData.branchComparison} />
-        </CollapsibleSection>
-      )}
-
-      {isSectionVisible('trend_chart', role) && isExec && execData && (
-        <CollapsibleSection
-          title="Trend"
-          icon={<TrendingUp className="w-3.5 h-3.5" />}
-          defaultOpen={false}
-          data-testid="mc-trend-section"
-        >
-          <TrendChart
-            title="6 Aylık Trend"
-            data={execData.trends}
-            xKey="month"
-            lines={[
-              { key: "tickets", color: "#f59e0b", name: "Ticket" },
-              { key: "faults", color: "#ef4444", name: "Arıza" },
-            ]}
-          />
-        </CollapsibleSection>
-      )}
-
-      {isSectionVisible('branch_grid', role) && !isExec && (
-        <CollapsibleSection
-          title="Şube Durumu"
-          icon={<Building2 className="w-3.5 h-3.5" />}
-          badge={`${totalBranches} şube`}
-          badgeVariant={branchHealthBadge.variant}
-          defaultOpen={true}
-          headerRight={
-            <Link href="/operasyon">
-              <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
-                Tümü <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          }
-          data-testid="mc-branch-grid-section"
-        >
-          {(hqSummary?.branchRanking || []).length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {(hqSummary?.branchRanking || []).slice(0, 6).map(b => (
-                <BranchCard key={b.id} branch={b} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground text-xs">
-              Şube verisi henüz yok
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
+        <div className="space-y-3">
+          {isSectionVisible('todays_tasks', role) && (
+          <CollapsibleSection
+            title="Bugünün Görevleri"
+            icon={<ClipboardList className="w-3.5 h-3.5" />}
+            defaultOpen={true}
+            data-testid="mc-tasks-section"
+          >
+            <TodaysTasksWidget />
+          </CollapsibleSection>
           )}
-        </CollapsibleSection>
-      )}
 
-      {isSectionVisible('factory_qc', role) && (
-      <CollapsibleSection
-        title="Fabrika & Kalite Kontrol"
-        icon={<Factory className="w-3.5 h-3.5" />}
-        badge={factoryBadge.text}
-        badgeVariant={factoryBadge.variant}
-        defaultOpen={false}
-        headerRight={
-          <Link href="/fabrika/dashboard">
-            <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
-              Detay <ArrowRight className="w-3 h-3" />
-            </Button>
-          </Link>
-        }
-        data-testid="mc-factory-qc-section"
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-            <span className="text-lg font-bold tabular-nums">{factorySummary?.todayProduction ?? 0}</span>
-            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Bugün üretim</p>
-          </div>
-          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-            <span className={`text-lg font-bold tabular-nums ${(factorySummary?.wastePercentage ?? 0) > 5 ? "text-destructive" : ""}`}>
-              %{factorySummary?.wastePercentage ?? 0}
-            </span>
-            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Fire oranı</p>
-          </div>
-          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-            <span className={`text-lg font-bold tabular-nums ${(qcToday?.pending ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
-              {qcToday?.pending ?? 0}
-            </span>
-            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">QC bekleyen</p>
-          </div>
-          <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-            <span className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-              %{qcToday?.passRate ?? 0}
-            </span>
-            <p className="text-[7px] uppercase tracking-wider text-muted-foreground">QC onay oranı</p>
-          </div>
+          {isSectionVisible('branch_health', role) && isExec && execData && execData.branchComparison.length > 0 && (
+            <CollapsibleSection
+              title="Şube Sağlığı"
+              icon={<Building2 className="w-3.5 h-3.5" />}
+              badge={branchHealthBadge.text}
+              badgeVariant={branchHealthBadge.variant}
+              defaultOpen={true}
+              headerRight={
+                <Link href="/operasyon">
+                  <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
+                    Tümü <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              }
+              data-testid="mc-branch-health-section"
+            >
+              <BranchComparisonTable data={execData.branchComparison} />
+            </CollapsibleSection>
+          )}
+
+          {isSectionVisible('branch_grid', role) && !isExec && (
+            <CollapsibleSection
+              title="Şube Durumu"
+              icon={<Building2 className="w-3.5 h-3.5" />}
+              badge={`${totalBranches} şube`}
+              badgeVariant={branchHealthBadge.variant}
+              defaultOpen={true}
+              headerRight={
+                <Link href="/operasyon">
+                  <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
+                    Tümü <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              }
+              data-testid="mc-branch-grid-section"
+            >
+              {(hqSummary?.branchRanking || []).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {(hqSummary?.branchRanking || []).slice(0, 6).map(b => (
+                    <BranchCard key={b.id} branch={b} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-xs">
+                  Şube verisi henüz yok
+                </div>
+              )}
+            </CollapsibleSection>
+          )}
+
+          {isSectionVisible('trend_chart', role) && isExec && execData && (
+            <CollapsibleSection
+              title="Trend"
+              icon={<TrendingUp className="w-3.5 h-3.5" />}
+              defaultOpen={false}
+              data-testid="mc-trend-section"
+            >
+              <TrendChart
+                title="6 Aylık Trend"
+                data={execData.trends}
+                xKey="month"
+                lines={[
+                  { key: "tickets", color: "#f59e0b", name: "Ticket" },
+                  { key: "faults", color: "#ef4444", name: "Arıza" },
+                ]}
+              />
+            </CollapsibleSection>
+          )}
         </div>
-      </CollapsibleSection>
-      )}
 
-      {isSectionVisible('activity_timeline', role) && (
-      <CollapsibleSection
-        title="Canlı Akış"
-        icon={<Zap className="w-3.5 h-3.5" />}
-        defaultOpen={false}
-        headerRight={
-          <Link href="/bildirimler">
-            <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
-              Tümü <ArrowRight className="w-3 h-3" />
-            </Button>
-          </Link>
-        }
-        data-testid="mc-activity-section"
-      >
-        <ActivityTimeline />
-      </CollapsibleSection>
-      )}
+        <div className="space-y-3">
+          {isSectionVisible('alerts', role) && isExec && execData && (
+            <CollapsibleSection
+              title="Uyarılar"
+              icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              badge={alertCount > 0 ? (criticalAlerts > 0 ? `${criticalAlerts} kritik` : `${alertCount} uyarı`) : "Yok"}
+              badgeVariant={criticalAlerts > 0 ? "danger" : alertCount > 0 ? "warning" : "success"}
+              defaultOpen={alertCount > 0}
+              data-testid="mc-alerts-section"
+            >
+              <AlertPanel alerts={execData.alerts} grouped={true} />
+            </CollapsibleSection>
+          )}
+
+          {isSectionVisible('factory_qc', role) && (
+          <CollapsibleSection
+            title="Fabrika & Kalite Kontrol"
+            icon={<Factory className="w-3.5 h-3.5" />}
+            badge={factoryBadge.text}
+            badgeVariant={factoryBadge.variant}
+            defaultOpen={false}
+            headerRight={
+              <Link href="/fabrika/dashboard">
+                <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
+                  Detay <ArrowRight className="w-3 h-3" />
+                </Button>
+              </Link>
+            }
+            data-testid="mc-factory-qc-section"
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className="text-lg font-bold tabular-nums">{factorySummary?.todayProduction ?? 0}</span>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Bugün üretim</p>
+              </div>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className={`text-lg font-bold tabular-nums ${(factorySummary?.wastePercentage ?? 0) > 5 ? "text-destructive" : ""}`}>
+                  %{factorySummary?.wastePercentage ?? 0}
+                </span>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Fire oranı</p>
+              </div>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className={`text-lg font-bold tabular-nums ${(qcToday?.pending ?? 0) > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                  {qcToday?.pending ?? 0}
+                </span>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">QC bekleyen</p>
+              </div>
+              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                <span className="text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                  %{qcToday?.passRate ?? 0}
+                </span>
+                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">QC onay oranı</p>
+              </div>
+            </div>
+          </CollapsibleSection>
+          )}
+
+          {isSectionVisible('ik_summary', role) && hasIKAccess && (
+            <CollapsibleSection
+              title="İK & Personel"
+              icon={<Users className="w-3.5 h-3.5" />}
+              badge={ikBadge.text}
+              badgeVariant={ikBadge.variant}
+              defaultOpen={false}
+              headerRight={
+                <Link href="/ik">
+                  <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
+                    Detay <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              }
+              data-testid="mc-ik-section"
+            >
+              {ikData ? (
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                    <span className="text-base font-bold tabular-nums">{ikData.documents.total}</span>
+                    <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Özlük dosya</p>
+                  </div>
+                  <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                    <span className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{ikData.documents.verified}</span>
+                    <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Onaylı</p>
+                  </div>
+                  <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                    <span className={`text-base font-bold tabular-nums ${ikData.documents.expiringSoon > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                      {ikData.documents.expiringSoon}
+                    </span>
+                    <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Süresi dolan</p>
+                  </div>
+                  <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
+                    <span className={`text-base font-bold tabular-nums ${ikData.disciplinary.open > 0 ? "text-destructive" : ""}`}>
+                      {ikData.disciplinary.open}
+                    </span>
+                    <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Açık tutanak</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-xs">
+                  İK verileri yükleniyor...
+                </div>
+              )}
+            </CollapsibleSection>
+          )}
+
+          {isSectionVisible('activity_timeline', role) && (
+          <CollapsibleSection
+            title="Canlı Akış"
+            icon={<Zap className="w-3.5 h-3.5" />}
+            defaultOpen={false}
+            headerRight={
+              <Link href="/bildirimler">
+                <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
+                  Tümü <ArrowRight className="w-3 h-3" />
+                </Button>
+              </Link>
+            }
+            data-testid="mc-activity-section"
+          >
+            <ActivityTimeline />
+          </CollapsibleSection>
+          )}
+        </div>
+      </div>
 
       {isSectionVisible('ik_summary', role) && <PdksHQOverviewWidget />}
-
-      {isSectionVisible('ik_summary', role) && hasIKAccess && (
-        <CollapsibleSection
-          title="İK & Personel"
-          icon={<Users className="w-3.5 h-3.5" />}
-          badge={ikBadge.text}
-          badgeVariant={ikBadge.variant}
-          defaultOpen={false}
-          headerRight={
-            <Link href="/ik">
-              <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
-                Detay <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          }
-          data-testid="mc-ik-section"
-        >
-          {ikData ? (
-            <div className="grid grid-cols-4 gap-2">
-              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-                <span className="text-base font-bold tabular-nums">{ikData.documents.total}</span>
-                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Özlük dosya</p>
-              </div>
-              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-                <span className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{ikData.documents.verified}</span>
-                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Onaylı</p>
-              </div>
-              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-                <span className={`text-base font-bold tabular-nums ${ikData.documents.expiringSoon > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
-                  {ikData.documents.expiringSoon}
-                </span>
-                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Süresi dolan</p>
-              </div>
-              <div className="rounded-lg bg-card border border-border/40 p-2 text-center">
-                <span className={`text-base font-bold tabular-nums ${ikData.disciplinary.open > 0 ? "text-destructive" : ""}`}>
-                  {ikData.disciplinary.open}
-                </span>
-                <p className="text-[7px] uppercase tracking-wider text-muted-foreground">Açık tutanak</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground text-xs">
-              İK verileri yükleniyor...
-            </div>
-          )}
-        </CollapsibleSection>
-      )}
 
       {isSectionVisible('quick_actions', role) && <QuickActions role={role} />}
     </div>

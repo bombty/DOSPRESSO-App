@@ -148,7 +148,7 @@ export default function MissionControlStajyer() {
   const isLoading = loadingStreak || loadingProgress;
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-lg md:max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-stajyer">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1400px] mx-auto overflow-y-auto h-full" data-testid="mission-control-stajyer">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
@@ -202,105 +202,111 @@ export default function MissionControlStajyer() {
         </Link>
       )}
 
-      <CollapsibleSection
-        title="Bugünün Görevleri"
-        icon={<ClipboardList className="w-3.5 h-3.5" />}
-        defaultOpen={true}
-        data-testid="mc-stj-tasks-section"
-      >
-        <TodaysTasksWidget />
-      </CollapsibleSection>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
+        <div className="space-y-3">
+          <CollapsibleSection
+            title="Bugünün Görevleri"
+            icon={<ClipboardList className="w-3.5 h-3.5" />}
+            defaultOpen={true}
+            data-testid="mc-stj-tasks-section"
+          >
+            <TodaysTasksWidget />
+          </CollapsibleSection>
 
-      <CollapsibleSection
-        title="Kariyer Yol Haritası"
-        icon={<Target className="w-3.5 h-3.5" />}
-        defaultOpen={false}
-        data-testid="mc-career-path"
-      >
-        <CareerRoadmap currentRole={role} />
-      </CollapsibleSection>
+          <CollapsibleSection
+            title="Kariyer Yol Haritası"
+            icon={<Target className="w-3.5 h-3.5" />}
+            defaultOpen={false}
+            data-testid="mc-career-path"
+          >
+            <CareerRoadmap currentRole={role} />
+          </CollapsibleSection>
 
-      <CollapsibleSection
-        title="Öğrenme Serisi"
-        icon={<Flame className="w-3.5 h-3.5" />}
-        badge={streak > 0 ? `${streak} gün` : undefined}
-        badgeVariant={streak >= 7 ? "success" : streak >= 3 ? "info" : "muted"}
-        defaultOpen={streak > 0}
-        data-testid="mc-streak-section"
-      >
-        <LearningStreak currentStreak={streak} longestStreak={longestStreak} />
-      </CollapsibleSection>
+          <CollapsibleSection
+            title="Öğrenme Serisi"
+            icon={<Flame className="w-3.5 h-3.5" />}
+            badge={streak > 0 ? `${streak} gün` : undefined}
+            badgeVariant={streak >= 7 ? "success" : streak >= 3 ? "info" : "muted"}
+            defaultOpen={streak > 0}
+            data-testid="mc-streak-section"
+          >
+            <LearningStreak currentStreak={streak} longestStreak={longestStreak} />
+          </CollapsibleSection>
+        </div>
 
-      {modules.length > 0 && (
-        <CollapsibleSection
-          title="Modüller"
-          icon={<GraduationCap className="w-3.5 h-3.5" />}
-          badge={`${completedModules}/${totalModules}`}
-          badgeVariant={progressPct >= 80 ? "success" : progressPct >= 40 ? "info" : "warning"}
-          defaultOpen={true}
-          headerRight={
-            <Link href="/akademi">
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={e => e.stopPropagation()}>
-                Tümü <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          }
-          data-testid="mc-modules"
-        >
-          <div className="space-y-1.5">
-            {modules.map((m) => (
-              <ModuleCard key={m.id} module={m} />
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
+        <div className="space-y-3">
+          {modules.length > 0 && (
+            <CollapsibleSection
+              title="Modüller"
+              icon={<GraduationCap className="w-3.5 h-3.5" />}
+              badge={`${completedModules}/${totalModules}`}
+              badgeVariant={progressPct >= 80 ? "success" : progressPct >= 40 ? "info" : "warning"}
+              defaultOpen={true}
+              headerRight={
+                <Link href="/akademi">
+                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={e => e.stopPropagation()}>
+                    Tümü <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              }
+              data-testid="mc-modules"
+            >
+              <div className="space-y-1.5">
+                {modules.map((m) => (
+                  <ModuleCard key={m.id} module={m} />
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
 
-      {quizResults && Array.isArray(quizResults) && quizResults.length > 0 && (
-        <CollapsibleSection
-          title="Quiz Sonuçları"
-          icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-          badge={avgQuizScore > 0 ? `Ort: ${avgQuizScore}` : undefined}
-          badgeVariant={avgQuizScore >= 80 ? "success" : avgQuizScore >= 60 ? "warning" : "danger"}
-          defaultOpen={false}
-          data-testid="mc-quiz-results"
-        >
-          <div className="space-y-1">
-            {quizResults.slice(0, 5).map((q: any, i: number) => {
-              const score = q.score ?? q.percentage ?? 0;
-              return (
-                <div key={q.id || i} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`quiz-result-${i}`}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    {score >= 80 ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                    ) : score >= 60 ? (
-                      <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                    ) : (
-                      <Target className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                    )}
-                    <span className="text-xs truncate">{q.quizName || q.name || `Quiz ${i + 1}`}</span>
-                  </div>
-                  <Badge variant="outline" className={`text-[9px] h-5 ${score >= 80 ? "text-emerald-600" : score >= 60 ? "text-amber-600" : "text-red-600"}`}>
-                    {score}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-        </CollapsibleSection>
-      )}
+          {quizResults && Array.isArray(quizResults) && quizResults.length > 0 && (
+            <CollapsibleSection
+              title="Quiz Sonuçları"
+              icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+              badge={avgQuizScore > 0 ? `Ort: ${avgQuizScore}` : undefined}
+              badgeVariant={avgQuizScore >= 80 ? "success" : avgQuizScore >= 60 ? "warning" : "danger"}
+              defaultOpen={false}
+              data-testid="mc-quiz-results"
+            >
+              <div className="space-y-1">
+                {quizResults.slice(0, 5).map((q: any, i: number) => {
+                  const score = q.score ?? q.percentage ?? 0;
+                  return (
+                    <div key={q.id || i} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`quiz-result-${i}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {score >= 80 ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        ) : score >= 60 ? (
+                          <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                        ) : (
+                          <Target className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                        )}
+                        <span className="text-xs truncate">{q.quizName || q.name || `Quiz ${i + 1}`}</span>
+                      </div>
+                      <Badge variant="outline" className={`text-[9px] h-5 ${score >= 80 ? "text-emerald-600" : score >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                        {score}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
+          )}
 
-      {badges.length > 0 && (
-        <CollapsibleSection
-          title="Rozet Koleksiyonu"
-          icon={<Award className="w-3.5 h-3.5" />}
-          badge={`${badges.filter(b => b.earned).length}/${badges.length}`}
-          badgeVariant="info"
-          defaultOpen={false}
-          data-testid="mc-badges"
-        >
-          <BadgeGrid badges={badges} />
-        </CollapsibleSection>
-      )}
+          {badges.length > 0 && (
+            <CollapsibleSection
+              title="Rozet Koleksiyonu"
+              icon={<Award className="w-3.5 h-3.5" />}
+              badge={`${badges.filter(b => b.earned).length}/${badges.length}`}
+              badgeVariant="info"
+              defaultOpen={false}
+              data-testid="mc-badges"
+            >
+              <BadgeGrid badges={badges} />
+            </CollapsibleSection>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-2" data-testid="mc-stj-quick-nav">
         <Link href="/akademi">

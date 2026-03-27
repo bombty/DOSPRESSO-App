@@ -170,7 +170,7 @@ export default function MissionControlYatirimci() {
 
   if (isLoading && !isHQ) {
     return (
-      <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="mc-yatirimci-loading">
+      <div className="p-4 space-y-4 max-w-[1400px] mx-auto" data-testid="mc-yatirimci-loading">
         <Skeleton className="h-12 rounded-lg" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
@@ -181,7 +181,7 @@ export default function MissionControlYatirimci() {
   }
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="mission-control-yatirimci">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1400px] mx-auto overflow-y-auto h-full" data-testid="mission-control-yatirimci">
       <div className="flex items-center justify-between gap-2 flex-wrap" data-testid="mc-yat-header">
         <div className="flex items-center gap-2.5">
           <Avatar className="w-7 h-7">
@@ -230,231 +230,237 @@ export default function MissionControlYatirimci() {
 
       <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={4} />
 
-      {alerts.length > 0 && (
-        <CollapsibleSection
-          title="Dikkat Gereken Konular"
-          icon={<AlertTriangle className="w-3.5 h-3.5" />}
-          badge={criticalAlerts > 0 ? `${criticalAlerts} kritik` : `${alerts.length} uyarı`}
-          badgeVariant={criticalAlerts > 0 ? "danger" : "warning"}
-          defaultOpen={true}
-          data-testid="mc-yat-alerts"
-        >
-          <div className="space-y-1.5">
-            {alerts.map((a, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md bg-muted/30">
-                <AlertTriangle className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${a.type === "critical" ? "text-destructive" : "text-amber-500"}`} />
-                <span>{a.message}</span>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {!isHQ && (
-        <CollapsibleSection
-          title="Personel Durumu"
-          icon={<Users className="w-3.5 h-3.5" />}
-          badge={kpis ? `${kpis.activeStaff}/${kpis.totalStaff}` : undefined}
-          defaultOpen={false}
-          data-testid="mc-yat-staff"
-        >
-          {(branchData?.teamStatus || []).length > 0 ? (
-            <div className="space-y-1">
-              {(branchData?.teamStatus || []).slice(0, 10).map((m, i) => (
-                <div key={m.id || i} className="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted/20">
-                  <span className="font-medium truncate">{m.name}</span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[9px] h-4 capitalize">{m.role?.replace("_", " ")}</Badge>
-                    <div className={`w-2 h-2 rounded-full ${m.checklistStatus === "tamamlandi" ? "bg-emerald-500" : m.checklistStatus === "devam" ? "bg-amber-500" : "bg-muted-foreground/30"}`} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
+        <div className="space-y-3">
+          {alerts.length > 0 && (
+            <CollapsibleSection
+              title="Dikkat Gereken Konular"
+              icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              badge={criticalAlerts > 0 ? `${criticalAlerts} kritik` : `${alerts.length} uyarı`}
+              badgeVariant={criticalAlerts > 0 ? "danger" : "warning"}
+              defaultOpen={true}
+              data-testid="mc-yat-alerts"
+            >
+              <div className="space-y-1.5">
+                {alerts.map((a, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs p-2 rounded-md bg-muted/30">
+                    <AlertTriangle className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${a.type === "critical" ? "text-destructive" : "text-amber-500"}`} />
+                    <span>{a.message}</span>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground text-center py-3">Personel verisi bulunamadı</p>
+                ))}
+              </div>
+            </CollapsibleSection>
           )}
-        </CollapsibleSection>
-      )}
 
-      {!isHQ && (branchData?.lowStockItems || []).length > 0 && (
-        <CollapsibleSection
-          title="Düşük Stok Uyarısı"
-          icon={<AlertTriangle className="w-3.5 h-3.5" />}
-          badge={`${branchData!.lowStockItems.length} ürün`}
-          badgeVariant="warning"
-          defaultOpen={true}
-          data-testid="mc-yat-stock"
-        >
-          <div className="space-y-1">
-            {branchData!.lowStockItems.map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted/20">
-                <span>{item.name}</span>
-                <Badge variant="outline" className="text-[9px] h-4 text-amber-600">{item.quantity}</Badge>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {isHQ && hqSummary && (hqSummary.branchRanking || []).length > 0 && (
-        <CollapsibleSection
-          title="Şube Durumu"
-          icon={<Building2 className="w-3.5 h-3.5" />}
-          badge={`${(hqSummary.branchRanking || []).length} şube`}
-          defaultOpen={true}
-          data-testid="mc-yat-branches"
-        >
-          <div className="space-y-1">
-            {(hqSummary.branchRanking || []).map(b => {
-              const statusColor = b.status === "critical" ? "text-destructive" : b.status === "warning" ? "text-amber-600" : "text-emerald-600";
-              return (
-                <div key={b.id} className="flex items-center justify-between text-xs p-2 rounded-md bg-muted/20">
-                  <span className="font-medium truncate">{b.name}</span>
-                  <div className="flex items-center gap-2">
-                    {b.avgRating > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <Star className="w-3 h-3 text-amber-500" />
-                        <span>{b.avgRating.toFixed(1)}</span>
+          {!isHQ && (
+            <CollapsibleSection
+              title="Personel Durumu"
+              icon={<Users className="w-3.5 h-3.5" />}
+              badge={kpis ? `${kpis.activeStaff}/${kpis.totalStaff}` : undefined}
+              defaultOpen={false}
+              data-testid="mc-yat-staff"
+            >
+              {(branchData?.teamStatus || []).length > 0 ? (
+                <div className="space-y-1">
+                  {(branchData?.teamStatus || []).slice(0, 10).map((m, i) => (
+                    <div key={m.id || i} className="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted/20">
+                      <span className="font-medium truncate">{m.name}</span>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[9px] h-4 capitalize">{m.role?.replace("_", " ")}</Badge>
+                        <div className={`w-2 h-2 rounded-full ${m.checklistStatus === "tamamlandi" ? "bg-emerald-500" : m.checklistStatus === "devam" ? "bg-amber-500" : "bg-muted-foreground/30"}`} />
                       </div>
-                    )}
-                    <div className={`w-2 h-2 rounded-full ${b.status === "critical" ? "bg-destructive" : b.status === "warning" ? "bg-amber-500" : "bg-emerald-500"}`} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {!isHQ && trainingData && trainingData.length > 0 && (
-        <CollapsibleSection
-          title={"E\u011Fitim \u0130lerlemesi"}
-          icon={<GraduationCap className="w-3.5 h-3.5" />}
-          badge={(() => {
-            const withProgress = trainingData.filter(t => t.totalAssigned > 0);
-            if (withProgress.length === 0) return "0%";
-            const avg = Math.round(withProgress.reduce((s, t) => s + t.progressRate, 0) / withProgress.length);
-            return `%${avg}`;
-          })()}
-          badgeVariant={(() => {
-            const withProgress = trainingData.filter(t => t.totalAssigned > 0);
-            if (withProgress.length === 0) return "info" as const;
-            const avg = Math.round(withProgress.reduce((s, t) => s + t.progressRate, 0) / withProgress.length);
-            return avg >= 70 ? "success" as const : avg >= 40 ? "warning" as const : "danger" as const;
-          })()}
-          defaultOpen={false}
-          data-testid="mc-yat-training"
-        >
-          <div className="space-y-1">
-            {trainingData.slice(0, 8).map((t, idx) => (
-              <div key={t.userId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/20" data-testid={`yat-training-${idx}`}>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-medium truncate block">{t.name}</span>
-                  <span className="text-[9px] text-muted-foreground capitalize">{t.role?.replace("_", " ")}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">{t.completedModules}/{t.totalAssigned}</span>
-                  <Badge variant={t.progressRate >= 70 ? "default" : t.progressRate >= 40 ? "secondary" : "destructive"} className="text-[9px] h-4">
-                    %{t.progressRate}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {!isHQ && feedbackData && feedbackData.totalCount > 0 && (
-        <CollapsibleSection
-          title={"M\u00FC\u015Fteri Geri Bildirim"}
-          icon={<Star className="w-3.5 h-3.5" />}
-          badge={feedbackData.avgRating > 0 ? feedbackData.avgRating.toFixed(1) : undefined}
-          badgeVariant={feedbackData.avgRating >= 4 ? "success" : feedbackData.avgRating >= 3 ? "warning" : "danger"}
-          defaultOpen={false}
-          headerRight={
-            <Badge variant="outline" className="text-[10px] h-5">{feedbackData.totalCount} yorum</Badge>
-          }
-          data-testid="mc-yat-feedback"
-        >
-          <div className="space-y-1">
-            {feedbackData.recent.slice(0, 4).map((fb) => (
-              <div key={fb.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-muted/20" data-testid={`yat-feedback-${fb.id}`}>
-                <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-2.5 h-2.5 ${i < fb.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}`} />
+                    </div>
                   ))}
                 </div>
-                <span className="text-[10px] text-muted-foreground line-clamp-2">{fb.comment || "Puan verildi"}</span>
-              </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-3">Personel verisi bulunamadı</p>
+              )}
+            </CollapsibleSection>
+          )}
 
-      {!isHQ && kpis && (
-        <CollapsibleSection
-          title="Checklist & Uyum"
-          icon={<ClipboardCheck className="w-3.5 h-3.5" />}
-          badge={kpis.checklistCompletion != null ? `%${Math.round(kpis.checklistCompletion)}` : undefined}
-          badgeVariant={(() => {
-            const val = kpis.checklistCompletion ?? 100;
-            return val >= 80 ? "success" as const : val >= 50 ? "warning" as const : "danger" as const;
-          })()}
-          defaultOpen={false}
-          data-testid="mc-yat-checklist"
-        >
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 px-2">
-              <span className="text-[10px] text-muted-foreground flex-shrink-0">Tamamlanma</span>
-              <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${(kpis.checklistCompletion ?? 0) >= 80 ? "bg-emerald-500" : (kpis.checklistCompletion ?? 0) >= 50 ? "bg-amber-500" : "bg-destructive"}`}
-                  style={{ width: `${Math.min(100, Math.round(kpis.checklistCompletion ?? 0))}%` }}
-                />
+          {isHQ && hqSummary && (hqSummary.branchRanking || []).length > 0 && (
+            <CollapsibleSection
+              title="Şube Durumu"
+              icon={<Building2 className="w-3.5 h-3.5" />}
+              badge={`${(hqSummary.branchRanking || []).length} şube`}
+              defaultOpen={true}
+              data-testid="mc-yat-branches"
+            >
+              <div className="space-y-1">
+                {(hqSummary.branchRanking || []).map(b => {
+                  const statusColor = b.status === "critical" ? "text-destructive" : b.status === "warning" ? "text-amber-600" : "text-emerald-600";
+                  return (
+                    <div key={b.id} className="flex items-center justify-between text-xs p-2 rounded-md bg-muted/20">
+                      <span className="font-medium truncate">{b.name}</span>
+                      <div className="flex items-center gap-2">
+                        {b.avgRating > 0 && (
+                          <div className="flex items-center gap-0.5">
+                            <Star className="w-3 h-3 text-amber-500" />
+                            <span>{b.avgRating.toFixed(1)}</span>
+                          </div>
+                        )}
+                        <div className={`w-2 h-2 rounded-full ${b.status === "critical" ? "bg-destructive" : b.status === "warning" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <span className="text-[10px] font-medium flex-shrink-0">%{Math.round(kpis.checklistCompletion ?? 0)}</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground text-center">
-              {(kpis.checklistCompletion ?? 0) >= 80 ? "Checklist uyumu iyi durumda" : (kpis.checklistCompletion ?? 0) >= 50 ? "Checklist uyumu orta seviyede" : "Checklist uyumu kritik seviyede"}
-            </p>
-          </div>
-        </CollapsibleSection>
-      )}
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection
+            title="Görevlerim"
+            defaultOpen={true}
+            data-testid="mc-yat-tasks"
+          >
+            <TodaysTasksWidget />
+          </CollapsibleSection>
+        </div>
+
+        <div className="space-y-3">
+          {!isHQ && trainingData && trainingData.length > 0 && (
+            <CollapsibleSection
+              title={"E\u011Fitim \u0130lerlemesi"}
+              icon={<GraduationCap className="w-3.5 h-3.5" />}
+              badge={(() => {
+                const withProgress = trainingData.filter(t => t.totalAssigned > 0);
+                if (withProgress.length === 0) return "0%";
+                const avg = Math.round(withProgress.reduce((s, t) => s + t.progressRate, 0) / withProgress.length);
+                return `%${avg}`;
+              })()}
+              badgeVariant={(() => {
+                const withProgress = trainingData.filter(t => t.totalAssigned > 0);
+                if (withProgress.length === 0) return "info" as const;
+                const avg = Math.round(withProgress.reduce((s, t) => s + t.progressRate, 0) / withProgress.length);
+                return avg >= 70 ? "success" as const : avg >= 40 ? "warning" as const : "danger" as const;
+              })()}
+              defaultOpen={false}
+              data-testid="mc-yat-training"
+            >
+              <div className="space-y-1">
+                {trainingData.slice(0, 8).map((t, idx) => (
+                  <div key={t.userId} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/20" data-testid={`yat-training-${idx}`}>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-medium truncate block">{t.name}</span>
+                      <span className="text-[9px] text-muted-foreground capitalize">{t.role?.replace("_", " ")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">{t.completedModules}/{t.totalAssigned}</span>
+                      <Badge variant={t.progressRate >= 70 ? "default" : t.progressRate >= 40 ? "secondary" : "destructive"} className="text-[9px] h-4">
+                        %{t.progressRate}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {!isHQ && feedbackData && feedbackData.totalCount > 0 && (
+            <CollapsibleSection
+              title={"M\u00FC\u015Fteri Geri Bildirim"}
+              icon={<Star className="w-3.5 h-3.5" />}
+              badge={feedbackData.avgRating > 0 ? feedbackData.avgRating.toFixed(1) : undefined}
+              badgeVariant={feedbackData.avgRating >= 4 ? "success" : feedbackData.avgRating >= 3 ? "warning" : "danger"}
+              defaultOpen={false}
+              headerRight={
+                <Badge variant="outline" className="text-[10px] h-5">{feedbackData.totalCount} yorum</Badge>
+              }
+              data-testid="mc-yat-feedback"
+            >
+              <div className="space-y-1">
+                {feedbackData.recent.slice(0, 4).map((fb) => (
+                  <div key={fb.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-muted/20" data-testid={`yat-feedback-${fb.id}`}>
+                    <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-2.5 h-2.5 ${i < fb.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground line-clamp-2">{fb.comment || "Puan verildi"}</span>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {!isHQ && kpis && (
+            <CollapsibleSection
+              title="Checklist & Uyum"
+              icon={<ClipboardCheck className="w-3.5 h-3.5" />}
+              badge={kpis.checklistCompletion != null ? `%${Math.round(kpis.checklistCompletion)}` : undefined}
+              badgeVariant={(() => {
+                const val = kpis.checklistCompletion ?? 100;
+                return val >= 80 ? "success" as const : val >= 50 ? "warning" as const : "danger" as const;
+              })()}
+              defaultOpen={false}
+              data-testid="mc-yat-checklist"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-2">
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0">Tamamlanma</span>
+                  <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${(kpis.checklistCompletion ?? 0) >= 80 ? "bg-emerald-500" : (kpis.checklistCompletion ?? 0) >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                      style={{ width: `${Math.min(100, Math.round(kpis.checklistCompletion ?? 0))}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium flex-shrink-0">%{Math.round(kpis.checklistCompletion ?? 0)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground text-center">
+                  {(kpis.checklistCompletion ?? 0) >= 80 ? "Checklist uyumu iyi durumda" : (kpis.checklistCompletion ?? 0) >= 50 ? "Checklist uyumu orta seviyede" : "Checklist uyumu kritik seviyede"}
+                </p>
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {!isHQ && kpis && (
+            <CollapsibleSection
+              title={"Ekipman Sa\u011Fl\u0131k"}
+              icon={<Wrench className="w-3.5 h-3.5" />}
+              badge={`${kpis.openFaults ?? 0} arıza`}
+              badgeVariant={(kpis.openFaults ?? 0) > 0 ? "danger" as const : "success" as const}
+              defaultOpen={false}
+              data-testid="mc-yat-equipment"
+            >
+              <div className="flex items-center gap-3 px-2 py-1">
+                <div className="flex-1 text-center p-2 rounded-md bg-muted/30">
+                  <p className="text-lg font-bold">{kpis.openFaults ?? 0}</p>
+                  <p className="text-[9px] text-muted-foreground">{"A\u00E7\u0131k Ar\u0131za"}</p>
+                </div>
+                <div className="flex-1 text-center p-2 rounded-md bg-muted/30">
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{(kpis.totalEquipment ?? 0) - (kpis.openFaults ?? 0)}</p>
+                  <p className="text-[9px] text-muted-foreground">{"Sa\u011Fl\u0131kl\u0131"}</p>
+                </div>
+              </div>
+              {(kpis.openFaults ?? 0) === 0 && (
+                <p className="text-[10px] text-muted-foreground text-center py-1">{"T\u00FCm ekipmanlar \u00E7al\u0131\u015F\u0131yor"}</p>
+              )}
+            </CollapsibleSection>
+          )}
+
+          {!isHQ && (branchData?.lowStockItems || []).length > 0 && (
+            <CollapsibleSection
+              title="Düşük Stok Uyarısı"
+              icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              badge={`${branchData!.lowStockItems.length} ürün`}
+              badgeVariant="warning"
+              defaultOpen={true}
+              data-testid="mc-yat-stock"
+            >
+              <div className="space-y-1">
+                {branchData!.lowStockItems.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted/20">
+                    <span>{item.name}</span>
+                    <Badge variant="outline" className="text-[9px] h-4 text-amber-600">{item.quantity}</Badge>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
+        </div>
+      </div>
 
       <PdksYatirimciWidget branchId={branchId} isHQ={isHQ} />
-
-      {!isHQ && kpis && (
-        <CollapsibleSection
-          title={"Ekipman Sa\u011Fl\u0131k"}
-          icon={<Wrench className="w-3.5 h-3.5" />}
-          badge={`${kpis.openFaults ?? 0} arıza`}
-          badgeVariant={(kpis.openFaults ?? 0) > 0 ? "danger" as const : "success" as const}
-          defaultOpen={false}
-          data-testid="mc-yat-equipment"
-        >
-          <div className="flex items-center gap-3 px-2 py-1">
-            <div className="flex-1 text-center p-2 rounded-md bg-muted/30">
-              <p className="text-lg font-bold">{kpis.openFaults ?? 0}</p>
-              <p className="text-[9px] text-muted-foreground">{"A\u00E7\u0131k Ar\u0131za"}</p>
-            </div>
-            <div className="flex-1 text-center p-2 rounded-md bg-muted/30">
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{(kpis.totalEquipment ?? 0) - (kpis.openFaults ?? 0)}</p>
-              <p className="text-[9px] text-muted-foreground">{"Sa\u011Fl\u0131kl\u0131"}</p>
-            </div>
-          </div>
-          {(kpis.openFaults ?? 0) === 0 && (
-            <p className="text-[10px] text-muted-foreground text-center py-1">{"T\u00FCm ekipmanlar \u00E7al\u0131\u015F\u0131yor"}</p>
-          )}
-        </CollapsibleSection>
-      )}
-
-      <CollapsibleSection
-        title="Görevlerim"
-        defaultOpen={true}
-        data-testid="mc-yat-tasks"
-      >
-        <TodaysTasksWidget />
-      </CollapsibleSection>
 
       <div className="grid grid-cols-2 gap-2" data-testid="mc-yat-quick-actions">
         <Link href="/raporlar">

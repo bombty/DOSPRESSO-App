@@ -231,7 +231,7 @@ export default function PdksPage() {
     const summary = summaryQuery.data?.find((s: any) => s.userId === selectedUser);
 
     return (
-      <div className="p-4 max-w-4xl mx-auto space-y-4">
+      <div className="p-4 max-w-6xl mx-auto space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => setSelectedUser(null)} data-testid="button-back-to-list">
             <ChevronLeft />
@@ -421,7 +421,7 @@ export default function PdksPage() {
   );
 
   return (
-    <div className="p-4 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 max-w-6xl mx-auto space-y-4">
       <h1 className="text-xl font-bold" data-testid="text-pdks-title">PDKS — Devam Takibi</h1>
       {canManage ? (
         <Tabs defaultValue="attendance">

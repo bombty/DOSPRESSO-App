@@ -195,7 +195,7 @@ export default function MissionControlSupervisor() {
   }
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-2xl mx-auto overflow-y-auto h-full pb-24 md:pb-4" data-testid="mission-control-supervisor">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1400px] mx-auto overflow-y-auto h-full pb-24 md:pb-4" data-testid="mission-control-supervisor">
       {!isMobile && <SupervisorQuickBar />}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -232,225 +232,231 @@ export default function MissionControlSupervisor() {
         }))} />
       )}
 
-      {presenceMembers.length > 0 && (
-        <Card data-testid="mc-presence">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Users className="w-4 h-4" />
-              Personel Durumu
-            </CardTitle>
-            <Badge variant="outline" className="text-[10px] h-5">
-              {presenceMembers.length} kişi
-            </Badge>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <PresenceBar members={presenceMembers} />
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
+        <div className="space-y-3">
+          {presenceMembers.length > 0 && (
+            <Card data-testid="mc-presence">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Users className="w-4 h-4" />
+                  Personel Durumu
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] h-5">
+                  {presenceMembers.length} kişi
+                </Badge>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <PresenceBar members={presenceMembers} />
+              </CardContent>
+            </Card>
+          )}
 
-      {staffMembers.length > 0 && (
-        <Card data-testid="mc-staff-grid">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4" />
-              Ekip Kartları
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {staffMembers.map((m) => (
-                <StaffCard key={m.id} member={m} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {shiftEntries.length > 0 && (
-        <Card className="hidden md:block" data-testid="mc-shift-timeline-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <CalendarClock className="w-4 h-4" />
-              Vardiya Zaman Çizelgesi
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <ShiftTimeline shifts={shiftEntries} />
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="md:hidden">
-        {staffMembers.length > 0 && shiftEntries.length > 0 && (
-          <Card data-testid="mc-shift-list-mobile">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                Vardiyalar
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 pb-3 space-y-1">
-              {staffMembers.slice(0, 6).map((m) => (
-                <div key={m.id} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/30">
-                  <span className="text-[10px] font-medium">{m.name.split(" ")[0]}</span>
-                  <span className="text-[10px] text-muted-foreground">{m.shiftLabel || "—"}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {branchSummary?.checklists && branchSummary.checklists.length > 0 && (
-        <Card data-testid="mc-checklists">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <ClipboardCheck className="w-4 h-4" />
-              Bugünkü Checklist
-            </CardTitle>
-            <Badge variant="outline" className="text-[10px] h-5">
-              {branchSummary.checklists.filter((c) => c.done).length}/{branchSummary.checklists.length}
-            </Badge>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1">
-            {branchSummary.checklists.map((c) => (
-              <div key={c.id} className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/30">
-                <div className={`w-4 h-4 rounded-sm flex items-center justify-center text-[10px] ${c.done ? "bg-emerald-500 text-white" : "border border-muted-foreground/30"}`}>
-                  {c.done ? "✓" : ""}
-                </div>
-                <span className={`text-xs ${c.done ? "text-muted-foreground line-through" : "font-medium"}`}>{c.name}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {branchSummary?.lowStockItems && branchSummary.lowStockItems.length > 0 && (
-        <Card data-testid="mc-low-stock">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-              Düşük Stok
-            </CardTitle>
-            <Link href="/stok">
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1">
-                Detay <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1">
-            {branchSummary.lowStockItems.slice(0, 5).map((item, idx) => (
-              <div key={`${item.productName}-${idx}`} className="flex items-center justify-between px-2 py-1 rounded-md bg-amber-500/5" data-testid={`mc-stock-${idx}`}>
-                <span className="text-xs truncate">{item.productName}</span>
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                  {Number(item.currentStock).toFixed(1)}/{Number(item.minimumStock).toFixed(1)} {item.unit}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {trainingData && trainingData.length > 0 && (
-        <Card data-testid="mc-training-progress">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4" />
-              {"E\u011Fitim \u0130lerlemesi"}
-            </CardTitle>
-            <Link href="/akademi">
-              <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" data-testid="btn-training-all">
-                {"T\u00FCm\u00FC"} <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1">
-            {trainingData.slice(0, 6).map((t, idx) => (
-              <div key={t.userId} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/30" data-testid={`training-item-${idx}`}>
-                <div className="min-w-0">
-                  <span className="text-[10px] font-medium truncate block">{t.name}</span>
-                  <span className="text-[9px] text-muted-foreground capitalize">{t.role?.replace("_", " ")}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">{t.completedModules}/{t.totalAssigned}</span>
-                  <Badge variant={t.progressRate >= 80 ? "default" : t.progressRate >= 50 ? "secondary" : "destructive"} className="text-[9px] h-5">
-                    %{t.progressRate}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {feedbackData && feedbackData.totalCount > 0 && (
-        <Card data-testid="mc-feedback-summary">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Star className="w-4 h-4" />
-              {"M\u00FC\u015Fteri Geri Bildirim"}
-            </CardTitle>
-            <div className="flex items-center gap-1.5">
-              <Badge variant={feedbackData.avgRating >= 4 ? "default" : feedbackData.avgRating >= 3 ? "secondary" : "destructive"} className="text-[9px] h-5">
-                <Star className="w-3 h-3 mr-0.5" />{feedbackData.avgRating.toFixed(1)}
-              </Badge>
-              <Badge variant="outline" className="text-[10px] h-5">
-                {feedbackData.totalCount} yorum
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1">
-            {feedbackData.recent.slice(0, 4).map((fb) => (
-              <div key={fb.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-muted/30" data-testid={`feedback-item-${fb.id}`}>
-                <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-2.5 h-2.5 ${i < fb.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}`} />
+          {staffMembers.length > 0 && (
+            <Card data-testid="mc-staff-grid">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4" />
+                  Ekip Kartları
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {staffMembers.map((m) => (
+                    <StaffCard key={m.id} member={m} />
                   ))}
                 </div>
-                <span className="text-[10px] text-muted-foreground line-clamp-2">{fb.comment || "Puan verildi"}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
 
-      {branchSummary?.kpis && (
-        <Card data-testid="mc-branch-scorecard">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <BarChart3 className="w-4 h-4" />
-              {"Şube Skor Kartı"}
-            </CardTitle>
-            <Badge variant={
-              (branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0) >= 80 ? "default"
-              : (branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0) >= 50 ? "secondary"
-              : "destructive"
-            } className="text-[9px] h-5">
-              %{Math.round(branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0)}
-            </Badge>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1.5">
-            {[
-              { label: "Aktif Personel", value: `${branchSummary.kpis.activeStaff}/${branchSummary.kpis.totalStaff}`, pct: branchSummary.kpis.totalStaff > 0 ? Math.round((branchSummary.kpis.activeStaff / branchSummary.kpis.totalStaff) * 100) : 0 },
-              { label: "Checklist", value: `%${Math.round(branchSummary.kpis.checklistCompletion ?? 0)}`, pct: Math.round(branchSummary.kpis.checklistCompletion ?? 0) },
-              { label: "Müşteri Puanı", value: branchSummary.kpis.customerAvg ? `${Number(branchSummary.kpis.customerAvg).toFixed(1)}/5` : "—", pct: branchSummary.kpis.customerAvg ? Math.round(Number(branchSummary.kpis.customerAvg) * 20) : 0 },
-              { label: "Uyarılar", value: String(branchSummary.kpis.warnings ?? 0), pct: (branchSummary.kpis.warnings ?? 0) === 0 ? 100 : Math.max(0, 100 - (branchSummary.kpis.warnings ?? 0) * 20) },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground w-24 flex-shrink-0">{item.label}</span>
-                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${item.pct >= 80 ? "bg-emerald-500" : item.pct >= 50 ? "bg-amber-500" : "bg-destructive"}`}
-                    style={{ width: `${Math.min(100, item.pct)}%` }}
-                  />
+          {shiftEntries.length > 0 && (
+            <Card className="hidden md:block" data-testid="mc-shift-timeline-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <CalendarClock className="w-4 h-4" />
+                  Vardiya Zaman Çizelgesi
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <ShiftTimeline shifts={shiftEntries} />
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="md:hidden">
+            {staffMembers.length > 0 && shiftEntries.length > 0 && (
+              <Card data-testid="mc-shift-list-mobile">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" />
+                    Vardiyalar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 space-y-1">
+                  {staffMembers.slice(0, 6).map((m) => (
+                    <div key={m.id} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/30">
+                      <span className="text-[10px] font-medium">{m.name.split(" ")[0]}</span>
+                      <span className="text-[10px] text-muted-foreground">{m.shiftLabel || "—"}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {branchSummary?.checklists && branchSummary.checklists.length > 0 && (
+            <Card data-testid="mc-checklists">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <ClipboardCheck className="w-4 h-4" />
+                  Bugünkü Checklist
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] h-5">
+                  {branchSummary.checklists.filter((c) => c.done).length}/{branchSummary.checklists.length}
+                </Badge>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-1">
+                {branchSummary.checklists.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/30">
+                    <div className={`w-4 h-4 rounded-sm flex items-center justify-center text-[10px] ${c.done ? "bg-emerald-500 text-white" : "border border-muted-foreground/30"}`}>
+                      {c.done ? "✓" : ""}
+                    </div>
+                    <span className={`text-xs ${c.done ? "text-muted-foreground line-through" : "font-medium"}`}>{c.name}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {branchSummary?.lowStockItems && branchSummary.lowStockItems.length > 0 && (
+            <Card data-testid="mc-low-stock">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  Düşük Stok
+                </CardTitle>
+                <Link href="/stok">
+                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1">
+                    Detay <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-1">
+                {branchSummary.lowStockItems.slice(0, 5).map((item, idx) => (
+                  <div key={`${item.productName}-${idx}`} className="flex items-center justify-between px-2 py-1 rounded-md bg-amber-500/5" data-testid={`mc-stock-${idx}`}>
+                    <span className="text-xs truncate">{item.productName}</span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                      {Number(item.currentStock).toFixed(1)}/{Number(item.minimumStock).toFixed(1)} {item.unit}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {trainingData && trainingData.length > 0 && (
+            <Card data-testid="mc-training-progress">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4" />
+                  {"E\u011Fitim \u0130lerlemesi"}
+                </CardTitle>
+                <Link href="/akademi">
+                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" data-testid="btn-training-all">
+                    {"T\u00FCm\u00FC"} <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-1">
+                {trainingData.slice(0, 6).map((t, idx) => (
+                  <div key={t.userId} className="flex items-center justify-between px-2 py-1 rounded-md bg-muted/30" data-testid={`training-item-${idx}`}>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-medium truncate block">{t.name}</span>
+                      <span className="text-[9px] text-muted-foreground capitalize">{t.role?.replace("_", " ")}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">{t.completedModules}/{t.totalAssigned}</span>
+                      <Badge variant={t.progressRate >= 80 ? "default" : t.progressRate >= 50 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                        %{t.progressRate}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {feedbackData && feedbackData.totalCount > 0 && (
+            <Card data-testid="mc-feedback-summary">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Star className="w-4 h-4" />
+                  {"M\u00FC\u015Fteri Geri Bildirim"}
+                </CardTitle>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={feedbackData.avgRating >= 4 ? "default" : feedbackData.avgRating >= 3 ? "secondary" : "destructive"} className="text-[9px] h-5">
+                    <Star className="w-3 h-3 mr-0.5" />{feedbackData.avgRating.toFixed(1)}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px] h-5">
+                    {feedbackData.totalCount} yorum
+                  </Badge>
                 </div>
-                <span className="text-[10px] font-medium w-12 text-right flex-shrink-0">{item.value}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-1">
+                {feedbackData.recent.slice(0, 4).map((fb) => (
+                  <div key={fb.id} className="flex items-start gap-2 px-2 py-1.5 rounded-md bg-muted/30" data-testid={`feedback-item-${fb.id}`}>
+                    <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-2.5 h-2.5 ${i < fb.rating ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30"}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground line-clamp-2">{fb.comment || "Puan verildi"}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {branchSummary?.kpis && (
+            <Card data-testid="mc-branch-scorecard">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4" />
+                  {"Şube Skor Kartı"}
+                </CardTitle>
+                <Badge variant={
+                  (branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0) >= 80 ? "default"
+                  : (branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0) >= 50 ? "secondary"
+                  : "destructive"
+                } className="text-[9px] h-5">
+                  %{Math.round(branchSummary.kpis.healthScore ?? branchSummary.kpis.checklistCompletion ?? 0)}
+                </Badge>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-1.5">
+                {[
+                  { label: "Aktif Personel", value: `${branchSummary.kpis.activeStaff}/${branchSummary.kpis.totalStaff}`, pct: branchSummary.kpis.totalStaff > 0 ? Math.round((branchSummary.kpis.activeStaff / branchSummary.kpis.totalStaff) * 100) : 0 },
+                  { label: "Checklist", value: `%${Math.round(branchSummary.kpis.checklistCompletion ?? 0)}`, pct: Math.round(branchSummary.kpis.checklistCompletion ?? 0) },
+                  { label: "Müşteri Puanı", value: branchSummary.kpis.customerAvg ? `${Number(branchSummary.kpis.customerAvg).toFixed(1)}/5` : "—", pct: branchSummary.kpis.customerAvg ? Math.round(Number(branchSummary.kpis.customerAvg) * 20) : 0 },
+                  { label: "Uyarılar", value: String(branchSummary.kpis.warnings ?? 0), pct: (branchSummary.kpis.warnings ?? 0) === 0 ? 100 : Math.max(0, 100 - (branchSummary.kpis.warnings ?? 0) * 20) },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground w-24 flex-shrink-0">{item.label}</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${item.pct >= 80 ? "bg-emerald-500" : item.pct >= 50 ? "bg-amber-500" : "bg-destructive"}`}
+                        style={{ width: `${Math.min(100, item.pct)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-medium w-12 text-right flex-shrink-0">{item.value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       <PdksYoklamaWidget branchId={branchId} />
 

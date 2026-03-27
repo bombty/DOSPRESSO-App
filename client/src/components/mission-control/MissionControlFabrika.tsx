@@ -187,7 +187,7 @@ export default function MissionControlFabrika() {
   const dateStr = now.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-3xl mx-auto overflow-y-auto h-full" data-testid="mission-control-fabrika">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1400px] mx-auto overflow-y-auto h-full" data-testid="mission-control-fabrika">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
@@ -211,69 +211,75 @@ export default function MissionControlFabrika() {
         <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
       )}
 
-      {stationInfos.length > 0 && (
-        <Card data-testid="mc-fab-stations">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Factory className="w-4 h-4" />
-              İstasyon Durumu
-            </CardTitle>
-            <Badge variant="outline" className="text-[10px] h-5">{stationInfos.length} istasyon</Badge>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {stationInfos.map((s) => (
-                <StationCard key={s.id} station={s} />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
+        <div className="space-y-3">
+          {stationInfos.length > 0 && (
+            <Card data-testid="mc-fab-stations">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Factory className="w-4 h-4" />
+                  İstasyon Durumu
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] h-5">{stationInfos.length} istasyon</Badge>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {stationInfos.map((s) => (
+                    <StationCard key={s.id} station={s} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-      <QCSummary data={qcData} />
+          {workerStaff.length > 0 && (
+            <Card data-testid="mc-fab-workers">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Users className="w-4 h-4" />
+                  Aktif Personel
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] h-5">{activeWorkers.length} kişi</Badge>
+              </CardHeader>
+              <CardContent className="px-3 pb-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {workerStaff.map((w) => (
+                    <StaffCard key={w.id} member={w} />
+                  ))}
+                </div>
+                {activeWorkers.length > 12 && (
+                  <p className="text-[10px] text-center text-muted-foreground mt-2">+{activeWorkers.length - 12} kişi daha</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-      {workerStaff.length > 0 && (
-        <Card data-testid="mc-fab-workers">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Users className="w-4 h-4" />
-              Aktif Personel
-            </CardTitle>
-            <Badge variant="outline" className="text-[10px] h-5">{activeWorkers.length} kişi</Badge>
-          </CardHeader>
-          <CardContent className="px-3 pb-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {workerStaff.map((w) => (
-                <StaffCard key={w.id} member={w} />
-              ))}
-            </div>
-            {activeWorkers.length > 12 && (
-              <p className="text-[10px] text-center text-muted-foreground mt-2">+{activeWorkers.length - 12} kişi daha</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+        <div className="space-y-3">
+          <QCSummary data={qcData} />
 
-      {(stockOverview?.lowStockCount ?? 0) > 0 && (
-        <Card className="border-amber-500/30" data-testid="mc-fab-low-stock">
-          <CardContent className="p-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-xs font-medium">Düşük Stok Uyarısı</p>
-                <p className="text-[10px] text-muted-foreground">{stockOverview!.lowStockCount} hammadde minimum seviyenin altında</p>
-              </div>
-            </div>
-            <Link href="/fabrika/stok-sayim">
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                Detay <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+          {(stockOverview?.lowStockCount ?? 0) > 0 && (
+            <Card className="border-amber-500/30" data-testid="mc-fab-low-stock">
+              <CardContent className="p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium">Düşük Stok Uyarısı</p>
+                    <p className="text-[10px] text-muted-foreground">{stockOverview!.lowStockCount} hammadde minimum seviyenin altında</p>
+                  </div>
+                </div>
+                <Link href="/fabrika/stok-sayim">
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                    Detay <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-2" data-testid="mc-fab-quick-nav">
         <Link href="/fabrika">

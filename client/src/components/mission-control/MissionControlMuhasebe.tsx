@@ -105,7 +105,7 @@ export default function MissionControlMuhasebe() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-3xl mx-auto" data-testid="mc-muhasebe-loading">
+      <div className="p-4 space-y-4 max-w-[1400px] mx-auto" data-testid="mc-muhasebe-loading">
         <Skeleton className="h-10 rounded-lg" />
         <div className="grid grid-cols-3 gap-1.5">
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
@@ -116,7 +116,7 @@ export default function MissionControlMuhasebe() {
   }
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-3xl mx-auto overflow-y-auto h-full" data-testid="mission-control-muhasebe">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1400px] mx-auto overflow-y-auto h-full" data-testid="mission-control-muhasebe">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
@@ -137,49 +137,54 @@ export default function MissionControlMuhasebe() {
 
       <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
 
-      {data?.payrollSummary?.branchBreakdown && data.payrollSummary.branchBreakdown.length > 0 ? (
-        <Card data-testid="mc-muh-payroll">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Calculator className="w-4 h-4" />
-              Şube Maliyet Dağılımı
-            </CardTitle>
-            <Link href="/bordro">
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-0.5">
-                Detay <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent className="px-3 pb-3 space-y-1.5">
-            {data.payrollSummary.branchBreakdown.slice(0, 10).map((b, i) => (
-              <div key={i} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`muh-branch-cost-${i}`}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs truncate">{b.branch}</span>
-                  <Badge variant="outline" className="text-[9px] h-4">{b.staffCount} kişi</Badge>
-                </div>
-                <span className="text-xs font-medium flex-shrink-0">{fmt(b.totalCost)} TL</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ) : (
-        <EmptyStateCard icon={<Calculator className="h-10 w-10" />} title="Bordro verisi" description="Bu dönem için hesaplanmış bordro bulunamadı" />
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
+        <div className="space-y-3">
+          {data?.payrollSummary?.branchBreakdown && data.payrollSummary.branchBreakdown.length > 0 ? (
+            <Card data-testid="mc-muh-payroll">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Calculator className="w-4 h-4" />
+                  Şube Maliyet Dağılımı
+                </CardTitle>
+                <Link href="/bordro">
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-0.5">
+                    Detay <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 space-y-1.5">
+                {data.payrollSummary.branchBreakdown.slice(0, 10).map((b, i) => (
+                  <div key={i} className="flex items-center justify-between px-2 py-1.5 rounded-md bg-muted/30" data-testid={`muh-branch-cost-${i}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-xs truncate">{b.branch}</span>
+                      <Badge variant="outline" className="text-[9px] h-4">{b.staffCount} kişi</Badge>
+                    </div>
+                    <span className="text-xs font-medium flex-shrink-0">{fmt(b.totalCost)} TL</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : (
+            <EmptyStateCard icon={<Calculator className="h-10 w-10" />} title="Bordro verisi" description="Bu dönem için hesaplanmış bordro bulunamadı" />
+          )}
 
-      <TrendChart
-        title="Şube Maliyet Karşılaştırması"
-        data={branchCostData}
-        xKey="branch"
-        bars={[{ key: "maliyet", color: "#6366f1", name: "Toplam Maliyet" }]}
-        type="bar"
-        height={180}
-        data-testid="mc-muh-cost-chart"
-      />
+          <TrendChart
+            title="Şube Maliyet Karşılaştırması"
+            data={branchCostData}
+            xKey="branch"
+            bars={[{ key: "maliyet", color: "#6366f1", name: "Toplam Maliyet" }]}
+            type="bar"
+            height={180}
+            data-testid="mc-muh-cost-chart"
+          />
+        </div>
 
-      <PdksBordroWidget />
-
-      <TodaysTasksWidget />
+        <div className="space-y-3">
+          <PdksBordroWidget />
+          <TodaysTasksWidget />
+        </div>
+      </div>
 
       <div className="grid grid-cols-3 gap-2" data-testid="mc-muh-quick-nav">
         <Link href="/bordro">

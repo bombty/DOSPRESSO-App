@@ -118,7 +118,7 @@ export default function CoachTeamProgress() {
     : 0;
 
   return (
-    <div className="space-y-6 p-4 max-w-4xl mx-auto" data-testid="coach-team-progress">
+    <div className="space-y-6 p-4 max-w-6xl mx-auto" data-testid="coach-team-progress">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />
