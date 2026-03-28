@@ -25,45 +25,125 @@ function requireRole(roles: string[]) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════
+// SECURITY: Parameterized query helpers
+// NEVER interpolate user input into SQL strings
+// Always use sql`` tagged template for date parameters
+// ═══════════════════════════════════════════════════════════
+
+/** Strict date sanitization — only allows YYYY-MM-DD format */
+function sanitizeDate(input: string): string {
+  const match = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date().toISOString().split("T")[0]; // fallback to today
+  const [, y, m, d] = match;
+  const date = new Date(`${y}-${m}-${d}`);
+  if (isNaN(date.getTime())) return new Date().toISOString().split("T")[0];
+  return `${y}-${m}-${d}`;
+}
+
+async function safeCountParam(query: ReturnType<typeof sql>): Promise<number> {
+  try {
+    const r = await db.execute(query);
+    return Number(r.rows?.[0]?.count || 0);
+  } catch (e) { 
+    console.error("[dashboard-data] safeCountParam error:", e);
+    return 0; 
+  }
+}
+
+async function safeAvgParam(query: ReturnType<typeof sql>): Promise<number> {
+  try {
+    const r = await db.execute(query);
+    return Number(r.rows?.[0]?.avg || 0);
+  } catch (e) { 
+    console.error("[dashboard-data] safeAvgParam error:", e);
+    return 0; 
+  }
+}
+
+async function safeRowsParam(query: ReturnType<typeof sql>): Promise<any[]> {
+  try {
+    const r = await db.execute(query);
+    return r.rows || [];
+  } catch (e) { 
+    console.error("[dashboard-data] safeRowsParam error:", e);
+    return []; 
+  }
+}
+
+// Legacy helpers — injection protection added
+// New queries should use safeCountParam with sql`` tagged template
+
+/** Reject queries with common SQL injection patterns */
+function validateQuerySafety(query: string): boolean {
+  const dangerous = /;\s*(DROP|DELETE|UPDATE|INSERT|ALTER|EXEC|UNION\s+SELECT|--)/i;
+  if (dangerous.test(query)) {
+    console.error("[SECURITY] Blocked suspicious SQL query:", query.substring(0, 120));
+    return false;
+  }
+  return true;
+}
+
+/** Sanitize branchId — must be a positive integer */
+function safeBranchId(input: any): number {
+  const num = parseInt(String(input), 10);
+  if (isNaN(num) || num <= 0 || num > 100000) return -1;
+  return num;
+}
+
 async function safeCount(query: string): Promise<number> {
+  if (!validateQuerySafety(query)) return 0;
   try {
     const r = await db.execute(sql.raw(query));
     return Number(r.rows?.[0]?.count || 0);
-  } catch { return 0; }
+  } catch (e) {
+    console.error("[dashboard-data] safeCount error:", e);
+    return 0;
+  }
 }
 
 async function safeAvg(query: string): Promise<number> {
+  if (!validateQuerySafety(query)) return 0;
   try {
     const r = await db.execute(sql.raw(query));
     return Number(r.rows?.[0]?.avg || 0);
-  } catch { return 0; }
+  } catch (e) {
+    console.error("[dashboard-data] safeAvg error:", e);
+    return 0;
+  }
 }
 
 async function safeRows(query: string): Promise<any[]> {
+  if (!validateQuerySafety(query)) return [];
   try {
     const r = await db.execute(sql.raw(query));
     return r.rows || [];
-  } catch { return []; }
+  } catch (e) {
+    console.error("[dashboard-data] safeRows error:", e);
+    return [];
+  }
 }
 
 router.get("/api/dashboard/executive", isAuthenticated, requireRole(EXEC_ROLES), async (req, res) => {
   try {
-    const { startDate, endDate } = getDateRange(req.query.period as string, req.query.startDate as string, req.query.endDate as string);
+    const raw = getDateRange(req.query.period as string, req.query.startDate as string, req.query.endDate as string);
+    const startDate = sanitizeDate(raw.startDate);
+    const endDate = sanitizeDate(raw.endDate);
 
     const totalBranches = await safeCount(`SELECT count(*) FROM branches WHERE is_active = true AND id NOT IN (23,24)`);
     const totalStaff = await safeCount(`SELECT count(*) FROM users WHERE is_active = true AND account_status = 'approved'`);
-    const totalTickets = await safeCount(`SELECT count(*) FROM support_tickets WHERE created_at >= '${startDate}' AND created_at <= '${endDate} 23:59:59'`);
-    const slaBreaches = await safeCount(`SELECT count(*) FROM support_tickets WHERE sla_breached = true AND created_at >= '${startDate}' AND created_at <= '${endDate} 23:59:59'`);
-    const avgCustomerRating = await safeAvg(`SELECT avg(rating_overall) as avg FROM support_tickets WHERE rating_overall IS NOT NULL AND created_at >= '${startDate}' AND created_at <= '${endDate} 23:59:59'`);
-    const totalFaults = await safeCount(`SELECT count(*) FROM equipment_faults WHERE created_at >= '${startDate}' AND created_at <= '${endDate} 23:59:59'`);
+    const totalTickets = await safeCountParam(sql`SELECT count(*) FROM support_tickets WHERE created_at >= ${startDate}::date AND created_at <= (${endDate}::date + interval '1 day')`);
+    const slaBreaches = await safeCountParam(sql`SELECT count(*) FROM support_tickets WHERE sla_breached = true AND created_at >= ${startDate}::date AND created_at <= (${endDate}::date + interval '1 day')`);
+    const avgCustomerRating = await safeAvgParam(sql`SELECT avg(rating_overall) as avg FROM support_tickets WHERE rating_overall IS NOT NULL AND created_at >= ${startDate}::date AND created_at <= (${endDate}::date + interval '1 day')`);
+    const totalFaults = await safeCountParam(sql`SELECT count(*) FROM equipment_faults WHERE created_at >= ${startDate}::date AND created_at <= (${endDate}::date + interval '1 day')`);
 
-    const branchRows = await safeRows(`
+    const branchRows = await safeRowsParam(sql`
       SELECT b.id as branch_id, b.name,
         (SELECT count(*) FROM users u WHERE u.branch_id = b.id AND u.is_active = true) as staff_count,
-        (SELECT count(*) FROM support_tickets t WHERE t.branch_id = b.id AND t.created_at >= '${startDate}' AND t.created_at <= '${endDate} 23:59:59') as tickets,
-        (SELECT count(*) FROM support_tickets t WHERE t.branch_id = b.id AND t.sla_breached = true AND t.created_at >= '${startDate}' AND t.created_at <= '${endDate} 23:59:59') as sla_breaches,
-        (SELECT avg(t.rating_overall) FROM support_tickets t WHERE t.branch_id = b.id AND t.rating_overall IS NOT NULL AND t.created_at >= '${startDate}' AND t.created_at <= '${endDate} 23:59:59') as avg_rating,
-        (SELECT count(*) FROM equipment_faults f WHERE f.branch_id = b.id AND f.created_at >= '${startDate}' AND f.created_at <= '${endDate} 23:59:59') as faults
+        (SELECT count(*) FROM support_tickets t WHERE t.branch_id = b.id AND t.created_at >= ${startDate}::date AND t.created_at <= (${endDate}::date + interval '1 day')) as tickets,
+        (SELECT count(*) FROM support_tickets t WHERE t.branch_id = b.id AND t.sla_breached = true AND t.created_at >= ${startDate}::date AND t.created_at <= (${endDate}::date + interval '1 day')) as sla_breaches,
+        (SELECT avg(t.rating_overall) FROM support_tickets t WHERE t.branch_id = b.id AND t.rating_overall IS NOT NULL AND t.created_at >= ${startDate}::date AND t.created_at <= (${endDate}::date + interval '1 day')) as avg_rating,
+        (SELECT count(*) FROM equipment_faults f WHERE f.branch_id = b.id AND f.created_at >= ${startDate}::date AND f.created_at <= (${endDate}::date + interval '1 day')) as faults
       FROM branches b WHERE b.is_active = true AND b.id NOT IN (23,24) ORDER BY b.name
     `);
 
@@ -126,7 +206,9 @@ router.get("/api/dashboard/executive", isAuthenticated, requireRole(EXEC_ROLES),
 router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    const { startDate, endDate } = getDateRange(req.query.period as string, req.query.startDate as string, req.query.endDate as string);
+    const rawDates = getDateRange(req.query.period as string, req.query.startDate as string, req.query.endDate as string);
+    const startDate = sanitizeDate(rawDates.startDate);
+    const endDate = sanitizeDate(rawDates.endDate);
 
     const myBranches = await safeRows(`
       SELECT b.id as branch_id, b.name,
@@ -265,7 +347,8 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
 router.get("/api/dashboard/branch/:branchId", isAuthenticated, requireRole(BRANCH_ROLES), async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    const branchId = parseInt(req.params.branchId);
+    const branchId = safeBranchId(req.params.branchId);
+    if (branchId === -1) return res.status(400).json({ error: "Geçersiz şube ID" });
     if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz şube ID" });
 
     if (user.role && !["admin", "ceo", "cgo", "coach", "trainer"].includes(user.role) && user.branchId !== branchId) {
@@ -310,7 +393,9 @@ router.get("/api/dashboard/branch/:branchId", isAuthenticated, requireRole(BRANC
 
 router.get("/api/dashboard/finance", isAuthenticated, requireRole(FINANCE_ROLES), async (req, res) => {
   try {
-    const { startDate, endDate } = getDateRange(req.query.period as string, req.query.startDate as string, req.query.endDate as string);
+    const rawDates = getDateRange(req.query.period as string, req.query.startDate as string, req.query.endDate as string);
+    const startDate = sanitizeDate(rawDates.startDate);
+    const endDate = sanitizeDate(rawDates.endDate);
 
     const totalActive = await safeCount(`SELECT count(*) FROM users WHERE is_active = true AND account_status = 'approved'`);
     const pendingLeaves = await safeCount(`SELECT count(*) FROM leave_requests WHERE status = 'pending'`);
@@ -419,7 +504,8 @@ const BRANCH_ACCESS_ROLES = ["admin", "ceo", "cgo", "coach", "trainer", "mudur",
 router.get("/api/branch-training-progress/:branchId", isAuthenticated, requireRole(BRANCH_ACCESS_ROLES), async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    const branchId = parseInt(req.params.branchId);
+    const branchId = safeBranchId(req.params.branchId);
+    if (branchId === -1) return res.status(400).json({ error: "Geçersiz şube ID" });
     if (isNaN(branchId)) return res.status(400).json({ message: "Invalid branchId" });
 
     const globalRoles = ["admin", "ceo", "cgo", "coach", "trainer"];
@@ -454,7 +540,8 @@ router.get("/api/branch-training-progress/:branchId", isAuthenticated, requireRo
 router.get("/api/branch-feedback-summary/:branchId", isAuthenticated, requireRole(BRANCH_ACCESS_ROLES), async (req, res) => {
   try {
     const user = req.user as AuthUser;
-    const branchId = parseInt(req.params.branchId);
+    const branchId = safeBranchId(req.params.branchId);
+    if (branchId === -1) return res.status(400).json({ error: "Geçersiz şube ID" });
     if (isNaN(branchId)) return res.status(400).json({ message: "Invalid branchId" });
 
     const globalRoles = ["admin", "ceo", "cgo", "coach", "trainer"];

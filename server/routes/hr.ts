@@ -98,6 +98,65 @@ const trainingFileUpload = multer({
 
 const router = Router();
 
+// ═══════════════════════════════════════════════════════════
+// HR ACCESS CONTROL MIDDLEWARE
+// WHITELIST approach: Only allowed roles can access HR data
+// Self-service routes are accessible to ALL authenticated users
+// ═══════════════════════════════════════════════════════════
+const HR_ALLOWED_ROLES = new Set([
+  // Executive
+  'admin', 'ceo', 'cgo',
+  // HR & Finance
+  'muhasebe_ik', 'muhasebe',
+  // Management
+  'coach', 'trainer', 'satinalma', 'marketing',
+  'kalite_kontrol', 'gida_muhendisi', 'teknik', 'destek',
+  // Branch management
+  'supervisor', 'supervisor_buddy', 'mudur',
+  // Factory management
+  'fabrika_mudur', 'uretim_sefi',
+]);
+
+// These paths are self-service — ANY authenticated user can access
+const SELF_ACCESS_PATHS = [
+  '/api/me/',
+  '/api/notification-preferences',
+  '/api/training/progress',
+  '/api/training/quiz-attempts',
+];
+
+// These paths are read-only for learning — ANY authenticated user
+const TRAINING_READ_PATHS = [
+  '/api/training/modules',
+];
+
+router.use((req: any, res, next) => {
+  if (!req.user) return next();
+  
+  const role = req.user.role;
+  const path = req.path;
+  const method = req.method;
+  
+  // Self-service routes — always allowed
+  if (SELF_ACCESS_PATHS.some(prefix => path.startsWith(prefix))) return next();
+  
+  // Training modules — read-only for everyone, write requires management role
+  if (TRAINING_READ_PATHS.some(prefix => path.startsWith(prefix))) {
+    if (method === 'GET') return next();
+    // POST/PUT/DELETE requires management role — fall through to check below
+  }
+  
+  // Management roles — full access
+  if (HR_ALLOWED_ROLES.has(role)) return next();
+  
+  // Everyone else — BLOCKED
+  console.warn(`[HR-ACL] Blocked: role="${role}" user=${req.user.id} → ${method} ${path}`);
+  return res.status(403).json({ 
+    error: 'Bu işlem için yetkiniz yok',
+    code: 'HR_ACCESS_DENIED' 
+  });
+});
+
 
   router.get('/api/performance', isAuthenticated, async (req, res) => {
     try {
