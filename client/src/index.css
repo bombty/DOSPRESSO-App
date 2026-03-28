@@ -1,4 +1,5 @@
 @import 'react-big-calendar/lib/css/react-big-calendar.css';
+@import './styles/dospresso-design-system.css';
 
 @tailwind base;
 @tailwind components;
