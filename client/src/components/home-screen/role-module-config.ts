@@ -5,6 +5,7 @@ import {
   BookOpen, CalendarDays,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { ROLE_CONTROL_PATH } from "@/lib/role-routes";
 
 export interface ModuleCardConfig {
   id: string;
@@ -312,11 +313,22 @@ export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   yatirimci_hq: [SUBELER, RAPORLAR, PROFIL],
 };
 
-/** Get module cards for a given role, sorted by order */
+/** Get module cards for a given role, sorted by order.
+ *  Control card path is overridden per role (CEO→/hq-ozet, Coach→/kocluk-paneli, etc.)
+ */
 export function getModulesForRole(role: string | undefined): ModuleCardConfig[] {
   if (!role) return [];
   const modules = ROLE_MODULES[role] || [];
-  return [...modules].sort((a, b) => a.order - b.order);
+  const controlPath = ROLE_CONTROL_PATH[role] || "/control";
+  
+  return [...modules]
+    .map((mod) => {
+      if (mod.id === "control" && controlPath !== "/control") {
+        return { ...mod, path: controlPath };
+      }
+      return mod;
+    })
+    .sort((a, b) => a.order - b.order);
 }
 
 /** Check if role should see Mr. Dobody card */
