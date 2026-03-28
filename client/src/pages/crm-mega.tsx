@@ -527,10 +527,10 @@ export default function CRMMegaModule() {
     if (isHQ) {
       return [
         { key: "dashboard", label: "Dashboard", badge: null },
-        { key: "tickets", label: channel === "franchise" ? "Sube Talepleri" : "Misafir GB", badge: openCount > 0 ? openCount : null },
+        { key: "tickets", label: channel === "franchise" ? "Şube Talepleri" : "Misafir GB", badge: openCount > 0 ? openCount : null },
         ...(channel === "franchise"
           ? [
-              { key: "hq-tasks", label: "HQ Gorevler", badge: Number(hqPending) > 0 ? Number(hqPending) : null },
+              { key: "hq-tasks", label: "HQ Görevler", badge: Number(hqPending) > 0 ? Number(hqPending) : null },
               { key: "broadcast", label: "Duyurular", badge: null },
             ]
           : []),
@@ -565,7 +565,7 @@ export default function CRMMegaModule() {
             CRM
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {channel === "franchise" ? "Franchise talep ve destek yonetimi" : channel === "misafir" ? "Misafir geri bildirim ve memnuniyet" : "Gorev takibi ve yonetimi"}
+            {channel === "franchise" ? "Franchise talep ve destek yönetimi" : channel === "misafir" ? "Misafir geri bildirim ve memnuniyet" : "Görev takibi ve yönetimi"}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

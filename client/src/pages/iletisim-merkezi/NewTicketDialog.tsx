@@ -460,7 +460,7 @@ export function NewTicketDialog({ open, onOpenChange, channel }: NewTicketDialog
             {mutation.isPending || isUploading ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {isUploading ? "Fotograflar yukleniyor..." : "Gonderiliyor..."}
+                {isUploading ? "Fotoğraflar yükleniyor..." : "Gönderiliyor..."}
               </span>
             ) : "Ticket Ac"}
           </Button>
