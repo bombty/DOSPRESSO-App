@@ -1,4 +1,4 @@
-import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset, User as UserIcon, PanelLeftClose, PanelLeft, ListPlus } from "lucide-react";
+import { LogOut, QrCode, Sun, Moon, CircleHelp, Headset, User as UserIcon, ListPlus } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { queryClient } from "@/lib/queryClient";
@@ -21,10 +21,9 @@ interface AppHeaderProps {
   user?: User | null;
   branchName?: string | null;
   onQRClick?: () => void;
-  onSidebarToggle?: () => void;
 }
 
-export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppHeaderProps) {
+export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
   const [, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
@@ -94,18 +93,6 @@ export function AppHeader({ user, branchName, onQRClick, onSidebarToggle }: AppH
           <div className={hideHamburgerOnMobile ? 'hidden' : 'md:hidden'}>
             <HamburgerMenu />
           </div>
-          {onSidebarToggle && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hidden md:inline-flex"
-              onClick={onSidebarToggle}
-              data-testid="button-sidebar-toggle"
-              title="Menuyy Ac/Kapat"
-            >
-              <PanelLeft className="w-4 h-4 text-sidebar-foreground" />
-            </Button>
-          )}
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
               <Button
