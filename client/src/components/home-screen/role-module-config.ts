@@ -307,6 +307,13 @@ export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   // ── Factory ──
   fabrika_mudur: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR],
   uretim_sefi: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR],
+  fabrika_sorumlu: [CONTROL, FABRIKA_MODUL, PROFIL],
+  fabrika_operator: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
+  fabrika_personel: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
+  fabrika: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL], // Legacy → fabrika_personel ile aynı
+
+  // ── Kiosk ──
+  sube_kiosk: [CONTROL, PROFIL], // Kiosk ekranına yönlendirilir ama fallback kartlar
 
   // ── Investor ──
   yatirimci_branch: [SUBEM, RAPORLAR, PROFIL],

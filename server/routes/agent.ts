@@ -762,7 +762,7 @@ async function getOperationalAlerts(userId: string, userRole: string, userBranch
         severity: faultCount >= 5 ? 'critical' : faultCount >= 2 ? 'high' : 'medium',
         title: `${faultCount} açık ekipman arızası var`,
         description: `${faultCount} ekipman arızası çözüm bekliyor. Hemen kontrol edin.`,
-        deepLink: '/ekipman-arizalar',
+        deepLink: '/ariza',
         targetRoles: ['admin', 'supervisor', 'mudur', 'coach', 'ceo', 'cgo'],
         targetBranchId: userBranchId,
         autoResolvable: false,

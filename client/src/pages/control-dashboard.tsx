@@ -7,6 +7,13 @@ import { WidgetGrid } from "@/components/layout/WidgetGrid";
 import { WidgetCard } from "@/components/layout/WidgetCard";
 import { MiniStatGrid, ProgressBar, AlertBox } from "@/components/layout/MiniStatGrid";
 import { Bot, Building2, CheckSquare, AlertTriangle, Bell, Wrench, BookOpen, Users, BarChart3, ClipboardList, TrendingUp } from "lucide-react";
+import { lazy, Suspense } from "react";
+
+const DashboardRouter = lazy(() => import("@/components/mission-control/DashboardRouter").then(m => ({ default: m.DashboardRouter })));
+
+// HQ rolleri → generic KPI dashboard görür
+// Diğer roller → DashboardRouter ile rol-spesifik MC bileşenine yönlenir
+const HQ_CONTROL_ROLES = ["admin", "ceo", "cgo"];
 
 interface ControlData {
   kpi: { branches: number; sla: number; tickets: number; staff: number; checklist: number; quality: number; faults: number };
@@ -53,11 +60,22 @@ function timeAgo(dateStr: string): string {
 
 export default function ControlDashboard() {
   const { user } = useAuth();
+  const isHQControl = !user?.role || HQ_CONTROL_ROLES.includes(user.role);
 
   const { data, isLoading } = useQuery<ControlData>({
     queryKey: ["/api/me/control-widgets"],
     staleTime: 60_000,
+    enabled: isHQControl, // Sadece HQ rolleri için veri çek
   });
+
+  // Non-HQ roles → rol-spesifik MC dashboard
+  if (!isHQControl) {
+    return (
+      <Suspense fallback={<ControlSkeleton />}>
+        <DashboardRouter />
+      </Suspense>
+    );
+  }
 
   if (isLoading || !data) return <ControlSkeleton />;
 

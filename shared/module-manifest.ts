@@ -85,6 +85,8 @@ export const M01_CORE: ModuleManifest = {
     supervisor:       { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     mudur:            { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_hq:    { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    sube_kiosk:      { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     barista:          { view: 'own', create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
   },
 };
@@ -146,7 +148,7 @@ export const M03_VARDIYA: ModuleManifest = {
     { id: 'my-shifts', name: 'Vardiyalarım', description: 'Çalışan vardiya görünümü', path: '/vardiyalarim', canDisable: false, defaultEnabled: true, flagBehavior: 'always_on' },
     { id: 'kiosk', name: 'Kiosk Sistemi', description: 'QR + PIN check-in/out', path: '/sube/kiosk', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'pdks', name: 'Puantaj (PDKS)', description: 'Puantaj kayıtları', path: '/pdks', canDisable: false, defaultEnabled: true, flagBehavior: 'ui_hidden_data_continues' },
-    { id: 'overtime', name: 'Fazla Mesai Talepleri', description: 'Talep ve onay', path: '/overtime-requests', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'overtime', name: 'Fazla Mesai Talepleri', description: 'Talep ve onay', path: '/mesai-talepleri', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'shift-swap', name: 'Vardiya Takas', description: 'Çift onay takas', path: '/vardiyalarim', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'shift-templates', name: 'Vardiya Şablonları', description: 'Tekrarlayan planlar', path: '/vardiya-planlama', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
   ],
@@ -250,7 +252,7 @@ export const M06_EKIPMAN: ModuleManifest = {
   provides: ['fault_data', 'equipment_data'],
   subModules: [
     { id: 'equipment-list', name: 'Ekipman Envanteru', description: 'Ekipman listesi', path: '/ekipman', canDisable: false, defaultEnabled: true, flagBehavior: 'always_on' },
-    { id: 'fault-reporting', name: 'Arıza Bildirimi', description: 'Fotoğraflı bildirim', path: '/ekipman-arizalar', canDisable: false, defaultEnabled: true, flagBehavior: 'always_on' },
+    { id: 'fault-reporting', name: 'Arıza Bildirimi', description: 'Fotoğraflı bildirim', path: '/ariza', canDisable: false, defaultEnabled: true, flagBehavior: 'always_on' },
     { id: 'sla', name: 'SLA Yönetimi', description: 'Servis sözleşmeleri', path: '/ekipman', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'maintenance', name: 'Bakım Takvimi', description: 'Periyodik bakım', path: '/ekipman', canDisable: true, defaultEnabled: false, flagBehavior: 'fully_hidden' },
   ],
@@ -364,6 +366,9 @@ export const M09_FABRIKA: ModuleManifest = {
     gida_muhendisi:   { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
     uretim_sefi:      { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
     fabrika_operator: { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    fabrika_sorumlu:  { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    fabrika_personel: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    fabrika:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' }, // Legacy
   },
 };
 
@@ -416,7 +421,7 @@ export const M11_RAPORLAR: ModuleManifest = {
     { id: 'branch-reports', name: 'Şube Raporları', description: 'Şube bazlı', path: '/raporlar', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'performance', name: 'Performans Raporları', description: 'Personel performans', path: '/raporlar', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'financial', name: 'Mali Raporlar', description: 'Maliyet analizi', path: '/raporlar', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
-    { id: 'advanced', name: 'Gelişmiş Raporlar', description: 'AI destekli', path: '/advanced-reports', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'advanced', name: 'Gelişmiş Raporlar', description: 'AI destekli', path: '/gelismis-raporlar', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
   ],
   roles: {
     admin:            { view: true, create: true, edit: false, delete: false, approve: false, scope: 'all_branches' },
@@ -447,7 +452,7 @@ export const M12_DOBODY: ModuleManifest = {
   subModules: [
     { id: 'guidance', name: 'Akıllı Uyarılar', description: 'Pattern-based bildirimler', path: '/', canDisable: false, defaultEnabled: true, flagBehavior: 'always_on' },
     { id: 'flow-mode', name: 'Günlük Akış', description: 'Flow Mode', path: '/agent-merkezi', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
-    { id: 'chat', name: 'AI Chat', description: 'Soru-cevap', path: '/ai-asistan', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'chat', name: 'AI Chat', description: 'Soru-cevap', path: '/akademi-ai-assistant', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'avatar', name: 'Avatar Sistemi', description: 'Kişiselleştirilmiş avatar', path: '/', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
   ],
   roles: {
