@@ -27,6 +27,7 @@ import { ModuleGuard } from "@/components/module-guard";
 import { CollapsibleSidebar } from "@/components/collapsible-sidebar";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { GuidanceWidget } from "@/components/widgets/guidance-widget";
+import { RouteModuleSidebar } from "@/components/layout/RouteModuleSidebar";
 import { BranchOnboardingWizard } from "@/components/branch-onboarding-wizard";
 import { RoleOnboardingWizard } from "@/components/role-onboarding-wizard";
 import logoPath from "@assets/IMG_6637_1765138781125.png";
@@ -576,10 +577,13 @@ function AppContent() {
       {/* QR Scanner Modal */}
       <QRScannerModal open={qrModalOpen} onOpenChange={setQrModalOpen} />
       
-      {/* Main content — full width, no sidebar */}
+      {/* Main layout: optional module sidebar + content */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Module-specific sidebar — auto-detected from URL path */}
+        {!isFullWidthPage && <RouteModuleSidebar />}
+        
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Breadcrumb Navigation - only on sub-pages (not home or control) */}
+          {/* Breadcrumb Navigation - only on sub-pages */}
           {!isFullWidthPage && (
             <div className="px-2 pt-1">
               <BreadcrumbNavigation />
