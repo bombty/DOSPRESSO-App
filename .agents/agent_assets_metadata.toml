@@ -300,3 +300,9 @@ id = "LkBY6bAZd5KJeEeU72I3F"
 uri = "file://docs/DOSPRESSO-IT-AUDIT-REPORT.md"
 type = "text"
 title = "DOSPRESSO IT Audit Raporu"
+
+[[outputs]]
+id = "4YcPnJug2WPjGnF6LeQq3"
+uri = "file://.local/audit-report-detailed.md"
+type = "text"
+title = "DOSPRESSO Kapsamlı Teknik Audit Raporu"
