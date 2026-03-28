@@ -89,13 +89,13 @@ export default function ControlDashboard() {
             { value: data.branchHealth.healthy, label: "Sağlıklı", color: "var(--ds-green)" },
             { value: data.branchHealth.critical, label: "Kritik", color: "var(--ds-red-light)" },
           ]} />
-          {data.branchHealth.alerts.map((alert, i) => (
+          {(data.branchHealth?.alerts || []).map((alert, i) => (
             <AlertBox key={i} message={alert} />
           ))}
         </WidgetCard>
 
         <WidgetCard title="Görevler" icon={CheckSquare} badge={{ label: String(data.tasks.pending), color: data.tasks.overdue > 0 ? "danger" : "warning" }}>
-          {data.tasks.items.slice(0, 3).map((task) => {
+          {((data.tasks?.items || []) as any[]).slice(0, 3).map((task) => {
             const badge = getTaskStatusBadge(task.status);
             return (
               <div key={task.id} style={{
@@ -118,7 +118,7 @@ export default function ControlDashboard() {
         </WidgetCard>
 
         <WidgetCard title="Bildirimler" icon={Bell} badge={{ label: String(data.notifications.count), color: data.notifications.count > 5 ? "danger" : "info" }}>
-          {data.notifications.items.slice(0, 4).map((notif) => (
+          {((data.notifications?.items || []) as any[]).slice(0, 4).map((notif) => (
             <div key={notif.id} style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "4px 0", borderBottom: "1px solid var(--ds-border-subtle)",
@@ -151,7 +151,7 @@ export default function ControlDashboard() {
         </WidgetCard>
 
         <WidgetCard title="Eğitim" icon={BookOpen} badge={{ label: `%${data.training.completion}`, color: data.training.completion > 70 ? "success" : "warning" }}>
-          {Object.entries(data.training.categories).map(([key, val]) => (
+          {Object.entries(data.training?.categories || {}).map(([key, val]) => (
             <ProgressBar key={key} label={key.charAt(0).toUpperCase() + key.slice(1)} value={val as number} color={(val as number) > 70 ? "var(--ds-green)" : "var(--ds-amber)"} />
           ))}
         </WidgetCard>
