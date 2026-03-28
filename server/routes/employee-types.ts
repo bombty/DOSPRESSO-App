@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
@@ -52,7 +53,7 @@ router.get("/api/admin/employee-types", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/api/admin/employee-types", isAuthenticated, async (req, res) => {
+router.post("/api/admin/employee-types", isAuthenticated, requireManifestAccess("ik", "create"), async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -67,7 +68,7 @@ router.post("/api/admin/employee-types", isAuthenticated, async (req, res) => {
   }
 });
 
-router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req, res) => {
+router.patch("/api/admin/employee-types/:id", isAuthenticated, requireManifestAccess("ik", "edit"), async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 
@@ -87,7 +88,7 @@ router.patch("/api/admin/employee-types/:id", isAuthenticated, async (req, res) 
   }
 });
 
-router.delete("/api/admin/employee-types/:id", isAuthenticated, async (req, res) => {
+router.delete("/api/admin/employee-types/:id", isAuthenticated, requireManifestAccess("ik", "delete"), async (req, res) => {
   try {
     if (!isAdmin(req, res)) return;
 

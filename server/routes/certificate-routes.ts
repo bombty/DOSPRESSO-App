@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -43,7 +44,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/certificate-designs', isAuthenticated, async (req, res) => {
+  router.post('/api/certificate-designs', isAuthenticated, requireManifestAccess('akademi', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as any)) {
@@ -82,7 +83,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/certificate-designs/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/certificate-designs/:id', isAuthenticated, requireManifestAccess('akademi', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as any)) {
@@ -189,7 +190,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/certificates', isAuthenticated, async (req, res) => {
+  router.post('/api/certificates', isAuthenticated, requireManifestAccess('akademi', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as any)) {
@@ -203,7 +204,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/certificates/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/certificates/:id', isAuthenticated, requireManifestAccess('akademi', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as any)) {

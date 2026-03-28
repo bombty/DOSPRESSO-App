@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import {
   isHQRole,
   isBranchRole,
@@ -97,7 +98,7 @@ router.get('/api/academy/gates/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-router.post('/api/academy/gates', isAuthenticated, requireAcademyCoach, async (req, res) => {
+router.post('/api/academy/gates', isAuthenticated, requireManifestAccess('akademi', 'create'), requireAcademyCoach, async (req, res) => {
   try {
     const parsed = insertCareerGateSchema.parse(req.body);
     const [gate] = await db.insert(careerGates).values(parsed).returning();
@@ -435,7 +436,7 @@ router.patch('/api/academy/gate-attempts/:attemptId', isAuthenticated, async (re
   }
 });
 
-router.post('/api/academy/gates/:id/approve', isAuthenticated, requireAcademyCoach, async (req, res) => {
+router.post('/api/academy/gates/:id/approve', isAuthenticated, requireManifestAccess('akademi', 'approve'), requireAcademyCoach, async (req, res) => {
   try {
     const user = req.user!;
     const gateId = parseInt(req.params.id);
@@ -558,7 +559,7 @@ router.get('/api/academy/packs/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-router.post('/api/academy/packs', isAuthenticated, async (req, res) => {
+router.post('/api/academy/packs', isAuthenticated, requireManifestAccess('akademi', 'create'), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any) && user.role !== 'admin' && user.role !== 'trainer') {

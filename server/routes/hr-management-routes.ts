@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -245,7 +246,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/employee-documents', isAuthenticated, async (req, res) => {
+  router.post('/api/employee-documents', isAuthenticated, requireManifestAccess('ik', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Personel belgesi ekleme yetkiniz yok');
@@ -308,7 +309,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/employee-documents/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/employee-documents/:id', isAuthenticated, requireManifestAccess('ik', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       const docId = parseInt(req.params.id);
@@ -414,7 +415,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/disciplinary-reports', isAuthenticated, async (req, res) => {
+  router.post('/api/disciplinary-reports', isAuthenticated, requireManifestAccess('ik', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'hr', 'create', 'Disiplin kaydı oluşturma yetkiniz yok');

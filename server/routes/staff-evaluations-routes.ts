@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -255,7 +256,7 @@ const router = Router();
   });
 
   // POST /api/staff-evaluations
-  router.post('/api/staff-evaluations', isAuthenticated, async (req, res) => {
+  router.post('/api/staff-evaluations', isAuthenticated, requireManifestAccess('ik', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const allowedRoles = ['coach', 'admin', 'supervisor', 'yatirimci_hq'];

@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { sql, eq, and, desc, asc, inArray } from "drizzle-orm";

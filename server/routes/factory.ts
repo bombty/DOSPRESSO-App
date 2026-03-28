@@ -159,7 +159,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.post('/api/factory/products', isAuthenticated, async (req, res) => {
+  router.post('/api/factory/products', isAuthenticated, requireManifestAccess('fabrika', 'create'), async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -173,7 +173,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.patch('/api/factory/products/:id', isAuthenticated, async (req, res) => {
+  router.patch('/api/factory/products/:id', isAuthenticated, requireManifestAccess('fabrika', 'edit'), async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -189,7 +189,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.delete('/api/factory/products/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/factory/products/:id', isAuthenticated, requireManifestAccess('fabrika', 'delete'), async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -232,7 +232,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.post('/api/factory/batches', isAuthenticated, async (req, res) => {
+  router.post('/api/factory/batches', isAuthenticated, requireManifestAccess('fabrika', 'create'), async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -249,7 +249,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.patch('/api/factory/batches/:id', isAuthenticated, async (req, res) => {
+  router.patch('/api/factory/batches/:id', isAuthenticated, requireManifestAccess('fabrika', 'edit'), async (req, res) => {
     try {
       const userRole = req.user?.role;
       if (!['admin', 'fabrika', 'coach'].includes(userRole)) {
@@ -293,7 +293,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.post('/api/factory/orders', isAuthenticated, async (req, res) => {
+  router.post('/api/factory/orders', isAuthenticated, requireManifestAccess('fabrika', 'create'), async (req, res) => {
     try {
       const { items, ...orderData } = req.body;
       const orderNumber = `ORD-${Date.now()}`;
@@ -319,7 +319,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
-  router.patch('/api/factory/orders/:id', isAuthenticated, async (req, res) => {
+  router.patch('/api/factory/orders/:id', isAuthenticated, requireManifestAccess('fabrika', 'edit'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
@@ -397,7 +397,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // Yeni istasyon oluştur
-  router.post('/api/factory/stations', isAuthenticated, async (req, res) => {
+  router.post('/api/factory/stations', isAuthenticated, requireManifestAccess('fabrika', 'create'), async (req, res) => {
     try {
       const { name, code, description, category, targetHourlyOutput, maxCapacity, isActive, sortOrder } = req.body;
       
@@ -456,7 +456,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   });
 
   // İstasyon sil
-  router.delete('/api/factory/stations/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/factory/stations/:id', isAuthenticated, requireManifestAccess('fabrika', 'delete'), async (req, res) => {
     try {
       const stationId = parseInt(req.params.id);
       if (isNaN(stationId)) return res.status(400).json({ message: "Geçersiz ID" });
