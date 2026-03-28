@@ -571,20 +571,15 @@ function AppContent() {
         user={user}
         branchName={branchName}
         onQRClick={() => setQrModalOpen(true)}
-        onSidebarToggle={sidebarState.toggle}
       />
       
       {/* QR Scanner Modal */}
       <QRScannerModal open={qrModalOpen} onOpenChange={setQrModalOpen} />
       
-      {/* Below header: sidebar + content side by side on md+ */}
+      {/* Main content — full width, no sidebar */}
       <div className="flex flex-1 overflow-hidden">
-        {!isFullWidthPage && (
-          <CollapsibleSidebar isExpanded={sidebarState.isExpanded} />
-        )}
-        
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Breadcrumb Navigation - hidden on home screen */}
+          {/* Breadcrumb Navigation - only on sub-pages (not home or control) */}
           {!isFullWidthPage && (
             <div className="px-2 pt-1">
               <BreadcrumbNavigation />
@@ -599,12 +594,12 @@ function AppContent() {
             </div>
           </main>
           
-          {/* Flow Mode Mini-Bar - hidden on home screen */}
+          {/* Flow Mode Mini-Bar - only on sub-pages */}
           {!isFullWidthPage && <DobodyMiniBar />}
         </div>
       </div>
       
-      {/* Bottom Navigation - hidden on md+ where sidebar takes over */}
+      {/* Bottom Navigation */}
       <BottomNav />
       
       {/* Global Search (Ctrl+K) */}
