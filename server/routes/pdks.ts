@@ -471,101 +471,111 @@ router.get('/api/pdks/dashboard-summary', isAuthenticated, async (req: any, res:
       }
     }
 
-    let branchFilter: string;
+    // Parameterized branch filter (sql injection koruması)
+    const branchIds: number[] = [];
+    let branchMode: 'hq' | 'all' | 'single' = 'all';
     if (effectiveScope === 'hq') {
-      branchFilter = 'AND b.id IN (5, 23, 24)';
+      branchIds.push(5, 23, 24);
+      branchMode = 'hq';
     } else if (effectiveScope === 'all') {
-      branchFilter = 'AND b.id NOT IN (23, 24)';
+      branchMode = 'all'; // excludes 23, 24
     } else {
-      branchFilter = `AND b.id = ${parseInt(String(effectiveBranchId!)) || 0}`;
+      branchIds.push(parseInt(String(effectiveBranchId!)) || 0);
+      branchMode = 'single';
     }
+
+    const branchCondition = branchMode === 'hq'
+      ? sql`AND b.id IN (5, 23, 24)`
+      : branchMode === 'single'
+        ? sql`AND b.id = ${branchIds[0]}`
+        : sql`AND b.id NOT IN (23, 24)`;
 
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const monthStart = today.substring(0, 7) + '-01';
 
-    const staffRes = await db.execute(sql.raw(`
+    const staffRes = await db.execute(sql`
       SELECT count(DISTINCT u.id) as total_staff
       FROM users u JOIN branches b ON b.id = u.branch_id
-      WHERE u.is_active = true AND b.is_active = true ${branchFilter}
-    `));
+      WHERE u.is_active = true AND b.is_active = true ${branchCondition}
+    `);
     const totalStaff = Number((staffRes.rows as any[])?.[0]?.total_staff || 0);
 
-    const presentRes = await db.execute(sql.raw(`
+    const presentRes = await db.execute(sql`
       SELECT count(DISTINCT pr.user_id) as present
       FROM pdks_records pr JOIN branches b ON b.id = pr.branch_id
-      WHERE pr.record_date = '${today}' AND pr.record_type = 'giris'
-      AND b.is_active = true ${branchFilter}
-    `));
+      WHERE pr.record_date = ${today} AND pr.record_type = 'giris'
+      AND b.is_active = true ${branchCondition}
+    `);
     const todayPresent = Number((presentRes.rows as any[])?.[0]?.present || 0);
 
-    const monthRes = await db.execute(sql.raw(`
+    const monthRes = await db.execute(sql`
       SELECT pr.record_type, count(*) as cnt
       FROM pdks_records pr JOIN branches b ON b.id = pr.branch_id
-      WHERE pr.record_date >= '${monthStart}' AND b.is_active = true ${branchFilter}
+      WHERE pr.record_date >= ${monthStart} AND b.is_active = true ${branchCondition}
       GROUP BY pr.record_type
-    `));
+    `);
     const monthRows = monthRes.rows as any[];
     const monthEntries = monthRows.find((r: any) => r.record_type === 'giris');
     const monthExits = monthRows.find((r: any) => r.record_type === 'cikis');
 
-    const lateRes = await db.execute(sql.raw(`
+    const lateRes = await db.execute(sql`
       SELECT count(*) as cnt, coalesce(sum(sa.lateness_minutes), 0) as total_min
       FROM shift_attendance sa
       JOIN shifts s ON s.id = sa.shift_id
       JOIN branches b ON b.id = s.branch_id
       WHERE sa.lateness_minutes > 0
-      AND s.shift_date >= '${monthStart}'
-      AND b.is_active = true ${branchFilter}
-    `));
+      AND s.shift_date >= ${monthStart}
+      AND b.is_active = true ${branchCondition}
+    `);
     const lateCount = Number((lateRes.rows as any[])?.[0]?.cnt || 0);
     const totalLateMinutes = Number((lateRes.rows as any[])?.[0]?.total_min || 0);
 
-    const offRes = await db.execute(sql.raw(`
+    const offRes = await db.execute(sql`
       SELECT count(*) as cnt
       FROM scheduled_offs so
       JOIN users u ON u.id = so.user_id
       JOIN branches b ON b.id = u.branch_id
-      WHERE so.off_date >= '${monthStart}' AND so.off_date <= '${today}'
-      AND b.is_active = true ${branchFilter}
-    `));
+      WHERE so.off_date >= ${monthStart} AND so.off_date <= ${today}
+      AND b.is_active = true ${branchCondition}
+    `);
     const scheduledOffCount = Number((offRes.rows as any[])?.[0]?.cnt || 0);
 
-    const weeklyRes = await db.execute(sql.raw(`
+    const weeklyRes = await db.execute(sql`
       SELECT bwa.branch_id,
         coalesce(sum(bwa.planned_total_minutes), 0) as planned,
         coalesce(sum(bwa.actual_total_minutes), 0) as actual,
         coalesce(avg(bwa.weekly_compliance_score), 0) as avg_score
       FROM branch_weekly_attendance_summary bwa
       JOIN branches b ON b.id = bwa.branch_id
-      WHERE b.is_active = true ${branchFilter}
+      WHERE b.is_active = true ${branchCondition}
       GROUP BY bwa.branch_id
       ORDER BY bwa.branch_id
-    `));
+    `);
     const weeklyRows = weeklyRes.rows as any[];
 
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthNum = lastMonth.getMonth() + 1;
     const lastMonthYear = lastMonth.getFullYear();
-    const payrollRes = await db.execute(sql.raw(`
+    const payrollRes = await db.execute(sql`
       SELECT count(*) as cnt
       FROM monthly_payroll mp
       JOIN branches b ON b.id = mp.branch_id
       WHERE mp.month = ${lastMonthNum} AND mp.year = ${lastMonthYear}
-      AND b.is_active = true ${branchFilter}
-    `));
+      AND b.is_active = true ${branchCondition}
+    `);
     const payrollCount = Number((payrollRes.rows as any[])?.[0]?.cnt || 0);
 
     let branchBreakdown: any[] = [];
     if (effectiveScope === 'all' || effectiveScope === 'hq') {
-      const branchRes = await db.execute(sql.raw(`
+      const branchRes = await db.execute(sql`
         SELECT b.id as branch_id, b.name,
           (SELECT count(DISTINCT u.id) FROM users u WHERE u.branch_id = b.id AND u.is_active = true) as staff,
-          (SELECT count(DISTINCT pr.user_id) FROM pdks_records pr WHERE pr.branch_id = b.id AND pr.record_date = '${today}' AND pr.record_type = 'giris') as present,
-          (SELECT count(*) FROM shift_attendance sa JOIN shifts s ON s.id = sa.shift_id WHERE s.branch_id = b.id AND s.shift_date >= '${monthStart}' AND sa.lateness_minutes > 0) as late_count
-        FROM branches b WHERE b.is_active = true ${branchFilter}
+          (SELECT count(DISTINCT pr.user_id) FROM pdks_records pr WHERE pr.branch_id = b.id AND pr.record_date = ${today} AND pr.record_type = 'giris') as present,
+          (SELECT count(*) FROM shift_attendance sa JOIN shifts s ON s.id = sa.shift_id WHERE s.branch_id = b.id AND s.shift_date >= ${monthStart} AND sa.lateness_minutes > 0) as late_count
+        FROM branches b WHERE b.is_active = true ${branchCondition}
         ORDER BY b.name
-      `));
+      `);
       branchBreakdown = (branchRes.rows as any[]).map((r: any) => ({
         branchId: r.branch_id,
         name: r.name,
