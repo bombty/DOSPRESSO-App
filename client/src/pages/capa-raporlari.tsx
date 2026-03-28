@@ -222,7 +222,7 @@ export default function CapaRaporlari() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Sube Bazli Performans
+            Şube Bazlı Performans
           </CardTitle>
         </CardHeader>
         <CardContent>

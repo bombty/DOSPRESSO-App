@@ -437,7 +437,7 @@ export default function MerkezDashboard() {
               <CardHeader className="pb-1 pt-3 px-3">
                 <CardTitle className="flex items-center gap-2 text-xs">
                   <TrendingUp className="h-3.5 w-3.5" />
-                  Sube Durum Ozeti
+                  Şube Durum Özeti
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-3 pb-3">
@@ -456,7 +456,7 @@ export default function MerkezDashboard() {
                             variant={branch.openTasks > 5 ? "destructive" : "secondary"}
                             className="text-[10px]"
                           >
-                            {branch.openTasks} gorev
+                            {branch.openTasks} görev
                           </Badge>
                         ) : (
                           <Badge variant="default" className="text-[10px] bg-green-600">

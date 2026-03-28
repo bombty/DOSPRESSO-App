@@ -919,7 +919,7 @@ export default function PersonelDuzenle() {
             <TabsContent value="termination" className="space-y-4 mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Ayrilik Bilgileri</CardTitle>
+                  <CardTitle>Ayrılık Bilgileri</CardTitle>
                   <CardDescription>Isten ayrilma durumunda doldurulur</CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -928,11 +928,11 @@ export default function PersonelDuzenle() {
                     name="leaveType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ayrilik Turu</FormLabel>
+                        <FormLabel>Ayrılık Türü</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-leaveType">
-                              <SelectValue placeholder="Ayrilik turu secin" />
+                              <SelectValue placeholder="Ayrılık türü seçin" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -1002,7 +1002,7 @@ export default function PersonelDuzenle() {
                     name="leaveStartDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ayrilik Tarihi</FormLabel>
+                        <FormLabel>Ayrılık Tarihi</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} data-testid="input-leaveStartDate" />
                         </FormControl>
@@ -1015,9 +1015,9 @@ export default function PersonelDuzenle() {
                     name="leaveReason"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
-                        <FormLabel>Ayrilik Nedeni (Acik Metin)</FormLabel>
+                        <FormLabel>Ayrılık Nedeni (Açık Metin)</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="Ayrilik ile ilgili detaylari yazin..." data-testid="input-leaveReason" />
+                          <Textarea {...field} placeholder="Ayrılık ile ilgili detayları yazın..." data-testid="input-leaveReason" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

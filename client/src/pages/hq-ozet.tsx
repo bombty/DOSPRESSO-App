@@ -227,9 +227,9 @@ export default function HQOzet() {
       <div className="space-y-3 mb-2" data-testid="hq-ci-section">
         <DashboardAlertPills pills={[
           ...(data.slaBreaches > 0 ? [{ label: `${data.slaBreaches} SLA Ihlali`, variant: 'red' as const, dot: true }] : []),
-          ...(data.openTickets > 0 ? [{ label: `${data.openTickets} Acik Ticket`, variant: 'orange' as const, dot: true }] : []),
-          ...(data.branchStatus.critical > 0 ? [{ label: `${data.branchStatus.critical} Kritik Sube`, variant: 'red' as const, dot: true }] : []),
-          { label: `${data.branchStatus.total} Aktif Sube`, variant: 'green' as const, dot: true },
+          ...(data.openTickets > 0 ? [{ label: `${data.openTickets} Açık Ticket`, variant: 'orange' as const, dot: true }] : []),
+          ...(data.branchStatus.critical > 0 ? [{ label: `${data.branchStatus.critical} Kritik Şube`, variant: 'red' as const, dot: true }] : []),
+          { label: `${data.branchStatus.total} Aktif Şube`, variant: 'green' as const, dot: true },
           ...activeDelegations.map((del: any) => ({ label: `${del.moduleName} devredildi`, variant: 'blue' as const, dot: true })),
           ...(data.slaBreaches === 0 && data.openTickets === 0 && data.branchStatus.critical === 0 ? [{ label: 'Sistem normal', variant: 'green' as const, dot: true }] : []),
         ]} />

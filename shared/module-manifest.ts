@@ -32,6 +32,7 @@ export interface ModuleRoleAccess {
 
 export interface ModuleManifest {
   id: string;
+  flagKey: string;             // Mevcut module_flags tablosundaki key (geriye uyumlu)
   name: string;
   nameTr: string;
   icon: string;
@@ -56,6 +57,7 @@ export interface ModuleManifest {
 // ═══════════════════════════════════════════════════
 export const M01_CORE: ModuleManifest = {
   id: 'm01-core',
+  flagKey: 'admin',
   name: 'Core System',
   nameTr: 'Çekirdek Sistem',
   icon: 'Shield',
@@ -96,6 +98,7 @@ export const M01_CORE: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M02_IK: ModuleManifest = {
   id: 'm02-ik',
+  flagKey: 'ik',
   name: 'HR & Personnel',
   nameTr: 'İK & Personel',
   icon: 'Users',
@@ -133,6 +136,7 @@ export const M02_IK: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M03_VARDIYA: ModuleManifest = {
   id: 'm03-vardiya',
+  flagKey: 'vardiya',
   name: 'Shift & Attendance',
   nameTr: 'Vardiya & Puantaj',
   icon: 'Clock',
@@ -172,6 +176,7 @@ export const M03_VARDIYA: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M04_BORDRO: ModuleManifest = {
   id: 'm04-bordro',
+  flagKey: 'bordro',
   name: 'Payroll & Finance',
   nameTr: 'Bordro & Finans',
   icon: 'Banknote',
@@ -206,6 +211,7 @@ export const M04_BORDRO: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M05_OPERASYON: ModuleManifest = {
   id: 'm05-operasyon',
+  flagKey: 'gorevler',
   name: 'Operations',
   nameTr: 'Operasyon',
   icon: 'ClipboardCheck',
@@ -240,6 +246,7 @@ export const M05_OPERASYON: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M06_EKIPMAN: ModuleManifest = {
   id: 'm06-ekipman',
+  flagKey: 'ekipman',
   name: 'Equipment & Faults',
   nameTr: 'Ekipman & Arıza',
   icon: 'Wrench',
@@ -271,6 +278,7 @@ export const M06_EKIPMAN: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M07_AKADEMI: ModuleManifest = {
   id: 'm07-akademi',
+  flagKey: 'akademi',
   name: 'Academy & Training',
   nameTr: 'Akademi & Eğitim',
   icon: 'GraduationCap',
@@ -306,6 +314,7 @@ export const M07_AKADEMI: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M08_CRM: ModuleManifest = {
   id: 'm08-crm',
+  flagKey: 'crm',
   name: 'CRM & Customer Relations',
   nameTr: 'CRM & Müşteri',
   icon: 'Heart',
@@ -339,6 +348,7 @@ export const M08_CRM: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M09_FABRIKA: ModuleManifest = {
   id: 'm09-fabrika',
+  flagKey: 'fabrika',
   name: 'Factory',
   nameTr: 'Fabrika',
   icon: 'Factory',
@@ -377,6 +387,7 @@ export const M09_FABRIKA: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M10_STOK: ModuleManifest = {
   id: 'm10-stok',
+  flagKey: 'stok',
   name: 'Inventory & Procurement',
   nameTr: 'Stok & Satın Alma',
   icon: 'Package',
@@ -407,6 +418,7 @@ export const M10_STOK: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M11_RAPORLAR: ModuleManifest = {
   id: 'm11-raporlar',
+  flagKey: 'raporlar',
   name: 'Reports & Analytics',
   nameTr: 'Raporlar & Analitik',
   icon: 'BarChart3',
@@ -439,6 +451,7 @@ export const M11_RAPORLAR: ModuleManifest = {
 // ═══════════════════════════════════════════════════
 export const M12_DOBODY: ModuleManifest = {
   id: 'm12-dobody',
+  flagKey: 'dobody',
   name: 'Mr. Dobody AI Assistant',
   nameTr: 'Mr. Dobody',
   icon: 'Bot',
@@ -489,16 +502,39 @@ export function getModulesForRole(role: string): ModuleManifest[] {
   });
 }
 
-/** Modül manifest'ten module_flags seed verisi üretir */
+/** Modül manifest'ten module_flags seed verisi üretir (flagKey kullanır — DB uyumlu) */
 export function generateModuleFlagSeeds(): Array<{ key: string; level: string; behavior: string; parent: string | null }> {
   const seeds: Array<{ key: string; level: string; behavior: string; parent: string | null }> = [];
   for (const m of ALL_MODULES) {
-    seeds.push({ key: m.id, level: 'module', behavior: m.flagBehavior, parent: null });
+    seeds.push({ key: m.flagKey, level: 'module', behavior: m.flagBehavior, parent: null });
     for (const sub of m.subModules) {
-      seeds.push({ key: `${m.id}.${sub.id}`, level: 'submodule', behavior: sub.flagBehavior, parent: m.id });
+      seeds.push({ key: `${m.flagKey}.${sub.id}`, level: 'submodule', behavior: sub.flagBehavior, parent: m.flagKey });
     }
   }
   return seeds;
+}
+
+/** flagKey → manifest mapping (hızlı lookup) */
+export function getModuleByFlagKey(flagKey: string): ModuleManifest | undefined {
+  return ALL_MODULES.find(m => m.flagKey === flagKey);
+}
+
+/** Rol için modül erişim yetkisini kontrol et */
+export function hasModuleAccess(role: string, flagKey: string, action: 'view' | 'create' | 'edit' | 'delete' | 'approve'): boolean {
+  const module = getModuleByFlagKey(flagKey);
+  if (!module) return false;
+  const access = module.roles[role];
+  if (!access) return false;
+  if (action === 'view') return access.view === true || access.view === 'own';
+  return access[action] === true;
+}
+
+/** Rol için modül scope'unu döner */
+export function getModuleScope(role: string, flagKey: string): string | null {
+  const module = getModuleByFlagKey(flagKey);
+  if (!module) return null;
+  const access = module.roles[role];
+  return access?.scope ?? null;
 }
 
 /** Modül bağımlılık grafiğini kontrol et — circular dependency var mı? */

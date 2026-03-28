@@ -164,7 +164,7 @@ function FormPreviewDialog({ formSettings, customQuestions }: {
                   <PreviewRatingRow label="Temizlik" color={formSettings.primaryColor} value={5} />
                 )}
                 {formSettings.showProductRating && (
-                  <PreviewRatingRow label="Urun Kalitesi" color={formSettings.primaryColor} value={4} />
+                  <PreviewRatingRow label="Ürün Kalitesi" color={formSettings.primaryColor} value={4} />
                 )}
                 {formSettings.showStaffRating && (
                   <PreviewRatingRow label="Personel" color={formSettings.primaryColor} value={3} />
@@ -425,7 +425,7 @@ export default function GuestFormSettings() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  Geri Bildirim Formu Ayarlari
+                  Geri Bildirim Formu Ayarları
                 </CardTitle>
                 <CardDescription>
                   Tum subeler icin gecerli genel form ayarlari
@@ -569,13 +569,13 @@ export default function GuestFormSettings() {
             <div className="space-y-4">
               <h4 className="font-medium flex items-center gap-2">
                 <Eye className="h-4 w-4" />
-                Soru Gorunurluk Ayarlari
+                Soru Görünürlük Ayarları
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
                   { key: "showServiceRating", label: "Hizmet Puani", icon: <Sparkles className="h-4 w-4 text-muted-foreground" /> },
                   { key: "showCleanlinessRating", label: "Temizlik Puani", icon: <Brush className="h-4 w-4 text-muted-foreground" /> },
-                  { key: "showProductRating", label: "Urun Kalitesi Puani", icon: <Package className="h-4 w-4 text-muted-foreground" /> },
+                  { key: "showProductRating", label: "Ürün Kalitesi Puani", icon: <Package className="h-4 w-4 text-muted-foreground" /> },
                   { key: "showStaffRating", label: "Personel Puani", icon: <User className="h-4 w-4 text-muted-foreground" /> },
                   { key: "showStaffSelection", label: "Personel Secimi", icon: <Users className="h-4 w-4 text-muted-foreground" /> },
                   { key: "showPhotoUpload", label: "Fotograf Yukleme", icon: <Image className="h-4 w-4 text-muted-foreground" /> },
@@ -691,7 +691,7 @@ export default function GuestFormSettings() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Plus className="h-4 w-4" />
-              Ozel Sorular (Subeye Ozel)
+              Özel Sorular (Şubeye Özel)
             </CardTitle>
             <CardDescription>
               Her sube icin farkli ek sorular ekleyebilirsiniz. Eklenen sorular AI tarafindan otomatik cevirilir.

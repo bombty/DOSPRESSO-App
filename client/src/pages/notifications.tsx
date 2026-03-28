@@ -1152,7 +1152,7 @@ export default function Notifications() {
                 data-testid="button-assign-task"
               >
                 <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-                Gorev Ata
+                Görev Ata
               </Button>
             )}
             {isAdmin && (

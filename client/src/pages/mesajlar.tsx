@@ -788,7 +788,7 @@ function NewMessageForm({
                 onClick={() => { setRecipientCategory("branch"); setSelectedBranchId(""); setRecipientId(""); }}
                 data-testid="button-category-branch"
               >
-                Sube Personeli
+                Şube Personeli
               </Button>
             </div>
           </div>

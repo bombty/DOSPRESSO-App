@@ -565,7 +565,7 @@ export default function GidaGuvenligiDashboard() {
               <CardHeader className="pb-2 pt-4 px-4">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  Sube Hijyen Skorlari
+                  Şube Hijyen Skorları
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
@@ -911,7 +911,7 @@ export default function GidaGuvenligiDashboard() {
                   <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between gap-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
-                      Planli Egitimler
+                      Planlı Eğitimler
                     </CardTitle>
                     <Badge variant="secondary" className="text-xs">
                       {scheduledTrainings.length}
@@ -961,7 +961,7 @@ export default function GidaGuvenligiDashboard() {
                   <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between gap-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4" />
-                      Tamamlanan Egitimler
+                      Tamamlanan Eğitimler
                     </CardTitle>
                     <Badge variant="default" className="text-xs">
                       {completedTrainings.length}

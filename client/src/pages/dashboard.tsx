@@ -76,7 +76,7 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
         value: kpis?.customerAvg != null && kpis.customerAvg > 0
           ? `${Number(kpis.customerAvg).toFixed(1)}/5`
           : '—',
-        label: 'Musteri Puani',
+        label: 'Müşteri Puanı',
         color: kpis?.customerAvg != null && kpis.customerAvg > 0
           ? (kpis.customerAvg < 3.5 ? 'danger' as const : 'success' as const)
           : 'default' as const,

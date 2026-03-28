@@ -240,7 +240,7 @@ export default function Academy() {
                   </span>
                   {weeklyProgress.streakDays >= 30 && (
                     <Badge variant="secondary" className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" data-testid="badge-streak-monthly">
-                      Ay'in Ogrencisi
+                      Ay'in Öğrencisi
                     </Badge>
                   )}
                   {weeklyProgress.streakDays >= 7 && weeklyProgress.streakDays < 30 && (

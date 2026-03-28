@@ -238,7 +238,7 @@ function EmployeeTypesTab() {
             <TableHead>Gruplar</TableHead>
             <TableHead>Durum</TableHead>
             <TableHead>Politika</TableHead>
-            <TableHead>Islemler</TableHead>
+            <TableHead>İşlemler</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -526,7 +526,7 @@ function PoliciesTab() {
               <TableHead>Politika Key</TableHead>
               <TableHead>Deger (JSON)</TableHead>
               <TableHead>Durum</TableHead>
-              <TableHead>Islemler</TableHead>
+              <TableHead>İşlemler</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -734,9 +734,9 @@ function AssignmentsTab() {
             <TableHead>Kapsam</TableHead>
             <TableHead>Org ID</TableHead>
             <TableHead>Personel Tipi</TableHead>
-            <TableHead>Gorev Paketi</TableHead>
+            <TableHead>Görev Paketi</TableHead>
             <TableHead>Durum</TableHead>
-            <TableHead>Islemler</TableHead>
+            <TableHead>İşlemler</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

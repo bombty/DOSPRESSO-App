@@ -4753,7 +4753,7 @@ function AddTerminationDialog({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium">Ayrilik Turu</label>
+            <label className="text-sm font-medium">Ayrılık Türü</label>
             <Select value={terminationType} onValueChange={(v) => { setTerminationType(v); setTerminationSubReason(""); }}>
               <SelectTrigger data-testid="select-termination-type">
                 <SelectValue />
@@ -4809,12 +4809,12 @@ function AddTerminationDialog({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium">Ayrilik Tarihi</label>
+            <label className="text-sm font-medium">Ayrılık Tarihi</label>
             <Input type="date" value={terminationDate} onChange={(e) => setTerminationDate(e.target.value)} data-testid="input-termination-date" />
           </div>
           <div>
-            <label className="text-sm font-medium">Ayrilik Nedeni (Acik Metin)</label>
-            <Textarea placeholder="Ayrilik ile ilgili detaylari yazin..." value={reason} onChange={(e) => setReason(e.target.value)} className="resize-none" />
+            <label className="text-sm font-medium">Ayrılık Nedeni (Açık Metin)</label>
+            <Textarea placeholder="Ayrılık ile ilgili detayları yazın..." value={reason} onChange={(e) => setReason(e.target.value)} className="resize-none" />
           </div>
           <div>
             <label className="text-sm font-medium">Toplam Ödeme (₺) (Opsiyonel)</label>

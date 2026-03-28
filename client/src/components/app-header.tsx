@@ -121,7 +121,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setIsOpen(false); setShowNewTask(true); }} data-testid="button-assign-task">
                 <ListPlus className="mr-2 h-4 w-4" />
-                <span>Gorev Ata</span>
+                <span>Görev Ata</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setIsOpen(false); setLocation("/crm?channel=franchise"); }} data-testid="button-support">
                 <Headset className="mr-2 h-4 w-4" />
