@@ -15,6 +15,7 @@ import {
 import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
+import { requireManifestAccess, getScopeFilter } from '../services/manifest-auth';
 import { evaluateShiftBlockRules } from "../services/rules-engine";
 
 const router = Router();
@@ -1314,14 +1315,10 @@ router.get('/api/shifts/my', isAuthenticated, async (req, res) => {
 });
 
 // POST /api/shifts - Create a new shift
-router.post('/api/shifts', isAuthenticated, async (req, res) => {
+router.post('/api/shifts', isAuthenticated, requireManifestAccess('vardiya', 'create'), async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
-    
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
-      return res.status(403).json({ message: "Vardiya oluşturma yetkiniz yok" });
-    }
     
     const { z } = await import('zod');
     const shiftSchema = z.object({
@@ -1568,15 +1565,11 @@ router.post('/api/shifts/bulk-create', isAuthenticated, async (req, res) => {
 });
 
 // PATCH /api/shifts/:id - Update a shift
-router.patch('/api/shifts/:id', isAuthenticated, async (req, res) => {
+router.patch('/api/shifts/:id', isAuthenticated, requireManifestAccess('vardiya', 'edit'), async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
     const id = parseInt(req.params.id);
-    
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
-      return res.status(403).json({ message: "Vardiya güncelleme yetkiniz yok" });
-    }
     
     const shift = await storage.getShift(id);
     if (!shift) {
@@ -1719,7 +1712,7 @@ router.patch('/api/shift-checklists/:id', isAuthenticated, async (req, res) => {
 });
 
 // DELETE /api/shifts/:id - Delete a shift (AFTER reset-weekly to avoid :id matching reset-weekly)
-router.delete('/api/shifts/:id', isAuthenticated, async (req, res) => {
+router.delete('/api/shifts/:id', isAuthenticated, requireManifestAccess('vardiya', 'delete'), async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1727,10 +1720,6 @@ router.delete('/api/shifts/:id', isAuthenticated, async (req, res) => {
     
     if (isNaN(id)) {
       return res.status(400).json({ message: "Geçersiz vardiya ID'si" });
-    }
-    
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
-      return res.status(403).json({ message: "Vardiya silme yetkiniz yok" });
     }
     
     const shift = await storage.getShift(id);

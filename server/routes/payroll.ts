@@ -3,6 +3,7 @@ import { db } from '../db';
 import { monthlyPayroll, users, branches, positionSalaries } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
+import { requireManifestAccess } from '../services/manifest-auth';
 import { checkDataLock } from '../services/data-lock';
 import { calculateBranchPayroll, savePayrollResults, calculatePayroll } from '../lib/payroll-engine';
 import { getMonthClassification } from '../lib/pdks-engine';
@@ -22,12 +23,9 @@ function canViewPayroll(role: string): boolean {
   return PAYROLL_VIEW_ROLES.includes(role);
 }
 
-router.post('/api/pdks-payroll/calculate', isAuthenticated, async (req: any, res: Response) => {
+router.post('/api/pdks-payroll/calculate', isAuthenticated, requireManifestAccess('bordro', 'create'), async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canAdminPayroll(user.role)) {
-      return res.status(403).json({ error: 'Yetkisiz' });
-    }
 
     const { branchId, year, month } = req.body;
     if (!branchId || !year || !month) {
@@ -275,12 +273,9 @@ router.get('/api/pdks-payroll/:userId', isAuthenticated, async (req: any, res: R
   }
 });
 
-router.patch('/api/pdks-payroll/:id/approve', isAuthenticated, async (req: any, res: Response) => {
+router.patch('/api/pdks-payroll/:id/approve', isAuthenticated, requireManifestAccess('bordro', 'approve'), async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canAdminPayroll(user.role)) {
-      return res.status(403).json({ error: 'Yetkisiz' });
-    }
 
     const id = Number(req.params.id);
 
@@ -330,12 +325,9 @@ const detailedPayrollSchema = z.object({
   cumulativeTaxBase: z.number().min(0).default(0),
 });
 
-router.post('/api/payroll/calculate-detailed', isAuthenticated, async (req: any, res: Response) => {
+router.post('/api/payroll/calculate-detailed', isAuthenticated, requireManifestAccess('bordro', 'create'), async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canAdminPayroll(user.role)) {
-      return res.status(403).json({ error: 'Yetkisiz' });
-    }
 
     const parsed = detailedPayrollSchema.safeParse(req.body);
     if (!parsed.success) {
