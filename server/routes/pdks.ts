@@ -13,6 +13,11 @@ function canManagePdks(role: string): boolean {
   return ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'muhasebe'].includes(role);
 }
 
+// Şube yöneticileri kendi şubelerinin kiosk ayarlarını görebilir/düzenleyebilir
+function canManageKiosk(role: string): boolean {
+  return canManagePdks(role) || ['mudur', 'supervisor'].includes(role);
+}
+
 router.post('/api/pdks/punch', isAuthenticated, async (req: any, res: Response) => {
   try {
     const reqUser = req.user;
@@ -96,7 +101,7 @@ router.get('/api/pdks/records', isAuthenticated, async (req: any, res: Response)
     }
 
     const bId = Number(branchId);
-    if (!canManagePdks(user.role) && user.role !== 'mudur' && user.role !== 'supervisor' && user.role !== 'coach') {
+    if (!canManagePdks(user.role) && !['mudur', 'supervisor', 'coach'].includes(user.role)) {
       if (user.branchId !== bId) {
         return res.status(403).json({ error: 'Yetkisiz' });
       }
@@ -146,7 +151,7 @@ router.get('/api/pdks/records/:userId', isAuthenticated, async (req: any, res: R
       return res.status(400).json({ error: 'month ve year gerekli' });
     }
 
-    if (!canManagePdks(user.role) && user.role !== 'mudur' && user.role !== 'supervisor' && user.role !== 'coach') {
+    if (!canManagePdks(user.role) && !['mudur', 'supervisor', 'coach'].includes(user.role)) {
       if (user.id !== targetUserId) {
         return res.status(403).json({ error: 'Sadece kendi kayıtlarınızı görebilirsiniz' });
       }
@@ -217,7 +222,7 @@ router.get('/api/pdks/daily-summary', isAuthenticated, async (req: any, res: Res
 router.post('/api/pdks/scheduled-offs', isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canManagePdks(user.role) && user.role !== 'mudur') {
+    if (!canManagePdks(user.role) && !['mudur', 'supervisor'].includes(user.role)) {
       return res.status(403).json({ error: 'Yetkisiz' });
     }
 
@@ -293,7 +298,7 @@ router.get('/api/pdks/scheduled-offs', isAuthenticated, async (req: any, res: Re
 router.delete('/api/pdks/scheduled-offs/:id', isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canManagePdks(user.role) && user.role !== 'mudur') {
+    if (!canManagePdks(user.role) && !['mudur', 'supervisor'].includes(user.role)) {
       return res.status(403).json({ error: 'Yetkisiz' });
     }
 
@@ -309,11 +314,17 @@ router.delete('/api/pdks/scheduled-offs/:id', isAuthenticated, async (req: any, 
 router.get('/api/pdks/kiosk-settings', isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canManagePdks(user.role)) {
+    if (!canManageKiosk(user.role)) {
       return res.status(403).json({ error: 'Yetkisiz' });
     }
 
-    const settings = await db.select({
+    const conditions = [];
+    // Branch-scoped: supervisor/mudur only see their branch
+    if (!canManagePdks(user.role) && user.branchId) {
+      conditions.push(eq(branchKioskSettings.branchId, user.branchId));
+    }
+
+    let query = db.select({
       id: branchKioskSettings.id,
       branchId: branchKioskSettings.branchId,
       branchName: branches.name,
@@ -326,8 +337,14 @@ router.get('/api/pdks/kiosk-settings', isAuthenticated, async (req: any, res: Re
       isKioskEnabled: branchKioskSettings.isKioskEnabled,
     })
     .from(branchKioskSettings)
-    .innerJoin(branches, eq(branchKioskSettings.branchId, branches.id))
-    .orderBy(branches.name);
+    .innerJoin(branches, eq(branchKioskSettings.branchId, branches.id));
+
+    // Branch-scoped for supervisor/mudur
+    if (!canManagePdks(user.role) && user.branchId) {
+      query = query.where(eq(branchKioskSettings.branchId, user.branchId)) as any;
+    }
+
+    const settings = await query.orderBy(branches.name);
 
     res.json(settings);
   } catch (error) {
@@ -339,11 +356,16 @@ router.get('/api/pdks/kiosk-settings', isAuthenticated, async (req: any, res: Re
 router.patch('/api/pdks/kiosk-settings/:branchId', isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
-    if (!canManagePdks(user.role)) {
+    if (!canManageKiosk(user.role)) {
       return res.status(403).json({ error: 'Yetkisiz' });
     }
 
     const branchId = Number(req.params.branchId);
+    
+    // Branch-scoped: supervisor/mudur can only change their own branch
+    if (!canManagePdks(user.role) && user.branchId !== branchId) {
+      return res.status(403).json({ error: 'Sadece kendi şubenizin ayarlarını değiştirebilirsiniz' });
+    }
     const { defaultShiftStartTime, defaultShiftEndTime, lateToleranceMinutes, earlyLeaveToleranceMinutes, defaultBreakMinutes, autoCloseTime } = req.body;
 
     type SettingsUpdate = Partial<Pick<typeof branchKioskSettings.$inferSelect,

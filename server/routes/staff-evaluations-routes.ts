@@ -426,7 +426,7 @@ const router = Router();
   router.get('/api/evaluation-status', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!['supervisor', 'admin', 'yatirimci_hq', 'operasyon_muduru', 'bolgeMuduru', 'coach'].includes(user.role)) {
+      if (!['supervisor', 'supervisor_buddy', 'mudur', 'admin', 'yatirimci_hq', 'operasyon_muduru', 'bolgeMuduru', 'coach'].includes(user.role)) {
         return res.status(403).json({ message: "Erişim yetkiniz yok" });
       }
 
