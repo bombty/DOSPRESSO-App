@@ -272,6 +272,23 @@ function ProfileRedirect() {
   return null;
 }
 
+// Redirects for shortcut paths used in MC components
+function VardiyaRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation("/vardiya-planlama", { replace: true }); }, [setLocation]);
+  return null;
+}
+function StokRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation("/sube/siparis-stok", { replace: true }); }, [setLocation]);
+  return null;
+}
+function IletisimRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation("/iletisim-merkezi", { replace: true }); }, [setLocation]);
+  return null;
+}
+
 
 function AuthCatchAllToLogin() {
   const [location, setLocation] = useLocation();
@@ -339,6 +356,9 @@ function Router() {
           <Route path="/subeler" component={Subeler} />
           <Route path="/gizlilik-politikasi" component={PrivacyPolicy} />
           <Route path="/profil" component={ProfileRedirect} />
+          <Route path="/vardiya" component={VardiyaRedirect} />
+          <Route path="/stok" component={StokRedirect} />
+          <Route path="/iletisim" component={IletisimRedirect} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />
