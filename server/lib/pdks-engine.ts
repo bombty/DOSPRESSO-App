@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { pdksRecords, scheduledOffs, leaveRequests } from "@shared/schema";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { pdksRecords, scheduledOffs, leaveRequests, shifts } from "@shared/schema";
+import { eq, and, gte, lte, sql, isNull } from "drizzle-orm";
 
 export interface DayClassification {
   date: string;
@@ -57,7 +57,8 @@ export function classifyDay(
   dateStr: string,
   dayRecords: { time: string; type: string; source: string | null }[],
   isScheduledOff: boolean,
-  leaveType: string | null
+  leaveType: string | null,
+  plannedMinutes: number = 480 // Default 8 saat, vardiya varsa onun süresi
 ): DayClassification {
   const base = { date: dateStr, records: dayRecords, workedMinutes: 0, overtimeMinutes: 0 };
 
@@ -89,7 +90,7 @@ export function classifyDay(
   if (hasWorkStamp) {
     const workedMinutes = calculateWorkedMinutes(dayRecords);
     if (workedMinutes > 0) {
-      const overtimeMinutes = Math.max(0, workedMinutes - 480);
+      const overtimeMinutes = Math.max(0, workedMinutes - plannedMinutes);
       return { ...base, status: 'worked', workedMinutes, overtimeMinutes };
     }
     const hasGiris = dayRecords.some(r => r.type === 'giris');
@@ -111,7 +112,7 @@ export async function getMonthClassification(
   const daysInMonth = new Date(year, month, 0).getDate();
   const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-  const [records, offs, leaves] = await Promise.all([
+  const [records, offs, leaves, userShifts] = await Promise.all([
     db.select({
       recordDate: pdksRecords.recordDate,
       recordTime: pdksRecords.recordTime,
@@ -145,10 +146,36 @@ export async function getMonthClassification(
       eq(leaveRequests.status, 'approved'),
       lte(leaveRequests.startDate, endDate),
       gte(leaveRequests.endDate, startDate)
-    ))
+    )),
+
+    // P2.1: Fetch planned shifts to calculate correct overtime threshold
+    db.select({
+      shiftDate: shifts.shiftDate,
+      startTime: shifts.startTime,
+      endTime: shifts.endTime,
+    })
+    .from(shifts)
+    .where(and(
+      eq(shifts.assignedToId, userId),
+      gte(shifts.shiftDate, startDate),
+      lte(shifts.shiftDate, endDate),
+      isNull(shifts.deletedAt),
+    )),
   ]);
 
   const offSet = new Set(offs.map(o => o.offDate));
+
+  // Build date → planned shift minutes map
+  const shiftMinutesMap = new Map<string, number>();
+  for (const s of userShifts) {
+    if (s.startTime && s.endTime) {
+      const [startH, startM] = s.startTime.split(':').map(Number);
+      const [endH, endM] = s.endTime.split(':').map(Number);
+      let duration = (endH * 60 + endM) - (startH * 60 + startM);
+      if (duration < 0) duration += 24 * 60; // Gece vardiyası
+      shiftMinutesMap.set(s.shiftDate, duration);
+    }
+  }
 
   const days: DayClassification[] = [];
   for (let day = 1; day <= daysInMonth; day++) {
@@ -168,7 +195,7 @@ export async function getMonthClassification(
       }
     }
 
-    days.push(classifyDay(dateStr, dayRecords, isOff, leaveType));
+    days.push(classifyDay(dateStr, dayRecords, isOff, leaveType, shiftMinutesMap.get(dateStr)));
   }
 
   const workedDays = days.filter(d => d.status === 'worked').length;

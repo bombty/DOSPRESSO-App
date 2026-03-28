@@ -66,6 +66,7 @@ import {
   pdksRecords,
   shiftAttendance,
   attendancePenalties,
+  overtimeRequests,
 } from "@shared/schema";
 import crypto from "crypto";
 
@@ -3037,6 +3038,8 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskAuthenticated, asy
 
     let earlyLeaveMinutes = 0;
     let overtimeMinutes = 0;
+    let approvedOvertimeMinutes = 0;
+    let effectiveOvertimeMinutes = 0;
 
     if (session.plannedShiftId) {
       const [plannedShift] = await db.select().from(shifts)
@@ -3053,6 +3056,25 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskAuthenticated, asy
         } else if (diff > 0) {
           overtimeMinutes = Math.floor(diff / 60000);
         }
+      }
+    }
+
+    // P2.2: Onaylı fazla mesai kontrolü
+    if (overtimeMinutes > 0) {
+      try {
+        const todayStr = now.toISOString().split('T')[0];
+        const approvedReqs = await db.select({ approvedMinutes: overtimeRequests.approvedMinutes })
+          .from(overtimeRequests)
+          .where(and(
+            eq(overtimeRequests.userId, session.userId),
+            eq(overtimeRequests.overtimeDate, todayStr),
+            eq(overtimeRequests.status, 'approved'),
+          ));
+        approvedOvertimeMinutes = approvedReqs.reduce((sum, r) => sum + (r.approvedMinutes || 0), 0);
+        effectiveOvertimeMinutes = Math.min(overtimeMinutes, approvedOvertimeMinutes);
+      } catch (otErr) {
+        console.error("[BRANCH-KIOSK] Overtime check error (non-blocking):", otErr);
+        effectiveOvertimeMinutes = overtimeMinutes; // Fallback: count all overtime
       }
     }
 

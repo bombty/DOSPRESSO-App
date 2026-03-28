@@ -12,7 +12,7 @@ import { z } from 'zod';
 const router = Router();
 
 const PAYROLL_ADMIN_ROLES = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'muhasebe'];
-const PAYROLL_VIEW_ROLES = [...PAYROLL_ADMIN_ROLES, 'mudur', 'yatirimci_branch', 'yatirimci_hq'];
+const PAYROLL_VIEW_ROLES = [...PAYROLL_ADMIN_ROLES, 'mudur', 'supervisor', 'yatirimci_branch', 'yatirimci_hq'];
 
 function canAdminPayroll(role: string): boolean {
   return PAYROLL_ADMIN_ROLES.includes(role);
