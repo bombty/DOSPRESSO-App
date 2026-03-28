@@ -1,3 +1,4 @@
+import { requireManifestAccess } from '../services/manifest-auth';
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -432,7 +433,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/tasks/bulk', isAuthenticated, async (req, res) => {
+  router.post('/api/tasks/bulk', isAuthenticated, requireManifestAccess('gorevler', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const userId = user.id;
@@ -541,7 +542,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/tasks', isAuthenticated, async (req, res) => {
+  router.post('/api/tasks', isAuthenticated, requireManifestAccess('gorevler', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -755,7 +756,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/tasks/:id/verify', isAuthenticated, async (req, res) => {
+  router.post('/api/tasks/:id/verify', isAuthenticated, requireManifestAccess('gorevler', 'approve'), async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -821,7 +822,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/tasks/:id/reject', isAuthenticated, async (req, res) => {
+  router.post('/api/tasks/:id/reject', isAuthenticated, requireManifestAccess('gorevler', 'approve'), async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
