@@ -18,6 +18,13 @@ interface BreadcrumbItem {
 
 const PATH_LABELS: Record<string, string> = {
   '/': 'Ana Sayfa',
+  '/control': 'Control',
+  '/sube-ozet': 'Şube Özet',
+  '/kocluk-paneli': 'Koçluk Paneli',
+  '/hq-ozet': 'HQ Özet',
+  '/franchise-ozet': 'Franchise Özet',
+  '/benim-gunum': 'Benim Günüm',
+  '/merkez-dashboard': 'Merkez Gösterge Paneli',
   '/operasyon': 'Operasyon',
   '/sube': 'Şube',
   '/sube/dashboard': 'Şube Gösterge Paneli',

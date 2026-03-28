@@ -310,7 +310,7 @@ export default function MerkezDashboard() {
                 <CardHeader className="pb-1 pt-3 px-3">
                   <CardTitle className="flex items-center gap-2 text-xs">
                     <Store className="h-3.5 w-3.5" />
-                    Sube Ozet Bilgileri
+                    Şube Özet Bilgileri
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 pb-3">
