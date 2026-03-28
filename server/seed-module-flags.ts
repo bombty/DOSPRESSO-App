@@ -1,51 +1,16 @@
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import { ALL_MODULES, generateModuleFlagSeeds } from "@shared/module-manifest";
 
-interface ModuleDefinition {
-  key: string;
-  level: string;
-  behavior: string;
-  parent: string | null;
-}
-
-const MODULE_DEFINITIONS: ModuleDefinition[] = [
-  { key: "admin", level: "module", behavior: "always_on", parent: null },
-  { key: "dashboard", level: "module", behavior: "always_on", parent: null },
-  { key: "bordro", level: "module", behavior: "always_on", parent: null },
-  { key: "dobody", level: "module", behavior: "always_on", parent: null },
-  { key: "fabrika", level: "module", behavior: "always_on", parent: null },
-  { key: "satinalma", level: "module", behavior: "always_on", parent: null },
-
-  { key: "pdks", level: "module", behavior: "ui_hidden_data_continues", parent: null },
-  { key: "vardiya", level: "module", behavior: "ui_hidden_data_continues", parent: null },
-
+// Legacy modül key'leri — manifest'te olmayan ama DB'de olan eski tanımlar
+// Manifest geçişi tamamlanınca bunlar kaldırılacak
+const LEGACY_MODULES = [
   { key: "checklist", level: "module", behavior: "fully_hidden", parent: null },
   { key: "gorevler", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "akademi", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "crm", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "stok", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "ekipman", level: "module", behavior: "fully_hidden", parent: null },
   { key: "denetim", level: "module", behavior: "fully_hidden", parent: null },
   { key: "iletisim_merkezi", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "raporlar", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "finans", level: "module", behavior: "fully_hidden", parent: null },
   { key: "delegasyon", level: "module", behavior: "fully_hidden", parent: null },
   { key: "franchise", level: "module", behavior: "fully_hidden", parent: null },
-  { key: "ajanda", level: "module", behavior: "standard", parent: null },
-
-  { key: "fabrika.sevkiyat", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-  { key: "fabrika.sayim", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-  { key: "fabrika.hammadde", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-  { key: "fabrika.siparis", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-  { key: "fabrika.vardiya", level: "submodule", behavior: "ui_hidden_data_continues", parent: "fabrika" },
-  { key: "fabrika.kalite", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-  { key: "fabrika.kavurma", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-  { key: "fabrika.stok", level: "submodule", behavior: "fully_hidden", parent: "fabrika" },
-
-  { key: "dobody.chat", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
-  { key: "dobody.bildirim", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
-  { key: "dobody.flow", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
-
   { key: "sube_gorevleri", level: "module", behavior: "fully_hidden", parent: null },
 ];
 
@@ -59,8 +24,12 @@ export async function seedModuleFlags() {
   await db.execute(sql`DROP INDEX IF EXISTS uq_module_flags_key_scope_branch_role`);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_module_flags_key_scope_branch_role ON module_flags (module_key, scope, COALESCE(branch_id, 0), COALESCE(target_role, ''))`);
 
+  // Manifest'ten seed verileri üret
+  const manifestSeeds = generateModuleFlagSeeds();
+  const allSeeds = [...manifestSeeds, ...LEGACY_MODULES];
+
   let upserted = 0;
-  for (const def of MODULE_DEFINITIONS) {
+  for (const def of allSeeds) {
     try {
       await db.execute(
         sql`INSERT INTO module_flags (module_key, scope, branch_id, is_enabled, flag_level, flag_behavior, parent_key, target_role, created_at, updated_at)
@@ -77,5 +46,5 @@ export async function seedModuleFlags() {
       console.error(`[SEED] Module flag error for ${def.key}:`, error);
     }
   }
-  console.log(`[SEED] Module flags: ${upserted}/${MODULE_DEFINITIONS.length} flags upserted (${MODULE_DEFINITIONS.length} total definitions)`);
+  console.log(`[SEED] Module flags: ${upserted}/${allSeeds.length} flags upserted (${ALL_MODULES.length} manifest modules + ${LEGACY_MODULES.length} legacy)`);
 }

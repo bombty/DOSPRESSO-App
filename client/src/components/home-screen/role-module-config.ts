@@ -21,6 +21,8 @@ export interface ModuleCardConfig {
   order: number;
   /** If true, card spans 2 columns on desktop (for smaller utility cards) */
   halfWidth?: boolean;
+  /** Manifest module ID — connects to shared/module-manifest.ts for on/off control */
+  manifestModuleId?: string;
 }
 
 // ─── CARD DEFINITIONS ───────────────────────────────────────
