@@ -790,7 +790,7 @@ export default function AcademyWebinars() {
   });
 
   return (
-    <div className="p-4 space-y-4 max-w-4xl mx-auto">
+    <div className="p-4 space-y-4 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">

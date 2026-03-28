@@ -163,7 +163,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
             size="icon"
             onClick={toggleTheme}
             data-testid="button-theme-toggle"
-            title={effectiveTheme === "dark" ? "Acik Mod" : "Koyu Mod"}
+            title={effectiveTheme === "dark" ? "Açık Mod" : "Koyu Mod"}
           >
             {effectiveTheme === "dark" ? (
               <Sun className="w-4 h-4 text-sidebar-foreground" />

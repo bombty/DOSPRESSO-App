@@ -202,7 +202,7 @@ export default function AkademiV3() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-[1200px] mx-auto">
         <Suspense fallback={<TabSkeleton />}>
           {activeTab === "ana" && (
             <HomeTab

@@ -174,7 +174,7 @@ export default function OnboardingProgramlar() {
 
   return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto p-4 pb-24 space-y-4">
+        <div className="max-w-6xl mx-auto p-4 pb-24 space-y-4">
           <Button variant="ghost" size="sm" onClick={() => setSelectedInstance(null)} data-testid="button-back">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Geri Dön
@@ -410,7 +410,7 @@ export default function OnboardingProgramlar() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-4 pb-24 space-y-4">
+      <div className="max-w-6xl mx-auto p-4 pb-24 space-y-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <GraduationCap className="h-6 w-6 text-primary" />

@@ -830,7 +830,7 @@ export default function AcademyMyPath() {
   const optionalActions = actions.filter(a => a.priority >= 5);
 
   return (
-    <div className="space-y-4 p-4 max-w-2xl mx-auto" data-testid="my-path-container">
+    <div className="space-y-4 p-4 max-w-[1200px] mx-auto" data-testid="my-path-container">
       {data.onboarding && <OnboardingBanner onboarding={data.onboarding} />}
 
       {onboardingData && <OnboardingDetailSection assignmentData={onboardingData} />}

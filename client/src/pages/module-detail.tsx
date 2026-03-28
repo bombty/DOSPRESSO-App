@@ -359,7 +359,7 @@ export default function ModuleDetail() {
   // STUDENT VIEW - Auto-show full learning experience immediately
   if (!isEditor) {
     return (
-      <div className="flex flex-col gap-3 sm:gap-4 p-3 max-w-4xl mx-auto">
+      <div className="flex flex-col gap-3 sm:gap-4 p-3 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
           <Button
             onClick={() => setLocation(referrerPage || "/akademi")}

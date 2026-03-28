@@ -182,7 +182,7 @@ export default function EgitimProgrami() {
 
   if (!hasAccess) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-6xl mx-auto">
         <Card>
           <CardContent className="p-8 text-center">
             <GraduationCap className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -210,7 +210,7 @@ export default function EgitimProgrami() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="ghost" size="sm" onClick={() => setLocation("/personel-profil")} data-testid="button-back">
           <ArrowLeft className="w-4 h-4 mr-1" />

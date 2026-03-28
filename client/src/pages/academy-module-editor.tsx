@@ -1035,7 +1035,7 @@ export default function AcademyModuleEditor() {
           </nav>
         </aside>
 
-        <main className="flex-1 p-3 sm:p-6 max-w-4xl overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-6 max-w-6xl overflow-y-auto">
           {activeTab === "info" && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">Modül Bilgileri</h2>

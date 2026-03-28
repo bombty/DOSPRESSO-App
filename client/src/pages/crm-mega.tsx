@@ -127,7 +127,7 @@ function ChannelToggle({
   const channels: { key: Channel; label: string; icon: typeof Building2 }[] = [
     { key: "franchise", label: "Franchise", icon: Building2 },
     { key: "misafir", label: "Misafir", icon: Coffee },
-    { key: "task", label: "Gorevler", icon: ListTodo },
+    { key: "task", label: "Görevler", icon: ListTodo },
   ];
 
   return (
@@ -166,21 +166,21 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
   const kpis = channel === "franchise"
     ? [
         {
-          label: "Acik Talepler",
+          label: "Açık Talepler",
           value: data.openTickets,
           icon: TicketCheck,
           color: data.openTickets > 5 ? "text-amber-500" : "text-foreground",
           sub: data.slaRisk > 0 ? `${data.slaRisk} SLA riski` : "Tumü zamanında",
         },
         {
-          label: "SLA Ihlali",
+          label: "SLA İhlali",
           value: data.slaBreaches,
           icon: AlertTriangle,
           color: data.slaBreaches > 0 ? "text-red-500" : "text-foreground",
           sub: data.slaBreaches > 0 ? "Acil aksiyon" : "Ihlal yok",
         },
         {
-          label: "Bu Hafta Cozulen",
+          label: "Bu Hafta Çözülen",
           value: data.resolvedThisWeek,
           icon: CheckCircle2,
           color: "text-green-600 dark:text-green-400",
@@ -196,7 +196,7 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
       ]
     : [
         {
-          label: "Acik Geri Bildirimler",
+          label: "Açık Geri Bildirimler",
           value: data.openTickets,
           icon: TicketCheck,
           color: data.openTickets > 5 ? "text-amber-500" : "text-foreground",
@@ -210,14 +210,14 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
           sub: `${data.ratingCount} degerlendirme`,
         },
         {
-          label: "Bu Hafta Cozulen",
+          label: "Bu Hafta Çözülen",
           value: data.resolvedThisWeek,
           icon: CheckCircle2,
           color: "text-green-600 dark:text-green-400",
           sub: data.avgResolveTimeHours ? `Ort. ${data.avgResolveTimeHours}s` : "—",
         },
         {
-          label: "SLA Ihlali",
+          label: "SLA İhlali",
           value: data.slaBreaches,
           icon: AlertTriangle,
           color: data.slaBreaches > 0 ? "text-red-500" : "text-foreground",

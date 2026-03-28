@@ -137,7 +137,7 @@ export default function MaasPage() {
   if (selectedPayroll && detailQuery.data) {
     const p = detailQuery.data.payroll;
     return (
-      <div className="p-4 max-w-4xl mx-auto space-y-4">
+      <div className="p-4 max-w-6xl mx-auto space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" size="icon" onClick={() => setSelectedPayroll(null)} data-testid="button-back-to-maas">
             <ChevronLeft />
