@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";

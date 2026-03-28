@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { userTodos, userCalendarEvents, userNotes } from "@shared/schema";
@@ -135,7 +136,7 @@ router.get("/api/ajanda/todos", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/api/ajanda/todos", isAuthenticated, async (req, res) => {
+router.post("/api/ajanda/todos", isAuthenticated, requireManifestAccess("gorevler", "create"), async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const parsed = todoCreateSchema.safeParse(req.body);
@@ -195,7 +196,7 @@ router.patch("/api/ajanda/todos/:id", isAuthenticated, async (req, res) => {
   }
 });
 
-router.delete("/api/ajanda/todos/:id", isAuthenticated, async (req, res) => {
+router.delete("/api/ajanda/todos/:id", isAuthenticated, requireManifestAccess("gorevler", "delete"), async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const id = parseInt(req.params.id);
@@ -348,7 +349,7 @@ router.get("/api/ajanda/events", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/api/ajanda/events", isAuthenticated, async (req, res) => {
+router.post("/api/ajanda/events", isAuthenticated, requireManifestAccess("gorevler", "create"), async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const parsed = eventCreateSchema.safeParse(req.body);
@@ -411,7 +412,7 @@ router.patch("/api/ajanda/events/:id", isAuthenticated, async (req, res) => {
   }
 });
 
-router.delete("/api/ajanda/events/:id", isAuthenticated, async (req, res) => {
+router.delete("/api/ajanda/events/:id", isAuthenticated, requireManifestAccess("gorevler", "delete"), async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const id = parseInt(req.params.id);

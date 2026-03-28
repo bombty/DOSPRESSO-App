@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { db } from "../db";
 import { eq, lt, desc, asc, sql, and, or, count, isNull } from "drizzle-orm";
 import { z } from "zod";
@@ -537,7 +538,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/users/:id', isAuthenticated, async (req, res) => {
+  router.patch('/api/admin/users/:id', isAuthenticated, requireManifestAccess('admin', 'edit'), async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -571,7 +572,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/users/:id/status', isAuthenticated, async (req, res) => {
+  router.patch('/api/admin/users/:id/status', isAuthenticated, requireManifestAccess('admin', 'edit'), async (req, res) => {
     try {
       const currentUser = req.user!;
       if (!currentUser.role || !isHQRole(currentUser.role as UserRoleType)) {
@@ -612,7 +613,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/users/bulk-import', isAuthenticated, async (req, res) => {
+  router.post('/api/admin/users/bulk-import', isAuthenticated, requireManifestAccess('admin', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       if (!user.role || !isHQRole(user.role as UserRoleType)) {
@@ -650,7 +651,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/users/approve/:id', isAuthenticated, async (req, res) => {
+  router.post('/api/admin/users/approve/:id', isAuthenticated, requireManifestAccess('admin', 'approve'), async (req, res) => {
     try {
       const currentUser = req.user!;
       const { sendWelcomeEmail } = await import('../email');
@@ -829,7 +830,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/admin/users/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/admin/users/:id', isAuthenticated, requireManifestAccess('admin', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {
@@ -965,7 +966,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/settings', isAuthenticated, async (req, res) => {
+  router.post('/api/admin/settings', isAuthenticated, requireManifestAccess('admin', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       
@@ -993,7 +994,7 @@ const router = Router();
     }
   });
 
-  router.patch('/api/admin/settings/:key', isAuthenticated, async (req, res) => {
+  router.patch('/api/admin/settings/:key', isAuthenticated, requireManifestAccess('admin', 'edit'), async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1021,7 +1022,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/admin/settings/:key', isAuthenticated, async (req, res) => {
+  router.delete('/api/admin/settings/:key', isAuthenticated, requireManifestAccess('admin', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       
@@ -1223,7 +1224,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/admin/roles', isAuthenticated, async (req, res) => {
+  router.post('/api/admin/roles', isAuthenticated, requireManifestAccess('admin', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       if (user.role !== 'admin') {

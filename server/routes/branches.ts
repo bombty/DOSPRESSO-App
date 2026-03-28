@@ -311,7 +311,7 @@ router.get('/api/branches/:id/staff-scores', isAuthenticated, async (req, res) =
   }
 });
 
-router.post('/api/branches', isAuthenticated, async (req, res) => {
+router.post('/api/branches', isAuthenticated, requireManifestAccess('admin', 'create'), async (req, res) => {
   try {
     const user = req.user!;
     
@@ -343,7 +343,7 @@ router.post('/api/branches', isAuthenticated, async (req, res) => {
   }
 });
 
-router.patch('/api/branches/:id', isAuthenticated, async (req, res) => {
+router.patch('/api/branches/:id', isAuthenticated, requireManifestAccess('admin', 'edit'), async (req, res) => {
   try {
     const user = req.user!;
     const id = parseInt(req.params.id);
@@ -414,7 +414,7 @@ router.patch('/api/branches/:id/settings', isAuthenticated, async (req, res) => 
   }
 });
 
-router.delete('/api/branches/:id', isAuthenticated, async (req, res) => {
+router.delete('/api/branches/:id', isAuthenticated, requireManifestAccess('admin', 'delete'), async (req, res) => {
   try {
     const user = req.user!;
     const id = parseInt(req.params.id);
