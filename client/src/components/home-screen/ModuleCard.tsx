@@ -17,8 +17,8 @@ interface ModuleCardProps {
 const BADGE_STYLES: Record<string, { bg: string; text: string }> = {
   success: { bg: "rgba(39,174,96,0.08)", text: "var(--dospresso-green, #27ae60)" },
   warning: { bg: "rgba(212,168,75,0.08)", text: "var(--dospresso-amber, #d4a84b)" },
-  danger: { bg: "rgba(192,57,43,0.1)", text: "var(--dospresso-red, #c0392b)" },
-  info: { bg: "rgba(41,128,185,0.06)", text: "var(--dospresso-blue, #2980b9)" },
+  danger: { bg: "rgba(192,57,43,0.1)", text: "#e74c3c" },
+  info: { bg: "rgba(41,128,185,0.06)", text: "#5dade2" },
   muted: { bg: "rgba(138,125,109,0.08)", text: "var(--dospresso-bej-muted, #8a7d6d)" },
 };
 
@@ -41,6 +41,7 @@ export function ModuleCard({ config, badges, statusMessage, className }: ModuleC
         padding: 10,
         backgroundColor: "var(--dospresso-bg2, #0f1d32)",
         borderColor: "var(--dospresso-border, #1e3250)",
+        borderWidth: "0.5px",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = "var(--dospresso-bg3, #152640)";

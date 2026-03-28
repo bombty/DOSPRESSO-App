@@ -596,8 +596,8 @@ function AppContent() {
             </div>
           </main>
           
-          {/* Flow Mode Mini-Bar */}
-          <DobodyMiniBar />
+          {/* Flow Mode Mini-Bar - hidden on home screen */}
+          {location !== "/" && <DobodyMiniBar />}
         </div>
       </div>
       
