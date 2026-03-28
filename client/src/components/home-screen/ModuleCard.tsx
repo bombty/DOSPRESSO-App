@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import type { ModuleCardConfig } from "./role-module-config";
 
@@ -11,18 +10,17 @@ interface ModuleCardProps {
   config: ModuleCardConfig;
   badges?: BadgeInfo[];
   statusMessage?: string;
-  className?: string;
 }
 
-const BADGE_STYLES: Record<string, { bg: string; text: string }> = {
-  success: { bg: "rgba(39,174,96,0.12)", text: "#27ae60" },
-  warning: { bg: "rgba(212,168,75,0.12)", text: "#d4a84b" },
-  danger: { bg: "rgba(192,57,43,0.14)", text: "#e74c3c" },
-  info: { bg: "rgba(41,128,185,0.10)", text: "#5dade2" },
-  muted: { bg: "rgba(138,125,109,0.10)", text: "#8a7d6d" },
+const BADGE_MAP: Record<string, { bg: string; text: string }> = {
+  success: { bg: "var(--ds-badge-success-bg)", text: "var(--ds-badge-success-text)" },
+  warning: { bg: "var(--ds-badge-warning-bg)", text: "var(--ds-badge-warning-text)" },
+  danger: { bg: "var(--ds-badge-danger-bg)", text: "var(--ds-badge-danger-text)" },
+  info: { bg: "var(--ds-badge-info-bg)", text: "var(--ds-badge-info-text)" },
+  muted: { bg: "var(--ds-badge-muted-bg)", text: "var(--ds-badge-muted-text)" },
 };
 
-export function ModuleCard({ config, badges, statusMessage, className }: ModuleCardProps) {
+export function ModuleCard({ config, badges, statusMessage }: ModuleCardProps) {
   const [, setLocation] = useLocation();
   const Icon = config.icon;
 
@@ -31,50 +29,54 @@ export function ModuleCard({ config, badges, statusMessage, className }: ModuleC
       type="button"
       onClick={() => setLocation(config.path)}
       data-testid={`module-card-${config.id}`}
-      className={cn(
-        "w-full text-left transition-all duration-150 active:scale-[0.97] cursor-pointer group",
-        config.halfWidth && "col-span-1",
-        className
-      )}
       style={{
-        padding: "14px 16px",
-        backgroundColor: "#0f1d32",
-        border: "1px solid #1e3250",
-        borderRadius: "12px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1)",
+        width: "100%",
+        textAlign: "left" as const,
+        padding: "var(--ds-card-padding)",
+        background: "var(--ds-bg-card)",
+        border: "var(--ds-card-border)",
+        borderRadius: "var(--ds-card-radius)",
+        boxShadow: "var(--ds-card-shadow)",
+        cursor: "pointer",
+        transition: "var(--ds-transition)",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "#152640";
-        e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-        e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15)";
-        e.currentTarget.style.borderColor = "#2a4060";
+        const t = e.currentTarget;
+        t.style.background = "var(--ds-bg-card-hover)";
+        t.style.transform = "translateY(-2px) scale(1.01)";
+        t.style.boxShadow = "var(--ds-card-shadow-hover)";
+        t.style.borderColor = "var(--ds-border-hover)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "#0f1d32";
-        e.currentTarget.style.transform = "translateY(0) scale(1)";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1)";
-        e.currentTarget.style.borderColor = "#1e3250";
+        const t = e.currentTarget;
+        t.style.background = "var(--ds-bg-card)";
+        t.style.transform = "translateY(0) scale(1)";
+        t.style.boxShadow = "var(--ds-card-shadow)";
+        t.style.borderColor = "var(--ds-border)";
       }}
     >
-      {/* Header: icon + title */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-        <div
-          style={{
-            width: 36, height: 36, borderRadius: 8,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
-            backgroundColor: config.iconBg, color: config.iconColor,
-          }}
-        >
-          <Icon style={{ width: 18, height: 18 }} />
+      {/* Icon + Title */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--ds-gap-md)", marginBottom: "var(--ds-gap-sm)" }}>
+        <div style={{
+          width: "var(--ds-icon-container)",
+          height: "var(--ds-icon-container)",
+          borderRadius: "var(--ds-icon-container-radius)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+          background: config.iconBg,
+          color: config.iconColor,
+        }}>
+          <Icon style={{ width: "var(--ds-icon-svg)", height: "var(--ds-icon-svg)" }} />
         </div>
         <div style={{ minWidth: 0 }}>
           <p style={{
-            fontSize: 14, fontWeight: 600, color: "#f2e6d0", margin: 0,
+            fontSize: "var(--ds-font-card-title)", fontWeight: 600,
+            color: "var(--ds-text-primary)", margin: 0,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>{config.title}</p>
           <p style={{
-            fontSize: 11, color: "#8a7d6d", margin: "1px 0 0",
+            fontSize: "var(--ds-font-card-subtitle)",
+            color: "var(--ds-text-secondary)", margin: "1px 0 0",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>{config.subtitle}</p>
         </div>
@@ -82,18 +84,15 @@ export function ModuleCard({ config, badges, statusMessage, className }: ModuleC
 
       {/* Badges */}
       {badges && badges.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginBottom: "4px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--ds-gap-xs)", marginBottom: 4 }}>
           {badges.map((badge, idx) => {
-            const style = BADGE_STYLES[badge.color];
+            const s = BADGE_MAP[badge.color];
             return (
-              <span
-                key={idx}
-                style={{
-                  fontSize: 10, fontWeight: 600, borderRadius: 4,
-                  padding: "2px 8px",
-                  backgroundColor: style.bg, color: style.text,
-                }}
-              >
+              <span key={idx} style={{
+                fontSize: "var(--ds-font-badge)", fontWeight: 600,
+                padding: "3px 10px", borderRadius: 5,
+                background: s.bg, color: s.text,
+              }}>
                 {badge.label}
               </span>
             );
@@ -101,10 +100,11 @@ export function ModuleCard({ config, badges, statusMessage, className }: ModuleC
         </div>
       )}
 
-      {/* Status message */}
+      {/* Status */}
       {statusMessage && (
         <p style={{
-          fontSize: 11, color: "#6a7d6d", margin: 0,
+          fontSize: "var(--ds-font-status)",
+          color: "var(--ds-text-muted)", margin: 0,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>{statusMessage}</p>
       )}
