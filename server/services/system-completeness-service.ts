@@ -50,6 +50,13 @@ export async function detectSystemGaps(): Promise<CompletenessItem[]> {
 
       if (isHQOrFactory(branch.name)) continue;
 
+      // Boş/test şubeleri filtrele — personeli olmayan şubeler için uyarı üretme
+      // Pilot öncesi test şubeleri gürültü yapmasın
+      const realStaffCount = branchUsers.filter(u => 
+        !['sube_kiosk', 'yatirimci_branch'].includes(u.role)
+      ).length;
+      if (realStaffCount === 0) continue;
+
       if (!roles.includes("mudur") && !roles.includes("supervisor")) {
         gaps.push({
           id: `personnel-no-manager-${branch.id}`,
