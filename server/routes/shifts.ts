@@ -1739,6 +1739,23 @@ router.delete('/api/shifts/:id', isAuthenticated, async (req, res) => {
     }
     
     await db.update(shifts).set({ deletedAt: new Date() }).where(eq(shifts.id, id));
+    
+    // P1.4: Vardiya silme → çalışana bildirim
+    if (shift.assignedToId) {
+      try {
+        await storage.createNotification({
+          userId: shift.assignedToId,
+          type: 'shift_cancelled',
+          title: 'Vardiya İptal Edildi',
+          message: `${shift.shiftDate} tarihindeki ${shift.startTime?.substring(0, 5)} - ${shift.endTime?.substring(0, 5)} vardiyası iptal edildi.`,
+          link: '/vardiyalarim',
+          branchId: shift.branchId,
+        });
+      } catch (notifErr) {
+        console.error("Shift deletion notification error:", notifErr);
+      }
+    }
+    
     const ctx = getAuditContext(req);
     await createAuditEntry(ctx, {
       eventType: "data.soft_delete",

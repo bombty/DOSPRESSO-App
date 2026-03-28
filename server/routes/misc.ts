@@ -1193,6 +1193,21 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
       
       const updated = await storage.approveOvertimeRequest(requestId, user.id, approvedMinutes);
       
+      // P1.5: Fazla mesai onayı → çalışana bildirim
+      if (updated?.userId) {
+        try {
+          await storage.createNotification({
+            userId: updated.userId,
+            type: 'overtime_approved',
+            title: 'Fazla Mesai Onaylandı',
+            message: `${updated.overtimeDate} tarihli ${approvedMinutes || updated.requestedMinutes} dk fazla mesai talebiniz onaylandı.`,
+            link: '/vardiyalarim',
+          });
+        } catch (notifErr) {
+          console.error("Overtime approval notification error:", notifErr);
+        }
+      }
+      
       // CRITICAL: Recalculate effectiveWorkMinutes for linked attendance record (retroactive approval)
       // If this overtime request was for a shift that has already been checked out,
       // we need to add the approved overtime to effectiveWorkMinutes
@@ -1272,6 +1287,22 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
       }
       
       const updated = await storage.rejectOvertimeRequest(requestId, rejectionReason);
+      
+      // P1.5: Fazla mesai reddi → çalışana bildirim
+      if (updated?.userId) {
+        try {
+          await storage.createNotification({
+            userId: updated.userId,
+            type: 'overtime_rejected',
+            title: 'Fazla Mesai Reddedildi',
+            message: `${updated.overtimeDate} tarihli fazla mesai talebiniz reddedildi.${rejectionReason ? ' Sebep: ' + rejectionReason : ''}`,
+            link: '/vardiyalarim',
+          });
+        } catch (notifErr) {
+          console.error("Overtime rejection notification error:", notifErr);
+        }
+      }
+      
       res.json(updated);
     } catch (error: unknown) {
       console.error("Error rejecting overtime request:", error);

@@ -2832,6 +2832,37 @@ router.post('/api/branches/:branchId/kiosk/shift-start', isKioskAuthenticated, a
       }
     }
 
+    // P1.1: Geç kalma → supervisor bildirim
+    if (isLateArrival && lateMinutes > 0) {
+      try {
+        const [lateUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, userId)).limit(1);
+        const lateName = [lateUser?.firstName, lateUser?.lastName].filter(Boolean).join(' ') || 'Çalışan';
+        
+        const supervisors = await db.select({ id: users.id })
+          .from(users)
+          .where(and(
+            eq(users.branchId, branchId),
+            eq(users.isActive, true),
+            sql`${users.role} IN ('supervisor', 'supervisor_buddy', 'mudur')`
+          ));
+        
+        if (supervisors.length > 0) {
+          await db.insert(notifications).values(supervisors.map(s => ({
+            userId: s.id,
+            type: 'late_arrival',
+            title: 'Geç Kalma Bildirimi',
+            message: `${lateName} vardiyasına ${lateMinutes} dk geç kaldı (tolerans: ${lateToleranceMinutes} dk)`,
+            link: '/vardiya-planlama',
+            isRead: false,
+            branchId,
+          })));
+        }
+      } catch (notifErr) {
+        console.error("[BRANCH-KIOSK] Late arrival notification error:", notifErr);
+      }
+    }
+
     res.json({
       success: true,
       session,
@@ -3094,6 +3125,43 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskAuthenticated, asy
       });
     } catch (pdksErr) {
       console.error("PDKS cikis hook error (non-blocking):", pdksErr);
+    }
+
+    // P1.2+P1.3: Fazla mesai / erken çıkış → supervisor bildirim
+    if (overtimeMinutes > 15 || earlyLeaveMinutes > 15) {
+      try {
+        const [shiftUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users).where(eq(users.id, session.userId)).limit(1);
+        const uName = [shiftUser?.firstName, shiftUser?.lastName].filter(Boolean).join(' ') || 'Çalışan';
+        
+        const supervisors = await db.select({ id: users.id })
+          .from(users)
+          .where(and(
+            eq(users.branchId, branchId),
+            eq(users.isActive, true),
+            sql`${users.role} IN ('supervisor', 'supervisor_buddy', 'mudur')`
+          ));
+        
+        if (supervisors.length > 0) {
+          const notifType = overtimeMinutes > 15 ? 'overtime_alert' : 'early_leave_alert';
+          const notifTitle = overtimeMinutes > 15 ? 'Fazla Mesai Bildirimi' : 'Erken Çıkış Bildirimi';
+          const notifMessage = overtimeMinutes > 15
+            ? `${uName} vardiyasını ${overtimeMinutes} dk fazla mesai ile tamamladı`
+            : `${uName} vardiyasından ${earlyLeaveMinutes} dk erken ayrıldı`;
+          
+          await db.insert(notifications).values(supervisors.map(s => ({
+            userId: s.id,
+            type: notifType,
+            title: notifTitle,
+            message: notifMessage,
+            link: '/vardiya-planlama',
+            isRead: false,
+            branchId,
+          })));
+        }
+      } catch (notifErr) {
+        console.error("[BRANCH-KIOSK] Shift-end notification error:", notifErr);
+      }
     }
 
     res.json({
