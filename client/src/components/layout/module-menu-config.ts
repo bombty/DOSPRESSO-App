@@ -223,6 +223,9 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/franchise-acilis": SUBELER_MENU,
   "/agent-merkezi": YONETIM_MENU,
   "/qr-tara": OPERASYON_MENU,
+  "/hq-dashboard": YONETIM_MENU,
+  "/stok-transferleri": SUBELER_MENU,
+  "/canli-izleme": SUBELER_MENU,
 };
 
 const PREFIX_ROUTE_MAP: Array<{ prefix: string; config: ModuleMenuConfig }> = [
@@ -257,7 +260,7 @@ const NO_SIDEBAR_PATHS = ["/", "/control", "/control-legacy", "/login", "/regist
   "/forgot-password", "/reset-password", "/setup", "/gizlilik-politikasi",
   "/hq-ozet", "/kocluk-paneli", "/sube-ozet", "/merkez-dashboard",
   "/franchise-ozet", "/ceo-command-center", "/cgo-command-center",
-  "/profil",
+  "/profil", "/dobody", "/nfc-giris", "/ai-asistan",
 ];
 
 export function getModuleMenuForPath(path: string): ModuleMenuConfig | null {
