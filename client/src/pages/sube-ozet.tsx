@@ -78,11 +78,11 @@ function KPICard({ icon: Icon, label, value, sub, variant = "default" }: {
   
   return (
     <Card className={borderClass}>
-      <CardContent className="p-3 flex flex-col items-center gap-1">
-        <Icon className={`h-5 w-5 ${variant === "warning" ? "text-orange-500" : variant === "success" ? "text-green-500" : "text-muted-foreground"}`} />
-        <div className="text-xl font-bold">{value}</div>
-        <div className="text-xs text-muted-foreground text-center">{label}</div>
-        {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
+      <CardContent className="p-2 flex flex-col items-center gap-0.5">
+        <Icon className={`h-4 w-4 ${variant === "warning" ? "text-orange-500" : variant === "success" ? "text-green-500" : "text-muted-foreground"}`} />
+        <div className="text-base font-bold tabular-nums">{value}</div>
+        <div className="text-[10px] text-muted-foreground text-center">{label}</div>
+        {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
       </CardContent>
     </Card>
   );

@@ -73,7 +73,7 @@ export default function KoclukPaneli() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-loading">
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto" data-testid="kocluk-paneli-loading">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-32" />
         <Skeleton className="h-48" />
@@ -83,7 +83,7 @@ export default function KoclukPaneli() {
 
   if (isError) {
     return (
-      <div className="p-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-error">
+      <div className="p-4 max-w-[1200px] mx-auto" data-testid="kocluk-paneli-error">
         <ErrorState onRetry={() => refetch()} />
       </div>
     );
@@ -91,14 +91,14 @@ export default function KoclukPaneli() {
 
   if (!data) {
     return (
-      <div className="p-4 max-w-2xl mx-auto" data-testid="kocluk-paneli-empty">
+      <div className="p-4 max-w-[1200px] mx-auto" data-testid="kocluk-paneli-empty">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="kocluk-paneli-page">
+    <div className="p-4 space-y-4 max-w-[1200px] mx-auto overflow-y-auto h-full" data-testid="kocluk-paneli-page">
       <DobodyFlowMode
         userId={user?.id || ""}
         userRole={user?.role || ""}

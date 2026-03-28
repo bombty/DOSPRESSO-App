@@ -113,3 +113,48 @@
   /* ── Transitions ── */
   --ds-transition: all 0.18s ease;
 }
+
+/* ═══════════════════════════════════════
+   MC Dashboard KPI Overrides
+   KPI kartları daha kompakt ve orantılı
+   ═══════════════════════════════════════ */
+
+/* MC dashboard KPI kartları — küçült */
+[data-testid*="mission-control"] .grid-cols-3 > div,
+[data-testid*="mission-control"] .grid-cols-4 > div,
+[data-testid*="mission-control"] .grid-cols-5 > div,
+[data-testid*="mission-control"] .grid-cols-6 > div,
+[data-testid*="mc-"] .grid-cols-3 > div,
+[data-testid*="mc-"] .grid-cols-4 > div,
+[data-testid*="mc-"] .grid-cols-5 > div,
+[data-testid*="mc-"] .grid-cols-6 > div {
+  padding: 8px 10px !important;
+}
+
+/* KPI değer fontları küçült */
+[data-testid*="mission-control"] .text-2xl,
+[data-testid*="mc-"] .text-2xl {
+  font-size: 1.25rem !important;
+}
+
+[data-testid*="mission-control"] .text-3xl,
+[data-testid*="mc-"] .text-3xl {
+  font-size: 1.5rem !important;
+}
+
+/* KPI label fontları */
+[data-testid*="mission-control"] .text-xs.text-muted-foreground,
+[data-testid*="mc-"] .text-xs.text-muted-foreground {
+  font-size: 10px !important;
+}
+
+/* Card spacing daha kompakt */
+[data-testid*="mission-control"] .space-y-4 > * + *,
+[data-testid*="mc-"] .space-y-4 > * + * {
+  margin-top: 0.75rem !important;
+}
+
+[data-testid*="mission-control"] .space-y-3 > * + *,
+[data-testid*="mc-"] .space-y-3 > * + * {
+  margin-top: 0.5rem !important;
+}

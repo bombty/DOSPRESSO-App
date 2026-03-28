@@ -78,13 +78,13 @@ function StatusCard({ icon: Icon, label, value, color }: {
 }) {
   return (
     <Card>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`p-2 rounded-md ${color}`}>
-          <Icon className="h-5 w-5" />
+      <CardContent className="p-2.5 flex items-center gap-2.5">
+        <div className={`p-1.5 rounded-md ${color}`}>
+          <Icon className="h-4 w-4" />
         </div>
         <div>
-          <div className="text-2xl font-bold">{value}</div>
-          <div className="text-xs text-muted-foreground">{label}</div>
+          <div className="text-base font-bold tabular-nums">{value}</div>
+          <div className="text-[10px] text-muted-foreground">{label}</div>
         </div>
       </CardContent>
     </Card>
@@ -162,7 +162,7 @@ export default function HQOzet() {
 
   if (modeLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="hq-ozet-loading">
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto" data-testid="hq-ozet-loading">
         <Skeleton className="h-6 w-2/3" />
         <Skeleton className="h-14 rounded-lg" />
       </div>
@@ -187,7 +187,7 @@ export default function HQOzet() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4 max-w-2xl mx-auto" data-testid="hq-ozet-loading">
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto" data-testid="hq-ozet-loading">
         <Skeleton className="h-6 w-2/3" />
         <div className="grid grid-cols-4 gap-1.5">
           {[...Array(4)].map((_, i) => (
@@ -204,7 +204,7 @@ export default function HQOzet() {
 
   if (!data) {
     return (
-      <div className="p-4 max-w-2xl mx-auto" data-testid="hq-ozet-error">
+      <div className="p-4 max-w-[1200px] mx-auto" data-testid="hq-ozet-error">
         <Card><CardContent className="p-6 text-center text-muted-foreground">Veriler yüklenemedi</CardContent></Card>
       </div>
     );
@@ -214,7 +214,7 @@ export default function HQOzet() {
   const bottomBranches = data.branchRanking.filter((b) => b.avgRating > 0 && b.avgRating < 3.5).slice(-5).reverse();
 
   return (
-    <div className="p-4 space-y-4 max-w-2xl mx-auto overflow-y-auto h-full" data-testid="hq-ozet-page">
+    <div className="p-4 space-y-4 max-w-[1200px] mx-auto overflow-y-auto h-full" data-testid="hq-ozet-page">
       <div className="flex justify-end">
         <DashboardModeToggle />
       </div>

@@ -74,12 +74,12 @@ function PillView({ items, className }: { items: KPIItem[]; className?: string }
 
 function CardView({ items, className }: { items: KPIItem[]; className?: string }) {
   return (
-    <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-3 mb-4", className)} data-testid="unified-kpi-cards">
+    <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-2 mb-3", className)} data-testid="unified-kpi-cards">
       {items.map((item, idx) => (
         <div
           key={idx}
           className={cn(
-            "bg-muted/30 rounded-lg p-3 text-center border border-border/40",
+            "bg-muted/30 rounded-lg p-2.5 text-center border border-border/40",
             item.onClick && "cursor-pointer hover-elevate"
           )}
           onClick={item.onClick}
@@ -87,11 +87,11 @@ function CardView({ items, className }: { items: KPIItem[]; className?: string }
         >
           <div className="flex items-center justify-center gap-1.5">
             {item.icon && <span className="text-muted-foreground">{item.icon}</span>}
-            <span className={cn("text-xl font-bold tabular-nums", COLORS[item.color || "default"])}>
+            <span className={cn("text-base font-bold tabular-nums", COLORS[item.color || "default"])}>
               {displayValue(item.value, item.suffix)}
             </span>
           </div>
-          <div className="text-xs text-muted-foreground mt-1 truncate">{item.label}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{item.label}</div>
         </div>
       ))}
     </div>
@@ -169,11 +169,11 @@ function CompactView({ items, desktopColumns = 4, desktopGridClass, className }:
               onClick={item.onClick}
               data-testid={item.testId || `kpi-compact-card-${idx}`}
             >
-              <CardContent className="p-3">
-                <div className="flex flex-col items-center text-center gap-1">
+              <CardContent className="p-2.5">
+                <div className="flex flex-col items-center text-center gap-0.5">
                   {item.icon && <div className="flex-shrink-0">{item.icon}</div>}
-                  <p className="text-xs text-muted-foreground">{item.label}</p>
-                  <p className={cn("text-lg font-bold tabular-nums", COLORS[clr])}>
+                  <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                  <p className={cn("text-base font-bold tabular-nums", COLORS[clr])}>
                     {displayValue(item.value, item.suffix)}
                   </p>
                   {item.subtitle && (
