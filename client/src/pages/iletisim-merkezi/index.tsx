@@ -161,7 +161,7 @@ export default function IletisimMerkezi() {
     if (isHQ) {
       return [
         { key: "dashboard", label: "Dashboard", badge: null },
-        { key: "tickets", label: "Sube Talepleri", badge: openCount > 0 ? openCount : null },
+        { key: "tickets", label: "Şube Talepleri", badge: openCount > 0 ? openCount : null },
         { key: "hq-tasks", label: "HQ Gorevler", badge: Number(hqPending) > 0 ? Number(hqPending) : null },
         { key: "broadcast", label: "Duyurular", badge: null },
       ];

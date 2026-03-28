@@ -57,7 +57,7 @@ const SOURCE_LABELS: Record<string, string> = {
   crm_ticket: "CRM",
   equipment: "Ekipman",
   dobody: "Dobody",
-  branch_task: "Gorev",
+  branch_task: "Görev",
   system: "Sistem",
 };
 

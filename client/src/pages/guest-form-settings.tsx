@@ -705,7 +705,7 @@ export default function GuestFormSettings() {
                 onValueChange={(v) => setSelectedQuestionBranchId(parseInt(v))}
               >
                 <SelectTrigger data-testid="select-question-branch">
-                  <SelectValue placeholder="Sube secin..." />
+                  <SelectValue placeholder="Şube seçin..." />
                 </SelectTrigger>
                 <SelectContent>
                   {branches.map((b) => (
