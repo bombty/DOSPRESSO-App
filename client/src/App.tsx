@@ -261,6 +261,17 @@ function FabrikaDashboardRedirect() {
   return null;
 }
 
+function ProfileRedirect() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (user?.id) {
+      setLocation(`/personel/${user.id}`, { replace: true });
+    }
+  }, [user, setLocation]);
+  return null;
+}
+
 
 function AuthCatchAllToLogin() {
   const [location, setLocation] = useLocation();
@@ -327,6 +338,7 @@ function Router() {
           <Route path="/subeler/:id" component={SubeDetay} />
           <Route path="/subeler" component={Subeler} />
           <Route path="/gizlilik-politikasi" component={PrivacyPolicy} />
+          <Route path="/profil" component={ProfileRedirect} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />

@@ -212,7 +212,7 @@ const STOK: ModuleCardConfig = {
   icon: Package,
   iconBg: "rgba(212,168,75,0.1)",
   iconColor: "#d4a84b",
-  path: "/stok",
+  path: "/sube/siparis-stok",
   order: 6,
 };
 
