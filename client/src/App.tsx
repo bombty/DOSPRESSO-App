@@ -62,6 +62,7 @@ const Register = lazyWithRetry(() => import("@/pages/register"));
 const ForgotPassword = lazyWithRetry(() => import("@/pages/forgot-password"));
 const ResetPassword = lazyWithRetry(() => import("@/pages/reset-password"));
 const Dashboard = lazyWithRetry(() => import("@/pages/dashboard"));
+const ControlDashboard = lazyWithRetry(() => import("@/pages/control-dashboard"));
 const HomeScreen = lazyWithRetry(() => import("@/components/home-screen/HomeScreen"));
 const Subeler = lazyWithRetry(() => import("@/pages/subeler"));
 const SubeDetay = lazyWithRetry(() => import("@/pages/sube-detay"));
@@ -319,7 +320,8 @@ function Router() {
       {isAuthenticated && (
         <>
           <Route path="/" component={HomeScreen} />
-          <Route path="/control" component={Dashboard} />
+          <Route path="/control" component={ControlDashboard} />
+          <Route path="/control-legacy" component={Dashboard} />
           <Route path="/merkez-dashboard" component={MerkezDashboard} />
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
@@ -539,6 +541,7 @@ function AppContent() {
   };
 
   const isHomePage = location === "/";
+  const isFullWidthPage = location === "/" || location === "/control";
 
   const branchName = getBranchName(user?.branchId);
 
@@ -576,13 +579,13 @@ function AppContent() {
       
       {/* Below header: sidebar + content side by side on md+ */}
       <div className="flex flex-1 overflow-hidden">
-        {location !== "/" && (
+        {!isFullWidthPage && (
           <CollapsibleSidebar isExpanded={sidebarState.isExpanded} />
         )}
         
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Breadcrumb Navigation - hidden on home screen */}
-          {location !== "/" && (
+          {!isFullWidthPage && (
             <div className="px-2 pt-1">
               <BreadcrumbNavigation />
             </div>
@@ -591,13 +594,13 @@ function AppContent() {
           {/* Main Content */}
           <main className="flex-1 overflow-auto pb-20 md:pb-4">
             <div className="max-w-[1600px] mx-auto w-full">
-              {location !== "/" && <GuidanceWidgetWrapper user={user} />}
+              {!isFullWidthPage && <GuidanceWidgetWrapper user={user} />}
               <Router />
             </div>
           </main>
           
           {/* Flow Mode Mini-Bar - hidden on home screen */}
-          {location !== "/" && <DobodyMiniBar />}
+          {!isFullWidthPage && <DobodyMiniBar />}
         </div>
       </div>
       

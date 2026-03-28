@@ -27,6 +27,7 @@ import dobodyAvatarRoutes from "./routes/dobody-avatars";
 import dobodyTaskManagerRoutes from "./routes/dobody-task-manager";
 import insightReportRoutes from "./routes/insight-reports";
 import homeSummaryRoutes from "./routes/home-summary";
+import controlWidgetRoutes from "./routes/control-widgets";
 import dashboardDataRoutes from "./routes/dashboard-data-routes";
 import unifiedDashboardRoutes from "./routes/unified-dashboard-routes";
 import productionPlanningRoutes from "./routes/production-planning-routes";
@@ -1210,6 +1211,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(employeeSummaryRoutes);
   app.use(insightReportRoutes);
   app.use(homeSummaryRoutes);
+  app.use(controlWidgetRoutes);
   app.use(dashboardDataRoutes);
   app.use(unifiedDashboardRoutes);
   app.use(productionPlanningRoutes);
