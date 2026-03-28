@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { eq, desc, and, sql } from "drizzle-orm";
 import {
   hasPermission,
@@ -180,7 +181,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/equipment', isAuthenticated, async (req, res) => {
+  router.post('/api/equipment', isAuthenticated, requireManifestAccess('ekipman', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const { insertEquipmentSchema } = await import('@shared/schema');
@@ -286,7 +287,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/equipment/:id/maintenance', isAuthenticated, async (req, res) => {
+  router.post('/api/equipment/:id/maintenance', isAuthenticated, requireManifestAccess('ekipman', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const userId = req.user.id;
@@ -484,7 +485,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/equipment/service-requests/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/equipment/service-requests/:id', isAuthenticated, requireManifestAccess('ekipman', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       const id = parseInt(req.params.id);
@@ -642,7 +643,7 @@ const router = Router();
     }
   });
 
-  router.post('/api/equipment-catalog', isAuthenticated, async (req, res) => {
+  router.post('/api/equipment-catalog', isAuthenticated, requireManifestAccess('ekipman', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType)) {
@@ -703,7 +704,7 @@ const router = Router();
     }
   });
 
-  router.delete('/api/equipment-catalog/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/equipment-catalog/:id', isAuthenticated, requireManifestAccess('ekipman', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       if (!isHQRole(user.role as UserRoleType)) {

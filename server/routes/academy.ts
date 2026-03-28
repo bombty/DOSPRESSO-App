@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import {
   isHQRole,
   isBranchRole,
@@ -43,7 +44,7 @@ import { handleApiError } from "./helpers";
 const router = Router();
 
 // POST /api/academy/ai-generate-onboarding - AI ile onboarding şablonu oluştur
-router.post('/api/academy/ai-generate-onboarding', isAuthenticated, async (req, res) => {
+router.post('/api/academy/ai-generate-onboarding', isAuthenticated, requireManifestAccess('akademi', 'create'), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any)) {
@@ -134,7 +135,7 @@ En az 6, en fazla 12 adım oluştur. Sadece JSON array döndür, başka açıkla
 });
 
 // POST /api/academy/ai-generate-program - AI ile eğitim programı oluştur
-router.post('/api/academy/ai-generate-program', isAuthenticated, async (req, res) => {
+router.post('/api/academy/ai-generate-program', isAuthenticated, requireManifestAccess('akademi', 'create'), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as any)) {
@@ -330,7 +331,7 @@ router.get('/api/academy/team-members', isAuthenticated, async (req, res) => {
 });
 
 // PATCH /api/academy/exam-request/:id/approve - Sınav onayı (HQ only)
-router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, async (req, res) => {
+router.patch('/api/academy/exam-request/:id/approve', isAuthenticated, requireManifestAccess('akademi', 'approve'), async (req, res) => {
   try {
     if (!isHQRole(req.user.role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
@@ -394,7 +395,7 @@ router.patch('/api/academy/exam-request/:id/reject', isAuthenticated, async (req
 });
 
 // POST /api/academy/exam-request - Sınav talep et (Supervisor)
-router.post('/api/academy/exam-request', isAuthenticated, async (req, res) => {
+router.post('/api/academy/exam-request', isAuthenticated, requireManifestAccess('akademi', 'create'), async (req, res) => {
   try {
     const { userId, targetRoleId, supervisorNotes } = req.body;
     const supervisorId = req.user.id;
