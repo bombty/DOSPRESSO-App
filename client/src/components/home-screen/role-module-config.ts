@@ -36,6 +36,7 @@ const CONTROL: ModuleCardConfig = {
   iconColor: "#c0392b",
   path: "/control",
   order: 1,
+  manifestModuleId: "m01-core",
 };
 
 const SUBELER: ModuleCardConfig = {
@@ -47,6 +48,7 @@ const SUBELER: ModuleCardConfig = {
   iconColor: "#5dade2",
   path: "/subeler",
   order: 2,
+  manifestModuleId: "m01-core",
 };
 
 const IK_PERSONEL: ModuleCardConfig = {
@@ -58,6 +60,7 @@ const IK_PERSONEL: ModuleCardConfig = {
   iconColor: "#9b59b6",
   path: "/ik",
   order: 3,
+  manifestModuleId: "m02-ik",
 };
 
 const OPERASYON: ModuleCardConfig = {
@@ -69,6 +72,7 @@ const OPERASYON: ModuleCardConfig = {
   iconColor: "#27ae60",
   path: "/gorevler",
   order: 4,
+  manifestModuleId: "m05-operasyon",
 };
 
 const FABRIKA: ModuleCardConfig = {
@@ -80,6 +84,7 @@ const FABRIKA: ModuleCardConfig = {
   iconColor: "#d4a84b",
   path: "/fabrika/dashboard",
   order: 5,
+  manifestModuleId: "m09-fabrika",
 };
 
 const MUSTERI: ModuleCardConfig = {
@@ -91,6 +96,7 @@ const MUSTERI: ModuleCardConfig = {
   iconColor: "#5dade2",
   path: "/crm",
   order: 6,
+  manifestModuleId: "m08-crm",
 };
 
 const RAPORLAR: ModuleCardConfig = {
@@ -102,6 +108,7 @@ const RAPORLAR: ModuleCardConfig = {
   iconColor: "#d4a84b",
   path: "/raporlar",
   order: 8,
+  manifestModuleId: "m11-raporlar",
 };
 
 const FINANS: ModuleCardConfig = {
@@ -114,6 +121,7 @@ const FINANS: ModuleCardConfig = {
   path: "/muhasebe",
   order: 9,
   halfWidth: true,
+  manifestModuleId: "m04-bordro",
 };
 
 const YONETIM: ModuleCardConfig = {
@@ -126,6 +134,7 @@ const YONETIM: ModuleCardConfig = {
   path: "/admin/dashboard-ayarlari",
   order: 10,
   halfWidth: true,
+  manifestModuleId: "m01-core",
 };
 
 const EGITIM: ModuleCardConfig = {
@@ -137,6 +146,7 @@ const EGITIM: ModuleCardConfig = {
   iconColor: "#27ae60",
   path: "/akademi",
   order: 7,
+  manifestModuleId: "m07-akademi",
 };
 
 const GUVENLIK: ModuleCardConfig = {
@@ -149,6 +159,7 @@ const GUVENLIK: ModuleCardConfig = {
   path: "/admin/aktivite-loglari",
   order: 11,
   halfWidth: true,
+  manifestModuleId: "m01-core",
 };
 
 const KULLANICILAR: ModuleCardConfig = {
@@ -161,6 +172,7 @@ const KULLANICILAR: ModuleCardConfig = {
   path: "/admin/yetkilendirme",
   order: 12,
   halfWidth: true,
+  manifestModuleId: "m01-core",
 };
 
 const BENIM_GUNUM: ModuleCardConfig = {
@@ -172,6 +184,7 @@ const BENIM_GUNUM: ModuleCardConfig = {
   iconColor: "#d4a84b",
   path: "/benim-gunum",
   order: 1,
+  manifestModuleId: "m03-vardiya",
 };
 
 const VARDIYAM: ModuleCardConfig = {
@@ -183,6 +196,7 @@ const VARDIYAM: ModuleCardConfig = {
   iconColor: "#5dade2",
   path: "/vardiyalarim",
   order: 3,
+  manifestModuleId: "m03-vardiya",
 };
 
 const AKADEMI: ModuleCardConfig = {
@@ -194,6 +208,7 @@ const AKADEMI: ModuleCardConfig = {
   iconColor: "#27ae60",
   path: "/akademi",
   order: 2,
+  manifestModuleId: "m07-akademi",
 };
 
 const EKIPMAN_ARIZA: ModuleCardConfig = {
@@ -205,6 +220,7 @@ const EKIPMAN_ARIZA: ModuleCardConfig = {
   iconColor: "#c0392b",
   path: "/ekipman",
   order: 5,
+  manifestModuleId: "m06-ekipman",
 };
 
 const STOK: ModuleCardConfig = {
@@ -216,6 +232,7 @@ const STOK: ModuleCardConfig = {
   iconColor: "#d4a84b",
   path: "/sube/siparis-stok",
   order: 6,
+  manifestModuleId: "m10-stok",
 };
 
 const SUBEM: ModuleCardConfig = {
@@ -227,6 +244,7 @@ const SUBEM: ModuleCardConfig = {
   iconColor: "#5dade2",
   path: "/franchise-ozet",
   order: 1,
+  manifestModuleId: "m01-core",
 };
 
 const BORDRO_PDKS: ModuleCardConfig = {
@@ -238,6 +256,7 @@ const BORDRO_PDKS: ModuleCardConfig = {
   iconColor: "#c0392b",
   path: "/pdks",
   order: 4,
+  manifestModuleId: "m04-bordro",
 };
 
 const PERSONEL_YONETIMI: ModuleCardConfig = {
@@ -249,6 +268,7 @@ const PERSONEL_YONETIMI: ModuleCardConfig = {
   iconColor: "#9b59b6",
   path: "/ik",
   order: 4,
+  manifestModuleId: "m02-ik",
 };
 
 const FABRIKA_MODUL: ModuleCardConfig = {
@@ -260,6 +280,7 @@ const FABRIKA_MODUL: ModuleCardConfig = {
   iconColor: "#d4a84b",
   path: "/fabrika/dashboard",
   order: 2,
+  manifestModuleId: "m09-fabrika",
 };
 
 const PROFIL: ModuleCardConfig = {
@@ -272,6 +293,7 @@ const PROFIL: ModuleCardConfig = {
   path: "/profil",
   order: 99,
   halfWidth: true,
+  manifestModuleId: "m01-core",
 };
 
 // ─── ROLE → CARDS MAPPING ───────────────────────────────────
