@@ -16,17 +16,17 @@ interface HomeSummaryData {
 
 function HomeScreenSkeleton() {
   return (
-    <div style={{ padding: "var(--ds-page-padding-y) var(--ds-page-padding-x)", maxWidth: "var(--ds-max-width)", margin: "0 auto" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+    <div className="p-4 md:p-6 max-w-[1200px] mx-auto">
+      <div className="flex gap-2 mb-4">
         <Skeleton className="h-8 w-32 rounded-lg" />
         <Skeleton className="h-8 w-40 rounded-lg" />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
         {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-[110px] rounded-xl" />
+          <Skeleton key={i} className="h-[100px] md:h-[120px] rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-[90px] rounded-xl mt-3" />
+      <Skeleton className="h-[80px] rounded-xl mt-3" />
     </div>
   );
 }
@@ -53,30 +53,19 @@ export default function HomeScreen() {
   return (
     <div
       data-testid="home-screen"
-      style={{
-        padding: `var(--ds-page-padding-y) var(--ds-page-padding-x)`,
-        maxWidth: "var(--ds-max-width)",
-        margin: "0 auto",
-        overflowY: "auto",
-        height: "100%",
-      }}
+      className="p-4 md:p-6 max-w-[1200px] mx-auto overflow-y-auto h-full"
     >
-      {/* Alert pills only — name is in header, no repetition */}
+      {/* Alert pills only — name is in header */}
       <WelcomeHeader
         firstName=""
         role={user.role || ""}
         alerts={homeSummary?.alerts}
       />
 
-      {/* Main module grid — responsive 3 columns */}
+      {/* Main module grid — 2 col mobile, 3 col desktop */}
       <div
         data-testid="module-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-          gap: "var(--ds-gap-md)",
-          marginBottom: "var(--ds-gap-md)",
-        }}
+        className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-[14px] mb-3 md:mb-[14px]"
       >
         {fullCards.map((mod) => (
           <ModuleCard
@@ -90,18 +79,17 @@ export default function HomeScreen() {
 
       {/* Mr. Dobody card */}
       {hasDobody && (
-        <div style={{ marginBottom: "var(--ds-gap-md)" }}>
+        <div className="mb-3 md:mb-[14px]">
           <DobodyCard />
         </div>
       )}
 
       {/* Half-width utility cards */}
       {halfCards.length > 0 && (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${Math.min(halfCards.length, 3)}, 1fr)`,
-          gap: "var(--ds-gap-md)",
-        }}>
+        <div className={`grid gap-3 md:gap-[14px] ${
+          halfCards.length === 1 ? "grid-cols-1" :
+          halfCards.length === 2 ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"
+        }`}>
           {halfCards.map((mod) => (
             <ModuleCard
               key={mod.id}
@@ -113,16 +101,11 @@ export default function HomeScreen() {
         </div>
       )}
 
-      {/* Footer note */}
-      <p style={{
-        textAlign: "center",
-        fontSize: "var(--ds-font-small)",
-        color: "var(--ds-text-secondary)",
-        padding: "12px 0 4px",
-        opacity: 0.5,
-      }}>
+      {/* Footer */}
+      <p className="text-center text-[11px] py-3 opacity-50"
+        style={{ color: "var(--ds-text-secondary)" }}>
         {user.role === "admin" ? "Admin: 12 modül · 31 alt sayfa · Tam erişim" :
-         `${modules.length} modül · ${user.role?.toUpperCase()}`}
+         `${modules.length} modül · ${(user.role || "").toUpperCase()}`}
       </p>
     </div>
   );
