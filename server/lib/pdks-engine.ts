@@ -4,7 +4,7 @@ import { eq, and, gte, lte, sql, isNull } from "drizzle-orm";
 
 export interface DayClassification {
   date: string;
-  status: 'worked' | 'program_off' | 'kapanish_off' | 'absent' | 'unpaid_leave' | 'sick_leave' | 'annual_leave';
+  status: 'worked' | 'program_off' | 'kapanish_off' | 'absent' | 'no_shift' | 'unpaid_leave' | 'sick_leave' | 'annual_leave';
   records: { time: string; type: string; source: string | null }[];
   workedMinutes: number;
   overtimeMinutes: number;
@@ -58,9 +58,11 @@ export function classifyDay(
   dayRecords: { time: string; type: string; source: string | null }[],
   isScheduledOff: boolean,
   leaveType: string | null,
-  plannedMinutes: number = 480 // Default 8 saat, vardiya varsa onun süresi
+  plannedMinutes?: number // undefined = vardiya planlanmamış, number = planlanan süre
 ): DayClassification {
   const base = { date: dateStr, records: dayRecords, workedMinutes: 0, overtimeMinutes: 0 };
+  const hasPlannedShift = plannedMinutes !== undefined;
+  const effectivePlannedMinutes = plannedMinutes ?? 480;
 
   if (leaveType) {
     if (leaveType === 'unpaid') return { ...base, status: 'unpaid_leave' };
@@ -70,6 +72,10 @@ export function classifyDay(
 
   if (dayRecords.length === 0) {
     if (isScheduledOff) return { ...base, status: 'program_off' };
+    // BUG2 FIX: Vardiya planlanmamışsa "absent" DEĞİL "no_shift"
+    // Absent = vardiya planlanmış AMA gelmemiş
+    // No_shift = zaten o gün vardiyası yok
+    if (!hasPlannedShift) return { ...base, status: 'no_shift' };
     return { ...base, status: 'absent' };
   }
 
@@ -90,7 +96,7 @@ export function classifyDay(
   if (hasWorkStamp) {
     const workedMinutes = calculateWorkedMinutes(dayRecords);
     if (workedMinutes > 0) {
-      const overtimeMinutes = Math.max(0, workedMinutes - plannedMinutes);
+      const overtimeMinutes = Math.max(0, workedMinutes - effectivePlannedMinutes);
       return { ...base, status: 'worked', workedMinutes, overtimeMinutes };
     }
     const hasGiris = dayRecords.some(r => r.type === 'giris');
@@ -199,7 +205,7 @@ export async function getMonthClassification(
   }
 
   const workedDays = days.filter(d => d.status === 'worked').length;
-  const offDays = days.filter(d => ['program_off', 'kapanish_off'].includes(d.status)).length;
+  const offDays = days.filter(d => ['program_off', 'kapanish_off', 'no_shift'].includes(d.status)).length;
   const absentDays = days.filter(d => d.status === 'absent').length;
   const unpaidLeaveDays = days.filter(d => d.status === 'unpaid_leave').length;
   const sickLeaveDays = days.filter(d => d.status === 'sick_leave').length;

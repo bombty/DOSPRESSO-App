@@ -5,7 +5,7 @@ import {
   agentPendingActions, agentRuns, agentEscalationHistory, 
   agentActionOutcomes, agentRejectionPatterns, agentRoutingRules,
   users, notifications, aiAgentLogs, tasks, dobodyFlowTasks,
-  guidanceDismissals, isHQRole
+  guidanceDismissals, isHQRole, equipmentFaults, branches
 } from "@shared/schema";
 import { eq, desc, and, count, sql, gte, or, inArray, ne } from "drizzle-orm";
 import { runAgentAnalysis } from "../services/agent-engine";
@@ -739,16 +739,108 @@ async function getCachedGaps() {
   return cachedGaps;
 }
 
+async function getOperationalAlerts(userId: string, userRole: string, userBranchId: number | null): Promise<any[]> {
+  const alerts: any[] = [];
+  const isHQ = isHQRole(userRole);
+  const today = new Date().toISOString().split('T')[0];
+  
+  try {
+    // Open equipment faults
+    const faultConditions = [ne(equipmentFaults.status, 'cozuldu')];
+    if (!isHQ && userBranchId) {
+      faultConditions.push(eq(equipmentFaults.branchId, userBranchId));
+    }
+    const openFaults = await db.select({ cnt: sql<number>`count(*)` })
+      .from(equipmentFaults)
+      .where(and(...faultConditions));
+    const faultCount = Number(openFaults[0]?.cnt || 0);
+    
+    if (faultCount > 0) {
+      alerts.push({
+        id: `ops-faults-${userBranchId || 'all'}-${today}`,
+        category: 'operational',
+        severity: faultCount >= 5 ? 'critical' : faultCount >= 2 ? 'high' : 'medium',
+        title: `${faultCount} açık ekipman arızası var`,
+        description: `${faultCount} ekipman arızası çözüm bekliyor. Hemen kontrol edin.`,
+        deepLink: '/ekipman-arizalar',
+        targetRoles: ['admin', 'supervisor', 'mudur', 'coach', 'ceo', 'cgo'],
+        targetBranchId: userBranchId,
+        autoResolvable: false,
+        checkFn: 'ops-equipment-faults',
+      });
+    }
+
+    // Overdue/due today tasks
+    const taskConditions = [
+      sql`${tasks.status} IN ('pending', 'in_progress')`,
+      sql`${tasks.dueDate} <= ${today}`,
+    ];
+    if (!isHQ && userBranchId) {
+      taskConditions.push(eq(tasks.branchId, userBranchId));
+    }
+    const dueTasks = await db.select({ cnt: sql<number>`count(*)` })
+      .from(tasks)
+      .where(and(...taskConditions));
+    const dueCount = Number(dueTasks[0]?.cnt || 0);
+
+    if (dueCount > 0) {
+      alerts.push({
+        id: `ops-tasks-due-${userBranchId || 'all'}-${today}`,
+        category: 'operational',
+        severity: dueCount >= 5 ? 'high' : 'medium',
+        title: `${dueCount} görevin deadline'ı geçti veya bugün`,
+        description: `${dueCount} görev acil ilgi bekliyor.`,
+        deepLink: '/gorevler',
+        targetRoles: ['admin', 'supervisor', 'mudur', 'coach'],
+        targetBranchId: userBranchId,
+        autoResolvable: false,
+        checkFn: 'ops-overdue-tasks',
+      });
+    }
+
+    // Pending leave requests (for supervisors/managers)
+    if (['supervisor', 'mudur', 'admin', 'muhasebe_ik'].includes(userRole)) {
+      const pendingLeaves = await db.execute(sql`
+        SELECT count(*) as cnt FROM leave_requests WHERE status = 'pending'
+        ${userBranchId && !isHQ ? sql`AND user_id IN (SELECT id FROM users WHERE branch_id = ${userBranchId})` : sql``}
+      `);
+      const leaveCount = Number((pendingLeaves.rows as any[])?.[0]?.cnt || 0);
+      if (leaveCount > 0) {
+        alerts.push({
+          id: `ops-leaves-pending-${userBranchId || 'all'}-${today}`,
+          category: 'operational',
+          severity: leaveCount >= 3 ? 'medium' : 'low',
+          title: `${leaveCount} bekleyen izin talebi`,
+          description: `${leaveCount} izin talebi onay bekliyor.`,
+          deepLink: '/izin-talepleri',
+          targetRoles: ['admin', 'supervisor', 'mudur', 'muhasebe_ik'],
+          targetBranchId: userBranchId,
+          autoResolvable: false,
+          checkFn: 'ops-pending-leaves',
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[Guidance] Operational alerts error:", err);
+  }
+  
+  return alerts;
+}
+
 router.get("/api/agent/guidance", isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
     const allGaps = await getCachedGaps();
+    
+    // BUG1 FIX: Also fetch operational alerts
+    const opsAlerts = await getOperationalAlerts(user.id, user.role, user.branchId);
+    const combined = [...allGaps, ...opsAlerts];
 
     const dismissals = await db.select().from(guidanceDismissals).where(eq(guidanceDismissals.userId, user.id));
     const dismissedIds = new Set(dismissals.map((d) => d.guidanceId));
 
     const isHQ = isHQRole(user.role);
-    const myGuidance = allGaps.filter(gap => {
+    const myGuidance = combined.filter(gap => {
       if (dismissedIds.has(gap.id)) return false;
       if (!gap.targetRoles.includes(user.role)) return false;
       if (gap.targetBranchId) {
