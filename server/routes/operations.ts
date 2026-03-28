@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import {
   checklists,
   checklistAssignments,
@@ -103,7 +104,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     }
   });
 
-  router.post('/api/checklists', isAuthenticated, async (req, res) => {
+  router.post('/api/checklists', isAuthenticated, requireManifestAccess('gorevler', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'create');
@@ -153,7 +154,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // Update checklist with tasks (Admin/CEO/CGO/Coach/Trainer always, supervisors only if isEditable=true)
-  router.patch('/api/checklists/:id', isAuthenticated, async (req, res) => {
+  router.patch('/api/checklists/:id', isAuthenticated, requireManifestAccess('gorevler', 'edit'), async (req, res) => {
     try {
       const user = req.user!;
       const role = user.role as UserRoleType;
@@ -360,7 +361,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // POST /api/checklist-assignments - Create new assignment
-  router.post('/api/checklist-assignments', isAuthenticated, async (req, res) => {
+  router.post('/api/checklist-assignments', isAuthenticated, requireManifestAccess('gorevler', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');
@@ -450,7 +451,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // DELETE /api/checklist-assignments/:id - Delete assignment
-  router.delete('/api/checklist-assignments/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/checklist-assignments/:id', isAuthenticated, requireManifestAccess('gorevler', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'delete');
@@ -756,7 +757,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
   });
 
   // PATCH /api/checklist-completions/:id/review - Manager review and score update
-  router.patch('/api/checklist-completions/:id/review', isAuthenticated, async (req, res) => {
+  router.patch('/api/checklist-completions/:id/review', isAuthenticated, requireManifestAccess('gorevler', 'approve'), async (req, res) => {
     try {
       const user = req.user!;
       ensurePermission(user, 'checklists', 'edit');

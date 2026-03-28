@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { hasPermission, resolvePermissionScope, applyScopeFilter, type UserRoleType } from "../permission-service";
 import { createAuditEntry, getAuditContext } from "../audit";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, max, min } from "drizzle-orm";
@@ -559,7 +560,7 @@ router.use((req: any, res, next) => {
   });
 
   // Create new employee (admin/coach/supervisor with branch scoping)
-  router.post('/api/employees', isAuthenticated, async (req, res) => {
+  router.post('/api/employees', isAuthenticated, requireManifestAccess('ik', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const { role, branchId: userBranchId } = user;
@@ -616,7 +617,7 @@ router.use((req: any, res, next) => {
   });
 
   // Delete employee (admin/coach only - no branch restriction for coach)
-  router.delete('/api/employees/:id', isAuthenticated, async (req, res) => {
+  router.delete('/api/employees/:id', isAuthenticated, requireManifestAccess('ik', 'delete'), async (req, res) => {
     try {
       const user = req.user!;
       const { role } = user;
@@ -859,7 +860,7 @@ router.use((req: any, res, next) => {
   });
 
   // Create employee warning (with permissions and branch filtering)
-  router.post('/api/employees/:id/warnings', isAuthenticated, async (req, res) => {
+  router.post('/api/employees/:id/warnings', isAuthenticated, requireManifestAccess('ik', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const { role, branchId: userBranchId, id: issuerId } = user;
@@ -2304,7 +2305,7 @@ JSON formatında yanıt ver:
   });
 
   // POST /api/leave-requests - Create a new leave request
-  router.post('/api/leave-requests', isAuthenticated, async (req, res) => {
+  router.post('/api/leave-requests', isAuthenticated, requireManifestAccess('ik', 'create'), async (req, res) => {
     try {
       const user = req.user!;
       const { userId, leaveType, startDate, endDate, totalDays, reason } = req.body;
