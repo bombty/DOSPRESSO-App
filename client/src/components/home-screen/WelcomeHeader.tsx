@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckSquare, Clock } from "lucide-react";
 
 interface WelcomeHeaderProps {
-  firstName: string;
+  firstName?: string;
   role: string;
   branchName?: string | null;
   alerts?: { criticalCount: number; pendingTasks: number; pendingApprovals: number };

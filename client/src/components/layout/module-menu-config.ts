@@ -115,6 +115,17 @@ const YONETIM_MENU: ModuleMenuConfig = {
   ],
 };
 
+const BENIM_GUNUM_MENU: ModuleMenuConfig = {
+  title: "Benim Günüm",
+  items: [
+    { id: "gunum", label: "Benim Günüm", path: "/benim-gunum", icon: Clock },
+    { id: "vardiya", label: "Vardiyam", path: "/vardiya-planlama", icon: Calendar },
+    { id: "gorevler", label: "Görevlerim", path: "/gorevler", icon: CheckSquare },
+    { id: "akademi", label: "Akademi", path: "/akademi", icon: BookOpen },
+    { id: "profil", label: "Profilim", path: "/profil", icon: Users },
+  ],
+};
+
 // ─── ROUTE → MODÜL EŞLEŞTİRME ─────────────────────
 // URL path prefix → hangi modül menüsü gösterilecek
 
@@ -151,6 +162,8 @@ const ROUTE_MODULE_MAP: Array<{ prefix: string; config: ModuleMenuConfig }> = [
   { prefix: "/admin", config: YONETIM_MENU },
   { prefix: "/yonetim", config: YONETIM_MENU },
   { prefix: "/ajanda", config: YONETIM_MENU },
+  { prefix: "/benim-gunum", config: BENIM_GUNUM_MENU },
+  { prefix: "/profil", config: BENIM_GUNUM_MENU },
 ];
 
 /**

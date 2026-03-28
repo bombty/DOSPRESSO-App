@@ -24,8 +24,6 @@ import { NetworkStatusProvider } from "@/hooks/useNetworkStatus";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { ProtectedRoute } from "@/components/protected-route";
 import { ModuleGuard } from "@/components/module-guard";
-import { CollapsibleSidebar } from "@/components/collapsible-sidebar";
-import { useSidebarState } from "@/hooks/useSidebarState";
 import { GuidanceWidget } from "@/components/widgets/guidance-widget";
 import { RouteModuleSidebar } from "@/components/layout/RouteModuleSidebar";
 import { BranchOnboardingWizard } from "@/components/branch-onboarding-wizard";
@@ -494,7 +492,6 @@ function AppContent() {
   useLanguageSync();
   const [location, setLocation] = useLocation();
   const [qrModalOpen, setQrModalOpen] = useState(false);
-  const sidebarState = useSidebarState();
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
     enabled: isAuthenticated && !!user,

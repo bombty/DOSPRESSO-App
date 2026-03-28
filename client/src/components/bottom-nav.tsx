@@ -33,8 +33,8 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
     defaultLabelTR: "Ana Sayfa",
     defaultLabelEN: "Home",
     getPath: (user) => {
-      if (user?.role === 'ceo') return '/ceo-command-center';
-      if (user?.role === 'cgo') return '/cgo-command-center';
+      // CEO → HomeScreen
+      // CGO → HomeScreen
       return '/';
     },
   },
@@ -58,8 +58,8 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
     defaultLabelTR: "AI Asistan",
     defaultLabelEN: "AI Assistant",
     getPath: (user) => {
-      if (user?.role === 'ceo') return '/ceo-command-center';
-      if (user?.role === 'cgo') return '/cgo-command-center';
+      // CEO → HomeScreen
+      // CGO → HomeScreen
       return '#ai-overlay';
     },
     isOverlay: true,
