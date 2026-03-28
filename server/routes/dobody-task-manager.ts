@@ -616,7 +616,7 @@ router.post("/api/admin/dobody-tasks/:id/remind", isAuthenticated, async (req, r
             isRead: false,
           });
           sentCount++;
-        } catch {}
+        } catch (e) { console.error(e); }
       }
     }
 

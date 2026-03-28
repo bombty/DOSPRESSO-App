@@ -68,7 +68,7 @@ router.get("/api/action-cards/today", isAuthenticated, async (req, res) => {
       let template: any = {};
       try {
         template = card.triggerTemplate ? JSON.parse(card.triggerTemplate) : {};
-      } catch {}
+      } catch (e) { console.error(e); }
       return {
         ...card,
         title: template.title || card.triggerName || card.description,
@@ -161,7 +161,7 @@ router.post("/api/action-cards/:id/submit", isAuthenticated, async (req, res) =>
         resourceId: String(taskId),
         details: { evidenceType: submitType, triggerId: task.triggerId, branchId: task.branchId },
       });
-    } catch {}
+    } catch (e) { console.error(e); }
 
     return res.json({ success: true, message: "Kanıt gönderildi" });
   } catch (error: unknown) {
@@ -214,7 +214,7 @@ router.post("/api/action-cards/:id/approve", isAuthenticated, async (req, res) =
         resourceId: String(taskId),
         details: { reviewerId: reviewer.id, triggerId: task.triggerId, branchId: task.branchId },
       });
-    } catch {}
+    } catch (e) { console.error(e); }
 
     return res.json({ success: true, message: "Görev onaylandı" });
   } catch (error: unknown) {
@@ -267,7 +267,7 @@ router.post("/api/action-cards/:id/reject", isAuthenticated, async (req, res) =>
         resourceId: String(taskId),
         details: { reviewerId: reviewer.id, triggerId: task.triggerId, branchId: task.branchId, note },
       });
-    } catch {}
+    } catch (e) { console.error(e); }
 
     return res.json({ success: true, message: "Görev reddedildi" });
   } catch (error: unknown) {
@@ -338,7 +338,7 @@ router.get("/api/action-cards/pending-approvals", isAuthenticated, async (req, r
       let template: any = {};
       try {
         template = card.triggerTemplate ? JSON.parse(card.triggerTemplate) : {};
-      } catch {}
+      } catch (e) { console.error(e); }
       return {
         ...card,
         title: template.title || card.triggerName || card.description,

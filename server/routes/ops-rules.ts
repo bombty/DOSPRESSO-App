@@ -50,7 +50,7 @@ router.get("/api/ops-rules/evaluate", isAuthenticated, async (req, res) => {
         resourceId: "batch",
         details: { issueCount: issues.length, branchId },
       });
-    } catch {}
+    } catch (e) { console.error(e); }
 
     return res.json(issues);
   } catch (error: unknown) {

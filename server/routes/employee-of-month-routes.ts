@@ -124,7 +124,7 @@ const router = Router();
                 )
               );
             complianceDeduction = Math.min(Number(compRow?.cnt ?? 0) * 3, 15);
-          } catch {}
+          } catch (e) { console.error(e); }
         }
 
         const totalScore = attendanceScore + checklistScore + taskScore +

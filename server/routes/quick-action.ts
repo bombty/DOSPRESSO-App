@@ -549,7 +549,7 @@ router.post("/api/quick-action", isAuthenticated, isSupervisorPlus, async (req, 
         status: "error",
         executionTimeMs: executionTime,
       });
-    } catch {}
+    } catch (e) { console.error(e); }
     console.error("Quick action error:", error);
     res.status(500).json({ message: "İşlem gerçekleştirilemedi" });
   }

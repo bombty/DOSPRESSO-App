@@ -732,7 +732,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                     <TableHead>Tedarikci</TableHead>
                     <TableHead>Sorun Tipi</TableHead>
                     <TableHead>Onem</TableHead>
-                    <TableHead>Aciklama</TableHead>
+                    <TableHead>Açıklama</TableHead>
                     <TableHead>Cozum</TableHead>
                     <TableHead>Durum</TableHead>
                   </TableRow>
@@ -801,7 +801,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                     <TableHead>Tarih</TableHead>
                     <TableHead>Hareket Tipi</TableHead>
                     <TableHead className="text-right">Miktar</TableHead>
-                    <TableHead>Aciklama</TableHead>
+                    <TableHead>Açıklama</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1131,7 +1131,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Aciklama</Label>
+              <Label>Açıklama</Label>
               <Textarea
                 value={newIssueForm.description}
                 onChange={(e) => setNewIssueForm((p) => ({ ...p, description: e.target.value }))}

@@ -177,7 +177,7 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
           value: data.slaBreaches,
           icon: AlertTriangle,
           color: data.slaBreaches > 0 ? "text-red-500" : "text-foreground",
-          sub: data.slaBreaches > 0 ? "Acil aksiyon" : "Ihlal yok",
+          sub: data.slaBreaches > 0 ? "Acil aksiyon" : "İhlal yok",
         },
         {
           label: "Bu Hafta Çözülen",
@@ -221,7 +221,7 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
           value: data.slaBreaches,
           icon: AlertTriangle,
           color: data.slaBreaches > 0 ? "text-red-500" : "text-foreground",
-          sub: data.slaBreaches > 0 ? "Acil aksiyon" : "Ihlal yok",
+          sub: data.slaBreaches > 0 ? "Acil aksiyon" : "İhlal yok",
         },
       ];
 

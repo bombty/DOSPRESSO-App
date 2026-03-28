@@ -180,7 +180,7 @@ router.get("/api/dashboard/executive", isAuthenticated, requireRole(EXEC_ROLES),
         message: i.recommendation,
         branchId: i.branchId,
       }));
-    } catch {}
+    } catch (e) { console.error(e); }
 
     const dataAvailable = totalTickets > 0 || totalFaults > 0 || totalStaff > 0;
 

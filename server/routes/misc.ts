@@ -419,7 +419,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             icon: 'building',
           });
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       // 2. Search users/employees
       try {
@@ -453,7 +453,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             });
           }
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       // 3. Search equipment
       try {
@@ -482,7 +482,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             });
           }
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       // 4. Search tasks
       try {
@@ -508,7 +508,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             });
           }
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       // 5. Search faults
       try {
@@ -534,7 +534,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             });
           }
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       // 6. Search checklists
       try {
@@ -554,7 +554,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             icon: 'check-square',
           });
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       // 7. Search recipes
       try {
@@ -576,7 +576,7 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
             icon: 'chef-hat',
           });
         }
-      } catch (error: unknown) {}
+      } catch (error: unknown) { console.error(error); }
 
       res.json({ results: results.slice(0, 20) });
     } catch (error: unknown) {

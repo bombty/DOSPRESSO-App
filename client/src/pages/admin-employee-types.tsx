@@ -233,7 +233,7 @@ function EmployeeTypesTab() {
           <TableRow>
             <TableHead>Key</TableHead>
             <TableHead>Ad</TableHead>
-            <TableHead>Aciklama</TableHead>
+            <TableHead>Açıklama</TableHead>
             <TableHead>Yas Araligi</TableHead>
             <TableHead>Gruplar</TableHead>
             <TableHead>Durum</TableHead>
@@ -336,7 +336,7 @@ function EmployeeTypesTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="type-description">Aciklama</Label>
+              <Label htmlFor="type-description">Açıklama</Label>
               <Input
                 id="type-description"
                 value={formData.description}

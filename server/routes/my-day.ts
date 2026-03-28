@@ -55,7 +55,7 @@ router.get("/api/my-day", isAuthenticated, async (req, res) => {
           )
         );
       todayChecklists = checklists;
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let pendingTraining: any[] = [];
     try {
@@ -77,7 +77,7 @@ router.get("/api/my-day", isAuthenticated, async (req, res) => {
         )
         .limit(3);
       pendingTraining = trainings;
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let streak: any = { currentStreak: 0, bestStreak: 0, totalActiveDays: 0 };
     try {
@@ -92,7 +92,7 @@ router.get("/api/my-day", isAuthenticated, async (req, res) => {
         .from(learningStreaks)
         .where(eq(learningStreaks.userId, userId));
       if (s) streak = s;
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let career: any = null;
     try {
@@ -145,7 +145,7 @@ router.get("/api/my-day", isAuthenticated, async (req, res) => {
           nextLevel,
         };
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let onboarding: any = null;
     if (userRole === "stajyer") {
@@ -192,7 +192,7 @@ router.get("/api/my-day", isAuthenticated, async (req, res) => {
             mentorName,
           };
         }
-      } catch {}
+      } catch (e) { console.error(e); }
     }
 
     const todayTasks: any[] = [];
@@ -238,12 +238,12 @@ router.get("/api/my-day", isAuthenticated, async (req, res) => {
     let suggestions: any[] = [];
     try {
       suggestions = await getBaristaSuggestions(userId);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     try {
       const skillInsights = await getLatestSkillInsights(userId, userRole);
       suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     res.json({
       greeting: getGreeting(),

@@ -55,7 +55,7 @@ router.post('/api/setup/initialize', isAuthenticated, async (req: Request, res: 
         INSERT INTO site_settings (key, value, updated_at) 
         VALUES ('company_name', ${companyName}, NOW())
         ON CONFLICT (key) DO UPDATE SET value = ${companyName}, updated_at = NOW()
-      `).catch(() => {});
+      `).catch((e) => { console.error(e); });
     }
 
     const adminId = randomUUID();
@@ -72,7 +72,7 @@ router.post('/api/setup/initialize', isAuthenticated, async (req: Request, res: 
             INSERT INTO branches (name, address, city, phone, email, status)
             VALUES (${branch.name}, ${branch.address || ''}, ${branch.city || ''}, ${branch.phone || ''}, ${branch.email || ''}, 'active')
             ON CONFLICT DO NOTHING
-          `).catch(() => {});
+          `).catch((e) => { console.error(e); });
         }
       }
     }
@@ -106,7 +106,7 @@ async function loadDefaultData() {
         INSERT INTO titles (name, category, description)
         VALUES (${pos.name}, ${pos.category}, ${pos.description})
         ON CONFLICT DO NOTHING
-      `).catch(() => {});
+      `).catch((e) => { console.error(e); });
     }
   } catch (error) {
     console.error('[Setup] Default data loading error:', error);
@@ -129,7 +129,7 @@ async function loadDemoData() {
         INSERT INTO users (id, username, email, password, role, "firstName", "lastName", "isActive", "accountStatus")
         VALUES (${id}, ${u.username}, ${u.email}, ${defaultPassword}, ${u.role}, ${u.firstName}, ${u.lastName}, true, 'approved')
         ON CONFLICT DO NOTHING
-      `).catch(() => {});
+      `).catch((e) => { console.error(e); });
     }
   } catch (error) {
     console.error('[Setup] Demo data loading error:', error);

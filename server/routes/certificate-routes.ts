@@ -713,7 +713,7 @@ const router = Router();
         const [result] = await db.select({ count: countFn() }).from(agentPendingActions)
           .where(and(...conditions));
         agentPendingCount = Number(result?.count ?? 0);
-      } catch {}
+      } catch (e) { console.error(e); }
 
       const badges: Record<string, number> = {
         notifications: notificationCount,

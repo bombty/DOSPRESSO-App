@@ -609,7 +609,7 @@ router.get("/api/branch-tasks/stats", isAuthenticated, moduleGuard, async (req, 
         const scoreResult = await calculateBranchTaskScore(branchScope);
         (stats as any).score = scoreResult.score;
         (stats as any).scoreDetails = scoreResult.details;
-      } catch {}
+      } catch (e) { console.error(e); }
     }
 
     res.json(stats);

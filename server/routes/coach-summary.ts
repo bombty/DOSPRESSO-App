@@ -58,7 +58,7 @@ router.get("/api/coach-summary", isAuthenticated, async (req, res) => {
           reason: (row.compositeScore || 0) < 50 ? "Kritik dusuk skor" : "Dusuk skor",
         });
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     attentionNeeded.sort((a, b) => a.compositeScore - b.compositeScore);
 
@@ -70,12 +70,12 @@ router.get("/api/coach-summary", isAuthenticated, async (req, res) => {
     let suggestions: any[] = [];
     try {
       suggestions = await getCoachSuggestions(req.user.id);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     try {
       const skillInsights = await getLatestSkillInsights(req.user.id, userRole);
       suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     res.json({
       branches: branchSummary,

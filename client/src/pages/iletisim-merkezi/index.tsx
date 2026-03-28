@@ -228,7 +228,7 @@ export default function IletisimMerkezi() {
                 {isHQ ? 'Iletisim Merkezi' : 'Destek Taleplerim'}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {isHQ ? 'Sube Talepleri · HQ Gorevler · Duyurular' : branchInfo?.name ?? 'Subem'}
+                {isHQ ? 'Şube Talepleri · HQ Görevler · Duyurular' : branchInfo?.name ?? 'Şubem'}
               </p>
             </div>
             {canCreateTicket(user?.role ?? "") && (

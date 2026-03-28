@@ -176,7 +176,7 @@ export function TicketListPanel({ tickets, selectedId, onSelect, isLoading, onNe
         <div className="flex gap-1.5 mt-2.5 overflow-x-auto">
           {[
             { key: 'all', label: 'Tumu' },
-            { key: 'acik', label: 'Acik' },
+            { key: 'acik', label: 'Açık' },
             { key: 'islemde', label: 'Islemde' },
             { key: 'cozuldu', label: 'Cozuldu' },
           ].map((f) => (

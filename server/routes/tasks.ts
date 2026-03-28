@@ -2580,7 +2580,7 @@ const router = Router();
             link: `/gorevler?taskId=${taskId}`,
             branchId: task.branchId,
           });
-        } catch (e) {}
+        } catch (e) { console.error(e); }
       }
 
       res.json({

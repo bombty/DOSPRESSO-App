@@ -1170,7 +1170,7 @@ router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async
             ON CONFLICT (station_id, target_date) DO NOTHING
           `);
           targetsAdded++;
-        } catch { }
+        } catch (e) { console.error(e); }
       }
     }
     results.dailyTargetsAdded = targetsAdded;

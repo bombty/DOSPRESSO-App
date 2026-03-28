@@ -407,7 +407,7 @@ router.post("/webinars/:id/cancel", isAuthenticated, async (req, res) => {
           message: `"${existing.title}" webinarı iptal edildi.`,
           link: "/akademi-v3?tab=webinar",
         });
-      } catch {}
+      } catch (e) { console.error(e); }
     }
 
     res.json(updated);
@@ -687,7 +687,7 @@ export async function checkWebinarReminders() {
               message: reminderMessage,
               link: "/akademi-v3?tab=webinar",
             });
-          } catch {}
+          } catch (e) { console.error(e); }
         }
 
         sentWebinarReminders.add(dedupeKey);

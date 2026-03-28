@@ -49,7 +49,7 @@ const router = Router();
         for (const row of complianceRows) {
           if (row.branchId) branchComplianceCounts.set(row.branchId, Number(row.openCount));
         }
-      } catch {}
+      } catch (e) { console.error(e); }
 
       const getPerformanceMetrics = (userId: string, userBranchId?: number | null) => {
         const assignedFaults = allFaults.filter(f => f.assignedToId === userId);

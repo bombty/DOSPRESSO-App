@@ -241,7 +241,7 @@ function PaymentDialog({ order, open, onOpenChange }: { order: PurchaseOrder; op
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="notes">Aciklama</Label>
+            <Label htmlFor="notes">Açıklama</Label>
             <Textarea
               id="notes"
               value={notes}

@@ -675,7 +675,7 @@ export default function MalKabul() {
                           <TableHead className="w-[100px]">Teslim Mik.</TableHead>
                           <TableHead className="w-[80px]">Birim</TableHead>
                           <TableHead className="w-[140px]">Kalite Durumu</TableHead>
-                          <TableHead className="min-w-[120px]">Aciklama</TableHead>
+                          <TableHead className="min-w-[120px]">Açıklama</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
                       </TableHeader>

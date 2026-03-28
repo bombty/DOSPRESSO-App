@@ -329,8 +329,8 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     y += 5;
 
     y = checkPageBreak(doc, y, 30);
-    y = addSection(doc, 'Aciklama', y);
-    y = addParagraph(doc, createdFault.description || 'Aciklama girilmedi', y);
+    y = addSection(doc, 'Açıklama', y);
+    y = addParagraph(doc, createdFault.description || 'Açıklama girilmedi', y);
 
     if (selectedSymptoms.length > 0) {
       y = checkPageBreak(doc, y, 20);

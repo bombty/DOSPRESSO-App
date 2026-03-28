@@ -110,7 +110,7 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
     }
 
     if (pills.length === 0) {
-      pills.push({ label: 'Sube normal', variant: 'green', dot: true });
+      pills.push({ label: 'Şube normal', variant: 'green', dot: true });
     }
 
     return pills;
@@ -118,12 +118,12 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
 
   const BRANCH_MODULES = isBranchManager ? [
     { label: 'Akademi', sublabel: 'Dersler', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
-    { label: 'Gorevlerim', sublabel: 'Bugunku gorevler', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />, gradient: 'bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900' },
+    { label: 'Görevlerim', sublabel: 'Bugünkü görevler', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />, gradient: 'bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900' },
     { label: 'Iletisim M.', sublabel: 'Talepler', path: '/hq-destek', icon: <MessageSquare className="w-8 h-8 text-red-600 dark:text-red-400" />, gradient: 'bg-gradient-to-br from-red-100 to-red-200 dark:from-red-950 dark:to-red-900' },
-    { label: 'Raporlar', sublabel: 'Sube analiz', path: '/raporlar', icon: <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400" />, gradient: 'bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900' },
+    { label: 'Raporlar', sublabel: 'Şube analiz', path: '/raporlar', icon: <BarChart3 className="w-8 h-8 text-purple-600 dark:text-purple-400" />, gradient: 'bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950 dark:to-purple-900' },
   ] : [
     { label: 'Akademi', sublabel: 'Dersler & Sertifika', path: '/akademi', icon: <GraduationCap className="w-8 h-8 text-blue-600 dark:text-blue-400" />, gradient: 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-950 dark:to-blue-900' },
-    { label: 'Gorevlerim', sublabel: 'Bugun', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />, gradient: 'bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900' },
+    { label: 'Görevlerim', sublabel: 'Bugün', path: '/gorevler', icon: <ClipboardCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />, gradient: 'bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-950 dark:to-emerald-900' },
     { label: 'Siralama', sublabel: 'Lider tablosu', path: '/akademi-leaderboard', icon: <Trophy className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />, gradient: 'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-950 dark:to-yellow-900' },
   ];
 

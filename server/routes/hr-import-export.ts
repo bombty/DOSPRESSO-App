@@ -462,7 +462,7 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
       if (req.body.columnMapping) {
         customMapping = JSON.parse(req.body.columnMapping);
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(req.file.buffer);
@@ -662,7 +662,7 @@ router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("fi
       if (req.body.columnMapping) {
         customMapping = JSON.parse(req.body.columnMapping);
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     const headerRow = sheet.getRow(1);
     const colMap: Record<number, string> = {};
@@ -976,7 +976,7 @@ router.post("/api/hr/employees/import/:batchId/rollback", isAuthenticated, async
           const { id, createdAt, ...restoreData } = before;
           await db.update(users).set({ ...restoreData, updatedAt: new Date() }).where(eq(users.id, r.employeeId));
           rolledBack++;
-        } catch {}
+        } catch (e) { console.error(e); }
       } else if (r.status === "deactivate" && r.employeeId) {
         await db.update(users).set({ isActive: true, updatedAt: new Date() }).where(eq(users.id, r.employeeId));
         rolledBack++;
@@ -1232,7 +1232,7 @@ router.post("/api/hr/employees/import/validate", isAuthenticated, upload.single(
       if (req.body.columnMapping) {
         customMapping = JSON.parse(req.body.columnMapping);
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(req.file.buffer);

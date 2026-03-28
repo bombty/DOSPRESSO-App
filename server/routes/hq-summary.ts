@@ -54,7 +54,7 @@ router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
         .from(customerFeedback)
         .where(sql`${customerFeedback.createdAt} >= ${threeDaysAgo}`)
         .groupBy(customerFeedback.branchId);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     const ratingMap = new Map<number, { avg: number; count: number }>();
     for (const r of branchRatings) {
@@ -118,7 +118,7 @@ router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
         wastePercentage: produced > 0 ? Math.round((waste / produced) * 1000) / 10 : 0,
         pendingShipments: shipmentCount?.count || 0,
       };
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let pendingOrderCount = 0;
     try {
@@ -127,7 +127,7 @@ router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
         .from(branchOrders)
         .where(eq(branchOrders.status, "pending"));
       pendingOrderCount = orderCount?.count || 0;
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let openTickets = 0;
     let slaBreaches = 0;
@@ -162,7 +162,7 @@ router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
           eq(users.isActive, true)
         ));
       activeUsers = Number(userResult?.count ?? 0);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let suggestions: any[] = [];
     try {
@@ -182,13 +182,13 @@ router.get("/api/hq-summary", isAuthenticated, async (req, res) => {
       } else {
         suggestions = await getHQSuggestions();
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     try {
       const userId = req.user.id;
       const skillInsights = await getLatestSkillInsights(userId, userRole);
       suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     suggestions = filterSuggestionsForRole(suggestions, userRole);
 

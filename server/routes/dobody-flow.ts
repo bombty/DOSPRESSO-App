@@ -141,7 +141,7 @@ async function getBaristaFlowTasks(userId: string, branchId: number | null): Pro
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const pendingTraining = await db
@@ -167,7 +167,7 @@ async function getBaristaFlowTasks(userId: string, branchId: number | null): Pro
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const pendingTasks = await db
@@ -193,7 +193,7 @@ async function getBaristaFlowTasks(userId: string, branchId: number | null): Pro
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 3);
 }
@@ -227,7 +227,7 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const pendingApprovals = await db
@@ -253,7 +253,7 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const lowStockItems = await db
@@ -287,7 +287,7 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const sevenDaysAgo = new Date();
@@ -323,7 +323,7 @@ async function getSupervisorFlowTasks(userId: string, branchId: number): Promise
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 3);
 }
@@ -346,7 +346,7 @@ async function getMudurFlowTasks(userId: string, branchId: number): Promise<Flow
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return supervisorTasks.slice(0, 3);
 }
@@ -401,7 +401,7 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const pendingAgentActions = await db
@@ -422,7 +422,7 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const allSuggestions = await getHQSuggestions();
@@ -440,7 +440,7 @@ async function getCeoFlowTasks(userId: string): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 5);
 }
@@ -462,7 +462,7 @@ async function getCoachFlowTasks(userId: string): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   if (flowTasks.length === 0) {
     try {
@@ -531,7 +531,7 @@ async function getTrainerFlowTasks(): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 3);
 }
@@ -565,7 +565,7 @@ async function getFabrikaFlowTasks(userId: string): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   try {
     const suggestions = await getFactorySuggestions();
@@ -581,7 +581,7 @@ async function getFabrikaFlowTasks(userId: string): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 3);
 }
@@ -603,7 +603,7 @@ async function getMuhasebeFlowTasks(): Promise<FlowTask[]> {
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 3);
 }
@@ -636,7 +636,7 @@ async function getDefaultFlowTasks(userId: string, role: string): Promise<FlowTa
         completed: false,
       });
     }
-  } catch {}
+  } catch (e) { console.error(e); }
 
   return flowTasks.slice(0, 3);
 }
@@ -768,7 +768,7 @@ router.get("/api/dobody/flow-tasks", isAuthenticated, async (req, res) => {
           )
         );
       completedToday = result?.cnt || 0;
-    } catch {}
+    } catch (e) { console.error(e); }
 
     const score = streakData.totalXp || 0;
 

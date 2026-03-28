@@ -102,7 +102,7 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req, res) =>
             checklistStatus: checkStatus,
           };
         });
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let customerAvg = 0;
     let feedbackCount = 0;
@@ -123,7 +123,7 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req, res) =>
         );
       customerAvg = fb?.avgRating ? parseFloat(String(fb.avgRating)) : 0;
       feedbackCount = fb?.count || 0;
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let lowStockItems: any[] = [];
     try {
@@ -151,7 +151,7 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req, res) =>
         unit: i.unit || "adet",
       }));
       lowStockItems = rawItems.filter((w, i, arr) => arr.findIndex(x => x.productName === w.productName) === i);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     let warnings = 0;
     if (lowStockItems.length > 0) warnings += lowStockItems.length;
@@ -161,14 +161,14 @@ router.get("/api/branch-summary/:branchId", isAuthenticated, async (req, res) =>
     let suggestions: any[] = [];
     try {
       suggestions = await getSupervisorSuggestions(branchId);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     try {
       const userId = req.user.id;
       const userRole = req.user.role;
       const skillInsights = await getLatestSkillInsights(userId, userRole);
       suggestions = deduplicateSuggestions([...suggestions, ...skillInsights]);
-    } catch {}
+    } catch (e) { console.error(e); }
 
     res.json({
       branch: branchInfo || { id: branchId, name: "Bilinmiyor" },

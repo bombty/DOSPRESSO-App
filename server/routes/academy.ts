@@ -483,7 +483,7 @@ router.get('/api/academy/stats', isAuthenticated, async (req, res) => {
           roleCompletion[rs.role] = Number(rs.total) > 0 ? Math.round((Number(rs.completed) / Number(rs.total)) * 100) : 0;
         }
       }
-    } catch {}
+    } catch (e) { console.error(e); }
 
     res.json({
       totalCompletion,
@@ -553,12 +553,12 @@ router.post('/api/academy/quiz-result', isAuthenticated, async (req, res) => {
       if (badge.badgeKey === 'first_quiz') {
         storage.unlockBadge(req.user.id, badge.id).then(() => {
           unlockedBadges.push(badge.titleTr);
-        }).catch(() => {});
+        }).catch((e) => { console.error(e); });
       }
       if (badge.badgeKey === 'perfect_score' && score === 100) {
         storage.unlockBadge(req.user.id, badge.id).then(() => {
           unlockedBadges.push(badge.titleTr);
-        }).catch(() => {});
+        }).catch((e) => { console.error(e); });
       }
     });
 

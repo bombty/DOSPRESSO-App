@@ -237,7 +237,7 @@ export default function HQOzet() {
         <UnifiedKPI variant="compact" desktopColumns={4} items={[
           { value: String(data.branchStatus.total), label: 'Sube' },
           { value: String(data.slaBreaches ?? 0), label: 'SLA Ihlali', color: (data.slaBreaches ?? 0) > 0 ? 'danger' as const : 'default' as const },
-          { value: String(data.openTickets ?? 0), label: 'Acik Ticket', color: (data.openTickets ?? 0) > 10 ? 'warning' as const : 'default' as const },
+          { value: String(data.openTickets ?? 0), label: 'Açık Ticket', color: (data.openTickets ?? 0) > 10 ? 'warning' as const : 'default' as const },
           { value: String(data.activeUsers ?? 0), label: 'Aktif Kullanici' },
         ]} />
 
