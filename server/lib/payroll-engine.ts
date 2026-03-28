@@ -92,7 +92,9 @@ export async function calculatePayroll(
 
   let absenceDeduction = 0;
   if (classification.absentDays > 0) {
-    absenceDeduction = (classification.absentDays + 1) * dailyRate;
+    // Devamsızlık kesintisi: devamsız gün × günlük ücret
+    // Not: Önceki formül (absentDays + 1) fazla kesinti yapıyordu
+    absenceDeduction = classification.absentDays * dailyRate;
   }
 
   let bonusDeduction = 0;

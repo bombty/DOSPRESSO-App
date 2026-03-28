@@ -10,6 +10,7 @@ import {
   shiftAttendance,
   insertShiftAttendanceSchema,
   users,
+  pdksRecords,
 } from "@shared/schema";
 import { eq, desc, and, sql, isNull } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
@@ -776,6 +777,21 @@ router.post('/api/shift-attendance/check-in', isAuthenticated, async (req, res) 
       })();
     }
     
+    // P0.1 FIX: Write to pdksRecords so payroll engine counts this day as worked
+    try {
+      const now2 = new Date();
+      await db.insert(pdksRecords).values({
+        userId: user.id,
+        branchId: shift.branchId,
+        recordDate: now2.toISOString().split('T')[0],
+        recordTime: now2.toTimeString().split(' ')[0].substring(0, 5),
+        recordType: 'giris',
+        source: 'mobile_qr',
+      });
+    } catch (pdksErr) {
+      console.error("[shifts] PDKS giris hook error (non-blocking):", pdksErr);
+    }
+    
     res.status(201).json(attendance);
   } catch (error: unknown) {
     console.error("Error checking in:", error);
@@ -874,6 +890,20 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req, res)
       totalWorkedMinutes: actualWorkMinutes,
       effectiveWorkMinutes: effectiveWorkMinutes,
     });
+    
+    // P0.1 FIX: Write to pdksRecords so payroll engine counts check-out
+    try {
+      await db.insert(pdksRecords).values({
+        userId: user.id,
+        branchId: shift.branchId,
+        recordDate: now.toISOString().split('T')[0],
+        recordTime: now.toTimeString().split(' ')[0].substring(0, 5),
+        recordType: 'cikis',
+        source: 'mobile_qr',
+      });
+    } catch (pdksErr) {
+      console.error("[shifts] PDKS cikis hook error (non-blocking):", pdksErr);
+    }
     
     // Return response with overtime info
     res.json({
@@ -1285,7 +1315,7 @@ router.post('/api/shifts', isAuthenticated, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
     
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya oluşturma yetkiniz yok" });
     }
     
@@ -1409,7 +1439,7 @@ router.post('/api/shifts/bulk-create', isAuthenticated, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
     
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya oluşturma yetkiniz yok" });
     }
     
@@ -1540,7 +1570,7 @@ router.patch('/api/shifts/:id', isAuthenticated, async (req, res) => {
     const role = user.role as UserRoleType;
     const id = parseInt(req.params.id);
     
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya güncelleme yetkiniz yok" });
     }
     
@@ -1617,7 +1647,7 @@ router.delete('/api/shifts/reset-weekly', isAuthenticated, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
     
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya sıfırlama yetkiniz yok" });
     }
     
@@ -1695,7 +1725,7 @@ router.delete('/api/shifts/:id', isAuthenticated, async (req, res) => {
       return res.status(400).json({ message: "Geçersiz vardiya ID'si" });
     }
     
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya silme yetkiniz yok" });
     }
     
@@ -1730,7 +1760,7 @@ router.post('/api/shifts/validate-plan', isAuthenticated, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
 
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya doğrulama yetkiniz yok" });
     }
 
@@ -2416,7 +2446,7 @@ router.post('/api/shift-corrections', isAuthenticated, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
     
-    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'admin'].includes(role)) {
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
       return res.status(403).json({ message: "Vardiya düzeltme yetkiniz yok" });
     }
     

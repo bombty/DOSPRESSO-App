@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches } from '@shared/schema';
+import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches, shiftAttendance, shifts } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { getMonthClassification } from '../lib/pdks-engine';
@@ -633,14 +633,19 @@ router.get('/api/pdks/branch-attendance', isAuthenticated, async (req: any, res:
 
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
       const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
-      const lateRes2 = await db.execute(sql.raw(`
-        SELECT count(*) as cnt, coalesce(sum(sa.lateness_minutes), 0) as total_min
-        FROM shift_attendance sa
-        JOIN shifts s ON s.id = sa.shift_id
-        WHERE sa.user_id = '${person.id}' AND sa.lateness_minutes > 0
-        AND s.shift_date >= '${startDate}' AND s.shift_date <= '${endDate}'
-      `));
-      const lateRow = (lateRes2.rows as any[])?.[0];
+      const lateRes2 = await db.select({
+        cnt: sql<number>`count(*)`,
+        totalMin: sql<number>`coalesce(sum(${shiftAttendance.latenessMinutes}), 0)`,
+      })
+      .from(shiftAttendance)
+      .innerJoin(shifts, eq(shiftAttendance.shiftId, shifts.id))
+      .where(and(
+        eq(shiftAttendance.userId, person.id),
+        sql`${shiftAttendance.latenessMinutes} > 0`,
+        sql`${shifts.shiftDate} >= ${startDate}`,
+        sql`${shifts.shiftDate} <= ${endDate}`,
+      ));
+      const lateRow = lateRes2[0];
 
       staffResults.push({
         userId: person.id,
