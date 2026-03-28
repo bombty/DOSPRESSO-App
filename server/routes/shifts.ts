@@ -143,7 +143,11 @@ router.delete('/api/shift-attendance/:id', isAuthenticated, async (req, res) => 
   }
 });
 
-// ===== SHIFT TRADE REQUEST ENDPOINTS =====
+// ===== SHIFT TRADE REQUEST ENDPOINTS (DEPRECATED) =====
+// These endpoints are DEPRECATED — replaced by shift_swap_requests (dual approval system)
+// Frontend uses /api/shift-swap-requests exclusively (34 references)
+// These endpoints have 0 frontend references — kept for backward compatibility only
+// TODO: Remove in next major version after confirming no external API consumers
 
 // POST /api/shift-trades - Create a shift trade request
 router.post('/api/shift-trades', isAuthenticated, async (req, res) => {

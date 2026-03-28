@@ -2991,6 +2991,43 @@ router.post('/api/branches/:branchId/kiosk/break-end', isKioskAuthenticated, asy
       eventTime: now,
     });
 
+    // P3.1: Uzun mola uyarısı → supervisor bildirim
+    if (activeBreak) {
+      const breakDuration = Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000);
+      const [kioskCfg] = await db.select({ maxBreak: branchKioskSettings.maxBreakMinutes })
+        .from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId)).limit(1);
+      const maxBreak = kioskCfg?.maxBreak || 90;
+
+      if (breakDuration > maxBreak) {
+        try {
+          const [breakUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users).where(eq(users.id, session.userId)).limit(1);
+          const bName = [breakUser?.firstName, breakUser?.lastName].filter(Boolean).join(' ') || 'Çalışan';
+
+          const supervisors = await db.select({ id: users.id }).from(users)
+            .where(and(
+              eq(users.branchId, branchId),
+              eq(users.isActive, true),
+              sql`${users.role} IN ('supervisor', 'supervisor_buddy', 'mudur')`
+            ));
+
+          if (supervisors.length > 0) {
+            await db.insert(notifications).values(supervisors.map(s => ({
+              userId: s.id,
+              type: 'long_break_warning',
+              title: 'Uzun Mola Uyarısı',
+              message: `${bName} ${breakDuration} dk mola yaptı (limit: ${maxBreak} dk)`,
+              link: '/vardiya-planlama',
+              isRead: false,
+              branchId,
+            })));
+          }
+        } catch (notifErr) {
+          console.error("[BRANCH-KIOSK] Long break notification error:", notifErr);
+        }
+      }
+    }
+
     res.json({ success: true });
   } catch (error: unknown) {
     console.error("Error ending break:", error);

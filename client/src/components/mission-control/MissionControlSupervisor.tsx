@@ -81,8 +81,8 @@ export default function MissionControlSupervisor() {
       return r.json();
     },
     enabled: !!branchId,
-    staleTime: 2 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 30 * 1000, // 30 saniye stale
+    refetchInterval: 60 * 1000, // Her 60 saniyede güncelle (yoklama gerçek zamanlı)
   });
 
   const { data: dashboardAlerts } = useQuery<{ alerts: Array<{ type: string; message: string }> }>({
