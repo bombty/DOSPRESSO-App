@@ -95,7 +95,7 @@ const SUBELER_MENU: ModuleMenuConfig = {
   items: [
     { id: "liste", label: "Şube Listesi", path: "/subeler", icon: Building2 },
     { id: "denetim", label: "Şube Denetim", path: "/coach-sube-denetim", icon: ClipboardCheck },
-    { id: "stok", label: "Stok Yönetimi", path: "/sube-stok", icon: Package },
+    { id: "stok", label: "Stok Yönetimi", path: "/sube/siparis-stok", icon: Package },
     { id: "canli", label: "Canlı Takip", path: "/canli-takip", icon: TrendingUp },
     { id: "saglik", label: "Şube Sağlık", path: "/sube-saglik-skoru", icon: BarChart3 },
     { id: "karsilastirma", label: "Karşılaştırma", path: "/sube-karsilastirma", icon: BarChart2 },
@@ -198,7 +198,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/egitim-ata": AKADEMI_MENU,
   "/icerik-studyosu": AKADEMI_MENU,
   "/subeler": SUBELER_MENU,
-  "/sube-stok": SUBELER_MENU,
+  "/sube/siparis-stok": SUBELER_MENU,
   "/coach-sube-denetim": SUBELER_MENU,
   "/canli-takip": SUBELER_MENU,
   "/sube-saglik-skoru": SUBELER_MENU,
