@@ -28,6 +28,7 @@ import dobodyTaskManagerRoutes from "./routes/dobody-task-manager";
 import insightReportRoutes from "./routes/insight-reports";
 import homeSummaryRoutes from "./routes/home-summary";
 import controlWidgetRoutes from "./routes/control-widgets";
+import { csrfProtection } from "./middleware/csrf";
 import dashboardDataRoutes from "./routes/dashboard-data-routes";
 import unifiedDashboardRoutes from "./routes/unified-dashboard-routes";
 import productionPlanningRoutes from "./routes/production-planning-routes";
@@ -829,6 +830,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
   app.use('/api/ai/', sensitiveApiLimiter);
   app.use('/api/agent/run-now', agentRunLimiter);
+
+  // CSRF protection — validates Origin/Referer on mutating requests
+  app.use(csrfProtection);
 
   app.use(adminRouter);
   app.use(seedRouter);
