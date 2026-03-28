@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -28,7 +29,7 @@ function generateOrderNumber(): string {
   return `ORD-${y}${m}${d}-${seq}`;
 }
 
-router.post("/api/branch-orders", isAuthenticated, async (req, res) => {
+router.post("/api/branch-orders", isAuthenticated, requireManifestAccess("stok", "create"), async (req, res) => {
   try {
     const userRole = req.user?.role as UserRoleType;
     if (!hasPermission(userRole, "branch_orders", "create")) {

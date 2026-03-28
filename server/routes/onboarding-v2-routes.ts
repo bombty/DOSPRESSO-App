@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { eq, desc, asc, and } from "drizzle-orm";
 import {
   users,

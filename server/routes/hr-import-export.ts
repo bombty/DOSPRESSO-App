@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { hasPermission } from "../permission-service";
 import { createAuditEntry, getAuditContext } from "../audit";
 import { eq, and, inArray, notInArray, isNull, desc, gte, lte } from "drizzle-orm";
@@ -186,7 +187,7 @@ function styleHeaderRow(sheet: ExcelJS.Worksheet) {
   };
 }
 
-router.post("/api/hr/employees/export", isAuthenticated, async (req, res) => {
+router.post("/api/hr/employees/export", isAuthenticated, requireManifestAccess("ik", "view"), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {
@@ -629,7 +630,7 @@ router.post("/api/hr/employees/import/dry-run", isAuthenticated, upload.single("
 
 // ─── IMPORT APPLY ────────────────────────────────────────
 
-router.post("/api/hr/employees/import/apply", isAuthenticated, upload.single("file"), async (req, res) => {
+router.post("/api/hr/employees/import/apply", isAuthenticated, requireManifestAccess("ik", "create"), upload.single("file"), async (req, res) => {
   try {
     const user = req.user!;
     if (!isHQRole(user.role as UserRoleTypeSchema) && user.role !== "admin") {

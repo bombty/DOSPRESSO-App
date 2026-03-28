@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import type { AuthUser } from "../types/auth";
@@ -88,7 +89,7 @@ router.get("/api/production-planning/plans/:id", isAuthenticated, requireRole(PL
   }
 });
 
-router.post("/api/production-planning/plans", isAuthenticated, requireRole(PLAN_MANAGE_ROLES), async (req, res) => {
+router.post("/api/production-planning/plans", isAuthenticated, requireManifestAccess("fabrika", "create"), requireRole(PLAN_MANAGE_ROLES), async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const { weekStart, weekEnd, notes, items } = req.body;
@@ -175,7 +176,7 @@ router.put("/api/production-planning/plans/:id", isAuthenticated, requireRole(PL
   }
 });
 
-router.post("/api/production-planning/plans/:id/approve", isAuthenticated, requireRole(PLAN_APPROVE_ROLES), async (req, res) => {
+router.post("/api/production-planning/plans/:id/approve", isAuthenticated, requireManifestAccess("fabrika", "approve"), requireRole(PLAN_APPROVE_ROLES), async (req, res) => {
   try {
     const user = req.user as AuthUser;
     const planId = parseInt(req.params.id);

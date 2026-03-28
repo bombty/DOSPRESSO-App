@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import {
   trainingModules,
   userTrainingProgress,
@@ -315,7 +316,7 @@ router.get("/webinars", isAuthenticated, async (req, res) => {
   }
 });
 
-router.post("/webinars", isAuthenticated, async (req, res) => {
+router.post("/webinars", isAuthenticated, requireManifestAccess("akademi", "create"), async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {
@@ -339,7 +340,7 @@ router.post("/webinars", isAuthenticated, async (req, res) => {
   }
 });
 
-router.patch("/webinars/:id", isAuthenticated, async (req, res) => {
+router.patch("/webinars/:id", isAuthenticated, requireManifestAccess("akademi", "edit"), async (req, res) => {
   try {
     const user = req.user as any;
     if (!isHQUser(user.role)) {

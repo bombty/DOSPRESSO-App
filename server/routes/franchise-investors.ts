@@ -1,3 +1,4 @@
+import { requireManifestAccess } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { 
@@ -189,7 +190,7 @@ router.get("/api/franchise/investors/:id/performance", isAuthenticated, async (r
   }
 });
 
-router.post("/api/franchise/investors", isAuthenticated, async (req, res) => {
+router.post("/api/franchise/investors", isAuthenticated, requireManifestAccess("admin", "create"), async (req, res) => {
   try {
     const user = req.user as any;
     if (user.role !== "admin") {
@@ -219,7 +220,7 @@ router.post("/api/franchise/investors", isAuthenticated, async (req, res) => {
   }
 });
 
-router.patch("/api/franchise/investors/:id", isAuthenticated, async (req, res) => {
+router.patch("/api/franchise/investors/:id", isAuthenticated, requireManifestAccess("admin", "edit"), async (req, res) => {
   try {
     const user = req.user as any;
     if (user.role !== "admin") {

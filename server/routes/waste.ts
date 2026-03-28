@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import {
   wasteCategories,
   wasteReasons,
@@ -110,7 +111,7 @@ const createWasteEventSchema = z.object({
   supplierBatch: z.string().nullable().optional(),
 });
 
-router.post("/api/waste/events", isAuthenticated, async (req, res) => {
+router.post("/api/waste/events", isAuthenticated, requireManifestAccess("gorevler", "create"), async (req, res) => {
   try {
     const user = req.user!;
     if (!canCreateWasteEvent(user.role)) {
@@ -337,7 +338,7 @@ router.patch("/api/waste/events/:id/status", isAuthenticated, async (req, res) =
   }
 });
 
-router.post("/api/waste/lots", isAuthenticated, async (req, res) => {
+router.post("/api/waste/lots", isAuthenticated, requireManifestAccess("gorevler", "create"), async (req, res) => {
   try {
     const user = req.user!;
     if (!canManageLots(user.role)) {
