@@ -219,7 +219,7 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
     `);
 
     const trainingCompletions = await safeCount(
-      `SELECT count(*) FROM training_progress WHERE status = 'completed' AND completed_at >= '${startDate}' AND completed_at <= '${endDate} 23:59:59'`
+      `SELECT count(*) FROM user_training_progress WHERE status = 'completed' AND completed_at >= '${startDate}' AND completed_at <= '${endDate} 23:59:59'`
     );
 
     const avgQuizScore = await safeAvg(
@@ -228,7 +228,7 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
 
     const staffDev = await safeRows(`
       SELECT u.id as user_id, u.first_name || ' ' || u.last_name as name, u.role,
-        (SELECT count(*) FROM training_progress tp WHERE tp.user_id = u.id AND tp.status = 'completed') as modules_completed
+        (SELECT count(*) FROM user_training_progress tp WHERE tp.user_id = u.id AND tp.status = 'completed') as modules_completed
       FROM users u WHERE u.is_active = true AND u.role IN ('stajyer','bar_buddy','barista')
       ORDER BY modules_completed DESC LIMIT 20
     `);
@@ -274,7 +274,7 @@ router.get("/api/dashboard/coach", isAuthenticated, requireRole(COACH_ROLES), as
     `);
 
     const actionRequired: any[] = [];
-    const overdueTraining = await safeCount(`SELECT count(*) FROM training_progress WHERE status = 'in_progress' AND updated_at < NOW() - INTERVAL '14 days'`);
+    const overdueTraining = await safeCount(`SELECT count(*) FROM user_training_progress WHERE status = 'in_progress' AND updated_at < NOW() - INTERVAL '14 days'`);
     if (overdueTraining > 0) actionRequired.push({ type: "training_overdue", message: `${overdueTraining} personel eğitimi gecikiyor`, count: overdueTraining });
 
     const openTickets = await safeCount(`SELECT count(*) FROM support_tickets WHERE status NOT IN ('resolved','closed')`);
@@ -466,8 +466,8 @@ router.get("/api/dashboard/barista", isAuthenticated, async (req, res) => {
 
     const myTasks = await safeCount(`SELECT count(*) FROM branch_task_instances WHERE assigned_to = '${user.id}' AND status IN ('pending','in_progress')`);
     const completedTasks = await safeCount(`SELECT count(*) FROM branch_task_instances WHERE assigned_to = '${user.id}' AND status = 'completed'`);
-    const trainingCompleted = await safeCount(`SELECT count(*) FROM training_progress WHERE user_id = '${user.id}' AND status = 'completed'`);
-    const trainingTotal = await safeCount(`SELECT count(*) FROM training_progress WHERE user_id = '${user.id}'`);
+    const trainingCompleted = await safeCount(`SELECT count(*) FROM user_training_progress WHERE user_id = '${user.id}' AND status = 'completed'`);
+    const trainingTotal = await safeCount(`SELECT count(*) FROM user_training_progress WHERE user_id = '${user.id}'`);
     const avgQuiz = await safeAvg(`SELECT avg(score) as avg FROM quiz_attempts WHERE user_id = '${user.id}'`);
 
     res.json({
@@ -515,8 +515,8 @@ router.get("/api/branch-training-progress/:branchId", isAuthenticated, requireRo
 
     const rows = await safeRows(`
       SELECT u.id as user_id, u.first_name || ' ' || u.last_name as name, u.role,
-        (SELECT count(*) FROM training_progress tp WHERE tp.user_id = u.id AND tp.status = 'completed') as completed_modules,
-        (SELECT count(*) FROM training_progress tp WHERE tp.user_id = u.id) as total_assigned
+        (SELECT count(*) FROM user_training_progress tp WHERE tp.user_id = u.id AND tp.status = 'completed') as completed_modules,
+        (SELECT count(*) FROM user_training_progress tp WHERE tp.user_id = u.id) as total_assigned
       FROM users u
       WHERE u.branch_id = ${branchId} AND u.is_active = true
         AND u.role IN ('stajyer','bar_buddy','barista','supervisor','supervisor_buddy')

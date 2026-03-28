@@ -12,7 +12,7 @@ registerSkill({
   schedule: "weekly",
   targetRoles: ["admin", "ceo", "cgo", "coach"],
   autonomyLevel: "info_only",
-  dataSources: ["branches", "users", "support_tickets", "faults", "checklist_submissions", "attendance_records", "training_progress"],
+  dataSources: ["branches", "users", "support_tickets", "faults", "checklist_submissions", "attendance_records", "user_training_progress"],
 
   analyze: async (context) => {
     const insights: any[] = [];
