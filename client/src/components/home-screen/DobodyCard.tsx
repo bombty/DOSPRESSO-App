@@ -19,61 +19,67 @@ export function DobodyCard() {
       type="button"
       onClick={() => setLocation("/dobody")}
       data-testid="dobody-home-card"
-      className="w-full text-left rounded-lg p-[10px] flex gap-[10px] items-start cursor-pointer transition-all duration-150 active:scale-[0.99]"
       style={{
-        backgroundColor: "var(--dospresso-bg2, #0f1d32)",
-        border: "0.5px solid rgba(192,57,43,0.12)",
-        borderRadius: "8px",
+        width: "100%",
+        textAlign: "left",
+        padding: "16px 18px",
+        display: "flex",
+        gap: "14px",
+        alignItems: "flex-start",
+        cursor: "pointer",
+        backgroundColor: "#0f1d32",
+        border: "1px solid rgba(192,57,43,0.2)",
+        borderRadius: 12,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px rgba(192,57,43,0.05)",
+        transition: "background 0.15s, transform 0.15s, box-shadow 0.15s",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--dospresso-bg3, #152640)")}
-      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "var(--dospresso-bg2, #0f1d32)")}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "#152640";
+        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.25), 0 0 0 1px rgba(192,57,43,0.1)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "#0f1d32";
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15), 0 0 0 1px rgba(192,57,43,0.05)";
+      }}
     >
-      <div
-        className="flex items-center justify-center flex-shrink-0"
-        style={{
-          width: 30, height: 30, borderRadius: 7,
-          backgroundColor: "rgba(192,57,43,0.10)",
-        }}
-      >
-        <Bot style={{ width: 14, height: 14, color: "var(--dospresso-red, #c0392b)" }} />
+      <div style={{
+        width: 40, height: 40, borderRadius: 10,
+        backgroundColor: "rgba(192,57,43,0.12)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        <Bot style={{ width: 20, height: 20, color: "#c0392b" }} />
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-medium" style={{ color: "var(--dospresso-bej, #f2e6d0)", margin: 0 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "#f2e6d0", margin: 0 }}>
           Mr. Dobody
         </p>
-        <p
-          className="line-clamp-2"
-          style={{
-            fontSize: 10, lineHeight: 1.4, margin: "2px 0 5px",
-            color: "var(--dospresso-bej-mid, #c8b698)",
-          }}
-        >
+        <p style={{
+          fontSize: 13, lineHeight: 1.5, margin: "4px 0 8px",
+          color: "#c8b698",
+          overflow: "hidden", display: "-webkit-box",
+          WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
+        }}>
           {summary}
         </p>
-        <div className="flex gap-[5px]">
+        <div style={{ display: "flex", gap: "8px" }}>
           {suggestionCount > 0 && (
-            <span
-              className="text-[9px] rounded-[4px]"
-              style={{
-                padding: "3px 7px",
-                border: "0.5px solid var(--dospresso-border, #1e3250)",
-                backgroundColor: "rgba(242,230,208,0.03)",
-                color: "var(--dospresso-bej-mid, #c8b698)",
-              }}
-            >
+            <span style={{
+              fontSize: 11, fontWeight: 500, padding: "4px 10px", borderRadius: 6,
+              border: "1px solid #1e3250",
+              backgroundColor: "rgba(242,230,208,0.04)", color: "#c8b698",
+            }}>
               {suggestionCount} öneri
             </span>
           )}
-          <span
-            className="text-[9px] rounded-[4px]"
-            style={{
-              padding: "3px 7px",
-              border: "0.5px solid var(--dospresso-border, #1e3250)",
-              backgroundColor: "rgba(242,230,208,0.03)",
-              color: "var(--dospresso-bej-mid, #c8b698)",
-            }}
-          >
+          <span style={{
+            fontSize: 11, fontWeight: 500, padding: "4px 10px", borderRadius: 6,
+            border: "1px solid #1e3250",
+            backgroundColor: "rgba(242,230,208,0.04)", color: "#c8b698",
+          }}>
             Soru sor
           </span>
         </div>

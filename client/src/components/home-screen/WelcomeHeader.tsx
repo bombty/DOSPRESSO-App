@@ -37,55 +37,46 @@ export function WelcomeHeader({ firstName, role, branchName, alerts }: WelcomeHe
   const pendingApprovals = alerts?.pendingApprovals || 0;
 
   return (
-    <div className="mb-3">
-      <h1 className="text-[14px] font-medium" style={{ color: "var(--dospresso-bej, #f2e6d0)" }}>
+    <div style={{ marginBottom: 20 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 600, color: "#f2e6d0", margin: 0 }}>
         Hoş geldin, {firstName}
       </h1>
-      <p className="text-[10px]" style={{ color: "var(--dospresso-bej-muted, #8a7d6d)" }}>
+      <p style={{ fontSize: 13, color: "#8a7d6d", margin: "4px 0 0" }}>
         {dateStr} · {branchName || roleLabel}
       </p>
 
       {(criticalCount > 0 || pendingTasks > 0 || pendingApprovals > 0) && (
-        <div className="flex flex-wrap gap-[5px] mt-2">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
           {criticalCount > 0 && (
-            <span
-              className="inline-flex items-center gap-[3px] text-[9px] rounded-[5px]"
-              style={{
-                padding: "3px 7px",
-                backgroundColor: "rgba(192,57,43,0.10)",
-                color: "#e74c3c",
-                border: "0.5px solid rgba(192,57,43,0.18)",
-              }}
-            >
-              <AlertTriangle style={{ width: 10, height: 10 }} />
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "5px",
+              fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 8,
+              backgroundColor: "rgba(192,57,43,0.12)", color: "#e74c3c",
+              border: "1px solid rgba(192,57,43,0.2)",
+            }}>
+              <AlertTriangle style={{ width: 13, height: 13 }} />
               {criticalCount} kritik uyarı
             </span>
           )}
           {pendingTasks > 0 && (
-            <span
-              className="inline-flex items-center gap-[3px] text-[9px] rounded-[5px]"
-              style={{
-                padding: "3px 7px",
-                backgroundColor: "rgba(41,128,185,0.07)",
-                color: "#5dade2",
-                border: "0.5px solid rgba(41,128,185,0.12)",
-              }}
-            >
-              <CheckSquare style={{ width: 10, height: 10 }} />
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "5px",
+              fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 8,
+              backgroundColor: "rgba(41,128,185,0.10)", color: "#5dade2",
+              border: "1px solid rgba(41,128,185,0.15)",
+            }}>
+              <CheckSquare style={{ width: 13, height: 13 }} />
               {pendingTasks} bekleyen görev
             </span>
           )}
           {pendingApprovals > 0 && (
-            <span
-              className="inline-flex items-center gap-[3px] text-[9px] rounded-[5px]"
-              style={{
-                padding: "3px 7px",
-                backgroundColor: "rgba(212,168,75,0.08)",
-                color: "#d4a84b",
-                border: "0.5px solid rgba(212,168,75,0.12)",
-              }}
-            >
-              <Clock style={{ width: 10, height: 10 }} />
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "5px",
+              fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 8,
+              backgroundColor: "rgba(212,168,75,0.10)", color: "#d4a84b",
+              border: "1px solid rgba(212,168,75,0.15)",
+            }}>
+              <Clock style={{ width: 13, height: 13 }} />
               {pendingApprovals} onay bekliyor
             </span>
           )}

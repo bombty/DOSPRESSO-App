@@ -16,15 +16,15 @@ interface HomeSummaryData {
 
 function HomeScreenSkeleton() {
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-[800px] mx-auto" data-testid="home-skeleton">
-      <Skeleton className="h-10 w-48 rounded-lg" />
-      <Skeleton className="h-5 w-32 rounded" />
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+    <div style={{ padding: "24px 32px", maxWidth: 1200, margin: "0 auto" }} data-testid="home-skeleton">
+      <Skeleton className="h-12 w-64 rounded-lg mb-2" />
+      <Skeleton className="h-6 w-48 rounded mb-4" />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-[88px] rounded-lg" />
+          <Skeleton key={i} className="h-[100px] rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-[72px] rounded-lg" />
+      <Skeleton className="h-[80px] rounded-xl mt-4" />
     </div>
   );
 }
@@ -58,8 +58,14 @@ export default function HomeScreen() {
 
   return (
     <div
-      className="p-3 md:p-4 max-w-[800px] mx-auto overflow-y-auto h-full"
       data-testid="home-screen"
+      style={{
+        padding: "20px 24px",
+        maxWidth: 1200,
+        margin: "0 auto",
+        overflowY: "auto",
+        height: "100%",
+      }}
     >
       <WelcomeHeader
         firstName={firstName}
@@ -68,7 +74,16 @@ export default function HomeScreen() {
         alerts={homeSummary?.alerts}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-2" data-testid="module-grid">
+      {/* Main module grid */}
+      <div
+        data-testid="module-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: "12px",
+          marginBottom: "12px",
+        }}
+      >
         {fullCards.map((mod) => (
           <ModuleCard
             key={mod.id}
@@ -79,21 +94,21 @@ export default function HomeScreen() {
         ))}
       </div>
 
+      {/* Mr. Dobody card (full width) */}
       {hasDobody && (
-        <div className="mb-2">
+        <div style={{ marginBottom: "12px" }}>
           <DobodyCard />
         </div>
       )}
 
+      {/* Half-width utility cards */}
       {halfCards.length > 0 && (
         <div
-          className={`grid gap-2 ${
-            halfCards.length === 1
-              ? "grid-cols-1"
-              : halfCards.length === 2
-                ? "grid-cols-2"
-                : "grid-cols-3"
-          }`}
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${Math.min(halfCards.length, 3)}, 1fr)`,
+            gap: "12px",
+          }}
         >
           {halfCards.map((mod) => (
             <ModuleCard
