@@ -99,6 +99,46 @@ const trainingFileUpload = multer({
 
 const router = Router();
 
+/** 
+ * Scope-aware branch filter helper for HR endpoints
+ * Returns: { type, branchId?, branchIds? } or sends 403 response
+ */
+const MANAGED_BRANCH_IDS = [5, 23, 24]; // HQ(5), Fabrika(23), Işıklar(24)
+
+interface ScopeResult {
+  type: 'single' | 'multiple' | 'all';
+  branchId?: number;
+  branchIds?: number[];
+}
+
+function resolveBranchScope(req: any): ScopeResult | { error: string } {
+  const scope = (req as any).manifestScope;
+  const user = req.user as any;
+  const requestedBranch = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+
+  switch (scope) {
+    case 'own_data':
+    case 'own_branch':
+      if (!user.branchId) return { error: 'Şube ataması yapılmamış' };
+      return { type: 'single', branchId: user.branchId };
+
+    case 'managed_branches': {
+      if (requestedBranch) {
+        if (!MANAGED_BRANCH_IDS.includes(requestedBranch)) {
+          return { error: 'Bu şubeye erişim yetkiniz yok' };
+        }
+        return { type: 'single', branchId: requestedBranch };
+      }
+      return { type: 'multiple', branchIds: MANAGED_BRANCH_IDS };
+    }
+
+    case 'all_branches':
+    default:
+      if (requestedBranch) return { type: 'single', branchId: requestedBranch };
+      return { type: 'all' };
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // HR ACCESS CONTROL MIDDLEWARE
 // WHITELIST approach: Only allowed roles can access HR data
@@ -239,34 +279,27 @@ router.use((req: any, res, next) => {
   // ========================================
 
   // Get employees list (with permissions and branch filtering)
-  router.get('/api/employees', isAuthenticated, async (req, res) => {
+  router.get('/api/employees', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
-      const { role, branchId: userBranchId } = user;
-
-      // Permission check
-      if (!hasPermission(role as UserRoleType, 'employees', 'view')) {
-        return res.status(403).json({ message: "Çalışan listesine erişim yetkiniz yok" });
-      }
-
-      // Authorization: Supervisor must have a valid branchId
-      if (role === 'supervisor' && !userBranchId) {
-        return res.status(403).json({ message: "Şube ataması yapılmamış" });
-      }
-
-      // Branch filtering for supervisor/coach
-      let branchFilter: number | undefined;
-      if (role === 'supervisor') {
-        // Supervisor can only see their own branch
-        branchFilter = userBranchId!;
-      } else if (role === 'coach' || role === 'admin') {
-        // Coach/Admin can optionally filter by branchId query param
-        branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
-      }
-
-      const employees = await storage.getAllEmployees(branchFilter);
+      const { role } = user;
+      const scopeResult = resolveBranchScope(req);
       
-      // Sanitize: Remove sensitive fields - HQ users get more details
+      if ('error' in scopeResult) {
+        return res.status(403).json({ message: scopeResult.error });
+      }
+
+      let employees: any[];
+      if (scopeResult.type === 'multiple') {
+        employees = [];
+        for (const bid of scopeResult.branchIds!) {
+          const emps = await storage.getAllEmployees(bid);
+          employees.push(...emps);
+        }
+      } else {
+        employees = await storage.getAllEmployees(scopeResult.branchId);
+      }
+
       res.json(sanitizeUsersForRole(employees, role as UserRoleType));
     } catch (error: unknown) {
       console.error("Error fetching employees:", error);
@@ -275,22 +308,33 @@ router.use((req: any, res, next) => {
   });
 
   // Get terminated employees list (ayrılan personeller)
-  router.get('/api/employees/terminated', isAuthenticated, async (req, res) => {
+  router.get('/api/employees/terminated', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
-      const { role, branchId: userBranchId } = user;
+      const { role } = user;
+      const scope = (req as any).manifestScope;
 
-      // Permission check - only HQ and admin can see terminated employees
-      if (!isHQRole(role as UserRoleType) && role !== 'admin') {
+      // own_data cannot see terminated list
+      if (scope === 'own_data') {
         return res.status(403).json({ message: "Ayrılan personel listesine erişim yetkiniz yok" });
       }
 
-      // Optional branch filter
-      const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const scopeResult = resolveBranchScope(req);
+      if ('error' in scopeResult) {
+        return res.status(403).json({ message: scopeResult.error });
+      }
 
-      const terminatedEmployees = await storage.getTerminatedEmployees(branchFilter);
-      
-      // Sanitize: Remove sensitive fields - HQ users get more details
+      let terminatedEmployees: any[];
+      if (scopeResult.type === 'multiple') {
+        terminatedEmployees = [];
+        for (const bid of scopeResult.branchIds!) {
+          const emps = await storage.getTerminatedEmployees(bid);
+          terminatedEmployees.push(...emps);
+        }
+      } else {
+        terminatedEmployees = await storage.getTerminatedEmployees(scopeResult.branchId);
+      }
+
       res.json(sanitizeUsersForRole(terminatedEmployees, role as UserRoleType));
     } catch (error: unknown) {
       console.error("Error fetching terminated employees:", error);

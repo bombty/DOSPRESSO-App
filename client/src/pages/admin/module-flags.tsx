@@ -530,7 +530,7 @@ export default function AdminModuleFlags() {
     );
   }
 
-  const selectedBranch = branches.find(b => b.id === branchIdNum);
+  const selectedBranchObj = branches.find(b => b.id === branchIdNum);
 
   return (
     <div className="space-y-4 p-1" data-testid="branch-flags-view">
@@ -538,7 +538,7 @@ export default function AdminModuleFlags() {
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2"><ToggleLeft className="h-5 w-5" />Modül Bayrakları</h2>
           <p className="text-sm text-muted-foreground">
-            {selectedBranch ? `${selectedBranch.name} — Şube Override'ları` : "Şube seçin"}
+            {selectedBranchObj ? `${selectedBranchObj.name} — Şube Override'ları` : "Şube seçin"}
           </p>
         </div>
         <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>

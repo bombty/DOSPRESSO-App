@@ -461,7 +461,7 @@ export default function GorevDetay() {
     },
   });
 
-  const requestExtensionMutation = useMutation({
+  const requestExtensionByDateMutation = useMutation({
     mutationFn: async ({ reason, requestedDueDate }: { reason: string; requestedDueDate: string }) => {
       return apiRequest("POST", `/api/tasks/${id}/request-extension`, { reason, requestedDueDate });
     },
@@ -2195,7 +2195,7 @@ export default function GorevDetay() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowExtensionDialog(false)}>İptal</Button>
-            <Button onClick={() => { if (extensionReason.trim() && extensionDate) requestExtensionMutation.mutate({ reason: extensionReason, requestedDueDate: new Date(extensionDate).toISOString() }); }} disabled={requestExtensionMutation.isPending || !extensionReason.trim() || !extensionDate} data-testid="button-send-extension">
+            <Button onClick={() => { if (extensionReason.trim() && extensionDate) requestExtensionByDateMutation.mutate({ reason: extensionReason, requestedDueDate: new Date(extensionDate).toISOString() }); }} disabled={requestExtensionByDateMutation.isPending || !extensionReason.trim() || !extensionDate} data-testid="button-send-extension">
               <Clock className="h-4 w-4 mr-2" />
               Talep Gönder
             </Button>
