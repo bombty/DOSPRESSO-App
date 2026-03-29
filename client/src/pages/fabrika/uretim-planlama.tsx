@@ -37,7 +37,8 @@ import {
   Brain,
   BarChart3,
   Boxes,
-  X
+  X,
+  TrendingUp
 } from "lucide-react";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
@@ -511,6 +512,26 @@ export default function FabrikaUretimPlanlama() {
         <Card className="hover-elevate">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/20 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Gerçekleşen</p>
+                <p className="text-xl font-bold">{plans.reduce((sum, p) => sum + Number(p.actualQuantity ?? 0), 0)}</p>
+                {(() => {
+                  const target = plans.reduce((s, p) => s + p.targetQuantity, 0);
+                  const actual = plans.reduce((s, p) => s + Number(p.actualQuantity ?? 0), 0);
+                  const pct = target > 0 ? Math.round((actual / target) * 100) : 0;
+                  return <p className={`text-[10px] font-medium ${pct >= 80 ? 'text-emerald-500' : pct >= 50 ? 'text-amber-500' : 'text-red-500'}`}>%{pct} tamamlandı</p>;
+                })()}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover-elevate">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
               <div className="p-2 bg-red-500/20 rounded-lg">
                 <Boxes className="h-5 w-5 text-red-500" />
               </div>
@@ -612,15 +633,22 @@ export default function FabrikaUretimPlanlama() {
                         {date.getDate()}
                       </div>
                       <div className="space-y-1">
-                        {dayPlans.slice(0, 3).map(plan => (
-                          <div
-                            key={plan.id}
-                            className={`text-xs p-1 rounded truncate ${getStatusColor(plan.status)} text-white`}
-                            title={`${plan.productName} - ${plan.targetQuantity} adet`}
-                          >
-                            {plan.productName}
+                        {dayPlans.slice(0, 3).map(plan => {
+                          const actual = Number(plan.actualQuantity ?? 0);
+                          const pct = plan.targetQuantity > 0 ? Math.min(100, Math.round((actual / plan.targetQuantity) * 100)) : 0;
+                          return (
+                          <div key={plan.id} title={`${plan.productName} — Hedef: ${plan.targetQuantity}, Gerçek: ${actual} (%${pct})`}>
+                            <div className={`text-xs p-1 rounded-t truncate ${getStatusColor(plan.status)} text-white`}>
+                              {plan.productName} {actual > 0 && <span className="opacity-75">({actual}/{plan.targetQuantity})</span>}
+                            </div>
+                            {plan.targetQuantity > 0 && (
+                              <div className="h-1 bg-muted rounded-b overflow-hidden">
+                                <div className={`h-full ${pct >= 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-500'}`} style={{ width: `${pct}%` }} />
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                         {dayPlans.length > 3 && (
                           <div className="text-xs text-muted-foreground">+{dayPlans.length - 3} daha</div>
                         )}
