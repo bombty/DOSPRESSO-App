@@ -190,6 +190,26 @@ export default function BranchKiosk() {
       if (inactivityRef.current) clearTimeout(inactivityRef.current);
     };
   }, [step, resetInactivityTimer]);
+
+  // Working ekranında session durumunu 5sn'de bir senkronize et (QR işlemlerini yakala)
+  useEffect(() => {
+    if (step !== 'working' || !selectedUser?.id || !branchId) return;
+    const syncSession = async () => {
+      try {
+        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${selectedUser.id}`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.activeSession && data.activeSession.status !== currentSession?.status) {
+            setCurrentSession(data.activeSession);
+          } else if (!data.activeSession && currentSession) {
+            // Vardiya bitti
+          }
+        }
+      } catch {}
+    };
+    const interval = setInterval(syncSession, 5000);
+    return () => clearInterval(interval);
+  }, [step, selectedUser?.id, branchId]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
@@ -919,7 +939,8 @@ export default function BranchKiosk() {
     const onBreak = staffList2.filter((s: any) => s.shiftStatus === 'on_break');
     const late = staffList2.filter((s: any) => s.shiftStatus === 'late' || s.shiftStatus === 'missing');
     const scheduled = staffList2.filter((s: any) => s.shiftStatus === 'scheduled');
-    const offAll = staffList2.filter((s: any) => s.shiftStatus === 'off' || !s.shiftStatus || s.shiftStatus === 'not_scheduled');
+    const offAll = staffList2.filter((s: any) => s.shiftStatus === 'off');
+    const noShift = staffList2.filter((s: any) => !s.shiftStatus || s.shiftStatus === 'not_scheduled');
     const activeAndBreak = [...active, ...onBreak];
     const now2 = new Date();
     const todayStart = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), 8, 0);
@@ -997,6 +1018,7 @@ export default function BranchKiosk() {
             {late.length > 0 && <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />{late.length} gecikmeli</span>}
             {scheduled.length > 0 && <span style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93c5fd', display: 'inline-block' }} />{scheduled.length} bekliyor</span>}
             {offAll.length > 0 && <span style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'inline-block' }} />{offAll.length} izinli</span>}
+            {noShift.length > 0 && <span style={{ color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />{noShift.length} plansız</span>}
           </div>
         </div>
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 220px', overflow: 'hidden' }}>
@@ -1045,6 +1067,19 @@ export default function BranchKiosk() {
                       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{offAll.length - 2} kisi daha</div>
                     </div>
                     <div style={{ flex: 1, height: 28, background: 'rgba(255,255,255,0.02)', borderRadius: 5 }} />
+                  </div>
+                )}
+              </>)}
+              {noShift.length > 0 && (<>
+                <SecHead label="Vardiya planlanmamis" count={noShift.length} color="rgba(255,255,255,0.3)" bg="rgba(255,255,255,0.05)" />
+                {noShift.slice(0,2).map(staff => (<div key={staff.id} style={{ opacity: 0.35 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
+                {noShift.length > 2 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 28, opacity: 0.3, marginBottom: 3 }}>
+                    <div style={{ width: 154, height: 28, flexShrink: 0, borderRadius: 8, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 7, border: '1px dashed rgba(255,255,255,0.08)', background: '#1a2232' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500 }}>+{noShift.length - 2}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{noShift.length - 2} kisi daha</div>
+                    </div>
+                    <div style={{ flex: 1, height: 28, background: 'rgba(255,255,255,0.01)', borderRadius: 5 }} />
                   </div>
                 )}
               </>)}
