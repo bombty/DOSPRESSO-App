@@ -204,7 +204,8 @@ export default function BranchKiosk() {
       .then(data => {
         if (data?.kioskMode === 'qr') {
           setKioskMode('qr');
-          if (step === 'password') setStep('qr-scan');
+          // Sadece şifre ekranındaysa QR'a geç — personel seçim ekranında değiştirme
+          setStep(prev => prev === 'password' ? 'qr-scan' : prev);
         }
       })
       .catch(() => {});
