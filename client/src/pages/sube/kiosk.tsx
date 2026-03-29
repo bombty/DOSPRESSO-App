@@ -117,7 +117,12 @@ export default function BranchKiosk() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (user?.role === 'sube_kiosk' && user.branchId) {
-        setBranchAuth({ id: user.branchId, username: user.username });
+        // Şube adını API'den al
+        fetch(`/api/branches/${user.branchId}`)
+          .then(r => r.json())
+          .then(b => setBranchAuth({ id: user.branchId, username: user.username, name: b?.name || '' }))
+          .catch(() => setBranchAuth({ id: user.branchId, username: user.username, name: '' }));
+        setBranchAuth({ id: user.branchId, username: user.username, name: '' });
         setStep('select-user');
         setAuthChecked(true);
         return;
@@ -624,22 +629,20 @@ export default function BranchKiosk() {
     };
 
     fetchLobby();
-    const interval = setInterval(fetchLobby, 60000);
-    return () => clearInterval(interval);
-  }, [step, branchId]);
+    const lobbyInterval = setInterval(fetchLobby, 60000);
 
-  // Display QR — 10sn'de yenile
-  useEffect(() => {
-    if (step !== 'select-user' || !branchId) return;
+    // QR 30sn'de yenile (45sn geçerli, rahat margin)
     const fetchQr = async () => {
       try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/display-qr`);
+        const res = await fetch(`/api/branches/${branchId}/kiosk/display-qr`, { credentials: 'include' });
         if (res.ok) setDisplayQr(await res.json());
-      } catch {}
+        else console.error('display-qr error:', res.status);
+      } catch (e) { console.error('display-qr fetch fail:', e); }
     };
     fetchQr();
-    const interval = setInterval(fetchQr, 10000);
-    return () => clearInterval(interval);
+    const qrInterval = setInterval(fetchQr, 30000);
+
+    return () => { clearInterval(lobbyInterval); clearInterval(qrInterval); };
   }, [step, branchId]);
 
   // QR ile giren personeli tespit et — 5sn'de bir aktif session kontrol
@@ -1109,39 +1112,42 @@ export default function BranchKiosk() {
   );
 
   const renderWorkingStep = () => (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12">
+    <div className="flex flex-col h-screen bg-[#f8f6f3] dark:bg-[#0a1628] overflow-hidden">
+      {/* Kompakt header */}
+      <div className="bg-[#c0392b] px-4 py-2 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
             <AvatarImage src={selectedUser?.profileImageUrl || undefined} />
-            <AvatarFallback className="bg-amber-100 text-amber-700">
+            <AvatarFallback className="bg-white/20 text-white text-sm">
               {selectedUser?.firstName?.[0]}{selectedUser?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold">{selectedUser?.firstName} {selectedUser?.lastName}</p>
-            <Badge variant={currentSession?.status === 'on_break' ? 'secondary' : 'default'}>
+            <p className="text-white font-semibold text-sm leading-tight">{selectedUser?.firstName} {selectedUser?.lastName}</p>
+            <Badge variant={currentSession?.status === 'on_break' ? 'secondary' : 'default'} className="text-xs h-4">
               {currentSession?.status === 'on_break' ? 'Molada' : 'Çalışıyor'}
             </Badge>
           </div>
         </div>
-        <Button variant="outline" onClick={resetWorker} data-testid="button-logout">
-          <LogOut className="h-4 w-4 mr-2" /> Çıkış
-        </Button>
-        <Button variant="outline" size="sm" onClick={resetWorker} data-testid="button-home">
-          <Store className="h-4 w-4 mr-1" /> Ana Ekran
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 h-8" onClick={resetWorker} data-testid="button-home">
+            <Store className="h-4 w-4 mr-1" /> Ana Ekran
+          </Button>
+          <Button variant="ghost" size="sm" className="text-white/60 hover:bg-white/10 h-8" onClick={resetWorker} data-testid="button-logout">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-600" />
+      <div className="flex-1 grid grid-cols-2 gap-3 p-3 overflow-hidden" style={{gridTemplateRows: '1fr 1fr'}}>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-amber-600" />
               Vardiya Durumu
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-3 px-4 pb-3">
             {!currentSession ? (
               <div className="text-center py-8">
                 <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -1214,14 +1220,14 @@ export default function BranchKiosk() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ListTodo className="h-5 w-5 text-amber-600" />
+        <Card className="overflow-hidden flex flex-col">
+          <CardHeader className="pb-2 pt-3 px-4 shrink-0">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <ListTodo className="h-4 w-4 text-amber-600" />
               Görevlerim
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-y-auto flex-1 px-4 pb-3">
             {userTasks.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />

@@ -3522,7 +3522,7 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
     const qrData = JSON.stringify({ branchId, timestamp: qrTimestamp, nonce: qrNonce });
     const qrToken = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'dospresso-qr-fallback-key')
       .update(qrData).digest('hex');
-    const displayQrPayload = { branchId, timestamp: qrTimestamp, nonce: qrNonce, token: qrToken, expiresIn: 10 };
+    const displayQrPayload = { branchId, timestamp: qrTimestamp, nonce: qrNonce, token: qrToken, expiresIn: 45 };
 
     res.json({
       staff: staffWithStatus,
@@ -4626,7 +4626,7 @@ router.get('/api/branch-dashboard-v2/:branchId', isAuthenticated, async (req, re
 });
 
 const QR_HMAC_SECRET = process.env.SESSION_SECRET || 'dospresso-qr-fallback-key';
-const QR_EXPIRY_MS = 10_000; // 10 saniye
+const QR_EXPIRY_MS = 45_000; // 45 saniye
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
 
 function generateQrPayload(userId: string) {
@@ -4672,7 +4672,7 @@ router.get('/api/branches/:branchId/kiosk/display-qr', async (req, res) => {
     const nonce = crypto.randomBytes(12).toString('hex');
     const data = JSON.stringify({ branchId, timestamp, nonce });
     const token = crypto.createHmac('sha256', QR_HMAC_SECRET).update(data).digest('hex');
-    res.json({ branchId, timestamp, nonce, token, expiresIn: 10 });
+    res.json({ branchId, timestamp, nonce, token, expiresIn: 45 });
   } catch (error: unknown) {
     console.error('Display QR error:', error);
     res.status(500).json({ message: 'QR oluşturulamadı' });
@@ -4697,7 +4697,7 @@ router.post('/api/kiosk/phone-checkin', isAuthenticated, async (req, res) => {
     }
 
     // 10sn geçerlilik
-    if (Date.now() - timestamp > 10_000) {
+    if (Date.now() - timestamp > 45_000) {
       return res.status(400).json({ message: 'QR kodunun süresi dolmuş. Yeni QR okutun.' });
     }
 

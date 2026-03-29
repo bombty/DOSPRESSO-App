@@ -560,7 +560,9 @@ export async function cleanupExpiredKioskSessions(): Promise<number> {
 // Kiosk işlemlerine web oturumu ile de erişebilen yetkili roller
 const KIOSK_AUTHORIZED_ROLES = [
   'admin', 'fabrika_mudur', 'fabrika_operator', 'fabrika',
-  'supervisor', 'supervisor_buddy', 'coach'
+  'supervisor', 'supervisor_buddy', 'coach',
+  'sube_kiosk', 'mudur', 'barista', 'bar_buddy', 'stajyer',
+  'fabrika_sorumlu', 'fabrika_personel',
 ];
 
 export const isKioskAuthenticated: RequestHandler = async (req, res, next) => {
