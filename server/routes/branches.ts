@@ -4603,7 +4603,7 @@ router.get('/api/branch-dashboard-v2/:branchId', isAuthenticated, async (req, re
 });
 
 const QR_HMAC_SECRET = process.env.SESSION_SECRET || 'dospresso-qr-fallback-key';
-const QR_EXPIRY_MS = 45_000;
+const QR_EXPIRY_MS = 10_000; // 10 saniye
 const NONCE_CLEANUP_INTERVAL = 60 * 60 * 1000;
 
 function generateQrPayload(userId: string) {
@@ -4639,6 +4639,131 @@ setInterval(async () => {
     console.error('QR nonce cleanup error:', e);
   }
 }, NONCE_CLEANUP_INTERVAL);
+
+// =================== KİOSK EKRAN QR (tablet gösterir, personel telefonu okur) ===================
+
+router.get('/api/branches/:branchId/kiosk/display-qr', async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const timestamp = Date.now();
+    const nonce = crypto.randomBytes(12).toString('hex');
+    const data = JSON.stringify({ branchId, timestamp, nonce });
+    const token = crypto.createHmac('sha256', QR_HMAC_SECRET).update(data).digest('hex');
+    res.json({ branchId, timestamp, nonce, token, expiresIn: 10 });
+  } catch (error: unknown) {
+    console.error('Display QR error:', error);
+    res.status(500).json({ message: 'QR oluşturulamadı' });
+  }
+});
+
+// Telefon bu endpoint'i çağırır — kiosk QR okutunca vardiya işlemi
+router.post('/api/kiosk/phone-checkin', isAuthenticated, async (req, res) => {
+  try {
+    const { branchId, timestamp, nonce, token, action } = req.body;
+    const userId = req.user!.id;
+
+    if (!branchId || !timestamp || !nonce || !token || !action) {
+      return res.status(400).json({ message: 'Eksik parametreler' });
+    }
+
+    // Token doğrula
+    const data = JSON.stringify({ branchId, timestamp, nonce });
+    const expected = crypto.createHmac('sha256', QR_HMAC_SECRET).update(data).digest('hex');
+    if (!crypto.timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'))) {
+      return res.status(400).json({ message: 'Geçersiz QR kodu' });
+    }
+
+    // 10sn geçerlilik
+    if (Date.now() - timestamp > 10_000) {
+      return res.status(400).json({ message: 'QR kodunun süresi dolmuş. Yeni QR okutun.' });
+    }
+
+    // Personel bu şubede mi?
+    const [userRecord] = await db.select({ branchId: users.branchId }).from(users)
+      .where(eq(users.id, userId)).limit(1);
+    if (userRecord?.branchId !== parseInt(branchId)) {
+      return res.status(403).json({ message: 'Bu kiosk sizin şubenize ait değil' });
+    }
+
+    // Aktif session kontrol
+    const [activeSession] = await db.select().from(branchShiftSessions)
+      .where(and(
+        eq(branchShiftSessions.userId, userId),
+        eq(branchShiftSessions.branchId, parseInt(branchId)),
+        or(eq(branchShiftSessions.status, 'active'), eq(branchShiftSessions.status, 'on_break'))
+      )).limit(1);
+
+    const now = new Date();
+
+    if (action === 'shift_start') {
+      if (activeSession) return res.status(400).json({ message: 'Zaten aktif vardiyeniz var' });
+      const [session] = await db.insert(branchShiftSessions).values({
+        userId, branchId: parseInt(branchId),
+        checkInTime: now, status: 'active', checkinMethod: 'qr',
+      }).returning();
+      await db.insert(branchShiftEvents).values({
+        sessionId: session.id, userId, branchId: parseInt(branchId),
+        eventType: 'check_in', eventTime: now,
+      });
+      return res.json({ success: true, action: 'shift_start', session });
+    }
+
+    if (!activeSession) return res.status(400).json({ message: 'Aktif vardiya bulunamadı' });
+
+    if (action === 'break_start') {
+      if (activeSession.status === 'on_break') return res.status(400).json({ message: 'Zaten moladasınız' });
+      await db.update(branchShiftSessions).set({ status: 'on_break' })
+        .where(eq(branchShiftSessions.id, activeSession.id));
+      await db.insert(branchBreakLogs).values({
+        sessionId: activeSession.id, userId, branchId: parseInt(branchId), breakStartTime: now,
+      });
+      await db.insert(branchShiftEvents).values({
+        sessionId: activeSession.id, userId, branchId: parseInt(branchId),
+        eventType: 'break_start', eventTime: now,
+      });
+      return res.json({ success: true, action: 'break_start' });
+    }
+
+    if (action === 'break_end') {
+      if (activeSession.status !== 'on_break') return res.status(400).json({ message: 'Molada değilsiniz' });
+      const [activeBreak] = await db.select().from(branchBreakLogs)
+        .where(and(eq(branchBreakLogs.sessionId, activeSession.id), isNull(branchBreakLogs.breakEndTime)))
+        .limit(1);
+      const breakDuration = activeBreak
+        ? Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000) : 0;
+      if (activeBreak) {
+        await db.update(branchBreakLogs).set({ breakEndTime: now, breakDurationMinutes: breakDuration })
+          .where(eq(branchBreakLogs.id, activeBreak.id));
+      }
+      await db.update(branchShiftSessions)
+        .set({ status: 'active', breakMinutes: (activeSession.breakMinutes || 0) + breakDuration })
+        .where(eq(branchShiftSessions.id, activeSession.id));
+      await db.insert(branchShiftEvents).values({
+        sessionId: activeSession.id, userId, branchId: parseInt(branchId),
+        eventType: 'break_end', eventTime: now,
+      });
+      return res.json({ success: true, action: 'break_end' });
+    }
+
+    if (action === 'shift_end') {
+      const totalMinutes = Math.floor((now.getTime() - new Date(activeSession.checkInTime).getTime()) / 60000);
+      const netWork = totalMinutes - (activeSession.breakMinutes || 0);
+      await db.update(branchShiftSessions).set({
+        status: 'completed', checkOutTime: now, workMinutes: totalMinutes, netWorkMinutes: netWork,
+      }).where(eq(branchShiftSessions.id, activeSession.id));
+      await db.insert(branchShiftEvents).values({
+        sessionId: activeSession.id, userId, branchId: parseInt(branchId),
+        eventType: 'check_out', eventTime: now,
+      });
+      return res.json({ success: true, action: 'shift_end', workMinutes: totalMinutes, netWorkMinutes: netWork });
+    }
+
+    return res.status(400).json({ message: 'Geçersiz işlem' });
+  } catch (error: unknown) {
+    console.error('Phone checkin error:', error);
+    res.status(500).json({ message: 'İşlem gerçekleştirilemedi' });
+  }
+});
 
 router.get('/api/qr-checkin/generate', isAuthenticated, async (req, res) => {
   try {
@@ -4980,29 +5105,38 @@ router.patch('/api/branches/:branchId/kiosk/mode', isAuthenticated, async (req, 
     }
 
     const branchId = parseInt(req.params.branchId);
-    const { kioskMode } = req.body;
+    const { kioskMode, allowPin, allowQr } = req.body;
 
-    if (!['pin', 'qr'].includes(kioskMode)) {
-      return res.status(400).json({ message: 'Geçerli modlar: pin, qr' });
+    // En az bir giriş yöntemi aktif olmalı
+    if (allowPin === false && allowQr === false) {
+      return res.status(400).json({ message: 'En az bir giriş yöntemi aktif olmalı (PIN veya QR)' });
     }
+
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (kioskMode !== undefined && ['pin', 'qr', 'both'].includes(kioskMode)) updateData.kioskMode = kioskMode;
+    if (allowPin !== undefined) updateData.allowPin = allowPin;
+    if (allowQr !== undefined) updateData.allowQr = allowQr;
 
     const [existing] = await db.select().from(branchKioskSettings)
       .where(eq(branchKioskSettings.branchId, branchId)).limit(1);
 
     if (existing) {
       await db.update(branchKioskSettings)
-        .set({ kioskMode, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(branchKioskSettings.branchId, branchId));
     } else {
       const hashedDefault = await bcrypt.hash('0000', 10);
       await db.insert(branchKioskSettings).values({
         branchId,
-        kioskMode,
         kioskPassword: hashedDefault,
+        ...updateData,
       });
     }
 
-    res.json({ success: true, kioskMode });
+    const [updated] = await db.select().from(branchKioskSettings)
+      .where(eq(branchKioskSettings.branchId, branchId)).limit(1);
+
+    res.json({ success: true, settings: updated });
   } catch (error: unknown) {
     console.error('Kiosk mode update error:', error);
     res.status(500).json({ message: 'Kiosk modu güncellenemedi' });

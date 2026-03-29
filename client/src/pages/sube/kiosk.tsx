@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -159,6 +160,31 @@ export default function BranchKiosk() {
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
   const [lobbyData, setLobbyData] = useState<any>(null);
+  const [displayQr, setDisplayQr] = useState<any>(null);
+  const inactivityRef = useRef<NodeJS.Timeout | null>(null);
+  const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityRef.current) clearTimeout(inactivityRef.current);
+    inactivityRef.current = setTimeout(() => {
+      resetWorker();
+    }, INACTIVITY_MS);
+  }, []);
+
+  // Working ekranında hareket algıla
+  useEffect(() => {
+    if (step !== 'working') {
+      if (inactivityRef.current) clearTimeout(inactivityRef.current);
+      return;
+    }
+    const events = ['touchstart', 'mousedown', 'keydown', 'scroll'];
+    events.forEach(e => window.addEventListener(e, resetInactivityTimer));
+    resetInactivityTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
+      if (inactivityRef.current) clearTimeout(inactivityRef.current);
+    };
+  }, [step, resetInactivityTimer]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
@@ -600,6 +626,63 @@ export default function BranchKiosk() {
     return () => clearInterval(interval);
   }, [step, branchId]);
 
+  // Display QR — 10sn'de yenile
+  useEffect(() => {
+    if (step !== 'select-user' || !branchId) return;
+    const fetchQr = async () => {
+      try {
+        const res = await fetch(`/api/branches/${branchId}/kiosk/display-qr`);
+        if (res.ok) setDisplayQr(await res.json());
+      } catch {}
+    };
+    fetchQr();
+    const interval = setInterval(fetchQr, 10000);
+    return () => clearInterval(interval);
+  }, [step, branchId]);
+
+  // QR ile giren personeli tespit et — 5sn'de bir aktif session kontrol
+  useEffect(() => {
+    if (step !== 'select-user' || !branchId) return;
+
+    let lastActiveIds = new Set<string>();
+
+    const pollSessions = async () => {
+      try {
+        const res = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const team: any[] = Array.isArray(data.team) ? data.team : [];
+        const currentIds = new Set(team.map((m: any) => m.userId));
+
+        // Yeni giriş yapan biri var mı?
+        const newEntrant = team.find((m: any) =>
+          m.status === 'active' && !lastActiveIds.has(m.userId)
+        );
+
+        if (newEntrant && lastActiveIds.size > 0) {
+          // QR ile yeni giriş — o kişinin ekranına geç
+          setSelectedUser({
+            id: newEntrant.userId,
+            firstName: newEntrant.firstName,
+            lastName: newEntrant.lastName,
+            profileImageUrl: newEntrant.profileImageUrl,
+            role: newEntrant.role,
+            hasPin: true,
+          });
+          await fetchSessionDetails(newEntrant.userId);
+          setStep('working');
+        }
+
+        lastActiveIds = currentIds;
+        setTeamStatus(team);
+      } catch {}
+    };
+
+    pollSessions();
+    const interval = setInterval(pollSessions, 5000);
+    return () => clearInterval(interval);
+  }, [step, branchId]);
+
   const resetWorker = () => {
     setStep('select-user');
     setSelectedUser(null);
@@ -791,6 +874,7 @@ export default function BranchKiosk() {
   const renderSelectUserStep = () => {
     const activeCount = lobbyData?.staff?.filter((s: any) => s.shiftStatus === 'active').length || 0;
     const onBreakCount = lobbyData?.staff?.filter((s: any) => s.shiftStatus === 'on_break').length || 0;
+    const staffList2 = lobbyData?.staff || staffList;
 
     const statusDot = (status: string) => {
       if (status === 'active') return 'bg-green-500';
@@ -804,102 +888,146 @@ export default function BranchKiosk() {
       if (status === 'active') return 'Çalışıyor';
       if (status === 'on_break') return 'Molada';
       if (status === 'off') return 'İzinli';
-      if (status === 'scheduled' && startTime) return startTime.slice(0,5) + "'de geliyor";
-      return 'Planlanmamış';
+      if (status === 'scheduled' && startTime) return startTime.slice(0,5) + "'de";
+      return '';
     };
 
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+
     return (
-      <div className="flex flex-col min-h-screen bg-[#f8f6f3] dark:bg-[#0a1628]">
-        {/* Header */}
-        <div className="bg-[#c0392b] px-4 py-3 flex items-center justify-between">
+      <div className="flex flex-col h-screen bg-[#f8f6f3] dark:bg-[#0a1628] overflow-hidden">
+
+        {/* Header — kırmızı şerit */}
+        <div className="bg-[#c0392b] px-5 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <Store className="h-6 w-6 text-white" />
+            <Store className="h-6 w-6 text-white shrink-0" />
             <div>
-              <p className="text-white font-bold text-lg leading-none">{branchAuth?.name || 'Şube Kiosk'}</p>
-              <p className="text-white/70 text-sm">{new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+              <p className="text-white font-bold text-lg leading-tight">{branchAuth?.name || 'Şube Kiosk'}</p>
+              <p className="text-white/70 text-xs">{dateStr}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-white/80 text-sm">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-400 inline-block"/>{activeCount} aktif</span>
-            {onBreakCount > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block"/>{onBreakCount} molada</span>}
+          <div className="flex items-center gap-4 text-white text-sm font-mono">
+            <span>{timeStr}</span>
+            <div className="flex items-center gap-2">
+              {activeCount > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-400 inline-block"/>{activeCount}</span>}
+              {onBreakCount > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block"/>{onBreakCount} mola</span>}
+            </div>
           </div>
         </div>
 
-        {/* Duyuru + bildirim şeridi */}
-        {((lobbyData?.announcements?.length > 0) || (lobbyData?.notifications?.length > 0)) && (
-          <div className="bg-white dark:bg-[#0f1d32] border-b border-[#e8e4df] dark:border-[#1a2d48] px-4 py-2 space-y-1">
-            {lobbyData?.announcements?.slice(0, 2).map((ann: any) => (
-              <div key={`ann-${ann.id}`} className="flex items-center gap-2 text-sm">
-                <Megaphone className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                <span className="font-medium truncate">{ann.title}</span>
-                {ann.isPinned && <Badge variant="outline" className="text-xs py-0 h-4">Sabitli</Badge>}
-              </div>
-            ))}
-            {lobbyData?.notifications?.slice(0, 1).map((n: any) => (
-              <div key={`notif-${n.id}`} className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{n.title}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Ana içerik — 2 kolon */}
+        <div className="flex flex-1 overflow-hidden">
 
-        {/* Personel grid */}
-        <div className="flex-1 p-4">
-          <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Kendi kartına tıkla</p>
-          {loadingStaff ? (
-            <div className="flex items-center justify-center h-48">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#c0392b]" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {(lobbyData?.staff || staffList).map((staff: any) => (
-                <div
-                  key={staff.id}
-                  className={`bg-white dark:bg-[#0f1d32] rounded-xl border border-[#e8e4df] dark:border-[#1a2d48] p-3 flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform ${!staff.hasPin ? 'opacity-40' : 'hover:border-[#c0392b]'}`}
-                  onClick={() => {
-                    if (!staff.hasPin) {
-                      toast({ title: "PIN Gerekli", description: "Bu personelin PIN'i ayarlanmamış.", variant: "destructive" });
-                      return;
-                    }
-                    setSelectedUser(staff);
-                    setStep('enter-pin');
-                  }}
-                  data-testid={`staff-card-${staff.id}`}
-                >
-                  <div className="relative">
-                    <Avatar className="h-14 w-14">
-                      <AvatarImage src={staff.profileImageUrl || undefined} />
-                      <AvatarFallback className="text-lg bg-[#f8f6f3] dark:bg-[#1a2d48] text-[#1a2536] dark:text-[#f2e6d0]">
-                        {staff.firstName?.[0]}{staff.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#0f1d32] ${statusDot(staff.shiftStatus || 'not_scheduled')}`} />
+          {/* SOL — Personel kartları */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <p className="text-xs text-muted-foreground mb-3 font-medium text-center">Kartına tıkla → PIN gir</p>
+            {loadingStaff ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#c0392b]" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {staffList2.map((staff: any) => (
+                  <div
+                    key={staff.id}
+                    className={`bg-white dark:bg-[#0f1d32] rounded-xl border border-[#e8e4df] dark:border-[#1a2d48] p-2.5 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-transform select-none ${!staff.hasPin ? 'opacity-40' : 'hover:border-[#c0392b]'}`}
+                    onClick={() => {
+                      if (!staff.hasPin) {
+                        toast({ title: "PIN Gerekli", description: "Yöneticinize başvurun.", variant: "destructive" });
+                        return;
+                      }
+                      setSelectedUser(staff);
+                      setStep('enter-pin');
+                    }}
+                    data-testid={`staff-card-${staff.id}`}
+                  >
+                    <div className="relative">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={staff.profileImageUrl || undefined} />
+                        <AvatarFallback className="text-sm bg-[#f8f6f3] dark:bg-[#1a2d48] text-[#1a2536] dark:text-[#f2e6d0]">
+                          {staff.firstName?.[0]}{staff.lastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#0f1d32] ${statusDot(staff.shiftStatus || 'not_scheduled')}`} />
+                    </div>
+                    <p className="text-[11px] font-medium text-center leading-tight">{staff.firstName} {staff.lastName?.[0]}.</p>
+                    {staff.shiftStatus && (
+                      <p className={`text-[10px] leading-none ${
+                        staff.shiftStatus === 'active' ? 'text-green-600 dark:text-green-400' :
+                        staff.shiftStatus === 'on_break' ? 'text-amber-500' :
+                        staff.shiftStatus === 'off' ? 'text-red-400' : 'text-muted-foreground'
+                      }`}>{statusLabel(staff.shiftStatus, staff.shiftStartTime)}</p>
+                    )}
                   </div>
-                  <p className="text-xs font-medium text-center leading-tight">{staff.firstName} {staff.lastName?.[0]}.</p>
-                  <p className={`text-[10px] text-center leading-none ${
-                    staff.shiftStatus === 'active' ? 'text-green-600 dark:text-green-400' :
-                    staff.shiftStatus === 'on_break' ? 'text-amber-600 dark:text-amber-400' :
-                    staff.shiftStatus === 'off' ? 'text-red-500' : 'text-muted-foreground'
-                  }`}>
-                    {statusLabel(staff.shiftStatus || 'not_scheduled', staff.shiftStartTime)}
-                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SAĞ — Bildirimler + QR */}
+          <div className="w-52 shrink-0 border-l border-[#e8e4df] dark:border-[#1a2d48] bg-white dark:bg-[#0f1d32] flex flex-col overflow-hidden">
+
+            {/* Bildirim + Duyurular */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {lobbyData?.announcements?.length > 0 && (
+                <>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Duyurular</p>
+                  {lobbyData.announcements.slice(0, 4).map((ann: any) => (
+                    <div key={`ann-${ann.id}`} className="flex items-start gap-1.5 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900">
+                      <Megaphone className="h-3 w-3 text-blue-500 shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-tight">{ann.title}</p>
+                    </div>
+                  ))}
+                </>
+              )}
+              {lobbyData?.notifications?.length > 0 && (
+                <>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide mt-1">Bildirimler</p>
+                  {lobbyData.notifications.slice(0, 3).map((n: any) => (
+                    <div key={`notif-${n.id}`} className="flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900">
+                      <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-tight">{n.title}</p>
+                    </div>
+                  ))}
+                </>
+              )}
+              {!lobbyData?.announcements?.length && !lobbyData?.notifications?.length && (
+                <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
+                  <Bell className="h-6 w-6 mb-1 opacity-30" />
+                  <p className="text-[10px]">Bildirim yok</p>
                 </div>
-              ))}
+              )}
             </div>
-          )}
+
+            {/* QR Kod */}
+            <div className="border-t border-[#e8e4df] dark:border-[#1a2d48] p-3 flex flex-col items-center gap-2">
+              <p className="text-[10px] text-muted-foreground font-medium text-center">Telefonunla tara</p>
+              {displayQr ? (
+                <div className="bg-white p-2 rounded-lg border border-[#e8e4df]">
+                  <QRCodeSVG value={JSON.stringify(displayQr)} size={100} level="M" />
+                </div>
+              ) : (
+                <div className="w-[116px] h-[116px] bg-muted rounded-lg flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <p className="text-[9px] text-muted-foreground text-center">Vardiya · Mola · Çıkış<br/>10sn'de yenilenir</p>
+            </div>
+          </div>
         </div>
 
-        {/* Alt bilgi */}
-        <div className="bg-[#0a1628] dark:bg-[#060e1a] px-4 py-2 flex items-center justify-between">
-          <Button variant="ghost" size="sm" className="text-white/60 hover:text-white text-xs" onClick={resetKiosk} data-testid="button-back">
-            <ChevronLeft className="h-4 w-4 mr-1" /> Çıkış
+        {/* Alt bar */}
+        <div className="bg-[#0a1628] px-4 py-2 flex items-center justify-end shrink-0">
+          <Button variant="ghost" size="sm" className="text-white/50 hover:text-white text-xs" onClick={resetKiosk} data-testid="button-back">
+            <ChevronLeft className="h-4 w-4 mr-1" /> Kiosk'tan Çık
           </Button>
-          <p className="text-white/40 text-xs">DOSPRESSO Kiosk</p>
         </div>
       </div>
     );
   };
+
 
   const renderEnterPinStep = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
@@ -995,6 +1123,9 @@ export default function BranchKiosk() {
         </div>
         <Button variant="outline" onClick={resetWorker} data-testid="button-logout">
           <LogOut className="h-4 w-4 mr-2" /> Çıkış
+        </Button>
+        <Button variant="outline" size="sm" onClick={resetWorker} data-testid="button-home">
+          <Store className="h-4 w-4 mr-1" /> Ana Ekran
         </Button>
       </div>
 

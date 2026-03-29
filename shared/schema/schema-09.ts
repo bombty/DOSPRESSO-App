@@ -321,6 +321,10 @@ export const branchKioskSettings = pgTable("branch_kiosk_settings", {
   
   kioskMode: varchar("kiosk_mode", { length: 10 }).default("pin").notNull(),
   
+  // Giriş yöntemi — şube bazlı toggle (admin tarafından ayarlanır)
+  allowPin: boolean("allow_pin").default(true).notNull(),
+  allowQr: boolean("allow_qr").default(true).notNull(),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

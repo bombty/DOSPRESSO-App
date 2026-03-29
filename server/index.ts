@@ -272,6 +272,11 @@ app.use((req, res, next) => {
     await ensureAdminUserApproved();
     await ensureKioskSessionsTable();
     await migrateKioskPasswords();
+    // Kiosk giriş yöntemi toggle sütunları
+    try {
+      await db.execute(sql`ALTER TABLE branch_kiosk_settings ADD COLUMN IF NOT EXISTS allow_pin BOOLEAN NOT NULL DEFAULT true`);
+      await db.execute(sql`ALTER TABLE branch_kiosk_settings ADD COLUMN IF NOT EXISTS allow_qr BOOLEAN NOT NULL DEFAULT true`);
+    } catch (e) { console.error("[Migration] allow_pin/allow_qr:", e); }
     await seedKioskAccounts();
 
     const roleChain = async () => {

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { QrCode, X, Camera, MapPin, Wrench, Package, Loader2 } from "lucide-react";
+import { QrCode, X, Camera, MapPin, Wrench, Package, Loader2, Play, Coffee, LogOut, Timer } from "lucide-react";
 import { QREquipmentDetail } from "@/components/qr-equipment-detail";
 import { QRInventoryDetail } from "@/components/qr-inventory-detail";
 
@@ -14,7 +14,7 @@ interface QRScannerModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type QRType = "shift" | "equipment" | "inventory" | "unknown";
+type QRType = "shift" | "equipment" | "inventory" | "kiosk" | "unknown";
 
 interface DetectedQR {
   type: QRType;
@@ -24,6 +24,14 @@ interface DetectedQR {
 
 function detectQRType(text: string): DetectedQR {
   const trimmed = text.trim();
+
+  // Kiosk display QR — JSON içinde branchId + token var
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed.branchId && parsed.token && parsed.nonce && parsed.timestamp) {
+      return { type: "kiosk", id: parsed.branchId, raw: trimmed };
+    }
+  } catch {}
 
   if (trimmed.startsWith("shift:")) {
     return { type: "shift", id: trimmed, raw: trimmed };
@@ -81,6 +89,9 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
   const [equipmentDetailOpen, setEquipmentDetailOpen] = useState(false);
   const [inventoryDetailId, setInventoryDetailId] = useState<string | number | null>(null);
   const [inventoryDetailOpen, setInventoryDetailOpen] = useState(false);
+  const [kioskQrData, setKioskQrData] = useState<any>(null);
+  const [kioskActionOpen, setKioskActionOpen] = useState(false);
+  const [kioskActionLoading, setKioskActionLoading] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -179,6 +190,39 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
     });
   };
 
+  const handleKioskQR = async (raw: string) => {
+    try {
+      const parsed = JSON.parse(raw);
+      await stopScannerSilent();
+      onOpenChange(false);
+      setKioskQrData(parsed);
+      setKioskActionOpen(true);
+    } catch {
+      toast({ title: "Hata", description: "Kiosk QR okunamadı", variant: "destructive" });
+    }
+  };
+
+  const handleKioskAction = async (action: string) => {
+    if (!kioskQrData) return;
+    setKioskActionLoading(true);
+    try {
+      await apiRequest("POST", "/api/kiosk/phone-checkin", { ...kioskQrData, action });
+      const labels: Record<string, string> = {
+        shift_start: "Vardiya başlatıldı",
+        break_start: "Mola başlatıldı",
+        break_end: "Mola bitirildi",
+        shift_end: "Vardiya bitirildi",
+      };
+      toast({ title: "✓ " + (labels[action] || "İşlem tamamlandı") });
+      queryClient.invalidateQueries({ queryKey: ["/api/shift-attendance"] });
+      setKioskActionOpen(false);
+    } catch (error: any) {
+      toast({ title: "Hata", description: error.message || "İşlem gerçekleştirilemedi", variant: "destructive" });
+    } finally {
+      setKioskActionLoading(false);
+    }
+  };
+
   const handleShiftQR = async (decodedText: string) => {
     try {
       const photoUrl = await capturePhoto();
@@ -245,6 +289,9 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
       await stopScannerSilent();
 
       switch (detected.type) {
+        case "kiosk":
+          await handleKioskQR(detected.raw);
+          break;
         case "shift":
           await handleShiftQR(decodedText);
           break;
@@ -412,6 +459,62 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
           if (!val) setInventoryDetailId(null);
         }}
       />
+
+      {/* Kiosk QR İşlem Seçimi */}
+      <Dialog open={kioskActionOpen} onOpenChange={setKioskActionOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5 text-[#c0392b]" />
+              Kiosk İşlemi
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground text-center pb-2">Ne yapmak istiyorsunuz?</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              className="h-16 flex-col gap-1 bg-green-600 hover:bg-green-700"
+              onClick={() => handleKioskAction("shift_start")}
+              disabled={kioskActionLoading}
+              data-testid="btn-kiosk-shift-start"
+            >
+              <Play className="h-5 w-5" />
+              <span className="text-xs">Vardiya Başlat</span>
+            </Button>
+            <Button
+              className="h-16 flex-col gap-1 bg-amber-500 hover:bg-amber-600"
+              onClick={() => handleKioskAction("break_start")}
+              disabled={kioskActionLoading}
+              data-testid="btn-kiosk-break-start"
+            >
+              <Coffee className="h-5 w-5" />
+              <span className="text-xs">Mola Başlat</span>
+            </Button>
+            <Button
+              className="h-16 flex-col gap-1 bg-blue-600 hover:bg-blue-700"
+              onClick={() => handleKioskAction("break_end")}
+              disabled={kioskActionLoading}
+              data-testid="btn-kiosk-break-end"
+            >
+              <Play className="h-5 w-5" />
+              <span className="text-xs">Molayı Bitir</span>
+            </Button>
+            <Button
+              className="h-16 flex-col gap-1 bg-[#c0392b] hover:bg-[#a93226]"
+              onClick={() => handleKioskAction("shift_end")}
+              disabled={kioskActionLoading}
+              data-testid="btn-kiosk-shift-end"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="text-xs">Vardiya Bitir</span>
+            </Button>
+          </div>
+          {kioskActionLoading && (
+            <div className="flex justify-center pt-2">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
