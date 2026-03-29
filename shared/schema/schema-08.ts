@@ -646,6 +646,9 @@ export const factoryProductionOutputs = pgTable("factory_production_outputs", {
   qualityCheckedAt: timestamp("quality_checked_at"),
   qualityNotes: text("quality_notes"), // Kalite kontrol notları
   
+  // Reçete bağlantısı — hangi reçete versiyonuyla üretildi
+  productRecipeId: integer("product_recipe_id"), // product_recipes.id referansı
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("factory_production_outputs_session_idx").on(table.sessionId),

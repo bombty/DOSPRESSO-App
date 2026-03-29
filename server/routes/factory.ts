@@ -1413,6 +1413,46 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           })
           .where(eq(factoryShiftSessions.id, sessionId));
 
+        // P0: Üretim planı actualQuantity otomatik güncelleme
+        // Bugünkü plan + aynı ürün + aynı istasyon varsa güncelle
+        if (productId && produced > 0) {
+          try {
+            const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD format
+            const planConditions = [
+              eq(factoryProductionPlans.productId, productId),
+              eq(factoryProductionPlans.planDate, todayStr),
+              or(
+                eq(factoryProductionPlans.status, 'planned'),
+                eq(factoryProductionPlans.status, 'in_progress')
+              ),
+            ];
+            // İstasyon eşleşmesi varsa filtrele
+            if (session.stationId) {
+              planConditions.push(eq(factoryProductionPlans.stationId, session.stationId));
+            }
+
+            const [todayPlan] = await db.select()
+              .from(factoryProductionPlans)
+              .where(and(...planConditions))
+              .limit(1);
+
+            if (todayPlan) {
+              const newActual = (todayPlan.actualQuantity || 0) + produced;
+              const newStatus = newActual >= todayPlan.targetQuantity ? 'completed' : 'in_progress';
+              await db.update(factoryProductionPlans)
+                .set({
+                  actualQuantity: newActual,
+                  status: newStatus,
+                  updatedAt: new Date(),
+                })
+                .where(eq(factoryProductionPlans.id, todayPlan.id));
+            }
+          } catch (planErr) {
+            // Plan güncelleme hatası üretim kaydını engellememeli
+            console.error("[Factory] Plan actualQuantity update error:", planErr);
+          }
+        }
+
         try {
           const [sessionUser] = await db.select({ firstName: users.firstName, lastName: users.lastName })
             .from(users).where(eq(users.id, session.userId)).limit(1);
@@ -6637,6 +6677,40 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         output: result.output,
         lot: result.lot,
       });
+
+      // P0: Üretim planı actualQuantity otomatik güncelleme (fire-and-forget)
+      if (productId && qty > 0) {
+        try {
+          const todayStr = new Date().toLocaleDateString('sv-SE');
+          const planConditions = [
+            eq(factoryProductionPlans.productId, productId),
+            eq(factoryProductionPlans.planDate, todayStr),
+            or(
+              eq(factoryProductionPlans.status, 'planned'),
+              eq(factoryProductionPlans.status, 'in_progress')
+            ),
+          ];
+          if (activeSession.stationId) {
+            planConditions.push(eq(factoryProductionPlans.stationId, activeSession.stationId));
+          }
+          const [todayPlan] = await db.select()
+            .from(factoryProductionPlans)
+            .where(and(...planConditions))
+            .limit(1);
+          if (todayPlan) {
+            const newActual = (todayPlan.actualQuantity || 0) + qty;
+            await db.update(factoryProductionPlans)
+              .set({
+                actualQuantity: newActual,
+                status: newActual >= todayPlan.targetQuantity ? 'completed' : 'in_progress',
+                updatedAt: new Date(),
+              })
+              .where(eq(factoryProductionPlans.id, todayPlan.id));
+          }
+        } catch (planErr) {
+          console.error("[Factory] Plan update error (quick-complete):", planErr);
+        }
+      }
     } catch (error: unknown) {
       if (error.message?.startsWith('INSUFFICIENT_SEMI:')) {
         return res.status(400).json({ message: "Yetersiz yarı mamul stoku" });
