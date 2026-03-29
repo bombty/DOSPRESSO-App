@@ -861,11 +861,37 @@ router.get("/api/agent/guidance", isAuthenticated, async (req, res) => {
       low: myGuidance.filter(g => g.severity === "low"),
     };
 
+    // Şube sağlık skoru ekleme (HQ rolleri için)
+    let healthSummary = null;
+    let patterns: any[] = [];
+    if (isHQ) {
+      try {
+        const { getAllBranchHealthScores, detectPatterns } = await import("../services/branch-health-score");
+        const scores = await getAllBranchHealthScores();
+        patterns = await detectPatterns(scores);
+        healthSummary = {
+          average: scores.average,
+          healthyCount: scores.healthyCount,
+          warningCount: scores.warningCount,
+          criticalCount: scores.criticalCount,
+          worstBranches: scores.branches.slice(0, 3).map(b => ({
+            name: b.branchName,
+            score: b.overallScore,
+            status: b.status,
+          })),
+        };
+      } catch (e) {
+        console.error("[Guidance] Health score error:", e);
+      }
+    }
+
     res.json({
       totalGaps: myGuidance.length,
       criticalCount: grouped.critical.length,
       items: myGuidance,
       grouped,
+      healthSummary,
+      patterns,
       lastChecked: new Date().toISOString(),
     });
   } catch (error) {
@@ -889,6 +915,67 @@ router.post("/api/agent/guidance/:id/dismiss", isAuthenticated, async (req, res)
   } catch (error) {
     console.error("[Guidance] Dismiss error:", error);
     res.status(500).json({ error: "Dismiss failed" });
+  }
+});
+
+// ═══════════════════════════════════════════
+// BRANCH HEALTH SCORE ENDPOINTS
+// ═══════════════════════════════════════════
+
+router.get("/api/agent/branch-health", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const { getAllBranchHealthScores, detectPatterns } = await import("../services/branch-health-score");
+
+    const scores = await getAllBranchHealthScores();
+    const patterns = await detectPatterns(scores);
+
+    // Rol bazlı filtreleme
+    const isHQ = isHQRole(user.role);
+    let filteredBranches = scores.branches;
+
+    if (!isHQ && user.branchId) {
+      // Şube rolleri sadece kendi şubesini görür
+      filteredBranches = scores.branches.filter(b => b.branchId === user.branchId);
+    }
+
+    res.json({
+      branches: filteredBranches,
+      average: scores.average,
+      healthyCount: scores.healthyCount,
+      warningCount: scores.warningCount,
+      criticalCount: scores.criticalCount,
+      patterns: isHQ ? patterns : [], // Pattern'ler sadece HQ'ya gösterilir
+      calculatedAt: scores.calculatedAt,
+    });
+  } catch (error) {
+    console.error("[BranchHealth] Error:", error);
+    res.json({ branches: [], average: 0, healthyCount: 0, warningCount: 0, criticalCount: 0, patterns: [] });
+  }
+});
+
+router.get("/api/agent/branch-health/:branchId", isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user as any;
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) return res.status(400).json({ error: "Geçersiz şube ID" });
+
+    // Scope kontrolü
+    if (!isHQRole(user.role) && user.branchId !== branchId) {
+      return res.status(403).json({ error: "Bu şubeye erişim yetkiniz yok" });
+    }
+
+    const { calculateBranchHealthScore } = await import("../services/branch-health-score");
+
+    // Şube adını bul
+    const [branch] = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, branchId)).limit(1);
+    if (!branch) return res.status(404).json({ error: "Şube bulunamadı" });
+
+    const score = await calculateBranchHealthScore(branchId, branch.name);
+    res.json(score);
+  } catch (error) {
+    console.error("[BranchHealth] Single branch error:", error);
+    res.status(500).json({ error: "Sağlık skoru hesaplanamadı" });
   }
 });
 

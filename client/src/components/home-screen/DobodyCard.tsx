@@ -56,9 +56,12 @@ export function DobodyCard() {
   ];
 
   const topItems = allItems.slice(0, 3);
-  const summary = topItems.length > 0
-    ? topItems.map(i => i.title).join(". ") + "."
-    : "Tüm sistemler normal çalışıyor.";
+  const healthAvg = guidance?.healthSummary?.average;
+  const summary = healthAvg != null
+    ? `Şube sağlık ortalaması %${healthAvg}. ` + (topItems.length > 0 ? topItems[0].title + "." : "")
+    : topItems.length > 0
+      ? topItems.map(i => i.title).join(". ") + "."
+      : "Tüm sistemler normal çalışıyor.";
 
   return (
     <div
@@ -116,8 +119,72 @@ export function DobodyCard() {
       {/* Expanded — uyarı ve bildirim listesi */}
       {isExpanded && (
         <div className="px-3 md:px-5 pb-3 md:pb-4" style={{ borderTop: "1px solid var(--ds-border-subtle)" }}>
+          {/* Şube Sağlık Skoru Özeti */}
+          {guidance?.healthSummary && (
+            <div className="pt-2 pb-2 mb-2" style={{ borderBottom: "1px solid var(--ds-border-subtle)" }}>
+              <p className="text-[10px] md:text-[11px] font-semibold mb-1.5" style={{ color: "var(--ds-text-mid)" }}>
+                Şube Sağlık Skoru
+              </p>
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[16px] md:text-[20px] font-bold" style={{
+                    color: guidance.healthSummary.average >= 80 ? "var(--ds-green)" :
+                           guidance.healthSummary.average >= 60 ? "var(--ds-amber)" : "var(--ds-red-light)"
+                  }}>
+                    %{guidance.healthSummary.average}
+                  </span>
+                  <span className="text-[9px] md:text-[10px]" style={{ color: "var(--ds-text-secondary)" }}>ortalama</span>
+                </div>
+                <div className="flex gap-2 text-[9px] md:text-[10px]">
+                  <span style={{ color: "var(--ds-green)" }}>●{guidance.healthSummary.healthyCount}</span>
+                  <span style={{ color: "var(--ds-amber)" }}>●{guidance.healthSummary.warningCount}</span>
+                  <span style={{ color: "var(--ds-red-light)" }}>●{guidance.healthSummary.criticalCount}</span>
+                </div>
+              </div>
+              {guidance.healthSummary.worstBranches?.length > 0 && (
+                <div className="flex gap-1 flex-wrap">
+                  {guidance.healthSummary.worstBranches.map(b => (
+                    <span key={b.name} className="text-[8px] md:text-[9px] px-1.5 py-0.5 rounded"
+                      style={{
+                        background: b.status === 'critical' ? "rgba(231,76,60,0.15)" :
+                                   b.status === 'warning' ? "rgba(243,156,18,0.15)" : "rgba(46,204,113,0.1)",
+                        color: b.status === 'critical' ? "var(--ds-red-light)" :
+                               b.status === 'warning' ? "var(--ds-amber)" : "var(--ds-green)",
+                      }}>
+                      {b.name}: %{b.score}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pattern Bildirimleri */}
+          {guidance?.patterns && guidance.patterns.length > 0 && (
+            <div className="pb-2 mb-2" style={{ borderBottom: "1px solid var(--ds-border-subtle)" }}>
+              {guidance.patterns.map((p, idx) => (
+                <div key={idx} className="flex items-start gap-2 py-1">
+                  <span className="text-[8px] md:text-[9px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5"
+                    style={{
+                      background: p.severity === 'critical' ? "var(--ds-badge-danger-bg)" :
+                                 p.severity === 'high' ? "var(--ds-badge-warning-bg)" : "var(--ds-badge-info-bg)",
+                      color: p.severity === 'critical' ? "var(--ds-badge-danger-text)" :
+                             p.severity === 'high' ? "var(--ds-badge-warning-text)" : "var(--ds-badge-info-text)",
+                    }}>
+                    Trend
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] md:text-[11px]" style={{ color: "var(--ds-text-mid)" }}>{p.pattern}</p>
+                    <p className="text-[8px] md:text-[9px]" style={{ color: "var(--ds-text-secondary)" }}>{p.recommendation}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Mevcut uyarı listesi */}
           {allItems.length > 0 ? (
-            <div className="pt-2">
+            <div className="pt-1">
               {allItems.map((item, idx) => (
                 <GuidanceRow key={item.id || idx} item={item} />
               ))}

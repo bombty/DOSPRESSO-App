@@ -19,6 +19,21 @@ export interface GuidanceItem {
   branchName?: string;
 }
 
+export interface HealthSummary {
+  average: number;
+  healthyCount: number;
+  warningCount: number;
+  criticalCount: number;
+  worstBranches: Array<{ name: string; score: number; status: string }>;
+}
+
+export interface PatternAlert {
+  pattern: string;
+  severity: 'critical' | 'high' | 'medium';
+  affectedBranches: string[];
+  recommendation: string;
+}
+
 export interface GuidanceData {
   totalGaps: number;
   criticalCount: number;
@@ -29,6 +44,8 @@ export interface GuidanceData {
     medium: GuidanceItem[];
     low: GuidanceItem[];
   };
+  healthSummary?: HealthSummary;
+  patterns?: PatternAlert[];
 }
 
 export function useGuidanceData() {
