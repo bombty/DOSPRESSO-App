@@ -9,7 +9,6 @@ import { sanitizeUsersForRole } from "../security";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { handleApiError } from "./helpers";
 import bcrypt from "bcrypt";
-import { requireManifestAccess } from '../services/manifest-auth';
 import { z } from "zod";
 import QRCode from "qrcode";
 import {
@@ -73,6 +72,8 @@ import {
   overtimeRequests,
 } from "@shared/schema";
 import crypto from "crypto";
+
+const router = Router();
 
 // Kiosk endpoints için genişletilmiş auth — token veya web session kabul eder
 const isKioskOrAuthenticated: RequestHandler = async (req: any, res, next) => {
