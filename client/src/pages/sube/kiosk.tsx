@@ -967,53 +967,56 @@ export default function BranchKiosk() {
           </div>
 
           {/* SAĞ — Bildirimler + QR */}
-          <div className="w-52 shrink-0 border-l border-[#e8e4df] dark:border-[#1a2d48] bg-white dark:bg-[#0f1d32] flex flex-col overflow-hidden">
+          <div className="w-72 shrink-0 border-l border-[#e8e4df] dark:border-[#1a2d48] bg-white dark:bg-[#0f1d32] flex flex-col overflow-hidden">
 
             {/* Bildirim + Duyurular */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {lobbyData?.announcements?.length > 0 && (
                 <>
-                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Duyurular</p>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Duyurular</p>
                   {lobbyData.announcements.slice(0, 4).map((ann: any) => (
-                    <div key={`ann-${ann.id}`} className="flex items-start gap-1.5 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900">
-                      <Megaphone className="h-3 w-3 text-blue-500 shrink-0 mt-0.5" />
-                      <p className="text-[11px] leading-tight">{ann.title}</p>
+                    <div key={`ann-${ann.id}`} className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900">
+                      <Megaphone className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                      <p className="text-sm leading-tight font-medium">{ann.title}</p>
                     </div>
                   ))}
                 </>
               )}
               {lobbyData?.notifications?.length > 0 && (
                 <>
-                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide mt-1">Bildirimler</p>
+                  <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mt-2">Bildirimler</p>
                   {lobbyData.notifications.slice(0, 3).map((n: any) => (
-                    <div key={`notif-${n.id}`} className="flex items-start gap-1.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900">
-                      <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
-                      <p className="text-[11px] leading-tight">{n.title}</p>
+                    <div key={`notif-${n.id}`} className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900">
+                      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium leading-tight">{n.title}</p>
+                        {n.message && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>}
+                      </div>
                     </div>
                   ))}
                 </>
               )}
               {!lobbyData?.announcements?.length && !lobbyData?.notifications?.length && (
-                <div className="flex flex-col items-center justify-center h-24 text-muted-foreground">
-                  <Bell className="h-6 w-6 mb-1 opacity-30" />
-                  <p className="text-[10px]">Bildirim yok</p>
+                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                  <Bell className="h-8 w-8 mb-2 opacity-30" />
+                  <p className="text-sm">Bildirim yok</p>
                 </div>
               )}
             </div>
 
             {/* QR Kod */}
-            <div className="border-t border-[#e8e4df] dark:border-[#1a2d48] p-3 flex flex-col items-center gap-2">
-              <p className="text-[10px] text-muted-foreground font-medium text-center">Telefonunla tara</p>
+            <div className="border-t border-[#e8e4df] dark:border-[#1a2d48] p-4 flex flex-col items-center gap-2">
+              <p className="text-xs text-muted-foreground font-medium text-center">📱 Telefonunla tara</p>
               {displayQr ? (
-                <div className="bg-white p-2 rounded-lg border border-[#e8e4df]">
-                  <QRCodeSVG value={JSON.stringify(displayQr)} size={100} level="M" />
+                <div className="bg-white p-2.5 rounded-xl border-2 border-[#c0392b]/20">
+                  <QRCodeSVG value={JSON.stringify(displayQr)} size={140} level="M" />
                 </div>
               ) : (
-                <div className="w-[116px] h-[116px] bg-muted rounded-lg flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="w-[156px] h-[156px] bg-muted rounded-xl flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               )}
-              <p className="text-[9px] text-muted-foreground text-center">Vardiya · Mola · Çıkış<br/>10sn'de yenilenir</p>
+              <p className="text-[10px] text-muted-foreground text-center">Vardiya · Mola · Çıkış<br/>10sn'de otomatik yenilenir</p>
             </div>
           </div>
         </div>

@@ -3394,7 +3394,7 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    // 1. Şube personeli
+    // 1. Şube personeli + PIN durumu
     const staff = await db.select({
       id: users.id,
       firstName: users.firstName,
@@ -3404,6 +3404,19 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
     }).from(users)
       .where(and(eq(users.isActive, true), eq(users.branchId, branchId)))
       .orderBy(users.firstName);
+
+    // PIN durumu toplu sorgula
+    const staffIds = staff.map(s => s.id);
+    const pins = staffIds.length > 0
+      ? await db.select({ userId: branchStaffPins.userId })
+          .from(branchStaffPins)
+          .where(and(
+            inArray(branchStaffPins.userId, staffIds),
+            eq(branchStaffPins.branchId, branchId),
+            eq(branchStaffPins.isActive, true)
+          ))
+      : [];
+    const pinSet = new Set(pins.map(p => p.userId));
 
     // 2. Aktif session'lar (bugün vardiyada olanlar)
     const activeSessions = await db.select({
@@ -3457,6 +3470,7 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
 
       return {
         ...s,
+        hasPin: pinSet.has(s.id),
         shiftStatus,
         shiftStartTime: shift?.startTime || null,
         shiftEndTime: shift?.endTime || null,
