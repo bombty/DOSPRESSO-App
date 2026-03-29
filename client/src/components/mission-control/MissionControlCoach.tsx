@@ -25,9 +25,38 @@ import {
   Star,
   CalendarClock,
   Headphones,
+  Activity,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PdksDevamsizlikWidget } from "./shared/PdksWidget";
+
+interface BranchHealthData {
+  branches: Array<{
+    branchId: number;
+    branchName: string;
+    overallScore: number;
+    status: 'healthy' | 'warning' | 'critical';
+    staffCount: number;
+    dimensions: Array<{
+      name: string;
+      nameTr: string;
+      score: number;
+      weight: number;
+      detail?: string;
+    }>;
+  }>;
+  average: number;
+  healthyCount: number;
+  warningCount: number;
+  criticalCount: number;
+  patterns: Array<{
+    pattern: string;
+    severity: 'critical' | 'high' | 'medium';
+    affectedBranches: string[];
+    recommendation: string;
+  }>;
+}
 
 interface CoachDashboardData {
   _meta: { dataAvailable: boolean; lastDataDate: string };
@@ -82,18 +111,29 @@ export default function MissionControlCoach() {
     staleTime: 2 * 60 * 1000,
   });
 
+  const { data: healthData } = useQuery<BranchHealthData>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return { branches: [], average: 0, healthyCount: 0, warningCount: 0, criticalCount: 0, patterns: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const kpiItems = useMemo((): KPIItem[] => {
     if (!data?.kpis) return [];
     const k = data.kpis;
+    const healthAvg = healthData?.average;
     return [
       { value: k.totalBranches.toString(), label: "Şube", color: "default" as const },
       { value: k.totalStaff.toString(), label: "Personel", color: "info" as const },
       { value: k.openFaults.toString(), label: "Arıza", color: k.openFaults > 0 ? "danger" as const : "success" as const },
       { value: k.openTickets.toString(), label: "Ticket", color: k.openTickets > 0 ? "warning" as const : "success" as const },
-      { value: k.avgHealthScore ? `${k.avgHealthScore}` : "—", label: "Sağlık", color: (k.avgHealthScore ?? 0) >= 70 ? "success" as const : "warning" as const },
+      { value: healthAvg != null ? `%${healthAvg}` : "—", label: "Sağlık", color: (healthAvg ?? 0) >= 70 ? "success" as const : (healthAvg ?? 0) >= 50 ? "warning" as const : "danger" as const },
       { value: k.avgTrainingProgress ? `%${k.avgTrainingProgress}` : "—", label: "Eğitim", color: "info" as const },
     ];
-  }, [data]);
+  }, [data, healthData]);
 
   const handlePeriodChange = (p: PeriodType, start?: string, end?: string) => {
     setPeriod(p);
@@ -136,6 +176,120 @@ export default function MissionControlCoach() {
       <DateRangeFilter period={period} onPeriodChange={handlePeriodChange} data-testid="mc-coach-date-filter" />
 
       <UnifiedKPI items={kpiItems} variant="compact" desktopColumns={3} />
+
+      {/* Şube Sağlık Haritası */}
+      {healthData && healthData.branches.length > 0 && (
+        <CollapsibleSection
+          title="Şube Sağlık Haritası"
+          icon={<Activity className="w-3.5 h-3.5" />}
+          badge={`%${healthData.average}`}
+          badgeVariant={healthData.average >= 80 ? "success" : healthData.average >= 60 ? "warning" : "danger"}
+          defaultOpen={true}
+          data-testid="mc-coach-health"
+        >
+          {/* Özet satırı */}
+          <div className="flex items-center gap-3 mb-2 px-1">
+            <span className="text-[22px] font-bold" style={{
+              color: healthData.average >= 80 ? "var(--ds-green)" :
+                     healthData.average >= 60 ? "var(--ds-amber)" : "var(--ds-red-light)"
+            }}>
+              %{healthData.average}
+            </span>
+            <div className="flex gap-2.5 text-[10px]">
+              <span className="flex items-center gap-1" style={{ color: "var(--ds-green)" }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: "var(--ds-green)" }} />
+                {healthData.healthyCount} Sağlıklı
+              </span>
+              <span className="flex items-center gap-1" style={{ color: "var(--ds-amber)" }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: "var(--ds-amber)" }} />
+                {healthData.warningCount} Uyarı
+              </span>
+              <span className="flex items-center gap-1" style={{ color: "var(--ds-red-light)" }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: "var(--ds-red-light)" }} />
+                {healthData.criticalCount} Kritik
+              </span>
+            </div>
+          </div>
+
+          {/* Pattern bildirimleri */}
+          {healthData.patterns.length > 0 && (
+            <div className="mb-2 space-y-1">
+              {healthData.patterns.map((p, idx) => (
+                <div key={idx} className="flex items-start gap-2 px-2 py-1.5 rounded-md" style={{
+                  background: p.severity === 'critical' ? "rgba(231,76,60,0.08)" :
+                             p.severity === 'high' ? "rgba(243,156,18,0.08)" : "rgba(52,152,219,0.08)",
+                }}>
+                  <Badge variant={p.severity === 'critical' ? "destructive" : p.severity === 'high' ? "secondary" : "outline"}
+                    className="text-[8px] h-4 flex-shrink-0 mt-0.5">
+                    Trend
+                  </Badge>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium">{p.pattern}</p>
+                    <p className="text-[9px] text-muted-foreground">{p.recommendation}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Şube karşılaştırma listesi — en düşükten yükseğe */}
+          <div className="space-y-1">
+            {healthData.branches.map((b) => {
+              const scoreColor = b.status === 'healthy' ? "var(--ds-green)" :
+                                b.status === 'warning' ? "var(--ds-amber)" : "var(--ds-red-light)";
+              return (
+                <div key={b.branchId} className="flex items-center gap-2 px-2 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  data-testid={`coach-health-${b.branchId}`}>
+                  {/* Skor bar */}
+                  <div className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style={{
+                    background: b.status === 'critical' ? "rgba(231,76,60,0.15)" :
+                               b.status === 'warning' ? "rgba(243,156,18,0.12)" : "rgba(46,204,113,0.12)",
+                  }}>
+                    <span className="text-xs font-bold" style={{ color: scoreColor }}>
+                      {b.overallScore}
+                    </span>
+                  </div>
+
+                  {/* Şube bilgisi */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium truncate">{b.branchName}</span>
+                      <span className="text-[9px] text-muted-foreground">{b.staffCount} kişi</span>
+                    </div>
+                    {/* Mini dimension bar'ları */}
+                    <div className="flex gap-0.5 mt-1">
+                      {b.dimensions.map(d => (
+                        <div key={d.name} className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--ds-border-subtle)" }}
+                          title={`${d.nameTr}: %${d.score}`}>
+                          <div className="h-full rounded-full transition-all" style={{
+                            width: `${d.score}%`,
+                            background: d.score >= 80 ? "var(--ds-green)" :
+                                       d.score >= 60 ? "var(--ds-amber)" : "var(--ds-red-light)",
+                          }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-1.5 mt-0.5">
+                      {b.dimensions.map(d => (
+                        <span key={d.name} className="text-[7px] text-muted-foreground flex-1 text-center truncate">
+                          {d.nameTr.split(' ')[0]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Detay butonu */}
+                  <Link href={`/sube-detay/${b.branchId}`}>
+                    <Button variant="ghost" size="sm" className="h-6 text-[9px] gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      Detay <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </CollapsibleSection>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 lg:items-start">
         <div className="space-y-3">
@@ -402,7 +556,15 @@ export default function MissionControlCoach() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2" data-testid="mc-coach-quick-nav">
+      <div className="grid grid-cols-4 gap-2" data-testid="mc-coach-quick-nav">
+        <Link href="/subeler">
+          <Card className="hover-elevate cursor-pointer">
+            <CardContent className="p-2.5 flex flex-col items-center gap-1">
+              <BarChart3 className="w-5 h-5 text-red-500" />
+              <span className="text-[9px] font-medium text-center">Sağlık Skoru</span>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href="/akademi-hq">
           <Card className="hover-elevate cursor-pointer">
             <CardContent className="p-2.5 flex flex-col items-center gap-1">
