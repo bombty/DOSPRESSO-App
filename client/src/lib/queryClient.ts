@@ -53,7 +53,10 @@ export async function apiRequest(
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
-    const headers: HeadersInit = data ? { "Content-Type": "application/json" } : {};
+    const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+    // Kiosk token varsa ekle
+    const kioskToken = localStorage.getItem("kiosk-token");
+    if (kioskToken) headers["x-kiosk-token"] = kioskToken;
 
     const res = await fetch(url, {
       method,
