@@ -63,6 +63,7 @@ import {
   hqShiftSessions,
   hqShiftEvents,
   notifications,
+  announcements,
   qrCheckinNonces,
   pdksRecords,
   shiftAttendance,
@@ -3381,6 +3382,126 @@ router.get('/api/branches/:branchId/kiosk/active-shifts', isKioskAuthenticated, 
   } catch (error: unknown) {
     console.error("Error fetching active shifts:", error);
     res.status(500).json({ message: "Aktif vardiyalar alınamadı" });
+  }
+});
+
+// =================== KIOSK TEAM STATUS ===================
+
+router.get('/api/branches/:branchId/kiosk/team-status', isKioskAuthenticated, async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const now = new Date();
+
+    const [kioskCfg] = await db.select({ maxBreak: branchKioskSettings.maxBreakMinutes })
+      .from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId)).limit(1);
+    const maxBreakMinutes = kioskCfg?.maxBreak || 90;
+
+    const activeSessions = await db.select({
+      sessionId: branchShiftSessions.id,
+      status: branchShiftSessions.status,
+      checkInTime: branchShiftSessions.checkInTime,
+      userId: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImageUrl: users.profileImageUrl,
+      role: users.role,
+    }).from(branchShiftSessions)
+      .leftJoin(users, eq(branchShiftSessions.userId, users.id))
+      .where(and(
+        eq(branchShiftSessions.branchId, branchId),
+        or(eq(branchShiftSessions.status, 'active'), eq(branchShiftSessions.status, 'on_break'))
+      ))
+      .orderBy(asc(users.firstName));
+
+    const breakSessionIds = activeSessions
+      .filter(s => s.status === 'on_break')
+      .map(s => s.sessionId);
+
+    const activeBreaks = breakSessionIds.length > 0
+      ? await db.select({
+          sessionId: branchBreakLogs.sessionId,
+          breakStartTime: branchBreakLogs.breakStartTime,
+        }).from(branchBreakLogs)
+          .where(and(inArray(branchBreakLogs.sessionId, breakSessionIds), isNull(branchBreakLogs.breakEndTime)))
+      : [];
+
+    const breakMap = new Map(activeBreaks.map(b => [b.sessionId, b.breakStartTime]));
+
+    const team = activeSessions.map(s => {
+      const breakStart = s.status === 'on_break' ? breakMap.get(s.sessionId) : null;
+      const breakMinutes = breakStart
+        ? Math.floor((now.getTime() - new Date(breakStart).getTime()) / 60000)
+        : 0;
+      return {
+        userId: s.userId,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        profileImageUrl: s.profileImageUrl,
+        role: s.role,
+        status: s.status,
+        checkInTime: s.checkInTime,
+        breakMinutes,
+        isBreakAnomaly: s.status === 'on_break' && breakMinutes > maxBreakMinutes,
+        maxBreakMinutes,
+      };
+    });
+
+    res.json({ team, maxBreakMinutes });
+  } catch (error: unknown) {
+    console.error("Error fetching kiosk team status:", error);
+    res.status(500).json({ message: "Ekip durumu alınamadı" });
+  }
+});
+
+// =================== KIOSK ANNOUNCEMENTS ===================
+
+router.get('/api/branches/:branchId/kiosk/announcements', isKioskAuthenticated, async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const now = new Date();
+
+    const results = await db.select().from(announcements)
+      .where(and(
+        lte(announcements.publishedAt, now),
+        or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+        isNull(announcements.deletedAt)
+      ))
+      .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt))
+      .limit(20);
+
+    const filtered = results.filter(ann => {
+      const hasNoTarget = !ann.targetRoles?.length && !ann.targetBranches?.length;
+      if (hasNoTarget) return true;
+      if (ann.targetBranches?.some(b => b === branchId)) return true;
+      return false;
+    });
+
+    res.json(filtered);
+  } catch (error: unknown) {
+    console.error("Error fetching kiosk announcements:", error);
+    res.status(500).json({ message: "Duyurular alınamadı" });
+  }
+});
+
+// =================== KIOSK NOTIFICATIONS ===================
+
+router.get('/api/branches/:branchId/kiosk/notifications/:userId', isKioskAuthenticated, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const results = await db.select().from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false),
+        eq(notifications.isArchived, false)
+      ))
+      .orderBy(desc(notifications.createdAt))
+      .limit(10);
+
+    res.json(results);
+  } catch (error: unknown) {
+    console.error("Error fetching kiosk notifications:", error);
+    res.status(500).json({ message: "Bildirimler alınamadı" });
   }
 });
 

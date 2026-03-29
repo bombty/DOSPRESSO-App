@@ -41,6 +41,9 @@ import {
   UserCheck,
   AlertOctagon,
   Loader2,
+  Bell,
+  Megaphone,
+  Users,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -151,6 +154,10 @@ export default function BranchKiosk() {
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
+  const [teamStatus, setTeamStatus] = useState<any[]>([]);
+  const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
+  const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
+  const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
@@ -390,6 +397,7 @@ export default function BranchKiosk() {
       return res.json();
     },
     onSuccess: (data) => {
+      if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken);
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
         fetchSessionDetails(data.user.id);
@@ -494,7 +502,7 @@ export default function BranchKiosk() {
 
   const fetchSessionDetails = async (userId: string) => {
     try {
-      const res = await fetch(`/api/branches/${branchId}/kiosk/session/${userId}`);
+      const res = await fetch(`/api/branches/${branchId}/kiosk/session/${userId}`, { credentials: 'include' });
       const data = await res.json();
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
@@ -507,6 +515,35 @@ export default function BranchKiosk() {
       }
     } catch (error) {
       console.error("Error fetching session details:", error);
+    }
+
+    // Ekip durumu
+    try {
+      const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
+      const teamData = await teamRes.json();
+      const team = Array.isArray(teamData.team) ? teamData.team : [];
+      setTeamStatus(team);
+      setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly));
+    } catch (err) {
+      console.error("Error fetching team status:", err);
+    }
+
+    // Kullanıcı bildirimleri
+    try {
+      const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${userId}`, { credentials: 'include' });
+      const notifData = await notifRes.json();
+      setKioskNotifications(Array.isArray(notifData) ? notifData : []);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+
+    // Duyurular
+    try {
+      const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include' });
+      const annData = await annRes.json();
+      setKioskAnnouncements(Array.isArray(annData) ? annData : []);
+    } catch (err) {
+      console.error("Error fetching announcements:", err);
     }
   };
 
@@ -544,6 +581,11 @@ export default function BranchKiosk() {
     setPinInput('');
     setCurrentSession(null);
     setUserTasks([]);
+    setUserChecklists([]);
+    setTeamStatus([]);
+    setKioskNotifications([]);
+    setKioskAnnouncements([]);
+    setPdksAnomalyUsers([]);
     setElapsedTime(0);
     setShiftSummary(null);
     setAutoLogoutCountdown(15);
@@ -1063,6 +1105,92 @@ export default function BranchKiosk() {
         </Dialog>
 
         <KioskBranchTasks />
+
+        {/* PDKS Anomali Banner */}
+        {pdksAnomalyUsers.length > 0 && (
+          <div className="col-span-full flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800" data-testid="pdks-anomaly-banner">
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-red-700 dark:text-red-300">Mola Süresi Aşıldı</p>
+              <div className="mt-1 space-y-1">
+                {pdksAnomalyUsers.map((m: any) => (
+                  <p key={m.userId} className="text-sm text-red-600 dark:text-red-400">
+                    {m.firstName} {m.lastName} — {m.breakMinutes} dk molada (limit: {m.maxBreakMinutes} dk)
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ekip Durumu */}
+        {teamStatus.length > 0 && (
+          <Card data-testid="card-team-status">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                Ekip Durumu
+                <Badge variant="secondary" className="ml-auto">{teamStatus.length} kişi</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2">
+                {teamStatus.map((member: any) => (
+                  <div key={member.userId} className="flex items-center gap-2 p-2 rounded-lg bg-muted" data-testid={`team-member-${member.userId}`}>
+                    <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                      member.isBreakAnomaly ? 'bg-red-500' :
+                      member.status === 'on_break' ? 'bg-amber-400' : 'bg-green-500'
+                    }`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{member.firstName} {member.lastName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {member.status === 'on_break'
+                          ? `Molada ${member.breakMinutes > 0 ? `(${member.breakMinutes} dk)` : ''}`
+                          : 'Çalışıyor'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Bildirimler + Duyurular */}
+        {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
+          <Card data-testid="card-kiosk-notifications">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-purple-600" />
+                Bildirimler & Duyurular
+                {kioskNotifications.length > 0 && (
+                  <Badge className="ml-auto bg-purple-600">{kioskNotifications.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {kioskAnnouncements.slice(0, 3).map((ann: any) => (
+                <div key={`ann-${ann.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-blue-50 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800" data-testid={`announcement-${ann.id}`}>
+                  <Megaphone className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{ann.title}</p>
+                    {ann.summary && <p className="text-xs text-muted-foreground line-clamp-2">{ann.summary}</p>}
+                  </div>
+                  {ann.isPinned && <Badge variant="outline" className="text-xs shrink-0">Sabitli</Badge>}
+                </div>
+              ))}
+              {kioskNotifications.slice(0, 5).map((notif: any) => (
+                <div key={`notif-${notif.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-muted" data-testid={`notification-${notif.id}`}>
+                  <Bell className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{notif.title}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
