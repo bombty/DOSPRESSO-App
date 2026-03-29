@@ -200,6 +200,10 @@ export default function BranchKiosk() {
   const [showEndShiftConfirm2, setShowEndShiftConfirm2] = useState(false);
   const [showBreakConfirm1, setShowBreakConfirm1] = useState(false);
   const [showBreakConfirm2, setShowBreakConfirm2] = useState(false);
+  const [showOvertimeRequest, setShowOvertimeRequest] = useState(false);
+  const [overtimeReason, setOvertimeReason] = useState('');
+  const [overtimeNote, setOvertimeNote] = useState('');
+  const [overtimeManagerName, setOvertimeManagerName] = useState('');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
   const [showKioskFaultReport, setShowKioskFaultReport] = useState(false);
   const [kioskFaultCategory, setKioskFaultCategory] = useState("");
@@ -460,6 +464,38 @@ export default function BranchKiosk() {
     },
     onError: (error: any) => {
       toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const overtimeRequestMutation = useMutation({
+    mutationFn: async (data: { reason: string; note: string; managerName: string }) => {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 5);
+      const endTime = `${String(now.getHours() + 2).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const fullReason = data.reason === 'Yönetici Talebi' && data.managerName
+        ? `${data.reason} (${data.managerName}): ${data.note}`
+        : `${data.reason}: ${data.note}`;
+      const res = await apiRequest('POST', '/api/overtime-requests', {
+        userId: selectedUser?.id,
+        branchId,
+        overtimeDate: todayStr,
+        startTime: currentTime,
+        endTime,
+        requestedMinutes: 120,
+        reason: fullReason,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Mesai talebi gönderildi", description: "Supervisor onayı bekleniyor." });
+      setShowOvertimeRequest(false);
+      setOvertimeReason('');
+      setOvertimeNote('');
+      setOvertimeManagerName('');
+    },
+    onError: (error: any) => {
+      toast({ title: "Talep gönderilemedi", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1639,6 +1675,16 @@ export default function BranchKiosk() {
           </div>
 
           <Button
+            variant="outline"
+            className="w-full gap-2 border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+            onClick={() => setShowOvertimeRequest(true)}
+            data-testid="button-overtime-request"
+          >
+            <Timer className="h-4 w-4" />
+            Mesai Talep Et
+          </Button>
+
+          <Button
             className="w-full"
             onClick={resetWorker}
             data-testid="button-finish"
@@ -1954,6 +2000,80 @@ export default function BranchKiosk() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mesai Talebi Dialog */}
+      <Dialog open={showOvertimeRequest} onOpenChange={setShowOvertimeRequest}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5 text-amber-500" />
+              Mesai Talep Et
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Mesai nedeni</p>
+              <div className="grid grid-cols-1 gap-2">
+                {['Gelmeyen Personel', 'Yoğun Talep (Rush Time)', 'Yönetici Talebi', 'Diğer'].map((reason) => (
+                  <Button
+                    key={reason}
+                    variant={overtimeReason === reason ? 'default' : 'outline'}
+                    className="justify-start text-sm h-10"
+                    onClick={() => setOvertimeReason(reason)}
+                    data-testid={`btn-overtime-reason-${reason}`}
+                  >
+                    {reason}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {overtimeReason === 'Yönetici Talebi' && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Yönetici adı</p>
+                <Input
+                  placeholder="Yöneticinin adı soyadı..."
+                  value={overtimeManagerName}
+                  onChange={(e) => setOvertimeManagerName(e.target.value)}
+                  className="h-10"
+                  data-testid="input-overtime-manager"
+                />
+              </div>
+            )}
+
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">Açıklama (opsiyonel)</p>
+              <Textarea
+                placeholder="Kısa açıklama..."
+                value={overtimeNote}
+                onChange={(e) => setOvertimeNote(e.target.value)}
+                className="min-h-[70px]"
+                data-testid="input-overtime-note"
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Talep supervisor onayına gönderilecektir. Onaylanmadan bordronuza yansımaz.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowOvertimeRequest(false)}
+            >
+              İptal
+            </Button>
+            <Button
+              disabled={!overtimeReason || overtimeRequestMutation.isPending || (overtimeReason === 'Yönetici Talebi' && !overtimeManagerName.trim())}
+              onClick={() => overtimeRequestMutation.mutate({ reason: overtimeReason, note: overtimeNote, managerName: overtimeManagerName })}
+              data-testid="button-overtime-submit"
+            >
+              {overtimeRequestMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Talep Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
