@@ -204,8 +204,10 @@ export default function BranchKiosk() {
       .then(data => {
         if (data?.kioskMode === 'qr') {
           setKioskMode('qr');
-          // Sadece şifre ekranındaysa QR'a geç — personel seçim ekranında değiştirme
-          setStep(prev => prev === 'password' ? 'qr-scan' : prev);
+          // sube_kiosk rolü direkt select-user'a gider — QR'a atlatma
+          if (user?.role !== 'sube_kiosk') {
+            setStep(prev => prev === 'password' ? 'qr-scan' : prev);
+          }
         }
       })
       .catch(() => {});
