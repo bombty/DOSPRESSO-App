@@ -1059,29 +1059,11 @@ export default function BranchKiosk() {
               </>)}
               {offAll.length > 0 && (<>
                 <SecHead label="Izinli bugun" count={offAll.length} color="rgba(255,255,255,0.45)" bg="rgba(255,255,255,0.08)" />
-                {offAll.slice(0,2).map(staff => (<div key={staff.id} style={{ opacity: 0.5 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
-                {offAll.length > 2 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 28, opacity: 0.4, marginBottom: 3 }}>
-                    <div style={{ width: 154, height: 28, flexShrink: 0, borderRadius: 8, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 7, border: '1px dashed rgba(255,255,255,0.12)', background: '#1e2a38' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500 }}>+{offAll.length - 2}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{offAll.length - 2} kisi daha</div>
-                    </div>
-                    <div style={{ flex: 1, height: 28, background: 'rgba(255,255,255,0.02)', borderRadius: 5 }} />
-                  </div>
-                )}
+                {offAll.map(staff => (<div key={staff.id} style={{ opacity: 0.5 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
               </>)}
               {noShift.length > 0 && (<>
                 <SecHead label="Vardiya planlanmamis" count={noShift.length} color="rgba(255,255,255,0.3)" bg="rgba(255,255,255,0.05)" />
-                {noShift.slice(0,2).map(staff => (<div key={staff.id} style={{ opacity: 0.35 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
-                {noShift.length > 2 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 28, opacity: 0.3, marginBottom: 3 }}>
-                    <div style={{ width: 154, height: 28, flexShrink: 0, borderRadius: 8, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 7, border: '1px dashed rgba(255,255,255,0.08)', background: '#1a2232' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500 }}>+{noShift.length - 2}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{noShift.length - 2} kisi daha</div>
-                    </div>
-                    <div style={{ flex: 1, height: 28, background: 'rgba(255,255,255,0.01)', borderRadius: 5 }} />
-                  </div>
-                )}
+                {noShift.map(staff => (<div key={staff.id} style={{ opacity: 0.35 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
               </>)}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, paddingBottom: 4 }}>
                 {[{c:'rgba(34,197,94,0.4)',l:'Calisildi'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planli',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
@@ -1248,6 +1230,28 @@ export default function BranchKiosk() {
           </Button>
         </div>
       </div>
+
+      {/* Mola modunda — büyük uyarı bandı */}
+      {currentSession?.status === 'on_break' && (
+        <div className="bg-amber-600 px-4 py-2 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Coffee className="h-5 w-5 text-white" />
+            <span className="text-white font-semibold text-sm">
+              Molada — {currentSession.breakMinutes > 0 ? `${currentSession.breakMinutes} dk` : ''}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            className="bg-white text-amber-700 hover:bg-amber-50 h-9 px-4 font-semibold"
+            onClick={() => breakEndMutation.mutate(currentSession.id)}
+            disabled={breakEndMutation.isPending}
+            data-testid="button-end-break-top"
+          >
+            {breakEndMutation.isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Play className="h-4 w-4 mr-1.5" />}
+            Molayı Bitir — Geri Dön
+          </Button>
+        </div>
+      )}
 
       <div className="flex-1 grid grid-cols-2 gap-3 p-3 overflow-y-auto" style={{gridTemplateRows: 'auto auto', alignContent: 'start'}}>
         <Card className="overflow-hidden">
