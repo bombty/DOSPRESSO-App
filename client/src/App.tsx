@@ -533,6 +533,21 @@ function AppContent() {
     return <Router />;
   }
 
+  // Kiosk rolleri sadece kendi sayfalarında olabilir
+  if (user?.role === 'sube_kiosk') {
+    const kioskPath = `/sube/kiosk/${user.branchId || ''}`;
+    if (!location.startsWith('/sube/kiosk')) {
+      setLocation(kioskPath);
+      return null;
+    }
+  }
+  if (user?.role === 'fabrika_kiosk') {
+    if (!location.startsWith('/fabrika/kiosk')) {
+      setLocation('/fabrika/kiosk');
+      return null;
+    }
+  }
+
   const getRoleLabel = (role: string | undefined) => {
     const roleMap: Record<string, string> = {
       "admin": "Admin",

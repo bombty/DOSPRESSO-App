@@ -158,6 +158,7 @@ export default function BranchKiosk() {
   const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
+  const [lobbyData, setLobbyData] = useState<any>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
@@ -575,6 +576,27 @@ export default function BranchKiosk() {
     return () => clearInterval(interval);
   }, [step]);
 
+  // Lobby verisi — select-user ekranında 60sn'de bir yenile
+  useEffect(() => {
+    if (step !== 'select-user' || !branchId) return;
+
+    const fetchLobby = async () => {
+      try {
+        const res = await fetch(`/api/branches/${branchId}/kiosk/lobby`);
+        if (res.ok) {
+          const data = await res.json();
+          setLobbyData(data);
+        }
+      } catch (err) {
+        console.error('Lobby fetch error:', err);
+      }
+    };
+
+    fetchLobby();
+    const interval = setInterval(fetchLobby, 60000);
+    return () => clearInterval(interval);
+  }, [step, branchId]);
+
   const resetWorker = () => {
     setStep('select-user');
     setSelectedUser(null);
@@ -763,64 +785,118 @@ export default function BranchKiosk() {
       </Card>
     </div>
   );
-  const renderSelectUserStep = () => (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={resetKiosk} data-testid="button-back">
-          <ChevronLeft className="h-6 w-6" />
-        </Button>
-        <h1 className="text-2xl font-bold">Personel Seçin</h1>
+  const renderSelectUserStep = () => {
+    const activeCount = lobbyData?.staff?.filter((s: any) => s.shiftStatus === 'active').length || 0;
+    const onBreakCount = lobbyData?.staff?.filter((s: any) => s.shiftStatus === 'on_break').length || 0;
+
+    const statusDot = (status: string) => {
+      if (status === 'active') return 'bg-green-500';
+      if (status === 'on_break') return 'bg-amber-400';
+      if (status === 'off') return 'bg-red-400';
+      if (status === 'scheduled') return 'bg-blue-400';
+      return 'bg-muted-foreground/30';
+    };
+
+    const statusLabel = (status: string, startTime?: string | null) => {
+      if (status === 'active') return 'Çalışıyor';
+      if (status === 'on_break') return 'Molada';
+      if (status === 'off') return 'İzinli';
+      if (status === 'scheduled' && startTime) return startTime.slice(0,5) + "'de geliyor";
+      return 'Planlanmamış';
+    };
+
+    return (
+      <div className="flex flex-col min-h-screen bg-[#f8f6f3] dark:bg-[#0a1628]">
+        {/* Header */}
+        <div className="bg-[#c0392b] px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Store className="h-6 w-6 text-white" />
+            <div>
+              <p className="text-white font-bold text-lg leading-none">{branchAuth?.name || 'Şube Kiosk'}</p>
+              <p className="text-white/70 text-sm">{new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-white/80 text-sm">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-400 inline-block"/>{activeCount} aktif</span>
+            {onBreakCount > 0 && <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block"/>{onBreakCount} molada</span>}
+          </div>
+        </div>
+
+        {/* Duyuru + bildirim şeridi */}
+        {((lobbyData?.announcements?.length > 0) || (lobbyData?.notifications?.length > 0)) && (
+          <div className="bg-white dark:bg-[#0f1d32] border-b border-[#e8e4df] dark:border-[#1a2d48] px-4 py-2 space-y-1">
+            {lobbyData?.announcements?.slice(0, 2).map((ann: any) => (
+              <div key={`ann-${ann.id}`} className="flex items-center gap-2 text-sm">
+                <Megaphone className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                <span className="font-medium truncate">{ann.title}</span>
+                {ann.isPinned && <Badge variant="outline" className="text-xs py-0 h-4">Sabitli</Badge>}
+              </div>
+            ))}
+            {lobbyData?.notifications?.slice(0, 1).map((n: any) => (
+              <div key={`notif-${n.id}`} className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{n.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Personel grid */}
+        <div className="flex-1 p-4">
+          <p className="text-sm text-muted-foreground mb-3 text-center font-medium">Kendi kartına tıkla</p>
+          {loadingStaff ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#c0392b]" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+              {(lobbyData?.staff || staffList).map((staff: any) => (
+                <div
+                  key={staff.id}
+                  className={`bg-white dark:bg-[#0f1d32] rounded-xl border border-[#e8e4df] dark:border-[#1a2d48] p-3 flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform ${!staff.hasPin ? 'opacity-40' : 'hover:border-[#c0392b]'}`}
+                  onClick={() => {
+                    if (!staff.hasPin) {
+                      toast({ title: "PIN Gerekli", description: "Bu personelin PIN'i ayarlanmamış.", variant: "destructive" });
+                      return;
+                    }
+                    setSelectedUser(staff);
+                    setStep('enter-pin');
+                  }}
+                  data-testid={`staff-card-${staff.id}`}
+                >
+                  <div className="relative">
+                    <Avatar className="h-14 w-14">
+                      <AvatarImage src={staff.profileImageUrl || undefined} />
+                      <AvatarFallback className="text-lg bg-[#f8f6f3] dark:bg-[#1a2d48] text-[#1a2536] dark:text-[#f2e6d0]">
+                        {staff.firstName?.[0]}{staff.lastName?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-[#0f1d32] ${statusDot(staff.shiftStatus || 'not_scheduled')}`} />
+                  </div>
+                  <p className="text-xs font-medium text-center leading-tight">{staff.firstName} {staff.lastName?.[0]}.</p>
+                  <p className={`text-[10px] text-center leading-none ${
+                    staff.shiftStatus === 'active' ? 'text-green-600 dark:text-green-400' :
+                    staff.shiftStatus === 'on_break' ? 'text-amber-600 dark:text-amber-400' :
+                    staff.shiftStatus === 'off' ? 'text-red-500' : 'text-muted-foreground'
+                  }`}>
+                    {statusLabel(staff.shiftStatus || 'not_scheduled', staff.shiftStartTime)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Alt bilgi */}
+        <div className="bg-[#0a1628] dark:bg-[#060e1a] px-4 py-2 flex items-center justify-between">
+          <Button variant="ghost" size="sm" className="text-white/60 hover:text-white text-xs" onClick={resetKiosk} data-testid="button-back">
+            <ChevronLeft className="h-4 w-4 mr-1" /> Çıkış
+          </Button>
+          <p className="text-white/40 text-xs">DOSPRESSO Kiosk</p>
+        </div>
       </div>
-      
-      {loadingStaff ? (
-        <div className="flex items-center justify-center flex-1">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {staffList.map((staff) => (
-            <Card
-              key={staff.id}
-              className={`cursor-pointer transition-all hover-elevate ${
-                !staff.hasPin ? 'opacity-50' : ''
-              }`}
-              onClick={() => {
-                if (staff.hasPin) {
-                  setSelectedUser(staff);
-                  setStep('enter-pin');
-                } else {
-                  toast({
-                    title: "PIN Gerekli",
-                    description: "Bu personelin PIN'i ayarlanmamış. Yöneticinize başvurun.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              data-testid={`staff-card-${staff.id}`}
-            >
-              <CardContent className="flex flex-col items-center p-4">
-                <Avatar className="h-20 w-20 mb-3">
-                  <AvatarImage src={staff.profileImageUrl || undefined} />
-                  <AvatarFallback className="text-xl bg-amber-100 text-amber-700">
-                    {staff.firstName?.[0]}{staff.lastName?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <p className="font-medium text-center">{staff.firstName} {staff.lastName}</p>
-                <Badge variant="secondary" className="mt-2 text-xs">
-                  {staff.role}
-                </Badge>
-                {!staff.hasPin && (
-                  <Badge variant="destructive" className="mt-1 text-xs">
-                    PIN Yok
-                  </Badge>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderEnterPinStep = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">

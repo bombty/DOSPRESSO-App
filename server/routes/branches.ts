@@ -64,6 +64,7 @@ import {
   hqShiftEvents,
   notifications,
   announcements,
+  scheduledOffs,
   qrCheckinNonces,
   pdksRecords,
   shiftAttendance,
@@ -3382,6 +3383,134 @@ router.get('/api/branches/:branchId/kiosk/active-shifts', isKioskAuthenticated, 
   } catch (error: unknown) {
     console.error("Error fetching active shifts:", error);
     res.status(500).json({ message: "Aktif vardiyalar alınamadı" });
+  }
+});
+
+// =================== KIOSK LOBBY (bekleme ekranı verisi) ===================
+
+router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // 1. Şube personeli
+    const staff = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImageUrl: users.profileImageUrl,
+      role: users.role,
+    }).from(users)
+      .where(and(eq(users.isActive, true), eq(users.branchId, branchId)))
+      .orderBy(users.firstName);
+
+    // 2. Aktif session'lar (bugün vardiyada olanlar)
+    const activeSessions = await db.select({
+      userId: branchShiftSessions.userId,
+      status: branchShiftSessions.status,
+      checkInTime: branchShiftSessions.checkInTime,
+    }).from(branchShiftSessions)
+      .where(and(
+        eq(branchShiftSessions.branchId, branchId),
+        or(eq(branchShiftSessions.status, 'active'), eq(branchShiftSessions.status, 'on_break'))
+      ));
+
+    const sessionMap = new Map(activeSessions.map(s => [s.userId, s]));
+
+    // 3. Bugünkü vardiya planı
+    const todayShifts = await db.select({
+      userId: shifts.assignedToId,
+      startTime: shifts.startTime,
+      endTime: shifts.endTime,
+    }).from(shifts)
+      .where(and(
+        eq(shifts.branchId, branchId),
+        eq(shifts.shiftDate, todayStr),
+        eq(shifts.status, 'published')
+      ));
+
+    const shiftMap = new Map(todayShifts.filter(s => s.userId).map(s => [s.userId!, s]));
+
+    // 4. Bugün izinli olanlar
+    const todayOffs = await db.select({ userId: scheduledOffs.userId })
+      .from(scheduledOffs)
+      .where(and(
+        eq(scheduledOffs.branchId, branchId),
+        eq(scheduledOffs.offDate, todayStr)
+      ));
+
+    const offSet = new Set(todayOffs.map(o => o.userId));
+
+    // 5. Personel + durum birleştir
+    const staffWithStatus = staff.map(s => {
+      const session = sessionMap.get(s.id);
+      const shift = shiftMap.get(s.id);
+      const isOff = offSet.has(s.id);
+
+      let shiftStatus: string;
+      if (session?.status === 'active') shiftStatus = 'active';
+      else if (session?.status === 'on_break') shiftStatus = 'on_break';
+      else if (isOff) shiftStatus = 'off';
+      else if (shift) shiftStatus = 'scheduled';
+      else shiftStatus = 'not_scheduled';
+
+      return {
+        ...s,
+        shiftStatus,
+        shiftStartTime: shift?.startTime || null,
+        shiftEndTime: shift?.endTime || null,
+        checkInTime: session?.checkInTime || null,
+      };
+    });
+
+    // 6. Aktif duyurular (son 5)
+    const activeAnnouncements = await db.select({
+      id: announcements.id,
+      title: announcements.title,
+      summary: announcements.summary,
+      category: announcements.category,
+      priority: announcements.priority,
+      isPinned: announcements.isPinned,
+    }).from(announcements)
+      .where(and(
+        lte(announcements.publishedAt, now),
+        or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+        isNull(announcements.deletedAt)
+      ))
+      .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt))
+      .limit(5);
+
+    const filteredAnn = activeAnnouncements.filter(ann => {
+      // @ts-ignore - targetBranches is array
+      return true; // lobby herkese açık, tüm duyuruları göster
+    });
+
+    // 7. Şube bildirimleri (son 3 okunmamış, şube geneli)
+    const branchNotifs = await db.select({
+      id: notifications.id,
+      title: notifications.title,
+      message: notifications.message,
+      type: notifications.type,
+      createdAt: notifications.createdAt,
+    }).from(notifications)
+      .where(and(
+        eq(notifications.branchId, branchId),
+        eq(notifications.isRead, false),
+        eq(notifications.isArchived, false)
+      ))
+      .orderBy(desc(notifications.createdAt))
+      .limit(3);
+
+    res.json({
+      staff: staffWithStatus,
+      announcements: filteredAnn,
+      notifications: branchNotifs,
+      generatedAt: now.toISOString(),
+    });
+  } catch (error: unknown) {
+    console.error("Error fetching kiosk lobby:", error);
+    res.status(500).json({ message: "Lobi verisi alınamadı" });
   }
 });
 
