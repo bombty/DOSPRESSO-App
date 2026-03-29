@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
-import { requireManifestAccess } from "../services/manifest-auth";
+import { requireManifestAccess, resolveBranchScope, MANAGED_BRANCH_IDS } from "../services/manifest-auth";
 import { hasPermission, resolvePermissionScope, applyScopeFilter, type UserRoleType } from "../permission-service";
 import { createAuditEntry, getAuditContext } from "../audit";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, max, min } from "drizzle-orm";
@@ -98,46 +98,6 @@ const trainingFileUpload = multer({
 });
 
 const router = Router();
-
-/** 
- * Scope-aware branch filter helper for HR endpoints
- * Returns: { type, branchId?, branchIds? } or sends 403 response
- */
-const MANAGED_BRANCH_IDS = [5, 23, 24]; // HQ(5), Fabrika(23), Işıklar(24)
-
-interface ScopeResult {
-  type: 'single' | 'multiple' | 'all';
-  branchId?: number;
-  branchIds?: number[];
-}
-
-function resolveBranchScope(req: any): ScopeResult | { error: string } {
-  const scope = (req as any).manifestScope;
-  const user = req.user as any;
-  const requestedBranch = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
-
-  switch (scope) {
-    case 'own_data':
-    case 'own_branch':
-      if (!user.branchId) return { error: 'Şube ataması yapılmamış' };
-      return { type: 'single', branchId: user.branchId };
-
-    case 'managed_branches': {
-      if (requestedBranch) {
-        if (!MANAGED_BRANCH_IDS.includes(requestedBranch)) {
-          return { error: 'Bu şubeye erişim yetkiniz yok' };
-        }
-        return { type: 'single', branchId: requestedBranch };
-      }
-      return { type: 'multiple', branchIds: MANAGED_BRANCH_IDS };
-    }
-
-    case 'all_branches':
-    default:
-      if (requestedBranch) return { type: 'single', branchId: requestedBranch };
-      return { type: 'all' };
-  }
-}
 
 // ═══════════════════════════════════════════════════════════
 // HR ACCESS CONTROL MIDDLEWARE
@@ -2241,7 +2201,7 @@ JSON formatında yanıt ver:
   // ========================
 
   // GET /api/leave-requests - Get leave requests (filtered by role)
-  router.get('/api/leave-requests', isAuthenticated, async (req, res) => {
+  router.get('/api/leave-requests', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
       const { userId, status, leaveType, startDate, endDate } = req.query;
@@ -2651,32 +2611,32 @@ JSON formatında yanıt ver:
 
   // Employee Onboarding
   // Get all onboarding records (with optional branch filter via query param)
-  router.get('/api/employee-onboarding', isAuthenticated, async (req, res) => {
+  router.get('/api/employee-onboarding', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
-      const { branchId } = req.query;
+      const scopeResult = resolveBranchScope(req);
       
-      ensurePermission(user, 'hr', 'view', 'Onboarding kayıtlarını görüntüleme yetkiniz yok');
+      if ('error' in scopeResult) {
+        return res.status(403).json({ message: scopeResult.error });
+      }
       
-      // Get all employees first
+      // Get all employees for user info attachment
       const allEmployees = await db.select().from(users);
       let onboardingRecords: any[] = [];
       
-      // Branch users can only see their own branch (ignore query param)
-      if (!isHQRole(user.role ) && user.branchId) {
-        onboardingRecords = await storage.getOnboardingsByBranch(user.branchId);
-      } else if (isHQRole(user.role )) {
-        // HQ users: respect branchId query param or get all
-        if (branchId) {
-          const targetBranchId = parseInt(branchId as string);
-          onboardingRecords = await storage.getOnboardingsByBranch(targetBranchId);
-        } else {
-          // Get all - fetch from all branches
-          const branches = await storage.getBranches();
-          for (const branch of branches) {
-            const branchOnboardings = await storage.getOnboardingsByBranch(branch.id);
-            onboardingRecords.push(...branchOnboardings);
-          }
+      if (scopeResult.type === 'single') {
+        onboardingRecords = await storage.getOnboardingsByBranch(scopeResult.branchId!);
+      } else if (scopeResult.type === 'multiple') {
+        for (const bid of scopeResult.branchIds!) {
+          const branchOnboardings = await storage.getOnboardingsByBranch(bid);
+          onboardingRecords.push(...branchOnboardings);
+        }
+      } else {
+        // all — fetch from all branches
+        const allBranches = await storage.getBranches();
+        for (const branch of allBranches) {
+          const branchOnboardings = await storage.getOnboardingsByBranch(branch.id);
+          onboardingRecords.push(...branchOnboardings);
         }
       }
       
@@ -2698,6 +2658,11 @@ JSON formatında yanıt ver:
     } catch (error: unknown) {
       console.error("Error fetching all onboarding records:", error);
       if (error instanceof AuthorizationError) {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
+    }
+  });
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
@@ -7434,13 +7399,9 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
     }
   });
 
-  router.get('/api/hr/ik-dashboard', isAuthenticated, async (req, res) => {
+  router.get('/api/hr/ik-dashboard', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user;
-      const allowedRoles = ['admin', 'muhasebe_ik', 'genel_mudur', 'ceo', 'cgo', 'coo', 'coach', 'mudur'];
-      if (!allowedRoles.includes(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
-      }
       const allDocs = await db.select({ cnt: sql<number>`count(*)` }).from(employeeDocuments);
       const verifiedDocs = await db.select({ cnt: sql<number>`count(*)` }).from(employeeDocuments)
         .where(eq(employeeDocuments.isVerified, true));

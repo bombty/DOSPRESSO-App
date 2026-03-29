@@ -1,4 +1,4 @@
-import { requireManifestAccess } from "../services/manifest-auth";
+import { requireManifestAccess, resolveBranchScope, MANAGED_BRANCH_IDS } from "../services/manifest-auth";
 import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
@@ -161,34 +161,26 @@ const router = Router();
 
   // Employee Documents (Özlük Dosyası)
   // Get all employee documents (latest 20, with branch restrictions for branch users)
-  router.get('/api/employee-documents', isAuthenticated, async (req, res) => {
+  router.get('/api/employee-documents', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
-      const { branchId } = req.query;
+      const scopeResult = resolveBranchScope(req);
       
-      ensurePermission(user, 'hr', 'view', 'Personel belgelerini görüntüleme yetkiniz yok');
+      if ('error' in scopeResult) {
+        return res.status(403).json({ message: scopeResult.error });
+      }
       
-      // Get all employees
+      // Get employees based on scope
       const allEmployees = await db.select().from(users);
       let documentsToReturn: any[] = [];
       
-      // Collect all documents from all employees
       for (const employee of allEmployees) {
-        // Branch users can only see their own branch (ignore query param)
-        if (!isHQRole(user.role ) && employee.branchId !== user.branchId) {
-          continue;
-        }
-        
-        // HQ users: respect branchId query param if provided
-        if (isHQRole(user.role ) && branchId) {
-          const targetBranchId = parseInt(branchId as string);
-          if (employee.branchId !== targetBranchId) {
-            continue;
-          }
-        }
+        // Scope filtering
+        if (scopeResult.type === 'single' && employee.branchId !== scopeResult.branchId) continue;
+        if (scopeResult.type === 'multiple' && !scopeResult.branchIds!.includes(employee.branchId!)) continue;
+        // type === 'all' → no filter
         
         const docs = await storage.getEmployeeDocuments(employee.id);
-        // Attach user info to each document
         const docsWithUser = docs.map(doc => ({
           ...doc,
           user: {
@@ -359,18 +351,35 @@ const router = Router();
   });
 
   // Disciplinary Reports (Disiplin İşlemleri)
-  router.get('/api/disciplinary-reports', isAuthenticated, async (req, res) => {
+  router.get('/api/disciplinary-reports', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
-      ensurePermission(user, 'hr', 'view', 'Disiplin kayıtlarını görüntüleme yetkiniz yok');
-      
       const { userId, status } = req.query;
-      let branchId = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+      const scopeResult = resolveBranchScope(req);
       
-      // Branch users can only see their own branch
-      if (!isHQRole(user.role )) {
-        branchId = user.branchId!;
+      if ('error' in scopeResult) {
+        return res.status(403).json({ message: scopeResult.error });
       }
+
+      let branchId: number | undefined;
+      if (scopeResult.type === 'single') {
+        branchId = scopeResult.branchId;
+      } else if (scopeResult.type === 'multiple') {
+        // managed_branches: get reports for all managed branches
+        let allReports: any[] = [];
+        for (const bid of scopeResult.branchIds!) {
+          const reports = await storage.getDisciplinaryReports(
+            userId as string | undefined,
+            bid,
+            status as string | undefined
+          );
+          allReports.push(...reports);
+        }
+        // Sort by incident date descending
+        allReports.sort((a, b) => new Date(b.incidentDate).getTime() - new Date(a.incidentDate).getTime());
+        return res.json(allReports);
+      }
+      // type === 'all' → branchId undefined (all branches)
       
       const reports = await storage.getDisciplinaryReports(
         userId as string | undefined,
@@ -388,21 +397,26 @@ const router = Router();
     }
   });
 
-  router.get('/api/disciplinary-reports/:id', isAuthenticated, async (req, res) => {
+  router.get('/api/disciplinary-reports/:id', isAuthenticated, requireManifestAccess('ik', 'view'), async (req, res) => {
     try {
       const user = req.user!;
       const reportId = parseInt(req.params.id);
-      
-      ensurePermission(user, 'hr', 'view', 'Disiplin kaydını görüntüleme yetkiniz yok');
       
       const report = await storage.getDisciplinaryReport(reportId);
       if (!report) {
         return res.status(404).json({ message: "Kayıt bulunamadı" });
       }
       
-      // Verify permission
-      if (!isHQRole(user.role ) && report.branchId !== user.branchId) {
-        return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
+      // Scope check: branch users can only see their own branch reports
+      const scope = (req as any).manifestScope;
+      if (scope === 'own_branch' || scope === 'own_data') {
+        if (report.branchId !== user.branchId) {
+          return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
+        }
+      } else if (scope === 'managed_branches') {
+        if (!MANAGED_BRANCH_IDS.includes(report.branchId!)) {
+          return res.status(403).json({ message: "Bu kaydı görüntüleme yetkiniz yok" });
+        }
       }
       
       res.json(report);

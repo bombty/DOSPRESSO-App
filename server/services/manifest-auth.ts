@@ -103,3 +103,50 @@ export function getScopeFilter(req: any): { type: 'all' | 'branch' | 'managed' |
 export function canAccessModule(role: string, flagKey: string): boolean {
   return hasModuleAccess(role, flagKey, 'view');
 }
+
+/** Muhasebe_ik ve muhasebe'nin sorumlu olduğu şubeler: HQ(5) + Fabrika(23) + Işıklar(24) */
+export const MANAGED_BRANCH_IDS = [5, 23, 24];
+
+export interface ScopeResult {
+  type: 'single' | 'multiple' | 'all';
+  branchId?: number;
+  branchIds?: number[];
+}
+
+/**
+ * Scope-aware branch filter resolver
+ * requireManifestAccess middleware'ından sonra kullanılır.
+ * Manifest scope'a ve query parametrelerine göre branchId filtresi çözümler.
+ * 
+ * Kullanım:
+ *   const scopeResult = resolveBranchScope(req);
+ *   if ('error' in scopeResult) return res.status(403).json({ message: scopeResult.error });
+ *   // scopeResult.type === 'single' | 'multiple' | 'all'
+ */
+export function resolveBranchScope(req: any): ScopeResult | { error: string } {
+  const scope = (req as any).manifestScope;
+  const user = req.user as any;
+  const requestedBranch = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
+
+  switch (scope) {
+    case 'own_data':
+    case 'own_branch':
+      if (!user.branchId) return { error: 'Şube ataması yapılmamış' };
+      return { type: 'single', branchId: user.branchId };
+
+    case 'managed_branches': {
+      if (requestedBranch) {
+        if (!MANAGED_BRANCH_IDS.includes(requestedBranch)) {
+          return { error: 'Bu şubeye erişim yetkiniz yok' };
+        }
+        return { type: 'single', branchId: requestedBranch };
+      }
+      return { type: 'multiple', branchIds: MANAGED_BRANCH_IDS };
+    }
+
+    case 'all_branches':
+    default:
+      if (requestedBranch) return { type: 'single', branchId: requestedBranch };
+      return { type: 'all' };
+  }
+}
