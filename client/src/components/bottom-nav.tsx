@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { Home, GraduationCap, Wrench, User, Brain, BarChart3, Factory, Settings, Building2, Users, Bell, CalendarDays, ClipboardCheck, Package, ShoppingCart, Clock, FileText, Megaphone, Search, Shield, WifiOff } from "lucide-react";
+import { Home, GraduationCap, Wrench, User, Brain, BarChart3, Factory, Settings, Building2, Users, Bell, CalendarDays, ClipboardCheck, Package, ShoppingCart, Clock, FileText, Megaphone, Search, Shield, WifiOff, Bot } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { NAV_ITEMS_BY_ROLE, UserRole } from "@/lib/role-visibility";
@@ -217,7 +217,18 @@ const NAV_ITEM_CONFIG: Record<string, NavItemConfig> = {
     defaultLabelEN: "Profile",
     getPath: (user) => user ? `/personel/${user.id}` : "/login",
   },
+  dobody: {
+    icon: Bot,
+    labelKey: "nav.dobody",
+    defaultLabelTR: "Dobody",
+    defaultLabelEN: "Dobody",
+    getPath: () => "#ai-overlay",
+    isOverlay: true,
+  },
 };
+
+// Sabit 4 item — tüm roller için aynı bottom nav
+const FIXED_NAV_KEYS = ['home', 'notifications', 'dobody', 'profile'];
 
 export function BottomNav() {
   const [location] = useLocation();
@@ -227,7 +238,7 @@ export function BottomNav() {
   const { isOnline } = useNetworkStatus();
 
   const userRole = user?.role as UserRole | undefined;
-  const navKeys = userRole ? (NAV_ITEMS_BY_ROLE[userRole] || ['home', 'profile']) : ['home', 'profile'];
+  const navKeys = FIXED_NAV_KEYS;
 
   const resolveLabel = (config: NavItemConfig) => {
     if (userRole === 'admin') {
@@ -268,7 +279,7 @@ export function BottomNav() {
             <span>Çevrimdışı</span>
           </div>
         )}
-        <div className="flex items-center justify-around h-14 sm:max-w-md mx-auto px-1 sm:px-2 sm:rounded-2xl rounded-none bg-card/95 backdrop-blur-xl border-t sm:border border-card-border sm:shadow-xl">
+        <div className="flex items-center justify-around h-14 sm:max-w-md mx-auto px-1 sm:px-2 sm:rounded-2xl rounded-none bg-[#0a1628] backdrop-blur-xl border-t sm:border border-[#1a2d48] sm:shadow-xl">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -278,7 +289,7 @@ export function BottomNav() {
                 <button
                   key={`${item.label}-${index}`}
                   onClick={() => setSearchOpen(true)}
-                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-muted-foreground hover:text-foreground"
+                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-white/40 hover:text-white/70"
                   data-testid="nav-ara"
                 >
                   <div className="relative pointer-events-none">
@@ -298,7 +309,7 @@ export function BottomNav() {
                 <button
                   key={`${item.label}-${index}`}
                   onClick={() => window.dispatchEvent(new Event('open-ai-assistant'))}
-                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-muted-foreground hover:text-foreground"
+                  className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative rounded-xl text-white/40 hover:text-white/70"
                   data-testid="nav-ai-asistan"
                 >
                   <div className="relative pointer-events-none">
@@ -319,16 +330,16 @@ export function BottomNav() {
                 href={item.path}
                 className={`flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-all duration-300 relative no-underline rounded-xl ${
                   active 
-                    ? "text-primary" 
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-white" 
+                    : "text-white/40 hover:text-white/70"
                 }`}
                 data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, '-')}`}
               >
                 {active && (
-                  <div className="absolute inset-1 rounded-xl bg-primary/10 pointer-events-none" />
+                  <div className="absolute inset-1 rounded-xl bg-white/10 pointer-events-none" />
                 )}
                 <div className="relative pointer-events-none">
-                  <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-primary shadow-sm" : ""}`}>
+                  <div className={`p-1.5 rounded-xl transition-all duration-300 ${active ? "bg-white/20 shadow-sm" : ""}`}>
                     <Icon className={`w-5 h-5 transition-colors duration-300 ${active ? "text-white stroke-[2.5px]" : ""}`} />
                   </div>
                   {item.badge && item.badge > 0 && (

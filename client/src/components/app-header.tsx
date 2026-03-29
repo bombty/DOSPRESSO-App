@@ -87,7 +87,7 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
   return (
     <>
     <div className="flex-shrink-0 z-50 bg-background border-b">
-      <div className="px-3 py-1.5 border-b bg-sidebar flex items-center gap-2 relative">
+      <div className="px-3 py-1.5 border-b bg-[#c0392b] dark:bg-sidebar flex items-center gap-2 relative">
         
         <div className="flex items-center gap-1 flex-shrink-0">
           <div className={hideHamburgerOnMobile ? 'hidden' : 'md:hidden'}>
@@ -103,11 +103,11 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
                 <div className="text-left min-w-0 max-w-[120px] sm:max-w-[180px]">
                   <p className="text-xs font-medium text-sidebar-foreground truncate" data-testid="text-user-name">
                     <span>{user?.firstName || user?.username || "Kullanici"}</span>
-                    <span className="text-muted-foreground mx-1">·</span>
-                    <span className="text-muted-foreground" data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
+                    <span className="text-sidebar-foreground/60 mx-1">·</span>
+                    <span className="text-sidebar-foreground/60" data-testid="text-user-role">{getRoleLabel(user?.role)}</span>
                   </p>
                   {branchName && (
-                    <p className="text-[10px] text-muted-foreground truncate" data-testid="text-branch-name">
+                    <p className="text-[10px] text-sidebar-foreground/60 truncate" data-testid="text-branch-name">
                       {branchName}
                     </p>
                   )}

@@ -265,6 +265,9 @@ export default function Equipment() {
     setIsEditDialogOpen(true);
   };
 
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
   const filteredEquipment = equipment
     ?.filter((item: EquipmentWithHealth) => {
       // Branch-level filtering: non-HQ users can only see their branch equipment
@@ -289,11 +292,7 @@ export default function Equipment() {
       // Health filter
       if (healthFilter && healthFilter !== "all") {
         if (healthFilter === "critical") {
-          
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (item.healthScore ?? 100) < 50;
+          return (item.healthScore ?? 100) < 50;
         }
         if (healthFilter === "warning") {
           const score = item.healthScore ?? 100;

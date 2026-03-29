@@ -55,17 +55,17 @@
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-blur: 16px;
 
-  --background: 210 40% 98%;
+  --background: 36 29% 96%;
 
   --foreground: 220 60% 12%;
 
-  --border: 214 32% 91%;
+  --border: 33 17% 89%;
 
   --card: 0 0% 100%;
 
   --card-foreground: 220 60% 12%;
 
-  --card-border: 214 32% 91%;
+  --card-border: 33 17% 89%;
 
   --sidebar: 220 60% 15%;
 
@@ -97,9 +97,9 @@
 
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 210 40% 96%;
+  --muted: 36 20% 94%;
 
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 220 10% 40%;
 
   --accent: 217 91% 55%;
 
