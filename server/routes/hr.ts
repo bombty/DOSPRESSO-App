@@ -116,6 +116,11 @@ const HR_ALLOWED_ROLES = new Set([
   'supervisor', 'supervisor_buddy', 'mudur',
   // Factory management
   'fabrika_mudur', 'uretim_sefi',
+  // Kiosk roles — limited access, kendi data'larına erişir
+  'sube_kiosk', 'fabrika_kiosk',
+  // Branch roles — self-service access
+  'barista', 'bar_buddy', 'stajyer', 'yatirimci_branch',
+  'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel',
 ]);
 
 // These paths are self-service — ANY authenticated user can access
