@@ -19,6 +19,9 @@ import {
   Package,
   ExternalLink,
   ChevronRight,
+  Timer,
+  Check,
+  X,
 } from "lucide-react";
 import { useState, lazy, Suspense } from "react";
 import { useDashboardMode } from "@/hooks/useDashboardMode";
@@ -138,6 +141,36 @@ export default function SubeOzet() {
     },
   });
 
+  const { data: overtimeData, refetch: refetchOvertime } = useQuery<any[]>({
+    queryKey: ["/api/overtime-requests", "pending"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/overtime-requests?status=pending");
+      const d = await res.json();
+      return Array.isArray(d) ? d : [];
+    },
+    refetchInterval: 30000,
+  });
+
+  const pendingOvertime = (overtimeData || []).filter((r: any) => r.status === 'pending');
+
+  const approveOvertime = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("PATCH", `/api/overtime-requests/${id}/approve`, { approvedMinutes: 120 });
+      return res.json();
+    },
+    onSuccess: () => { toast({ title: "Mesai onaylandı" }); refetchOvertime(); },
+    onError: () => toast({ title: "Hata", description: "Onaylanamadı", variant: "destructive" }),
+  });
+
+  const rejectOvertime = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("PATCH", `/api/overtime-requests/${id}/reject`, { rejectionReason: "Supervisor reddetti" });
+      return res.json();
+    },
+    onSuccess: () => { toast({ title: "Mesai reddedildi" }); refetchOvertime(); },
+    onError: () => toast({ title: "Hata", description: "Reddedilemedi", variant: "destructive" }),
+  });
+
   if (!branchId) {
     return (
       <div className="p-4 max-w-6xl mx-auto">
@@ -210,6 +243,50 @@ export default function SubeOzet() {
         })}
         isPending={quickAction.isPending}
       />
+
+      {pendingOvertime.length > 0 && (
+        <Card data-testid="card-overtime-requests" className="border-amber-500/30">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Timer className="h-4 w-4 text-amber-500" />
+              Bekleyen Mesai Talepleri
+              <Badge className="ml-auto bg-amber-500 text-white text-xs">{pendingOvertime.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2">
+            {pendingOvertime.map((req: any) => (
+              <div key={req.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted" data-testid={`overtime-req-${req.id}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{req.user?.firstName} {req.user?.lastName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{req.reason}</p>
+                  <p className="text-xs text-muted-foreground">{req.startTime} – {req.endTime} · {new Date(req.overtimeDate).toLocaleDateString('tr-TR')}</p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    className="h-8 bg-green-600 hover:bg-green-700 px-2"
+                    onClick={() => approveOvertime.mutate(req.id)}
+                    disabled={approveOvertime.isPending}
+                    data-testid={`btn-approve-overtime-${req.id}`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 px-2"
+                    onClick={() => rejectOvertime.mutate(req.id)}
+                    disabled={rejectOvertime.isPending}
+                    data-testid={`btn-reject-overtime-${req.id}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {data.teamStatus.length > 0 && (
         <Card data-testid="card-team-status">
