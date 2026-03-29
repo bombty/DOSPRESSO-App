@@ -184,6 +184,7 @@ app.use((req, res, next) => {
     try {
       await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password TYPE varchar(255)`);
       await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password DROP DEFAULT`);
+      await db.execute(sql`ALTER TABLE branch_kiosk_settings ADD COLUMN IF NOT EXISTS auto_close_time VARCHAR(5) DEFAULT '22:00'`);
     } catch (error) {
       console.error("[KioskMigration] Schema migration error:", error);
     }

@@ -136,10 +136,10 @@ async function calculateCustomerScore(branchId: number, thirtyDaysAgo: string): 
     const result = await db.execute(sql`
       SELECT
         count(*) as cnt,
-        coalesce(avg(overall_rating), 0) as avg_rating
+        coalesce(avg(rating), 0) as avg_rating
       FROM customer_feedback
       WHERE branch_id = ${branchId}
-      AND created_at >= ${thirtyDaysAgo}::timestamp
+      AND feedback_date >= ${thirtyDaysAgo}::timestamp
     `);
     const cnt = Number((result.rows as any[])?.[0]?.cnt || 0);
     const avgRating = Number((result.rows as any[])?.[0]?.avg_rating || 0);

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@shared/schema";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";

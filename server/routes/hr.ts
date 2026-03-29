@@ -2663,11 +2663,6 @@ JSON formatında yanıt ver:
       res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
     }
   });
-        return res.status(403).json({ message: error.message });
-      }
-      res.status(500).json({ message: "Onboarding kayıtları yüklenirken hata oluştu" });
-    }
-  });
 
   router.get('/api/employee-onboarding/mentor/my-mentees', isAuthenticated, async (req, res) => {
     try {

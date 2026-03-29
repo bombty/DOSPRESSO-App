@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../localAuth";
+import { requireManifestAccess } from "../services/manifest-auth";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { checkDataLock } from "../services/data-lock";
 import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, not, ne, count, sum, avg, max, min } from "drizzle-orm";
