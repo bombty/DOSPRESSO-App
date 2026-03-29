@@ -9,6 +9,7 @@ import { sanitizeUsersForRole } from "../security";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { handleApiError } from "./helpers";
 import bcrypt from "bcrypt";
+import { requireManifestAccess } from '../services/manifest-auth';
 import { z } from "zod";
 import QRCode from "qrcode";
 import {

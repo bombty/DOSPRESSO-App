@@ -16,6 +16,7 @@ import {
   getWorkerScoreSummary,
 } from "../services/factory-scoring-service";
 import bcrypt from "bcrypt";
+import { requireManifestAccess } from '../services/manifest-auth';
 import {
   hasPermission,
   isHQRole,
