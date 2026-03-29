@@ -3489,6 +3489,21 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
       else if (shift) shiftStatus = 'scheduled';
       else shiftStatus = 'not_scheduled';
 
+      // Geç tespit: vardiyası planlandı, giriş yok, başlangıç saati geçmiş
+      let lateMinutes = 0;
+      let isMissing = false;
+      if (!session && shift && shiftStatus === 'scheduled') {
+        const [h, m] = (shift.startTime as string).split(':').map(Number);
+        const plannedStart = new Date(now);
+        plannedStart.setHours(h, m, 0, 0);
+        const diffMin = Math.floor((now.getTime() - plannedStart.getTime()) / 60000);
+        if (diffMin > 15) {
+          lateMinutes = diffMin;
+          shiftStatus = diffMin > 60 ? 'missing' : 'late';
+          isMissing = diffMin > 60;
+        }
+      }
+
       return {
         ...s,
         hasPin: pinSet.has(s.id),
@@ -3496,8 +3511,34 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
         shiftStartTime: shift?.startTime || null,
         shiftEndTime: shift?.endTime || null,
         checkInTime: session?.checkInTime || null,
+        lateMinutes,
+        isMissing,
       };
     });
+
+    // Timeline için tüm bugünkü vardiyalar (tüm personel, sadece yayınlanmış)
+    const timelineShifts = await db.select({
+      userId: shifts.assignedToId,
+      startTime: shifts.startTime,
+      endTime: shifts.endTime,
+    }).from(shifts)
+      .leftJoin(users, eq(shifts.assignedToId, users.id))
+      .where(and(
+        eq(shifts.branchId, branchId),
+        eq(shifts.shiftDate, todayStr)
+      ))
+      .orderBy(shifts.startTime);
+
+    // Timeline için aktif break süreleri
+    const timelineBreaks = await db.select({
+      userId: branchBreakLogs.userId,
+      breakStartTime: branchBreakLogs.breakStartTime,
+      breakEndTime: branchBreakLogs.breakEndTime,
+    }).from(branchBreakLogs)
+      .where(and(
+        eq(branchBreakLogs.branchId, branchId),
+        gte(branchBreakLogs.breakStartTime, new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+      ));
 
     // 6. Aktif duyurular (son 5)
     const activeAnnouncements = await db.select({
@@ -3549,6 +3590,8 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
       staff: staffWithStatus,
       announcements: filteredAnn,
       notifications: branchNotifs,
+      timeline: timelineShifts,
+      timelineBreaks,
       displayQr: displayQrPayload,
       generatedAt: now.toISOString(),
     });
