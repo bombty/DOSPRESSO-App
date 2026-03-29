@@ -3516,10 +3516,19 @@ router.get('/api/branches/:branchId/kiosk/lobby', async (req, res) => {
       .orderBy(desc(notifications.createdAt))
       .limit(3);
 
+    // 8. Display QR payload
+    const qrTimestamp = Date.now();
+    const qrNonce = crypto.randomBytes(12).toString('hex');
+    const qrData = JSON.stringify({ branchId, timestamp: qrTimestamp, nonce: qrNonce });
+    const qrToken = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'dospresso-qr-fallback-key')
+      .update(qrData).digest('hex');
+    const displayQrPayload = { branchId, timestamp: qrTimestamp, nonce: qrNonce, token: qrToken, expiresIn: 10 };
+
     res.json({
       staff: staffWithStatus,
       announcements: filteredAnn,
       notifications: branchNotifs,
+      displayQr: displayQrPayload,
       generatedAt: now.toISOString(),
     });
   } catch (error: unknown) {

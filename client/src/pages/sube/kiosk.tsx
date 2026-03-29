@@ -615,6 +615,8 @@ export default function BranchKiosk() {
         if (res.ok) {
           const data = await res.json();
           setLobbyData(data);
+          // QR de lobby'den gelsin
+          if (data.displayQr) setDisplayQr(data.displayQr);
         }
       } catch (err) {
         console.error('Lobby fetch error:', err);
@@ -932,14 +934,13 @@ export default function BranchKiosk() {
                 {staffList2.map((staff: any) => (
                   <div
                     key={staff.id}
-                    className={`bg-white dark:bg-[#0f1d32] rounded-xl border border-[#e8e4df] dark:border-[#1a2d48] p-2.5 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-transform select-none ${!staff.hasPin ? 'opacity-40' : 'hover:border-[#c0392b]'}`}
+                    className={`bg-white dark:bg-[#0f1d32] rounded-xl border border-[#e8e4df] dark:border-[#1a2d48] p-2.5 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-transform select-none hover:border-[#c0392b]`}
                     onClick={() => {
-                      if (!staff.hasPin) {
-                        toast({ title: "PIN Gerekli", description: "Yöneticinize başvurun.", variant: "destructive" });
-                        return;
-                      }
                       setSelectedUser(staff);
                       setStep('enter-pin');
+                      if (!staff.hasPin) {
+                        toast({ title: "PIN Tanımlı Değil", description: "Yöneticinizden PIN tanımlamasını isteyin.", variant: "destructive" });
+                      }
                     }}
                     data-testid={`staff-card-${staff.id}`}
                   >
