@@ -509,3 +509,294 @@ SCORING: Günlük 02:00
 - Her sprint sonrası push
 - Replit otomatik pull + deploy
 - Conflict çözümü: Claude'un kodu öncelikli (Replit düzeltmeleri pull ile alınır)
+
+---
+
+# 20. YAPILAN HATALAR VE DERSLER (TEKRAR YAPMA!)
+
+## Hata 1: Yanlış grep analizi → yanlış önceliklendirme
+**Ne oldu:** Hook safety taraması 56 ihlal buldu → 2 gün crash fix planı yapıldı.
+**Gerçek:** Sadece 1 gerçek ihlal varmış. grep queryFn callback'lerini ve farklı sub-component'lerdeki return'leri false positive olarak yakaladı.
+**Ders:** grep sonuçlarını körü körüne sayma. Her "ihlal" için component sınırlarını doğrula:
+```bash
+# YANLIŞ: Basit grep
+grep -n "return.*Loading" file.tsx | head -1  # bu callback içinde olabilir!
+
+# DOĞRU: Component sınırı kontrolü
+# early return ile son hook arasında yeni function tanımı var mı?
+sed -n "${EARLY},${HOOK}p" file.tsx | grep -c "^function\|^export.*function"
+# >0 ise FALSE POSITIVE — farklı component'ler
+```
+
+## Hata 2: Build geçiyor ≠ çalışıyor
+**Ne oldu:** `requireManifestAccess` import eklenmedi, vite build geçti, uygulama runtime'da crash yaptı.
+**Sebep:** Vite frontend build'i — backend TypeScript ayrı derleniyor, import hatası ancak çalışma zamanında ortaya çıkıyor.
+**Ders:** Her backend değişikliğinden sonra Replit'te çalıştığını doğrula. Özellikle:
+- Yeni import eklediğinde → satırın dosyanın başında olduğunu kontrol et
+- Yeni middleware kullandığında → import'u kontrol et
+- Raw SQL yazdığında → kolon adlarını schema ile karşılaştır
+
+## Hata 3: Raw SQL kolon adı hatası sessizce fail oluyor
+**Ne oldu:** `branch-health-score.ts`'te `overall_rating` ve `created_at` kullanıldı ama tabloda `rating` ve `feedback_date` var. Build geçti, 18 şubede customer score hep hata verdi.
+**Ders:** Raw SQL yazarken mutlaka:
+```bash
+grep -A 30 "tableName = pgTable" shared/schema/schema-XX.ts
+# Kolon adlarının schema ile eşleştiğini doğrula
+```
+
+## Hata 4: Duplicate kod copy-paste'ten oluşuyor
+**Ne oldu:** hr.ts'te büyük refactoring sırasında 5 satır duplicate oldu → syntax error.
+**Ders:** Büyük dosyalarda str_replace kullanırken old_str'nin benzersiz olduğundan emin ol. Değişiklikten sonra duplicate kontrol:
+```bash
+# Duplicate blok kontrolü
+sort file.ts | uniq -d | head -10
+```
+
+## Özet: Her sprint sonrası ZORUNLU kontrol listesi
+1. ✅ `npx vite build` geçiyor mu?
+2. ✅ Replit'te uygulama başlıyor mu? (runtime import kontrol)
+3. ✅ Yeni raw SQL varsa kolon adları schema ile eşleşiyor mu?
+4. ✅ str_replace'ten sonra duplicate blok oluştu mu?
+5. ✅ Light mode + dark mode UI doğru mu?
+
+---
+
+# 21. API RESPONSE FORMAT REHBERİ
+
+Bazı endpoint'ler array döner, bazıları object. Yanlış beklenti → crash.
+
+## Object Dönen (Frontend'de destructure gerekir)
+```
+GET /api/branches/:id/kiosk/session/:uid
+  → { activeSession, tasks, checklists }
+
+GET /api/faults
+  → { data: [...], total: number }
+
+GET /api/notifications
+  → { notifications: [...] }  VEYA  [...]  (tutarsız!)
+
+GET /api/ceo/command-center
+  → { kpi, branchHealth, tasks, notifications, warnings, ... }
+
+GET /api/hq-dashboard/*
+  → { ...data }  (her endpoint farklı yapı)
+
+POST /api/factory/kiosk/log-production
+  → { success, message, totalProduced, totalWaste }
+
+POST /api/factory/kiosk/quick-complete
+  → { message, output, lot }
+```
+
+## Array Dönen
+```
+GET /api/employees → [...]
+GET /api/branch-tasks/kiosk/instances → [...]
+GET /api/announcements → [...]
+GET /api/equipment → [...]
+```
+
+## Güvenli Kullanım Paterni
+```typescript
+// Her zaman normalize et:
+const items = Array.isArray(data) ? data : (data?.data || data?.items || []);
+```
+
+---
+
+# 22. KRİTİK BAĞIMLILIK HARİTASI
+
+Hangi dosyayı değiştirince ne kırılır:
+
+```
+factory.ts değişirse → 17 fabrika sayfası etkilenir
+branches.ts değişirse → 74 sayfa etkilenir (EN RİSKLİ!)
+hr.ts değişirse → İK + bordro + personel sayfaları
+index.css değişirse → 281 sayfa (global tema)
+app-header.tsx değişirse → TÜM sayfalar
+bottom-nav.tsx değişirse → TÜM mobil görünüm
+storage.ts değişirse → TÜM backend (8862 sat, tüm CRUD)
+manifest-auth.ts değişirse → 111 endpoint yetki kontrolü
+schema-*.ts değişirse → migration gerekir + tüm ilgili route/page
+```
+
+**Altın kural:** branches.ts ve storage.ts'e dokunurken ÇOK DİKKATLİ ol. Bir satır bile hata 74 sayfayı kırar.
+
+---
+
+# 23. KARAR GEÇMİŞİ (Neden Böyle Yapıldı)
+
+| Karar | Neden | Alternatif Değerlendirildi mi |
+|-------|-------|------------------------------|
+| Kırmızı header + navy footer | Marka üstte görünür, alt nav sakin taban, kırmızı alt nav "uyarı" hissi verir | Evet — A/B mockup karşılaştırması yapıldı |
+| Bottom nav 4 item sabit | Rol bazlı nav karmaşıklaştırıyordu, kullanıcılar kayboluyordu | Evet — eskiden 5-6 item rol bazlı |
+| Off-white (#f8f6f3) arka plan | Saf beyaz göz yoruyor, krem ton sıcak ve profesyonel | Evet — beyaz denenip reddedildi |
+| Mobil 2 kolon widget | Tek kolon sayfayı çok uzatıyor, 3 kolon çok dar | Evet — mockup'larda test edildi |
+| İK iki katmanlı (scope) | Muhasebe sadece 3 şubeyi yönetir, coach hepsini görür ama read-only | İş gereksinimi — alternatif yok |
+| useIKScope hook | Ad-hoc isHQRole() 20+ yerde tekrarlanıyordu | Evet — inline kontrol vs hook |
+| Plan actualQuantity otomatik | Şef planı girer, personel üretir ama bağlantı yoktu | P0 — pilot'ta temel akış |
+| recipeId otomatik çözümleme | Frontend'de reçete seçimi UX karmaşıklığı ekler | Backend otomatik → frontend değişikliği gereksiz |
+| Factory scoring scheduler | Gerçek zamanlı hesaplama gereksiz yük | Gece 02:00 batch hesaplama yeterli |
+| Manifest auth kademeli geçiş | 1551 endpoint'i tek seferde değiştirmek riskli | %7 başlangıç, kademeli artış |
+
+---
+
+# 24. KULLANICI AKIŞLARI (Rol Bazlı)
+
+## Fabrika Personeli (pilot ana akış)
+```
+Kiosk PIN giriş → İstasyon seç → Vardiya başlat
+→ Faz: Hazırlık → Üretim → Temizlik
+→ Üretim kaydet (ürün seç, miktar, fire, fotoğraf)
+→ [Otomatik: reçete çözümleme + plan güncelleme + LOT oluşturma]
+→ Mola al → Mola bitir → Vardiya kapat
+→ [Gece 02:00: skor hesaplama]
+```
+
+## Fabrika Şefi / Müdürü
+```
+Giriş → Fabrika Dashboard
+→ Üretim planlama: haftalık plan gir (ürün + miktar + istasyon)
+→ Plan vs gerçek takip (progress bar + renk kodlu)
+→ QC: bekleyen kalite kontrolleri onayla/reddet
+→ Personel performans skorları izle
+→ Arıza bildirimleri takip et
+```
+
+## Şube Personeli (pilot — Sprint 4b'de genişleyecek)
+```
+Kiosk PIN/QR giriş → Vardiya başlat
+→ Atanmış görevleri gör → Tamamla
+→ Checklist yap → İlerleme kaydet
+→ [Sprint 4b: Açık görevleri gör → "Al" → Tamamla → Skor]
+→ [Sprint 4b: Bildirim/duyuru oku]
+→ [Sprint 4b: Ekip durumunu gör]
+→ Arıza bildir → Vardiya kapat
+```
+
+## Şube Müdürü
+```
+Giriş → Şube Dashboard (KPI + personel + checklist)
+→ Vardiya planla (haftalık)
+→ Personel İK yönet (kendi şubesi)
+→ Görev ata → Takip et
+→ Rapor görüntüle
+→ Müşteri geri bildirim takibi
+```
+
+## CEO
+```
+Giriş → CEO Dashboard
+→ KPI strip (25 şube, SLA, personel, checklist, kalite, müşteri puanı)
+→ Şube sağlığı (18 sağlıklı / 4 uyarı / 3 kritik)
+→ En iyi/kötü şubeler ranking
+→ Mr. Dobody özet + öneri
+→ Modül kartlarından detaya in
+```
+
+## CGO (Utku)
+```
+Giriş → CGO Dashboard
+→ Fabrika üretim (canlı hedef/gerçek/fire/QC)
+→ Teknik arızalar (şube bazlı, öncelikli)
+→ Ekipman sağlığı (142 cihaz, %94 sağlıklı)
+→ CRM teknik talep (şubelerden geri bildirim)
+→ Servis akışı (HQ vs şube teknik servis)
+→ Bakım takvimi (planlı/gecikmiş)
+→ Ekipman servis sorumluluğu düzenle (HQ/şube)
+```
+
+## Coach
+```
+Giriş → Coach Dashboard
+→ Şube sağlık haritası (tüm şubeler skor + trend)
+→ Checklist takibi (günlük/haftalık/aylık oranlar)
+→ Personel durumu (aktif/mola/izin/devamsız)
+→ Bekleyen aksiyonlar (denetim planı)
+→ Mr. Dobody: öncelik sırasıyla denetim önerisi
+```
+
+## Misafir (Public)
+```
+QR kod okut → Geri bildirim formu (7 dil)
+→ Genel puan (1-5) + kategori puanları
+→ Opsiyonel: personel seç + puan ver
+→ Opsiyonel: fotoğraf yükle + yorum
+→ Konum doğrulama (şubeye yakın mı)
+→ [Otomatik: şube sağlık skoruna yansır]
+```
+
+---
+
+# 25. TEKNİK BORÇ ÖNCELİK MATRİSİ
+
+## P0 — Pilot öncesi (Sprint 4b-5b)
+```
+[ ] Şube kiosk: açık görev + bildirim + ekip durumu
+[ ] PDKS anomali bildirimi
+[ ] Pilot veri hazırlığı (gerçek personel, PIN'ler)
+[ ] E2E test (6 akış)
+```
+
+## P1 — Pilot sonrası ilk 2 hafta
+```
+[ ] Kalan toFixed ~200 fix (pilot dışı sayfalar)
+[ ] Array safety 205 ihlal fix
+[ ] CRM 19 endpoint auth ekleme
+[ ] Rate limiting (kiosk PIN + login)
+[ ] breadcrumb-navigation duplicate key fix
+```
+
+## P2 — 1-3 ay
+```
+[ ] Manifest auth 111 → 500+ endpoint
+[ ] factory.ts transaction coverage (102 → %80+)
+[ ] N+1 query fix (employee-documents)
+[ ] 386 filtresiz SELECT'e limit ekleme
+[ ] Mega dosya bölümleme (factory 7580, storage 8862)
+[ ] WebSocket/SSE (polling → realtime)
+```
+
+## P3 — 3-12 ay
+```
+[ ] 55 şube ölçeklendirme
+[ ] SGK/e-fatura entegrasyonu
+[ ] Mr. Dobody otonom aksiyonlar test
+[ ] Muhasebe Logo import → AI raporlama
+[ ] Franchise finansal modül
+```
+
+---
+
+# 26. REPLIT WORKFLOW
+
+## Deployment
+```
+Replit otomatik deploy:
+- GitHub push → Replit pull → Build → Restart
+- Build: npm run build (vite)
+- Run: npm run start (node dist/index.js)
+- Dev: npm run dev (tsx watch)
+```
+
+## Test Sırası
+```
+1. Claude: vite build geçiyor mu?
+2. Claude: git commit + push
+3. Aslan: Replit'te pull + restart
+4. Aslan: Tarayıcıda giriş yap
+5. Aslan: Light/dark mode kontrol
+6. Aslan: Pilot akışı test et
+7. Aslan: Console'da hata var mı?
+8. Aslan: Screenshot + rapor → Claude'a gönder
+```
+
+## Replit Özellikleri
+```
+- modules: nodejs-20, web, postgresql-16
+- imagemagick kurulu (QR kod)
+- PostgreSQL 16 (Neon'a bağlı)
+- Auto-deploy: autoscale mode
+- .replit config: run = "npm run dev"
+```
