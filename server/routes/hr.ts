@@ -141,6 +141,9 @@ router.use((req: any, res, next) => {
   // Self-service routes — always allowed
   if (SELF_ACCESS_PATHS.some(prefix => path.startsWith(prefix))) return next();
   
+  // Kiosk paths — auth handled by isKioskAuthenticated, not HR middleware
+  if (path.includes('/kiosk/')) return next();
+  
   // Training modules — read-only for everyone, write requires management role
   if (TRAINING_READ_PATHS.some(prefix => path.startsWith(prefix))) {
     if (method === 'GET') return next();
