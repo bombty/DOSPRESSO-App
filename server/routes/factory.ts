@@ -67,6 +67,7 @@ import {
   shifts,
   shiftAttendance,
   attendancePenalties,
+  productRecipes,
 } from "../../shared/schema";
 
 const router = Router();
@@ -1379,6 +1380,21 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const prodCount = parseInt(wasteProductCount) || 0;
 
       if (produced > 0 || waste > 0 || doughKg > 0 || prodCount > 0 || photoUrl) {
+        // P1: Aktif reçeteyi otomatik çözümle
+        let activeRecipeId: number | null = null;
+        if (productId) {
+          try {
+            const [recipe] = await db.select({ id: productRecipes.id })
+              .from(productRecipes)
+              .where(and(
+                eq(productRecipes.productId, productId),
+                eq(productRecipes.isActive, true)
+              ))
+              .limit(1);
+            activeRecipeId = recipe?.id || null;
+          } catch { /* reçete bulunamazsa null kalır */ }
+        }
+
         await db.insert(factoryProductionOutputs).values({
           sessionId,
           userId: session.userId,
@@ -1395,6 +1411,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           wasteProductCount: wasteProductCount || null,
           photoUrl: photoUrl || null,
           qualityStatus: 'pending',
+          productRecipeId: activeRecipeId,
         });
 
         await createAutoLot({
@@ -6624,6 +6641,19 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
             .where(eq(factoryInventory.productId, product.parentProductId));
         }
 
+        // P1: Aktif reçeteyi otomatik çözümle
+        let activeRecipeId: number | null = null;
+        try {
+          const [recipe] = await tx.select({ id: productRecipes.id })
+            .from(productRecipes)
+            .where(and(
+              eq(productRecipes.productId, productId),
+              eq(productRecipes.isActive, true)
+            ))
+            .limit(1);
+          activeRecipeId = recipe?.id || null;
+        } catch { /* reçete bulunamazsa null kalır */ }
+
         const [output] = await tx.insert(factoryProductionOutputs).values({
           sessionId: activeSession.id,
           userId,
@@ -6635,6 +6665,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           wasteQuantity: String(waste),
           wasteUnit: product.unit || 'adet',
           qualityStatus: 'pending',
+          productRecipeId: activeRecipeId,
           createdAt: new Date(),
         }).returning();
 
@@ -7587,9 +7618,10 @@ export async function initFactoryKioskMigrations() {
     await db.execute(sql`
       ALTER TABLE factory_production_outputs
         ADD COLUMN IF NOT EXISTS waste_dough_kg NUMERIC(8,2),
-        ADD COLUMN IF NOT EXISTS waste_product_count INTEGER
+        ADD COLUMN IF NOT EXISTS waste_product_count INTEGER,
+        ADD COLUMN IF NOT EXISTS product_recipe_id INTEGER
     `);
-    console.log("[FAB-KIOSK] Phase + waste columns migration applied.");
+    console.log("[FAB-KIOSK] Phase + waste + recipe columns migration applied.");
 
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS factory_kiosk_config (
