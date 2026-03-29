@@ -1251,50 +1251,55 @@ export default function BranchKiosk() {
 
                 <div className="flex flex-col gap-2">
                   {currentSession.status === 'on_break' ? (
-                    <Button
-                      size="lg"
-                      className="w-full bg-blue-600 hover:bg-blue-700 h-14 text-base"
-                      onClick={() => breakEndMutation.mutate(currentSession.id)}
-                      disabled={breakEndMutation.isPending}
-                      data-testid="button-end-break"
-                    >
-                      <Play className="h-5 w-5 mr-2" />
-                      Molayı Bitir
-                    </Button>
+                    <>
+                      <Button
+                        size="lg"
+                        className="w-full bg-blue-600 hover:bg-blue-700 h-16 text-base font-semibold"
+                        onClick={() => breakEndMutation.mutate(currentSession.id)}
+                        disabled={breakEndMutation.isPending}
+                        data-testid="button-end-break"
+                      >
+                        {breakEndMutation.isPending ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Play className="h-5 w-5 mr-2" />}
+                        Molayı Bitir — Geri Dön
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="destructive"
+                        className="w-full h-12 opacity-80"
+                        onClick={handleEndShiftClick}
+                        disabled={endShiftMutation.isPending}
+                        data-testid="button-end-shift-from-break"
+                      >
+                        <LogOut className="h-5 w-5 mr-2" />
+                        Vardiyayı Bitir
+                      </Button>
+                    </>
                   ) : (
-                    <Button
-                      size="lg"
-                      variant="secondary"
-                      className="w-full h-12"
-                      onClick={handleBreakStartClick}
-                      disabled={breakStartMutation.isPending}
-                      data-testid="button-start-break"
-                    >
-                      <Coffee className="h-5 w-5 mr-2" />
-                      Mola Al
-                    </Button>
+                    <>
+                      <Button
+                        size="lg"
+                        variant="secondary"
+                        className="w-full h-12"
+                        onClick={handleBreakStartClick}
+                        disabled={breakStartMutation.isPending}
+                        data-testid="button-start-break"
+                      >
+                        <Coffee className="h-5 w-5 mr-2" />
+                        Mola Al
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="destructive"
+                        className="w-full h-12"
+                        onClick={handleEndShiftClick}
+                        disabled={endShiftMutation.isPending}
+                        data-testid="button-end-shift"
+                      >
+                        <LogOut className="h-5 w-5 mr-2" />
+                        Vardiyayı Bitir
+                      </Button>
+                    </>
                   )}
-                  <Button
-                    size="lg"
-                    variant="destructive"
-                    className="w-full h-12"
-                    onClick={handleEndShiftClick}
-                    disabled={endShiftMutation.isPending || currentSession.status === 'on_break'}
-                    data-testid="button-end-shift"
-                  >
-                    <LogOut className="h-5 w-5 mr-2" />
-                    Vardiya Bitir
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                    onClick={() => setShowOvertimeRequest(true)}
-                    data-testid="button-overtime-working"
-                  >
-                    <Timer className="h-4 w-4 mr-1.5" />
-                    Mesai Talep Et
-                  </Button>
                 </div>
 
                 {currentSession.breakMinutes > 0 && (
@@ -1361,15 +1366,26 @@ export default function BranchKiosk() {
           </CardContent>
         </Card>
 
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          onClick={() => setShowKioskFaultReport(true)}
-          data-testid="button-kiosk-report-fault"
-        >
-          <AlertOctagon className="h-5 w-5 text-orange-500" />
-          Sorun Bildir
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => setShowKioskFaultReport(true)}
+            data-testid="button-kiosk-report-fault"
+          >
+            <AlertOctagon className="h-4 w-4 text-orange-500" />
+            Sorun Bildir
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full gap-2 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+            onClick={() => setShowOvertimeRequest(true)}
+            data-testid="button-overtime-request"
+          >
+            <Timer className="h-4 w-4" />
+            Mesai Talep Et
+          </Button>
+        </div>
 
         <Dialog open={showKioskFaultReport} onOpenChange={setShowKioskFaultReport}>
           <DialogContent className="max-w-sm">
