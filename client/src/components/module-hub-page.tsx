@@ -125,7 +125,7 @@ export function ModuleHubPage({
         <div className={`${bgColor} text-white`}>
           <div className="container mx-auto px-4 py-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/20 rounded-xl">
+              <div className="p-3 bg-card/20 rounded-xl">
                 <MegaIcon className="h-8 w-8" />
               </div>
               <div>

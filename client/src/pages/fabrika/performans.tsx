@@ -749,7 +749,7 @@ export default function FabrikaPerformans() {
                                 <TableCell className="text-red-500">{pb.waste}</TableCell>
                                 <TableCell>
                                   <Badge variant={(pb.wastePercent || 0) < 5 ? "secondary" : (pb.wastePercent || 0) < 10 ? "outline" : "destructive"}>
-                                    %{(pb.wastePercent || 0).toFixed(1)}
+                                    %{Number(pb.wastePercent ?? 0).toFixed(1)}
                                   </Badge>
                                 </TableCell>
                               </TableRow>

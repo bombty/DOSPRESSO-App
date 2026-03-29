@@ -43,7 +43,7 @@ export function NavRail({ className }: { className?: string }) {
                     "relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-150",
                     isActive
                       ? "bg-[#cc1f1f]"
-                      : "bg-transparent hover:bg-white/10"
+                      : "bg-transparent hover:bg-card/10"
                   )}
                 >
                   <IconComponent
@@ -71,7 +71,7 @@ export function NavRail({ className }: { className?: string }) {
             <Link href={user ? `/personel/${user.id}` : "/login"}>
               <button
                 data-testid="rail-profile"
-                className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-white/10 transition-all"
+                className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-card/10 transition-all"
               >
                 <User className="w-[18px] h-[18px] text-white opacity-40" />
               </button>

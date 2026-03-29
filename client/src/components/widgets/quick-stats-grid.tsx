@@ -100,7 +100,7 @@ export function QuickStatsGrid() {
             data-testid={`stat-card-${stat.id}`}
           >
             {/* Background decoration */}
-            <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
+            <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-card/10" />
             
             <div className={`w-10 h-10 rounded-xl ${stat.iconBg} flex items-center justify-center mb-3`}>
               <Icon className="w-5 h-5 text-white" />

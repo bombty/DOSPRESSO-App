@@ -739,7 +739,7 @@ export default function FabrikaUretimPlanlama() {
                           {(() => {
                             const totalProduced = filtered.reduce((s, r) => s + parseFloat(r.producedQuantity || '0'), 0);
                             const totalWaste = filtered.reduce((s, r) => s + parseFloat(r.wasteQuantity || '0'), 0);
-                            return totalProduced > 0 ? `%${((totalWaste / (totalProduced + totalWaste)) * 100).toFixed(1)}` : '%0';
+                            return totalProduced > 0 ? `%${((Number(totalWaste ?? 0) / Math.max(Number(totalProduced ?? 0) + Number(totalWaste ?? 0), 1)) * 100).toFixed(1)}` : '%0';
                           })()}
                         </p>
                       </div>

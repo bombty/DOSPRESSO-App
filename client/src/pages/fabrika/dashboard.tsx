@@ -659,7 +659,7 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
                   stats.stationProduction.map((sp) => {
                     const target = getStationTarget(sp.stationId) * 8;
                     const progress = target > 0 ? Math.min(100, (sp.produced / target) * 100) : 0;
-                    const wastePercent = sp.produced > 0 ? ((sp.waste / sp.produced) * 100).toFixed(1) : 0;
+                    const wastePercent = sp.produced > 0 ? ((Number(sp.waste ?? 0) / Math.max(Number(sp.produced ?? 1), 1)) * 100).toFixed(1) : 0;
                     
                     return (
                       <div key={sp.stationId} className="space-y-1">

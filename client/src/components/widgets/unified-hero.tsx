@@ -51,7 +51,7 @@ export function UnifiedHero() {
       className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[hsl(var(--dospresso-navy))] via-[hsl(var(--dospresso-blue))] to-[hsl(var(--dospresso-blue)/0.8)] p-3 text-white"
       data-testid="unified-hero"
     >
-      <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute top-0 right-0 w-24 h-24 bg-card/5 rounded-full -translate-y-1/2 translate-x-1/2" />
       
       <div className="relative z-10">
         <div className="flex items-center gap-1.5 mb-0.5">
@@ -71,13 +71,13 @@ export function UnifiedHero() {
                 <button
                   key={widget.id}
                   onClick={() => widget.url && setLocation(widget.url)}
-                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 rounded-lg px-2.5 py-1.5 text-[11px] transition-colors"
+                  className="flex items-center gap-1.5 bg-card/10 hover:bg-card/20 rounded-lg px-2.5 py-1.5 text-[11px] transition-colors"
                   data-testid={`hero-widget-${widget.id}`}
                 >
                   <IconComp className="w-3.5 h-3.5 text-white/80" />
                   <span className="font-medium text-white">{widget.title}</span>
                   {count > 0 && (
-                    <span className="ml-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-white/25 text-[10px] font-bold text-white px-1" data-testid={`hero-widget-count-${widget.id}`}>
+                    <span className="ml-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-card/25 text-[10px] font-bold text-white px-1" data-testid={`hero-widget-count-${widget.id}`}>
                       {count > 99 ? '99+' : count}
                     </span>
                   )}

@@ -191,11 +191,11 @@ interface PayrollCalculation {
 }
 
 function formatCurrency(value: number): string {
-  return (value / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (Number(value ?? 0) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatPercent(value: number): string {
-  return (value / 10).toFixed(1);
+  return (Number(value ?? 0) / 10).toFixed(1);
 }
 
 const MONTHS = [
@@ -1108,7 +1108,7 @@ export default function Muhasebe() {
                     <CardContent>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Oran:</span>
-                        <span className="font-medium">Binde {(currentYearParams.stampTaxRate / 100).toFixed(2)}</span>
+                        <span className="font-medium">Binde {(Number(currentYearParams?.stampTaxRate ?? 0) / 100).toFixed(2)}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
                         Asgari ücret tutarına kadar istisna uygulanır
@@ -1495,7 +1495,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={(editingParam.minimumWageGross / 100).toFixed(2)}
+                    value={(Number(editingParam?.minimumWageGross ?? 0) / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, minimumWageGross: Math.round(parseFloat(e.target.value || "0") * 100) })}
                     data-testid="input-edit-min-wage-gross"
                   />
@@ -1505,7 +1505,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={(editingParam.minimumWageNet / 100).toFixed(2)}
+                    value={(Number(editingParam?.minimumWageNet ?? 0) / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, minimumWageNet: Math.round(parseFloat(e.target.value || "0") * 100) })}
                     data-testid="input-edit-min-wage-net"
                   />
@@ -1520,7 +1520,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.1"
-                    value={(editingParam.sgkEmployeeRate / 10).toFixed(1)}
+                    value={(Number(editingParam?.sgkEmployeeRate ?? 0) / 10).toFixed(1)}
                     onChange={(e) => setEditingParam({ ...editingParam, sgkEmployeeRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
                     data-testid="input-edit-sgk-employee"
                   />
@@ -1530,7 +1530,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.1"
-                    value={(editingParam.sgkEmployerRate / 10).toFixed(1)}
+                    value={(Number(editingParam?.sgkEmployerRate ?? 0) / 10).toFixed(1)}
                     onChange={(e) => setEditingParam({ ...editingParam, sgkEmployerRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
                     data-testid="input-edit-sgk-employer"
                   />
@@ -1540,7 +1540,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.1"
-                    value={(editingParam.unemploymentEmployeeRate / 10).toFixed(1)}
+                    value={(Number(editingParam?.unemploymentEmployeeRate ?? 0) / 10).toFixed(1)}
                     onChange={(e) => setEditingParam({ ...editingParam, unemploymentEmployeeRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
                     data-testid="input-edit-unemployment-employee"
                   />
@@ -1550,7 +1550,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.1"
-                    value={(editingParam.unemploymentEmployerRate / 10).toFixed(1)}
+                    value={(Number(editingParam?.unemploymentEmployerRate ?? 0) / 10).toFixed(1)}
                     onChange={(e) => setEditingParam({ ...editingParam, unemploymentEmployerRate: Math.round(parseFloat(e.target.value || "0") * 10) })}
                     data-testid="input-edit-unemployment-employer"
                   />
@@ -1565,7 +1565,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={(editingParam.stampTaxRate / 100).toFixed(2)}
+                    value={(Number(editingParam?.stampTaxRate ?? 0) / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, stampTaxRate: Math.round(parseFloat(e.target.value || "0") * 100) })}
                     data-testid="input-edit-stamp-tax"
                   />
@@ -1681,7 +1681,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={(editingParam.mealAllowanceTaxExemptDaily / 100).toFixed(2)}
+                    value={(Number(editingParam?.mealAllowanceTaxExemptDaily ?? 0) / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, mealAllowanceTaxExemptDaily: Math.round(parseFloat(e.target.value || "0") * 100) })}
                     data-testid="input-edit-meal-tax"
                   />
@@ -1691,7 +1691,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={(editingParam.mealAllowanceSgkExemptDaily / 100).toFixed(2)}
+                    value={(Number(editingParam?.mealAllowanceSgkExemptDaily ?? 0) / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, mealAllowanceSgkExemptDaily: Math.round(parseFloat(e.target.value || "0") * 100) })}
                     data-testid="input-edit-meal-sgk"
                   />
@@ -1701,7 +1701,7 @@ export default function Muhasebe() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={(editingParam.transportAllowanceExemptDaily / 100).toFixed(2)}
+                    value={(Number(editingParam?.transportAllowanceExemptDaily ?? 0) / 100).toFixed(2)}
                     onChange={(e) => setEditingParam({ ...editingParam, transportAllowanceExemptDaily: Math.round(parseFloat(e.target.value || "0") * 100) })}
                     data-testid="input-edit-transport"
                   />

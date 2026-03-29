@@ -142,7 +142,7 @@ export function ModernMegaModuleCard({
         color.includes("from-") ? color : `from-${color.replace('bg-', '')} to-${color.replace('bg-', '')}/80`
       )}>
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-white/20 backdrop-blur-sm">
+          <div className="p-2.5 rounded-xl bg-card/20 backdrop-blur-sm">
             <Icon className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -152,7 +152,7 @@ export function ModernMegaModuleCard({
         </div>
         
         {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute top-0 right-0 w-20 h-20 bg-card/10 rounded-full blur-2xl" />
       </div>
       
       {/* Footer with arrow */}

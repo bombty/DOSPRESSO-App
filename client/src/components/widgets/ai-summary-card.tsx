@@ -46,7 +46,7 @@ export function AISummaryCard() {
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-card/20 flex items-center justify-center">
             <Brain className="w-4 h-4" />
           </div>
           <span className="font-semibold text-sm">AI Control Tower</span>
@@ -76,12 +76,12 @@ export function AISummaryCard() {
               ) : avgHealth === 0 ? (
                 <>
                   <p className="text-lg font-bold">0%</p>
-                  <Badge variant="secondary" className="text-[8px] h-4 bg-white/20 text-white/60 border-0">Henüz değerlendirme yok</Badge>
+                  <Badge variant="secondary" className="text-[8px] h-4 bg-card/20 text-white/60 border-0">Henüz değerlendirme yok</Badge>
                 </>
               ) : (
                 <>
                   <p className="text-lg font-bold">{avgHealth}%</p>
-                  {avgHealth >= 80 && <Badge variant="secondary" className="text-[8px] h-4 bg-white/20 text-white border-0">İyi</Badge>}
+                  {avgHealth >= 80 && <Badge variant="secondary" className="text-[8px] h-4 bg-card/20 text-white border-0">İyi</Badge>}
                 </>
               )}
             </div>

@@ -36,8 +36,8 @@ export function WelcomeHero() {
       data-testid="welcome-hero"
     >
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+      <div className="absolute top-0 right-0 w-40 h-40 bg-card/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-card/5 rounded-full translate-y-1/2 -translate-x-1/2" />
       
       {/* Illustration */}
       <div className="absolute right-4 bottom-0 opacity-20">
@@ -64,7 +64,7 @@ export function WelcomeHero() {
         <p className="text-sm text-white/70">{formatDate()}</p>
         
         <div className="mt-4 flex items-center gap-2">
-          <div className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-xs font-medium">
+          <div className="px-3 py-1.5 rounded-full bg-card/20 backdrop-blur-sm text-xs font-medium">
             <Coffee className="w-3 h-3 inline mr-1" />
             DOSPRESSO
           </div>
