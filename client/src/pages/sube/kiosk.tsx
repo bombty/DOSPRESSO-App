@@ -891,7 +891,7 @@ export default function BranchKiosk() {
         case 'late': return 'bg-red-600 border-red-400';
         case 'missing': return 'bg-red-700 border-red-500';
         case 'scheduled': return 'bg-blue-950/60 border-blue-400/50 dark:bg-blue-950/40';
-        case 'off': return 'bg-purple-950/40 border-purple-500/40';
+        case 'off': return 'bg-white/4 border-white/10 opacity-50';
         default: return 'bg-[#0f1d32] border-white/8';
       }
     };
@@ -902,7 +902,7 @@ export default function BranchKiosk() {
         case 'on_break': return 'bg-amber-500/20 text-amber-400';
         case 'late': case 'missing': return 'bg-white/20 text-white';
         case 'scheduled': return 'bg-blue-500/20 text-blue-400';
-        case 'off': return 'bg-purple-500/20 text-purple-400';
+        case 'off': return 'bg-white/8 text-white/30';
         default: return 'bg-white/6 text-white/30';
       }
     };
@@ -912,7 +912,7 @@ export default function BranchKiosk() {
       if (status === 'active') return 'text-green-100';
       if (status === 'on_break') return 'text-amber-100';
       if (status === 'scheduled') return 'text-blue-100';
-      if (status === 'off') return 'text-purple-200';
+      if (status === 'off') return 'text-white/30';
       return 'text-white/30';
     };
 
@@ -923,7 +923,7 @@ export default function BranchKiosk() {
       if (s === 'late') return { text: `${staff.lateMinutes}dk geç!`, color: 'text-red-200 font-semibold' };
       if (s === 'missing') return { text: 'Gelmedi!', color: 'text-red-200 font-semibold' };
       if (s === 'scheduled' && staff.shiftStartTime) return { text: staff.shiftStartTime.slice(0,5) + "'de", color: 'text-blue-400' };
-      if (s === 'off') return { text: 'İzinli', color: 'text-purple-400' };
+      if (s === 'off') return { text: 'İzinli', color: 'text-white/25' };
       return { text: '', color: 'text-white/20' };
     };
 
@@ -932,7 +932,7 @@ export default function BranchKiosk() {
       if (status === 'on_break') return 'bg-amber-400';
       if (status === 'late' || status === 'missing') return 'bg-red-300';
       if (status === 'scheduled') return 'bg-blue-400';
-      if (status === 'off') return 'bg-purple-400';
+      if (status === 'off') return 'bg-white/20';
       return 'bg-white/20';
     };
 
@@ -977,7 +977,7 @@ export default function BranchKiosk() {
               {onBreakCount > 0 && <span className="flex items-center gap-1 text-amber-300"><span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block"/> {onBreakCount} mola</span>}
               {scheduledCount > 0 && <span className="flex items-center gap-1 text-blue-300"><span className="h-1.5 w-1.5 rounded-full bg-blue-400 inline-block"/> {scheduledCount} bekliyor</span>}
               {lateCount > 0 && <span className="flex items-center gap-1 text-red-300"><span className="h-1.5 w-1.5 rounded-full bg-red-400 inline-block"/> {lateCount} gecikmeli</span>}
-              {offCount > 0 && <span className="flex items-center gap-1 text-purple-300"><span className="h-1.5 w-1.5 rounded-full bg-purple-400 inline-block"/> {offCount} izinli</span>}
+              {offCount > 0 && <span className="flex items-center gap-1 text-white/40"><span className="h-1.5 w-1.5 rounded-full bg-white/30 inline-block"/> {offCount} izinli</span>}
             </div>
           </div>
         </div>
