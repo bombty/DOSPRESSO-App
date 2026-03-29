@@ -912,298 +912,197 @@ export default function BranchKiosk() {
       </Card>
     </div>
   );
+
   const renderSelectUserStep = () => {
     const staffList2: any[] = lobbyData?.staff || staffList;
-    const activeCount = staffList2.filter((s: any) => s.shiftStatus === 'active').length;
-    const onBreakCount = staffList2.filter((s: any) => s.shiftStatus === 'on_break').length;
-    const scheduledCount = staffList2.filter((s: any) => s.shiftStatus === 'scheduled').length;
-    const lateCount = staffList2.filter((s: any) => s.shiftStatus === 'late' || s.shiftStatus === 'missing').length;
-    const offCount = staffList2.filter((s: any) => s.shiftStatus === 'off').length;
-
-    const cardStyle = (status: string) => {
-      switch (status) {
-        case 'active': return 'bg-green-950/60 border-green-500/60 dark:bg-green-950/40';
-        case 'on_break': return 'bg-amber-950/60 border-amber-400/60 dark:bg-amber-950/40';
-        case 'late': return 'bg-red-600 border-red-400';
-        case 'missing': return 'bg-red-700 border-red-500';
-        case 'scheduled': return 'bg-blue-950/60 border-blue-400/50 dark:bg-blue-950/40';
-        case 'off': return 'bg-white/4 border-white/10 opacity-50';
-        default: return 'bg-[#0f1d32] border-white/8';
-      }
-    };
-
-    const avatarStyle = (status: string) => {
-      switch (status) {
-        case 'active': return 'bg-green-500/20 text-green-400';
-        case 'on_break': return 'bg-amber-500/20 text-amber-400';
-        case 'late': case 'missing': return 'bg-white/20 text-white';
-        case 'scheduled': return 'bg-blue-500/20 text-blue-400';
-        case 'off': return 'bg-white/8 text-white/30';
-        default: return 'bg-white/6 text-white/30';
-      }
-    };
-
-    const nameColor = (status: string) => {
-      if (status === 'late' || status === 'missing') return 'text-white';
-      if (status === 'active') return 'text-green-100';
-      if (status === 'on_break') return 'text-amber-100';
-      if (status === 'scheduled') return 'text-blue-100';
-      if (status === 'off') return 'text-white/30';
-      return 'text-white/30';
-    };
-
-    const statusLabel2 = (staff: any) => {
-      const s = staff.shiftStatus;
-      if (s === 'active') return { text: 'Çalışıyor', color: 'text-green-400' };
-      if (s === 'on_break') return { text: 'Molada', color: 'text-amber-400' };
-      if (s === 'late') return { text: `${staff.lateMinutes}dk geç!`, color: 'text-red-200 font-semibold' };
-      if (s === 'missing') return { text: 'Gelmedi!', color: 'text-red-200 font-semibold' };
-      if (s === 'scheduled' && staff.shiftStartTime) return { text: staff.shiftStartTime.slice(0,5) + "'de", color: 'text-blue-400' };
-      if (s === 'off') return { text: 'İzinli', color: 'text-white/25' };
-      return { text: '', color: 'text-white/20' };
-    };
-
-    const dotColor = (status: string) => {
-      if (status === 'active') return 'bg-green-500';
-      if (status === 'on_break') return 'bg-amber-400';
-      if (status === 'late' || status === 'missing') return 'bg-red-300';
-      if (status === 'scheduled') return 'bg-blue-400';
-      if (status === 'off') return 'bg-white/20';
-      return 'bg-white/20';
-    };
-
+    const active = staffList2.filter((s: any) => s.shiftStatus === 'active');
+    const onBreak = staffList2.filter((s: any) => s.shiftStatus === 'on_break');
+    const late = staffList2.filter((s: any) => s.shiftStatus === 'late' || s.shiftStatus === 'missing');
+    const scheduled = staffList2.filter((s: any) => s.shiftStatus === 'scheduled');
+    const offAll = staffList2.filter((s: any) => s.shiftStatus === 'off' || !s.shiftStatus || s.shiftStatus === 'not_scheduled');
+    const activeAndBreak = [...active, ...onBreak];
     const now2 = new Date();
     const todayStart = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), 8, 0);
     const todayEnd = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), 22, 0);
     const totalMs = todayEnd.getTime() - todayStart.getTime();
-
-    const timeToPercent = (timeStr: string) => {
+    const pct = (timeStr: string) => {
       const [h, m] = timeStr.split(':').map(Number);
       const t = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), h, m);
       return Math.max(0, Math.min(100, ((t.getTime() - todayStart.getTime()) / totalMs) * 100));
     };
-
-    const nowPercent = Math.max(0, Math.min(100, ((now2.getTime() - todayStart.getTime()) / totalMs) * 100));
-    const timeLabels = ['08', '10', '12', '14', '16', '18', '20', '22'];
-
-    const timeStr = now2.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = now2.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-    // Timeline kişileri: vardiyası olanlar + aktif çalışanlar
-    const timelineStaff = staffList2.filter((s: any) =>
-      s.shiftStartTime || s.shiftStatus === 'active' || s.shiftStatus === 'on_break'
-    ).slice(0, 6);
-
-    return (
-      <div className="flex flex-col h-screen bg-[#0a1628] overflow-hidden">
-
-        {/* Header */}
-        <div className="bg-[#c0392b] px-4 py-2.5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <Store className="h-5 w-5 text-white shrink-0" />
-            <div>
-              <p className="text-white font-bold text-base leading-tight">{branchAuth?.name || 'Şube Kiosk'}</p>
-              <p className="text-white/60 text-[11px]">{dateStr}</p>
-            </div>
+    const nowPct = Math.max(0, Math.min(100, ((now2.getTime() - todayStart.getTime()) / totalMs) * 100));
+    const timeStr2 = now2.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr2 = now2.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const handlePerson = (staff: any) => {
+      setSelectedUser(staff);
+      setStep('enter-pin');
+      if (!staff.hasPin) toast({ title: "PIN Tanımlı Değil", description: "Yöneticinizden PIN tanımlamasını isteyin.", variant: "destructive" });
+    };
+    const gridLines = [12.5, 25, 37.5, 50, 62.5, 75, 87.5].map(p => (
+      <div key={p} style={{ position: 'absolute', top: 0, bottom: 0, left: `${p}%`, width: '0.5px', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
+    ));
+    const NowLine = () => <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${nowPct}%`, width: 2, background: '#ef4444', zIndex: 3 }} />;
+    const pbStyle = (s: string): React.CSSProperties => ({
+      width: 154, height: 34, flexShrink: 0 as const, borderRadius: 8, padding: '0 8px',
+      display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', border: 'none',
+      ...(s === 'active' ? { background: '#1a6b2e', boxShadow: '0 0 0 1px rgba(74,222,128,0.4)' } :
+         s === 'on_break' ? { background: '#7a4a0a', boxShadow: '0 0 0 1px rgba(251,191,36,0.4)' } :
+         s === 'late' || s === 'missing' ? { background: '#8b1c1c', boxShadow: '0 0 0 1px rgba(248,113,113,0.5)' } :
+         s === 'scheduled' ? { background: '#1a3a6b', boxShadow: '0 0 0 1px rgba(147,197,253,0.4)' } :
+         { background: '#1e2a38', boxShadow: '0 0 0 1px rgba(255,255,255,0.12)' })
+    });
+    const statusColor = (s: string) => s === 'active' ? '#86efac' : s === 'on_break' ? '#fde68a' : s === 'late' || s === 'missing' ? '#fca5a5' : s === 'scheduled' ? '#bfdbfe' : 'rgba(255,255,255,0.35)';
+    const statusTxt = (staff: any) => {
+      const s = staff.shiftStatus;
+      if (s === 'active') return 'Çalışıyor';
+      if (s === 'on_break') return `Molada${staff.lateMinutes ? ` · ${staff.lateMinutes}dk` : ''}`;
+      if (s === 'late') return `${staff.lateMinutes}dk geç!`;
+      if (s === 'missing') return 'Gelmedi!';
+      if (s === 'scheduled' && staff.shiftStartTime) return `${staff.shiftStartTime.slice(0,5)}-${staff.shiftEndTime?.slice(0,5)||'?'}`;
+      return 'Izinli';
+    };
+    const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, marginBottom: 3 }}>
+        <button style={pbStyle(staff.shiftStatus || 'off')} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, flexShrink: 0 }}>
+            {staff.firstName?.[0]}{staff.lastName?.[0]}
           </div>
-          <div className="flex items-center gap-3 text-[11px] font-mono">
-            <span className="text-white/80">{timeStr}</span>
-            <div className="flex items-center gap-2">
-              {activeCount > 0 && <span className="flex items-center gap-1 text-green-300"><span className="h-1.5 w-1.5 rounded-full bg-green-400 inline-block"/>  {activeCount} aktif</span>}
-              {onBreakCount > 0 && <span className="flex items-center gap-1 text-amber-300"><span className="h-1.5 w-1.5 rounded-full bg-amber-400 inline-block"/> {onBreakCount} mola</span>}
-              {scheduledCount > 0 && <span className="flex items-center gap-1 text-blue-300"><span className="h-1.5 w-1.5 rounded-full bg-blue-400 inline-block"/> {scheduledCount} bekliyor</span>}
-              {lateCount > 0 && <span className="flex items-center gap-1 text-red-300"><span className="h-1.5 w-1.5 rounded-full bg-red-400 inline-block"/> {lateCount} gecikmeli</span>}
-              {offCount > 0 && <span className="flex items-center gap-1 text-white/40"><span className="h-1.5 w-1.5 rounded-full bg-white/30 inline-block"/> {offCount} izinli</span>}
-            </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 500, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
+            <div style={{ fontSize: 8, color: statusColor(staff.shiftStatus || 'off'), whiteSpace: 'nowrap' }}>{statusTxt(staff)}</div>
+          </div>
+        </button>
+        <div style={{ flex: 1, height: 34, background: 'rgba(255,255,255,0.04)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
+          {gridLines}{bar}
+        </div>
+      </div>
+    );
+    const SecHead = ({ label, count, color, bg }: any) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0 5px' }}>
+        <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
+        <span style={{ fontSize: 11, fontWeight: 500, color, whiteSpace: 'nowrap' }}>{label}</span>
+        <span style={{ fontSize: 9, padding: '1px 7px', borderRadius: 10, fontWeight: 500, background: bg, color }}>{count}</span>
+        <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
+      </div>
+    );
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0c1a2e', overflow: 'hidden' }}>
+        <div style={{ background: '#c0392b', padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div>
+            <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>{branchAuth?.name || 'Sube Kiosk'}</div>
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{dateStr2} - {timeStr2}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+            {activeAndBreak.length > 0 && <span style={{ color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />{active.length} aktif{onBreak.length > 0 ? ` - ${onBreak.length} mola` : ''}</span>}
+            {late.length > 0 && <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />{late.length} gecikmeli</span>}
+            {scheduled.length > 0 && <span style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93c5fd', display: 'inline-block' }} />{scheduled.length} bekliyor</span>}
+            {offAll.length > 0 && <span style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'inline-block' }} />{offAll.length} izinli</span>}
           </div>
         </div>
-
-        {/* Ana içerik — 2 kolon */}
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* SOL — Personel kartları + timeline */}
-          <div className="flex-1 overflow-y-auto p-3">
-            <p className="text-[10px] text-white/30 mb-2.5 font-medium text-center">Kartına tıkla → PIN gir</p>
-
-            {/* Personel grid */}
-            {loadingStaff ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#c0392b]" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
-                {staffList2.map((staff: any) => {
-                  const lbl = statusLabel2(staff);
-                  return (
-                    <div
-                      key={staff.id}
-                      className={`rounded-xl border p-2 flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition-transform select-none ${cardStyle(staff.shiftStatus || 'not_scheduled')}`}
-                      onClick={() => {
-                        setSelectedUser(staff);
-                        setStep('enter-pin');
-                        if (!staff.hasPin) toast({ title: "PIN Tanımlı Değil", description: "Yöneticinizden PIN tanımlamasını isteyin.", variant: "destructive" });
-                      }}
-                      data-testid={`staff-card-${staff.id}`}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={staff.profileImageUrl || undefined} />
-                          <AvatarFallback className={`text-xs font-medium ${avatarStyle(staff.shiftStatus || 'not_scheduled')}`}>
-                            {staff.firstName?.[0]}{staff.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0a1628] ${dotColor(staff.shiftStatus || 'not_scheduled')}`} />
-                      </div>
-                      <p className={`text-[10px] font-medium text-center leading-tight ${nameColor(staff.shiftStatus || 'not_scheduled')}`}>
-                        {staff.firstName} {staff.lastName?.[0]}.
-                      </p>
-                      <p className={`text-[9px] leading-none ${lbl.color}`}>{lbl.text}</p>
-                      {staff.shiftStartTime && (
-                        <p className={`text-[9px] leading-none ${staff.shiftStatus === 'late' || staff.shiftStatus === 'missing' ? 'text-red-200/70' : 'text-white/25'}`}>
-                          {staff.shiftStartTime.slice(0,5)}–{staff.shiftEndTime?.slice(0,5) || '?'}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Vardiya timeline */}
-            {timelineStaff.length > 0 && (
-              <div className="bg-[#0f1d32] rounded-lg p-3 border border-white/6">
-                <p className="text-[9px] text-white/30 font-medium uppercase tracking-wider mb-2">Vardiya zaman çizelgesi</p>
-                {/* Saat eksen */}
-                <div className="flex justify-between mb-1.5 pl-16">
-                  {timeLabels.map(t => <span key={t} className="text-[8px] text-white/20">{t}</span>)}
-                </div>
-                {/* Şu an çizgisi ve satırlar */}
-                <div className="space-y-1.5">
-                  {timelineStaff.map((staff: any) => (
-                    <div key={staff.id} className="flex items-center gap-2">
-                      <p className="text-[9px] text-white/40 w-14 flex-shrink-0 truncate">{staff.firstName} {staff.lastName?.[0]}.</p>
-                      <div className="flex-1 h-4 bg-white/4 rounded-sm relative overflow-hidden">
-                        {/* Şu an çizgisi */}
-                        <div className="absolute top-0 bottom-0 w-px bg-red-500/80 z-10" style={{left: `${nowPercent}%`}} />
-                        {/* Çalışılan süre */}
-                        {staff.checkInTime && (
-                          <div className="absolute top-0 bottom-0 bg-green-500/40 rounded-sm"
-                            style={{
-                              left: `${timeToPercent(new Date(staff.checkInTime).toTimeString().slice(0,5))}%`,
-                              width: `${Math.max(1, nowPercent - timeToPercent(new Date(staff.checkInTime).toTimeString().slice(0,5)))}%`
-                            }} />
-                        )}
-                        {/* Planlanan vardiya */}
-                        {staff.shiftStartTime && staff.shiftEndTime && (
-                          <div className={`absolute top-0 bottom-0 rounded-sm border ${
-                            staff.shiftStatus === 'active' || staff.shiftStatus === 'on_break'
-                              ? 'border-green-500/30 bg-transparent'
-                              : staff.shiftStatus === 'late' || staff.shiftStatus === 'missing'
-                              ? 'bg-red-500/25 border-red-400/40'
-                              : 'bg-blue-500/20 border-blue-400/30 border-dashed'
-                          }`}
-                            style={{
-                              left: `${timeToPercent(staff.shiftStartTime)}%`,
-                              width: `${Math.max(1, timeToPercent(staff.shiftEndTime) - timeToPercent(staff.shiftStartTime))}%`
-                            }} />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* Legand */}
-                <div className="flex gap-3 mt-2">
-                  {[
-                    { color: 'bg-green-500/40', label: 'Çalışıldı' },
-                    { color: 'bg-blue-500/20 border border-blue-400/30 border-dashed', label: 'Planlı' },
-                    { color: 'bg-red-500/25', label: 'Gecikmeli' },
-                    { color: 'bg-red-500/80 w-px', label: 'Şu an' },
-                  ].map(l => (
-                    <div key={l.label} className="flex items-center gap-1">
-                      <div className={`h-2 w-3 rounded-sm ${l.color}`} />
-                      <span className="text-[8px] text-white/25">{l.label}</span>
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 220px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: 1, padding: '10px 14px 6px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', paddingLeft: 162, marginBottom: 7 }}>
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
+                  {['08','10','12','14','16','18','20','22'].map(t => (
+                    <div key={t} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <div style={{ width: 1, height: 6, background: 'rgba(255,255,255,0.2)' }} />
+                      <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{t}</span>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+              {activeAndBreak.length > 0 && (<>
+                <SecHead label="Aktif & molada" count={activeAndBreak.length} color="#4ade80" bg="rgba(34,197,94,0.15)" />
+                {activeAndBreak.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
+                  <NowLine />
+                  {staff.checkInTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(new Date(staff.checkInTime).toTimeString().slice(0,5))}%`, width: `${Math.max(1, nowPct - pct(new Date(staff.checkInTime).toTimeString().slice(0,5)))}%`, background: 'rgba(34,197,94,0.4)', borderRadius: 3 }} />}
+                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.15)', border: '0.5px dashed rgba(147,197,253,0.4)', borderRadius: 3 }} />}
+                </>} />))}
+              </>)}
+              {late.length > 0 && (<>
+                <SecHead label="Gecikmeli" count={late.length} color="#f87171" bg="rgba(239,68,68,0.2)" />
+                {late.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
+                  <NowLine />
+                  {staff.shiftStartTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, nowPct - pct(staff.shiftStartTime))}%`, background: 'rgba(239,68,68,0.4)', borderRadius: 3, display: 'flex', alignItems: 'center', paddingLeft: 4 }}><span style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)' }}>gelmedi</span></div>}
+                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${nowPct}%`, width: `${Math.max(0, pct(staff.shiftEndTime) - nowPct)}%`, background: 'rgba(59,130,246,0.15)', border: '0.5px dashed rgba(147,197,253,0.4)', borderRadius: 3 }} />}
+                </>} />))}
+              </>)}
+              {scheduled.length > 0 && (<>
+                <SecHead label="Sonraki vardiya" count={scheduled.length} color="#93c5fd" bg="rgba(59,130,246,0.15)" />
+                {scheduled.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
+                  <NowLine />
+                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.22)', border: '0.5px dashed rgba(147,197,253,0.45)', borderRadius: 3 }} />}
+                </>} />))}
+              </>)}
+              {offAll.length > 0 && (<>
+                <SecHead label="Izinli bugun" count={offAll.length} color="rgba(255,255,255,0.45)" bg="rgba(255,255,255,0.08)" />
+                {offAll.slice(0,2).map(staff => (<div key={staff.id} style={{ opacity: 0.5 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
+                {offAll.length > 2 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 28, opacity: 0.4, marginBottom: 3 }}>
+                    <div style={{ width: 154, height: 28, flexShrink: 0, borderRadius: 8, padding: '0 8px', display: 'flex', alignItems: 'center', gap: 7, border: '1px dashed rgba(255,255,255,0.12)', background: '#1e2a38' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500 }}>+{offAll.length - 2}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{offAll.length - 2} kisi daha</div>
+                    </div>
+                    <div style={{ flex: 1, height: 28, background: 'rgba(255,255,255,0.02)', borderRadius: 5 }} />
+                  </div>
+                )}
+              </>)}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, paddingBottom: 4 }}>
+                {[{c:'rgba(34,197,94,0.4)',l:'Calisildi'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planli',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
+                  <div key={x.l} style={{ display:'flex',alignItems:'center',gap:3 }}>
+                    <div style={{ width:9,height:6,borderRadius:2,background:x.c,...(x.d?{border:'0.5px dashed rgba(147,197,253,0.5)'}:{}) }} />
+                    <span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>{x.l}</span>
+                  </div>
+                ))}
+                <div style={{ display:'flex',alignItems:'center',gap:3 }}><div style={{ width:2,height:10,background:'#ef4444' }}/><span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>Su an</span></div>
+              </div>
+            </div>
+            <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.07)', padding: '6px 14px', textAlign: 'right', flexShrink: 0 }}>
+              <button onClick={resetKiosk} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan cik</button>
+            </div>
           </div>
-
-          {/* SAĞ — QR üstte, bildirimler + duyurular altta */}
-          <div className="w-64 shrink-0 border-l border-white/7 bg-[#0f1d32] flex flex-col overflow-hidden">
-
-            {/* QR Kod — üstte */}
-            <div className="border-b border-white/7 p-3 flex flex-col items-center gap-2">
-              <p className="text-[10px] text-white/40 font-medium">Telefonunla tara</p>
+          <div style={{ borderLeft: '0.5px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ borderBottom: '0.5px solid rgba(255,255,255,0.07)', padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Telefonunla tara</div>
               {displayQr ? (
-                <div className="bg-white p-2 rounded-lg border-2 border-[#c0392b]/20">
-                  <QRCodeSVG value={JSON.stringify(displayQr)} size={120} level="M" />
+                <div style={{ background: '#fff', borderRadius: 8, padding: 7, width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <QRCodeSVG value={JSON.stringify(displayQr)} size={74} level="M" />
                 </div>
               ) : (
-                <div className="w-[136px] h-[136px] bg-white/5 rounded-lg flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-white/20" />
+                <div style={{ width: 90, height: 90, background: 'rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               )}
-              <p className="text-[9px] text-white/20 text-center">Vardiya · Mola · Çıkış<br/>45sn'de yenilenir</p>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.5 }}>Vardiya - Mola - Cikis<br/>45sn yenilenir</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>veya ismine tikla PIN</div>
             </div>
-
-            {/* Bildirimler + Duyurular — altta */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {lobbyData?.announcements?.length > 0 && (
-                <>
-                  <p className="text-[9px] text-white/30 font-semibold uppercase tracking-wider">Duyurular</p>
-                  {lobbyData.announcements.slice(0, 3).map((ann: any) => (
-                    <div key={`ann-${ann.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                      <Megaphone className="h-3 w-3 text-blue-400 shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-blue-100 leading-tight font-medium">{ann.title}</p>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {lateCount > 0 && (
-                <>
-                  <p className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mt-1">Uyarılar</p>
-                  {staffList2.filter((s: any) => s.shiftStatus === 'late' || s.shiftStatus === 'missing').map((s: any) => (
-                    <div key={`late-${s.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-red-500/15 border border-red-500/30">
-                      <AlertTriangle className="h-3 w-3 text-red-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[11px] text-red-200 font-medium">{s.firstName} {s.lastName}</p>
-                        <p className="text-[9px] text-red-300/70">{s.shiftStatus === 'missing' ? 'Gelmedi' : `${s.lateMinutes}dk geç`}</p>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {lobbyData?.notifications?.length > 0 && (
-                <>
-                  <p className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mt-1">Bildirimler</p>
-                  {lobbyData.notifications.slice(0, 3).map((n: any) => (
-                    <div key={`notif-${n.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                      <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-[11px] text-amber-100 font-medium">{n.title}</p>
-                        {n.message && <p className="text-[9px] text-amber-200/50 line-clamp-2 mt-0.5">{n.message}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {!lobbyData?.announcements?.length && !lobbyData?.notifications?.length && lateCount === 0 && (
-                <div className="flex flex-col items-center justify-center h-20 text-white/20">
-                  <Bell className="h-5 w-5 mb-1 opacity-30" />
-                  <p className="text-[10px]">Bildirim yok</p>
-                </div>
-              )}
-            </div>
-
-            {/* Alt bar */}
-            <div className="border-t border-white/7 px-3 py-2">
-              <Button variant="ghost" size="sm" className="text-white/30 hover:text-white text-[10px] w-full" onClick={resetKiosk} data-testid="button-back">
-                <ChevronLeft className="h-3 w-3 mr-1" /> Kiosk'tan Çık
-              </Button>
+            <div style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto' }}>
+              {lobbyData?.announcements?.length > 0 && (<>
+                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duyurular</p>
+                {lobbyData.announcements.slice(0,3).map((ann: any) => (
+                  <div key={`ann-${ann.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(59,130,246,0.1)', borderLeft: '2px solid #3b82f6' }}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{ann.title}</div>
+                  </div>
+                ))}
+              </>)}
+              {late.length > 0 && (<>
+                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Uyarilar</p>
+                {late.map((s: any) => (
+                  <div key={`late-${s.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(239,68,68,0.12)', borderLeft: '2px solid #ef4444' }}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{s.firstName} {s.lastName}</div>
+                    <div style={{ fontSize: 9, color: '#fca5a5', marginTop: 1 }}>{s.shiftStatus === 'missing' ? 'Gelmedi' : `${s.lateMinutes}dk gec`}</div>
+                  </div>
+                ))}
+              </>)}
+              {lobbyData?.notifications?.length > 0 && (<>
+                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Bildirimler</p>
+                {lobbyData.notifications.slice(0,3).map((n: any) => (
+                  <div key={`notif-${n.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(245,158,11,0.1)', borderLeft: '2px solid #f59e0b' }}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{n.title}</div>
+                  </div>
+                ))}
+              </>)}
             </div>
           </div>
         </div>
