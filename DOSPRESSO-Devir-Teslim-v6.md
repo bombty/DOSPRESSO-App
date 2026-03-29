@@ -402,3 +402,110 @@ Bu oturumda Replit 3 kritik runtime hata yakaladı:
 
 Şunu yaz:
 > "DOSPRESSO Sprint 4b devam. Son commit: 14eaeb80 (34 commit). Şube kiosk'a açık görev + bildirim + ekip durumu ekle. Önce skill dosyalarını oku, sonra sube/kiosk.tsx ve branch-tasks.ts'i incele. Backend endpoint'leri hazır — sadece frontend entegrasyonu lazım."
+
+---
+
+# 13. SCHEDULER JOB'LARI (37 aktif)
+
+| Job | Sıklık | İşlev |
+|-----|--------|-------|
+| master-tick-10min | 10 dk | Orphaned shift kapanma + PDKS kontrol |
+| tick-1hr | 1 saat | Arıza escalation + stok uyarı |
+| factory-scoring-daily | Günlük 02:00 | Fabrika çalışan skorları hesapla |
+| factory-scoring-weekly | Pazartesi 03:00 | Haftalık fabrika skorları |
+| task-delivery | 10 dk | Açık görev oluşturma/dağıtım |
+| skt-expiry | 1 saat | Son kullanma tarihi kontrolü |
+| gap-detection-daily | Günlük | Eksik veri tespiti |
+| notification-cleanup-daily | Günlük | Eski bildirimleri temizle |
+| pdks-auto-weekend-offs | 10 dk | Hafta sonu programlı izin |
+| pdks-weekly-summary | Haftalık | PDKS haftalık özet |
+| pdks-daily-absence | Günlük | Devamsızlık tespiti |
+| pdks-monthly-payroll | Aylık | Bordro hesaplama |
+| agent-scheduler | Sürekli | Mr. Dobody 31 skill çalıştırma |
+
+# 14. SCHEMA DOSYA HARİTASI
+
+| Dosya | Tablo | İçerik |
+|-------|-------|--------|
+| schema-01.ts | 2 | Temel session/config |
+| schema-02.ts | 19 | Users, branches, roles, permissions |
+| schema-03.ts | 36 | Tasks, checklists, notifications |
+| schema-04.ts | 36 | CRM, customer_feedback, campaigns |
+| schema-05.ts | 36 | HR: employees, documents, disciplinary |
+| schema-06.ts | 36 | HR: leave, onboarding, satisfaction |
+| schema-07.ts | 30 | Inventory, suppliers, purchase orders |
+| schema-08.ts | 35 | Factory: stations, sessions, outputs, QC, scoring |
+| schema-09.ts | 27 | Kiosk settings, PDKS, shifts, attendance |
+| schema-10.ts | 42 | Recipes, production records, lots, shipments |
+| schema-11.ts | 42 | Academy, career, quizzes, webinars |
+| schema-12.ts | 52 | Agent: skills, actions, routing, escalation |
+| schema-13.ts | 6 | Knowledge base, FAQ |
+| schema-14.ts | 1 | Relations (Drizzle) |
+| schema-15.ts | 8 | Ajanda/calendar |
+| schema-16.ts | 2 | Financial |
+| schema-17.ts | 3 | Monthly snapshots |
+| schema-18.ts | 5 | Production planning |
+
+# 15. ENVIRONMENT DEĞİŞKENLERİ
+
+```
+DATABASE_URL          — PostgreSQL (Neon) bağlantı
+PORT                  — Express port (default 5000)
+NODE_ENV              — production/development
+SMTP_HOST             — Email sunucu
+SMTP_PORT             — Email port
+SMTP_USER             — Email kullanıcı
+SMTP_PASSWORD         — Email şifre
+SMTP_FROM_EMAIL       — Gönderici adres
+VAPID_PUBLIC_KEY      — Web push public key
+VAPID_PRIVATE_KEY     — Web push private key
+ADMIN_BOOTSTRAP_PASSWORD — İlk admin şifresi
+REPLIT_DEPLOYMENT_URL — Replit deploy URL
+```
+
+# 16. BİLİNEN UYARILAR / MINOR BUGLAR
+
+| Uyarı | Dosya | Durum |
+|-------|-------|-------|
+| Duplicate key "/merkez-dashboard" | breadcrumb-navigation.tsx L27+L170 | Minor — çalışmayı etkilemiyor |
+| auto_close_time kolonu eksik | branch_kiosk_settings | Migration eklendi (fc20a60f), Replit restart gerekli |
+| Fabrika kiosk default PIN 0000 | factory.ts + factoryKioskConfig | Pilot öncesi değiştirilmeli |
+
+# 17. MOCKUP REFERANSLARI (Bu Oturumda Oluşturulan)
+
+Bu oturumda 4 mockup oluşturuldu (visualizer widget olarak, dosya olarak kaydedilmedi):
+1. **CEO Dashboard** — desktop dark + mobil light (KPI strip, şube sağlığı, en iyi/kötü, Mr. Dobody)
+2. **Coach Dashboard** — desktop dark (şube haritası, checklist takibi, personel, aksiyonlar)
+3. **CGO Dashboard** — desktop dark + mobil light (fabrika üretim, arızalar, ekipman, CRM teknik, bakım, servis akışı)
+4. **Light mode A/B karşılaştırma** — kırmızı header + navy footer seçildi
+
+# 18. FABRIKA ÜRETİM ZİNCİRİ (Tam Akış)
+
+```
+ŞEF: Haftalık üretim planı girer
+  → factoryProductionPlans (productId, stationId, targetQuantity, planDate)
+
+PERSONEL: Kiosk'tan vardiya başlatır
+  → factoryShiftSessions (userId, stationId, status=active)
+
+PERSONEL: Üretim kaydeder (log-production / quick-complete)
+  → factoryProductionOutputs (quantity, waste, productRecipeId=otomatik)
+  → factoryProductionPlans.actualQuantity otomatik güncellenir (P0)
+  → productionLots otomatik oluşur (LOT numarası)
+  → factoryInventory güncellenir (stok artar)
+  → Yüksek fire (%5+) → fabrika_mudur bildirim
+
+QC: Kalite kontrol (2 aşama)
+  → factoryQualityChecks (teknisyen → mühendis onay)
+
+SCORING: Günlük 02:00
+  → factoryWorkerScores (üretim %35, devam %25, kalite %15, mola %15, fire %10)
+```
+
+# 19. GİT STRATEJİSİ
+
+- Tek branch: `main`
+- Commit mesajları: `Sprint X: kısa açıklama` formatı
+- Her sprint sonrası push
+- Replit otomatik pull + deploy
+- Conflict çözümü: Claude'un kodu öncelikli (Replit düzeltmeleri pull ile alınır)
