@@ -35,6 +35,7 @@ import {
   Shield,
   GraduationCap,
   ChefHat,
+  Activity,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -247,6 +248,24 @@ export default function MissionControlHQ() {
     enabled: isExec,
   });
 
+  const { data: healthData } = useQuery<{
+    branches: Array<{
+      branchId: number; branchName: string; overallScore: number;
+      status: 'healthy' | 'warning' | 'critical'; staffCount: number;
+      dimensions: Array<{ name: string; nameTr: string; score: number }>;
+    }>;
+    average: number; healthyCount: number; warningCount: number; criticalCount: number;
+    patterns: Array<{ pattern: string; severity: string; recommendation: string }>;
+  }>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return { branches: [], average: 0, healthyCount: 0, warningCount: 0, criticalCount: 0, patterns: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const branchStatus = hqSummary?.branchStatus;
   const totalBranches = (branchStatus?.normal ?? 0) + (branchStatus?.warning ?? 0) + (branchStatus?.critical ?? 0);
   const firstName = user?.firstName || "Kullanıcı";
@@ -409,15 +428,15 @@ export default function MissionControlHQ() {
           </CollapsibleSection>
           )}
 
-          {isSectionVisible('branch_health', role) && isExec && execData && execData.branchComparison.length > 0 && (
+          {isSectionVisible('branch_health', role) && isExec && (
             <CollapsibleSection
-              title="Şube Sağlığı"
-              icon={<Building2 className="w-3.5 h-3.5" />}
-              badge={branchHealthBadge.text}
-              badgeVariant={branchHealthBadge.variant}
+              title="Şube Sağlık Haritası"
+              icon={<Activity className="w-3.5 h-3.5" />}
+              badge={healthData ? `%${healthData.average}` : branchHealthBadge.text}
+              badgeVariant={healthData ? (healthData.average >= 80 ? "success" : healthData.average >= 60 ? "warning" : "danger") : branchHealthBadge.variant}
               defaultOpen={true}
               headerRight={
-                <Link href="/operasyon">
+                <Link href="/subeler">
                   <Button variant="ghost" size="sm" className="text-[10px] gap-0.5" onClick={e => e.stopPropagation()}>
                     Tümü <ArrowRight className="w-3 h-3" />
                   </Button>
@@ -425,7 +444,86 @@ export default function MissionControlHQ() {
               }
               data-testid="mc-branch-health-section"
             >
-              <BranchComparisonTable data={execData.branchComparison} />
+              {healthData && healthData.branches.length > 0 ? (
+                <div className="space-y-2">
+                  {/* Executive özet satırı */}
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[24px] font-bold" style={{
+                        color: healthData.average >= 80 ? "var(--ds-green)" :
+                               healthData.average >= 60 ? "var(--ds-amber)" : "var(--ds-red-light)"
+                      }}>%{healthData.average}</span>
+                      <div className="flex gap-3 text-[10px]">
+                        <span style={{ color: "var(--ds-green)" }}>●{healthData.healthyCount} Sağlıklı</span>
+                        <span style={{ color: "var(--ds-amber)" }}>●{healthData.warningCount} Uyarı</span>
+                        <span style={{ color: "var(--ds-red-light)" }}>●{healthData.criticalCount} Kritik</span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-muted-foreground">{healthData.branches.length} şube</span>
+                  </div>
+
+                  {/* Pattern trend uyarıları */}
+                  {healthData.patterns.length > 0 && (
+                    <div className="space-y-1">
+                      {healthData.patterns.slice(0, 3).map((p: any, idx: number) => (
+                        <div key={idx} className="flex items-start gap-2 px-2 py-1.5 rounded-md" style={{
+                          background: p.severity === 'critical' ? "rgba(231,76,60,0.08)" :
+                                     p.severity === 'high' ? "rgba(243,156,18,0.08)" : "rgba(52,152,219,0.06)",
+                        }}>
+                          <Badge variant={p.severity === 'critical' ? "destructive" : "secondary"} className="text-[8px] h-4 mt-0.5 flex-shrink-0">Trend</Badge>
+                          <div>
+                            <p className="text-[10px] font-medium">{p.pattern}</p>
+                            <p className="text-[9px] text-muted-foreground">{p.recommendation}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Şube skor listesi — en düşükten */}
+                  <div className="space-y-1">
+                    {healthData.branches.map((b: any) => (
+                      <div key={b.branchId} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/30" data-testid={`hq-health-${b.branchId}`}>
+                        <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{
+                          background: b.status === 'critical' ? "rgba(231,76,60,0.15)" :
+                                     b.status === 'warning' ? "rgba(243,156,18,0.12)" : "rgba(46,204,113,0.12)",
+                        }}>
+                          <span className="text-xs font-bold" style={{
+                            color: b.status === 'critical' ? "var(--ds-red-light)" :
+                                   b.status === 'warning' ? "var(--ds-amber)" : "var(--ds-green)"
+                          }}>{b.overallScore}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium truncate">{b.branchName}</span>
+                            <span className="text-[9px] text-muted-foreground">{b.staffCount} kişi</span>
+                          </div>
+                          <div className="flex gap-0.5 mt-0.5">
+                            {b.dimensions.map((d: any) => (
+                              <div key={d.name} className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "var(--ds-border-subtle)" }}
+                                title={`${d.nameTr}: %${d.score}`}>
+                                <div className="h-full rounded-full" style={{
+                                  width: `${d.score}%`,
+                                  background: d.score >= 80 ? "var(--ds-green)" : d.score >= 60 ? "var(--ds-amber)" : "var(--ds-red-light)",
+                                }} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <Link href={`/sube-detay/${b.branchId}`}>
+                          <Button variant="ghost" size="sm" className="h-6 text-[9px] flex-shrink-0" onClick={e => e.stopPropagation()}>
+                            <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : execData && execData.branchComparison.length > 0 ? (
+                <BranchComparisonTable data={execData.branchComparison} />
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-xs">Şube verisi henüz yok</div>
+              )}
             </CollapsibleSection>
           )}
 
