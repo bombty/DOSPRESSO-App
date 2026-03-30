@@ -97,8 +97,9 @@ export default function PersonelDetay() {
     queryKey: ["/api/personnel", id],
     queryFn: async () => {
       const response = await fetch(`/api/personnel/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch employee");
-      return response.json();
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!id,
   });
@@ -107,8 +108,9 @@ export default function PersonelDetay() {
     queryKey: ["/api/employee-documents", id],
     queryFn: async () => {
       const response = await fetch(`/api/employee-documents/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch documents");
-      return response.json();
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!id,
   });
@@ -117,8 +119,9 @@ export default function PersonelDetay() {
     queryKey: ["/api/disciplinary-reports", id],
     queryFn: async () => {
       const response = await fetch(`/api/disciplinary-reports?userId=${id}`);
-      if (!response.ok) throw new Error("Failed to fetch disciplinary reports");
-      return response.json();
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!id,
   });
@@ -127,8 +130,8 @@ export default function PersonelDetay() {
     queryKey: ["/api/employee-onboarding", id],
     queryFn: async () => {
       const response = await fetch(`/api/employee-onboarding/${id}`);
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error("Failed to fetch onboarding");
+      if (response.status === 404 || response.status === 403) return null;
+      if (!response.ok) return null;
       return response.json();
     },
     enabled: !!id,
@@ -138,7 +141,7 @@ export default function PersonelDetay() {
     queryKey: ["/api/onboarding-tasks", onboarding?.id],
     queryFn: async () => {
       const response = await fetch(`/api/onboarding-tasks/${onboarding!.id}`);
-      if (!response.ok) throw new Error("Failed to fetch onboarding tasks");
+      if (!response.ok) return [];
       return response.json();
     },
     enabled: !!onboarding?.id,

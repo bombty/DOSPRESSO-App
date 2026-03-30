@@ -89,8 +89,9 @@ export default function GorevDetay() {
     queryKey: ["/api/tasks", id],
     queryFn: async () => {
       const response = await fetch(`/api/tasks/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch task");
-      return response.json();
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!id,
   });

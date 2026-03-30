@@ -92,8 +92,9 @@ export default function PersonelDuzenle() {
     queryKey: ["/api/personnel", id],
     queryFn: async () => {
       const response = await fetch(`/api/personnel/${id}`);
-      if (!response.ok) throw new Error("Failed to fetch employee");
-      return response.json();
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!id,
   });
