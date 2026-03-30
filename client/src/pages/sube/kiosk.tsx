@@ -1169,7 +1169,7 @@ export default function BranchKiosk() {
                   <QRCodeSVG value={JSON.stringify(displayQr)} size={74} level="M" />
                 </div>
               ) : (
-                <div style={{ width: 90, height: 90, background: 'rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 90, height: 90, background: 'rgba(255,255,255,0.04)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               )}
@@ -1291,7 +1291,7 @@ export default function BranchKiosk() {
     const hasSession = !!currentSession;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-background-tertiary)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a1628', overflow: 'hidden' }}>
 
         {/* Header */}
         <div style={{ background: '#c0392b', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -1330,79 +1330,99 @@ export default function BranchKiosk() {
         <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignContent: 'start' }}>
 
           {/* Vardiya Durumu */}
-          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 16 }}>⏱ Vardiya Durumu</p>
+          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
 
             {sessionLoading ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                <div style={{ width: 32, height: 32, border: '3px solid #c0392b', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} />
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Yükleniyor...</p>
+                <div style={{ width: 32, height: 32, border: '3px solid #16a34a', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} />
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Yükleniyor...</p>
               </div>
             ) : !hasSession ? (
-              <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 16 }}>Vardiya başlatılmadı</p>
+              <div style={{ padding: '12px 0' }}>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>Vardiya başlatılmadı</p>
                 <button
                   onClick={handleStartShift}
                   disabled={startShiftMutation.isPending}
                   data-testid="button-start-shift"
-                  style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: '14px 28px', fontSize: 16, fontWeight: 600, cursor: 'pointer', width: '100%' }}
+                  style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', opacity: startShiftMutation.isPending ? 0.7 : 1 }}
                 >
-                  {startShiftMutation.isPending ? 'Başlatılıyor...' : '▶ Vardiya Başlat'}
+                  {startShiftMutation.isPending ? 'Başlatılıyor...' : 'Vardiya Başlat'}
                 </button>
+              </div>
+            ) : isOnBreak ? (
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Mola Süresi</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
+                    disabled={breakEndMutation.isPending}
+                    data-testid="button-end-break"
+                    style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', opacity: breakEndMutation.isPending ? 0.7 : 1 }}
+                  >
+                    {breakEndMutation.isPending ? 'İşleniyor...' : 'Molayı Bitir'}
+                  </button>
+                  <button
+                    onClick={handleEndShiftClick}
+                    disabled={endShiftMutation.isPending}
+                    data-testid="button-end-shift-from-break"
+                    style={{ background: 'transparent', color: 'rgba(239,68,68,0.7)', border: '1.5px solid rgba(239,68,68,0.4)', borderRadius: 10, padding: '12px', fontSize: 13, fontWeight: 500, cursor: 'pointer', width: '100%' }}
+                  >
+                    Vardiyayı Bitir
+                  </button>
+                </div>
+                {currentSession.breakMinutes > 0 && (
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola: {formatMinutes(currentSession.breakMinutes)}</p>
+                )}
               </div>
             ) : (
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                  <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#d97706', letterSpacing: 2 }}>
-                    {formatTime(elapsedTime)}
-                  </div>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: 4 }}>Çalışma Süresi</p>
+                  <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#fbbf24', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Çalışma Süresi</p>
                 </div>
-
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {!isOnBreak && (
-                    <button
-                      onClick={handleBreakStartClick}
-                      disabled={breakStartMutation.isPending}
-                      data-testid="button-start-break"
-                      style={{ background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 500, cursor: 'pointer', width: '100%' }}
-                    >
-                      ☕ Mola Al
-                    </button>
-                  )}
+                  <button
+                    onClick={handleBreakStartClick}
+                    disabled={breakStartMutation.isPending}
+                    data-testid="button-start-break"
+                    style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 600, cursor: 'pointer', width: '100%', opacity: breakStartMutation.isPending ? 0.7 : 1 }}
+                  >
+                    Mola Al
+                  </button>
                   <button
                     onClick={handleEndShiftClick}
                     disabled={endShiftMutation.isPending}
                     data-testid="button-end-shift"
-                    style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 600, cursor: 'pointer', width: '100%' }}
+                    style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 600, cursor: 'pointer', width: '100%', opacity: endShiftMutation.isPending ? 0.7 : 1 }}
                   >
-                    {endShiftMutation.isPending ? 'Kaydediliyor...' : '↪ Vardiyayı Bitir'}
+                    {endShiftMutation.isPending ? 'Kaydediliyor...' : 'Vardiyayı Bitir'}
                   </button>
                 </div>
-
                 {currentSession.breakMinutes > 0 && (
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, textAlign: 'center', marginTop: 10 }}>
-                    Toplam mola: {formatMinutes(currentSession.breakMinutes)}
-                  </p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola: {formatMinutes(currentSession.breakMinutes)}</p>
                 )}
               </div>
             )}
           </div>
 
           {/* Görevlerim */}
-          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, overflow: 'auto' }}>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>📋 Görevlerim</p>
+          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📋 Görevlerim</p>
             {userTasks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Bekleyen görev yok</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Bekleyen görev yok</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {userTasks.slice(0, 5).map((task: any) => (
-                  <div key={task.id} style={{ padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8, fontSize: 13 }}>
-                    <p style={{ fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{task.title}</p>
-                    {task.dueDate && <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
+                  <div key={task.id} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7, fontSize: 13 }}>
+                    <p style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{task.title}</p>
+                    {task.dueDate && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
                   </div>
                 ))}
               </div>
@@ -1410,31 +1430,31 @@ export default function BranchKiosk() {
           </div>
 
           {/* Sorun Bildir + Mesai */}
-          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button onClick={() => setShowKioskFaultReport(true)} data-testid="button-kiosk-report-fault"
-              style={{ background: 'none', border: '0.5px solid var(--color-border-secondary)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 20 }}>⚠️</span>
               Sorun Bildir
             </button>
             <button onClick={() => setShowOvertimeRequest(true)} data-testid="button-overtime-request"
-              style={{ background: 'none', border: '0.5px solid rgba(245,158,11,0.5)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: '#d97706', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              style={{ background: 'rgba(245,158,11,0.06)', border: '0.5px solid rgba(245,158,11,0.35)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: '#d97706', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 20 }}>⏱</span>
               Mesai Talep Et
             </button>
           </div>
 
           {/* Şube Görevleri */}
-          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, overflow: 'auto' }}>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>📌 Şube Görevleri</p>
+          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📌 Şube Görevleri</p>
             {kioskBranchTasks.length === 0 ? (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Açık görev yok</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Açık görev yok</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {kioskBranchTasks.slice(0, 3).map((task: any) => (
-                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8 }}>
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7 }}>
                     <div>
-                      <p style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 13, margin: 0 }}>{task.title}</p>
-                      <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, margin: '2px 0 0' }}>{task.category}</p>
+                      <p style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontSize: 13, margin: 0 }}>{task.title}</p>
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>{task.category}</p>
                     </div>
                     {!task.assignedTo && (
                       <button onClick={() => handleClaimBranchTask(task.id)} style={{ background: '#c0392b', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
@@ -1448,10 +1468,10 @@ export default function BranchKiosk() {
           </div>
 
           {/* Ekip Durumu */}
-          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>
+          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               👥 Ekip Durumu
-              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'var(--color-background-secondary)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
+              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
             </p>
             {pdksAnomalyUsers.length > 0 && (
               <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
@@ -1463,35 +1483,35 @@ export default function BranchKiosk() {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {teamStatus.filter((m: any) => m.userId !== selectedUser?.id).map((member: any) => (
-                <div key={member.userId} style={{ padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div key={member.userId} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: member.status === 'active' ? '#22c55e' : member.status === 'on_break' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
                   <div>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{member.firstName} {member.lastName}</p>
-                    <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{member.firstName} {member.lastName}</p>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
                   </div>
                 </div>
               ))}
-              {teamStatus.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Yükleniyor...</p>}
+              {teamStatus.length === 0 && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Yükleniyor...</p>}
             </div>
           </div>
 
           {/* Bildirimler & Duyurular */}
           {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
-            <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>
+            <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
                 🔔 Bildirimler & Duyurular
                 {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#c0392b', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 11 }}>{kioskNotifications.length}</span>}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {kioskAnnouncements.slice(0,2).map((ann: any) => (
                   <div key={`ann-${ann.id}`} style={{ padding: '8px 10px', background: 'rgba(59,130,246,0.08)', borderLeft: '3px solid #3b82f6', borderRadius: '0 8px 8px 0' }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{ann.title}</p>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{ann.title}</p>
                   </div>
                 ))}
                 {kioskNotifications.slice(0,3).map((n: any) => (
                   <div key={`notif-${n.id}`} style={{ padding: '8px 10px', background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #f59e0b', borderRadius: '0 8px 8px 0' }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{n.title}</p>
-                    {n.message && <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
+                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{n.title}</p>
+                    {n.message && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
                   </div>
                 ))}
               </div>
@@ -1500,18 +1520,18 @@ export default function BranchKiosk() {
 
           {/* Checklistlerim */}
           {userChecklists.length > 0 && (
-            <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>✅ Checklistlerim</p>
+            <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>✅ Checklistlerim</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {userChecklists.map((cl: any) => {
                   const pct = cl.totalTasks > 0 ? Math.round((cl.completedTasks / cl.totalTasks) * 100) : 0;
                   return (
                     <div key={cl.id}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <p style={{ fontSize: 12, color: 'var(--color-text-primary)', margin: 0 }}>{cl.name}</p>
-                        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
+                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{cl.name}</p>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
                       </div>
-                      <div style={{ height: 6, background: 'var(--color-background-secondary)', borderRadius: 3 }}>
+                      <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#c0392b', borderRadius: 3, transition: 'width 0.3s' }} />
                       </div>
                     </div>
