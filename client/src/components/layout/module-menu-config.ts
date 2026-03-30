@@ -6,7 +6,7 @@ import {
   BookOpen, Video, Target, Award,
   Building2, Settings, Bell, Search,
   BarChart2, FileBarChart, Sun, User, Briefcase,
-  Home, Wallet, Headphones, Megaphone,
+  Home, Wallet, Headphones, Megaphone, GraduationCap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
