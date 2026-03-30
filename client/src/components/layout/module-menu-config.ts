@@ -36,6 +36,7 @@ const IK_MENU: ModuleMenuConfig = {
     { id: "onboarding", label: "Onboarding", path: "/personel-onboarding", icon: UserPlus },
     { id: "performans", label: "Performans", path: "/performansim", icon: TrendingUp },
     { id: "ik-raporlar", label: "İK Raporları", path: "/ik-raporlari", icon: BarChart2 },
+    { id: "sube-bordro", label: "Bordro Özeti", path: "/sube-bordro-ozet", icon: CreditCard },
   ],
 };
 

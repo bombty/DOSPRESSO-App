@@ -4,11 +4,11 @@ import {
   users, branches, tasks, equipmentFaults, equipment, customerFeedback,
   checklistCompletions, trainingCompletions, inventory, supplierQuotes,
   purchaseOrders, productComplaints, leaveRequests, productionBatches,
-  employeePerformanceScores, agentPendingActions, agentRuns, aiAgentLogs,
+  employeePerformanceScores, agentPendingActions, agentRuns, aiAgentLogs, shifts,
   type InsertAgentPendingAction, type InsertAgentRun, type AgentPendingAction,
   type UserRoleType,
 } from "@shared/schema";
-import { eq, and, or, lt, gt, gte, lte, sql, desc, count } from "drizzle-orm";
+import { eq, and, or, lt, gt, gte, lte, sql, desc, count, notInArray } from "drizzle-orm";
 import { ROLE_GROUP_MAP, getRoleGroup } from "./ai-policy-engine";
 import { checkBatchActions, getSystemPromptPolicy } from "./agent-safety";
 
@@ -208,7 +208,59 @@ export async function analyzeForBranchMgmt(userId: string): Promise<AnalysisResu
       }));
     }
 
-    let branchPerf: any[] = [];
+    // Adil dağılım analizi — hafta sonu yük dengesi
+    try {
+      const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+      const recentShifts = await db.select({
+        userId: shifts.assignedToId,
+        shiftDate: shifts.shiftDate,
+      }).from(shifts)
+        .where(and(
+          eq(shifts.branchId, branchId),
+          gte(shifts.shiftDate, fourWeeksAgo.toISOString().split('T')[0]),
+          notInArray(shifts.status, ['cancelled'])
+        ));
+
+      // Hafta sonu (Cmt=6, Paz=0) sayısı per kişi
+      const weekendCounts: Record<string, number> = {};
+      const totalCounts: Record<string, number> = {};
+      for (const s of recentShifts) {
+        if (!s.userId || !s.shiftDate) continue;
+        const day = new Date(s.shiftDate).getDay();
+        totalCounts[s.userId] = (totalCounts[s.userId] || 0) + 1;
+        if (day === 0 || day === 6) {
+          weekendCounts[s.userId] = (weekendCounts[s.userId] || 0) + 1;
+        }
+      }
+
+      const weekendRatios = Object.entries(weekendCounts)
+        .filter(([uid]) => totalCounts[uid] >= 4) // En az 4 vardiya olan
+        .map(([uid, wknd]) => ({ uid, ratio: wknd / (totalCounts[uid] || 1), wknd, total: totalCounts[uid] }))
+        .sort((a, b) => b.ratio - a.ratio);
+
+      if (weekendRatios.length >= 2) {
+        const highest = weekendRatios[0];
+        const lowest = weekendRatios[weekendRatios.length - 1];
+        const imbalance = highest.ratio - lowest.ratio;
+
+        if (imbalance > 0.4) { // %40'tan fazla fark
+          const highUser = branchUsers.find(u => u.id === highest.uid);
+          const lowUser = branchUsers.find(u => u.id === lowest.uid);
+          if (highUser && lowUser) {
+            kpis.weekendImbalance = imbalance;
+            actions.push(makeAction("suggest_task", "Hafta sonu vardiya dağılımı dengesiz", `Son 4 haftada ${highUser.firstName} ${highUser.lastName} hafta sonlarının %${Math.round(highest.ratio * 100)}'inde çalışırken, ${lowUser.firstName} ${lowUser.lastName} yalnızca %${Math.round(lowest.ratio * 100)}'inde çalıştı. Dağılımı dengelemeyi düşünün.`, "med", {
+              targetUserId: user.id as any,
+              targetRoleScope: user.role,
+              branchId,
+              deepLink: "/vardiya-planlama",
+              metadata: { highUserId: highest.uid, lowUserId: lowest.uid, imbalance },
+            }));
+          }
+        }
+      }
+    } catch {}
+
+
     try {
       branchPerf = await db.select().from(employeePerformanceScores)
         .where(sql`${employeePerformanceScores.userId} IN (${sql.join(branchUsers.map(u => sql`${u.id}`), sql`, `)})`);

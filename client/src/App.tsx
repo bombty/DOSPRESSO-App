@@ -173,6 +173,7 @@ const ChecklistExecutionPage = lazyWithRetry(() => import("@/pages/sube/checklis
 const HQFabrikaAnalitik = lazyWithRetry(() => import("@/pages/hq-fabrika-analitik"));
 const SubeKarsilastirma = lazyWithRetry(() => import("@/pages/sube-karsilastirma"));
 const CanliTakip = lazyWithRetry(() => import("@/pages/canli-takip"));
+const SubeBordroOzet = lazyWithRetry(() => import("@/pages/sube-bordro-ozet"));
 const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici-degerlendirme"));
 const BannerEditor = lazyWithRetry(() => import("@/pages/banner-editor"));
 const KaliteKontrolDashboard = lazyWithRetry(() => import("@/pages/kalite-kontrol-dashboard"));
@@ -443,6 +444,7 @@ function Router() {
           <Route path="/fabrika/:tab?" component={FabrikaMegaModule} />
           <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
           <Route path="/canli-takip" component={CanliTakip} />
+          <Route path="/sube-bordro-ozet" component={SubeBordroOzet} />
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
           <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
           <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />
