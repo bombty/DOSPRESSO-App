@@ -361,7 +361,7 @@ export function CardGridHub() {
       label: navLabel("live-tracking", "Canlı Takip"), 
       path: "/canli-takip",
       color: "bg-emerald-500",
-      description: navDesc("live-tracking", "Personel konum takibi"),
+      description: navDesc("live-tracking", "Şube bazlı canlı vardiya durumu"),
       roles: ["supervisor", "manager"]
     },
   ];
@@ -488,7 +488,7 @@ export function CardGridHub() {
       label: navLabel("live-tracking", "Canlı Takip"), 
       path: "/canli-takip",
       color: "bg-emerald-500",
-      description: navDesc("live-tracking", "Personel konum takibi")
+      description: navDesc("live-tracking", "Şube bazlı canlı vardiya durumu")
     },
     { 
       id: "settings", 
