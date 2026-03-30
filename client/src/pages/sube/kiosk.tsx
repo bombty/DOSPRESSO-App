@@ -102,6 +102,7 @@ export default function BranchKiosk() {
   const params = useParams();
   
   const [branchAuth, setBranchAuth] = useState<any>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [authChecked, setAuthChecked] = useState(false);
   
   const { data: allowedRolesData } = useQuery<{ roles: string[] }>({
@@ -170,6 +171,15 @@ export default function BranchKiosk() {
   const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
 
   const resetInactivityTimer = useCallback(() => {
+
+  // Offline/Online durumu takip et
+  useEffect(() => {
+    const onOnline = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
+  }, []);
     if (inactivityRef.current) clearTimeout(inactivityRef.current);
     inactivityRef.current = setTimeout(() => {
       resetWorker();
@@ -1030,7 +1040,7 @@ export default function BranchKiosk() {
       if (s === 'late') return `${staff.lateMinutes}dk geç!`;
       if (s === 'missing') return 'Gelmedi!';
       if (s === 'scheduled' && staff.shiftStartTime) return `${staff.shiftStartTime.slice(0,5)}-${staff.shiftEndTime?.slice(0,5)||'?'}`;
-      return 'Izinli';
+      return 'İzinli';
     };
     const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
@@ -1060,7 +1070,7 @@ export default function BranchKiosk() {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0c1a2e', overflow: 'hidden' }}>
         <div style={{ background: '#c0392b', padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>{branchAuth?.name || 'Sube Kiosk'}</div>
+            <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>{branchAuth?.name || 'Şube Kiosk'}</div>
             <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{dateStr2} - {timeStr2}</div>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
@@ -1120,7 +1130,7 @@ export default function BranchKiosk() {
                 </>} />))}
               </>)}
               {offAll.length > 0 && (<>
-                <SecHead label="Izinli bugun" count={offAll.length} color="rgba(255,255,255,0.45)" bg="rgba(255,255,255,0.08)" />
+                <SecHead label="İzinli bugün" count={offAll.length} color="rgba(255,255,255,0.45)" bg="rgba(255,255,255,0.08)" />
                 {offAll.map(staff => (<div key={staff.id} style={{ opacity: 0.5 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
               </>)}
               {noShift.length > 0 && (<>
@@ -1128,7 +1138,7 @@ export default function BranchKiosk() {
                 {noShift.map(staff => (<div key={staff.id} style={{ opacity: 0.35 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
               </>)}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, paddingBottom: 4 }}>
-                {[{c:'rgba(34,197,94,0.4)',l:'Calisildi'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planli',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
+                {[{c:'rgba(34,197,94,0.4)',l:'Çalışıldı'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planlı',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
                   <div key={x.l} style={{ display:'flex',alignItems:'center',gap:3 }}>
                     <div style={{ width:9,height:6,borderRadius:2,background:x.c,...(x.d?{border:'0.5px dashed rgba(147,197,253,0.5)'}:{}) }} />
                     <span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>{x.l}</span>
@@ -1138,7 +1148,7 @@ export default function BranchKiosk() {
               </div>
             </div>
             <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.07)', padding: '6px 14px', textAlign: 'right', flexShrink: 0 }}>
-              <button onClick={resetKiosk} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan cik</button>
+              <button onClick={resetKiosk} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
             </div>
           </div>
           <div style={{ borderLeft: '0.5px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1922,6 +1932,14 @@ export default function BranchKiosk() {
   return (
     <>
       {renderContent()}
+
+      {/* Offline uyarı bandı */}
+      {isOffline && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white text-center py-2 text-sm font-medium flex items-center justify-center gap-2">
+          <AlertTriangle className="h-4 w-4" />
+          İnternet bağlantısı kesildi — İşlemler kaydedilemiyor
+        </div>
+      )}
 
       <Button
         variant="outline"
