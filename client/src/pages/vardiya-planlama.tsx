@@ -410,6 +410,29 @@ export default function VardiyaPlanlama() {
         checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
       }));
 
+      // Çakışma + 11 saat kontrolü
+      const allWarnings: string[] = [];
+      const allErrors: string[] = [];
+      for (const s of newShifts) {
+        try {
+          const res = await fetch('/api/shifts/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ branchId: s.branchId, assignedToId: s.assignedToId, shiftDate: s.shiftDate, startTime: s.startTime, endTime: s.endTime }),
+          });
+          if (res.ok) {
+            const v = await res.json();
+            allErrors.push(...v.errors);
+            allWarnings.push(...v.warnings);
+          }
+        } catch {}
+      }
+      if (allErrors.length > 0) throw new Error(allErrors[0]);
+      if (allWarnings.length > 0) {
+        toast({ title: "⚠ Dinlenme Uyarısı", description: allWarnings[0], variant: "destructive" });
+      }
+
       return apiRequest('POST', '/api/shifts/bulk-create', { shifts: newShifts });
     },
     onSuccess: () => {
@@ -821,6 +844,30 @@ export default function VardiyaPlanlama() {
           </Button>
         )}
       </div>
+
+      {/* Personel Haftalık Saat Özeti */}
+      {branchEmployees.length > 0 && (
+        <div className="flex flex-wrap gap-2 py-1">
+          {branchEmployees.map((emp: any) => {
+            const hours = getEmployeeWeeklyHours(String(emp.id));
+            const limit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+            const pct = Math.min(100, Math.round((hours / limit) * 100));
+            const over = hours > limit;
+            const near = hours >= limit * 0.9 && !over;
+            return (
+              <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
+                style={{ background: over ? 'rgba(220,38,38,0.08)' : near ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)', borderColor: over ? 'rgba(220,38,38,0.3)' : near ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)' }}>
+                <span className="font-medium" style={{ color: over ? '#f87171' : near ? '#fbbf24' : 'var(--color-text-primary)' }}>
+                  {emp.firstName} {emp.lastName?.charAt(0)}.
+                </span>
+                <span style={{ color: over ? '#f87171' : near ? '#fbbf24' : 'var(--color-text-secondary)' }}>
+                  {hours.toFixed(1)}/{limit}sa {over ? '⚠' : ''}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Main Content: Inline Form + Calendar Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
