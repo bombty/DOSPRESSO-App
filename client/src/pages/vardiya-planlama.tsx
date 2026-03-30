@@ -799,6 +799,27 @@ export default function VardiyaPlanlama() {
         <span className="text-xs text-muted-foreground ml-2">
           {canEditShifts && "Sürükle-bırak ile vardiyaları taşıyabilirsiniz"}
         </span>
+        {canEditShifts && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto gap-1.5 text-xs"
+            disabled={copyWeekMutation.isPending}
+            onClick={() => {
+              const prevWeekStart = new Date(currentWeekStart);
+              prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+              copyWeekMutation.mutate({
+                sourceWeekStart: prevWeekStart.toISOString().split('T')[0],
+                targetWeekStart: currentWeekStart.toISOString().split('T')[0],
+                branchId: selectedBranchId || user?.branchId,
+              });
+            }}
+            data-testid="button-copy-prev-week"
+          >
+            {copyWeekMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarPlus className="h-3 w-3" />}
+            Geçen Haftayı Kopyala
+          </Button>
+        )}
       </div>
 
       {/* Main Content: Inline Form + Calendar Side by Side */}
@@ -1909,6 +1930,16 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       setIsGenerating(false);
     }
   };
+
+  const copyWeekMutation = useMutation({
+    mutationFn: (params: { sourceWeekStart: string; targetWeekStart: string; branchId: number }) =>
+      apiRequest('POST', '/api/shifts/copy-week', params).then(r => r.json()),
+    onSuccess: (data: any) => {
+      toast({ title: "Hafta Kopyalandı", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+    },
+    onError: (err: Error) => toast({ title: "Kopyalama Hatası", description: err.message, variant: "destructive" }),
+  });
 
   const createMutation = useMutation({
     mutationFn: async () => {

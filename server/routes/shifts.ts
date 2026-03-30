@@ -12,7 +12,7 @@ import {
   users,
   pdksRecords,
 } from "@shared/schema";
-import { eq, desc, and, sql, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, gte, lte, ne, notInArray, inArray } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { requireManifestAccess, getScopeFilter } from '../services/manifest-auth';
@@ -3037,3 +3037,196 @@ function timeToMin(t: string): number {
 }
 
 export default router;
+
+// POST /api/shifts/copy-week - Geçen haftanın vardiyalarını bu haftaya kopyala
+router.post('/api/shifts/copy-week', isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user!;
+    const role = user.role as UserRoleType;
+
+    if (!isHQRole(role) && !['supervisor', 'supervisor_buddy', 'mudur', 'admin'].includes(role)) {
+      return res.status(403).json({ message: "Vardiya kopyalama yetkiniz yok" });
+    }
+
+    const { sourceWeekStart, targetWeekStart, branchId } = req.body;
+    if (!sourceWeekStart || !targetWeekStart || !branchId) {
+      return res.status(400).json({ message: "sourceWeekStart, targetWeekStart ve branchId gerekli" });
+    }
+
+    if (isBranchRole(role) && parseInt(branchId) !== user.branchId) {
+      return res.status(403).json({ message: "Sadece kendi şubeniz için kopyalama yapabilirsiniz" });
+    }
+
+    // Kaynak haftanın vardiyalarını çek
+    const sourceStart = new Date(sourceWeekStart);
+    const sourceEnd = new Date(sourceWeekStart);
+    sourceEnd.setDate(sourceEnd.getDate() + 6);
+
+    const sourceShifts = await db.select().from(shifts)
+      .where(and(
+        eq(shifts.branchId, parseInt(branchId)),
+        gte(shifts.shiftDate, sourceWeekStart),
+        lte(shifts.shiftDate, sourceEnd.toISOString().split('T')[0]),
+        eq(shifts.status, 'published')
+      ));
+
+    if (sourceShifts.length === 0) {
+      return res.status(404).json({ message: "Kaynak haftada kopyalanacak vardiya bulunamadı" });
+    }
+
+    // Hedef haftada zaten olan tarihleri bul
+    const targetStart = new Date(targetWeekStart);
+    const targetEnd = new Date(targetWeekStart);
+    targetEnd.setDate(targetEnd.getDate() + 6);
+
+    const existingTargetShifts = await db.select({ shiftDate: shifts.shiftDate })
+      .from(shifts)
+      .where(and(
+        eq(shifts.branchId, parseInt(branchId)),
+        gte(shifts.shiftDate, targetWeekStart),
+        lte(shifts.shiftDate, targetEnd.toISOString().split('T')[0])
+      ));
+
+    const existingDates = new Set(existingTargetShifts.map(s => s.shiftDate));
+
+    // Gün offsetini hesapla
+    const dayOffset = Math.round((targetStart.getTime() - sourceStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    const newShifts = [];
+    const skipped = [];
+
+    for (const shift of sourceShifts) {
+      const srcDate = new Date(shift.shiftDate);
+      srcDate.setDate(srcDate.getDate() + dayOffset);
+      const newDate = srcDate.toISOString().split('T')[0];
+
+      if (existingDates.has(newDate)) {
+        skipped.push(newDate);
+        continue;
+      }
+
+      newShifts.push({
+        branchId: shift.branchId,
+        assignedToId: shift.assignedToId,
+        shiftDate: newDate,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        breakStartTime: shift.breakStartTime,
+        breakEndTime: shift.breakEndTime,
+        shiftType: shift.shiftType,
+        status: 'published' as const,
+        notes: shift.notes ? `[Kopyalandı: ${sourceWeekStart}] ${shift.notes}` : `[Kopyalandı: ${sourceWeekStart}]`,
+        checklistId: shift.checklistId,
+        checklist2Id: shift.checklist2Id,
+        checklist3Id: shift.checklist3Id,
+        createdById: user.id,
+      });
+    }
+
+    if (newShifts.length === 0) {
+      return res.json({ created: 0, skipped: skipped.length, message: "Tüm günlerde zaten vardiya mevcut, kopyalanacak vardiya yok" });
+    }
+
+    const created = await db.insert(shifts).values(newShifts).returning({ id: shifts.id });
+
+    res.json({
+      created: created.length,
+      skipped: skipped.length,
+      message: `${created.length} vardiya kopyalandı${skipped.length > 0 ? `, ${skipped.length} gün atlandı (zaten vardiya mevcut)` : ''}`
+    });
+  } catch (error: unknown) {
+    console.error("Copy week error:", error);
+    res.status(500).json({ message: "Hafta kopyalanırken hata oluştu" });
+  }
+});
+
+// POST /api/shifts/validate - Vardiya çakışma + 11 saat dinlenme kontrolü
+router.post('/api/shifts/validate', isAuthenticated, async (req, res) => {
+  try {
+    const { branchId, assignedToId, shiftDate, startTime, endTime, excludeShiftId } = req.body;
+    if (!branchId || !assignedToId || !shiftDate || !startTime || !endTime) {
+      return res.status(400).json({ message: "Eksik parametre" });
+    }
+
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    // Aynı gün çakışma kontrolü
+    const sameDay = await db.select().from(shifts)
+      .where(and(
+        eq(shifts.assignedToId, assignedToId),
+        eq(shifts.shiftDate, shiftDate),
+        notInArray(shifts.status, ['cancelled']),
+        ...(excludeShiftId ? [ne(shifts.id, excludeShiftId)] : [])
+      ));
+
+    const [newStartH, newStartM] = startTime.split(':').map(Number);
+    const [newEndH, newEndM] = endTime.split(':').map(Number);
+    const newStartMin = newStartH * 60 + newStartM;
+    const newEndMin = newEndH * 60 + newEndM + (newEndH < newStartH ? 24 * 60 : 0);
+
+    for (const existing of sameDay) {
+      const [eStartH, eStartM] = existing.startTime.split(':').map(Number);
+      const [eEndH, eEndM] = existing.endTime.split(':').map(Number);
+      const eStartMin = eStartH * 60 + eStartM;
+      const eEndMin = eEndH * 60 + eEndM + (eEndH < eStartH ? 24 * 60 : 0);
+
+      if (newStartMin < eEndMin && newEndMin > eStartMin) {
+        errors.push(`Bu personel ${shiftDate} tarihinde ${existing.startTime}-${existing.endTime} vardiyasında zaten kayıtlı — çakışma var`);
+      }
+    }
+
+    // 11 saat dinlenme kontrolü — önceki gün
+    const prevDate = new Date(shiftDate);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevDateStr = prevDate.toISOString().split('T')[0];
+
+    const prevShifts = await db.select().from(shifts)
+      .where(and(
+        eq(shifts.assignedToId, assignedToId),
+        eq(shifts.shiftDate, prevDateStr),
+        notInArray(shifts.status, ['cancelled'])
+      ));
+
+    for (const prev of prevShifts) {
+      const [pEndH, pEndM] = prev.endTime.split(':').map(Number);
+      let prevEndTotalMin = pEndH * 60 + pEndM;
+      // Eğer bitiş saati başlangıçtan küçükse gece yarısını geçiyor
+      const [pStartH] = prev.startTime.split(':').map(Number);
+      if (pEndH < pStartH) prevEndTotalMin += 24 * 60;
+
+      const restMinutes = (24 * 60 - prevEndTotalMin) + newStartMin;
+      if (restMinutes < 11 * 60) {
+        const restHours = (restMinutes / 60).toFixed(1);
+        warnings.push(`Önceki vardiya (${prevDateStr} ${prev.endTime}) ile arası ${restHours} saat — minimum 11 saat dinlenme kuralı ihlali`);
+      }
+    }
+
+    // Ertesi gün kontrolü
+    const nextDate = new Date(shiftDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextDateStr = nextDate.toISOString().split('T')[0];
+
+    const nextShifts = await db.select().from(shifts)
+      .where(and(
+        eq(shifts.assignedToId, assignedToId),
+        eq(shifts.shiftDate, nextDateStr),
+        notInArray(shifts.status, ['cancelled'])
+      ));
+
+    for (const next of nextShifts) {
+      const [nStartH, nStartM] = next.startTime.split(':').map(Number);
+      const nextStartTotalMin = nStartH * 60 + nStartM + 24 * 60; // ertesi günü base al
+      const restMinutes = nextStartTotalMin - newEndMin;
+      if (restMinutes < 11 * 60) {
+        const restHours = (restMinutes / 60).toFixed(1);
+        warnings.push(`Sonraki vardiya (${nextDateStr} ${next.startTime}) ile arası ${restHours} saat — minimum 11 saat dinlenme kuralı ihlali`);
+      }
+    }
+
+    res.json({ valid: errors.length === 0, errors, warnings });
+  } catch (error: unknown) {
+    console.error("Shift validate error:", error);
+    res.status(500).json({ message: "Kontrol sırasında hata oluştu" });
+  }
+});
