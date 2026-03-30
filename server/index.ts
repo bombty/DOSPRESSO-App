@@ -379,6 +379,12 @@ app.use((req, res, next) => {
       closeOrphanedBreakLogs().catch(e => console.error("[Factory Scoring] Startup orphan break cleanup error:", e));
       backfillNullScores().catch(e => console.error("[Factory Scoring] Startup backfill error:", e));
       cleanupStaleShiftSessions().catch(e => console.error("[Factory Kiosk] Startup stale shift cleanup error:", e));
+      // Şube stale session cleanup — 14 saatten eski aktif session'ları abandoned yap
+      db.execute(sql`
+        UPDATE branch_shift_sessions 
+        SET status = 'abandoned', notes = COALESCE(notes, '') || ' [Otomatik kapatıldı — 14 saatten eski]'
+        WHERE status IN ('active','on_break') AND check_in_time < NOW() - INTERVAL '14 hours'
+      `).catch(e => console.error("[Branch Kiosk] Stale session cleanup error:", e));
 
       scheduleFactoryAutoCheckout();
       scheduleBranchAutoCheckout();

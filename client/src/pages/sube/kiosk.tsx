@@ -118,6 +118,7 @@ export default function BranchKiosk() {
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
   const [lobbyData, setLobbyData] = useState<any>(null);
   const [displayQr, setDisplayQr] = useState<any>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const inactivityRef = useRef<NodeJS.Timeout | null>(null);
   const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
   
@@ -257,7 +258,6 @@ export default function BranchKiosk() {
     const interval = setInterval(() => loadAll(false), 10000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(loadingFallback); };
   }, [step, selectedUser?.id, branchId]);
-  const [sessionLoading, setSessionLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
