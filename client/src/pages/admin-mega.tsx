@@ -504,6 +504,7 @@ const TAB_URL_MAP: Record<string, string> = {
   "fabrika-istasyonlar": "/admin/fabrika-istasyonlar",
   "fire-sebepleri": "/admin/fire-sebepleri",
   "pin-yonetimi": "/admin/pin-yonetimi",
+  "sube-pin-yonetimi": "/admin/sube-pin-yonetimi",
   "kalite-kriterleri": "/admin/kalite-kriterleri",
   "personel-tipleri": "/admin/personel-tipleri",
   "ai-politikalari": "/admin/ai-politikalari",
