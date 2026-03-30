@@ -507,6 +507,16 @@ export default function VardiyaPlanlama() {
   const nextWeek = () => setWeekStart(addDays(weekStart, 7 * periodWeeks));
   const goToToday = () => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
+  const copyWeekMutation = useMutation({
+    mutationFn: (params: { sourceWeekStart: string; targetWeekStart: string; branchId: number }) =>
+      apiRequest('POST', '/api/shifts/copy-week', params).then((r: Response) => r.json()),
+    onSuccess: (data: any) => {
+      toast({ title: "Hafta Kopyalandı", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ['/api/shifts'] });
+    },
+    onError: (err: Error) => toast({ title: "Kopyalama Hatası", description: err.message, variant: "destructive" }),
+  });
+
   // Drag-drop mutation
   const moveShiftMutation = useMutation({
     mutationFn: async ({ shiftId, newDate }: { shiftId: number; newDate: string }) => {
@@ -829,11 +839,11 @@ export default function VardiyaPlanlama() {
             className="ml-auto gap-1.5 text-xs"
             disabled={copyWeekMutation.isPending}
             onClick={() => {
-              const prevWeekStart = new Date(currentWeekStart);
+              const prevWeekStart = new Date(weekStart);
               prevWeekStart.setDate(prevWeekStart.getDate() - 7);
               copyWeekMutation.mutate({
                 sourceWeekStart: prevWeekStart.toISOString().split('T')[0],
-                targetWeekStart: currentWeekStart.toISOString().split('T')[0],
+                targetWeekStart: weekStart.toISOString().split('T')[0],
                 branchId: selectedBranchId || user?.branchId,
               });
             }}
