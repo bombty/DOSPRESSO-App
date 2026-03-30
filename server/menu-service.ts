@@ -355,6 +355,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     group: "management",
     items: [
       {
+        id: "ceo-command-center",
+        titleTr: "Komuta Merkezi",
+        path: "/ceo-command-center",
+        icon: "LayoutDashboard",
+        moduleKey: "raporlar",
+        scope: "hq",
+      },
+      {
         id: "cgo-teknik-komuta",
         titleTr: "Teknik Komuta",
         path: "/cgo-teknik-komuta",
@@ -649,7 +657,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
   ],
   ceo: [
-    'dashboard', 'ajanda', 'branches-list', 'hr', 'reports', 'performance-dashboard',
+    'dashboard', 'ajanda', 'ceo-command-center', 'branches-list', 'hr', 'reports', 'performance-dashboard',
     'knowledge-base', 'ai-assistant', 'training-academy-hq', 'notifications', 'crm-main',
     'franchise-investors',
   ],
