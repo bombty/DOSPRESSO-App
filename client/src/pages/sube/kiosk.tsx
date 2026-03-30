@@ -196,7 +196,7 @@ export default function BranchKiosk() {
     if (step !== 'working' || !selectedUser?.id || !branchId) return;
     const syncSession = async () => {
       try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${selectedUser.id}`, { credentials: 'include' });
+        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${selectedUser.id}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (res.ok) {
           const data = await res.json();
           if (data.activeSession) {
@@ -478,7 +478,7 @@ export default function BranchKiosk() {
       // 3. Arka planda yükle — userId'yi data'dan al (selectedUser race yok)
       const uid = data.user.id;
       try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${uid}`, { credentials: 'include' });
+        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${uid}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (res.ok) {
           const sd = await res.json();
           if (sd.activeSession) setCurrentSession(sd.activeSession);
@@ -489,7 +489,7 @@ export default function BranchKiosk() {
       // Session sync tamamlandı
       setSessionLoading(false);
       try {
-        const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
+        const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (teamRes.ok) {
           const teamData = await teamRes.json();
           const team = Array.isArray(teamData.team) ? teamData.team : [];
@@ -498,14 +498,14 @@ export default function BranchKiosk() {
         }
       } catch {}
       try {
-        const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${uid}`, { credentials: 'include' });
+        const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${uid}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (notifRes.ok) {
           const nd = await notifRes.json();
           setKioskNotifications(Array.isArray(nd) ? nd : []);
         }
       } catch {}
       try {
-        const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include' });
+        const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (annRes.ok) {
           const ad = await annRes.json();
           setKioskAnnouncements(Array.isArray(ad) ? ad : []);
@@ -652,7 +652,7 @@ export default function BranchKiosk() {
 
   const fetchSessionDetails = async (userId: string) => {
     try {
-      const res = await fetch(`/api/branches/${branchId}/kiosk/session/${userId}`, { credentials: 'include' });
+      const res = await fetch(`/api/branches/${branchId}/kiosk/session/${userId}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
       const data = await res.json();
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
@@ -669,7 +669,7 @@ export default function BranchKiosk() {
 
     // Ekip durumu
     try {
-      const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
+      const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
       const teamData = await teamRes.json();
       const team = Array.isArray(teamData.team) ? teamData.team : [];
       setTeamStatus(team);
@@ -680,7 +680,7 @@ export default function BranchKiosk() {
 
     // Kullanıcı bildirimleri
     try {
-      const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${userId}`, { credentials: 'include' });
+      const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${userId}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
       const notifData = await notifRes.json();
       setKioskNotifications(Array.isArray(notifData) ? notifData : []);
     } catch (err) {
@@ -689,7 +689,7 @@ export default function BranchKiosk() {
 
     // Duyurular
     try {
-      const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include' });
+      const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
       const annData = await annRes.json();
       setKioskAnnouncements(Array.isArray(annData) ? annData : []);
     } catch (err) {
@@ -749,7 +749,7 @@ export default function BranchKiosk() {
     // QR 30sn'de yenile (45sn geçerli, rahat margin)
     const fetchQr = async () => {
       try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/display-qr`, { credentials: 'include' });
+        const res = await fetch(`/api/branches/${branchId}/kiosk/display-qr`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (res.ok) setDisplayQr(await res.json());
         else console.error('display-qr error:', res.status);
       } catch (e) { console.error('display-qr fetch fail:', e); }
@@ -768,7 +768,7 @@ export default function BranchKiosk() {
 
     const pollSessions = async () => {
       try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
+        const res = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
         if (!res.ok) return;
         const data = await res.json();
         const team: any[] = Array.isArray(data.team) ? data.team : [];
