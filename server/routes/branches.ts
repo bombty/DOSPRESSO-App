@@ -3330,10 +3330,25 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
       };
     })
 
+    // Şube açık görevleri
+    const branchOpenTasks = await db.select({
+      id: tasks.id,
+      title: tasks.title,
+      category: tasks.category,
+      status: tasks.status,
+      assignedTo: tasks.assignedTo,
+    }).from(tasks)
+      .where(and(
+        eq(tasks.branchId, branchId),
+        or(eq(tasks.status, 'pending'), eq(tasks.status, 'in_progress'))
+      ))
+      .limit(5);
+
     res.json({
       activeSession: session,
       tasks: userTasks,
       checklists: userChecklists,
+      branchTasks: branchOpenTasks,
     });
   } catch (error: unknown) {
     console.error("Error getting session:", error);

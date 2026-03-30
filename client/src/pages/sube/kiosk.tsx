@@ -227,6 +227,7 @@ export default function BranchKiosk() {
             // İlk yüklemede null gelirse de loading'i kapat (vardiya yok durumu)
             if (data.tasks) setUserTasks(data.tasks);
             if (data.checklists) setUserChecklists(data.checklists);
+            if (data.branchTasks) setKioskBranchTasks(data.branchTasks);
           }
         }
       } catch {}
@@ -1447,7 +1448,7 @@ export default function BranchKiosk() {
           </div>
 
           {/* Ekip Durumu */}
-          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, gridColumn: '1 / -1' }}>
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>
               👥 Ekip Durumu
               {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'var(--color-background-secondary)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
@@ -1460,22 +1461,65 @@ export default function BranchKiosk() {
                 ))}
               </div>
             )}
-            {teamStatus.length === 0 ? (
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Ekip bilgisi yükleniyor...</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
-                {teamStatus.filter((m: any) => m.userId !== selectedUser?.id).map((member: any) => (
-                  <div key={member.userId} style={{ padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: member.status === 'active' ? '#22c55e' : member.status === 'on_break' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{member.name}</p>
-                      <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {teamStatus.filter((m: any) => m.userId !== selectedUser?.id).map((member: any) => (
+                <div key={member.userId} style={{ padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: member.status === 'active' ? '#22c55e' : member.status === 'on_break' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{member.firstName} {member.lastName}</p>
+                    <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
+                  </div>
+                </div>
+              ))}
+              {teamStatus.length === 0 && <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Yükleniyor...</p>}
+            </div>
+          </div>
+
+          {/* Bildirimler & Duyurular */}
+          {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
+            <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>
+                🔔 Bildirimler & Duyurular
+                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#c0392b', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 11 }}>{kioskNotifications.length}</span>}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {kioskAnnouncements.slice(0,2).map((ann: any) => (
+                  <div key={`ann-${ann.id}`} style={{ padding: '8px 10px', background: 'rgba(59,130,246,0.08)', borderLeft: '3px solid #3b82f6', borderRadius: '0 8px 8px 0' }}>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{ann.title}</p>
+                  </div>
+                ))}
+                {kioskNotifications.slice(0,3).map((n: any) => (
+                  <div key={`notif-${n.id}`} style={{ padding: '8px 10px', background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #f59e0b', borderRadius: '0 8px 8px 0' }}>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{n.title}</p>
+                    {n.message && <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Checklistlerim */}
+          {userChecklists.length > 0 && (
+            <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>✅ Checklistlerim</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {userChecklists.map((cl: any) => {
+                  const pct = cl.totalTasks > 0 ? Math.round((cl.completedTasks / cl.totalTasks) * 100) : 0;
+                  return (
+                    <div key={cl.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <p style={{ fontSize: 12, color: 'var(--color-text-primary)', margin: 0 }}>{cl.name}</p>
+                        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
+                      </div>
+                      <div style={{ height: 6, background: 'var(--color-background-secondary)', borderRadius: 3 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#c0392b', borderRadius: 3, transition: 'width 0.3s' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
 
