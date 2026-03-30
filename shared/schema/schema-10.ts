@@ -725,7 +725,7 @@ export const machineProducts = pgTable("machine_products", {
 export const factoryShifts = pgTable("factory_shifts", {
   id: serial("id").primaryKey(),
   shiftDate: date("shift_date").notNull(),
-  shiftType: varchar("shift_type", { length: 20 }).notNull(), // sabah, aksam, gece
+  shiftType: varchar("shift_type", { length: 20 }).notNull(), // sabah(opening), 1.araci(relay_1), 2.araci(relay_2), kapanish(closing), gece
   startTime: varchar("start_time", { length: 5 }).notNull(), // "06:00"
   endTime: varchar("end_time", { length: 5 }).notNull(), // "14:00"
   status: varchar("status", { length: 20 }).default("planned").notNull(), // planned, active, completed, cancelled

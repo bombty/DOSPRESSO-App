@@ -943,7 +943,7 @@ export const insertShiftSchema = createInsertSchema(shifts).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  shiftType: z.enum(["morning", "evening", "night"]),
+  shiftType: z.enum(["morning", "evening", "night", "opening", "relay_1", "relay_2", "closing"]),
   status: z.enum(["draft", "pending_hq", "confirmed", "completed", "cancelled"]).default("draft"),
 });
 

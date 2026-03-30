@@ -82,6 +82,10 @@ interface DashboardData {
 }
 
 const SHIFT_TYPE_LABELS: Record<string, string> = {
+  opening: "Açılış",
+  relay_1: "1. Aracı",
+  relay_2: "2. Aracı",
+  closing: "Kapanış",
   morning: "Sabah",
   evening: "Akşam",
   night: "Gece",

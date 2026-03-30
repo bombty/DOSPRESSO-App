@@ -447,6 +447,21 @@ export default function VardiyaPlanlama() {
 
   const canSaveShift = selectedEmployee && selectedDays.length > 0;
 
+  // Mr. Dobody shift planner uyarıları
+  const { data: dobodyWarnings = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "shift_planner"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/actions?status=pending&limit=5", { credentials: "include" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : (data.actions || []);
+      return arr.filter((a: any) =>
+        ["weekend_off_violation","peak_understaffed","rotation_imbalance","week_not_planned"].includes(a.metadata?.type || a.type)
+      );
+    },
+    refetchInterval: 120000,
+  });
+
   // Period days: 7 for 1 week, 14 for 2 weeks
   const periodDays = useMemo(() => {
     const totalDays = periodWeeks * 7;
@@ -876,6 +891,29 @@ export default function VardiyaPlanlama() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Mr. Dobody Shift Planner Uyarıları */}
+      {dobodyWarnings.length > 0 && (
+        <div className="space-y-2">
+          {dobodyWarnings.slice(0, 3).map((w: any, i: number) => (
+            <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border"
+              style={{
+                background: w.severity === "critical" ? "rgba(220,38,38,0.08)" : w.severity === "warning" ? "rgba(245,158,11,0.08)" : "rgba(59,130,246,0.08)",
+                borderColor: w.severity === "critical" ? "rgba(220,38,38,0.3)" : w.severity === "warning" ? "rgba(245,158,11,0.3)" : "rgba(59,130,246,0.3)",
+              }}>
+              <span className="text-sm flex-shrink-0" style={{ marginTop: 1 }}>
+                {w.severity === "critical" ? "🚨" : w.severity === "warning" ? "⚠️" : "ℹ️"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold" style={{ color: w.severity === "critical" ? "#f87171" : w.severity === "warning" ? "#fbbf24" : "#93c5fd" }}>
+                  Mr. Dobody
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{w.description || w.title}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

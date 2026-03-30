@@ -1064,7 +1064,7 @@ export const shiftTemplates = pgTable("shift_templates", {
   branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 100 }).notNull(), // e.g., "Hafta İçi Sabah", "Hafta Sonu Akşam"
   description: text("description"),
-  shiftType: varchar("shift_type", { length: 20 }).notNull(), // morning, evening, night
+  shiftType: varchar("shift_type", { length: 20 }).notNull(), // morning, evening, night, opening, relay_1, relay_2, closing
   startTime: time("start_time", { precision: 0 }).notNull(),
   endTime: time("end_time", { precision: 0 }).notNull(),
   daysOfWeek: integer("days_of_week").array(), // 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -1082,7 +1082,7 @@ export const insertShiftTemplateSchema = createInsertSchema(shiftTemplates).omit
   createdAt: true,
   updatedAt: true,
 }).extend({
-  shiftType: z.enum(["morning", "evening", "night"]),
+  shiftType: z.enum(["morning", "evening", "night", "opening", "relay_1", "relay_2", "closing"]),
   daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
 });
 
