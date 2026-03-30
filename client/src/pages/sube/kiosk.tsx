@@ -830,9 +830,20 @@ export default function BranchKiosk() {
   };
 
   const handleKioskExit = async () => {
-    // Şifre doğrulama
-    if (exitPasswordInput !== kioskPassword && exitPasswordInput !== branchAuth?.password) {
-      toast({ title: "Hatalı şifre", description: "Kiosk çıkış şifresi yanlış", variant: "destructive" });
+    try {
+      const verifyRes = await fetch(`/api/branches/${branchId}/kiosk/verify-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: exitPasswordInput }),
+        credentials: 'include',
+      });
+      if (!verifyRes.ok) {
+        toast({ title: "Hatalı şifre", description: "Kiosk çıkış şifresi yanlış", variant: "destructive" });
+        setExitPasswordInput('');
+        return;
+      }
+    } catch {
+      toast({ title: "Doğrulama hatası", description: "Şifre kontrol edilemedi", variant: "destructive" });
       setExitPasswordInput('');
       return;
     }
