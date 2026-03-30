@@ -173,6 +173,7 @@ export function BranchTrainingComparisonWidget() {
 
   const { data: branchesData, isLoading: branchesLoading } = useQuery<any[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: !!user,
   });
 

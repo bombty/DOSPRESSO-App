@@ -106,6 +106,7 @@ export default function Raporlar() {
   // Fetch branches for form - all branches for HQ, only user's branch for branch roles
   const { data: allBranches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
   
   // Filter branches based on user role - branch users only see their own branch

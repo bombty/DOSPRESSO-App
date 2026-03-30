@@ -91,6 +91,7 @@ export default function DenetimlerPage() {
   // Fetch branches for target selection
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   // Create audit mutation

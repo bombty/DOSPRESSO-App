@@ -81,6 +81,7 @@ export default function KayipEsyaPage() {
 
   const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: userIsHQ,
   });
 

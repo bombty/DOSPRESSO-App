@@ -98,6 +98,7 @@ export default function MuhasebeRaporlama() {
 
   const { data: branches, isError, refetch, isLoading } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: !!isAuthorized,
   });
 

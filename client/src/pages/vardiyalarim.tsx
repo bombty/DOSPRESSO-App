@@ -217,6 +217,7 @@ export default function Vardiyalarim() {
 
   const { data: branchColleagues } = useQuery<any[]>({
     queryKey: ["/api/branches", branchId, "users"],
+    staleTime: 300000,
     queryFn: async () => {
       if (!branchId) return [];
       const res = await fetch(`/api/branches/${branchId}/users`);

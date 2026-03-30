@@ -107,6 +107,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
 
   const { data: branchInfo } = useQuery<{id: number, name: string, address: string, phoneNumber: string, managerName: string}>({
     queryKey: ['/api/branches', equipment.branchId],
+    staleTime: 300000,
     enabled: isOpen && !!equipment.branchId,
   });
 

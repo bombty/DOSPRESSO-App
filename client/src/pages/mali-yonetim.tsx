@@ -180,8 +180,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
   });
   const categories = categoriesData ? [...(categoriesData.gelir || []), ...(categoriesData.gider || [])] : [];
 
-  const { data: branches = [] } = useQuery<any[]>({ queryKey: ['/api/branches'] });
-
+  const { data: branches = [] } = useQuery<any[]>({ queryKey: ['/api/branches'], staleTime: 300000 });
   const createMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", '/api/financial/records', {

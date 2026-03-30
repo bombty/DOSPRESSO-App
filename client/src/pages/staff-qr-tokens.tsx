@@ -32,6 +32,7 @@ export default function StaffQrTokensPage() {
 
   const { data: branches } = useQuery({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: users } = useQuery({

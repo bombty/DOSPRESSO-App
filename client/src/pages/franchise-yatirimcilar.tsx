@@ -97,6 +97,7 @@ export default function FranchiseYatirimcilar() {
 
   const { data: allBranches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: createOpen,
   });
 

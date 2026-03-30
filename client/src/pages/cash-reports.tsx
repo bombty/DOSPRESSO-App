@@ -63,6 +63,7 @@ export default function CashReports() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: isMuhasebe,
   });
 

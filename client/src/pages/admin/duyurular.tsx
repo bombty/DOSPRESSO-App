@@ -134,6 +134,7 @@ export default function AdminDuyurular() {
 
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const createMutation = useMutation({

@@ -52,11 +52,13 @@ export function CompactStatsBar() {
 
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: !!user && isHQRole(userRole),
   });
 
   const { data: personnel = [] } = useQuery<any[]>({
     queryKey: ["/api/employees"],
+    staleTime: 600000,
     enabled: !!user && isHQRole(userRole),
   });
 

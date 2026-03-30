@@ -64,6 +64,7 @@ export default function Equipment() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: criticalEquipment } = useQuery<EquipmentWithHealth[]>({

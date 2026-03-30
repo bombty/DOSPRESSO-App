@@ -82,6 +82,7 @@ export default function AdminKullanicilar() {
 
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: employeeTypes = [] } = useQuery<any[]>({

@@ -42,6 +42,7 @@ export default function ChecklistTrackingPage() {
 
   const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   const effectiveBranchId = filterBranchId === "all" ? undefined : parseInt(filterBranchId);

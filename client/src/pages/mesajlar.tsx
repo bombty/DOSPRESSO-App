@@ -79,7 +79,7 @@ export default function Mesajlar() {
 
   const { data: allThreads = [], isLoading: threadsLoading, isFetching: threadsFetching, isError, refetch } = useQuery<ThreadSummary[]>({
     queryKey: ["/api/messages"],
-    refetchInterval: 5000,
+    refetchInterval: 30000, // mesajlar 30sn polling (5sn çok agresifti)
     refetchOnWindowFocus: true,
     staleTime: 2000,
   });
@@ -123,6 +123,7 @@ export default function Mesajlar() {
 
   const { data: allBranches = [] } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: isNewMessageOpen && isHQRole(user?.role as UserRoleType),
   });
 

@@ -53,6 +53,7 @@ export default function KayipEsyaHQPage() {
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const filteredItems = useMemo(() => {

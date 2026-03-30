@@ -313,6 +313,7 @@ export default function BannerEditor() {
 
   const { data: branches, isLoading, isError, refetch } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   // Draft save state

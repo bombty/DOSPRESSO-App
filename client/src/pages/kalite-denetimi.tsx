@@ -182,6 +182,7 @@ export default function KaliteDenetimi() {
   // Always fetch branches for filters
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const form = useForm<CreateAuditFormValues>({

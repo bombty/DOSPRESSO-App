@@ -66,6 +66,7 @@ export default function IletisimMerkezi() {
 
   const { data: branchInfo } = useQuery<{ id: number; name: string }>({
     queryKey: ['/api/branches', user?.branchId],
+    staleTime: 300000,
     queryFn: async () => {
       const res = await fetch(`/api/branches/${user?.branchId}`, { credentials: "include" });
       if (!res.ok) return { id: 0, name: "Subem" };

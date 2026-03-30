@@ -158,11 +158,13 @@ export default function PersonelOnboardingPage() {
 
   const { data: employees = [] } = useQuery<User[]>({
     queryKey: ["/api/employees"],
+    staleTime: 600000,
     enabled: !!user,
   });
 
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: !!user,
   });
 

@@ -931,6 +931,7 @@ export default function Notifications() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: !!isAdmin,
   });
 

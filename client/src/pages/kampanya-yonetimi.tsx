@@ -70,6 +70,7 @@ export default function KampanyaYonetimi() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: canManageCampaigns,
   });
 

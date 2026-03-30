@@ -66,6 +66,7 @@ export default function RecruitmentSection() {
   // Fetch branches
   const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   // Fetch interviews

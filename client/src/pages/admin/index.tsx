@@ -56,6 +56,7 @@ export default function AdminDashboard() {
 
   const { data: branches = [], isLoading: branchesLoading } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   if (user?.role !== "admin") {

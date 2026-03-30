@@ -98,11 +98,13 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
+    staleTime: 600000,
     enabled: open,
   });
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: open,
   });
 

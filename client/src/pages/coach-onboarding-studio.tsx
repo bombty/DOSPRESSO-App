@@ -164,6 +164,7 @@ export default function CoachOnboardingStudio() {
 
   const { data: allBranches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: availableUsers } = useQuery<AvailableUser[]>({

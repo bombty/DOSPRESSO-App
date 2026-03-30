@@ -106,12 +106,14 @@ export function QuickTaskModal({ trigger, open: controlledOpen, onOpenChange: co
   // Fetch employees for assignment
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
+    staleTime: 600000,
     enabled: open,
   });
 
   // Fetch branches for HQ users
   const { data: allBranches = [], isLoading: branchesLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: open && isHQUser,
   });
 

@@ -52,6 +52,7 @@ export default function NewFaultReport() {
 
   const { data: branches = [], isLoading: branchesLoading, isError, refetch } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: equipment = [], isLoading: equipmentLoading } = useQuery<Equipment[]>({

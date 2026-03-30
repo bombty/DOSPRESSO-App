@@ -42,6 +42,7 @@ export default function Performance() {
 
   const { data: branches, isLoading: branchesLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: isHQ, // Only HQ users need the full branch list
   });
 

@@ -128,6 +128,7 @@ export default function ServiceRequestsManagement() {
 
   const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   const { data: allEquipment = [] } = useQuery<any[]>({

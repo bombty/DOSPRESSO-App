@@ -44,6 +44,7 @@ export default function HqVardiyaGoruntuleme() {
 
   const { data: branches, isLoading: branchesLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   const { data: shifts, isLoading: shiftsLoading } = useQuery<any[]>({

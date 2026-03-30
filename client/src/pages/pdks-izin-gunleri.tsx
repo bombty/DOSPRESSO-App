@@ -79,6 +79,7 @@ export default function PdksIzinGunleri() {
 
   const branchesQuery = useQuery<BranchItem[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: canManage,
   });
 

@@ -75,6 +75,7 @@ export default function Announcements() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   const { data: readStatus } = useQuery<ReadStatus>({

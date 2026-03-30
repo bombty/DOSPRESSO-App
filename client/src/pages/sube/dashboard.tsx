@@ -134,6 +134,7 @@ export default function SubeDashboard() {
 
   const { data: branches, isLoading: branchesLoading, isError, refetch } = useQuery<Array<{ id: number; name: string; city: string }>>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: !!needsBranchSelection,
   });
 

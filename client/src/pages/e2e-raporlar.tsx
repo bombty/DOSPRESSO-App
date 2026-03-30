@@ -137,6 +137,7 @@ export default function E2EReportsPage() {
 
   const { data: branches = [], isLoading: isLoadingBranches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: isHQ,
   });
 

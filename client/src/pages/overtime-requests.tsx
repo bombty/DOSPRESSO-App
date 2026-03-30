@@ -102,6 +102,7 @@ export default function OvertimeRequestsPage() {
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/employees"],
+    staleTime: 600000,
     enabled: !!user && (user.role === "supervisor" || user.role === "supervisor_buddy" || isHQRole(user.role as any)),
   });
 

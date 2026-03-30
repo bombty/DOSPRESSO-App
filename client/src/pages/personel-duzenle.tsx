@@ -101,6 +101,7 @@ export default function PersonelDuzenle() {
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const form = useForm<EmployeeFormValues>({

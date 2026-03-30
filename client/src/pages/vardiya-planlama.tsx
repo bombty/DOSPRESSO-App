@@ -188,11 +188,13 @@ export default function VardiyaPlanlama() {
 
   const { data: allEmployees } = useQuery({
     queryKey: ['/api/employees'],
+    staleTime: 600000,
   });
 
   // Fetch branch details for opening/closing hours
   const { data: branchData } = useQuery({
     queryKey: ['/api/branches', user?.branchId],
+    staleTime: 300000,
     enabled: !!user?.branchId,
   });
 
@@ -211,6 +213,7 @@ export default function VardiyaPlanlama() {
 
   const { data: checklists } = useQuery({
     queryKey: ['/api/checklists'],
+    staleTime: 1800000,
   });
 
   // Calculate weekly hours for each employee from existing shifts (excluding 1-hour breaks)
@@ -1578,7 +1581,7 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
   const { toast } = useToast();
   const { deleteState: shiftDelState, requestDelete: requestShiftDel, cancelDelete: cancelShiftDel, confirmDelete: confirmShiftDel } = useConfirmDelete();
   const { data: shifts } = useQuery({ queryKey: ['/api/shifts'] });
-  const { data: checklists } = useQuery({ queryKey: ['/api/checklists'] });
+  const { data: checklists } = useQuery({ queryKey: ['/api/checklists'], staleTime: 1800000 });
   const { data: tasks } = useQuery({ queryKey: ['/api/tasks'] });
   
   const shift = useMemo(() => {

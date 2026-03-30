@@ -40,6 +40,7 @@ export function MuhasebeDashboard({
 
   const { data: employees = [] } = useQuery<any[]>({
     queryKey: ["/api/employees"],
+    staleTime: 600000,
     enabled: hasHRAccess,
   });
 

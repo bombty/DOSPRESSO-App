@@ -102,6 +102,7 @@ export default function AdminChecklistManagement() {
 
   const { data: checklists, isLoading, isError, refetch } = useQuery<Checklist[]>({
     queryKey: ['/api/checklists'],
+    staleTime: 1800000,
   });
 
   const { data: checklistTasks = [] } = useQuery<ChecklistTask[]>({
@@ -889,6 +890,7 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
 
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   const { data: users = [] } = useQuery<any[]>({

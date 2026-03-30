@@ -449,6 +449,7 @@ export default function BranchKiosk() {
 
   const { data: staffList = [], isLoading: loadingStaff, refetch: refetchStaff, isError } = useQuery<StaffMember[]>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'staff'],
+    staleTime: 300000,
     queryFn: async () => {
       const res = await fetch(`/api/branches/${branchId}/kiosk/staff`);
       return res.json();

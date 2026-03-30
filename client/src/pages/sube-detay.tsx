@@ -29,6 +29,7 @@ function KioskModeCard({ branchId }: { branchId: number }) {
   const { toast } = useToast();
   const { data: kioskSettings, isError, refetch, isLoading } = useQuery<any>({
     queryKey: ['/api/branches', branchId, 'kiosk', 'settings'],
+    staleTime: 300000,
     queryFn: async () => {
       const res = await fetch(`/api/branches/${branchId}/kiosk/settings`);
       return res.json();
@@ -199,6 +200,7 @@ export default function SubeDetayPage() {
   };
   const { data: staffScores } = useQuery<StaffScore[]>({
     queryKey: ['/api/branches', branchId, 'staff-scores', scorePeriod],
+    staleTime: 300000,
     queryFn: async () => {
       const res = await fetch(`/api/branches/${branchId}/staff-scores?days=${scorePeriod}`, { credentials: "include" });
       if (!res.ok) throw new Error("Staff scores fetch failed");
@@ -249,6 +251,7 @@ export default function SubeDetayPage() {
   // Fetch customer feedback QR data
   const { data: feedbackQrData, refetch: refetchFeedbackQr } = useQuery({
     queryKey: ['/api/branches', branchId, 'feedback-qr'],
+    staleTime: 300000,
     enabled: !!branchId && !!isAdmin,
     queryFn: async (): Promise<{ token: string; url: string; qrCode: string } | null> => {
       const response = await fetch(`/api/branches/${branchId}/feedback-qr`);

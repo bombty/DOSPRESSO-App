@@ -29,6 +29,7 @@ export default function SubelerPage() {
 
   const { data: branches = [], isLoading, error, isError, refetch } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: !!user,
   });
 

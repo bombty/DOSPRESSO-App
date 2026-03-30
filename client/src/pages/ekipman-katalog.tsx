@@ -103,6 +103,7 @@ export default function EkipmanKatalog() {
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const form = useForm<CatalogFormValues>({

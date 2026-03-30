@@ -42,6 +42,7 @@ export default function AdvancedReportsPage() {
 
   const { data: branches, isLoading: branchesLoading, isError: branchesError, refetch: refetchBranches } = useQuery({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: users, isLoading: usersLoading } = useQuery({

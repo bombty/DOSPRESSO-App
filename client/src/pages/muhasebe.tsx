@@ -389,6 +389,7 @@ export default function Muhasebe() {
 
   const { data: parameters = [], isLoading } = useQuery<PayrollParameters[]>({
     queryKey: ['/api/payroll/parameters'],
+    staleTime: 1800000,
   });
 
   // Employees for payroll

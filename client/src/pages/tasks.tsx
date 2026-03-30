@@ -76,6 +76,7 @@ export default function Tasks() {
 
   const { data: branches, isLoading: isBranchesLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const isHQ = user?.role && checkIsHQRole(user.role as any);
@@ -1495,6 +1496,7 @@ function RecurringTasksManagementTab() {
 
   const { data: branches } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const [showDialog, setShowDialog] = useState(false);

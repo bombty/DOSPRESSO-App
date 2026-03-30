@@ -19,6 +19,7 @@ export default function SubePinYonetimi() {
 
   const { data: branches, isLoading: branchesLoading } = useQuery<any[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     queryFn: async () => {
       const res = await fetch("/api/branches", { credentials: "include" });
       return res.json();

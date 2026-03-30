@@ -103,10 +103,12 @@ export default function HRReportsPage() {
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery<User[]>({
     queryKey: ['/api/employees'],
+    staleTime: 600000,
   });
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: isHQRole((user?.role || "") as UserRoleType),
   });
 

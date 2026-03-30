@@ -295,6 +295,7 @@ export default function AdminMenuManagement() {
   // Fetch branches for branch selector
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   // Sensors for drag-drop

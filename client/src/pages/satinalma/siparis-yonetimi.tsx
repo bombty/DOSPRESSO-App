@@ -438,6 +438,7 @@ export default function SiparisYonetimi() {
 
   const { data: branches } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: canFilterBranch,
   });
 

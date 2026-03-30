@@ -175,6 +175,7 @@ export default function FabrikaSevkiyat() {
 
   const { data: branchesList = [] } = useQuery<Branch[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
   });
 
   const { data: products = [] } = useQuery<FactoryProduct[]>({

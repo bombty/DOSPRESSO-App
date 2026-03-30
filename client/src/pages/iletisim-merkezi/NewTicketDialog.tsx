@@ -93,6 +93,7 @@ export function NewTicketDialog({ open, onOpenChange, channel }: NewTicketDialog
 
   const { data: branchList = [] } = useQuery<{ id: number; name: string }[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: isMisafir && isHQ,
   });
 

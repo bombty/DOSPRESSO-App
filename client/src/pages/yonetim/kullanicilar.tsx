@@ -55,6 +55,7 @@ export default function UserCRM() {
   // Fetch branches
   const { data: branches = [], isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   // Build URL with query params for users query

@@ -782,6 +782,7 @@ function AccessSettingsTab() {
 
   const { data: currentSetting, isLoading } = useQuery<{ roles: string[] }>({
     queryKey: ["/api/branch-dashboard-allowed-roles"],
+    staleTime: 300000,
     queryFn: async () => {
       const res = await fetch("/api/branch-dashboard-allowed-roles");
       if (!res.ok) return { roles: [] };

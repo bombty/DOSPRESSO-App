@@ -16,6 +16,7 @@ export default function SubeBordroOzet() {
 
   const { data: employees = [] } = useQuery<any[]>({
     queryKey: ["/api/employees", branchId],
+    staleTime: 600000,
     queryFn: async () => {
       const res = await fetch(`/api/employees?branchId=${branchId}&isActive=true`, { credentials: "include" });
       if (!res.ok) return [];

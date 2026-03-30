@@ -104,6 +104,7 @@ export default function CoachSubeDenetim() {
 
   const { data: branches, isLoading: branchesLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: pastInspections, isLoading: historyLoading } = useQuery<PastInspection[]>({

@@ -277,6 +277,7 @@ export default function SatinalmaDashboard() {
 
   const { data: branchesList, isError, refetch, isLoading } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: !!isHqRole,
   });
 

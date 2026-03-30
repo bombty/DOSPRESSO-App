@@ -127,6 +127,7 @@ export default function AdminModuleFlags() {
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const isGlobalView = selectedBranchId === "global";
@@ -134,6 +135,7 @@ export default function AdminModuleFlags() {
 
   const { data: globalFlags = [], isLoading: globalLoading } = useQuery<GlobalFlag[]>({
     queryKey: ["/api/module-flags"],
+    staleTime: 1800000,
     enabled: isGlobalView,
   });
 

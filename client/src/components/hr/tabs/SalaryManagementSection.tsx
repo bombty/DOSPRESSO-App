@@ -36,6 +36,7 @@ export default function SalaryManagementSection({ employees, branches }: { emplo
   // Bordro parametreleri
   const { data: payrollParams } = useQuery<any[]>({
     queryKey: ['/api/payroll/parameters'],
+    staleTime: 1800000,
   });
 
   const currentParams = payrollParams?.find((p: any) => p.isActive) || payrollParams?.[0];

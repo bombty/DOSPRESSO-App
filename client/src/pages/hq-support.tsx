@@ -361,6 +361,7 @@ function CreateTicketDialog({
   // Fetch branches for HQ users
   const { data: branches = [] } = useQuery<any[]>({
     queryKey: ['/api/branches'],
+    staleTime: 300000,
     enabled: open && isHQ,
   });
   

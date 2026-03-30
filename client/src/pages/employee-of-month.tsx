@@ -51,6 +51,7 @@ export default function EmployeeOfMonthPage() {
 
   const { data: branches, isError, refetch, isLoading } = useQuery({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   const { data: weights } = useQuery({

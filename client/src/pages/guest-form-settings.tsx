@@ -280,8 +280,7 @@ export default function GuestFormSettings() {
   const [translatingId, setTranslatingId] = useState<number | null>(null);
   const [selectedQuestionBranchId, setSelectedQuestionBranchId] = useState<number | null>(null);
 
-  const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/branches"] });
-
+  const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({ queryKey: ["/api/branches"], staleTime: 300000 });
   const { data: globalSettings, isLoading: loadingSettings } = useQuery<FormSettings>({
     queryKey: ["/api/feedback-form-settings"],
   });

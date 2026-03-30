@@ -48,6 +48,7 @@ export default function CanliTakip() {
 
   const { data: branches = [] } = useQuery<Branch[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
     enabled: isMultiBranch,
   });
 
@@ -222,7 +223,7 @@ export default function CanliTakip() {
               {/* Staff list */}
               <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {members.length === 0 ? (
-                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', textAlign: 'center', padding: '16px 0' }}>Veri yükleniyor...</p>
+                  <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', textAlign: 'center', padding: '16px 0' }}>branchData[branchId] ? 'Aktif vardiya kaydı yok — Kiosk henüz kullanılmamış olabilir' : 'Yükleniyor...'</p>
                 ) : (
                   members.map(member => {
                     const { bg, border } = statusBg(member.status);

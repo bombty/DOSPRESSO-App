@@ -224,6 +224,7 @@ export default function IKPage() {
   // Fetch branches
   const { data: branches = [], isError, refetch, isLoading } = useQuery<{ id: number; name: string }[]>({
     queryKey: ["/api/branches"],
+    staleTime: 300000,
   });
 
   // Fetch employees (backend handles branch filtering automatically)
