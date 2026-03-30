@@ -113,6 +113,7 @@ const PATH_LABELS: Record<string, string> = {
   '/canli-takip': 'Canlı Takip',
   '/sube-bordro-ozet': 'Bordro Özeti',
   '/sube-uyum-merkezi': 'Uyum Merkezi',
+  '/coach-uyum-paneli': 'Uyum Paneli',
   '/tarif': 'Tarifler',
   '/receteler': 'Reçeteler',
   '/recete': 'Reçete Detay',

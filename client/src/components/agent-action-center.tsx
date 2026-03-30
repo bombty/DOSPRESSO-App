@@ -117,15 +117,34 @@ function getActionDeepLink(action: AgentAction): string | null {
 
 function getApproveConsequence(action: AgentAction): string {
   const meta = action.metadata || {};
+  const type = meta.type || action.actionType;
   const hasTarget = action.targetUserId || meta.targetUserId;
   if (hasTarget && (action.actionType === "alert" || action.actionType === "performance_note")) {
     return "Şube supervisor'ına bildirim gönderilecek, performans görüşmesi görevi oluşturulacak ve Flow Mode'a eklenecek.";
+  }
+  if (type === "critical_training_overdue" || type === "training_overdue") {
+    return "Gecikmiş eğitimler için hatırlatma bildirimleri gönderilecek ve takip görevi oluşturulacak.";
+  }
+  if (type === "no_training_assigned") {
+    return "Eğitim atanmamış personele uygun başlangıç eğitimleri önerilecek ve Akademi sayfasına yönlendirilecek.";
+  }
+  if (type === "compliance_critical" || type === "compliance_warning") {
+    return "Şube yöneticisine uyum raporu bildirim gönderilecek ve düzeltici aksiyon görevi oluşturulacak.";
+  }
+  if (type === "sla_breached") {
+    return "Teknik ekibe öncelikli arıza bildirimi gönderilecek, 48 saat takip hatırlatması oluşturulacak.";
+  }
+  if (type === "weekend_off_violation" || type === "peak_understaffed") {
+    return "Şube yöneticisine vardiya düzeltme önerisi gönderilecek, Vardiya Planlama sayfasına yönlendirilecek.";
+  }
+  if (type === "rotation_imbalance") {
+    return "Vardiya rotasyon uyarısı supervisor'a iletilecek.";
   }
   if (action.actionType === "remind") return "Hedef kullanıcıya hatırlatma bildirimi gönderilecek.";
   if (action.actionType === "alert") return "Hedef kullanıcıya uyarı bildirimi gönderilecek.";
   if (action.actionType === "escalate") return "Konu yükseltilecek ve ilgili kişilere bildirim gönderilecek.";
   if (action.actionType === "suggest_task") return "Görev önerisi olarak kaydedilecek.";
-  return "Öneri onaylanmış olarak işaretlenecek.";
+  return "Öneri onaylanmış olarak işaretlenecek ve ilgili bildirimleri gönderilecek.";
 }
 
 function ActionCard({ action, onApprove, onReject, onShowDetail }: {

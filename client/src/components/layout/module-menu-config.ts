@@ -99,6 +99,7 @@ const SUBELER_MENU: ModuleMenuConfig = {
     { id: "stok", label: "Stok Yönetimi", path: "/sube/siparis-stok", icon: Package },
     { id: "canli", label: "Canlı Takip", path: "/canli-takip", icon: TrendingUp },
     { id: "uyum", label: "Uyum Merkezi", path: "/sube-uyum-merkezi", icon: BarChart2 },
+    { id: "uyum-panel", label: "Uyum Paneli", path: "/coach-uyum-paneli", icon: TrendingUp },
     { id: "saglik", label: "Şube Sağlık", path: "/sube-saglik-skoru", icon: BarChart3 },
     { id: "karsilastirma", label: "Karşılaştırma", path: "/sube-karsilastirma", icon: BarChart2 },
   ],
