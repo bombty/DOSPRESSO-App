@@ -126,3 +126,41 @@ export const guidanceDismissals = pgTable("guidance_dismissals", {
 }, (table) => [
   uniqueIndex("idx_guidance_dismissals_unique").on(table.userId, table.guidanceId),
 ]);
+
+// ─── Franchise Eskalasyon Konfigürasyonu ────────────────────────────────────
+// Admin tarafından yapılandırılabilir 5 kademeli SLA sistemi
+export const escalationConfig = pgTable("escalation_config", {
+  id: serial("id").primaryKey(),
+  level: integer("level").notNull(),                   // 1-5
+  name: varchar("name", { length: 100 }).notNull(),    // "Supervisor", "Müdür" etc.
+  targetRoleKey: varchar("target_role_key", { length: 50 }).notNull(), // "supervisor","mudur","coach_trainer","cgo","ceo"
+  slaDays: integer("sla_days").notNull(),              // Önceki seviyeden kaç gün sonra
+  isActive: boolean("is_active").notNull().default(true),
+  description: text("description"),
+  notifyEmail: boolean("notify_email").default(true),
+  notifyInApp: boolean("notify_in_app").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (t) => [
+  uniqueIndex("idx_escalation_config_level").on(t.level),
+]);
+export type EscalationConfig = typeof escalationConfig.$inferSelect;
+
+// ─── Rol Yetki Geçersiz Kılma (Admin Paneli) ────────────────────────────────
+// Manifest'teki varsayılan yetkileri admin override edebilir
+export const rolePermissionOverrides = pgTable("role_permission_overrides", {
+  id: serial("id").primaryKey(),
+  role: varchar("role", { length: 50 }).notNull(),
+  moduleKey: varchar("module_key", { length: 100 }).notNull(),
+  canView: boolean("can_view").default(true),
+  canCreate: boolean("can_create").default(false),
+  canEdit: boolean("can_edit").default(false),
+  canDelete: boolean("can_delete").default(false),
+  canApprove: boolean("can_approve").default(false),
+  isEnabled: boolean("is_enabled").default(true),   // Modül tamamen kapatılabilir
+  updatedByUserId: varchar("updated_by_user_id").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+}, (t) => [
+  uniqueIndex("idx_role_perm_overrides_unique").on(t.role, t.moduleKey),
+]);
+export type RolePermissionOverride = typeof rolePermissionOverrides.$inferSelect;

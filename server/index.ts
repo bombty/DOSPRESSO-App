@@ -14,6 +14,7 @@ import { seedSlaRules } from "./seed-sla-rules";
 import { seedModuleFlags } from "./seed-module-flags";
 import { seedBranchTasks } from "./seed-branch-tasks";
 import { generateDailyTaskInstances, markOverdueInstances } from "./services/branch-task-scheduler";
+import { migrateEscalationTables, startFranchiseEscalationScheduler } from "./services/franchise-escalation";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
@@ -372,6 +373,10 @@ app.use((req, res, next) => {
       startTrackingCleanup();
       startNotificationCleanupJob();
       startFactoryScoringScheduler();
+
+      // Franchise eskalasyon tablolarını oluştur ve 5-kademe sistemi başlat
+      migrateEscalationTables().catch(e => console.error("[Escalation] Migration error:", e));
+      startFranchiseEscalationScheduler();
 
       generateDailyTaskInstances().catch(e => console.error("[BranchTasks] Startup generation error:", e));
       markOverdueInstances().catch(e => console.error("[BranchTasks] Startup overdue check error:", e));

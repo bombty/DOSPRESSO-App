@@ -9,6 +9,8 @@ import bcrypt from "bcrypt";
 import { clearAIConfigCache, getAIConfig, getActiveProvider } from "../ai";
 import {
   hasPermission,
+  escalationConfig,
+  rolePermissionOverrides,
   isHQRole,
   type UserRoleType,
   insertMenuSectionSchema,
@@ -4146,3 +4148,67 @@ const router = Router();
   });
 
 export default router;
+
+// ─── Eskalasyon Konfigürasyon API ─────────────────────────────────────────
+
+router.get("/api/admin/escalation-config", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const rows = await db.select().from(escalationConfig).orderBy(escalationConfig.level);
+    res.json(rows.length >= 3 ? rows : [
+      { id: 1, level: 1, name: "Supervisor", targetRoleKey: "supervisor", slaDays: 2, isActive: true, description: "Şube supervisor" },
+      { id: 2, level: 2, name: "Müdür", targetRoleKey: "mudur", slaDays: 3, isActive: true, description: "Şube müdürü" },
+      { id: 3, level: 3, name: "Coach / Trainer", targetRoleKey: "coach_trainer", slaDays: 7, isActive: true, description: "HQ Coach/Trainer" },
+      { id: 4, level: 4, name: "CGO", targetRoleKey: "cgo", slaDays: 14, isActive: true, description: "CGO" },
+      { id: 5, level: 5, name: "CEO", targetRoleKey: "ceo", slaDays: 21, isActive: true, description: "CEO" },
+    ]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.patch("/api/admin/escalation-config/:level", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const level = parseInt(req.params.level);
+    const { slaDays, isActive, name, description } = req.body;
+    await db.update(escalationConfig)
+      .set({ ...(slaDays && { slaDays }), ...(isActive !== undefined && { isActive }), ...(name && { name }), ...(description && { description }), updatedAt: new Date() })
+      .where(eq(escalationConfig.level, level));
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── Rol Yetki Override API ───────────────────────────────────────────────
+
+router.get("/api/admin/role-permissions", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const overrides = await db.select().from(rolePermissionOverrides);
+    res.json(overrides);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/api/admin/role-permissions", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const { role, moduleKey, canView, canCreate, canEdit, canDelete, canApprove, isEnabled } = req.body;
+    await db.insert(rolePermissionOverrides).values({
+      role, moduleKey,
+      canView: canView ?? true,
+      canCreate: canCreate ?? false,
+      canEdit: canEdit ?? false,
+      canDelete: canDelete ?? false,
+      canApprove: canApprove ?? false,
+      isEnabled: isEnabled ?? true,
+      updatedByUserId: String(req.user?.id),
+      updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: [rolePermissionOverrides.role, rolePermissionOverrides.moduleKey],
+      set: { canView, canCreate, canEdit, canDelete, canApprove, isEnabled, updatedByUserId: String(req.user?.id), updatedAt: new Date() },
+    });
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});

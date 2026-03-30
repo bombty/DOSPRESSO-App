@@ -544,6 +544,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
+        id: "rol-yetkileri",
+        titleTr: "Rol Yetkileri",
+        path: "/admin/rol-yetkileri",
+        icon: "Shield",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
         id: "branches-list",
         titleTr: "Şubeler",
         path: "/subeler",
