@@ -2201,12 +2201,12 @@ function KioskBranchTasks() {
               </div>
               <div className="flex items-center gap-1">
                 {task.status === "pending" && (
-                  <Button size="sm" onClick={() => claimMutation.mutate(task.id)} disabled={claimMutation.isPending} data-testid={`button-kiosk-claim-${task.id}`}>
+                  <Button size="default" className="h-11" onClick={() => claimMutation.mutate(task.id)} disabled={claimMutation.isPending} data-testid={`button-kiosk-claim-${task.id}`}>
                     Sahiplen
                   </Button>
                 )}
                 {task.status === "claimed" && (
-                  <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={() => completeMutation.mutate(task.id)} disabled={completeMutation.isPending} data-testid={`button-kiosk-complete-${task.id}`}>
+                  <Button size="default" className="bg-green-600 hover:bg-green-700 h-11" onClick={() => completeMutation.mutate(task.id)} disabled={completeMutation.isPending} data-testid={`button-kiosk-complete-${task.id}`}>
                     Tamamla
                   </Button>
                 )}

@@ -106,7 +106,7 @@ function BranchDashboard({ userRole, branchId }: { userRole: string; branchId: n
     }
 
     if (kpis?.customerAvg != null && kpis.customerAvg >= 4.0) {
-      pills.push({ label: `Musteri ${Number(kpis.customerAvg).toFixed(1)}/5`, variant: 'green', dot: true });
+      pills.push({ label: `Müşteri ${Number(kpis.customerAvg).toFixed(1)}/5`, variant: 'green', dot: true });
     }
 
     if (pills.length === 0) {
@@ -230,7 +230,7 @@ export default function Dashboard() {
         <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
           <MessageSquare className="w-8 h-8 text-muted-foreground" />
         </div>
-        <div className="text-base font-bold text-foreground">Sube Atamasi Yok</div>
+        <div className="text-base font-bold text-foreground">Şube Atamasi Yok</div>
         <div className="text-sm text-muted-foreground max-w-sm">
           Hesabiniza henuz bir sube atanmamis. Yoneticinizle iletisime gecin.
         </div>

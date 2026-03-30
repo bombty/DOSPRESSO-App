@@ -60,10 +60,10 @@ function KioskModeCard({ branchId }: { branchId: number }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Monitor className="h-4 w-4" />
-          Kiosk Giris Modu
+          Kiosk Giriş Modu
         </CardTitle>
         <CardDescription>
-          Sube kiosk tabletinde kullanilacak giris yontemini secin
+          Şube kiosk tabletinde kullanilacak giris yontemini secin
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

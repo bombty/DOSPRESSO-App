@@ -699,7 +699,7 @@ export default function GuestFormSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm">Sube Secin</Label>
+              <Label className="text-sm">Şube Secin</Label>
               <Select
                 value={selectedQuestionBranchId?.toString() || ""}
                 onValueChange={(v) => setSelectedQuestionBranchId(parseInt(v))}

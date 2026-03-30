@@ -432,10 +432,10 @@ export default function SubeSaglikSkoru() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-page-title">
-            Sube Saglik Skoru
+            Şube Saglik Skoru
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Sube bazli performans ve risk analizi
+            Şube bazli performans ve risk analizi
           </p>
         </div>
         <div className="flex items-center gap-1" data-testid="range-selector">
@@ -579,7 +579,7 @@ export default function SubeSaglikSkoru() {
                           data-testid="th-branch-name"
                         >
                           <span className="inline-flex items-center gap-1">
-                            Sube
+                            Şube
                             {sortField === "name" && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                           </span>
                         </th>

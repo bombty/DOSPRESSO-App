@@ -172,6 +172,15 @@ export default function FactoryKiosk() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const onOnline = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -849,6 +858,11 @@ export default function FactoryKiosk() {
 
   return (
     <div className="w-screen overflow-hidden flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" style={{ height: '100dvh' }}>
+      {isOffline && (
+        <div className="flex-shrink-0 bg-red-600 text-white text-center py-1.5 text-xs font-medium flex items-center justify-center gap-2 z-50">
+          <span>⚠</span> İnternet bağlantısı kesildi — İşlemler kaydedilemiyor
+        </div>
+      )}
       <div className="flex-shrink-0 h-14 border-b border-slate-700 flex items-center justify-between px-4 bg-slate-800/90">
         <div className="flex items-center gap-3">
           {selectedUser && !['device-password', 'enter-credentials', 'select-user', 'enter-pin'].includes(step) && step !== 'end-shift-summary' && (

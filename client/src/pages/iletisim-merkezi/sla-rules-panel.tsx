@@ -95,7 +95,7 @@ function BusinessHoursSection({ isAdmin }: { isAdmin: boolean }) {
       toast({ title: 'Mesai saatleri guncellendi' });
     },
     onError: () => {
-      toast({ title: 'Hata', description: 'Guncelleme basarisiz', variant: 'destructive' });
+      toast({ title: 'Hata', description: 'Güncelleme basarisiz', variant: 'destructive' });
     },
   });
 
@@ -286,7 +286,7 @@ export function SlaRulesPanel({ isAdmin }: { isAdmin: boolean }) {
       toast({ title: 'SLA kurali guncellendi' });
     },
     onError: () => {
-      toast({ title: 'Hata', description: 'Guncelleme basarisiz', variant: 'destructive' });
+      toast({ title: 'Hata', description: 'Güncelleme basarisiz', variant: 'destructive' });
     },
   });
 

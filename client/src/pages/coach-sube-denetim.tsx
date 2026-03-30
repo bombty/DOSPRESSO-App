@@ -249,7 +249,7 @@ export default function CoachSubeDenetim() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" data-testid="heading-sube-denetim">
-            Sube Denetim
+            Şube Denetim
           </h1>
           <p className="text-sm text-muted-foreground">Coach sube denetim formu</p>
         </div>
@@ -284,7 +284,7 @@ export default function CoachSubeDenetim() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium flex items-center gap-2">
                     <Building2 className="w-4 h-4" />
-                    Sube
+                    Şube
                   </label>
                   <Select
                     value={selectedBranchId}
@@ -504,7 +504,7 @@ export default function CoachSubeDenetim() {
                       <div className="flex items-center gap-2">
                         <Building2 className="w-4 h-4 text-muted-foreground" />
                         <span className="font-semibold" data-testid={`text-branch-name-${inspection.id}`}>
-                          {inspection.branchName || `Sube #${inspection.branchId}`}
+                          {inspection.branchName || `Şube #${inspection.branchId}`}
                         </span>
                       </div>
                       <Badge

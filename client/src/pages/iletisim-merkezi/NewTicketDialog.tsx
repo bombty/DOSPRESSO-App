@@ -235,7 +235,7 @@ export function NewTicketDialog({ open, onOpenChange, channel }: NewTicketDialog
                 className="w-full text-sm px-3 py-2 rounded-md border border-border bg-background text-foreground"
                 data-testid="select-branch-misafir"
               >
-                <option value="">Sube secin...</option>
+                <option value="">Şube secin...</option>
                 {branchList.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
@@ -255,7 +255,7 @@ export function NewTicketDialog({ open, onOpenChange, channel }: NewTicketDialog
 
           {isMisafir && (
             <div className="space-y-2" data-testid="customer-info-section">
-              <p className="text-xs font-medium text-muted-foreground">Musteri Bilgileri (opsiyonel)</p>
+              <p className="text-xs font-medium text-muted-foreground">Müşteri Bilgileri (opsiyonel)</p>
               <Input placeholder="Ad Soyad" value={customerName} onChange={e => setCustomerName(e.target.value)} className="text-sm" data-testid="input-customer-name" />
               <div className="grid grid-cols-2 gap-2">
                 <Input placeholder="Telefon" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="text-sm" data-testid="input-customer-phone" />
