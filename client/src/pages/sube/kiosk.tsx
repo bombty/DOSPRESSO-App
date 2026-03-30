@@ -242,8 +242,10 @@ export default function BranchKiosk() {
 
     setSessionLoading(true);
     loadAll(true);
+    // Garantili fallback — 4sn sonra hala loading ise kapat
+    const loadingFallback = setTimeout(() => setSessionLoading(false), 4000);
     const interval = setInterval(() => loadAll(false), 10000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => { cancelled = true; clearInterval(interval); clearTimeout(loadingFallback); };
   }, [step, selectedUser?.id, branchId]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);

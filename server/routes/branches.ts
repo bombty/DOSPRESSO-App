@@ -3274,7 +3274,7 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
   }
 });
 
-router.get('/api/branches/:branchId/kiosk/session/:userId', isKioskOrAuthenticated, async (req, res) => {
+router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     const userId = req.params.userId;
