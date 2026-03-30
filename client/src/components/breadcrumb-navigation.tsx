@@ -171,7 +171,6 @@ const PATH_LABELS: Record<string, string> = {
   '/sube-karsilastirma': 'Şube Karşılaştırma',
   '/sube-gorevler': 'Şube Görevler',
   '/subeler': 'Şubeler',
-  '/merkez-dashboard': 'Merkez Gösterge Paneli',
   '/hq-dashboard': 'HQ Gösterge Paneli',
   '/gida-guvenligi-dashboard': 'Gıda Güvenliği',
   '/ayin-elemani': 'Ayın Elemanı',
