@@ -167,7 +167,6 @@ export default function BranchKiosk() {
   const [lobbyData, setLobbyData] = useState<any>(null);
   const [displayQr, setDisplayQr] = useState<any>(null);
   const inactivityRef = useRef<NodeJS.Timeout | null>(null);
-  const mutationLockRef = useRef<number>(0);
   const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
 
   const resetInactivityTimer = useCallback(() => {
@@ -193,32 +192,30 @@ export default function BranchKiosk() {
   }, [step, resetInactivityTimer]);
 
 
-  // TEK SESSION KAYNAĞI — race condition yok
+  // TEK SESSION KAYNAĞI — sync sadece günceller, asla silmez
   useEffect(() => {
     if (step !== 'working' || !selectedUser?.id || !branchId) return;
     let cancelled = false;
+    const userId = selectedUser.id;
     const token = () => localStorage.getItem('kiosk-token') || '';
 
     const loadAll = async (isFirstLoad = false) => {
       try {
         const res = await fetch(
-          `/api/branches/${branchId}/kiosk/session/${selectedUser.id}`,
+          `/api/branches/${branchId}/kiosk/session/${userId}`,
           { credentials: 'include', headers: { 'x-kiosk-token': token() } }
         );
         if (res.ok && !cancelled) {
           const data = await res.json();
-          const lockAge = Date.now() - mutationLockRef.current;
           if (!cancelled) {
-            if (lockAge < 5000 && !data.activeSession) {
-              // skip — mutation set session recently, don't override with stale null
-            } else if (data.activeSession) setCurrentSession(data.activeSession);
-            else setCurrentSession(null);
+            if (data.activeSession) {
+              setCurrentSession(data.activeSession);
+            }
             if (data.tasks) setUserTasks(data.tasks);
             if (data.checklists) setUserChecklists(data.checklists);
           }
         }
       } catch {}
-      // Her durumda loading'i kapat
       if (isFirstLoad && !cancelled) setSessionLoading(false);
       if (isFirstLoad) {
         try {
@@ -228,11 +225,11 @@ export default function BranchKiosk() {
             const td = await t.json();
             const team = Array.isArray(td.team) ? td.team : [];
             setTeamStatus(team);
-            setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== selectedUser.id));
+            setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== userId));
           }
         } catch {}
         try {
-          const n = await fetch(`/api/branches/${branchId}/kiosk/notifications/${selectedUser.id}`,
+          const n = await fetch(`/api/branches/${branchId}/kiosk/notifications/${userId}`,
             { credentials: 'include', headers: { 'x-kiosk-token': token() } });
           if (n.ok && !cancelled) { const nd = await n.json(); setKioskNotifications(Array.isArray(nd) ? nd : []); }
         } catch {}
@@ -246,7 +243,6 @@ export default function BranchKiosk() {
 
     setSessionLoading(true);
     loadAll(true);
-    // Garantili fallback — 4sn sonra hala loading ise kapat
     const loadingFallback = setTimeout(() => setSessionLoading(false), 4000);
     const interval = setInterval(() => loadAll(false), 10000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(loadingFallback); };
@@ -504,7 +500,6 @@ export default function BranchKiosk() {
       }
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
-        mutationLockRef.current = Date.now();
       }
       setStep('working');
       toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user?.firstName}` });
@@ -527,13 +522,11 @@ export default function BranchKiosk() {
     },
     onSuccess: (data) => {
       setCurrentSession(data.session);
-      mutationLockRef.current = Date.now();
       toast({ title: "Vardiya başladı", description: "İyi çalışmalar!" });
     },
     onError: (error: any) => {
       if (error?.session) {
         setCurrentSession(error.session);
-        mutationLockRef.current = Date.now();
         toast({ title: "Aktif vardiya bulundu", description: "Mevcut vardiyenize devam edebilirsiniz." });
       } else {
         toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
@@ -581,7 +574,6 @@ export default function BranchKiosk() {
     onSuccess: () => {
       if (currentSession) {
         setCurrentSession({ ...currentSession, status: 'on_break' });
-        mutationLockRef.current = Date.now();
       }
       toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
     },
@@ -601,7 +593,6 @@ export default function BranchKiosk() {
     onSuccess: () => {
       if (currentSession) {
         setCurrentSession({ ...currentSession, status: 'active' });
-        mutationLockRef.current = Date.now();
       }
       toast({ title: "Mola bitti", description: "Çalışmaya devam" });
     },
@@ -1287,8 +1278,8 @@ export default function BranchKiosk() {
           </Avatar>
           <div>
             <p className="text-white font-semibold text-sm leading-tight">{selectedUser?.firstName} {selectedUser?.lastName}</p>
-            <Badge variant={currentSession?.status === 'on_break' ? 'secondary' : 'default'} className="text-xs h-4">
-              {currentSession?.status === 'on_break' ? 'Molada' : 'Çalışıyor'}
+            <Badge variant={currentSession?.status === 'on_break' ? 'secondary' : currentSession ? 'default' : 'outline'} className="text-xs h-4">
+              {currentSession?.status === 'on_break' ? 'Molada' : currentSession ? 'Çalışıyor' : 'Giriş Yapıldı'}
             </Badge>
           </div>
         </div>
