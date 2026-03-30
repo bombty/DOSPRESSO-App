@@ -167,6 +167,7 @@ export default function BranchKiosk() {
   const [lobbyData, setLobbyData] = useState<any>(null);
   const [displayQr, setDisplayQr] = useState<any>(null);
   const inactivityRef = useRef<NodeJS.Timeout | null>(null);
+  const mutationLockRef = useRef<number>(0);
   const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
 
   const resetInactivityTimer = useCallback(() => {
@@ -206,9 +207,12 @@ export default function BranchKiosk() {
         );
         if (res.ok && !cancelled) {
           const data = await res.json();
+          const lockAge = Date.now() - mutationLockRef.current;
           if (!cancelled) {
-            if (data.activeSession) setCurrentSession(data.activeSession);
-            else setCurrentSession(null); // Vardiya yok — Başlat butonu göster
+            if (lockAge < 5000 && !data.activeSession) {
+              // skip — mutation set session recently, don't override with stale null
+            } else if (data.activeSession) setCurrentSession(data.activeSession);
+            else setCurrentSession(null);
             if (data.tasks) setUserTasks(data.tasks);
             if (data.checklists) setUserChecklists(data.checklists);
           }
@@ -495,9 +499,12 @@ export default function BranchKiosk() {
     },
     onSuccess: async (data) => {
       if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken);
-      // selectedUser'ı response'dan güncelle (id garantisi)
       if (data.user) {
         setSelectedUser((prev: any) => ({ ...(prev || {}), ...data.user }));
+      }
+      if (data.activeSession) {
+        setCurrentSession(data.activeSession);
+        mutationLockRef.current = Date.now();
       }
       setStep('working');
       toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user?.firstName}` });
@@ -520,12 +527,13 @@ export default function BranchKiosk() {
     },
     onSuccess: (data) => {
       setCurrentSession(data.session);
+      mutationLockRef.current = Date.now();
       toast({ title: "Vardiya başladı", description: "İyi çalışmalar!" });
     },
     onError: (error: any) => {
-      // Zaten aktif vardiya var — session'ı set et
       if (error?.session) {
         setCurrentSession(error.session);
+        mutationLockRef.current = Date.now();
         toast({ title: "Aktif vardiya bulundu", description: "Mevcut vardiyenize devam edebilirsiniz." });
       } else {
         toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
@@ -573,6 +581,7 @@ export default function BranchKiosk() {
     onSuccess: () => {
       if (currentSession) {
         setCurrentSession({ ...currentSession, status: 'on_break' });
+        mutationLockRef.current = Date.now();
       }
       toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
     },
@@ -585,13 +594,14 @@ export default function BranchKiosk() {
     mutationFn: async (sessionId: number) => {
       const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/break-end`, {
         sessionId,
-        userId: selectedUser?.id,  // fallback
+        userId: selectedUser?.id,
       });
       return res.json();
     },
     onSuccess: () => {
       if (currentSession) {
         setCurrentSession({ ...currentSession, status: 'active' });
+        mutationLockRef.current = Date.now();
       }
       toast({ title: "Mola bitti", description: "Çalışmaya devam" });
     },
@@ -1323,7 +1333,12 @@ export default function BranchKiosk() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto space-y-3 px-4 pb-3">
-            {!currentSession ? (
+            {sessionLoading && !currentSession ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader2 className="h-10 w-10 animate-spin text-amber-500 mb-3" />
+                <p className="text-muted-foreground text-sm">Vardiya durumu yükleniyor...</p>
+              </div>
+            ) : !currentSession ? (
               <div className="text-center py-8">
                 <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground mb-4">Vardiya başlatılmadı</p>
