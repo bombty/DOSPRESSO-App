@@ -1401,36 +1401,38 @@ export async function generateShiftPlan(
         },
         {
           role: "user",
-          content: `Sube #${branchId} icin ${weekStart} - ${weekEnd} vardiya planı olustur.
+          content: `Sube #${branchId} icin ${weekStart} - ${weekEnd} kesin vardiya planı olustur.
 
 SUBE SAATLERI: ${openingHours} - ${closingHours}
 
 PERSONEL LISTESI (${employees.length} kisi):
 ${employeeList}
 
-KESIN KURALLAR:
-1. FT personel = KESINLIKLE 6 gun calisir, 1 gun OFF. 6'DAN FAZLA OLAMAZ! Haftalik MAKSIMUM 45 saat (6 x 7.5 saat calısma). 45 saati ASLA gecme!
-2. PT personel = 3 gun calisir. Her PT icin KESINLIKLE 3 vardiya olustur!
-3. Toplam MINIMUM ${expectedShiftCount} vardiya olusturulmali!
-4. Ayni personel ayni gun 2 vardiyaya atanamaz.
-5. Vardiya suresi: FT = 8.5 saat (7.5+1 mola), PT = 4 saat.
-6. Vardiya tipleri: morning (${openingHours}-${String(midShiftH).padStart(2,'0')}:30), evening (${String(midShiftH).padStart(2,'0')}:00-${closingHours})
-7. Her gun sabah 2-3 kisi, aksam 3-4 kisi olmali.
-8. Molalar kademeli: 15dk arayla (ornek: 12:00, 12:15, 12:30).
-9. OFF gunleri SADECE Pazartesi veya Sali olabilir. Cumartesi ve Pazar KESINLIKLE OFF OLAMAZ! Herkes Cumartesi ve Pazar calisir!
-10. Her vardiyada en az 1 deneyimli personel (barista/supervisor).
-11. Stajyer tek basina calisamaz.
-12. CUMARTESI VE PAZAR ZORUNLU CALISMA GUNLERIDIR. Hic kimseye Cmt veya Paz gun OFF verme! OFF sadece Pzt veya Sal gunleri verilebilir!
+KESIN KURALLAR (HER BİRİ ZORUNLU):
+1. FT personel = TAMAMEN 6 gun calisir, 1 gun izin. Haftalik NET calisma = 45 saat (6 x 7.5h).
+   - Her FT personelin vardiyasi MUTLAKA ${openingHours}-${String(midShiftH).padStart(2,'0')}:30 VEYA ${String(midShiftH).padStart(2,'0')}:00-${closingHours} olmali (her biri 8.5 saat gross, 7.5h net).
+   - FT icin 6 kez 8.5 saatlik vardiya = 51 gross saat - 6 mola saati = 45 net saat. DIGER SURElER YASAK!
+2. PT personel = 3 gun calisir. Vardiya suresi 4 saat. Haftalik 12-13 saat.
+3. Toplam ${expectedShiftCount} vardiya olmali.
+4. Ayni personel ayni gun SADECE 1 vardiya.
+5. Haftalik izin sadece Pzt veya Sal gunleri. Cmt ve Paz ZORUNLU calisma!
+6. Her vardiyada min 1 barista/supervisor.
 
-ORNEK CIKTI (${ftEmployees.length} FT, ${ptEmployees.length} PT):
-Her FT personel icin 6 farkli gune, her PT icin 3 farkli gune vardiya ata.
+VARDIYA SABLONLARI:
+- Sabah (morning): startTime="${openingHours}:00", endTime="${String(midShiftH).padStart(2,'0')}:30:00", break 12:00-13:00
+- Aksam (evening): startTime="${String(midShiftH).padStart(2,'0')}:00:00", endTime="${closingHours}:00", break 18:00-19:00
+Bu iki sablondan BIRI kullanilmali. Farkli sureler YASAK!
+
+BEKLENEN CIKAR:
+${employees.filter((e:any) => e.employmentType !== 'parttime').map((e:any) => `${e.name}: 6 farkli gunde 6 vardiya`).join('\n')}
+${employees.filter((e:any) => e.employmentType === 'parttime').map((e:any) => `${e.name}: 3 farkli gunde 3 vardiya`).join('\n')}
 
 JSON yanit ver:
 {
   "shifts": [
     {"shiftDate":"YYYY-MM-DD","startTime":"HH:MM:SS","endTime":"HH:MM:SS","breakStartTime":"HH:MM:SS","breakEndTime":"HH:MM:SS","shiftType":"morning|evening","assignedToId":"user-id","status":"draft"}
   ],
-  "summary":"Özet"
+  "summary":"Ozet"
 }`,
         },
       ],

@@ -2385,10 +2385,32 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req, res) => {
 
     const finalPlannedCount = new Set(validatedShifts.map(s => s.assignedToId)).size;
 
+    // ─── 45 Saat Garantisi ────────────────────────────────────────────────
+    // FT vardiyaları standart saate normalize et: sabah veya akşam, 8.5 gross saat
+    const branchOpenH = parseInt((branch?.openingHours || '08:00').split(':')[0]);
+    const branchCloseH = parseInt((branch?.closingHours || '22:00').split(':')[0]);
+    const midH = Math.floor((branchOpenH + branchCloseH) / 2);
+    const midHStr = String(midH).padStart(2, '0');
+    const openStr = (branch?.openingHours || '08:00') + ':00';
+    const closeStr = (branch?.closingHours || '22:00') + ':00';
+    const morningEnd = `${midHStr}:30:00`;
+    const eveningStart = `${midHStr}:00:00`;
+    const empTypeMap = new Map(employees.map((e: any) => [String(e.id), e.employmentType]));
+
+    const correctedShifts = validatedShifts.map((shift: any) => {
+      if (empTypeMap.get(String(shift.assignedToId)) === 'parttime') return shift;
+      const isEvening = shift.shiftType === 'evening' ||
+        (shift.startTime && parseInt((shift.startTime as string).split(':')[0]) >= midH);
+      if (isEvening) {
+        return { ...shift, startTime: eveningStart, endTime: closeStr, breakStartTime: '18:00:00', breakEndTime: '19:00:00', shiftType: 'evening' };
+      }
+      return { ...shift, startTime: openStr, endTime: morningEnd, breakStartTime: '12:00:00', breakEndTime: '13:00:00', shiftType: 'morning' };
+    });
+
     res.json({
-      recommendations: validatedShifts,
+      recommendations: correctedShifts,
       summary: aiPlan.summary || '',
-      totalShifts: validatedShifts.length,
+      totalShifts: correctedShifts.length,
       cached: aiPlan.cached || false,
       weekStart,
       weekEnd,

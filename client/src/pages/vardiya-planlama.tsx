@@ -862,7 +862,7 @@ export default function VardiyaPlanlama() {
               copyWeekMutation.mutate({
                 sourceWeekStart: prevWeekStart.toISOString().split('T')[0],
                 targetWeekStart: weekStart.toISOString().split('T')[0],
-                branchId: selectedBranchId || user?.branchId,
+                branchId: user?.branchId,
               });
             }}
             data-testid="button-copy-prev-week"
@@ -873,53 +873,67 @@ export default function VardiyaPlanlama() {
         )}
       </div>
 
-      {/* Personel Haftalık Saat Özeti */}
+      {/* Personel Haftalık Saat Özeti — Grid kart görünümü */}
       {branchEmployees.length > 0 && (
-        <div className="flex flex-wrap gap-2 py-1">
-          {branchEmployees.map((emp: any) => {
-            const hours = getEmployeeWeeklyHours(String(emp.id));
-            const limit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
-            const pct = Math.min(100, Math.round((hours / limit) * 100));
-            const over = hours > limit;
-            const near = hours >= limit * 0.9 && !over;
-            return (
-              <div key={emp.id} title={`${emp.firstName} ${emp.lastName}: ${hours.toFixed(1)}/${limit}sa`}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
-                style={{
-                  background: over ? 'rgba(220,38,38,0.12)' : near ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
-                  borderColor: over ? 'rgba(220,38,38,0.4)' : near ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.1)',
-                  color: over ? '#f87171' : near ? '#fbbf24' : 'var(--color-text-secondary)',
-                }}>
-                {over ? '⚠' : near ? '↑' : ''}{emp.firstName} {emp.lastName?.charAt(0)}. {hours.toFixed(1)}sa
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Mr. Dobody Shift Planner Uyarıları */}
-      {dobodyWarnings.length > 0 && (
-        <div className="space-y-2">
-          {dobodyWarnings.slice(0, 3).map((w: any, i: number) => (
-            <div key={i} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg border"
-              style={{
-                background: w.severity === "critical" ? "rgba(220,38,38,0.08)" : w.severity === "warning" ? "rgba(245,158,11,0.08)" : "rgba(59,130,246,0.08)",
-                borderColor: w.severity === "critical" ? "rgba(220,38,38,0.3)" : w.severity === "warning" ? "rgba(245,158,11,0.3)" : "rgba(59,130,246,0.3)",
-              }}>
-              <span className="text-sm flex-shrink-0" style={{ marginTop: 1 }}>
-                {w.severity === "critical" ? "🚨" : w.severity === "warning" ? "⚠️" : "ℹ️"}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold" style={{ color: w.severity === "critical" ? "#f87171" : w.severity === "warning" ? "#fbbf24" : "#93c5fd" }}>
-                  Mr. Dobody
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{w.description || w.title}</p>
-              </div>
+        <div className="rounded-xl border p-3 mb-1" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground">Haftalık Saat Özeti</span>
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+              <span className="text-green-400">✓ {branchEmployees.filter((e:any) => { const h = getEmployeeWeeklyHours(String(e.id)); const l = e.weeklyHours || (e.employmentType==='parttime'?25:45); return h >= l; }).length} tamamlandı</span>
+              <span className="text-amber-400">⚠ {branchEmployees.filter((e:any) => { const h = getEmployeeWeeklyHours(String(e.id)); const l = e.weeklyHours || (e.employmentType==='parttime'?25:45); return h > 0 && h < l; }).length} eksik</span>
+              <span className="text-muted-foreground/50">{branchEmployees.filter((e:any) => getEmployeeWeeklyHours(String(e.id)) === 0).length} atanmamış</span>
             </div>
-          ))}
+          </div>
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
+            {branchEmployees.map((emp: any) => {
+              const hours = getEmployeeWeeklyHours(String(emp.id));
+              const limit = emp.weeklyHours || (emp.employmentType === 'parttime' ? 25 : 45);
+              const pct = Math.min(100, Math.round((hours / limit) * 100));
+              const over = hours > limit;
+              const under = hours > 0 && hours < limit;
+              const barColor = over ? '#ef4444' : under ? '#f59e0b' : '#22c55e';
+              const textColor = over ? '#f87171' : under ? '#fbbf24' : '#4ade80';
+              const bg = over ? 'rgba(239,68,68,0.08)' : under ? 'rgba(245,158,11,0.08)' : 'rgba(34,197,94,0.08)';
+              const borderColor = over ? 'rgba(239,68,68,0.25)' : under ? 'rgba(245,158,11,0.25)' : 'rgba(34,197,94,0.2)';
+              return (
+                <div key={emp.id} className="rounded-md p-2" style={{ background: bg, border: `0.5px solid ${borderColor}` }}>
+                  <div className="text-xs font-medium truncate">{emp.firstName} {emp.lastName?.charAt(0)}.</div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <div className="flex-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
+                    </div>
+                    <span className="text-[10px] font-medium flex-shrink-0" style={{ color: textColor }}>
+                      {hours}/{limit}s{over ? ' ⚠' : ''}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
-
+            {/* Mr. Dobody Shift Planner Uyarıları — kapatılabilir */}
+      {dobodyWarnings.length > 0 && !dobodyDismissed && (
+        <div className="rounded-xl border px-3 py-2.5 mb-1" style={{ background: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.25)' }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-amber-400 flex items-center gap-1.5">
+              🤖 Mr. Dobody — {dobodyWarnings.length} Vardiya Uyarısı
+            </span>
+            <button onClick={() => setDobodyDismissed(true)} className="text-[10px] text-muted-foreground hover:text-foreground">✕ kapat</button>
+          </div>
+          <div className="space-y-1">
+            {dobodyWarnings.slice(0, 3).map((w: any, i: number) => (
+              <div key={i} className="text-xs text-amber-300/80 flex items-start gap-1.5">
+                <span className="mt-0.5 flex-shrink-0">⚠</span>
+                <span>{w.message || w.description || String(w)}</span>
+              </div>
+            ))}
+            {dobodyWarnings.length > 3 && (
+              <div className="text-[10px] text-muted-foreground">+{dobodyWarnings.length - 3} daha...</div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Main Content: Inline Form + Calendar Side by Side */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: Inline Shift Form */}
