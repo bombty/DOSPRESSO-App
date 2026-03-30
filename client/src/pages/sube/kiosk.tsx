@@ -116,6 +116,7 @@ export default function BranchKiosk() {
   const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
+  const [kioskBranchTasks, setKioskBranchTasks] = useState<any[]>([]);
   const [lobbyData, setLobbyData] = useState<any>(null);
   const [displayQr, setDisplayQr] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -873,6 +874,12 @@ export default function BranchKiosk() {
     }
   };
 
+  const handleClaimBranchTask = async (taskId: number) => {
+    try {
+      await apiRequest('POST', `/api/tasks/${taskId}/claim`, { userId: selectedUser?.id });
+    } catch {}
+  };
+
   const handleStartShift = () => {
     if (selectedUser) {
       startShiftMutation.mutate(selectedUser.id);
@@ -1277,411 +1284,207 @@ export default function BranchKiosk() {
     </div>
   );
 
-  const renderWorkingStep = () => (
-    <div className="flex flex-col h-screen bg-[#f8f6f3] dark:bg-[#0a1628] overflow-hidden">
-      {/* Kompakt header */}
-      <div className="bg-[#c0392b] px-4 py-2 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={selectedUser?.profileImageUrl || undefined} />
-            <AvatarFallback className="bg-white/20 text-white text-sm">
+
+  const renderWorkingStep = () => {
+    const isOnBreak = currentSession?.status === 'on_break';
+    const hasSession = !!currentSession;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--color-background-tertiary)', overflow: 'hidden' }}>
+
+        {/* Header */}
+        <div style={{ background: '#c0392b', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 14 }}>
               {selectedUser?.firstName?.[0]}{selectedUser?.lastName?.[0]}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="text-white font-semibold text-sm leading-tight">{selectedUser?.firstName} {selectedUser?.lastName}</p>
-            <Badge variant={currentSession?.status === 'on_break' ? 'secondary' : currentSession ? 'default' : 'outline'} className="text-xs h-4">
-              {currentSession?.status === 'on_break' ? 'Molada' : currentSession ? 'Çalışıyor' : 'Giriş Yapıldı'}
-            </Badge>
+            </div>
+            <div>
+              <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: 0 }}>{selectedUser?.firstName} {selectedUser?.lastName}</p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: 0 }}>
+                {isOnBreak ? 'Molada' : hasSession ? 'Çalışıyor' : 'Vardiya bekleniyor'}
+              </p>
+            </div>
           </div>
+          <button onClick={resetWorker} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+            🏠 Ana Ekran
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 h-8" onClick={resetWorker} data-testid="button-home">
-            <Store className="h-4 w-4 mr-1" /> Ana Ekran
-          </Button>
-          <Button variant="ghost" size="sm" className="text-white/60 hover:bg-white/10 h-8" onClick={resetWorker} data-testid="button-logout">
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
-      {/* Mola modunda — büyük uyarı bandı */}
-      {currentSession?.status === 'on_break' && (
-        <div className="bg-amber-600 px-4 py-2 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <Coffee className="h-5 w-5 text-white" />
-            <span className="text-white font-semibold text-sm">
-              Molada — {currentSession.breakMinutes > 0 ? `${currentSession.breakMinutes} dk` : ''}
-            </span>
+        {/* Mola bandı */}
+        {isOnBreak && (
+          <div style={{ background: '#d97706', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>☕ Molada{currentSession?.breakMinutes ? ` — ${currentSession.breakMinutes} dk` : ''}</span>
+            <button
+              onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
+              disabled={breakEndMutation.isPending}
+              data-testid="button-end-break-top"
+              style={{ background: '#fff', border: 'none', borderRadius: 8, color: '#d97706', padding: '8px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}
+            >
+              {breakEndMutation.isPending ? '...' : '▶ Molayı Bitir'}
+            </button>
           </div>
-          <Button
-            size="sm"
-            className="bg-white text-amber-700 hover:bg-amber-50 h-9 px-4 font-semibold"
-            onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
-            disabled={breakEndMutation.isPending}
-            data-testid="button-end-break-top"
-          >
-            {breakEndMutation.isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Play className="h-4 w-4 mr-1.5" />}
-            Molayı Bitir — Geri Dön
-          </Button>
-        </div>
-      )}
+        )}
 
-      <div className="flex-1 grid grid-cols-2 gap-2 p-2 overflow-hidden" style={{gridTemplateRows: '1fr 1fr', minHeight: 0}}>
-        <Card className="flex flex-col overflow-hidden min-h-0">
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-amber-600" />
-              Vardiya Durumu
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto space-y-3 px-4 pb-3">
-            {sessionLoading && !currentSession ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 className="h-10 w-10 animate-spin text-amber-500 mb-3" />
-                <p className="text-muted-foreground text-sm">Vardiya durumu yükleniyor...</p>
+        {/* İçerik */}
+        <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignContent: 'start' }}>
+
+          {/* Vardiya Durumu */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16 }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 16 }}>⏱ Vardiya Durumu</p>
+
+            {sessionLoading ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ width: 32, height: 32, border: '3px solid #c0392b', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} />
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Yükleniyor...</p>
               </div>
-            ) : !currentSession ? (
-              <div className="text-center py-8">
-                <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground mb-4">Vardiya başlatılmadı</p>
-                <Button
-                  size="lg"
-                  className="bg-green-600 hover:bg-green-700"
+            ) : !hasSession ? (
+              <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 16 }}>Vardiya başlatılmadı</p>
+                <button
                   onClick={handleStartShift}
                   disabled={startShiftMutation.isPending}
                   data-testid="button-start-shift"
+                  style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: '14px 28px', fontSize: 16, fontWeight: 600, cursor: 'pointer', width: '100%' }}
                 >
-                  <Play className="h-5 w-5 mr-2" />
-                  Vardiya Başlat
-                </Button>
+                  {startShiftMutation.isPending ? 'Başlatılıyor...' : '▶ Vardiya Başlat'}
+                </button>
               </div>
             ) : (
-              <>
-                <div className="text-center">
-                  <div className="text-5xl font-mono font-bold text-amber-600 mb-2">
+              <div>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#d97706', letterSpacing: 2 }}>
                     {formatTime(elapsedTime)}
                   </div>
-                  <p className="text-muted-foreground">Çalışma Süresi</p>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: 4 }}>Çalışma Süresi</p>
                 </div>
 
-                <Separator />
-
-                <div className="flex flex-col gap-2">
-                  {currentSession.status === 'on_break' ? (
-                    <>
-                      <Button
-                        size="lg"
-                        className="w-full bg-blue-600 hover:bg-blue-700 h-16 text-base font-semibold"
-                        onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
-                        disabled={breakEndMutation.isPending}
-                        data-testid="button-end-break"
-                      >
-                        {breakEndMutation.isPending ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Play className="h-5 w-5 mr-2" />}
-                        Molayı Bitir — Geri Dön
-                      </Button>
-                      <Button
-                        size="lg"
-                        variant="destructive"
-                        className="w-full h-12 opacity-80"
-                        onClick={handleEndShiftClick}
-                        disabled={endShiftMutation.isPending}
-                        data-testid="button-end-shift-from-break"
-                      >
-                        <LogOut className="h-5 w-5 mr-2" />
-                        Vardiyayı Bitir
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="lg"
-                        variant="secondary"
-                        className="w-full h-12"
-                        onClick={handleBreakStartClick}
-                        disabled={breakStartMutation.isPending}
-                        data-testid="button-start-break"
-                      >
-                        <Coffee className="h-5 w-5 mr-2" />
-                        Mola Al
-                      </Button>
-                      <Button
-                        size="lg"
-                        variant="destructive"
-                        className="w-full h-12"
-                        onClick={handleEndShiftClick}
-                        disabled={endShiftMutation.isPending}
-                        data-testid="button-end-shift"
-                      >
-                        <LogOut className="h-5 w-5 mr-2" />
-                        Vardiyayı Bitir
-                      </Button>
-                    </>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {!isOnBreak && (
+                    <button
+                      onClick={handleBreakStartClick}
+                      disabled={breakStartMutation.isPending}
+                      data-testid="button-start-break"
+                      style={{ background: 'var(--color-background-secondary)', color: 'var(--color-text-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 500, cursor: 'pointer', width: '100%' }}
+                    >
+                      ☕ Mola Al
+                    </button>
                   )}
+                  <button
+                    onClick={handleEndShiftClick}
+                    disabled={endShiftMutation.isPending}
+                    data-testid="button-end-shift"
+                    style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '14px', fontSize: 15, fontWeight: 600, cursor: 'pointer', width: '100%' }}
+                  >
+                    {endShiftMutation.isPending ? 'Kaydediliyor...' : '↪ Vardiyayı Bitir'}
+                  </button>
                 </div>
 
                 {currentSession.breakMinutes > 0 && (
-                  <div className="text-center text-muted-foreground">
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, textAlign: 'center', marginTop: 10 }}>
                     Toplam mola: {formatMinutes(currentSession.breakMinutes)}
-                  </div>
+                  </p>
                 )}
-              </>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card className="overflow-hidden flex flex-col">
-          <CardHeader className="pb-2 pt-3 px-4 shrink-0">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <ListTodo className="h-4 w-4 text-amber-600" />
-              Görevlerim
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-y-auto flex-1 px-4 pb-3">
+          {/* Görevlerim */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, overflow: 'auto' }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>📋 Görevlerim</p>
             {userTasks.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                <p>Bekleyen görev yok</p>
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Bekleyen görev yok</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {userTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border bg-card"
-                    data-testid={`task-item-${task.id}`}
-                  >
-                    <div className={`p-2 rounded-full ${
-                      task.priority === 'high' ? 'bg-red-100 text-red-600' :
-                      task.priority === 'medium' ? 'bg-amber-100 text-amber-600' :
-                      'bg-blue-100 text-blue-600'
-                    }`}>
-                      {task.priority === 'high' ? (
-                        <AlertCircle className="h-4 w-4" />
-                      ) : (
-                        <ListTodo className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{task.title}</p>
-                      {task.dueDate && (
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(task.dueDate).toLocaleDateString('tr-TR')}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant={
-                      task.status === 'pending' ? 'secondary' :
-                      task.status === 'in_progress' ? 'default' : 'outline'
-                    }>
-                      {task.status === 'pending' ? 'Bekliyor' :
-                       task.status === 'in_progress' ? 'Devam Ediyor' : task.status}
-                    </Badge>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {userTasks.slice(0, 5).map((task: any) => (
+                  <div key={task.id} style={{ padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8, fontSize: 13 }}>
+                    <p style={{ fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{task.title}</p>
+                    {task.dueDate && <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => setShowKioskFaultReport(true)}
-            data-testid="button-kiosk-report-fault"
-          >
-            <AlertOctagon className="h-4 w-4 text-orange-500" />
-            Sorun Bildir
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full gap-2 border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-            onClick={() => setShowOvertimeRequest(true)}
-            data-testid="button-overtime-request"
-          >
-            <Timer className="h-4 w-4" />
-            Mesai Talep Et
-          </Button>
+          {/* Sorun Bildir + Mesai */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={() => setShowKioskFaultReport(true)} data-testid="button-kiosk-report-fault"
+              style={{ background: 'none', border: '0.5px solid var(--color-border-secondary)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              Sorun Bildir
+            </button>
+            <button onClick={() => setShowOvertimeRequest(true)} data-testid="button-overtime-request"
+              style={{ background: 'none', border: '0.5px solid rgba(245,158,11,0.5)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: '#d97706', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 20 }}>⏱</span>
+              Mesai Talep Et
+            </button>
+          </div>
+
+          {/* Şube Görevleri */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, overflow: 'auto' }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>📌 Şube Görevleri</p>
+            {kioskBranchTasks.length === 0 ? (
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Açık görev yok</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {kioskBranchTasks.slice(0, 3).map((task: any) => (
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8 }}>
+                    <div>
+                      <p style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 13, margin: 0 }}>{task.title}</p>
+                      <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, margin: '2px 0 0' }}>{task.category}</p>
+                    </div>
+                    {!task.assignedTo && (
+                      <button onClick={() => handleClaimBranchTask(task.id)} style={{ background: '#c0392b', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                        Sahiplen
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Ekip Durumu */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 16, gridColumn: '1 / -1' }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 500, marginBottom: 12 }}>
+              👥 Ekip Durumu
+              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'var(--color-background-secondary)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
+            </p>
+            {pdksAnomalyUsers.length > 0 && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
+                <p style={{ color: '#ef4444', fontWeight: 600, fontSize: 13, margin: '0 0 4px' }}>⚠ Mola Süresi Aşıldı</p>
+                {pdksAnomalyUsers.map((m: any) => (
+                  <p key={m.userId} style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>{m.name} — {m.breakMinutes} dk molada (limit: 90 dk)</p>
+                ))}
+              </div>
+            )}
+            {teamStatus.length === 0 ? (
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Ekip bilgisi yükleniyor...</p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }}>
+                {teamStatus.filter((m: any) => m.userId !== selectedUser?.id).map((member: any) => (
+                  <div key={member.userId} style={{ padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: member.status === 'active' ? '#22c55e' : member.status === 'on_break' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{member.name}</p>
+                      <p style={{ fontSize: 11, color: 'var(--color-text-secondary)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
 
-        <Dialog open={showKioskFaultReport} onOpenChange={setShowKioskFaultReport}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Sorun Bildir</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                {["Ekipman", "Hijyen", "Stok", "Diğer"].map((cat) => (
-                  <Button
-                    key={cat}
-                    variant={kioskFaultCategory === cat ? "default" : "outline"}
-                    className="toggle-elevate"
-                    onClick={() => setKioskFaultCategory(cat)}
-                    data-testid={`button-fault-cat-${cat.toLowerCase()}`}
-                  >
-                    {cat}
-                  </Button>
-                ))}
-              </div>
-              <Textarea
-                placeholder="Sorunu kısaca açıklayın..."
-                value={kioskFaultDesc}
-                onChange={(e) => setKioskFaultDesc(e.target.value)}
-                className="min-h-[80px]"
-                data-testid="input-kiosk-fault-desc"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => kioskFaultMutation.mutate({ category: kioskFaultCategory, description: kioskFaultDesc })}
-                disabled={!kioskFaultCategory || !kioskFaultDesc.trim() || kioskFaultMutation.isPending}
-                data-testid="button-kiosk-fault-submit"
-              >
-                {kioskFaultMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Gönder
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <KioskBranchTasks />
-
-        {/* PDKS Anomali Banner */}
-        {pdksAnomalyUsers.length > 0 && (
-          <div className="col-span-full flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800" data-testid="pdks-anomaly-banner">
-            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-semibold text-red-700 dark:text-red-300">Mola Süresi Aşıldı</p>
-              <div className="mt-1 space-y-1">
-                {pdksAnomalyUsers.map((m: any) => (
-                  <p key={m.userId} className="text-sm text-red-600 dark:text-red-400">
-                    {m.firstName} {m.lastName} — {m.breakMinutes} dk molada (limit: {m.maxBreakMinutes} dk)
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Ekip Durumu */}
-        {teamStatus.length > 0 && (
-          <Card data-testid="card-team-status">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Ekip Durumu
-                <Badge variant="secondary" className="ml-auto">{teamStatus.length} kişi</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-2">
-                {teamStatus.map((member: any) => (
-                  <div key={member.userId} className="flex items-center gap-2 p-2 rounded-lg bg-muted" data-testid={`team-member-${member.userId}`}>
-                    <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
-                      member.isBreakAnomaly ? 'bg-red-500' :
-                      member.status === 'on_break' ? 'bg-amber-400' : 'bg-green-500'
-                    }`} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{member.firstName} {member.lastName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {member.status === 'on_break'
-                          ? `Molada ${member.breakMinutes > 0 ? `(${member.breakMinutes} dk)` : ''}`
-                          : 'Çalışıyor'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Bildirimler + Duyurular */}
-        {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
-          <Card data-testid="card-kiosk-notifications">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-purple-600" />
-                Bildirimler & Duyurular
-                {kioskNotifications.length > 0 && (
-                  <Badge className="ml-auto bg-purple-600">{kioskNotifications.length}</Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {kioskAnnouncements.slice(0, 3).map((ann: any) => (
-                <div key={`ann-${ann.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-blue-50 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800" data-testid={`announcement-${ann.id}`}>
-                  <Megaphone className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{ann.title}</p>
-                    {ann.summary && <p className="text-xs text-muted-foreground line-clamp-2">{ann.summary}</p>}
-                  </div>
-                  {ann.isPinned && <Badge variant="outline" className="text-xs shrink-0">Sabitli</Badge>}
-                </div>
-              ))}
-              {kioskNotifications.slice(0, 5).map((notif: any) => (
-                <div key={`notif-${notif.id}`} className="flex items-start gap-2 p-2 rounded-lg bg-muted" data-testid={`notification-${notif.id}`}>
-                  <Bell className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{notif.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              Checklistlerim
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {userChecklists.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                <p>Atanmış checklist yok</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {userChecklists.map((checklist) => (
-                  <div
-                    key={checklist.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border bg-card cursor-pointer hover-elevate"
-                    data-testid={`checklist-item-${checklist.id}`}
-                    onClick={() => handleStartChecklist(checklist)}
-                  >
-                    <div className={`p-2 rounded-full ${checklist.pendingTasks === 0 ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                      {startingChecklistId === checklist.id ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : checklist.pendingTasks === 0 ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        <ListTodo className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{checklist.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {checklist.completedTasks}/{checklist.totalTasks} tamamlandı
-                      </p>
-                    </div>
-                    <Badge variant={checklist.pendingTasks === 0 ? 'default' : 'secondary'}>
-                      {checklist.pendingTasks === 0 ? 'Tamamlandı' : `${checklist.pendingTasks} bekliyor`}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* CSS animasyon */}
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
-    </div>
-  );
+    );
+  };
+
 
   const renderEndShiftSummary = () => (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-gray-900 dark:to-gray-800 p-4">
