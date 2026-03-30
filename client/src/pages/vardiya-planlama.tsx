@@ -783,6 +783,34 @@ export default function VardiyaPlanlama() {
         </div>
       </div>
 
+      {/* Stats Strip — haftalık özet */}
+      {branchEmployees.length > 0 && (
+        <div className="flex items-center gap-5 text-xs px-1 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+            <span className="text-muted-foreground">45sa tamamlayan</span>
+            <span className="font-semibold">{branchEmployees.filter((e:any) => { const h=getEmployeeWeeklyHours(String(e.id)); const l=e.weeklyHours||(e.employmentType==='parttime'?25:45); return h>=l; }).length}/{branchEmployees.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></div>
+            <span className="text-muted-foreground">Saat eksik</span>
+            <span className="font-semibold">{branchEmployees.filter((e:any) => { const h=getEmployeeWeeklyHours(String(e.id)); const l=e.weeklyHours||(e.employmentType==='parttime'?25:45); return h>0&&h<l; }).length} kişi</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+            <span className="text-muted-foreground">Boş gün</span>
+            <span className="font-semibold">{gapsInPeriod.length}</span>
+          </div>
+          {dobodyWarnings.length > 0 && !dobodyDismissed && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:"#7f77dd"}}></div>
+              <span className="text-muted-foreground">Dobody uyarısı</span>
+              <span className="font-semibold">{dobodyWarnings.length}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'schedule' | 'swap-requests' | 'compliance')} className="w-full">
         <div className="flex items-center gap-2 flex-wrap">
@@ -842,7 +870,7 @@ export default function VardiyaPlanlama() {
           <ChevronLeft className="w-4 h-4" />
         </Button>
         <Button size="sm" variant="outline" onClick={goToToday} data-testid="button-today">
-          Bugün
+          Bu Hafta
         </Button>
         <Button size="icon" variant="outline" onClick={nextWeek} data-testid="button-next-week">
           <ChevronRight className="w-4 h-4" />
@@ -1248,6 +1276,13 @@ export default function VardiyaPlanlama() {
                             );
                           })
                         )}
+                        {/* Dobody inline uyarı — bu gün için */}
+                        {dobodyWarnings.filter((w:any) => !w.shiftDate || w.shiftDate === day.dateStr).slice(0,1).map((w:any, wi:number) => (
+                          <div key={wi} className="mx-1 mb-1 px-2 py-1 rounded text-[10px] leading-snug"
+                            style={{background:'rgba(245,158,11,0.08)', border:'0.5px dashed rgba(245,158,11,0.35)', color:'#fbbf24'}}>
+                            {(w.message||w.description||'').slice(0,60)}{(w.message||'').length>60?'…':''}
+                          </div>
+                        ))}
                       </DroppableDayCell>
                     </Card>
                   );
