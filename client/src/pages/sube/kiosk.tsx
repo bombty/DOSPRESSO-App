@@ -1046,22 +1046,50 @@ export default function BranchKiosk() {
     ));
     const NowLine = () => <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${nowPct}%`, width: 2, background: '#ef4444', zIndex: 3 }} />;
     const pbStyle = (s: string): React.CSSProperties => ({
-      width: 158, height: 48, flexShrink: 0 as const, borderRadius: 8, padding: '0 8px',
-      display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', border: 'none',
-      ...(s === 'active' ? { background: '#1a6b2e', boxShadow: '0 0 0 1px rgba(74,222,128,0.4)' } :
-         s === 'on_break' ? { background: '#7a4a0a', boxShadow: '0 0 0 1px rgba(251,191,36,0.4)' } :
-         s === 'late' || s === 'missing' ? { background: '#8b1c1c', boxShadow: '0 0 0 1px rgba(248,113,113,0.5)' } :
-         s === 'scheduled' ? { background: '#1a3a6b', boxShadow: '0 0 0 1px rgba(147,197,253,0.4)' } :
-         { background: '#1a2d48', boxShadow: '0 0 0 1px rgba(255,255,255,0.18)' })
+      width: 164, height: 48, flexShrink: 0 as const, borderRadius: 10, padding: '0 10px',
+      display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', border: 'none',
+      ...(s === 'active'   ? { background: '#16a34a', boxShadow: '0 2px 10px rgba(22,163,74,0.35)' } :
+         s === 'on_break'  ? { background: '#d97706', boxShadow: '0 2px 10px rgba(217,119,6,0.35)' } :
+         s === 'late' || s === 'missing' ? { background: '#dc2626', boxShadow: '0 2px 10px rgba(220,38,38,0.35)' } :
+         s === 'scheduled' ? { background: '#1d4ed8', boxShadow: '0 2px 10px rgba(29,78,216,0.3)' } :
+         { background: '#142030', boxShadow: '0 0 0 1px rgba(255,255,255,0.15)' })
     });
-    const statusColor = (s: string) => s === 'active' ? '#86efac' : s === 'on_break' ? '#fde68a' : s === 'late' || s === 'missing' ? '#fca5a5' : s === 'scheduled' ? '#bfdbfe' : 'rgba(255,255,255,0.35)';
+    const statusColor = (s: string) => '#fff';
     const statusTxt = (staff: any) => {
       const s = staff.shiftStatus;
-      if (s === 'active') return 'Çalışıyor';
-      if (s === 'on_break') return `Molada${staff.lateMinutes ? ` · ${staff.lateMinutes}dk` : ''}`;
-      if (s === 'late') return `${staff.lateMinutes}dk geç!`;
-      if (s === 'missing') return 'Gelmedi!';
-      if (s === 'scheduled' && staff.shiftStartTime) return `${staff.shiftStartTime.slice(0,5)}-${staff.shiftEndTime?.slice(0,5)||'?'}`;
+      const now = new Date();
+      if (s === 'active') {
+        // Kalan süre hesapla
+        if (staff.shiftEndTime) {
+          const [eh, em] = staff.shiftEndTime.split(':').map(Number);
+          let endMin = eh * 60 + em;
+          const nowMin = now.getHours() * 60 + now.getMinutes();
+          if (endMin < nowMin) endMin += 24 * 60; // gece yarısı
+          const remaining = endMin - nowMin;
+          if (remaining > 0) {
+            const rh = Math.floor(remaining / 60);
+            const rm = remaining % 60;
+            return rh > 0 ? `Çalışıyor · ${rh}sa ${rm}dk kaldı` : `Çalışıyor · ${rm}dk kaldı`;
+          }
+        }
+        return 'Çalışıyor';
+      }
+      if (s === 'on_break') return `Molada${staff.breakMinutes ? ` · ${staff.breakMinutes}dk` : ''}`;
+      if (s === 'late') return `${staff.lateMinutes}dk geç — ${staff.shiftStartTime?.slice(0,5)||''}`;
+      if (s === 'missing') return `Gelmedi — ${staff.shiftStartTime?.slice(0,5)||''}`;
+      if (s === 'scheduled' && staff.shiftStartTime) {
+        const [sh, sm] = staff.shiftStartTime.split(':').map(Number);
+        const startMin = sh * 60 + sm;
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const diff = startMin - nowMin;
+        if (diff > 0) {
+          const dh = Math.floor(diff / 60);
+          const dm = diff % 60;
+          const label = dh > 0 ? `${dh}sa ${dm}dk sonra` : `${dm}dk sonra`;
+          return `${staff.shiftStartTime.slice(0,5)} — ${label}`;
+        }
+        return `${staff.shiftStartTime.slice(0,5)}-${staff.shiftEndTime?.slice(0,5)||'?'}`;
+      }
       return 'İzinli';
     };
     const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
