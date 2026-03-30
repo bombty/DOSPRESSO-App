@@ -160,6 +160,8 @@ export default function VardiyaPlanlama() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<'schedule' | 'swap-requests' | 'compliance'>('schedule');
+  const [dobodyDismissed, setDobodyDismissed] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
 
   // Role-based access: Only these roles can edit shifts
   const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'coach', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin'];
