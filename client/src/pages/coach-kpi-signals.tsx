@@ -85,9 +85,35 @@ export default function CoachKpiSignals() {
       </p>
 
       <div className="space-y-3">
+      {healthData && (
+        <div className="grid grid-cols-3 gap-2 p-1">
+          {[
+            { label: "Sağlıklı", count: healthData.healthyCount || 0, color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
+            { label: "Uyarı",   count: healthData.warningCount || 0,  color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
+            { label: "Kritik",  count: healthData.criticalCount || 0, color: "#ef4444", bg: "rgba(239,68,68,0.1)" },
+          ].map(s => (
+            <div key={s.label} className="text-center p-2.5 rounded-xl border"
+              style={{ background: s.bg, borderColor: `${s.color}30` }}>
+              <div className="text-2xl font-bold" style={{ color: s.color }}>{s.count}</div>
+              <div className="text-[11px] text-muted-foreground">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
         {(signals || []).map(signal => {
           const Icon = SIGNAL_ICONS[signal.signalKey] || AlertTriangle;
-          return (
+          const { data: healthData } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+  });
+
+  return (
             <Card key={signal.id} data-testid={`kpi-signal-${signal.signalKey}`}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">

@@ -14,7 +14,7 @@ export default function SubeBordroOzet() {
 
   const branchId = user?.branchId;
 
-  const { data: employees = [] } = useQuery<any[]>({
+  const { data: employees = [], isLoading: empLoading } = useQuery<any[]>({
     queryKey: ["/api/employees", branchId],
     staleTime: 600000,
     queryFn: async () => {
@@ -74,6 +74,12 @@ export default function SubeBordroOzet() {
   });
 
   const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+
+  if (!branchId) return (
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <p className="text-sm text-muted-foreground">Bu sayfayı görüntülemek için şube erişiminiz olmalı.</p>
+    </div>
+  );
 
   const totalNetPayroll = payrollRecords.reduce((s: number, r: any) => s + (r.netSalary || 0), 0);
   const totalOvertimeMins = weeklyStats.reduce((s, r) => s + r.overtimeMins, 0);

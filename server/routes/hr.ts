@@ -6240,8 +6240,11 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       `);
       const overtimeMinutes = parseInt((overtimeResult.rows[0] as any).total_minutes) || 0;
       
-      // Mesai ücreti hesaplama (saatlik ücret x 1.5)
-      const hourlyRate = baseSalary / (45 * 4); // Aylık ücret / (haftalık saat x 4 hafta)
+      // Mesai ücreti hesaplama — personelin sözleşme saatine göre (part-time için doğru)
+      const empRecord = await db.select({ weeklyHours: users.weeklyHours, employmentType: users.employmentType })
+        .from(users).where(eq(users.id, userId)).limit(1);
+      const contractWeeklyHours = empRecord[0]?.weeklyHours || 45;
+      const hourlyRate = baseSalary / (contractWeeklyHours * 4); // Aylık ücret / (sözleşme saati x 4 hafta)
       const overtimeAmount = Math.round((overtimeMinutes / 60) * hourlyRate * 1.5);
       
       // 4. Çalışma saati kontrolü

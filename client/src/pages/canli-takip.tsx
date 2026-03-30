@@ -112,6 +112,8 @@ export default function CanliTakip() {
 
   const getBranchName = (id: number) => branches.find(b => b.id === id)?.name || `Şube #${id}`;
 
+  if (!user) return null;
+
   return (
     <div style={{ padding: 16, maxWidth: 1400, margin: '0 auto' }}>
       {/* Header */}

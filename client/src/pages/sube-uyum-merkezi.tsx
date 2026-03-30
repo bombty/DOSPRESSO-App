@@ -78,6 +78,18 @@ export default function SubeUyumMerkezi() {
     staleTime: 2 * 60 * 1000,
   });
 
+  const { data: dobodyActions } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", selectedBranch?.branchId, "pending"],
+    queryFn: async () => {
+      const res = await fetch(`/api/agent/actions?status=pending&branchId=${selectedBranch.branchId}&limit=5`, { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return Array.isArray(d) ? d : (d.actions || []);
+    },
+    enabled: !!selectedBranch?.branchId,
+    staleTime: 60000,
+  });
+
   const { data: teamStatus } = useQuery<any>({
     queryKey: ["/api/branches", selectedBranch?.branchId, "team-status"],
     queryFn: async () => {
@@ -253,6 +265,29 @@ export default function SubeUyumMerkezi() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Mr. Dobody Bekleyen Aksiyonlar */}
+            {dobodyActions && dobodyActions.length > 0 && (
+              <div className="rounded-xl border p-4">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <span className="text-base">🤖</span>
+                  Mr. Dobody — Bekleyen Aksiyonlar
+                  <span className="ml-auto text-xs bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/30">{dobodyActions.length}</span>
+                </h3>
+                <div className="space-y-2">
+                  {dobodyActions.map((a: any) => (
+                    <div key={a.id} className="flex items-start gap-2.5 p-2.5 rounded-lg border text-xs"
+                      style={{ background: a.severity === "critical" ? "rgba(220,38,38,0.08)" : "rgba(245,158,11,0.08)", borderColor: a.severity === "critical" ? "rgba(220,38,38,0.25)" : "rgba(245,158,11,0.25)" }}>
+                      <span className="flex-shrink-0">{a.severity === "critical" ? "🚨" : "⚠️"}</span>
+                      <div>
+                        <p className="font-medium text-foreground">{a.title}</p>
+                        <p className="text-muted-foreground mt-0.5">{a.description}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

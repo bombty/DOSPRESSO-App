@@ -170,8 +170,65 @@ function GrowthTab({ data }: { data: CGOData }) {
     { icon: GraduationCap, label: "Akademi", route: "/akademi" },
   ];
 
+  // Şube uyum özeti
+  const { data: healthSummary } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+  });
+
   return (
     <div className="space-y-4">
+      {/* Şube Uyum Özeti */}
+      {healthSummary && healthSummary.branches?.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Şube Uyum Durumu
+              </span>
+              <a href="/sube-uyum-merkezi" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                Tümünü Gör →
+              </a>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[
+                { label: "Sağlıklı", count: healthSummary.healthyCount, color: "#22c55e" },
+                { label: "Uyarı", count: healthSummary.warningCount, color: "#f59e0b" },
+                { label: "Kritik", count: healthSummary.criticalCount, color: "#ef4444" },
+              ].map(s => (
+                <div key={s.label} className="text-center p-2 rounded-lg border" style={{ borderColor: `${s.color}30`, background: `${s.color}10` }}>
+                  <div className="text-xl font-bold" style={{ color: s.color }}>{s.count}</div>
+                  <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {healthSummary.branches
+                .sort((a: any, b: any) => a.overallScore - b.overallScore)
+                .slice(0, 4)
+                .map((b: any) => (
+                  <div key={b.branchId} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-24 truncate">{b.branchName}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${b.overallScore}%`, background: b.overallScore >= 80 ? "#22c55e" : b.overallScore >= 60 ? "#f59e0b" : "#ef4444" }} />
+                    </div>
+                    <span className="text-xs font-medium w-6 text-right">{b.overallScore}</span>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <CompactKPIStrip
         items={kpiCards.map((kpi, i) => ({
           label: kpi.label,
@@ -349,6 +406,18 @@ function DepartmentTab({ data }: { data: CGOData }) {
     ? Math.round(data.departmentHealth.reduce((s, d) => s + d.score, 0) / data.departmentHealth.length)
     : 0;
 
+  // Şube uyum özeti
+  const { data: healthSummary } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+  });
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -441,8 +510,65 @@ function OperationalTab({ data }: { data: CGOData }) {
     { label: "Ekipman Uptime", value: `%${op.uptimeRate}`, icon: <Activity className="w-4 h-4 text-purple-500" />, sub: `${op.equipmentActive}/${op.equipmentTotal} aktif` },
   ];
 
+  // Şube uyum özeti
+  const { data: healthSummary } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+  });
+
   return (
     <div className="space-y-4">
+      {/* Şube Uyum Özeti */}
+      {healthSummary && healthSummary.branches?.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Şube Uyum Durumu
+              </span>
+              <a href="/sube-uyum-merkezi" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                Tümünü Gör →
+              </a>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[
+                { label: "Sağlıklı", count: healthSummary.healthyCount, color: "#22c55e" },
+                { label: "Uyarı", count: healthSummary.warningCount, color: "#f59e0b" },
+                { label: "Kritik", count: healthSummary.criticalCount, color: "#ef4444" },
+              ].map(s => (
+                <div key={s.label} className="text-center p-2 rounded-lg border" style={{ borderColor: `${s.color}30`, background: `${s.color}10` }}>
+                  <div className="text-xl font-bold" style={{ color: s.color }}>{s.count}</div>
+                  <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {healthSummary.branches
+                .sort((a: any, b: any) => a.overallScore - b.overallScore)
+                .slice(0, 4)
+                .map((b: any) => (
+                  <div key={b.branchId} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-24 truncate">{b.branchName}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${b.overallScore}%`, background: b.overallScore >= 80 ? "#22c55e" : b.overallScore >= 60 ? "#f59e0b" : "#ef4444" }} />
+                    </div>
+                    <span className="text-xs font-medium w-6 text-right">{b.overallScore}</span>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <CompactKPIStrip
         items={statCards.map((stat, i) => ({
           label: stat.label,
@@ -690,6 +816,18 @@ function ManagerPerformanceTab() {
       </Card>
     );
   }
+
+  // Şube uyum özeti
+  const { data: healthSummary } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+  });
 
   return (
     <div className="space-y-4">
