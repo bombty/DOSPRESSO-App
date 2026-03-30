@@ -3707,7 +3707,9 @@ JSON formatında yanıt ver:
   // POST /api/training/assignments - Bulk assign training to users/roles
   router.post('/api/training/assignments', isAuthenticated, async (req, res) => {
     try {
-      if (!hasPermission(req.user.role, 'training', 'create')) {
+      const canAssign = hasPermission(req.user.role, 'training', 'create') ||
+        ["trainer", "coach", "admin", "ceo"].includes(req.user.role);
+      if (!canAssign) {
         return res.status(403).json({ message: "Eğitim ataması yapma izniniz yok" });
       }
       

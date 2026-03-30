@@ -150,14 +150,32 @@ router.post("/api/agent/actions/:id/approve", isAuthenticated, async (req, res) 
     if (!action) return res.status(404).json({ message: "Öneri bulunamadı" });
     if (action.status !== "pending" && action.status !== "escalated") return res.status(400).json({ message: "Bu öneri zaten işlenmiş" });
 
+    // Yetki kontrol sistemi:
+    // 1. Admin/CEO/CGO — her şeyi onaylayabilir + zincir aksiyonları tetikler
+    // 2. Coach/Trainer — kendi rolüne atanmış aksiyonları onaylayabilir (eğitim, checklist, uyum)
+    // 3. Supervisor/Müdür — kendi şubesine ait aksiyonları onaylayabilir
+    // 4. Hedef kullanıcı — kendine atanan reminders
     const adminRoles = ["admin", "ceo", "cgo"];
+    const coachTrainerRoles = ["coach", "trainer"];
+    const branchMgrRoles = ["mudur", "supervisor", "supervisor_buddy"];
     const isAdmin = adminRoles.includes(user.role);
+    const isCoachTrainer = coachTrainerRoles.includes(user.role);
+    const isBranchMgr = branchMgrRoles.includes(user.role);
     const isTargetUser = action.targetUserId && action.targetUserId === String(user.id);
     const isRoleScopeFallback = !action.targetUserId && action.targetRoleScope === user.role &&
       (action.branchId === null || action.branchId === user.branchId);
     const isEscalationTarget = action.status === "escalated" && action.escalationRole === user.role;
+    // Coach/Trainer: eğitim, uyum, checklist ve kendi scope aksiyonlarını onaylayabilir
+    const coachTrainerCanApprove = isCoachTrainer && (
+      ["training_overdue", "critical_training_overdue", "no_training_assigned",
+       "compliance_warning", "compliance_critical", "weekly_compliance_summary",
+       "missing_checklist", "rotation_imbalance", "weekend_off_violation"].includes(action.metadata?.type || "") ||
+      action.targetRoleScope === user.role
+    );
+    // Şube yöneticisi: kendi şubesine ait aksiyonları onaylayabilir
+    const branchMgrCanApprove = isBranchMgr && action.branchId === user.branchId;
 
-    if (!isAdmin && !isTargetUser && !isRoleScopeFallback && !isEscalationTarget) {
+    if (!isAdmin && !isTargetUser && !isRoleScopeFallback && !isEscalationTarget && !coachTrainerCanApprove && !branchMgrCanApprove) {
       return res.status(403).json({ message: "Bu öneriyi onaylama yetkiniz yok" });
     }
 

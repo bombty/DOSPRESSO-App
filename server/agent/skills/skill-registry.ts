@@ -86,6 +86,9 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./auto-todo-from-ticket");
   await import("./cross-module-insight");
   await import("./shift-planner");
+  await import("./training-assigner");
+  await import("./compliance-reporter");
+  await import("./sla-tracker");
   await import("./financial-insight");
 }
 
