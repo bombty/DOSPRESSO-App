@@ -219,9 +219,11 @@ export default function BranchKiosk() {
         if (res.ok && !cancelled) {
           const data = await res.json();
           if (!cancelled) {
+            // Sadece activeSession varsa güncelle — null gelirse mevcut state'e dokunma
             if (data.activeSession) {
               setCurrentSession(data.activeSession);
             }
+            // İlk yüklemede null gelirse de loading'i kapat (vardiya yok durumu)
             if (data.tasks) setUserTasks(data.tasks);
             if (data.checklists) setUserChecklists(data.checklists);
           }
