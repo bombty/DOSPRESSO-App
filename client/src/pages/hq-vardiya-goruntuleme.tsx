@@ -306,8 +306,60 @@ export default function HqVardiyaGoruntuleme() {
               </div>
             </CardContent>
           </Card>
+
+          <OvertimeSummaryWidget />
         </>
       )}
     </div>
+  );
+}
+
+function OvertimeSummaryWidget() {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/overtime-summary"],
+    queryFn: async () => {
+      const res = await fetch("/api/overtime-summary", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 60000,
+  });
+
+  if (isLoading || !data) return null;
+  const { period, summary, totalPending } = data;
+
+  return (
+    <Card data-testid="card-overtime-summary">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4 text-amber-500" />
+          Mesai Özeti — {period}
+          {totalPending > 0 && (
+            <span className="ml-auto text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full">
+              {totalPending} bekliyor
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        {summary.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Bu ay mesai talebi bulunmuyor</p>
+        ) : (
+          <div className="space-y-2">
+            {summary.map((b: any) => (
+              <div key={b.branchId} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-muted/40" data-testid={`overtime-branch-${b.branchId}`}>
+                <span className="text-sm font-medium truncate">{b.branchName}</span>
+                <div className="flex items-center gap-3 text-xs flex-shrink-0">
+                  {b.pending > 0 && <span className="text-amber-600 dark:text-amber-400">{b.pending} bekliyor</span>}
+                  {b.approved > 0 && <span className="text-green-600 dark:text-green-400">{b.approved} onaylı</span>}
+                  {b.rejected > 0 && <span className="text-muted-foreground">{b.rejected} red</span>}
+                  <span className="font-semibold text-foreground">{b.totalApprovedHours}s</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

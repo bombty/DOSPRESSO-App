@@ -17,6 +17,7 @@ import { onFeedbackReceived } from "../event-task-generator";
 import { z } from "zod";
 import multer from "multer";
 import {
+  overtimeRequests,
   insertKnowledgeBaseArticleSchema,
   insertQualityAuditSchema,
   insertMaintenanceScheduleSchema,
@@ -1127,6 +1128,56 @@ const updatePageContentSchema = insertPageContentSchema.partial().omit({
   // ========================================
   // OVERTIME REQUESTS - Mesai Talepleri
   // ========================================
+
+  // HQ: Şube bazlı mesai özeti (bu ay)
+  router.get('/api/overtime-summary', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const now = new Date();
+      const periodStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const allRequests = await db.select({
+        id: overtimeRequests.id,
+        branchId: overtimeRequests.branchId,
+        status: overtimeRequests.status,
+        requestedMinutes: overtimeRequests.requestedMinutes,
+        approvedMinutes: overtimeRequests.approvedMinutes,
+        overtimeDate: overtimeRequests.overtimeDate,
+      }).from(overtimeRequests)
+        .where(
+          sql`to_char(${overtimeRequests.overtimeDate}, 'YYYY-MM') = ${periodStr}`
+        );
+
+      // Şube bazlı grupla
+      const branchMap = new Map<number, { pending: number; approved: number; rejected: number; totalApprovedMin: number }>();
+      for (const r of allRequests) {
+        if (!r.branchId) continue;
+        if (!branchMap.has(r.branchId)) branchMap.set(r.branchId, { pending: 0, approved: 0, rejected: 0, totalApprovedMin: 0 });
+        const b = branchMap.get(r.branchId)!;
+        if (r.status === 'pending') b.pending++;
+        else if (r.status === 'approved') { b.approved++; b.totalApprovedMin += r.approvedMinutes || r.requestedMinutes || 0; }
+        else if (r.status === 'rejected') b.rejected++;
+      }
+
+      const branchIds = [...branchMap.keys()];
+      const branchNames = branchIds.length > 0
+        ? await db.select({ id: branches.id, name: branches.name }).from(branches).where(inArray(branches.id, branchIds))
+        : [];
+      const nameMap = new Map(branchNames.map(b => [b.id, b.name]));
+
+      const summary = [...branchMap.entries()].map(([branchId, stats]) => ({
+        branchId,
+        branchName: nameMap.get(branchId) || `Şube #${branchId}`,
+        ...stats,
+        totalApprovedHours: Math.round(stats.totalApprovedMin / 60 * 10) / 10,
+      })).sort((a, b) => b.totalApprovedHours - a.totalApprovedHours);
+
+      res.json({ period: periodStr, summary, totalPending: allRequests.filter(r => r.status === 'pending').length });
+    } catch (error) {
+      console.error('Overtime summary error:', error);
+      res.status(500).json({ message: 'Mesai özeti yüklenemedi' });
+    }
+  });
 
   router.get('/api/overtime-requests', isAuthenticated, async (req, res) => {
     try {

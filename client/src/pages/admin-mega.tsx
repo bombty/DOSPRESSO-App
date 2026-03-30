@@ -27,6 +27,7 @@ import {
   Sparkles,
   AlertTriangle,
   Lock,
+  KeyRound,
   Cog,
   BookOpen,
   ListTodo,
@@ -62,6 +63,7 @@ const AdminServisMailAyarlari = lazy(() => import("./admin/servis-mail-ayarlari"
 const AdminFabrikaIstasyonlar = lazy(() => import("./admin/fabrika-istasyonlar"));
 const AdminFabrikaFireSebepleri = lazy(() => import("./admin/fabrika-fire-sebepleri"));
 const AdminFabrikaPinYonetimi = lazy(() => import("./admin/fabrika-pin-yonetimi"));
+const AdminSubePinYonetimi = lazy(() => import("./admin/sube-pin-yonetimi"));
 const AdminFabrikaKaliteKriterleri = lazy(() => import("./admin/fabrika-kalite-kriterleri"));
 const IcerikStudyosu = lazy(() => import("./icerik-studyosu"));
 const AdminSeed = lazy(() => import("./admin-seed"));
@@ -367,6 +369,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "factory_pins",
     group: "fabrika",
     component: AdminFabrikaPinYonetimi
+  },
+  {
+    id: "sube-pin-yonetimi",
+    label: "Branch PIN Management",
+    labelTr: "Şube PIN Yönetimi",
+    icon: <KeyRound className="h-4 w-4" />,
+    permissionModule: "branch_pins",
+    group: "sube",
+    component: AdminSubePinYonetimi
   },
   {
     id: "kalite-kriterleri",

@@ -1006,7 +1006,7 @@ export default function BranchKiosk() {
     ));
     const NowLine = () => <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${nowPct}%`, width: 2, background: '#ef4444', zIndex: 3 }} />;
     const pbStyle = (s: string): React.CSSProperties => ({
-      width: 154, height: 34, flexShrink: 0 as const, borderRadius: 8, padding: '0 8px',
+      width: 158, height: 48, flexShrink: 0 as const, borderRadius: 8, padding: '0 8px',
       display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', border: 'none',
       ...(s === 'active' ? { background: '#1a6b2e', boxShadow: '0 0 0 1px rgba(74,222,128,0.4)' } :
          s === 'on_break' ? { background: '#7a4a0a', boxShadow: '0 0 0 1px rgba(251,191,36,0.4)' } :
@@ -1025,7 +1025,7 @@ export default function BranchKiosk() {
       return 'Izinli';
     };
     const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, marginBottom: 3 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
         <button style={pbStyle(staff.shiftStatus || 'off')} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
           <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, flexShrink: 0 }}>
             {staff.firstName?.[0]}{staff.lastName?.[0]}
@@ -1035,7 +1035,7 @@ export default function BranchKiosk() {
             <div style={{ fontSize: 8, color: statusColor(staff.shiftStatus || 'off'), whiteSpace: 'nowrap' }}>{statusTxt(staff)}</div>
           </div>
         </button>
-        <div style={{ flex: 1, height: 34, background: 'rgba(255,255,255,0.04)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ flex: 1, height: 48, background: 'rgba(255,255,255,0.04)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
           {gridLines}{bar}
         </div>
       </div>
