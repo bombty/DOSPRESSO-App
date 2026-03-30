@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Lock,
   KeyRound,
+  Building,
   Cog,
   BookOpen,
   ListTodo,
@@ -104,6 +105,7 @@ interface TabGroup {
 const TAB_GROUPS: TabGroup[] = [
   { id: "kullanicilar", label: "Users", labelTr: "Kullanıcılar", icon: <Users className="h-4 w-4" /> },
   { id: "sistem", label: "System", labelTr: "Sistem", icon: <Cog className="h-4 w-4" /> },
+  { id: "sube", label: "Branch", labelTr: "Şube", icon: <Building className="h-4 w-4" /> },
   { id: "icerik", label: "Content", labelTr: "İçerik", icon: <FileText className="h-4 w-4" /> },
   { id: "operasyon", label: "Operations", labelTr: "Operasyon", icon: <ClipboardList className="h-4 w-4" /> },
   { id: "fabrika", label: "Factory", labelTr: "Fabrika", icon: <Factory className="h-4 w-4" /> }
