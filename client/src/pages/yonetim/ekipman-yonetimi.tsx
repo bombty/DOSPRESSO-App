@@ -484,7 +484,7 @@ export default function EquipmentManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map(b => (
+                  {(Array.isArray(branches) ? branches : []).map(b => (
                     <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -961,7 +961,7 @@ export default function EquipmentManagement() {
                     <SelectValue placeholder="Şube seçiniz..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.map(b => (
+                    {(Array.isArray(branches) ? branches : []).map(b => (
                       <SelectItem key={b.id} value={b.id.toString()}>
                         {b.name}
                       </SelectItem>

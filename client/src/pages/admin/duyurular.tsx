@@ -782,7 +782,7 @@ export default function AdminDuyurular() {
                   Boş bırakılırsa tüm şubelere gösterilir
                 </p>
                 <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                  {branches.map((branch: any) => (
+                  {(Array.isArray(branches) ? branches : []).map((branch: any) => (
                     <Badge
                       key={branch.id}
                       variant={formData.targetBranches.includes(branch.id) ? "default" : "outline"}

@@ -380,7 +380,7 @@ export default function AdminWidgetYonetimi() {
                   </div>
                   {widget.roles && widget.roles.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {widget.roles.map(role => (
+                      {widget.roles?.map(role => (
                         <Badge key={role} variant="outline" className="text-xs" data-testid={`badge-widget-role-${widget.id}-${role}`}>
                           {ROLE_OPTIONS.find(r => r.value === role)?.label || role}
                         </Badge>

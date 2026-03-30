@@ -371,7 +371,7 @@ export default function FabrikaPerformans() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tüm Ürünler</SelectItem>
-                {products.map((p) => (
+                {(Array.isArray(products) ? products : []).map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
                   </SelectItem>
@@ -742,7 +742,7 @@ export default function FabrikaPerformans() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {workerScore.productBreakdown.map((pb, i) => (
+                            {workerScore.productBreakdown?.map((pb, i) => (
                               <TableRow key={i}>
                                 <TableCell className="font-medium">{pb.productName}</TableCell>
                                 <TableCell>{pb.produced}</TableCell>
@@ -775,7 +775,7 @@ export default function FabrikaPerformans() {
                 <SelectValue placeholder="Ürün Seçin" />
               </SelectTrigger>
               <SelectContent>
-                {products.map((p) => (
+                {(Array.isArray(products) ? products : []).map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
                   </SelectItem>
@@ -1043,7 +1043,7 @@ export default function FabrikaPerformans() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {updateScoresMutation.data.workers.map((w) => {
+                      {updateScoresMutation.data.workers?.map((w) => {
                         const diff = w.newScore - w.oldScore;
                         return (
                           <TableRow key={w.userId} data-testid={`row-score-update-${w.userId}`}>

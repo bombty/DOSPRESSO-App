@@ -392,7 +392,7 @@ export default function Checklists() {
       isEditable: checklist.isEditable ?? true,
       timeWindowStart: checklist.timeWindowStart || "",
       timeWindowEnd: checklist.timeWindowEnd || "",
-      tasks: tasks.map(t => ({
+      tasks: (Array.isArray(tasks) ? tasks : []).map(t => ({
         id: t.id,
         taskDescription: t.taskDescription,
         requiresPhoto: t.requiresPhoto ?? false,
@@ -421,7 +421,7 @@ export default function Checklists() {
         timeWindowStart: data.timeWindowStart || null,
         timeWindowEnd: data.timeWindowEnd || null,
         tasks: [
-          ...data.tasks.map((t, idx) => ({
+          ...data.tasks?.map((t, idx) => ({
             id: t.id ?? null,
             taskDescription: t.taskDescription,
             requiresPhoto: t.requiresPhoto,
@@ -564,7 +564,7 @@ export default function Checklists() {
             </Button>
           ) : (
             <div className="space-y-2">
-              {tasks.map((task: ChecklistTask) => {
+              {(Array.isArray(tasks) ? tasks : []).map((task: ChecklistTask) => {
                 const taskCompleted = isTaskCompleted(completion, task.id);
                 const taskCompletionData = getTaskCompletion(completion, task.id);
                 const isExpanded = expandedTasks[task.id];

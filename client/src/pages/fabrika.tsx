@@ -767,7 +767,7 @@ export default function Fabrika() {
             </div>
           ) : orders && orders.length > 0 ? (
             <div className="space-y-3">
-              {orders.map(order => (
+              {(Array.isArray(orders) ? orders : []).map(order => (
                 <Card key={order.id} data-testid={`card-order-${order.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -729,13 +729,13 @@ function EmbeddedMessages() {
                     {threadData.messages[0]?.subject || "Mesaj"}
                   </h2>
                   <p className="text-sm text-muted-foreground truncate">
-                    {getParticipantNames(threadData.participants.map((p: any) => ({ id: p.id || p.userId, firstName: p.firstName || "", lastName: p.lastName || "" })))}
+                    {getParticipantNames(threadData.participants?.map((p: any) => ({ id: p.id || p.userId, firstName: p.firstName || "", lastName: p.lastName || "" })))}
                   </p>
                 </div>
               </div>
               <ScrollArea className="flex-1" ref={scrollRef as any}>
                 <div className="p-4 space-y-2">
-                  {threadData.messages.map((message) => {
+                  {threadData.messages?.map((message) => {
                     const isSent = message.senderId === user?.id;
                     const sender = threadData.participants.find((p: any) => (p.id || p.userId) === message.senderId);
                     return (
@@ -1174,7 +1174,7 @@ export default function Notifications() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all" data-testid="branch-option-all">Tüm Şubeler</SelectItem>
-                  {branches.map(branch => (
+                  {(Array.isArray(branches) ? branches : []).map(branch => (
                     <SelectItem key={branch.id} value={String(branch.id)} data-testid={`branch-option-${branch.id}`}>
                       {branch.name}
                     </SelectItem>
@@ -1766,7 +1766,7 @@ function NotificationPreferencesContent({
                   <span>{cat.label}</span>
                 </div>
                 <div className="space-y-1 pl-6">
-                  {cat.types.map((type) => (
+                  {cat.types?.map((type) => (
                     <div
                       key={type.key}
                       className="flex items-center justify-between py-1.5"

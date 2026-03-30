@@ -454,7 +454,7 @@ export default function TopluVeriYonetimi() {
 
                     {validationResult.warnings.length > 0 && (
                       <div className="space-y-1">
-                        {validationResult.warnings.map((w, i) => (
+                        {validationResult.warnings?.map((w, i) => (
                           <div key={i} className="flex items-start gap-1 text-xs text-yellow-600 dark:text-yellow-400">
                             <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                             <span>{w}</span>
@@ -465,7 +465,7 @@ export default function TopluVeriYonetimi() {
 
                     {validationResult.errors.length > 0 && (
                       <div className="space-y-1">
-                        {validationResult.errors.map((e, i) => (
+                        {validationResult.errors?.map((e, i) => (
                           <div key={i} className="flex items-start gap-1 text-xs text-red-600">
                             <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                             <span>{e}</span>
@@ -517,7 +517,7 @@ export default function TopluVeriYonetimi() {
 
                   {importStatus.errors.length > 0 && (
                     <ScrollArea className="h-[120px] border rounded-md p-2">
-                      {importStatus.errors.map((e, i) => (
+                      {importStatus.errors?.map((e, i) => (
                         <div key={i} className="flex items-start gap-1 text-xs text-red-600 mb-1">
                           <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                           <span>{e}</span>

@@ -1028,7 +1028,7 @@ export default function MisafirGeriBildirim() {
                     </SelectTrigger>
                     <SelectContent className="max-h-[240px]">
                       {!staffRating && <SelectItem value="_none">{t.dontWantToSpecify}</SelectItem>}
-                      {branchInfo.staff.map((s) => (
+                      {branchInfo.staff?.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.firstName} {s.lastName}
                         </SelectItem>

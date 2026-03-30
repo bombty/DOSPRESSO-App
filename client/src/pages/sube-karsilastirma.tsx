@@ -158,7 +158,7 @@ export default function SubeKarsilastirma() {
                 />
                 <Legend />
                 <Bar dataKey="averageScore" name="Ortalama Puan" radius={[0, 4, 4, 0]}>
-                  {branches.map((entry, index) => (
+                  {(Array.isArray(branches) ? branches : []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getScoreColor(entry.averageScore)} />
                   ))}
                 </Bar>
@@ -177,7 +177,7 @@ export default function SubeKarsilastirma() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {branches.map((branch, index) => {
+            {(Array.isArray(branches) ? branches : []).map((branch, index) => {
               const badgeInfo = getScoreBadge(branch.averageScore);
               return (
                 <div 

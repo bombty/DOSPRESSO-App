@@ -105,7 +105,7 @@ function DashboardTab({ year, month }: { year: number; month: number }) {
           <CardHeader className="pb-2"><CardTitle className="text-sm">Gider Dağılımı</CardTitle></CardHeader>
           <CardContent>
             {d?.categoryBreakdown && d.categoryBreakdown.length > 0 ? (() => {
-              const pieData = d.categoryBreakdown.map((c: any) => ({ name: c.category, value: c.amount }));
+              const pieData = d.categoryBreakdown?.map((c: any) => ({ name: c.category, value: c.amount }));
               return (
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
@@ -234,7 +234,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
             <SelectTrigger className="w-[120px]" data-testid="select-records-branch"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tümü</SelectItem>
-              {branches.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
+              {(Array.isArray(branches) ? branches : []).map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -244,7 +244,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
             <SelectTrigger className="w-[120px]" data-testid="select-records-category"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tümü</SelectItem>
-              {categories.map((c: any) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+              {(Array.isArray(categories) ? categories : []).map((c: any) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -260,7 +260,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
                 <Label>Şube</Label>
                 <Select value={form.branchId} onValueChange={v => setForm({ ...form, branchId: v })}>
                   <SelectTrigger data-testid="select-record-branch"><SelectValue placeholder="Şube seçin" /></SelectTrigger>
-                  <SelectContent>{branches.map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{(Array.isArray(branches) ? branches : []).map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
@@ -310,7 +310,7 @@ function RecordsTab({ year, month }: { year: number; month: number }) {
               <TableBody>
                 {records.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Kayıt bulunamadı</TableCell></TableRow>
-                ) : records.map((r: any, i: number) => (
+                ) : (Array.isArray(records) ? records : []).map((r: any, i: number) => (
                   <TableRow key={r.id || i} data-testid={`row-record-${i}`}>
                     <TableCell className="text-sm">{r.recordDate ? new Date(r.recordDate).toLocaleDateString('tr-TR') : '-'}</TableCell>
                     <TableCell className="text-sm">{r.branchName || '-'}</TableCell>
@@ -464,7 +464,7 @@ function ProfitabilityTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.allProducts.map((p: any, i: number) => (
+                {data.allProducts?.map((p: any, i: number) => (
                   <TableRow key={i} data-testid={`row-product-${i}`}>
                     <TableCell className="font-medium">{p.productName}</TableCell>
                     <TableCell className="text-right">{fmt(p.unitCost || 0)}</TableCell>
@@ -498,7 +498,7 @@ function InventoryTab() {
 
       {data?.categoryBreakdown && data.categoryBreakdown.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {data.categoryBreakdown.map((c: any, i: number) => (
+          {data.categoryBreakdown?.map((c: any, i: number) => (
             <Card key={i}>
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground truncate">{c.category}</p>
@@ -524,7 +524,7 @@ function InventoryTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.lowStockItems.map((item: any, i: number) => (
+                {data.lowStockItems?.map((item: any, i: number) => (
                   <TableRow key={i} data-testid={`row-low-stock-${i}`}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-right">{fmtNum(item.current || 0)}</TableCell>
@@ -552,7 +552,7 @@ function InventoryTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.highValueItems.map((item: any, i: number) => (
+                {data.highValueItems?.map((item: any, i: number) => (
                   <TableRow key={i} data-testid={`row-high-value-${i}`}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-right">{item.unit || '-'}</TableCell>
@@ -594,7 +594,7 @@ function PersonnelTab({ year, month }: { year: number; month: number }) {
 
       {data?.roleDistribution && data.roleDistribution.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {data.roleDistribution.map((r: any, i: number) => (
+          {data.roleDistribution?.map((r: any, i: number) => (
             <Badge key={i} variant="secondary" data-testid={`badge-role-${i}`}>{r.role}: {r.count}</Badge>
           ))}
         </div>
@@ -617,7 +617,7 @@ function PersonnelTab({ year, month }: { year: number; month: number }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.branchBreakdown.map((b: any, i: number) => (
+                {data.branchBreakdown?.map((b: any, i: number) => (
                   <TableRow key={i} data-testid={`row-personnel-branch-${i}`}>
                     <TableCell className="font-medium">{b.branchName}</TableCell>
                     <TableCell className="text-right">{b.employeeCount}</TableCell>

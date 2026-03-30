@@ -235,7 +235,7 @@ export default function AcademyExplore() {
           >
             Tümü
           </Button>
-          {categories.map((cat) => {
+          {(Array.isArray(categories) ? categories : []).map((cat) => {
             const Icon = getCategoryIcon(cat);
             return (
               <Button

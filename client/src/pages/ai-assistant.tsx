@@ -114,7 +114,7 @@ export default function AIAssistant() {
                       <div className="mt-4 pt-4 border-t">
                         <p className="text-sm font-medium text-muted-foreground mb-2">Kaynaklar:</p>
                         <div className="flex flex-col gap-3 sm:gap-4">
-                          {item.sources.map((source, idx) => (
+                          {item.sources?.map((source, idx) => (
                             <div key={idx} className="text-sm">
                               <Badge variant="outline" className="mb-1">
                                 {source.title}

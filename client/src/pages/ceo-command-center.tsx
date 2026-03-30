@@ -363,7 +363,7 @@ export default function CEOCommandCenter() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-1.5">
-                  {dashboardData.urgentAlerts.map((alert, i) => (
+                  {dashboardData.urgentAlerts?.map((alert, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm" data-testid={`alert-item-${i}`}>
                       {alert.severity === 'critical' ? (
                         <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
@@ -455,7 +455,7 @@ export default function CEOCommandCenter() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {dashboardData.departments.map((dept, i) => (
+            {dashboardData.departments?.map((dept, i) => (
               <Card key={i} data-testid={`card-dept-${dept.source.toLowerCase().replace(/[^a-z]/g, '-')}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -473,7 +473,7 @@ export default function CEOCommandCenter() {
                 <CardContent className="pt-0">
                   <p className="text-sm font-semibold mb-2" data-testid={`text-dept-metric-${i}`}>{dept.mainMetric}</p>
                   <div className="space-y-1">
-                    {dept.details.map((d, j) => (
+                    {dept.details?.map((d, j) => (
                       <div key={j} className="flex justify-between text-xs">
                         <span className="text-muted-foreground">{d.key}</span>
                         <span className="font-medium">{d.value}</span>
@@ -506,7 +506,7 @@ export default function CEOCommandCenter() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {abuseReport.alerts.map((alert, i) => (
+                  {abuseReport.alerts?.map((alert, i) => (
                     <div key={i} className="flex items-start gap-2 p-2 rounded-lg border" data-testid={`abuse-alert-${i}`}>
                       {alert.severity === 'critical' ? (
                         <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
@@ -552,7 +552,7 @@ export default function CEOCommandCenter() {
               <CardContent className="space-y-2">
                 <Progress value={evalCoverage.summary.overallPercentage} className="h-2" />
                 <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
-                  {evalCoverage.branches.map((b) => (
+                  {evalCoverage.branches?.map((b) => (
                     <div key={b.branchId} className="flex items-center justify-between gap-2 p-1.5 rounded-md" data-testid={`eval-branch-${b.branchId}`}>
                       <div className="flex items-center gap-2 min-w-0">
                         <div className={`w-2 h-2 rounded-full shrink-0 ${b.percentage >= 80 ? 'bg-green-500' : b.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} />
@@ -582,7 +582,7 @@ export default function CEOCommandCenter() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {dashboardData.bottomManagers.map((m) => (
+                  {dashboardData.bottomManagers?.map((m) => (
                     <div key={m.id} className="flex items-center justify-between p-2 rounded-lg border" data-testid={`card-bottom-mgr-${m.id}`}>
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full shrink-0 ${m.score >= 80 ? 'bg-green-500' : m.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`} />

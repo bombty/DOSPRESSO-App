@@ -672,7 +672,7 @@ export default function PersonelDetay() {
                 <div className="text-center p-3 rounded-md border" data-testid="score-overall">
                   <p className="text-2xl font-bold text-primary">
                     {satisfactionScore?.overallScore !== null && satisfactionScore?.overallScore !== undefined
-                      ? satisfactionScore.overallScore.toFixed(0)
+                      ? Number(satisfactionScore.overallScore ?? 0).toFixed(0)
                       : "-"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Memnuniyet / 100</p>
@@ -1125,7 +1125,7 @@ export default function PersonelDetay() {
                     {/* Genel Skor */}
                     <Card className="text-center p-3">
                       <p className="text-2xl font-bold text-primary">
-                        {satisfactionScore.overallScore !== null ? satisfactionScore.overallScore.toFixed(0) : "-"}
+                        {satisfactionScore.overallScore !== null ? Number(satisfactionScore.overallScore ?? 0).toFixed(0) : "-"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">Genel Skor / 100</p>
                     </Card>

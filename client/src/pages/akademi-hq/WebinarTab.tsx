@@ -210,7 +210,7 @@ export function WebinarTab() {
                     </div>
                     {webinar.targetRoles && webinar.targetRoles.length > 0 && (
                       <div className="flex gap-1 mt-1 flex-wrap">
-                        {webinar.targetRoles.map(r => (
+                        {webinar.targetRoles?.map(r => (
                           <Badge key={r} variant="outline" className="text-xs">{r}</Badge>
                         ))}
                       </div>

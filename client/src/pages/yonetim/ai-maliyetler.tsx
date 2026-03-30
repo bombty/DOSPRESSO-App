@@ -151,7 +151,7 @@ export default function AICostDashboard() {
                 </TableHeader>
                 <TableBody>
                   {data?.costByFeature && data.costByFeature.length > 0 ? (
-                    data.costByFeature.map((item) => (
+                    data.costByFeature?.map((item) => (
                       <TableRow key={item.feature} data-testid={`row-feature-${item.feature}`}>
                         <TableCell className="font-medium">
                           {FEATURE_LABELS[item.feature] || item.feature}
@@ -201,7 +201,7 @@ export default function AICostDashboard() {
                 </TableHeader>
                 <TableBody>
                   {data?.costByModel && data.costByModel.length > 0 ? (
-                    data.costByModel.map((item) => (
+                    data.costByModel?.map((item) => (
                       <TableRow key={item.model} data-testid={`row-model-${item.model}`}>
                         <TableCell className="font-medium font-mono text-sm">
                           {item.model}
@@ -252,7 +252,7 @@ export default function AICostDashboard() {
               </TableHeader>
               <TableBody>
                 {data?.last14Days && data.last14Days.length > 0 ? (
-                  data.last14Days.map((item) => (
+                  data.last14Days?.map((item) => (
                     <TableRow key={item.date} data-testid={`row-day-${item.date}`}>
                       <TableCell className="font-medium">
                         {formatDate(item.date)}

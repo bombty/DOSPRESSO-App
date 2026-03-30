@@ -259,7 +259,7 @@ function GrowthTab({ data }: { data: CGOData }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {data.alerts.length > 0 ? data.alerts.map((alert, i) => (
+                {data.alerts.length > 0 ? data.alerts?.map((alert, i) => (
                   <div key={i} className={`flex items-start gap-2 p-2 rounded-md ${getStatusBg(alert.severity)}`} data-testid={`cgo-alert-${i}`}>
                     <StatusIcon status={alert.severity} />
                     <div className="min-w-0 flex-1">
@@ -398,7 +398,7 @@ function DepartmentTab({ data }: { data: CGOData }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {data.departmentHealth.map((dept, i) => (
+              {data.departmentHealth?.map((dept, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-3 p-2.5 rounded-md hover-elevate cursor-pointer bg-muted/30"

@@ -708,7 +708,7 @@ export default function GuestFormSettings() {
                   <SelectValue placeholder="Şube seçin..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map((b) => (
+                  {(Array.isArray(branches) ? branches : []).map((b) => (
                     <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>

@@ -73,7 +73,7 @@ export default function SubePinYonetimi() {
               {branchesLoading ? (
                 <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
               ) : (
-                Array.isArray(branches) && branches.map((b: any) => (
+                Array.isArray(branches) && (Array.isArray(branches) ? branches : []).map((b: any) => (
                   <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                 ))
               )}

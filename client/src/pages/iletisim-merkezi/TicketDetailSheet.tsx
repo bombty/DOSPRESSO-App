@@ -91,8 +91,8 @@ export function TicketDetailSheet({ ticketId, open, onOpenChange }: TicketDetail
     const hoursLeft = (new Date(ticket.sla_deadline).getTime() - Date.now()) / 3600000;
     if (hoursLeft < 0) return { label: "SLA Aşıldı", color: "text-red-500" };
     if (hoursLeft < 1) return { label: `${Math.floor(hoursLeft * 60)} dk kaldı`, color: "text-red-500" };
-    if (hoursLeft < 4) return { label: `${hoursLeft.toFixed(1)} saat kaldı`, color: "text-amber-500" };
-    return { label: `${hoursLeft.toFixed(0)} saat kaldı`, color: "text-green-600 dark:text-green-400" };
+    if (hoursLeft < 4) return { label: `${Number(hoursLeft ?? 0).toFixed(1)} saat kaldı`, color: "text-amber-500" };
+    return { label: `${Number(hoursLeft ?? 0).toFixed(0)} saat kaldı`, color: "text-green-600 dark:text-green-400" };
   };
 
   const slaStatus = getSlaStatus();

@@ -434,7 +434,7 @@ export default function AdminFabrikaKaliteKriterleri() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="general">Genel (Tüm ürünler)</SelectItem>
-                          {products.map(product => (
+                          {(Array.isArray(products) ? products : []).map(product => (
                             <SelectItem key={product.id} value={product.id.toString()}>{product.name}</SelectItem>
                           ))}
                         </SelectContent>

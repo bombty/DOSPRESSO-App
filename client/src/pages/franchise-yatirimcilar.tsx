@@ -220,7 +220,7 @@ export default function FranchiseYatirimcilar() {
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Şubeler:</p>
                     <div className="flex flex-wrap gap-1">
-                      {inv.branches.map((b) => (
+                      {inv.branches?.map((b) => (
                         <Badge key={b.id} variant="outline" className="text-xs" data-testid={`badge-branch-${b.branchId}`}>
                           <MapPin className="w-3 h-3 mr-1" />
                           {b.branchName || `Şube #${b.branchId}`}
@@ -389,7 +389,7 @@ export default function FranchiseYatirimcilar() {
               </Select>
               {formData.branchIds.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {formData.branchIds.map((id) => {
+                  {formData.branchIds?.map((id) => {
                     const br = allBranches?.find((b) => String(b.id) === id);
                     return (
                       <Badge
@@ -431,7 +431,7 @@ export default function FranchiseYatirimcilar() {
                   investmentAmount: formData.investmentAmount || undefined,
                   monthlyRoyaltyRate: formData.monthlyRoyaltyRate || undefined,
                   notes: formData.notes || undefined,
-                  branchIds: formData.branchIds.map(Number),
+                  branchIds: formData.branchIds?.map(Number),
                 });
               }}
               data-testid="button-submit-investor"

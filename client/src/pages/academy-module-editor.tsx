@@ -655,7 +655,7 @@ export default function AcademyModuleEditor() {
       })));
       setSupervisorChecklist(
         Array.isArray(existingModule.supervisorChecklist)
-          ? existingModule.supervisorChecklist.map((item: any) => typeof item === 'string' ? item : item.title || item.description || "")
+          ? existingModule.supervisorChecklist?.map((item: any) => typeof item === 'string' ? item : item.title || item.description || "")
           : []
       );
       setModuleStatus((existingModule as any).status || "draft");
@@ -673,8 +673,8 @@ export default function AcademyModuleEditor() {
     setModuleType(template.moduleType);
     setRequiredForRole(template.requiredForRole);
     setLearningObjectives(template.learningObjectives);
-    setSteps(template.steps.map(s => ({ ...s, videoUrl: "", imageUrl: "" })));
-    setQuiz(template.quiz.map(q => ({ ...q, explanation: "", points: 10 })));
+    setSteps(template.steps?.map(s => ({ ...s, videoUrl: "", imageUrl: "" })));
+    setQuiz(template.quiz?.map(q => ({ ...q, explanation: "", points: 10 })));
     setShowTemplates(false);
     toast({ title: "Şablon uygulandı", description: `"${template.title}" şablonu yüklendi.` });
   };
@@ -756,10 +756,10 @@ export default function AcademyModuleEditor() {
       if (data?.module) {
         const m = data.module;
         if (m.learningObjectives?.length) setLearningObjectives(m.learningObjectives);
-        if (m.steps?.length) setSteps(m.steps.map((s: any, i: number) => ({
+        if (m.steps?.length) setSteps(m.steps?.map((s: any, i: number) => ({
           stepNumber: i + 1, title: s.title || "", content: s.content || "", videoUrl: "", imageUrl: ""
         })));
-        if (m.quiz?.length) setQuiz(m.quiz.map((q: any) => ({
+        if (m.quiz?.length) setQuiz(m.quiz?.map((q: any) => ({
           questionId: q.questionId || `q${Date.now()}-${Math.random()}`,
           questionType: q.questionType || "mcq",
           questionText: q.questionText || "",
@@ -816,7 +816,7 @@ export default function AcademyModuleEditor() {
     },
     onSuccess: (data: any) => {
       if (data?.questions?.length) {
-        const newQuiz = data.questions.map((q: any) => ({
+        const newQuiz = data.questions?.map((q: any) => ({
           questionId: q.questionId || `q${Date.now()}-${Math.random()}`,
           questionType: q.questionType || "mcq",
           questionText: q.questionText || q.question || "",
@@ -1498,7 +1498,7 @@ export default function AcademyModuleEditor() {
 
                         <div className="space-y-2">
                           <Label className="text-xs text-muted-foreground">Seçenekler (doğru cevabı seçin)</Label>
-                          {q.options.map((opt, optIdx) => (
+                          {q.options?.map((opt, optIdx) => (
                             <div key={optIdx} className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -1745,7 +1745,7 @@ export default function AcademyModuleEditor() {
                         />
                         <div>
                           <Label className="text-xs text-muted-foreground mb-1 block">Beklenen Aksiyonlar</Label>
-                          {sc.expectedActions.map((action, actionIdx) => (
+                          {sc.expectedActions?.map((action, actionIdx) => (
                             <div key={actionIdx} className="flex gap-2 mb-1">
                               <Input
                                 value={action}

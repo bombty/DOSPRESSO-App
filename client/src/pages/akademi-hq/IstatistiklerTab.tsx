@@ -177,7 +177,7 @@ export function IstatistiklerTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {trainingStats.personnelProgress.map((person, idx) => {
+                  {trainingStats.personnelProgress?.map((person, idx) => {
                     const pct = person.totalModules > 0 ? Math.round((person.completedModules / person.totalModules) * 100) : 0;
                     return (
                       <TableRow key={person.userId || idx} data-testid={`personnel-stat-${idx}`}>

@@ -261,7 +261,7 @@ export default function CapaRaporlari() {
                     </tr>
                   </thead>
                   <tbody>
-                    {branches.map(branch => (
+                    {(Array.isArray(branches) ? branches : []).map(branch => (
                       <tr key={branch.branchId} className="border-b hover-elevate">
                         <td className="py-2 px-3 font-medium">{branch.branchName}</td>
                         <td className="text-center py-2 px-3">{branch.total}</td>

@@ -485,7 +485,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-lg ${stockBg} text-center min-w-[120px]`}>
                 <p className={`text-2xl font-bold ${stockColor}`} data-testid="text-current-stock">
-                  {currentStock.toLocaleString("tr-TR")}
+                  {Number(currentStock ?? 0).toLocaleString("tr-TR")}
                 </p>
                 <p className="text-xs text-muted-foreground">{product.unit}</p>
                 <Badge
@@ -642,7 +642,7 @@ export default function UrunKarti({ productId, onBack }: UrunKartiProps) {
                       <XAxis dataKey="name" fontSize={12} />
                       <YAxis fontSize={12} />
                       <Tooltip
-                        formatter={(value: number) => [`${value.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL`, "Fiyat"]}
+                        formatter={(value: number) => [`${Number(value ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL`, "Fiyat"]}
                       />
                       <Bar dataKey="fiyat" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>

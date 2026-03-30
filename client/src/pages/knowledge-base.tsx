@@ -360,7 +360,7 @@ export default function KnowledgeBase() {
                     </p>
                     {article.tags && article.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {article.tags.map((tag, index) => (
+                        {article.tags?.map((tag, index) => (
                           <Badge key={index} variant="outline" className="text-xs">
                             {tag}
                           </Badge>
@@ -451,7 +451,7 @@ export default function KnowledgeBase() {
               
               {selectedArticle.tags && selectedArticle.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-2">
-                  {selectedArticle.tags.map((tag, index) => (
+                  {selectedArticle.tags?.map((tag, index) => (
                     <Badge key={index} variant="outline" className="text-xs">{tag}</Badge>
                   ))}
                 </div>

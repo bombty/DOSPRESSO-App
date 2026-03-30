@@ -2476,7 +2476,7 @@ export default function FactoryKiosk() {
                     Ortak Üretim Skorları
                   </h4>
                   <div className="space-y-2">
-                    {collaborativeScores.workers.map((w: any) => (
+                    {collaborativeScores.workers?.map((w: any) => (
                       <div key={w.userId} className="bg-slate-700/50 rounded-lg p-3 flex items-center justify-between" data-testid={`collab-score-${w.userId}`}>
                         <div>
                           <p className={`font-medium ${w.userId === selectedUser?.id ? 'text-amber-400' : 'text-slate-200'}`}>

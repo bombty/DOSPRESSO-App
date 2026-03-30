@@ -344,7 +344,7 @@ export default function E2EReportsPage() {
       ["Toplam Ekipman", equipmentStats.total.toString()],
       ["Aktif Arıza Sayısı", faultStats.open.toString()],
       ["Tamamlanan Görevler", checklistStats.completed.toString()],
-      ["Performans Skoru", `${performanceStats.avgComposite.toFixed(1)}%`],
+      ["Performans Skoru", `${Number(performanceStats.avgComposite ?? 0).toFixed(1)}%`],
     ];
     
     (doc as any).autoTable({
@@ -367,7 +367,7 @@ export default function E2EReportsPage() {
       ["Çalışır Durumda", equipmentStats.operational.toString()],
       ["Bakımda", equipmentStats.maintenance.toString()],
       ["Arızalı", equipmentStats.faulty.toString()],
-      ["Ortalama Sağlık Skoru", `${equipmentStats.avgHealth.toFixed(1)}%`],
+      ["Ortalama Sağlık Skoru", `${Number(equipmentStats.avgHealth ?? 0).toFixed(1)}%`],
     ];
     
     (doc as any).autoTable({
@@ -390,7 +390,7 @@ export default function E2EReportsPage() {
       ["Açık", faultStats.open.toString()],
       ["İşlemde", faultStats.inProgress.toString()],
       ["Çözüldü", faultStats.resolved.toString()],
-      ["Ort. Çözüm Süresi", `${faultStats.avgResolutionTime.toFixed(1)} gün`],
+      ["Ort. Çözüm Süresi", `${Number(faultStats.avgResolutionTime ?? 0).toFixed(1)} gün`],
     ];
     
     (doc as any).autoTable({
@@ -413,7 +413,7 @@ export default function E2EReportsPage() {
       ["Tamamlanan", checklistStats.completed.toString()],
       ["Bekleyen", checklistStats.pending.toString()],
       ["Gecikmiş", checklistStats.overdue.toString()],
-      ["Tamamlanma Oranı", `${checklistStats.completionRate.toFixed(1)}%`],
+      ["Tamamlanma Oranı", `${Number(checklistStats.completionRate ?? 0).toFixed(1)}%`],
     ];
     
     (doc as any).autoTable({
@@ -437,11 +437,11 @@ export default function E2EReportsPage() {
     yPos += 8;
     
     const performanceTableData = [
-      ["Genel Skor", `${performanceStats.avgComposite.toFixed(1)}%`],
-      ["Checklist Skoru", `${performanceStats.avgChecklist.toFixed(1)}%`],
-      ["Devamlılık Skoru", `${performanceStats.avgAttendance.toFixed(1)}%`],
-      ["SLA Uyum Skoru", `${performanceStats.avgSLA.toFixed(1)}%`],
-      ["Müşteri Memnuniyeti", `${performanceStats.avgCustomer.toFixed(1)}%`],
+      ["Genel Skor", `${Number(performanceStats.avgComposite ?? 0).toFixed(1)}%`],
+      ["Checklist Skoru", `${Number(performanceStats.avgChecklist ?? 0).toFixed(1)}%`],
+      ["Devamlılık Skoru", `${Number(performanceStats.avgAttendance ?? 0).toFixed(1)}%`],
+      ["SLA Uyum Skoru", `${Number(performanceStats.avgSLA ?? 0).toFixed(1)}%`],
+      ["Müşteri Memnuniyeti", `${Number(performanceStats.avgCustomer ?? 0).toFixed(1)}%`],
     ];
     
     (doc as any).autoTable({
@@ -517,7 +517,7 @@ export default function E2EReportsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tüm Şubeler</SelectItem>
-                      {branches.map((branch) => (
+                      {(Array.isArray(branches) ? branches : []).map((branch) => (
                         <SelectItem key={branch.id} value={branch.id.toString()}>
                           {branch.name}
                         </SelectItem>
@@ -588,7 +588,7 @@ export default function E2EReportsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Performans Skoru</p>
                   <p className="text-2xl font-bold" data-testid="text-performance-score">
-                    {isLoading ? <Skeleton className="h-8 w-16" /> : `${performanceStats.avgComposite.toFixed(0)}%`}
+                    {isLoading ? <Skeleton className="h-8 w-16" /> : `${Number(performanceStats.avgComposite ?? 0).toFixed(0)}%`}
                   </p>
                 </div>
               </div>
@@ -733,7 +733,7 @@ export default function E2EReportsPage() {
                       <TableCell className="text-right">{checklistStats.completed}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant={checklistStats.completionRate > 80 ? "default" : "destructive"}>
-                          {checklistStats.completionRate.toFixed(0)}%
+                          {Number(checklistStats.completionRate ?? 0).toFixed(0)}%
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -809,7 +809,7 @@ export default function E2EReportsPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <div className="text-2xl font-bold text-primary">
-                      {equipmentStats.avgHealth.toFixed(1)}%
+                      {Number(equipmentStats.avgHealth ?? 0).toFixed(1)}%
                     </div>
                     <p className="text-sm text-muted-foreground">Ortalama Ekipman Sağlık Skoru</p>
                   </div>
@@ -873,7 +873,7 @@ export default function E2EReportsPage() {
                 <CardContent className="space-y-4">
                   <div className="text-center py-8">
                     <div className="text-5xl font-bold text-primary">
-                      {faultStats.avgResolutionTime.toFixed(1)}
+                      {Number(faultStats.avgResolutionTime ?? 0).toFixed(1)}
                     </div>
                     <p className="text-muted-foreground mt-2">Ortalama Çözüm Süresi (Gün)</p>
                   </div>
@@ -932,7 +932,7 @@ export default function E2EReportsPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">İlerleme</span>
-                    <span className="font-semibold">{checklistStats.completionRate.toFixed(1)}%</span>
+                    <span className="font-semibold">{Number(checklistStats.completionRate ?? 0).toFixed(1)}%</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-4 overflow-hidden">
                     <div
@@ -959,7 +959,7 @@ export default function E2EReportsPage() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
                     <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, "Skor"]} />
+                    <Tooltip formatter={(value: number) => [`${Number(value ?? 0).toFixed(1)}%`, "Skor"]} />
                     <Bar dataKey="value" fill="#8b4513" radius={[4, 4, 0, 0]}>
                       {performanceChartData.map((entry, index) => (
                         <Cell 
@@ -986,7 +986,7 @@ export default function E2EReportsPage() {
                     <div className="flex flex-col items-center text-center">
                       <metric.icon className={`h-8 w-8 mb-2 ${metric.value >= 80 ? "text-green-600" : metric.value >= 60 ? "text-yellow-600" : "text-red-600"}`} />
                       <div className={`text-2xl font-bold ${metric.value >= 80 ? "text-green-600" : metric.value >= 60 ? "text-yellow-600" : "text-red-600"}`}>
-                        {metric.value.toFixed(0)}%
+                        {Number(metric.value ?? 0).toFixed(0)}%
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{metric.label}</p>
                     </div>

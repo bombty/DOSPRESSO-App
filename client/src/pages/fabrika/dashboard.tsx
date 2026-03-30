@@ -656,7 +656,7 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
               </CardHeader>
               <CardContent className="px-3 pb-3 space-y-2">
                 {stats.stationProduction && stats.stationProduction.length > 0 ? (
-                  stats.stationProduction.map((sp) => {
+                  stats.stationProduction?.map((sp) => {
                     const target = getStationTarget(sp.stationId) * 8;
                     const progress = target > 0 ? Math.min(100, (sp.produced / target) * 100) : 0;
                     const wastePercent = sp.produced > 0 ? ((Number(sp.waste ?? 0) / Math.max(Number(sp.produced ?? 1), 1)) * 100).toFixed(1) : 0;
@@ -677,7 +677,7 @@ export default function FabrikaDashboard({ embedded }: { embedded?: boolean } = 
                         <Progress value={progress} className="h-2" />
                         {target > 0 && (
                           <p className="text-xs text-muted-foreground text-right">
-                            Hedef: {target} adet ({progress.toFixed(0)}%)
+                            Hedef: {target} adet ({Number(progress ?? 0).toFixed(0)}%)
                           </p>
                         )}
                       </div>

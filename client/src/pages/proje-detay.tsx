@@ -766,7 +766,7 @@ export default function ProjeDetay() {
 
           <div className="space-y-3">
             {project.milestones?.length > 0 ? (
-              project.milestones.map((milestone: any) => (
+              project.milestones?.map((milestone: any) => (
                 <Card 
                   key={milestone.id} 
                   data-testid={`card-milestone-${milestone.id}`} 

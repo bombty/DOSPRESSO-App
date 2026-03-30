@@ -148,7 +148,7 @@ export function RoleDashboard({ onNavigateTab, onCertSettings, onOpenAiOnboardin
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {trainingStats.personnelProgress.map((person, idx) => {
+                  {trainingStats.personnelProgress?.map((person, idx) => {
                     const progressPct = person.totalModules > 0
                       ? Math.round((person.completedModules / person.totalModules) * 100)
                       : 0;

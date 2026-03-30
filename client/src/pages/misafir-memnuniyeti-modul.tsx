@@ -177,7 +177,7 @@ function CategoryRatingCard({ label, value, icon }: { label: string; value: numb
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-lg font-bold" data-testid={`value-category-${label.toLowerCase()}`}>
-          {safeVal > 0 ? safeVal.toFixed(1) : "-"}
+          {safeVal > 0 ? Number(safeVal ?? 0).toFixed(1) : "-"}
         </p>
       </div>
     </div>

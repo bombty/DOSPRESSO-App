@@ -437,7 +437,7 @@ export default function Tasks() {
                   <Check className={`h-4 w-4 mr-2 ${filterBranchId === null ? 'opacity-100' : 'opacity-0'}`} />
                   Tümü
                 </Button>
-                {branches.map((branch) => (
+                {(Array.isArray(branches) ? branches : []).map((branch) => (
                   <Button
                     key={branch.id}
                     variant={filterBranchId === branch.id ? "secondary" : "ghost"}
@@ -1258,7 +1258,7 @@ export default function Tasks() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      {group.members.map((member: any) => {
+                      {group.members?.map((member: any) => {
                         const barWidth = group.maxTasks > 0 ? (member.totalTasks / group.maxTasks) * 100 : 0;
                         const isAboveAvg = member.totalTasks > group.avgTasks * 1.2;
                         const isBelowAvg = member.totalTasks < group.avgTasks * 0.8;
@@ -1672,7 +1672,7 @@ function RecurringTasksManagementTab() {
             <h3 className="text-sm font-medium text-muted-foreground capitalize" data-testid={`text-group-${catKey}`}>
               {categories?.find((c: any) => c.key === catKey)?.label || catKey}
             </h3>
-            {items.map((t: any) => (
+            {(Array.isArray(items) ? items : []).map((t: any) => (
               <Card key={t.id} data-testid={`card-template-${t.id}`}>
                 <CardContent className="p-3">
                   <div className="flex flex-col gap-2">

@@ -829,7 +829,7 @@ export default function Announcements() {
               {readStatus.readers.length > 0 && (
                 <ScrollArea className="h-48">
                   <div className="space-y-2">
-                    {readStatus.readers.map((reader, idx) => (
+                    {readStatus.readers?.map((reader, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2 border rounded">
                         <span className="text-sm">{reader.username}</span>
                         <span className="text-xs text-muted-foreground">

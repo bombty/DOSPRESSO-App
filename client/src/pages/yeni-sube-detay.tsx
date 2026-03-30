@@ -2041,7 +2041,7 @@ export default function YeniSubeDetay() {
                           </TableCell>
                         </TableRow>
                       )}
-                      {assignments.map((assignment) => {
+                      {(Array.isArray(assignments) ? assignments : []).map((assignment) => {
                         const displayName = assignment.user
                           ? `${assignment.user.firstName} ${assignment.user.lastName}`
                           : assignment.externalUser

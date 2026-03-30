@@ -1741,7 +1741,7 @@ export default function AdminYetkilendirme() {
                       <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
                     </div>
                     <div className="space-y-1">
-                      {group.roles.map(role => (
+                      {group.roles?.map(role => (
                         <button
                           key={role}
                           onClick={() => handleRoleSelect(role)}

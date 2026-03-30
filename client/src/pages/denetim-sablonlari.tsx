@@ -256,7 +256,7 @@ export default function DenetimSablonlariPage() {
     });
     
     // Map items to form data (exclude id and templateId)
-    setItems(fullTemplate.items.map((item: AuditTemplateItem) => ({
+    setItems(fullTemplate.items?.map((item: AuditTemplateItem) => ({
       itemText: item.itemText,
       itemType: item.itemType || 'checkbox',
       weight: item.weight || 1,
@@ -330,7 +330,7 @@ export default function DenetimSablonlariPage() {
     }
     
     // Update sortOrder based on array index
-    const itemsWithOrder = items.map((item, index) => ({
+    const itemsWithOrder = (Array.isArray(items) ? items : []).map((item, index) => ({
       ...item,
       sortOrder: index,
     }));
@@ -668,7 +668,7 @@ export default function DenetimSablonlariPage() {
                   </Button>
                 </div>
 
-                {items.map((item, index) => (
+                {(Array.isArray(items) ? items : []).map((item, index) => (
                   <Card key={index} data-testid={`card-item-${index}`}>
                     <CardContent className="pt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
                       <div className="flex items-start justify-between gap-2">

@@ -489,7 +489,7 @@ function RecordsList({
       />
     );
   }
-  return <>{records.map((r) => renderCard(r))}</>;
+  return <>{(Array.isArray(records) ? records : []).map((r) => renderCard(r))}</>;
 }
 
 function TimelineDetail({
@@ -553,7 +553,7 @@ function TimelineDetail({
         </span>
       </div>
       <div className="relative flex flex-col gap-0">
-        {tasks.map((task: any, idx: number) => {
+        {(Array.isArray(tasks) ? tasks : []).map((task: any, idx: number) => {
           const isCompleted = task.status === "completed";
           const isInProgress = task.status === "in_progress";
           const isLast = idx === tasks.length - 1;
@@ -699,7 +699,7 @@ function StartOnboardingDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {employees.map((e) => (
+                      {(Array.isArray(employees) ? employees : []).map((e) => (
                         <SelectItem key={e.id} value={e.id}>
                           {e.firstName} {e.lastName} {e.role ? `(${e.role})` : ""}
                         </SelectItem>
@@ -723,7 +723,7 @@ function StartOnboardingDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {branches.map((b: any) => (
+                      {(Array.isArray(branches) ? branches : []).map((b: any) => (
                         <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
                       ))}
                     </SelectContent>

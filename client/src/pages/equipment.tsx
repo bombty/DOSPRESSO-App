@@ -954,7 +954,7 @@ export default function Equipment() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tüm Şubeler</SelectItem>
-              {branches.map((branch) => (
+              {(Array.isArray(branches) ? branches : []).map((branch) => (
                 <SelectItem key={branch.id} value={branch.id.toString()}>
                   {branch.name}
                 </SelectItem>

@@ -276,7 +276,7 @@ export default function PdksPage() {
                     <Badge variant="outline" className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
                     {day.status === 'worked' && day.records.length > 0 && (
                       <span className="text-xs text-muted-foreground">
-                        {day.records.map((r: any) => r.time).join(' → ')}
+                        {day.records?.map((r: any) => r.time).join(' → ')}
                         {day.workedMinutes > 0 && ` (${formatMinutes(day.workedMinutes)})`}
                         {day.overtimeMinutes > 0 && ` FM: ${day.overtimeMinutes}dk`}
                       </span>
@@ -394,7 +394,7 @@ export default function PdksPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {summaryQuery.data.map((s: any) => (
+                  {summaryQuery.data?.map((s: any) => (
                     <tr
                       key={s.userId}
                       className="border-b hover-elevate cursor-pointer"

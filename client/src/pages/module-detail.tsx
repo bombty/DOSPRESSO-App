@@ -959,7 +959,7 @@ export default function ModuleDetail() {
                                 <p className="text-sm text-muted-foreground">{scenario.description}</p>
                                 {scenario.tasks && (
                                   <ul className="text-sm space-y-1 ml-4 mt-2">
-                                    {scenario.tasks.map((task: string, tidx: number) => (
+                                    {scenario.tasks?.map((task: string, tidx: number) => (
                                       <li key={tidx} className="list-disc text-muted-foreground">
                                         {task}
                                       </li>
@@ -1433,7 +1433,7 @@ export default function ModuleDetail() {
                               </div>
                               {step.photos && step.photos.length > 0 && (
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                  {step.photos.map((photo: string, pidx: number) => (
+                                  {step.photos?.map((photo: string, pidx: number) => (
                                     <div key={pidx} className="relative w-16 h-16 rounded overflow-hidden bg-muted">
                                       <img src={photo} alt={`Photo ${pidx}`} className="w-full h-full object-cover" loading="lazy" />
                                       <button
@@ -1495,7 +1495,7 @@ export default function ModuleDetail() {
                         <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{step.content}</p>
                         {step.photos && step.photos.length > 0 && (
                           <div className="grid grid-cols-2 gap-2">
-                            {step.photos.map((photo: string, pidx: number) => (
+                            {step.photos?.map((photo: string, pidx: number) => (
                               <div key={pidx} className="overflow-hidden rounded-md bg-muted aspect-video">
                                 <img src={photo} alt={`Step photo ${pidx}`} className="w-full h-full object-cover" loading="lazy" />
                               </div>
@@ -1506,7 +1506,7 @@ export default function ModuleDetail() {
                           <div>
                             <p className="text-xs font-medium text-muted-foreground mb-1">Önerilen Medya:</p>
                             <div className="flex gap-1 flex-wrap">
-                              {step.media_suggestions.map((media: string, midx: number) => (
+                              {step.media_suggestions?.map((media: string, midx: number) => (
                                 <Badge key={midx} variant="secondary" className="text-xs">
                                   {media}
                                 </Badge>
@@ -1681,7 +1681,7 @@ export default function ModuleDetail() {
                         <p className="font-medium text-sm">{q.question_text || `Soru ${idx + 1}`}</p>
                         {q.options && (
                           <ul className="text-sm space-y-1 mt-2 ml-4">
-                            {q.options.map((opt: string, oidx: number) => (
+                            {q.options?.map((opt: string, oidx: number) => (
                               <li key={oidx} className={`list-disc ${oidx === q.correct_option_index ? "text-success font-medium" : "text-muted-foreground"}`}>
                                 {opt}
                               </li>
@@ -1786,7 +1786,7 @@ export default function ModuleDetail() {
                           <p className="text-sm text-muted-foreground">{scenario.description}</p>
                           {scenario.tasks && (
                             <ul className="text-sm space-y-1 ml-4">
-                              {scenario.tasks.map((task: string, tidx: number) => (
+                              {scenario.tasks?.map((task: string, tidx: number) => (
                                 <li key={tidx} className="list-disc text-muted-foreground">
                                   {task}
                                 </li>
@@ -2351,7 +2351,7 @@ export default function ModuleDetail() {
                               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg">
                                 <p className="text-xs font-semibold mb-1">İpuçları:</p>
                                 <ul className="text-xs text-muted-foreground space-y-1">
-                                  {scenario.tips.map((tip, tipIdx) => (
+                                  {scenario.tips?.map((tip, tipIdx) => (
                                     <li key={tipIdx}>• {tip}</li>
                                   ))}
                                 </ul>

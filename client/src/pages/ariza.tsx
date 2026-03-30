@@ -198,7 +198,7 @@ export default function FaultHub() {
             <div>
               <h3 className="text-sm font-medium mb-2">Kritik Arızalar</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
-                {metrics.critical.map((fault: EquipmentFault) => (
+                {metrics.critical?.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-destructive bg-destructive/10 dark:bg-red-950 hover-elevate cursor-pointer" data-testid={`card-critical-fault-${fault.id}`} onClick={() => setLocation(`/ariza-detay/${fault.id}`)}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
@@ -299,7 +299,7 @@ export default function FaultHub() {
             <div>
               <h3 className="text-sm font-medium mb-2 text-destructive">Zaman Aşımı Yapan</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
-                {metrics.breached.map((fault: EquipmentFault) => (
+                {metrics.breached?.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-destructive bg-destructive/10 dark:bg-red-950 hover-elevate" data-testid={`card-breached-fault-${fault.id}`}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
@@ -315,7 +315,7 @@ export default function FaultHub() {
             <div>
               <h3 className="text-sm font-medium mb-2 text-warning">Risk Altında Olan</h3>
               <div className="flex flex-col gap-3 sm:gap-4">
-                {metrics.atRisk.map((fault: EquipmentFault) => (
+                {metrics.atRisk?.map((fault: EquipmentFault) => (
                   <Card key={fault.id} className="border-orange-500 bg-warning/10 dark:bg-orange-950 hover-elevate" data-testid={`card-atrisk-fault-${fault.id}`}>
                     <CardContent className="p-3">
                       <p className="font-medium text-sm line-clamp-2">{fault.equipmentName}</p>
@@ -433,7 +433,7 @@ export default function FaultHub() {
                   {metrics.myFaults.length === 0 ? (
                     <EmptyStatePreset preset="faults" />
                   ) : (
-                    metrics.myFaults.map((fault: EquipmentFault) => (
+                    metrics.myFaults?.map((fault: EquipmentFault) => (
                       <div key={fault.id} className="p-3 border rounded hover-elevate cursor-pointer" data-testid={`card-my-fault-${fault.id}`} onClick={() => setLocation(`/ariza-detay/${fault.id}`)}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1">

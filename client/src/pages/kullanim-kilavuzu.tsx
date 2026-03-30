@@ -258,7 +258,7 @@ export default function KullanimKilavuzu() {
                       Erişilebilir Modüller
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {guide.availableModules.map((mod, i) => {
+                      {guide.availableModules?.map((mod, i) => {
                         const IconComp = getIcon(mod.icon);
                         const isExpanded = expandedModule === i;
                         return (
@@ -290,7 +290,7 @@ export default function KullanimKilavuzu() {
                                   <p className="text-xs font-medium text-muted-foreground">Bu modülde yapabilecekleriniz:</p>
                                   {mod.detailedSteps && mod.detailedSteps.length > 0 ? (
                                     <ul className="space-y-1">
-                                      {mod.detailedSteps.map((step, j) => (
+                                      {mod.detailedSteps?.map((step, j) => (
                                         <li key={j} className="flex items-start gap-2 text-xs text-muted-foreground">
                                           <span className="text-primary font-bold shrink-0">-</span>
                                           <span>{step}</span>
@@ -331,7 +331,7 @@ export default function KullanimKilavuzu() {
                     <Card>
                       <CardContent className="p-4">
                         <ul className="space-y-2">
-                          {guide.quickTips.map((tip, i) => (
+                          {guide.quickTips?.map((tip, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm" data-testid={`text-tip-${i}`}>
                               <span className="text-primary font-bold shrink-0">-</span>
                               <span>{tip}</span>
@@ -350,7 +350,7 @@ export default function KullanimKilavuzu() {
                       Sık Yapılan İşlemler
                     </h2>
                     <div className="space-y-2">
-                      {guide.commonTasks.map((task, i) => (
+                      {guide.commonTasks?.map((task, i) => (
                         <Card key={i} data-testid={`card-task-${i}`}>
                           <CardHeader
                             className="p-4 cursor-pointer flex flex-row items-center justify-between gap-2"
@@ -367,7 +367,7 @@ export default function KullanimKilavuzu() {
                           {expandedTask === i && (
                             <CardContent className="px-4 pb-4 pt-0">
                               <ol className="space-y-1">
-                                {task.steps.map((step, j) => (
+                                {task.steps?.map((step, j) => (
                                   <li key={j} className="flex items-start gap-2 text-sm" data-testid={`text-step-${i}-${j}`}>
                                     <Badge variant="outline" className="shrink-0 text-xs">{j + 1}</Badge>
                                     <span>{step}</span>
@@ -391,7 +391,7 @@ export default function KullanimKilavuzu() {
                     <Card>
                       <CardContent className="p-4">
                         <ul className="space-y-2">
-                          {guide.restrictions.map((r, i) => (
+                          {guide.restrictions?.map((r, i) => (
                             <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground" data-testid={`text-restriction-${i}`}>
                               <span className="shrink-0">-</span>
                               <span>{r}</span>

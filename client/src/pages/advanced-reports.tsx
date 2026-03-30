@@ -193,7 +193,7 @@ export default function AdvancedReportsPage() {
         return {
           name: branch.name,
           personelSayisi: branchRankings.length,
-          ortPuan: avgScore.toFixed(2)
+          ortPuan: Number(avgScore ?? 0).toFixed(2)
         };
       }) || [];
 

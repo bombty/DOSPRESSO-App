@@ -240,7 +240,7 @@ function SatinalmaDashboard() {
     { icon: <DollarSign className="w-5 h-5 text-purple-500" />, iconBgClass: "bg-purple-500/10" },
   ];
 
-  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+  const metrics: MetricCard[] = data?.metrics ? data.metrics?.map((m: any, index: number) => ({
     title: m.title,
     value: m.value ?? "—",
     status: m.status || 'healthy',
@@ -348,7 +348,7 @@ function FabrikaDashboard() {
     { icon: <Users className="w-5 h-5 text-yellow-500" />, iconBgClass: "bg-yellow-500/10" },
   ];
 
-  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+  const metrics: MetricCard[] = data?.metrics ? data.metrics?.map((m: any, index: number) => ({
     title: m.title,
     value: m.value ?? "—",
     status: m.status || 'healthy',
@@ -451,7 +451,7 @@ function IKDashboard() {
     { icon: <UserCheck className="w-5 h-5 text-green-500" />, iconBgClass: "bg-green-500/10" },
   ];
 
-  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+  const metrics: MetricCard[] = data?.metrics ? data.metrics?.map((m: any, index: number) => ({
     title: m.title,
     value: m.value ?? "—",
     status: m.status || 'healthy',
@@ -574,7 +574,7 @@ function CoachDashboard() {
   };
   const defaultIcon = <Store className="w-5 h-5 text-muted-foreground" />;
 
-  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any) => {
+  const metrics: MetricCard[] = data?.metrics ? data.metrics?.map((m: any) => {
     const cfg = metricConfig[m.title];
     return {
       title: m.title,
@@ -709,7 +709,7 @@ function MarketingDashboard() {
     { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
+  const metrics = data?.metrics ? data.metrics?.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <Megaphone className="w-5 h-5 text-muted-foreground" />;
     return {
       title: m.title,
@@ -806,7 +806,7 @@ function TrainerDashboard() {
     { icon: <Users className="w-5 h-5 text-blue-500" />, iconBgClass: "bg-blue-500/10" },
   ];
 
-  const metrics: MetricCard[] = data?.metrics ? data.metrics.map((m: any, index: number) => ({
+  const metrics: MetricCard[] = data?.metrics ? data.metrics?.map((m: any, index: number) => ({
     title: m.title,
     value: m.value ?? "—",
     status: m.status || 'healthy',
@@ -909,7 +909,7 @@ function KaliteDashboard() {
     { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
+  const metrics = data?.metrics ? data.metrics?.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <ClipboardCheck className="w-5 h-5 text-muted-foreground" />;
     return {
       title: m.title,
@@ -1638,7 +1638,7 @@ function DestekDashboard() {
     { message: "Veriler yükleniyor...", severity: 'healthy' as RiskStatus },
   ];
 
-  const metrics = data?.metrics ? data.metrics.map((m: any, index: number) => {
+  const metrics = data?.metrics ? data.metrics?.map((m: any, index: number) => {
     const fallbackIcon = fallbackMetrics[index]?.icon || <MessageSquare className="w-5 h-5 text-muted-foreground" />;
     return {
       title: m.title,

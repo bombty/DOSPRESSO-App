@@ -307,7 +307,7 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
         </div>
         {data.packaging?.items?.length > 0 ? (
           <div className="space-y-1">
-            {data.packaging.items.map((item: any) => (
+            {data.packaging.items?.map((item: any) => (
               <div key={item.id} className="flex items-center justify-between text-sm py-1 border-b border-teal-100 dark:border-teal-800 last:border-0">
                 <span>{item.name}</span>
                 <div className="flex items-center gap-2">
@@ -650,9 +650,9 @@ function ProductCostDetail({ productId, onEditLabor, onEditRecipe, onDeleteIngre
                     const wasteCost = wasteKg * costPerKg;
                     return (
                       <>
-                        <p>Toplam Girdi: <strong>{totalKg.toFixed(3)} kg</strong></p>
-                        <p>Beklenen Toplam Ürün: <strong>{outputKg.toFixed(3)} kg</strong> ({count} adet x {unitW} {unit})</p>
-                        <p>Hesaplanan Fire: <strong className="text-red-600">{wasteKg.toFixed(3)} kg (%{wastePct.toFixed(2)})</strong></p>
+                        <p>Toplam Girdi: <strong>{Number(totalKg ?? 0).toFixed(3)} kg</strong></p>
+                        <p>Beklenen Toplam Ürün: <strong>{Number(outputKg ?? 0).toFixed(3)} kg</strong> ({count} adet x {unitW} {unit})</p>
+                        <p>Hesaplanan Fire: <strong className="text-red-600">{Number(wasteKg ?? 0).toFixed(3)} kg (%{Number(wastePct ?? 0).toFixed(2)})</strong></p>
                         <p>Tahmini Fire Maliyeti: <strong className="text-red-600">{formatCurrency(wasteCost)}</strong></p>
                       </>
                     );
@@ -866,7 +866,7 @@ function MaterialPriceHistoryDialog({ materialId, open, onOpenChange }: { materi
                         tick={{ fontSize: 11 }} 
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(v) => `₺${v.toLocaleString('tr-TR')}`}
+                        tickFormatter={(v) => `₺${Number(v ?? 0).toLocaleString('tr-TR')}`}
                       />
                       <RechartsTooltip 
                         formatter={(value: any) => [`₺${parseFloat(value).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, 'Fiyat']}
@@ -931,7 +931,7 @@ function MaterialPriceHistoryDialog({ materialId, open, onOpenChange }: { materi
                                   variant="outline" 
                                   className={change > 0 ? 'text-red-600 border-red-200 dark:text-red-400 dark:border-red-800' : 'text-green-600 border-green-200 dark:text-green-400 dark:border-green-800'}
                                 >
-                                  {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                                  {change > 0 ? '+' : ''}{Number(change ?? 0).toFixed(1)}%
                                 </Badge>
                               ) : (
                                 <Badge variant="outline">-</Badge>

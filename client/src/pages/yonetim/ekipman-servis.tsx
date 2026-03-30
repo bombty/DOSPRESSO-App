@@ -508,7 +508,7 @@ export default function EkipmanServis() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map(branch => (
+                  {(Array.isArray(branches) ? branches : []).map(branch => (
                     <SelectItem key={branch.id} value={String(branch.id)}>
                       {branch.name}
                     </SelectItem>
@@ -614,7 +614,7 @@ export default function EkipmanServis() {
                   <SelectValue placeholder="Şube seçiniz" />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map(branch => (
+                  {(Array.isArray(branches) ? branches : []).map(branch => (
                     <SelectItem key={branch.id} value={String(branch.id)}>
                       {branch.name}
                     </SelectItem>

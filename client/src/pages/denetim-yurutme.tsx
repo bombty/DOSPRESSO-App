@@ -835,7 +835,7 @@ export default function DenetimYurutmePage() {
     <div className="w-full space-y-2 sm:space-y-3">
       <h2 className="text-xl font-semibold">Denetim Maddeleri</h2>
         
-        {audit.items.map((item, index) => {
+        {audit.items?.map((item, index) => {
           const itemType = item.templateItem.itemType || 'checkbox';
           const requiresPhoto = item.templateItem.requiresPhoto || false;
 

@@ -579,7 +579,7 @@ export default function FabrikaUretimPlanlama() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5" />
-                  {currentDate.toLocaleString('tr-TR', { month: 'long', year: 'numeric' })}
+                  {Number(currentDate ?? 0).toLocaleString('tr-TR', { month: 'long', year: 'numeric' })}
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <Button
@@ -908,7 +908,7 @@ export default function FabrikaUretimPlanlama() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {materialLinks.materials.map(mat => (
+                      {materialLinks.materials?.map(mat => (
                         <TableRow key={mat.materialId} data-testid={`material-link-${mat.materialId}`}>
                           <TableCell className="font-mono text-sm">{mat.materialCode}</TableCell>
                           <TableCell className="font-medium">{mat.materialName}</TableCell>
@@ -1010,7 +1010,7 @@ export default function FabrikaUretimPlanlama() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {aiInsights.recommendations.map((rec, idx) => (
+                    {aiInsights.recommendations?.map((rec, idx) => (
                       <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                         {rec.startsWith("ACİL") ? (
                           <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
@@ -1048,7 +1048,7 @@ export default function FabrikaUretimPlanlama() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {aiInsights.consumptionForecasts.map((fc, idx) => (
+                        {aiInsights.consumptionForecasts?.map((fc, idx) => (
                           <TableRow key={idx} data-testid={`forecast-${idx}`}>
                             <TableCell>
                               <div>
@@ -1084,7 +1084,7 @@ export default function FabrikaUretimPlanlama() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {aiInsights.lowStockAlerts.map(alert => (
+                      {aiInsights.lowStockAlerts?.map(alert => (
                         <Card key={alert.id} className="border-red-200 dark:border-red-800">
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
@@ -1149,7 +1149,7 @@ export default function FabrikaUretimPlanlama() {
                   <SelectValue placeholder="Ürün seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map(product => (
+                  {(Array.isArray(products) ? products : []).map(product => (
                     <SelectItem key={product.id} value={product.id.toString()}>
                       {product.name} ({product.category})
                     </SelectItem>
@@ -1309,7 +1309,7 @@ export default function FabrikaUretimPlanlama() {
                   <SelectValue placeholder="Üretilecek ürünü seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map(product => (
+                  {(Array.isArray(products) ? products : []).map(product => (
                     <SelectItem key={product.id} value={product.id.toString()}>
                       {product.name}
                     </SelectItem>
@@ -1400,7 +1400,7 @@ export default function FabrikaUretimPlanlama() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {stockCheckResult.items.map((item, idx) => (
+                    {stockCheckResult.items?.map((item, idx) => (
                       <TableRow key={idx}>
                         <TableCell>
                           <div>

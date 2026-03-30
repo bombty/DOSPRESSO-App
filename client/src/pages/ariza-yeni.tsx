@@ -287,7 +287,7 @@ export default function NewFaultReport() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {branches.map((branch: Branch) => (
+                        {(Array.isArray(branches) ? branches : []).map((branch: Branch) => (
                           <SelectItem key={branch.id} value={String(branch.id)}>
                             {branch.name}
                           </SelectItem>

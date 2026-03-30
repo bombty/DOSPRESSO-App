@@ -277,7 +277,7 @@ export default function DenetimlerPage() {
                   <SelectValue placeholder="Şube seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map((branch) => (
+                  {(Array.isArray(branches) ? branches : []).map((branch) => (
                     <SelectItem key={branch.id} value={branch.id.toString()} data-testid={`option-branch-${branch.id}`}>
                       {branch.name}
                     </SelectItem>

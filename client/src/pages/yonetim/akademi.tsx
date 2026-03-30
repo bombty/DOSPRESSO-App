@@ -987,7 +987,7 @@ function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
             <div>
               <span className="text-sm font-medium">Şurup:</span>
               <div className="flex flex-wrap gap-1 mt-1">
-                {size.syrups.map((s, i) => (
+                {size.syrups?.map((s, i) => (
                   <Badge key={i} variant="outline" className="text-xs">{s.name} ({s.pumps} pump)</Badge>
                 ))}
               </div>
@@ -1009,7 +1009,7 @@ function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
             <div>
               <span className="text-sm font-medium">Toz:</span>
               <div className="flex flex-wrap gap-1 mt-1">
-                {size.powders.map((p, i) => (
+                {size.powders?.map((p, i) => (
                   <Badge key={i} variant="outline" className="text-xs">{p.name} ({p.scoops} scoop)</Badge>
                 ))}
               </div>
@@ -1031,7 +1031,7 @@ function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
             <div>
               <span className="text-sm font-medium">Garnitür:</span>
               <div className="flex flex-wrap gap-1 mt-1">
-                {size.garnish.map((g, i) => (
+                {size.garnish?.map((g, i) => (
                   <Badge key={i} variant="outline" className="text-xs">{g}</Badge>
                 ))}
               </div>
@@ -1046,7 +1046,7 @@ function RecipeDetailDialog({ recipeId, category, open, onOpenChange }: {
               Hazırlama Adımları:
             </span>
             <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-              {size.steps.map((step, i) => (
+              {size.steps?.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
             </ol>
@@ -1836,7 +1836,7 @@ function RecipeDialog({ open, onOpenChange, recipeId, categories, duplicatingRec
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categories.map((cat) => (
+                          {(Array.isArray(categories) ? categories : []).map((cat) => (
                             <SelectItem key={cat.id} value={cat.id.toString()}>
                               {cat.titleTr}
                             </SelectItem>

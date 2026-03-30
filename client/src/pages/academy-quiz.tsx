@@ -858,7 +858,7 @@ export default function AcademyQuiz() {
             <p className="text-sm font-medium mb-2">{question.question}</p>
 
             <RadioGroup value={answers[currentQuestion] || ""} onValueChange={(value) => setAnswers({ ...answers, [currentQuestion]: value })} className="flex flex-col gap-3">
-              {question.options.map((option: string, idx: number) => (
+              {question.options?.map((option: string, idx: number) => (
                 <div key={idx} className="flex items-center space-x-3 p-3 border rounded-md hover-elevate text-sm min-h-[48px]" data-testid={`option-${idx}`}>
                   <RadioGroupItem value={idx.toString()} id={`option-${currentQuestion}-${idx}`} />
                   <Label htmlFor={`option-${currentQuestion}-${idx}`} className="flex-1 cursor-pointer text-sm">

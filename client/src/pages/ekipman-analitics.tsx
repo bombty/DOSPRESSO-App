@@ -160,7 +160,7 @@ export default function EquipmentAnalytics() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgResolutionTime.toFixed(1)}h</div>
+            <div className="text-2xl font-bold">{Number(avgResolutionTime ?? 0).toFixed(1)}h</div>
             <p className="text-xs text-muted-foreground mt-1">Kapalı arızalar</p>
           </CardContent>
         </Card>

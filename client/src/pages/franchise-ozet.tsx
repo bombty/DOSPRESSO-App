@@ -116,7 +116,7 @@ export default function FranchiseOzet() {
         <p className="text-sm text-muted-foreground">{data.totalBranches} şube</p>
       </div>
 
-      {data.branches.map((branch) => (
+      {data.branches?.map((branch) => (
         <Card key={branch.id} data-testid={`card-branch-${branch.id}`}>
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">

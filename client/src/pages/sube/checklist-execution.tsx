@@ -340,7 +340,7 @@ export default function ChecklistExecutionPage() {
       </div>
 
       <div className="container mx-auto px-4 py-4 space-y-3">
-        {completion.tasks.map((task, index) => {
+        {completion.tasks?.map((task, index) => {
           const taskCompletion = getTaskCompletion(task.id);
           const isCompleted = taskCompletion?.isCompleted || false;
           const isExpanded = expandedTaskId === task.id;

@@ -390,7 +390,7 @@ function SiparislerimTab({ branchId }: { branchId: number }) {
             </CardContent>
           </Card>
         ) : (
-          orders.map((order: any) => {
+          (Array.isArray(orders) ? orders : []).map((order: any) => {
             const statusInfo = STATUS_MAP[order.status] || STATUS_MAP.pending;
             return (
               <Card
@@ -552,7 +552,7 @@ function StokDurumuTab({ branchId }: { branchId: number }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventory.map((item: any) => {
+              {(Array.isArray(inventory) ? inventory : []).map((item: any) => {
                 const current = parseFloat(item.currentStock || "0");
                 const min = parseFloat(item.minimumStock || "0");
                 const belowMin = current < min;

@@ -123,7 +123,7 @@ export default function AdminDegisiklikTalepleri() {
                   </TableCell>
                 </TableRow>
               ) : (
-                requests.map((req) => {
+                (Array.isArray(requests) ? requests : []).map((req) => {
                   const statusInfo = STATUS_MAP[req.status] || STATUS_MAP.pending;
                   return (
                     <TableRow key={req.id} data-testid={`row-request-${req.id}`}>

@@ -107,7 +107,7 @@ export default function AcademyAIAssistant() {
         <CardContent className="flex-1 p-2 overflow-hidden">
           <ScrollArea className="h-full pr-4">
             <div className="grid grid-cols-1 gap-2 sm:gap-3">
-              {messages.map((msg, idx) => (
+              {(Array.isArray(messages) ? messages : []).map((msg, idx) => (
                 <div
                   key={idx}
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}

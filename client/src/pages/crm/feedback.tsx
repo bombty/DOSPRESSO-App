@@ -260,7 +260,7 @@ export default function CRMFeedback() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_all">Tüm Şubeler</SelectItem>
-                {branches.map((b) => (
+                {(Array.isArray(branches) ? branches : []).map((b) => (
                   <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -548,7 +548,7 @@ export default function CRMFeedback() {
               {detail.responses && detail.responses.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Yanıtlar ({detail.responses.length})</p>
-                  {detail.responses.map((resp) => (
+                  {detail.responses?.map((resp) => (
                     <Card key={resp.id} data-testid={`response-${resp.id}`}>
                       <CardContent className="p-3 space-y-1">
                         <div className="flex items-center justify-between gap-2 flex-wrap">

@@ -125,7 +125,7 @@ export default function WasteCoachConsole() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-1">
-              {insights.redFlags.map((flag: string, i: number) => (
+              {insights.redFlags?.map((flag: string, i: number) => (
                 <li key={i} className="flex items-center gap-2 text-sm">
                   <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />
                   <span data-testid={`text-red-flag-${i}`}>{flag}</span>
@@ -196,7 +196,7 @@ export default function WasteCoachConsole() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("waste.allCategories", { defaultValue: "Tümü" })}</SelectItem>
-                {categories.map((c: any) => (
+                {(Array.isArray(categories) ? categories : []).map((c: any) => (
                   <SelectItem key={c.id} value={String(c.id)}>{c.nameTr}</SelectItem>
                 ))}
               </SelectContent>

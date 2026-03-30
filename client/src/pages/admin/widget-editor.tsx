@@ -374,7 +374,7 @@ export default function WidgetEditor() {
                   )}
                   {widget.targetRoles && widget.targetRoles.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {widget.targetRoles.map(role => (
+                      {widget.targetRoles?.map(role => (
                         <Badge key={role} variant="outline" className="text-xs" data-testid={`badge-hero-widget-role-${widget.id}-${role}`}>
                           {ROLE_OPTIONS.find(r => r.value === role)?.label || role}
                         </Badge>

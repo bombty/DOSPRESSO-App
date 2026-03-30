@@ -175,7 +175,7 @@ function EmployeePanel({ data }: { data: EmployeePanelData }) {
               </p>
             </div>
           ) : (
-            data.actions.map((action, idx) => {
+            data.actions?.map((action, idx) => {
               const Icon = ACTION_TYPE_ICONS[action.type] || Brain;
               const severityCfg = SEVERITY_CONFIG[action.severity] || SEVERITY_CONFIG.medium;
               const signalLabel = SIGNAL_LABELS[action.signal] || action.signal;
@@ -328,7 +328,7 @@ function SupervisorPanel({ data }: { data: SupervisorPanelData }) {
               </p>
             </div>
           ) : (
-            data.riskSignals.map((signal, idx) => (
+            data.riskSignals?.map((signal, idx) => (
               <Card key={idx} className="hover-elevate" data-testid={`risk-card-${idx}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
@@ -389,7 +389,7 @@ function SupervisorPanel({ data }: { data: SupervisorPanelData }) {
 
 function exportLogsToCsv(logs: AiLogEntry[]) {
   const headers = ["Timestamp", "Run Type", "Scope", "Actions", "Status", "Time (ms)"];
-  const rows = logs.map((log) => [
+  const rows = (Array.isArray(logs) ? logs : []).map((log) => [
     new Date(log.createdAt).toISOString(),
     log.runType,
     log.targetRoleScope,
@@ -552,7 +552,7 @@ function CoachPanel({ data }: { data: CoachPanelData }) {
                 <span className="text-center">Status</span>
                 <span className="text-right">Time (ms)</span>
               </div>
-              {data.recentLogs.map((log) => {
+              {data.recentLogs?.map((log) => {
                 const isExpanded = expandedRows.has(log.id);
                 return (
                   <div key={log.id} data-testid={`log-row-${log.id}`}>

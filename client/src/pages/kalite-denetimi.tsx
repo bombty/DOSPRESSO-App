@@ -607,7 +607,7 @@ export default function KaliteDenetimi() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className={`${riskColors[riskLevel]} text-white`}>{riskLabels[riskLevel]}</Badge>
-                          <span className="text-lg font-bold">{score.toFixed(0)}%</span>
+                          <span className="text-lg font-bold">{Number(score ?? 0).toFixed(0)}%</span>
                         </div>
                       </div>
                     );

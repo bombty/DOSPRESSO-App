@@ -281,7 +281,7 @@ export default function MaasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {summaryQuery.data.map((p: any) => (
+                  {summaryQuery.data?.map((p: any) => (
                     <tr
                       key={p.userId}
                       className="border-b hover-elevate cursor-pointer"

@@ -282,7 +282,7 @@ export default function AdminAIBilgiYonetimi() {
       return res.json() as Promise<{ items: Array<{ category: string; title: string; content: string; keywords: string[] }>; summary: string }>;
     },
     onSuccess: (result) => {
-      setGeneratedItems(result.items.map(item => ({ ...item, selected: true })));
+      setGeneratedItems(result.items?.map(item => ({ ...item, selected: true })));
       toast({ title: "Bilgiler araştırıldı", description: result.summary });
     },
     onError: (error: Error) => {
@@ -296,7 +296,7 @@ export default function AdminAIBilgiYonetimi() {
       return res.json() as Promise<{ items: Array<{ category: string; title: string; content: string; keywords: string[] }>; summary: string }>;
     },
     onSuccess: (result) => {
-      setGeneratedItems(result.items.map(item => ({ ...item, selected: true })));
+      setGeneratedItems(result.items?.map(item => ({ ...item, selected: true })));
       toast({ title: "İçerikler oluşturuldu", description: result.summary });
     },
     onError: (error: Error) => {
@@ -525,7 +525,7 @@ export default function AdminAIBilgiYonetimi() {
                           className={`cursor-pointer transition-colors ${item.selected ? 'ring-2 ring-primary' : 'opacity-60'}`}
                           onClick={() => {
                             setGeneratedItems(items => 
-                              items.map((it, i) => i === index ? { ...it, selected: !it.selected } : it)
+                              (Array.isArray(items) ? items : []).map((it, i) => i === index ? { ...it, selected: !it.selected } : it)
                             );
                           }}
                           data-testid={`generated-item-${index}`}
@@ -827,7 +827,7 @@ export default function AdminAIBilgiYonetimi() {
               <Button
                 variant="default"
                 onClick={() => {
-                  const allMissingTypes = missingKnowledge.groups.map(g => g.type);
+                  const allMissingTypes = missingKnowledge.groups?.map(g => g.type);
                   bulkGenerateMutation.mutate(allMissingTypes);
                 }}
                 disabled={bulkGenerateMutation.isPending}

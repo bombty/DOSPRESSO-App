@@ -111,7 +111,7 @@ export default function KoclukPaneli() {
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2" data-testid="branch-list">
-        {data.branches.map((branch) => (
+        {data.branches?.map((branch) => (
           <Link key={branch.id} href={`/sube/${branch.id}/dashboard`}>
             <Card className="flex-shrink-0 hover-elevate cursor-pointer">
               <CardContent className="p-3 flex items-center gap-2">
@@ -132,7 +132,7 @@ export default function KoclukPaneli() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-2">
-            {data.attentionNeeded.map((person) => (
+            {data.attentionNeeded?.map((person) => (
               <div
                 key={person.userId}
                 className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30"
@@ -199,7 +199,7 @@ export default function KoclukPaneli() {
       <QuickTaskModal
         open={showAssignDialog}
         onOpenChange={setShowAssignDialog}
-        allowedBranchIds={data.branches.map((b) => b.id)}
+        allowedBranchIds={data.branches?.map((b) => b.id)}
       />
 
       <SmartNotificationDialog

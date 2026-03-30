@@ -185,7 +185,7 @@ export default function MuhasebeRaporlama() {
 
   const monthlyChartData = useMemo(() => {
     if (!summary?.monthlyData) return [];
-    return summary.monthlyData.map((d: any) => ({
+    return summary.monthlyData?.map((d: any) => ({
       name: MONTHS[d.month - 1]?.substring(0, 3) || '',
       Gelir: d.revenue,
       Gider: d.expenses,
@@ -239,7 +239,7 @@ export default function MuhasebeRaporlama() {
     const rows = (reports as any[]).map((r: any) => {
       const branchName = (branches as any[])?.find((b: any) => b.id === r.branchId)?.name || 'Genel';
       const profit = (parseFloat(r.revenue) || 0) - (parseFloat(r.expenses) || 0);
-      return [r.period, branchName, r.revenue, r.expenses, profit.toFixed(2), r.customerCount || '', r.averageTicket || ''];
+      return [r.period, branchName, r.revenue, r.expenses, Number(profit ?? 0).toFixed(2), r.customerCount || '', r.averageTicket || ''];
     });
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });

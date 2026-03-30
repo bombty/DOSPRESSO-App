@@ -306,7 +306,7 @@ export default function ProjeGorevDetay() {
                       <div className="h-full bg-primary transition-all" style={{ width: `${subtaskProgress}%` }} />
                     </div>
                   )}
-                  {task.subtasks.map((subtask) => {
+                  {task.subtasks?.map((subtask) => {
                     const subStatus = statusConfig[subtask.status] || statusConfig.todo;
                     return (
                       <div 
@@ -365,7 +365,7 @@ export default function ProjeGorevDetay() {
                 <p className="text-sm text-muted-foreground text-center py-4">Bu görevin bağımlılığı yok</p>
               ) : (
                 <div className="space-y-2">
-                  {task.dependencies.map((dep) => {
+                  {task.dependencies?.map((dep) => {
                     const depStatus = statusConfig[dep.dependsOnTask.status] || statusConfig.todo;
                     const isBlocking = dep.dependsOnTask.status !== "done";
                     return (
@@ -403,7 +403,7 @@ export default function ProjeGorevDetay() {
                   <p className="text-sm text-muted-foreground text-center py-4">Henüz yorum yok</p>
                 ) : (
                   <div className="space-y-3 pr-4">
-                    {task.comments.map((comment) => (
+                    {task.comments?.map((comment) => (
                       <div key={comment.id} className={`flex gap-3 ${comment.isSystemMessage ? "opacity-60" : ""}`}>
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={comment.user.profileImageUrl} />

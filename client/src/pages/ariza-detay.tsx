@@ -1403,7 +1403,7 @@ export default function FaultDetail() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="none">Atama Kaldır</SelectItem>
-                        {users.map((u: any) => (
+                        {(Array.isArray(users) ? users : []).map((u: any) => (
                           <SelectItem key={u.id} value={u.id}>{u.name || `${u.firstName} ${u.lastName}`}</SelectItem>
                         ))}
                       </SelectContent>

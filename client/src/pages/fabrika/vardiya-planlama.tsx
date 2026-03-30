@@ -1152,7 +1152,7 @@ export default function FabrikaVardiyaPlanlama() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedShift.workers.map((w: any) => (
+                        {selectedShift.workers?.map((w: any) => (
                           <TableRow key={w.id} data-testid={`row-worker-${w.id}`}>
                             <TableCell className="font-medium">{w.userName}</TableCell>
                             <TableCell>{w.productName || <span className="text-muted-foreground">Atanmadı</span>}</TableCell>
@@ -1241,7 +1241,7 @@ export default function FabrikaVardiyaPlanlama() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedShift.productions.map((p: any) => (
+                        {selectedShift.productions?.map((p: any) => (
                           <TableRow key={p.id} data-testid={`row-production-${p.id}`}>
                             <TableCell className="font-medium">{p.productName}</TableCell>
                             <TableCell>{p.machineName || "-"}</TableCell>
@@ -1313,7 +1313,7 @@ export default function FabrikaVardiyaPlanlama() {
                   <SelectValue placeholder="Ürün seçin..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {products.map((p: any) => (
+                  {(Array.isArray(products) ? products : []).map((p: any) => (
                     <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1706,7 +1706,7 @@ function ProductionStats() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.productBreakdown.map((p: any, i: number) => (
+                {stats.productBreakdown?.map((p: any, i: number) => (
                   <TableRow key={i}>
                     <TableCell className="font-medium">{p.productName}</TableCell>
                     <TableCell className="text-right font-mono">{p.batchCount}</TableCell>
@@ -1740,7 +1740,7 @@ function ProductionStats() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.workerBreakdown.map((w: any, i: number) => (
+                {stats.workerBreakdown?.map((w: any, i: number) => (
                   <TableRow key={i}>
                     <TableCell className="font-medium">{w.userName}</TableCell>
                     <TableCell className="text-right font-mono">{w.batchCount}</TableCell>
@@ -1876,7 +1876,7 @@ function TeamAnalysis({ products }: { products: any[] }) {
                             #{idx + 1}
                           </Badge>
                           <div className="flex items-center gap-1 flex-wrap">
-                            {team.workers.map((w: any, wi: number) => (
+                            {team.workers?.map((w: any, wi: number) => (
                               <span key={wi}>
                                 <Badge variant="outline">{w.userName}</Badge>
                                 {wi < team.workers.length - 1 && <span className="mx-0.5 text-muted-foreground">+</span>}
@@ -1909,7 +1909,7 @@ function TeamAnalysis({ products }: { products: any[] }) {
                       {team.products.length > 0 && (
                         <div className="flex items-center gap-1 flex-wrap">
                           <span className="text-xs text-muted-foreground">Ürünler:</span>
-                          {team.products.map((p: string, pi: number) => (
+                          {team.products?.map((p: string, pi: number) => (
                             <Badge key={pi} variant="secondary" className="text-xs">{p}</Badge>
                           ))}
                         </div>

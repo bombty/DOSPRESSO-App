@@ -1415,7 +1415,7 @@ export default function IKPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">Tüm Personel</SelectItem>
-                              {employees.map((emp) => (
+                              {(Array.isArray(employees) ? employees : []).map((emp) => (
                                 <SelectItem key={emp.id} value={emp.id}>
                                   {emp.firstName} {emp.lastName}
                                 </SelectItem>
@@ -1657,7 +1657,7 @@ export default function IKPage() {
                             <p className="text-sm text-muted-foreground">{record.employee_terminations?.terminationType === 'resignation' ? 'İstifa' : 'Fesih'}</p>
                             <p className="text-xs text-muted-foreground">{record.employee_terminations?.terminationDate ? format(new Date(record.employee_terminations.terminationDate), "dd.MM.yyyy") : "-"}</p>
                           </div>
-                          <Badge>{record.employee_terminations?.totalPayment ? `${record.employee_terminations.totalPayment.toLocaleString('tr-TR')} ₺` : "Ödeme Yapılmadı"}</Badge>
+                          <Badge>{record.employee_terminations?.totalPayment ? `${Number(record.employee_terminations.totalPayment ?? 0).toLocaleString('tr-TR')} ₺` : "Ödeme Yapılmadı"}</Badge>
                         </div>
                       </Card>
                     ))}

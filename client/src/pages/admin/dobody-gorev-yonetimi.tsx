@@ -183,7 +183,7 @@ export default function DobodyGorevYonetimi() {
       const res = await fetch("/api/branches");
       if (!res.ok) return [];
       const data = await res.json();
-      return Array.isArray(data) ? data.map((b: any) => ({ id: b.id, name: b.name })) : [];
+      return Array.isArray(data) ? (Array.isArray(data) ? data : []).map((b: any) => ({ id: b.id, name: b.name })) : [];
     },
   });
 
@@ -282,7 +282,7 @@ export default function DobodyGorevYonetimi() {
             </div>
           ) : (
             <div className="space-y-2">
-              {tasks.map((task) => (
+              {(Array.isArray(tasks) ? tasks : []).map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -364,7 +364,7 @@ function TaskRow({
   onDelete: () => void;
 }) {
   const targetLabel = task.targetRoles?.length
-    ? task.targetRoles.map(roleLabel).join(", ")
+    ? task.targetRoles?.map(roleLabel).join(", ")
     : task.targetUsers?.length
     ? `${task.targetUsers.length} kişi`
     : "Tümü";
@@ -640,7 +640,7 @@ function TaskFormDialog({
             </div>
             {!allBranches && branches.length > 0 && (
               <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto border rounded-md p-2">
-                {branches.map((b) => (
+                {(Array.isArray(branches) ? branches : []).map((b) => (
                   <label key={b.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
                     <Checkbox
                       checked={selectedBranches.includes(b.id)}
@@ -755,7 +755,7 @@ function StatsDialog({ taskId, onClose }: { taskId: number; onClose: () => void 
                   Tamamlayanlar ({stats.completedUsers.length})
                 </Label>
                 <div className="max-h-40 overflow-y-auto space-y-1 border rounded-md p-2">
-                  {stats.completedUsers.map((c, i) => (
+                  {stats.completedUsers?.map((c, i) => (
                     <div key={i} className="flex items-center justify-between text-xs gap-2">
                       <span className="truncate">{[c.firstName, c.lastName].filter(Boolean).join(" ")}</span>
                       <span className="text-muted-foreground flex-shrink-0 flex items-center gap-2">
@@ -776,7 +776,7 @@ function StatsDialog({ taskId, onClose }: { taskId: number; onClose: () => void 
                   Bekleyenler ({stats.pendingUsers.length})
                 </Label>
                 <div className="max-h-40 overflow-y-auto space-y-1 border rounded-md p-2">
-                  {stats.pendingUsers.map((p, i) => (
+                  {stats.pendingUsers?.map((p, i) => (
                     <div key={i} className="flex items-center justify-between text-xs gap-2">
                       <span className="truncate">{[p.firstName, p.lastName].filter(Boolean).join(" ")}</span>
                       <span className="text-muted-foreground flex-shrink-0 flex items-center gap-2">

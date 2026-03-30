@@ -542,7 +542,7 @@ function SayimDetailDialog({
 }: any) {
   const assignments = detail?.assignments || [];
 
-  const availableCategories = Array.from(new Set(assignments.map((a: any) => a.inventory_category) as string[])).filter(Boolean);
+  const availableCategories = Array.from(new Set((Array.isArray(assignments) ? assignments : []).map((a: any) => a.inventory_category) as string[])).filter(Boolean);
 
   const filteredAssignments = assignments.filter((a: any) => {
     const matchCategory = activeCategory === "all" || a.inventory_category === activeCategory;
@@ -668,7 +668,7 @@ function SayimDetailDialog({
                       <Badge variant="secondary">{items.length}</Badge>
                     </div>
                     <div className="space-y-1">
-                      {items.map((a: any) => (
+                      {(Array.isArray(items) ? items : []).map((a: any) => (
                         <AssignmentRow
                           key={a.id}
                           assignment={a}
@@ -969,7 +969,7 @@ function SayimRaporlari({ filterYear }: { filterYear: number }) {
         </Card>
       ) : (
         <div className="space-y-2">
-          {reports.map((r: any) => (
+          {(Array.isArray(reports) ? reports : []).map((r: any) => (
             <Card key={r.id} className={r.severity === "critical" || r.severity === "high" ? "border-red-500/50" : ""} data-testid={`report-${r.id}`}>
               <CardContent className="pt-3 pb-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">

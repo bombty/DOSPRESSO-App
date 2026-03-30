@@ -153,7 +153,7 @@ export default function HqTasksTab() {
         <div className="text-center py-8 text-sm text-muted-foreground">Görev bulunamadı</div>
       ) : (
         <div className="grid gap-3">
-          {tasks.map((task) => {
+          {(Array.isArray(tasks) ? tasks : []).map((task) => {
             const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "tamamlandi";
             return (
               <Card key={task.id} className={cn("transition-all", isOverdue && "border-red-200 dark:border-red-900")} data-testid={`hq-task-${task.id}`}>

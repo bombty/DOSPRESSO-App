@@ -218,7 +218,7 @@ export default function AcademyContentManagement() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Kategoriler</SelectItem>
-            {categories.map((cat) => (
+            {(Array.isArray(categories) ? categories : []).map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {CATEGORY_LABELS[cat] || cat}
               </SelectItem>

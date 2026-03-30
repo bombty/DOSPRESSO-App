@@ -349,7 +349,7 @@ export default function CoachSubeDenetim() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="space-y-2">
-                      {cat.items.map((item, idx) => (
+                      {cat.items?.map((item, idx) => (
                         <div key={idx} className="flex items-start gap-2">
                           <Checkbox
                             id={`${cat.key}-item-${idx}`}
@@ -434,7 +434,7 @@ export default function CoachSubeDenetim() {
 
               {categories && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {categories.map((cat) => (
+                  {(Array.isArray(categories) ? categories : []).map((cat) => (
                     <div key={cat.key} className="flex items-center justify-between gap-1 p-2 rounded-md bg-muted/50">
                       <span className="truncate">{cat.label}</span>
                       <span className={`font-bold ${getScoreColor(scores[cat.key] ?? 0)}`}>

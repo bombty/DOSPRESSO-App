@@ -243,7 +243,7 @@ export function AIModuleCreator({ open, onOpenChange }: AIModuleCreatorProps) {
                 <div>
                   <h5 className="font-medium text-sm mb-2">Öğrenme Hedefleri ({generatedModule.learningObjectives.length})</h5>
                   <ul className="list-disc list-inside text-sm space-y-1">
-                    {generatedModule.learningObjectives.map((obj: string, i: number) => (
+                    {generatedModule.learningObjectives?.map((obj: string, i: number) => (
                       <li key={i} className="text-muted-foreground">{obj}</li>
                     ))}
                   </ul>
@@ -254,7 +254,7 @@ export function AIModuleCreator({ open, onOpenChange }: AIModuleCreatorProps) {
                 <div>
                   <h5 className="font-medium text-sm mb-2">Eğitim Adımları ({generatedModule.steps.length})</h5>
                   <div className="flex flex-col gap-2">
-                    {generatedModule.steps.map((step, i: number) => (
+                    {generatedModule.steps?.map((step, i: number) => (
                       <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                         <p className="font-medium">{step.stepNumber}. {step.title}</p>
                         <p className="text-muted-foreground text-xs mt-1 line-clamp-2">{step.content}</p>
@@ -268,7 +268,7 @@ export function AIModuleCreator({ open, onOpenChange }: AIModuleCreatorProps) {
                 <div>
                   <h5 className="font-medium text-sm mb-2">Quiz Soruları ({generatedModule.quiz.length})</h5>
                   <div className="flex flex-col gap-2">
-                    {generatedModule.quiz.map((q, i: number) => (
+                    {generatedModule.quiz?.map((q, i: number) => (
                       <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                         <p className="font-medium">{q.questionText}</p>
                         <div className="flex gap-1 mt-1 flex-wrap">
@@ -286,7 +286,7 @@ export function AIModuleCreator({ open, onOpenChange }: AIModuleCreatorProps) {
                 <div>
                   <h5 className="font-medium text-sm mb-2">Senaryolar ({generatedModule.scenarioTasks.length})</h5>
                   <div className="flex flex-col gap-2">
-                    {generatedModule.scenarioTasks.map((s, i: number) => (
+                    {generatedModule.scenarioTasks?.map((s, i: number) => (
                       <div key={i} className="bg-muted/50 p-2 rounded text-sm">
                         <p className="font-medium">{s.title}</p>
                         <p className="text-muted-foreground text-xs">{s.description}</p>

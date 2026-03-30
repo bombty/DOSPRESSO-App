@@ -359,7 +359,7 @@ export default function FranchiseYatirimciDetay() {
                   </tr>
                 </thead>
                 <tbody>
-                  {performance.branches.map((b) => (
+                  {performance.branches?.map((b) => (
                     <tr key={b.branchId} className="border-b last:border-0" data-testid={`row-branch-${b.branchId}`}>
                       <td className="py-2 pr-4 font-medium">{b.branchName || `#${b.branchId}`}</td>
                       <td className="py-2 pr-4">

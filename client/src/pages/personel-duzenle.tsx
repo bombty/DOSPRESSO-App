@@ -536,7 +536,7 @@ export default function PersonelDuzenle() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none">Şube Yok (HQ)</SelectItem>
-                            {branches.map((branch) => (
+                            {(Array.isArray(branches) ? branches : []).map((branch) => (
                               <SelectItem key={branch.id} value={branch.id.toString()}>
                                 {branch.name}
                               </SelectItem>

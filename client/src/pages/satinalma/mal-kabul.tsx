@@ -360,7 +360,7 @@ export default function MalKabul() {
 
   const handlePOAutoPopulate = () => {
     if (poDetail?.items && poDetail.items.length > 0) {
-      const rows: ReceiptItemRow[] = poDetail.items.map(item => ({
+      const rows: ReceiptItemRow[] = poDetail.items?.map(item => ({
         inventoryId: item.inventoryId.toString(),
         orderedQuantity: item.quantity,
         receivedQuantity: item.quantity,
@@ -484,7 +484,7 @@ export default function MalKabul() {
       }
     }
 
-    const allItems = qcDetail.items.map(item => {
+    const allItems = qcDetail.items?.map(item => {
       const s = qcItemStatuses[item.id];
       return s ? s.qualityStatus : item.qualityStatus;
     });
@@ -950,7 +950,7 @@ export default function MalKabul() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {receiptDetail.items.map((item) => (
+                        {receiptDetail.items?.map((item) => (
                           <TableRow key={item.id} data-testid={`detail-item-row-${item.id}`}>
                             <TableCell className="font-medium">
                               {item.inventory?.name || `Ürün #${item.inventoryId}`}
@@ -1004,7 +1004,7 @@ export default function MalKabul() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {qcDetail.items.map((item) => {
+                      {qcDetail.items?.map((item) => {
                         const currentStatus = qcItemStatuses[item.id] || { qualityStatus: item.qualityStatus || "beklemede", qualityNotes: item.qualityNotes || "" };
                         return (
                           <TableRow key={item.id} data-testid={`qc-item-row-${item.id}`}>

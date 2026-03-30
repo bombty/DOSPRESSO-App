@@ -740,7 +740,7 @@ function AssignmentsTab() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {assignments.map((a) => (
+          {(Array.isArray(assignments) ? assignments : []).map((a) => (
             <TableRow key={a.id} data-testid={`row-assignment-${a.id}`}>
               <TableCell>
                 <Badge variant="outline">

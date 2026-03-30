@@ -175,9 +175,9 @@ export default function HRReportsPage() {
     const rows = employeeBreakdown.map(emp => [
       emp.name,
       emp.shiftCount.toString(),
-      emp.totalHours.toFixed(2),
+      Number(emp.totalHours ?? 0).toFixed(2),
       emp.totalBreakMinutes.toString(),
-      emp.avgPerShift.toFixed(2),
+      Number(emp.avgPerShift ?? 0).toFixed(2),
     ]);
     
     const csvContent = [
@@ -272,7 +272,7 @@ export default function HRReportsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map(branch => (
+                  {(Array.isArray(branches) ? branches : []).map(branch => (
                     <SelectItem key={branch.id} value={branch.id.toString()}>
                       {branch.name}
                     </SelectItem>
@@ -289,8 +289,8 @@ export default function HRReportsPage() {
       <CompactKPIStrip
         items={[
           { label: "Vardiya", value: isLoading ? "..." : attendanceStats.totalRecords, icon: <Users className="h-4 w-4 text-primary" />, color: "info" },
-          { label: "Toplam", value: isLoading ? "..." : `${attendanceStats.totalHoursWorked.toFixed(1)}h`, icon: <Clock className="h-4 w-4 text-success" />, color: "success" },
-          { label: "Ortalama", value: isLoading ? "..." : `${attendanceStats.avgHoursPerShift.toFixed(1)}h`, icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />, color: "default" },
+          { label: "Toplam", value: isLoading ? "..." : `${Number(attendanceStats.totalHoursWorked ?? 0).toFixed(1)}h`, icon: <Clock className="h-4 w-4 text-success" />, color: "success" },
+          { label: "Ortalama", value: isLoading ? "..." : `${Number(attendanceStats.avgHoursPerShift ?? 0).toFixed(1)}h`, icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />, color: "default" },
           { label: "Mola", value: isLoading ? "..." : `${attendanceStats.totalBreakMinutes}m`, icon: <Coffee className="h-4 w-4 text-warning" />, color: "warning" },
           { label: "Geç", value: isLoading ? "..." : attendanceStats.lateArrivals, icon: <AlertCircle className="h-4 w-4 text-destructive" />, color: attendanceStats.lateArrivals > 0 ? "danger" : "default" },
         ]}
@@ -337,9 +337,9 @@ export default function HRReportsPage() {
                       <TableCell className="text-right">
                         <Badge variant="secondary">{emp.shiftCount}</Badge>
                       </TableCell>
-                      <TableCell className="text-right font-medium">{emp.totalHours.toFixed(2)}h</TableCell>
+                      <TableCell className="text-right font-medium">{Number(emp.totalHours ?? 0).toFixed(2)}h</TableCell>
                       <TableCell className="text-right">{emp.totalBreakMinutes}m</TableCell>
-                      <TableCell className="text-right">{emp.avgPerShift.toFixed(2)}h</TableCell>
+                      <TableCell className="text-right">{Number(emp.avgPerShift ?? 0).toFixed(2)}h</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -365,7 +365,7 @@ export default function HRReportsPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Toplam Çalışılan Saat:</span>
-            <span className="font-medium">{attendanceStats.totalHoursWorked.toFixed(1)} saat</span>
+            <span className="font-medium">{Number(attendanceStats.totalHoursWorked ?? 0).toFixed(1)} saat</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Ortalama/Çalışan:</span>

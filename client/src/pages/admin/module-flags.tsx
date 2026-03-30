@@ -304,7 +304,7 @@ export default function AdminModuleFlags() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Global Ayarlar</SelectItem>
-              {branches.map(b => (
+              {(Array.isArray(branches) ? branches : []).map(b => (
                 <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
               ))}
             </SelectContent>
@@ -547,7 +547,7 @@ export default function AdminModuleFlags() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="global">Global Ayarlar</SelectItem>
-            {branches.map(b => (
+            {(Array.isArray(branches) ? branches : []).map(b => (
               <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
             ))}
           </SelectContent>

@@ -174,9 +174,9 @@ function SortableSection({
             collisionDetection={closestCenter} 
             onDragEnd={(e) => onDragItemEnd(e, section.id)}
           >
-            <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={(Array.isArray(items) ? items : []).map(i => i.id)} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-3 sm:gap-4">
-                {items.map(item => (
+                {(Array.isArray(items) ? items : []).map(item => (
                   <SortableItem 
                     key={item.id} 
                     item={item}
@@ -1165,7 +1165,7 @@ export default function AdminMenuManagement() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {users.map(user => (
+                                  {(Array.isArray(users) ? users : []).map(user => (
                                     <SelectItem key={user.id} value={user.id}>
                                       {user.firstName} {user.lastName} ({user.email || user.username})
                                     </SelectItem>

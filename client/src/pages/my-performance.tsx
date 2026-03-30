@@ -203,7 +203,7 @@ export default function MyPerformancePage() {
         <>
           <CompactKPIStrip
             items={[
-              { label: "Toplam Puan", value: totalScore.toFixed(1), icon: <Trophy className={`h-4 w-4 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />, color: totalScore >= 70 ? "success" : totalScore >= 50 ? "warning" : "danger", testId: "card-total-score" },
+              { label: "Toplam Puan", value: Number(totalScore ?? 0).toFixed(1), icon: <Trophy className={`h-4 w-4 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />, color: totalScore >= 70 ? "success" : totalScore >= 50 ? "warning" : "danger", testId: "card-total-score" },
               { label: "Sıralama", value: rank || "-", icon: <Medal className="h-4 w-4 text-blue-500" />, color: "info", testId: "card-ranking", subtitle: rank && rank <= 3 ? "İlk 3'te!" : undefined },
               { label: "Müşteri Puanı", value: perf?.customerRatingAvg?.toFixed(1) || "-", icon: <Star className="h-4 w-4 text-yellow-500" />, color: "warning", testId: "card-customer-score" },
               { label: "Checklist", value: `${perf?.checklistCompletion?.toFixed(0) || 0}%`, icon: <ClipboardCheck className="h-4 w-4 text-purple-500" />, color: "info", testId: "card-checklist-score" },
@@ -214,7 +214,7 @@ export default function MyPerformancePage() {
                   <CardContent className="pt-6">
                     <div className="flex flex-col items-center">
                       <Trophy className={`h-8 w-8 mb-2 ${totalScore >= 70 ? "text-green-500" : totalScore >= 50 ? "text-yellow-500" : "text-red-500"}`} />
-                      <p className="text-2xl font-bold" data-testid="text-total-score">{totalScore.toFixed(1)}</p>
+                      <p className="text-2xl font-bold" data-testid="text-total-score">{Number(totalScore ?? 0).toFixed(1)}</p>
                       <p className="text-sm text-muted-foreground">Toplam Puan</p>
                       <Progress value={totalScore} className="h-2 mt-2 w-full" />
                     </div>
@@ -468,7 +468,7 @@ function PeriodContent({ data, period }: { data: any; period: PeriodType }) {
             <div className="flex flex-col items-center">
               <p className="text-sm text-muted-foreground mb-1">{PERIOD_LABELS[period]} Puan</p>
               <p className={`text-2xl font-bold ${currentScore >= 70 ? 'text-green-600 dark:text-green-400' : currentScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`} data-testid="text-period-score">
-                {currentScore.toFixed(1)}
+                {Number(currentScore ?? 0).toFixed(1)}
               </p>
               <Progress value={currentScore} className="h-2 mt-3 w-full" />
               <div className="mt-2">
@@ -600,7 +600,7 @@ function ScoreBar({ label, value, max, color }: { label: string; value: number; 
     <div>
       <div className="flex justify-between items-center mb-1">
         <span className="text-sm font-medium">{label}</span>
-        <span className="text-sm text-muted-foreground">{value.toFixed(1)} / {max}</span>
+        <span className="text-sm text-muted-foreground">{Number(value ?? 0).toFixed(1)} / {max}</span>
       </div>
       <div className="h-3 bg-muted rounded-full overflow-hidden">
         <div 

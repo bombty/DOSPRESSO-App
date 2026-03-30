@@ -216,7 +216,7 @@ function WebinarCard({
 
           {webinar.targetRoles && webinar.targetRoles.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {webinar.targetRoles.map((r: string) => (
+              {webinar.targetRoles?.map((r: string) => (
                 <Badge key={r} variant="outline" className="text-xs">
                   {ROLE_LABELS[r] || r}
                 </Badge>
@@ -877,7 +877,7 @@ export default function AcademyWebinars() {
                     {getMonthLabel(items[0].webinarDate)}
                   </h3>
                   <div className="space-y-2">
-                    {items.map((w: any) => (
+                    {(Array.isArray(items) ? items : []).map((w: any) => (
                       <WebinarCard
                         key={w.id}
                         webinar={w}

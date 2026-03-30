@@ -337,8 +337,8 @@ export default function SubeDetayPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLatitude(position.coords.latitude.toFixed(7));
-          setLongitude(position.coords.longitude.toFixed(7));
+          setLatitude(Number(position.coords.latitude ?? 0).toFixed(7));
+          setLongitude(Number(position.coords.longitude ?? 0).toFixed(7));
           toast({ title: "Konum Alındı", description: "GPS koordinatları güncellendi" });
         },
         (error) => {
@@ -404,7 +404,7 @@ export default function SubeDetayPage() {
             <h1 className="text-2xl font-bold">{branch.name}</h1>
             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10">
               <Star className="h-4 w-4 text-primary" />
-              <span className="text-lg font-bold text-primary" data-testid="composite-score">{scores.compositeScore.toFixed(1)}</span>
+              <span className="text-lg font-bold text-primary" data-testid="composite-score">{Number(scores.compositeScore ?? 0).toFixed(1)}</span>
               <span className="text-xs text-muted-foreground">/100</span>
             </div>
           </div>
@@ -446,7 +446,7 @@ export default function SubeDetayPage() {
                 <Users className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold" data-testid="score-employee">{scores.employeePerformanceScore.toFixed(1)}</span>
+                <span className="text-xl font-bold" data-testid="score-employee">{Number(scores.employeePerformanceScore ?? 0).toFixed(1)}</span>
                 <Progress value={scores.employeePerformanceScore} className="h-1 flex-1" />
               </div>
             </button>
@@ -462,7 +462,7 @@ export default function SubeDetayPage() {
                 <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold" data-testid="score-equipment">{scores.equipmentScore.toFixed(1)}</span>
+                <span className="text-xl font-bold" data-testid="score-equipment">{Number(scores.equipmentScore ?? 0).toFixed(1)}</span>
                 <Progress value={scores.equipmentScore} className="h-1 flex-1" />
               </div>
             </button>
@@ -478,7 +478,7 @@ export default function SubeDetayPage() {
                 <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold" data-testid="score-quality">{scores.qualityAuditScore.toFixed(1)}</span>
+                <span className="text-xl font-bold" data-testid="score-quality">{Number(scores.qualityAuditScore ?? 0).toFixed(1)}</span>
                 <Progress value={scores.qualityAuditScore} className="h-1 flex-1" />
               </div>
             </button>
@@ -494,7 +494,7 @@ export default function SubeDetayPage() {
                 <ThumbsUp className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold" data-testid="score-satisfaction">{scores.customerSatisfactionScore.toFixed(1)}</span>
+                <span className="text-xl font-bold" data-testid="score-satisfaction">{Number(scores.customerSatisfactionScore ?? 0).toFixed(1)}</span>
                 <Progress value={scores.customerSatisfactionScore} className="h-1 flex-1" />
               </div>
             </button>
@@ -781,7 +781,7 @@ export default function SubeDetayPage() {
                     <p className="text-2xl font-bold text-primary" data-testid="quality-overall-score">
                       {auditScoreData?.overallScore !== null && auditScoreData?.overallScore !== undefined 
                         ? Math.round(auditScoreData.overallScore)
-                        : scores.qualityAuditScore.toFixed(0)}
+                        : Number(scores.qualityAuditScore ?? 0).toFixed(0)}
                     </p>
                   </div>
                   <Award className="h-12 w-12 text-primary opacity-20" />

@@ -609,7 +609,7 @@ export default function PersonelProfilPage() {
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className={`text-2xl font-bold ${scoreColor}`} data-testid="performance-score">
-                      {overall.toFixed(0)}
+                      {Number(overall ?? 0).toFixed(0)}
                     </span>
                     <span className="text-xs text-muted-foreground">Genel Skor</span>
                   </div>
@@ -729,7 +729,7 @@ export default function PersonelProfilPage() {
                 <div data-testid="ai-weak-areas">
                   <p className="text-sm font-semibold mb-2">Zayıf Alanlar</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {aiRecs.weakAreas.map((area, i) => (
+                    {aiRecs.weakAreas?.map((area, i) => (
                       <Badge key={i} variant="destructive" data-testid={`badge-weak-area-${i}`}>
                         {area}
                       </Badge>
@@ -742,7 +742,7 @@ export default function PersonelProfilPage() {
                 <div data-testid="ai-recommendations-list">
                   <p className="text-sm font-semibold mb-2">İyileştirme Önerileri</p>
                   <ol className="space-y-1.5 pl-4 list-decimal">
-                    {aiRecs.recommendations.map((rec, i) => (
+                    {aiRecs.recommendations?.map((rec, i) => (
                       <li key={i} className="text-sm text-muted-foreground" data-testid={`text-recommendation-${i}`}>
                         {rec}
                       </li>
@@ -755,7 +755,7 @@ export default function PersonelProfilPage() {
                 <div data-testid="ai-target-plan">
                   <p className="text-sm font-semibold mb-2">Hedef Plan</p>
                   <ul className="space-y-1.5">
-                    {aiRecs.targetPlan.map((item, i) => (
+                    {aiRecs.targetPlan?.map((item, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm" data-testid={`text-target-plan-${i}`}>
                         <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
                         <span className="text-muted-foreground">{item}</span>
@@ -1938,7 +1938,7 @@ export default function PersonelProfilPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {evalData.evaluations.map((ev) => {
+                  {evalData.evaluations?.map((ev) => {
                     const evColor = ev.overallScore >= 75 ? "text-emerald-600" : ev.overallScore >= 65 ? "text-amber-600" : "text-red-600";
                     return (
                       <Card key={ev.id} data-testid={`eval-card-${ev.id}`}>

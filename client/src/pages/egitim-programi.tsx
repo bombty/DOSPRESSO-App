@@ -388,7 +388,7 @@ export default function EgitimProgrami() {
               </div>
             ) : quizQuery.data?.questions ? (
               <>
-                {quizQuery.data.questions.map((q, qIndex) => (
+                {quizQuery.data.questions?.map((q, qIndex) => (
                   <div key={qIndex} className="space-y-3" data-testid={`quiz-question-${qIndex}`}>
                     <p className="font-medium text-sm">
                       {qIndex + 1}. {q.question}
@@ -397,7 +397,7 @@ export default function EgitimProgrami() {
                       value={quizAnswers[qIndex]?.toString()}
                       onValueChange={(val) => setQuizAnswers(prev => ({ ...prev, [qIndex]: parseInt(val) }))}
                     >
-                      {q.options.map((option, oIndex) => (
+                      {q.options?.map((option, oIndex) => (
                         <div key={oIndex} className="flex items-center gap-2">
                           <RadioGroupItem
                             value={oIndex.toString()}

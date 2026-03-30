@@ -315,7 +315,7 @@ export default function MerkezDashboard() {
                 </CardHeader>
                 <CardContent className="px-3 pb-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {data.branchInfoGraphics.map((branch) => {
+                    {data.branchInfoGraphics?.map((branch) => {
                       const checklistRate = branch.checklistTotal > 0
                         ? Math.round((branch.checklistDone / branch.checklistTotal) * 100) : 0;
                       return (
@@ -369,7 +369,7 @@ export default function MerkezDashboard() {
               <CardContent className="px-3 pb-3">
                 {data?.merkezStaff && data.merkezStaff.length > 0 ? (
                   <div className="space-y-1.5">
-                    {data.merkezStaff.map((staff) => (
+                    {data.merkezStaff?.map((staff) => (
                       <div
                         key={staff.id}
                         className="flex items-center gap-2 p-2 rounded-lg border"

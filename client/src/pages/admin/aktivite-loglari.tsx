@@ -341,7 +341,7 @@ export default function AdminAktiviteLoglar() {
                   Henüz kayıt bulunmuyor
                 </p>
               ) : (
-                logs.map((log) => {
+                (Array.isArray(logs) ? logs : []).map((log) => {
                   const info = getEventInfo(log.eventType);
                   const Icon = info.icon;
                   return (

@@ -562,7 +562,7 @@ export default function CapaDetayPage() {
                     {/* Evidence Photos */}
                     {update.evidence?.photos && update.evidence.photos.length > 0 && (
                       <div className="mt-2 flex gap-2 flex-wrap">
-                        {update.evidence.photos.map((photo, pi) => (
+                        {update.evidence.photos?.map((photo, pi) => (
                           <a 
                             key={pi} 
                             href={photo} 

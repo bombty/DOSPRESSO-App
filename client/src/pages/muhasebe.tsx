@@ -545,7 +545,7 @@ export default function Muhasebe() {
       setAiCheckResult(data);
       setIsAiCheckDialogOpen(true);
       if (data.changes && data.changes.length > 0) {
-        setSelectedAiChanges(new Set(data.changes.map((_: any, i: number) => i)));
+        setSelectedAiChanges(new Set(data.changes?.map((_: any, i: number) => i)));
       } else {
         setSelectedAiChanges(new Set());
       }
@@ -777,7 +777,7 @@ export default function Muhasebe() {
                         <SelectValue placeholder={employees.length === 0 ? "Personel yükleniyor..." : "Personel seçin..."} />
                       </SelectTrigger>
                       <SelectContent>
-                        {employees.map((emp) => (
+                        {(Array.isArray(employees) ? employees : []).map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {emp.first_name} {emp.last_name} {emp.branch_name ? `(${emp.branch_name})` : ''}
                           </SelectItem>
@@ -1820,7 +1820,7 @@ export default function Muhasebe() {
                         if (selectedAiChanges.size === aiCheckResult.changes.length) {
                           setSelectedAiChanges(new Set());
                         } else {
-                          setSelectedAiChanges(new Set(aiCheckResult.changes.map((_: any, i: number) => i)));
+                          setSelectedAiChanges(new Set(aiCheckResult.changes?.map((_: any, i: number) => i)));
                         }
                       }}
                       data-testid="button-toggle-all-changes"
@@ -1828,7 +1828,7 @@ export default function Muhasebe() {
                       {selectedAiChanges.size === aiCheckResult.changes.length ? "Hiçbirini Seçme" : "Tümünü Seç"}
                     </Button>
                   </div>
-                  {aiCheckResult.changes.map((change: AiRegulationSuggestion, index: number) => {
+                  {aiCheckResult.changes?.map((change: AiRegulationSuggestion, index: number) => {
                     const isMonetary = ['minimumWageGross', 'minimumWageNet', 'taxBracket1Limit', 'taxBracket2Limit', 'taxBracket3Limit', 'taxBracket4Limit', 'mealAllowanceTaxExemptDaily', 'mealAllowanceSgkExemptDaily', 'transportAllowanceExemptDaily'].includes(change.field);
                     const isRate = ['sgkEmployeeRate', 'sgkEmployerRate', 'unemploymentEmployeeRate', 'unemploymentEmployerRate'].includes(change.field);
                     const isStampTax = change.field === 'stampTaxRate';
@@ -1965,7 +1965,7 @@ function SalarySettingsSection({ employees, canEdit }: { employees: Employee[]; 
 
   const formatScaleCurrency = (value: string) => {
     const num = parseFloat(value || "0");
-    return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return Number(num ?? 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const handleScaleEdit = (scale: SalaryScale) => {

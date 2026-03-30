@@ -558,7 +558,7 @@ export default function ServiceRequestsManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map(branch => (
+                  {(Array.isArray(branches) ? branches : []).map(branch => (
                     <SelectItem key={branch.id} value={String(branch.id)}>
                       {branch.name}
                     </SelectItem>
@@ -815,7 +815,7 @@ export default function ServiceRequestsManagement() {
                     Tarih
                   </h3>
                   <div className="flex flex-col gap-3 sm:gap-4">
-                    {selectedRequest.timeline.map((entry, idx) => (
+                    {selectedRequest.timeline?.map((entry, idx) => (
                       <div key={entry.id} className="flex gap-2 sm:gap-3">
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 bg-primary/100 rounded-full mt-2"></div>
@@ -1060,7 +1060,7 @@ export default function ServiceRequestsManagement() {
                   <SelectValue placeholder="Şube seçiniz" />
                 </SelectTrigger>
                 <SelectContent>
-                  {branches.map(branch => (
+                  {(Array.isArray(branches) ? branches : []).map(branch => (
                     <SelectItem key={branch.id} value={String(branch.id)}>
                       {branch.name}
                     </SelectItem>

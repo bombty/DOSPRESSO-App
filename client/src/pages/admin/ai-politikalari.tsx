@@ -569,7 +569,7 @@ function AiLogsTab() {
               </TableCell>
             </TableRow>
           ) : (
-            logs.map((log: any) => (
+            (Array.isArray(logs) ? logs : []).map((log: any) => (
               <TableRow key={log.id} data-testid={`row-log-${log.id}`}>
                 <TableCell className="text-xs whitespace-nowrap">
                   {log.createdAt ? new Date(log.createdAt).toLocaleString("tr-TR") : "-"}

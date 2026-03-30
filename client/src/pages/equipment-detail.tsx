@@ -989,7 +989,7 @@ export default function EquipmentDetail() {
             <CardContent>
               {equipment.maintenanceLogs.length > 0 ? (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {equipment.maintenanceLogs.map((log) => (
+                  {equipment.maintenanceLogs?.map((log) => (
                     <div key={log.id} className="flex gap-2 sm:gap-3 pb-4 border-b last:border-0" data-testid={`maintenance-log-${log.id}`}>
                       <div className="flex-shrink-0 mt-1">
                         <div className="h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1054,7 +1054,7 @@ export default function EquipmentDetail() {
             <CardContent>
               {equipment.faults.length > 0 ? (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {equipment.faults.map((fault) => (
+                  {equipment.faults?.map((fault) => (
                     <div key={fault.id} className="flex gap-2 sm:gap-3 pb-4 border-b last:border-0" data-testid={`fault-${fault.id}`}>
                       <div className="flex-shrink-0 mt-1">
                         <div className="h-4 w-4 rounded-full bg-destructive/10 flex items-center justify-center">
@@ -1274,7 +1274,7 @@ export default function EquipmentDetail() {
             <CardContent className="w-full space-y-2 sm:space-y-3">
               {equipment.comments.length > 0 && (
                 <div className="w-full space-y-2 sm:space-y-3">
-                  {equipment.comments.map((comment) => (
+                  {equipment.comments?.map((comment) => (
                     <div key={comment.id} className="flex gap-2 sm:gap-3 pb-4 border-b" data-testid={`comment-${comment.id}`}>
                       <div className="flex-shrink-0 mt-1">
                         <div className="h-4 w-4 rounded-full bg-muted flex items-center justify-center">
@@ -1598,7 +1598,7 @@ export default function EquipmentDetail() {
                       </div>
                       {knowledge.keywords?.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t">
-                          {knowledge.keywords.map((kw: string, idx: number) => (
+                          {knowledge.keywords?.map((kw: string, idx: number) => (
                             <Badge key={idx} variant="outline" className="text-xs">{kw}</Badge>
                           ))}
                         </div>
@@ -2530,7 +2530,7 @@ export default function EquipmentDetail() {
                           <div className="pt-2 border-t">
                             <p className="text-xs font-medium text-muted-foreground mb-1">Kaynaklar:</p>
                             <div className="flex flex-wrap gap-1">
-                              {aiAnswer.sources.map((source, idx: number) => (
+                              {aiAnswer.sources?.map((source, idx: number) => (
                                 <Badge key={idx} variant="outline" className="text-xs" data-testid={`badge-ai-source-${idx}`}>
                                   {source.title || `Kaynak ${idx + 1}`}
                                 </Badge>

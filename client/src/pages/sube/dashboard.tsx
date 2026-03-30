@@ -450,7 +450,7 @@ export default function SubeDashboard() {
                   </div>
                   <Progress value={evalStatus.summary.percentage} className="h-2" />
                   <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {evalStatus.notEvaluated.map((emp: any) => (
+                    {evalStatus.notEvaluated?.map((emp: any) => (
                       <Link key={emp.id} href={`/personel/${emp.id}`}>
                         <div className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate cursor-pointer" data-testid={`eval-warning-${emp.id}`}>
                           <div className="flex items-center gap-2">

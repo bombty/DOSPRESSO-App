@@ -294,7 +294,7 @@ export default function GidaGuvenligi() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {records.map((record) => (
+                  {(Array.isArray(records) ? records : []).map((record) => (
                     <TableRow key={record.id} data-testid={`row-haccp-${record.id}`}>
                       <TableCell className="font-medium" data-testid={`text-checkpoint-${record.id}`}>
                         {record.checkPoint}

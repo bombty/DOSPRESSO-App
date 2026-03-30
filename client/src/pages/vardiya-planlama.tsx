@@ -905,9 +905,9 @@ export default function VardiyaPlanlama() {
                 <div className={`p-2 rounded text-xs ${hoursCheck.exceedsLimit ? 'bg-destructive/10 border border-destructive/30' : 'bg-muted'}`}>
                   <div className="flex justify-between">
                     <span>Mevcut: {hoursCheck.currentHours}s</span>
-                    <span>+{hoursCheck.newShiftHours.toFixed(1)}s</span>
+                    <span>+{Number(hoursCheck.newShiftHours ?? 0).toFixed(1)}s</span>
                     <span className={hoursCheck.exceedsLimit ? 'text-destructive font-bold' : 'font-medium'}>
-                      {hoursCheck.totalHours.toFixed(1)}/{hoursCheck.weeklyLimit}s
+                      {Number(hoursCheck.totalHours ?? 0).toFixed(1)}/{hoursCheck.weeklyLimit}s
                     </span>
                   </div>
                   {hoursCheck.exceedsLimit && (
@@ -987,7 +987,7 @@ export default function VardiyaPlanlama() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Seçilmedi</SelectItem>
-                      {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                      {Array.isArray(checklists) && (Array.isArray(checklists) ? checklists : []).map((cl: { id: number; title: string }) => (
                         <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1653,7 +1653,7 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Seçilmedi</SelectItem>
-                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                  {Array.isArray(checklists) && (Array.isArray(checklists) ? checklists : []).map((cl: { id: number; title: string }) => (
                     <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1664,7 +1664,7 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Seçilmedi</SelectItem>
-                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                  {Array.isArray(checklists) && (Array.isArray(checklists) ? checklists : []).map((cl: { id: number; title: string }) => (
                     <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1675,7 +1675,7 @@ function ShiftEditModal({ open, shiftId, employees, onClose, canEdit = true }: {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Seçilmedi</SelectItem>
-                  {Array.isArray(checklists) && checklists.map((cl: { id: number; title: string }) => (
+                  {Array.isArray(checklists) && (Array.isArray(checklists) ? checklists : []).map((cl: { id: number; title: string }) => (
                     <SelectItem key={cl.id} value={String(cl.id)}>{cl.title}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1831,7 +1831,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
       }
       
       // Map AI recommendations to preview format with employee names
-      const mappedShifts = data.recommendations.map((rec: any) => {
+      const mappedShifts = data.recommendations?.map((rec: any) => {
         const emp = employees.find((e: any) => String(e.id) === String(rec.assignedToId));
         return {
           ...rec,
@@ -2065,7 +2065,7 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
                 empHours[s.assignedToId] = (empHours[s.assignedToId] || 0) + hours;
                 empDays[s.assignedToId] = (empDays[s.assignedToId] || 0) + 1;
               });
-              const entries = employees.map((emp: any) => ({
+              const entries = (Array.isArray(employees) ? employees : []).map((emp: any) => ({
                 name: emp.fullName || emp.firstName,
                 hours: empHours[String(emp.id)] || 0,
                 days: empDays[String(emp.id)] || 0,
@@ -2194,7 +2194,7 @@ function ComplianceView({ branchId, weekStart }: { branchId: number; weekStart: 
     }
   }
 
-  const uniqueUsers = [...new Set(complianceData.compliance.map((c: any) => c.userId))];
+  const uniqueUsers = [...new Set(complianceData.compliance?.map((c: any) => c.userId))];
   const weekDays: string[] = [];
   for (let i = 0; i < 7; i++) {
     weekDays.push(format(addDays(weekStart, i), 'yyyy-MM-dd'));

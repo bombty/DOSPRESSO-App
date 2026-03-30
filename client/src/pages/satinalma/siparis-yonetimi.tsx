@@ -579,7 +579,7 @@ export default function SiparisYonetimi() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map((b: { id: number; name: string }) => (
+                  {(Array.isArray(branches) ? branches : []).map((b: { id: number; name: string }) => (
                     <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -650,7 +650,7 @@ export default function SiparisYonetimi() {
             </TableHeader>
             <TableBody>
               {orders && orders.length > 0 ? (
-                orders.map((order) => (
+                (Array.isArray(orders) ? orders : []).map((order) => (
                   <TableRow key={order.id} data-testid={`order-row-${order.id}`}>
                     <TableCell className="font-mono text-sm">{order.orderNumber}</TableCell>
                     <TableCell className="font-medium">

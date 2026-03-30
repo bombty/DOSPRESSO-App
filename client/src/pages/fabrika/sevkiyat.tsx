@@ -976,7 +976,7 @@ export default function FabrikaSevkiyat() {
                         <SelectValue placeholder="Ürün seçin" />
                       </SelectTrigger>
                       <SelectContent>
-                        {products.map(p => (
+                        {(Array.isArray(products) ? products : []).map(p => (
                           <SelectItem key={p.id} value={String(p.id)}>
                             {p.name} {p.sku ? `(${p.sku})` : ''}
                           </SelectItem>

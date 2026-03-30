@@ -538,7 +538,7 @@ function ChecklistFormDialog({
       isActive,
       timeWindowStart: timeWindowStart || null,
       timeWindowEnd: timeWindowEnd || null,
-      tasks: tasks.map((t, i) => ({ ...t, order: i + 1 })),
+      tasks: (Array.isArray(tasks) ? tasks : []).map((t, i) => ({ ...t, order: i + 1 })),
     };
 
     if (mode === "create") {
@@ -693,7 +693,7 @@ function ChecklistFormDialog({
             </Button>
           </div>
 
-          {tasks.map((task, index) => (
+          {(Array.isArray(tasks) ? tasks : []).map((task, index) => (
             <Card key={index} data-testid={`task-row-${index}`}>
               <CardContent className="py-3">
                 <div className="flex gap-2 items-start">
@@ -1010,7 +1010,7 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
             <div>
               <Label className="text-sm font-semibold">Mevcut Atamalar</Label>
               <div className="mt-2 space-y-2">
-                {assignments.map((assignment: any) => (
+                {(Array.isArray(assignments) ? assignments : []).map((assignment: any) => (
                   <div key={assignment.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
                     <span className="text-sm">{getAssignmentLabel(assignment)}</span>
                     <Button
@@ -1055,7 +1055,7 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
                     <SelectValue placeholder="Şube seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {branches.map((branch: any) => (
+                    {(Array.isArray(branches) ? branches : []).map((branch: any) => (
                       <SelectItem key={branch.id} value={String(branch.id)}>
                         {branch.name}
                       </SelectItem>
@@ -1091,7 +1091,7 @@ function AssignmentDialog({ checklist, open, onClose }: AssignmentDialogProps) {
                     <SelectValue placeholder="Kullanıcı seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((user: any) => (
+                    {(Array.isArray(users) ? users : []).map((user: any) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.firstName} {user.lastName} ({user.username})
                       </SelectItem>

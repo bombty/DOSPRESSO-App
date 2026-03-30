@@ -338,7 +338,7 @@ export default function UserCRM() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tümü</SelectItem>
-                    {branches.map(branch => (
+                    {(Array.isArray(branches) ? branches : []).map(branch => (
                       <SelectItem key={branch.id} value={branch.id.toString()}>
                         {branch.name}
                       </SelectItem>
@@ -535,7 +535,7 @@ export default function UserCRM() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="none">Yok</SelectItem>
-                                    {branches.map(branch => (
+                                    {(Array.isArray(branches) ? branches : []).map(branch => (
                                       <SelectItem key={branch.id} value={branch.id.toString()}>
                                         {branch.name}
                                       </SelectItem>

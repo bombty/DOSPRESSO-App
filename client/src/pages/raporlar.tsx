@@ -244,7 +244,7 @@ export default function Raporlar() {
   });
 
   // Build comparison data from real API data
-  const comparisonData = branches.map((branch) => {
+  const comparisonData = (Array.isArray(branches) ? branches : []).map((branch) => {
     const branchTasks = allTasks.filter((t: any) => t.branchId === branch.id);
     const branchFaults = allFaults.filter((f: any) => f.branchId === branch.id);
     const branchEquipment = allEquipment.filter((e: any) => e.branchId === branch.id);
@@ -545,7 +545,7 @@ export default function Raporlar() {
       return;
     }
 
-    const data = reports.map((report) => ({
+    const data = (Array.isArray(reports) ? reports : []).map((report) => ({
       "Rapor Adı": report.title,
       "Rapor Tipi": report.reportType,
       "Şube Sayısı": report.branchIds?.length || 0,
@@ -658,7 +658,7 @@ export default function Raporlar() {
                         )}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                        {branches.map((branch) => (
+                        {(Array.isArray(branches) ? branches : []).map((branch) => (
                           <div
                             key={branch.id}
                             className={`p-2 border rounded-md cursor-pointer text-sm transition-colors ${
@@ -1016,7 +1016,7 @@ export default function Raporlar() {
                   <h4 className="text-sm font-medium mb-3">Şube Kalite Skorları</h4>
                   {(() => {
                     // Aggregate scores by branch
-                    const branchQualityData = branches.map(branch => {
+                    const branchQualityData = (Array.isArray(branches) ? branches : []).map(branch => {
                       const branchScores = branchAuditScores.filter(s => s.branchId === branch.id);
                       const totalWeightedScore = branchScores.reduce((acc, s) => acc + (s.sectionScore * s.weight / 100), 0);
                       return {
@@ -1089,7 +1089,7 @@ export default function Raporlar() {
                   Excel İndir
                 </Button>
               </div>
-              {reports.map((report) => (
+              {(Array.isArray(reports) ? reports : []).map((report) => (
                 <Card key={report.id}>
                   <CardHeader className="flex flex-row items-start justify-between gap-2">
                     <div>

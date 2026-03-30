@@ -205,7 +205,7 @@ export default function CoachTeamProgress() {
                 <Badge variant="outline">{members.length}</Badge>
               </div>
               <div className="space-y-2">
-                {members.map(member => (
+                {(Array.isArray(members) ? members : []).map(member => (
                   <Card key={member.userId} className="hover-elevate" data-testid={`member-card-${member.userId}`}>
                     <CardContent className="p-3">
                       <div className="flex items-center gap-3">

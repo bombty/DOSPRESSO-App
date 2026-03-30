@@ -234,7 +234,7 @@ const TOOLTIP_STYLE = {
 };
 
 function formatCurrency(value: number): string {
-  return value.toLocaleString("tr-TR", {
+  return Number(value ?? 0).toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -448,7 +448,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
                   />
                   <Tooltip
                     formatter={(value: number) => [
-                      value.toLocaleString("tr-TR"),
+                      Number(value ?? 0).toLocaleString("tr-TR"),
                       "Miktar",
                     ]}
                     contentStyle={TOOLTIP_STYLE}
@@ -625,7 +625,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.priceChanges.map((change, index) => {
+                {data.priceChanges?.map((change, index) => {
                   const changePercent = parseFloat(
                     change.change_percent || "0"
                   );
@@ -671,7 +671,7 @@ function GenelTrendTab({ data }: { data: TrendData | undefined }) {
                             }
                           >
                             {isIncrease ? "+" : ""}
-                            {changePercent.toFixed(1)}%
+                            {Number(changePercent ?? 0).toFixed(1)}%
                           </Badge>
                         ) : (
                           "-"
@@ -838,7 +838,7 @@ function TedarikciPerformansTab() {
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm" data-testid={`sp-orders-${s.id}`}>{s.orderCount}</TableCell>
                       <TableCell className="text-right font-mono text-sm" data-testid={`sp-value-${s.id}`}>{formatCurrency(s.totalValue)} TL</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{s.avgDeliveryDays > 0 ? s.avgDeliveryDays.toFixed(1) : "-"}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{s.avgDeliveryDays > 0 ? Number(s.avgDeliveryDays ?? 0).toFixed(1) : "-"}</TableCell>
                       <TableCell className="text-right font-mono text-sm">{s.activeProductCount}</TableCell>
                       <TableCell className="text-right" data-testid={`sp-issues-${s.id}`}>
                         {s.recentIssuesCount > 0 ? (
@@ -919,14 +919,14 @@ function StokHareketleriTab({ branchId }: { branchId: string }) {
     <div className="space-y-4" data-testid="stock-movement-container">
       <CompactKPIStrip
         items={[
-          { label: "Toplam Hareket", value: summary.totalMovements.toLocaleString("tr-TR"), icon: <ArrowUpDown className="h-4 w-4 text-blue-500" />, color: "info", testId: "sm-card-total" },
+          { label: "Toplam Hareket", value: Number(summary.totalMovements ?? 0).toLocaleString("tr-TR"), icon: <ArrowUpDown className="h-4 w-4 text-blue-500" />, color: "info", testId: "sm-card-total" },
           { label: "Giriş Miktarı", value: formatCurrency(summary.totalIn), icon: <ArrowDownRight className="h-4 w-4 text-green-500" />, color: "success", testId: "sm-card-in" },
           { label: "Çıkış Miktarı", value: formatCurrency(summary.totalOut), icon: <ArrowUpRight className="h-4 w-4 text-red-500" />, color: "danger", testId: "sm-card-out" },
           { label: "Net Fark", value: formatCurrency(summary.totalIn - summary.totalOut), icon: <Package className="h-4 w-4 text-purple-500" />, color: "info", testId: "sm-card-net" },
         ]}
         desktopRenderer={
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <SummaryCard title="Toplam Hareket" value={summary.totalMovements.toLocaleString("tr-TR")} icon={ArrowUpDown} color="text-blue-500" bgColor="bg-blue-500/10" testId="sm-card-total" />
+            <SummaryCard title="Toplam Hareket" value={Number(summary.totalMovements ?? 0).toLocaleString("tr-TR")} icon={ArrowUpDown} color="text-blue-500" bgColor="bg-blue-500/10" testId="sm-card-total" />
             <SummaryCard title="Toplam Giriş Miktarı" value={formatCurrency(summary.totalIn)} icon={ArrowDownRight} color="text-green-500" bgColor="bg-green-500/10" testId="sm-card-in" />
             <SummaryCard title="Toplam Çıkış Miktarı" value={formatCurrency(summary.totalOut)} icon={ArrowUpRight} color="text-red-500" bgColor="bg-red-500/10" testId="sm-card-out" />
             <SummaryCard title="Net Fark" value={formatCurrency(summary.totalIn - summary.totalOut)} icon={Package} color="text-purple-500" bgColor="bg-purple-500/10" testId="sm-card-net" />
@@ -1241,7 +1241,7 @@ export default function TrendAnalizi() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tüm Şubeler</SelectItem>
-              {branches.map((b: { id: number; name: string }) => (
+              {(Array.isArray(branches) ? branches : []).map((b: { id: number; name: string }) => (
                 <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
               ))}
             </SelectContent>

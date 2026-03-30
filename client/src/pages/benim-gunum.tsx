@@ -207,7 +207,7 @@ export default function BenimGunum() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-2">
-            {data.todayTasks.map((task, i) => (
+            {data.todayTasks?.map((task, i) => (
               <Link key={i} href={task.link}>
                 <div
                   className="flex items-center justify-between gap-2 p-2 rounded-md hover-elevate cursor-pointer"

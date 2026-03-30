@@ -252,7 +252,7 @@ export default function StokYonetimi() {
     
     const csvContent = [
       ["Kod", "Ürün Adı", "Kategori", "Birim", "Mevcut Stok", "Min. Stok", "Birim Maliyet", "Depo Konumu"].join(","),
-      ...items.map(item => [
+      ...(Array.isArray(items) ? items : []).map(item => [
         item.code,
         `"${item.name}"`,
         item.category,
@@ -362,7 +362,7 @@ export default function StokYonetimi() {
             <SelectValue placeholder="Kategori" />
           </SelectTrigger>
           <SelectContent>
-            {categories.map(cat => (
+            {(Array.isArray(categories) ? categories : []).map(cat => (
               <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
             ))}
           </SelectContent>
@@ -502,7 +502,7 @@ export default function StokYonetimi() {
             </TableHeader>
             <TableBody>
               {items && items.length > 0 ? (
-                items.map((item) => {
+                (Array.isArray(items) ? items : []).map((item) => {
                   const status = getStockStatus(item);
                   return (
                     <TableRow 

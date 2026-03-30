@@ -41,7 +41,7 @@ export default function TicketsTab() {
       const res = await fetch("/api/branches", { credentials: "include" });
       if (!res.ok) return [];
       const data = await res.json();
-      return Array.isArray(data) ? data.map((b: any) => ({ id: b.id, name: b.name })) : [];
+      return Array.isArray(data) ? (Array.isArray(data) ? data : []).map((b: any) => ({ id: b.id, name: b.name })) : [];
     },
     staleTime: 60000,
   });

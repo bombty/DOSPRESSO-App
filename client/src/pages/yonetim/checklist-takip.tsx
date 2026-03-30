@@ -209,7 +209,7 @@ export default function ChecklistTrackingPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tüm Şubeler</SelectItem>
-                    {branches.map((b) => (
+                    {(Array.isArray(branches) ? branches : []).map((b) => (
                       <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                     ))}
                   </SelectContent>

@@ -361,7 +361,7 @@ export default function HQFabrikaAnalitik() {
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Üretim</span>
-                      <span className="font-medium text-green-600">{station.produced.toLocaleString('tr-TR')} adet</span>
+                      <span className="font-medium text-green-600">{Number(station.produced ?? 0).toLocaleString('tr-TR')} adet</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Fire</span>

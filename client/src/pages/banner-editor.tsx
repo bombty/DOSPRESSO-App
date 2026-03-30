@@ -1316,7 +1316,7 @@ export default function BannerEditor() {
                         <div key={catKey}>
                           <h4 className="text-xs font-medium text-muted-foreground mb-2">{category.name}</h4>
                           <div className="grid grid-cols-5 gap-1">
-                            {category.icons.map((icon) => (
+                            {category.icons?.map((icon) => (
                               <button
                                 key={icon.id}
                                 className="p-2 rounded-lg border border-muted hover:border-primary hover:bg-muted/50 transition-colors flex flex-col items-center gap-0.5"

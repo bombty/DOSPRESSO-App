@@ -133,7 +133,7 @@ export default function RaporlarInsight() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tüm Şubeler</SelectItem>
-            {branches.map(([id, name]) => (
+            {(Array.isArray(branches) ? branches : []).map(([id, name]) => (
               <SelectItem key={id} value={String(id)}>{name}</SelectItem>
             ))}
           </SelectContent>
@@ -172,7 +172,7 @@ export default function RaporlarInsight() {
                       {insight.data.staffCount > 0 && <span>Personel: {insight.data.staffCount}</span>}
                       {insight.data.customerComplaints > 0 && <span>Şikayet: {insight.data.customerComplaints}</span>}
                       {insight.data.equipmentFaults > 0 && <span>Arıza: {insight.data.equipmentFaults}</span>}
-                      {insight.data.checklistCompletion > 0 && <span>Checklist: %{insight.data.checklistCompletion.toFixed(0)}</span>}
+                      {insight.data.checklistCompletion > 0 && <span>Checklist: %{Number(insight.data.checklistCompletion ?? 0).toFixed(0)}</span>}
                     </div>
                   </div>
                 </div>

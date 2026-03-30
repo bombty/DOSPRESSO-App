@@ -119,7 +119,7 @@ export default function DashboardAyarlari() {
   const saveMutation = useMutation({
     mutationFn: async (assignments: LocalAssignment[]) => {
       await apiRequest("PUT", `/api/admin/dashboard-role-widgets/${selectedRole}`, {
-        widgets: assignments.map((a) => ({
+        widgets: (Array.isArray(assignments) ? assignments : []).map((a) => ({
           widgetKey: a.widgetKey,
           isEnabled: a.isEnabled,
           displayOrder: a.displayOrder,

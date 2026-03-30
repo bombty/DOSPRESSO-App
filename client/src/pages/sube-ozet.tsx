@@ -297,7 +297,7 @@ export default function SubeOzet() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-1">
-            {data.teamStatus.map((member) => (
+            {data.teamStatus?.map((member) => (
               <div
                 key={member.id}
                 className="flex items-center justify-between gap-2 p-2 rounded-md"
@@ -323,7 +323,7 @@ export default function SubeOzet() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-1">
-            {data.lowStockItems.map((item, i) => (
+            {data.lowStockItems?.map((item, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between gap-2 p-2 rounded-md text-sm"

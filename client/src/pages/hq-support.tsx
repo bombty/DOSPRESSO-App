@@ -433,7 +433,7 @@ function CreateTicketDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {branches.map((branch) => (
+                        {(Array.isArray(branches) ? branches : []).map((branch) => (
                           <SelectItem key={branch.id} value={branch.id.toString()} data-testid={`option-branch-${branch.id}`}>
                             {branch.name}
                           </SelectItem>
@@ -845,7 +845,7 @@ function TicketDetailDialog({
               {messages.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Henüz mesaj yok</p>
               ) : (
-                messages.map((msg) => {
+                (Array.isArray(messages) ? messages : []).map((msg) => {
                   const isCurrentUser = msg.senderId === user?.id;
                   return (
                     <div

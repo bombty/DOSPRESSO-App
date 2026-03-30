@@ -588,7 +588,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
             {(!project.tasks || project.tasks.length === 0) ? (
               <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henüz görev eklenmemiş</CardContent></Card>
             ) : (
-              project.tasks.map(task => {
+              project.tasks?.map(task => {
                 const phase = project.phases?.find(p => p.id === task.phaseId);
                 return (
                   <Card key={task.id} data-testid={`card-task-${task.id}`}>
@@ -784,7 +784,7 @@ function ProjectDetail({ projectId, onBack }: { projectId: number; onBack: () =>
             {(!project.comments || project.comments.length === 0) ? (
               <Card><CardContent className="py-8 text-center text-muted-foreground text-sm">Henüz aktivite yok</CardContent></Card>
             ) : (
-              project.comments.map(comment => (
+              project.comments?.map(comment => (
                 <Card key={comment.id} data-testid={`card-comment-${comment.id}`}>
                   <CardContent className="pt-3 pb-2 px-4">
                     <div className="flex items-start gap-2">

@@ -520,7 +520,7 @@ export default function Vardiyalarim() {
                       </tr>
                     </thead>
                     <tbody>
-                      {employees.map(([empKey, empShifts]) => {
+                      {(Array.isArray(employees) ? employees : []).map(([empKey, empShifts]) => {
                         const [, empName] = empKey.split("|");
                         return (
                           <tr key={empKey} className="border-b last:border-b-0" data-testid={`row-employee-${empKey}`}>

@@ -1035,7 +1035,7 @@ export default function Receteler() {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex flex-wrap gap-2">
-                                {sizeData.concentrates.map((c, idx) => (
+                                {sizeData.concentrates?.map((c, idx) => (
                                   <Badge key={idx} variant="secondary">
                                     {c.name}: {c.pumps} pump
                                   </Badge>
@@ -1132,7 +1132,7 @@ export default function Receteler() {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex flex-wrap gap-2">
-                                {sizeData.equipment.map((item, idx) => (
+                                {sizeData.equipment?.map((item, idx) => (
                                   <Badge key={idx} variant="outline">{item}</Badge>
                                 ))}
                               </div>
@@ -1162,7 +1162,7 @@ export default function Receteler() {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex flex-wrap gap-2">
-                                {sizeData.toppings.map((item, idx) => (
+                                {sizeData.toppings?.map((item, idx) => (
                                   <Badge key={idx} variant="outline">{item}</Badge>
                                 ))}
                               </div>
@@ -1179,7 +1179,7 @@ export default function Receteler() {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex flex-wrap gap-2">
-                                {sizeData.garnish.map((item, idx) => (
+                                {sizeData.garnish?.map((item, idx) => (
                                   <Badge key={idx} variant="outline">{item}</Badge>
                                 ))}
                               </div>
@@ -1196,7 +1196,7 @@ export default function Receteler() {
                             </CardHeader>
                             <CardContent className="pt-0">
                               <ol className="list-decimal list-inside space-y-2">
-                                {sizeData.steps.map((step, idx) => (
+                                {sizeData.steps?.map((step, idx) => (
                                   <li key={idx} className="text-sm">{step}</li>
                                 ))}
                               </ol>
@@ -1246,7 +1246,7 @@ export default function Receteler() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="space-y-1">
-                          {currentVersion.ingredients.map((ing: any, idx: number) => (
+                          {currentVersion.ingredients?.map((ing: any, idx: number) => (
                             <div key={idx} className="flex items-center gap-2 text-sm">
                               <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-xs flex-shrink-0">{idx + 1}</span>
                               <span>{typeof ing === 'string' ? ing : `${ing.name}${ing.amount ? ` - ${ing.amount}` : ''}${ing.unit ? ` ${ing.unit}` : ''}`}</span>
@@ -1265,7 +1265,7 @@ export default function Receteler() {
                       </CardHeader>
                       <CardContent className="pt-0">
                         <ol className="list-decimal list-inside space-y-2">
-                          {currentVersion.cookingSteps.map((step: string, idx: number) => (
+                          {currentVersion.cookingSteps?.map((step: string, idx: number) => (
                             <li key={idx} className="text-sm">{step}</li>
                           ))}
                         </ol>
@@ -1473,7 +1473,7 @@ export default function Receteler() {
                     <SelectValue placeholder="Kategori seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
+                    {(Array.isArray(categories) ? categories : []).map((cat) => (
                       <SelectItem key={cat.id} value={String(cat.id)}>
                         {cat.titleTr}
                       </SelectItem>

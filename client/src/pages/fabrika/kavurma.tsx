@@ -158,7 +158,7 @@ export default function Kavurma() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {stats.degreeBreakdown.map((d: any) => (
+              {stats.degreeBreakdown?.map((d: any) => (
                 <Badge key={d.degree} variant="secondary">
                   {ROAST_DEGREES[d.degree] || d.degree}: {d.count}
                 </Badge>
@@ -184,7 +184,7 @@ export default function Kavurma() {
             </CardContent>
           </Card>
         ) : (
-          logs.map((item: any) => {
+          (Array.isArray(logs) ? logs : []).map((item: any) => {
             const log = item.log || item;
             return (
               <Card key={log.id} data-testid={`card-roasting-${log.id}`}>

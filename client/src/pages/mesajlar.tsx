@@ -263,7 +263,7 @@ export default function Mesajlar() {
 
   const formatFullDate = (date: Date | string) => {
     const d = new Date(date);
-    return d.toLocaleString("tr-TR", {
+    return Number(d ?? 0).toLocaleString("tr-TR", {
       hour: "2-digit",
       minute: "2-digit",
       day: "numeric",
@@ -500,7 +500,7 @@ export default function Mesajlar() {
                   </h2>
                   <p className="text-sm text-muted-foreground truncate" data-testid="text-thread-participants">
                     {getParticipantNames(
-                      threadData.participants.map((p: any) => ({
+                      threadData.participants?.map((p: any) => ({
                         id: p.id || p.userId,
                         firstName: p.firstName || "",
                         lastName: p.lastName || "",
@@ -512,7 +512,7 @@ export default function Mesajlar() {
 
               <ScrollArea className="flex-1" ref={scrollRef as any}>
                 <div className="p-4 space-y-1">
-                  {threadData.messages.map((message, idx) => {
+                  {threadData.messages?.map((message, idx) => {
                     const isSent = message.senderId === user?.id;
                     const prevMessage = idx > 0 ? threadData.messages[idx - 1] : null;
                     const showDateSep = !prevMessage ||
@@ -572,7 +572,7 @@ export default function Mesajlar() {
 
                               {message.attachments && message.attachments.length > 0 && (
                                 <div className="mt-2 space-y-2">
-                                  {message.attachments.map((att: any) =>
+                                  {message.attachments?.map((att: any) =>
                                     att.type?.startsWith("image/") ? (
                                       <img
                                         key={att.id}

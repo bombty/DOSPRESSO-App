@@ -182,7 +182,7 @@ function AiCopilotCard({ range }: { range: RangeOption }) {
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2">Risk Alanlari</p>
               <div className="space-y-1.5" data-testid="list-riskler">
-                {data.ilk_3_risk.map((risk, i) => (
+                {data.ilk_3_risk?.map((risk, i) => (
                   <div key={i} className="flex items-start gap-2 rounded-md bg-muted/50 p-2">
                     <AlertTriangle className="h-3.5 w-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -207,7 +207,7 @@ function AiCopilotCard({ range }: { range: RangeOption }) {
             <div>
               <p className="text-xs font-semibold text-muted-foreground mb-2">Aksiyon Önerileri</p>
               <div className="space-y-1.5" data-testid="list-aksiyonlar">
-                {data.ilk_3_aksiyon.map((aksiyon, i) => (
+                {data.ilk_3_aksiyon?.map((aksiyon, i) => (
                   <Link key={i} href={aksiyon.deepLink}>
                     <div
                       className="flex items-center gap-2 rounded-md bg-muted/50 p-2 hover-elevate cursor-pointer"
@@ -290,7 +290,7 @@ function BranchDetailView({ branch }: { branch: BranchHealth }) {
       <div>
         <h4 className="text-sm font-semibold mb-2">Bilesen Detaylari</h4>
         <div className="space-y-3">
-          {branch.components.map((comp) => {
+          {branch.components?.map((comp) => {
             const Icon = COMPONENT_ICONS[comp.key] || Activity;
             return (
               <div key={comp.key} className="rounded-md bg-muted/50 p-3 space-y-1.5">
@@ -320,7 +320,7 @@ function BranchDetailView({ branch }: { branch: BranchHealth }) {
                 </div>
                 {comp.notes.length > 0 && (
                   <ul className="text-xs text-muted-foreground space-y-0.5 pl-6 list-disc">
-                    {comp.notes.map((note, i) => (
+                    {comp.notes?.map((note, i) => (
                       <li key={i}>{note}</li>
                     ))}
                   </ul>
@@ -338,7 +338,7 @@ function BranchDetailView({ branch }: { branch: BranchHealth }) {
         <div>
           <h4 className="text-sm font-semibold mb-2">Risk Bayraklari</h4>
           <div className="space-y-1.5">
-            {branch.riskFlags.map((flag, i) => (
+            {branch.riskFlags?.map((flag, i) => (
               <div key={i} className="flex items-center gap-2 rounded-md bg-muted/50 p-2">
                 <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
                 <span className="text-sm flex-1">{flag.label}</span>
@@ -620,7 +620,7 @@ export default function SubeSaglikSkoru() {
                             </td>
                             <td className="p-3 hidden lg:table-cell">
                               <div className="flex items-center justify-center gap-2 flex-wrap">
-                                {branch.components.map((comp) => (
+                                {branch.components?.map((comp) => (
                                   <ComponentScoreBadge key={comp.key} component={comp} />
                                 ))}
                               </div>

@@ -295,7 +295,7 @@ export default function AttendancePage() {
                           </CollapsibleTrigger>
                           <CollapsibleContent className="pt-2">
                             <ul className="text-sm space-y-1 list-disc pl-5" data-testid="list-ai-warnings">
-                              {activeShift.aiWarnings.map((warning: string, idx: number) => (
+                              {activeShift.aiWarnings?.map((warning: string, idx: number) => (
                                 <li key={idx} className="text-destructive">{warning}</li>
                               ))}
                             </ul>

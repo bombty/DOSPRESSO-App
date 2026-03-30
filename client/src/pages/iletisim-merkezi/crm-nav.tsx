@@ -91,7 +91,7 @@ export function CrmNav({ activeKey, onSelect, ticketCounts, delegatedDepts = [],
               <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-2 pt-3 pb-1.5">
                 {section.header}
               </div>
-              {section.items.map((item) => (
+              {section.items?.map((item) => (
                 <NavButton
                   key={item.key}
                   item={item}

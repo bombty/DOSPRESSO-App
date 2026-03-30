@@ -918,7 +918,7 @@ export default function SatinalmaDashboard() {
                             variant={score >= 80 ? "outline" : score >= 50 ? "secondary" : "destructive"}
                             className={`text-xs ${score >= 80 ? "bg-green-500/10 text-green-700 dark:text-green-400" : ""}`}
                           >
-                            {score.toFixed(0)}
+                            {Number(score ?? 0).toFixed(0)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm text-muted-foreground" data-testid={`supplier-delivery-${supplier.id}`}>

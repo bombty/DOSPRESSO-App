@@ -79,7 +79,7 @@ export default function WasteEntry() {
       toast({
         title: t("waste.eventCreated", { defaultValue: "Kayıt oluşturuldu" }),
         description: data.warnings?.length > 0
-          ? data.warnings.map((w: any) => w.message).join(", ")
+          ? data.warnings?.map((w: any) => w.message).join(", ")
           : undefined,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/waste/events"] });
@@ -139,7 +139,7 @@ export default function WasteEntry() {
       toast({
         title: t("waste.eventCreated", { defaultValue: "Kayıt oluşturuldu" }),
         description: data.warnings?.length > 0
-          ? data.warnings.map((w: any) => w.message).join("; ")
+          ? data.warnings?.map((w: any) => w.message).join("; ")
           : undefined,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/waste/events"] });
@@ -189,7 +189,7 @@ export default function WasteEntry() {
                   <SelectValue placeholder={t("waste.selectCategory", { defaultValue: "Kategori seçin" })} />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c: any) => (
+                  {(Array.isArray(categories) ? categories : []).map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)} data-testid={`option-category-${c.id}`}>
                       {lang === "en" && c.nameEn ? c.nameEn : c.nameTr}
                     </SelectItem>

@@ -193,7 +193,7 @@ export default function KayipEsyaHQPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şubeler</SelectItem>
-                  {branches.map((branch) => (
+                  {(Array.isArray(branches) ? branches : []).map((branch) => (
                     <SelectItem key={branch.id} value={String(branch.id)}>
                       {branch.name}
                     </SelectItem>
@@ -309,7 +309,7 @@ export default function KayipEsyaHQPage() {
           </CardHeader>
           <CardContent className="p-3">
             <div className="flex flex-col gap-3 sm:gap-4 lg:grid-cols-4 gap-2">
-              {stats.byBranch.map((branch) => (
+              {stats.byBranch?.map((branch) => (
                 <div
                   key={branch.id}
                   className="p-2 border rounded-md text-xs"

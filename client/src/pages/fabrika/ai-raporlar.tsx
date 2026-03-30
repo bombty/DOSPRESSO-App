@@ -125,7 +125,7 @@ export default function FabrikaAIRaporlar() {
                 <span className="font-medium text-sm">AI Önerileri</span>
               </div>
               <ul className="space-y-1 text-sm">
-                {report.recommendations.map((rec, i) => (
+                {report.recommendations?.map((rec, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     <span className="text-amber-600 font-bold">{i + 1}.</span>
                     <span>{rec}</span>

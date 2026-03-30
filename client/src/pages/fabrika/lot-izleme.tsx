@@ -241,7 +241,7 @@ export default function LotIzleme() {
                   <CardContent className="text-sm">
                     {traceData.shipments?.length > 0 ? (
                       <div className="space-y-2">
-                        {traceData.shipments.map((s: any, i: number) => (
+                        {traceData.shipments?.map((s: any, i: number) => (
                           <div key={i} className="flex items-center justify-between">
                             <span>{s.shipment?.shipmentNumber || "Sevkiyat"}</span>
                             <Badge variant="secondary">{s.shipment?.status || "-"}</Badge>

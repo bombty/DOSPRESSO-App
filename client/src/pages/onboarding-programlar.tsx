@@ -278,7 +278,7 @@ export default function OnboardingProgramlar() {
                           Hedefler
                         </p>
                         <ul className="space-y-1">
-                          {week.goals.map((goal, gi) => (
+                          {week.goals?.map((goal, gi) => (
                             <li key={gi} className="flex items-start gap-2 text-xs text-muted-foreground">
                               <span className="text-primary shrink-0">-</span>
                               <span>{goal}</span>
