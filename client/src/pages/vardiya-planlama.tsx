@@ -231,10 +231,10 @@ export default function VardiyaPlanlama() {
         const [sH, sM] = shift.startTime.split(':').map(Number);
         const [eH, eM] = shift.endTime.split(':').map(Number);
         let shiftMinutes = (eH * 60 + eM) - (sH * 60 + sM);
-        // Subtract 1-hour break for shifts >= 6 hours (fulltime shifts)
-        if (shiftMinutes >= 360) {
-          shiftMinutes -= 60;
-        }
+        // Gece yarısını geçen vardiya (kapanış) düzeltmesi
+        if (shiftMinutes < 0) shiftMinutes += 24 * 60;
+        // Mola düşümü: 6 saat ve üstü vardiyalarda 1 saat mola
+        if (shiftMinutes >= 360) shiftMinutes -= 60;
         totalMinutes += shiftMinutes;
       }
     });
@@ -242,12 +242,12 @@ export default function VardiyaPlanlama() {
     return Math.round(totalMinutes / 60 * 10) / 10;
   }, [shifts, weekStart]);
 
-  // Calculate new shift hours (excluding 1-hour break)
+  // Calculate new shift hours (excluding 1-hour break), handles midnight crossover
   const calculateShiftHours = useCallback(() => {
     const [sH, sM] = startTime.split(':').map(Number);
     const [eH, eM] = endTime.split(':').map(Number);
-    const totalMinutes = (eH * 60 + eM) - (sH * 60 + sM);
-    // Subtract 1-hour break for shifts >= 6 hours
+    let totalMinutes = (eH * 60 + eM) - (sH * 60 + sM);
+    if (totalMinutes < 0) totalMinutes += 24 * 60; // gece yarısı düzeltmesi
     const workMinutes = totalMinutes >= 360 ? totalMinutes - 60 : totalMinutes;
     return workMinutes / 60;
   }, [startTime, endTime]);
@@ -880,14 +880,14 @@ export default function VardiyaPlanlama() {
             const over = hours > limit;
             const near = hours >= limit * 0.9 && !over;
             return (
-              <div key={emp.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
-                style={{ background: over ? 'rgba(220,38,38,0.08)' : near ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)', borderColor: over ? 'rgba(220,38,38,0.3)' : near ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)' }}>
-                <span className="font-medium" style={{ color: over ? '#f87171' : near ? '#fbbf24' : 'var(--color-text-primary)' }}>
-                  {emp.firstName} {emp.lastName?.charAt(0)}.
-                </span>
-                <span style={{ color: over ? '#f87171' : near ? '#fbbf24' : 'var(--color-text-secondary)' }}>
-                  {hours.toFixed(1)}/{limit}sa {over ? '⚠' : ''}
-                </span>
+              <div key={emp.id} title={`${emp.firstName} ${emp.lastName}: ${hours.toFixed(1)}/${limit}sa`}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                style={{
+                  background: over ? 'rgba(220,38,38,0.12)' : near ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
+                  borderColor: over ? 'rgba(220,38,38,0.4)' : near ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.1)',
+                  color: over ? '#f87171' : near ? '#fbbf24' : 'var(--color-text-secondary)',
+                }}>
+                {over ? '⚠' : near ? '↑' : ''}{emp.firstName} {emp.lastName?.charAt(0)}. {hours.toFixed(1)}sa
               </div>
             );
           })}
@@ -2038,17 +2038,27 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const shiftsToCreate = preview.map(s => ({
-        shiftDate: s.shiftDate,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        breakStartTime: s.breakStartTime,
-        breakEndTime: s.breakEndTime,
-        shiftType: s.shiftType,
-        assignedToId: s.assignedToId,
-        status: s.status,
-        branchId: s.branchId,
-      }));
+      // Checklist otomatik atama: şift tipine göre
+      const checklistArr = Array.isArray(checklists) ? checklists as any[] : [];
+      const openingCL = checklistArr.find((c: any) => c.title?.includes('Açılış') || c.name?.includes('Açılış'));
+      const closingCL = checklistArr.find((c: any) => c.title?.includes('Kapanış') || c.name?.includes('Kapanış'));
+
+      const shiftsToCreate = preview.map(s => {
+        const isOpening = s.shiftType === 'opening' || s.shiftType === 'morning';
+        const isClosing = s.shiftType === 'closing' || s.shiftType === 'evening';
+        return {
+          shiftDate: s.shiftDate,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          breakStartTime: s.breakStartTime,
+          breakEndTime: s.breakEndTime,
+          shiftType: s.shiftType,
+          assignedToId: s.assignedToId,
+          status: s.status,
+          branchId: s.branchId,
+          checklistId: isOpening && openingCL ? openingCL.id : isClosing && closingCL ? closingCL.id : null,
+        };
+      });
 
       return apiRequest('POST', '/api/shifts/bulk-create', { shifts: shiftsToCreate });
     },
