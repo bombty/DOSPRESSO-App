@@ -191,7 +191,7 @@ export default function BranchKiosk() {
     };
   }, [step, resetInactivityTimer]);
 
-  // Working ekranında session durumunu senkronize et — mount'ta hemen + 5sn'de bir
+  // Working ekranında session durumunu 5sn'de bir senkronize et (QR işlemlerini yakala)
   useEffect(() => {
     if (step !== 'working' || !selectedUser?.id || !branchId) return;
     const syncSession = async () => {
@@ -200,7 +200,6 @@ export default function BranchKiosk() {
         if (res.ok) {
           const data = await res.json();
           if (data.activeSession) {
-            // Her zaman güncelle — status farkı olmasa da id null ise al
             if (!currentSession || data.activeSession.id !== currentSession.id || data.activeSession.status !== currentSession.status) {
               setCurrentSession(data.activeSession);
             }
@@ -208,11 +207,14 @@ export default function BranchKiosk() {
         }
       } catch {}
     };
-    // Mount'ta hemen çalıştır
-    syncSession();
-    const interval = setInterval(syncSession, 5000);
-    return () => clearInterval(interval);
+    // 5sn sonra başlat — login fetch'i tamamlanmış olacak
+    const timeout = setTimeout(() => {
+      syncSession();
+    }, 5000);
+    const interval = setInterval(syncSession, 10000);
+    return () => { clearTimeout(timeout); clearInterval(interval); };
   }, [step, selectedUser?.id, branchId]);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [shiftSummary, setShiftSummary] = useState<any>(null);
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
@@ -461,6 +463,9 @@ export default function BranchKiosk() {
     onSuccess: async (data) => {
       if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken);
 
+      // Session yükleniyor — "Vardiya başlatılmadı" ekranını engelle
+      setSessionLoading(true);
+
       // 1. Önce session'ı set et
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
@@ -481,13 +486,14 @@ export default function BranchKiosk() {
           if (sd.checklists) setUserChecklists(sd.checklists);
         }
       } catch {}
+      // Session sync tamamlandı
+      setSessionLoading(false);
       try {
         const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
         if (teamRes.ok) {
           const teamData = await teamRes.json();
           const team = Array.isArray(teamData.team) ? teamData.team : [];
           setTeamStatus(team);
-          // uid kullan — selectedUser henüz state'e işlenmemiş olabilir
           setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== uid));
         }
       } catch {}
@@ -1327,7 +1333,11 @@ export default function BranchKiosk() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto space-y-3 px-4 pb-3">
-            {!currentSession ? (
+            {sessionLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+              </div>
+            ) : !currentSession ? (
               <div className="text-center py-8">
                 <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground mb-4">Vardiya başlatılmadı</p>
