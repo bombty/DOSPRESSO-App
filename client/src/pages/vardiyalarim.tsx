@@ -62,11 +62,97 @@ function getShiftTypeIcon(type: string) {
   return <Moon className="w-3 h-3" />;
 }
 
+
+// Aylık özet bileşeni — personelin kendi profilinde görür
+function AylikOzet({ userId }: { userId?: string }) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  const { data: records = [] } = useQuery<any[]>({
+    queryKey: ['/api/payroll/records', { year, month, userId }],
+    queryFn: async () => {
+      const res = await fetch(`/api/payroll/records?year=${year}&month=${month}&employeeId=${userId}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const { data: myShifts = [] } = useQuery<any[]>({
+    queryKey: ['/api/shifts/my', year, month],
+    queryFn: async () => {
+      const res = await fetch(`/api/shifts?month=${year}-${String(month).padStart(2,'0')}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.shifts || []);
+    },
+    enabled: !!userId,
+  });
+
+  // Toplam planlı saat
+  const totalPlannedHours = myShifts.reduce((sum: number, s: any) => {
+    if (!s.startTime || !s.endTime) return sum;
+    const [sh, sm] = s.startTime.split(':').map(Number);
+    const [eh, em] = s.endTime.split(':').map(Number);
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins < 0) mins += 24 * 60;
+    return sum + mins / 60;
+  }, 0);
+
+  const payroll = records[0];
+
+  return (
+    <div className="space-y-4 p-1">
+      <h3 className="font-semibold text-sm">
+        {now.toLocaleString('tr-TR', { month: 'long', year: 'numeric' })} — Aylık Özet
+      </h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-1">Planlanan Vardiya</p>
+          <p className="text-2xl font-bold">{myShifts.length}</p>
+          <p className="text-xs text-muted-foreground">{totalPlannedHours.toFixed(1)} saat</p>
+        </div>
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-1">Fazla Mesai</p>
+          <p className="text-2xl font-bold">{payroll ? (payroll.overtimeHours || 0).toFixed(1) : '—'}</p>
+          <p className="text-xs text-muted-foreground">saat</p>
+        </div>
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-1">Devamsızlık</p>
+          <p className="text-2xl font-bold">{payroll ? (payroll.absenceDays || 0) : '—'}</p>
+          <p className="text-xs text-muted-foreground">gün</p>
+        </div>
+        <div className="rounded-lg border p-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-1">Bordro Durumu</p>
+          <p className="text-sm font-semibold mt-1">
+            {payroll ? (
+              <span className={payroll.status === 'approved' ? 'text-green-500' : 'text-amber-500'}>
+                {payroll.status === 'approved' ? '✓ Onaylandı' : payroll.status === 'draft' ? 'Taslak' : payroll.status}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Henüz oluşturulmadı</span>
+            )}
+          </p>
+          {payroll?.netSalary && (
+            <p className="text-xs text-muted-foreground mt-1">Net: {(payroll.netSalary / 100).toLocaleString('tr-TR')} ₺</p>
+          )}
+        </div>
+      </div>
+      {!payroll && (
+        <p className="text-xs text-muted-foreground text-center py-3">
+          Bu ay için bordro kaydı henüz muhasebe tarafından oluşturulmadı.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Vardiyalarim() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedWeekOffset, setSelectedWeekOffset] = useState<0 | 1>(0);
-  const [viewMode, setViewMode] = useState<"my" | "branch" | "leave" | "qr">("my");
+  const [viewMode, setViewMode] = useState<"ozet" | "my" | "branch" | "leave" | "qr">("ozet");
 
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
   const [swapTargetShift, setSwapTargetShift] = useState<MyShift | null>(null);
@@ -696,7 +782,8 @@ export default function Vardiyalarim() {
       />
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} data-testid="tabs-view-mode">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
+          <TabsTrigger value="ozet" data-testid="tab-ozet" className="text-xs sm:text-sm">Bu Ay</TabsTrigger>
           <TabsTrigger value="my" data-testid="tab-my-shifts" className="text-xs sm:text-sm">Vardiyalarım</TabsTrigger>
           <TabsTrigger value="qr" data-testid="tab-qr-checkin" className="text-xs sm:text-sm">
             <QrCode className="w-3.5 h-3.5 sm:mr-1" />
@@ -738,6 +825,7 @@ export default function Vardiyalarim() {
         </span>
       </div>
 
+      {viewMode === "ozet" && <AylikOzet userId={user?.id} />}
       {viewMode === "my" && renderMyShifts()}
       {viewMode === "qr" && <QrCheckinGenerator />}
       {viewMode === "branch" && renderBranchPlan()}
