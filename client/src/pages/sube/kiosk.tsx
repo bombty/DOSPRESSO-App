@@ -1023,15 +1023,17 @@ export default function BranchKiosk() {
     const noShift = staffList2.filter((s: any) => !s.shiftStatus || s.shiftStatus === 'not_scheduled');
     const activeAndBreak = [...active, ...onBreak];
     const now2 = new Date();
-    const todayStart = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), 8, 0);
-    const todayEnd = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), 22, 0);
-    const totalMs = todayEnd.getTime() - todayStart.getTime();
+    // Timeline: 07:00 - 03:00 (ertesi gün) = 20 saat
+    const START_HOUR = 7;
+    const TOTAL_HOURS = 20;
     const pct = (timeStr: string) => {
-      const [h, m] = timeStr.split(':').map(Number);
-      const t = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate(), h, m);
-      return Math.max(0, Math.min(100, ((t.getTime() - todayStart.getTime()) / totalMs) * 100));
+      let [h, m] = timeStr.split(':').map(Number);
+      if (h < START_HOUR) h += 24; // gece yarısı sonrası
+      const minutesFromStart = (h - START_HOUR) * 60 + m;
+      return Math.max(0, Math.min(100, (minutesFromStart / (TOTAL_HOURS * 60)) * 100));
     };
-    const nowPct = Math.max(0, Math.min(100, ((now2.getTime() - todayStart.getTime()) / totalMs) * 100));
+    const nowH = now2.getHours() < START_HOUR ? now2.getHours() + 24 : now2.getHours();
+    const nowPct = Math.max(0, Math.min(100, ((nowH - START_HOUR) * 60 + now2.getMinutes()) / (TOTAL_HOURS * 60) * 100));
     const timeStr2 = now2.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
     const dateStr2 = now2.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
     const handlePerson = (staff: any) => {
@@ -1050,7 +1052,7 @@ export default function BranchKiosk() {
          s === 'on_break' ? { background: '#7a4a0a', boxShadow: '0 0 0 1px rgba(251,191,36,0.4)' } :
          s === 'late' || s === 'missing' ? { background: '#8b1c1c', boxShadow: '0 0 0 1px rgba(248,113,113,0.5)' } :
          s === 'scheduled' ? { background: '#1a3a6b', boxShadow: '0 0 0 1px rgba(147,197,253,0.4)' } :
-         { background: '#1e2a38', boxShadow: '0 0 0 1px rgba(255,255,255,0.12)' })
+         { background: '#1a2d48', boxShadow: '0 0 0 1px rgba(255,255,255,0.18)' })
     });
     const statusColor = (s: string) => s === 'active' ? '#86efac' : s === 'on_break' ? '#fde68a' : s === 'late' || s === 'missing' ? '#fca5a5' : s === 'scheduled' ? '#bfdbfe' : 'rgba(255,255,255,0.35)';
     const statusTxt = (staff: any) => {
@@ -1099,6 +1101,13 @@ export default function BranchKiosk() {
             {scheduled.length > 0 && <span style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93c5fd', display: 'inline-block' }} />{scheduled.length} bekliyor</span>}
             {offAll.length > 0 && <span style={{ color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'inline-block' }} />{offAll.length} izinli</span>}
             {noShift.length > 0 && <span style={{ color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />{noShift.length} plansız</span>}
+            <button
+              onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }}
+              style={{ marginLeft: 8, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, color: 'rgba(255,255,255,0.7)', padding: '5px 10px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+              data-testid="btn-kiosk-exit-header"
+            >
+              🔒 Çık
+            </button>
           </div>
         </div>
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 220px', overflow: 'hidden' }}>
@@ -1106,7 +1115,7 @@ export default function BranchKiosk() {
             <div style={{ flex: 1, padding: '10px 14px 6px', overflowY: 'auto' }}>
               <div style={{ display: 'flex', paddingLeft: 162, marginBottom: 7 }}>
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between' }}>
-                  {['08','10','12','14','16','18','20','22'].map(t => (
+                  {['07','09','11','13','15','17','19','21','23','01','03'].map(t => (
                     <div key={t} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                       <div style={{ width: 1, height: 6, background: 'rgba(255,255,255,0.2)' }} />
                       <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{t}</span>
@@ -1151,11 +1160,11 @@ export default function BranchKiosk() {
               </>)}
               {offAll.length > 0 && (<>
                 <SecHead label="İzinli bugün" count={offAll.length} color="rgba(255,255,255,0.45)" bg="rgba(255,255,255,0.08)" />
-                {offAll.map(staff => (<div key={staff.id} style={{ opacity: 0.5 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
+                {offAll.map(staff => (<div key={staff.id} style={{ opacity: 0.55 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
               </>)}
               {noShift.length > 0 && (<>
-                <SecHead label="Vardiya planlanmamis" count={noShift.length} color="rgba(255,255,255,0.3)" bg="rgba(255,255,255,0.05)" />
-                {noShift.map(staff => (<div key={staff.id} style={{ opacity: 0.35 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
+                <SecHead label="Vardiya planlanmamış" count={noShift.length} color="rgba(255,255,255,0.5)" bg="rgba(255,255,255,0.05)" />
+                {noShift.map(staff => (<div key={staff.id} style={{ opacity: 0.55 }}><PersonRow staff={staff} bar={<NowLine />} /></div>))}
               </>)}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 10, paddingBottom: 4 }}>
                 {[{c:'rgba(34,197,94,0.4)',l:'Çalışıldı'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planlı',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
