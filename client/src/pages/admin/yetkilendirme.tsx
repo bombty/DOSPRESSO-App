@@ -534,7 +534,7 @@ function DroppableMegaModule({
       <CardContent className="pt-0">
         <div className="space-y-1.5 min-h-[100px]">
           <SortableContext items={modules} strategy={verticalListSortingStrategy}>
-            {modules.map((moduleId) => (
+            {(Array.isArray(modules) ? modules : []).map((moduleId) => (
               <DraggableModuleItem
                 key={moduleId}
                 id={moduleId}
@@ -655,7 +655,7 @@ function RoleTemplatesTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {templates.map((t) => (
+        {(Array.isArray(templates) ? templates : []).map((t) => (
           <Card key={t.id} data-testid={`card-role-template-${t.id}`}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2">

@@ -337,7 +337,7 @@ function OrderDetailDialog({ order, open, onOpenChange }: { order: PurchaseOrder
           {payments && payments.length > 0 && (
             <div className="space-y-3">
               <h4 className="font-semibold text-sm">Ödeme Bilgileri</h4>
-              {payments.map((payment) => (
+              {(Array.isArray(payments) ? payments : []).map((payment) => (
                 <Card key={payment.id} data-testid={`card-payment-${payment.id}`}>
                   <CardContent className="p-3 space-y-2">
                     <div className="grid grid-cols-2 gap-2 text-sm">

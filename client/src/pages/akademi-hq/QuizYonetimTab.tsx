@@ -133,7 +133,7 @@ export function QuizYonetimTab() {
               <p className="text-center py-6 text-muted-foreground text-sm" data-testid="text-no-quizzes">Henüz quiz oluşturulmadı</p>
             ) : (
               <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
-                {quizzes.map((quiz: QuizItem) => (
+                {(Array.isArray(quizzes) ? quizzes : []).map((quiz: QuizItem) => (
                   <div
                     key={quiz.id}
                     onClick={() => setSelectedQuizId(quiz.id)}

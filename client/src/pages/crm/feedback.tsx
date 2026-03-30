@@ -207,7 +207,7 @@ export default function CRMFeedback() {
 
   const exportCSV = () => {
     const headers = ["Tarih", "Şube", "Puan", "Hizmet", "Temizlik", "Ürün", "Personel", "Yorum", "Durum", "Kaynak", "Kategori"];
-    const rows = feedbacks.map((fb) => [
+    const rows = (Array.isArray(feedbacks) ? feedbacks : []).map((fb) => [
       fb.feedbackDate ? format(new Date(fb.feedbackDate), "dd.MM.yyyy") : "",
       fb.branchName || "",
       fb.rating?.toString() || "",
@@ -347,7 +347,7 @@ export default function CRMFeedback() {
         </Card>
       ) : (
         <div className="space-y-2" data-testid="feedback-list">
-          {feedbacks.map((fb) => {
+          {(Array.isArray(feedbacks) ? feedbacks : []).map((fb) => {
             const srcInfo = sourceLabels[fb.source];
             const SrcIcon = srcInfo?.icon || MessageSquare;
             const stInfo = statusConfig[fb.status] || statusConfig.new;

@@ -39,7 +39,7 @@ export default function BroadcastTab() {
       ) : announcements.length === 0 ? (
         <div className="text-center py-8 text-sm text-muted-foreground">Duyuru bulunamadı</div>
       ) : (
-        announcements.map((ann) => (
+        (Array.isArray(announcements) ? announcements : []).map((ann) => (
           <div
             key={ann.id}
             className={cn(

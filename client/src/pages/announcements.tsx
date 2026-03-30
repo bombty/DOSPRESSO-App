@@ -625,7 +625,7 @@ export default function Announcements() {
         <ListSkeleton count={6} variant="card" />
       ) : announcements && announcements.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {announcements.map((announcement) => {
+          {(Array.isArray(announcements) ? announcements : []).map((announcement) => {
             const isUrgent = announcement.priority === 'urgent';
             const isActive = announcement.publishedAt && (!announcement.expiresAt || new Date(announcement.expiresAt) > new Date());
             const hasBanner = !!announcement.bannerImageUrl;

@@ -906,7 +906,7 @@ function MaterialPriceHistoryDialog({ materialId, open, onOpenChange }: { materi
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {history.map((h: any) => {
+                      {(Array.isArray(history) ? history : []).map((h: any) => {
                         const change = parseFloat(h.changePercent || "0");
                         const sourceLabels: Record<string, string> = {
                           'manual': 'Manuel',

@@ -258,7 +258,7 @@ export default function DenetimlerPage() {
                   <SelectValue placeholder="Şablon seçin" />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.map((template) => (
+                  {(Array.isArray(templates) ? templates : []).map((template) => (
                     <SelectItem key={template.id} value={template.id.toString()} data-testid={`option-template-${template.id}`}>
                       {template.title}
                     </SelectItem>

@@ -856,7 +856,7 @@ export default function KaliteDenetimi() {
                 </Card>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {templates.map((template) => (
+                  {(Array.isArray(templates) ? templates : []).map((template) => (
                     <Link key={template.id} href={`/admin/kalite-denetim-sablonu/${template.id}`}>
                       <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-template-${template.id}`}>
                         <CardHeader className="pb-2">

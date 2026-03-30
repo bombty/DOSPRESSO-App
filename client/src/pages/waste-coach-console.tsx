@@ -210,7 +210,7 @@ export default function WasteCoachConsole() {
             <p className="text-sm text-muted-foreground text-center py-4">{t("waste.noEvents", { defaultValue: "Henüz kayıt bulunmuyor" })}</p>
           ) : (
             <div className="space-y-2">
-              {events.map((ev: any) => {
+              {(Array.isArray(events) ? events : []).map((ev: any) => {
                 const e = ev.event || ev;
                 const isExpanded = expandedEvent === e.id;
                 return (

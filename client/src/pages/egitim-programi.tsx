@@ -200,7 +200,7 @@ export default function EgitimProgrami() {
 
   const handleSubmitQuiz = () => {
     const questions = quizQuery.data?.questions || [];
-    const answers = questions.map((_, i) => quizAnswers[i] ?? -1);
+    const answers = (Array.isArray(questions) ? questions : []).map((_, i) => quizAnswers[i] ?? -1);
     submitQuizMutation.mutate(answers);
   };
 

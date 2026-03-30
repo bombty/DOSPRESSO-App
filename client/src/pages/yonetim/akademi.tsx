@@ -747,7 +747,7 @@ function QuizzesTab({ quizzes }: { quizzes: Quiz[] }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {quizzes.map((quiz) => (
+            {(Array.isArray(quizzes) ? quizzes : []).map((quiz) => (
               <Card key={quiz.id} className={`${quiz.isActive ? '' : 'opacity-60'}`} data-testid={`quiz-card-${quiz.id}`}>
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">

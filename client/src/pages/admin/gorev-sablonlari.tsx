@@ -261,7 +261,7 @@ function TemplateTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {templates.map(t => (
+        {(Array.isArray(templates) ? templates : []).map(t => (
           <TableRow key={t.id} data-testid={`template-row-${t.id}`}>
             <TableCell>
               <div>

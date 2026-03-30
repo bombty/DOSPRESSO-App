@@ -1172,7 +1172,7 @@ export default function FaultDetail() {
                     Henüz mesaj yok. İlk mesajı gönderin.
                   </p>
                 ) : (
-                  comments.map((c) => {
+                  (Array.isArray(comments) ? comments : []).map((c) => {
                     const isOwn = c.userId === user?.id;
                     return (
                       <div
@@ -1244,7 +1244,7 @@ export default function FaultDetail() {
               ) : (
                 <div className="relative space-y-0">
                   <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border" />
-                  {history.map((h: any, idx: number) => (
+                  {(Array.isArray(history) ? history : []).map((h: any, idx: number) => (
                     <div key={h.id || idx} className="relative pl-8 pb-4" data-testid={`history-item-${idx}`}>
                       <div className={`absolute left-1 top-1.5 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                         idx === 0 ? "bg-primary border-primary" : "bg-background border-border"

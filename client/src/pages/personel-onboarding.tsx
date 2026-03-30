@@ -745,7 +745,7 @@ function StartOnboardingDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {templates.map((t: any) => (
+                      {(Array.isArray(templates) ? templates : []).map((t: any) => (
                         <SelectItem key={t.id} value={String(t.id)}>
                           {t.name} ({t.targetRole})
                         </SelectItem>

@@ -109,7 +109,7 @@ export default function AcademyLearningPaths() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          {paths.map((path) => (
+          {(Array.isArray(paths) ? paths : []).map((path) => (
             <Card key={path.id} className={`bg-gradient-to-br ${path.color} overflow-hidden`}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-1">

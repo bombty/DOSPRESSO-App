@@ -448,7 +448,7 @@ export default function OnboardingProgramlar() {
                 </CardContent>
               </Card>
             ) : (
-              instances.map((inst) => {
+              (Array.isArray(instances) ? instances : []).map((inst) => {
                 const totalWeeks = inst.program?.durationWeeks || 4;
                 const prog = Math.min(100, Math.round((inst.checkinsCount / totalWeeks) * 100));
                 return (

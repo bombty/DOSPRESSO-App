@@ -1038,7 +1038,7 @@ function TedarikciPuanlama() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {suppliers.map((s: any) => {
+          {(Array.isArray(suppliers) ? suppliers : []).map((s: any) => {
             const supplierScores = scores?.filter(sc => sc.supplier_id === s.id) || [];
             const latestScore = supplierScores[0];
             const overallScore = latestScore ? parseFloat(latestScore.overall_score || 0) : parseFloat(s.performance_score || 0);

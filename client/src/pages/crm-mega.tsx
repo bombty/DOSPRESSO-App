@@ -227,7 +227,7 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 py-3" data-testid="channel-kpi-strip">
-      {kpis.map((kpi, i) => {
+      {(Array.isArray(kpis) ? kpis : []).map((kpi, i) => {
         const Icon = kpi.icon;
         return (
           <Card key={i} className="bg-muted/50 border-0" data-testid={`kpi-card-${i}`}>
@@ -311,7 +311,7 @@ function TaskChannelContent() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {kpis.map((kpi, i) => {
+        {(Array.isArray(kpis) ? kpis : []).map((kpi, i) => {
           const Icon = kpi.icon;
           return (
             <Card

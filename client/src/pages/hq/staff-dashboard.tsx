@@ -146,7 +146,7 @@ export default function HqStaffDashboard() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {sessions.map((item) => (
+          {(Array.isArray(sessions) ? sessions : []).map((item) => (
             <Card key={item.session.id} className="hover-elevate" data-testid={`hq-session-card-${item.session.id}`}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">

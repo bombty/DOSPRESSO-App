@@ -250,7 +250,7 @@ export default function TedarikciYonetimi() {
             </TableHeader>
             <TableBody>
               {suppliers && suppliers.length > 0 ? (
-                suppliers.map((supplier) => (
+                (Array.isArray(suppliers) ? suppliers : []).map((supplier) => (
                   <TableRow key={supplier.id} data-testid={`supplier-row-${supplier.id}`}>
                     <TableCell className="font-mono text-sm">{supplier.code}</TableCell>
                     <TableCell className="font-medium">{supplier.name}</TableCell>

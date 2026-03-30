@@ -434,7 +434,7 @@ export default function DenetimSablonlariPage() {
 
       {/* Templates Grid */}
       <div className="flex flex-col gap-3 sm:gap-4">
-        {templates.map((template) => (
+        {(Array.isArray(templates) ? templates : []).map((template) => (
           <Card key={template.id} data-testid={`card-template-${template.id}`} className="hover-elevate">
             <CardContent className="p-3">
               <div className="flex flex-col gap-2">

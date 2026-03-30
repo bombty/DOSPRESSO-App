@@ -176,7 +176,7 @@ export default function BranchFeedback() {
               <p className="text-muted-foreground text-center py-8">Henüz geribildirim göderilmedi</p>
             ) : (
               <div className="grid grid-cols-1 gap-2 sm:gap-3 max-h-96 overflow-y-auto">
-                {feedbacks.map((fb) => (
+                {(Array.isArray(feedbacks) ? feedbacks : []).map((fb) => (
                   <Card key={fb.id} className="bg-muted/50" data-testid={`card-feedback-${fb.id}`}>
                     <CardContent className="pt-4">
                       <div className="flex items-start justify-between mb-2">

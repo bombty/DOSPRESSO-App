@@ -252,7 +252,7 @@ export default function StokYonetimi() {
     
     const csvContent = [
       ["Kod", "Ürün Adı", "Kategori", "Birim", "Mevcut Stok", "Min. Stok", "Birim Maliyet", "Depo Konumu"].join(","),
-      ...(Array.isArray(items) ? items : []).map(item => [
+      ...items?.map(item => [
         item.code,
         `"${item.name}"`,
         item.category,
