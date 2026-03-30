@@ -455,14 +455,53 @@ export default function BranchKiosk() {
       const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/login`, data);
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken);
+
+      // 1. Önce session'ı set et
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
-        fetchSessionDetails(data.user.id);
       }
+
+      // 2. Ekrana geç
       setStep('working');
       toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
+
+      // 3. Arka planda yükle — userId'yi data'dan al (selectedUser race yok)
+      const uid = data.user.id;
+      try {
+        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${uid}`, { credentials: 'include' });
+        if (res.ok) {
+          const sd = await res.json();
+          if (sd.activeSession) setCurrentSession(sd.activeSession);
+          if (sd.tasks) setUserTasks(sd.tasks);
+          if (sd.checklists) setUserChecklists(sd.checklists);
+        }
+      } catch {}
+      try {
+        const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include' });
+        if (teamRes.ok) {
+          const teamData = await teamRes.json();
+          const team = Array.isArray(teamData.team) ? teamData.team : [];
+          setTeamStatus(team);
+          // uid kullan — selectedUser henüz state'e işlenmemiş olabilir
+          setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== uid));
+        }
+      } catch {}
+      try {
+        const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${uid}`, { credentials: 'include' });
+        if (notifRes.ok) {
+          const nd = await notifRes.json();
+          setKioskNotifications(Array.isArray(nd) ? nd : []);
+        }
+      } catch {}
+      try {
+        const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include' });
+        if (annRes.ok) {
+          const ad = await annRes.json();
+          setKioskAnnouncements(Array.isArray(ad) ? ad : []);
+        }
+      } catch {}
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
@@ -537,7 +576,10 @@ export default function BranchKiosk() {
 
   const breakEndMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/break-end`, { sessionId });
+      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/break-end`, {
+        sessionId,
+        userId: selectedUser?.id,  // fallback
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -614,7 +656,7 @@ export default function BranchKiosk() {
       const teamData = await teamRes.json();
       const team = Array.isArray(teamData.team) ? teamData.team : [];
       setTeamStatus(team);
-      setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly));
+      setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== selectedUser?.id));
     } catch (err) {
       console.error("Error fetching team status:", err);
     }
@@ -1038,23 +1080,35 @@ export default function BranchKiosk() {
                 <SecHead label="Aktif & molada" count={activeAndBreak.length} color="#4ade80" bg="rgba(34,197,94,0.15)" />
                 {activeAndBreak.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
-                  {staff.checkInTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(new Date(staff.checkInTime).toTimeString().slice(0,5))}%`, width: `${Math.max(1, nowPct - pct(new Date(staff.checkInTime).toTimeString().slice(0,5)))}%`, background: 'rgba(34,197,94,0.4)', borderRadius: 3 }} />}
-                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.15)', border: '0.5px dashed rgba(147,197,253,0.4)', borderRadius: 3 }} />}
+                  {staff.checkInTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(new Date(staff.checkInTime).toTimeString().slice(0,5))}%`, width: `${Math.max(1, nowPct - pct(new Date(staff.checkInTime).toTimeString().slice(0,5)))}%`, background: 'rgba(34,197,94,0.6)', borderRadius: 3, display:'flex', alignItems:'center', paddingLeft:4 }}>
+                    <span style={{fontSize:8,color:'rgba(255,255,255,0.8)',whiteSpace:'nowrap'}}>{new Date(staff.checkInTime).toTimeString().slice(0,5)}</span>
+                  </div>}
+                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.2)', border: '0.5px dashed rgba(147,197,253,0.5)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 4px' }}>
+                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftStartTime.slice(0,5)}</span>
+                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                  </div>}
                 </>} />))}
               </>)}
               {late.length > 0 && (<>
                 <SecHead label="Gecikmeli" count={late.length} color="#f87171" bg="rgba(239,68,68,0.2)" />
                 {late.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
-                  {staff.shiftStartTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, nowPct - pct(staff.shiftStartTime))}%`, background: 'rgba(239,68,68,0.4)', borderRadius: 3, display: 'flex', alignItems: 'center', paddingLeft: 4 }}><span style={{ fontSize: 8, color: 'rgba(255,255,255,0.6)' }}>gelmedi</span></div>}
-                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${nowPct}%`, width: `${Math.max(0, pct(staff.shiftEndTime) - nowPct)}%`, background: 'rgba(59,130,246,0.15)', border: '0.5px dashed rgba(147,197,253,0.4)', borderRadius: 3 }} />}
+                  {staff.shiftStartTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, nowPct - pct(staff.shiftStartTime))}%`, background: 'rgba(239,68,68,0.55)', borderRadius: 3, display:'flex', alignItems:'center', paddingLeft:4 }}>
+                    <span style={{fontSize:8,color:'rgba(255,255,255,0.8)'}}>gelmedi</span>
+                  </div>}
+                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${nowPct}%`, width: `${Math.max(0, pct(staff.shiftEndTime) - nowPct)}%`, background: 'rgba(59,130,246,0.2)', border: '0.5px dashed rgba(147,197,253,0.5)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:4 }}>
+                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                  </div>}
                 </>} />))}
               </>)}
               {scheduled.length > 0 && (<>
                 <SecHead label="Sonraki vardiya" count={scheduled.length} color="#93c5fd" bg="rgba(59,130,246,0.15)" />
                 {scheduled.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
-                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.22)', border: '0.5px dashed rgba(147,197,253,0.45)', borderRadius: 3 }} />}
+                  {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.28)', border: '0.5px dashed rgba(147,197,253,0.55)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 4px' }}>
+                    <span style={{fontSize:8,color:'rgba(147,197,253,0.9)'}}>{staff.shiftStartTime.slice(0,5)}</span>
+                    <span style={{fontSize:8,color:'rgba(147,197,253,0.9)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                  </div>}
                 </>} />))}
               </>)}
               {offAll.length > 0 && (<>
@@ -1243,7 +1297,7 @@ export default function BranchKiosk() {
           <Button
             size="sm"
             className="bg-white text-amber-700 hover:bg-amber-50 h-9 px-4 font-semibold"
-            onClick={() => breakEndMutation.mutate(currentSession.id)}
+            onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
             disabled={breakEndMutation.isPending}
             data-testid="button-end-break-top"
           >
@@ -1253,15 +1307,15 @@ export default function BranchKiosk() {
         </div>
       )}
 
-      <div className="flex-1 grid grid-cols-2 gap-3 p-3 overflow-y-auto" style={{gridTemplateRows: 'auto auto', alignContent: 'start'}}>
-        <Card className="overflow-hidden">
+      <div className="flex-1 grid grid-cols-2 gap-2 p-2 overflow-hidden" style={{gridTemplateRows: '1fr 1fr', minHeight: 0}}>
+        <Card className="flex flex-col overflow-hidden min-h-0">
           <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-amber-600" />
               Vardiya Durumu
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 px-4 pb-3">
+          <CardContent className="flex-1 overflow-y-auto space-y-3 px-4 pb-3">
             {!currentSession ? (
               <div className="text-center py-8">
                 <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -1294,7 +1348,7 @@ export default function BranchKiosk() {
                       <Button
                         size="lg"
                         className="w-full bg-blue-600 hover:bg-blue-700 h-16 text-base font-semibold"
-                        onClick={() => breakEndMutation.mutate(currentSession.id)}
+                        onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
                         disabled={breakEndMutation.isPending}
                         data-testid="button-end-break"
                       >

@@ -2957,7 +2957,19 @@ router.post('/api/branches/:branchId/kiosk/break-start', isKioskOrAuthenticated,
 router.post('/api/branches/:branchId/kiosk/break-end', isKioskOrAuthenticated, async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
-    const { sessionId } = req.body;
+    let { sessionId, userId } = req.body;
+
+    // sessionId yoksa userId ile bul
+    if (!sessionId && userId) {
+      const [found] = await db.select().from(branchShiftSessions)
+        .where(and(
+          eq(branchShiftSessions.userId, userId),
+          eq(branchShiftSessions.branchId, branchId),
+          eq(branchShiftSessions.status, 'on_break')
+        ))
+        .limit(1);
+      if (found) sessionId = found.id;
+    }
     
     if (!sessionId) {
       return res.status(400).json({ message: "Oturum gerekli" });
