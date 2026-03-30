@@ -89,6 +89,8 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./training-assigner");
   await import("./compliance-reporter");
   await import("./sla-tracker");
+  await import("./predictive-alert");
+  await import("./action-plan-generator");
   await import("./financial-insight");
 }
 

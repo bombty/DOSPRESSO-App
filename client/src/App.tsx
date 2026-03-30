@@ -177,6 +177,9 @@ const SubeBordroOzet = lazyWithRetry(() => import("@/pages/sube-bordro-ozet"));
 const SubeUyumMerkezi = lazyWithRetry(() => import("@/pages/sube-uyum-merkezi"));
 const CoachUyumPaneli = lazyWithRetry(() => import("@/pages/coach-uyum-paneli"));
 const RolYetkileri = lazyWithRetry(() => import("@/pages/admin/rol-yetkileri"));
+const CgoTeknikKomuta = lazyWithRetry(() => import("@/pages/cgo-teknik-komuta"));
+const CoachKontrolMerkezi = lazyWithRetry(() => import("@/pages/coach-kontrol-merkezi"));
+const TrainerEgitimMerkezi = lazyWithRetry(() => import("@/pages/trainer-egitim-merkezi"));
 const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici-degerlendirme"));
 const BannerEditor = lazyWithRetry(() => import("@/pages/banner-editor"));
 const KaliteKontrolDashboard = lazyWithRetry(() => import("@/pages/kalite-kontrol-dashboard"));
@@ -451,6 +454,9 @@ function Router() {
           <Route path="/sube-uyum-merkezi" component={SubeUyumMerkezi} />
           <Route path="/coach-uyum-paneli" component={CoachUyumPaneli} />
           <Route path="/admin/rol-yetkileri" component={RolYetkileri} />
+          <Route path="/cgo-teknik-komuta" component={CgoTeknikKomuta} />
+          <Route path="/coach-kontrol-merkezi" component={CoachKontrolMerkezi} />
+          <Route path="/trainer-egitim-merkezi" component={TrainerEgitimMerkezi} />
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
           <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
           <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />

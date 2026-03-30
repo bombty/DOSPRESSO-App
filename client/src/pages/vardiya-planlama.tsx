@@ -935,10 +935,10 @@ export default function VardiyaPlanlama() {
         </div>
       )}
       {/* Main Content: Inline Form + Calendar Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Left: Inline Shift Form */}
         {canEditShifts && (
-          <Card className="lg:col-span-4 xl:col-span-3">
+          <Card className="lg:col-span-3">
             <CardContent className="p-4 space-y-4">
               <h3 className="font-semibold text-sm flex items-center gap-2">
                 <UserPlus className="w-4 h-4" />
@@ -1126,6 +1126,22 @@ export default function VardiyaPlanlama() {
                     </SelectContent>
                   </Select>
                 ))}
+              </div>
+
+              {/* Görev Atama */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Görev Ekle <span className="opacity-50">(opsiyonel)</span></label>
+                <Select value={selectedTaskId || "none"} onValueChange={v => setSelectedTaskId(v === "none" ? "" : v)}>
+                  <SelectTrigger className="h-7 text-xs" data-testid="select-task">
+                    <SelectValue placeholder="Görev seç..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Seçilmedi</SelectItem>
+                    {Array.isArray(tasks) && (tasks as any[]).filter((t: any) => !t.assignedToId || t.status === 'beklemede').map((t: any) => (
+                      <SelectItem key={t.id} value={String(t.id)}>{(t.description || t.title || '').slice(0, 50)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Save Button */}

@@ -355,6 +355,30 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     group: "management",
     items: [
       {
+        id: "cgo-teknik-komuta",
+        titleTr: "Teknik Komuta",
+        path: "/cgo-teknik-komuta",
+        icon: "Wrench",
+        moduleKey: "ekipman",
+        scope: "hq",
+      },
+      {
+        id: "coach-kontrol-merkezi",
+        titleTr: "Kontrol Merkezi",
+        path: "/coach-kontrol-merkezi",
+        icon: "LayoutDashboard",
+        moduleKey: "raporlar",
+        scope: "hq",
+      },
+      {
+        id: "trainer-egitim-merkezi",
+        titleTr: "Eğitim Merkezi",
+        path: "/trainer-egitim-merkezi",
+        icon: "GraduationCap",
+        moduleKey: "akademi",
+        scope: "hq",
+      },
+      {
         id: "performance-dashboard",
         titleTr: "Performans",
         path: "/performans",
@@ -630,7 +654,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'franchise-investors',
   ],
   cgo: [
-    'dashboard', 'ajanda', 'branches-list', 'hr', 'reports', 'performance-dashboard',
+    'dashboard', 'ajanda', 'cgo-teknik-komuta', 'branches-list', 'hr', 'reports', 'performance-dashboard',
     'customer-satisfaction', 'knowledge-base', 'ai-assistant',
     'franchise-investors', 'notifications', 'crm-main',
   ],
@@ -638,7 +662,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
-    'dashboard', 'ajanda', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
+    'dashboard', 'ajanda', 'coach-kontrol-merkezi', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
     'reports', 'knowledge-base', 'training-academy-hq', 'tasks-list',
     'notifications', 'crm-main',
   ],
@@ -647,7 +671,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'crm-main', 'notifications',
   ],
   trainer: [
-    'dashboard', 'ajanda', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
+    'dashboard', 'ajanda', 'trainer-egitim-merkezi', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
     'knowledge-base', 'reports', 'performance-dashboard',
     'notifications', 'crm-main',
   ],
