@@ -11,7 +11,7 @@ export default function TrainerEgitimMerkezi() {
   const qc = useQueryClient();
   const [period, setPeriod] = useState("week");
 
-  const { data: compliance, isLoading } = useQuery<any>({
+  const { data: compliance, isLoading, isError } = useQuery<any>({
     queryKey: ["/api/agent/compliance-overview", period],
     queryFn: async () => {
       const res = await fetch(`/api/agent/compliance-overview?period=${period}`, { credentials: "include" });
@@ -21,12 +21,27 @@ export default function TrainerEgitimMerkezi() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: overdueAssignments = [] } = useQuery<any[]>({
-    queryKey: ["/api/training/assignments", "overdue"],
+  // Gecikmiş eğitimler: agent actions üzerinden (training skill tarafından üretilir)
+  const { data: overdueInsights = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/insights", "training_overdue"],
     queryFn: async () => {
-      const res = await fetch("/api/training/assignments?status=overdue&limit=50", { credentials: "include" });
+      const res = await fetch("/api/agent/actions?status=pending&limit=30", { credentials: "include" });
       if (!res.ok) return [];
-      return res.json();
+      const d = await res.json();
+      const all = Array.isArray(d) ? d : (d.actions || []);
+      // Training overdue aksiyonlarını filtrele ve veri çıkar
+      const trainingActions = all.filter((a: any) => {
+        const meta = a.metadata || {};
+        return ["training_overdue","critical_training_overdue","no_training_assigned"].includes(meta.type || "");
+      });
+      // Flatten assignments from metadata
+      const assignments: any[] = [];
+      trainingActions.forEach((a: any) => {
+        const meta = a.metadata || {};
+        if (meta.assignments) assignments.push(...meta.assignments.slice(0,5));
+        else assignments.push({ userId: meta.userId, userName: meta.userName || a.title, materialTitle: a.description, dueDate: null, branchName: meta.branchName });
+      });
+      return assignments;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -64,7 +79,7 @@ export default function TrainerEgitimMerkezi() {
           <h1 className="text-xl font-bold">Eğitim Merkezi</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Tüm şubelerde eğitim uyumu ve atama yönetimi</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -72,6 +87,9 @@ export default function TrainerEgitimMerkezi() {
               <SelectItem value="month">Bu Ay</SelectItem>
             </SelectContent>
           </Select>
+          <a href="/akademi" className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
+            + Eğitim Ata
+          </a>
         </div>
       </div>
 
@@ -161,17 +179,17 @@ export default function TrainerEgitimMerkezi() {
           <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Clock size={13} className="text-amber-400" />
             Gecikmiş Eğitimler
-            {overdueAssignments.length > 0 && (
-              <span className="text-xs bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full ml-1">{overdueAssignments.length}</span>
+            {overdueInsights.length > 0 && (
+              <span className="text-xs bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full ml-1">{overdueInsights.length}</span>
             )}
           </h2>
-          {overdueAssignments.length === 0 ? (
+          {overdueInsights.length === 0 ? (
             <div className="flex items-center gap-2 text-xs text-green-400">
               <CheckCircle2 size={13} /> Gecikmiş eğitim yok
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {overdueAssignments.slice(0, 8).map((a: any) => (
+              {overdueInsights.slice(0, 8).map((a: any) => (
                 <div key={a.id} className="flex items-center gap-2 p-2 rounded-lg border text-xs">
                   <div className="w-6 h-6 rounded-full bg-amber-500/15 flex items-center justify-center flex-shrink-0">
                     <AlertTriangle size={11} className="text-amber-500" />

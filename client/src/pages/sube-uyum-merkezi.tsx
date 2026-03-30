@@ -56,7 +56,7 @@ export default function SubeUyumMerkezi() {
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
   const [sortBy, setSortBy] = useState<"score" | "name">("score");
 
-  const { data: healthData, isLoading, refetch, dataUpdatedAt } = useQuery<any>({
+  const { data: healthData, isLoading, isError, refetch, dataUpdatedAt } = useQuery<any>({
     queryKey: ["/api/agent/branch-health"],
     queryFn: async () => {
       const res = await fetch("/api/agent/branch-health", { credentials: "include" });

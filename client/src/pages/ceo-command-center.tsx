@@ -157,8 +157,105 @@ function AIAssistant() {
     "En büyük riskler neler?",
   ];
 
+
+  // Franchise sağlık skoru
+  const { data: healthData } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/branch-health", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Eskalasyon özeti
+  const { data: escalationData } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "escalated", "ceo"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/actions?status=escalated&limit=10", { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return Array.isArray(d) ? d : (d.actions || []);
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
   return (
     <div className="space-y-4">
+
+      {/* Franchise Sağlık Özeti — CEO Komuta */}
+      {healthData && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Ortalama Skor", value: healthData.average || 0, suffix: "/100",
+              color: (healthData.average||0) >= 80 ? "#4ade80" : (healthData.average||0) >= 60 ? "#fbbf24" : "#f87171" },
+            { label: "Sağlıklı Şube", value: healthData.healthyCount || 0, suffix: " şube", color: "#4ade80" },
+            { label: "Uyarı",         value: healthData.warningCount || 0, suffix: " şube", color: "#fbbf24" },
+            { label: "Kritik",        value: healthData.criticalCount || 0, suffix: " şube", color: "#f87171" },
+          ].map((k, i) => (
+            <div key={i} className="rounded-xl border p-3">
+              <p className="text-xs text-muted-foreground mb-1">{k.label}</p>
+              <p className="text-2xl font-bold" style={{ color: k.color }}>
+                {k.value}<span className="text-sm font-normal text-muted-foreground">{k.suffix}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* En Kötü Şubeler + Eskalasyon Uyarıları */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {healthData?.branches && (
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm">Acil Müdahale Gereken Şubeler</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-2">
+                {[...healthData.branches]
+                  .sort((a: any, b: any) => a.overallScore - b.overallScore)
+                  .slice(0, 5)
+                  .map((b: any) => {
+                    const color = b.overallScore < 60 ? "#f87171" : "#fbbf24";
+                    return (
+                      <div key={b.branchId} className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground flex-1 truncate">{b.branchName}</span>
+                        <div className="w-20 h-1.5 rounded-full bg-muted">
+                          <div className="h-full rounded-full" style={{ width: `${b.overallScore}%`, background: color }} />
+                        </div>
+                        <span className="text-xs font-bold w-6 text-right" style={{ color }}>{b.overallScore}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {Array.isArray(escalationData) && escalationData.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                🚨 Eskalasyon — CEO Kademesi
+                <span className="ml-auto text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">{escalationData.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-2">
+                {escalationData.slice(0, 4).map((a: any) => (
+                  <div key={a.id} className="text-xs p-2 rounded-lg border border-red-500/20 bg-red-500/5">
+                    <p className="font-medium">{a.title}</p>
+                    <p className="text-muted-foreground mt-0.5 line-clamp-1">{a.description}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">

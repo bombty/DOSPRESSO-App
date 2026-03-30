@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Clock, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, RefreshCw, ChevronRight, Calendar } from "lucide-react";
+import { MapPin, Clock, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, RefreshCw, ChevronRight, Calendar, BarChart2, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
   const r = size * 0.38;
@@ -28,7 +29,7 @@ export default function CoachKontrolMerkezi() {
   const qc = useQueryClient();
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
 
-  const { data: healthData, isLoading } = useQuery<any>({
+  const { data: healthData, isLoading, isError } = useQuery<any>({
     queryKey: ["/api/agent/branch-health"],
     refetchInterval: 10 * 60 * 1000,
     staleTime: 5 * 60 * 1000,
@@ -59,6 +60,21 @@ export default function CoachKontrolMerkezi() {
     staleTime: 60000,
   });
 
+  const { data: kpiSignals = [] } = useQuery<any[]>({
+    queryKey: ["/api/academy/kpi-signals"],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: complianceTable } = useQuery<any>({
+    queryKey: ["/api/agent/compliance-overview", "week"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/compliance-overview?period=week", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/agent/actions/${id}/approve`),
     onSuccess: () => {
@@ -74,13 +90,32 @@ export default function CoachKontrolMerkezi() {
   const summary = complianceData?.summary;
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+      <div className="border-b px-4 pt-3 bg-background flex-shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="font-bold text-base">Coach Kontrol Merkezi</h1>
+        </div>
+      </div>
+      <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="px-4 border-b rounded-none h-9 bg-transparent justify-start gap-0 flex-shrink-0">
+          <TabsTrigger value="overview" className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-8 px-3">
+            Şube Takip
+          </TabsTrigger>
+          <TabsTrigger value="compliance" className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-8 px-3">
+            Uyum Tablosu
+          </TabsTrigger>
+          <TabsTrigger value="signals" className="text-xs rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent h-8 px-3">
+            KPI Sinyaller
+            {kpiSignals.length > 0 && <span className="ml-1.5 text-[9px] bg-amber-500/20 text-amber-500 px-1.5 rounded-full">{kpiSignals.length}</span>}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="flex-1 overflow-hidden m-0">
+          <div className="flex h-full overflow-hidden">
       {/* Sol: Öncelikli Şube Listesi */}
       <div className="w-72 flex-shrink-0 border-r flex flex-col overflow-hidden">
         <div className="p-4 border-b">
-          <h1 className="font-bold text-base">Coach Kontrol Merkezi</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Ziyaret öncelikleri ve aksiyon planları</p>
-
+          <p className="text-xs text-muted-foreground mt-0 mb-3">Ziyaret öncelikleri ve aksiyon planları</p>
           {summary && (
             <div className="grid grid-cols-3 gap-1.5 mt-3">
               {[
@@ -261,6 +296,68 @@ export default function CoachKontrolMerkezi() {
           </div>
         )}
       </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="compliance" className="flex-1 overflow-auto p-4 m-0">
+          {complianceTable?.branches ? (
+            <div className="max-w-3xl space-y-4">
+              <div className="rounded-xl border overflow-hidden">
+                <div className="grid grid-cols-[180px_1fr_1fr_1fr_1fr_70px] gap-0 border-b bg-muted/20 px-4 py-2.5">
+                  <div className="text-xs font-medium text-muted-foreground">Şube</div>
+                  {["Vardiya", "Checklist", "Arıza", "Eğitim"].map(l => (
+                    <div key={l} className="text-xs font-medium text-muted-foreground">{l}</div>
+                  ))}
+                  <div className="text-xs font-medium text-muted-foreground text-right">Genel</div>
+                </div>
+                {complianceTable.branches.map((b: any) => {
+                  const overall = b.scores?.overall || 0;
+                  const oc = overall >= 80 ? "#4ade80" : overall >= 60 ? "#fbbf24" : "#f87171";
+                  return (
+                    <div key={b.branchId} className="grid grid-cols-[180px_1fr_1fr_1fr_1fr_70px] gap-0 border-b last:border-0 px-4 py-2.5 hover:bg-muted/20">
+                      <span className="text-xs font-medium truncate">{b.branchName}</span>
+                      {(["shift","checklist","fault","training"] as const).map(dim => {
+                        const s = b.scores?.[dim] || 0;
+                        const c = s >= 80 ? "#4ade80" : s >= 60 ? "#fbbf24" : "#f87171";
+                        return (
+                          <div key={dim} className="flex items-center gap-1.5">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted max-w-[60px]">
+                              <div className="h-full rounded-full" style={{ width: `${s}%`, background: c }} />
+                            </div>
+                            <span className="text-[10px] font-medium" style={{ color: c }}>{s}</span>
+                          </div>
+                        );
+                      })}
+                      <span className="text-xs font-bold text-right" style={{ color: oc }}>{overall}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">Uyum verisi yükleniyor...</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="signals" className="flex-1 overflow-auto p-4 m-0">
+          <div className="max-w-2xl space-y-3">
+            {kpiSignals.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-green-400 p-4">
+                <CheckCircle2 size={16} /> KPI sinyali yok — sistem normal çalışıyor
+              </div>
+            ) : kpiSignals.map((s: any, i: number) => (
+              <div key={i} className="rounded-xl border p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <BarChart2 size={13} className="text-amber-400" />
+                  <span className="text-sm font-medium">{s.title || s.signalCode}</span>
+                  {s.severity && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500">{s.severity}</span>}
+                </div>
+                <p className="text-xs text-muted-foreground">{s.description || s.message}</p>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { AlertTriangle, Wrench, Clock, CheckCircle2, RefreshCw, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +35,7 @@ export default function CgoTeknikKomuta() {
   const [filterPriority, setFilterPriority] = useState("all");
   const [filterBranch, setFilterBranch] = useState("all");
 
-  const { data: faults = [], isLoading: faultsLoading, refetch } = useQuery<any[]>({
+  const { data: faults = [], isLoading, isError, faultsLoading, refetch } = useQuery<any[]>({
     queryKey: ["/api/faults"],
     queryFn: async () => {
       const res = await fetch("/api/faults?limit=100&status=open,in_progress", { credentials: "include" });
@@ -45,15 +47,8 @@ export default function CgoTeknikKomuta() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: equipment = [] } = useQuery<any[]>({
-    queryKey: ["/api/equipment/critical"],
-    queryFn: async () => {
-      const res = await fetch("/api/equipment/critical", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json();
-    },
-    staleTime: 10 * 60 * 1000,
-  });
+  // Equipment critical: mevcut endpoint scope sorunu var, ileride aktif edilecek
+  // const { data: equipment = [] } = useQuery<any[]>({ queryKey: ["/api/equipment/critical"] });
 
   const { data: slaInsights = [] } = useQuery<any>({
     queryKey: ["/api/agent/actions", "sla"],
@@ -232,9 +227,16 @@ export default function CgoTeknikKomuta() {
               </h3>
               <div className="space-y-2">
                 {slaInsights.slice(0, 4).map((a: any) => (
-                  <div key={a.id} className="text-xs p-2 rounded-lg border border-amber-500/20 bg-amber-500/6">
-                    <p className="font-medium text-foreground">{a.title}</p>
-                    <p className="text-muted-foreground mt-0.5 line-clamp-2">{a.description}</p>
+                  <div key={a.id} className="flex items-start gap-2 text-xs p-2 rounded-lg border border-amber-500/20 bg-amber-500/6">
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{a.title}</p>
+                      <p className="text-muted-foreground mt-0.5 line-clamp-2">{a.description}</p>
+                    </div>
+                    <button
+                      onClick={() => approveSLA(a.id)}
+                      className="flex-shrink-0 px-2 py-1 rounded text-[10px] font-medium bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors whitespace-nowrap">
+                      Onayla
+                    </button>
                   </div>
                 ))}
               </div>
