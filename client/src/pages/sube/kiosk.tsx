@@ -104,6 +104,22 @@ export default function BranchKiosk() {
   const [branchAuth, setBranchAuth] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [authChecked, setAuthChecked] = useState(false);
+  const [step, setStep] = useState<KioskStep>('password');
+  const [kioskPassword, setKioskPassword] = useState('');
+  const [kioskUsername, setKioskUsername] = useState('');
+  const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
+  const [pinInput, setPinInput] = useState('');
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [userTasks, setUserTasks] = useState<Task[]>([]);
+  const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
+  const [teamStatus, setTeamStatus] = useState<any[]>([]);
+  const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
+  const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
+  const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
+  const [lobbyData, setLobbyData] = useState<any>(null);
+  const [displayQr, setDisplayQr] = useState<any>(null);
+  const inactivityRef = useRef<NodeJS.Timeout | null>(null);
+  const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
   
   const { data: allowedRolesData } = useQuery<{ roles: string[] }>({
     queryKey: ["/api/branch-dashboard-allowed-roles"],
@@ -153,24 +169,6 @@ export default function BranchKiosk() {
   // Use branchAuth.id if available, otherwise fall back to route params or default
   const branchId = branchAuth?.id || (params.branchId ? parseInt(params.branchId) : 1);
   
-  const [step, setStep] = useState<KioskStep>('password');
-  const [kioskPassword, setKioskPassword] = useState('');
-  const [kioskUsername, setKioskUsername] = useState('');
-  const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
-  const [pinInput, setPinInput] = useState('');
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
-  const [userTasks, setUserTasks] = useState<Task[]>([]);
-  const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
-  const [teamStatus, setTeamStatus] = useState<any[]>([]);
-  const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
-  const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
-  const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
-  const [lobbyData, setLobbyData] = useState<any>(null);
-  const [displayQr, setDisplayQr] = useState<any>(null);
-  const inactivityRef = useRef<NodeJS.Timeout | null>(null);
-  const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
-
-  const resetInactivityTimer = useCallback(() => {
 
   // Offline/Online durumu takip et
   useEffect(() => {
@@ -180,6 +178,8 @@ export default function BranchKiosk() {
     window.addEventListener('offline', onOffline);
     return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline); };
   }, []);
+
+  const resetInactivityTimer = useCallback(() => {
     if (inactivityRef.current) clearTimeout(inactivityRef.current);
     inactivityRef.current = setTimeout(() => {
       resetWorker();
