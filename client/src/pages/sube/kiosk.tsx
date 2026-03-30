@@ -117,6 +117,8 @@ export default function BranchKiosk() {
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
   const [kioskBranchTasks, setKioskBranchTasks] = useState<any[]>([]);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [exitPasswordInput, setExitPasswordInput] = useState('');
   const [lobbyData, setLobbyData] = useState<any>(null);
   const [displayQr, setDisplayQr] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
@@ -828,6 +830,14 @@ export default function BranchKiosk() {
   };
 
   const handleKioskExit = async () => {
+    // Şifre doğrulama
+    if (exitPasswordInput !== kioskPassword && exitPasswordInput !== branchAuth?.password) {
+      toast({ title: "Hatalı şifre", description: "Kiosk çıkış şifresi yanlış", variant: "destructive" });
+      setExitPasswordInput('');
+      return;
+    }
+    setShowExitConfirm(false);
+    setExitPasswordInput('');
     try {
       await apiRequest('POST', '/api/auth/logout');
       queryClient.clear();
@@ -1158,7 +1168,7 @@ export default function BranchKiosk() {
               </div>
             </div>
             <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.07)', padding: '6px 14px', textAlign: 'right', flexShrink: 0 }}>
-              <button onClick={resetKiosk} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
+              <button onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }} style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
             </div>
           </div>
           <div style={{ borderLeft: '0.5px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -1810,18 +1820,44 @@ export default function BranchKiosk() {
         </div>
       )}
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="fixed top-4 right-4 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
-        onClick={handleKioskExit}
-        data-testid="button-kiosk-exit"
-      >
-        <LogOut className="h-4 w-4 mr-2" />
-        Kiosk'tan Cik
-      </Button>
-      
-      {/* First confirmation dialog for ending shift */}
+      {/* Exit confirmation dialog */}
+      <Dialog open={showExitConfirm} onOpenChange={(o) => { setShowExitConfirm(o); setExitPasswordInput(''); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-[#c0392b]" />
+              Kiosk'tan Çık
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Kiosk'tan çıkmak için kiosk şifresini girin.</p>
+            <Input
+              type="password"
+              placeholder="Kiosk şifresi..."
+              value={exitPasswordInput}
+              onChange={(e) => setExitPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleKioskExit()}
+              className="h-12 text-base"
+              data-testid="input-exit-password"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowExitConfirm(false); setExitPasswordInput(''); }}>
+              İptal
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!exitPasswordInput}
+              onClick={handleKioskExit}
+              data-testid="btn-confirm-exit"
+            >
+              Çık
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={showEndShiftConfirm1} onOpenChange={setShowEndShiftConfirm1}>
         <AlertDialogContent>
           <AlertDialogHeader>
