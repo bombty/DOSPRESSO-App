@@ -191,7 +191,7 @@ export default function BranchKiosk() {
     };
   }, [step, resetInactivityTimer]);
 
-  // Working ekranında session durumunu 5sn'de bir senkronize et (QR işlemlerini yakala)
+  // Working ekranında session durumunu senkronize et — mount'ta hemen + 5sn'de bir
   useEffect(() => {
     if (step !== 'working' || !selectedUser?.id || !branchId) return;
     const syncSession = async () => {
@@ -199,14 +199,17 @@ export default function BranchKiosk() {
         const res = await fetch(`/api/branches/${branchId}/kiosk/session/${selectedUser.id}`, { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
-          if (data.activeSession && data.activeSession.status !== currentSession?.status) {
-            setCurrentSession(data.activeSession);
-          } else if (!data.activeSession && currentSession) {
-            // Vardiya bitti
+          if (data.activeSession) {
+            // Her zaman güncelle — status farkı olmasa da id null ise al
+            if (!currentSession || data.activeSession.id !== currentSession.id || data.activeSession.status !== currentSession.status) {
+              setCurrentSession(data.activeSession);
+            }
           }
         }
       } catch {}
     };
+    // Mount'ta hemen çalıştır
+    syncSession();
     const interval = setInterval(syncSession, 5000);
     return () => clearInterval(interval);
   }, [step, selectedUser?.id, branchId]);
@@ -515,14 +518,22 @@ export default function BranchKiosk() {
         userId,
         ...(userLocation ? { latitude: userLocation.latitude, longitude: userLocation.longitude } : {}),
       });
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw { message: data.message, session: data.session };
+      return data;
     },
     onSuccess: (data) => {
       setCurrentSession(data.session);
       toast({ title: "Vardiya başladı", description: "İyi çalışmalar!" });
     },
     onError: (error: any) => {
-      toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
+      // Zaten aktif vardiya var — session'ı set et
+      if (error?.session) {
+        setCurrentSession(error.session);
+        toast({ title: "Aktif vardiya bulundu", description: "Mevcut vardiyenize devam edebilirsiniz." });
+      } else {
+        toast({ title: "Vardiya başlatılamadı", description: error.message, variant: "destructive" });
+      }
     },
   });
 
