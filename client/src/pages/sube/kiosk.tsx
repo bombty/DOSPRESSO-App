@@ -204,13 +204,17 @@ export default function BranchKiosk() {
           `/api/branches/${branchId}/kiosk/session/${selectedUser.id}`,
           { credentials: 'include', headers: { 'x-kiosk-token': token() } }
         );
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.activeSession) setCurrentSession(data.activeSession);
-        if (data.tasks) setUserTasks(data.tasks);
-        if (data.checklists) setUserChecklists(data.checklists);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          if (!cancelled) {
+            if (data.activeSession) setCurrentSession(data.activeSession);
+            else setCurrentSession(null); // Vardiya yok — Başlat butonu göster
+            if (data.tasks) setUserTasks(data.tasks);
+            if (data.checklists) setUserChecklists(data.checklists);
+          }
+        }
       } catch {}
+      // Her durumda loading'i kapat
       if (isFirstLoad && !cancelled) setSessionLoading(false);
       if (isFirstLoad) {
         try {
