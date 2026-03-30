@@ -1060,7 +1060,7 @@ router.get("/api/agent/compliance-overview", isAuthenticated, async (req, res) =
         // Checklist tamamlama
         db.select({
           total: sql<number>`count(*)::int`,
-          done: sql<number>`count(*) filter (where is_completed = true)::int`,
+          done: sql<number>`count(*) filter (where status = 'completed')::int`,
         }).from(checklistCompletions).where(and(eq(checklistCompletions.branchId, branch.id), gte(checklistCompletions.createdAt, since))),
         // Açık arıza
         db.select({ cnt: sql<number>`count(*)::int` }).from(equipmentFaults)

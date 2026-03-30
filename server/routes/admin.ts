@@ -79,6 +79,14 @@ const updatePageContentSchema = (insertPageContentSchema as any).partial().omit(
 });
 const router = Router();
 
+function isAdminOrCeo(req: any, res: any, next: any) {
+  const role = req.user?.role;
+  if (!["admin", "ceo", "cgo", "genel_mudur"].includes(role)) {
+    return res.status(403).json({ error: "Bu işlem için yönetici yetkisi gerekli" });
+  }
+  next();
+}
+
   router.get('/api/mega-module-mapping', isAuthenticated, async (req, res) => {
     try {
       // Get mega-module items from database
@@ -1050,9 +1058,9 @@ const router = Router();
       const user = req.user!;
       const { role: roleFilter } = req.query;
       
-      // Admin-only access
-      if (user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin yetkisi gerekli" });
+      // Admin/CEO/CGO erişimi
+      if (!["admin", "ceo", "cgo", "genel_mudur"].includes(user.role)) {
+        return res.status(403).json({ message: "Yönetici yetkisi gerekli" });
       }
 
       // Define default module permissions for each role
@@ -4147,8 +4155,6 @@ const router = Router();
     }
   });
 
-export default router;
-
 // ─── Eskalasyon Konfigürasyon API ─────────────────────────────────────────
 
 router.get("/api/admin/escalation-config", isAuthenticated, isAdminOrCeo, async (req, res) => {
@@ -4212,3 +4218,5 @@ router.post("/api/admin/role-permissions", isAuthenticated, isAdminOrCeo, async 
     res.status(400).json({ error: e.message });
   }
 });
+
+export default router;
