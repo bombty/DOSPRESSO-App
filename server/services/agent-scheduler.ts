@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { users, branches, agentPendingActions, agentRuns, inventory, customerFeedback, equipmentFaults, productComplaints, notifications } from "@shared/schema";
+import { users, branches, agentPendingActions, agentRuns, inventory, customerFeedback, equipmentFaults, productComplaints, notifications, shifts, branchShiftSessions } from "@shared/schema";
 import { eq, and, or, gte, lte, sql, count, isNull, notInArray, lt } from "drizzle-orm";
 import { getRoleGroup, ROLE_GROUP_MAP } from "./ai-policy-engine";
 import { runAgentAnalysis, runBatchAnalysis } from "./agent-engine";
@@ -282,6 +282,42 @@ async function checkEventTriggers(): Promise<void> {
   try {
     const now = new Date();
 
+    // Geç gelen / gelmeyen personel tespiti (15 dk+ gecikme)
+    const todayStr = now.toISOString().split('T')[0];
+    const cutoffTime = new Date(now.getTime() - 15 * 60 * 1000); // 15dk tolerans
+    
+    const publishedShifts = await db.select({
+      userId: shifts.assignedToId,
+      branchId: shifts.branchId,
+      startTime: shifts.startTime,
+    }).from(shifts)
+      .where(and(
+        eq(shifts.shiftDate, todayStr),
+        eq(shifts.status, 'published')
+      ));
+
+    const activeSessions = await db.select({ userId: branchShiftSessions.userId })
+      .from(branchShiftSessions)
+      .where(or(
+        eq(branchShiftSessions.status, 'active'),
+        eq(branchShiftSessions.status, 'on_break')
+      ));
+    
+    const activeUserIds = new Set(activeSessions.map(s => s.userId));
+    
+    let lateCount = 0;
+    const lateBranchIds = new Set<number>();
+    for (const shift of publishedShifts) {
+      if (!shift.userId || activeUserIds.has(shift.userId)) continue;
+      const [h, m] = (shift.startTime as string).split(':').map(Number);
+      const shiftStart = new Date(now);
+      shiftStart.setHours(h, m, 0, 0);
+      if (shiftStart < cutoffTime) {
+        lateCount++;
+        if (shift.branchId) lateBranchIds.add(shift.branchId);
+      }
+    }
+
     const [zeroStockResult] = await db
       .select({ cnt: sql<number>`count(*)::int` })
       .from(inventory)
@@ -316,12 +352,12 @@ async function checkEventTriggers(): Promise<void> {
 
     const feedbackSlaCount = feedbackSlaResult?.cnt ?? 0;
 
-    const shouldTrigger = zeroStockCount >= 3 || slaBreachCount >= 5 || feedbackSlaCount >= 10;
+    const shouldTrigger = zeroStockCount >= 3 || slaBreachCount >= 5 || feedbackSlaCount >= 10 || lateCount >= 2;
 
     if (!shouldTrigger) return;
 
-
     const targetGroups = [];
+    if (lateCount >= 2) targetGroups.push("branch_mgmt", "hq_ops");
     if (zeroStockCount >= 3) targetGroups.push("hq_finance");
     if (slaBreachCount >= 5) targetGroups.push("hq_ops", "executive");
     if (feedbackSlaCount >= 10) targetGroups.push("branch_mgmt", "hq_ops");

@@ -25,6 +25,7 @@ import {
   Store,
   BarChart3,
   ArrowRightLeft,
+  Bot,
 } from "lucide-react";
 import { ModuleCard } from "@/components/module-card";
 import { DashboardAlertPills, type AlertPill } from "@/components/dashboard-alert-pills";
@@ -118,6 +119,16 @@ export default function HQOzet() {
 
   const { data: activeDelegations = [] } = useQuery<any[]>({
     queryKey: ['/api/delegations/active'],
+  });
+
+  const { data: agentSummary } = useQuery<any>({
+    queryKey: ["/api/agent/actions/summary"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/actions/summary", { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    refetchInterval: 60000,
   });
 
   const quickAction = useMutation({
@@ -329,6 +340,32 @@ export default function HQOzet() {
           </div>
         </CardContent>
       </Card>
+
+      {agentSummary && Number(agentSummary.pending) > 0 && (
+        <Card className="border-amber-500/30" data-testid="card-agent-pending">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-4 w-4 text-amber-500" />
+              Mr. Dobody — Onay Bekleyen Aksiyonlar
+              <span className="ml-auto text-xs bg-amber-500 text-white px-2 py-0.5 rounded-full">
+                {agentSummary.pending}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <p className="text-sm text-muted-foreground mb-3">
+              {agentSummary.critical > 0 && (
+                <span className="text-red-500 font-medium">{agentSummary.critical} kritik · </span>
+              )}
+              {agentSummary.pending} aksiyon onayınızı bekliyor
+            </p>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.location.href = '/agent-merkezi'}>
+              <ExternalLink className="h-3.5 w-3.5" />
+              Agent Merkezi'ne Git
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <DobodySuggestionList
         suggestions={data.suggestions || []}
