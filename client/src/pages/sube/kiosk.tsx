@@ -493,9 +493,12 @@ export default function BranchKiosk() {
     },
     onSuccess: async (data) => {
       if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken);
-      // currentSession'a DOKUNMA — working effect kendi yükleyecek
+      // selectedUser'ı response'dan güncelle (id garantisi)
+      if (data.user) {
+        setSelectedUser((prev: any) => ({ ...(prev || {}), ...data.user }));
+      }
       setStep('working');
-      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
+      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user?.firstName}` });
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
@@ -1318,11 +1321,7 @@ export default function BranchKiosk() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto space-y-3 px-4 pb-3">
-            {sessionLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-              </div>
-            ) : !currentSession ? (
+            {!currentSession ? (
               <div className="text-center py-8">
                 <Play className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground mb-4">Vardiya başlatılmadı</p>
