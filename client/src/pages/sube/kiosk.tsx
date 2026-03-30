@@ -191,28 +191,55 @@ export default function BranchKiosk() {
     };
   }, [step, resetInactivityTimer]);
 
-  // Working ekranında session durumunu 5sn'de bir senkronize et (QR işlemlerini yakala)
+
+  // TEK SESSION KAYNAĞI — race condition yok
   useEffect(() => {
     if (step !== 'working' || !selectedUser?.id || !branchId) return;
-    const syncSession = async () => {
+    let cancelled = false;
+    const token = () => localStorage.getItem('kiosk-token') || '';
+
+    const loadAll = async (isFirstLoad = false) => {
       try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${selectedUser.id}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.activeSession) {
-            if (!currentSession || data.activeSession.id !== currentSession.id || data.activeSession.status !== currentSession.status) {
-              setCurrentSession(data.activeSession);
-            }
-          }
-        }
+        const res = await fetch(
+          `/api/branches/${branchId}/kiosk/session/${selectedUser.id}`,
+          { credentials: 'include', headers: { 'x-kiosk-token': token() } }
+        );
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.activeSession) setCurrentSession(data.activeSession);
+        if (data.tasks) setUserTasks(data.tasks);
+        if (data.checklists) setUserChecklists(data.checklists);
       } catch {}
+      if (isFirstLoad && !cancelled) setSessionLoading(false);
+      if (isFirstLoad) {
+        try {
+          const t = await fetch(`/api/branches/${branchId}/kiosk/team-status`,
+            { credentials: 'include', headers: { 'x-kiosk-token': token() } });
+          if (t.ok && !cancelled) {
+            const td = await t.json();
+            const team = Array.isArray(td.team) ? td.team : [];
+            setTeamStatus(team);
+            setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== selectedUser.id));
+          }
+        } catch {}
+        try {
+          const n = await fetch(`/api/branches/${branchId}/kiosk/notifications/${selectedUser.id}`,
+            { credentials: 'include', headers: { 'x-kiosk-token': token() } });
+          if (n.ok && !cancelled) { const nd = await n.json(); setKioskNotifications(Array.isArray(nd) ? nd : []); }
+        } catch {}
+        try {
+          const a = await fetch(`/api/branches/${branchId}/kiosk/announcements`,
+            { credentials: 'include', headers: { 'x-kiosk-token': token() } });
+          if (a.ok && !cancelled) { const ad = await a.json(); setKioskAnnouncements(Array.isArray(ad) ? ad : []); }
+        } catch {}
+      }
     };
-    // 5sn sonra başlat — login fetch'i tamamlanmış olacak
-    const timeout = setTimeout(() => {
-      syncSession();
-    }, 5000);
-    const interval = setInterval(syncSession, 10000);
-    return () => { clearTimeout(timeout); clearInterval(interval); };
+
+    setSessionLoading(true);
+    loadAll(true);
+    const interval = setInterval(() => loadAll(false), 10000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [step, selectedUser?.id, branchId]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -462,55 +489,9 @@ export default function BranchKiosk() {
     },
     onSuccess: async (data) => {
       if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken);
-
-      // Session yükleniyor — "Vardiya başlatılmadı" ekranını engelle
-      setSessionLoading(true);
-
-      // 1. Önce session'ı set et
-      if (data.activeSession) {
-        setCurrentSession(data.activeSession);
-      }
-
-      // 2. Ekrana geç
+      // currentSession'a DOKUNMA — working effect kendi yükleyecek
       setStep('working');
       toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user.firstName}` });
-
-      // 3. Arka planda yükle — userId'yi data'dan al (selectedUser race yok)
-      const uid = data.user.id;
-      try {
-        const res = await fetch(`/api/branches/${branchId}/kiosk/session/${uid}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
-        if (res.ok) {
-          const sd = await res.json();
-          if (sd.activeSession) setCurrentSession(sd.activeSession);
-          if (sd.tasks) setUserTasks(sd.tasks);
-          if (sd.checklists) setUserChecklists(sd.checklists);
-        }
-      } catch {}
-      // Session sync tamamlandı
-      setSessionLoading(false);
-      try {
-        const teamRes = await fetch(`/api/branches/${branchId}/kiosk/team-status`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
-        if (teamRes.ok) {
-          const teamData = await teamRes.json();
-          const team = Array.isArray(teamData.team) ? teamData.team : [];
-          setTeamStatus(team);
-          setPdksAnomalyUsers(team.filter((m: any) => m.isBreakAnomaly && m.userId !== uid));
-        }
-      } catch {}
-      try {
-        const notifRes = await fetch(`/api/branches/${branchId}/kiosk/notifications/${uid}`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
-        if (notifRes.ok) {
-          const nd = await notifRes.json();
-          setKioskNotifications(Array.isArray(nd) ? nd : []);
-        }
-      } catch {}
-      try {
-        const annRes = await fetch(`/api/branches/${branchId}/kiosk/announcements`, { credentials: 'include', headers: { 'x-kiosk-token': localStorage.getItem('kiosk-token') || '' } });
-        if (annRes.ok) {
-          const ad = await annRes.json();
-          setKioskAnnouncements(Array.isArray(ad) ? ad : []);
-        }
-      } catch {}
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
