@@ -1,82 +1,95 @@
 /**
- * CentrumShell — Tüm Control Centrum sayfalarının ortak layout ve widget bileşenleri.
- * 15 rol dashboard'u bu shell'i ve component'ları kullanır.
+ * CentrumShell v3 — Onaylanan JSX prototype'dan birebir uygulama.
+ * Tüm DOSPRESSO sayfalarında kullanılacak global tasarım dili.
  *
- * Export'lar:
- *   Layout:   CentrumShell
- *   KPI:      KpiChip
- *   Widgets:  Widget, MiniStats, ProgressWidget, ListItem, DobodySlot
- *   New v5:   TimeFilter, EscalationBadge, TopFlop, DobodyTaskPlan,
- *             FeedbackWidget, LostFoundBanner, QCStatusWidget, ClickableWidget
+ * Token sistemi JSX'ten birebir:
+ *   bg:#0c0f14, card:#141820, border:#1e2530, muted:#6b7a8d, text:#e8ecf1
+ *   alert:#ef4444, warn:#fbbf24, ok:#22c55e, info:#60a5fa, purple:#a5a0f0
  */
-import { ReactNode, useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { ReactNode, useState } from "react";
 
-export type KpiVariant = "alert" | "warn" | "ok" | "info" | "purple" | "neutral";
-
-const VARIANT_STYLES: Record<KpiVariant, { dot: string; val: string; bg: string; border: string }> = {
-  alert:   { dot: "bg-red-400",    val: "text-red-400",    bg: "bg-red-500/5",    border: "border-red-500/25" },
-  warn:    { dot: "bg-amber-400",  val: "text-amber-400",  bg: "bg-amber-500/5",  border: "border-amber-500/20" },
-  ok:      { dot: "bg-green-400",  val: "text-green-400",  bg: "bg-green-500/5",  border: "border-green-500/20" },
-  info:    { dot: "bg-blue-400",   val: "text-blue-400",   bg: "bg-blue-500/5",   border: "border-blue-500/20" },
-  purple:  { dot: "bg-purple-400", val: "text-purple-400", bg: "bg-purple-500/5", border: "border-purple-500/20" },
-  neutral: { dot: "bg-muted-foreground", val: "text-muted-foreground", bg: "bg-muted/40", border: "border-border" },
+// ═══ TOKEN SİSTEMİ (JSX birebir) ═══
+const T = {
+  bg: "#0c0f14", card: "#141820", border: "#1e2530",
+  muted: "#6b7a8d", text: "#e8ecf1",
+  alert: "#ef4444", warn: "#fbbf24", ok: "#22c55e",
+  info: "#60a5fa", purple: "#a5a0f0",
+};
+const V: Record<KpiVariant, string> = {
+  alert: T.alert, warn: T.warn, ok: T.ok, info: T.info, purple: T.purple, neutral: T.muted,
 };
 
-interface KpiChipProps { label: string; value: string | number; variant?: KpiVariant; onClick?: () => void; }
+// ═══ TYPES ═══
+export type KpiVariant = "alert" | "warn" | "ok" | "info" | "purple" | "neutral";
+export type DobodyMode = "auto" | "action" | "info";
+export type TimePeriod = "today" | "week" | "month" | "quarter";
 
-export function KpiChip({ label, value, variant = "neutral", onClick }: KpiChipProps) {
-  const s = VARIANT_STYLES[variant];
+// ═══ KPI CHIP (JSX Kpi birebir) ═══
+interface KpiChipProps { label: string; value: string | number; variant?: KpiVariant; sub?: string; onClick?: () => void; }
+
+export function KpiChip({ label, value, variant = "neutral", sub, onClick }: KpiChipProps) {
+  const c = V[variant];
   return (
-    <button onClick={onClick} className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all whitespace-nowrap hover:brightness-105", s.bg, s.border)}>
-      <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", s.dot)} />
-      <span className={cn("text-[13px] font-bold leading-none", s.val)}>{value}</span>
-      <span className="text-[10px] text-muted-foreground leading-none">{label}</span>
-    </button>
+    <div onClick={onClick} className={`flex flex-col px-2 py-1.5 rounded-xl border min-w-[80px] shrink-0 ${onClick ? "cursor-pointer" : ""}`}
+      style={{ borderColor: `${c}30`, background: `${c}08` }}>
+      <span className="text-base font-bold leading-none" style={{ color: c }}>{value}</span>
+      <span className="text-[8px] mt-0.5" style={{ color: T.muted }}>{label}</span>
+      {sub && <span className="text-[8px]" style={{ color: `${c}99` }}>{sub}</span>}
+    </div>
   );
 }
 
-// ─── DOBODY SLOT (3-Mod: auto / action / info) ─────────
-export type DobodyMode = "auto" | "action" | "info";
-interface DobodyAction {
-  id: number | string;
-  title: string;
-  sub?: string;
-  mode?: DobodyMode;
-  onApprove?: () => void;
-  approving?: boolean;
-  btnLabel?: string;
-  btnVariant?: "green" | "purple" | "blue";
-}
-const BTN_V = { green: "bg-green-500/15 text-green-400 hover:bg-green-500/25", purple: "bg-purple-500/15 text-purple-400 hover:bg-purple-500/25", blue: "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25" };
-const MODE_DOT = { auto: "bg-green-400", action: "bg-purple-400", info: "bg-muted-foreground" };
+// ═══ WIDGET (JSX W birebir) ═══
+interface WidgetProps { title: string; badge?: ReactNode; children: ReactNode; onClick?: () => void; className?: string; noPadding?: boolean; action?: ReactNode; }
 
-export function DobodySlot({ actions, compact }: { actions: DobodyAction[]; compact?: boolean; }) {
+export function Widget({ title, badge, children, onClick, className = "" }: WidgetProps) {
   return (
-    <div className="rounded-xl border border-dashed border-purple-500/30 bg-purple-500/[0.04] overflow-hidden">
-      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-purple-500/[0.08]">
-        <span className="text-[10px] font-semibold text-purple-400">◈ Mr. Dobody</span>
-        {actions.length > 0 && <span className="text-[9px] bg-purple-500/15 text-purple-400 px-1.5 py-0.5 rounded-full">{actions.length}</span>}
+    <div className={`rounded-xl border overflow-hidden ${onClick ? "cursor-pointer hover:border-blue-500/30" : ""} ${className}`}
+      style={{ borderColor: T.border, background: T.card }} onClick={onClick}>
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b" style={{ borderColor: T.border, background: `${T.border}40` }}>
+        <span className="text-[10px] font-semibold flex-1" style={{ color: T.text }}>{title}</span>
+        {badge}
+        {onClick && <span className="text-[8px]" style={{ color: T.info }}>→</span>}
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+// ═══ CLICKABLE WIDGET ═══
+export function ClickableWidget({ title, badge, onClick, children, className }: { title: ReactNode; badge?: ReactNode; onClick: () => void; children: ReactNode; className?: string }) {
+  return <Widget title={typeof title === "string" ? title : ""} badge={badge} onClick={onClick} className={className}>{children}</Widget>;
+}
+
+// ═══ DOBODY SLOT (JSX Dob birebir) ═══
+interface DobodyAction { id: number | string; title: string; sub?: string; mode?: DobodyMode; onApprove?: () => void; approving?: boolean; btnLabel?: string; btnVariant?: string; }
+
+export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boolean }) {
+  return (
+    <div className="rounded-xl border border-dashed overflow-hidden" style={{ borderColor: `${T.purple}40`, background: `${T.purple}06` }}>
+      <div className="flex items-center gap-1 px-2.5 py-1 border-b" style={{ borderColor: `${T.purple}12` }}>
+        <span className="text-[9px] font-semibold" style={{ color: T.purple }}>◈ Dobody</span>
+        {actions.length > 0 && <span className="text-[8px] px-1 rounded-full" style={{ background: `${T.purple}20`, color: T.purple }}>{actions.length}</span>}
       </div>
       {actions.length === 0 ? (
-        <p className="text-[10px] text-muted-foreground px-3 py-2">Bekleyen öneri yok</p>
+        <p className="text-[9px] px-2.5 py-2" style={{ color: T.muted }}>Bekleyen öneri yok</p>
       ) : actions.map((a) => {
         const mode = a.mode || (a.onApprove ? "action" : "info");
         return (
-          <div key={a.id} className={cn("flex items-start gap-2 px-3 border-b border-purple-500/[0.06] last:border-0", compact ? "py-1.5" : "py-2")}>
-            <div className={cn("w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0", MODE_DOT[mode])} />
+          <div key={a.id} className="flex items-start gap-1.5 px-2.5 py-1 border-b last:border-0" style={{ borderColor: `${T.purple}08` }}>
+            <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0"
+              style={{ background: mode === "auto" ? T.ok : mode === "action" ? T.purple : T.muted }} />
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-medium text-foreground leading-snug">{a.title}</p>
-              {a.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{a.sub}</p>}
+              <p className="text-[9px] font-medium" style={{ color: T.text }}>{a.title}</p>
+              {a.sub && <p className="text-[8px]" style={{ color: T.muted }}>{a.sub}</p>}
             </div>
-            {mode === "auto" && (
-              <span className="flex-shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded bg-green-500/15 text-green-400">✓</span>
-            )}
             {mode === "action" && a.onApprove && (
-              <button onClick={a.onApprove} disabled={a.approving} className={cn("flex-shrink-0 text-[10px] font-medium px-2 py-1 rounded-md transition-colors disabled:opacity-50", BTN_V[a.btnVariant || "purple"])}>
+              <button onClick={(e) => { e.stopPropagation(); a.onApprove?.(); }} disabled={a.approving}
+                className="text-[8px] px-1.5 py-0.5 rounded shrink-0" style={{ background: `${T.purple}15`, color: T.purple }}>
                 {a.approving ? "..." : (a.btnLabel || "Onayla")}
               </button>
             )}
+            {mode === "auto" && <span className="text-[7px] px-1 rounded shrink-0" style={{ background: `${T.ok}15`, color: T.ok }}>✓</span>}
           </div>
         );
       })}
@@ -84,313 +97,258 @@ export function DobodySlot({ actions, compact }: { actions: DobodyAction[]; comp
   );
 }
 
+// ═══ MINISTATS (JSX S satırları) ═══
 interface MiniStatRow { label: string; value: string | number; color?: string; }
-export function MiniStats({ title, rows, linkText, onLink }: { title: string; rows: MiniStatRow[]; linkText?: string; onLink?: () => void; }) {
+export function MiniStats({ title, rows, linkText, onLink }: { title: string; rows: MiniStatRow[]; linkText?: string; onLink?: () => void }) {
   return (
-    <div className="rounded-xl border overflow-hidden">
-      <div className="px-3 py-2 border-b bg-muted/30 text-[11px] font-medium">{title}</div>
-      <div className="px-3 py-2 space-y-1.5">
-        {rows.map((r, i) => (
-          <div key={i} className="flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">{r.label}</span>
-            <span className="font-semibold" style={{ color: r.color }}>{r.value}</span>
-          </div>
-        ))}
-        {linkText && onLink && <button onClick={onLink} className="text-[10px] text-blue-400 mt-1 hover:underline block">{linkText} →</button>}
-      </div>
-    </div>
+    <Widget title={title} onClick={onLink}>
+      {rows.map((r, i) => (
+        <div key={i} className="flex justify-between text-[9px] px-2.5 py-0.5">
+          <span style={{ color: T.muted }}>{r.label}</span>
+          <span className="font-semibold" style={{ color: r.color || T.text }}>{r.value}</span>
+        </div>
+      ))}
+    </Widget>
   );
 }
 
-interface ProgRow { label: string; value: number; max?: number; color?: string; }
-export function ProgressWidget({ title, rows, linkText, onLink }: { title: string; rows: ProgRow[]; linkText?: string; onLink?: () => void; }) {
+// ═══ PROGRESS WIDGET (JSX P birebir) ═══
+interface ProgRow { label: string; value: number; max?: number; }
+export function ProgressWidget({ title, rows }: { title: string; rows: ProgRow[]; linkText?: string; onLink?: () => void }) {
   return (
-    <div className="rounded-xl border overflow-hidden">
-      <div className="px-3 py-2 border-b bg-muted/30 text-[11px] font-medium">{title}</div>
-      <div className="px-3 py-2 space-y-2">
-        {rows.map((r, i) => {
-          const pct = Math.min(100, Math.round((r.value / (r.max || 100)) * 100));
-          const color = r.color || (pct >= 80 ? "#4ade80" : pct >= 60 ? "#fbbf24" : "#f87171");
-          return (
-            <div key={i} className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground w-[52px] flex-shrink-0 truncate">{r.label}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-border"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} /></div>
-              <span className="text-[10px] font-semibold w-7 text-right" style={{ color }}>{r.max ? r.value : `%${pct}`}</span>
+    <Widget title={title}>
+      {rows.map((r, i) => {
+        const mx = r.max || 100;
+        const p = Math.min(100, Math.round((r.value / mx) * 100));
+        const c = p >= 80 ? T.ok : p >= 60 ? T.warn : T.alert;
+        return (
+          <div key={i} className="flex items-center gap-1.5 px-2.5 py-0.5">
+            <span className="text-[8px] w-12 shrink-0 truncate" style={{ color: T.muted }}>{r.label}</span>
+            <div className="flex-1 h-1 rounded-full" style={{ background: T.border }}>
+              <div className="h-full rounded-full" style={{ width: `${p}%`, background: c }} />
             </div>
-          );
-        })}
-        {linkText && onLink && <button onClick={onLink} className="text-[10px] text-blue-400 mt-0.5 hover:underline block">{linkText} →</button>}
-      </div>
-    </div>
-  );
-}
-
-interface WidgetProps { title: ReactNode; badge?: ReactNode; action?: ReactNode; children: ReactNode; className?: string; noPadding?: boolean; }
-export function Widget({ title, badge, action, children, className, noPadding }: WidgetProps) {
-  return (
-    <div className={cn("rounded-xl border overflow-hidden", className)}>
-      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
-        <span className="text-[11px] font-medium flex-1">{title}</span>
-        {badge}{action}
-      </div>
-      <div className={noPadding ? "" : "p-0"}>{children}</div>
-    </div>
-  );
-}
-
-interface ListItemProps { priority?: string; priorityColor?: string; title: string; meta?: string; slaLabel?: string; slaColor?: string; slaPct?: number; action?: ReactNode; onClick?: () => void; }
-export function ListItem({ priority, priorityColor, title, meta, slaLabel, slaColor, slaPct, action, onClick }: ListItemProps) {
-  return (
-    <div onClick={onClick} className={cn("flex items-center gap-2 px-3 py-2 border-b last:border-0 text-[11px]", onClick && "cursor-pointer hover:bg-muted/30 transition-colors")}>
-      {priority && <span className="text-[9px] font-semibold flex-shrink-0 w-9 text-center px-1 py-0.5 rounded" style={{ color: priorityColor, background: `${priorityColor}20` }}>{priority}</span>}
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{title}</div>
-        {meta && <div className="text-[10px] text-muted-foreground truncate mt-0.5">{meta}</div>}
-      </div>
-      {slaPct !== undefined && (
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-border"><div className="h-full rounded-full" style={{ width: `${slaPct}%`, background: slaColor }} /></div>
-          <span className="text-[9px] font-medium" style={{ color: slaColor }}>{slaLabel}</span>
-        </div>
-      )}
-      {action}
-    </div>
-  );
-}
-
-interface CentrumShellProps {
-  title: string; subtitle?: string; roleLabel: string; roleColor: string; roleBg: string;
-  kpis: KpiChipProps[]; actions?: ReactNode;
-  tabs?: { label: string; badge?: string | number }[];
-  activeTab?: number; onTabChange?: (i: number) => void;
-  children: ReactNode; rightPanel?: ReactNode; className?: string;
-}
-
-export function CentrumShell({ title, subtitle, roleLabel, roleColor, roleBg, kpis, actions, tabs, activeTab = 0, onTabChange, children, rightPanel, className }: CentrumShellProps) {
-  return (
-    <div className={cn("flex flex-col h-full", className)}>
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b flex-shrink-0">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-[13px] font-semibold">{title}</h1>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: roleBg, color: roleColor }}>{roleLabel}</span>
+            <span className="text-[8px] font-semibold w-6 text-right" style={{ color: c }}>{r.value}</span>
           </div>
-          {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
-        </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        );
+      })}
+    </Widget>
+  );
+}
+
+// ═══ LIST ITEM (JSX R birebir) ═══
+interface ListItemProps { title: string; meta?: string; priority?: string; priorityColor?: string; slaLabel?: string; slaColor?: string; slaPct?: number; action?: ReactNode; onClick?: () => void; }
+
+export function ListItem({ title, meta, priority, priorityColor, onClick }: ListItemProps) {
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1 border-b last:border-0 ${onClick ? "cursor-pointer hover:bg-white/[0.02]" : ""}`}
+      style={{ borderColor: T.border }} onClick={onClick}>
+      {priority && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: priorityColor || T.muted }} />}
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-medium truncate" style={{ color: T.text }}>{title}</p>
+        {meta && <p className="text-[8px] truncate" style={{ color: T.muted }}>{meta}</p>}
       </div>
-      {kpis.length > 0 && (
-        <div className="flex gap-2 px-4 py-2 border-b flex-shrink-0 overflow-x-auto">
-          {kpis.map((kpi, i) => <KpiChip key={i} {...kpi} />)}
-        </div>
-      )}
-      {tabs && (
-        <div className="flex border-b flex-shrink-0 px-4 bg-muted/20">
-          {tabs.map((tab, i) => (
-            <button key={i} onClick={() => onTabChange?.(i)} className={cn("py-2 px-3 text-[11px] border-b-2 transition-colors whitespace-nowrap", i === activeTab ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}>
-              {tab.label}
-              {tab.badge !== undefined && <span className="ml-1.5 text-[9px] bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full">{tab.badge}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">{children}</div>
-        {rightPanel && <div className="w-[200px] flex-shrink-0 border-l overflow-y-auto p-3 space-y-3">{rightPanel}</div>}
-      </div>
+      {priority && <span className="text-[8px] font-semibold shrink-0" style={{ color: priorityColor || T.muted }}>{priority}</span>}
     </div>
   );
 }
 
-// ─── v5 COMPONENTS ──────────────────────────────────────
+// ═══ BADGE (JSX B birebir) ═══
+export function Badge({ text, color }: { text: string; color: string }) {
+  return <span className="text-[7px] px-1.5 py-0.5 rounded-full shrink-0" style={{ background: `${color}20`, color }}>{text}</span>;
+}
 
-// ─── TIME FILTER ────────────────────────────────────────
-export type TimePeriod = "today" | "week" | "month" | "quarter";
-const TIME_LABELS: Record<TimePeriod, string> = { today: "Bugün", week: "Bu Hafta", month: "Bu Ay", quarter: "Bu Çeyrek" };
+// ═══ TIME FILTER ═══
+const TIME_LABELS: Record<TimePeriod, string> = { today: "Bugün", week: "Bu Hafta", month: "Bu Ay", quarter: "Çeyrek" };
 
-export function TimeFilter({ value, onChange, className }: { value: TimePeriod; onChange: (v: TimePeriod) => void; className?: string }) {
+export function TimeFilter({ value, onChange }: { value: TimePeriod; onChange: (v: TimePeriod) => void; className?: string }) {
   return (
-    <div className={cn("flex gap-1", className)}>
-      {(Object.keys(TIME_LABELS) as TimePeriod[]).map((key) => (
-        <button key={key} onClick={() => onChange(key)}
-          className={cn("text-[10px] px-2.5 py-1 rounded-md transition-all border", value === key ? "bg-blue-500/10 text-blue-400 border-blue-500/25 font-medium" : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30")}>
-          {TIME_LABELS[key]}
+    <div className="flex gap-1">
+      {(Object.keys(TIME_LABELS) as TimePeriod[]).map(k => (
+        <button key={k} onClick={() => onChange(k)} className="text-[8px] px-1.5 py-0.5 rounded-md"
+          style={{ background: value === k ? `${T.info}15` : "transparent", color: value === k ? T.info : T.muted }}>
+          {TIME_LABELS[k]}
         </button>
       ))}
     </div>
   );
 }
 
-// ─── ESCALATION BADGE ───────────────────────────────────
-interface EscalationItem { id: number | string; title: string; meta?: string; level: number; maxLevel?: number; slaHours?: number; onClick?: () => void; }
-
+// ═══ ESCALATION BADGE ═══
+interface EscalationItem { id: number | string; title: string; level: number; color?: string; }
 export function EscalationBadge({ items, title = "Eskalasyon" }: { items: EscalationItem[]; title?: string }) {
-  if (items.length === 0) return null;
-  const levelColor = (lv: number) => lv >= 4 ? "text-red-400 bg-red-500/15" : lv >= 3 ? "text-amber-400 bg-amber-500/15" : "text-blue-400 bg-blue-500/15";
   return (
-    <Widget title={title} badge={<span className="text-[9px] bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full">{items.length}</span>}>
-      {items.map((item) => (
-        <ListItem key={item.id} title={item.title} meta={item.meta} onClick={item.onClick}
-          priority={`K${item.level}`} priorityColor={item.level >= 4 ? "#f87171" : item.level >= 3 ? "#fbbf24" : "#60a5fa"}
-          slaLabel={item.slaHours ? `${item.slaHours}s` : undefined} slaColor={item.slaHours && item.slaHours <= 12 ? "#f87171" : "#fbbf24"}
-          slaPct={item.slaHours ? Math.min(100, (item.slaHours / 72) * 100) : undefined} />
+    <Widget title={title} onClick={() => {}}>
+      {items.map(e => (
+        <ListItem key={e.id} title={e.title} priority={`K${e.level}`} priorityColor={e.level >= 4 ? T.alert : T.warn} onClick={() => {}} />
       ))}
     </Widget>
   );
 }
 
-// ─── TOP / FLOP SIRALAMA ────────────────────────────────
+// ═══ TOP FLOP (JSX TF2 birebir) ═══
 interface RankedBranch { id: number; name: string; score: number; }
-
 export function TopFlop({ branches, onBranchClick, onViewAll }: { branches: RankedBranch[]; onBranchClick?: (id: number) => void; onViewAll?: () => void }) {
-  const sorted = useMemo(() => [...branches].sort((a, b) => b.score - a.score), [branches]);
-  const top3 = sorted.slice(0, 3);
-  const flop3 = sorted.length > 3 ? sorted.slice(-3).reverse() : [];
-  const scoreColor = (s: number) => s >= 70 ? "#4ade80" : s >= 50 ? "#fbbf24" : "#f87171";
-
+  const sorted = [...branches].sort((a, b) => b.score - a.score);
   return (
-    <Widget title="🏆 Top 3 / ⚠ Flop 3"
-      badge={onViewAll && <button onClick={onViewAll} className="text-[9px] text-blue-400 hover:underline">Tüm şubeler →</button>}>
-      <div className="px-3 py-1"><span className="text-[9px] font-medium text-green-400">EN İYİ</span></div>
-      {top3.map((b, i) => (
-        <ListItem key={b.id} title={`${i + 1}. ${b.name}`} onClick={onBranchClick ? () => onBranchClick(b.id) : undefined}
-          priority={`${b.score}`} priorityColor={scoreColor(b.score)} />
+    <Widget title="🏆Top3 / ⚠Flop3" onClick={onViewAll}>
+      <div className="px-2.5 py-0.5"><span className="text-[8px]" style={{ color: T.ok }}>EN İYİ</span></div>
+      {sorted.slice(0, 3).map((b, i) => (
+        <ListItem key={`t${i}`} title={`${i + 1}. ${b.name}`} priority={`${b.score}`} priorityColor={T.ok} onClick={() => onBranchClick?.(b.id)} />
       ))}
-      {flop3.length > 0 && <>
-        <div className="px-3 py-1 border-t"><span className="text-[9px] font-medium text-red-400">EN ZAYIF</span></div>
-        {flop3.map((b, i) => (
-          <ListItem key={b.id} title={`${sorted.length - 2 + i}. ${b.name}`} onClick={onBranchClick ? () => onBranchClick(b.id) : undefined}
-            priority={`${b.score}`} priorityColor={scoreColor(b.score)} />
-        ))}
-      </>}
+      <div className="px-2.5 py-0.5 border-t" style={{ borderColor: T.border }}><span className="text-[8px]" style={{ color: T.alert }}>EN ZAYIF</span></div>
+      {sorted.slice(-3).reverse().map((b, i) => (
+        <ListItem key={`f${i}`} title={b.name} priority={`${b.score}`} priorityColor={T.alert} onClick={() => onBranchClick?.(b.id)} />
+      ))}
     </Widget>
   );
 }
 
-// ─── DOBODY STEP-BY-STEP GÖREV PLANI ────────────────────
+// ═══ DOBODY TASK PLAN (JSX DTP birebir) ═══
 interface TaskPlanItem { id: number | string; title: string; sub?: string; estimatedMinutes?: number; navigateTo?: string; }
-
 export function DobodyTaskPlan({ tasks, onComplete, onNavigate }: { tasks: TaskPlanItem[]; onComplete?: (id: number | string) => void; onNavigate?: (path: string) => void }) {
-  const [done, setDone] = useState<Set<number | string>>(new Set());
-  const toggle = (id: number | string) => {
-    setDone(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
-    onComplete?.(id);
-  };
-
+  const [done, setDone] = useState<Set<number>>(new Set());
   return (
-    <Widget title="📋 Dobody Günlük Plan"
-      badge={<span className={cn("text-[9px] px-1.5 py-0.5 rounded-full", done.size === tasks.length ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400")}>{done.size}/{tasks.length}</span>}>
+    <Widget title="📋 Dobody Plan" badge={<Badge text={`${done.size}/${tasks.length}`} color={done.size === tasks.length ? T.ok : T.warn} />}>
       {tasks.map((t, i) => (
-        <div key={t.id} className="flex items-center gap-2 px-3 py-2 border-b last:border-0">
-          <button onClick={() => toggle(t.id)}
-            className={cn("w-5 h-5 rounded flex items-center justify-center text-[9px] flex-shrink-0 transition-all border", done.has(t.id) ? "bg-green-500/20 border-green-500/40 text-green-400" : "bg-muted/40 border-border text-muted-foreground")}>
-            {done.has(t.id) ? "✓" : i + 1}
+        <div key={t.id || i} className="flex items-center gap-1.5 px-2.5 py-1 border-b last:border-0" style={{ borderColor: T.border }}>
+          <button onClick={() => { setDone(p => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; }); onComplete?.(t.id); }}
+            className="w-3.5 h-3.5 rounded flex items-center justify-center text-[7px] shrink-0"
+            style={{ background: done.has(i) ? `${T.ok}25` : T.border, color: done.has(i) ? T.ok : T.muted }}>
+            {done.has(i) ? "✓" : i + 1}
           </button>
-          <div className="flex-1 min-w-0" style={{ opacity: done.has(t.id) ? 0.4 : 1 }}>
-            <p className={cn("text-[11px] font-medium", done.has(t.id) && "line-through")}>{t.title}</p>
-            {t.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{t.sub}</p>}
+          <div className="flex-1 cursor-pointer" style={{ opacity: done.has(i) ? 0.4 : 1 }}
+            onClick={() => t.navigateTo && onNavigate?.(t.navigateTo)}>
+            <p className="text-[9px] font-medium" style={{ color: T.text, textDecoration: done.has(i) ? "line-through" : "none" }}>{t.title}</p>
+            {t.sub && <p className="text-[8px]" style={{ color: T.muted }}>{t.sub}</p>}
           </div>
-          {t.estimatedMinutes && <span className="text-[9px] text-muted-foreground flex-shrink-0">{t.estimatedMinutes}dk</span>}
-          {t.navigateTo && onNavigate && (
-            <button onClick={() => onNavigate(t.navigateTo!)} className="text-[9px] text-blue-400 flex-shrink-0 hover:underline">→</button>
-          )}
         </div>
       ))}
     </Widget>
   );
 }
 
-// ─── MİSAFİR GERİ BİLDİRİM + SLA WIDGET ───────────────
-interface FeedbackItem { id: number; rating: number; comment?: string; time: string; source?: string; customerName?: string; slaHoursLeft?: number; needsResponse?: boolean; onClick?: () => void; }
-
+// ═══ FEEDBACK WIDGET (JSX FB birebir) ═══
+interface FeedbackItem { id: number | string; rating?: number; comment?: string; time?: string; source?: string; customerName?: string; slaHoursLeft?: number; needsResponse?: boolean; onClick?: () => void; }
 export function FeedbackWidget({ items, showSLA = true, title = "⭐ Misafir Geri Bildirim", onViewAll }: { items: FeedbackItem[]; showSLA?: boolean; title?: string; onViewAll?: () => void }) {
-  const pendingSLA = items.filter(f => f.needsResponse).length;
-  const ratingColor = (r: number) => r >= 4 ? "#4ade80" : r >= 3 ? "#fbbf24" : "#f87171";
-
+  const slaCount = items.filter(f => f.needsResponse).length;
   return (
-    <Widget title={title}
-      badge={<>
-        {pendingSLA > 0 && showSLA && <span className="text-[9px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full">{pendingSLA} SLA bekliyor</span>}
-        {onViewAll && <button onClick={onViewAll} className="text-[9px] text-blue-400 hover:underline ml-1">Tümü →</button>}
-      </>}>
-      {items.map((f) => (
-        <ListItem key={f.id} title={`${f.rating}★ — ${f.comment || "Yorum yok"}`}
-          meta={`${f.time} · ${f.source || "QR"} · ${f.customerName || "Anonim"}`}
-          onClick={f.onClick}
-          priority={`${f.rating}★`} priorityColor={ratingColor(f.rating)}
-          slaLabel={showSLA && f.needsResponse && f.slaHoursLeft ? `${f.slaHoursLeft}s` : undefined}
-          slaColor={f.slaHoursLeft && f.slaHoursLeft <= 6 ? "#f87171" : "#fbbf24"}
-          slaPct={showSLA && f.slaHoursLeft ? Math.min(100, ((24 - f.slaHoursLeft) / 24) * 100) : undefined} />
-      ))}
-      {items.length === 0 && <p className="text-[10px] text-muted-foreground px-3 py-3">Yeni geri bildirim yok</p>}
-    </Widget>
-  );
-}
-
-// ─── LOST & FOUND BANNER ────────────────────────────────
-interface LostFoundItem { id: number; description: string; foundArea: string; foundTime: string; foundByName?: string; }
-
-export function LostFoundBanner({ item, onClick }: { item: LostFoundItem | null; onClick?: () => void }) {
-  if (!item) return null;
-  return (
-    <button onClick={onClick}
-      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-500/25 bg-blue-500/[0.06] text-left hover:bg-blue-500/10 transition-colors">
-      <span className="text-sm flex-shrink-0">🔍</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-medium text-blue-400">Kayıp Eşya Bulundu!</p>
-        <p className="text-[10px] text-muted-foreground truncate">
-          {item.description} — {item.foundArea} · {item.foundTime}{item.foundByName ? ` · ${item.foundByName} buldu` : ""}
-        </p>
-      </div>
-      <span className="text-[10px] text-blue-400 flex-shrink-0">detay →</span>
-    </button>
-  );
-}
-
-// ─── QC STATUS WIDGET ───────────────────────────────────
-interface QCStatusData { todayTotal: number; pending: number; approved: number; rejected: number; passRate: number; overdueCount?: number; oldestPendingHours?: number; }
-
-export function QCStatusWidget({ data, onViewAll }: { data: QCStatusData | null; onViewAll?: () => void }) {
-  if (!data) return null;
-  return (
-    <Widget title="🔬 Kalite Kontrol"
-      badge={<>
-        {data.pending > 0 && <span className="text-[9px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded-full">{data.pending} bekleyen</span>}
-        {(data.overdueCount ?? 0) > 0 && <span className="text-[9px] bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full ml-1">{data.overdueCount} yapılmamış!</span>}
-        {onViewAll && <button onClick={onViewAll} className="text-[9px] text-blue-400 hover:underline ml-1">QC →</button>}
-      </>}>
-      <div className="grid grid-cols-4 gap-2 p-3">
-        {[
-          { label: "Toplam", value: data.todayTotal, color: undefined },
-          { label: "Geçme %", value: `%${data.passRate}`, color: data.passRate >= 90 ? "text-green-400" : "text-amber-400" },
-          { label: "Onaylı", value: data.approved, color: "text-green-400" },
-          { label: "Red", value: data.rejected, color: data.rejected > 0 ? "text-red-400" : undefined },
-        ].map((item, i) => (
-          <div key={i} className="text-center">
-            <div className={cn("text-sm font-bold", item.color)}>{item.value}</div>
-            <div className="text-[9px] text-muted-foreground">{item.label}</div>
+    <Widget title={title} onClick={onViewAll} badge={items.length > 0 ? <Badge text={`${items.length} yeni`} color={T.warn} /> : undefined}>
+      {items.map((f) => {
+        const dot = (f.rating || 5) <= 2.5 ? T.alert : (f.rating || 5) >= 4 ? T.ok : T.warn;
+        return (
+          <div key={f.id} className="flex items-center gap-1.5 px-2.5 py-1 border-b last:border-0 cursor-pointer hover:bg-white/[0.02]"
+            style={{ borderColor: T.border }} onClick={f.onClick}>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-medium truncate" style={{ color: T.text }}>{f.rating}★ {f.comment}</p>
+              <p className="text-[8px] truncate" style={{ color: T.muted }}>{f.time}·{f.source}·{f.customerName || "Anonim"}</p>
+            </div>
+            <span className="text-[8px] font-semibold shrink-0" style={{ color: dot }}>
+              {showSLA && f.slaHoursLeft ? `SLA ${f.slaHoursLeft}s!` : `${f.rating}★`}
+            </span>
           </div>
-        ))}
-      </div>
-      {data.oldestPendingHours && data.oldestPendingHours > 2 && (
-        <div className="px-3 py-1.5 border-t bg-amber-500/5">
-          <span className="text-[10px] text-amber-400">⚠ En eski bekleyen: {data.oldestPendingHours} saat önce üretildi</span>
+        );
+      })}
+      {showSLA && slaCount > 0 && (
+        <div className="px-2.5 py-1" style={{ background: `${T.warn}08` }}>
+          <span className="text-[8px]" style={{ color: T.warn }}>⏰ {slaCount} yanıt bekliyor (SLA: 4 saat)</span>
         </div>
       )}
     </Widget>
   );
 }
 
-// ─── CLICKABLE WIDGET (tıklanabilir wrapper) ────────────
-export function ClickableWidget({ title, badge, onClick, children, className }: { title: ReactNode; badge?: ReactNode; onClick: () => void; children: ReactNode; className?: string }) {
+// ═══ LOST & FOUND BANNER (JSX LF birebir) ═══
+interface LostFoundItem { id: number | string; description: string; foundArea?: string; foundTime?: string; foundByName?: string; }
+export function LostFoundBanner({ item, onClick }: { item: LostFoundItem | null; onClick?: () => void }) {
+  if (!item) return null;
   return (
-    <div onClick={onClick} className={cn("rounded-xl border overflow-hidden cursor-pointer hover:border-blue-500/25 transition-colors", className)}>
-      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/30">
-        <span className="text-[11px] font-medium flex-1">{title}</span>
-        {badge}
-        <span className="text-[9px] text-blue-400">→</span>
+    <div className="rounded-xl border overflow-hidden cursor-pointer hover:border-amber-500/30"
+      style={{ borderColor: `${T.warn}40`, background: `${T.warn}06` }} onClick={onClick}>
+      <div className="flex items-center gap-2 px-2.5 py-1.5">
+        <span className="text-[10px]">🔍</span>
+        <div className="flex-1">
+          <p className="text-[9px] font-medium" style={{ color: T.text }}>Kayıp Eşya Bulundu!</p>
+          <p className="text-[8px]" style={{ color: T.muted }}>{item.description} · {item.foundArea} · {item.foundTime}{item.foundByName ? ` · ${item.foundByName} buldu` : ""}</p>
+        </div>
+        <span className="text-[8px]" style={{ color: T.info }}>Detay →</span>
       </div>
-      <div>{children}</div>
     </div>
   );
 }
+
+// ═══ QC STATUS WIDGET ═══
+interface QCStatusData { todayTotal: number; pending: number; approved: number; rejected: number; passRate: number; overdueCount: number; oldestPendingHours?: number; }
+export function QCStatusWidget({ data, onViewAll }: { data: QCStatusData | null; onViewAll?: () => void }) {
+  if (!data) return null;
+  return (
+    <Widget title="QC Durum" onClick={onViewAll}>
+      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: T.muted }}>Bekleyen</span><span className="font-semibold" style={{ color: data.pending > 0 ? T.warn : T.ok }}>{data.pending} lot</span></div>
+      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: T.muted }}>Onay</span><span className="font-semibold" style={{ color: T.ok }}>{data.approved}</span></div>
+      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: T.muted }}>Red</span><span className="font-semibold" style={{ color: data.rejected > 0 ? T.alert : T.text }}>{data.rejected}</span></div>
+      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: T.muted }}>Geçiş oranı</span><span className="font-semibold" style={{ color: data.passRate >= 90 ? T.ok : T.warn }}>%{data.passRate}</span></div>
+    </Widget>
+  );
+}
+
+// ═══ CENTRUM SHELL (Ana layout) ═══
+interface CentrumShellProps {
+  title: string; subtitle?: string;
+  roleLabel?: string; roleColor?: string; roleBg?: string;
+  kpis?: { label: string; value: string | number; variant: KpiVariant; sub?: string }[];
+  actions?: ReactNode; tabs?: { label: string }[];
+  activeTab?: number; onTabChange?: (i: number) => void;
+  children: ReactNode; rightPanel?: ReactNode; className?: string;
+}
+
+export function CentrumShell({ title, subtitle, roleLabel, roleColor, roleBg, kpis, actions, tabs, activeTab = 0, onTabChange, children, rightPanel }: CentrumShellProps) {
+  return (
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: T.bg, color: T.text }}>
+      {/* Header bar */}
+      <div className="flex items-center gap-2 px-3 py-1 border-b shrink-0" style={{ borderColor: T.border }}>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] font-semibold">{title}</span>
+            {roleLabel && <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ background: roleBg || `${roleColor}18`, color: roleColor }}>{roleLabel}</span>}
+          </div>
+          {subtitle && <p className="text-[8px]" style={{ color: T.muted }}>{subtitle}</p>}
+        </div>
+        {actions}
+      </div>
+
+      {/* KPI strip */}
+      {kpis && kpis.length > 0 && (
+        <div className="flex gap-1 px-2.5 py-1 border-b shrink-0 overflow-x-auto" style={{ borderColor: T.border }}>
+          {kpis.map((k, i) => <KpiChip key={i} label={k.label} value={k.value} variant={k.variant} sub={k.sub} />)}
+        </div>
+      )}
+
+      {/* Tabs */}
+      {tabs && tabs.length > 0 && (
+        <div className="flex border-b px-2 overflow-x-auto shrink-0" style={{ borderColor: T.border }}>
+          {tabs.map((tab, i) => (
+            <button key={i} onClick={() => onTabChange?.(i)} className="py-1 px-2 text-[9px] border-b-2 shrink-0"
+              style={{ borderColor: i === activeTab ? T.ok : "transparent", color: i === activeTab ? T.text : T.muted }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Content + Right panel */}
+      <div className="flex gap-2 flex-1 overflow-hidden p-2">
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {children}
+        </div>
+        {rightPanel && (
+          <div className="w-[170px] shrink-0 space-y-2 overflow-y-auto">
+            {rightPanel}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══ RE-EXPORT TOKEN (diğer sayfalar kullanabilir) ═══
+export { T as DSTokens };

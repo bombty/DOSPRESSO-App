@@ -1,160 +1,91 @@
 /* ═══════════════════════════════════════════════════════════
-   DOSPRESSO DESIGN SYSTEM v2.0
+   DOSPRESSO DESIGN SYSTEM v3.0
+   Onaylanan JSX prototype'dan birebir token eşleşme
    Tek kaynak — bu dosyayı değiştirmek tüm sistemi günceller
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Backgrounds ── */
-  --ds-bg-page: #0a1628;
-  --ds-bg-card: #0f1d32;
-  --ds-bg-card-hover: #152640;
-  --ds-bg-header: #0c1a2e;
-  --ds-bg-input: #0f1d32;
-  --ds-bg-widget-inner: rgba(15,29,50,0.6);
+  --ds-bg-page: #0c0f14;
+  --ds-bg-card: #141820;
+  --ds-bg-card-hover: #1a2030;
+  --ds-bg-header: #080a0f;
+  --ds-bg-input: #141820;
+  --ds-bg-widget-header: rgba(30, 37, 48, 0.25);
 
-  /* ── Borders ── */
-  --ds-border: #1a2d48;
-  --ds-border-hover: #2a4060;
-  --ds-border-subtle: rgba(26,45,72,0.5);
-  --ds-border-red: rgba(192,57,43,0.25);
+  --ds-border: #1e2530;
+  --ds-border-hover: #2a3545;
+  --ds-border-subtle: rgba(30, 37, 48, 0.5);
 
-  /* ── Text ── */
-  --ds-text-primary: #f2e6d0;
-  --ds-text-secondary: #8a7d6d;
-  --ds-text-mid: #c8b698;
-  --ds-text-muted: #6a7d6d;
+  --ds-text-primary: #e8ecf1;
+  --ds-text-muted: #6b7a8d;
 
-  /* ── Brand colors ── */
-  --ds-red: #c0392b;
-  --ds-red-light: #e74c3c;
-  --ds-blue: #5dade2;
-  --ds-green: #27ae60;
-  --ds-amber: #d4a84b;
-  --ds-purple: #9b59b6;
+  --ds-alert: #ef4444;
+  --ds-warn: #fbbf24;
+  --ds-ok: #22c55e;
+  --ds-info: #60a5fa;
+  --ds-purple: #a5a0f0;
 
-  /* ── Badge backgrounds ── */
-  --ds-badge-success-bg: rgba(39,174,96,0.12);
-  --ds-badge-success-text: #27ae60;
-  --ds-badge-warning-bg: rgba(212,168,75,0.12);
-  --ds-badge-warning-text: #d4a84b;
-  --ds-badge-danger-bg: rgba(192,57,43,0.14);
-  --ds-badge-danger-text: #e74c3c;
-  --ds-badge-info-bg: rgba(41,128,185,0.10);
-  --ds-badge-info-text: #5dade2;
-  --ds-badge-muted-bg: rgba(138,125,109,0.10);
-  --ds-badge-muted-text: #8a7d6d;
+  --ds-alert-bg: rgba(239,68,68,0.08);
+  --ds-warn-bg: rgba(251,191,36,0.08);
+  --ds-ok-bg: rgba(34,197,94,0.08);
+  --ds-info-bg: rgba(96,165,250,0.08);
+  --ds-purple-bg: rgba(165,160,240,0.06);
 
-  /* ── Alert pill backgrounds ── */
-  --ds-pill-danger-bg: rgba(192,57,43,0.12);
-  --ds-pill-danger-border: rgba(192,57,43,0.2);
-  --ds-pill-info-bg: rgba(41,128,185,0.10);
-  --ds-pill-info-border: rgba(41,128,185,0.15);
-  --ds-pill-warning-bg: rgba(212,168,75,0.10);
-  --ds-pill-warning-border: rgba(212,168,75,0.15);
+  --ds-alert-border: rgba(239,68,68,0.30);
+  --ds-warn-border: rgba(251,191,36,0.30);
+  --ds-ok-border: rgba(34,197,94,0.30);
+  --ds-info-border: rgba(96,165,250,0.30);
+  --ds-purple-border: rgba(165,160,240,0.30);
 
-  /* ── Icon container backgrounds ── */
-  --ds-icon-red-bg: rgba(192,57,43,0.15);
-  --ds-icon-blue-bg: rgba(41,128,185,0.12);
-  --ds-icon-green-bg: rgba(39,174,96,0.12);
-  --ds-icon-amber-bg: rgba(212,168,75,0.10);
-  --ds-icon-purple-bg: rgba(155,89,182,0.10);
-  --ds-icon-muted-bg: rgba(138,125,109,0.10);
+  --ds-badge-alert-bg: rgba(239,68,68,0.20);
+  --ds-badge-warn-bg: rgba(251,191,36,0.20);
+  --ds-badge-ok-bg: rgba(34,197,94,0.20);
+  --ds-badge-info-bg: rgba(96,165,250,0.20);
+  --ds-badge-purple-bg: rgba(165,160,240,0.20);
 
-  /* ── Spacing ── */
-  --ds-gap-xs: 5px;
-  --ds-gap-sm: 8px;
-  --ds-gap-md: 12px;
-  --ds-gap-lg: 16px;
-  --ds-gap-xl: 24px;
-  --ds-gap-2xl: 32px;
+  --ds-dobody-bg: rgba(165,160,240,0.06);
+  --ds-dobody-border: rgba(165,160,240,0.40);
+  --ds-dobody-divider: rgba(165,160,240,0.08);
+  --ds-dobody-btn-bg: rgba(165,160,240,0.15);
 
-  /* ── Card ── */
-  --ds-card-radius: 14px;
-  --ds-card-padding: 18px 20px;
-  --ds-card-border: 1px solid var(--ds-border);
-  --ds-card-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
-  --ds-card-shadow-hover: 0 6px 20px rgba(0,0,0,0.25);
+  --ds-lost-bg: rgba(251,191,36,0.06);
+  --ds-lost-border: rgba(251,191,36,0.40);
 
-  /* ── Widget ── */
+  --ds-btn-ok-bg: rgba(34,197,94,0.15);
+  --ds-btn-purple-bg: rgba(165,160,240,0.15);
+  --ds-btn-blue-bg: rgba(96,165,250,0.15);
+  --ds-btn-alert-bg: rgba(239,68,68,0.15);
+  --ds-btn-warn-bg: rgba(251,191,36,0.15);
+
+  --ds-card-radius: 12px;
   --ds-widget-radius: 12px;
-  --ds-widget-padding: 16px;
-  --ds-widget-border: 1px solid var(--ds-border);
-
-  /* ── KPI ── */
-  --ds-kpi-radius: 10px;
-  --ds-kpi-padding: 10px 14px;
-
-  /* ── Typography ── */
-  --ds-font-page-title: 20px;
-  --ds-font-card-title: 16px;
-  --ds-font-card-subtitle: 12px;
-  --ds-font-widget-title: 14px;
-  --ds-font-badge: 11px;
-  --ds-font-status: 12px;
-  --ds-font-kpi-value: 18px;
-  --ds-font-kpi-label: 10px;
-  --ds-font-pill: 12px;
-  --ds-font-small: 11px;
-  --ds-font-tiny: 9px;
-
-  /* ── Icons ── */
-  --ds-icon-container: 40px;
-  --ds-icon-container-radius: 10px;
-  --ds-icon-svg: 20px;
-  --ds-icon-container-sm: 34px;
-  --ds-icon-svg-sm: 16px;
-
-  /* ── Layout ── */
-  --ds-max-width: 1200px;
-  --ds-page-padding-x: 24px;
-  --ds-page-padding-y: 20px;
-  --ds-header-height: 52px;
-
-  /* ── Transitions ── */
-  --ds-transition: all 0.18s ease;
 }
 
-/* ═══════════════════════════════════════
-   MC Dashboard KPI Overrides
-   KPI kartları daha kompakt ve orantılı
-   ═══════════════════════════════════════ */
-
-/* MC dashboard KPI kartları — küçült */
-[data-testid*="mission-control"] .grid-cols-3 > div,
-[data-testid*="mission-control"] .grid-cols-4 > div,
-[data-testid*="mission-control"] .grid-cols-5 > div,
-[data-testid*="mission-control"] .grid-cols-6 > div,
-[data-testid*="mc-"] .grid-cols-3 > div,
-[data-testid*="mc-"] .grid-cols-4 > div,
-[data-testid*="mc-"] .grid-cols-5 > div,
-[data-testid*="mc-"] .grid-cols-6 > div {
-  padding: 8px 10px !important;
+.ds-card {
+  background: var(--ds-bg-card);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-card-radius);
+  overflow: hidden;
 }
-
-/* KPI değer fontları küçült */
-[data-testid*="mission-control"] .text-2xl,
-[data-testid*="mc-"] .text-2xl {
-  font-size: 1.25rem !important;
+.ds-card-header {
+  background: var(--ds-bg-widget-header);
+  border-bottom: 1px solid var(--ds-border);
+  padding: 6px 10px;
 }
-
-[data-testid*="mission-control"] .text-3xl,
-[data-testid*="mc-"] .text-3xl {
-  font-size: 1.5rem !important;
+.ds-widget-clickable { cursor: pointer; transition: border-color 0.15s; }
+.ds-widget-clickable:hover { border-color: rgba(96,165,250,0.30); }
+.ds-dobody {
+  border: 1px dashed var(--ds-dobody-border);
+  background: var(--ds-dobody-bg);
+  border-radius: var(--ds-card-radius);
+  overflow: hidden;
 }
-
-/* KPI label fontları */
-[data-testid*="mission-control"] .text-xs.text-muted-foreground,
-[data-testid*="mc-"] .text-xs.text-muted-foreground {
-  font-size: 10px !important;
+.ds-lost-found {
+  border: 1px solid var(--ds-lost-border);
+  background: var(--ds-lost-bg);
+  border-radius: var(--ds-card-radius);
+  overflow: hidden; cursor: pointer; transition: border-color 0.15s;
 }
-
-/* Card spacing daha kompakt */
-[data-testid*="mission-control"] .space-y-4 > * + *,
-[data-testid*="mc-"] .space-y-4 > * + * {
-  margin-top: 0.75rem !important;
-}
-
-[data-testid*="mission-control"] .space-y-3 > * + *,
-[data-testid*="mc-"] .space-y-3 > * + * {
-  margin-top: 0.5rem !important;
-}
+.ds-lost-found:hover { border-color: rgba(251,191,36,0.60); }
+.ds-progress-track { background: var(--ds-border); height: 4px; border-radius: 9999px; }
+.ds-row-hover:hover { background: rgba(255,255,255,0.02); }
