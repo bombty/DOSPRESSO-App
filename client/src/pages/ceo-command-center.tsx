@@ -37,7 +37,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { DobodyFlowMode } from "@/components/dobody-flow-mode";
 

@@ -68,7 +68,7 @@ export default function FabrikaCentrum() {
           passRate: qcStats.today.passRate,
           overdueCount: qualityOverview?.overdueQC ?? 0,
           oldestPendingHours: qualityOverview?.oldestPendingHours,
-        } : null} onViewAll={() => window.location.href = "/fabrika/kalite-kontrol"} />
+        } : null} onViewAll={() => window.location.href = "/kalite-kontrol-dashboard"} />
 
         <Widget title="Sevkiyat">
           {(shipments ?? []).slice(0, 4).map((s: any, i: number) => (

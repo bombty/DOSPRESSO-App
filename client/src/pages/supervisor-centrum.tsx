@@ -50,7 +50,7 @@ export default function SupervisorCentrum() {
       ]}
       actions={<TimeFilter value={period} onChange={setPeriod} />}
       rightPanel={<DobodySlot actions={[
-        { id: 1, title: "Personel değerlendirme yap", sub: `${evalDone}/2 zorunlu`, mode: "action", btnLabel: "Başla", onApprove: () => setLocation("/degerlendirme") },
+        { id: 1, title: "Personel değerlendirme yap", sub: `${evalDone}/2 zorunlu`, mode: "action", btnLabel: "Başla", onApprove: () => setLocation("/yonetici-degerlendirme") },
         { id: 2, title: "Vardiya planı kontrol", sub: "Yarın izinli kişi var", mode: "info" },
         { id: 3, title: "GB cevapla", sub: "SLA bekliyor", mode: "action", btnLabel: "Cevapla", onApprove: () => {} },
       ]} />}

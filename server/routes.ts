@@ -22,6 +22,7 @@ import hqSummaryRoutes from "./routes/hq-summary";
 import coachSummaryRoutes from "./routes/coach-summary";
 import franchiseSummaryRoutes from "./routes/franchise-summary";
 import franchiseInvestorRoutes from "./routes/franchise-investors";
+import centrumEndpoints from "./routes/centrum-endpoints";
 import dobodyFlowRoutes from "./routes/dobody-flow";
 import dobodyAvatarRoutes from "./routes/dobody-avatars";
 import dobodyTaskManagerRoutes from "./routes/dobody-task-manager";
@@ -1212,6 +1213,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(coachSummaryRoutes);
   app.use(franchiseSummaryRoutes);
   app.use(franchiseInvestorRoutes);
+  app.use(centrumEndpoints);
   app.use(dobodyFlowRoutes);
   app.use(dobodyAvatarRoutes);
   app.use(dobodyTaskManagerRoutes);
