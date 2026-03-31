@@ -95,8 +95,70 @@ const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'satinalma', 'teknik', 'destek', 'fabrika', 'yatirimci_hq'];
 
+function DobodyBranchWidget({ branchId }: { branchId?: number }) {
+  const { data: actions = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "branch", branchId],
+    queryFn: async () => {
+      if (!branchId) return [];
+      const res = await fetch(`/api/agent/actions?status=pending&branchId=${branchId}&limit=3`, { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return Array.isArray(d) ? d : (d.actions || []);
+    },
+    enabled: !!branchId,
+    staleTime: 5 * 60 * 1000,
+  });
+  if (actions.length === 0) return null;
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-medium" style={{ color: "#a5a0f0" }}>◈ Dobody Önerileri</span>
+          <span className="text-[10px] px-1.5 rounded-full font-medium" style={{ background: "rgba(127,119,221,0.15)", color: "#a5a0f0" }}>{actions.length}</span>
+        </div>
+        <div className="space-y-2">
+          {actions.map((a: any) => (
+            <div key={a.id} className="text-xs p-2 rounded-lg" style={{ background: "rgba(127,119,221,0.06)", border: "0.5px dashed rgba(127,119,221,0.3)" }}>
+              <div className="font-medium">{a.title}</div>
+              <div className="text-muted-foreground mt-0.5 line-clamp-2">{a.description}</div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SubeDashboard() {
   const { user } = useAuth();
+
+  // Dobody branch widget
+  const { data: branchActions = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "branch-pending", user?.branchId],
+    queryFn: async () => {
+      if (!user?.branchId) return [];
+      const res = await fetch(`/api/agent/actions?status=pending&branchId=${user.branchId}&limit=5`, { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return Array.isArray(d) ? d : (d.actions || []);
+    },
+    enabled: !!user?.branchId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: branchHealth } = useQuery<any>({
+    queryKey: ["/api/agent/branch-health", user?.branchId],
+    queryFn: async () => {
+      if (!user?.branchId) return null;
+      const res = await fetch(`/api/agent/branch-health?branchId=${user.branchId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      const d = await res.json();
+      const branches = d?.branches || [];
+      return branches.find((b: any) => b.branchId === user?.branchId) || null;
+    },
+    enabled: !!user?.branchId,
+    staleTime: 10 * 60 * 1000,
+  });
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [branchAuth, setBranchAuth] = useState<any>(null);
@@ -383,6 +445,9 @@ export default function SubeDashboard() {
 
             <TodaysTasksWidget />
 
+            {/* Dobody Önerileri — Şube */}
+            <DobodyBranchWidget branchId={selectedBranchId || dashboardData?.branchId} />
+
             {(dashboardData?.alerts?.length || 0) > 0 && (
               <Card>
                 <CardHeader className="pb-1 pt-3 px-3">
@@ -638,6 +703,40 @@ export default function SubeDashboard() {
           </>
         )}
       </div>
+
+      {/* Şube Dobody Widget */}
+      {branchActions.length > 0 && (
+        <div className="mt-4 rounded-xl border p-4" style={{ borderColor: 'rgba(127,119,221,0.3)', background: 'rgba(127,119,221,0.04)' }}>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <span style={{ color: '#a5a0f0' }}>◈</span> Dobody Önerileri
+          </h3>
+          <div className="space-y-2">
+            {branchActions.slice(0, 3).map((action: any) => (
+              <div key={action.id} className="flex items-start gap-2 text-sm">
+                <span className="text-amber-400 mt-0.5">⚠</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{action.title}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">{action.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* Şube Sağlık Mini */}
+      {branchHealth && (
+        <div className="mt-3 rounded-xl border p-3 flex items-center gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground">Şube Sağlık</div>
+            <div className="text-2xl font-bold" style={{ color: branchHealth.totalScore >= 80 ? '#22c55e' : branchHealth.totalScore >= 60 ? '#fbbf24' : '#ef4444' }}>
+              {Math.round(branchHealth.totalScore || 0)}
+            </div>
+          </div>
+          <div className="flex-1 h-2 rounded-full bg-muted">
+            <div className="h-full rounded-full" style={{ width: `${branchHealth.totalScore || 0}%`, background: branchHealth.totalScore >= 80 ? '#22c55e' : branchHealth.totalScore >= 60 ? '#fbbf24' : '#ef4444' }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -116,6 +116,7 @@ const PATH_LABELS: Record<string, string> = {
   '/coach-uyum-paneli': 'Uyum Paneli',
   '/admin/rol-yetkileri': 'Rol Yetkileri',
   '/cgo-teknik-komuta': 'Teknik Komuta',
+  '/cowork': 'Cowork',
   '/coach-kontrol-merkezi': 'Kontrol Merkezi',
   '/trainer-egitim-merkezi': 'Eğitim Merkezi',
   '/tarif': 'Tarifler',

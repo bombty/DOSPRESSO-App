@@ -1166,3 +1166,48 @@ export type ShiftTradeStatus = "taslak" | "calisan_onayi" | "yonetici_onayi" | "
 // ========================================
 // DYNAMIC MENU CONFIGURATION TABLES
 // ========================================
+
+// ─── Cowork Sistemi ─────────────────────────────────────────────────────────
+export const coworkChannels = pgTable("cowork_channels", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdById: text("created_by_id").references(() => users.id),
+  isPrivate: boolean("is_private").default(false),
+  allowedBranchIds: text("allowed_branch_ids"), // JSON array of branch IDs
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  isActive: boolean("is_active").default(true),
+});
+
+export const coworkChannelMembers = pgTable("cowork_channel_members", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").references(() => coworkChannels.id),
+  userId: text("user_id").references(() => users.id),
+  role: text("role").$type<'owner'|'admin'|'member'>().default('member'),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow(),
+});
+
+export const coworkMessages = pgTable("cowork_messages", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").references(() => coworkChannels.id),
+  senderId: text("sender_id").references(() => users.id),
+  content: text("content").notNull(),
+  messageType: text("message_type").$type<'text'|'task_created'|'file'|'dobody'>().default('text'),
+  metadata: text("metadata"), // JSON: task ref, file info etc.
+  isEdited: boolean("is_edited").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const coworkTasks = pgTable("cowork_tasks", {
+  id: serial("id").primaryKey(),
+  channelId: integer("channel_id").references(() => coworkChannels.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  assignedToId: text("assigned_to_id").references(() => users.id),
+  createdById: text("created_by_id").references(() => users.id),
+  status: text("status").$type<'todo'|'in_progress'|'done'>().default('todo'),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});

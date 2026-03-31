@@ -1352,6 +1352,17 @@ export default function BranchKiosk() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a1628', overflow: 'hidden' }}>
 
+        {/* Dobody Uyarısı — kritik bildirimler */}
+        {kioskNotifications.filter((n: any) => n.type === 'dobody_alert' || n.priority === 'critical').slice(0, 1).map((n: any) => (
+          <div key={n.id} style={{ margin: '8px 12px 0', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(127,119,221,0.18)', borderLeft: '3px solid #7F77DD' }}>
+            <span style={{ color: '#a5a0f0', fontSize: 14 }}>◈</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#a5a0f0' }}>{n.title}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>{n.message}</div>
+            </div>
+          </div>
+        ))}
+
         {/* Header */}
         <div style={{ background: '#c0392b', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -1,3 +1,12 @@
+
+const SOURCE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  hq_manual:       { label: "HQ-Manuel",  color: "#93c5fd", bg: "rgba(59,130,246,0.12)" },
+  dobody:          { label: "Dobody",      color: "#a5a0f0", bg: "rgba(127,119,221,0.12)" },
+  periodic:        { label: "Periyodik",   color: "#fbbf24", bg: "rgba(245,158,11,0.12)" },
+  shift_bound:     { label: "Vardiya",     color: "#2dd4bf", bg: "rgba(20,184,166,0.12)" },
+  branch_internal: { label: "Şube-İçi",   color: "#86efac", bg: "rgba(34,197,94,0.08)" },
+};
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -171,6 +180,15 @@ export default function TaskTakip() {
                     {task.branchName || `Şube #${task.branchId}`}
                     {task.assignedToName && ` · ${task.assignedToName}`}
                   </div>
+                  {/* İlerleme takibi — toplu atama */}
+                  {task.totalAssigned > 1 && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted max-w-[100px]">
+                        <div className="h-full rounded-full bg-green-500" style={{ width: `${Math.round(((task.completedCount || 0) / task.totalAssigned) * 100)}%` }} />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{task.completedCount || 0}/{task.totalAssigned} tamamladı</span>
+                    </div>
+                  )}
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-center font-medium"
                   style={{ background: src.bg, color: src.color }}>

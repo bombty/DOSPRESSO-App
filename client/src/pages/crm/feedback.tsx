@@ -179,16 +179,27 @@ export default function CRMFeedback() {
 
   const respondMutation = useMutation({
     mutationFn: async ({ id, content }: { id: number; content: string }) => {
-      return apiRequest("POST", `/api/customer-feedback/${id}/response`, {
-        responseType: "defense",
-        content,
+      // P0: SLA akışı — branch-respond endpoint'i kullan (feedbackStatus günceller)
+      const branchRes = await fetch(`/api/customer-feedback/${id}/branch-respond`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ responseText: content }),
       });
+      if (!branchRes.ok) {
+        // Fallback: eski response endpoint
+        return apiRequest("POST", `/api/customer-feedback/${id}/response`, {
+          responseType: "defense",
+          content,
+        });
+      }
+      return branchRes.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-feedback"] });
       setShowResponse(false);
       setResponseText("");
-      toast({ title: "Yanıt eklendi" });
+      toast({ title: "Yanıt gönderildi", description: "Misafir geri bildirimi yanıtlandı" });
     },
     onError: () => {
       toast({ title: "Hata", description: "Yanıt eklenemedi", variant: "destructive" });

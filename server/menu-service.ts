@@ -355,6 +355,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
     group: "management",
     items: [
       {
+        id: "cowork",
+        titleTr: "Cowork",
+        path: "/cowork",
+        icon: "Users",
+        moduleKey: "mesajlar",
+        scope: "hq",
+      },
+      {
         id: "ceo-command-center",
         titleTr: "Komuta Merkezi",
         path: "/ceo-command-center",
@@ -657,23 +665,23 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
   ],
   ceo: [
-    'dashboard', 'ceo-command-center', 'crm-main', 'tasks-list', 'reports', 'ajanda',
+    'dashboard', 'ceo-command-center', 'crm-main', 'tasks-list', 'reports', 'cowork',
   ],
   cgo: [
-    'dashboard', 'cgo-teknik-komuta', 'crm-main', 'tasks-list', 'reports', 'ajanda',
+    'dashboard', 'cgo-teknik-komuta', 'crm-main', 'tasks-list', 'reports', 'cowork',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
-    'dashboard', 'coach-kontrol-merkezi', 'crm-main', 'tasks-list', 'reports', 'ajanda',
+    'dashboard', 'coach-kontrol-merkezi', 'crm-main', 'tasks-list', 'reports', 'cowork',
   ],
   destek: [
     'dashboard', 'branches-list', 'equipment', 'faults',
     'crm-main', 'notifications',
   ],
   trainer: [
-    'dashboard', 'trainer-egitim-merkezi', 'crm-main', 'tasks-list', 'training-academy-hq', 'ajanda',
+    'dashboard', 'trainer-egitim-merkezi', 'crm-main', 'tasks-list', 'training-academy-hq', 'cowork',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety',

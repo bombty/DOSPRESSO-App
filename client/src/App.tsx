@@ -180,6 +180,7 @@ const RolYetkileri = lazyWithRetry(() => import("@/pages/admin/rol-yetkileri"));
 const TaskAtama = lazyWithRetry(() => import("@/pages/task-atama"));
 const TaskTakip = lazyWithRetry(() => import("@/pages/task-takip"));
 const CgoTeknikKomuta = lazyWithRetry(() => import("@/pages/cgo-teknik-komuta"));
+const Cowork = lazyWithRetry(() => import("@/pages/cowork"));
 const CoachKontrolMerkezi = lazyWithRetry(() => import("@/pages/coach-kontrol-merkezi"));
 const TrainerEgitimMerkezi = lazyWithRetry(() => import("@/pages/trainer-egitim-merkezi"));
 const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici-degerlendirme"));
@@ -200,6 +201,7 @@ const AdminMegaModule = lazyWithRetry(() => import("@/pages/admin-mega"));
 const AkademiMegaModule = lazyWithRetry(() => import("@/pages/akademi-mega"));
 const AkademiV3 = lazyWithRetry(() => import("@/pages/akademi-v3/index"));
 const CRMMegaModule = lazyWithRetry(() => import("@/pages/crm-mega"));
+const IletisimMerkeziRedirect = () => { const [,nav] = (require("wouter") as any).useLocation(); (require("react") as any).useEffect(() => nav("/crm"), []); return null; };
 const AjandaPage = lazyWithRetry(() => import("@/pages/ajanda"));
 const CEOCommandCenter = lazyWithRetry(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"));
@@ -294,7 +296,7 @@ function StokRedirect() {
 }
 function IletisimRedirect() {
   const [, setLocation] = useLocation();
-  useEffect(() => { setLocation("/iletisim-merkezi", { replace: true }); }, [setLocation]);
+  useEffect(() => { setLocation("/crm", { replace: true }); }, [setLocation]);
   return null;
 }
 
@@ -368,6 +370,8 @@ function Router() {
           <Route path="/vardiya" component={VardiyaRedirect} />
           <Route path="/stok" component={StokRedirect} />
           <Route path="/iletisim" component={IletisimRedirect} />
+          <Route path="/crm" component={CRMMegaModule} />
+          <Route path="/crm/:tab?" component={CRMMegaModule} />
           <Route path="/personel/:id" component={PersonelProfil} />
           <Route path="/personel-detay/:id" component={PersonelDetay} />
           <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />
@@ -459,6 +463,7 @@ function Router() {
           <Route path="/task-atama" component={TaskAtama} />
           <Route path="/task-takip" component={TaskTakip} />
           <Route path="/cgo-teknik-komuta" component={CgoTeknikKomuta} />
+          <Route path="/cowork" component={Cowork} />
           <Route path="/coach-kontrol-merkezi" component={CoachKontrolMerkezi} />
           <Route path="/trainer-egitim-merkezi" component={TrainerEgitimMerkezi} />
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
@@ -526,7 +531,7 @@ function Router() {
           <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
-          <Route path="/iletisim-merkezi" component={CRMMegaModule} />
+          <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />
         </>
       )}
       

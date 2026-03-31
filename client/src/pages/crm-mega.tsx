@@ -406,6 +406,43 @@ function TaskChannelContent() {
   );
 }
 
+
+// P0: Şube Misafir Cevap Formu
+function BranchFeedbackRespond({ feedbackId, onSuccess }: { feedbackId: number; onSuccess: () => void }) {
+  const [response, setResponse] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const respond = async () => {
+    if (!response.trim()) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/customer-feedback/${feedbackId}/branch-respond`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ responseText: response }),
+      });
+      onSuccess();
+      setResponse("");
+    } catch(e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+  return (
+    <div className="mt-4 space-y-2">
+      <div className="text-xs font-medium text-green-500 mb-1">Misafire Yanıt Yaz (SLA Kapsamında)</div>
+      <textarea
+        value={response} onChange={e => setResponse(e.target.value)}
+        placeholder="Misafire göndereceğiniz yanıtı yazın..."
+        className="w-full border rounded-lg p-3 text-sm bg-background resize-none outline-none"
+        rows={3}
+      />
+      <button onClick={respond} disabled={!response.trim() || saving}
+        className="w-full py-2 rounded-lg bg-green-500/15 text-green-500 border border-green-500/20 text-sm font-medium hover:bg-green-500/25 disabled:opacity-50">
+        {saving ? "Kaydediliyor..." : "Yanıtı Kaydet → SLA Kapat"}
+      </button>
+    </div>
+  );
+}
+
 function MisafirHqNote({ ticketId }: { ticketId: number }) {
   const [note, setNote] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
@@ -714,6 +751,14 @@ export default function CRMMegaModule() {
               {isHQ && channel === "misafir" && selectedTicketId && (
                 <TabsContent value="hq-note" className="mt-0">
                   <MisafirHqNote ticketId={selectedTicketId} />
+                </TabsContent>
+              )}
+              {!isHQ && channel === "misafir" && selectedTicketId && (
+                <TabsContent value="branch-respond" className="mt-0">
+                  <BranchFeedbackRespond
+                    feedbackId={selectedTicketId}
+                    onSuccess={() => {}}
+                  />
                 </TabsContent>
               )}
             </Suspense>

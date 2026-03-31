@@ -1257,7 +1257,16 @@ export default function VardiyaPlanlama() {
                         
                         {/* Existing shifts */}
                         {(periodShifts[day.dateStr] || []).length === 0 && !hasPreview ? (
-                          <p className="text-xs text-muted-foreground text-center py-3">-</p>
+                          <div>
+                            {isGap && dobodyWarnings.length > 0 ? (
+                              <div className="p-1.5 text-center">
+                                <div className="text-[10px] font-medium mb-0.5" style={{ color: '#a5a0f0' }}>◈ Dobody</div>
+                                <p className="text-[10px] text-amber-500">Boş vardiya — personel ata</p>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground text-center py-3">-</p>
+                            )}
+                          </div>
                         ) : (
                           (periodShifts[day.dateStr] || []).map((shift: any) => {
                             if (!shift?.id) return null;

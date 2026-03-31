@@ -4141,6 +4141,28 @@ function ensurePermission(user: Express.User, module: string, action: string, er
               branchId,
             });
           }
+          // P0: 2★ altı → feedback'i HQ müdahale gerekiyor olarak işaretle
+          try {
+            await pool.query(`
+              UPDATE customer_feedback 
+              SET hq_intervention_required = true, feedback_status = 'hq_reviewing'
+              WHERE id = $1
+            `, [savedFeedback[0]?.id]);
+            // Coach + Trainer'a da bildirim git
+            const hqAlertUsers = await db.select({ id: users.id }).from(users)
+              .where(and(eq(users.isActive, true), sql`${users.role} IN ('coach','trainer','ceo')`));
+            for (const hqUser of hqAlertUsers) {
+              await storage.createNotification({
+                userId: hqUser.id,
+                type: 'feedback_alert',
+                title: `⚠️ Düşük Puan — ${branchName} HQ Müdahale`,
+                message: `${branchName}: ${rating}/5 puan. Şubenin yanıt vermesini takip edin.`,
+                link: '/crm?channel=misafir',
+                isRead: false,
+                branchId,
+              });
+            }
+          } catch(e) { console.error("[FeedbackAlert] HQ intervention flag error:", e); }
         } else if (rating === 3) {
           for (const userId of supervisorIds) {
             await storage.createNotification({

@@ -65,6 +65,51 @@ export async function migrateCrmTaskTables(): Promise<void> {
       WHERE source_type IS NULL;
     `);
 
+
+    // Cowork tabloları
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cowork_channels (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        created_by_id TEXT,
+        is_private BOOLEAN DEFAULT false,
+        allowed_branch_ids TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        is_active BOOLEAN DEFAULT true
+      );
+      CREATE TABLE IF NOT EXISTS cowork_channel_members (
+        id SERIAL PRIMARY KEY,
+        channel_id INTEGER REFERENCES cowork_channels(id),
+        user_id TEXT,
+        role TEXT DEFAULT 'member',
+        joined_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS cowork_messages (
+        id SERIAL PRIMARY KEY,
+        channel_id INTEGER REFERENCES cowork_channels(id),
+        sender_id TEXT,
+        content TEXT NOT NULL,
+        message_type TEXT DEFAULT 'text',
+        metadata TEXT,
+        is_edited BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS cowork_tasks (
+        id SERIAL PRIMARY KEY,
+        channel_id INTEGER REFERENCES cowork_channels(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        assigned_to_id TEXT,
+        created_by_id TEXT,
+        status TEXT DEFAULT 'todo',
+        due_date TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
     console.log("[CRMTaskMigration] ✅ Tables ready");
   } catch (err) {
     console.error("[CRMTaskMigration] Error:", err);

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, AlertTriangle, CheckCircle2, RefreshCw, Clock } from "lucide-react";
+import { GraduationCap, AlertTriangle, CheckCircle2, RefreshCw, Clock, Plus, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,6 +10,10 @@ export default function TrainerEgitimMerkezi() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [period, setPeriod] = useState("week");
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignBranch, setAssignBranch] = useState("");
+  const [assignModule, setAssignModule] = useState("");
+  const [assignDue, setAssignDue] = useState("");
 
   const { data: compliance, isLoading, isError } = useQuery<any>({
     queryKey: ["/api/agent/compliance-overview", period],
@@ -61,6 +65,25 @@ export default function TrainerEgitimMerkezi() {
     staleTime: 60000,
   });
 
+  // Eğitim atama mutation
+  const assignTrainingMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/tasks", {
+      description: `Eğitim: ${data.module}`,
+      branchId: parseInt(data.branchId),
+      sourceType: 'hq_manual',
+      status: 'beklemede',
+      priority: 'yüksek',
+      dueDate: data.dueDate || null,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Eğitim atandı", description: "Şube bilgilendirildi" });
+      setShowAssignModal(false);
+      setAssignBranch("");
+      setAssignModule("");
+    },
+  });
+
   const approveMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/agent/actions/${id}/approve`),
     onSuccess: () => {
@@ -73,6 +96,43 @@ export default function TrainerEgitimMerkezi() {
   const summary = compliance?.summary;
 
   return (
+    <>
+    {/* Eğitim Ata Modal */}
+    {showAssignModal && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-background rounded-xl border shadow-xl w-full max-w-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Eğitim Ata</h3>
+            <button onClick={() => setShowAssignModal(false)} className="text-muted-foreground hover:text-foreground"><X size={16}/></button>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Eğitim Modülü</label>
+              <input value={assignModule} onChange={e => setAssignModule(e.target.value)}
+                placeholder="Örn: Temel Hijyen Eğitimi"
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Şube ID</label>
+              <input value={assignBranch} onChange={e => setAssignBranch(e.target.value)}
+                placeholder="Şube ID (sayı)"
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background outline-none" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Son Tarih</label>
+              <input type="date" value={assignDue} onChange={e => setAssignDue(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm bg-background outline-none" />
+            </div>
+          </div>
+          <button
+            onClick={() => assignTrainingMutation.mutate({ module: assignModule, branchId: assignBranch, dueDate: assignDue })}
+            disabled={!assignModule.trim() || !assignBranch || assignTrainingMutation.isPending}
+            className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
+            {assignTrainingMutation.isPending ? "Atanıyor..." : "Eğitim Ata"}
+          </button>
+        </div>
+      </div>
+    )}
     <div className="p-4 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
@@ -210,5 +270,7 @@ export default function TrainerEgitimMerkezi() {
         </div>
       </div>
     </div>
+  );
+    </>
   );
 }

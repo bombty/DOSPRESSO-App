@@ -425,6 +425,7 @@ import employeeBenefitsRouter from "./routes/employee-benefits-routes";
 import announcementsRouter from "./routes/announcements-routes";
 import trainingProgramRouter from "./routes/training-program-routes";
 import cgoRouter from "./routes/cgo-routes";
+import coworkRouter from "./routes/cowork-routes";
 import qualityAuditsRouter from "./routes/quality-audits-routes";
 import systemHealthRouter from "./routes/system-health-routes";
 import hqSupportRouter from "./routes/hq-support-routes";
@@ -877,6 +878,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(announcementsRouter);
   app.use(trainingProgramRouter);
   app.use(cgoRouter);
+  app.use(coworkRouter);
+  app.use(coworkRouter);
   app.use(qualityAuditsRouter);
   app.use(systemHealthRouter);
   app.use(hqSupportRouter);
