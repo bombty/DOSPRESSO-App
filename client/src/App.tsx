@@ -208,6 +208,17 @@ const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"
 const HQDashboard = lazyWithRetry(() => import("@/pages/hq-dashboard"));
 const SatinalmaMega = lazyWithRetry(() => import("@/pages/satinalma-mega"));
 
+// Centrum v5 pages
+const MuhasebeCentrum = lazyWithRetry(() => import("@/pages/muhasebe-centrum"));
+const SatinalmaCentrum = lazyWithRetry(() => import("@/pages/satinalma-centrum"));
+const FabrikaCentrum = lazyWithRetry(() => import("@/pages/fabrika-centrum"));
+const DepoCentrum = lazyWithRetry(() => import("@/pages/depo-centrum"));
+const SubeCentrum = lazyWithRetry(() => import("@/pages/sube-centrum"));
+const SupervisorCentrum = lazyWithRetry(() => import("@/pages/supervisor-centrum"));
+const SupBuddyCentrum = lazyWithRetry(() => import("@/pages/supbuddy-centrum"));
+const PersonelCentrum = lazyWithRetry(() => import("@/pages/personel-centrum"));
+const YatirimciCentrum = lazyWithRetry(() => import("@/pages/yatirimci-centrum"));
+
 const SubeSaglikSkoru = lazyWithRetry(() => import("@/pages/sube-saglik-skoru"));
 const HqVardiyaGoruntuleme = lazyWithRetry(() => import("@/pages/hq-vardiya-goruntuleme"));
 const HQPersonelIstatistikleri = lazyWithRetry(() => import("@/pages/hq-personel-istatistikleri"));
@@ -466,6 +477,16 @@ function Router() {
           <Route path="/cowork" component={Cowork} />
           <Route path="/coach-kontrol-merkezi" component={CoachKontrolMerkezi} />
           <Route path="/trainer-egitim-merkezi" component={TrainerEgitimMerkezi} />
+          {/* Centrum v5 pages */}
+          <Route path="/muhasebe-centrum" component={MuhasebeCentrum} />
+          <Route path="/satinalma-centrum" component={SatinalmaCentrum} />
+          <Route path="/fabrika-centrum" component={FabrikaCentrum} />
+          <Route path="/depo-centrum" component={DepoCentrum} />
+          <Route path="/sube-centrum" component={SubeCentrum} />
+          <Route path="/supervisor-centrum" component={SupervisorCentrum} />
+          <Route path="/supbuddy-centrum" component={SupBuddyCentrum} />
+          <Route path="/personel-centrum" component={PersonelCentrum} />
+          <Route path="/yatirimci-centrum" component={YatirimciCentrum} />
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
           <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
           <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />

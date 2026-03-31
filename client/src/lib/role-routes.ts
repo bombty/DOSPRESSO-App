@@ -52,28 +52,41 @@ export const ROLE_HOME_ROUTES: Record<string, string> = {
 
 /** Map role to its Control/MC dashboard page */
 export const ROLE_CONTROL_PATH: Record<string, string> = {
-  ceo: '/hq-ozet',
-  cgo: '/hq-ozet',
-  admin: '/hq-ozet',
-  coach: '/kocluk-paneli',
-  trainer: '/hq-dashboard/trainer',
-  supervisor: '/sube-ozet',
-  supervisor_buddy: '/sube-ozet',
-  mudur: '/sube-ozet',
-  muhasebe: '/merkez-dashboard',
-  muhasebe_ik: '/merkez-dashboard',
-  yatirimci_branch: '/franchise-ozet',
-  yatirimci_hq: '/franchise-ozet',
-  fabrika_mudur: '/fabrika/dashboard',
-  uretim_sefi: '/fabrika/dashboard',
-  barista: '/benim-gunum',
-  bar_buddy: '/benim-gunum',
-  stajyer: '/benim-gunum',
-  satinalma: '/hq-dashboard/satinalma',
+  // HQ roles → Centrum
+  ceo: '/ceo-command-center',
+  cgo: '/cgo-teknik-komuta',
+  admin: '/ceo-command-center',
+  coach: '/coach-kontrol-merkezi',
+  trainer: '/trainer-egitim-merkezi',
+  muhasebe: '/muhasebe-centrum',
+  muhasebe_ik: '/muhasebe-centrum',
+  ik: '/muhasebe-centrum',
+  satinalma: '/satinalma-centrum',
+  gida_muhendisi: '/fabrika-centrum',
+  kalite_kontrol: '/fabrika-centrum',
+
+  // Fabrika + Depo
+  fabrika_mudur: '/fabrika-centrum',
+  uretim_sefi: '/fabrika-centrum',
+  fabrika_depo: '/depo-centrum',
+  fabrika_pisman: '/fabrika-centrum',
+  fabrika_kalite: '/fabrika-centrum',
+
+  // Şube rolleri
+  mudur: '/sube-centrum',
+  supervisor: '/supervisor-centrum',
+  supervisor_buddy: '/supbuddy-centrum',
+  barista: '/personel-centrum',
+  bar_buddy: '/personel-centrum',
+  stajyer: '/personel-centrum',
+
+  // Yatırımcı
+  yatirimci_branch: '/yatirimci-centrum',
+  yatirimci_hq: '/yatirimci-centrum',
+
+  // Diğer HQ
   marketing: '/hq-dashboard/marketing',
-  gida_muhendisi: '/hq-dashboard',
-  kalite_kontrol: '/kalite-kontrol-dashboard',
-  teknik: '/hq-dashboard/teknik',
+  teknik: '/cgo-teknik-komuta',
   destek: '/hq-dashboard/destek',
 };
 
