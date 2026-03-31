@@ -32,10 +32,10 @@ export function ProgressRing({
   const autoColor = color
     ? color
     : pct >= 75
-      ? "var(--dospresso-green, #27ae60)"
+      ? "var(--dospresso-green, #22c55e)"
       : pct >= 50
-        ? "var(--dospresso-amber, #d4a84b)"
-        : "var(--dospresso-red-light, #e74c3c)";
+        ? "var(--dospresso-amber, #fbbf24)"
+        : "var(--dospresso-red-light, #f87171)";
 
   return (
     <div

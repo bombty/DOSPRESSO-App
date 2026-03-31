@@ -210,13 +210,13 @@ export default function ControlDashboard() {
 
         {/* Row 4: Mr. Dobody full width */}
         <WidgetCard title="" span={3} style={{
-          background: "rgba(192,57,43,0.04)",
-          border: "1px solid rgba(192,57,43,0.18)",
+          background: "rgba(239,68,68,0.04)",
+          border: "1px solid rgba(239,68,68,0.18)",
         }}>
           <div style={{ display: "flex", gap: 14 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8,
-              background: "rgba(192,57,43,0.12)",
+              background: "rgba(239,68,68,0.12)",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}>
@@ -237,9 +237,9 @@ export default function ControlDashboard() {
                   <span key={label} style={{
                     fontSize: "var(--ds-font-kpi-label)", fontWeight: 500,
                     padding: "4px 10px", borderRadius: 5,
-                    border: "1px solid rgba(192,57,43,0.2)",
+                    border: "1px solid rgba(239,68,68,0.2)",
                     color: "var(--ds-text-mid)",
-                    background: "rgba(192,57,43,0.04)",
+                    background: "rgba(239,68,68,0.04)",
                     cursor: "pointer",
                   }}>
                     {label}

@@ -169,7 +169,7 @@ export default function CoachKontrolMerkezi() {
             return (
               <button key={b.branchId} onClick={() => setSelectedBranch(b)}
                 className="w-full text-left px-4 py-3 border-b hover:bg-muted/30 transition-colors"
-                style={{ borderLeft: isSelected ? "3px solid #c0392b" : "3px solid transparent", background: isSelected ? "rgba(192,57,43,0.05)" : undefined }}>
+                style={{ borderLeft: isSelected ? "3px solid #ef4444" : "3px solid transparent", background: isSelected ? "rgba(239,68,68,0.05)" : undefined }}>
                 <div className="flex items-center gap-2.5">
                   <ScoreRing score={b.overallScore} size={36} />
                   <div className="flex-1 min-w-0">

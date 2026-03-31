@@ -56,7 +56,7 @@ export default function SubePinYonetimi() {
     <div className="p-4 max-w-4xl mx-auto space-y-4" data-testid="sube-pin-yonetimi">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-[#c0392b]" />
+          <KeyRound className="h-5 w-5 text-[#ef4444]" />
           Şube Kiosk PIN Yönetimi
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -137,7 +137,7 @@ export default function SubePinYonetimi() {
                       <Button
                         size="sm"
                         variant={s.hasPin ? "outline" : "default"}
-                        className={s.hasPin ? "" : "bg-[#c0392b] hover:bg-[#a93226]"}
+                        className={s.hasPin ? "" : "bg-[#ef4444] hover:bg-[#dc2626]"}
                         onClick={() => { setPinDialog({ open: true, user: s }); setNewPin(""); }}
                         data-testid={`btn-set-pin-${s.id}`}
                       >
@@ -158,7 +158,7 @@ export default function SubePinYonetimi() {
         <DialogContent className="max-w-sm" data-testid="dialog-set-pin">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-[#c0392b]" />
+              <KeyRound className="h-5 w-5 text-[#ef4444]" />
               PIN {pinDialog?.user?.hasPin ? "Değiştir" : "Ata"}
             </DialogTitle>
           </DialogHeader>

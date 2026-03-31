@@ -28,10 +28,10 @@ export function Sparkline({
   const trend = points[points.length - 1] - points[0];
   const trendColor = color || (
     trend > 0
-      ? "var(--dospresso-green, #27ae60)"
+      ? "var(--dospresso-green, #22c55e)"
       : trend < 0
-        ? "var(--dospresso-red, #c0392b)"
-        : "var(--dospresso-bej-muted, #8a7d6d)"
+        ? "var(--dospresso-red, #ef4444)"
+        : "var(--dospresso-bej-muted, #6b7a8d)"
   );
 
   const coords = points.map((val, i) => ({

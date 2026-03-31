@@ -279,7 +279,7 @@ export function BottomNav() {
             <span>Çevrimdışı</span>
           </div>
         )}
-        <div className="flex items-center justify-around h-14 sm:max-w-md mx-auto px-1 sm:px-2 sm:rounded-2xl rounded-none bg-[#0a1628] backdrop-blur-xl border-t sm:border border-[#1a2d48] sm:shadow-xl">
+        <div className="flex items-center justify-around h-14 sm:max-w-md mx-auto px-1 sm:px-2 sm:rounded-2xl rounded-none bg-[#0c0f14] backdrop-blur-xl border-t sm:border border-[#1e2530] sm:shadow-xl">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);

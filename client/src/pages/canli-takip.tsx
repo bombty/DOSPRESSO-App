@@ -163,7 +163,7 @@ export default function CanliTakip() {
               )}
               style={{
                 padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                background: selectedBranchIds.length === branches.length ? '#c0392b' : 'var(--color-background-secondary)',
+                background: selectedBranchIds.length === branches.length ? '#ef4444' : 'var(--color-background-secondary)',
                 color: selectedBranchIds.length === branches.length ? '#fff' : 'var(--color-text-secondary)',
                 border: '1px solid var(--color-border-secondary)'
               }}
@@ -176,9 +176,9 @@ export default function CanliTakip() {
                 onClick={() => toggleBranch(b.id)}
                 style={{
                   padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                  background: selectedBranchIds.includes(b.id) ? 'rgba(192,57,43,0.15)' : 'var(--color-background-secondary)',
-                  color: selectedBranchIds.includes(b.id) ? '#c0392b' : 'var(--color-text-secondary)',
-                  border: `1px solid ${selectedBranchIds.includes(b.id) ? 'rgba(192,57,43,0.4)' : 'var(--color-border-secondary)'}`
+                  background: selectedBranchIds.includes(b.id) ? 'rgba(239,68,68,0.15)' : 'var(--color-background-secondary)',
+                  color: selectedBranchIds.includes(b.id) ? '#ef4444' : 'var(--color-text-secondary)',
+                  border: `1px solid ${selectedBranchIds.includes(b.id) ? 'rgba(239,68,68,0.4)' : 'var(--color-border-secondary)'}`
                 }}
               >
                 {b.name}
@@ -200,9 +200,9 @@ export default function CanliTakip() {
           return (
             <div key={branchId} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-secondary)', borderRadius: 12, overflow: 'hidden' }}>
               {/* Branch header */}
-              <div style={{ background: '#0f1d32', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ background: '#141820', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Building2 size={15} color="#c0392b" />
+                  <Building2 size={15} color="#ef4444" />
                   <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--color-text-primary)' }}>{getBranchName(branchId)}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>

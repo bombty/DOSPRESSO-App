@@ -11,10 +11,10 @@ export function Sparkline({ data, height = 12 }: SparklineProps) {
     ? lastTwo[1] > lastTwo[0] ? "up" : lastTwo[1] < lastTwo[0] ? "down" : "stable"
     : "stable";
   const color = trend === "up"
-    ? "var(--dospresso-green, #27ae60)"
+    ? "var(--dospresso-green, #22c55e)"
     : trend === "down"
-      ? "var(--dospresso-red-light, #e74c3c)"
-      : "var(--dospresso-bej-muted, #8a7d6d)";
+      ? "var(--dospresso-red-light, #f87171)"
+      : "var(--dospresso-bej-muted, #6b7a8d)";
 
   return (
     <span className="inline-flex items-end gap-px" style={{ height }} data-testid="sparkline">

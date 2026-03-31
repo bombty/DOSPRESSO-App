@@ -13,7 +13,7 @@ function Avatar({ name, color }: { name: string; color: string }) {
   );
 }
 
-const COLORS = ['#c0392b','#7F77DD','#1D9E75','#378ADD','#BA7517','#D85A30'];
+const COLORS = ['#ef4444','#7F77DD','#1D9E75','#378ADD','#BA7517','#D85A30'];
 const userColor = (id: string) => COLORS[id?.charCodeAt(0) % COLORS.length] || '#888';
 
 export default function Cowork() {

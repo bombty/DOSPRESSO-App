@@ -14,9 +14,9 @@ interface ProgressRingProps {
 }
 
 function getAutoColor(pct: number): string {
-  if (pct >= 80) return "var(--dospresso-green, #27ae60)";
-  if (pct >= 50) return "var(--dospresso-amber, #d4a84b)";
-  return "var(--dospresso-red, #c0392b)";
+  if (pct >= 80) return "var(--dospresso-green, #22c55e)";
+  if (pct >= 50) return "var(--dospresso-amber, #fbbf24)";
+  return "var(--dospresso-red, #ef4444)";
 }
 
 export function ProgressRing({
@@ -35,7 +35,7 @@ export function ProgressRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (pct / 100) * circumference;
-  const ringColor = color || (autoColor ? getAutoColor(pct) : "var(--dospresso-red, #c0392b)");
+  const ringColor = color || (autoColor ? getAutoColor(pct) : "var(--dospresso-red, #ef4444)");
 
   return (
     <div className={cn("flex items-center gap-2", className)} data-testid={testId}>
@@ -50,7 +50,7 @@ export function ProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--dospresso-border, #1e3250)"
+          stroke="var(--dospresso-border, #1e2530)"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -69,12 +69,12 @@ export function ProgressRing({
       {(label || sublabel) && (
         <div className="min-w-0">
           {label && (
-            <span className="text-xs font-bold leading-tight block truncate" style={{ color: "var(--dospresso-bej, #f2e6d0)" }}>
+            <span className="text-xs font-bold leading-tight block truncate" style={{ color: "var(--dospresso-bej, #e8ecf1)" }}>
               {label}
             </span>
           )}
           {sublabel && (
-            <span className="text-[9px] leading-tight block truncate" style={{ color: "var(--dospresso-bej-muted, #8a7d6d)" }}>
+            <span className="text-[9px] leading-tight block truncate" style={{ color: "var(--dospresso-bej-muted, #6b7a8d)" }}>
               {sublabel}
             </span>
           )}

@@ -13,9 +13,9 @@ interface MiniBarProps {
 }
 
 function getBarColor(pct: number): string {
-  if (pct >= 80) return "var(--dospresso-green, #27ae60)";
-  if (pct >= 50) return "var(--dospresso-amber, #d4a84b)";
-  return "var(--dospresso-red, #c0392b)";
+  if (pct >= 80) return "var(--dospresso-green, #22c55e)";
+  if (pct >= 50) return "var(--dospresso-amber, #fbbf24)";
+  return "var(--dospresso-red, #ef4444)";
 }
 
 export function MiniBar({
@@ -30,7 +30,7 @@ export function MiniBar({
   "data-testid": testId,
 }: MiniBarProps) {
   const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
-  const barColor = color || (autoColor ? getBarColor(pct) : "var(--dospresso-red, #c0392b)");
+  const barColor = color || (autoColor ? getBarColor(pct) : "var(--dospresso-red, #ef4444)");
 
   return (
     <div className={cn("flex items-center gap-1.5", className)} data-testid={testId}>
@@ -39,7 +39,7 @@ export function MiniBar({
         style={{
           width: `${width}px`,
           height: `${height}px`,
-          backgroundColor: "var(--dospresso-border, #1e3250)",
+          backgroundColor: "var(--dospresso-border, #1e2530)",
         }}
       >
         <div
@@ -52,7 +52,7 @@ export function MiniBar({
         />
       </div>
       {showLabel && (
-        <span className="text-[9px] font-medium tabular-nums" style={{ color: "var(--dospresso-bej-mid, #c8b698)" }}>
+        <span className="text-[9px] font-medium tabular-nums" style={{ color: "var(--dospresso-bej-mid, #a0aab8)" }}>
           {pct}%
         </span>
       )}

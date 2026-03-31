@@ -6,15 +6,15 @@ interface MiniBarProps {
 export function MiniBar({ value, width = 40 }: MiniBarProps) {
   const clamped = Math.max(0, Math.min(100, value));
   const color = clamped >= 80
-    ? "var(--dospresso-green, #27ae60)"
+    ? "var(--dospresso-green, #22c55e)"
     : clamped >= 60
-      ? "var(--dospresso-amber, #d4a84b)"
-      : "var(--dospresso-red-light, #e74c3c)";
+      ? "var(--dospresso-amber, #fbbf24)"
+      : "var(--dospresso-red-light, #f87171)";
 
   return (
     <span
       className="inline-block rounded-sm overflow-hidden"
-      style={{ width, height: 3, background: "var(--dospresso-bg3, #152640)" }}
+      style={{ width, height: 3, background: "var(--dospresso-bg3, #1a2030)" }}
       data-testid="mini-bar"
     >
       <span

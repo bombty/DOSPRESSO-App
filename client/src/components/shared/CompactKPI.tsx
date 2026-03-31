@@ -18,34 +18,34 @@ interface CompactKPIProps {
 
 const COLOR_MAP: Record<string, { bg: string; text: string; border: string }> = {
   success: {
-    bg: "rgba(39, 174, 96, 0.1)",
-    text: "var(--dospresso-green, #27ae60)",
-    border: "rgba(39, 174, 96, 0.25)",
+    bg: "rgba(34, 197, 94, 0.08)",
+    text: "var(--dospresso-green, #22c55e)",
+    border: "rgba(34, 197, 94, 0.30)",
   },
   warning: {
-    bg: "rgba(212, 168, 75, 0.1)",
-    text: "var(--dospresso-amber, #d4a84b)",
-    border: "rgba(212, 168, 75, 0.25)",
+    bg: "rgba(251, 191, 36, 0.08)",
+    text: "var(--dospresso-amber, #fbbf24)",
+    border: "rgba(251, 191, 36, 0.30)",
   },
   danger: {
-    bg: "rgba(192, 57, 43, 0.1)",
-    text: "var(--dospresso-red, #c0392b)",
-    border: "rgba(192, 57, 43, 0.25)",
+    bg: "rgba(239, 68, 68, 0.08)",
+    text: "var(--dospresso-red, #ef4444)",
+    border: "rgba(239, 68, 68, 0.30)",
   },
   info: {
-    bg: "rgba(41, 128, 185, 0.1)",
-    text: "var(--dospresso-blue, #2980b9)",
-    border: "rgba(41, 128, 185, 0.25)",
+    bg: "rgba(96, 165, 250, 0.08)",
+    text: "var(--dospresso-blue, #60a5fa)",
+    border: "rgba(96, 165, 250, 0.30)",
   },
   muted: {
-    bg: "rgba(138, 125, 109, 0.08)",
-    text: "var(--dospresso-bej-muted, #8a7d6d)",
-    border: "rgba(138, 125, 109, 0.2)",
+    bg: "rgba(107, 122, 141, 0.08)",
+    text: "var(--dospresso-bej-muted, #6b7a8d)",
+    border: "rgba(107, 122, 141, 0.20)",
   },
   default: {
-    bg: "rgba(242, 230, 208, 0.05)",
-    text: "var(--dospresso-bej, #f2e6d0)",
-    border: "var(--dospresso-border, #1e3250)",
+    bg: "rgba(232, 236, 241, 0.05)",
+    text: "var(--dospresso-bej, #e8ecf1)",
+    border: "var(--dospresso-border, #1e2530)",
   },
 };
 
@@ -83,7 +83,7 @@ export function CompactKPI({ items, className }: CompactKPIProps) {
             <span className="font-bold tabular-nums" style={{ color: colors.text }}>
               {displayVal(item.value, item.suffix)}
             </span>
-            <span style={{ color: "var(--dospresso-bej-mid, #c8b698)" }}>
+            <span style={{ color: "var(--dospresso-bej-mid, #a0aab8)" }}>
               {item.label}
             </span>
           </button>

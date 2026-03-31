@@ -12,12 +12,12 @@ interface StatusDotProps {
 }
 
 const STATUS_COLORS: Record<StatusType, string> = {
-  success: "var(--dospresso-green, #27ae60)",
-  warning: "var(--dospresso-amber, #d4a84b)",
-  danger: "var(--dospresso-red, #c0392b)",
-  info: "var(--dospresso-blue, #2980b9)",
-  muted: "var(--dospresso-bej-muted, #8a7d6d)",
-  offline: "var(--dospresso-border, #1e3250)",
+  success: "var(--dospresso-green, #22c55e)",
+  warning: "var(--dospresso-amber, #fbbf24)",
+  danger: "var(--dospresso-red, #ef4444)",
+  info: "var(--dospresso-blue, #60a5fa)",
+  muted: "var(--dospresso-bej-muted, #6b7a8d)",
+  offline: "var(--dospresso-border, #1e2530)",
 };
 
 export function StatusDot({
@@ -41,7 +41,7 @@ export function StatusDot({
         }}
       />
       {label && (
-        <span className="text-[10px] truncate" style={{ color: "var(--dospresso-bej-mid, #c8b698)" }}>
+        <span className="text-[10px] truncate" style={{ color: "var(--dospresso-bej-mid, #a0aab8)" }}>
           {label}
         </span>
       )}

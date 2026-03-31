@@ -1130,7 +1130,7 @@ export default function BranchKiosk() {
     );
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0c1a2e', overflow: 'hidden' }}>
-        <div style={{ background: '#c0392b', padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ background: '#ef4444', padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>{branchAuth?.name || 'Şube Kiosk'}</div>
             <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{dateStr2} - {timeStr2}</div>
@@ -1350,7 +1350,7 @@ export default function BranchKiosk() {
     const hasSession = !!currentSession;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a1628', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0c0f14', overflow: 'hidden' }}>
 
         {/* Dobody Uyarısı — kritik bildirimler */}
         {kioskNotifications.filter((n: any) => n.type === 'dobody_alert' || n.priority === 'critical').slice(0, 1).map((n: any) => (
@@ -1364,7 +1364,7 @@ export default function BranchKiosk() {
         ))}
 
         {/* Header */}
-        <div style={{ background: '#c0392b', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ background: '#ef4444', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: 14 }}>
               {selectedUser?.firstName?.[0]}{selectedUser?.lastName?.[0]}
@@ -1400,7 +1400,7 @@ export default function BranchKiosk() {
         <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignContent: 'start' }}>
 
           {/* Vardiya Durumu */}
-          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
 
             {sessionLoading ? (
@@ -1480,7 +1480,7 @@ export default function BranchKiosk() {
           </div>
 
           {/* Görevlerim */}
-          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📋 Görevlerim</p>
             {userTasks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
@@ -1500,7 +1500,7 @@ export default function BranchKiosk() {
           </div>
 
           {/* Sorun Bildir + Mesai */}
-          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button onClick={() => setShowKioskFaultReport(true)} data-testid="button-kiosk-report-fault"
               style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 20 }}>⚠️</span>
@@ -1514,7 +1514,7 @@ export default function BranchKiosk() {
           </div>
 
           {/* Şube Görevleri */}
-          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📌 Şube Görevleri</p>
             {kioskBranchTasks.length === 0 ? (
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Açık görev yok</p>
@@ -1527,7 +1527,7 @@ export default function BranchKiosk() {
                       <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>{task.category}</p>
                     </div>
                     {!task.assignedTo && (
-                      <button onClick={() => handleClaimBranchTask(task.id)} style={{ background: '#c0392b', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                      <button onClick={() => handleClaimBranchTask(task.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
                         Sahiplen
                       </button>
                     )}
@@ -1538,7 +1538,7 @@ export default function BranchKiosk() {
           </div>
 
           {/* Ekip Durumu */}
-          <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               👥 Ekip Durumu
               {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
@@ -1567,10 +1567,10 @@ export default function BranchKiosk() {
 
           {/* Bildirimler & Duyurular */}
           {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
-            <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+            <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
                 🔔 Bildirimler & Duyurular
-                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#c0392b', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 11 }}>{kioskNotifications.length}</span>}
+                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 11 }}>{kioskNotifications.length}</span>}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {kioskAnnouncements.slice(0,2).map((ann: any) => (
@@ -1590,7 +1590,7 @@ export default function BranchKiosk() {
 
           {/* Checklistlerim */}
           {userChecklists.length > 0 && (
-            <div style={{ background: '#0f1d32', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+            <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>✅ Checklistlerim</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {userChecklists.map((cl: any) => {
@@ -1602,7 +1602,7 @@ export default function BranchKiosk() {
                         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
                       </div>
                       <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#c0392b', borderRadius: 3, transition: 'width 0.3s' }} />
+                        <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
                       </div>
                     </div>
                   );
@@ -1885,7 +1885,7 @@ export default function BranchKiosk() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-[#c0392b]" />
+              <LogOut className="h-5 w-5 text-[#ef4444]" />
               Kiosk'tan Çık
             </DialogTitle>
           </DialogHeader>

@@ -195,11 +195,11 @@ export default function TaskAtama() {
                 <button key={mode} onClick={() => setTargetMode(mode as TargetMode)}
                   className="flex items-start gap-2 p-3 rounded-lg border text-left transition-all"
                   style={{
-                    borderColor: targetMode === mode ? '#c0392b' : undefined,
-                    background: targetMode === mode ? 'rgba(192,57,43,0.04)' : undefined,
+                    borderColor: targetMode === mode ? '#ef4444' : undefined,
+                    background: targetMode === mode ? 'rgba(239,68,68,0.04)' : undefined,
                   }}>
                   <Icon size={14} className="mt-0.5 flex-shrink-0"
-                    style={{ color: targetMode === mode ? '#c0392b' : undefined }} />
+                    style={{ color: targetMode === mode ? '#ef4444' : undefined }} />
                   <div>
                     <div className="text-xs font-medium">{label}</div>
                     <div className="text-[10px] text-muted-foreground">{sub}</div>

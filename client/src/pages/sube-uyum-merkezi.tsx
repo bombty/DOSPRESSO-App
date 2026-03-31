@@ -167,7 +167,7 @@ export default function SubeUyumMerkezi() {
             return (
               <button key={branch.branchId} onClick={() => setSelectedBranch(branch)}
                 className="w-full text-left px-4 py-3 border-b hover:bg-muted/40 transition-colors"
-                style={{ background: isSelected ? "rgba(192,57,43,0.08)" : undefined, borderLeft: isSelected ? "3px solid #c0392b" : "3px solid transparent" }}>
+                style={{ background: isSelected ? "rgba(239,68,68,0.08)" : undefined, borderLeft: isSelected ? "3px solid #ef4444" : "3px solid transparent" }}>
                 <div className="flex items-center gap-3">
                   <ScoreRing score={branch.overallScore} size={38} />
                   <div className="flex-1 min-w-0">

@@ -465,7 +465,7 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Timer className="h-5 w-5 text-[#c0392b]" />
+              <Timer className="h-5 w-5 text-[#ef4444]" />
               Kiosk İşlemi
             </DialogTitle>
           </DialogHeader>
@@ -499,7 +499,7 @@ export function QRScannerModal({ open, onOpenChange }: QRScannerModalProps) {
               <span className="text-xs">Molayı Bitir</span>
             </Button>
             <Button
-              className="h-16 flex-col gap-1 bg-[#c0392b] hover:bg-[#a93226]"
+              className="h-16 flex-col gap-1 bg-[#ef4444] hover:bg-[#dc2626]"
               onClick={() => handleKioskAction("shift_end")}
               disabled={kioskActionLoading}
               data-testid="btn-kiosk-shift-end"
