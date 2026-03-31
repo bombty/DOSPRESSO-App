@@ -2932,6 +2932,7 @@ export const insertTaskCommentSchema = createInsertSchema(taskComments).omit({
 
 export const taskRatings = pgTable("task_ratings", {
   id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }), // Task being rated
   ratedById: varchar("rated_by_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assigner who rates
   ratedUserId: varchar("rated_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assignee being rated
   rawRating: integer("raw_rating").notNull(), // What assigner submitted (1-5)
