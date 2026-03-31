@@ -184,6 +184,18 @@ function AIAssistant() {
     staleTime: 2 * 60 * 1000,
   });
 
+  // Dobody önerileri
+  const { data: dobodyActions = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "pending"],
+    queryFn: async () => {
+      const res = await fetch("/api/agent/actions?status=pending&limit=10", { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return Array.isArray(d) ? d : (d.actions || []);
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
   return (
     <div className="space-y-4">
 

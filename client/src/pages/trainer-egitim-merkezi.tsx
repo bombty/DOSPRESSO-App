@@ -160,8 +160,8 @@ export default function TrainerEgitimMerkezi() {
         <div className="flex gap-2 px-4 pb-2 overflow-x-auto">
           <KpiChip label="Gecikmiş Eğitim" value={overdueInsights.length} variant={overdueInsights.length > 5 ? "alert" : overdueInsights.length > 0 ? "warn" : "ok"} />
           <KpiChip label="Tamamlanma" value={`%${Math.round((compliance?.overallScore || compliance?.avgScore || 0))}`} variant={(compliance?.overallScore || compliance?.avgScore || 0) >= 80 ? "ok" : (compliance?.overallScore || 0) >= 60 ? "warn" : "alert"} />
-          <KpiChip label="Bu Hafta Biten" value={pendingTraining.filter((a: any) => a.status === "approved").length || "—"} variant="ok" />
-          <KpiChip label="Dobody Öneri" value={pendingTraining.length} variant="purple" />
+          <KpiChip label="Bu Hafta Biten" value={pendingActions.filter((a: any) => a.status === "approved").length || "—"} variant="ok" />
+          <KpiChip label="Dobody Öneri" value={pendingActions.length} variant="purple" />
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

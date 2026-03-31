@@ -117,10 +117,10 @@ export default function CoachKontrolMerkezi() {
         </div>
         {/* KPI Strip */}
         <div className="flex gap-2 px-4 pb-2 overflow-x-auto">
-          <KpiChip label="Kritik Şube" value={branchHealth.filter((b: any) => (b.totalScore || 0) < 50).length} variant="alert" />
-          <KpiChip label="Uyarı" value={branchHealth.filter((b: any) => { const s = b.totalScore || 0; return s >= 50 && s < 70; }).length} variant="warn" />
-          <KpiChip label="Sağlıklı" value={branchHealth.filter((b: any) => (b.totalScore || 0) >= 70).length} variant="ok" />
-          <KpiChip label="Bekl. Görev" value={userTasks.filter((t: any) => ["beklemede","devam_ediyor"].includes(t.status || "")).length} variant="info" />
+          <KpiChip label="Kritik Şube" value={branches.filter((b: any) => (b.totalScore || 0) < 50).length} variant="alert" />
+          <KpiChip label="Uyarı" value={branches.filter((b: any) => { const s = b.totalScore || 0; return s >= 50 && s < 70; }).length} variant="warn" />
+          <KpiChip label="Sağlıklı" value={branches.filter((b: any) => (b.totalScore || 0) >= 70).length} variant="ok" />
+          <KpiChip label="Bekl. Görev" value={pendingActions.filter((t: any) => !t.isCompleted).length} variant="info" />
           <KpiChip label="Dobody Öneri" value={pendingActions.length} variant="purple" />
         </div>
       </div>
