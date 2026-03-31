@@ -1,55 +1,74 @@
-import { db } from "../db";
-import { sql } from "drizzle-orm";
+import { pool } from "../db";
 
-export async function migrateCrmTaskTables() {
+export async function migrateCrmTaskTables(): Promise<void> {
+  const client = await pool.connect();
   try {
-    await db.execute(sql.raw(`
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source_type TEXT DEFAULT 'hq_manual';
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_group_id INTEGER;
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_role TEXT;
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_branch_ids TEXT;
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_internal BOOLEAN DEFAULT false;
-    `));
+    // tasks tablosuna P0 kolonları
+    await client.query(`
+      ALTER TABLE tasks
+        ADD COLUMN IF NOT EXISTS source_type TEXT DEFAULT 'hq_manual',
+        ADD COLUMN IF NOT EXISTS task_group_id INTEGER,
+        ADD COLUMN IF NOT EXISTS total_assigned INTEGER DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS completed_count INTEGER DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS notify_assigner BOOLEAN DEFAULT true;
+    `);
 
-    await db.execute(sql.raw(`
+    // task_groups tablosu
+    await client.query(`
       CREATE TABLE IF NOT EXISTS task_groups (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         description TEXT,
-        created_by_id INTEGER,
-        target_branch_ids TEXT,
-        target_role TEXT,
+        created_by_id TEXT,
         source_type TEXT DEFAULT 'hq_manual',
-        priority TEXT DEFAULT 'medium',
-        due_date TIMESTAMP,
-        task_count INTEGER DEFAULT 0,
-        completed_count INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        target_branch_ids TEXT,
+        target_roles TEXT,
+        total_tasks INTEGER DEFAULT 0,
+        completed_tasks INTEGER DEFAULT 0,
+        due_date TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
       );
-    `));
+    `);
 
-    await db.execute(sql.raw(`
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS sla_deadline TIMESTAMP;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS response_deadline TIMESTAMP;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS is_resolved BOOLEAN DEFAULT false;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS resolved_by_id INTEGER;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS hq_note TEXT;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS hq_alerted BOOLEAN DEFAULT false;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS branch_response_at TIMESTAMP;
-      ALTER TABLE customer_feedback ADD COLUMN IF NOT EXISTS visibility_level TEXT DEFAULT 'branch';
-    `));
+    // customer_feedback SLA + iç not kolonları
+    await client.query(`
+      ALTER TABLE customer_feedback
+        ADD COLUMN IF NOT EXISTS sla_deadline_hours INTEGER DEFAULT 24,
+        ADD COLUMN IF NOT EXISTS branch_response_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS branch_response_text TEXT,
+        ADD COLUMN IF NOT EXISTS branch_responder_id TEXT,
+        ADD COLUMN IF NOT EXISTS hq_note TEXT,
+        ADD COLUMN IF NOT EXISTS hq_note_by_id TEXT,
+        ADD COLUMN IF NOT EXISTS hq_note_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS hq_intervention_required BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS hq_intervention_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS feedback_status TEXT DEFAULT 'open';
+    `);
 
-    await db.execute(sql.raw(`
-      ALTER TABLE feedback_responses ADD COLUMN IF NOT EXISTS is_internal BOOLEAN DEFAULT false;
-      ALTER TABLE feedback_responses ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'public';
-      ALTER TABLE guest_complaints ADD COLUMN IF NOT EXISTS hq_note TEXT;
-      ALTER TABLE guest_complaints ADD COLUMN IF NOT EXISTS is_internal BOOLEAN DEFAULT false;
-    `));
+    // Mevcut feedback'leri migrate et
+    await client.query(`
+      UPDATE customer_feedback SET feedback_status = 'closed'
+      WHERE feedback_status IS NULL AND created_at < NOW() - INTERVAL '7 days';
+    `);
+    await client.query(`
+      UPDATE customer_feedback SET feedback_status = 'open'
+      WHERE feedback_status IS NULL;
+    `);
 
-    console.log("[CrmTaskMigration] Tables ready");
+    // source_type için mevcut tasks'ları güncelle
+    await client.query(`
+      UPDATE tasks SET source_type = 'periodic'
+      WHERE source_type IS NULL AND checklist_id IS NOT NULL;
+    `);
+    await client.query(`
+      UPDATE tasks SET source_type = 'hq_manual'
+      WHERE source_type IS NULL;
+    `);
+
+    console.log("[CRMTaskMigration] ✅ Tables ready");
   } catch (err) {
-    console.error("[CrmTaskMigration] Error:", err);
+    console.error("[CRMTaskMigration] Error:", err);
+  } finally {
+    client.release();
   }
 }

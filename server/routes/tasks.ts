@@ -596,6 +596,8 @@ const router = Router();
         branchId: taskBranchId!,
         assignedToId: validatedData.assignedToId || userId,
         assignedById: userId,
+        // P0: Kaynak tipi — hangi sistemden geldi
+        sourceType: (req.body.sourceType as any) || 'hq_manual',
       });
       
       const assigneeId = validatedData.assignedToId || userId;
@@ -674,6 +676,18 @@ const router = Router();
           : 'Bir çalışan';
         const branch = task.branchId ? await storage.getBranch(task.branchId) : null;
         const branchName = branch?.name || 'Bilinmeyen Şube';
+
+        // P0: Atayan kişiye bildirim (assignedById)
+        if (task.assignedById && task.assignedById !== userId) {
+          await storage.createNotification({
+            userId: task.assignedById,
+            type: 'task_completed',
+            title: 'Görev Tamamlandı',
+            message: `${completerName} (${branchName}) atadığınız görevi tamamladı: "${task.description?.substring(0, 50)}${(task.description?.length || 0) > 50 ? '...' : ''}"`,
+            link: `/gorevler?taskId=${task.id}`,
+            branchId: task.branchId,
+          }).catch(e => console.error("[TaskComplete] Assigner notify error:", e));
+        }
         
         for (const admin of hqAdmins) {
           if (admin.id === userId) continue;

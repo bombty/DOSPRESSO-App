@@ -444,6 +444,18 @@ export default function CRMFeedback() {
                   <span className="text-sm font-medium">Genel Puan:</span>
                   <StarDisplay rating={detail.rating} size="md" />
                   <span className="font-bold">{detail.rating}/5</span>
+                  {/* P0: SLA Durumu */}
+                  {detail.feedbackStatus && (
+                    <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      detail.feedbackStatus === 'open' ? 'bg-amber-500/15 text-amber-500' :
+                      detail.feedbackStatus === 'branch_responded' ? 'bg-green-500/15 text-green-500' :
+                      detail.feedbackStatus === 'hq_reviewing' ? 'bg-blue-500/15 text-blue-400' :
+                      'bg-muted text-muted-foreground'}`}>
+                      {detail.feedbackStatus === 'open' ? 'Yanıt Bekleniyor' :
+                       detail.feedbackStatus === 'branch_responded' ? 'Şube Yanıtladı' :
+                       detail.feedbackStatus === 'hq_reviewing' ? 'HQ İnceliyor' : 'Kapatıldı'}
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {detail.serviceRating != null && (

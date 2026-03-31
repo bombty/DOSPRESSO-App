@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Clock, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, RefreshCw, ChevronRight, Calendar, BarChart2, Shield } from "lucide-react";
+import { MapPin, Clock, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, RefreshCw, ChevronRight, Calendar, BarChart2, Shield, Plus, Send } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
@@ -27,6 +27,7 @@ export default function CoachKontrolMerkezi() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [taskTitle, setTaskTitle] = useState<string>("");
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
 
   const { data: healthData, isLoading, isError } = useQuery<any>({
@@ -73,6 +74,16 @@ export default function CoachKontrolMerkezi() {
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
+  });
+
+  // P0: Coach'dan şubeye görev atama
+  const createTaskMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/tasks", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/tasks"] });
+      toast({ title: "Görev atandı", description: "Şube personeli bilgilendirildi" });
+      setTaskTitle("");
+    },
   });
 
   const approveMutation = useMutation({
@@ -260,6 +271,36 @@ export default function CoachKontrolMerkezi() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* P0: Hızlı Görev Ata */}
+            {selectedBranch && (
+              <div className="rounded-xl border p-4">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Plus size={13} className="text-primary" />
+                  Hızlı Görev Ata — {selectedBranch.branchName}
+                </h3>
+                <div className="flex gap-2">
+                  <input
+                    value={taskTitle}
+                    onChange={e => setTaskTitle(e.target.value)}
+                    placeholder="Görev başlığı yaz, Enter ile gönder..."
+                    className="flex-1 text-xs border rounded-lg px-3 py-2 bg-background outline-none"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && taskTitle.trim()) {
+                        createTaskMutation.mutate({ description: taskTitle, branchId: selectedBranch.branchId, sourceType: 'hq_manual', status: 'beklemede', priority: 'orta' });
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => createTaskMutation.mutate({ description: taskTitle, branchId: selectedBranch.branchId, sourceType: 'hq_manual', status: 'beklemede', priority: 'orta' })}
+                    disabled={!taskTitle.trim() || createTaskMutation.isPending}
+                    className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50 flex items-center gap-1"
+                  >
+                    <Send size={11} /> Ata
+                  </button>
+                </div>
               </div>
             )}
 

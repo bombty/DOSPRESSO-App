@@ -2794,6 +2794,15 @@ export const tasks = pgTable("tasks", {
   dueDate: timestamp("due_date"),
   // Recurring task fields
   isRecurring: boolean("is_recurring").default(false),
+  // P0: Kaynak tipi — hangi sistemden geldi
+  sourceType: text("source_type").$type<'hq_manual'|'dobody'|'periodic'|'shift_bound'|'branch_internal'>().default('hq_manual'),
+  // P0: Toplu atama grubu
+  taskGroupId: integer("task_group_id"),
+  // P0: İlerleme takibi (toplu atama: kaç kişi tamamladı)
+  totalAssigned: integer("total_assigned").default(1),
+  completedCount: integer("completed_count").default(0),
+  // P0: Atayan bildirilsin mi
+  notifyAssigner: boolean("notify_assigner").default(true),
   sourceType: text("source_type").default("hq_manual"), // hq_manual | dobody | periodic | shift_bound | branch_internal
   taskGroupId: integer("task_group_id").references(() => taskGroups.id, { onDelete: "set null" }),
   targetRole: text("target_role"), // supervisor | mudur | all — rol bazlı atama
@@ -3035,6 +3044,21 @@ export const insertTaskRatingSchema = createInsertSchema(taskRatings).omit({
   isLate: z.boolean().optional(),
   feedback: z.string().max(500).optional(),
 });
+
+export const taskGroups = pgTable("task_groups", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  createdById: text("created_by_id").references(() => users.id),
+  sourceType: text("source_type").$type<'hq_manual'|'dobody'|'periodic'>().default('hq_manual'),
+  targetBranchIds: text("target_branch_ids"), // JSON array
+  targetRoles: text("target_roles"),           // JSON array
+  totalTasks: integer("total_tasks").default(0),
+  completedTasks: integer("completed_tasks").default(0),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 
 export type InsertTaskRating = z.infer<typeof insertTaskRatingSchema>;
 export type TaskRating = typeof taskRatings.$inferSelect;

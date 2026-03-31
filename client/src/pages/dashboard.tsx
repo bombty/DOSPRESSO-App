@@ -191,12 +191,15 @@ export default function Dashboard() {
     if (user && isFactoryFloorRole(user.role as any)) {
       setLocation('/fabrika/dashboard');
     }
-    if (user?.role === 'ceo' || user?.role === 'cgo' || user?.role === 'admin') {
-      setLocation('/hq-ozet');
-    }
+    // P0: Her HQ rolü kendi Centrum'una yönlendirilir
+    if (user?.role === 'ceo') setLocation('/ceo-command-center');
+    if (user?.role === 'cgo') setLocation('/cgo-teknik-komuta');
+    if (user?.role === 'coach') setLocation('/coach-kontrol-merkezi');
+    if (user?.role === 'trainer') setLocation('/trainer-egitim-merkezi');
+    if (user?.role === 'admin') setLocation('/hq-ozet');
   }, [user, setLocation]);
 
-  if (user && (isFactoryFloorRole(user.role as any) || user.role === 'ceo' || user.role === 'cgo' || user.role === 'admin')) {
+  if (user && (isFactoryFloorRole(user.role as any) || ['ceo','cgo','coach','trainer','admin'].includes(user.role))) {
     return null;
   }
 

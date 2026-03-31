@@ -15,6 +15,7 @@ import { seedModuleFlags } from "./seed-module-flags";
 import { seedBranchTasks } from "./seed-branch-tasks";
 import { generateDailyTaskInstances, markOverdueInstances } from "./services/branch-task-scheduler";
 import { migrateCrmTaskTables } from "./services/crm-task-migration";
+import { migrateCrmTaskTables } from "./services/crm-task-migration";
 import { migrateEscalationTables, startFranchiseEscalationScheduler } from "./services/franchise-escalation";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
@@ -377,6 +378,7 @@ app.use((req, res, next) => {
 
       // Franchise eskalasyon tablolarını oluştur ve 5-kademe sistemi başlat
       migrateEscalationTables().catch(e => console.error("[Escalation] Migration error:", e));
+      migrateCrmTaskTables().catch(e => console.error("[CRMTask] Migration error:", e));
       startFranchiseEscalationScheduler();
 
       generateDailyTaskInstances().catch(e => console.error("[BranchTasks] Startup generation error:", e));

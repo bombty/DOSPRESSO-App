@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { AlertTriangle, Wrench, Clock, CheckCircle2, RefreshCw, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const PRIORITY_META: Record<string, { label: string; color: string; bg: string; slaHours: number }> = {
@@ -49,6 +50,18 @@ export default function CgoTeknikKomuta() {
 
   // Equipment critical: mevcut endpoint scope sorunu var, ileride aktif edilecek
   // const { data: equipment = [] } = useQuery<any[]>({ queryKey: ["/api/equipment/critical"] });
+
+  // P0: CRM teknik talepler
+  const { data: techTickets = [] } = useQuery<any[]>({
+    queryKey: ["/api/iletisim/tickets", "teknik"],
+    queryFn: async () => {
+      const res = await fetch("/api/iletisim/tickets?department=teknik&status=acik,islemde&limit=15", { credentials: "include" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return Array.isArray(d) ? d : (d.tickets || d.data || []);
+    },
+    staleTime: 2 * 60 * 1000,
+  });
 
   const { data: slaInsights = [] } = useQuery<any>({
     queryKey: ["/api/agent/actions", "sla"],
@@ -118,6 +131,12 @@ export default function CgoTeknikKomuta() {
         ))}
       </div>
 
+      <Tabs defaultValue="faults">
+        <TabsList className="mb-3">
+          <TabsTrigger value="faults">Arızalar <span className="ml-1.5 text-[10px] bg-red-500/15 text-red-400 px-1.5 rounded-full">{openFaults.length}</span></TabsTrigger>
+          <TabsTrigger value="tickets">CRM Teknik <span className="ml-1.5 text-[10px] bg-amber-500/15 text-amber-400 px-1.5 rounded-full">{techTickets.length}</span></TabsTrigger>
+        </TabsList>
+        <TabsContent value="faults" className="m-0">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Sol: Arıza Listesi */}
         <div className="lg:col-span-2 space-y-3">
@@ -269,6 +288,39 @@ export default function CgoTeknikKomuta() {
           )}
         </div>
       </div>
+      </TabsContent>
+
+      <TabsContent value="tickets" className="m-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-2">
+            {techTickets.length === 0 ? (
+              <div className="rounded-xl border p-8 text-center text-sm text-muted-foreground">Açık teknik talep yok</div>
+            ) : techTickets.map((t: any) => (
+              <div key={t.id} className="rounded-xl border p-3 hover:bg-muted/20 transition-colors"
+                style={{ borderLeft: t.slaBreached ? "3px solid #ef4444" : "3px solid #f59e0b" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-mono text-muted-foreground">{t.ticketNumber}</span>
+                  <span className="text-sm font-medium flex-1 truncate">{t.title || t.subject}</span>
+                  {t.slaBreached && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">SLA!</span>}
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span>{t.branchName || "Şube"}</span><span>·</span>
+                  <span>{t.status === 'acik' ? 'Açık' : t.status === 'islemde' ? 'İşlemde' : t.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border p-4">
+            <h3 className="text-sm font-semibold mb-3">Teknik Talep Özeti</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Açık</span><span className="font-medium">{techTickets.filter((t:any)=>t.status==='acik').length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">İşlemde</span><span className="font-medium">{techTickets.filter((t:any)=>t.status==='islemde').length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">SLA İhlali</span><span className="font-medium text-red-400">{techTickets.filter((t:any)=>t.slaBreached).length}</span></div>
+            </div>
+          </div>
+        </div>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }

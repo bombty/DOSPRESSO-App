@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "../db";
+import { db, pool } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { requireManifestAccess } from "../services/manifest-auth";
@@ -4567,6 +4567,60 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const { status, reviewNotes } = req.body;
       const userId = req.user?.id;
       const userRole = req.user?.role;
+
+  // P0: HQ iç not — misafir GÖREMEZ
+  router.patch('/api/customer-feedback/:id/hq-note', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { note, interventionRequired } = req.body;
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      
+      const hqRoles = ['hq', 'ceo', 'cgo', 'coach', 'trainer', 'admin', 'muhasebe', 'ik'];
+      if (!hqRoles.includes(userRole || '')) {
+        return res.status(403).json({ message: "Bu işlem için HQ yetkisi gerekli" });
+      }
+      
+      await pool.query(`
+        UPDATE customer_feedback SET
+          hq_note = $1,
+          hq_note_by_id = $2,
+          hq_note_at = NOW(),
+          hq_intervention_required = $3,
+          feedback_status = CASE WHEN $3 = true THEN 'hq_reviewing' ELSE feedback_status END
+        WHERE id = $4
+      `, [note, userId, interventionRequired || false, parseInt(id)]);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("HQ note error:", error);
+      res.status(500).json({ message: "İç not kaydedilemedi" });
+    }
+  });
+
+  // P0: Şube yanıtı (misafir SLA)
+  router.patch('/api/customer-feedback/:id/branch-respond', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { responseText } = req.body;
+      const userId = req.user?.id;
+      
+      await pool.query(`
+        UPDATE customer_feedback SET
+          branch_response_text = $1,
+          branch_responder_id = $2,
+          branch_response_at = NOW(),
+          feedback_status = 'branch_responded'
+        WHERE id = $3
+      `, [responseText, userId, parseInt(id)]);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Branch respond error:", error);
+      res.status(500).json({ message: "Yanıt kaydedilemedi" });
+    }
+  });
+
 
       const feedbackId = parseInt(id);
       if (isNaN(feedbackId)) {

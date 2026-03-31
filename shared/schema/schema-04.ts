@@ -575,6 +575,19 @@ export const customerFeedback = pgTable("customer_feedback", {
   cleanlinessRating: integer("cleanliness_rating"), // Temizlik puanı 1-5
   productRating: integer("product_rating"), // Ürün kalitesi puanı 1-5
   staffRating: integer("staff_rating"), // Personel puanı 1-5
+  // P0: Misafir SLA sistemi
+  slaDeadlineHours: integer("sla_deadline_hours").default(24), // Şube cevap SLA (saat)
+  branchResponseAt: timestamp("branch_response_at", { withTimezone: true }),
+  branchResponseText: text("branch_response_text"),   // Şubenin misafire cevabı
+  branchResponderId: text("branch_responder_id"),
+  // P0: HQ iç not (misafir GÖREMEZ)
+  hqNote: text("hq_note"),
+  hqNoteById: text("hq_note_by_id"),
+  hqNoteAt: timestamp("hq_note_at", { withTimezone: true }),
+  // P0: HQ müdahale eşiği
+  hqInterventionRequired: boolean("hq_intervention_required").default(false),
+  hqInterventionAt: timestamp("hq_intervention_at", { withTimezone: true }),
+  feedbackStatus: text("feedback_status").$type<'open'|'branch_responded'|'hq_reviewing'|'closed'>().default('open'),
   
   // Staff attribution (optional)
   staffId: varchar("staff_id").references(() => users.id, { onDelete: "set null" }), // Which staff served the customer
