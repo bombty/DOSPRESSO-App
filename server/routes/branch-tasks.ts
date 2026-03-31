@@ -903,4 +903,76 @@ router.get("/api/branch-tasks/score/user/:userId", isAuthenticated, moduleGuard,
   }
 });
 
+
+// POST /api/tasks/bulk-assign — HQ → Şube/Rol/Kişi toplu görev atama
+router.post('/api/tasks/bulk-assign', isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user!;
+    const canAssign = ["ceo","cgo","coach","trainer","admin","mudur","supervisor"].includes(user.role);
+    if (!canAssign) return res.status(403).json({ message: "Görev atama yetkiniz yok" });
+
+    const {
+      title, description, dueDate, priority, sourceType, requiresPhoto,
+      targetMode, targetBranchIds, targetRoles, targetUserIds,
+    } = req.body;
+
+    if (!title) return res.status(400).json({ message: "Görev başlığı zorunlu" });
+
+    const { db } = await import("../db");
+    const { tasks } = await import("@shared/schema");
+    const { users: usersTable, branches: branchesTable } = await import("@shared/schema");
+    const { inArray, eq, and } = await import("drizzle-orm");
+
+    let assigneeIds: number[] = [];
+
+    if (targetMode === "specific_users" && targetUserIds?.length) {
+      assigneeIds = targetUserIds;
+    } else if (targetMode === "all_branches") {
+      const allUsers = await db.select({ id: usersTable.id })
+        .from(usersTable).where(eq(usersTable.isActive, true));
+      assigneeIds = allUsers.map(u => u.id);
+    } else if (targetMode === "branches" || targetMode === "role_filter") {
+      const branchFilter = targetBranchIds?.length
+        ? inArray(usersTable.branchId, targetBranchIds)
+        : undefined;
+      const roleFilter = targetRoles?.length && !targetRoles.includes("all")
+        ? inArray(usersTable.role, targetRoles)
+        : undefined;
+
+      const conditions = [
+        eq(usersTable.isActive, true),
+        ...(branchFilter ? [branchFilter] : []),
+        ...(roleFilter ? [roleFilter] : []),
+      ];
+
+      const targetUsers = await db.select({ id: usersTable.id })
+        .from(usersTable).where(and(...conditions));
+      assigneeIds = targetUsers.map(u => u.id);
+    }
+
+    // Her alıcı için görev oluştur
+    const created = [];
+    for (const uid of assigneeIds.slice(0, 500)) {
+      const [task] = await db.insert(tasks).values({
+        assignedToId: uid,
+        assignedById: user.id,
+        branchId: (await db.select({ branchId: usersTable.branchId }).from(usersTable).where(eq(usersTable.id, uid)).limit(1))[0]?.branchId,
+        description: title,
+        status: "pending",
+        priority: priority || "medium",
+        dueDate: dueDate ? new Date(dueDate) : null,
+        requiresPhoto: requiresPhoto || false,
+        sourceType: sourceType || "hq_manual",
+        targetRole: targetRoles?.join(","),
+      }).returning({ id: tasks.id });
+      created.push(task);
+    }
+
+    res.json({ success: true, created: created.length, message: `${created.length} kişiye görev atandı` });
+  } catch (error) {
+    console.error("Bulk assign error:", error);
+    res.status(500).json({ message: "Görev atama hatası" });
+  }
+});
+
 export default router;

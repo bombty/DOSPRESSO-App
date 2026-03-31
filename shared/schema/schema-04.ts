@@ -649,6 +649,15 @@ export const insertCustomerFeedbackSchema = createInsertSchema(customerFeedback)
   comment: z.string().max(2000, "Comment too long").optional().transform(val => val?.trim() || null),
   feedbackType: z.enum(["feedback", "complaint"]).optional().default("feedback"),
   requiresContact: z.boolean().optional().default(false),
+  slaDeadline: timestamp("sla_deadline"), // Şubenin yanıt vermesi gereken son tarih
+  responseDeadline: timestamp("response_deadline"), // 24h varsayılan
+  isResolved: boolean("is_resolved").default(false),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedById: integer("resolved_by_id"),
+  hqNote: text("hq_note"), // HQ'nun iç notu — misafire görünmez
+  hqAlerted: boolean("hq_alerted").default(false), // HQ müdahale bayrağı
+  branchResponseAt: timestamp("branch_response_at"),
+  visibilityLevel: text("visibility_level").default("branch"), // branch | hq | internal
 });
 
 export type InsertCustomerFeedback = z.infer<typeof insertCustomerFeedbackSchema>;
@@ -674,6 +683,8 @@ export const feedbackResponses = pgTable("feedback_responses", {
 export const insertFeedbackResponseSchema = createInsertSchema(feedbackResponses).omit({
   id: true,
   createdAt: true,
+  isInternal: boolean("is_internal").default(false), // true = iç not, misafire görünmez
+  visibility: text("visibility").default("public"), // public | internal | hq_only
 });
 
 export type InsertFeedbackResponse = z.infer<typeof insertFeedbackResponseSchema>;

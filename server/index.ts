@@ -14,6 +14,7 @@ import { seedSlaRules } from "./seed-sla-rules";
 import { seedModuleFlags } from "./seed-module-flags";
 import { seedBranchTasks } from "./seed-branch-tasks";
 import { generateDailyTaskInstances, markOverdueInstances } from "./services/branch-task-scheduler";
+import { migrateCrmTaskTables } from "./services/crm-task-migration";
 import { migrateEscalationTables, startFranchiseEscalationScheduler } from "./services/franchise-escalation";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";

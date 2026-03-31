@@ -100,7 +100,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "tasks-list",
         titleTr: "Görevler",
-        path: "/gorevler",
+        path: "/task-takip",
         icon: "CheckSquare",
         moduleKey: "tasks",
         scope: "both",
@@ -657,31 +657,23 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
   ],
   ceo: [
-    'dashboard', 'ajanda', 'ceo-command-center', 'branches-list', 'hr', 'reports', 'performance-dashboard',
-    'knowledge-base', 'ai-assistant', 'training-academy-hq', 'notifications', 'crm-main',
-    'franchise-investors',
+    'dashboard', 'ceo-command-center', 'crm-main', 'tasks-list', 'reports', 'ajanda',
   ],
   cgo: [
-    'dashboard', 'ajanda', 'cgo-teknik-komuta', 'branches-list', 'hr', 'reports', 'performance-dashboard',
-    'customer-satisfaction', 'knowledge-base', 'ai-assistant',
-    'franchise-investors', 'notifications', 'crm-main',
+    'dashboard', 'cgo-teknik-komuta', 'crm-main', 'tasks-list', 'reports', 'ajanda',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
-    'dashboard', 'ajanda', 'coach-kontrol-merkezi', 'branches-list', 'hr', 'branch-inspection', 'customer-satisfaction',
-    'reports', 'knowledge-base', 'training-academy-hq', 'tasks-list',
-    'notifications', 'crm-main',
+    'dashboard', 'coach-kontrol-merkezi', 'crm-main', 'tasks-list', 'reports', 'ajanda',
   ],
   destek: [
     'dashboard', 'branches-list', 'equipment', 'faults',
     'crm-main', 'notifications',
   ],
   trainer: [
-    'dashboard', 'ajanda', 'trainer-egitim-merkezi', 'hr', 'training-academy-hq', 'tasks-list', 'branch-inspection',
-    'knowledge-base', 'reports', 'performance-dashboard',
-    'notifications', 'crm-main',
+    'dashboard', 'trainer-egitim-merkezi', 'crm-main', 'tasks-list', 'training-academy-hq', 'ajanda',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety',

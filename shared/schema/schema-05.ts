@@ -325,6 +325,8 @@ export const insertGuestComplaintSchema = createInsertSchema(guestComplaints).om
   complaintDate: true,
   createdAt: true,
   updatedAt: true,
+  hqNote: text("hq_note"),
+  isInternal: boolean("is_internal").default(false),
 });
 
 export type InsertGuestComplaint = z.infer<typeof insertGuestComplaintSchema>;
