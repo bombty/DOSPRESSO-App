@@ -2859,6 +2859,10 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
 });
 
+export const updateTaskSchema = insertTaskSchema.partial();
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+
 // Task Status History - tracks all status changes
 export const taskStatusHistory = pgTable("task_status_history", {
   id: serial("id").primaryKey(),
