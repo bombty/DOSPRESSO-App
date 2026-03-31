@@ -1,3 +1,5 @@
+import React from 'react';
+import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
@@ -404,6 +406,38 @@ function TaskChannelContent() {
   );
 }
 
+function MisafirHqNote({ ticketId }: { ticketId: number }) {
+  const [note, setNote] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const submitNote = async () => {
+    if (!note.trim()) return;
+    setSubmitting(true);
+    try {
+      await fetch(`/api/customer-feedback/${ticketId}/hq-note`, {
+        method: 'PATCH', headers: {'Content-Type':'application/json'}, credentials:'include',
+        body: JSON.stringify({ note, interventionRequired: true }),
+      });
+      setNote("");
+    } catch(e) { console.error(e); }
+    finally { setSubmitting(false); }
+  };
+  return (
+    <div className="p-4 space-y-3">
+      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+        <div className="text-xs font-medium text-amber-500 mb-1">HQ İÇ NOT — Misafir Göremez</div>
+        <p className="text-xs text-muted-foreground">Bu not yalnızca HQ ekibine görünür.</p>
+      </div>
+      <textarea value={note} onChange={e=>setNote(e.target.value)}
+        placeholder="İç değerlendirmenizi yazın..." rows={4}
+        className="w-full border rounded-lg p-3 text-sm bg-background resize-none outline-none"/>
+      <button onClick={submitNote} disabled={!note.trim()||submitting}
+        className="w-full py-2 rounded-lg bg-amber-500/15 text-amber-500 border border-amber-500/20 text-sm font-medium disabled:opacity-50">
+        {submitting?"Kaydediliyor...":"İç Not Kaydet"}
+      </button>
+    </div>
+  );
+}
+
 export default function CRMMegaModule() {
   const { user } = useAuth();
   const [location, setLocation] = useLocation();
@@ -637,11 +671,30 @@ export default function CRMMegaModule() {
                           <Badge variant={ticket.sla_breached ? "destructive" : "secondary"} className="text-xs">
                             {getDeptConfig(ticket.department)?.label?.split(" ")[0] ?? ticket.department}
                           </Badge>
+                          {/* P0: Misafir SLA durumu */}
+                          {channel === "misafir" && ticket.feedback_status && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                              ticket.feedback_status === 'open' ? 'bg-amber-500/15 text-amber-500' :
+                              ticket.feedback_status === 'branch_responded' ? 'bg-green-500/15 text-green-500' :
+                              ticket.feedback_status === 'hq_reviewing' ? 'bg-blue-500/15 text-blue-400' : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {ticket.feedback_status === 'open' ? 'Yanıt Bekl.' :
+                               ticket.feedback_status === 'branch_responded' ? 'Yanıtlandı' :
+                               ticket.feedback_status === 'hq_reviewing' ? 'HQ İnceliyor' : 'Kapatıldı'}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm font-medium truncate">{ticket.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {ticket.branch_name ?? "—"} · {ticket.status}
-                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                          <span>{ticket.branch_name ?? "—"}</span>
+                          <span>·</span>
+                          <span>{ticket.status}</span>
+                          {channel === "misafir" && ticket.rating && (
+                            <span className="ml-auto font-medium" style={{color: ticket.rating >= 4 ? '#22c55e' : ticket.rating >= 3 ? '#fbbf24' : '#ef4444'}}>
+                              {ticket.rating}★
+                            </span>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -656,6 +709,12 @@ export default function CRMMegaModule() {
                     <BroadcastTab />
                   </TabsContent>
                 </>
+              )}
+              {/* P0: Misafir kanalı — HQ iç not panel */}
+              {isHQ && channel === "misafir" && selectedTicketId && (
+                <TabsContent value="hq-note" className="mt-0">
+                  <MisafirHqNote ticketId={selectedTicketId} />
+                </TabsContent>
               )}
             </Suspense>
           </Tabs>
