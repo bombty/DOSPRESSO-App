@@ -10,7 +10,9 @@ export async function migrateCrmTaskTables(): Promise<void> {
         ADD COLUMN IF NOT EXISTS task_group_id INTEGER,
         ADD COLUMN IF NOT EXISTS total_assigned INTEGER DEFAULT 1,
         ADD COLUMN IF NOT EXISTS completed_count INTEGER DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS notify_assigner BOOLEAN DEFAULT true;
+        ADD COLUMN IF NOT EXISTS notify_assigner BOOLEAN DEFAULT true,
+        ADD COLUMN IF NOT EXISTS target_role TEXT,
+        ADD COLUMN IF NOT EXISTS target_branch_ids TEXT;
     `);
 
     // task_groups tablosu
