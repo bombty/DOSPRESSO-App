@@ -2803,8 +2803,6 @@ export const tasks = pgTable("tasks", {
   completedCount: integer("completed_count").default(0),
   // P0: Atayan bildirilsin mi
   notifyAssigner: boolean("notify_assigner").default(true),
-  sourceType: text("source_type").default("hq_manual"), // hq_manual | dobody | periodic | shift_bound | branch_internal
-  taskGroupId: integer("task_group_id").references(() => taskGroups.id, { onDelete: "set null" }),
   targetRole: text("target_role"), // supervisor | mudur | all — rol bazlı atama
   targetBranchIds: text("target_branch_ids"), // JSON array of branch IDs for bulk
   isInternal: boolean("is_internal").default(false), // HQ internal task (misafir görmez)
@@ -2842,7 +2840,6 @@ export const tasks = pgTable("tasks", {
   evidenceData: text("evidence_data"),
   taskScope: varchar("task_scope", { length: 20 }).default("branch"),
   targetDepartment: varchar("target_department", { length: 50 }),
-  targetBranchIds: integer("target_branch_ids").array(),
   isGroupTask: boolean("is_group_task").default(false),
   acceptanceRequired: boolean("acceptance_required").default(false),
   allowExtension: boolean("allow_extension").default(true),
@@ -2860,76 +2857,7 @@ export const tasks = pgTable("tasks", {
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  status: z.enum(taskStatusEnum).optional(),
-  priority: z.enum(taskPriorityEnum).optional(),
-  branchId: z.number().nullable().optional(),
-  dueDate: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  // Onboarding checker fields
-  isOnboarding: z.boolean().optional(),
-  checkerId: z.string().nullable().optional(),
-  // Scheduled delivery
-  scheduledDeliveryAt: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  isDelivered: z.boolean().optional(),
 });
-
-export const updateTaskSchema = createInsertSchema(tasks).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  status: z.enum(taskStatusEnum).optional(),
-  priority: z.enum(taskPriorityEnum).optional(),
-  branchId: z.number().nullable().optional(),
-  dueDate: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  // Onboarding checker fields
-  isOnboarding: z.boolean().optional(),
-  checkerId: z.string().nullable().optional(),
-  checkerNote: z.string().nullable().optional(),
-  checkedAt: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  startedAt: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  // Approval workflow fields
-  questionText: z.string().nullable().optional(),
-  questionAnswerText: z.string().nullable().optional(),
-  extensionReason: z.string().nullable().optional(),
-  requestedDueDate: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  approvedByAssignerId: z.string().nullable().optional(),
-  approvedAt: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  approverNote: z.string().nullable().optional(),
-  // Scheduled delivery
-  scheduledDeliveryAt: z.preprocess(
-    (val) => (val ? new Date(val as string | Date) : null),
-    z.date().nullable().optional()
-  ),
-  isDelivered: z.boolean().optional(),
-}).partial();
-
-export type InsertTask = z.infer<typeof insertTaskSchema>;
-export type UpdateTask = z.infer<typeof updateTaskSchema>;
-export type Task = typeof tasks.$inferSelect;
 
 // Task Status History - tracks all status changes
 export const taskStatusHistory = pgTable("task_status_history", {
@@ -2939,18 +2867,13 @@ export const taskStatusHistory = pgTable("task_status_history", {
   newStatus: varchar("new_status", { length: 50 }).notNull(),
   changedById: varchar("changed_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   note: text("note"), // Optional note explaining the change
-  createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   taskIdIdx: index("task_status_history_task_idx").on(table.taskId),
 }));
 
 export const insertTaskStatusHistorySchema = createInsertSchema(taskStatusHistory).omit({
   id: true,
-  createdAt: true,
 });
-
-export type InsertTaskStatusHistory = z.infer<typeof insertTaskStatusHistorySchema>;
-export type TaskStatusHistory = typeof taskStatusHistory.$inferSelect;
 
 // ========================================
 // TASK ASSIGNEES TABLE (Multiple assignees per task)
@@ -2960,21 +2883,15 @@ export const taskAssignees = pgTable("task_assignees", {
   id: serial("id").primaryKey(),
   taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  status: varchar("status", { length: 50 }).notNull().default("beklemede"),
-  acknowledgedAt: timestamp("acknowledged_at"),
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
   acceptanceStatus: varchar("acceptance_status", { length: 20 }).default("pending"),
   acceptedAt: timestamp("accepted_at"),
   rejectedAt: timestamp("rejected_at"),
   rejectionReason: text("rejection_reason"),
   extensionRequestedAt: timestamp("extension_requested_at"),
-  extensionReason: text("extension_reason"),
   extensionDays: integer("extension_days"),
   extensionApproved: boolean("extension_approved"),
   completionRate: integer("completion_rate").default(0),
   notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   taskUserIdx: uniqueIndex("task_assignees_task_user_idx").on(table.taskId, table.userId),
   taskIdx: index("task_assignees_task_idx").on(table.taskId),
@@ -2983,11 +2900,7 @@ export const taskAssignees = pgTable("task_assignees", {
 
 export const insertTaskAssigneeSchema = createInsertSchema(taskAssignees).omit({
   id: true,
-  createdAt: true,
 });
-
-export type InsertTaskAssignee = z.infer<typeof insertTaskAssigneeSchema>;
-export type TaskAssignee = typeof taskAssignees.$inferSelect;
 
 // ========================================
 // TASK COMMENTS TABLE (Chat/comments on tasks)
@@ -2996,23 +2909,18 @@ export type TaskAssignee = typeof taskAssignees.$inferSelect;
 export const taskComments = pgTable("task_comments", {
   id: serial("id").primaryKey(),
   taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
-  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id),
   message: text("message").notNull(),
   commentType: varchar("comment_type", { length: 20 }).default("message"),
   attachmentUrl: text("attachment_url"),
-  isInternal: boolean("is_internal").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({
   taskCreatedIdx: index("idx_task_comments_task_created").on(table.taskId, table.createdAt),
 }));
 
 export const insertTaskCommentSchema = createInsertSchema(taskComments).omit({
   id: true,
-  createdAt: true,
 });
-
-export type InsertTaskComment = z.infer<typeof insertTaskCommentSchema>;
-export type TaskComment = typeof taskComments.$inferSelect;
 
 // ========================================
 // TASK RATINGS TABLE (Manual rating by assigner)
@@ -3020,7 +2928,6 @@ export type TaskComment = typeof taskComments.$inferSelect;
 
 export const taskRatings = pgTable("task_ratings", {
   id: serial("id").primaryKey(),
-  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   ratedById: varchar("rated_by_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assigner who rates
   ratedUserId: varchar("rated_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Assignee being rated
   rawRating: integer("raw_rating").notNull(), // What assigner submitted (1-5)
@@ -3028,21 +2935,13 @@ export const taskRatings = pgTable("task_ratings", {
   penaltyApplied: integer("penalty_applied").default(0), // 0 or 1 (late delivery penalty)
   isLate: boolean("is_late").default(false), // Whether task was completed after deadline
   feedback: text("feedback"), // Optional comment from assigner
-  createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  taskIdUniqueIdx: uniqueIndex("task_ratings_task_id_unique_idx").on(table.taskId), // One rating per task
+  taskIdUniqueIdx: uniqueIndex("task_ratings_task_id_unique_idx").on(table.taskId),
   ratedUserIdx: index("task_ratings_rated_user_idx").on(table.ratedUserId),
 }));
 
 export const insertTaskRatingSchema = createInsertSchema(taskRatings).omit({
   id: true,
-  createdAt: true,
-}).extend({
-  rawRating: z.number().min(1).max(5),
-  finalRating: z.number().min(1).max(5),
-  penaltyApplied: z.number().min(0).max(1).optional(),
-  isLate: z.boolean().optional(),
-  feedback: z.string().max(500).optional(),
 });
 
 export const taskGroups = pgTable("task_groups", {

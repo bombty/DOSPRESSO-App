@@ -1,5 +1,5 @@
 import { db } from "../../db";
-import { users, trainingCompletions, quizAttempts, issuedCertificates } from "@shared/schema";
+import { users, trainingCompletions, userQuizAttempts as quizAttempts, issuedCertificates } from "@shared/schema";
 import { eq, and, sql, count, avg } from "drizzle-orm";
 import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, type SkillAction } from "./skill-registry";
 
