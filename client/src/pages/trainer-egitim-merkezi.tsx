@@ -133,42 +133,37 @@ export default function TrainerEgitimMerkezi() {
         </div>
       </div>
     )}
-    <div className="p-4 max-w-5xl mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Eğitim Merkezi</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Tüm şubelerde eğitim uyumu ve atama yönetimi</p>
-        </div>
-        <div className="flex gap-2 items-center">
+    <div className="flex flex-col h-full max-w-5xl mx-auto w-full">
+      {/* Compact topbar — CentrumShell uyumlu */}
+      <div className="border-b flex-shrink-0">
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-[13px] font-semibold">Eğitim Merkezi</h1>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-500/12 text-teal-400">Trainer</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Şube eğitim uyumu · Modül takibi</p>
+          </div>
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-24 h-7 text-[11px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="week">Bu Hafta</SelectItem>
               <SelectItem value="month">Bu Ay</SelectItem>
             </SelectContent>
           </Select>
-          <a href="/akademi" className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
-            + Eğitim Ata
-          </a>
+          <button onClick={() => setShowAssignModal(true)} className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium flex items-center gap-1">
+            <Plus size={12} /> Eğitim Ata
+          </button>
+        </div>
+        {/* KPI Chip Strip */}
+        <div className="flex gap-2 px-4 pb-2 overflow-x-auto">
+          <KpiChip label="Gecikmiş Eğitim" value={overdueInsights.length} variant={overdueInsights.length > 5 ? "alert" : overdueInsights.length > 0 ? "warn" : "ok"} />
+          <KpiChip label="Tamamlanma" value={`%${Math.round((compliance?.overallScore || compliance?.avgScore || 0))}`} variant={(compliance?.overallScore || compliance?.avgScore || 0) >= 80 ? "ok" : (compliance?.overallScore || 0) >= 60 ? "warn" : "alert"} />
+          <KpiChip label="Bu Hafta Biten" value={pendingTraining.filter((a: any) => a.status === "approved").length || "—"} variant="ok" />
+          <KpiChip label="Dobody Öneri" value={pendingTraining.length} variant="purple" />
         </div>
       </div>
-
-      {/* KPI */}
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { l: "Toplam Şube", v: summary.total, c: "var(--color-text-primary)" },
-            { l: "Sağlıklı Eğitim", v: summary.healthy, c: "#4ade80" },
-            { l: "Uyarı", v: summary.warning, c: "#fbbf24" },
-            { l: "Kritik", v: summary.critical, c: "#f87171" },
-          ].map((k, i) => (
-            <div key={i} className="rounded-xl border p-3">
-              <p className="text-xs text-muted-foreground">{k.l}</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: k.c }}>{k.v}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Eğitim Uyum Heat Map */}
@@ -269,8 +264,8 @@ export default function TrainerEgitimMerkezi() {
           )}
         </div>
       </div>
+      </div>
     </div>
-  );
     </>
   );
 }

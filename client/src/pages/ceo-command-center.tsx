@@ -187,26 +187,6 @@ function AIAssistant() {
   return (
     <div className="space-y-4">
 
-      {/* Franchise Sağlık Özeti — CEO Komuta */}
-      {healthData && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Ortalama Skor", value: healthData.average || 0, suffix: "/100",
-              color: (healthData.average||0) >= 80 ? "#4ade80" : (healthData.average||0) >= 60 ? "#fbbf24" : "#f87171" },
-            { label: "Sağlıklı Şube", value: healthData.healthyCount || 0, suffix: " şube", color: "#4ade80" },
-            { label: "Uyarı",         value: healthData.warningCount || 0, suffix: " şube", color: "#fbbf24" },
-            { label: "Kritik",        value: healthData.criticalCount || 0, suffix: " şube", color: "#f87171" },
-          ].map((k, i) => (
-            <div key={i} className="rounded-xl border p-3">
-              <p className="text-xs text-muted-foreground mb-1">{k.label}</p>
-              <p className="text-2xl font-bold" style={{ color: k.color }}>
-                {k.value}<span className="text-sm font-normal text-muted-foreground">{k.suffix}</span>
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* En Kötü Şubeler + Eskalasyon Uyarıları */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {healthData?.branches && (
@@ -471,9 +451,12 @@ export default function CEOCommandCenter() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div>
-            <h1 className="text-xl font-bold" data-testid="heading-ceo-dashboard">{pageTitle}</h1>
-            <p className="text-xs text-muted-foreground">
-              Son güncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            <div className="flex items-center gap-2">
+              <h1 className="text-[13px] font-semibold" data-testid="heading-ceo-dashboard">{pageTitle}</h1>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/12 text-red-400">CEO</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Son güncelleme: {new Date(dashboardData.lastUpdated).toLocaleTimeString('tr', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>
@@ -489,7 +472,16 @@ export default function CEOCommandCenter() {
         </Button>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      {/* KPI Chip Strip — compact */}
+      <div className="flex gap-2 flex-wrap">
+        {healthData && <>
+          <KpiChip label="Franchise Sağlık" value={Math.round(healthData.average || 0)} variant={(healthData.average||0) >= 80 ? "ok" : (healthData.average||0) >= 60 ? "warn" : "alert"} />
+          <KpiChip label="Kritik Şube" value={healthData.criticalCount || 0} variant={(healthData.criticalCount||0) > 0 ? "alert" : "ok"} />
+          <KpiChip label="Sağlıklı" value={healthData.healthyCount || 0} variant="ok" />
+        </>}
+        <KpiChip label="Açık Eskalasyon" value={Array.isArray(escalationData) ? escalationData.length : 0} variant={(Array.isArray(escalationData) && escalationData.length > 0) ? "warn" : "ok"} />
+        <KpiChip label="Dobody Öneri" value={Array.isArray(dobodyActions) ? dobodyActions.length : 0} variant="purple" />
+      </div>      <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid grid-cols-2 w-full max-w-xs">
           <TabsTrigger value="overview" data-testid="tab-overview">
             <Eye className="w-4 h-4 mr-1.5" />Özet

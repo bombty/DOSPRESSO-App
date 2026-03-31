@@ -102,9 +102,25 @@ export default function CoachKontrolMerkezi() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
-      <div className="border-b px-4 pt-3 bg-background flex-shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="font-bold text-base">Coach Kontrol Merkezi</h1>
+      {/* Compact topbar — CentrumShell uyumlu */}
+      <div className="border-b flex-shrink-0">
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-[13px] font-semibold">Kontrol Merkezi</h1>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/12 text-blue-400">Coach</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Şube takip · Uyum · KPI Sinyaller</p>
+          </div>
+          <button className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium">+ Ziyaret Planla</button>
+        </div>
+        {/* KPI Strip */}
+        <div className="flex gap-2 px-4 pb-2 overflow-x-auto">
+          <KpiChip label="Kritik Şube" value={branchHealth.filter((b: any) => (b.totalScore || 0) < 50).length} variant="alert" />
+          <KpiChip label="Uyarı" value={branchHealth.filter((b: any) => { const s = b.totalScore || 0; return s >= 50 && s < 70; }).length} variant="warn" />
+          <KpiChip label="Sağlıklı" value={branchHealth.filter((b: any) => (b.totalScore || 0) >= 70).length} variant="ok" />
+          <KpiChip label="Bekl. Görev" value={userTasks.filter((t: any) => ["beklemede","devam_ediyor"].includes(t.status || "")).length} variant="info" />
+          <KpiChip label="Dobody Öneri" value={pendingActions.length} variant="purple" />
         </div>
       </div>
       <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
