@@ -55,17 +55,13 @@
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-blur: 16px;
 
-  --background: 36 29% 96%;
-
-  --foreground: 220 60% 12%;
-
-  --border: 33 17% 89%;
-
-  --card: 0 0% 100%;
-
-  --card-foreground: 220 60% 12%;
-
-  --card-border: 33 17% 89%;
+  /* JSX Light Token: bg:#edeae4 card:#ffffff border:#ddd8d0 text:#1c1b18 muted:#3d3832 */
+  --background: 40 17% 91%;         /* #edeae4 */
+  --foreground: 45 8% 10%;          /* #1c1b18 */
+  --border: 37 16% 84%;             /* #ddd8d0 */
+  --card: 0 0% 100%;                /* #ffffff */
+  --card-foreground: 45 8% 10%;     /* #1c1b18 */
+  --card-border: 37 16% 84%;        /* #ddd8d0 */
 
   --sidebar: 220 60% 15%;
 
@@ -84,38 +80,31 @@
   --sidebar-ring: 0 84% 52%;
 
   --popover: 0 0% 100%;
+  --popover-foreground: 45 8% 10%;
+  --popover-border: 37 16% 84%;
 
-  --popover-foreground: 220 60% 12%;
-
-  --popover-border: 214 32% 91%;
-
-  --primary: 0 84% 52%;
-
+  --primary: 0 76% 50%;             /* #dc2626 */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 60% 18%;
-
+  --secondary: 215 25% 17%;         /* #1e2a3a navy */
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 36 20% 94%;
+  --muted: 37 16% 84%;              /* #ddd8d0 */
+  --muted-foreground: 33 10% 22%;   /* #3d3832 */
 
-  --muted-foreground: 220 10% 40%;
-
-  --accent: 217 91% 55%;
-
+  --accent: 221 84% 53%;            /* #2563eb */
   --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 84% 52%;
-
+  --destructive: 0 76% 50%;         /* #dc2626 */
   --destructive-foreground: 0 0% 100%;
 
-  --input: 214 32% 85%;
-  --ring: 217 91% 55%;
-  --chart-1: 220 60% 25%;
-  --chart-2: 217 91% 50%;
-  --chart-3: 0 84% 52%;
-  --chart-4: 210 100% 65%;
-  --chart-5: 170 75% 45%;
+  --input: 37 16% 84%;
+  --ring: 0 76% 50%;
+  --chart-1: 0 76% 50%;             /* alert */
+  --chart-2: 142 77% 36%;           /* ok */
+  --chart-3: 33 93% 44%;            /* warn */
+  --chart-4: 221 84% 53%;           /* info */
+  --chart-5: 258 79% 59%;           /* purple */
 
   /* Modern Typography */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
