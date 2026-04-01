@@ -1,66 +1,106 @@
 /* ═══════════════════════════════════════════════════════════
-   DOSPRESSO DESIGN SYSTEM v3.0
-   Onaylanan JSX prototype'dan birebir token eşleşme
+   DOSPRESSO DESIGN SYSTEM v4.0
+   Onaylanan tasarım: docs/DESIGN-SYSTEM.md
    Tek kaynak — bu dosyayı değiştirmek tüm sistemi günceller
    ═══════════════════════════════════════════════════════════ */
 
 :root {
+  /* Page backgrounds */
   --ds-bg-page: #0c0f14;
   --ds-bg-card: #141820;
   --ds-bg-card-hover: #1a2030;
   --ds-bg-header: #080a0f;
   --ds-bg-input: #141820;
-  --ds-bg-widget-header: rgba(30, 37, 48, 0.25);
+  --ds-bg-widget-header: #192838;
 
+  /* Borders */
   --ds-border: #1e2530;
   --ds-border-hover: #2a3545;
   --ds-border-subtle: rgba(30, 37, 48, 0.5);
+  --ds-border-red: rgba(180,42,42,0.30);
 
+  /* Text */
   --ds-text-primary: #e8ecf1;
+  --ds-text-mid: #9ca3af;
+  --ds-text-secondary: #6b7a8d;
   --ds-text-muted: #6b7a8d;
 
-  --ds-alert: #ef4444;
-  --ds-warn: #fbbf24;
-  --ds-ok: #22c55e;
-  --ds-info: #60a5fa;
+  /* Semantic colors */
+  --ds-red: #ef4444;
+  --ds-red-light: #f87171;
+  --ds-amber: #fbbf24;
+  --ds-green: #22c55e;
+  --ds-blue: #60a5fa;
   --ds-purple: #a5a0f0;
 
+  /* Aliases */
+  --ds-alert: var(--ds-red);
+  --ds-warn: var(--ds-amber);
+  --ds-ok: var(--ds-green);
+  --ds-info: var(--ds-blue);
+
+  /* Semantic backgrounds */
   --ds-alert-bg: rgba(239,68,68,0.08);
   --ds-warn-bg: rgba(251,191,36,0.08);
   --ds-ok-bg: rgba(34,197,94,0.08);
   --ds-info-bg: rgba(96,165,250,0.08);
   --ds-purple-bg: rgba(165,160,240,0.06);
 
+  /* Semantic borders */
   --ds-alert-border: rgba(239,68,68,0.30);
   --ds-warn-border: rgba(251,191,36,0.30);
   --ds-ok-border: rgba(34,197,94,0.30);
   --ds-info-border: rgba(96,165,250,0.30);
   --ds-purple-border: rgba(165,160,240,0.30);
 
-  --ds-badge-alert-bg: rgba(239,68,68,0.20);
-  --ds-badge-warn-bg: rgba(251,191,36,0.20);
-  --ds-badge-ok-bg: rgba(34,197,94,0.20);
-  --ds-badge-info-bg: rgba(96,165,250,0.20);
-  --ds-badge-purple-bg: rgba(165,160,240,0.20);
+  /* Badges — dolgulu renk + beyaz metin */
+  --ds-badge-danger-bg: #ef4444;
+  --ds-badge-danger-text: #ffffff;
+  --ds-badge-warning-bg: #fbbf24;
+  --ds-badge-warning-text: #ffffff;
+  --ds-badge-success-bg: #22c55e;
+  --ds-badge-success-text: #ffffff;
+  --ds-badge-info-bg: #60a5fa;
+  --ds-badge-info-text: #ffffff;
+  --ds-badge-muted-bg: #6b7a8d;
+  --ds-badge-muted-text: #ffffff;
 
-  --ds-dobody-bg: rgba(165,160,240,0.06);
-  --ds-dobody-border: rgba(165,160,240,0.40);
-  --ds-dobody-divider: rgba(165,160,240,0.08);
-  --ds-dobody-btn-bg: rgba(165,160,240,0.15);
+  /* Pills */
+  --ds-pill-danger-bg: rgba(239,68,68,0.12);
+  --ds-pill-danger-border: rgba(239,68,68,0.25);
+  --ds-pill-info-bg: rgba(96,165,250,0.12);
+  --ds-pill-info-border: rgba(96,165,250,0.25);
+  --ds-pill-warn-bg: rgba(251,191,36,0.12);
+  --ds-pill-warn-border: rgba(251,191,36,0.25);
 
+  /* Mr. Dobody (Option C: kırmızı header + navy gövde) */
+  --ds-dobody-header: #b42a2a;
+  --ds-dobody-body: #192838;
+  --ds-dobody-border: #192838;
+  --ds-dobody-divider: rgba(255,255,255,0.08);
+
+  /* Lost & Found */
   --ds-lost-bg: rgba(251,191,36,0.06);
   --ds-lost-border: rgba(251,191,36,0.40);
 
+  /* Buttons */
   --ds-btn-ok-bg: rgba(34,197,94,0.15);
   --ds-btn-purple-bg: rgba(165,160,240,0.15);
   --ds-btn-blue-bg: rgba(96,165,250,0.15);
   --ds-btn-alert-bg: rgba(239,68,68,0.15);
   --ds-btn-warn-bg: rgba(251,191,36,0.15);
 
+  /* Sizing */
   --ds-card-radius: 12px;
   --ds-widget-radius: 12px;
+  --ds-card-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  --ds-font-pill: 11px;
+  --ds-gap-sm: 6px;
+  --ds-gap-md: 10px;
+  --ds-gap-lg: 16px;
 }
 
+/* Utility classes */
 .ds-card {
   background: var(--ds-bg-card);
   border: 1px solid var(--ds-border);
@@ -69,16 +109,22 @@
 }
 .ds-card-header {
   background: var(--ds-bg-widget-header);
-  border-bottom: 1px solid var(--ds-border);
-  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  padding: 8px 12px;
+  color: #ffffff;
 }
 .ds-widget-clickable { cursor: pointer; transition: border-color 0.15s; }
 .ds-widget-clickable:hover { border-color: rgba(96,165,250,0.30); }
 .ds-dobody {
-  border: 1px dashed var(--ds-dobody-border);
-  background: var(--ds-dobody-bg);
+  border: 1.5px solid var(--ds-dobody-border);
+  background: var(--ds-dobody-body);
   border-radius: var(--ds-card-radius);
   overflow: hidden;
+}
+.ds-dobody-header {
+  background: var(--ds-dobody-header);
+  padding: 8px 12px;
+  color: #ffffff;
 }
 .ds-lost-found {
   border: 1px solid var(--ds-lost-border);

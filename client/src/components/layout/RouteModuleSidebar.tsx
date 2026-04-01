@@ -59,7 +59,7 @@ export function RouteModuleSidebar() {
               fontSize: 12,
               fontWeight: isActive ? 600 : 400,
               color: isActive ? "var(--ds-red)" : "var(--ds-text-secondary)",
-              background: isActive ? "rgba(192,57,43,0.06)" : "transparent",
+              background: isActive ? "rgba(180,42,42,0.08)" : "transparent",
               borderLeft: isActive ? "2px solid var(--ds-red)" : "2px solid transparent",
               border: "none",
               borderLeftStyle: "solid" as const,

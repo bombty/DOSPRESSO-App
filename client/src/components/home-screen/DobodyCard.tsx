@@ -70,7 +70,7 @@ export function DobodyCard() {
       style={{
         background: "var(--ds-bg-card)",
         border: "1px solid var(--ds-border-red)",
-        boxShadow: "var(--ds-card-shadow), 0 0 0 1px rgba(192,57,43,0.05)",
+        boxShadow: "var(--ds-card-shadow), 0 0 0 1px rgba(180,42,42,0.08)",
       }}
     >
       {/* Header — always visible, toggles expand */}
@@ -80,7 +80,7 @@ export function DobodyCard() {
         className="w-full text-left p-3 md:p-[16px_20px] flex gap-3 md:gap-4 items-start cursor-pointer transition-colors hover:opacity-95"
       >
         <div className="w-9 h-9 md:w-11 md:h-11 rounded-lg md:rounded-[10px] flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(192,57,43,0.12)" }}>
+          style={{ background: "#b42a2a" }}>
           <Bot className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" style={{ color: "var(--ds-red)" }} />
         </div>
 

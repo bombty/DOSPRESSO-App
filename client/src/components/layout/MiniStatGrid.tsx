@@ -102,7 +102,7 @@ interface AlertBoxProps {
 export function AlertBox({ message, color = "var(--ds-red-light)" }: AlertBoxProps) {
   return (
     <div style={{
-      background: "rgba(192,57,43,0.08)",
+      background: "rgba(180,42,42,0.10)",
       borderLeft: `3px solid ${color}`,
       borderRadius: "0 6px 6px 0",
       padding: "5px 10px",
