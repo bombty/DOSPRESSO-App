@@ -9,12 +9,14 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   CheckSquare,
   ClipboardList,
+  ClipboardCheck,
   Search,
   MapPin,
 } from "lucide-react";
 
 const Tasks = lazy(() => import("./tasks"));
 const Checklists = lazy(() => import("./checklists"));
+const Denetimler = lazy(() => import("./denetimler"));
 const KayipEsya = lazy(() => import("./kayip-esya"));
 const CanliTakip = lazy(() => import("./canli-takip"));
 const KayipEsyaHQ = lazy(() => import("./kayip-esya-hq"));
@@ -44,6 +46,14 @@ const OPERASYON_TABS: TabConfig[] = [
     icon: <ClipboardList className="h-4 w-4" />,
     permissionModule: "checklists",
     component: Checklists
+  },
+  {
+    id: "denetimler",
+    label: "Audits",
+    labelTr: "Denetimler",
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    permissionModule: "denetim",
+    component: Denetimler
   },
   {
     id: "kayip-esya",
