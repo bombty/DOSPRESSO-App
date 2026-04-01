@@ -4231,6 +4231,7 @@ router.post("/api/admin/reset-test-data", isAuthenticated, isAdminOrCeo, async (
       { name: "support_tickets", query: sql`DELETE FROM support_tickets WHERE title LIKE '%[TEST]%'` },
       { name: "announcements", query: sql`DELETE FROM announcements WHERE title LIKE '%[TEST]%'` },
       { name: "cowork_channels", query: sql`DELETE FROM cowork_channels WHERE name LIKE 'test-%'` },
+      { name: "dobody_actions", query: sql`DELETE FROM agent_pending_actions WHERE title LIKE '%[TEST]%'` },
     ];
     
     for (const t of tables) {
