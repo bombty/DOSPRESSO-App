@@ -331,7 +331,7 @@ async function seedTickets(branches: any[], users: any[], hqUsers: any[]) {
     const status = daysAgo > 15 ? "cozuldu" : daysAgo > 7 ? pick(["cozuldu", "islemde"]) : pick(["acik", "islemde"]);
     
     try {
-      const ticketNum = `TKT-${Date.now()}-${rand(100,999)}`;
+      const ticketNum = `TKT-SEED-${String(i + 1).padStart(3, '0')}-${rand(1000, 9999)}`;
       await db.execute(sql`
         INSERT INTO support_tickets (
           ticket_number, title, description, department, priority, status,

@@ -201,7 +201,7 @@ const AdminMegaModule = lazyWithRetry(() => import("@/pages/admin-mega"));
 const AkademiMegaModule = lazyWithRetry(() => import("@/pages/akademi-mega"));
 const AkademiV3 = lazyWithRetry(() => import("@/pages/akademi-v3/index"));
 const CRMMegaModule = lazyWithRetry(() => import("@/pages/crm-mega"));
-const IletisimMerkeziRedirect = () => { const [,nav] = (require("wouter") as any).useLocation(); (require("react") as any).useEffect(() => nav("/crm"), []); return null; };
+const IletisimMerkeziRedirect = () => { const [, nav] = useLocation(); useEffect(() => { nav("/crm"); }, []); return null; };
 const AjandaPage = lazyWithRetry(() => import("@/pages/ajanda"));
 const CEOCommandCenter = lazyWithRetry(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"));
