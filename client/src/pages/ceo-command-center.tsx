@@ -105,28 +105,28 @@ export default function CEOCommandCenter() {
 
       <div className="grid grid-cols-2 gap-2.5">
         <MiniStats title="💰Merkez Bordro" rows={[
-          { label: "Fabrika", value: "₺128K" },
-          { label: "HQ", value: "₺95K" },
-          { label: "Işıklar", value: "₺42K" },
-          { label: "Toplam", value: `₺${dashData?.totalPayroll || "265K"}`, color: "#60a5fa" },
-        ]} onLink={() => {}} />
+          { label: "Fabrika", value: `₺${dashData?.fabrikaPayroll || "—"}` },
+          { label: "HQ", value: `₺${dashData?.hqPayroll || "—"}` },
+          { label: "Işıklar", value: `₺${dashData?.isiklarPayroll || "—"}` },
+          { label: "Toplam", value: `₺${dashData?.totalPayroll || "—"}`, color: "#60a5fa" },
+        ]} onLink={() => setLocation("/ik")} />
         <MiniStats title="💰Diğer Şubeler" rows={[
-          { label: "Toplam", value: "₺310K" },
+          { label: "Toplam", value: `₺${dashData?.branchPayrollTotal || "—"}` },
           { label: "Girilmemiş", value: `${(financialData || []).filter((f: any) => !f.fixedCosts?.some((c: any) => c.amount)).length} şube⚠`, color: "#ef4444" },
-        ]} onLink={() => {}} />
+        ]} onLink={() => setLocation("/ik")} />
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
         <MiniStats title="📊Merkez Gider" rows={[
-          { label: "Kira+gider", value: "₺91K" },
-          { label: "Stok", value: "₺142K", color: "#fbbf24" },
-          { label: "Toplam", value: "₺233K" },
-        ]} onLink={() => {}} />
+          { label: "Kira+gider", value: `₺${dashData?.rentExpense || "—"}` },
+          { label: "Stok", value: `₺${dashData?.stockCost || "—"}`, color: "#fbbf24" },
+          { label: "Toplam", value: `₺${dashData?.totalExpense || "—"}` },
+        ]} onLink={() => setLocation("/finans")} />
         <MiniStats title="Franchise KPI" rows={[
-          { label: "Müşteri", value: `${dashData?.avgRating || "—"}★`, color: "#fbbf24" },
+          { label: "Müşteri", value: `${dashData?.avgRating || healthData?.avgRating || "—"}★`, color: "#fbbf24" },
           { label: "Eğitim", value: `%${dashData?.trainingCompletion || "—"}`, color: "#ef4444" },
           { label: "Uyum", value: `${dashData?.complianceScore || "—"}`, color: "#22c55e" },
-        ]} onLink={() => {}} />
+        ]} onLink={() => setLocation("/sube-saglik-skoru")} />
       </div>
     </CentrumShell>
   );

@@ -4219,4 +4219,34 @@ router.post("/api/admin/role-permissions", isAuthenticated, isAdminOrCeo, async 
   }
 });
 
+// ═══ TEST VERİSİ SIFIRLAMA ═══
+router.post("/api/admin/reset-test-data", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const results: Record<string, number> = {};
+    
+    const tables = [
+      { name: "customer_feedback", query: sql`DELETE FROM customer_feedback WHERE source = 'seed_test'` },
+      { name: "tasks", query: sql`DELETE FROM tasks WHERE source_type = 'seed_test'` },
+      { name: "equipment_faults", query: sql`DELETE FROM equipment_faults WHERE description LIKE '%[TEST]%'` },
+      { name: "support_tickets", query: sql`DELETE FROM support_tickets WHERE title LIKE '%[TEST]%'` },
+      { name: "announcements", query: sql`DELETE FROM announcements WHERE title LIKE '%[TEST]%'` },
+      { name: "cowork_channels", query: sql`DELETE FROM cowork_channels WHERE name LIKE 'test-%'` },
+    ];
+    
+    for (const t of tables) {
+      try {
+        const r = await db.execute(t.query);
+        results[t.name] = (r as any).rowCount || 0;
+      } catch (e) {
+        results[t.name] = -1;
+      }
+    }
+    
+    res.json({ success: true, message: "Test verileri silindi", results });
+  } catch (error) {
+    console.error("Reset test data error:", error);
+    res.status(500).json({ message: "Sıfırlama sırasında hata oluştu" });
+  }
+});
+
 export default router;
