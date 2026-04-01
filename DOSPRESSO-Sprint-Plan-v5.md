@@ -1,7 +1,56 @@
 # DOSPRESSO Control Centrum v5 — Birleşik Sprint Planı
-**Tarih:** 31 Mart 2026 | **Onaylayan:** Aslan (Product Owner)
+**Tarih:** 1 Nisan 2026 | **Onaylayan:** Aslan (Product Owner)
 **Strateji:** MissionControl mantığını koru, Centrum tasarımını giydir
-**Toplam:** 10 sprint, ~76 saat, 30+ dosya
+**Toplam:** 10 sprint + pre-sprint, ~80 saat, 30+ dosya
+
+---
+
+## TESPİT EDİLEN SORUNLAR (1 Nisan 2026 — Görsel Test)
+
+### ✅ Düzeltildi (commit 97b7116)
+| # | Sorun | Çözüm |
+|---|-------|-------|
+| T1 | KPI çok satırlı (flex-col) | KpiChip → flex items-center (tek satır yatay) |
+| T2 | Widget font'ları çok küçük (9px) | Widget 12px, içerik 11px, meta 10px |
+| T3 | Light mode sarı metin okunamıyor | warn: #d97706 → #92400e (koyu amber) |
+| T4 | Light mode ikon gölgesi yok | box-shadow: 0 2px 8px rgba(0,0,0,0.15) |
+| T5 | Widget header rgba şeffaf | #192838 solid (her iki mod) |
+| T6 | Dobody eski mor tint | Option C: #b42a2a header + #192838 gövde |
+| T7 | Badge'ler dark modda soluk | Dolgulu renk + beyaz metin (her iki mod) |
+
+### ⏳ Bekleyen Sorunlar
+| # | Sorun | Öncelik | Sprint |
+|---|-------|---------|--------|
+| T8 | Kiosk token bug (sube/kiosk.tsx kioskToken localStorage'a kaydetmiyor) | 🔴 Pilot | Pre-S3 |
+| T9 | CGO boş veri (Arıza 0, SLA 0, CRM 0) — endpoint dönüş veya seed data eksik | 🔴 | Pre-S3 |
+| T10 | Arıza Yönetimi sayfası eski tasarım (CentrumShell değil) | 🟡 | S4 |
+| T11 | 9 Centrum sayfasında font/renk tutarlılık kontrolü | 🟡 | S5C |
+| T12 | Tüm rollerde kontrol merkezi veri bağlantı doğrulaması | 🔴 | Pre-S3 |
+| T13 | CEO ana sayfa + command center Replit screenshot eksik | 🟡 | Replit |
+
+---
+
+## PRE-SPRINT: BUG FIX + VERİ DOĞRULAMA (2 saat)
+
+**P1. Kiosk Token Bug Fix** (15dk)
+Dosya: `client/src/pages/sube/kiosk.tsx`
+Fix: `onSuccess` handler'a `if (data.kioskToken) localStorage.setItem("kiosk-token", data.kioskToken)` ekle
+(`fabrika/kiosk.tsx`'te zaten var — aynı pattern)
+
+**P2. CGO Veri Bağlantıları** (1s)
+- `/api/faults` → CGO'ya 0 dönüyor mu, seed data var mı kontrol et
+- `/api/iletisim/tickets?department=teknik` → CRM widget boş
+- `/api/agent/branch-health` → Şube sağlık verisi kontrol et
+- `/api/hq/kiosk/active-sessions` → Personel live tracking
+- `/api/agent/actions?status=pending` → Dobody aksiyonları
+- Her endpoint'i curl ile test et, boş ise seed data ekle
+
+**P3. Tüm Dashboard Veri Doğrulama** (45dk)
+CEO, CGO, Coach, Trainer dashboard'larını gez:
+- Her widget'ta veri görünüyor mu?
+- Tıklanabilir widget'lar doğru sayfaya gidiyor mu?
+- KPI'lar API'den canlı veri çekiyor mu?
+- Boş widget'larda "Veri yok" mesajı gösteriliyor mu?
 
 ---
 
@@ -209,17 +258,18 @@ Dashboard: Coach/Trainer best practice listesi, Müdür diğer şubelerden öğr
 
 | Sprint | İçerik | Dosya | Saat |
 |--------|--------|-------|------|
-| S1 | Altyapı (CentrumShell + routes) | 2 | 4 |
-| S2 | HQ rolleri (CEO+CGO+Coach+Trainer+İK+Satınalma) | 6 | 12 |
-| S3 | Fabrika + Depo | 2 | 6 |
+| **Pre** | **Bug fix + veri doğrulama** | **3** | **2** |
+| S1 | Altyapı (CentrumShell + routes) | 2 | 4 | ✅ |
+| S2 | HQ rolleri (CEO+CGO+Coach+Trainer+İK+Satınalma) | 6 | 12 | ✅ |
+| S3 | Fabrika QC + Depo detay | 2 | 6 | 🔴 Pilot |
 | S4 | Şube rolleri (Müdür+Sup+Buddy+Personel+Yatırımcı) | 5 | 10 |
-| S5 | QC genişletme + temizlik + quality gate + admin tema | 6+ | 9 |
+| S5 | QC + temizlik + quality gate + admin tema + tasarım tutarlılığı | 6+ | 9 |
 | S6 | Upselling hedef + Müşteri NPS | 5 | 9 |
 | S7 | Vardiya devir teslim (3 parça) | 4 | 6 |
 | S8 | Excel import + 5 AI skill | 3 | 5 |
 | S9 | Bölge + Sözleşme + Kullanım analitik | 8 | 10 |
 | S10 | Risk yönetimi + Best practice | 5 | 8 |
-| **TOPLAM** | | **45+ dosya** | **~76 saat** |
+| **TOPLAM** | | **49+ dosya** | **~81 saat** |
 
 ---
 
