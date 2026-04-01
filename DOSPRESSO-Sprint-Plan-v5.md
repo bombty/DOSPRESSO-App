@@ -324,3 +324,33 @@ Dashboard: Coach/Trainer best practice listesi, Müdür diğer şubelerden öğr
 10. Devir teslim: mola → checklist zorunlu, vardiya bitiş → checklist zorunlu
 11. Franchise sözleşme: sadece alan bilgileri, ekipman listesi, lisans bedeli import
 12. Sistem kullanım: pilot için kritik — kim kullanıyor ölçülmeli
+
+### SPRINT 4B: ROL FONKSİYONEL EKSİKLER (Yeni — 2 Nisan 2026)
+**Referans:** `docs/ROL-FONKSIYONEL-ANALIZ-v2.md`
+
+**4B-1. Eksik Dashboard'lar (3s)**
+- marketing-centrum.tsx — YENİ (NPS trend, kampanya, marka uyum)
+- destek-centrum.tsx — YENİ (açık talepler, SLA, çözüm süresi)
+- yatirimci-hq-centrum.tsx — YENİ (tüm şube read-only özet)
+
+**4B-2. Zayıf Dashboard Güçlendirme (2s)**
+- supbuddy-centrum.tsx — 2→6+ widget (checklist, görev, ekipman, vardiya)
+- personel-centrum.tsx — vardiya bilgisi, kiosk link, checklist, rozet
+
+**4B-3. Aksiyon Butonları (2s)**
+- Coach: "Hızlı Görev Ata" + "Denetim Planla" butonları
+- Supervisor: "Görev Oluştur" + "Checklist Ata" butonları
+- Müdür: "HQ'ya Talep" + "Fiks Gider Gir" butonları
+- Barista: "Vardiyamı Başlat" + "Checklist Tamamla" kısayolları
+
+**4B-4. Dobody Rol Bazlı Filtreleme (2s)**
+- Her rol SADECE kendini ilgilendiren aksiyonları görecek
+- CEO→stratejik, Coach→şube, Supervisor→ekip, Barista→kişisel
+- targetRoleScope filtresi aktifleştir
+
+**4B-5. Bağlantı/Link Eksikleri (1s)**
+- Supervisor → /checklistler link
+- Barista → /sube/kiosk link
+- Coach → /denetimler link
+- Müdür → /crm destek kısayolu
+- Trainer → /akademi yönetim link
