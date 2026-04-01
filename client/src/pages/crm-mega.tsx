@@ -48,6 +48,7 @@ import { NewTaskDialog } from "@/components/new-task-dialog";
 const DashboardTab = lazy(() => import("@/pages/iletisim-merkezi/DashboardTab"));
 const HqTasksTab = lazy(() => import("@/pages/iletisim-merkezi/HqTasksTab"));
 const BroadcastTab = lazy(() => import("@/pages/iletisim-merkezi/BroadcastTab"));
+const CoworkContent = lazy(() => import("@/pages/mesajlar"));
 
 type Channel = "franchise" | "misafir" | "task";
 
