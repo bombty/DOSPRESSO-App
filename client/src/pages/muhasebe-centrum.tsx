@@ -57,17 +57,17 @@ export default function MuhasebeCentrum() {
           { label: "Aktif", value: ikData?.fabrikaActive ?? "—" },
           { label: "İzinli", value: ikData?.fabrikaLeave ?? 0 },
           { label: "Bordro", value: `₺${ikData?.fabrikaPayroll ?? "—"}` },
-        ]} />
+        ]} onLink={() => window.location.href = "/ik"} />
         <MiniStats title="🏢 HQ Personel" rows={[
           { label: "Aktif", value: ikData?.hqActive ?? "—" },
           { label: "İzinli", value: ikData?.hqLeave ?? 0 },
           { label: "Bordro", value: `₺${ikData?.hqPayroll ?? "—"}` },
-        ]} />
+        ]} onLink={() => window.location.href = "/ik"} />
         <MiniStats title="☕ Işıklar Personel" rows={[
           { label: "Aktif", value: ikData?.isiklarActive ?? "—" },
           { label: "İzinli", value: ikData?.isiklarLeave ?? 0 },
           { label: "Bordro", value: `₺${ikData?.isiklarPayroll ?? "—"}` },
-        ]} />
+        ]} onLink={() => window.location.href = "/ik"} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -80,7 +80,7 @@ export default function MuhasebeCentrum() {
           { label: "Toplam bordro", value: financeData?.totalBranchPayroll ?? "—" },
           { label: "Onay bekleyen", value: financeData?.pendingApproval ?? "—", color: "#fbbf24" },
           { label: "Sözleşme biten", value: financeData?.expiringContracts ?? "—", color: "#f87171" },
-        ]} />
+        ]} onLink={() => window.location.href = "/ik"} />
       </div>
 
       <Widget title="⚠ Dikkat Gerektiren">

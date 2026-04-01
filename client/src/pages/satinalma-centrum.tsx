@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SatinalmaCentrum() {
+  const [, navigate] = useLocation();
   const [period, setPeriod] = useState<TimePeriod>("week");
 
   const { data: dashData, isLoading } = useQuery<any>({
@@ -58,15 +60,15 @@ export default function SatinalmaCentrum() {
           { label: "Güncellenen", value: dashData?.priceUpdated ?? "—" },
           { label: "Artış olan", value: dashData?.priceIncreased ?? "—", color: "#f87171" },
           { label: "Stoktaki fark", value: dashData?.priceDiff ?? "—", color: "#f87171" },
-        ]} />
+        ]} onLink={() => navigate("/stok")} />
         <MiniStats title="📋 Sipariş Giriş-Çıkış" rows={[
           { label: "Bu ay sipariş", value: dashData?.totalOrders ?? "—" },
           { label: "Giriş yapılan", value: dashData?.receivedOrders ?? "—" },
           { label: "Giriş bekleyen", value: dashData?.pendingReceipt ?? "—", color: "#fbbf24" },
-        ]} />
+        ]} onLink={() => navigate("/stok")} />
       </div>
 
-      <Widget title="Tedarikçi Performans">
+      <Widget title="Tedarikçi Performans" onClick={() => navigate("/stok")}>
         {(dashData?.suppliers ?? []).slice(0, 5).map((s: any, i: number) => (
           <ListItem key={i} title={`${s.name}: %${s.onTimeRate} zamanında`}
             priority={s.onTimeRate >= 85 ? "✓" : "⚠"} priorityColor={s.onTimeRate >= 85 ? "#4ade80" : "#fbbf24"} />
