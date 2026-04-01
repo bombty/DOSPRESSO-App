@@ -149,7 +149,7 @@ async function resetTestData() {
   await db.execute(sql`DELETE FROM customer_feedback WHERE source = 'seed_test'`);
   await db.execute(sql`DELETE FROM tasks WHERE source_type = 'seed_test'`);
   await db.execute(sql`DELETE FROM equipment_faults WHERE description LIKE '%[TEST]%'`);
-  await db.execute(sql`DELETE FROM support_tickets WHERE subject LIKE '%[TEST]%'`);
+  await db.execute(sql`DELETE FROM support_tickets WHERE title LIKE '%[TEST]%'`);
   await db.execute(sql`DELETE FROM hq_support_tickets WHERE title LIKE '%[TEST]%'`);
   await db.execute(sql`DELETE FROM announcements WHERE title LIKE '%[TEST]%'`);
   await db.execute(sql`DELETE FROM cowork_channels WHERE name LIKE '%test-%'`);
@@ -194,18 +194,18 @@ async function seedCustomerFeedback(branches: any[], users: any[]) {
             INSERT INTO customer_feedback (
               branch_id, source, rating, 
               service_rating, cleanliness_rating, product_rating, staff_rating,
-              comment, guest_name, guest_phone,
+              comment, customer_name, customer_phone,
               sla_deadline_hours, branch_response_at, branch_response_text,
-              status, created_at, updated_at
+              feedback_status, feedback_date, created_at, updated_at
             ) VALUES (
               ${branch.id}, 'seed_test', ${rating},
-              ${rand(rating - 1, Math.min(5, rating + 1))}, ${rand(rating - 1, Math.min(5, rating + 1))}, 
-              ${rand(rating - 1, Math.min(5, rating + 1))}, ${rand(rating - 1, Math.min(5, rating + 1))},
+              ${Math.max(1, rand(rating - 1, Math.min(5, rating + 1)))}, ${Math.max(1, rand(rating - 1, Math.min(5, rating + 1)))}, 
+              ${Math.max(1, rand(rating - 1, Math.min(5, rating + 1)))}, ${Math.max(1, rand(rating - 1, Math.min(5, rating + 1)))},
               ${comment}, ${`Misafir ${rand(100, 999)}`}, ${`05${rand(30, 59)}${rand(1000000, 9999999)}`},
               ${slaHours}, ${responseTime ? fmtDate(responseTime) : null}, 
               ${hasResponse ? "Değerli geri bildiriminiz için teşekkür ederiz." : null},
-              ${hasResponse ? "responded" : (chance(50) ? "pending" : "new")},
-              ${fmtDate(feedbackTime)}, ${fmtDate(feedbackTime)}
+              ${hasResponse ? "branch_responded" : "open"},
+              ${fmtDate(feedbackTime)}, ${fmtDate(feedbackTime)}, ${fmtDate(feedbackTime)}
             )
           `);
           count++;
@@ -330,13 +330,14 @@ async function seedTickets(branches: any[], users: any[], hqUsers: any[]) {
     const status = daysAgo > 15 ? "cozuldu" : daysAgo > 7 ? pick(["cozuldu", "islemde"]) : pick(["acik", "islemde"]);
     
     try {
+      const ticketNum = `TKT-${Date.now()}-${rand(100,999)}`;
       await db.execute(sql`
         INSERT INTO support_tickets (
-          subject, description, department, priority, status,
+          ticket_number, title, description, department, priority, status,
           branch_id, created_by_user_id, 
           created_at, updated_at
         ) VALUES (
-          ${`[TEST] ${ticket.title}`}, ${`${ticket.title} — detaylı açıklama`},
+          ${ticketNum}, ${`[TEST] ${ticket.title}`}, ${`${ticket.title} — detaylı açıklama`},
           ${ticket.dept}, ${ticket.priority}, ${status},
           ${branch.id}, ${creator.id},
           ${fmtDate(addHours(date, rand(8, 18)))}, ${fmtDate(addHours(date, rand(8, 18)))}
@@ -360,8 +361,8 @@ async function seedAnnouncements(hqUsers: any[]) {
     const date = addDays(START_DATE, i * 7);
     try {
       await db.execute(sql`
-        INSERT INTO announcements (title, body, author_id, is_active, target_audience, priority, created_at, updated_at)
-        VALUES (${`[TEST] ${ann.title}`}, ${ann.body}, ${admin?.id || 'admin'}, true, 'all', ${i === 0 ? 'high' : 'normal'}, ${fmtDate(date)}, ${fmtDate(date)})
+        INSERT INTO announcements (title, message, created_by_id, priority, category, created_at, updated_at)
+        VALUES (${`[TEST] ${ann.title}`}, ${ann.body}, ${admin?.id || 'admin'}, ${i === 0 ? 'high' : 'normal'}, 'general', ${fmtDate(date)}, ${fmtDate(date)})
       `);
       count++;
     } catch (e) {
@@ -387,8 +388,8 @@ async function seedCoworkChannels(hqUsers: any[]) {
   for (const ch of channels) {
     try {
       await db.execute(sql`
-        INSERT INTO cowork_channels (name, display_name, description, created_by_id, channel_type, is_archived, created_at)
-        VALUES (${ch.name}, ${ch.displayName}, ${ch.desc}, ${creator?.id || 'admin'}, 'department', false, NOW())
+        INSERT INTO cowork_channels (name, description, created_by_id, is_private, is_active, created_at)
+        VALUES (${ch.name}, ${ch.desc}, ${creator?.id || 'admin'}, false, true, NOW())
       `);
       count++;
     } catch (e) {

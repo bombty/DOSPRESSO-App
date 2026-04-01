@@ -1296,7 +1296,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
   // CEO - Full read access
   ceo: {
     dashboard: ['view'],
-    tasks: ['view'],
+    tasks: ['view', 'create', 'edit', 'delete', 'approve'],
     checklists: ['view'],
     equipment: ['view'],
     equipment_faults: ['view'],
@@ -1312,7 +1312,7 @@ export const PERMISSIONS: Record<UserRoleType, Record<PermissionModule, Permissi
     training: ['view'],
     schedules: ['view'],
     messages: ['view', 'create'],
-    announcements: ['view'],
+    announcements: ['view', 'create'],
     complaints: ['view'],
     leave_requests: ['view'],
     overtime_requests: ['view'],
