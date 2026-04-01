@@ -17,16 +17,21 @@ interface HomeSummaryData {
 function HomeScreenSkeleton() {
   return (
     <div className="p-4 md:p-6 max-w-[1200px] mx-auto">
-      <div className="flex gap-2 mb-4">
-        <Skeleton className="h-8 w-32 rounded-lg" />
-        <Skeleton className="h-8 w-40 rounded-lg" />
+      <div className="space-y-2 mb-4">
+        <Skeleton className="h-7 w-48 rounded-lg" />
+        <Skeleton className="h-4 w-32 rounded" />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="flex gap-2 mb-4">
+        <Skeleton className="h-10 w-24 rounded-xl" />
+        <Skeleton className="h-10 w-24 rounded-xl" />
+        <Skeleton className="h-10 w-24 rounded-xl" />
+      </div>
+      <Skeleton className="h-[70px] rounded-xl mb-3" />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
         {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-[100px] md:h-[120px] rounded-xl" />
+          <Skeleton key={i} className="h-[90px] rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-[80px] rounded-xl mt-3" />
     </div>
   );
 }
@@ -47,66 +52,54 @@ export default function HomeScreen() {
   const modules = getModulesForRole(user.role);
   const hasDobody = showDobodyCard(user.role);
 
-  const fullCards = modules.filter((m) => !m.halfWidth);
-  const halfCards = modules.filter((m) => m.halfWidth);
-
   return (
     <div
       data-testid="home-screen"
       className="p-4 md:p-6 max-w-[1200px] mx-auto overflow-y-auto h-full"
     >
-      {/* Alert pills only — name is in header */}
+      {/* Greeting + KPI strip */}
       <WelcomeHeader
         firstName=""
-        role={user.role || ""}
+        role={user.role}
+        branchName={user.branchId ? `Şube ${user.branchId}` : null}
         alerts={homeSummary?.alerts}
       />
 
-      {/* Main module grid — 2 col mobile, 3 col desktop */}
-      <div
-        data-testid="module-grid"
-        className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-[14px] mb-3 md:mb-[14px]"
-      >
-        {fullCards.map((mod) => (
-          <ModuleCard
-            key={mod.id}
-            config={mod}
-            badges={homeSummary?.badges?.[mod.id]?.badges}
-            statusMessage={homeSummary?.badges?.[mod.id]?.status}
-          />
-        ))}
-      </div>
-
-      {/* Mr. Dobody card */}
+      {/* Mr. Dobody Banner */}
       {hasDobody && (
-        <div className="mb-3 md:mb-[14px]">
+        <div className="mb-3">
           <DobodyCard />
         </div>
       )}
 
-      {/* Half-width utility cards */}
-      {halfCards.length > 0 && (
-        <div className={`grid gap-3 md:gap-[14px] ${
-          halfCards.length === 1 ? "grid-cols-1" :
-          halfCards.length === 2 ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"
-        }`}>
-          {halfCards.map((mod) => (
+      {/* Module Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3">
+        {modules.map((mod) => {
+          const moduleData = homeSummary?.badges?.[mod.id];
+          return (
             <ModuleCard
               key={mod.id}
               config={mod}
-              badges={homeSummary?.badges?.[mod.id]?.badges}
-              statusMessage={homeSummary?.badges?.[mod.id]?.status}
+              badges={moduleData?.badges}
+              statusMessage={moduleData?.status}
             />
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* Footer */}
-      <p className="text-center text-[11px] py-3 opacity-50"
-        style={{ color: "var(--ds-text-secondary)" }}>
-        {user.role === "admin" ? "Admin: 12 modül · 31 alt sayfa · Tam erişim" :
-         `${modules.length} modül · ${(user.role || "").toUpperCase()}`}
+      <p className="text-center py-3 text-muted-foreground" style={{ fontSize: 11 }}>
+        {modules.length} modül · {(ROLE_LABELS[user.role] || user.role)}
       </p>
     </div>
   );
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  admin:"Admin", ceo:"CEO", cgo:"CGO", coach:"Coach", trainer:"Trainer",
+  muhasebe_ik:"İK-Muhasebe", muhasebe:"Muhasebe", satinalma:"Satınalma",
+  supervisor:"Supervisor", supervisor_buddy:"Sup.Buddy", mudur:"Müdür",
+  barista:"Barista", bar_buddy:"BarBuddy", stajyer:"Stajyer",
+  fabrika_mudur:"Fabrika Md.", uretim_sefi:"Üretim Şefi",
+  yatirimci_branch:"Yatırımcı", yatirimci_hq:"Yatırımcı",
+};

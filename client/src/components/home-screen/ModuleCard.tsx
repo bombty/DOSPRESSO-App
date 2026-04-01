@@ -1,90 +1,70 @@
 import { useLocation } from "wouter";
 import type { ModuleCardConfig } from "./role-module-config";
 
-interface BadgeInfo {
-  label: string;
-  color: "success" | "warning" | "danger" | "info" | "muted";
-}
+interface BadgeInfo { label: string; color: "success"|"warning"|"danger"|"info"|"muted"; }
+interface ModuleCardProps { config: ModuleCardConfig; badges?: BadgeInfo[]; statusMessage?: string; }
 
-interface ModuleCardProps {
-  config: ModuleCardConfig;
-  badges?: BadgeInfo[];
-  statusMessage?: string;
-}
-
-const BADGE_MAP: Record<string, { bg: string; text: string }> = {
-  success: { bg: "var(--ds-badge-success-bg)", text: "var(--ds-badge-success-text)" },
-  warning: { bg: "var(--ds-badge-warning-bg)", text: "var(--ds-badge-warning-text)" },
-  danger: { bg: "var(--ds-badge-danger-bg)", text: "var(--ds-badge-danger-text)" },
-  info: { bg: "var(--ds-badge-info-bg)", text: "var(--ds-badge-info-text)" },
-  muted: { bg: "var(--ds-badge-muted-bg)", text: "var(--ds-badge-muted-text)" },
+const BADGE_COLORS: Record<string, string> = {
+  success: "#22c55e", warning: "#fbbf24", danger: "#ef4444", info: "#60a5fa", muted: "#6b7a8d",
 };
 
 export function ModuleCard({ config, badges, statusMessage }: ModuleCardProps) {
   const [, setLocation] = useLocation();
   const Icon = config.icon;
+  const alertCount = badges?.filter(b => b.color === "danger").length || 0;
 
   return (
     <button
       type="button"
       onClick={() => setLocation(config.path)}
       data-testid={`module-card-${config.id}`}
-      className="w-full text-left p-3 md:p-[18px_20px] rounded-xl md:rounded-[14px] border cursor-pointer transition-all duration-150 active:scale-[0.97] hover:translate-y-[-2px]"
+      className="w-full text-left p-3 md:p-3.5 rounded-xl border cursor-pointer transition-all duration-150 active:scale-[0.97]"
       style={{
-        background: "var(--ds-bg-card)",
-        borderColor: "var(--ds-border)",
-        boxShadow: "var(--ds-card-shadow)",
-      }}
-      onMouseEnter={(e) => {
-        const t = e.currentTarget;
-        t.style.background = "var(--ds-bg-card-hover)";
-        t.style.boxShadow = "var(--ds-card-shadow-hover)";
-        t.style.borderColor = "var(--ds-border-hover)";
-      }}
-      onMouseLeave={(e) => {
-        const t = e.currentTarget;
-        t.style.background = "var(--ds-bg-card)";
-        t.style.boxShadow = "var(--ds-card-shadow)";
-        t.style.borderColor = "var(--ds-border)";
+        background: "hsl(var(--card))",
+        borderColor: "hsl(var(--border))",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
-      {/* Icon + Title */}
-      <div className="flex items-center gap-2.5 md:gap-3 mb-2 md:mb-2.5">
+      <div className="flex items-start gap-3">
+        {/* Icon — solid colored background + white icon */}
         <div
-          className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-[10px] flex items-center justify-center flex-shrink-0"
-          style={{ background: config.iconBg, color: config.iconColor }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: config.iconBg }}
         >
-          <Icon className="w-4 h-4 md:w-5 md:h-5" />
+          <Icon style={{ width: 20, height: 20, color: config.iconColor }} />
         </div>
-        <div className="min-w-0">
-          <p className="text-[13px] md:text-[16px] font-semibold truncate"
-            style={{ color: "var(--ds-text-primary)" }}>{config.title}</p>
-          <p className="text-[10px] md:text-[12px] truncate"
-            style={{ color: "var(--ds-text-secondary)" }}>{config.subtitle}</p>
-        </div>
-      </div>
 
-      {/* Badges */}
-      {badges && badges.length > 0 && (
-        <div className="flex flex-wrap gap-1 md:gap-1.5 mb-1">
-          {badges.map((badge, idx) => {
-            const s = BADGE_MAP[badge.color];
-            return (
-              <span key={idx}
-                className="text-[9px] md:text-[11px] font-semibold px-1.5 md:px-2.5 py-0.5 rounded md:rounded-[5px]"
-                style={{ background: s.bg, color: s.text }}>
-                {badge.label}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[13px] md:text-[14px] text-foreground">{config.title}</span>
+            {alertCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: "#ef4444", color: "white" }}>
+                {alertCount}
               </span>
-            );
-          })}
-        </div>
-      )}
+            )}
+          </div>
+          <p className="text-[11px] md:text-[12px] text-muted-foreground">{config.subtitle}</p>
 
-      {/* Status */}
-      {statusMessage && (
-        <p className="text-[10px] md:text-[12px] truncate"
-          style={{ color: "var(--ds-text-muted)" }}>{statusMessage}</p>
-      )}
+          {/* Status badges */}
+          {badges && badges.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {badges.map((b, i) => (
+                <span key={i} className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                  style={{ background: `${BADGE_COLORS[b.color]}15`, color: BADGE_COLORS[b.color] }}>
+                  {b.label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Status message */}
+          {statusMessage && !badges?.length && (
+            <p className="text-[11px] font-medium mt-0.5" style={{ color: "#22c55e" }}>{statusMessage}</p>
+          )}
+        </div>
+
+        <span className="text-muted-foreground text-[12px] shrink-0">→</span>
+      </div>
     </button>
   );
 }
