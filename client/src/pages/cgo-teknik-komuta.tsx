@@ -65,7 +65,7 @@ export default function CGOTeknikKomuta() {
       ]}
       actions={<TimeFilter value={period} onChange={setPeriod} />}
       rightPanel={<>
-        <Widget title="Teknik Sağlık">
+        <Widget title="Teknik Sağlık" onClick={() => navigate("/sube-saglik-skoru")}>
           {branchScores.slice(0, 4).map((b: any, i: number) => {
             const score = b.totalScore || b.overallScore || 0;
             const c = score >= 70 ? "#22c55e" : score >= 50 ? "#fbbf24" : "#ef4444";
@@ -112,7 +112,7 @@ export default function CGOTeknikKomuta() {
         <MiniStats title="Uyum" rows={[
           { label: "Vardiya", value: `%${compliance?.shiftCompliance || compliance?.vardiya || "—"}`, color: (compliance?.shiftCompliance || 0) < 70 ? "#fbbf24" : undefined },
           { label: "Checklist", value: `%${compliance?.checklistCompletion || compliance?.checklist || "—"}`, color: (compliance?.checklistCompletion || 0) < 60 ? "#ef4444" : undefined },
-        ]} onLink={() => {}} />
+        ]} onLink={() => navigate("/checklistler")} />
         <MiniStats title="CRM" rows={[
           { label: "Açık", value: techTickets.length },
           { label: "SLA", value: techTickets.filter((t: any) => t.isOverdue).length, color: "#ef4444" },
@@ -120,7 +120,7 @@ export default function CGOTeknikKomuta() {
         <MiniStats title="Personel" rows={[
           { label: "Aktif", value: activeSessions.length || "—", color: "#22c55e" },
           { label: "Devamsız", value: "—", color: "#ef4444" },
-        ]} onLink={() => {}} />
+        ]} onLink={() => navigate("/ik")} />
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -130,10 +130,10 @@ export default function CGOTeknikKomuta() {
           ))}
         </Widget>
         <MiniStats title="Gelir-Gider" rows={[
-          { label: "Gelir", value: "₺1.2M", color: "#22c55e" },
-          { label: "Gider", value: "₺890K" },
-          { label: "Kâr", value: "₺310K", color: "#22c55e" },
-        ]} onLink={() => {}} />
+          { label: "Teknik Maliyet", value: `₺${healthData?.techCost || "—"}` },
+          { label: "Arıza Maliyeti", value: `₺${healthData?.faultCost || "—"}` },
+          { label: "Bakım Planı", value: `${healthData?.maintenancePlan || "—"}` },
+        ]} onLink={() => navigate("/finans")} />
       </div>
     </CentrumShell>
   );
