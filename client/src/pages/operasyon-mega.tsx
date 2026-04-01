@@ -87,37 +87,20 @@ function TabSkeleton() {
 }
 
 const TAB_URL_MAP: Record<string, string> = {
-  "subeler": "/operasyon",
-  "sube-dashboard": "/operasyon/dashboard",
-  "gorevler": "/operasyon/gorevler",
+  "gorevler": "/operasyon",
   "checklistler": "/operasyon/checklistler",
+  "denetimler": "/operasyon/denetimler",
   "kayip-esya": "/operasyon/kayip-esya",
   "canli-takip": "/operasyon/canli-takip",
-  "qr-tara": "/operasyon/qr",
-  "kayip-esya-hq": "/operasyon/kayip-esya-hq",
-  "hq-destek": "/operasyon/hq-destek",
-  "bildirimler": "/operasyon/bildirimler",
-  "mesajlar": "/operasyon/mesajlar",
-  "nfc-giris": "/operasyon/nfc",
-  "destek": "/operasyon/destek",
-  "misafir-geri-bildirim": "/operasyon/misafir-geri-bildirim"
 };
 
 function getTabFromUrl(pathname: string): string | null {
-  if (pathname === "/operasyon" || pathname === "/operasyon/") return "subeler";
-  if (pathname.startsWith("/operasyon/dashboard")) return "sube-dashboard";
+  if (pathname === "/operasyon" || pathname === "/operasyon/") return "gorevler";
   if (pathname.startsWith("/operasyon/gorevler")) return "gorevler";
   if (pathname.startsWith("/operasyon/checklistler")) return "checklistler";
-  if (pathname.startsWith("/operasyon/kayip-esya-hq")) return "kayip-esya-hq";
+  if (pathname.startsWith("/operasyon/denetimler")) return "denetimler";
   if (pathname.startsWith("/operasyon/kayip-esya")) return "kayip-esya";
   if (pathname.startsWith("/operasyon/canli-takip")) return "canli-takip";
-  if (pathname.startsWith("/operasyon/qr")) return "qr-tara";
-  if (pathname.startsWith("/operasyon/hq-destek")) return "hq-destek";
-  if (pathname.startsWith("/operasyon/bildirimler")) return "bildirimler";
-  if (pathname.startsWith("/operasyon/mesajlar")) return "mesajlar";
-  if (pathname.startsWith("/operasyon/nfc")) return "nfc-giris";
-  if (pathname.startsWith("/operasyon/destek")) return "destek";
-  if (pathname.startsWith("/operasyon/misafir-geri-bildirim")) return "misafir-geri-bildirim";
   return null;
 }
 
@@ -133,7 +116,7 @@ export default function OperasyonMegaModule() {
     return canAccess(tab.permissionModule!, 'view');
   });
 
-  const firstVisibleTab = visibleTabs[0]?.id || "subeler";
+  const firstVisibleTab = visibleTabs[0]?.id || "gorevler";
   
   const initialTab = getTabFromUrl(location);
   const [activeTab, setActiveTab] = useState(
