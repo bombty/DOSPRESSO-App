@@ -373,23 +373,23 @@ function Router() {
           <Route path="/control-legacy" component={Dashboard} />
           <Route path="/merkez-dashboard">{() => <ExecutiveOnly><MerkezDashboard /></ExecutiveOnly>}</Route>
           <Route path="/modul/:moduleId" component={MegaModulePage} />
-          <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
-          <Route path="/subeler/:id" component={SubeDetay} />
-          <Route path="/subeler" component={Subeler} />
+          <Route path="/subeler/:id/nfc">{() => <ExecutiveOnly><SubeNFCDetay /></ExecutiveOnly>}</Route>
+          <Route path="/subeler/:id">{() => <ExecutiveOnly><SubeDetay /></ExecutiveOnly>}</Route>
+          <Route path="/subeler">{() => <ExecutiveOnly><Subeler /></ExecutiveOnly>}</Route>
           <Route path="/gizlilik-politikasi" component={PrivacyPolicy} />
           <Route path="/profil" component={ProfileRedirect} />
           <Route path="/vardiya" component={VardiyaRedirect} />
-          <Route path="/stok" component={StokRedirect} />
+          <Route path="/stok">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","satinalma","mudur","supervisor"]}><StokRedirect /></ProtectedRoute>}</Route>
           <Route path="/iletisim" component={IletisimRedirect} />
-          <Route path="/crm" component={CRMMegaModule} />
-          <Route path="/crm/:tab?" component={CRMMegaModule} />
+          <Route path="/crm">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
+          <Route path="/crm/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
           <Route path="/personel/:id" component={PersonelProfil} />
-          <Route path="/personel-detay/:id" component={PersonelDetay} />
-          <Route path="/personel-qr-tokenlar" component={StaffQrTokensPage} />
-          <Route path="/ayin-elemani" component={EmployeeOfMonthPage} />
-          <Route path="/gelismis-raporlar" component={AdvancedReportsPage} />
+          <Route path="/personel-detay/:id">{() => <ExecutiveOnly><PersonelDetay /></ExecutiveOnly>}</Route>
+          <Route path="/personel-qr-tokenlar">{() => <ExecutiveOnly><StaffQrTokensPage /></ExecutiveOnly>}</Route>
+          <Route path="/ayin-elemani">{() => <ProtectedRoute allowedRoles={["admin","ceo","coach","trainer","mudur"]}><EmployeeOfMonthPage /></ProtectedRoute>}</Route>
+          <Route path="/gelismis-raporlar">{() => <ExecutiveOnly><AdvancedReportsPage /></ExecutiveOnly>}</Route>
           <Route path="/performansim" component={MyPerformancePage} />
-          <Route path="/personel-duzenle/:id" component={PersonelDuzenle} />
+          <Route path="/personel-duzenle/:id">{() => <ExecutiveOnly><PersonelDuzenle /></ExecutiveOnly>}</Route>
           <Route path="/personel-onboarding">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/personel-onboarding'; return null; }}</Route>
           <Route path="/onboarding-programlar">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/onboarding-programlar'; return null; }}</Route>
           <Route path="/vardiyalar">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalar /></ModuleGuard>}</Route>
