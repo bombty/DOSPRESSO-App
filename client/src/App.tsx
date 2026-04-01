@@ -453,7 +453,7 @@ function Router() {
           <Route path="/projeler" component={Projeler} />
           <Route path="/yeni-sube-projeler" component={YeniSubeProjeler} />
           <Route path="/yeni-sube-detay/:id" component={YeniSubeDetay} />
-          <Route path="/ik/:tab?">{() => <ExecutiveOnly><IK /></ExecutiveOnly>}</Route>
+          <Route path="/ik/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","muhasebe","satinalma","mudur","supervisor"]}><IK /></ProtectedRoute>}</Route>
           <Route path="/izin-talepleri" component={LeaveRequests} />
           <Route path="/mesai-talepleri" component={OvertimeRequests} />
           <Route path="/ik-raporlari">{() => <ExecutiveOnly><HRReports /></ExecutiveOnly>}</Route>
