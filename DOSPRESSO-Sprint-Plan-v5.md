@@ -90,6 +90,28 @@ Read-only: şube performans, misafir GB (SLA yok), uyum, son 3 ay kâr
 **5A.** CGO + Fabrika QC genişletme (yapılmayan QC uyarısı, gecikme süresi, haftalık trend)
 **5B.** Eski sayfalar → redirect (hq-ozet→CEO, sube-ozet→sube, benim-gunum→personel vb.)
 **5C.** Quality gate: build test, Turkish UI, dark mode, responsive, error/loading state
+**5D.** Admin Tema Özelleştirme (3 saat)
+Yeni tablo: `theme_settings` (settingKey text PK, darkValue text, lightValue text, updatedAt, updatedBy)
+Varsayılan kayıtlar:
+  - bg: #0c0f14 / #edeae4
+  - card: #141820 / #ffffff
+  - border: #1e2530 / #ddd8d0
+  - widgetHeader: #192838 / #192838
+  - dobodyHead: #b42a2a / #b42a2a
+  - dobodyBody: #192838 / #192838
+  - primary: #ef4444 / #dc2626
+  - headerBg: (app header)
+  - navBg: (bottom nav)
+Yeni endpoint: `GET /api/admin/theme-settings`, `PUT /api/admin/theme-settings`
+Yeni sayfa: `client/src/pages/admin/tema-ayarlari.tsx`
+  - Renk seçici (color picker) her ayar için
+  - Dark / Light ayrı tab
+  - Canlı önizleme (değişiklik anında görünür)
+  - Kaydet → DB güncelle → CSS variables runtime'da uygula
+  - Sıfırla (varsayılana dön) butonu
+Frontend: ThemeProvider'a DB'den yüklenen renkleri inject et
+  - `useQuery("/api/admin/theme-settings")` → CSS custom properties güncelle
+  - Sayfa yüklendiğinde DB renkleri `:root`'a yazılır
 
 ---
 
@@ -191,7 +213,7 @@ Dashboard: Coach/Trainer best practice listesi, Müdür diğer şubelerden öğr
 | S2 | HQ rolleri (CEO+CGO+Coach+Trainer+İK+Satınalma) | 6 | 12 |
 | S3 | Fabrika + Depo | 2 | 6 |
 | S4 | Şube rolleri (Müdür+Sup+Buddy+Personel+Yatırımcı) | 5 | 10 |
-| S5 | QC genişletme + temizlik + quality gate | 5+ | 6 |
+| S5 | QC genişletme + temizlik + quality gate + admin tema | 6+ | 9 |
 | S6 | Upselling hedef + Müşteri NPS | 5 | 9 |
 | S7 | Vardiya devir teslim (3 parça) | 4 | 6 |
 | S8 | Excel import + 5 AI skill | 3 | 5 |
