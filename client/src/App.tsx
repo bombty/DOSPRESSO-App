@@ -371,7 +371,7 @@ function Router() {
           <Route path="/" component={HomeScreen} />
           <Route path="/control" component={ControlDashboard} />
           <Route path="/control-legacy" component={Dashboard} />
-          <Route path="/merkez-dashboard" component={MerkezDashboard} />
+          <Route path="/merkez-dashboard">{() => <ExecutiveOnly><MerkezDashboard /></ExecutiveOnly>}</Route>
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc" component={SubeNFCDetay} />
           <Route path="/subeler/:id" component={SubeDetay} />
@@ -453,35 +453,35 @@ function Router() {
           <Route path="/projeler" component={Projeler} />
           <Route path="/yeni-sube-projeler" component={YeniSubeProjeler} />
           <Route path="/yeni-sube-detay/:id" component={YeniSubeDetay} />
-          <Route path="/ik/:tab?" component={IK} />
+          <Route path="/ik/:tab?">{() => <ExecutiveOnly><IK /></ExecutiveOnly>}</Route>
           <Route path="/izin-talepleri" component={LeaveRequests} />
           <Route path="/mesai-talepleri" component={OvertimeRequests} />
-          <Route path="/ik-raporlari" component={HRReports} />
-          <Route path="/kasa-raporlari" component={CashReports} />
-          <Route path="/e2e-raporlar" component={E2EReports} />
+          <Route path="/ik-raporlari">{() => <ExecutiveOnly><HRReports /></ExecutiveOnly>}</Route>
+          <Route path="/kasa-raporlari">{() => <ExecutiveOnly><CashReports /></ExecutiveOnly>}</Route>
+          <Route path="/e2e-raporlar">{() => <ExecutiveOnly><E2EReports /></ExecutiveOnly>}</Route>
           <Route path="/raporlar/:tab?">{() => <ModuleGuard moduleKey="raporlar"><RaporlarMegaModule /></ModuleGuard>}</Route>
           <Route path="/raporlar-hub">{() => <ModuleGuard moduleKey="raporlar"><RaporlarHub /></ModuleGuard>}</Route>
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe">{() => <ModuleGuard moduleKey="finans"><Muhasebe /></ModuleGuard>}</Route>
           <Route path="/mali-yonetim">{() => <ModuleGuard moduleKey="finans"><MaliYonetim /></ModuleGuard>}</Route>
-          <Route path="/fabrika/:tab?" component={FabrikaMegaModule} />
-          <Route path="/hq-fabrika-analitik" component={HQFabrikaAnalitik} />
-          <Route path="/canli-takip" component={CanliTakip} />
-          <Route path="/sube-bordro-ozet" component={SubeBordroOzet} />
-          <Route path="/sube-uyum-merkezi" component={SubeUyumMerkezi} />
-          <Route path="/coach-uyum-paneli" component={CoachUyumPaneli} />
-          <Route path="/admin/rol-yetkileri" component={RolYetkileri} />
-          <Route path="/task-atama" component={TaskAtama} />
-          <Route path="/task-takip" component={TaskTakip} />
-          <Route path="/cgo-teknik-komuta" component={CgoTeknikKomuta} />
-          <Route path="/cowork" component={Cowork} />
-          <Route path="/coach-kontrol-merkezi" component={CoachKontrolMerkezi} />
-          <Route path="/trainer-egitim-merkezi" component={TrainerEgitimMerkezi} />
-          {/* Centrum v5 pages */}
-          <Route path="/muhasebe-centrum" component={MuhasebeCentrum} />
-          <Route path="/satinalma-centrum" component={SatinalmaCentrum} />
-          <Route path="/fabrika-centrum" component={FabrikaCentrum} />
-          <Route path="/depo-centrum" component={DepoCentrum} />
+          <Route path="/fabrika/:tab?">{() => <FabrikaOnly><FabrikaMegaModule /></FabrikaOnly>}</Route>
+          <Route path="/hq-fabrika-analitik">{() => <FabrikaOnly><HQFabrikaAnalitik /></FabrikaOnly>}</Route>
+          <Route path="/canli-takip">{() => <ExecutiveOnly><CanliTakip /></ExecutiveOnly>}</Route>
+          <Route path="/sube-bordro-ozet">{() => <ExecutiveOnly><SubeBordroOzet /></ExecutiveOnly>}</Route>
+          <Route path="/sube-uyum-merkezi">{() => <ExecutiveOnly><SubeUyumMerkezi /></ExecutiveOnly>}</Route>
+          <Route path="/coach-uyum-paneli">{() => <ExecutiveOnly><CoachUyumPaneli /></ExecutiveOnly>}</Route>
+          <Route path="/admin/rol-yetkileri">{() => <AdminOnly><RolYetkileri /></AdminOnly>}</Route>
+          <Route path="/task-atama">{() => <ExecutiveOnly><TaskAtama /></ExecutiveOnly>}</Route>
+          <Route path="/task-takip">{() => <ExecutiveOnly><TaskTakip /></ExecutiveOnly>}</Route>
+          <Route path="/cgo-teknik-komuta">{() => <ProtectedRoute allowedRoles={["cgo","admin","ceo"]}><CgoTeknikKomuta /></ProtectedRoute>}</Route>
+          <Route path="/cowork">{() => <ExecutiveOnly><Cowork /></ExecutiveOnly>}</Route>
+          <Route path="/coach-kontrol-merkezi">{() => <ProtectedRoute allowedRoles={["coach","admin","ceo"]}><CoachKontrolMerkezi /></ProtectedRoute>}</Route>
+          <Route path="/trainer-egitim-merkezi">{() => <ProtectedRoute allowedRoles={["trainer","admin","ceo"]}><TrainerEgitimMerkezi /></ProtectedRoute>}</Route>
+          {/* Centrum v5 pages — rol bazlı erişim */}
+          <Route path="/muhasebe-centrum">{() => <ProtectedRoute allowedRoles={["muhasebe_ik","muhasebe","admin","ceo"]}><MuhasebeCentrum /></ProtectedRoute>}</Route>
+          <Route path="/satinalma-centrum">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo"]}><SatinalmaCentrum /></ProtectedRoute>}</Route>
+          <Route path="/fabrika-centrum">{() => <FabrikaOnly><FabrikaCentrum /></FabrikaOnly>}</Route>
+          <Route path="/depo-centrum">{() => <FabrikaOnly><DepoCentrum /></FabrikaOnly>}</Route>
           <Route path="/sube-centrum" component={SubeCentrum} />
           <Route path="/supervisor-centrum" component={SupervisorCentrum} />
           <Route path="/supbuddy-centrum" component={SupBuddyCentrum} />
