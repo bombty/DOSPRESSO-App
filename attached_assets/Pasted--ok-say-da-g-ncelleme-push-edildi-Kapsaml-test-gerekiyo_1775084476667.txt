@@ -1,0 +1,82 @@
+Çok sayıda güncelleme push edildi. Kapsamlı test gerekiyor.
+
+═══ ADIM 1: GIT PULL + BUILD ═══
+git pull --rebase origin main
+npm run build
+# Son commit: 602ea21 olmalı — kontrol: git log --oneline -1
+
+═══ ADIM 2: SEED SIFIRLAMA + YENİDEN OLUŞTURMA ═══
+npx tsx server/seed-pilot-simulation.ts --reset
+npx tsx server/seed-pilot-simulation.ts
+
+# Artık Dobody aksiyonları da oluşturacak (10 adet)
+
+═══ ADIM 3: SEED DOĞRULAMA ═══
+SELECT 'customer_feedback' as t, count(*) FROM customer_feedback WHERE source='seed_test'
+UNION ALL SELECT 'tasks', count(*) FROM tasks WHERE source_type='seed_test'
+UNION ALL SELECT 'equipment_faults', count(*) FROM equipment_faults WHERE description LIKE '%[TEST]%'
+UNION ALL SELECT 'support_tickets', count(*) FROM support_tickets WHERE title LIKE '%[TEST]%'
+UNION ALL SELECT 'cowork_channels', count(*) FROM cowork_channels WHERE name LIKE 'test-%'
+UNION ALL SELECT 'announcements', count(*) FROM announcements WHERE title LIKE '%[TEST]%'
+UNION ALL SELECT 'dobody_actions', count(*) FROM agent_pending_actions WHERE title LIKE '%[TEST]%';
+
+Beklenen sonuçlar:
+- customer_feedback: ~359
+- tasks: ~96
+- equipment_faults: ~16
+- support_tickets: ~25
+- cowork_channels: 5
+- announcements: 5
+- dobody_actions: 10 ← YENİ
+
+═══ ADIM 4: API ENDPOINT TESTLERİ ═══
+Coach (yavuz) ile giriş yap:
+
+curl -b cookies.txt http://localhost:3000/api/agent/branch-health | python3 -c "
+import json,sys; d=json.load(sys.stdin)
+print('branches:', len(d.get('branches',[])))
+print('totalFaults:', d.get('totalFaults'))
+print('avgRating:', d.get('avgRating'))
+print('totalActive:', d.get('totalActive'))
+print('escalations:', len(d.get('escalations',[])))
+"
+
+curl -b cookies.txt "http://localhost:3000/api/agent/actions?status=pending" | python3 -c "
+import json,sys; d=json.load(sys.stdin)
+print('Dobody actions:', d.get('total', len(d.get('data',[]))))
+"
+
+═══ ADIM 5: DASHBOARD SCREENSHOT'LARI ═══
+Coach (yavuz) ile:
+1. Kontrol merkezi — widget'larda gerçek sayılar mı "—" mı?
+   Özellikle: Arıza, CRM, Personel widget'ları
+2. Mr. Dobody paneli — "Bekleyen öneri yok" mu yoksa aksiyon listesi mi?
+
+CGO (utku) ile:
+3. Teknik komuta — Arıza widget + Dobody paneli
+
+CEO (aslan) ile:
+4. Command center — Bordro widget'ı (₺128K hardcoded DEĞİL, API verisi olmalı)
+5. Görev oluşturma testi — tüm priority'ler çalışıyor mu?
+
+═══ ADIM 6: OPERASYON MODÜLÜ ═══
+Coach ile /gorevler sayfasını aç:
+6. Artık 5 tab olmalı: Görevler, Checklistler, Denetimler, Kayıp Eşya, Canlı Takip
+   (önceki 14 tab değil!)
+7. Denetimler tab'ında "Şablon Yönetimi" butonu var mı?
+8. Kayıp Eşya HQ tab'ı artık YOK — tek Kayıp Eşya var
+
+═══ ADIM 7: CRM MODÜLÜ ═══
+Coach ile /crm sayfasını aç:
+9. Sol sidebar yeni yapıda mı?
+   Beklenen bölümler: GENEL | GÖREV ATAMA | DESTEK TALEPLERİ | MİSAFİR SESİ | İLETİŞİM | AYARLAR
+10. "Görev Atama" tıklayınca içerik geliyor mu?
+11. "Duyurular" tıklayınca içerik geliyor mu?
+
+═══ ADIM 8: ADMIN SEED SIFIRLAMA ═══
+Admin ile giriş yap:
+curl -b cookies_admin.txt -X POST http://localhost:3000/api/admin/reset-test-data
+# Başarılı mı? Kaç kayıt silindi?
+
+Sonra tekrar seed çalıştır (pilot testleri için veri lazım):
+npx tsx server/seed-pilot-simulation.ts
