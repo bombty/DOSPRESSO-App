@@ -154,6 +154,7 @@ async function resetTestData() {
   await db.execute(sql`DELETE FROM announcements WHERE title LIKE '%[TEST]%'`);
   await db.execute(sql`DELETE FROM cowork_channels WHERE name LIKE '%test-%'`);
   await db.execute(sql`DELETE FROM notifications WHERE type = 'seed_test'`);
+  await db.execute(sql`DELETE FROM agent_pending_actions WHERE title LIKE '%[TEST]%'`);
   
   console.log("✅ Test verileri silindi.");
 }
@@ -399,6 +400,45 @@ async function seedCoworkChannels(hqUsers: any[]) {
   console.log(`  ✅ ${count} cowork kanalı oluşturuldu`);
 }
 
+async function seedDobodyActions(branches: any[]) {
+  console.log("\n🤖 Mr. Dobody aksiyonları oluşturuluyor...");
+  let count = 0;
+
+  const actions = [
+    { title: "Lara checklist uyumu düşük", desc: "Lara şubesinde son 7 günde kapanış checklist tamamlama oranı %52. Coach ziyareti önerilir.", type: "insight", severity: "high", role: "coach", category: "compliance", link: "/sube-saglik-skoru" },
+    { title: "3 arıza 48 saatten fazla açık", desc: "Espresso makinesi (Lara), Buzdolabı (Işıklar), POS Terminal (Lara) — CGO dikkat.", type: "action", severity: "high", role: "cgo", category: "equipment", link: "/ariza" },
+    { title: "Misafir NPS düşüş trendi", desc: "Lara NPS: 3.2 (geçen ay 3.6). Düşük puanların %40'ı temizlik şikayeti.", type: "insight", severity: "med", role: "coach", category: "customer", link: "/crm?channel=misafir" },
+    { title: "5 görev 7+ gündür gecikiyor", desc: "Işıklar (2), Lara (3) şubelerinde geciken görevler var. Eskalasyon önerilir.", type: "action", severity: "high", role: "coach", category: "tasks", link: "/gorevler" },
+    { title: "Fabrika fire oranı hedef üstü", desc: "Bu hafta fire oranı %6.2 — hedef <%5. Kavurma istasyonunda artış var.", type: "insight", severity: "med", role: "ceo", category: "production", link: "/waste-executive" },
+    { title: "Yeni personel onboarding eksik", desc: "2 yeni barista (Işıklar) henüz onboarding görevlerini tamamlamadı.", type: "action", severity: "low", role: "trainer", category: "training", link: "/ik" },
+    { title: "Stok kritik seviyede: Süt", desc: "Fabrika deposunda süt stoku 2 gün kaldı. Acil sipariş gerekli.", type: "action", severity: "critical", role: "ceo", category: "inventory", link: "/fabrika/dashboard" },
+    { title: "Haftalık performans özeti", desc: "Genel uyum %71 (geçen hafta %68). Işıklar en çok gelişen şube (+8 puan).", type: "info", severity: "low", role: "ceo", category: "performance", link: "/sube-saglik-skoru" },
+    { title: "Denetim planı hatırlatması", desc: "Lara şubesi 45 gündür denetlenmedi. Hijyen denetimi planlanmalı.", type: "action", severity: "med", role: "coach", category: "audit", link: "/denetimler" },
+    { title: "SLA aşımı: 2 destek talebi", desc: "Teknik departmanda 2 talep 48 saatten fazla açık. Eskalasyon gerekli.", type: "action", severity: "high", role: "cgo", category: "support", link: "/crm" },
+  ];
+
+  for (const a of actions) {
+    const branch = a.category === "production" || a.category === "inventory" ? branches.find((b: any) => (b.name || "").toLowerCase().includes("fabrika")) : branches.find((b: any) => (b.name || "").toLowerCase().includes("lara")) || branches[0];
+    try {
+      await db.execute(sql`
+        INSERT INTO agent_pending_actions (
+          action_type, target_role_scope, branch_id,
+          title, description, deep_link, severity, status,
+          category, metadata, created_at
+        ) VALUES (
+          ${a.type}, ${a.role}, ${branch?.id || null},
+          ${`[TEST] ${a.title}`}, ${a.desc}, ${a.link}, ${a.severity}, 'pending',
+          ${a.category}, ${JSON.stringify({ source: "seed_test" })}::jsonb, NOW()
+        )
+      `);
+      count++;
+    } catch (e: any) {
+      console.error(`  ❌ Dobody hata: ${e.message?.slice(0, 80)}`);
+    }
+  }
+  console.log(`  ✅ ${count} Dobody aksiyonu oluşturuldu`);
+}
+
 // ═══ ANA FONKSİYON ═══
 async function main() {
   console.log("═══════════════════════════════════════════");
@@ -430,6 +470,7 @@ async function main() {
   await seedTickets(branches, users, hqUsers);
   await seedAnnouncements(hqUsers);
   await seedCoworkChannels(hqUsers);
+  await seedDobodyActions(branches);
   
   console.log("\n═══════════════════════════════════════════");
   console.log("  ✅ Pilot simülasyon verisi tamamlandı!");
