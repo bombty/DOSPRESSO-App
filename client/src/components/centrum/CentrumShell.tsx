@@ -6,14 +6,14 @@
 import { ReactNode, useState } from "react";
 import { useTheme } from "@/contexts/theme-context";
 
-// ═══ DUAL TOKEN SİSTEMİ ═══
+// ═══ DUAL TOKEN SİSTEMİ (Onaylanan: docs/DESIGN-SYSTEM.md) ═══
 const DARK = {
   bg:"#0c0f14", card:"#141820", border:"#1e2530", muted:"#6b7a8d", text:"#e8ecf1",
   alert:"#ef4444", warn:"#fbbf24", ok:"#22c55e", info:"#60a5fa", purple:"#a5a0f0",
-  widgetHeaderBg:"rgba(30,37,48,0.25)", widgetHeaderText:"#e8ecf1",
-  dobodyBg:"rgba(165,160,240,0.06)", dobodyBorder:"rgba(165,160,240,0.40)",
-  dobodyBodyBg:"rgba(165,160,240,0.06)", dobodyHeaderBg:"rgba(165,160,240,0.06)",
-  badgeBgAlpha:"20", badgeTextWhite:false,
+  widgetHeaderBg:"#192838", widgetHeaderText:"#ffffff",
+  dobodyBg:"#192838", dobodyBorder:"#192838",
+  dobodyBodyBg:"#192838", dobodyHeaderBg:"#b42a2a",
+  badgeBgAlpha:"FF", badgeTextWhite:true,
   titleBarBg:"transparent", titleBarText:"#e8ecf1", titleBarMuted:"#6b7a8d",
   timeActiveBg:"rgba(96,165,250,0.15)", timeActiveText:"#60a5fa", timeInactiveText:"#6b7a8d",
   lostBg:"rgba(251,191,36,0.06)", lostBorder:"rgba(251,191,36,0.40)",
@@ -22,12 +22,12 @@ const DARK = {
 
 const LIGHT = {
   bg:"#edeae4", card:"#ffffff", border:"#ddd8d0", muted:"#3d3832", text:"#1c1b18",
-  alert:"#dc2626", warn:"#d97706", ok:"#16a34a", info:"#2563eb", purple:"#7c3aed",
-  widgetHeaderBg:"#1e2a3a", widgetHeaderText:"#ffffff",
-  dobodyBg:"#dc2626", dobodyBorder:"#dc2626",
-  dobodyBodyBg:"#dc2626", dobodyHeaderBg:"#1e2a3a",
+  alert:"#dc2626", warn:"#92400e", ok:"#16a34a", info:"#2563eb", purple:"#7c3aed",
+  widgetHeaderBg:"#192838", widgetHeaderText:"#ffffff",
+  dobodyBg:"#192838", dobodyBorder:"#192838",
+  dobodyBodyBg:"#192838", dobodyHeaderBg:"#b42a2a",
   badgeBgAlpha:"FF", badgeTextWhite:true,
-  titleBarBg:"#1e2a3a", titleBarText:"#ffffff", titleBarMuted:"rgba(255,255,255,0.85)",
+  titleBarBg:"#192838", titleBarText:"#ffffff", titleBarMuted:"rgba(255,255,255,0.85)",
   timeActiveBg:"#dc2626", timeActiveText:"#ffffff", timeInactiveText:"rgba(255,255,255,0.55)",
   lostBg:"rgba(217,119,6,0.06)", lostBorder:"rgba(217,119,6,0.40)",
   hoverBg:"hover:bg-black/[0.02]", rowBorder:"rgba(221,216,208,0.60)",
@@ -71,10 +71,10 @@ export function Widget({ title, badge, children, onClick, className="" }: Widget
     <div className={`rounded-xl border overflow-hidden ${onClick?"cursor-pointer hover:border-blue-500/30":""} ${className}`}
       style={{borderColor:T.border,background:T.card}} onClick={onClick}>
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b"
-        style={{borderColor:T===LIGHT?"rgba(255,255,255,0.10)":T.border, background:T.widgetHeaderBg}}>
+        style={{borderColor:"rgba(255,255,255,0.10)", background:T.widgetHeaderBg}}>
         <span className="text-[10px] font-semibold flex-1" style={{color:T.widgetHeaderText}}>{title}</span>
         {badge}
-        {onClick&&<span className="text-[8px]" style={{color:T===LIGHT?"rgba(255,255,255,0.60)":T.info}}>→</span>}
+        {onClick&&<span className="text-[8px]" style={{color:"rgba(255,255,255,0.60)"}}>→</span>}
       </div>
       <div>{children}</div>
     </div>
@@ -90,43 +90,34 @@ export function ClickableWidget({ title, badge, onClick, children, className }: 
 interface DobodyAction { id: number|string; title: string; sub?: string; mode?: DobodyMode; onApprove?: () => void; approving?: boolean; btnLabel?: string; btnVariant?: string; }
 export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boolean }) {
   const T = useT();
-  const isLight = T === LIGHT;
+  // Option C: Kırmızı header + Navy gövde (her iki modda aynı)
   return (
-    <div className="rounded-xl overflow-hidden" style={isLight
-      ? {background:T.dobodyBodyBg}
-      : {border:"1px dashed",borderColor:T.dobodyBorder,background:T.dobodyBg}
-    }>
-      <div className="flex items-center gap-1 px-2.5 py-1.5"
-        style={isLight
-          ? {background:T.dobodyHeaderBg,borderBottom:"1px solid rgba(255,255,255,0.15)"}
-          : {borderBottom:`1px solid ${T.purple}12`}
-        }>
-        <span className="text-[9px] font-bold" style={{color:isLight?"white":T.purple}}>◈ Mr. Dobody</span>
-        {actions.length>0&&<span className="text-[8px] px-1 rounded-full font-bold"
-          style={isLight?{background:"rgba(255,255,255,0.20)",color:"white"}:{background:`${T.purple}20`,color:T.purple}}>{actions.length}</span>}
+    <div className="rounded-xl overflow-hidden" style={{background:T.dobodyBodyBg,border:`1.5px solid ${T.dobodyBorder}`}}>
+      <div className="flex items-center gap-1.5 px-2.5 py-2" style={{background:T.dobodyHeaderBg}}>
+        <span className="text-[10px] font-bold text-white">◈ Mr. Dobody</span>
+        {actions.length>0&&<span className="text-[9px] px-1.5 rounded-full font-bold" style={{background:"rgba(255,255,255,0.20)",color:"white"}}>{actions.length}</span>}
       </div>
       {actions.length===0?(
-        <p className="text-[9px] px-2.5 py-2" style={{color:isLight?"rgba(255,255,255,0.70)":T.muted}}>Bekleyen öneri yok</p>
+        <p className="text-[10px] px-2.5 py-2" style={{color:"rgba(255,255,255,0.6)"}}>Bekleyen öneri yok</p>
       ):actions.map((a)=>{
         const mode=a.mode||(a.onApprove?"action":"info");
         return(
-          <div key={a.id} className="flex items-start gap-1.5 px-2.5 py-1.5"
-            style={{borderBottom:isLight?"1px solid rgba(255,255,255,0.10)":`1px solid ${T.purple}08`}}>
-            <span className="w-1.5 h-1.5 rounded-full mt-1 shrink-0"
-              style={{background:mode==="auto"?(isLight?"#4ade80":T.ok):mode==="action"?(isLight?"white":T.purple):(isLight?"rgba(255,255,255,0.5)":T.muted)}}/>
+          <div key={a.id} className="flex items-start gap-2 px-2.5 py-2" style={{borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+            <span className="w-2 h-2 rounded-full mt-1 shrink-0"
+              style={{background:mode==="auto"?"#4ade80":mode==="action"?"#ef4444":"#6b7a8d"}}/>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-medium" style={{color:isLight?"white":T.text}}>{a.title}</p>
-              {a.sub&&<p className="text-[8px]" style={{color:isLight?"rgba(255,255,255,0.70)":T.muted}}>{a.sub}</p>}
+              <p className="text-[10px] font-semibold" style={{color:"#e8ecf1"}}>{a.title}</p>
+              {a.sub&&<p className="text-[9px] mt-0.5" style={{color:"#6b7a8d"}}>{a.sub}</p>}
             </div>
             {mode==="action"&&a.onApprove&&(
               <button onClick={(e)=>{e.stopPropagation();a.onApprove?.();}} disabled={a.approving}
-                className="text-[8px] px-1.5 py-0.5 rounded shrink-0 font-semibold"
-                style={isLight?{background:"rgba(255,255,255,0.20)",color:"white"}:{background:`${T.purple}15`,color:T.purple}}>
+                className="text-[9px] px-2 py-0.5 rounded-lg shrink-0 font-bold"
+                style={{background:T.dobodyHeaderBg,color:"white"}}>
                 {a.approving?"...":(a.btnLabel||"Onayla")}
               </button>
             )}
-            {mode==="auto"&&<span className="text-[7px] px-1 rounded shrink-0 font-bold"
-              style={isLight?{background:"rgba(255,255,255,0.20)",color:"#4ade80"}:{background:`${T.ok}15`,color:T.ok}}>✓</span>}
+            {mode==="auto"&&<span className="text-[8px] px-1.5 py-0.5 rounded shrink-0 font-bold"
+              style={{background:"#22c55e18",color:"#4ade80"}}>✓</span>}
           </div>
         );
       })}
@@ -192,10 +183,9 @@ export function ListItem({ title, meta, priority, priorityColor, onClick }: List
 
 // ═══ BADGE ═══
 export function Badge({ text, color }: { text: string; color: string }) {
-  const T = useT();
-  const isLight = T === LIGHT;
-  return <span className="text-[7px] px-1.5 py-0.5 rounded-full shrink-0 font-bold"
-    style={isLight?{background:color,color:"white"}:{background:`${color}20`,color}}>{text}</span>;
+  // Onaylanan kural: Badge'ler HER ZAMAN dolgulu renk zemini + beyaz metin
+  return <span className="text-[8px] px-1.5 py-0.5 rounded-full shrink-0 font-bold"
+    style={{background:color,color:"white"}}>{text}</span>;
 }
 
 // ═══ TIME FILTER ═══
