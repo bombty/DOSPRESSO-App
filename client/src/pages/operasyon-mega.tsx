@@ -7,36 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
-  Store,
-  LayoutDashboard,
   CheckSquare,
   ClipboardList,
   Search,
   MapPin,
-  QrCode,
-  Headphones,
-  Bell,
-  MessageSquare,
-  Smartphone,
-  HelpCircle,
-  Users,
-  Settings2
 } from "lucide-react";
 
-const Subeler = lazy(() => import("./subeler"));
-const SubeDashboard = lazy(() => import("./sube/dashboard"));
 const Tasks = lazy(() => import("./tasks"));
 const Checklists = lazy(() => import("./checklists"));
 const KayipEsya = lazy(() => import("./kayip-esya"));
 const CanliTakip = lazy(() => import("./canli-takip"));
-const QRScanner = lazy(() => import("./qr-scanner"));
 const KayipEsyaHQ = lazy(() => import("./kayip-esya-hq"));
-const HQSupport = lazy(() => import("./hq-support"));
-const Notifications = lazy(() => import("./notifications"));
-const Mesajlar = lazy(() => import("./mesajlar"));
-const NFCGiris = lazy(() => import("./nfc-giris"));
-const Destek = lazy(() => import("./destek"));
-const MisafirMemnuniyeti = lazy(() => import("./misafir-memnuniyeti-modul"));
 
 interface TabConfig {
   id: string;
@@ -48,22 +29,6 @@ interface TabConfig {
 }
 
 const OPERASYON_TABS: TabConfig[] = [
-  {
-    id: "subeler",
-    label: "Branches",
-    labelTr: "Şubeler",
-    icon: <Store className="h-4 w-4" />,
-    permissionModule: "branches",
-    component: Subeler
-  },
-  {
-    id: "sube-dashboard",
-    label: "Branch Dashboard",
-    labelTr: "Şube Dashboard",
-    icon: <LayoutDashboard className="h-4 w-4" />,
-    permissionModule: "branch_dashboard",
-    component: SubeDashboard
-  },
   {
     id: "gorevler",
     label: "Tasks",
@@ -97,68 +62,12 @@ const OPERASYON_TABS: TabConfig[] = [
     component: CanliTakip
   },
   {
-    id: "qr-tara",
-    label: "QR Scan",
-    labelTr: "QR Tara",
-    icon: <QrCode className="h-4 w-4" />,
-    permissionModule: "qr_scanner",
-    component: QRScanner
-  },
-  {
     id: "kayip-esya-hq",
     label: "Lost & Found HQ",
     labelTr: "Kayıp Eşya HQ",
     icon: <Search className="h-4 w-4" />,
     permissionModule: "lost_found_hq",
     component: KayipEsyaHQ
-  },
-  {
-    id: "hq-destek",
-    label: "HQ Support",
-    labelTr: "HQ Destek",
-    icon: <Headphones className="h-4 w-4" />,
-    permissionModule: "hq_support",
-    component: HQSupport
-  },
-  {
-    id: "bildirimler",
-    label: "Notifications",
-    labelTr: "Bildirimler",
-    icon: <Bell className="h-4 w-4" />,
-    permissionModule: "notifications",
-    component: Notifications
-  },
-  {
-    id: "mesajlar",
-    label: "Messages",
-    labelTr: "Mesajlar",
-    icon: <MessageSquare className="h-4 w-4" />,
-    permissionModule: "messages",
-    component: Mesajlar
-  },
-  {
-    id: "nfc-giris",
-    label: "NFC Entry",
-    labelTr: "NFC Giriş",
-    icon: <Smartphone className="h-4 w-4" />,
-    permissionModule: "nfc_entry",
-    component: NFCGiris
-  },
-  {
-    id: "destek",
-    label: "Support",
-    labelTr: "Destek Talepleri",
-    icon: <HelpCircle className="h-4 w-4" />,
-    permissionModule: "support_requests",
-    component: Destek
-  },
-  {
-    id: "misafir-geri-bildirim",
-    label: "Guest Feedback",
-    labelTr: "Misafir Geri Bildirim",
-    icon: <Users className="h-4 w-4" />,
-    permissionModule: "guest_feedback",
-    component: MisafirMemnuniyeti
   }
 ];
 
