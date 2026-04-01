@@ -232,7 +232,7 @@ export const M05_OPERASYON: ModuleManifest = {
   ],
   roles: {
     admin:            { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
-    ceo:              { view: true, create: false, edit: false, delete: false, approve: true, scope: 'all_branches' },
+    ceo:              { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
     cgo:              { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
     coach:            { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
     trainer:            { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
