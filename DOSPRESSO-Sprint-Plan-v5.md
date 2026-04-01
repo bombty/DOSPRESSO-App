@@ -18,15 +18,19 @@
 | T6 | Dobody eski mor tint | Option C: #b42a2a header + #192838 gövde |
 | T7 | Badge'ler dark modda soluk | Dolgulu renk + beyaz metin (her iki mod) |
 
-### ⏳ Bekleyen Sorunlar
-| # | Sorun | Öncelik | Sprint |
-|---|-------|---------|--------|
-| T8 | Kiosk token bug (sube/kiosk.tsx kioskToken localStorage'a kaydetmiyor) | 🔴 Pilot | Pre-S3 |
-| T9 | CGO boş veri (Arıza 0, SLA 0, CRM 0) — endpoint dönüş veya seed data eksik | 🔴 | Pre-S3 |
-| T10 | Arıza Yönetimi sayfası eski tasarım (CentrumShell değil) | 🟡 | S4 |
-| T11 | 9 Centrum sayfasında font/renk tutarlılık kontrolü | 🟡 | S5C |
-| T12 | Tüm rollerde kontrol merkezi veri bağlantı doğrulaması | 🔴 | Pre-S3 |
-| T13 | CEO ana sayfa + command center Replit screenshot eksik | 🟡 | Replit |
+### ⏳ Bekleyen Sorunlar (Güncelleme: 2 Nisan 2026)
+| # | Sorun | Öncelik | Sprint | Durum |
+|---|-------|---------|--------|-------|
+| T8 | Kiosk token bug | 🔴 Pilot | Pre-S3 | ✅ Zaten düzeltilmiş |
+| T9 | CGO boş veri | 🔴 | Pre-S3 | ✅ Seed data ile dolduruldu (73 arıza) |
+| T10 | Arıza Yönetimi sayfası eski tasarım | 🟡 | S4 | ⏳ |
+| T11 | 9 Centrum sayfasında font/renk tutarlılık kontrolü | 🟡 | S5C | ⏳ |
+| T12 | Tüm rollerde kontrol merkezi veri bağlantı doğrulaması | 🔴 | Pre-S3 | ✅ API test: hepsi 200 |
+| T13 | CEO görev oluşturma 403 hatası | 🔴 | Pre-S3 | ✅ PERMISSIONS + manifest fix |
+| T14 | insertTaskSchema dueDate 400 hatası | 🔴 | Pre-S3 | ✅ z.coerce.date() 10 field |
+| T15 | Operasyon 14 tab karışık | 🟡 | S3.5B | ✅ 14→5 tab temizlendi |
+| T16 | CRM sidebar reorganizasyonu | 🟡 | S3.5A | ⏳ |
+| T17 | Denetim ayrımı (HQ/Coach/Şube) | 🟡 | S3.5D | ⏳ |
 
 ---
 
