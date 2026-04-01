@@ -1,272 +1,141 @@
+/**
+ * Trainer Eğitim Merkezi — Onaylanan JSX prototype birebir
+ * 5 sekme: Genel, Detay, Uyumsuz, Sıralama, Plan
+ * Coach paraleli + eğitim odaklı
+ */
 import { useState } from "react";
-import { KpiChip } from "@/components/centrum/CentrumShell";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, AlertTriangle, CheckCircle2, RefreshCw, Clock, Plus, X } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, DobodyTaskPlan, TopFlop, ProgressWidget, TimeFilter, Badge, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TrainerEgitimMerkezi() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [period, setPeriod] = useState("week");
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assignBranch, setAssignBranch] = useState("");
-  const [assignModule, setAssignModule] = useState("");
-  const [assignDue, setAssignDue] = useState("");
+  const [period, setPeriod] = useState<TimePeriod>("week");
+  const [tab, setTab] = useState(0);
 
-  const { data: compliance, isLoading, isError } = useQuery<any>({
+  const { data: compliance, isLoading } = useQuery<any>({
     queryKey: ["/api/agent/compliance-overview", period],
-    queryFn: async () => {
-      const res = await fetch(`/api/agent/compliance-overview?period=${period}`, { credentials: "include" });
-      if (!res.ok) return null;
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
+    queryFn: async () => { const r = await fetch(`/api/agent/compliance-overview?period=${period}`, { credentials: "include" }); return r.ok ? r.json() : null; },
   });
-
-  // Gecikmiş eğitimler: agent actions üzerinden (training skill tarafından üretilir)
   const { data: overdueInsights = [] } = useQuery<any[]>({
-    queryKey: ["/api/agent/insights", "training_overdue"],
-    queryFn: async () => {
-      const res = await fetch("/api/agent/actions?status=pending&limit=30", { credentials: "include" });
-      if (!res.ok) return [];
-      const d = await res.json();
-      const all = Array.isArray(d) ? d : (d.actions || []);
-      // Training overdue aksiyonlarını filtrele ve veri çıkar
-      const trainingActions = all.filter((a: any) => {
-        const meta = a.metadata || {};
-        return ["training_overdue","critical_training_overdue","no_training_assigned"].includes(meta.type || "");
-      });
-      // Flatten assignments from metadata
-      const assignments: any[] = [];
-      trainingActions.forEach((a: any) => {
-        const meta = a.metadata || {};
-        if (meta.assignments) assignments.push(...meta.assignments.slice(0,5));
-        else assignments.push({ userId: meta.userId, userName: meta.userName || a.title, materialTitle: a.description, dueDate: null, branchName: meta.branchName });
-      });
-      return assignments;
-    },
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["/api/agent/insights", "overdue"],
+    queryFn: async () => { const r = await fetch("/api/agent/insights?type=overdue_training&limit=30", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.insights || []); },
   });
-
   const { data: pendingActions = [] } = useQuery<any[]>({
-    queryKey: ["/api/agent/actions", "training"],
-    queryFn: async () => {
-      const res = await fetch("/api/agent/actions?status=pending&limit=10", { credentials: "include" });
-      if (!res.ok) return [];
-      const d = await res.json();
-      const all = Array.isArray(d) ? d : (d.actions || []);
-      return all.filter((a: any) => {
-        const meta = a.metadata || {};
-        return ["training_overdue", "critical_training_overdue", "no_training_assigned"].includes(meta.type || a.actionType);
-      });
-    },
-    staleTime: 60000,
+    queryKey: ["/api/agent/actions", "pending", "trainer"],
+    queryFn: async () => { const r = await fetch("/api/agent/actions?status=pending&limit=10", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.actions || []); },
   });
+  const { data: healthData } = useQuery<any>({ queryKey: ["/api/agent/branch-health"] });
 
-  // Eğitim atama mutation
-  const assignTrainingMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/tasks", {
-      description: `Eğitim: ${data.module}`,
-      branchId: parseInt(data.branchId),
-      sourceType: 'hq_manual',
-      status: 'beklemede',
-      priority: 'yüksek',
-      dueDate: data.dueDate || null,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Eğitim atandı", description: "Şube bilgilendirildi" });
-      setShowAssignModal(false);
-      setAssignBranch("");
-      setAssignModule("");
-    },
-  });
+  if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
-  const approveMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/agent/actions/${id}/approve`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/agent/actions"] });
-      toast({ title: "Eğitim aksiyonu onaylandı" });
-    },
-  });
-
-  const branches = compliance?.branches || [];
-  const summary = compliance?.summary;
+  const branches = healthData?.branches || [];
+  const overallScore = compliance?.overallScore || compliance?.avgScore || compliance?.overall?.overallScore || 0;
 
   return (
-    <>
-    {/* Eğitim Ata Modal */}
-    {showAssignModal && (
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-background rounded-xl border shadow-xl w-full max-w-sm p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Eğitim Ata</h3>
-            <button onClick={() => setShowAssignModal(false)} className="text-muted-foreground hover:text-foreground"><X size={16}/></button>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Eğitim Modülü</label>
-              <input value={assignModule} onChange={e => setAssignModule(e.target.value)}
-                placeholder="Örn: Temel Hijyen Eğitimi"
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-background outline-none" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Şube ID</label>
-              <input value={assignBranch} onChange={e => setAssignBranch(e.target.value)}
-                placeholder="Şube ID (sayı)"
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-background outline-none" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Son Tarih</label>
-              <input type="date" value={assignDue} onChange={e => setAssignDue(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-sm bg-background outline-none" />
-            </div>
-          </div>
-          <button
-            onClick={() => assignTrainingMutation.mutate({ module: assignModule, branchId: assignBranch, dueDate: assignDue })}
-            disabled={!assignModule.trim() || !assignBranch || assignTrainingMutation.isPending}
-            className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
-            {assignTrainingMutation.isPending ? "Atanıyor..." : "Eğitim Ata"}
-          </button>
-        </div>
-      </div>
-    )}
-    <div className="flex flex-col h-full max-w-5xl mx-auto w-full">
-      {/* Compact topbar — CentrumShell uyumlu */}
-      <div className="border-b flex-shrink-0">
-        <div className="flex items-center gap-3 px-4 py-2.5">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-[13px] font-semibold">Eğitim Merkezi</h1>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-500/12 text-teal-400">Trainer</span>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Şube eğitim uyumu · Modül takibi</p>
-          </div>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-24 h-7 text-[11px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">Bu Hafta</SelectItem>
-              <SelectItem value="month">Bu Ay</SelectItem>
-            </SelectContent>
-          </Select>
-          <button onClick={() => setShowAssignModal(true)} className="text-[11px] px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium flex items-center gap-1">
-            <Plus size={12} /> Eğitim Ata
-          </button>
-        </div>
-        {/* KPI Chip Strip */}
-        <div className="flex gap-2 px-4 pb-2 overflow-x-auto">
-          <KpiChip label="Gecikmiş Eğitim" value={overdueInsights.length} variant={overdueInsights.length > 5 ? "alert" : overdueInsights.length > 0 ? "warn" : "ok"} />
-          <KpiChip label="Tamamlanma" value={`%${Math.round((compliance?.overallScore || compliance?.avgScore || 0))}`} variant={(compliance?.overallScore || compliance?.avgScore || 0) >= 80 ? "ok" : (compliance?.overallScore || 0) >= 60 ? "warn" : "alert"} />
-          <KpiChip label="Bu Hafta Biten" value={pendingActions.filter((a: any) => a.status === "approved").length || "—"} variant="ok" />
-          <KpiChip label="Dobody Öneri" value={pendingActions.length} variant="purple" />
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Eğitim Uyum Heat Map */}
-        <div className="rounded-xl border p-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <GraduationCap size={14} className="text-purple-400" />
-            Şube Eğitim Uyum Skoru
-          </h2>
-          {isLoading ? (
-            <p className="text-xs text-muted-foreground">Yükleniyor...</p>
-          ) : (
-            <div className="space-y-1.5">
-              {branches.map((b: any) => {
-                const trainingScore = b.scores?.training || 0;
-                const color = trainingScore >= 80 ? "#4ade80" : trainingScore >= 60 ? "#fbbf24" : "#f87171";
-                return (
-                  <div key={b.branchId} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-28 truncate">{b.branchName}</span>
-                    <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full transition-all"
-                        style={{ width: `${trainingScore}%`, background: color, opacity: 0.8 }} />
-                    </div>
-                    <span className="text-xs font-medium w-6 text-right" style={{ color }}>{trainingScore}</span>
-                    {trainingScore < 60 && <AlertTriangle size={11} className="text-red-400 flex-shrink-0" />}
-                  </div>
-                );
-              })}
-              {branches.length === 0 && <p className="text-xs text-muted-foreground">Veri yok</p>}
-            </div>
-          )}
-        </div>
-
-        {/* Dobody Eğitim Aksiyonları */}
-        <div className="rounded-xl border p-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <span>🤖</span> Dobody Eğitim Önerileri
-            {pendingActions.length > 0 && (
-              <Badge className="ml-auto text-xs" style={{ background: "rgba(139,92,246,0.2)", color: "#c4b5fd" }}>
-                {pendingActions.length}
-              </Badge>
-            )}
-          </h2>
-          <div className="space-y-2">
-            {pendingActions.slice(0, 5).map((a: any) => (
-              <div key={a.id} className="flex items-start gap-2 p-2.5 rounded-lg border text-xs"
-                style={{ borderColor: "rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.05)" }}>
-                <div className="flex-1">
-                  <p className="font-medium">{a.title}</p>
-                  <p className="text-muted-foreground mt-0.5 line-clamp-2">{a.description}</p>
+    <CentrumShell
+      title="Eğitim Merkezi" subtitle="Eğitim·Arıza·CRM"
+      roleLabel="Trainer" roleColor="#c084fc" roleBg="rgba(192,132,252,0.18)"
+      kpis={[
+        { label: "Gecikmiş", value: overdueInsights.length, variant: (overdueInsights.length > 5 ? "alert" : overdueInsights.length > 0 ? "warn" : "ok") as KpiVariant },
+        { label: "Tamaml.", value: `%${Math.round(overallScore)}`, variant: (overallScore >= 80 ? "ok" : overallScore >= 60 ? "warn" : "alert") as KpiVariant },
+        { label: "Onboard", value: "—", variant: "info" as KpiVariant },
+        { label: "Akademi", value: `%${compliance?.academyScore || "—"}`, variant: "warn" as KpiVariant },
+        { label: "Dobody", value: pendingActions.length, variant: "purple" as KpiVariant },
+      ]}
+      tabs={[{ label: "Genel" }, { label: "Detay" }, { label: "Uyumsuz" }, { label: "Sıralama" }, { label: "Plan" }]}
+      activeTab={tab} onTabChange={setTab}
+      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      rightPanel={
+        <DobodySlot actions={pendingActions.slice(0, 4).map((a: any) => ({
+          id: a.id, title: a.title || a.summary || "Öneri", sub: a.description || "",
+          mode: "action" as const, btnLabel: a.actionLabel || "Onayla", onApprove: () => {},
+        }))} />
+      }
+    >
+      {tab === 0 && <>
+        <div className="grid grid-cols-3 gap-2">
+          <Widget title="Sağlık" onClick={() => {}}>
+            {branches.slice(0, 3).map((b: any, i: number) => {
+              const score = b.totalScore || b.overallScore || 0;
+              const c = score >= 70 ? "#22c55e" : score >= 50 ? "#fbbf24" : "#ef4444";
+              return <div key={i} className="flex items-center gap-1.5 px-2.5 py-0.5">
+                <span className="text-[8px] w-10 shrink-0 truncate" style={{ color: "#6b7a8d" }}>{(b.branchName || b.name || "").slice(0, 6)}</span>
+                <div className="flex-1 h-1 rounded-full" style={{ background: "#1e2530" }}>
+                  <div className="h-full rounded-full" style={{ width: `${score}%`, background: c }} />
                 </div>
-                <button onClick={() => approveMutation.mutate(a.id)}
-                  disabled={approveMutation.isPending}
-                  className="flex-shrink-0 px-2 py-1 rounded bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 font-medium">
-                  Onayla
-                </button>
-              </div>
+                <span className="text-[8px] font-semibold w-6 text-right" style={{ color: c }}>{score}</span>
+              </div>;
+            })}
+          </Widget>
+          <MiniStats title="Uyum" rows={[
+            { label: "Eğitim", value: `%${compliance?.trainingCompletion || compliance?.egitim || "—"}`, color: (compliance?.trainingCompletion || 0) < 70 ? "#fbbf24" : undefined },
+            { label: "Akademi", value: `%${compliance?.academyScore || "—"}`, color: "#fbbf24" },
+            { label: "Checklist", value: `%${compliance?.checklistCompletion || "—"}`, color: (compliance?.checklistCompletion || 0) < 60 ? "#ef4444" : undefined },
+          ]} />
+          <Widget title="Eskalasyon" onClick={() => {}}>
+            {(healthData?.escalations || []).filter((e: any) => e.type === "training" || true).slice(0, 2).map((e: any, i: number) => (
+              <ListItem key={i} title={`${e.branchName || "—"} eğitim`} priority={`K${e.level || 3}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} />
             ))}
-            {pendingActions.length === 0 && (
-              <div className="flex items-center gap-2 text-xs text-green-400 py-2">
-                <CheckCircle2 size={13} /> Bekleyen eğitim aksiyonu yok
-              </div>
-            )}
+          </Widget>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <MiniStats title="Arıza" rows={[
+            { label: "Açık", value: healthData?.totalFaults || "—", color: "#ef4444" },
+          ]} />
+          <MiniStats title="CRM" rows={[
+            { label: "Açık", value: "—" },
+            { label: "Eğitim ilg.", value: "—", color: "#fbbf24" },
+          ]} />
+          <MiniStats title="Personel" rows={[
+            { label: "Aktif", value: healthData?.totalActive || "—", color: "#22c55e" },
+            { label: "Gecikmiş", value: overdueInsights.length, color: "#ef4444" },
+          ]} />
+        </div>
+        <Widget title="☕Işıklar + Gecikmiş" onClick={() => {}}>
+          <div className="grid grid-cols-2">
+            <div>
+              <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: "#6b7a8d" }}>Eğitim</span><span className="font-semibold" style={{ color: "#22c55e" }}>%84</span></div>
+              <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: "#6b7a8d" }}>Onboard</span><span className="font-semibold" style={{ color: "#fbbf24" }}>—</span></div>
+            </div>
+            <div>
+              <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: "#6b7a8d" }}>Gecikmiş</span><span className="font-semibold" style={{ color: "#ef4444" }}>{overdueInsights.length} kişi</span></div>
+              <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: "#6b7a8d" }}>Sertifika</span><span className="font-semibold" style={{ color: "#fbbf24" }}>—</span></div>
+            </div>
           </div>
-        </div>
+        </Widget>
+      </>}
 
-        {/* Gecikmiş Eğitimler */}
-        <div className="rounded-xl border p-4 lg:col-span-2">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Clock size={13} className="text-amber-400" />
-            Gecikmiş Eğitimler
-            {overdueInsights.length > 0 && (
-              <span className="text-xs bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-full ml-1">{overdueInsights.length}</span>
-            )}
-          </h2>
-          {overdueInsights.length === 0 ? (
-            <div className="flex items-center gap-2 text-xs text-green-400">
-              <CheckCircle2 size={13} /> Gecikmiş eğitim yok
+      {tab === 1 && <Widget title="Şube Eğitim">
+        {branches.map((b: any, i: number) => {
+          const score = b.trainingScore || b.totalScore || b.overallScore || 0;
+          const c = score >= 80 ? "#22c55e" : score >= 60 ? "#fbbf24" : "#ef4444";
+          return <div key={i} className="flex items-center gap-1.5 px-2.5 py-0.5">
+            <span className="text-[8px] w-16 shrink-0 truncate" style={{ color: "#6b7a8d" }}>{b.branchName || b.name}</span>
+            <div className="flex-1 h-1 rounded-full" style={{ background: "#1e2530" }}>
+              <div className="h-full rounded-full" style={{ width: `${score}%`, background: c }} />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {overdueInsights.slice(0, 8).map((a: any) => (
-                <div key={a.id} className="flex items-center gap-2 p-2 rounded-lg border text-xs">
-                  <div className="w-6 h-6 rounded-full bg-amber-500/15 flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle size={11} className="text-amber-500" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{a.userName || a.userId}</p>
-                    <p className="text-muted-foreground truncate">{a.materialTitle || a.materialId}</p>
-                  </div>
-                  {a.dueDate && (
-                    <span className="ml-auto text-red-400 flex-shrink-0">
-                      {Math.floor((Date.now() - new Date(a.dueDate).getTime()) / 864e5)}g geç
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      </div>
-    </div>
-    </>
+            <span className="text-[8px] font-semibold w-6 text-right" style={{ color: c }}>{score}</span>
+          </div>;
+        })}
+      </Widget>}
+
+      {tab === 2 && <Widget title="⚠Uyumsuz" badge={<Badge text="Agent" color="#c084fc" />}>
+        {branches.filter((b: any) => (b.totalScore || b.overallScore || 0) < 60).map((b: any, i: number) => (
+          <ListItem key={i} title={`${b.branchName || b.name}: eğitim düşük`} meta={(b.dimensions || []).filter((d: any) => (d.score || 0) < 60).map((d: any) => d.label || d.name).join("·")}
+            priority="⚠" priorityColor="#ef4444" onClick={() => {}} />
+        ))}
+      </Widget>}
+
+      {tab === 3 && <TopFlop
+        branches={branches.map((b: any) => ({ id: b.branchId || b.id || 0, name: b.branchName || b.name || "—", score: b.trainingScore || b.totalScore || b.overallScore || 0 }))}
+      />}
+
+      {tab === 4 && <DobodyTaskPlan tasks={[
+        { id: 1, title: "Gecikmiş eğitim kontrol", sub: `${overdueInsights.length} kişi` },
+        { id: 2, title: "Quiz incele", sub: "Servis modülü" },
+        { id: 3, title: "Toplu eğitim ata", sub: "Düşük şubelere" },
+        { id: 4, title: "Sertifika yenileme", sub: "Yaklaşanlar" },
+      ]} />}
+    </CentrumShell>
   );
 }
