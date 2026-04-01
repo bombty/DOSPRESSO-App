@@ -150,10 +150,18 @@ export default function DenetimlerPage() {
           <h1 className="text-2xl font-bold">Denetimler</h1>
           <p className="text-muted-foreground">Şube denetimlerini görüntüleyin ve yeni denetim başlatın</p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-audit">
-          <Plus className="mr-2 h-4 w-4" />
-          Yeni Denetim
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/denetim-sablonlari">
+            <Button variant="outline" data-testid="button-manage-templates">
+              <FileText className="mr-2 h-4 w-4" />
+              Şablon Yönetimi
+            </Button>
+          </Link>
+          <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-audit">
+            <Plus className="mr-2 h-4 w-4" />
+            Yeni Denetim
+          </Button>
+        </div>
       </div>
 
       {/* In Progress Audits */}
