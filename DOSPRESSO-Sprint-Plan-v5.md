@@ -66,7 +66,7 @@ CEO, CGO, Coach, Trainer dashboard'larını gez:
 
 ---
 
-## BÖLÜM 1: CENTRUM DASHBOARD (S1–S5, ~38 saat)
+## BÖLÜM 1: CENTRUM DASHBOARD (S1–S5 + S3.5, ~46 saat)
 
 ### SPRINT 1: ALTYAPI (4 saat)
 
@@ -114,6 +114,38 @@ Endpoint: `/api/factory/production-stats`, `/api/factory/qc/stats`, `/api/factor
 **3B. Depo/Lojistik (YENİ)** → `depo-centrum.tsx` (~300L)
 Stok seviyeleri, LOT takibi, sipariş giriş, sevkiyat hazırlama
 Endpoint: `/api/factory/inventory`, `/api/factory/shipments`
+
+### SPRINT 3.5: CRM + OPERASYON YENİDEN YAPILANMA (8 saat)
+**Referans:** `docs/CRM-OPERASYON-ANALIZ.md`
+
+**3.5A. CRM Temizlik & Navigasyon (3s)**
+- Misafir Memnuniyeti redirect döngüsü düzelt
+- CRM sidebar yeniden düzenle: Görev Atama | Destek Talepleri | Misafir Sesi | Cowork | Duyurular
+- CRM KPI'ları CentrumShell KpiChip standardına getir (tek satır, global tasarım)
+- Görev oluşturma 500 hatası düzelt (server/routes/tasks.ts:769)
+- Channel toggle etiketlerini netleştir
+- CRM Dashboard: tüm kanalların özet KPI'ları
+
+**3.5B. Operasyon'dan CRM'e Taşıma (2s)**
+- Mesajlar → CRM > Cowork
+- HQ Destek + Destek → CRM > Destek Talepleri (birleştir)
+- Misafir Memnuniyeti → CRM > Misafir Sesi (redirect kaldır, native entegre)
+- Bildirimler → Genel sistem (bottom nav badge)
+- Operasyon tab listesi temizliği (14+ → 5 tab: Görev Şablonları, Checklist, Denetim, Kayıp Eşya, Canlı Takip)
+
+**3.5C. Widget Tıklanabilirlik (1s)**
+- CEO/CGO/Coach/Trainer/Müdür dashboard'larındaki TÜM widget header'lara → navigate() ekle
+- KPI chip'lere tıklama → filtrelenmiş liste sayfası
+- Widget ok (→) ikonu görünür + hover efekti
+- Test: her widget'a tıkla → doğru sayfaya gidiyor mu?
+
+**3.5D. Denetim Ayrımı (2s)**
+- Operasyon > Denetim Merkezi:
+  - HQ tarafı: Şablon + kriter + puanlama düzenleme sayfası
+  - Coach/Trainer tarafı: Denetim planlama + yürütme (mevcut coach-sube-denetim geliştir)
+  - Şube tarafı: Sadece kendi sonuçlarını görme (read-only)
+- CAPA (düzeltici eylem) takip → görev oluştur → tamamlanma kontrolü
+- Şube denetim route ayrımı: /denetim (HQ), /sube-denetim (şube read-only)
 
 ### SPRINT 4: ŞUBE ROLLERİ (10 saat)
 
@@ -262,6 +294,7 @@ Dashboard: Coach/Trainer best practice listesi, Müdür diğer şubelerden öğr
 | S1 | Altyapı (CentrumShell + routes) | 2 | 4 | ✅ |
 | S2 | HQ rolleri (CEO+CGO+Coach+Trainer+İK+Satınalma) | 6 | 12 | ✅ |
 | S3 | Fabrika QC + Depo detay | 2 | 6 | 🔴 Pilot |
+| **S3.5** | **CRM + Operasyon yeniden yapılanma** | **8+** | **8** |
 | S4 | Şube rolleri (Müdür+Sup+Buddy+Personel+Yatırımcı) | 5 | 10 |
 | S5 | QC + temizlik + quality gate + admin tema + tasarım tutarlılığı | 6+ | 9 |
 | S6 | Upselling hedef + Müşteri NPS | 5 | 9 |
@@ -269,7 +302,7 @@ Dashboard: Coach/Trainer best practice listesi, Müdür diğer şubelerden öğr
 | S8 | Excel import + 5 AI skill | 3 | 5 |
 | S9 | Bölge + Sözleşme + Kullanım analitik | 8 | 10 |
 | S10 | Risk yönetimi + Best practice | 5 | 8 |
-| **TOPLAM** | | **49+ dosya** | **~81 saat** |
+| **TOPLAM** | | **57+ dosya** | **~89 saat** |
 
 ---
 
