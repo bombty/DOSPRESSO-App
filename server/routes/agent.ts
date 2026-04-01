@@ -1,5 +1,6 @@
 import { Router, type Express } from "express";
 import { db } from "../db";
+import { sql } from "drizzle-orm";
 import { storage } from "../storage";
 import { 
   agentPendingActions, agentRuns, agentEscalationHistory, 
@@ -977,8 +978,36 @@ router.get("/api/agent/branch-health", isAuthenticated, async (req, res) => {
     let filteredBranches = scores.branches;
 
     if (!isHQ && user.branchId) {
-      // Şube rolleri sadece kendi şubesini görür
       filteredBranches = scores.branches.filter(b => b.branchId === user.branchId);
+    }
+
+    // Dashboard widget'ları için ek veriler
+    let totalFaults = 0, avgRating = 0, totalActive = 0, lateCount = 0;
+    let escalations: any[] = [];
+    try {
+      const [faultRes, feedbackRes, sessionRes] = await Promise.allSettled([
+        db.execute(sql`SELECT count(*) as cnt FROM equipment_faults WHERE status IN ('acik','devam_ediyor')`),
+        db.execute(sql`SELECT count(*) as cnt, COALESCE(avg(rating),0) as avg_rating FROM customer_feedback WHERE created_at > now() - interval '30 days'`),
+        db.execute(sql`SELECT count(*) as cnt FROM branch_shift_sessions WHERE status = 'active'`),
+      ]);
+      if (faultRes.status === 'fulfilled') totalFaults = Number((faultRes.value as any).rows?.[0]?.cnt || 0);
+      if (feedbackRes.status === 'fulfilled') {
+        avgRating = Number(Number((feedbackRes.value as any).rows?.[0]?.avg_rating || 0).toFixed(1));
+      }
+      if (sessionRes.status === 'fulfilled') totalActive = Number((sessionRes.value as any).rows?.[0]?.cnt || 0);
+      
+      // Eskalasyonlar: SLA aşan talepler + kritik arızalar
+      const escRes = await db.execute(sql`
+        SELECT 'fault' as type, id, equipment_name as title, priority, branch_id, created_at 
+        FROM equipment_faults WHERE status = 'acik' AND priority IN ('kritik','yüksek') 
+        UNION ALL 
+        SELECT 'ticket' as type, id, title, priority, branch_id, created_at 
+        FROM support_tickets WHERE status = 'acik' AND sla_breached = true
+        ORDER BY created_at DESC LIMIT 10
+      `);
+      escalations = (escRes as any).rows || [];
+    } catch (e) {
+      console.error("[BranchHealth] Extra data error:", e);
     }
 
     res.json({
@@ -987,12 +1016,18 @@ router.get("/api/agent/branch-health", isAuthenticated, async (req, res) => {
       healthyCount: scores.healthyCount,
       warningCount: scores.warningCount,
       criticalCount: scores.criticalCount,
-      patterns: isHQ ? patterns : [], // Pattern'ler sadece HQ'ya gösterilir
+      patterns: isHQ ? patterns : [],
       calculatedAt: scores.calculatedAt,
+      // Dashboard widget ek verileri
+      totalFaults,
+      avgRating,
+      totalActive,
+      lateCount,
+      escalations,
     });
   } catch (error) {
     console.error("[BranchHealth] Error:", error);
-    res.json({ branches: [], average: 0, healthyCount: 0, warningCount: 0, criticalCount: 0, patterns: [] });
+    res.json({ branches: [], average: 0, healthyCount: 0, warningCount: 0, criticalCount: 0, patterns: [], totalFaults: 0, avgRating: 0, totalActive: 0, lateCount: 0, escalations: [] });
   }
 });
 

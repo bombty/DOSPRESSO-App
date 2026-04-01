@@ -19,7 +19,6 @@ const Checklists = lazy(() => import("./checklists"));
 const Denetimler = lazy(() => import("./denetimler"));
 const KayipEsya = lazy(() => import("./kayip-esya"));
 const CanliTakip = lazy(() => import("./canli-takip"));
-const KayipEsyaHQ = lazy(() => import("./kayip-esya-hq"));
 
 interface TabConfig {
   id: string;
@@ -70,14 +69,6 @@ const OPERASYON_TABS: TabConfig[] = [
     icon: <MapPin className="h-4 w-4" />,
     permissionModule: "live_tracking",
     component: CanliTakip
-  },
-  {
-    id: "kayip-esya-hq",
-    label: "Lost & Found HQ",
-    labelTr: "Kayıp Eşya HQ",
-    icon: <Search className="h-4 w-4" />,
-    permissionModule: "lost_found_hq",
-    component: KayipEsyaHQ
   }
 ];
 
