@@ -54,7 +54,7 @@ export default function TrainerEgitimMerkezi() {
     >
       {tab === 0 && <>
         <div className="grid grid-cols-3 gap-2.5">
-          <Widget title="Sağlık" onClick={() => {}}>
+          <Widget title="Sağlık" onClick={() => navigate("/sube-saglik-skoru")}>
             {branches.slice(0, 3).map((b: any, i: number) => {
               const score = b.totalScore || b.overallScore || 0;
               const c = score >= 70 ? "#22c55e" : score >= 50 ? "#fbbf24" : "#ef4444";
@@ -71,8 +71,8 @@ export default function TrainerEgitimMerkezi() {
             { label: "Eğitim", value: `%${compliance?.trainingCompletion || compliance?.egitim || "—"}`, color: (compliance?.trainingCompletion || 0) < 70 ? "#fbbf24" : undefined },
             { label: "Akademi", value: `%${compliance?.academyScore || "—"}`, color: "#fbbf24" },
             { label: "Checklist", value: `%${compliance?.checklistCompletion || "—"}`, color: (compliance?.checklistCompletion || 0) < 60 ? "#ef4444" : undefined },
-          ]} />
-          <Widget title="Eskalasyon" onClick={() => {}}>
+          ]} onLink={() => navigate("/checklistler")} />
+          <Widget title="Eskalasyon" onClick={() => navigate("/crm")}>
             {(healthData?.escalations || []).filter((e: any) => e.type === "training" || true).slice(0, 2).map((e: any, i: number) => (
               <ListItem key={i} title={`${e.branchName || "—"} eğitim`} priority={`K${e.level || 3}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} />
             ))}
@@ -81,17 +81,17 @@ export default function TrainerEgitimMerkezi() {
         <div className="grid grid-cols-3 gap-2.5">
           <MiniStats title="Arıza" rows={[
             { label: "Açık", value: healthData?.totalFaults || "—", color: "#ef4444" },
-          ]} />
+          ]} onLink={() => navigate("/ariza")} />
           <MiniStats title="CRM" rows={[
             { label: "Açık", value: "—" },
             { label: "Eğitim ilg.", value: "—", color: "#fbbf24" },
-          ]} />
+          ]} onLink={() => navigate("/crm")} />
           <MiniStats title="Personel" rows={[
             { label: "Aktif", value: healthData?.totalActive || "—", color: "#22c55e" },
             { label: "Gecikmiş", value: overdueInsights.length, color: "#ef4444" },
-          ]} />
+          ]} onLink={() => navigate("/ik")} />
         </div>
-        <Widget title="☕Işıklar + Gecikmiş" onClick={() => {}}>
+        <Widget title="☕Işıklar + Gecikmiş" onClick={() => navigate("/sube-saglik-skoru")}>
           <div className="grid grid-cols-2">
             <div>
               <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{ color: "#6b7a8d" }}>Eğitim</span><span className="font-semibold" style={{ color: "#22c55e" }}>%84</span></div>
@@ -122,7 +122,7 @@ export default function TrainerEgitimMerkezi() {
       {tab === 2 && <Widget title="⚠Uyumsuz" badge={<Badge text="Agent" color="#c084fc" />}>
         {branches.filter((b: any) => (b.totalScore || b.overallScore || 0) < 60).map((b: any, i: number) => (
           <ListItem key={i} title={`${b.branchName || b.name}: eğitim düşük`} meta={(b.dimensions || []).filter((d: any) => (d.score || 0) < 60).map((d: any) => d.label || d.name).join("·")}
-            priority="⚠" priorityColor="#ef4444" onClick={() => {}} />
+            priority="⚠" priorityColor="#ef4444" onClick={() => navigate("/sube-saglik-skoru")} />
         ))}
       </Widget>}
 

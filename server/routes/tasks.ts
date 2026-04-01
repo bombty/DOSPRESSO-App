@@ -766,7 +766,15 @@ const router = Router();
       if (error instanceof AuthorizationError) {
         return res.status(403).json({ message: error.message });
       }
-      res.status(500).json({ message: "Görev başlatılamadı" });
+      // Zod validation hatası
+      if (error && typeof error === 'object' && 'issues' in error) {
+        const zodError = error as { issues: { path: string[]; message: string }[] };
+        const details = zodError.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+        return res.status(400).json({ message: `Validation hatası: ${details}` });
+      }
+      // DB hatası
+      const errMsg = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: `Görev başlatılamadı: ${errMsg.substring(0, 200)}` });
     }
   });
 

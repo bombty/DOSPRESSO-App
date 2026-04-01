@@ -94,10 +94,10 @@ export default function CEOCommandCenter() {
           })}
         </Widget>
 
-        <Widget title="Eskalasyon" onClick={() => {}}>
+        <Widget title="Eskalasyon" onClick={() => setLocation("/crm")}>
           {escalations.slice(0, 4).map((a: any, i: number) => (
             <ListItem key={i} title={a.title || a.summary || "Eskalasyon"} meta={a.description || ""}
-              priority={`K${a.level || 5}`} priorityColor={a.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => {}} />
+              priority={`K${a.level || 5}`} priorityColor={a.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => setLocation("/crm")} />
           ))}
           {escalations.length === 0 && <p className="text-[9px] px-2.5 py-2" style={{ color: "#6b7a8d" }}>Açık eskalasyon yok</p>}
         </Widget>

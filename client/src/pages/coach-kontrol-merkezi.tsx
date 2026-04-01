@@ -73,11 +73,11 @@ export default function CoachKontrolMerkezi() {
             { label: "Vardiya", value: `%${summary?.shiftCompliance || summary?.vardiya || "—"}`, color: (summary?.shiftCompliance || 0) < 70 ? "#fbbf24" : undefined },
             { label: "Checklist", value: `%${summary?.checklistCompletion || summary?.checklist || "—"}`, color: (summary?.checklistCompletion || 0) < 60 ? "#ef4444" : undefined },
             { label: "Eğitim", value: `%${summary?.trainingCompletion || summary?.egitim || "—"}`, color: "#22c55e" },
-          ]} onLink={() => {}} />
-          <Widget title="Eskalasyon" onClick={() => {}}
+          ]} onLink={() => navigate("/checklistler")} />
+          <Widget title="Eskalasyon" onClick={() => navigate("/crm")}
             badge={<Badge text={`${(healthData?.escalations || []).length}`} color="#ef4444" />}>
             {(healthData?.escalations || []).slice(0, 3).map((e: any, i: number) => (
-              <ListItem key={i} title={e.title || e.branchName || "—"} priority={`K${e.level || 5}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => {}} />
+              <ListItem key={i} title={e.title || e.branchName || "—"} priority={`K${e.level || 5}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => navigate("/crm")} />
             ))}
           </Widget>
         </div>
@@ -92,7 +92,7 @@ export default function CoachKontrolMerkezi() {
           <MiniStats title="Personel" rows={[
             { label: "Aktif", value: healthData?.totalActive || "—", color: "#22c55e" },
             { label: "Geç", value: healthData?.lateCount || "—", color: "#fbbf24" },
-          ]} />
+          ]} onLink={() => navigate("/ik")} />
         </div>
       </>}
 

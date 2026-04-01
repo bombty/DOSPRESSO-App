@@ -124,9 +124,9 @@ export default function CGOTeknikKomuta() {
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <Widget title="Eskalasyon" onClick={() => {}}>
+        <Widget title="Eskalasyon" onClick={() => navigate("/crm")}>
           {(healthData?.escalations || []).slice(0, 3).map((e: any, i: number) => (
-            <ListItem key={i} title={e.title || e.branchName || "—"} priority={`K${e.level || 3}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => {}} />
+            <ListItem key={i} title={e.title || e.branchName || "—"} priority={`K${e.level || 3}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => navigate("/crm")} />
           ))}
         </Widget>
         <MiniStats title="Gelir-Gider" rows={[
