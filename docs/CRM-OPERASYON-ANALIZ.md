@@ -371,3 +371,260 @@ Aslan'ın onayı gereken kararlar:
 ---
 
 *Bu doküman taslaktır. Aslan onayından sonra sprint planına entegre edilecektir.*
+
+---
+
+## BÖLÜM 7: ONAYLANAN KARARLAR (1 Nisan 2026)
+
+### 7.1 Kesinleşen Yapı
+
+```
+CRM (adı kalıyor):
+├── 1. Görev Atama (anlık — HQ→Şube, acil görev, CRM'in EN ÖNÜ)
+├── 2. Destek Talepleri (şube ↔ HQ, departman bazlı, SLA)
+├── 3. Misafir Sesi (QR geri bildirim, NPS, şikayet)
+├── 4. Cowork (HQ merkezli, şubeden kişi davet edilebilir)
+├── 5. Duyurular (tek yön HQ → Tüm)
+├── 6. Mesajlar (Operasyon'dan taşındı)
+└── Dashboard + Analizler + SLA Kuralları
+
+OPERASYON:
+├── 1. Görev Şablonları & Periyodik Görevler
+│   ├── Rol bazlı task şablonları (günlük/haftalık/aylık)
+│   ├── Açılış checklist, kapanış checklist, temizlik planı
+│   ├── Coach/Trainer oluşturur → şubelere atanır
+│   └── Tamamlama + fotoğraf + puan → raporlama
+├── 2. Checklist Merkezi
+│   ├── Şablon yönetimi (HQ)
+│   ├── Periyodik atama + takip
+│   └── Uyum skoru → şube sağlığına etki
+├── 3. Denetim Merkezi
+│   ├── HQ: Şablon + kriter + puanlama yönetimi
+│   ├── Coach/Trainer: Denetim planlama + yürütme
+│   ├── Şube: Kendi denetim sonuçlarını görme
+│   └── CAPA (düzeltici eylem takip)
+├── 4. Kayıp Eşya
+└── 5. Canlı Personel Takip
+```
+
+### 7.2 CRM vs Operasyon Görev Ayrımı
+
+| | CRM Görev Atama | Operasyon Görev Şablonları |
+|---|---|---|
+| **Ne zaman** | Anlık, acil | Planlı, periyodik |
+| **Kim oluşturur** | HQ herhangi yetkili | Coach/Trainer/Admin |
+| **Kime** | Belirli şube/kişi/rol | Tüm şubeler/roller |
+| **Tekrar** | Tek seferlik | Günlük/haftalık/aylık |
+| **Örnek** | "Lara kasasını kontrol et" | "Her gün 08:00 açılış checklist" |
+| **Takip** | CRM talep gibi (açık/çözülen) | Tamamlanma oranı + skor |
+| **Dobody** | SLA eskalasyon | Yapılmadı uyarısı |
+
+### 7.3 Operasyon'dan CRM'e Taşınacaklar
+
+| Öğe | Eski Yer | Yeni Yer |
+|-----|----------|----------|
+| Mesajlar | Operasyon tab | CRM > Cowork |
+| HQ Destek | Operasyon tab | CRM > Destek Talepleri |
+| Destek | Operasyon tab | CRM > Destek Talepleri |
+| Misafir Memnuniyeti | Operasyon tab (redirect) | CRM > Misafir Sesi |
+| Bildirimler | Operasyon tab | Genel (bottom nav) |
+
+### 7.4 Cowork Kuralları
+- Varsayılan: HQ kullanıcıları erişir
+- Şubeden kişi: kanal sahibi tarafından davet edilir
+- Kanal türleri: Departman, Proje, Şube (isteğe bağlı)
+- Dosya paylaşımı + mention + görev oluşturma (→ CRM görev)
+
+---
+
+## BÖLÜM 8: FRANCHISE YÖNETİMİ İÇİN OPERASYON DETAYI
+
+### 8.1 Operasyon Modülünde Olması Gerekenler
+
+```
+OPERASYON
+│
+├── 📋 GÖREV ŞABLONLARI & PERİYODİK GÖREVLER
+│   ├── Şablon Kütüphanesi (Admin/Coach/Trainer oluşturur)
+│   │   ├── Açılış prosedürleri (günlük)
+│   │   ├── Kapanış prosedürleri (günlük)
+│   │   ├── Temizlik planı (günlük/haftalık)
+│   │   ├── Eğitim görevleri (haftalık/aylık)
+│   │   ├── Stok sayım (haftalık)
+│   │   ├── Ekipman bakım kontrol (haftalık/aylık)
+│   │   └── Özel görevler (tek seferlik kampanya vb.)
+│   │
+│   ├── Atama Kuralları
+│   │   ├── Rol bazlı: "Tüm Barista'lara" / "Tüm Supervisor'lara"
+│   │   ├── Şube bazlı: "Sadece Lara + Işıklar"
+│   │   ├── Zaman bazlı: Günlük 08:00 / Haftalık Pazartesi / Aylık 1.
+│   │   └── Koşullu: "Stok <kritik ise" → otomatik sayım görevi
+│   │
+│   ├── Tamamlama & Kanıt
+│   │   ├── Fotoğraf zorunlu/isteğe bağlı
+│   │   ├── Alt görevler (sub-tasks) — hepsi tamamlanınca ana görev kapanır
+│   │   ├── Onay mekanizması (Supervisor onayı gerekli mi?)
+│   │   └── Süre takibi (görev ne kadar sürede tamamlandı)
+│   │
+│   └── Raporlama (Arka Plan)
+│       ├── Tamamlanma oranı → şube sağlık skoruna etki
+│       ├── Gecikme oranı → Coach dashboard'da görünür
+│       ├── Rol bazlı performans → "Barista Ali %92, Barista Veli %64"
+│       ├── Şube karşılaştırma → "Işıklar %88, Lara %52"
+│       └── Trend analizi → "Son 4 haftada temizlik uyumu düşüyor"
+│
+├── ☑️ CHECKLIST MERKEZİ
+│   ├── Şablon Türleri
+│   │   ├── Vardiya açılış checklist (zorunlu — vardiya başlamadan)
+│   │   ├── Vardiya kapanış checklist (zorunlu — çıkışta)
+│   │   ├── Mola dönüş checklist (mini — hijyen kontrol)
+│   │   ├── Haftalık ekipman kontrol
+│   │   ├── Aylık derin temizlik
+│   │   └── Özel: Kampanya/etkinlik checklist
+│   │
+│   ├── Yürütme
+│   │   ├── Kiosk'ta göster → personel tamamlar
+│   │   ├── Supervisor canlı takip → "3/7 madde tamamlandı"
+│   │   ├── Fotoğraf ekleme (isteğe bağlı)
+│   │   └── Otomatik süre damgası
+│   │
+│   └── Raporlama
+│       ├── Uyum skoru → şube sağlık bileşeni
+│       ├── En çok atlanan maddeler → Coach insight
+│       └── Dobody: "Lara 3 gündür kapanış checklist yapmadı"
+│
+├── 🔍 DENETİM MERKEZİ
+│   │
+│   ├── Şablon Yönetimi (HQ — Admin/Coach/Trainer)
+│   │   ├── Denetim kategorileri (Hijyen, Servis, Ekipman, Eğitim, Genel)
+│   │   ├── Kriter tanımlama (madde, ağırlık, puan aralığı)
+│   │   ├── Puanlama sistemi (1-5 veya Evet/Hayır/Kısmen)
+│   │   ├── Fotoğraf zorunlu alanlar
+│   │   └── Versiyon yönetimi (şablon güncelleme geçmişi)
+│   │
+│   ├── Denetim Planlama & Yürütme (Coach/Trainer)
+│   │   ├── Ziyaret planı oluştur (hangi şube, ne zaman)
+│   │   ├── Mobil denetim formu (tablet/telefon)
+│   │   ├── Madde bazlı puanlama + not + fotoğraf
+│   │   ├── Anlık skor hesaplama
+│   │   └── Denetim sonucu → şubeye bildirim
+│   │
+│   ├── CAPA (Düzeltici/Önleyici Eylem)
+│   │   ├── Düşük puan → otomatik aksiyon planı oluştur
+│   │   ├── Deadline ata (Müdür'e)
+│   │   ├── Takip → tamamlanma kontrolü
+│   │   └── Dobody: "CAPA deadline 2 gün kaldı — Lara müdürüne hatırlat"
+│   │
+│   └── Şube Tarafı (Müdür/Supervisor — sadece okuma)
+│       ├── Kendi denetim sonuçlarını gör
+│       ├── CAPA listesi ve deadline
+│       ├── Tarihçe ve trend
+│       └── NOT: Şubeler denetim formu düzenleyemez!
+│
+├── 📦 KAYIP EŞYA (mevcut — değişiklik yok)
+│
+└── 📍 CANLI PERSONEL TAKİP (mevcut — değişiklik yok)
+```
+
+### 8.2 Rol Bazlı Görev Detayları
+
+**CEO/Admin:**
+- Görev oluşturmaz (CRM üzerinden acil atama yapabilir)
+- Dashboard'dan tüm sistemi izler
+- Eskalasyon onayları
+
+**CGO:**
+- Teknik görev şablonları oluşturabilir (ekipman bakım, kalibrasyon)
+- Teknik denetim kriterleri tanımlar
+- Arıza → görev dönüşümünü yönetir
+
+**Coach:**
+- Şube bazlı görev şablonları oluşturur
+- Denetim planlar ve yürütür
+- Checklist şablonları oluşturur
+- Görev + denetim + checklist raporlarını takip eder
+- CAPA oluşturur ve takip eder
+- Şube ziyaret planı yapar
+
+**Trainer:**
+- Eğitim görev şablonları oluşturur
+- Eğitim denetimi yapar (barista yetkinlik, reçete bilgisi)
+- Eğitim checklist'leri oluşturur
+- Sertifika/quiz görevleri atar
+
+**Müdür (Yatırımcı):**
+- HQ'dan gelen görevleri görür ve tamamlar
+- Kendi şubesi için alt görev oluşturabilir
+- Checklist'leri personele atar
+- Denetim sonuçlarını görür + CAPA tamamlar
+- Misafir GB'ye yanıt verir (SLA dahilinde)
+
+**Supervisor:**
+- Müdür'den gelen görevleri ekibe dağıtır
+- Checklist tamamlama takibi
+- Personel performans değerlendirmesi
+- Vardiya devir teslim kontrolü
+
+**Barista/Personel:**
+- Kiosk'tan günlük görevleri görür
+- Checklist tamamlar (açılış/kapanış)
+- Görev tamamlama + fotoğraf yükleme
+- Performans puanını görür
+
+### 8.3 Arka Plan Raporlama Akışı
+
+```
+Görev/Checklist Tamamlandı
+        ↓
+    Veri kaydı (kim, ne zaman, süre, fotoğraf)
+        ↓
+    ┌───────────────────────────────────┐
+    │ BRANCH HEALTH SCORE ENGINE       │
+    │ 5 Boyut:                         │
+    │ 1. Operasyonel Uyum (%checklist) │
+    │ 2. Görev Tamamlama (%)           │
+    │ 3. Denetim Puanı (son 3 ay ort) │
+    │ 4. Misafir Memnuniyeti (NPS)     │
+    │ 5. Personel Performansı          │
+    └───────────┬───────────────────────┘
+                ↓
+    ┌───────────────────────────────────┐
+    │ MR. DOBODY PATTERN ENGINE        │
+    │ Tespit:                          │
+    │ - "Lara 3 haftadır düşüyor"      │
+    │ - "Işıklar hijyen puanı artıyor" │
+    │ - "Ali 5 gündür gecikiyor"        │
+    └───────────┬───────────────────────┘
+                ↓
+    ┌───────────────────────────────────┐
+    │ DASHBOARD WIDGET'LAR             │
+    │ CEO: Genel sağlık haritası       │
+    │ Coach: Şube karşılaştırma        │
+    │ Müdür: Kendi şube detayı         │
+    │ Sup: Ekip performansı            │
+    └───────────────────────────────────┘
+```
+
+### 8.4 Dobody Agent Görev Otomasyonu
+
+```
+OTOMATİK GÖREV OLUŞTURMA:
+├── Misafir 1-2 puan verdi → Müdür'e "Misafir şikayeti incele" görevi
+├── Checklist 3 gün yapılmadı → Supervisor'a "Checklist uyumu düştü" uyarı
+├── Denetim puanı <60 → otomatik CAPA oluştur
+├── Ekipman arıza bildirimi → CGO'ya teknik görev
+├── Stok kritik seviye → Satınalma'ya sipariş hatırlatma
+└── Yeni personel eklendi → otomatik onboarding görev seti
+
+OTOMATİK ESKALASYON:
+├── Görev 48s gecikti → Supervisor → Müdür → Coach sırasıyla
+├── CRM talep SLA aşıldı → departman → CGO/CEO
+├── CAPA deadline aşıldı → Coach → CEO
+└── Misafir şikayet 24s yanıtsız → Müdür → Coach
+
+INSIGHT & RAPORLAMA:
+├── "Lara'da temizlik puanı son 4 haftada %82→%54 düştü"
+├── "Işıklar en iyi görev tamamlama oranı: %94"
+├── "Teknik departman ort çözüm süresi 36s — hedef 24s"
+└── "Ali Barista — 3 haftadır tüm görevleri zamanında tamamlıyor → rozet öner"
+```
