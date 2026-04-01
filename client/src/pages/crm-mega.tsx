@@ -27,6 +27,7 @@ import {
   ListTodo,
   Timer,
   PlayCircle,
+  Radio,
 } from "lucide-react";
 
 import { CrmNav } from "@/pages/iletisim-merkezi/crm-nav";
@@ -801,8 +802,38 @@ export default function CRMMegaModule() {
               <DashboardTab stats={dashStats as any} />
             </Suspense>
           </div>
+        ) : crmNavKey === "hq-tasks" ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <Suspense fallback={<TabSkeleton />}>
+              <HqTasksTab />
+            </Suspense>
+          </div>
+        ) : crmNavKey === "broadcast" ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <Suspense fallback={<TabSkeleton />}>
+              <BroadcastTab />
+            </Suspense>
+          </div>
+        ) : crmNavKey === "misafir" ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <Suspense fallback={<TabSkeleton />}>
+              <DashboardTab stats={dashStats as any} />
+            </Suspense>
+          </div>
         ) : crmNavKey === "sla" ? (
           <SlaRulesPanel isAdmin={["admin", "ceo", "cgo"].includes(user.role)} />
+        ) : crmNavKey === "cowork" ? (
+          <div className="flex-1 overflow-y-auto">
+            <Suspense fallback={<TabSkeleton />}>
+              <CoworkContent />
+            </Suspense>
+          </div>
+        ) : crmNavKey === "analizler" ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <Suspense fallback={<TabSkeleton />}>
+              <DashboardTab stats={dashStats as any} />
+            </Suspense>
+          </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-6" />
         )}

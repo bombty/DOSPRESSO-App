@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Ticket, BarChart3,
   Wrench, Package, Calculator, Megaphone, GraduationCap, Users,
-  Settings, MessageSquare, Inbox
+  Settings, MessageSquare, Inbox, ListTodo, Star, Radio, Bell
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -32,36 +32,56 @@ const HQ_NAV_SECTIONS: CrmNavSection[] = [
     header: 'GENEL',
     items: [
       { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { key: 'talepler', label: 'Talepler', icon: Ticket },
       { key: 'analizler', label: 'Analizler', icon: BarChart3 },
     ],
   },
   {
-    header: 'DEPARTMANLAR',
+    header: 'GÖREV ATAMA',
     items: [
+      { key: 'hq-tasks', label: 'Görev Atama', icon: ListTodo },
+    ],
+  },
+  {
+    header: 'DESTEK TALEPLERİ',
+    items: [
+      { key: 'talepler', label: 'Tüm Talepler', icon: Ticket },
       { key: 'teknik', label: 'Teknik', icon: Wrench },
       { key: 'lojistik', label: 'Lojistik', icon: Package },
       { key: 'muhasebe', label: 'Muhasebe', icon: Calculator },
       { key: 'marketing', label: 'Marketing', icon: Megaphone },
-      { key: 'trainer', label: 'Egitim', icon: GraduationCap },
-      { key: 'hr', label: 'IK', icon: Users },
+      { key: 'trainer', label: 'Eğitim', icon: GraduationCap },
+      { key: 'hr', label: 'İK', icon: Users },
+    ],
+  },
+  {
+    header: 'MİSAFİR SESİ',
+    items: [
+      { key: 'misafir', label: 'Geri Bildirimler', icon: Star },
+    ],
+  },
+  {
+    header: 'İLETİŞİM',
+    items: [
+      { key: 'broadcast', label: 'Duyurular', icon: Bell },
+      { key: 'cowork', label: 'Cowork', icon: Radio },
     ],
   },
   {
     header: 'AYARLAR',
     items: [
-      { key: 'sla', label: 'SLA Kurallari', icon: Settings },
+      { key: 'sla', label: 'SLA Kuralları', icon: Settings },
     ],
   },
 ];
 
 const BRANCH_NAV_ITEMS: CrmNavItem[] = [
   { key: 'taleplerim', label: 'Taleplerim', icon: Inbox },
+  { key: 'misafir', label: 'Misafir GB', icon: Star },
   { key: 'teknik', label: 'Teknik', icon: Wrench },
   { key: 'lojistik', label: 'Lojistik', icon: Package },
   { key: 'muhasebe', label: 'Muhasebe', icon: Calculator },
   { key: 'marketing', label: 'Marketing', icon: Megaphone },
-  { key: 'hr', label: 'IK', icon: Users },
+  { key: 'hr', label: 'İK', icon: Users },
 ];
 
 export function CrmNav({ activeKey, onSelect, ticketCounts, delegatedDepts = [], isHQ, branchName }: CrmNavProps) {
@@ -75,10 +95,10 @@ export function CrmNav({ activeKey, onSelect, ticketCounts, delegatedDepts = [],
           <MessageSquare className="w-5 h-5 text-foreground flex-shrink-0" />
           <div>
             <div className="text-sm font-extrabold text-foreground">
-              {isHQ ? 'Iletisim M.' : 'Destek Taleplerim'}
+              {isHQ ? 'CRM' : 'Destek Taleplerim'}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {isHQ ? 'HQ · Tum subeler' : branchName ?? 'Subem'}
+              {isHQ ? 'Müşteri & İletişim Merkezi' : branchName ?? 'Subem'}
             </div>
           </div>
         </div>
