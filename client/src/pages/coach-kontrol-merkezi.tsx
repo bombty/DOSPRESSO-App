@@ -55,7 +55,7 @@ export default function CoachKontrolMerkezi() {
       }
     >
       {tab === 0 && <>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           <Widget title="Sağlık" onClick={() => setTab(1)}>
             {branches.slice(0, 4).map((b: any, i: number) => {
               const score = b.totalScore || b.overallScore || 0;
@@ -81,7 +81,7 @@ export default function CoachKontrolMerkezi() {
             ))}
           </Widget>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           <MiniStats title="Arıza" rows={[
             { label: "Açık", value: healthData?.totalFaults || "—", color: "#ef4444" },
           ]} onLink={() => navigate("/ariza")} />
@@ -96,7 +96,7 @@ export default function CoachKontrolMerkezi() {
         </div>
       </>}
 
-      {tab === 1 && <div className="grid grid-cols-2 gap-2">
+      {tab === 1 && <div className="grid grid-cols-2 gap-2.5">
         {branches.map((b: any, i: number) => {
           const score = b.totalScore || b.overallScore || 0;
           const c = score >= 70 ? "#22c55e" : score >= 50 ? "#fbbf24" : "#ef4444";

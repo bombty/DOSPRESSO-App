@@ -78,7 +78,7 @@ export default function CEOCommandCenter() {
         }))} />
       }
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         <Widget title="Şube Sağlık" onClick={() => setLocation("/sube-saglik-skoru")}
           badge={criticalCount > 0 ? <span className="text-[7px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}>{criticalCount}kritik</span> : undefined}>
           {[...branches].sort((a: any, b: any) => (b.totalScore || b.overallScore || 0) - (a.totalScore || a.overallScore || 0)).slice(0, 6).map((b: any, i: number) => {
@@ -103,7 +103,7 @@ export default function CEOCommandCenter() {
         </Widget>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         <MiniStats title="💰Merkez Bordro" rows={[
           { label: "Fabrika", value: "₺128K" },
           { label: "HQ", value: "₺95K" },
@@ -116,7 +116,7 @@ export default function CEOCommandCenter() {
         ]} onLink={() => {}} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         <MiniStats title="📊Merkez Gider" rows={[
           { label: "Kira+gider", value: "₺91K" },
           { label: "Stok", value: "₺142K", color: "#fbbf24" },

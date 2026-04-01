@@ -47,18 +47,21 @@ export type KpiVariant = "alert" | "warn" | "ok" | "info" | "purple" | "neutral"
 export type DobodyMode = "auto" | "action" | "info";
 export type TimePeriod = "today" | "week" | "month" | "quarter";
 
-// ═══ KPI CHIP ═══
-interface KpiChipProps { label: string; value: string | number; variant?: KpiVariant; sub?: string; onClick?: () => void; }
-export function KpiChip({ label, value, variant = "neutral", sub, onClick }: KpiChipProps) {
+// ═══ KPI CHIP (onaylanan: tek satır, yatay) ═══
+interface KpiChipProps { label: string; value: string | number; variant?: KpiVariant; sub?: string; onClick?: () => void; trend?: "up"|"down"|"flat"; }
+export function KpiChip({ label, value, variant = "neutral", sub, onClick, trend }: KpiChipProps) {
   const T = useT();
   const V: Record<KpiVariant, string> = { alert:T.alert, warn:T.warn, ok:T.ok, info:T.info, purple:T.purple, neutral:T.muted };
   const c = V[variant];
+  const arrow = trend==="up"?"▲":trend==="down"?"▼":trend==="flat"?"—":null;
+  const ac = trend==="up"?T.ok:trend==="down"?T.alert:T.muted;
   return (
-    <div onClick={onClick} className={`flex flex-col px-2 py-1.5 rounded-xl border min-w-[80px] shrink-0 ${onClick?"cursor-pointer":""}`}
+    <div onClick={onClick} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border shrink-0 ${onClick?"cursor-pointer":""}`}
       style={{borderColor:`${c}30`,background:`${c}08`}}>
-      <span className="text-base font-bold leading-none" style={{color:c}}>{value}</span>
-      <span className="text-[8px] mt-0.5" style={{color:T.muted}}>{label}</span>
-      {sub&&<span className="text-[8px]" style={{color:`${c}99`}}>{sub}</span>}
+      <span className="text-lg font-bold leading-none" style={{color:c}}>{value}</span>
+      {arrow&&<span className="text-[10px]" style={{color:ac}}>{arrow}</span>}
+      <span className="text-[11px] font-semibold" style={{color:c}}>{label}</span>
+      {sub&&<span className="text-[10px]" style={{color:`${c}99`}}>{sub}</span>}
     </div>
   );
 }
@@ -70,13 +73,13 @@ export function Widget({ title, badge, children, onClick, className="" }: Widget
   return (
     <div className={`rounded-xl border overflow-hidden ${onClick?"cursor-pointer hover:border-blue-500/30":""} ${className}`}
       style={{borderColor:T.border,background:T.card}} onClick={onClick}>
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b"
+      <div className="flex items-center gap-2 px-3 py-2 border-b"
         style={{borderColor:"rgba(255,255,255,0.10)", background:T.widgetHeaderBg}}>
-        <span className="text-[10px] font-semibold flex-1" style={{color:T.widgetHeaderText}}>{title}</span>
+        <span className="text-[12px] font-semibold flex-1" style={{color:T.widgetHeaderText}}>{title}</span>
         {badge}
-        {onClick&&<span className="text-[8px]" style={{color:"rgba(255,255,255,0.60)"}}>→</span>}
+        {onClick&&<span className="text-[10px]" style={{color:"rgba(255,255,255,0.60)"}}>→</span>}
       </div>
-      <div>{children}</div>
+      <div className="p-2">{children}</div>
     </div>
   );
 }
@@ -95,7 +98,7 @@ export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boo
     <div className="rounded-xl overflow-hidden" style={{background:T.dobodyBodyBg,border:`1.5px solid ${T.dobodyBorder}`}}>
       <div className="flex items-center gap-1.5 px-2.5 py-2" style={{background:T.dobodyHeaderBg}}>
         <span className="text-[10px] font-bold text-white">◈ Mr. Dobody</span>
-        {actions.length>0&&<span className="text-[9px] px-1.5 rounded-full font-bold" style={{background:"rgba(255,255,255,0.20)",color:"white"}}>{actions.length}</span>}
+        {actions.length>0&&<span className="text-[10px] px-1.5 rounded-full font-bold" style={{background:"rgba(255,255,255,0.20)",color:"white"}}>{actions.length}</span>}
       </div>
       {actions.length===0?(
         <p className="text-[10px] px-2.5 py-2" style={{color:"rgba(255,255,255,0.6)"}}>Bekleyen öneri yok</p>
@@ -107,16 +110,16 @@ export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boo
               style={{background:mode==="auto"?"#4ade80":mode==="action"?"#ef4444":"#6b7a8d"}}/>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold" style={{color:"#e8ecf1"}}>{a.title}</p>
-              {a.sub&&<p className="text-[9px] mt-0.5" style={{color:"#6b7a8d"}}>{a.sub}</p>}
+              {a.sub&&<p className="text-[10px] mt-0.5" style={{color:"#6b7a8d"}}>{a.sub}</p>}
             </div>
             {mode==="action"&&a.onApprove&&(
               <button onClick={(e)=>{e.stopPropagation();a.onApprove?.();}} disabled={a.approving}
-                className="text-[9px] px-2 py-0.5 rounded-lg shrink-0 font-bold"
+                className="text-[10px] px-2 py-0.5 rounded-lg shrink-0 font-bold"
                 style={{background:T.dobodyHeaderBg,color:"white"}}>
                 {a.approving?"...":(a.btnLabel||"Onayla")}
               </button>
             )}
-            {mode==="auto"&&<span className="text-[8px] px-1.5 py-0.5 rounded shrink-0 font-bold"
+            {mode==="auto"&&<span className="text-[9px] px-1.5 py-0.5 rounded shrink-0 font-bold"
               style={{background:"#22c55e18",color:"#4ade80"}}>✓</span>}
           </div>
         );
@@ -132,7 +135,7 @@ export function MiniStats({ title, rows, linkText, onLink }: { title: string; ro
   return (
     <Widget title={title} onClick={onLink}>
       {rows.map((r,i)=>(
-        <div key={i} className="flex justify-between text-[9px] px-2.5 py-0.5">
+        <div key={i} className="flex justify-between text-[11px] px-2.5 py-0.5">
           <span style={{color:T.muted}}>{r.label}</span>
           <span className="font-semibold" style={{color:r.color||T.text}}>{r.value}</span>
         </div>
@@ -152,11 +155,11 @@ export function ProgressWidget({ title, rows }: { title: string; rows: ProgRow[]
         const c=p>=80?T.ok:p>=60?T.warn:T.alert;
         return(
           <div key={i} className="flex items-center gap-1.5 px-2.5 py-0.5">
-            <span className="text-[8px] w-12 shrink-0 truncate" style={{color:T.muted}}>{r.label}</span>
+            <span className="text-[10px] w-12 shrink-0 truncate" style={{color:T.muted}}>{r.label}</span>
             <div className="flex-1 h-1 rounded-full" style={{background:T.border}}>
               <div className="h-full rounded-full" style={{width:`${p}%`,background:c}}/>
             </div>
-            <span className="text-[8px] font-semibold w-6 text-right" style={{color:c}}>{r.value}</span>
+            <span className="text-[10px] font-semibold w-6 text-right" style={{color:c}}>{r.value}</span>
           </div>
         );
       })}
@@ -173,10 +176,10 @@ export function ListItem({ title, meta, priority, priorityColor, onClick }: List
       style={{borderColor:T.rowBorder}} onClick={onClick}>
       {priority&&<span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:priorityColor||T.muted}}/>}
       <div className="flex-1 min-w-0">
-        <p className="text-[9px] font-medium truncate" style={{color:T.text}}>{title}</p>
-        {meta&&<p className="text-[8px] truncate" style={{color:T.muted}}>{meta}</p>}
+        <p className="text-[11px] font-medium truncate" style={{color:T.text}}>{title}</p>
+        {meta&&<p className="text-[10px] truncate" style={{color:T.muted}}>{meta}</p>}
       </div>
-      {priority&&<span className="text-[8px] font-semibold shrink-0" style={{color:priorityColor||T.muted}}>{priority}</span>}
+      {priority&&<span className="text-[10px] font-semibold shrink-0" style={{color:priorityColor||T.muted}}>{priority}</span>}
     </div>
   );
 }
@@ -184,7 +187,7 @@ export function ListItem({ title, meta, priority, priorityColor, onClick }: List
 // ═══ BADGE ═══
 export function Badge({ text, color }: { text: string; color: string }) {
   // Onaylanan kural: Badge'ler HER ZAMAN dolgulu renk zemini + beyaz metin
-  return <span className="text-[8px] px-1.5 py-0.5 rounded-full shrink-0 font-bold"
+  return <span className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0 font-bold"
     style={{background:color,color:"white"}}>{text}</span>;
 }
 
@@ -334,36 +337,36 @@ export function CentrumShell({ title, subtitle, roleLabel, roleColor, kpis, acti
   const isLight = T === LIGHT;
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{background:T.bg,color:T.text}}>
-      <div className="flex items-center gap-2 px-3 py-1.5 shrink-0"
+      <div className="flex items-center gap-2 px-4 py-2 shrink-0"
         style={isLight?{background:T.titleBarBg}:{borderBottom:`1px solid ${T.border}`}}>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[12px] font-semibold" style={{color:T.titleBarText}}>{title}</span>
-            {roleLabel&&<span className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold"
+            <span className="text-[14px] font-semibold" style={{color:T.titleBarText}}>{title}</span>
+            {roleLabel&&<span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
               style={isLight?{background:"rgba(255,255,255,0.15)",color:"white"}:{background:`${roleColor}18`,color:roleColor}}>{roleLabel}</span>}
           </div>
-          {subtitle&&<p className="text-[8px]" style={{color:T.titleBarMuted}}>{subtitle}</p>}
+          {subtitle&&<p className="text-[10px]" style={{color:T.titleBarMuted}}>{subtitle}</p>}
         </div>
         {actions}
       </div>
       {kpis&&kpis.length>0&&(
-        <div className="flex gap-1 px-2.5 py-1 border-b shrink-0 overflow-x-auto" style={{borderColor:T.border}}>
+        <div className="flex gap-2 px-3 py-1.5 border-b shrink-0 overflow-x-auto" style={{borderColor:T.border}}>
           {kpis.map((k,i)=><KpiChip key={i} label={k.label} value={k.value} variant={k.variant} sub={k.sub}/>)}
         </div>
       )}
       {tabs&&tabs.length>0&&(
-        <div className="flex border-b px-2 overflow-x-auto shrink-0" style={{borderColor:T.border}}>
+        <div className="flex border-b px-3 overflow-x-auto shrink-0" style={{borderColor:T.border}}>
           {tabs.map((tab,i)=>(
-            <button key={i} onClick={()=>onTabChange?.(i)} className="py-1 px-2 text-[9px] border-b-2 shrink-0"
+            <button key={i} onClick={()=>onTabChange?.(i)} className="py-1.5 px-3 text-[11px] font-medium border-b-2 shrink-0"
               style={{borderColor:i===activeTab?T.ok:"transparent",color:i===activeTab?T.text:T.muted}}>
               {tab.label}
             </button>
           ))}
         </div>
       )}
-      <div className="flex gap-2 flex-1 overflow-hidden p-2">
-        <div className="flex-1 overflow-y-auto space-y-2">{children}</div>
-        {rightPanel&&(<div className="w-[170px] shrink-0 space-y-2 overflow-y-auto">{rightPanel}</div>)}
+      <div className="flex gap-2.5 flex-1 overflow-hidden p-3">
+        <div className="flex-1 overflow-y-auto space-y-2.5">{children}</div>
+        {rightPanel&&(<div className="w-[200px] shrink-0 space-y-2 overflow-y-auto">{rightPanel}</div>)}
       </div>
     </div>
   );

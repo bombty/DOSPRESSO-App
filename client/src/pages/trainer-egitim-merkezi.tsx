@@ -53,7 +53,7 @@ export default function TrainerEgitimMerkezi() {
       }
     >
       {tab === 0 && <>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           <Widget title="Sağlık" onClick={() => {}}>
             {branches.slice(0, 3).map((b: any, i: number) => {
               const score = b.totalScore || b.overallScore || 0;
@@ -78,7 +78,7 @@ export default function TrainerEgitimMerkezi() {
             ))}
           </Widget>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           <MiniStats title="Arıza" rows={[
             { label: "Açık", value: healthData?.totalFaults || "—", color: "#ef4444" },
           ]} />

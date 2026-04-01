@@ -84,7 +84,7 @@ export default function CGOTeknikKomuta() {
         }))} />
       </>}
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         <Widget title="Canlı Arıza" onClick={() => navigate("/ariza")}
           badge={faults.length > 0 ? <span className="text-[7px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}>{faults.length}</span> : undefined}>
           {faults.slice(0, 4).map((f: any, i: number) => (
@@ -108,7 +108,7 @@ export default function CGOTeknikKomuta() {
         </Widget>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2.5">
         <MiniStats title="Uyum" rows={[
           { label: "Vardiya", value: `%${compliance?.shiftCompliance || compliance?.vardiya || "—"}`, color: (compliance?.shiftCompliance || 0) < 70 ? "#fbbf24" : undefined },
           { label: "Checklist", value: `%${compliance?.checklistCompletion || compliance?.checklist || "—"}`, color: (compliance?.checklistCompletion || 0) < 60 ? "#ef4444" : undefined },
@@ -123,7 +123,7 @@ export default function CGOTeknikKomuta() {
         ]} onLink={() => {}} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2.5">
         <Widget title="Eskalasyon" onClick={() => {}}>
           {(healthData?.escalations || []).slice(0, 3).map((e: any, i: number) => (
             <ListItem key={i} title={e.title || e.branchName || "—"} priority={`K${e.level || 3}`} priorityColor={e.level >= 4 ? "#ef4444" : "#fbbf24"} onClick={() => {}} />
