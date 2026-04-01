@@ -76,15 +76,13 @@ export default function PersonelCentrum() {
             { label: "Geçen hafta", value: briefing?.lastWeekScore ?? "—" },
           ]} />
         )}
-        <DobodySlot actions={isStajyer ? [
+        <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
+          id: a.id, title: a.title || a.message, sub: a.description,
+          mode: (a.actionType === "auto" ? "auto" : a.actionType === "info" ? "info" : "action") as any,
+        })) : isStajyer ? [
           { id: 1, title: "Onboarding hatırlatma", sub: "Temizlik protokolünü tamamla", mode: "auto" as const },
-          { id: 2, title: "Hijyen modülüne başla", sub: "Mentoruna sor", mode: "auto" as const },
-        ] : isBarBuddy ? [
-          { id: 1, title: "Hijyen modülü hatırlat", sub: "3 gün kaldı", mode: "auto" as const },
-          { id: 2, title: "Mentorunla çalış", sub: "Latte art dikkat", mode: "auto" as const },
         ] : [
-          { id: 1, title: "Latte art pratik", sub: "Quiz'e hazırlan", mode: "auto" as const },
-          { id: 2, title: "Performans yükseliyor", sub: "Hijyen bitir → rozet", mode: "auto" as const },
+          { id: 1, title: "Günlük görevlerini kontrol et", sub: "Kiosk'tan görevlere bak", mode: "auto" as const },
         ]} />
       </>}
     >

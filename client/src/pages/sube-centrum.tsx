@@ -60,9 +60,12 @@ export default function SubeCentrum() {
       activeTab={tab} onTabChange={setTab}
       actions={<TimeFilter value={period} onChange={setPeriod} />}
       rightPanel={<>
-        <DobodySlot actions={[
-          { id: 1, title: "Fiks gider girilmemiş!", sub: "Elektrik, su eksik", mode: "action", btnLabel: "Gir", btnVariant: "purple", onApprove: () => setLocation("/muhasebe") },
-          { id: 2, title: "Müşteri feedback cevapla", sub: "2 SLA bekliyor", mode: "action", btnLabel: "Cevapla", onApprove: () => {} },
+        <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
+          id: a.id, title: a.title || a.message, sub: a.description,
+          mode: (a.actionType === "info" ? "info" : "action") as any,
+          btnLabel: a.actionType !== "info" ? "İncele" : undefined,
+        })) : [
+          { id: 1, title: "Fiks gider girilmemiş!", sub: "Elektrik, su eksik", mode: "action" as const, btnLabel: "Gir", onApprove: () => setLocation("/muhasebe") },
         ]} />
       </>}
     >

@@ -50,10 +50,13 @@ export default function SupervisorCentrum() {
         { label: "Checklist", value: `%${kpis?.checklistCompletion ?? 0}`, variant: (kpis?.checklistCompletion ?? 0) >= 80 ? "ok" as KpiVariant : "warn" as KpiVariant },
       ]}
       actions={<TimeFilter value={period} onChange={setPeriod} />}
-      rightPanel={<DobodySlot actions={[
-        { id: 1, title: "Personel değerlendirme yap", sub: `${evalDone}/2 zorunlu`, mode: "action", btnLabel: "Başla", onApprove: () => setLocation("/yonetici-degerlendirme") },
-        { id: 2, title: "Vardiya planı kontrol", sub: "Yarın izinli kişi var", mode: "info" },
-        { id: 3, title: "GB cevapla", sub: "SLA bekliyor", mode: "action", btnLabel: "Cevapla", onApprove: () => {} },
+      rightPanel={<DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
+        id: a.id, title: a.title || a.message, sub: a.description,
+        mode: (a.actionType === "info" ? "info" : "action") as any,
+        btnLabel: a.actionType !== "info" ? "İncele" : undefined,
+      })) : [
+        { id: 1, title: "Personel değerlendirme yap", sub: `${evalDone}/2 zorunlu`, mode: "action" as const, btnLabel: "Başla", onApprove: () => setLocation("/yonetici-degerlendirme") },
+        { id: 2, title: "Vardiya planı kontrol", sub: "Yarın izinli kişi var", mode: "info" as const },
       ]} />}
     >
       <LostFoundBanner item={lostItem ? { id: lostItem.id, description: lostItem.itemDescription, foundArea: lostItem.foundArea, foundTime: lostItem.foundTime } : null} onClick={() => setLocation("/kayip-esya")} />
