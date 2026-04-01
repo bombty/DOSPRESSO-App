@@ -2858,11 +2858,17 @@ export const tasks = pgTable("tasks", {
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
 }).extend({
-  // JSON'dan gelen tarih string'lerini kabul et
+  // JSON'dan gelen tarih string'lerini kabul et (z.coerce.date = string→Date)
   dueDate: z.coerce.date().optional().nullable(),
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional().nullable(),
   updatedAt: z.coerce.date().optional().nullable(),
+  scheduledDeliveryAt: z.coerce.date().optional().nullable(),
+  requestedDueDate: z.coerce.date().optional().nullable(),
+  verifiedAt: z.coerce.date().optional().nullable(),
+  acceptedAt: z.coerce.date().optional().nullable(),
+  rejectedAt: z.coerce.date().optional().nullable(),
+  assignedAt: z.coerce.date().optional().nullable(),
 });
 
 export const updateTaskSchema = insertTaskSchema.partial();
