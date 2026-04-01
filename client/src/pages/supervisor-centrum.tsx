@@ -27,6 +27,7 @@ export default function SupervisorCentrum() {
     enabled: !!branchId,
   });
 
+  const { data: dobodyActions = [] } = useQuery<any[]>({ queryKey: ["/api/agent/actions", "pending"], queryFn: async () => { const r = await fetch("/api/agent/actions?status=pending&limit=5", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.data || d.actions || []); } });
   if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
   const kpis = branchSummary?.kpis;

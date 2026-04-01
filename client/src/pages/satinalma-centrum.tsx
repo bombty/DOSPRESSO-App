@@ -19,6 +19,11 @@ export default function SatinalmaCentrum() {
     queryKey: ["/api/purchase-orders/active"],
   });
 
+  const { data: dobodyActions = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "pending", "satinalma"],
+    queryFn: async () => { const r = await fetch("/api/agent/actions?status=pending&limit=5", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.data || d.actions || []); },
+  });
+
   if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
   const criticalStock = (stockAlerts ?? []).filter((s: any) => s.daysLeft <= 3).length;
@@ -33,10 +38,10 @@ export default function SatinalmaCentrum() {
       ]}
       actions={<TimeFilter value={period} onChange={setPeriod} />}
       rightPanel={
-        <DobodySlot actions={[
-          { id: 1, title: "Acil stok siparişi", sub: "Kritik seviye uyarısı", mode: "action", btnLabel: "Sipariş", onApprove: () => {} },
-          { id: 2, title: "Aylık fiyat güncelleme", sub: "17 ürün teklif bekliyor", mode: "action", btnLabel: "Başla", onApprove: () => {} },
-          { id: 3, title: "Muhasebe rapor bekliyor", sub: "Stok maliyet özeti", mode: "info" },
+        <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
+          id: a.id, title: a.title || a.message, sub: a.description, mode: (a.actionType === "info" ? "info" : "action") as any,
+        })) : [
+          { id: 1, title: "Stok sipariş hatırlatma", sub: "Kritik seviye kontrolü", mode: "info" },
         ]} />
       }
     >

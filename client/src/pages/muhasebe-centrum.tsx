@@ -22,6 +22,11 @@ export default function MuhasebeCentrum() {
     queryKey: ["/api/branch-financial-summary"],
   });
 
+  const { data: dobodyActions = [] } = useQuery<any[]>({
+    queryKey: ["/api/agent/actions", "pending", "muhasebe"],
+    queryFn: async () => { const r = await fetch("/api/agent/actions?status=pending&limit=5", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.data || d.actions || []); },
+  });
+
   if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
   const totalStaff = ikData?.totalEmployees ?? 0;
@@ -40,9 +45,10 @@ export default function MuhasebeCentrum() {
       ]}
       actions={<TimeFilter value={period} onChange={setPeriod} />}
       rightPanel={
-        <DobodySlot actions={[
+        <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
+          id: a.id, title: a.title || a.message, sub: a.description, mode: (a.actionType === "info" ? "info" : "action") as any,
+        })) : [
           { id: 1, title: "Bordro onay bekliyor", sub: "3 şube — deadline 5 Nisan", mode: "info" },
-          { id: 2, title: "Satınalma raporu hazır", sub: "Stok maliyet güncellemesi", mode: "action", btnLabel: "İncele →", onApprove: () => {} },
         ]} />
       }
     >
