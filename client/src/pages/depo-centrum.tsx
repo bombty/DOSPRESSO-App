@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, Badge, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DepoCentrum() {
@@ -38,7 +39,7 @@ export default function DepoCentrum() {
         { label: "Sevkiyat Bkl", value: pendingCount, variant: (pendingCount > 5 ? "warn" : "info") as KpiVariant },
         { label: "Sipariş Bkl", value: orderCount, variant: (orderCount > 0 ? "info" : "ok") as KpiVariant },
       ]}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => navigate("/fabrika/dashboard")} className="text-xs h-7">Sevkiyat</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={<>
         <MiniStats title="Sevkiyat Özeti" rows={[
           { label: "Bekleyen", value: `${pendingCount}`, color: pendingCount > 0 ? "#fbbf24" : "#22c55e" },

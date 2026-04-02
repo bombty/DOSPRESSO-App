@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SatinalmaCentrum() {
@@ -38,7 +39,7 @@ export default function SatinalmaCentrum() {
         { label: "Kritik Stok", value: criticalStock, variant: criticalStock > 0 ? "alert" as KpiVariant : "ok" as KpiVariant },
         { label: "Açık Sipariş", value: (orders ?? []).length, variant: "info" as KpiVariant },
       ]}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => navigate("/stok")} className="text-xs h-7">Sipariş</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={
         <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
           id: a.id, title: a.title || a.message, sub: a.description, mode: (a.actionType === "info" ? "info" : "action") as any,

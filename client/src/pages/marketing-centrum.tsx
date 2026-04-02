@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MarketingCentrum() {

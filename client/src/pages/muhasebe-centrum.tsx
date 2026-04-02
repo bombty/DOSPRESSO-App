@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MuhasebeCentrum() {
@@ -43,7 +44,7 @@ export default function MuhasebeCentrum() {
         { label: "İzin Bekleyen", value: pendingLeave, variant: pendingLeave > 0 ? "warn" as KpiVariant : "ok" as KpiVariant },
         { label: "Bordro", value: `%${payrollCompletion}`, variant: payrollCompletion >= 80 ? "ok" as KpiVariant : "warn" as KpiVariant },
       ]}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => window.location.href="/ik"} className="text-xs h-7">Personel</Button><Button size="sm" variant="outline" onClick={() => window.location.href="/muhasebe"} className="text-xs h-7">Finans</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={
         <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
           id: a.id, title: a.title || a.message, sub: a.description, mode: (a.actionType === "info" ? "info" : "action") as any,

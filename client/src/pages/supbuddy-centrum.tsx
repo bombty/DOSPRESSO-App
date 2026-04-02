@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, FeedbackWidget, LostFoundBanner, type KpiVariant } from "@/components/centrum/CentrumShell";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 

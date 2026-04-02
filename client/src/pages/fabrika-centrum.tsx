@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CentrumShell, Widget, MiniStats, ProgressWidget, ListItem, DobodySlot, Badge, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FabrikaCentrum() {
@@ -45,7 +46,7 @@ export default function FabrikaCentrum() {
         { label: "Personel", value: activeWorkers, variant: "info" as KpiVariant },
         { label: "Kritik Stok", value: criticalStock, variant: (criticalStock > 0 ? "alert" : "ok") as KpiVariant },
       ]}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => navigate("/fabrika")} className="text-xs h-7">Üretim</Button><Button size="sm" variant="outline" onClick={() => navigate("/kalite-kontrol-dashboard")} className="text-xs h-7">QC</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={<>
         {/* Vardiya */}
         <MiniStats title="Vardiya" rows={[
