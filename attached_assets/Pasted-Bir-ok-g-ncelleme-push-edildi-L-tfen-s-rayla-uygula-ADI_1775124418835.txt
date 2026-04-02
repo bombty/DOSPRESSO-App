@@ -1,0 +1,115 @@
+Birçok güncelleme push edildi. Lütfen sırayla uygula:
+
+═══ ADIM 1: GÜNCELLEMELERİ ÇEK ═══
+git pull --rebase origin main
+npm run build
+# Son commit: 84734e6 olmalı → kontrol: git log --oneline -1
+
+═══ ADIM 2: SEED SIFIRLAMA + YENİDEN OLUŞTURMA ═══
+npx tsx server/seed-pilot-simulation.ts --reset
+npx tsx server/seed-pilot-simulation.ts
+
+Beklenen seed çıktısı:
+- Ayşe Kaya (destek) + Murat Demir (teknik) — zaten varsa "mevcut" der
+- ~24 ekipman oluşturuldu
+- 16 troubleshoot adımı oluşturuldu
+- 21 Dobody aksiyonu oluşturuldu
+- ~359 customer_feedback
+- ~96 tasks
+- 25 support_tickets
+- 5 cowork kanalı
+- 5 duyuru
+
+═══ ADIM 3: YENİ DASHBOARD TESTLERİ ═══
+
+3a. Marketing (Diana) ile giriş yap:
+- Diana'nın username/şifresiyle giriş
+- Otomatik olarak /marketing-centrum açılmalı
+- Sayfa başlığı: "Marketing Merkezi"
+- Widget'lar: Müşteri Memnuniyet, Şube NPS, Son GB, Kampanya, Marka
+- Screenshot al
+
+3b. Destek (Ayşe Kaya) ile giriş yap:
+- Username: ayse.kaya / Şifre: 0000
+- Otomatik olarak /destek-centrum açılmalı
+- Sayfa başlığı: "Destek Merkezi"
+- Widget'lar: Açık Talepler, Departman Dağılımı, Performans, Şube Talep
+- Screenshot al
+
+3c. Yatırımcı HQ varsa test et:
+- yatirimci_hq rolüyle giriş
+- /yatirimci-hq-centrum açılmalı
+- Sayfa başlığı: "Yatırımcı Genel Bakış"
+- Tüm şubelerin sağlık skorunu göstermeli
+
+═══ ADIM 4: AKSİYON BUTONLARI TESTİ ═══
+
+4a. Coach (Yavuz) ile giriş:
+- /coach-kontrol-merkezi açılmalı
+- Sağ üstte 2 buton olmalı: "+ Görev Ata" ve "Denetim"
+- "+ Görev Ata" tıkla → /task-atama sayfasına gitmeli
+- "Denetim" tıkla → /denetimler sayfasına gitmeli
+- Screenshot al (butonlar görünür)
+
+4b. Supervisor (Basri/Kemal) ile giriş:
+- /supervisor-centrum açılmalı
+- Sağ üstte 2 buton: "+ Görev" ve "Checklist"
+- "+ Görev" tıkla → /gorevler sayfasına gitmeli
+- "Checklist" tıkla → /checklistler sayfasına gitmeli
+
+4c. Müdür ile giriş:
+- /sube-centrum açılmalı
+- Sağ üstte 2 buton: "HQ Talep" ve "Görevler"
+- "HQ Talep" tıkla → /crm sayfasına gitmeli
+- "Görevler" tıkla → /gorevler sayfasına gitmeli
+
+4d. Barista ile giriş:
+- /personel-centrum açılmalı
+- Sağ üstte 2 buton: "Vardiya" ve "Eğitim"
+- "Vardiya" tıkla → /sube/kiosk/:branchId sayfasına gitmeli
+- "Eğitim" tıkla → /akademi sayfasına gitmeli
+
+═══ ADIM 5: EKİPMAN/ARIZA SIDEBAR TESTİ ═══
+
+5a. Coach (Yavuz) ile giriş yap:
+- Sol sidebar'dan veya URL'den /ariza sayfasına git
+- Sol sidebar başlığı "Ekipman & Arıza" olmalı (FABRİKA DEĞİL!)
+- Screenshot al
+- Aynı şekilde /ekipman sayfasına git → sidebar yine "Ekipman & Arıza" olmalı
+
+5b. Supervisor (Basri) ile giriş yap:
+- URL'ye /fabrika yaz → "Bu sayfaya erişim yetkiniz yok" mesajı görmeli
+- URL'ye /receteler yaz → "Erişim yok" mesajı
+- URL'ye /projeler yaz → "Erişim yok" mesajı
+- /ekipman → GÖREBİLMELİ (kendi şubesi ekipmanları)
+
+═══ ADIM 6: EKİPMAN VERİ DOĞRULAMA ═══
+
+SQL sorgularını çalıştır:
+SELECT branch_id, equipment_type, model_no, maintenance_responsible 
+FROM equipment WHERE serial_number LIKE 'SN-%' 
+ORDER BY branch_id, equipment_type LIMIT 10;
+
+SELECT equipment_type, count(*) as step_count 
+FROM equipment_troubleshooting_steps 
+GROUP BY equipment_type ORDER BY step_count DESC;
+
+═══ ADIM 7: DOBODY ROL BAZLI TESTİ ═══
+
+7a. Coach ile giriş → Dobody panelinde coach'a özel aksiyonlar mı var?
+  Beklenen: "Lara checklist uyumu düşük", "Denetim planı hatırlatması" gibi
+  
+7b. Supervisor ile giriş → Dobody panelinde supervisor'a özel aksiyonlar mı var?
+  Beklenen: "Açılış checklist yapılmadı", "Ali 15dk geç kaldı" gibi
+
+7c. Barista ile giriş → Dobody panelinde barista'ya özel aksiyonlar mı var?
+  Beklenen: "Bugün 3 görevin var", "Eğitim modülü tamamla" gibi
+
+Her rolde Dobody PANELİ FARKLI İÇERİK GÖSTERMELİ.
+CEO/Admin her şeyi görür, ama Coach sadece coach aksiyonlarını,
+Supervisor sadece supervisor aksiyonlarını görmelidir.
+
+═══ SONUÇ ═══
+Lütfen her adımın sonucunu (✅/❌) ve varsa screenshot'ları paylaş.
+Özellikle yeni dashboard'lar (Marketing, Destek) ve aksiyon butonlarının
+görsel doğrulaması önemli.
