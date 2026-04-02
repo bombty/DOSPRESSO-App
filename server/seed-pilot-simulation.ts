@@ -10,6 +10,7 @@
 
 import { db } from "./db";
 import { sql } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 const IS_RESET = process.argv.includes("--reset");
 const SEED_TAG = "seed_test";
@@ -149,16 +150,17 @@ async function ensureHQUsers() {
     { id: "hq-teknik-001", first: "Murat", last: "Demir", role: "teknik", email: "murat.demir@dospresso.com" },
     { id: "hq-yatirimci-001", first: "Mehmet", last: "Özkan", role: "yatirimci_hq", email: "mehmet.ozkan@dospresso.com" },
   ];
+  const hashedPassword = await bcrypt.hash("0000", 10);
   let created = 0;
   for (const u of missing) {
     try {
       const exists = await db.execute(sql`SELECT id FROM users WHERE id = ${u.id}`);
       if ((exists as any).rows?.length > 0) continue;
       await db.execute(sql`
-        INSERT INTO users (id, first_name, last_name, role, email, username, hashed_password, is_active, is_approved, created_at)
+        INSERT INTO users (id, first_name, last_name, role, email, username, hashed_password, is_active, account_status, created_at)
         VALUES (${u.id}, ${u.first}, ${u.last}, ${u.role}, ${u.email}, ${u.email.split("@")[0]},
-        '$2b$10$LI1YFbQEOZyNjLELEVIJKOXbHbqFSlkDGmhEcvPmjMH6ZB4aKxZiO',
-        true, true, NOW())
+        ${hashedPassword},
+        true, 'approved', NOW())
       `);
       created++;
       console.log(`  ✅ ${u.role}: ${u.first} ${u.last}`);
