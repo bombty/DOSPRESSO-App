@@ -1,68 +1,87 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { db } from "../db";
-import { isAuthenticated } from "../localAuth";
-import { workshopNotes, insertWorkshopNoteSchema } from "@shared/schema";
+import { workshopNotes, insertWorkshopNoteSchema, updateWorkshopNoteSchema } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { isAuthenticated } from "../localAuth";
+
+const ALLOWED_ROLES = new Set(["admin", "ceo", "cgo", "coach", "trainer"]);
 
 const router = Router();
-const ALLOWED_ROLES = ["admin", "ceo", "cgo", "coach", "trainer"];
 
-function isWorkshopRole(role: string): boolean {
-  return ALLOWED_ROLES.includes(role);
+function isAllowed(req: Request): boolean {
+  const user = req.user as any;
+  return ALLOWED_ROLES.has(user?.role);
 }
 
-// GET /api/workshop/notes
-router.get("/api/workshop/notes", isAuthenticated, async (req, res) => {
+router.get("/api/sistem-atolyesi/notlar", isAuthenticated, async (req: Request, res: Response) => {
+  if (!isAllowed(req)) return res.status(403).json({ error: "Bu sayfaya erişim yetkiniz yok." });
+  const user = req.user as any;
   try {
-    if (!isWorkshopRole(req.user.role)) return res.status(403).json({ message: "Erişim yok" });
-    const notes = await db.select().from(workshopNotes)
-      .where(eq(workshopNotes.userId, req.user.id))
+    const notes = await db
+      .select()
+      .from(workshopNotes)
+      .where(eq(workshopNotes.userId, user.id))
       .orderBy(desc(workshopNotes.createdAt));
     res.json(notes);
-  } catch (e) {
-    res.status(500).json({ message: "Notlar alınamadı" });
+  } catch (err) {
+    console.error("[SistemAtolyesi] GET notlar error:", err);
+    res.status(500).json({ error: "Notlar yüklenirken hata oluştu." });
   }
 });
 
-// POST /api/workshop/notes
-router.post("/api/workshop/notes", isAuthenticated, async (req, res) => {
+router.post("/api/sistem-atolyesi/notlar", isAuthenticated, async (req: Request, res: Response) => {
+  if (!isAllowed(req)) return res.status(403).json({ error: "Bu sayfaya erişim yetkiniz yok." });
+  const user = req.user as any;
+  const parsed = insertWorkshopNoteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
-    if (!isWorkshopRole(req.user.role)) return res.status(403).json({ message: "Erişim yok" });
-    const data = insertWorkshopNoteSchema.parse(req.body);
-    const [note] = await db.insert(workshopNotes).values({ ...data, userId: req.user.id }).returning();
-    res.json(note);
-  } catch (e) {
-    res.status(400).json({ message: "Not oluşturulamadı" });
-  }
-});
-
-// PATCH /api/workshop/notes/:id
-router.patch("/api/workshop/notes/:id", isAuthenticated, async (req, res) => {
-  try {
-    if (!isWorkshopRole(req.user.role)) return res.status(403).json({ message: "Erişim yok" });
-    const id = parseInt(req.params.id);
-    const { title, content, section } = req.body;
-    const [note] = await db.update(workshopNotes)
-      .set({ title, content, section, updatedAt: new Date() })
-      .where(and(eq(workshopNotes.id, id), eq(workshopNotes.userId, req.user.id)))
+    const [note] = await db
+      .insert(workshopNotes)
+      .values({ ...parsed.data, userId: user.id })
       .returning();
-    if (!note) return res.status(404).json({ message: "Not bulunamadı" });
-    res.json(note);
-  } catch (e) {
-    res.status(500).json({ message: "Not güncellenemedi" });
+    res.status(201).json(note);
+  } catch (err) {
+    console.error("[SistemAtolyesi] POST notlar error:", err);
+    res.status(500).json({ error: "Not oluşturulurken hata oluştu." });
   }
 });
 
-// DELETE /api/workshop/notes/:id
-router.delete("/api/workshop/notes/:id", isAuthenticated, async (req, res) => {
+router.patch("/api/sistem-atolyesi/notlar/:id", isAuthenticated, async (req: Request, res: Response) => {
+  if (!isAllowed(req)) return res.status(403).json({ error: "Bu sayfaya erişim yetkiniz yok." });
+  const user = req.user as any;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID." });
+  const parsed = updateWorkshopNoteSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
-    if (!isWorkshopRole(req.user.role)) return res.status(403).json({ message: "Erişim yok" });
-    const id = parseInt(req.params.id);
-    await db.delete(workshopNotes)
-      .where(and(eq(workshopNotes.id, id), eq(workshopNotes.userId, req.user.id)));
+    const [note] = await db
+      .update(workshopNotes)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(and(eq(workshopNotes.id, id), eq(workshopNotes.userId, user.id)))
+      .returning();
+    if (!note) return res.status(404).json({ error: "Not bulunamadı." });
+    res.json(note);
+  } catch (err) {
+    console.error("[SistemAtolyesi] PATCH notlar error:", err);
+    res.status(500).json({ error: "Not güncellenirken hata oluştu." });
+  }
+});
+
+router.delete("/api/sistem-atolyesi/notlar/:id", isAuthenticated, async (req: Request, res: Response) => {
+  if (!isAllowed(req)) return res.status(403).json({ error: "Bu sayfaya erişim yetkiniz yok." });
+  const user = req.user as any;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID." });
+  try {
+    const [deleted] = await db
+      .delete(workshopNotes)
+      .where(and(eq(workshopNotes.id, id), eq(workshopNotes.userId, user.id)))
+      .returning();
+    if (!deleted) return res.status(404).json({ error: "Not bulunamadı." });
     res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ message: "Not silinemedi" });
+  } catch (err) {
+    console.error("[SistemAtolyesi] DELETE notlar error:", err);
+    res.status(500).json({ error: "Not silinirken hata oluştu." });
   }
 });
 

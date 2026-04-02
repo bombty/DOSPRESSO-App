@@ -241,6 +241,7 @@ const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"))
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
+const SistemAtolyesi = lazyWithRetry(() => import("@/pages/sistem-atolyesi"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -534,6 +535,7 @@ function Router() {
           <Route path="/yeni-sube/:tab?">{() => <ExecutiveOnly><YeniSubeMegaModule /></ExecutiveOnly>}</Route>
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
+          <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
           <Route path="/ajanda">{() => <ModuleGuard moduleKey="ajanda"><AjandaPage /></ModuleGuard>}</Route>
           <Route path="/admin/*?">{() => <AdminOnly><AdminMegaModule /></AdminOnly>}</Route>

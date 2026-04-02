@@ -454,7 +454,7 @@ import guideDocsRouter from "./routes/guide-docs-routes";
 import onboardingV2Router from "./routes/onboarding-v2-routes";
 import dashboardItemsRouter from "./routes/dashboard-items-routes";
 import miscSmallRouter from "./routes/misc-small-routes";
-import workshopRouter from "./routes/sistem-atolyesi";
+import sistemAtolyesiRouter from "./routes/sistem-atolyesi";
 import { checkSlaBreaches } from "./services/ticket-routing-engine";
 import { schedulerManager } from "./scheduler-manager";
 
@@ -909,7 +909,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(onboardingV2Router);
   app.use(dashboardItemsRouter);
   app.use(miscSmallRouter);
-  app.use(workshopRouter);
+  app.use(sistemAtolyesiRouter);
 
   app.get('/api/health', async (req, res) => {
     const startTime = Date.now();

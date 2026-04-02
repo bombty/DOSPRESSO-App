@@ -363,6 +363,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "hq",
       },
       {
+        id: "sistem-atolyesi",
+        titleTr: "Sistem Atölyesi",
+        path: "/sistem-atolyesi",
+        icon: "Settings2",
+        moduleKey: "admin_settings",
+        scope: "hq",
+      },
+      {
         id: "ceo-command-center",
         titleTr: "Komuta Merkezi",
         path: "/ceo-command-center",
@@ -665,23 +673,23 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
   ],
   ceo: [
-    'dashboard', 'ceo-command-center', 'crm-main', 'tasks-list', 'reports', 'cowork',
+    'dashboard', 'ceo-command-center', 'crm-main', 'tasks-list', 'reports', 'cowork', 'sistem-atolyesi',
   ],
   cgo: [
-    'dashboard', 'cgo-teknik-komuta', 'crm-main', 'tasks-list', 'reports', 'cowork',
+    'dashboard', 'cgo-teknik-komuta', 'crm-main', 'tasks-list', 'reports', 'cowork', 'sistem-atolyesi',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
-    'dashboard', 'coach-kontrol-merkezi', 'crm-main', 'tasks-list', 'reports', 'cowork',
+    'dashboard', 'coach-kontrol-merkezi', 'crm-main', 'tasks-list', 'reports', 'cowork', 'sistem-atolyesi',
   ],
   destek: [
     'dashboard', 'branches-list', 'equipment', 'faults',
     'crm-main', 'notifications',
   ],
   trainer: [
-    'dashboard', 'trainer-egitim-merkezi', 'crm-main', 'tasks-list', 'training-academy-hq', 'cowork',
+    'dashboard', 'trainer-egitim-merkezi', 'crm-main', 'tasks-list', 'training-academy-hq', 'cowork', 'sistem-atolyesi',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety',
@@ -737,7 +745,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'procurement-dashboard', 'stock-management',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
     'notifications',
-    'admin-panel', 'project-list',
+    'admin-panel', 'project-list', 'sistem-atolyesi',
   ],
   uretim_sefi: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
