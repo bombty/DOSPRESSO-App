@@ -486,11 +486,11 @@ function Router() {
           <Route path="/satinalma-centrum">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo"]}><SatinalmaCentrum /></ProtectedRoute>}</Route>
           <Route path="/fabrika-centrum">{() => <FabrikaOnly><FabrikaCentrum /></FabrikaOnly>}</Route>
           <Route path="/depo-centrum">{() => <FabrikaOnly><DepoCentrum /></FabrikaOnly>}</Route>
-          <Route path="/sube-centrum" component={SubeCentrum} />
-          <Route path="/supervisor-centrum" component={SupervisorCentrum} />
-          <Route path="/supbuddy-centrum" component={SupBuddyCentrum} />
-          <Route path="/personel-centrum" component={PersonelCentrum} />
-          <Route path="/yatirimci-centrum" component={YatirimciCentrum} />
+          <Route path="/sube-centrum">{() => <ProtectedRoute allowedRoles={["mudur","supervisor","supervisor_buddy","admin","ceo","cgo","coach"]}><SubeCentrum /></ProtectedRoute>}</Route>
+          <Route path="/supervisor-centrum">{() => <ProtectedRoute allowedRoles={["supervisor","supervisor_buddy","admin","ceo","cgo","coach","mudur"]}><SupervisorCentrum /></ProtectedRoute>}</Route>
+          <Route path="/supbuddy-centrum">{() => <ProtectedRoute allowedRoles={["supervisor_buddy","supervisor","admin","ceo","mudur"]}><SupBuddyCentrum /></ProtectedRoute>}</Route>
+          <Route path="/personel-centrum">{() => <ProtectedRoute allowedRoles={["barista","bar_buddy","stajyer","supervisor","supervisor_buddy","mudur","admin","ceo"]}><PersonelCentrum /></ProtectedRoute>}</Route>
+          <Route path="/yatirimci-centrum">{() => <ProtectedRoute allowedRoles={["yatirimci_branch","admin","ceo"]}><YatirimciCentrum /></ProtectedRoute>}</Route>
           <Route path="/marketing-centrum">{() => <ProtectedRoute allowedRoles={["marketing","admin","ceo","cgo"]}><MarketingCentrum /></ProtectedRoute>}</Route>
           <Route path="/destek-centrum">{() => <ProtectedRoute allowedRoles={["destek","admin","ceo","cgo"]}><DestekCentrum /></ProtectedRoute>}</Route>
           <Route path="/yatirimci-hq-centrum">{() => <ProtectedRoute allowedRoles={["yatirimci_hq","admin","ceo"]}><YatirimciHQCentrum /></ProtectedRoute>}</Route>
