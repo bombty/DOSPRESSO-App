@@ -293,6 +293,54 @@ export async function calculateBranchHealthScore(branchId: number, branchName: s
 }
 
 /**
+ * Branch monthly snapshot'tan sağlık skoru oluştur (fallback)
+ */
+async function buildScoreFromSnapshot(branchId: number, branchName: string, staffCount: number): Promise<BranchHealthScore | null> {
+  const result = await db.execute(sql`
+    SELECT attendance_rate, checklist_completion_rate, customer_avg_rating,
+           avg_quiz_score, equipment_faults, overall_health_score,
+           training_completions, staff_count
+    FROM branch_monthly_snapshots
+    WHERE branch_id = ${branchId}
+    ORDER BY snapshot_year DESC, snapshot_month DESC
+    LIMIT 1
+  `);
+  const row = (result.rows as any[])?.[0];
+  if (!row) return null;
+
+  const attendance  = Math.min(100, Math.round(Number(row.attendance_rate || 75)));
+  const checklist   = Math.min(100, Math.round(Number(row.checklist_completion_rate || 65)));
+  const customerRaw = Number(row.customer_avg_rating || 0);
+  const customer    = customerRaw > 0 ? Math.round((customerRaw / 5) * 100) : 70;
+  const training    = row.training_completions > 0 ? Math.min(100, Math.round(Number(row.avg_quiz_score || 60))) : 60;
+  const faults      = Number(row.equipment_faults || 0);
+  const equipment   = faults === 0 ? 90 : Math.max(40, Math.round(100 - faults * 10));
+  const shift       = Math.min(100, Math.round(attendance * 0.9));
+  const overall     = Number(row.overall_health_score || 0);
+
+  const dimensions: DimensionScore[] = [
+    { name: 'attendance', nameTr: 'Devam Oranı',        score: attendance, weight: WEIGHTS.attendance, weighted: Math.round(attendance * WEIGHTS.attendance), dataPoints: staffCount, detail: `Aylık snapshot — ${attendance}%` },
+    { name: 'checklist',  nameTr: 'Checklist Tamamlama', score: checklist,  weight: WEIGHTS.checklist,  weighted: Math.round(checklist  * WEIGHTS.checklist),  dataPoints: 1,          detail: `Aylık snapshot — ${checklist}%` },
+    { name: 'customer',   nameTr: 'Müşteri Memnuniyet', score: customer,   weight: WEIGHTS.customer,   weighted: Math.round(customer   * WEIGHTS.customer),   dataPoints: 1,          detail: `Aylık snapshot — ${customerRaw.toFixed(1)}/5` },
+    { name: 'training',   nameTr: 'Eğitim Tamamlama',   score: training,   weight: WEIGHTS.training,   weighted: Math.round(training   * WEIGHTS.training),   dataPoints: 1,          detail: `Aylık snapshot — ${training}%` },
+    { name: 'equipment',  nameTr: 'Ekipman Durumu',      score: equipment,  weight: WEIGHTS.equipment,  weighted: Math.round(equipment  * WEIGHTS.equipment),  dataPoints: 1,          detail: `${faults} arıza` },
+    { name: 'shift',      nameTr: 'Vardiya Uyumu',       score: shift,      weight: WEIGHTS.shift,      weighted: Math.round(shift      * WEIGHTS.shift),      dataPoints: 1,          detail: 'Aylık snapshot baz alındı' },
+  ];
+
+  const overallScore = overall > 0 ? Math.round(overall) : Math.round(dimensions.reduce((s, d) => s + d.weighted, 0));
+
+  return {
+    branchId,
+    branchName,
+    overallScore,
+    status: getStatus(overallScore),
+    dimensions,
+    calculatedAt: new Date().toISOString(),
+    staffCount,
+  };
+}
+
+/**
  * Tüm aktif şubeler için sağlık skoru hesapla
  * Cache: 5 dakika
  */
@@ -313,12 +361,22 @@ export async function getAllBranchHealthScores(): Promise<HealthScoreSummary> {
   const HQ_KEYWORDS = ['HQ', 'Merkez', 'Fabrika'];
   const shopBranches = activeBranches.filter(b => !HQ_KEYWORDS.some(kw => b.name.includes(kw)));
 
-  // Boş şubeleri filtrele
+  // Boş şubeleri filtrele + snapshot fallback
   const branchScores: BranchHealthScore[] = [];
   for (const branch of shopBranches) {
     const score = await calculateBranchHealthScore(branch.id, branch.name);
-    // Personeli olmayan şubeleri atla
     if (score.staffCount === 0) continue;
+
+    // Gerçek zamanlı veri yoksa monthly snapshot'tan fallback
+    const hasRealData = score.dimensions.some(d => d.dataPoints > 0 &&
+      !['shift', 'equipment'].includes(d.name));
+    if (!hasRealData) {
+      const snapshotScore = await buildScoreFromSnapshot(branch.id, branch.name, score.staffCount);
+      if (snapshotScore) {
+        branchScores.push(snapshotScore);
+        continue;
+      }
+    }
     branchScores.push(score);
   }
 
