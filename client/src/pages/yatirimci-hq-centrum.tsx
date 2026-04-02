@@ -17,7 +17,7 @@ export default function YatirimciHQCentrum() {
 
   return (
     <CentrumShell
-      title="Yatırımcı Genel Bakış" subtitle="Tüm Şubeler · Performans · Finans"
+      title="Franchise Yatırımcı" subtitle="Şubelerim · Performans · Finans"
       roleLabel="Yatırımcı" roleColor="#6b7280"
       kpis={[
         { label: "Ort Sağlık", value: `${avgScore}/100`, variant: (avgScore >= 70 ? "ok" : avgScore >= 50 ? "warn" : "alert") as KpiVariant },

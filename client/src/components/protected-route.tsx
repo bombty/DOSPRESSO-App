@@ -22,7 +22,7 @@ const ROLE_MAPPING: Record<string, RoleGroup[]> = {
   trainer: ['hq'],
   kalite_kontrol: ['hq'],
   gida_muhendisi: ['hq'],
-  yatirimci_hq: ['hq'],
+  yatirimci_hq: ['sube'],
   fabrika: ['fabrika', 'hq'],
   fabrika_mudur: ['fabrika', 'hq'],
   fabrika_operator: ['fabrika'],

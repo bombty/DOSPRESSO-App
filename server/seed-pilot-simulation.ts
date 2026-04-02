@@ -147,6 +147,7 @@ async function ensureHQUsers() {
   const missing = [
     { id: "hq-destek-001", first: "Ayşe", last: "Kaya", role: "destek", email: "ayse.kaya@dospresso.com" },
     { id: "hq-teknik-001", first: "Murat", last: "Demir", role: "teknik", email: "murat.demir@dospresso.com" },
+    { id: "hq-yatirimci-001", first: "Mehmet", last: "Özkan", role: "yatirimci_hq", email: "mehmet.ozkan@dospresso.com" },
   ];
   let created = 0;
   for (const u of missing) {

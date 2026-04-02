@@ -271,7 +271,7 @@ function FabrikaOnly({ children }: { children: ReactNode }) {
 }
 
 function ExecutiveOnly({ children }: { children: ReactNode }) {
-  return <ProtectedRoute allowedRoles={["admin", "ceo", "cgo", "coach", "trainer", "muhasebe", "muhasebe_ik", "satinalma", "teknik", "destek", "fabrika", "yatirimci_hq"]}>{children}</ProtectedRoute>;
+  return <ProtectedRoute allowedRoles={["admin", "ceo", "cgo", "coach", "trainer", "muhasebe", "muhasebe_ik", "satinalma", "teknik", "destek", "fabrika"]}>{children}</ProtectedRoute>;
 }
 
 function CEOOnly({ children }: { children: ReactNode }) {
@@ -614,7 +614,7 @@ function AppContent() {
       "teknik": "Teknik",
       "destek": "Destek",
       "fabrika": "Fabrika",
-      "yatirimci_hq": "Yatırımcı HQ",
+      "yatirimci_hq": "Franchise Yatırımcı",
       "stajyer": "Stajyer",
       "bar_buddy": "Bar Buddy",
       "barista": "Barista",
