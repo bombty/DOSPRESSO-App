@@ -142,6 +142,108 @@ async function getPilotData() {
   return { branches: branchList, users: userList, hqUsers: hqList };
 }
 
+async function ensureHQUsers() {
+  console.log("\n👤 Eksik HQ kullanıcıları kontrol ediliyor...");
+  const missing = [
+    { id: "hq-destek-001", first: "Ayşe", last: "Kaya", role: "destek", email: "ayse.kaya@dospresso.com" },
+    { id: "hq-teknik-001", first: "Murat", last: "Demir", role: "teknik", email: "murat.demir@dospresso.com" },
+  ];
+  let created = 0;
+  for (const u of missing) {
+    try {
+      const exists = await db.execute(sql`SELECT id FROM users WHERE id = ${u.id}`);
+      if ((exists as any).rows?.length > 0) continue;
+      await db.execute(sql`
+        INSERT INTO users (id, first_name, last_name, role, email, username, password, is_active, created_at)
+        VALUES (${u.id}, ${u.first}, ${u.last}, ${u.role}, ${u.email}, ${u.email}, 'pilot2026', true, NOW())
+      `);
+      created++;
+      console.log(`  ✅ ${u.role}: ${u.first} ${u.last}`);
+    } catch (e: any) {
+      console.error(`  ❌ ${u.role}: ${e.message?.slice(0, 60)}`);
+    }
+  }
+  if (created === 0) console.log("  Tüm HQ kullanıcıları mevcut");
+}
+
+async function seedEquipmentData(branches: any[]) {
+  console.log("\n🔧 Ekipman envanteri oluşturuluyor...");
+  let count = 0;
+  const equipmentTypes = [
+    { type: "espresso_machine", name: "Espresso Makinesi", brand: "La Marzocco", model: "Linea PB" },
+    { type: "grinder", name: "Kahve Değirmeni", brand: "Mahlkönig", model: "E65S" },
+    { type: "refrigerator", name: "Buzdolabı", brand: "Ugur", model: "USS 374 DTKS" },
+    { type: "pos_terminal", name: "POS Terminal", brand: "Ingenico", model: "Move 5000" },
+    { type: "ice_machine", name: "Buz Makinesi", brand: "Brema", model: "CB 184" },
+    { type: "dishwasher", name: "Bulaşık Makinesi", brand: "Winterhalter", model: "UC-M" },
+    { type: "water_filter", name: "Su Arıtma", brand: "BWT", model: "Bestmax Premium" },
+    { type: "blender", name: "Blender", brand: "Vitamix", model: "Quiet One" },
+  ];
+
+  for (const branch of branches) {
+    if ((branch.name || "").toLowerCase().includes("fabrika")) continue; // Fabrika ayrı
+    for (const eq of equipmentTypes) {
+      try {
+        await db.execute(sql`
+          INSERT INTO equipment (
+            branch_id, equipment_type, model_no, serial_number,
+            purchase_date, warranty_end_date,
+            maintenance_responsible, fault_protocol,
+            service_contact_name, service_contact_phone,
+            status, created_at
+          ) VALUES (
+            ${branch.id}, ${eq.type}, ${`${eq.brand} ${eq.model}`},
+            ${`SN-${branch.id}-${eq.type.slice(0, 4).toUpperCase()}-${Math.floor(Math.random() * 9000) + 1000}`},
+            '2024-01-15', '2026-01-15',
+            ${eq.type === "pos_terminal" || eq.type === "water_filter" ? "hq" : "branch"},
+            ${eq.type === "espresso_machine" || eq.type === "pos_terminal" ? "hq_teknik" : "branch"},
+            ${eq.type === "espresso_machine" ? "La Marzocco Servis" : eq.type === "pos_terminal" ? "Ingenico Destek" : null},
+            ${eq.type === "espresso_machine" ? "+90 212 XXX XXXX" : eq.type === "pos_terminal" ? "+90 850 XXX XXXX" : null},
+            'active', NOW()
+          ) ON CONFLICT DO NOTHING
+        `);
+        count++;
+      } catch (e) { /* skip duplicates */ }
+    }
+  }
+  console.log(`  ✅ ${count} ekipman oluşturuldu`);
+}
+
+async function seedTroubleshootSteps() {
+  console.log("\n🔍 Troubleshoot adımları oluşturuluyor...");
+  let count = 0;
+  const steps = [
+    { type: "espresso_machine", order: 1, desc: "Makineyi kapatın ve 30 saniye bekleyin, sonra tekrar açın.", required: true },
+    { type: "espresso_machine", order: 2, desc: "Su tankını kontrol edin — doluysa devam edin.", required: true },
+    { type: "espresso_machine", order: 3, desc: "Basınç göstergesini kontrol edin — 8-10 bar arası normal.", required: true },
+    { type: "espresso_machine", order: 4, desc: "Filtre sepetini çıkarıp temizleyin, tekrar takın.", required: true },
+    { type: "espresso_machine", order: 5, desc: "Portafilter'ı takıp kısa bir flush yapın.", required: false },
+    { type: "grinder", order: 1, desc: "Değirmeni kapatın, hazneyi boşaltın.", required: true },
+    { type: "grinder", order: 2, desc: "Çapak disklerinde taş veya yabancı cisim var mı kontrol edin.", required: true },
+    { type: "grinder", order: 3, desc: "Değirmeni tekrar açın — ses normal mi?", required: true },
+    { type: "refrigerator", order: 1, desc: "Kapak contasını kontrol edin — hava sızdırıyor mu?", required: true },
+    { type: "refrigerator", order: 2, desc: "Arka taraftaki fanı dinleyin — çalışıyor mu?", required: true },
+    { type: "refrigerator", order: 3, desc: "İç sıcaklığı kontrol edin — 2-8°C arası normal.", required: true },
+    { type: "pos_terminal", order: 1, desc: "Cihazı yeniden başlatın (kapatıp açın).", required: true },
+    { type: "pos_terminal", order: 2, desc: "İnternet bağlantısını kontrol edin — WiFi/Ethernet aktif mi?", required: true },
+    { type: "pos_terminal", order: 3, desc: "SIM kart varsa kontrol edin — takılı ve hasarsız mı?", required: true },
+    { type: "ice_machine", order: 1, desc: "Su bağlantısını kontrol edin — musluk açık mı?", required: true },
+    { type: "ice_machine", order: 2, desc: "Buz haznesini boşaltın ve temizleyin.", required: true },
+  ];
+
+  for (const s of steps) {
+    try {
+      await db.execute(sql`
+        INSERT INTO equipment_troubleshooting_steps (equipment_type, "order", description, requires_photo, is_required, created_at)
+        VALUES (${s.type}, ${s.order}, ${s.desc}, false, ${s.required}, NOW())
+        ON CONFLICT DO NOTHING
+      `);
+      count++;
+    } catch (e) { /* skip */ }
+  }
+  console.log(`  ✅ ${count} troubleshoot adımı oluşturuldu`);
+}
+
 async function resetTestData() {
   console.log("🗑️  Test verilerini sıfırlıyorum...");
   
@@ -155,6 +257,8 @@ async function resetTestData() {
   await db.execute(sql`DELETE FROM cowork_channels WHERE name LIKE '%test-%'`);
   await db.execute(sql`DELETE FROM notifications WHERE type = 'seed_test'`);
   await db.execute(sql`DELETE FROM agent_pending_actions WHERE title LIKE '%[TEST]%'`);
+  await db.execute(sql`DELETE FROM equipment WHERE serial_number LIKE 'SN-%'`);
+  await db.execute(sql`DELETE FROM equipment_troubleshooting_steps WHERE created_at > NOW() - INTERVAL '30 days'`);
   
   console.log("✅ Test verileri silindi.");
 }
@@ -477,6 +581,7 @@ async function main() {
   }
   
   // Sırayla seed et
+  await ensureHQUsers();
   await seedCustomerFeedback(branches, users);
   await seedTasks(branches, users, hqUsers);
   await seedFaults(branches, users);
@@ -484,6 +589,8 @@ async function main() {
   await seedAnnouncements(hqUsers);
   await seedCoworkChannels(hqUsers);
   await seedDobodyActions(branches);
+  await seedEquipmentData(branches);
+  await seedTroubleshootSteps();
   
   console.log("\n═══════════════════════════════════════════");
   console.log("  ✅ Pilot simülasyon verisi tamamlandı!");
