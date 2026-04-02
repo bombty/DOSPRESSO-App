@@ -154,8 +154,10 @@ async function ensureHQUsers() {
       const exists = await db.execute(sql`SELECT id FROM users WHERE id = ${u.id}`);
       if ((exists as any).rows?.length > 0) continue;
       await db.execute(sql`
-        INSERT INTO users (id, first_name, last_name, role, email, username, password, is_active, created_at)
-        VALUES (${u.id}, ${u.first}, ${u.last}, ${u.role}, ${u.email}, ${u.email}, 'pilot2026', true, NOW())
+        INSERT INTO users (id, first_name, last_name, role, email, username, hashed_password, is_active, is_approved, created_at)
+        VALUES (${u.id}, ${u.first}, ${u.last}, ${u.role}, ${u.email}, ${u.email.split("@")[0]},
+        '$2b$10$LI1YFbQEOZyNjLELEVIJKOXbHbqFSlkDGmhEcvPmjMH6ZB4aKxZiO',
+        true, true, NOW())
       `);
       created++;
       console.log(`  ✅ ${u.role}: ${u.first} ${u.last}`);
@@ -189,17 +191,14 @@ async function seedEquipmentData(branches: any[]) {
             branch_id, equipment_type, model_no, serial_number,
             purchase_date, warranty_end_date,
             maintenance_responsible, fault_protocol,
-            service_contact_name, service_contact_phone,
-            status, created_at
+            is_active, created_at
           ) VALUES (
             ${branch.id}, ${eq.type}, ${`${eq.brand} ${eq.model}`},
             ${`SN-${branch.id}-${eq.type.slice(0, 4).toUpperCase()}-${Math.floor(Math.random() * 9000) + 1000}`},
             '2024-01-15', '2026-01-15',
             ${eq.type === "pos_terminal" || eq.type === "water_filter" ? "hq" : "branch"},
             ${eq.type === "espresso_machine" || eq.type === "pos_terminal" ? "hq_teknik" : "branch"},
-            ${eq.type === "espresso_machine" ? "La Marzocco Servis" : eq.type === "pos_terminal" ? "Ingenico Destek" : null},
-            ${eq.type === "espresso_machine" ? "+90 212 XXX XXXX" : eq.type === "pos_terminal" ? "+90 850 XXX XXXX" : null},
-            'active', NOW()
+            true, NOW()
           ) ON CONFLICT DO NOTHING
         `);
         count++;
