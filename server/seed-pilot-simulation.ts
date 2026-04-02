@@ -404,8 +404,8 @@ async function seedChecklistCompletions(branches: any[], users: any[]) {
         try {
           // Önce assignment oluştur
           const assResult = await db.execute(sql`
-            INSERT INTO checklist_assignments (checklist_id, branch_id, assigned_to_id, assigned_by_id, due_date, status, created_at)
-            VALUES (${clId}, ${branch.id}, ${person.id}, ${person.id}, ${dateStr}, ${isCompleted ? "completed" : "pending"}, NOW())
+            INSERT INTO checklist_assignments (checklist_id, branch_id, assigned_user_id, created_by_id, scope, effective_from, is_active, created_at)
+            VALUES (${clId}, ${branch.id}, ${person.id}, ${person.id}, 'branch', ${dateStr}, true, NOW())
             RETURNING id
           `);
           const assId = ((assResult as any).rows || [])[0]?.id;
@@ -444,7 +444,7 @@ async function resetTestData() {
   await db.execute(sql`DELETE FROM pdks_records WHERE source = 'seed_test'`);
   await db.execute(sql`DELETE FROM shifts WHERE status IN ('completed','scheduled') AND shift_date >= '2026-03-01'`);
   await db.execute(sql`DELETE FROM checklist_completions WHERE scheduled_date >= '2026-03-01'`);
-  await db.execute(sql`DELETE FROM checklist_assignments WHERE due_date >= '2026-03-01'`);
+  await db.execute(sql`DELETE FROM checklist_assignments WHERE created_at >= '2026-03-01'`);
   
   console.log("✅ Test verileri silindi.");
 }
