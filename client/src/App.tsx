@@ -241,6 +241,24 @@ const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"))
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
+// ── Orphan → Linked (Sistem Atölyesi kararı) ──
+const Announcements = lazyWithRetry(() => import("@/pages/announcements"));
+const Mesajlar = lazyWithRetry(() => import("@/pages/mesajlar"));
+const PersonelOnboarding = lazyWithRetry(() => import("@/pages/personel-onboarding"));
+const EkipmanKatalog = lazyWithRetry(() => import("@/pages/ekipman-katalog"));
+const AcademyWebinars = lazyWithRetry(() => import("@/pages/academy-webinars"));
+const AcademyContentMgmt = lazyWithRetry(() => import("@/pages/academy-content-management"));
+const AdminEmployeeTypes = lazyWithRetry(() => import("@/pages/admin-employee-types"));
+const GuestFormSettings = lazyWithRetry(() => import("@/pages/guest-form-settings"));
+const KampanyaYonetimi = lazyWithRetry(() => import("@/pages/kampanya-yonetimi"));
+const CoachOnboardingStudio = lazyWithRetry(() => import("@/pages/coach-onboarding-studio"));
+const AksiyonTakip = lazyWithRetry(() => import("@/pages/aksiyon-takip"));
+const AcademyLanding = lazyWithRetry(() => import("@/pages/academy-landing"));
+const AcademyMyPath = lazyWithRetry(() => import("@/pages/academy-my-path"));
+const CoachKpiSignals = lazyWithRetry(() => import("@/pages/coach-kpi-signals"));
+const SupervisorOnboarding = lazyWithRetry(() => import("@/pages/supervisor-onboarding"));
+const CoachGateManagement = lazyWithRetry(() => import("@/pages/coach-gate-management"));
+const CapaRaporlari = lazyWithRetry(() => import("@/pages/capa-raporlari"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -535,6 +553,24 @@ function Router() {
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
           <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
+          {/* ── Orphan → Linked (17 sayfa) ── */}
+          <Route path="/duyuru-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach"]}><Announcements /></ProtectedRoute>}</Route>
+          <Route path="/mesajlarim" component={Mesajlar} />
+          <Route path="/personel-onboarding-akisi">{() => <ProtectedRoute allowedRoles={["muhasebe_ik","admin","mudur","coach","trainer"]}><PersonelOnboarding /></ProtectedRoute>}</Route>
+          <Route path="/ekipman-katalog">{() => <ProtectedRoute allowedRoles={["cgo","admin","teknik"]}><EkipmanKatalog /></ProtectedRoute>}</Route>
+          <Route path="/akademi-webinars">{() => <ProtectedRoute allowedRoles={["trainer","admin","coach"]}><AcademyWebinars /></ProtectedRoute>}</Route>
+          <Route path="/akademi-icerik-yonetimi">{() => <ProtectedRoute allowedRoles={["trainer","admin"]}><AcademyContentMgmt /></ProtectedRoute>}</Route>
+          <Route path="/personel-tipleri">{() => <AdminOnly><AdminEmployeeTypes /></AdminOnly>}</Route>
+          <Route path="/gb-form-ayarlari">{() => <ProtectedRoute allowedRoles={["marketing","admin","ceo"]}><GuestFormSettings /></ProtectedRoute>}</Route>
+          <Route path="/kampanya-yonetimi">{() => <ProtectedRoute allowedRoles={["marketing","admin","ceo"]}><KampanyaYonetimi /></ProtectedRoute>}</Route>
+          <Route path="/onboarding-studio">{() => <ProtectedRoute allowedRoles={["coach","trainer","admin"]}><CoachOnboardingStudio /></ProtectedRoute>}</Route>
+          <Route path="/aksiyon-takip">{() => <ProtectedRoute allowedRoles={["coach","ceo","cgo","admin"]}><AksiyonTakip /></ProtectedRoute>}</Route>
+          <Route path="/akademi-ana">{() => <AcademyLanding />}</Route>
+          <Route path="/ogrenme-yolum">{() => <AcademyMyPath />}</Route>
+          <Route path="/kpi-sinyalleri">{() => <ProtectedRoute allowedRoles={["coach","ceo","cgo"]}><CoachKpiSignals /></ProtectedRoute>}</Route>
+          <Route path="/supervisor-egitim">{() => <ProtectedRoute allowedRoles={["supervisor","coach","trainer"]}><SupervisorOnboarding /></ProtectedRoute>}</Route>
+          <Route path="/gecit-yonetimi">{() => <ProtectedRoute allowedRoles={["coach","trainer"]}><CoachGateManagement /></ProtectedRoute>}</Route>
+          <Route path="/capa-raporlari">{() => <ProtectedRoute allowedRoles={["coach","cgo","admin"]}><CapaRaporlari /></ProtectedRoute>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
           <Route path="/ajanda">{() => <ModuleGuard moduleKey="ajanda"><AjandaPage /></ModuleGuard>}</Route>
           <Route path="/admin/*?">{() => <AdminOnly><AdminMegaModule /></AdminOnly>}</Route>
