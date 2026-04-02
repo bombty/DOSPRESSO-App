@@ -527,7 +527,6 @@ function Router() {
           <Route path="/misafir-memnuniyeti">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
           <Route path="/sikayetler">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/hq-destek">{() => <ExecutiveOnly><HQSupport /></ExecutiveOnly>}</Route>
-          <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
           <Route path="/franchise-acilis">{() => <ModuleGuard moduleKey="franchise"><FranchiseAcilis /></ModuleGuard>}</Route>
           <Route path="/franchise-yatirimcilar">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimcilar /></ModuleGuard>}</Route>
           <Route path="/franchise-yatirimcilar/:id">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimciDetay /></ModuleGuard>}</Route>
