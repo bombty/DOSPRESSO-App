@@ -1019,7 +1019,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
     try {
       const user = req.user!;
       const userId = req.user.id;
-      const validatedData = insertEquipmentFaultSchema.parse(req.body);
+      const validatedData = insertEquipmentFaultSchema.passthrough().parse(req.body) as any;
       
       ensurePermission(user, 'equipment_faults', 'create');
       
