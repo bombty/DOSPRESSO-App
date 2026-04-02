@@ -16,7 +16,8 @@ import { Map, Users, GitBranch, FileText, Plus, Edit, Trash2, ChevronDown, Chevr
 interface SubModule { id: string; name: string; path: string; canDisable: boolean; }
 interface RoleAccess { role: string; view: boolean; create: boolean; edit: boolean; delete: boolean; approve: boolean; scope: string; }
 interface ModuleData { id: string; name: string; flagKey: string; subModuleCount: number; subModules: SubModule[]; roles: RoleAccess[]; }
-interface SystemMetadata { modules: ModuleData[]; roleCounts: Record<string,number>; branchCount: number; tableCount: number; totalModules: number; totalSubModules: number; totalRoles: number; }
+interface SystemHealth { orphanPages: string[]; unguardedRoutes: string[]; totalPages: number; totalRoutes: number; guardedRoutes: number; totalEndpoints: number; usedEndpoints: number; }
+interface SystemMetadata { modules: ModuleData[]; roleCounts: Record<string,number>; branchCount: number; tableCount: number; totalModules: number; totalSubModules: number; totalRoles: number; health: SystemHealth; }
 type WorkshopNote = { id: number; title: string; content: string; section: string; createdAt: string; };
 
 const ROLE_LABELS: Record<string,string> = {
@@ -364,6 +365,73 @@ function ToplantiNotlari() {
   );
 }
 
+// ═══ TAB 5: SİSTEM SAĞLIĞI ═══
+function SistemSagligi({ data }: { data: SystemMetadata }) {
+  const h = data.health;
+  const guardPercent = Math.round((h.guardedRoutes / h.totalRoutes) * 100);
+  const endpointPercent = Math.round((h.usedEndpoints / h.totalEndpoints) * 100);
+  const orphanPercent = Math.round((h.orphanPages.length / h.totalPages) * 100);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Card><CardContent className="pt-3 pb-3 text-center">
+          <div className="text-2xl font-bold">{h.totalPages}</div>
+          <div className="text-xs text-muted-foreground">Sayfa</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-3 pb-3 text-center">
+          <div className="text-2xl font-bold">{h.totalEndpoints}</div>
+          <div className="text-xs text-muted-foreground">API Endpoint</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-3 pb-3 text-center">
+          <div className={`text-2xl font-bold ${guardPercent >= 80 ? "text-green-500" : "text-yellow-500"}`}>{guardPercent}%</div>
+          <div className="text-xs text-muted-foreground">Route Koruması</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-3 pb-3 text-center">
+          <div className={`text-2xl font-bold ${endpointPercent >= 70 ? "text-green-500" : "text-yellow-500"}`}>{endpointPercent}%</div>
+          <div className="text-xs text-muted-foreground">API Kullanım</div>
+        </CardContent></Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-yellow-500">Orphan Sayfalar ({h.orphanPages.length})</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-2">Bu sayfa dosyaları mevcut ama App.tsx'te route tanımı yok — kullanıcı erişemiyor.</p>
+          <div className="flex flex-wrap gap-1">
+            {h.orphanPages.map(p => (
+              <Badge key={p} variant="outline" className="text-[10px] text-yellow-600 border-yellow-600/30">{p}</Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm text-red-500">Korumasız Route'lar ({h.unguardedRoutes.length})</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-2">Bu route'lar ProtectedRoute/Guard ile korunmuyor — herhangi bir giriş yapmış kullanıcı erişebilir.</p>
+          <div className="flex flex-wrap gap-1">
+            {h.unguardedRoutes.map(r => (
+              <Badge key={r} variant="outline" className="text-[10px] text-red-600 border-red-600/30">{r}</Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">API Kullanım Özeti</CardTitle></CardHeader>
+        <CardContent className="text-xs space-y-1">
+          <div className="flex justify-between"><span>Toplam Backend Endpoint</span><span className="font-mono">{h.totalEndpoints}</span></div>
+          <div className="flex justify-between"><span>Frontend'te Referanslanan</span><span className="font-mono text-green-500">{h.usedEndpoints}</span></div>
+          <div className="flex justify-between"><span>Kullanılmayan</span><span className="font-mono text-yellow-500">{h.totalEndpoints - h.usedEndpoints}</span></div>
+          <div className="w-full bg-muted rounded-full h-2 mt-2">
+            <div className="bg-green-500 h-2 rounded-full" style={{ width: `${endpointPercent}%` }} />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ═══ ANA SAYFA ═══
 export default function SistemAtolyesi() {
   const { data: metadata, isLoading } = useQuery<SystemMetadata>({ queryKey: ["/api/sistem-atolyesi/metadata"] });
@@ -386,15 +454,17 @@ export default function SistemAtolyesi() {
         </p>
       </div>
       <Tabs defaultValue="site" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-9">
-          <TabsTrigger value="site" className="text-xs gap-1"><Map className="h-3.5 w-3.5" />Site Haritası</TabsTrigger>
-          <TabsTrigger value="roller" className="text-xs gap-1"><Users className="h-3.5 w-3.5" />Rol Matrisi</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 h-9">
+          <TabsTrigger value="site" className="text-xs gap-1"><Map className="h-3.5 w-3.5" />Harita</TabsTrigger>
+          <TabsTrigger value="roller" className="text-xs gap-1"><Users className="h-3.5 w-3.5" />Roller</TabsTrigger>
           <TabsTrigger value="akis" className="text-xs gap-1"><GitBranch className="h-3.5 w-3.5" />Akışlar</TabsTrigger>
+          <TabsTrigger value="saglik" className="text-xs gap-1"><Shield className="h-3.5 w-3.5" />Sağlık</TabsTrigger>
           <TabsTrigger value="notlar" className="text-xs gap-1"><FileText className="h-3.5 w-3.5" />Notlar</TabsTrigger>
         </TabsList>
         <TabsContent value="site"><SiteHaritasi data={metadata} /></TabsContent>
         <TabsContent value="roller"><RolMatrisi data={metadata} /></TabsContent>
         <TabsContent value="akis"><AkisGoruntüleyici /></TabsContent>
+        <TabsContent value="saglik"><SistemSagligi data={metadata} /></TabsContent>
         <TabsContent value="notlar"><ToplantiNotlari /></TabsContent>
       </Tabs>
     </div>

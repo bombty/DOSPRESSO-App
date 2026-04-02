@@ -70,6 +70,30 @@ router.get("/api/sistem-atolyesi/metadata", isAuthenticated, async (req: Request
       totalModules: ALL_MODULES.length,
       totalSubModules: ALL_MODULES.reduce((s, m) => s + m.subModules.length, 0),
       totalRoles: Object.keys(roleCounts).length,
+      health: {
+        orphanPages: [
+          "academy-ai-panel", "academy-content-management", "academy-explore", "academy-landing",
+          "academy-my-path", "academy-webinars", "admin-employee-types", "admin-seed",
+          "ai-assistant", "aksiyon-takip", "announcements", "capa-raporlari",
+          "coach-content-library", "coach-gate-management", "coach-kpi-signals",
+          "coach-onboarding-studio", "coach-team-progress", "ekipman-katalog",
+          "fabrika", "guest-complaints", "guest-form-settings", "kampanya-yonetimi",
+          "mesajlar", "misafir-memnuniyeti-modul", "onboarding-programlar",
+          "personel-onboarding", "raporlar-finansal", "raporlar-insight",
+          "sikayetler", "supervisor-onboarding",
+        ],
+        unguardedRoutes: [
+          "/sube-centrum", "/supervisor-centrum", "/supbuddy-centrum",
+          "/yatirimci-centrum", "/personel-centrum", "/bilgi-bankasi",
+          "/egitim/:id", "/izin-talepleri", "/mesai-talepleri",
+          "/kayip-esya", "/destek", "/kullanim-kilavuzu",
+        ],
+        totalPages: 194,
+        totalRoutes: 203,
+        guardedRoutes: 148,
+        totalEndpoints: 956,
+        usedEndpoints: 549,
+      },
     });
   } catch (err) {
     console.error("[SistemAtolyesi] metadata error:", err);
