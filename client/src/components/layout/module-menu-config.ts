@@ -61,8 +61,15 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "lot", label: "Lot İzleme", path: "/fabrika/lot-izleme", icon: Package },
     { id: "maliyet", label: "Maliyet", path: "/fabrika/maliyet-yonetimi", icon: CreditCard },
     { id: "gida", label: "Gıda Güvenliği", path: "/fabrika/gida-guvenligi", icon: Shield },
-    { id: "ekipman", label: "Ekipman", path: "/ekipman", icon: Wrench },
+  ],
+};
+
+const EKIPMAN_MENU: ModuleMenuConfig = {
+  title: "Ekipman & Arıza",
+  items: [
+    { id: "ekipman", label: "Ekipman Listesi", path: "/ekipman", icon: Wrench },
     { id: "ariza", label: "Arıza Bildir", path: "/ariza", icon: Wrench },
+    { id: "ariza-yeni", label: "Yeni Arıza", path: "/ariza-yeni", icon: Wrench },
   ],
 };
 
@@ -185,10 +192,10 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/pdks-izin-gunleri": IK_MENU,
   "/ik-raporlari": IK_MENU,
   "/sube-vardiya-takibi": IK_MENU,
-  "/ekipman": FABRIKA_MENU,
-  "/ariza": FABRIKA_MENU,
-  "/ariza-yeni": FABRIKA_MENU,
-  "/ekipman-analitics": FABRIKA_MENU,
+  "/ekipman": EKIPMAN_MENU,
+  "/ariza": EKIPMAN_MENU,
+  "/ariza-yeni": EKIPMAN_MENU,
+  "/ekipman-analitics": EKIPMAN_MENU,
   "/hq-fabrika-analitik": FABRIKA_MENU,
   "/kalite-kontrol-dashboard": FABRIKA_MENU,
   "/gida-guvenligi-dashboard": FABRIKA_MENU,
@@ -252,8 +259,8 @@ const PREFIX_ROUTE_MAP: Array<{ prefix: string; config: ModuleMenuConfig }> = [
   { prefix: "/vardiya", config: IK_MENU },
   { prefix: "/bordro", config: IK_MENU },
   { prefix: "/izin", config: IK_MENU },
-  { prefix: "/ariza", config: FABRIKA_MENU },
-  { prefix: "/ekipman", config: FABRIKA_MENU },
+  { prefix: "/ariza", config: EKIPMAN_MENU },
+  { prefix: "/ekipman", config: EKIPMAN_MENU },
   { prefix: "/sube", config: SUBELER_MENU },
   { prefix: "/hq-personel", config: IK_MENU },
   { prefix: "/hq-vardiya", config: IK_MENU },
