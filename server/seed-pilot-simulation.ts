@@ -415,6 +415,19 @@ async function seedDobodyActions(branches: any[]) {
     { title: "Haftalık performans özeti", desc: "Genel uyum %71 (geçen hafta %68). Işıklar en çok gelişen şube (+8 puan).", type: "info", severity: "low", role: "ceo", category: "performance", link: "/sube-saglik-skoru" },
     { title: "Denetim planı hatırlatması", desc: "Lara şubesi 45 gündür denetlenmedi. Hijyen denetimi planlanmalı.", type: "action", severity: "med", role: "coach", category: "audit", link: "/denetimler" },
     { title: "SLA aşımı: 2 destek talebi", desc: "Teknik departmanda 2 talep 48 saatten fazla açık. Eskalasyon gerekli.", type: "action", severity: "high", role: "cgo", category: "support", link: "/crm" },
+    // Şube rolleri
+    { title: "Açılış checklist yapılmadı", desc: "Bugün açılış checklist'i henüz tamamlanmadı. 30 dakika geçti.", type: "action", severity: "high", role: "supervisor", category: "compliance", link: "/checklistler" },
+    { title: "Ali 15dk geç kaldı", desc: "Ali Barista henüz vardiya girişi yapmadı. Beklenen: 08:00.", type: "action", severity: "med", role: "supervisor", category: "attendance", link: "/vardiyalarim" },
+    { title: "2 misafir GB SLA yaklaşıyor", desc: "2 misafir geri bildirimi 4 saat içinde SLA'yı aşacak. Yanıtla.", type: "action", severity: "high", role: "supervisor", category: "customer", link: "/crm?channel=misafir" },
+    { title: "Bugün 3 görevin var", desc: "Açılış hazırlığı, stok kontrol, vitrin düzenleme görevlerin bekliyor.", type: "info", severity: "low", role: "barista", category: "tasks", link: "/gorevler" },
+    { title: "Eğitim modülü tamamla", desc: "Latte Art modülü %80 — tamamla ve rozet kazan!", type: "auto", severity: "low", role: "barista", category: "training", link: "/akademi" },
+    { title: "HQ'dan 3 yeni görev", desc: "Coach'tan gelen görevler: stok sayım, hijyen kontrol, vitrin güncelleme.", type: "action", severity: "med", role: "mudur", category: "tasks", link: "/gorevler" },
+    { title: "Fiks gider girişi bekliyor", desc: "Bu ayki elektrik ve su faturaları henüz girilmedi. Muhasebe bekliyor.", type: "action", severity: "med", role: "mudur", category: "finance", link: "/muhasebe" },
+    { title: "Misafir şikayet: temizlik", desc: "Misafir 2 puan verdi: 'Tuvalet temiz değildi'. İncele ve yanıtla.", type: "action", severity: "high", role: "mudur", category: "customer", link: "/crm?channel=misafir" },
+    // HQ destek rolleri
+    { title: "Bordro deadline 3 gün", desc: "Bu ayki bordro hesaplaması için son 3 gün. Eksik verileri tamamla.", type: "action", severity: "high", role: "muhasebe_ik", category: "payroll", link: "/ik" },
+    { title: "5 kritik stok ürünü", desc: "Süt, şeker, espresso çekirdeği, bardak, peçete — acil sipariş gerekli.", type: "action", severity: "high", role: "satinalma", category: "inventory", link: "/stok" },
+    { title: "NPS raporu hazır", desc: "Bu haftanın müşteri memnuniyet raporu hazır. İncele ve kampanya planla.", type: "info", severity: "low", role: "marketing", category: "customer", link: "/crm?channel=misafir" },
   ];
 
   for (const a of actions) {
