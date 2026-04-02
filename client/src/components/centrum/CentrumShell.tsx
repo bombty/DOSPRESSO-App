@@ -186,13 +186,22 @@ export function ProgressWidget({ title, rows }: { title: string; rows: ProgRow[]
 
 // ═══ LIST ITEM ═══
 // priorityColorClass: Tailwind sınıfı (ör. "text-destructive"), priorityColor: CSS renk stringi (backward compat)
+// priorityColorClass verildiğinde dot bg sınıfı otomatik türetilir (text- → bg-)
 interface ListItemProps { title: string; meta?: string; priority?: string; priorityColor?: string; priorityColorClass?: string; slaLabel?: string; slaColor?: string; slaPct?: number; action?: ReactNode; onClick?: () => void; }
 export function ListItem({ title, meta, priority, priorityColor, priorityColorClass, onClick }: ListItemProps) {
   const T = useT();
+  // text-destructive → bg-destructive; text-yellow-500 dark:text-yellow-400 → bg-yellow-500
+  const dotBgClass = priorityColorClass
+    ? priorityColorClass.split(" ").find(c => c.startsWith("text-"))?.replace("text-", "bg-") ?? ""
+    : "";
   return (
     <div className={`flex items-center gap-1.5 px-3 py-1 border-b last:border-0 ${onClick?"cursor-pointer "+T.hoverBg:""}`}
       style={{borderColor:T.rowBorder}} onClick={onClick}>
-      {priority&&<span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:priorityColor||T.muted}}/>}
+      {priority&&(
+        dotBgClass
+          ? <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotBgClass}`}/>
+          : <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:priorityColor||T.muted}}/>
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-medium truncate" style={{color:T.text}}>{title}</p>
         {meta&&<p className="text-[10px] truncate" style={{color:T.muted}}>{meta}</p>}
