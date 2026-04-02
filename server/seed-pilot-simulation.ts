@@ -271,6 +271,160 @@ async function seedKnowledgeBase() {
   console.log(`  ✅ ${count} bilgi bankası makalesi oluşturuldu`);
 }
 
+async function seedPDKSRecords(branches: any[], users: any[]) {
+  console.log("\n⏰ PDKS kayıtları oluşturuluyor (30 gün)...");
+  let count = 0;
+  const branchUsers: Record<number, any[]> = {};
+  for (const u of users) {
+    if (u.branch_id) {
+      if (!branchUsers[u.branch_id]) branchUsers[u.branch_id] = [];
+      branchUsers[u.branch_id].push(u);
+    }
+  }
+
+  for (let day = 0; day < DAYS; day++) {
+    const date = addDays(START_DATE, day);
+    const dateStr = date.toISOString().split("T")[0];
+    const dow = date.getDay();
+    if (dow === 0) continue; // Pazar kapalı
+
+    for (const branch of branches) {
+      const staff = branchUsers[branch.id] || [];
+      if (staff.length === 0) continue;
+
+      for (const person of staff.slice(0, 6)) { // max 6 kişi/şube
+        const isLate = chance(10);
+        const isAbsent = chance(3);
+        if (isAbsent) continue;
+
+        const girisH = isLate ? rand(8, 9) : rand(7, 8);
+        const girisM = rand(0, 59);
+        const cikisH = rand(17, 19);
+        const cikisM = rand(0, 59);
+
+        try {
+          await db.execute(sql`
+            INSERT INTO pdks_records (user_id, branch_id, record_date, record_time, record_type, source, device_info)
+            VALUES (${person.id}, ${branch.id}, ${dateStr}, ${`${String(girisH).padStart(2,"0")}:${String(girisM).padStart(2,"0")}:00`}, 'giris', 'seed_test', 'Seed')
+            ON CONFLICT DO NOTHING
+          `);
+          await db.execute(sql`
+            INSERT INTO pdks_records (user_id, branch_id, record_date, record_time, record_type, source, device_info)
+            VALUES (${person.id}, ${branch.id}, ${dateStr}, ${`${String(cikisH).padStart(2,"0")}:${String(cikisM).padStart(2,"0")}:00`}, 'cikis', 'seed_test', 'Seed')
+            ON CONFLICT DO NOTHING
+          `);
+          count += 2;
+        } catch (e) { /* skip */ }
+      }
+    }
+  }
+  console.log(`  ✅ ${count} PDKS kaydı oluşturuldu`);
+}
+
+async function seedShifts(branches: any[], users: any[]) {
+  console.log("\n📅 Vardiya planları oluşturuluyor (30 gün)...");
+  let count = 0;
+  const adminUser = users.find((u: any) => u.role === "admin" || u.role === "supervisor") || users[0];
+
+  for (let day = 0; day < DAYS; day++) {
+    const date = addDays(START_DATE, day);
+    const dateStr = date.toISOString().split("T")[0];
+    const dow = date.getDay();
+    if (dow === 0) continue;
+
+    for (const branch of branches) {
+      const branchStaff = users.filter((u: any) => u.branch_id === branch.id).slice(0, 4);
+      if (branchStaff.length === 0) continue;
+
+      for (const person of branchStaff) {
+        const isMorning = chance(60);
+        try {
+          await db.execute(sql`
+            INSERT INTO shifts (branch_id, assigned_to_id, created_by_id, shift_date, start_time, end_time, shift_type, status)
+            VALUES (${branch.id}, ${person.id}, ${adminUser?.id || person.id}, ${dateStr},
+            ${isMorning ? "08:00" : "14:00"}, ${isMorning ? "16:00" : "22:00"},
+            ${isMorning ? "sabah" : "aksam"}, ${day < DAYS - 5 ? "completed" : "scheduled"})
+            ON CONFLICT DO NOTHING
+          `);
+          count++;
+        } catch (e) { /* skip */ }
+      }
+    }
+  }
+  console.log(`  ✅ ${count} vardiya oluşturuldu`);
+}
+
+async function seedChecklistCompletions(branches: any[], users: any[]) {
+  console.log("\n✅ Checklist tamamlama kayıtları oluşturuluyor...");
+  let count = 0;
+  
+  // Önce checklist template var mı kontrol et
+  const existingChecklists = await db.execute(sql`SELECT id, title FROM checklists LIMIT 5`);
+  const clists = (existingChecklists as any).rows || [];
+  
+  if (clists.length === 0) {
+    // Basit checklist template oluştur
+    const templates = [
+      { title: "Açılış Checklist", type: "acilis" },
+      { title: "Kapanış Checklist", type: "kapanis" },
+      { title: "Temizlik Checklist", type: "temizlik" },
+    ];
+    for (const t of templates) {
+      try {
+        await db.execute(sql`
+          INSERT INTO checklists (title, description, branch_id, checklist_type, is_active, created_at)
+          VALUES (${t.title}, ${`Günlük ${t.title.toLowerCase()}`}, NULL, ${t.type}, true, NOW())
+          ON CONFLICT DO NOTHING
+        `);
+      } catch (e) { /* skip */ }
+    }
+  }
+  
+  // Checklist ID'lerini al
+  const allChecklists = await db.execute(sql`SELECT id FROM checklists WHERE is_active = true LIMIT 3`);
+  const checklistIds = ((allChecklists as any).rows || []).map((c: any) => c.id);
+  
+  if (checklistIds.length === 0) {
+    console.log("  ⚠️ Checklist template bulunamadı, atlanıyor");
+    return;
+  }
+
+  for (let day = 0; day < Math.min(DAYS, 20); day++) {
+    const date = addDays(START_DATE, day);
+    const dateStr = date.toISOString().split("T")[0];
+    if (date.getDay() === 0) continue;
+
+    for (const branch of branches.slice(0, 4)) {
+      const staff = users.filter((u: any) => u.branch_id === branch.id).slice(0, 2);
+      if (staff.length === 0) continue;
+      const person = staff[0];
+
+      for (const clId of checklistIds) {
+        const isCompleted = chance(75);
+        try {
+          // Önce assignment oluştur
+          const assResult = await db.execute(sql`
+            INSERT INTO checklist_assignments (checklist_id, branch_id, assigned_to_id, assigned_by_id, due_date, status, created_at)
+            VALUES (${clId}, ${branch.id}, ${person.id}, ${person.id}, ${dateStr}, ${isCompleted ? "completed" : "pending"}, NOW())
+            RETURNING id
+          `);
+          const assId = ((assResult as any).rows || [])[0]?.id;
+          if (!assId) continue;
+
+          await db.execute(sql`
+            INSERT INTO checklist_completions (assignment_id, checklist_id, user_id, branch_id, status, scheduled_date, completed_at, score)
+            VALUES (${assId}, ${clId}, ${person.id}, ${branch.id}, ${isCompleted ? "completed" : "pending"}, ${dateStr},
+            ${isCompleted ? date.toISOString() : null}, ${isCompleted ? rand(70, 100) : null})
+            ON CONFLICT DO NOTHING
+          `);
+          count++;
+        } catch (e) { /* skip */ }
+      }
+    }
+  }
+  console.log(`  ✅ ${count} checklist tamamlama kaydı oluşturuldu`);
+}
+
 async function resetTestData() {
   console.log("🗑️  Test verilerini sıfırlıyorum...");
   
@@ -287,6 +441,10 @@ async function resetTestData() {
   await db.execute(sql`DELETE FROM equipment WHERE serial_number LIKE 'SN-%'`);
   await db.execute(sql`DELETE FROM equipment_troubleshooting_steps WHERE created_at > NOW() - INTERVAL '30 days'`);
   await db.execute(sql`DELETE FROM knowledge_base_articles WHERE equipment_type_id IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'`);
+  await db.execute(sql`DELETE FROM pdks_records WHERE source = 'seed_test'`);
+  await db.execute(sql`DELETE FROM shifts WHERE status IN ('completed','scheduled') AND shift_date >= '2026-03-01'`);
+  await db.execute(sql`DELETE FROM checklist_completions WHERE scheduled_date >= '2026-03-01'`);
+  await db.execute(sql`DELETE FROM checklist_assignments WHERE due_date >= '2026-03-01'`);
   
   console.log("✅ Test verileri silindi.");
 }
@@ -620,6 +778,9 @@ async function main() {
   await seedEquipmentData(branches);
   await seedTroubleshootSteps();
   await seedKnowledgeBase();
+  await seedPDKSRecords(branches, users);
+  await seedShifts(branches, users);
+  await seedChecklistCompletions(branches, users);
   
   console.log("\n═══════════════════════════════════════════");
   console.log("  ✅ Pilot simülasyon verisi tamamlandı!");
