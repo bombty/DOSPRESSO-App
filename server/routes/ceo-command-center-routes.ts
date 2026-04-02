@@ -3,7 +3,8 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { handleApiError, parsePagination, wrapPaginatedResponse } from "./helpers";
-import { eq, desc, and, count, sum, max } from "drizzle-orm";
+import { eq, desc, and, count, sum, max, lte } from "drizzle-orm";
+import { notifications } from "@shared/schema";
 import { filterNotificationsForRole } from "../services/notification-level-filter";
 import { gatherAIAssistantContext } from "../ai-assistant-context";
 import { checkAndEnforcePolicy } from "../services/ai-policy-engine";
@@ -520,5 +521,23 @@ const router = Router();
   });
 
 
+
+  // PATCH /api/notifications/archive-old — 30 günden eski bildirimleri arşivle
+  router.patch('/api/notifications/archive-old', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const result = await db.update(notifications)
+        .set({ isArchived: true })
+        .where(and(
+          eq(notifications.userId, userId),
+          eq(notifications.isArchived, false),
+          lte(notifications.createdAt, cutoff)
+        ));
+      res.json({ success: true, message: "Eski bildirimler arşivlendi" });
+    } catch (error) {
+      res.status(500).json({ message: "Arşivleme hatası" });
+    }
+  });
 
 export default router;
