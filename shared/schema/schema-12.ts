@@ -1227,7 +1227,7 @@ export const moduleFlags = pgTable("module_flags", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("uq_module_flags_key_scope_branch_role").on(table.moduleKey, table.scope, table.branchId, table.targetRole),
+  unique("uq_module_flags_key_scope_branch_role").on(table.moduleKey, table.scope, table.branchId, table.targetRole),
 ]);
 
 export const insertModuleFlagSchema = createInsertSchema(moduleFlags).omit({ id: true, createdAt: true, updatedAt: true });
