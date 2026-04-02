@@ -22,7 +22,6 @@ export default function CGOTeknikKomuta() {
       const r = await fetch("/api/faults?limit=200", { credentials: "include" });
       if (!r.ok) return [];
       const d = await r.json();
-      // Hem eski hem yeni response shape'ini destekle
       if (Array.isArray(d)) return d;
       return d.data ?? d.faults ?? [];
     },
@@ -31,7 +30,7 @@ export default function CGOTeknikKomuta() {
   // Açık arızalar: Türkçe DB status değerleri
   const faults = allFaults.filter((f: any) => f.status === "acik" || f.status === "devam_ediyor");
 
-  // CRM teknik talepler — Türkçe status + sla_breached alanı
+  // CRM teknik talepler — sla_breached alanı
   const { data: techTickets = [] } = useQuery<any[]>({
     queryKey: ["/api/iletisim/tickets", "teknik"],
     queryFn: async () => {
@@ -66,19 +65,19 @@ export default function CGOTeknikKomuta() {
 
   const branchScores: any[] = healthData?.branches ?? [];
 
-  // Çözülen arızalar — tüm arızalar içinde, Türkçe "cozuldu" status
+  // Çözülen arızalar — Türkçe "cozuldu" status
   const resolvedFaults = allFaults.filter((f: any) =>
     f.status === "cozuldu" || f.currentStage === "cozuldu"
   );
 
-  // SLA öncelikli arızalar — DB priority değerleri: "kritik", "yuksek" (aksansız)
+  // SLA öncelikli arızalar — DB priority değerleri: "kritik", "yuksek"
   const slaFaults = faults.filter((f: any) =>
     f.priority === "kritik" || f.priority === "yuksek" || f.priority === "yüksek"
   );
 
   const activeSessions = livePersonnel?.activeSessions ?? livePersonnel?.sessions ?? [];
 
-  // Uyum skorları — branch-health dimensions'tan hesaplanır (compliance endpoint mevcut değil)
+  // Uyum skorları — branch-health dimensions'tan hesaplanır
   const avgChecklistScore = branchScores.length > 0
     ? Math.round(
         branchScores.reduce((sum: number, b: any) => {
@@ -99,14 +98,22 @@ export default function CGOTeknikKomuta() {
   const totalFaults = healthData?.totalFaults ?? allFaults.length;
   const avgRating = healthData?.avgRating;
   const activeShifts = healthData?.totalActive ?? activeSessions.length;
-
-  // Bakım gerekli: SLA öncelikli açık arızalar
   const maintenanceRequired = slaFaults.length;
+
+  // Skor rengi: Tailwind sınıfları — inline hex yok
+  function scoreColorClass(score: number) {
+    return score >= 70 ? "text-green-500 dark:text-green-400"
+         : score >= 50 ? "text-yellow-500 dark:text-yellow-400"
+         : "text-destructive";
+  }
+  function barBgClass(score: number) {
+    return score >= 70 ? "bg-green-500" : score >= 50 ? "bg-yellow-500" : "bg-destructive";
+  }
 
   return (
     <CentrumShell
       title="CGO — Teknik" subtitle="Arıza·SLA·Finans"
-      roleLabel="CGO" roleColor="#60a5fa" roleBg="rgba(96,165,250,0.18)"
+      roleLabel="CGO" roleVariant="cgo"
       kpis={[
         { label: "Arıza", value: faults.length, variant: (faults.length > 5 ? "alert" : faults.length > 0 ? "warn" : "ok") as KpiVariant },
         { label: "SLA", value: slaFaults.length, variant: (slaFaults.length > 0 ? "alert" : "ok") as KpiVariant },
@@ -128,15 +135,13 @@ export default function CGOTeknikKomuta() {
           )}
           {branchScores.slice(0, 5).map((b: any, i: number) => {
             const score = b.overallScore ?? b.totalScore ?? 0;
-            const scoreColor = score >= 70 ? "text-green-500" : score >= 50 ? "text-yellow-500" : "text-destructive";
-            const barColor = score >= 70 ? "#22c55e" : score >= 50 ? "#fbbf24" : "#ef4444";
             return (
               <div key={i} className="flex items-center gap-2 px-3 py-1">
                 <span className="text-[10px] w-16 shrink-0 truncate text-muted-foreground">{b.branchName ?? b.name}</span>
                 <div className="flex-1 h-1.5 rounded-full bg-muted">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(score, 100)}%`, background: barColor }} />
+                  <div className={`h-full rounded-full transition-all ${barBgClass(score)}`} style={{ width: `${Math.min(score, 100)}%` }} />
                 </div>
-                <span className={`text-[10px] font-semibold w-7 text-right ${scoreColor}`}>{score}</span>
+                <span className={`text-[10px] font-semibold w-7 text-right ${scoreColorClass(score)}`}>{score}</span>
               </div>
             );
           })}
@@ -167,7 +172,7 @@ export default function CGOTeknikKomuta() {
               title={`${f.branchName ?? f.branch_name ?? "—"} · ${f.equipmentName ?? f.equipment_name ?? f.equipmentType ?? "—"}`}
               meta={f.description ?? ""}
               priority={f.priority === "kritik" ? "SLA!" : f.priority}
-              priorityColor={f.priority === "kritik" ? "#ef4444" : "#fbbf24"}
+              priorityColorClass={f.priority === "kritik" ? "text-destructive" : "text-yellow-500 dark:text-yellow-400"}
               onClick={() => navigate(`/ariza/${f.id}`)}
             />
           ))}
@@ -182,15 +187,13 @@ export default function CGOTeknikKomuta() {
           )}
           {branchScores.slice(0, 4).map((b: any, i: number) => {
             const score = b.overallScore ?? b.totalScore ?? 0;
-            const barColor = score >= 70 ? "#22c55e" : score >= 50 ? "#fbbf24" : "#ef4444";
-            const scoreColor = score >= 70 ? "text-green-500" : score >= 50 ? "text-yellow-500" : "text-destructive";
             return (
               <div key={i} className="flex items-center gap-2 px-3 py-1">
                 <span className="text-[10px] w-16 shrink-0 truncate text-muted-foreground">{b.branchName ?? b.name}</span>
                 <div className="flex-1 h-1.5 rounded-full bg-muted">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(score, 100)}%`, background: barColor }} />
+                  <div className={`h-full rounded-full ${barBgClass(score)}`} style={{ width: `${Math.min(score, 100)}%` }} />
                 </div>
-                <span className={`text-[10px] font-semibold w-7 text-right ${scoreColor}`}>{score}</span>
+                <span className={`text-[10px] font-semibold w-7 text-right ${scoreColorClass(score)}`}>{score}</span>
               </div>
             );
           })}
@@ -202,12 +205,16 @@ export default function CGOTeknikKomuta() {
           {
             label: "Vardiya",
             value: avgShiftScore !== null ? `%${avgShiftScore}` : "—",
-            color: avgShiftScore !== null && avgShiftScore < 70 ? "#fbbf24" : undefined,
+            colorClass: avgShiftScore !== null && avgShiftScore < 70
+              ? "text-yellow-500 dark:text-yellow-400"
+              : undefined,
           },
           {
             label: "Checklist",
             value: avgChecklistScore !== null ? `%${avgChecklistScore}` : "—",
-            color: avgChecklistScore !== null && avgChecklistScore < 60 ? "#ef4444" : undefined,
+            colorClass: avgChecklistScore !== null && avgChecklistScore < 60
+              ? "text-destructive"
+              : undefined,
           },
         ]} onLink={() => navigate("/checklistler")} />
 
@@ -216,12 +223,12 @@ export default function CGOTeknikKomuta() {
           {
             label: "SLA İhlali",
             value: techTickets.filter((t: any) => t.sla_breached || t.slaBreached).length,
-            color: "#ef4444",
+            colorClass: "text-destructive",
           },
         ]} onLink={() => navigate("/crm")} />
 
         <MiniStats title="Personel" rows={[
-          { label: "Aktif Vardiya", value: activeShifts || "—", color: "#22c55e" },
+          { label: "Aktif Vardiya", value: activeShifts || "—", colorClass: "text-green-500 dark:text-green-400" },
           { label: "Ort. Puan", value: avgRating != null ? `${avgRating}/5` : "—" },
         ]} onLink={() => navigate("/ik")} />
       </div>
@@ -234,23 +241,26 @@ export default function CGOTeknikKomuta() {
           {(healthData?.escalations ?? []).slice(0, 4).map((e: any, i: number) => {
             const isCritical = e.priority === "kritik";
             const level = isCritical ? 4 : 3;
-            const color = isCritical ? "#ef4444" : "#fbbf24";
             return (
               <ListItem
                 key={i}
                 title={e.title ?? e.equipment_name ?? e.branchName ?? "—"}
                 meta={e.type === "fault" ? "Ekipman Arızası" : "Talep SLA"}
                 priority={`K${level}`}
-                priorityColor={color}
+                priorityColorClass={isCritical ? "text-destructive" : "text-yellow-500 dark:text-yellow-400"}
                 onClick={() => navigate(e.type === "fault" ? `/ariza/${e.id}` : "/crm")}
               />
             );
           })}
         </Widget>
 
-        {/* Gelir-Gider: bakım sayısı gerçek, maliyet/etki modülü henüz entegre değil */}
+        {/* Gelir-Gider: bakım sayısı gerçek; maliyet modülü henüz entegre değil */}
         <MiniStats title="Gelir-Gider" rows={[
-          { label: "Bakım Gerekli", value: maintenanceRequired, color: maintenanceRequired > 0 ? "#fbbf24" : undefined },
+          {
+            label: "Bakım Gerekli",
+            value: maintenanceRequired,
+            colorClass: maintenanceRequired > 0 ? "text-yellow-500 dark:text-yellow-400" : undefined,
+          },
           { label: "Toplam Arıza", value: totalFaults },
           { label: "Maliyet Analizi", value: "Yakında" },
         ]} onLink={() => navigate("/ekipman")} />

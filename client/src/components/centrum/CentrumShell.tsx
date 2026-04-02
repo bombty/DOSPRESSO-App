@@ -42,6 +42,16 @@ function useT() {
   }
 }
 
+// ═══ ROLE VARIANT SİSTEMİ ═══
+type RoleVariant = "cgo" | "ceo" | "coach" | "investor" | "supervisor";
+const ROLE_VARIANT_CLASSES: Record<RoleVariant, { badge: string }> = {
+  cgo:       { badge: "bg-blue-500/20 text-blue-400" },
+  ceo:       { badge: "bg-violet-500/20 text-violet-400" },
+  coach:     { badge: "bg-orange-500/20 text-orange-400" },
+  investor:  { badge: "bg-slate-500/20 text-slate-400" },
+  supervisor:{ badge: "bg-green-500/20 text-green-400" },
+};
+
 // ═══ TYPES ═══
 export type KpiVariant = "alert" | "warn" | "ok" | "info" | "purple" | "neutral";
 export type DobodyMode = "auto" | "action" | "info";
@@ -93,7 +103,6 @@ export function ClickableWidget({ title, badge, onClick, children, className }: 
 interface DobodyAction { id: number|string; title: string; sub?: string; mode?: DobodyMode; onApprove?: () => void; approving?: boolean; btnLabel?: string; btnVariant?: string; }
 export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boolean }) {
   const T = useT();
-  // Option C: Kırmızı header + Navy gövde (her iki modda aynı)
   return (
     <div className="rounded-xl overflow-hidden" style={{background:T.dobodyBodyBg,border:`1.5px solid ${T.dobodyBorder}`}}>
       <div className="flex items-center gap-1.5 px-2.5 py-2" style={{background:T.dobodyHeaderBg}}>
@@ -119,7 +128,7 @@ export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boo
                 {a.approving?"...":(a.btnLabel||"Onayla")}
               </button>
             )}
-            {mode==="auto"&&<span className="text-[9px] px-1.5 py-0.5 rounded shrink-0 font-bold"
+            {mode==="auto"&&<span className="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-bold"
               style={{background:"#22c55e18",color:"#4ade80"}}>✓</span>}
           </div>
         );
@@ -129,15 +138,19 @@ export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boo
 }
 
 // ═══ MINISTATS ═══
-interface MiniStatRow { label: string; value: string|number; color?: string; }
+// colorClass: Tailwind sınıfı (ör. "text-destructive"), color: CSS renk stringi (backward compat)
+interface MiniStatRow { label: string; value: string|number; color?: string; colorClass?: string; }
 export function MiniStats({ title, rows, linkText, onLink }: { title: string; rows: MiniStatRow[]; linkText?: string; onLink?: () => void }) {
   const T = useT();
   return (
     <Widget title={title} onClick={onLink}>
       {rows.map((r,i)=>(
-        <div key={i} className="flex justify-between text-[11px] px-2.5 py-0.5">
+        <div key={i} className="flex justify-between text-[11px] px-3 py-1">
           <span style={{color:T.muted}}>{r.label}</span>
-          <span className="font-semibold" style={{color:r.color||T.text}}>{r.value}</span>
+          {r.colorClass
+            ? <span className={`font-semibold ${r.colorClass}`}>{r.value}</span>
+            : <span className="font-semibold" style={{color:r.color||T.text}}>{r.value}</span>
+          }
         </div>
       ))}
     </Widget>
@@ -154,9 +167,9 @@ export function ProgressWidget({ title, rows }: { title: string; rows: ProgRow[]
         const mx=r.max||100;const p=Math.min(100,Math.round((r.value/mx)*100));
         const c=p>=80?T.ok:p>=60?T.warn:T.alert;
         return(
-          <div key={i} className="flex items-center gap-1.5 px-2.5 py-0.5">
-            <span className="text-[10px] w-12 shrink-0 truncate" style={{color:T.muted}}>{r.label}</span>
-            <div className="flex-1 h-1 rounded-full" style={{background:T.border}}>
+          <div key={i} className="flex items-center gap-1.5 px-3 py-1">
+            <span className="text-[10px] w-16 shrink-0 truncate" style={{color:T.muted}}>{r.label}</span>
+            <div className="flex-1 h-1.5 rounded-full" style={{background:T.border}}>
               <div className="h-full rounded-full" style={{width:`${p}%`,background:c}}/>
             </div>
             <span className="text-[10px] font-semibold w-6 text-right" style={{color:c}}>{r.value}</span>
@@ -168,26 +181,30 @@ export function ProgressWidget({ title, rows }: { title: string; rows: ProgRow[]
 }
 
 // ═══ LIST ITEM ═══
-interface ListItemProps { title: string; meta?: string; priority?: string; priorityColor?: string; slaLabel?: string; slaColor?: string; slaPct?: number; action?: ReactNode; onClick?: () => void; }
-export function ListItem({ title, meta, priority, priorityColor, onClick }: ListItemProps) {
+// priorityColorClass: Tailwind sınıfı (ör. "text-destructive"), priorityColor: CSS renk stringi (backward compat)
+interface ListItemProps { title: string; meta?: string; priority?: string; priorityColor?: string; priorityColorClass?: string; slaLabel?: string; slaColor?: string; slaPct?: number; action?: ReactNode; onClick?: () => void; }
+export function ListItem({ title, meta, priority, priorityColor, priorityColorClass, onClick }: ListItemProps) {
   const T = useT();
   return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 border-b last:border-0 ${onClick?"cursor-pointer "+T.hoverBg:""}`}
+    <div className={`flex items-center gap-1.5 px-3 py-1 border-b last:border-0 ${onClick?"cursor-pointer "+T.hoverBg:""}`}
       style={{borderColor:T.rowBorder}} onClick={onClick}>
       {priority&&<span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:priorityColor||T.muted}}/>}
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-medium truncate" style={{color:T.text}}>{title}</p>
         {meta&&<p className="text-[10px] truncate" style={{color:T.muted}}>{meta}</p>}
       </div>
-      {priority&&<span className="text-[10px] font-semibold shrink-0" style={{color:priorityColor||T.muted}}>{priority}</span>}
+      {priority&&(
+        priorityColorClass
+          ? <span className={`text-[10px] font-semibold shrink-0 ${priorityColorClass}`}>{priority}</span>
+          : <span className="text-[10px] font-semibold shrink-0" style={{color:priorityColor||T.muted}}>{priority}</span>
+      )}
     </div>
   );
 }
 
 // ═══ BADGE ═══
 export function Badge({ text, color }: { text: string; color: string }) {
-  // Onaylanan kural: Badge'ler HER ZAMAN dolgulu renk zemini + beyaz metin
-  return <span className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0 font-bold"
+  return <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-bold"
     style={{background:color,color:"white"}}>{text}</span>;
 }
 
@@ -198,7 +215,7 @@ export function TimeFilter({ value, onChange }: { value: TimePeriod; onChange: (
   return (
     <div className="flex gap-1">
       {(Object.keys(TIME_LABELS) as TimePeriod[]).map(k=>(
-        <button key={k} onClick={()=>onChange(k)} className="text-[8px] px-1.5 py-0.5 rounded-md"
+        <button key={k} onClick={()=>onChange(k)} className="text-[10px] px-1.5 py-0.5 rounded-md"
           style={{background:value===k?T.timeActiveBg:"transparent",color:value===k?T.timeActiveText:T.timeInactiveText}}>
           {TIME_LABELS[k]}
         </button>
@@ -224,10 +241,10 @@ export function TopFlop({ branches, onBranchClick, onViewAll }: { branches: Rank
   const T = useT();
   const sorted=[...branches].sort((a,b)=>b.score-a.score);
   return (
-    <Widget title="🏆Top3 / ⚠Flop3" onClick={onViewAll}>
-      <div className="px-2.5 py-0.5"><span className="text-[8px]" style={{color:T.ok}}>EN İYİ</span></div>
+    <Widget title="Top3 / Flop3" onClick={onViewAll}>
+      <div className="px-3 py-1"><span className="text-[10px]" style={{color:T.ok}}>EN İYİ</span></div>
       {sorted.slice(0,3).map((b,i)=><ListItem key={`t${i}`} title={`${i+1}. ${b.name}`} priority={`${b.score}`} priorityColor={T.ok} onClick={()=>onBranchClick?.(b.id)}/>)}
-      <div className="px-2.5 py-0.5 border-t" style={{borderColor:T.border}}><span className="text-[8px]" style={{color:T.alert}}>EN ZAYIF</span></div>
+      <div className="px-3 py-1 border-t" style={{borderColor:T.border}}><span className="text-[10px]" style={{color:T.alert}}>EN ZAYIF</span></div>
       {sorted.slice(-3).reverse().map((b,i)=><ListItem key={`f${i}`} title={b.name} priority={`${b.score}`} priorityColor={T.alert} onClick={()=>onBranchClick?.(b.id)}/>)}
     </Widget>
   );
@@ -239,17 +256,17 @@ export function DobodyTaskPlan({ tasks, onComplete, onNavigate }: { tasks: TaskP
   const T = useT();
   const [done,setDone]=useState<Set<number>>(new Set());
   return (
-    <Widget title="📋 Dobody Plan" badge={<Badge text={`${done.size}/${tasks.length}`} color={done.size===tasks.length?T.ok:T.warn}/>}>
+    <Widget title="Dobody Plan" badge={<Badge text={`${done.size}/${tasks.length}`} color={done.size===tasks.length?T.ok:T.warn}/>}>
       {tasks.map((t,i)=>(
-        <div key={t.id||i} className="flex items-center gap-1.5 px-2.5 py-1 border-b last:border-0" style={{borderColor:T.border}}>
+        <div key={t.id||i} className="flex items-center gap-1.5 px-3 py-1 border-b last:border-0" style={{borderColor:T.border}}>
           <button onClick={()=>{setDone(p=>{const n=new Set(p);n.has(i)?n.delete(i):n.add(i);return n;});onComplete?.(t.id);}}
-            className="w-3.5 h-3.5 rounded flex items-center justify-center text-[7px] shrink-0"
+            className="w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] shrink-0"
             style={{background:done.has(i)?`${T.ok}25`:T.border,color:done.has(i)?T.ok:T.muted}}>
             {done.has(i)?"✓":i+1}
           </button>
           <div className="flex-1 cursor-pointer" style={{opacity:done.has(i)?0.4:1}} onClick={()=>t.navigateTo&&onNavigate?.(t.navigateTo)}>
-            <p className="text-[9px] font-medium" style={{color:T.text,textDecoration:done.has(i)?"line-through":"none"}}>{t.title}</p>
-            {t.sub&&<p className="text-[8px]" style={{color:T.muted}}>{t.sub}</p>}
+            <p className="text-[10px] font-medium" style={{color:T.text,textDecoration:done.has(i)?"line-through":"none"}}>{t.title}</p>
+            {t.sub&&<p className="text-[10px]" style={{color:T.muted}}>{t.sub}</p>}
           </div>
         </div>
       ))}
@@ -259,7 +276,7 @@ export function DobodyTaskPlan({ tasks, onComplete, onNavigate }: { tasks: TaskP
 
 // ═══ FEEDBACK WIDGET ═══
 interface FeedbackItem { id: number|string; rating?: number; comment?: string; time?: string; source?: string; customerName?: string; slaHoursLeft?: number; needsResponse?: boolean; onClick?: () => void; }
-export function FeedbackWidget({ items, showSLA=true, title="⭐ Misafir Geri Bildirim", onViewAll }: { items: FeedbackItem[]; showSLA?: boolean; title?: string; onViewAll?: () => void }) {
+export function FeedbackWidget({ items, showSLA=true, title="Misafir Geri Bildirim", onViewAll }: { items: FeedbackItem[]; showSLA?: boolean; title?: string; onViewAll?: () => void }) {
   const T = useT();
   const slaCount=items.filter(f=>f.needsResponse).length;
   return (
@@ -267,22 +284,22 @@ export function FeedbackWidget({ items, showSLA=true, title="⭐ Misafir Geri Bi
       {items.map((f)=>{
         const dot=(f.rating||5)<=2.5?T.alert:(f.rating||5)>=4?T.ok:T.warn;
         return(
-          <div key={f.id} className={`flex items-center gap-1.5 px-2.5 py-1 border-b last:border-0 cursor-pointer ${T.hoverBg}`}
+          <div key={f.id} className={`flex items-center gap-1.5 px-3 py-1 border-b last:border-0 cursor-pointer ${T.hoverBg}`}
             style={{borderColor:T.rowBorder}} onClick={f.onClick}>
             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:dot}}/>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-medium truncate" style={{color:T.text}}>{f.rating}★ {f.comment}</p>
-              <p className="text-[8px] truncate" style={{color:T.muted}}>{f.time}·{f.source}·{f.customerName||"Anonim"}</p>
+              <p className="text-[10px] font-medium truncate" style={{color:T.text}}>{f.rating}★ {f.comment}</p>
+              <p className="text-[10px] truncate" style={{color:T.muted}}>{f.time}·{f.source}·{f.customerName||"Anonim"}</p>
             </div>
-            <span className="text-[8px] font-semibold shrink-0" style={{color:dot}}>
+            <span className="text-[10px] font-semibold shrink-0" style={{color:dot}}>
               {showSLA&&f.slaHoursLeft?`SLA ${f.slaHoursLeft}s!`:`${f.rating}★`}
             </span>
           </div>
         );
       })}
       {showSLA&&slaCount>0&&(
-        <div className="px-2.5 py-1" style={{background:`${T.warn}08`}}>
-          <span className="text-[8px]" style={{color:T.warn}}>⏰ {slaCount} yanıt bekliyor (SLA: 4 saat)</span>
+        <div className="px-3 py-1" style={{background:`${T.warn}08`}}>
+          <span className="text-[10px]" style={{color:T.warn}}>⏰ {slaCount} yanıt bekliyor (SLA: 4 saat)</span>
         </div>
       )}
     </Widget>
@@ -297,13 +314,12 @@ export function LostFoundBanner({ item, onClick }: { item: LostFoundItem|null; o
   return (
     <div className="rounded-xl border overflow-hidden cursor-pointer hover:border-amber-500/30"
       style={{borderColor:T.lostBorder,background:T.lostBg}} onClick={onClick}>
-      <div className="flex items-center gap-2 px-2.5 py-1.5">
-        <span className="text-[10px]">🔍</span>
+      <div className="flex items-center gap-2 px-3 py-1.5">
         <div className="flex-1">
-          <p className="text-[9px] font-medium" style={{color:T.text}}>Kayıp Eşya Bulundu!</p>
-          <p className="text-[8px]" style={{color:T.muted}}>{item.description} · {item.foundArea} · {item.foundTime}{item.foundByName?` · ${item.foundByName} buldu`:""}</p>
+          <p className="text-[10px] font-medium" style={{color:T.text}}>Kayıp Eşya Bulundu!</p>
+          <p className="text-[10px]" style={{color:T.muted}}>{item.description} · {item.foundArea} · {item.foundTime}{item.foundByName?` · ${item.foundByName} buldu`:""}</p>
         </div>
-        <span className="text-[8px]" style={{color:T.info}}>Detay →</span>
+        <span className="text-[10px]" style={{color:T.info}}>Detay →</span>
       </div>
     </div>
   );
@@ -316,25 +332,32 @@ export function QCStatusWidget({ data, onViewAll }: { data: QCStatusData|null; o
   if (!data) return null;
   return (
     <Widget title="QC Durum" onClick={onViewAll}>
-      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{color:T.muted}}>Bekleyen</span><span className="font-semibold" style={{color:data.pending>0?T.warn:T.ok}}>{data.pending} lot</span></div>
-      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{color:T.muted}}>Onay</span><span className="font-semibold" style={{color:T.ok}}>{data.approved}</span></div>
-      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{color:T.muted}}>Red</span><span className="font-semibold" style={{color:data.rejected>0?T.alert:T.text}}>{data.rejected}</span></div>
-      <div className="flex justify-between text-[9px] px-2.5 py-0.5"><span style={{color:T.muted}}>Geçiş</span><span className="font-semibold" style={{color:data.passRate>=90?T.ok:T.warn}}>%{data.passRate}</span></div>
+      <div className="flex justify-between text-[10px] px-3 py-1"><span style={{color:T.muted}}>Bekleyen</span><span className="font-semibold" style={{color:data.pending>0?T.warn:T.ok}}>{data.pending} lot</span></div>
+      <div className="flex justify-between text-[10px] px-3 py-1"><span style={{color:T.muted}}>Onay</span><span className="font-semibold" style={{color:T.ok}}>{data.approved}</span></div>
+      <div className="flex justify-between text-[10px] px-3 py-1"><span style={{color:T.muted}}>Red</span><span className="font-semibold" style={{color:data.rejected>0?T.alert:T.text}}>{data.rejected}</span></div>
+      <div className="flex justify-between text-[10px] px-3 py-1"><span style={{color:T.muted}}>Geçiş</span><span className="font-semibold" style={{color:data.passRate>=90?T.ok:T.warn}}>%{data.passRate}</span></div>
     </Widget>
   );
 }
 
 // ═══ CENTRUM SHELL ═══
 interface CentrumShellProps {
-  title: string; subtitle?: string; roleLabel?: string; roleColor?: string; roleBg?: string;
+  title: string; subtitle?: string; roleLabel?: string;
+  /** Geriye dönük uyum için: doğrudan renk stringi */
+  roleColor?: string; roleBg?: string;
+  /** Tercih edilen: semantic varyant */
+  roleVariant?: RoleVariant;
   kpis?: { label: string; value: string|number; variant: KpiVariant; sub?: string }[];
   actions?: ReactNode; tabs?: { label: string }[];
   activeTab?: number; onTabChange?: (i: number) => void;
   children: ReactNode; rightPanel?: ReactNode; className?: string;
 }
-export function CentrumShell({ title, subtitle, roleLabel, roleColor, kpis, actions, tabs, activeTab=0, onTabChange, children, rightPanel }: CentrumShellProps) {
+export function CentrumShell({ title, subtitle, roleLabel, roleColor, roleBg, roleVariant, kpis, actions, tabs, activeTab=0, onTabChange, children, rightPanel }: CentrumShellProps) {
   const T = useT();
   const isLight = T === LIGHT;
+
+  const roleClasses = roleVariant ? ROLE_VARIANT_CLASSES[roleVariant].badge : null;
+
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{background:T.bg,color:T.text}}>
       <div className="flex items-center gap-2 px-4 py-2 shrink-0"
@@ -342,8 +365,12 @@ export function CentrumShell({ title, subtitle, roleLabel, roleColor, kpis, acti
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="text-[14px] font-semibold" style={{color:T.titleBarText}}>{title}</span>
-            {roleLabel&&<span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-              style={isLight?{background:"rgba(255,255,255,0.15)",color:"white"}:{background:`${roleColor}18`,color:roleColor}}>{roleLabel}</span>}
+            {roleLabel&&(
+              roleClasses
+                ? <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${roleClasses}`}>{roleLabel}</span>
+                : <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                    style={isLight?{background:"rgba(255,255,255,0.15)",color:"white"}:{background:`${roleColor}18`,color:roleColor}}>{roleLabel}</span>
+            )}
           </div>
           {subtitle&&<p className="text-[10px]" style={{color:T.titleBarMuted}}>{subtitle}</p>}
         </div>
