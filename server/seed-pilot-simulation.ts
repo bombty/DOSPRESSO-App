@@ -246,6 +246,31 @@ async function seedTroubleshootSteps() {
   console.log(`  ✅ ${count} troubleshoot adımı oluşturuldu`);
 }
 
+async function seedKnowledgeBase() {
+  console.log("\n📚 Bilgi bankası makaleleri oluşturuluyor...");
+  let count = 0;
+  const articles = [
+    { title: "Espresso Makinesi Kullanım Kılavuzu", type: "espresso", category: "maintenance", content: "Thermoplan espresso makinesi günlük kullanım ve bakım kılavuzu.\n\n## Günlük Bakım\n- Portafilter her kullanım sonrası temizlenir\n- Grup başlıkları her vardiya sonunda backflush yapılır\n- Su tankı günlük kontrol edilir\n- Damla tepsisi boşaltılır\n\n## Haftalık Bakım\n- Süt sistemi kimyasal temizlik\n- Değirmen kalibrasyonu kontrol\n- Basınç göstergesi kontrolü (8-10 bar normal)\n\n## Arıza Durumunda\n1. Makineyi kapatın, 30 sn bekleyin\n2. Su tankını kontrol edin\n3. Basınç göstergesini okuyun\n4. Filtre sepetini temizleyin\n5. Sorun devam ederse arıza kaydı oluşturun" },
+    { title: "Krema Makinesi Bakım Prosedürü", type: "krema", category: "maintenance", content: "Krema makinesi bakım ve temizlik prosedürü.\n\n## Günlük\n- Hazne her vardiya sonunda boşaltılıp yıkanır\n- Çıkış ağzı sıcak suyla temizlenir\n\n## Arıza Belirtileri\n- Krema akışı yavaşladı → çıkış ağzı tıkanmış olabilir\n- Motor sesi değişti → teknik servis gerekli\n- Sıcaklık düşük → termostat kontrolü" },
+    { title: "Blender Güvenli Kullanım", type: "blender", category: "procedure", content: "Blendtech blender güvenli kullanım kuralları.\n\n## Güvenlik\n- Kapak takılmadan çalıştırılmaz\n- Sıcak sıvılarla dikkatli olun (buhar)\n- Bıçak grubunu elle tutmayın\n\n## Bakım\n- Her kullanım sonrası durulayın\n- Haftada 1 derin temizlik\n- Bıçak aşınması 6 ayda kontrol" },
+    { title: "Buz Makinesi Bakım ve Hijyen", type: "ice", category: "maintenance", content: "Buz makinesi bakım prosedürü.\n\n## Haftalık\n- Buz haznesini boşaltıp dezenfekte edin\n- Su filtresi kontrolü\n\n## Aylık\n- İç yüzey kireç temizliği\n- Kompresör fanı temizliği\n\n## Arıza\n- Buz üretimi durdu → su bağlantısı kontrol\n- Buz kalitesi düştü → filtre değişimi" },
+    { title: "Kasa Sistemi Sorun Giderme", type: "cash", category: "procedure", content: "POS terminal sorun giderme adımları.\n\n## Bağlantı Sorunu\n1. WiFi/Ethernet kontrol\n2. Cihazı yeniden başlat\n3. Modem/router kontrol\n\n## Yazıcı Sorunu\n- Kağıt kontrolü\n- Kağıt sıkışması temizliği\n\n## Ödeme Reddedildi\n- Kart okuyucu temizliği\n- Banka bağlantısı kontrol" },
+    { title: "Çay Makinesi Günlük Bakım", type: "tea", category: "maintenance", content: "Çay makinesi günlük bakım.\n\n- Her vardiya sonunda iç hazne yıkanır\n- Musluk ve çıkış noktaları temizlenir\n- Kireç önleyici aylık uygulanır" },
+  ];
+
+  for (const a of articles) {
+    try {
+      await db.execute(sql`
+        INSERT INTO knowledge_base_articles (title, category, content, equipment_type_id, is_published, tags, created_at)
+        VALUES (${a.title}, ${a.category}, ${a.content}, ${a.type}, true, ${`{${a.type},bakım,kılavuz}`}, NOW())
+        ON CONFLICT DO NOTHING
+      `);
+      count++;
+    } catch (e) { /* skip */ }
+  }
+  console.log(`  ✅ ${count} bilgi bankası makalesi oluşturuldu`);
+}
+
 async function resetTestData() {
   console.log("🗑️  Test verilerini sıfırlıyorum...");
   
@@ -261,6 +286,7 @@ async function resetTestData() {
   await db.execute(sql`DELETE FROM agent_pending_actions WHERE title LIKE '%[TEST]%'`);
   await db.execute(sql`DELETE FROM equipment WHERE serial_number LIKE 'SN-%'`);
   await db.execute(sql`DELETE FROM equipment_troubleshooting_steps WHERE created_at > NOW() - INTERVAL '30 days'`);
+  await db.execute(sql`DELETE FROM knowledge_base_articles WHERE equipment_type_id IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'`);
   
   console.log("✅ Test verileri silindi.");
 }
@@ -593,6 +619,7 @@ async function main() {
   await seedDobodyActions(branches);
   await seedEquipmentData(branches);
   await seedTroubleshootSteps();
+  await seedKnowledgeBase();
   
   console.log("\n═══════════════════════════════════════════");
   console.log("  ✅ Pilot simülasyon verisi tamamlandı!");
