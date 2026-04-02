@@ -356,7 +356,7 @@ function Router() {
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
-      <Route path="/fabrika/dashboard" component={FabrikaDashboardRedirect} />
+      <Route path="/fabrika/dashboard">{() => <FabrikaOnly><FabrikaDashboardRedirect /></FabrikaOnly>}</Route>
       <Route path="/fabrika/kiosk">{() => <FabrikaKiosk />}</Route>
       <Route path="/hq/kiosk">{() => <HqKiosk />}</Route>
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
@@ -442,20 +442,20 @@ function Router() {
           <Route path="/akademi-advanced-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyAdvancedAnalytics /></ModuleGuard>}</Route>
           <Route path="/akademi-branch-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyBranchAnalytics /></ModuleGuard>}</Route>
           <Route path="/akademi-cohort-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyCohortAnalytics /></ModuleGuard>}</Route>
-          <Route path="/receteler" component={Receteler} />
-          <Route path="/recete/:id" component={ReceteDetay} />
+          <Route path="/receteler">{() => <FabrikaOnly><Receteler /></FabrikaOnly>}</Route>
+          <Route path="/recete/:id">{() => <FabrikaOnly><ReceteDetay /></FabrikaOnly>}</Route>
           <Route path="/egitim/:id" component={ModuleDetail} />
-          <Route path="/egitim-ata" component={TrainingAssign} />
+          <Route path="/egitim-ata">{() => <ProtectedRoute allowedRoles={["trainer","admin","ceo","coach"]}><TrainingAssign /></ProtectedRoute>}</Route>
           <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi'; return null; }}</Route>
           <Route path="/bildirimler" component={Notifications} />
           <Route path="/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/icerik-studyosu">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/mesajlar">{() => { if (typeof window !== 'undefined') window.location.href = '/bildirimler?tab=mesajlar'; return null; }}</Route>
-          <Route path="/proje-gorev/:id" component={ProjeGorevDetay} />
-          <Route path="/projeler/:id" component={ProjeDetay} />
-          <Route path="/projeler" component={Projeler} />
-          <Route path="/yeni-sube-projeler" component={YeniSubeProjeler} />
-          <Route path="/yeni-sube-detay/:id" component={YeniSubeDetay} />
+          <Route path="/proje-gorev/:id">{() => <ExecutiveOnly><ProjeGorevDetay /></ExecutiveOnly>}</Route>
+          <Route path="/projeler/:id">{() => <ExecutiveOnly><ProjeDetay /></ExecutiveOnly>}</Route>
+          <Route path="/projeler">{() => <ExecutiveOnly><Projeler /></ExecutiveOnly>}</Route>
+          <Route path="/yeni-sube-projeler">{() => <ExecutiveOnly><YeniSubeProjeler /></ExecutiveOnly>}</Route>
+          <Route path="/yeni-sube-detay/:id">{() => <ExecutiveOnly><YeniSubeDetay /></ExecutiveOnly>}</Route>
           <Route path="/ik/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","muhasebe","satinalma","mudur","supervisor"]}><IK /></ProtectedRoute>}</Route>
           <Route path="/izin-talepleri" component={LeaveRequests} />
           <Route path="/mesai-talepleri" component={OvertimeRequests} />
