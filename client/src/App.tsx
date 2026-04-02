@@ -373,7 +373,7 @@ function Router() {
         <>
           <Route path="/" component={HomeScreen} />
           <Route path="/control" component={ControlDashboard} />
-          <Route path="/control-legacy" component={Dashboard} />
+          <Route path="/control-legacy">{() => <ExecutiveOnly><Dashboard /></ExecutiveOnly>}</Route>
           <Route path="/merkez-dashboard">{() => <ExecutiveOnly><MerkezDashboard /></ExecutiveOnly>}</Route>
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc">{() => <ExecutiveOnly><SubeNFCDetay /></ExecutiveOnly>}</Route>
@@ -400,7 +400,7 @@ function Router() {
           <Route path="/vardiyalarim">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalarim /></ModuleGuard>}</Route>
           <Route path="/vardiya-checkin">{() => <ModuleGuard moduleKey="vardiya"><VardiyaCheckin /></ModuleGuard>}</Route>
           <Route path="/nfc-giris" component={NFCGiris} />
-          <Route path="/personel-musaitlik" component={PersonelMusaitlik} />
+          <Route path="/personel-musaitlik">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","mudur","supervisor"]}><PersonelMusaitlik /></ProtectedRoute>}</Route>
           <Route path="/devam-takibi">{() => <ModuleGuard moduleKey="pdks"><Attendance /></ModuleGuard>}</Route>
           <Route path="/sube-vardiya-takibi" component={SubeDashboard} />
           <Route path="/gorevler">{() => <ModuleGuard moduleKey="gorevler"><Tasks /></ModuleGuard>}</Route>
@@ -535,7 +535,7 @@ function Router() {
           <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
           <Route path="/ajanda">{() => <ModuleGuard moduleKey="ajanda"><AjandaPage /></ModuleGuard>}</Route>
-          <Route path="/admin/*?" component={AdminMegaModule} />
+          <Route path="/admin/*?">{() => <AdminOnly><AdminMegaModule /></AdminOnly>}</Route>
           <Route path="/ceo-command-center">{() => <HQOnly><CEOCommandCenter /></HQOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
@@ -543,17 +543,17 @@ function Router() {
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
-          <Route path="/raporlar/sube-saglik" component={SubeSaglikSkoru} />
-          <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
+          <Route path="/raporlar/sube-saglik">{() => <ExecutiveOnly><SubeSaglikSkoru /></ExecutiveOnly>}</Route>
+          <Route path="/sube-saglik-skoru">{() => <ExecutiveOnly><SubeSaglikSkoru /></ExecutiveOnly>}</Route>
           <Route path="/sube-karsilastirma">{() => <HQOnly><SubeKarsilastirma /></HQOnly>}</Route>
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
           <Route path="/sube/siparis-stok">{() => <ModuleGuard moduleKey="stok"><SubeSiparisStok /></ModuleGuard>}</Route>
-          <Route path="/agent-merkezi" component={AgentMerkezi} />
+          <Route path="/agent-merkezi">{() => <ExecutiveOnly><AgentMerkezi /></ExecutiveOnly>}</Route>
           <Route path="/benim-gunum">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/personel-centrum"); }, []); return null; }}</Route>
           <Route path="/sube-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/sube-centrum"); }, []); return null; }}</Route>
           <Route path="/hq-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/ceo-command-center"); }, []); return null; }}</Route>
-          <Route path="/kocluk-paneli" component={KoclukPaneli} />
-          <Route path="/franchise-ozet" component={FranchiseOzet} />
+          <Route path="/kocluk-paneli">{() => <ProtectedRoute allowedRoles={["coach","admin","ceo"]}><KoclukPaneli /></ProtectedRoute>}</Route>
+          <Route path="/franchise-ozet">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","yatirimci_hq","yatirimci_branch","mudur"]}><FranchiseOzet /></ProtectedRoute>}</Route>
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>
           <Route path="/maas" component={MaasPage} />
