@@ -218,6 +218,11 @@ export default function VardiyaPlanlama() {
     staleTime: 1800000,
   });
 
+  const { data: tasks } = useQuery({
+    queryKey: ['/api/tasks'],
+    staleTime: 60000,
+  });
+
   // Calculate weekly hours for each employee from existing shifts (excluding 1-hour breaks)
   const getEmployeeWeeklyHours = useCallback((employeeId: string) => {
     if (!Array.isArray(shifts)) return 0;
