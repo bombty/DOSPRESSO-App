@@ -409,7 +409,7 @@ export default function EquipmentDetail() {
     resolver: zodResolver(faultFormSchema),
     defaultValues: {
       equipmentId: equipmentId,
-      equipmentName: equipment?.equipmentType || "",
+      equipmentName: (EQUIPMENT_METADATA as any)[equipment?.equipmentType]?.nameTr || equipment?.equipmentType || "",
       description: "",
       status: "acik",
       priority: "orta",
@@ -422,7 +422,7 @@ export default function EquipmentDetail() {
     if (equipment && user) {
       faultForm.reset({
         equipmentId: parseInt(id!),
-        equipmentName: equipment.equipmentType || "",
+        equipmentName: (EQUIPMENT_METADATA as any)[equipment.equipmentType]?.nameTr || equipment.equipmentType || "",
         description: "",
         status: "acik",
         priority: "orta",

@@ -493,10 +493,10 @@ function Router() {
           <Route path="/marketing-centrum">{() => <ProtectedRoute allowedRoles={["marketing","admin","ceo","cgo"]}><MarketingCentrum /></ProtectedRoute>}</Route>
           <Route path="/destek-centrum">{() => <ProtectedRoute allowedRoles={["destek","admin","ceo","cgo"]}><DestekCentrum /></ProtectedRoute>}</Route>
           <Route path="/yatirimci-hq-centrum">{() => <ProtectedRoute allowedRoles={["yatirimci_hq","admin","ceo"]}><YatirimciHQCentrum /></ProtectedRoute>}</Route>
-          <Route path="/hq-personel-durum" component={HqStaffDashboard} />
-          <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
-          <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />
-          <Route path="/muhasebe-raporlama" component={MuhasebeRaporlama} />
+          <Route path="/hq-personel-durum">{() => <ExecutiveOnly><HqStaffDashboard /></ExecutiveOnly>}</Route>
+          <Route path="/hq-vardiya-goruntuleme">{() => <ExecutiveOnly><HqVardiyaGoruntuleme /></ExecutiveOnly>}</Route>
+          <Route path="/hq-personel-istatistikleri">{() => <ExecutiveOnly><HQPersonelIstatistikleri /></ExecutiveOnly>}</Route>
+          <Route path="/muhasebe-raporlama">{() => <ExecutiveOnly><MuhasebeRaporlama /></ExecutiveOnly>}</Route>
           <Route path="/kalite-denetimi">{() => <ModuleGuard moduleKey="denetim"><KaliteDenetimi /></ModuleGuard>}</Route>
           <Route path="/coach-sube-denetim">{() => <ModuleGuard moduleKey="denetim"><CoachSubeDenetim /></ModuleGuard>}</Route>
           <Route path="/denetim-sablonlari">{() => <ModuleGuard moduleKey="denetim"><DenetimSablonlari /></ModuleGuard>}</Route>
@@ -507,25 +507,25 @@ function Router() {
           <Route path="/misafir-memnuniyeti/:tab?">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
           <Route path="/misafir-memnuniyeti">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
           <Route path="/sikayetler">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
-          <Route path="/hq-destek" component={HQSupport} />
+          <Route path="/hq-destek">{() => <ExecutiveOnly><HQSupport /></ExecutiveOnly>}</Route>
           <Route path="/kampanya-yonetimi">{() => { window.location.replace("/crm/kampanyalar"); return null; }}</Route>
           <Route path="/franchise-acilis">{() => <ModuleGuard moduleKey="franchise"><FranchiseAcilis /></ModuleGuard>}</Route>
           <Route path="/franchise-yatirimcilar">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimcilar /></ModuleGuard>}</Route>
           <Route path="/franchise-yatirimcilar/:id">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimciDetay /></ModuleGuard>}</Route>
-          <Route path="/yonetim/icerik" component={AdminContentManagement} />
-          <Route path="/yonetim/ayarlar" component={Settings} />
-          <Route path="/yonetim/kullanicilar" component={UserCRM} />
-          <Route path="/yonetim/degerlendirme" component={YoneticiDegerlendirme} />
-          <Route path="/yonetim/ai-maliyetler" component={AICostDashboard} />
-          <Route path="/yonetim/checklistler" component={AdminChecklistManagement} />
-          <Route path="/yonetim/checklist-takip" component={ChecklistTrackingPage} />
-          <Route path="/yonetim/ekipman-servis" component={EquipmentManagement} />
-          <Route path="/yonetim/servis-talepleri" component={EquipmentManagement} />
-          <Route path="/yonetim/ekipman-yonetimi" component={EquipmentManagement} />
-                    <Route path="/yonetim/akademi" component={AdminAcademy} />
+          <Route path="/yonetim/icerik">{() => <AdminOnly><AdminContentManagement /></AdminOnly>}</Route>
+          <Route path="/yonetim/ayarlar">{() => <AdminOnly><Settings /></AdminOnly>}</Route>
+          <Route path="/yonetim/kullanicilar">{() => <AdminOnly><UserCRM /></AdminOnly>}</Route>
+          <Route path="/yonetim/degerlendirme">{() => <ExecutiveOnly><YoneticiDegerlendirme /></ExecutiveOnly>}</Route>
+          <Route path="/yonetim/ai-maliyetler">{() => <AdminOnly><AICostDashboard /></AdminOnly>}</Route>
+          <Route path="/yonetim/checklistler">{() => <ExecutiveOnly><AdminChecklistManagement /></ExecutiveOnly>}</Route>
+          <Route path="/yonetim/checklist-takip">{() => <ExecutiveOnly><ChecklistTrackingPage /></ExecutiveOnly>}</Route>
+          <Route path="/yonetim/ekipman-servis">{() => <ExecutiveOnly><EquipmentManagement /></ExecutiveOnly>}</Route>
+          <Route path="/yonetim/servis-talepleri">{() => <ExecutiveOnly><EquipmentManagement /></ExecutiveOnly>}</Route>
+          <Route path="/yonetim/ekipman-yonetimi">{() => <ExecutiveOnly><EquipmentManagement /></ExecutiveOnly>}</Route>
+                    <Route path="/yonetim/akademi">{() => <AdminOnly><AdminAcademy /></AdminOnly>}</Route>
           <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
           <Route path="/kayip-esya" component={KayipEsya} />
-          <Route path="/kayip-esya-hq" component={KayipEsyaHQ} />
+          <Route path="/kayip-esya-hq">{() => <ExecutiveOnly><KayipEsyaHQ /></ExecutiveOnly>}</Route>
           <Route path="/destek" component={Destek} />
           <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
           <Route path="/waste/:tab?" component={WasteMegaModule} />
@@ -541,7 +541,7 @@ function Router() {
           <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
-          <Route path="/satinalma/:tab?" component={SatinalmaMega} />
+          <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik" component={SubeSaglikSkoru} />
           <Route path="/sube-saglik-skoru" component={SubeSaglikSkoru} />
