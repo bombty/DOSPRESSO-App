@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown, Clock, Shield, ExternalLink } from "lucide-react";
+import { ArrowLeft, Settings, Calendar, Wrench, AlertTriangle, MessageSquare, DollarSign, User, QrCode, ClipboardList, Edit, FileText, Sparkles, Send, ChevronDown, Clock, Shield, ExternalLink, Mail } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -310,6 +310,39 @@ export default function EquipmentDetail() {
   const [selectedServiceRequest, setSelectedServiceRequest] = useState<EquipmentServiceRequest | null>(null);
   const [timelineDialogOpen, setTimelineDialogOpen] = useState(false);
   const [selectedTimeline, setSelectedTimeline] = useState<EquipmentServiceRequest | null>(null);
+
+  // Teknik servis mail şablonu oluştur
+  const generateServiceEmail = (fault?: EquipmentFault) => {
+    const eqName = (EQUIPMENT_METADATA as any)[equipment?.equipmentType]?.nameTr || equipment?.equipmentType || "Ekipman";
+    const branch = equipment?.branchId ? `Şube #${equipment.branchId}` : "Bilinmiyor";
+    const subject = encodeURIComponent(`[DOSPRESSO] Arıza Bildirimi — ${eqName} (${branch})`);
+    const body = encodeURIComponent(
+`Sayın Teknik Servis,
+
+Aşağıdaki cihazımızda arıza tespit edilmiştir:
+
+CİHAZ BİLGİLERİ:
+- Cihaz: ${eqName}
+- Model: ${equipment?.modelNo || "—"}
+- Seri No: ${equipment?.serialNumber || "—"}
+- Şube: ${branch}
+- Garanti: ${equipment?.warrantyEndDate ? new Date(equipment.warrantyEndDate).toLocaleDateString('tr-TR') : "Bilgi yok"}
+- Son Bakım: ${equipment?.lastMaintenanceDate ? new Date(equipment.lastMaintenanceDate).toLocaleDateString('tr-TR') : "Kayıt yok"}
+
+ARIZA DETAYI:
+${fault ? `- Açıklama: ${fault.description}
+- Öncelik: ${fault.priority}
+- Tarih: ${fault.createdAt ? new Date(fault.createdAt).toLocaleDateString('tr-TR') : "—"}` : "Detay için ekteki arıza formunu inceleyiniz."}
+
+Lütfen en kısa sürede geri dönüş yapınız.
+
+Saygılarımızla,
+DOSPRESSO
+${branch}`
+    );
+    const serviceEmail = equipment?.serviceContactEmail || "";
+    return `mailto:${serviceEmail}?subject=${subject}&body=${body}`;
+  };
   const [isFaultDialogOpen, setIsFaultDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isTroubleshootingEditOpen, setIsTroubleshootingEditOpen] = useState(false);
@@ -857,6 +890,13 @@ export default function EquipmentDetail() {
           <Badge variant="outline" data-testid="badge-equipment-type">
             {equipment.equipmentType}
           </Badge>
+          {equipment.serviceContactEmail && (
+            <Button size="sm" variant="outline" asChild>
+              <a href={generateServiceEmail(equipment.faults?.find((f: any) => f.currentStage !== 'kapatildi'))} target="_blank" rel="noopener">
+                <Mail className="h-4 w-4 mr-1" />Mail
+              </a>
+            </Button>
+          )}
         </div>
       </div>
 
