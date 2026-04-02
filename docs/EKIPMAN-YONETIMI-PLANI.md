@@ -1,16 +1,89 @@
 # DOSPRESSO — Ekipman Yönetimi (Facility Management) Planı
-**Tarih:** 2 Nisan 2026
+**Tarih:** 2 Nisan 2026 | **v2 — Mevcut altyapı keşfi sonrası**
 **Temel İlke:** Şube ekipmanları ≠ Fabrika üretim ekipmanları
 
 ---
 
-## MEVCUT SORUN
+## MEVCUT ALTYAPI (zaten yapılmış — %80)
 
-Arıza/Ekipman sistemi Fabrika modülünün içinde. Bu yanlış çünkü:
-- Şube espresso makinesi ≠ Fabrika kavurma makinesi
-- Supervisor arıza bildirmek istediğinde Fabrika dashboard'ı görüyor
-- HQ (CGO) tüm şubelerin ekipmanlarını tek yerden yönetemiyor
-- Teknik servis takibi yok
+### Tablolar (7 adet)
+```
+✅ equipment — envanter (branch, type, serial, QR, garanti, HQ/şube sorumlu)
+✅ equipment_faults — arıza (AI analiz, multi-stage, fotoğraf)
+✅ equipment_troubleshooting_steps — troubleshoot adımları (tip bazlı, sıralı)
+✅ equipment_troubleshooting_completion — adım tamamlama takibi
+✅ equipment_service_requests — servis (maliyet, firma, timeline)
+✅ equipment_maintenance_logs — bakım (periyodik, maliyet, planlama)
+✅ equipment_catalog — katalog (kullanım kılavuzu, kalibrasyon)
+```
+
+### API Endpoint'ler (20+)
+```
+✅ CRUD: equipment, faults, service-requests, catalog
+✅ QR bulk generate
+✅ Maintenance CRUD
+✅ Service request status + timeline
+✅ Comments
+```
+
+### Frontend Sayfaları (10 sayfa, ~9,700 satır)
+```
+✅ ariza-yeni.tsx (659L) — troubleshoot + QR akışı
+✅ ariza-detay.tsx (1,449L) — detay + stage tracking
+✅ ariza.tsx (460L) — arıza listesi
+✅ equipment-detail.tsx (2,619L) — ekipman detay + servis
+✅ equipment.tsx (1,190L) — ekipman listesi
+✅ ekipman-mega.tsx (179L) — mega modül container
+✅ ekipman-katalog.tsx (838L) — katalog yönetimi
+✅ ekipman-analitics.tsx (325L) — analitik
+✅ yonetim/ekipman-servis.tsx (981L) — servis yönetimi
+✅ yonetim/ekipman-yonetimi.tsx (1,047L) — ekipman yönetimi
+```
+
+## GERÇEK SORUNLAR (navigasyon + bağlantı + veri)
+
+### 1. Sidebar Navigasyonu (DÜZELTİLDİ ✅)
+`/ariza` ve `/ekipman` → FABRIKA_MENU sidebar gösteriyordu.
+Ayrı EKIPMAN_MENU oluşturuldu.
+
+### 2. Dashboard Bağlantıları (EKSİK)
+Şube dashboard'larında ekipman/arıza linklerinin kontrolü:
+- Coach arıza widget → /ariza ✅
+- Supervisor ekipman widget → /ekipman ✅
+- Müdür → ekipman link EKSİK
+- Barista → arıza bildir kısayol EKSİK
+
+### 3. Seed Data (EKSİK)
+- equipment tablosu boş — şubelere ekipman eklenmeli
+- troubleshooting_steps tablosu boş — adımlar tanımlanmalı
+- equipment_catalog boş — katalog oluşturulmalı
+
+### 4. Ana Sayfa Kartı Bağlantısı
+`EKIPMAN_ARIZA` modül kartı supervisor ve müdür home screen'inde var
+ama yönlendirme URL doğru mu kontrol edilmeli.
+
+## YAPILMASI GEREKEN İŞLER
+
+### Sprint EQ-1: Veri + Bağlantı (2s)
+- Seed: pilot şubeler için ekipman envanteri (espresso, değirmen, buzdolabı, POS, ...)
+- Seed: troubleshoot adımları (espresso makinesi, değirmen, buzdolabı)
+- Dashboard link kontrolü + düzeltme
+
+### Sprint EQ-2: Ekipman-Fabrika Tam Ayrımı (2s)
+- Fabrika modülünde kendi ekipman listesi (fabrika_equipment view)
+- Şube modülünde kendi ekipman listesi (branch scoped)
+- HQ'da tüm şubelerin ekipman görünümü
+
+### Sprint EQ-3: QR Tarama Akışı (1s)
+- QR kod → ekipman kartı → arıza bildir butonu
+- Kiosk'tan QR okutma bağlantısı
+
+### Sprint EQ-4: Dobody Troubleshoot (2s)
+- Troubleshoot adımları tamamlanmadan arıza formu açılmamalı (UI kontrol)
+- AI destekli troubleshoot adım oluşturma (HQ admin)
+- Çözülmezse: teknik servis bilgileri + mail şablonu
+
+TOPLAM: ~7 saat (önceki tahminden ~6s düşüş — altyapı zaten var)
 
 ## ÖNERİLEN MİMARİ
 
