@@ -307,17 +307,72 @@ const SISTEM_ATOLYESI: ModuleCardConfig = {
   order: 50,
 };
 
+const DENETIM: ModuleCardConfig = {
+  id: "denetim",
+  title: "Denetim",
+  subtitle: "Şube denetim & audit",
+  icon: CheckSquare,
+  iconBg: "#f97316",
+  iconColor: "#ffffff",
+  path: "/denetimler",
+  order: 15,
+};
+
+const RECETELER: ModuleCardConfig = {
+  id: "receteler",
+  title: "Reçeteler",
+  subtitle: "Ürün reçete kartları",
+  icon: BookOpen,
+  iconBg: "#ef4444",
+  iconColor: "#ffffff",
+  path: "/receteler",
+  order: 16,
+};
+
+const SUBE_SAGLIK: ModuleCardConfig = {
+  id: "sube-saglik",
+  title: "Şube Sağlık",
+  subtitle: "Şube skor & sıralama",
+  icon: BarChart2,
+  iconBg: "#10b981",
+  iconColor: "#ffffff",
+  path: "/sube-saglik-skoru",
+  order: 8,
+};
+
+const CHECKLISTLER: ModuleCardConfig = {
+  id: "checklistler",
+  title: "Checklistler",
+  subtitle: "Günlük kontrol listeleri",
+  icon: CheckSquare,
+  iconBg: "#8b5cf6",
+  iconColor: "#ffffff",
+  path: "/checklistler",
+  order: 12,
+};
+
+const GOREVLERIM: ModuleCardConfig = {
+  id: "gorevlerim",
+  title: "Görevlerim",
+  subtitle: "Atanan görevler",
+  icon: CheckSquare,
+  iconBg: "#3b82f6",
+  iconColor: "#ffffff",
+  path: "/gorevler",
+  order: 3,
+};
+
 // ─── ROLE → CARDS MAPPING ───────────────────────────────────
 
 export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   // ── Executive ──
-  admin: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, GUVENLIK, KULLANICILAR, EKIPMAN_ARIZA, BORDRO_PDKS, SISTEM_ATOLYESI],
-  ceo: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, EKIPMAN_ARIZA, BORDRO_PDKS, SISTEM_ATOLYESI],
-  cgo: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, EKIPMAN_ARIZA, BORDRO_PDKS, SISTEM_ATOLYESI],
+  admin: [CONTROL, SUBELER, SUBE_SAGLIK, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, GUVENLIK, KULLANICILAR, EKIPMAN_ARIZA, BORDRO_PDKS, RECETELER, SISTEM_ATOLYESI],
+  ceo: [CONTROL, SUBELER, SUBE_SAGLIK, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, EKIPMAN_ARIZA, BORDRO_PDKS, SISTEM_ATOLYESI],
+  cgo: [CONTROL, SUBELER, SUBE_SAGLIK, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, EKIPMAN_ARIZA, BORDRO_PDKS, RECETELER, SISTEM_ATOLYESI],
 
   // ── Coach / Trainer ──
-  coach: [CONTROL, SUBELER, EGITIM, OPERASYON, MUSTERI, RAPORLAR, EKIPMAN_ARIZA, SISTEM_ATOLYESI],
-  trainer: [CONTROL, SUBELER, EGITIM, OPERASYON, RAPORLAR, AKADEMI, SISTEM_ATOLYESI],
+  coach: [CONTROL, SUBELER, SUBE_SAGLIK, EGITIM, OPERASYON, MUSTERI, RAPORLAR, EKIPMAN_ARIZA, DENETIM, SISTEM_ATOLYESI],
+  trainer: [CONTROL, SUBELER, EGITIM, OPERASYON, RAPORLAR, AKADEMI, DENETIM, SISTEM_ATOLYESI],
 
   // ── HQ Departments ──
   muhasebe_ik: [CONTROL, IK_PERSONEL, BORDRO_PDKS, RAPORLAR, FINANS],
@@ -330,18 +385,18 @@ export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   destek: [CONTROL, MUSTERI, OPERASYON, RAPORLAR],
 
   // ── Supervisor / Branch Manager ──
-  supervisor: [CONTROL, OPERASYON, PERSONEL_YONETIMI, EKIPMAN_ARIZA, STOK, EGITIM, VARDIYAM],
-  supervisor_buddy: [CONTROL, OPERASYON, PERSONEL_YONETIMI, EKIPMAN_ARIZA, STOK],
-  mudur: [CONTROL, OPERASYON, PERSONEL_YONETIMI, EKIPMAN_ARIZA, STOK, EGITIM, RAPORLAR],
+  supervisor: [CONTROL, OPERASYON, PERSONEL_YONETIMI, EKIPMAN_ARIZA, STOK, EGITIM, VARDIYAM, CHECKLISTLER],
+  supervisor_buddy: [CONTROL, OPERASYON, PERSONEL_YONETIMI, EKIPMAN_ARIZA, STOK, CHECKLISTLER],
+  mudur: [CONTROL, OPERASYON, PERSONEL_YONETIMI, EKIPMAN_ARIZA, STOK, EGITIM, RAPORLAR, CHECKLISTLER],
 
   // ── Staff ──
-  barista: [BENIM_GUNUM, AKADEMI, VARDIYAM, EKIPMAN_ARIZA, PROFIL],
-  bar_buddy: [BENIM_GUNUM, AKADEMI, VARDIYAM, EKIPMAN_ARIZA, PROFIL],
-  stajyer: [BENIM_GUNUM, AKADEMI, VARDIYAM, PROFIL],
+  barista: [BENIM_GUNUM, GOREVLERIM, AKADEMI, VARDIYAM, EKIPMAN_ARIZA, PROFIL],
+  bar_buddy: [BENIM_GUNUM, GOREVLERIM, AKADEMI, VARDIYAM, EKIPMAN_ARIZA, PROFIL],
+  stajyer: [BENIM_GUNUM, GOREVLERIM, AKADEMI, VARDIYAM, PROFIL],
 
   // ── Factory ──
-  fabrika_mudur: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR],
-  uretim_sefi: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR],
+  fabrika_mudur: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR, RECETELER],
+  uretim_sefi: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR, RECETELER],
   fabrika_sorumlu: [CONTROL, FABRIKA_MODUL, PROFIL],
   fabrika_operator: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
   fabrika_personel: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
