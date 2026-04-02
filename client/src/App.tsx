@@ -523,14 +523,14 @@ function Router() {
           <Route path="/yonetim/servis-talepleri">{() => <ExecutiveOnly><EquipmentManagement /></ExecutiveOnly>}</Route>
           <Route path="/yonetim/ekipman-yonetimi">{() => <ExecutiveOnly><EquipmentManagement /></ExecutiveOnly>}</Route>
                     <Route path="/yonetim/akademi">{() => <AdminOnly><AdminAcademy /></AdminOnly>}</Route>
-          <Route path="/muhasebe-geribildirimi" component={BranchFeedback} />
+          <Route path="/muhasebe-geribildirimi">{() => <ExecutiveOnly><BranchFeedback /></ExecutiveOnly>}</Route>
           <Route path="/kayip-esya" component={KayipEsya} />
           <Route path="/kayip-esya-hq">{() => <ExecutiveOnly><KayipEsyaHQ /></ExecutiveOnly>}</Route>
           <Route path="/destek" component={Destek} />
           <Route path="/operasyon/:tab?" component={OperasyonMegaModule} />
-          <Route path="/waste/:tab?" component={WasteMegaModule} />
+          <Route path="/waste/:tab?">{() => <FabrikaOnly><WasteMegaModule /></FabrikaOnly>}</Route>
           <Route path="/hub/:sectionId" component={HubPage} />
-          <Route path="/yeni-sube/:tab?" component={YeniSubeMegaModule} />
+          <Route path="/yeni-sube/:tab?">{() => <ExecutiveOnly><YeniSubeMegaModule /></ExecutiveOnly>}</Route>
           <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
           <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>

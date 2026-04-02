@@ -49,7 +49,7 @@ import {
   insertChecklistAssignmentSchema,
   type InsertAuditTemplateItem,
 } from "@shared/schema";
-import { eq, desc, sql, and, or, inArray, lte, gte, isNull, type SQL } from "drizzle-orm";
+import { eq, desc, sql, and, or, not, inArray, lte, gte, isNull, type SQL } from "drizzle-orm";
 import { compressChecklistPhotoBase64 } from "../photo-utils";
 import { verifyChecklistPhoto, analyzeFaultPhoto, diagnoseFault } from "../ai";
 import { onChecklistAssigned, onFaultReported } from "../event-task-generator";
@@ -57,7 +57,7 @@ import * as XLSX from "xlsx";
 import { z } from "zod";
 import { computeAuditScore, getCAPAPriority, shouldCreateCAPA, isValidCAPATransition, calculateSLADeadline, getSLAStatus } from "../audit-scoring";
 import { createAuditEntry, getAuditContext } from "../audit";
-import { handleApiError } from "./helpers";
+import { handleApiError, invalidateCache } from "./helpers";
 import { sendFeedbackThankYouEmail } from "../email";
 import { checkDataLock } from "../services/data-lock";
 
