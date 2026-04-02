@@ -10,8 +10,8 @@ export default function MarketingCentrum() {
   const [period, setPeriod] = useState<TimePeriod>("month");
 
   const { data: feedbackStats, isLoading } = useQuery<any>({
-    queryKey: ["/api/customer-feedback/stats", period],
-    queryFn: async () => { const r = await fetch(`/api/customer-feedback/stats?period=${period}`, { credentials: "include" }); return r.ok ? r.json() : null; },
+    queryKey: ["/api/customer-feedback/stats/summary", period],
+    queryFn: async () => { const r = await fetch(`/api/customer-feedback/stats/summary?period=${period}`, { credentials: "include" }); return r.ok ? r.json() : null; },
     refetchInterval: 120000,
   });
   const { data: healthData } = useQuery<any>({ queryKey: ["/api/agent/branch-health"] });

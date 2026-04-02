@@ -10,8 +10,8 @@ export default function DestekCentrum() {
   const [period, setPeriod] = useState<TimePeriod>("week");
 
   const { data: ticketStats, isLoading } = useQuery<any>({
-    queryKey: ["/api/iletisim/dashboard", period],
-    queryFn: async () => { const r = await fetch(`/api/iletisim/dashboard?period=${period}`, { credentials: "include" }); return r.ok ? r.json() : null; },
+    queryKey: ["/api/me/dashboard-data", period],
+    queryFn: async () => { const r = await fetch(`/api/me/dashboard-data?period=${period}`, { credentials: "include" }); return r.ok ? r.json() : null; },
     refetchInterval: 60000,
   });
   const { data: dobodyActions = [] } = useQuery<any[]>({
