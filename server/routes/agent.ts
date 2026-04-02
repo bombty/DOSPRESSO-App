@@ -1140,10 +1140,20 @@ router.get("/api/agent/compliance-overview", isAuthenticated, async (req, res) =
       ? Math.round(results.reduce((s, r) => s + r.scores.overall, 0) / results.length)
       : 0;
 
+    const avgShift = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.scores.shift, 0) / results.length) : 0;
+    const avgChecklist = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.scores.checklist, 0) / results.length) : 0;
+    const avgTraining = results.length > 0 ? Math.round(results.reduce((s, r) => s + r.scores.training, 0) / results.length) : 0;
+
     res.json({
       branches: sorted,
       summary: {
         avgScore,
+        shiftCompliance: avgShift,
+        checklistCompletion: avgChecklist,
+        trainingCompletion: avgTraining,
+        vardiya: avgShift,
+        checklist: avgChecklist,
+        egitim: avgTraining,
         critical: sorted.filter(r => r.status === "critical").length,
         warning: sorted.filter(r => r.status === "warning").length,
         healthy: sorted.filter(r => r.status === "healthy").length,
