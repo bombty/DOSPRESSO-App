@@ -2,7 +2,7 @@ import {
   Clock, Building2, Users, CheckSquare, Factory,
   MessageSquare, BarChart2, CreditCard, Settings,
   GraduationCap, Shield, Wrench, Sun, Package,
-  BookOpen, CalendarDays,
+  BookOpen, CalendarDays, Map,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROLE_CONTROL_PATH } from "@/lib/role-routes";
@@ -296,17 +296,28 @@ const PROFIL: ModuleCardConfig = {
   manifestModuleId: "m01-core",
 };
 
+const SISTEM_ATOLYESI: ModuleCardConfig = {
+  id: "sistem-atolyesi",
+  title: "Sistem Atölyesi",
+  subtitle: "Brainstorming & planlama",
+  icon: Map,
+  iconBg: "#6366f1",
+  iconColor: "#ffffff",
+  path: "/sistem-atolyesi",
+  order: 50,
+};
+
 // ─── ROLE → CARDS MAPPING ───────────────────────────────────
 
 export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   // ── Executive ──
-  admin: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, GUVENLIK, KULLANICILAR],
-  ceo: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, RAPORLAR, FINANS, YONETIM],
-  cgo: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, RAPORLAR, FINANS, YONETIM],
+  admin: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, EGITIM, RAPORLAR, FINANS, YONETIM, GUVENLIK, KULLANICILAR, SISTEM_ATOLYESI],
+  ceo: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, RAPORLAR, FINANS, YONETIM, SISTEM_ATOLYESI],
+  cgo: [CONTROL, SUBELER, IK_PERSONEL, OPERASYON, FABRIKA, MUSTERI, RAPORLAR, FINANS, YONETIM, SISTEM_ATOLYESI],
 
   // ── Coach / Trainer ──
-  coach: [CONTROL, SUBELER, EGITIM, OPERASYON, MUSTERI, RAPORLAR],
-  trainer: [CONTROL, SUBELER, EGITIM, OPERASYON, RAPORLAR],
+  coach: [CONTROL, SUBELER, EGITIM, OPERASYON, MUSTERI, RAPORLAR, SISTEM_ATOLYESI],
+  trainer: [CONTROL, SUBELER, EGITIM, OPERASYON, RAPORLAR, SISTEM_ATOLYESI],
 
   // ── HQ Departments ──
   muhasebe_ik: [CONTROL, IK_PERSONEL, BORDRO_PDKS, RAPORLAR, FINANS],
