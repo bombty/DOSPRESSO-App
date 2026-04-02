@@ -82,12 +82,12 @@ export const ROLE_CONTROL_PATH: Record<string, string> = {
 
   // Yatırımcı
   yatirimci_branch: '/yatirimci-centrum',
-  yatirimci_hq: '/yatirimci-centrum',
+  yatirimci_hq: '/yatirimci-hq-centrum',
 
   // Diğer HQ
-  marketing: '/hq-dashboard/marketing',
+  marketing: '/marketing-centrum',
   teknik: '/cgo-teknik-komuta',
-  destek: '/hq-dashboard/destek',
+  destek: '/destek-centrum',
 };
 
 export function getRoleHomePath(role: string | undefined, branchId?: number | null): string {

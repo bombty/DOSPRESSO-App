@@ -218,6 +218,9 @@ const SupervisorCentrum = lazyWithRetry(() => import("@/pages/supervisor-centrum
 const SupBuddyCentrum = lazyWithRetry(() => import("@/pages/supbuddy-centrum"));
 const PersonelCentrum = lazyWithRetry(() => import("@/pages/personel-centrum"));
 const YatirimciCentrum = lazyWithRetry(() => import("@/pages/yatirimci-centrum"));
+const MarketingCentrum = lazyWithRetry(() => import("@/pages/marketing-centrum"));
+const DestekCentrum = lazyWithRetry(() => import("@/pages/destek-centrum"));
+const YatirimciHQCentrum = lazyWithRetry(() => import("@/pages/yatirimci-hq-centrum"));
 
 const SubeSaglikSkoru = lazyWithRetry(() => import("@/pages/sube-saglik-skoru"));
 const HqVardiyaGoruntuleme = lazyWithRetry(() => import("@/pages/hq-vardiya-goruntuleme"));
@@ -487,6 +490,9 @@ function Router() {
           <Route path="/supbuddy-centrum" component={SupBuddyCentrum} />
           <Route path="/personel-centrum" component={PersonelCentrum} />
           <Route path="/yatirimci-centrum" component={YatirimciCentrum} />
+          <Route path="/marketing-centrum">{() => <ProtectedRoute allowedRoles={["marketing","admin","ceo","cgo"]}><MarketingCentrum /></ProtectedRoute>}</Route>
+          <Route path="/destek-centrum">{() => <ProtectedRoute allowedRoles={["destek","admin","ceo","cgo"]}><DestekCentrum /></ProtectedRoute>}</Route>
+          <Route path="/yatirimci-hq-centrum">{() => <ProtectedRoute allowedRoles={["yatirimci_hq","admin","ceo"]}><YatirimciHQCentrum /></ProtectedRoute>}</Route>
           <Route path="/hq-personel-durum" component={HqStaffDashboard} />
           <Route path="/hq-vardiya-goruntuleme" component={HqVardiyaGoruntuleme} />
           <Route path="/hq-personel-istatistikleri" component={HQPersonelIstatistikleri} />
