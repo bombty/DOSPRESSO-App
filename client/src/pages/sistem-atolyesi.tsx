@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Map, Users, GitBranch, FileText, Plus, Edit, Trash2, ChevronDown, ChevronRight, ArrowRight, Database, Shield, Layers } from "lucide-react";
+import { ROLE_MODULES, type ModuleCardConfig } from "@/components/home-screen/role-module-config";
+import { ROLE_CONTROL_PATH } from "@/lib/role-routes";
 
 // ═══ TYPES ═══
 interface SubModule { id: string; name: string; path: string; canDisable: boolean; }
@@ -115,9 +117,10 @@ function SiteHaritasi({ data }: { data: SystemMetadata }) {
   );
 }
 
-// ═══ TAB 2: ROL MATRİSİ (CANLI VERİ) ═══
+// ═══ TAB 2: ROL MATRİSİ + SİMÜLASYON ═══
 function RolMatrisi({ data }: { data: SystemMetadata }) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [simMode, setSimMode] = useState(false);
 
   const roleModuleMap = useMemo(() => {
     const map: Record<string, { module: string; view: boolean; create: boolean; edit: boolean; approve: boolean; scope: string; }[]> = {};
@@ -129,6 +132,11 @@ function RolMatrisi({ data }: { data: SystemMetadata }) {
     }
     return map;
   }, [data]);
+
+  const homeCards: ModuleCardConfig[] = selectedRole ? (ROLE_MODULES[selectedRole] || []) : [];
+  const dashboardPath = selectedRole ? (ROLE_CONTROL_PATH[selectedRole] || "/") : "/";
+  const userCount = selectedRole ? (data.roleCounts[selectedRole] || 0) : 0;
+  const permissions = selectedRole ? (roleModuleMap[selectedRole] || []).filter(m => m.view) : [];
 
   return (
     <div className="space-y-3">
@@ -146,7 +154,7 @@ function RolMatrisi({ data }: { data: SystemMetadata }) {
                       key={r}
                       variant={selectedRole === r ? "default" : "outline"}
                       className="cursor-pointer text-xs py-1"
-                      onClick={() => setSelectedRole(selectedRole === r ? null : r)}
+                      onClick={() => { setSelectedRole(selectedRole === r ? null : r); setSimMode(false); }}
                     >
                       {ROLE_LABELS[r] || r}
                       <span className="ml-1 text-[10px] opacity-60">{data.roleCounts[r] || 0}</span>
@@ -159,31 +167,86 @@ function RolMatrisi({ data }: { data: SystemMetadata }) {
         </div>
 
         {selectedRole && (
-          <Card className="md:w-80 shrink-0">
+          <Card className="md:w-96 shrink-0">
             <CardHeader className="pb-2 pt-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                {ROLE_LABELS[selectedRole] || selectedRole}
-                <Badge variant="secondary" className="text-[10px]">{data.roleCounts[selectedRole] || 0} kişi</Badge>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  {ROLE_LABELS[selectedRole] || selectedRole}
+                  <Badge variant="secondary" className="text-[10px]">{userCount} kişi</Badge>
+                </CardTitle>
+                <Button size="sm" variant={simMode ? "default" : "outline"} className="text-xs h-7"
+                  onClick={() => setSimMode(!simMode)}>
+                  {simMode ? "İzinlere Dön" : "🖥️ Simüle Et"}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-1.5 text-xs max-h-96 overflow-y-auto">
-              {(roleModuleMap[selectedRole] || []).filter(m => m.view).map((m, i) => (
-                <div key={i} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
-                  <span>{m.module}</span>
-                  <div className="flex gap-1">
-                    {m.view && <Badge variant="outline" className="text-[9px] px-1">Gör</Badge>}
-                    {m.create && <Badge className="text-[9px] px-1 bg-green-600">Oluştur</Badge>}
-                    {m.edit && <Badge className="text-[9px] px-1 bg-blue-600">Düzenle</Badge>}
-                    {m.approve && <Badge className="text-[9px] px-1 bg-purple-600">Onayla</Badge>}
+            <CardContent className="space-y-3 text-xs max-h-[500px] overflow-y-auto">
+              
+              {/* Dashboard bilgisi - her zaman göster */}
+              <div className="flex items-center gap-2 py-1.5 px-2 rounded bg-muted/50">
+                <span className="text-muted-foreground">Giriş Sayfası:</span>
+                <code className="text-[10px] bg-background px-1.5 py-0.5 rounded font-mono">{dashboardPath}</code>
+              </div>
+
+              {simMode ? (
+                /* ═══ SİMÜLASYON MODU ═══ */
+                <div className="space-y-3">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ana Sayfa Kartları ({homeCards.length})</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {homeCards.map(card => (
+                      <div key={card.id} className="flex items-center gap-1.5 p-1.5 rounded border bg-background text-[10px]">
+                        <div className="w-5 h-5 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: card.iconBg }}>
+                          <card.icon className="h-3 w-3" style={{ color: card.iconColor }} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{card.title}</div>
+                          <div className="text-muted-foreground truncate text-[9px]">{card.subtitle}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-3">Erişebildiği Modüller ({permissions.length})</div>
+                  <div className="space-y-0.5">
+                    {permissions.map((m, i) => (
+                      <div key={i} className="flex items-center justify-between py-0.5">
+                        <span>{m.module}</span>
+                        <div className="flex gap-0.5">
+                          {m.create && <span className="text-green-500 text-[9px]">+Oluştur</span>}
+                          {m.edit && <span className="text-blue-500 text-[9px]">✎Düzenle</span>}
+                          {m.approve && <span className="text-purple-500 text-[9px]">✓Onayla</span>}
+                          {!m.create && !m.edit && !m.approve && <span className="text-muted-foreground text-[9px]">Sadece gör</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-3">Kapsam</div>
+                  <div className="text-muted-foreground">
+                    {permissions[0]?.scope === "all_branches" && "✅ Tüm şubelerin verisini görür"}
+                    {permissions[0]?.scope === "own_branch" && "📍 Sadece kendi şubesinin verisini görür"}
+                    {permissions[0]?.scope === "own_data" && "👤 Sadece kendi verisini görür"}
+                    {permissions[0]?.scope === "managed_branches" && "🏢 Yönettiği şubelerin verisini görür"}
+                    {!permissions[0]?.scope && "—"}
                   </div>
                 </div>
-              ))}
-              {(roleModuleMap[selectedRole] || []).filter(m => m.view).length === 0 && (
-                <p className="text-muted-foreground py-2">Bu rol için izin tanımı yok</p>
+              ) : (
+                /* ═══ İZİN MODU ═══ */
+                <div className="space-y-1.5">
+                  {permissions.map((m, i) => (
+                    <div key={i} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                      <span>{m.module}</span>
+                      <div className="flex gap-1">
+                        {m.view && <Badge variant="outline" className="text-[9px] px-1">Gör</Badge>}
+                        {m.create && <Badge className="text-[9px] px-1 bg-green-600">Oluştur</Badge>}
+                        {m.edit && <Badge className="text-[9px] px-1 bg-blue-600">Düzenle</Badge>}
+                        {m.approve && <Badge className="text-[9px] px-1 bg-purple-600">Onayla</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                  {permissions.length === 0 && <p className="text-muted-foreground py-2">İzin tanımı yok</p>}
+                </div>
               )}
-              <div className="pt-2 text-[10px] text-muted-foreground">
-                Kapsam: {(roleModuleMap[selectedRole] || []).find(m => m.scope)?.scope || "—"}
-              </div>
             </CardContent>
           </Card>
         )}
