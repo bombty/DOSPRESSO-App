@@ -234,6 +234,7 @@ const BenimGunum = lazyWithRetry(() => import("@/pages/benim-gunum"));
 const SubeOzet = lazyWithRetry(() => import("@/pages/sube-ozet"));
 const HQOzet = lazyWithRetry(() => import("@/pages/hq-ozet"));
 const KoclukPaneli = lazyWithRetry(() => import("@/pages/kocluk-paneli"));
+const SistemAtolyesi = lazyWithRetry(() => import("@/pages/sistem-atolyesi"));
 const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazyWithRetry(() => import("@/pages/pdks"));
 const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"));
@@ -553,6 +554,7 @@ function Router() {
           <Route path="/sube-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/sube-centrum"); }, []); return null; }}</Route>
           <Route path="/hq-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kocluk-paneli">{() => <ProtectedRoute allowedRoles={["coach","admin","ceo"]}><KoclukPaneli /></ProtectedRoute>}</Route>
+          <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
           <Route path="/franchise-ozet">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","yatirimci_hq","yatirimci_branch","mudur"]}><FranchiseOzet /></ProtectedRoute>}</Route>
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>

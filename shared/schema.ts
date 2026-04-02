@@ -16,3 +16,4 @@ export * from './schema/schema-15-ajanda';
 export * from './schema/schema-16-financial';
 export * from './schema/schema-17-snapshots';
 export * from './schema/schema-18-production-planning';
+export * from './schema/schema-19-workshop';
