@@ -16,7 +16,8 @@ import { Map, Users, GitBranch, FileText, Plus, Edit, Trash2, ChevronDown, Chevr
 interface SubModule { id: string; name: string; path: string; canDisable: boolean; }
 interface RoleAccess { role: string; view: boolean; create: boolean; edit: boolean; delete: boolean; approve: boolean; scope: string; }
 interface ModuleData { id: string; name: string; flagKey: string; subModuleCount: number; subModules: SubModule[]; roles: RoleAccess[]; }
-interface SystemHealth { orphanPages: string[]; unguardedRoutes: string[]; totalPages: number; totalRoutes: number; guardedRoutes: number; totalEndpoints: number; usedEndpoints: number; }
+interface OrphanPage { file: string; lines: number; apis: number; status: "link"|"duplicate"|"merge"|"deprecated"|"delete"; recommendation: string; roles: string[]; category: string; }
+interface SystemHealth { orphanPages: OrphanPage[]; unguardedRoutes: string[]; totalPages: number; totalRoutes: number; guardedRoutes: number; totalEndpoints: number; usedEndpoints: number; }
 interface SystemMetadata { modules: ModuleData[]; roleCounts: Record<string,number>; branchCount: number; tableCount: number; totalModules: number; totalSubModules: number; totalRoles: number; health: SystemHealth; }
 type WorkshopNote = { id: number; title: string; content: string; section: string; createdAt: string; };
 
@@ -366,63 +367,110 @@ function ToplantiNotlari() {
 }
 
 // ═══ TAB 5: SİSTEM SAĞLIĞI ═══
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  link: { label: "🔗 Bağlanmalı", color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/30" },
+  duplicate: { label: "♻️ Birleştirilmeli", color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/30" },
+  merge: { label: "🔀 Mega modüle taşınmalı", color: "text-purple-500", bg: "bg-purple-500/10 border-purple-500/30" },
+  deprecated: { label: "🗑️ Eski — Silinebilir", color: "text-red-500", bg: "bg-red-500/10 border-red-500/30" },
+  delete: { label: "❌ Sil", color: "text-red-600", bg: "bg-red-600/10 border-red-600/30" },
+};
+
 function SistemSagligi({ data }: { data: SystemMetadata }) {
   const h = data.health;
+  const [filter, setFilter] = useState<string>("all");
   const guardPercent = Math.round((h.guardedRoutes / h.totalRoutes) * 100);
   const endpointPercent = Math.round((h.usedEndpoints / h.totalEndpoints) * 100);
-  const orphanPercent = Math.round((h.orphanPages.length / h.totalPages) * 100);
+
+  const linkCount = h.orphanPages.filter(p => p.status === "link").length;
+  const dupCount = h.orphanPages.filter(p => p.status === "duplicate" || p.status === "merge").length;
+  const delCount = h.orphanPages.filter(p => p.status === "deprecated" || p.status === "delete").length;
+
+  const filtered = filter === "all" ? h.orphanPages : h.orphanPages.filter(p => p.status === filter);
+  const categories = [...new Set(h.orphanPages.map(p => p.category))].sort();
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Card><CardContent className="pt-3 pb-3 text-center">
-          <div className="text-2xl font-bold">{h.totalPages}</div>
-          <div className="text-xs text-muted-foreground">Sayfa</div>
+          <div className="text-2xl font-bold text-blue-500">{linkCount}</div>
+          <div className="text-xs text-muted-foreground">Bağlanmalı</div>
         </CardContent></Card>
         <Card><CardContent className="pt-3 pb-3 text-center">
-          <div className="text-2xl font-bold">{h.totalEndpoints}</div>
-          <div className="text-xs text-muted-foreground">API Endpoint</div>
+          <div className="text-2xl font-bold text-yellow-500">{dupCount}</div>
+          <div className="text-xs text-muted-foreground">Birleştirilmeli</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-3 pb-3 text-center">
+          <div className="text-2xl font-bold text-red-500">{delCount}</div>
+          <div className="text-xs text-muted-foreground">Silinebilir</div>
         </CardContent></Card>
         <Card><CardContent className="pt-3 pb-3 text-center">
           <div className={`text-2xl font-bold ${guardPercent >= 80 ? "text-green-500" : "text-yellow-500"}`}>{guardPercent}%</div>
           <div className="text-xs text-muted-foreground">Route Koruması</div>
         </CardContent></Card>
-        <Card><CardContent className="pt-3 pb-3 text-center">
-          <div className={`text-2xl font-bold ${endpointPercent >= 70 ? "text-green-500" : "text-yellow-500"}`}>{endpointPercent}%</div>
-          <div className="text-xs text-muted-foreground">API Kullanım</div>
-        </CardContent></Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm text-yellow-500">Orphan Sayfalar ({h.orphanPages.length})</CardTitle></CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground mb-2">Bu sayfa dosyaları mevcut ama App.tsx'te route tanımı yok — kullanıcı erişemiyor.</p>
-          <div className="flex flex-wrap gap-1">
-            {h.orphanPages.map(p => (
-              <Badge key={p} variant="outline" className="text-[10px] text-yellow-600 border-yellow-600/30">{p}</Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant={filter === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setFilter("all")}>Tümü ({h.orphanPages.length})</Badge>
+        <Badge variant={filter === "link" ? "default" : "outline"} className="cursor-pointer text-xs text-blue-500" onClick={() => setFilter("link")}>Bağlanmalı ({linkCount})</Badge>
+        <Badge variant={filter === "duplicate" ? "default" : "outline"} className="cursor-pointer text-xs text-yellow-500" onClick={() => setFilter(filter === "duplicate" ? "all" : "duplicate")}>Duplicate ({dupCount})</Badge>
+        <Badge variant={filter === "deprecated" ? "default" : "outline"} className="cursor-pointer text-xs text-red-500" onClick={() => setFilter(filter === "deprecated" ? "all" : "deprecated")}>Silinebilir ({delCount})</Badge>
+      </div>
+
+      <div className="space-y-2">
+        {categories.map(cat => {
+          const catPages = filtered.filter(p => p.category === cat);
+          if (catPages.length === 0) return null;
+          return (
+            <Card key={cat}>
+              <CardHeader className="pb-1 pt-2">
+                <CardTitle className="text-xs font-bold text-muted-foreground uppercase">{cat} ({catPages.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 pb-3">
+                {catPages.map(p => {
+                  const sc = STATUS_CONFIG[p.status];
+                  return (
+                    <div key={p.file} className={`rounded-lg border p-2.5 ${sc.bg}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <code className="text-xs font-mono font-bold">{p.file}.tsx</code>
+                            <Badge variant="outline" className={`text-[10px] ${sc.color}`}>{sc.label}</Badge>
+                            <span className="text-[10px] text-muted-foreground">{p.lines} satır · {p.apis} API</span>
+                          </div>
+                          <p className="text-xs mt-1">{p.recommendation}</p>
+                          {p.roles.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className="text-[10px] text-muted-foreground">Önerilen roller:</span>
+                              {p.roles.map(r => <Badge key={r} variant="secondary" className="text-[10px] px-1.5 py-0">{ROLE_LABELS[r] || r}</Badge>)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm text-red-500">Korumasız Route'lar ({h.unguardedRoutes.length})</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-xs text-muted-foreground mb-2">Bu route'lar ProtectedRoute/Guard ile korunmuyor — herhangi bir giriş yapmış kullanıcı erişebilir.</p>
+          <p className="text-xs text-muted-foreground mb-2">ProtectedRoute guard'ı olmayan sayfalar — giriş yapan herkes erişebilir.</p>
           <div className="flex flex-wrap gap-1">
-            {h.unguardedRoutes.map(r => (
-              <Badge key={r} variant="outline" className="text-[10px] text-red-600 border-red-600/30">{r}</Badge>
-            ))}
+            {h.unguardedRoutes.map(r => <Badge key={r} variant="outline" className="text-[10px] text-red-600 border-red-600/30">{r}</Badge>)}
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">API Kullanım Özeti</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">API Kullanım</CardTitle></CardHeader>
         <CardContent className="text-xs space-y-1">
-          <div className="flex justify-between"><span>Toplam Backend Endpoint</span><span className="font-mono">{h.totalEndpoints}</span></div>
-          <div className="flex justify-between"><span>Frontend'te Referanslanan</span><span className="font-mono text-green-500">{h.usedEndpoints}</span></div>
-          <div className="flex justify-between"><span>Kullanılmayan</span><span className="font-mono text-yellow-500">{h.totalEndpoints - h.usedEndpoints}</span></div>
+          <div className="flex justify-between"><span>Backend Endpoint</span><span className="font-mono">{h.totalEndpoints}</span></div>
+          <div className="flex justify-between"><span>Frontend Kullanılan</span><span className="font-mono text-green-500">{h.usedEndpoints}</span></div>
+          <div className="flex justify-between"><span>Bağlanmamış</span><span className="font-mono text-yellow-500">{h.totalEndpoints - h.usedEndpoints}</span></div>
           <div className="w-full bg-muted rounded-full h-2 mt-2">
             <div className="bg-green-500 h-2 rounded-full" style={{ width: `${endpointPercent}%` }} />
           </div>
