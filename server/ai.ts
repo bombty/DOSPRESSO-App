@@ -1357,6 +1357,60 @@ export async function generateShiftPlan(
     throw new Error("Günlük vardiya planlama limitiniz doldu (10/gün). Yarın tekrar deneyin.");
   }
 
+  // ── Rule-based fallback plan (instant, no AI) ──────────────────────────────
+  function buildRuleBasedPlan(): ShiftPlanResponse {
+    const openingHours = workloadMetrics?.branchHours?.openingHours || '08:00';
+    const closingHours = workloadMetrics?.branchHours?.closingHours || '22:00';
+    const openH = parseInt(openingHours.split(':')[0]);
+    const closeH = parseInt(closingHours.split(':')[0]);
+    const midH = Math.floor((openH + closeH) / 2);
+    const midStr = String(midH).padStart(2, '0');
+
+    const shifts: any[] = [];
+    const weekDays: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + i);
+      weekDays.push(d.toISOString().split('T')[0]);
+    }
+
+    employees.forEach((emp, idx) => {
+      const isFT = emp.employmentType !== 'parttime';
+      const workDaysCount = isFT ? 6 : 3;
+      // Stagger day off: each FT employee gets a different weekday off (Mon/Tue)
+      const dayOff = isFT ? (idx % 2) : -1;
+
+      let workDays = weekDays.filter((_, di) => di !== dayOff);
+      if (!isFT) workDays = weekDays.filter((_, di) => di % 2 === idx % 2).slice(0, 3);
+      workDays = workDays.slice(0, workDaysCount);
+
+      workDays.forEach((date, di) => {
+        const isMorning = (idx + di) % 2 === 0;
+        shifts.push({
+          shiftDate: date,
+          startTime: isMorning ? `${openingHours}:00` : `${midStr}:00:00`,
+          endTime: isMorning ? `${midStr}:30:00` : `${closingHours}:00:00`,
+          breakStartTime: isMorning ? '12:00:00' : '18:00:00',
+          breakEndTime: isMorning ? '13:00:00' : '19:00:00',
+          shiftType: isMorning ? 'morning' : 'evening',
+          assignedToId: emp.id,
+          status: 'draft',
+        });
+      });
+    });
+
+    return {
+      shifts,
+      suggestions: shifts,
+      totalShifts: shifts.length,
+      summary: `Kural tabanlı plan: ${employees.length} personel, ${shifts.length} vardiya. (AI zaman aşımına düştü — otomatik plan uygulandı)`,
+      weekStart,
+      weekEnd,
+      cached: false,
+    };
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   try {
     // Prepare historical data summary
     const shiftStats = {
@@ -1392,7 +1446,13 @@ export async function generateShiftPlan(
     const ptEmployees = employees.filter(e => e.employmentType === 'parttime');
     const expectedShiftCount = (ftEmployees.length * 6) + (ptEmployees.length * 3);
 
-    const response = await aiChatCall({
+    const AI_TIMEOUT_MS = 25000; // 25 saniye — daha uzun sürerse kural-tabanlı plana geç
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('AI_TIMEOUT')), AI_TIMEOUT_MS)
+    );
+
+    const response = await Promise.race([
+      aiChatCall({
       model: CHAT_MODEL,
       messages: [
         {
@@ -1437,8 +1497,10 @@ JSON yanit ver:
         },
       ],
       response_format: { type: "json_object" },
-      max_completion_tokens: 12000,
-    });
+      max_completion_tokens: 4000,
+    }),
+      timeoutPromise,
+    ]);
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -1462,14 +1524,15 @@ JSON yanit ver:
     // Increment rate limit counter
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'shift_plan');
-      const remaining = aiRateLimiter.getRemainingCalls(userId, 'shift_plan', SHIFT_PLAN_LIMIT);
-    } else {
     }
 
     return planResponse;
-  } catch (error) {
-    console.error("Vardiya planı oluşturma hatası:", error);
-    throw new Error("Vardiya planı oluşturulamadı");
+  } catch (error: any) {
+    console.error("Vardiya planı oluşturma hatası:", error?.message || error);
+    // Return rule-based fallback instead of throwing
+    const fallback = buildRuleBasedPlan();
+    cache.set(cacheKey, fallback, 30 * 60 * 1000); // 30 min cache for fallback
+    return fallback;
   }
 }
 
