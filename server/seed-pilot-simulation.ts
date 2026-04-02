@@ -173,14 +173,14 @@ async function seedEquipmentData(branches: any[]) {
   console.log("\n🔧 Ekipman envanteri oluşturuluyor...");
   let count = 0;
   const equipmentTypes = [
-    { type: "espresso_machine", name: "Espresso Makinesi", brand: "La Marzocco", model: "Linea PB" },
-    { type: "grinder", name: "Kahve Değirmeni", brand: "Mahlkönig", model: "E65S" },
-    { type: "refrigerator", name: "Buzdolabı", brand: "Ugur", model: "USS 374 DTKS" },
-    { type: "pos_terminal", name: "POS Terminal", brand: "Ingenico", model: "Move 5000" },
-    { type: "ice_machine", name: "Buz Makinesi", brand: "Brema", model: "CB 184" },
-    { type: "dishwasher", name: "Bulaşık Makinesi", brand: "Winterhalter", model: "UC-M" },
-    { type: "water_filter", name: "Su Arıtma", brand: "BWT", model: "Bestmax Premium" },
+    { type: "espresso", name: "Espresso Makinesi", brand: "La Marzocco", model: "Linea PB" },
+    { type: "krema", name: "Krema Makinesi", brand: "Rancilio", model: "Silvia Pro" },
     { type: "blender", name: "Blender", brand: "Vitamix", model: "Quiet One" },
+    { type: "mixer", name: "Karıştırıcı", brand: "Artemis", model: "A-2001" },
+    { type: "ice", name: "Buz Makinesi", brand: "Brema", model: "CB 184" },
+    { type: "tea", name: "Çay Makinesi", brand: "Beko", model: "CM 9000" },
+    { type: "cash", name: "Kasa Sistemi", brand: "Ingenico", model: "Move 5000" },
+    { type: "kiosk", name: "Kiosk", brand: "DOSPRESSO", model: "K-1" },
   ];
 
   for (const branch of branches) {
@@ -213,22 +213,22 @@ async function seedTroubleshootSteps() {
   console.log("\n🔍 Troubleshoot adımları oluşturuluyor...");
   let count = 0;
   const steps = [
-    { type: "espresso_machine", order: 1, desc: "Makineyi kapatın ve 30 saniye bekleyin, sonra tekrar açın.", required: true },
-    { type: "espresso_machine", order: 2, desc: "Su tankını kontrol edin — doluysa devam edin.", required: true },
-    { type: "espresso_machine", order: 3, desc: "Basınç göstergesini kontrol edin — 8-10 bar arası normal.", required: true },
-    { type: "espresso_machine", order: 4, desc: "Filtre sepetini çıkarıp temizleyin, tekrar takın.", required: true },
-    { type: "espresso_machine", order: 5, desc: "Portafilter'ı takıp kısa bir flush yapın.", required: false },
-    { type: "grinder", order: 1, desc: "Değirmeni kapatın, hazneyi boşaltın.", required: true },
-    { type: "grinder", order: 2, desc: "Çapak disklerinde taş veya yabancı cisim var mı kontrol edin.", required: true },
-    { type: "grinder", order: 3, desc: "Değirmeni tekrar açın — ses normal mi?", required: true },
-    { type: "refrigerator", order: 1, desc: "Kapak contasını kontrol edin — hava sızdırıyor mu?", required: true },
-    { type: "refrigerator", order: 2, desc: "Arka taraftaki fanı dinleyin — çalışıyor mu?", required: true },
-    { type: "refrigerator", order: 3, desc: "İç sıcaklığı kontrol edin — 2-8°C arası normal.", required: true },
-    { type: "pos_terminal", order: 1, desc: "Cihazı yeniden başlatın (kapatıp açın).", required: true },
-    { type: "pos_terminal", order: 2, desc: "İnternet bağlantısını kontrol edin — WiFi/Ethernet aktif mi?", required: true },
-    { type: "pos_terminal", order: 3, desc: "SIM kart varsa kontrol edin — takılı ve hasarsız mı?", required: true },
-    { type: "ice_machine", order: 1, desc: "Su bağlantısını kontrol edin — musluk açık mı?", required: true },
-    { type: "ice_machine", order: 2, desc: "Buz haznesini boşaltın ve temizleyin.", required: true },
+    { type: "espresso", order: 1, desc: "Makineyi kapatın ve 30 saniye bekleyin, sonra tekrar açın.", required: true },
+    { type: "espresso", order: 2, desc: "Su tankını kontrol edin — doluysa devam edin.", required: true },
+    { type: "espresso", order: 3, desc: "Basınç göstergesini kontrol edin — 8-10 bar arası normal.", required: true },
+    { type: "espresso", order: 4, desc: "Filtre sepetini çıkarıp temizleyin, tekrar takın.", required: true },
+    { type: "espresso", order: 5, desc: "Portafilter'ı takıp kısa bir flush yapın.", required: false },
+    { type: "krema", order: 1, desc: "Krema haznesini kontrol edin — dolu mu?", required: true },
+    { type: "krema", order: 2, desc: "Çıkış ağzını temizleyin — tıkanıklık var mı?", required: true },
+    { type: "krema", order: 3, desc: "Makineyi kapatıp açın — hata devam ediyor mu?", required: true },
+    { type: "blender", order: 1, desc: "Bıçak grubunu kontrol edin — kırık veya aşınma var mı?", required: true },
+    { type: "blender", order: 2, desc: "Kapak sensörünü kontrol edin — düzgün kapanıyor mu?", required: true },
+    { type: "ice", order: 1, desc: "Su bağlantısını kontrol edin — musluk açık mı?", required: true },
+    { type: "ice", order: 2, desc: "Buz haznesini boşaltın ve temizleyin.", required: true },
+    { type: "mixer", order: 1, desc: "Karıştırma kabını çıkarıp bağlantı noktasını temizleyin.", required: true },
+    { type: "mixer", order: 2, desc: "Hız kontrol düğmesini sıfıra getirip tekrar deneyin.", required: true },
+    { type: "cash", order: 1, desc: "Cihazı yeniden başlatın (kapatıp açın).", required: true },
+    { type: "cash", order: 2, desc: "İnternet bağlantısını kontrol edin — WiFi/Ethernet aktif mi?", required: true },
   ];
 
   for (const s of steps) {

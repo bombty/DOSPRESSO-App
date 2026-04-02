@@ -423,7 +423,7 @@ export default function Equipment() {
                           <SelectContent>
                             {Object.values(EQUIPMENT_TYPES).map((type) => (
                               <SelectItem key={type} value={type}>
-                                {EQUIPMENT_METADATA[type].nameTr}
+                                {(EQUIPMENT_METADATA as any)[type]?.nameTr || type}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -620,7 +620,7 @@ export default function Equipment() {
                       <SelectContent>
                         {Object.values(EQUIPMENT_TYPES).map((type) => (
                           <SelectItem key={type} value={type}>
-                            {EQUIPMENT_METADATA[type].nameTr}
+                            {(EQUIPMENT_METADATA as any)[type]?.nameTr || type}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -941,7 +941,7 @@ export default function Equipment() {
             <SelectItem value="all">Tüm Tipler</SelectItem>
             {Object.values(EQUIPMENT_TYPES).map((type) => (
               <SelectItem key={type} value={type}>
-                {EQUIPMENT_METADATA[type].nameTr}
+                {(EQUIPMENT_METADATA as any)[type]?.nameTr || type}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1020,6 +1020,7 @@ export default function Equipment() {
         <div className="grid gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filteredEquipment.map((item) => {
             const metadata = EQUIPMENT_METADATA[item.equipmentType as keyof typeof EQUIPMENT_METADATA];
+            const equipmentDisplayName = metadata?.nameTr || item.modelNo || item.equipmentType;
             const maintenanceStatus = getMaintenanceStatus(item);
             const faultCount = openFaultsByEquipment[item.id] || 0;
             const truncatedSerial = item.serialNumber && item.serialNumber.length > 20
@@ -1035,7 +1036,7 @@ export default function Equipment() {
                         <Settings className="h-4 w-4 shrink-0" />
                         <Link href={`/ekipman-detay/${item.id}`} data-testid={`link-equipment-${item.id}`}>
                           <span className="hover-elevate rounded-sm px-1 -mx-1 cursor-pointer">
-                            {metadata.nameTr}
+                            {equipmentDisplayName}
                           </span>
                         </Link>
                         {faultCount > 0 && (

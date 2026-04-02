@@ -3279,6 +3279,7 @@ export const insertEquipmentFaultSchema = createInsertSchema(equipmentFaults).om
   id: true,
   createdAt: true,
   updatedAt: true,
+  reportedById: true,
 });
 
 export type InsertEquipmentFault = z.infer<typeof insertEquipmentFaultSchema>;

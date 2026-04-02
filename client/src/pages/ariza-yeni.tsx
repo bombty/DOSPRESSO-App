@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertTriangle, ArrowLeft, Upload, Loader2, CheckCircle2, Circle, ClipboardList, AlertCircle } from "lucide-react";
 import type { Equipment, Branch, EquipmentTroubleshootingStep } from "@shared/schema";
+import { EQUIPMENT_METADATA } from "@shared/schema";
 
 const faultReportSchema = z.object({
   branchId: z.coerce.number().int().positive("Şube seçiniz"),
@@ -192,14 +193,15 @@ export default function NewFaultReport() {
       if (!isNaN(eqId)) {
         const eq = equipment.find(e => e.id === eqId);
         if (eq) {
+          const eqName = `${(EQUIPMENT_METADATA as any)[eq.equipmentType]?.nameTr || eq.equipmentType}${eq.modelNo ? ` — ${eq.modelNo}` : ""}`;
           form.setValue("equipmentId", eqId);
-          form.setValue("equipmentName", eq.equipmentType || "");
+          form.setValue("equipmentName", eqName);
           if (eq.branchId) {
             form.setValue("branchId", eq.branchId);
           }
           toast({
             title: "Ekipman Seçildi",
-            description: `${eq.equipmentType} - QR kod ile otomatik dolduruldu`,
+            description: `${eqName} - QR kod ile otomatik dolduruldu`,
           });
         } else {
           toast({
@@ -216,7 +218,7 @@ export default function NewFaultReport() {
   useEffect(() => {
     const eqId = form.watch("equipmentId");
     if (eqId && !urlEquipmentId && selectedEq) {
-      form.setValue("equipmentName", selectedEq.equipmentType || "");
+      form.setValue("equipmentName", `${(EQUIPMENT_METADATA as any)[selectedEq.equipmentType]?.nameTr || selectedEq.equipmentType}${selectedEq.modelNo ? ` — ${selectedEq.modelNo}` : ""}`);
     }
   }, [form.watch("equipmentId"), selectedEq, urlEquipmentId]);
 
@@ -320,7 +322,7 @@ export default function NewFaultReport() {
                           .filter((eq: Equipment) => eq.branchId === form.watch("branchId"))
                           .map((eq: Equipment) => (
                             <SelectItem key={eq.id} value={String(eq.id)}>
-                              {(eq as any).equipmentName || "Ekipman"}
+                              {(EQUIPMENT_METADATA as any)[eq.equipmentType]?.nameTr || eq.equipmentType} {eq.modelNo ? `— ${eq.modelNo}` : ""} {eq.serialNumber ? `(${eq.serialNumber})` : ""}
                             </SelectItem>
                           ))}
                       </SelectContent>

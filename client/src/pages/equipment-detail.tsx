@@ -2077,7 +2077,7 @@ export default function EquipmentDetail() {
                       <SelectContent>
                         {Object.values(EQUIPMENT_TYPES).map((type) => (
                           <SelectItem key={type} value={type}>
-                            {EQUIPMENT_METADATA[type].nameTr}
+                            {(EQUIPMENT_METADATA as any)[type]?.nameTr || type}
                           </SelectItem>
                         ))}
                       </SelectContent>
