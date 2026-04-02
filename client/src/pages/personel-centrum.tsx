@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, Widget, MiniStats, ProgressWidget, ListItem, DobodySlot, FeedbackWidget, LostFoundBanner, type KpiVariant } from "@/components/centrum/CentrumShell";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 
@@ -69,6 +70,10 @@ export default function PersonelCentrum() {
         ]),
         { label: "Seri", value: `${streak} gün`, variant: streak > 0 ? "ok" as KpiVariant : "neutral" as KpiVariant },
       ]}
+      actions={<div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => setLocation(`/sube/kiosk/${user?.branchId || ""}`)} className="text-xs h-7">Vardiya</Button>
+        <Button size="sm" variant="outline" onClick={() => setLocation("/akademi")} className="text-xs h-7">Eğitim</Button>
+      </div>}
       rightPanel={<>
         {!isStajyer && (
           <MiniStats title="Performans" rows={[

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, Widget, MiniStats, ProgressWidget, ListItem, DobodySlot, DobodyTaskPlan, FeedbackWidget, LostFoundBanner, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
@@ -58,7 +59,11 @@ export default function SubeCentrum() {
       ]}
       tabs={[{ label: "Genel" }, { label: "Finans" }, { label: "Personel" }, { label: "Görev Planı" }]}
       activeTab={tab} onTabChange={setTab}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => setLocation("/crm")} className="text-xs h-7">HQ Talep</Button>
+        <Button size="sm" variant="outline" onClick={() => setLocation("/gorevler")} className="text-xs h-7">Görevler</Button>
+        <TimeFilter value={period} onChange={setPeriod} />
+      </div>}
       rightPanel={<>
         <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
           id: a.id, title: a.title || a.message, sub: a.description,

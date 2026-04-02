@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, FeedbackWidget, LostFoundBanner, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
@@ -49,7 +50,11 @@ export default function SupervisorCentrum() {
         { label: "Değerl.", value: `${evalDone}/2`, variant: evalDone < 2 ? "alert" as KpiVariant : "ok" as KpiVariant },
         { label: "Checklist", value: `%${kpis?.checklistCompletion ?? 0}`, variant: (kpis?.checklistCompletion ?? 0) >= 80 ? "ok" as KpiVariant : "warn" as KpiVariant },
       ]}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => setLocation("/gorevler")} className="text-xs h-7">+ Görev</Button>
+        <Button size="sm" variant="outline" onClick={() => setLocation("/checklistler")} className="text-xs h-7">Checklist</Button>
+        <TimeFilter value={period} onChange={setPeriod} />
+      </div>}
       rightPanel={<DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
         id: a.id, title: a.title || a.message, sub: a.description,
         mode: (a.actionType === "info" ? "info" : "action") as any,

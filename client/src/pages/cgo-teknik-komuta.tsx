@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, ProgressWidget, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CGOTeknikKomuta() {
@@ -63,7 +64,7 @@ export default function CGOTeknikKomuta() {
         { label: "Personel", value: activeSessions.length || "—", variant: "ok" as KpiVariant },
         { label: "Dobody", value: dobodyActions.length, variant: "purple" as KpiVariant },
       ]}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => navigate("/ariza-yeni")} className="text-xs h-7">+ Arıza</Button><Button size="sm" variant="outline" onClick={() => navigate("/crm?dept=teknik")} className="text-xs h-7">Teknik Talep</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={<>
         <Widget title="Teknik Sağlık" onClick={() => navigate("/sube-saglik-skoru")}>
           {branchScores.slice(0, 4).map((b: any, i: number) => {

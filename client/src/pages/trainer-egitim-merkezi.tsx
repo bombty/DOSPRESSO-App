@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, DobodyTaskPlan, TopFlop, ProgressWidget, TimeFilter, Badge, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TrainerEgitimMerkezi() {
@@ -44,7 +45,11 @@ export default function TrainerEgitimMerkezi() {
       ]}
       tabs={[{ label: "Genel" }, { label: "Detay" }, { label: "Uyumsuz" }, { label: "Sıralama" }, { label: "Plan" }]}
       activeTab={tab} onTabChange={setTab}
-      actions={<TimeFilter value={period} onChange={setPeriod} />}
+      actions={<div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => navigate("/akademi")} className="text-xs h-7">Akademi</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate("/task-atama")} className="text-xs h-7">+ Eğitim Görevi</Button>
+        <TimeFilter value={period} onChange={setPeriod} />
+      </div>}
       rightPanel={
         <DobodySlot actions={pendingActions.slice(0, 4).map((a: any) => ({
           id: a.id, title: a.title || a.summary || "Öneri", sub: a.description || "",
