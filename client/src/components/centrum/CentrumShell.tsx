@@ -100,6 +100,7 @@ export function ClickableWidget({ title, badge, onClick, children, className }: 
 }
 
 // ═══ DOBODY SLOT ═══
+// DobodySlot her zaman koyu navy zemin kullanır — metin renkleri sabit Tailwind sınıfları
 interface DobodyAction { id: number|string; title: string; sub?: string; mode?: DobodyMode; onApprove?: () => void; approving?: boolean; btnLabel?: string; btnVariant?: string; }
 export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boolean }) {
   const T = useT();
@@ -107,29 +108,32 @@ export function DobodySlot({ actions }: { actions: DobodyAction[]; compact?: boo
     <div className="rounded-xl overflow-hidden" style={{background:T.dobodyBodyBg,border:`1.5px solid ${T.dobodyBorder}`}}>
       <div className="flex items-center gap-1.5 px-2.5 py-2" style={{background:T.dobodyHeaderBg}}>
         <span className="text-[10px] font-bold text-white">◈ Mr. Dobody</span>
-        {actions.length>0&&<span className="text-[10px] px-1.5 rounded-full font-bold" style={{background:"rgba(255,255,255,0.20)",color:"white"}}>{actions.length}</span>}
+        {actions.length>0&&(
+          <span className="text-[10px] px-1.5 rounded-full font-bold bg-white/20 text-white">{actions.length}</span>
+        )}
       </div>
       {actions.length===0?(
-        <p className="text-[10px] px-2.5 py-2" style={{color:"rgba(255,255,255,0.6)"}}>Bekleyen öneri yok</p>
+        <p className="text-[10px] px-2.5 py-2 text-white/60">Bekleyen öneri yok</p>
       ):actions.map((a)=>{
         const mode=a.mode||(a.onApprove?"action":"info");
+        const dotClass=mode==="auto"?"bg-green-400":mode==="action"?"bg-destructive":"bg-slate-500";
         return(
-          <div key={a.id} className="flex items-start gap-2 px-2.5 py-2" style={{borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
-            <span className="w-2 h-2 rounded-full mt-1 shrink-0"
-              style={{background:mode==="auto"?"#4ade80":mode==="action"?"#ef4444":"#6b7a8d"}}/>
+          <div key={a.id} className="flex items-start gap-2 px-2.5 py-2 border-b border-white/[0.08] last:border-0">
+            <span className={`w-2 h-2 rounded-full mt-1 shrink-0 ${dotClass}`}/>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold" style={{color:"#e8ecf1"}}>{a.title}</p>
-              {a.sub&&<p className="text-[10px] mt-0.5" style={{color:"#6b7a8d"}}>{a.sub}</p>}
+              <p className="text-[10px] font-semibold text-slate-100">{a.title}</p>
+              {a.sub&&<p className="text-[10px] mt-0.5 text-slate-500">{a.sub}</p>}
             </div>
             {mode==="action"&&a.onApprove&&(
               <button onClick={(e)=>{e.stopPropagation();a.onApprove?.();}} disabled={a.approving}
-                className="text-[10px] px-2 py-0.5 rounded-lg shrink-0 font-bold"
-                style={{background:T.dobodyHeaderBg,color:"white"}}>
+                className="text-[10px] px-2 py-0.5 rounded-lg shrink-0 font-bold text-white"
+                style={{background:T.dobodyHeaderBg}}>
                 {a.approving?"...":(a.btnLabel||"Onayla")}
               </button>
             )}
-            {mode==="auto"&&<span className="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-bold"
-              style={{background:"#22c55e18",color:"#4ade80"}}>✓</span>}
+            {mode==="auto"&&(
+              <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-bold bg-green-500/10 text-green-400">✓</span>
+            )}
           </div>
         );
       })}
