@@ -538,7 +538,7 @@ function Router() {
           <Route path="/admin/*?" component={AdminMegaModule} />
           <Route path="/ceo-command-center">{() => <HQOnly><CEOCommandCenter /></HQOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
-          <Route path="/hq-dashboard/:department?">{() => <HQOnly><HQDashboard /></HQOnly>}</Route>
+          <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?" component={SatinalmaMega} />
@@ -549,9 +549,9 @@ function Router() {
           <Route path="/kullanim-kilavuzu" component={KullanimKilavuzu} />
           <Route path="/sube/siparis-stok">{() => <ModuleGuard moduleKey="stok"><SubeSiparisStok /></ModuleGuard>}</Route>
           <Route path="/agent-merkezi" component={AgentMerkezi} />
-          <Route path="/benim-gunum" component={BenimGunum} />
-          <Route path="/sube-ozet" component={SubeOzet} />
-          <Route path="/hq-ozet" component={HQOzet} />
+          <Route path="/benim-gunum">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/personel-centrum"); }, []); return null; }}</Route>
+          <Route path="/sube-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/sube-centrum"); }, []); return null; }}</Route>
+          <Route path="/hq-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kocluk-paneli" component={KoclukPaneli} />
           <Route path="/franchise-ozet" component={FranchiseOzet} />
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
