@@ -28,6 +28,7 @@ import {
   Box,
   Layers,
   Settings,
+  Calendar,
   TrendingUp
 } from "lucide-react";
 import { ErrorState } from "../components/error-state";
@@ -109,6 +110,148 @@ const ORDER_STATUSES = [
 
 function formatCurrency(value: number): string {
   return (value / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ═══ HAFTALIK ÜRETİM PLANI ═══
+function WeeklyPlanTab() {
+  const { toast } = useToast();
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [planItems, setPlanItems] = useState<Record<string, number>>({});
+
+  const { data: products = [] } = useQuery<any[]>({
+    queryKey: ["/api/factory/products"],
+  });
+
+  const { data: existingPlans = [] } = useQuery<any[]>({
+    queryKey: ["/api/factory/production-plans", weekOffset],
+    queryFn: async () => {
+      const start = getWeekStart(weekOffset);
+      const end = new Date(start); end.setDate(end.getDate() + 6);
+      const res = await fetch(`/api/factory/production-plans?startDate=${start.toISOString().split("T")[0]}&endDate=${end.toISOString().split("T")[0]}`, { credentials: "include" });
+      return res.ok ? res.json() : [];
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const entries = Object.entries(planItems).filter(([, qty]) => qty > 0);
+      for (const [key, qty] of entries) {
+        const [productId, dayIdx] = key.split("-").map(Number);
+        const planDate = new Date(getWeekStart(weekOffset));
+        planDate.setDate(planDate.getDate() + dayIdx);
+        await apiRequest("POST", "/api/factory/production-plans", {
+          productId,
+          planDate: planDate.toISOString().split("T")[0],
+          targetQuantity: qty,
+          unit: "adet",
+          priority: "normal",
+        });
+      }
+    },
+    onSuccess: () => {
+      toast({ title: "Kaydedildi", description: `${Object.values(planItems).filter(v => v > 0).length} ürün planı oluşturuldu` });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/production-plans"] });
+      setPlanItems({});
+    },
+    onError: () => toast({ title: "Hata", description: "Plan kaydedilemedi", variant: "destructive" }),
+  });
+
+  function getWeekStart(offset: number): Date {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const mon = new Date(now);
+    mon.setDate(now.getDate() + diff + offset * 7);
+    mon.setHours(0, 0, 0, 0);
+    return mon;
+  }
+
+  const weekStart = getWeekStart(weekOffset);
+  const DAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+  const categories = [...new Set(products.map((p: any) => p.category))].filter(Boolean).sort();
+  const filtered = selectedCategory === "all" ? products : products.filter((p: any) => p.category === selectedCategory);
+  const hasChanges = Object.values(planItems).some(v => v > 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setWeekOffset(w => w - 1)}>←</Button>
+          <span className="text-sm font-medium">
+            {weekStart.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} — {new Date(weekStart.getTime() + 5 * 86400000).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => setWeekOffset(w => w + 1)}>→</Button>
+          {weekOffset !== 0 && <Button size="sm" variant="ghost" onClick={() => setWeekOffset(0)}>Bu Hafta</Button>}
+        </div>
+        {hasChanges && (
+          <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? "Kaydediliyor..." : `Planı Kaydet (${Object.values(planItems).filter(v => v > 0).length} ürün)`}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant={selectedCategory === "all" ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setSelectedCategory("all")}>
+          Tümü ({products.length})
+        </Badge>
+        {categories.map(cat => (
+          <Badge key={cat} variant={selectedCategory === cat ? "default" : "outline"} className="cursor-pointer text-xs" onClick={() => setSelectedCategory(cat)}>
+            {cat} ({products.filter((p: any) => p.category === cat).length})
+          </Badge>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState icon={Package} title="Ürün bulunamadı" description="Seçili kategoride ürün yok" />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((product: any) => {
+            const existingForProduct = existingPlans.filter((p: any) => p.productId === product.id);
+            return (
+              <Card key={product.id}>
+                <CardContent className="py-2 px-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-medium text-sm flex-1">{product.name}</span>
+                    <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{product.unit}</Badge>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {DAYS.map((day, idx) => {
+                      const key = `${product.id}-${idx}`;
+                      const existing = existingForProduct.find((p: any) => {
+                        const d = new Date(p.planDate);
+                        return d.getDay() === (idx === 5 ? 6 : idx + 1);
+                      });
+                      return (
+                        <div key={idx} className="text-center">
+                          <div className="text-[10px] text-muted-foreground mb-0.5">{day}</div>
+                          {existing ? (
+                            <div className="text-xs font-medium bg-green-500/20 text-green-500 rounded px-1 py-0.5">
+                              {existing.targetQuantity}
+                            </div>
+                          ) : (
+                            <Input
+                              type="number"
+                              min="0"
+                              className="h-7 text-xs text-center px-1"
+                              placeholder="0"
+                              value={planItems[key] || ""}
+                              onChange={e => setPlanItems(prev => ({ ...prev, [key]: parseInt(e.target.value) || 0 }))}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Fabrika() {
@@ -283,6 +426,10 @@ export default function Fabrika() {
           <TabsTrigger value="orders" data-testid="tab-orders">
             <Truck className="h-4 w-4 mr-2" />
             Siparişler
+          </TabsTrigger>
+          <TabsTrigger value="plan" data-testid="tab-plan">
+            <Calendar className="h-4 w-4 mr-2" />
+            Haftalık Plan
           </TabsTrigger>
         </TabsList>
 
@@ -837,6 +984,11 @@ export default function Fabrika() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* ═══ HAFTALIK ÜRETİM PLANI ═══ */}
+        <TabsContent value="plan" className="space-y-4">
+          <WeeklyPlanTab />
         </TabsContent>
       </Tabs>
     </div>
