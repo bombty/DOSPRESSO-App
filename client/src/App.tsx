@@ -259,6 +259,8 @@ const CoachKpiSignals = lazyWithRetry(() => import("@/pages/coach-kpi-signals"))
 const SupervisorOnboarding = lazyWithRetry(() => import("@/pages/supervisor-onboarding"));
 const CoachGateManagement = lazyWithRetry(() => import("@/pages/coach-gate-management"));
 const CapaRaporlari = lazyWithRetry(() => import("@/pages/capa-raporlari"));
+const AcademyAiPanel = lazyWithRetry(() => import("@/pages/academy-ai-panel"));
+const CoachTeamProgress = lazyWithRetry(() => import("@/pages/coach-team-progress"));
 
 const PUBLIC_PATH_PREFIXES = [
   "/login", 
@@ -570,6 +572,8 @@ function Router() {
           <Route path="/supervisor-egitim">{() => <ProtectedRoute allowedRoles={["supervisor","coach","trainer"]}><SupervisorOnboarding /></ProtectedRoute>}</Route>
           <Route path="/gecit-yonetimi">{() => <ProtectedRoute allowedRoles={["coach","trainer"]}><CoachGateManagement /></ProtectedRoute>}</Route>
           <Route path="/capa-raporlari">{() => <ProtectedRoute allowedRoles={["coach","cgo","admin"]}><CapaRaporlari /></ProtectedRoute>}</Route>
+          <Route path="/akademi-ai-panel">{() => <ProtectedRoute allowedRoles={["trainer","admin"]}><AcademyAiPanel /></ProtectedRoute>}</Route>
+          <Route path="/takim-ilerleme">{() => <ProtectedRoute allowedRoles={["coach","trainer","ceo"]}><CoachTeamProgress /></ProtectedRoute>}</Route>
           <Route path="/crm/*?">{() => <ModuleGuard moduleKey="crm"><CRMMegaModule /></ModuleGuard>}</Route>
           <Route path="/ajanda">{() => <ModuleGuard moduleKey="ajanda"><AjandaPage /></ModuleGuard>}</Route>
           <Route path="/admin/*?">{() => <AdminOnly><AdminMegaModule /></AdminOnly>}</Route>
