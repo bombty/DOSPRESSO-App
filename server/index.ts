@@ -441,17 +441,33 @@ async function bootstrapAdminUser() {
       process.exit(1);
     }
     const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const existingAdmin = await storage.getUserByUsername('admin');
     if (existingAdmin) {
-      await db.update(users)
-        .set({ hashedPassword, accountStatus: 'approved', isActive: true })
-        .where(eq(users.id, existingAdmin.id));
-      log(`🔐 Admin user exists (id=${existingAdmin.id}), password synced from ADMIN_BOOTSTRAP_PASSWORD env`);
+      const alreadyCorrect = existingAdmin.hashedPassword
+        ? await bcrypt.compare(password, existingAdmin.hashedPassword)
+        : false;
+
+      if (!alreadyCorrect) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.update(users)
+          .set({ hashedPassword, accountStatus: 'approved', isActive: true, mustChangePassword: false })
+          .where(eq(users.id, existingAdmin.id));
+        const verify = await db.select({ hp: users.hashedPassword }).from(users).where(eq(users.id, existingAdmin.id));
+        const ok = verify[0]?.hp ? await bcrypt.compare(password, verify[0].hp) : false;
+        log(`🔐 Admin user exists (id=${existingAdmin.id}), password updated from ADMIN_BOOTSTRAP_PASSWORD env — verify: ${ok ? '✅ OK' : '❌ MISMATCH'}`);
+      } else {
+        if (existingAdmin.accountStatus !== 'approved' || !existingAdmin.isActive) {
+          await db.update(users)
+            .set({ accountStatus: 'approved', isActive: true, mustChangePassword: false })
+            .where(eq(users.id, existingAdmin.id));
+        }
+        log(`✅ Admin user exists (id=${existingAdmin.id}), password already correct`);
+      }
       return;
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
     const [newAdmin] = await db.insert(users).values({
       username: 'admin',
       hashedPassword,
