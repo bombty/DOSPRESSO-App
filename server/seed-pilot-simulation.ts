@@ -18,7 +18,7 @@ const SEED_TAG = "seed_test";
 // 30 günlük zaman aralığı
 const START_DATE = new Date("2026-03-01T00:00:00+03:00");
 const END_DATE = new Date("2026-04-01T00:00:00+03:00");
-const DAYS = 31;
+const DAYS = 35;
 
 // Rastgele helper'lar
 const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -389,7 +389,7 @@ async function seedChecklistCompletions(branches: any[], users: any[]) {
     return;
   }
 
-  for (let day = 0; day < Math.min(DAYS, 20); day++) {
+  for (let day = 0; day < DAYS; day++) {
     const date = addDays(START_DATE, day);
     const dateStr = date.toISOString().split("T")[0];
     if (date.getDay() === 0) continue;
