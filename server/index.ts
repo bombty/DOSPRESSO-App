@@ -16,7 +16,6 @@ import { seedBranchTasks } from "./seed-branch-tasks";
 import { generateDailyTaskInstances, markOverdueInstances } from "./services/branch-task-scheduler";
 import coworkRoutes from "./routes/cowork-routes";
 import { migrateCrmTaskTables } from "./services/crm-task-migration";
-import { migrateCrmTaskTables } from "./services/crm-task-migration";
 import { migrateEscalationTables, startFranchiseEscalationScheduler } from "./services/franchise-escalation";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
@@ -36,6 +35,21 @@ import { users, productionLots, tasks, notifications as notificationsTable, bran
 import { eq, lt, sql, count, and, lte, gte, ne, inArray, isNotNull, isNull } from "drizzle-orm";
 import crypto from "crypto";
 
+// Patch: @neondatabase/serverless tries to set ErrorEvent.message which is read-only
+// in Node.js 18+ — make it writable to prevent startup crash on transient DB errors
+if (typeof globalThis.ErrorEvent !== 'undefined') {
+  try {
+    const desc = Object.getOwnPropertyDescriptor(globalThis.ErrorEvent.prototype, 'message');
+    if (desc && !desc.writable && !desc.set) {
+      Object.defineProperty(globalThis.ErrorEvent.prototype, 'message', {
+        ...desc,
+        writable: true,
+        configurable: true,
+      });
+    }
+  } catch (_) { /* ignore */ }
+}
+
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('[UnhandledRejection] Unhandled promise rejection:', reason);
   console.error('[UnhandledRejection] Promise:', promise);
@@ -44,6 +58,11 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
 let httpServer: import('http').Server | null = null;
 
 process.on('uncaughtException', (error: Error) => {
+  // Neon serverless WebSocket bağlantı hatası — sunucu devam edebilir
+  if (error instanceof TypeError && error.message?.includes('only a getter')) {
+    console.warn('[UncaughtException] Transient Neon DB connection error (non-fatal), server continues:', error.message);
+    return;
+  }
   console.error('[UncaughtException] Uncaught exception:', error);
   console.error('[UncaughtException] Initiating graceful shutdown...');
   if (httpServer) {
