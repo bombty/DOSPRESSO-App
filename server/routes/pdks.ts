@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches, shiftAttendance, shifts } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches, shiftAttendance, shifts, branchShiftSessions } from '@shared/schema';
+import { eq, and, gte, lte, sql, desc, isNull } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { getMonthClassification } from '../lib/pdks-engine';
 
@@ -708,6 +708,97 @@ router.get('/api/pdks/branch-attendance', isAuthenticated, async (req: any, res:
   } catch (error) {
     console.error("PDKS branch-attendance error:", error);
     res.status(500).json({ error: 'Şube puantaj verisi alınamadı' });
+  }
+});
+
+// Admin: shift_attendance backfill — branch_shift_sessions'dan eksik kayıtları tamamla
+router.post('/api/admin/pdks/backfill-attendance', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!['admin', 'ceo'].includes(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+
+    // shift_attendance_id'si olmayan tüm session'ları bul
+    const orphanSessions = await db.select({
+      id: branchShiftSessions.id,
+      userId: branchShiftSessions.userId,
+      branchId: branchShiftSessions.branchId,
+      checkInTime: branchShiftSessions.checkInTime,
+      checkOutTime: branchShiftSessions.checkOutTime,
+      plannedShiftId: branchShiftSessions.plannedShiftId,
+      lateMinutes: branchShiftSessions.lateMinutes,
+      status: branchShiftSessions.status,
+    }).from(branchShiftSessions)
+      .where(isNull(branchShiftSessions.shiftAttendanceId))
+      .limit(500);
+
+    let created = 0, skipped = 0, failed = 0;
+
+    for (const session of orphanSessions) {
+      try {
+        let shiftId: number | null = session.plannedShiftId || null;
+
+        // Planlı vardiya yoksa adhoc oluştur
+        if (!shiftId) {
+          const sessionDate = new Date(session.checkInTime).toISOString().split('T')[0];
+          const [adHoc] = await db.insert(shifts).values({
+            branchId: session.branchId,
+            assignedToId: session.userId,
+            createdById: session.userId,
+            shiftDate: sessionDate,
+            startTime: "08:00:00",
+            endTime: "17:00:00",
+            shiftType: "morning",
+            status: "confirmed",
+          }).returning();
+          if (adHoc) shiftId = adHoc.id;
+        }
+
+        if (!shiftId) { failed++; continue; }
+
+        // Mevcut shift_attendance var mı?
+        const [existing] = await db.select({ id: shiftAttendance.id })
+          .from(shiftAttendance)
+          .where(and(
+            eq(shiftAttendance.shiftId, shiftId),
+            eq(shiftAttendance.userId, session.userId)
+          )).limit(1);
+
+        let saId: number;
+        if (existing) {
+          saId = existing.id;
+          skipped++;
+        } else {
+          const lateMin = session.lateMinutes ?? 0;
+          const [newSA] = await db.insert(shiftAttendance).values({
+            shiftId,
+            userId: session.userId,
+            checkInTime: session.checkInTime,
+            checkOutTime: session.checkOutTime ?? undefined,
+            status: session.status === 'completed' ? 'checked_out' : 'checked_in',
+            latenessMinutes: lateMin,
+          }).returning();
+          saId = newSA.id;
+          created++;
+        }
+
+        // Session'ı güncelle
+        await db.update(branchShiftSessions)
+          .set({ shiftAttendanceId: saId })
+          .where(eq(branchShiftSessions.id, session.id));
+
+      } catch (err: any) {
+        console.error(`[BACKFILL] Session ${session.id} failed: ${err?.message}`);
+        failed++;
+      }
+    }
+
+    console.log(`[BACKFILL] shift_attendance: created=${created}, skipped=${skipped}, failed=${failed}, total=${orphanSessions.length}`);
+    res.json({ success: true, total: orphanSessions.length, created, skipped, failed });
+  } catch (error: any) {
+    console.error("Backfill error:", error);
+    res.status(500).json({ error: error?.message || 'Backfill başarısız' });
   }
 });
 
