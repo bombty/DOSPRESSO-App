@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   AlertTriangle, Rocket, Shield, Database, Trash2,
   Users, Building2, Package, ClipboardList, ChevronRight,
-  CheckCircle2, XCircle, Lock,
+  CheckCircle2, XCircle, Lock, RefreshCw,
 } from "lucide-react";
 
 const CLEAN_CATEGORIES = [
@@ -53,6 +53,29 @@ export default function PilotLaunchPage() {
       setSelectedCategories(CLEAN_CATEGORIES.map(c => c.key));
     }
   };
+
+  const [backfillResult, setBackfillResult] = useState<{ total: number; created: number; skipped: number; failed: number } | null>(null);
+
+  const backfillMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/pdks/backfill-attendance", {});
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Backfill başarısız");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setBackfillResult(data);
+      toast({
+        title: "Backfill Tamamlandı",
+        description: `${data.created} yeni kayıt oluşturuldu, ${data.skipped} mevcut, ${data.failed} başarısız.`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Backfill Hatası", description: err.message, variant: "destructive" });
+    },
+  });
 
   const pilotMutation = useMutation({
     mutationFn: async () => {
@@ -185,6 +208,46 @@ export default function PilotLaunchPage() {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-lg">PDKS Devam Kaydı Backfill</CardTitle>
+          </div>
+          <CardDescription>
+            Kiosk girişi yapılmış ama shift_attendance kaydı oluşturulmamış session'ları tamamlar.
+            Tarihi kayıtlar için tek seferlik çalıştırın.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {backfillResult && (
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="p-2 rounded-md bg-green-50 dark:bg-green-950/30 text-center">
+                <div className="font-bold text-green-700 dark:text-green-300">{backfillResult.created}</div>
+                <div className="text-xs text-muted-foreground">Oluşturuldu</div>
+              </div>
+              <div className="p-2 rounded-md bg-secondary/50 text-center">
+                <div className="font-bold">{backfillResult.skipped}</div>
+                <div className="text-xs text-muted-foreground">Mevcut</div>
+              </div>
+              <div className="p-2 rounded-md bg-red-50 dark:bg-red-950/30 text-center">
+                <div className="font-bold text-red-700 dark:text-red-300">{backfillResult.failed}</div>
+                <div className="text-xs text-muted-foreground">Başarısız</div>
+              </div>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => backfillMutation.mutate()}
+            disabled={backfillMutation.isPending}
+            data-testid="button-pdks-backfill"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${backfillMutation.isPending ? 'animate-spin' : ''}`} />
+            {backfillMutation.isPending ? "Çalışıyor..." : "Backfill Başlat"}
+          </Button>
         </CardContent>
       </Card>
 
