@@ -459,7 +459,7 @@ async function bootstrapAdminUser() {
       console.error(`   Set ADMIN_BOOTSTRAP_PASSWORD in Replit Secrets before starting the application.`);
       process.exit(1);
     }
-    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD;
+    const password = process.env.ADMIN_BOOTSTRAP_PASSWORD.trim();
 
     const existingAdmin = await storage.getUserByUsername('admin');
     if (existingAdmin) {
