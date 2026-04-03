@@ -21,7 +21,7 @@ export default function Cowork() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'chat'|'tasks'|'members'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat'|'tasks'|'members'|'timeline'|'files'>('chat');
   const [message, setMessage] = useState("");
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showNewChannel, setShowNewChannel] = useState(false);
@@ -181,10 +181,10 @@ export default function Cowork() {
               )}
             </div>
             <div className="ml-auto flex items-center gap-1">
-              {(['chat','tasks','members'] as const).map(tab => (
+              {(['chat','tasks','members','timeline','files'] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   className={`text-xs px-3 py-1 rounded-md ${activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
-                  {tab === 'chat' ? 'Sohbet' : tab === 'tasks' ? `Tasks ${channelTasks.length > 0 ? `(${channelTasks.filter((t:any) => t.status !== 'done').length})` : ''}` : `Üyeler (${channelMembers.length})`}
+                  {tab === 'chat' ? 'Sohbet' : tab === 'tasks' ? `Tasks ${channelTasks.length > 0 ? `(${channelTasks.filter((t:any) => t.status !== 'done').length})` : ''}` : tab === 'members' ? `Üyeler (${channelMembers.length})` : tab === 'timeline' ? 'Timeline' : 'Dosyalar'}
                 </button>
               ))}
             </div>
@@ -300,6 +300,75 @@ export default function Cowork() {
                   <Users size={12} /> Üye Davet Et
                 </button>
               )}
+            </div>
+          )}
+
+          {activeTab === 'timeline' && (
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-3">
+                {messages.length === 0 && channelTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Bu kanalda henüz aktivite yok.</p>
+                ) : (
+                  [...messages.map((m: any) => ({ ...m, _type: 'message', _time: new Date(m.createdAt).getTime() })),
+                   ...channelTasks.map((t: any) => ({ ...t, _type: 'task', _time: new Date(t.createdAt).getTime() })),
+                  ].sort((a, b) => b._time - a._time).slice(0, 50).map((item: any, i: number) => (
+                    <div key={`${item._type}-${item.id || i}`} className="flex items-start gap-2 text-xs">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        item._type === 'task' ? 'bg-blue-500' : 
+                        item.messageType === 'file' ? 'bg-purple-500' :
+                        item.messageType === 'dobody' ? 'bg-red-500' : 'bg-green-500'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{item.senderName || item.assigneeName || '?'}</span>
+                          <span className="text-muted-foreground text-[10px]">
+                            {new Date(item.createdAt).toLocaleDateString('tr-TR')} {new Date(item.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground truncate">
+                          {item._type === 'task' ? `📋 Görev: ${item.title} (${item.status})` :
+                           item.messageType === 'file' ? `📎 Dosya paylaşıldı` :
+                           item.messageType === 'dobody' ? `🤖 Dobody: ${item.content?.slice(0, 60)}` :
+                           item.content?.slice(0, 80)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'files' && (
+            <div className="flex-1 overflow-y-auto p-4">
+              {(() => {
+                const fileMessages = messages.filter((m: any) => m.messageType === 'file' || (m.metadata && m.metadata.includes('file')));
+                return fileMessages.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">Bu kanalda henüz dosya paylaşılmamış.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Sohbette dosya paylaştığınızda burada görünecek.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {fileMessages.map((f: any) => {
+                      let meta: any = {};
+                      try { meta = JSON.parse(f.metadata || '{}'); } catch {}
+                      return (
+                        <div key={f.id} className="flex items-center gap-3 p-2 rounded-lg border bg-card">
+                          <div className="w-8 h-8 rounded bg-muted flex items-center justify-center text-xs">📄</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{meta.fileName || 'Dosya'}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {f.senderName} · {new Date(f.createdAt).toLocaleDateString('tr-TR')}
+                              {meta.fileSize ? ` · ${Math.round(meta.fileSize / 1024)}KB` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
