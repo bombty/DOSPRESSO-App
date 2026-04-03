@@ -463,25 +463,18 @@ async function bootstrapAdminUser() {
 
     const existingAdmin = await storage.getUserByUsername('admin');
     if (existingAdmin) {
-      const alreadyCorrect = existingAdmin.hashedPassword
-        ? await bcrypt.compare(password, existingAdmin.hashedPassword)
-        : false;
-
-      if (!alreadyCorrect) {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await db.update(users)
-          .set({ hashedPassword, accountStatus: 'approved', isActive: true, mustChangePassword: false })
-          .where(eq(users.id, existingAdmin.id));
-        const verify = await db.select({ hp: users.hashedPassword }).from(users).where(eq(users.id, existingAdmin.id));
-        const ok = verify[0]?.hp ? await bcrypt.compare(password, verify[0].hp) : false;
-        log(`🔐 Admin user exists (id=${existingAdmin.id}), password updated from ADMIN_BOOTSTRAP_PASSWORD env — verify: ${ok ? '✅ OK' : '❌ MISMATCH'}`);
-      } else {
-        if (existingAdmin.accountStatus !== 'approved' || !existingAdmin.isActive) {
-          await db.update(users)
-            .set({ accountStatus: 'approved', isActive: true, mustChangePassword: false })
-            .where(eq(users.id, existingAdmin.id));
-        }
-        log(`✅ Admin user exists (id=${existingAdmin.id}), password already correct`);
+      // Always force-write a fresh hash so production is guaranteed to be in sync
+      log(`🔐 Admin bootstrap: pw_len=${password.length}, existing_hash_len=${existingAdmin.hashedPassword?.length ?? 0}, existing_hash_prefix=${existingAdmin.hashedPassword?.slice(0, 15) ?? 'NONE'}`);
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await db.update(users)
+        .set({ hashedPassword, accountStatus: 'approved', isActive: true, mustChangePassword: false })
+        .where(eq(users.id, existingAdmin.id));
+      // Immediately verify the written hash simulates a real login
+      const verify = await db.select({ hp: users.hashedPassword }).from(users).where(eq(users.id, existingAdmin.id));
+      const loginSim = verify[0]?.hp ? await bcrypt.compare(password, verify[0].hp) : false;
+      log(`✅ Admin password force-reset (id=${existingAdmin.id}): hash_prefix=${verify[0]?.hp?.slice(0, 15)}, login_sim=${loginSim ? '✅ OK' : '❌ FAIL'}`);
+      if (!loginSim) {
+        log(`❌ CRITICAL: login simulation failed after writing hash — check DB column type or encoding`);
       }
       return;
     }
