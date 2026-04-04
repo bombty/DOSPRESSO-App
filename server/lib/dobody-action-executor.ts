@@ -94,16 +94,10 @@ async function executeSendMessage(
           userId,
           title: `Mr. Dobody: ${proposal.title}`,
           message: message.slice(0, 500),
-          type: proposal.priority === 'acil' ? 'alert' : 'info',
-          category: 'dobody',
+          type: proposal.priority === 'acil' ? 'dobody_alert' : 'dobody',
           isRead: false,
-          metadata: JSON.stringify({
-            proposalId: proposal.id,
-            workflowType: proposal.workflowType,
-            branchId: proposal.branchId,
-            sourceModule: proposal.sourceModule,
-          }),
-        } as any);
+          link: `/dobody/proposals/${proposal.id}`,
+        });
         created++;
       } catch (e) { /* skip failed inserts */ }
     }
@@ -155,12 +149,12 @@ async function executeEscalation(proposal: any, message: string, senderId: strin
     try {
       await db.insert(notifications).values({
         userId,
-        title: `⚠️ Escalation: ${proposal.title}`,
+        title: `Escalation: ${proposal.title}`,
         message: `Mr. Dobody escalation: ${message.slice(0, 400)}`,
-        type: 'alert',
-        category: 'dobody_escalation',
+        type: 'dobody_escalation',
         isRead: false,
-      } as any);
+        link: `/dobody/proposals/${proposal.id}`,
+      });
       created++;
     } catch (e) { /* skip */ }
   }
