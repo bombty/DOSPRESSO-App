@@ -495,7 +495,9 @@ export default function Projeler() {
                                   className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer ${isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted"}`}
                                   onClick={() => toggleTeamMember(teamUser.id)}
                                 >
-                                  <Checkbox checked={isSelected} className="shrink-0" />
+                                  <div className="shrink-0 pointer-events-none">
+                                    <Checkbox checked={isSelected} />
+                                  </div>
                                   <Avatar className="h-8 w-8 shrink-0">
                                     <AvatarImage src={teamUser.profileImageUrl} />
                                     <AvatarFallback className="text-xs">{teamUser.firstName?.[0]}{teamUser.lastName?.[0]}</AvatarFallback>
