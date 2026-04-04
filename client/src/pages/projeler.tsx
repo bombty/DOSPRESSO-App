@@ -216,26 +216,29 @@ export default function Projeler() {
 
   // Flatten and filter team users
   const allEligibleUsers = useMemo(() => {
-    if (!eligibleUsersData?.groups) return [];
-    return eligibleUsersData.groups.flatMap(g => g.users);
-  }, [eligibleUsersData]);
+    if (eligibleUsersData?.groups) {
+      return eligibleUsersData.groups.flatMap(g => g.users);
+    }
+    // Fallback: use hqUsers
+    return hqUsers || [];
+  }, [eligibleUsersData, hqUsers]);
 
   const filteredTeamUsers = useMemo(() => {
-    let users = allEligibleUsers;
+    let userList = allEligibleUsers;
     // Department filter
     if (teamDeptFilter !== "all" && eligibleUsersData?.groups) {
       const group = eligibleUsersData.groups.find(g => g.id === teamDeptFilter);
-      users = group ? group.users : [];
+      userList = group ? group.users : [];
     }
     // Search filter
     if (teamSearch.trim()) {
       const search = teamSearch.toLowerCase();
-      users = users.filter(u => {
+      userList = userList.filter((u: any) => {
         const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
         return fullName.includes(search);
       });
     }
-    return users;
+    return userList;
   }, [allEligibleUsers, teamDeptFilter, teamSearch, eligibleUsersData]);
 
   const filteredProjects = useMemo(() => {

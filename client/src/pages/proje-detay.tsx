@@ -182,25 +182,29 @@ export default function ProjeDetay() {
   const availableUsers = useMemo(() => hqUsers?.filter((u: any) => !existingMemberIds.has(u.id)) || [], [hqUsers, existingMemberIds]);
 
   // Enhanced: all eligible users (HQ + Factory + Branch) minus existing members
+  // Fallback to hqUsers if new endpoint is not available
   const allEligibleUsers = useMemo(() => {
-    if (!eligibleUsersData?.groups) return [];
-    return eligibleUsersData.groups.flatMap(g => g.users).filter((u: any) => !existingMemberIds.has(u.id));
-  }, [eligibleUsersData, existingMemberIds]);
+    if (eligibleUsersData?.groups) {
+      return eligibleUsersData.groups.flatMap(g => g.users).filter((u: any) => !existingMemberIds.has(u.id));
+    }
+    // Fallback: use hqUsers
+    return availableUsers;
+  }, [eligibleUsersData, existingMemberIds, availableUsers]);
 
   const filteredMemberUsers = useMemo(() => {
-    let users = allEligibleUsers;
+    let userList = allEligibleUsers;
     if (memberDeptFilter !== "all" && eligibleUsersData?.groups) {
       const group = eligibleUsersData.groups.find(g => g.id === memberDeptFilter);
-      users = group ? group.users.filter((u: any) => !existingMemberIds.has(u.id)) : [];
+      userList = group ? group.users.filter((u: any) => !existingMemberIds.has(u.id)) : [];
     }
     if (memberSearch.trim()) {
       const search = memberSearch.toLowerCase();
-      users = users.filter((u: any) => {
+      userList = userList.filter((u: any) => {
         const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
         return fullName.includes(search);
       });
     }
-    return users;
+    return userList;
   }, [allEligibleUsers, memberDeptFilter, memberSearch, eligibleUsersData, existingMemberIds]);
 
   // ─── Member workload ─────────────────────────────────────
