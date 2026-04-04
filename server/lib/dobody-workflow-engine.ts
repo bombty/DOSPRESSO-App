@@ -45,6 +45,25 @@ export async function fireEvent(eventType: string, sourceModule: string, entityT
       case 'task_overdue':
         generated += await wf7_projectDelay(eventData || {});
         break;
+      // Dobody-6: Yeni modül bağlantıları
+      case 'shift_missing':
+        generated += await wfShiftMissing(eventData || {});
+        break;
+      case 'stock_critical':
+        generated += await wfStockCritical(eventData || {});
+        break;
+      case 'equipment_overdue':
+        generated += await wfEquipmentOverdue(eventData || {});
+        break;
+      case 'checklist_incomplete':
+        generated += await wfChecklistIncomplete(eventData || {});
+        break;
+      case 'training_expiring':
+        generated += await wfTrainingExpiring(eventData || {});
+        break;
+      case 'system_health_issue':
+        generated += await wfSystemHealth(eventData || {});
+        break;
     }
 
     // Event'i güncelle
@@ -424,4 +443,156 @@ export async function cleanupExpiredProposals() {
     console.error("cleanupExpired error:", error);
     return { expired: 0 };
   }
+}
+
+// ──────────────────────────────────────────
+// DOBODY-6: YENİ MODÜL BAĞLANTILARI
+// ──────────────────────────────────────────
+
+// WF-5: Vardiya eksik
+async function wfShiftMissing(data: Record<string, any>): Promise<number> {
+  const { branchId, branchName, date, missingCount } = data;
+  if (!branchId) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-5', roleTarget: 'supervisor', branchId,
+    proposalType: 'warning', priority: 'onemli',
+    title: `${branchName || 'Şube'} — ${date || 'yarın'} vardiya planı eksik`,
+    description: `${missingCount || ''} personel için vardiya planlanmamış. Planlama yapılmalı.`,
+    sourceModule: 'vardiya',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// WF-3: Stok kritik
+async function wfStockCritical(data: Record<string, any>): Promise<number> {
+  const { branchId, branchName, productName, currentStock, minLevel, daysLeft } = data;
+  if (!branchId) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-3', roleTarget: 'supervisor', branchId,
+    proposalType: 'action', priority: daysLeft && daysLeft <= 1 ? 'acil' : 'onemli',
+    title: `${branchName || 'Şube'} — ${productName || 'Ürün'} stoku kritik`,
+    description: `Mevcut: ${currentStock || '?'}, minimum: ${minLevel || '?'}. Tahmini ${daysLeft || '?'} gün kaldı. Sipariş önerilir.`,
+    sourceModule: 'stok',
+    suggestedActionType: 'send_message',
+    suggestedActionData: { productName, branchId, suggestedOrder: minLevel ? (Number(minLevel) * 3) : null },
+  });
+  return ok ? 1 : 0;
+}
+
+// WF — Ekipman bakım gecikmiş
+async function wfEquipmentOverdue(data: Record<string, any>): Promise<number> {
+  const { branchId, branchName, equipmentName, lastMaintenanceDate, overduedays } = data;
+  if (!branchId && !equipmentName) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-3', roleTarget: 'supervisor', branchId,
+    proposalType: 'warning', priority: 'onemli',
+    title: `${equipmentName || 'Ekipman'} bakımı ${overduedays || ''} gün gecikmiş`,
+    description: `${branchName || 'Şube'} — Son bakım: ${lastMaintenanceDate || 'bilinmiyor'}. Bakım planlanmalı.`,
+    sourceModule: 'ekipman',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// WF — Checklist tamamlanmamış
+async function wfChecklistIncomplete(data: Record<string, any>): Promise<number> {
+  const { branchId, branchName, checklistType, assignedTo } = data;
+  if (!branchId) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-3', roleTarget: 'supervisor', branchId,
+    proposalType: 'warning', priority: 'onemli',
+    title: `${branchName || 'Şube'} — ${checklistType || 'Günlük'} checklist tamamlanmadı`,
+    description: `${assignedTo || 'Sorumlu'} henüz checklistini tamamlamamış. Hatırlatma önerilir.`,
+    sourceModule: 'checklist',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// WF-4: Eğitim/sertifika bitiyor
+async function wfTrainingExpiring(data: Record<string, any>): Promise<number> {
+  const { userId, userName, trainingName, expiresIn, branchId, branchName } = data;
+  if (!userName) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-4', roleTarget: 'coach',
+    proposalType: 'action', priority: expiresIn && expiresIn <= 7 ? 'acil' : 'onemli',
+    title: `${userName} — ${trainingName || 'Sertifika'} ${expiresIn || ''} gün sonra bitiyor`,
+    description: `${branchName || ''} şubesinde ${userName} personelinin eğitim sertifikası sona ermek üzere. Yenileme eğitimi atanmalı.`,
+    sourceModule: 'egitim',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// ──────────────────────────────────────────
+// SİSTEM SAĞLIK İZLEME (Admin'e bildirir)
+// ──────────────────────────────────────────
+
+async function wfSystemHealth(data: Record<string, any>): Promise<number> {
+  const { issueType, description, severity, affectedModule, affectedEndpoint } = data;
+  const ok = await createProposal({
+    workflowType: 'WF-SYSTEM', roleTarget: 'admin',
+    proposalType: 'warning', priority: severity === 'critical' ? 'acil' : 'onemli',
+    title: `Sistem: ${issueType || 'Sorun tespit edildi'}`,
+    description: `${description || ''}${affectedModule ? ` — Modül: ${affectedModule}` : ''}${affectedEndpoint ? ` — Endpoint: ${affectedEndpoint}` : ''}`,
+    sourceModule: 'sistem',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// ──────────────────────────────────────────
+// PERİYODİK KONTROLLER (Tüm modüller)
+// ──────────────────────────────────────────
+
+export async function runPeriodicChecks() {
+  const results = { shifts: 0, stock: 0, equipment: 0, checklist: 0, system: 0 };
+  
+  try {
+    // 1. Yarınki vardiya planı kontrolü
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    
+    const branchesWithoutShifts = await db.execute(sql`
+      SELECT b.id, b.name FROM branches b
+      WHERE b.is_active = true
+      AND NOT EXISTS (
+        SELECT 1 FROM shifts s WHERE s.branch_id = b.id 
+        AND s.date = ${tomorrowStr}
+      )
+      LIMIT 20
+    `);
+    
+    for (const branch of (branchesWithoutShifts as any).rows || []) {
+      const r = await fireEvent('shift_missing', 'vardiya', 'branch', branch.id, {
+        branchId: branch.id, branchName: branch.name, date: tomorrowStr,
+      });
+      results.shifts += r.proposalsGenerated;
+    }
+
+    // 2. SLA kontrol
+    const { checkPendingActions } = await import("./dobody-workflow-engine");
+    await checkPendingActions();
+
+    // 3. Sistem sağlık kontrolü (kritik tablolar)
+    const criticalTables = ['users','branches','shifts','notifications','audits_v2','dobody_proposals'];
+    for (const table of criticalTables) {
+      try {
+        await db.execute(sql.raw(`SELECT 1 FROM ${table} LIMIT 1`));
+      } catch {
+        await fireEvent('system_health_issue', 'sistem', 'table', 0, {
+          issueType: 'Tablo erişim hatası', description: `${table} tablosuna erişilemiyor`,
+          severity: 'critical', affectedModule: 'veritabanı',
+        });
+        results.system++;
+      }
+    }
+
+  } catch (error) {
+    console.error("runPeriodicChecks error:", error);
+  }
+  
+  return results;
 }

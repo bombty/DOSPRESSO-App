@@ -228,6 +228,18 @@ router.post('/api/dobody/cleanup', isAuthenticated, async (_req, res) => {
   }
 });
 
+// POST /api/dobody/run-checks — Tüm periyodik kontrolleri çalıştır
+router.post('/api/dobody/run-checks', isAuthenticated, async (_req, res) => {
+  try {
+    const { runPeriodicChecks } = await import("../lib/dobody-workflow-engine");
+    const result = await runPeriodicChecks();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("Periodic checks error:", error);
+    res.status(500).json({ message: "Periyodik kontrol başarısız" });
+  }
+});
+
 // POST /api/dobody/seed-scopes — Tüm roller için scope tanımla (ilk kurulum)
 router.post('/api/dobody/seed-scopes', isAuthenticated, async (_req, res) => {
   try {
