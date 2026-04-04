@@ -560,7 +560,8 @@ export async function runPeriodicChecks() {
       WHERE b.is_active = true
       AND NOT EXISTS (
         SELECT 1 FROM shifts s WHERE s.branch_id = b.id 
-        AND s.date = ${tomorrowStr}
+        AND s.shift_date = ${tomorrowStr}
+        AND s.deleted_at IS NULL
       )
       LIMIT 20
     `);
