@@ -459,3 +459,79 @@ Kullanıcı "Onayla" tıklar
 + Veri kalitesi + özel dönem (Sprint 10): ~68%
 + 6 ay öğrenme sonrası:                  ~75%
 ```
+
+---
+
+## 15. DİNAMİK YETKİ KAYDIRMA + MR. DOBODY
+
+### Akış:
+```
+Admin → Yetkilendirme → Modül X'i Rol A'dan Rol B'ye kaydir
+  → Dobody → Rol B'ye: "X modülü yetkisi size aktarıldı. Bekleyen işler: ..."
+  → Dobody → Rol A'ya: "X modülü yetkiniz Rol B'ye aktarıldı (tarih aralığı)"
+  → Süre dolunca → Dobody otomatik geri alır + rapor
+
+DB: role_delegations tablosu
+  source_role, target_role, target_user_id,
+  modules[], permission_level (view/edit/full),
+  start_date, end_date, reason,
+  auto_revert (boolean), created_by
+```
+
+### Dobody Entegrasyonu:
+```
+Yetki aktarıldığında:
+  WF-DELEGATION: Yeni sorumlunun dashboard'ında aktarılan modüller gösterilir
+  Dobody önerileri artık YENİ sorumluya gider
+  Eski sorumlunun bekleyen önerileri devredilir
+
+Süre dolduğunda:
+  Otomatik geri al + bildirim
+  Ara dönem özet raporu oluştur
+```
+
+---
+
+## 16. TÜM 27 ROL İÇİN DOBODY KABİLİYETLERİ
+
+### Yönetim
+| Rol | Dobody Ne Yapar |
+|-----|----------------|
+| Admin | Sistem sağlık raporu, yetki uyarısı, güvenlik bildirimi |
+| CEO | Haftalık brief, portfolio risk, toplam performans, stratejik öneri |
+| CGO | Şube karşılaştırma, franchise büyüme, arıza trend, performans düşüş |
+
+### HQ Departman
+| Rol | Dobody Ne Yapar |
+|-----|----------------|
+| Coach | Denetim hatırlatma, skor trend, eğitim eksik, performans erken uyarı |
+| Trainer | Sertifika bitiş, eğitim tamamlama, quiz başarısızlık, reçete güncelleme |
+| Muhasebe İK | PDKS eksik, bordro hatırlatma, izin bakiye, fazla mesai uyarı |
+| Muhasebe | Bütçe sapma, maliyet analiz, gelir-gider trend |
+| Satın Alma | Stok kritik, sipariş önerisi, tedarikçi fiyat karşılaştırma, SKT uyarı |
+| Marketing | NPS trend, kampanya performans, müşteri feedback analiz |
+| Kalite Kontrol | QC red oranı, müşteri şikayet paterni, checklist uyum |
+| Gıda Mühendisi | Gıda güvenliği uyarı, LOT SKT, kalibrasyon gecikme, HACCP |
+| Fabrika Müdürü | Üretim planı eksik, fire oranı, sevkiyat planı, hammadde stok |
+| Teknik | Bakım gecikme, tekrar arıza, servis SLA, ekipman değişim önerisi |
+| Destek | Açık ticket, SLA yaklaşma, müşteri memnuniyet trend |
+| Yatırımcı HQ | Franchise performans özeti, yatırımcı şube raporları |
+
+### Şube
+| Rol | Dobody Ne Yapar |
+|-----|----------------|
+| Müdür | Vardiya eksik, stok kritik, denetim aksiyon, personel performans |
+| Supervisor | Checklist hatırlatma, vardiya eksik, sipariş önerisi, arıza bildir |
+| Sup. Buddy | Görev hatırlatma, checklist |
+| Barista | Checklist hatırlatma, eğitim hatırlatma, vardiya bilgi |
+| Bar Buddy | Görev hatırlatma, eğitim |
+| Stajyer | Onboarding adım, eğitim hatırlatma, mentor check-in |
+| Yatırımcı Şube | Şube performans özet, denetim sonuç, genel KPI |
+
+### Fabrika
+| Rol | Dobody Ne Yapar |
+|-----|----------------|
+| Üretim Şefi | Üretim planı hatırlatma, istasyon performans, reçete, fire |
+| Fab. Operatör | Görev hatırlatma, günlük hedef, kalite kontrol |
+| Fab. Sorumlu | Hat performans, personel eksik, üretim akış |
+| Fab. Personel | Görev hatırlatma, vardiya bilgi |
