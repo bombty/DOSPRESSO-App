@@ -91,14 +91,25 @@ router.post('/api/dobody/proposals', isAuthenticated, async (req, res) => {
 // PATCH /api/dobody/proposals/:id/approve
 router.patch('/api/dobody/proposals/:id/approve', isAuthenticated, async (req, res) => {
   try {
+    const { message, recipient, deadline } = req.body || {};
+    
     const [updated] = await db.update(dobodyProposals)
       .set({ status: 'approved', approvedBy: req.user.id, approvedAt: new Date() })
       .where(eq(dobodyProposals.id, parseInt(req.params.id))).returning();
     if (!updated) return res.status(404).json({ message: "Öneri bulunamadı" });
 
+    // Öğrenme kaydı
     await db.insert(dobodyLearning).values({ workflowType: updated.workflowType, proposalId: updated.id, outcome: 'approved', confidenceDelta: '2.0' });
     await updateConfidence(updated.workflowType, updated.roleTarget, true);
-    res.json(updated);
+
+    // Aksiyon yürüt (gerçek DB işlemi)
+    let actionResult = null;
+    try {
+      const { executeProposalAction } = await import("../lib/dobody-action-executor");
+      actionResult = await executeProposalAction(updated.id, req.user.id, message, recipient, deadline);
+    } catch (e) { /* aksiyon hatası onayı engellemez */ }
+
+    res.json({ ...updated, actionResult });
   } catch (error) {
     console.error("Approve error:", error);
     res.status(500).json({ message: "Onay başarısız" });
@@ -250,6 +261,13 @@ router.post('/api/dobody/seed-scopes', isAuthenticated, async (_req, res) => {
       // Fabrika
       { role: 'fabrika_mudur', allowedModules: ['fabrika','stok','ekipman','vardiya'], blockedKeywords: ['maas','tckn','banka'], branchScope: 'none', maxDetailLevel: 'full' },
       { role: 'fabrika_personel', allowedModules: ['fabrika','vardiya'], blockedKeywords: ['maas','maliyet','fiyat','tckn','banka','muhasebe'], branchScope: 'none', maxDetailLevel: 'summary' },
+      // Eksik roller eklendi (27 rol tam)
+      { role: 'teknik', allowedModules: ['ekipman','crm'], blockedKeywords: ['maas','maliyet','tckn','banka'], branchScope: 'all', maxDetailLevel: 'detail' },
+      { role: 'gida_muhendisi', allowedModules: ['fabrika','denetim','checklist'], blockedKeywords: ['maas','tckn','banka'], branchScope: 'all', maxDetailLevel: 'detail' },
+      { role: 'fabrika', allowedModules: ['fabrika','stok'], blockedKeywords: ['maas','maliyet','tckn','banka'], branchScope: 'none', maxDetailLevel: 'summary' },
+      { role: 'uretim_sefi', allowedModules: ['fabrika','stok','vardiya'], blockedKeywords: ['maas','tckn','banka','muhasebe'], branchScope: 'none', maxDetailLevel: 'detail' },
+      { role: 'fabrika_operator', allowedModules: ['fabrika','vardiya'], blockedKeywords: ['maas','maliyet','fiyat','tckn','banka','muhasebe'], branchScope: 'none', maxDetailLevel: 'summary' },
+      { role: 'fabrika_sorumlu', allowedModules: ['fabrika','vardiya','stok'], blockedKeywords: ['maas','maliyet','tckn','banka','muhasebe'], branchScope: 'none', maxDetailLevel: 'detail' },
     ];
 
     await db.insert(dobodyScopes).values(scopes as any);
