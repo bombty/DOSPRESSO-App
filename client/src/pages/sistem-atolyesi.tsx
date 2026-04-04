@@ -618,8 +618,39 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 function SistemSagligi({ data }: { data: SystemMetadata }) {
   const h = data.health;
   const [filter, setFilter] = useState<string>("all");
+  const [healthData, setHealthData] = useState<any>(null);
+  const [testResults, setTestResults] = useState<Record<string, { status: number; ok: boolean; elapsed: number; error?: string }>>({});
+  const [testing, setTesting] = useState(false);
+  const [testRole, setTestRole] = useState<string>("barista");
   const guardPercent = Math.round((h.guardedRoutes / h.totalRoutes) * 100);
-  const endpointPercent = Math.round((h.usedEndpoints / h.totalEndpoints) * 100);
+
+  // Health check yükle
+  const { data: healthCheck } = useQuery<any>({ queryKey: ["/api/system/health-check"] });
+
+  const runTests = async () => {
+    if (!healthCheck?.roleEndpoints?.[testRole]) return;
+    setTesting(true);
+    setTestResults({});
+    const endpoints = healthCheck.roleEndpoints[testRole];
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch("/api/system/test-endpoint", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: ep.path }), credentials: "include",
+        });
+        const result = await res.json();
+        setTestResults(prev => ({ ...prev, [ep.path]: result }));
+      } catch {
+        setTestResults(prev => ({ ...prev, [ep.path]: { status: 0, ok: false, elapsed: 0, error: "Fetch hatası" } }));
+      }
+    }
+    setTesting(false);
+  };
+
+  const endpoints = healthCheck?.roleEndpoints?.[testRole] || [];
+  const tested = Object.keys(testResults).length;
+  const passed = Object.values(testResults).filter((r: any) => r.ok).length;
+  const failed = Object.values(testResults).filter((r: any) => !r.ok).length;
 
   const linkCount = h.orphanPages.filter(p => p.status === "link").length;
   const dupCount = h.orphanPages.filter(p => p.status === "duplicate" || p.status === "merge").length;
@@ -630,6 +661,82 @@ function SistemSagligi({ data }: { data: SystemMetadata }) {
 
   return (
     <div className="space-y-4">
+      {/* ═══ CANLI ENDPOINT TESTİ ═══ */}
+      <Card className="border-purple-500/30">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              🔬 Canlı Endpoint Testi
+              {tested > 0 && (
+                <Badge variant={failed > 0 ? "destructive" : "default"} className="text-[10px]">
+                  {passed}✅ {failed > 0 ? `${failed}❌` : ''}
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex gap-2">
+              <Select value={testRole} onValueChange={setTestRole}>
+                <SelectTrigger className="w-[140px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(healthCheck?.roles || Object.keys(ROLE_GROUPS).flatMap(g => ROLE_GROUPS[g])).map((r: string) => (
+                    <SelectItem key={r} value={r}>{ROLE_LABELS[r] || r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-7 text-xs" onClick={runTests} disabled={testing}>
+                {testing ? "Test ediliyor..." : "Testi Başlat"}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          {endpoints.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">Bu rol için tanımlı endpoint yok</p>
+          ) : (
+            endpoints.map((ep: any) => {
+              const result = testResults[ep.path];
+              return (
+                <div key={ep.path} className={`flex items-center justify-between py-1.5 px-2 rounded text-xs ${
+                  result ? (result.ok ? 'bg-green-500/10' : 'bg-red-500/10') : 'bg-muted/30'
+                }`}>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${
+                      result ? (result.ok ? 'bg-green-500' : 'bg-red-500') : 'bg-slate-400'
+                    }`} />
+                    <span className="font-medium truncate">{ep.name}</span>
+                    <span className="text-muted-foreground text-[10px]">{ep.module}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {result && (
+                      <>
+                        <span className={`text-[10px] ${result.ok ? 'text-green-500' : 'text-red-500'}`}>
+                          {result.status} {result.ok ? '✓' : '✗'}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{result.elapsed}ms</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+          {/* DB Durumu */}
+          {healthCheck && (
+            <div className="flex items-center gap-2 pt-2 text-[10px] text-muted-foreground border-t mt-2">
+              <span className={`w-2 h-2 rounded-full ${healthCheck.database?.connected ? 'bg-green-500' : 'bg-red-500'}`} />
+              DB: {healthCheck.database?.connected ? 'Bağlı' : 'Bağlantı Yok'}
+              <span className="mx-1">·</span>
+              {healthCheck.database?.tableCount} tablo
+              {healthCheck.criticalTables && (
+                <>
+                  <span className="mx-1">·</span>
+                  Kritik: {Object.values(healthCheck.criticalTables).filter(Boolean).length}/{Object.keys(healthCheck.criticalTables).length}
+                </>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Card><CardContent className="pt-3 pb-3 text-center">
           <div className="text-2xl font-bold text-blue-500">{linkCount}</div>
