@@ -178,8 +178,12 @@ export default function Projeler() {
     description: "",
     priority: "medium",
     targetDate: "",
+    startDate: "",
+    category: "operational",
   });
   const [selectedTeam, setSelectedTeam] = useState<{ userId: string; role: string }[]>([]);
+  const [teamSearch, setTeamSearch] = useState("");
+  const [teamDeptFilter, setTeamDeptFilter] = useState("all");
 
   const newShopForm = useForm<NewShopFormValues>({
     resolver: zodResolver(newShopFormSchema),
@@ -201,6 +205,39 @@ export default function Projeler() {
     queryKey: ["/api/hq-users"],
   });
 
+  // Enhanced user list with department grouping
+  const { data: eligibleUsersData } = useQuery<{
+    groups: { id: string; label: string; users: HQUser[] }[];
+    branches: { id: number; name: string; city: string }[];
+    total: number;
+  }>({
+    queryKey: ["/api/project-eligible-users"],
+  });
+
+  // Flatten and filter team users
+  const allEligibleUsers = useMemo(() => {
+    if (!eligibleUsersData?.groups) return [];
+    return eligibleUsersData.groups.flatMap(g => g.users);
+  }, [eligibleUsersData]);
+
+  const filteredTeamUsers = useMemo(() => {
+    let users = allEligibleUsers;
+    // Department filter
+    if (teamDeptFilter !== "all" && eligibleUsersData?.groups) {
+      const group = eligibleUsersData.groups.find(g => g.id === teamDeptFilter);
+      users = group ? group.users : [];
+    }
+    // Search filter
+    if (teamSearch.trim()) {
+      const search = teamSearch.toLowerCase();
+      users = users.filter(u => {
+        const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+        return fullName.includes(search);
+      });
+    }
+    return users;
+  }, [allEligibleUsers, teamDeptFilter, teamSearch, eligibleUsersData]);
+
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
     if (statusFilter === "all") return projects;
@@ -221,8 +258,10 @@ export default function Projeler() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setIsCreateOpen(false);
-      setNewProject({ title: "", description: "", priority: "medium", targetDate: "" });
+      setNewProject({ title: "", description: "", priority: "medium", targetDate: "", startDate: "", category: "operational" });
       setSelectedTeam([]);
+      setTeamSearch("");
+      setTeamDeptFilter("all");
       toast({ title: "Proje oluşturuldu" });
     },
     onError: () => {
@@ -353,21 +392,38 @@ export default function Projeler() {
                       <Label>Açıklama</Label>
                       <Textarea
                         data-testid="input-project-description"
-                        placeholder="Proje açıklaması"
+                        placeholder="Proje amacı, hedefleri ve kapsamı..."
                         value={newProject.description}
                         onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                        rows={3}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Kategori</Label>
+                        <Select
+                          value={newProject.category}
+                          onValueChange={(v) => setNewProject({ ...newProject, category: v })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="operational">Operasyonel</SelectItem>
+                            <SelectItem value="it">IT / Teknoloji</SelectItem>
+                            <SelectItem value="marketing">Pazarlama</SelectItem>
+                            <SelectItem value="hr">İK / Eğitim</SelectItem>
+                            <SelectItem value="finance">Finans / Muhasebe</SelectItem>
+                            <SelectItem value="equipment">Ekipman / Bakım</SelectItem>
+                            <SelectItem value="other">Diğer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="space-y-2">
                         <Label>Öncelik</Label>
                         <Select
                           value={newProject.priority}
                           onValueChange={(v) => setNewProject({ ...newProject, priority: v })}
                         >
-                          <SelectTrigger data-testid="select-project-priority">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger data-testid="select-project-priority"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="low">Düşük</SelectItem>
                             <SelectItem value="medium">Orta</SelectItem>
@@ -376,18 +432,19 @@ export default function Projeler() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Hedef Tarih</Label>
-                        <Input
-                          data-testid="input-project-target-date"
-                          type="date"
-                          value={newProject.targetDate}
-                          onChange={(e) => setNewProject({ ...newProject, targetDate: e.target.value })}
-                        />
+                        <Label>Başlangıç Tarihi</Label>
+                        <Input type="date" value={newProject.startDate} onChange={(e) => setNewProject({ ...newProject, startDate: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Hedef Bitiş Tarihi</Label>
+                        <Input data-testid="input-project-target-date" type="date" value={newProject.targetDate} onChange={(e) => setNewProject({ ...newProject, targetDate: e.target.value })} />
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 border-t pt-4">
                       <div className="flex items-center justify-between">
                         <Label className="flex items-center gap-2">
                           <UserPlus className="h-4 w-4" />
@@ -398,60 +455,74 @@ export default function Projeler() {
                         )}
                       </div>
                       
+                      {/* Search & Department Filter */}
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="İsim ara..."
+                          value={teamSearch}
+                          onChange={(e) => setTeamSearch(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Select value={teamDeptFilter} onValueChange={setTeamDeptFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Departman" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tüm Departmanlar</SelectItem>
+                            {eligibleUsersData?.groups?.map((g) => (
+                              <SelectItem key={g.id} value={g.id}>
+                                {g.label} ({g.users.length})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <Card className="border-dashed">
-                        <ScrollArea className="h-[200px]">
-                          <div className="p-3 space-y-2">
-                            {hqUsers?.map((user) => {
-                              const isSelected = selectedTeam.some(m => m.userId === user.id);
-                              const memberData = selectedTeam.find(m => m.userId === user.id);
+                        <ScrollArea className="h-[220px]">
+                          <div className="p-3 space-y-1">
+                            {filteredTeamUsers.map((teamUser) => {
+                              const isSelected = selectedTeam.some(m => m.userId === teamUser.id);
+                              const memberData = selectedTeam.find(m => m.userId === teamUser.id);
+                              const roleLabel = ROLE_LABELS[teamUser.role] || teamUser.role;
                               
                               return (
                                 <div 
-                                  key={user.id}
-                                  className={`flex items-center justify-between p-2 rounded-md border transition-colors ${
-                                    isSelected ? "bg-primary/5 border-primary/20" : "hover:bg-muted/50"
-                                  }`}
+                                  key={teamUser.id}
+                                  className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer ${isSelected ? "bg-primary/10 border border-primary/20" : "hover:bg-muted"}`}
+                                  onClick={() => toggleTeamMember(teamUser.id)}
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <Checkbox
-                                      checked={isSelected}
-                                      onCheckedChange={() => toggleTeamMember(user.id)}
-                                      data-testid={`checkbox-team-${user.id}`}
-                                    />
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarImage src={user.profileImageUrl} />
-                                      <AvatarFallback className="text-xs">
-                                        {user.firstName?.[0]}{user.lastName?.[0]}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                                      <p className="text-xs text-muted-foreground">{ROLE_LABELS[user.role] || user.role}</p>
-                                    </div>
+                                  <Checkbox checked={isSelected} className="shrink-0" />
+                                  <Avatar className="h-8 w-8 shrink-0">
+                                    <AvatarImage src={teamUser.profileImageUrl} />
+                                    <AvatarFallback className="text-xs">{teamUser.firstName?.[0]}{teamUser.lastName?.[0]}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{teamUser.firstName} {teamUser.lastName || ''}</p>
+                                    <p className="text-xs text-muted-foreground">{roleLabel}</p>
                                   </div>
-                                  
-                                  {isSelected && (
+                                  {isSelected && memberData && (
                                     <Select
-                                      value={memberData?.role || "contributor"}
-                                      onValueChange={(v) => updateMemberRole(user.id, v)}
+                                      value={memberData.role}
+                                      onValueChange={(v) => updateMemberRole(teamUser.id, v)}
                                     >
-                                      <SelectTrigger className="w-32 h-8">
+                                      <SelectTrigger className="w-[120px] h-7 text-xs" onClick={(e) => e.stopPropagation()}>
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {Object.entries(memberRoleConfig).map(([key, config]) => (
-                                          <SelectItem key={key} value={key}>
-                                            <p className="text-sm">{config.label}</p>
-                                          </SelectItem>
-                                        ))}
+                                        <SelectItem value="editor">Editör</SelectItem>
+                                        <SelectItem value="contributor">Katkıda Bulunan</SelectItem>
+                                        <SelectItem value="viewer">Görüntüleyici</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   )}
                                 </div>
                               );
                             })}
-                            {(!hqUsers || hqUsers.length === 0) && (
-                              <p className="text-sm text-muted-foreground text-center py-4">HQ kullanıcısı bulunamadı</p>
+                            {filteredTeamUsers.length === 0 && (
+                              <p className="text-sm text-muted-foreground text-center py-4">
+                                {teamSearch ? "Aramayla eşleşen kullanıcı bulunamadı" : "Kullanıcı bulunamadı"}
+                              </p>
                             )}
                           </div>
                         </ScrollArea>
@@ -460,17 +531,17 @@ export default function Projeler() {
                       {selectedTeam.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {selectedTeam.map((member) => {
-                            const user = hqUsers?.find(u => u.id === member.userId);
-                            if (!user) return null;
+                            const memberUser = allEligibleUsers.find((u: any) => u.id === member.userId) || hqUsers?.find((u: any) => u.id === member.userId);
+                            if (!memberUser) return null;
                             return (
                               <Badge key={member.userId} variant="outline" className="flex items-center gap-1 pr-1">
                                 <Avatar className="h-4 w-4">
-                                  <AvatarImage src={user.profileImageUrl} />
-                                  <AvatarFallback className="text-[8px]">{user.firstName?.[0]}{user.lastName?.[0]}</AvatarFallback>
+                                  <AvatarImage src={memberUser.profileImageUrl} />
+                                  <AvatarFallback className="text-[8px]">{memberUser.firstName?.[0]}{memberUser.lastName?.[0]}</AvatarFallback>
                                 </Avatar>
-                                <span className="text-xs">{user.firstName}</span>
+                                <span className="text-xs">{memberUser.firstName}</span>
                                 <span className="text-xs text-muted-foreground">({memberRoleConfig[member.role]?.label})</span>
-                                <Button variant="ghost" size="icon" className="ml-1" onClick={() => toggleTeamMember(member.userId)}>
+                                <Button variant="ghost" size="icon" className="ml-1 h-4 w-4" onClick={() => toggleTeamMember(member.userId)}>
                                   <X className="h-3 w-3" />
                                 </Button>
                               </Badge>

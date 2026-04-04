@@ -128,6 +128,8 @@ export default function ProjeDetay() {
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [selectedMemberRole, setSelectedMemberRole] = useState("contributor");
   const [newMilestone, setNewMilestone] = useState({ title: "", description: "", dueDate: "" });
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberDeptFilter, setMemberDeptFilter] = useState("all");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -142,6 +144,14 @@ export default function ProjeDetay() {
 
   const { data: hqUsers } = useQuery<any[]>({
     queryKey: ["/api/hq-users"],
+  });
+
+  const { data: eligibleUsersData } = useQuery<{
+    groups: { id: string; label: string; users: any[] }[];
+    branches: { id: number; name: string; city: string }[];
+    total: number;
+  }>({
+    queryKey: ["/api/project-eligible-users"],
   });
 
   useBreadcrumb(project?.title || '');
@@ -169,6 +179,28 @@ export default function ProjeDetay() {
 
   const existingMemberIds = useMemo(() => new Set(members.map((m: any) => m.userId)), [members]);
   const availableUsers = useMemo(() => hqUsers?.filter((u: any) => !existingMemberIds.has(u.id)) || [], [hqUsers, existingMemberIds]);
+
+  // Enhanced: all eligible users (HQ + Factory + Branch) minus existing members
+  const allEligibleUsers = useMemo(() => {
+    if (!eligibleUsersData?.groups) return [];
+    return eligibleUsersData.groups.flatMap(g => g.users).filter((u: any) => !existingMemberIds.has(u.id));
+  }, [eligibleUsersData, existingMemberIds]);
+
+  const filteredMemberUsers = useMemo(() => {
+    let users = allEligibleUsers;
+    if (memberDeptFilter !== "all" && eligibleUsersData?.groups) {
+      const group = eligibleUsersData.groups.find(g => g.id === memberDeptFilter);
+      users = group ? group.users.filter((u: any) => !existingMemberIds.has(u.id)) : [];
+    }
+    if (memberSearch.trim()) {
+      const search = memberSearch.toLowerCase();
+      users = users.filter((u: any) => {
+        const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+        return fullName.includes(search);
+      });
+    }
+    return users;
+  }, [allEligibleUsers, memberDeptFilter, memberSearch, eligibleUsersData, existingMemberIds]);
 
   // ─── Member workload ─────────────────────────────────────
   const memberWorkload = useMemo(() => {
@@ -217,6 +249,8 @@ export default function ProjeDetay() {
       setIsAddMemberOpen(false);
       setSelectedMemberId("");
       setSelectedMemberRole("contributor");
+      setMemberSearch("");
+      setMemberDeptFilter("all");
       toast({ title: "Üye eklendi" });
     },
   });
@@ -696,20 +730,58 @@ export default function ProjeDetay() {
               <DialogTrigger asChild>
                 <Button size="sm"><UserPlus className="h-4 w-4 mr-1" /> Üye Ekle</Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader><DialogTitle>Üye Ekle</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div className="space-y-1.5">
-                    <Label>Kişi</Label>
-                    <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                      <SelectTrigger><SelectValue placeholder="Kişi seçin" /></SelectTrigger>
-                      <SelectContent>
-                        {availableUsers.map((u: any) => (
-                          <SelectItem key={u.id} value={u.id}>{u.firstName} {u.lastName || ''}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-3 py-2">
+                  {/* Search & Department Filter */}
+                  <Input
+                    placeholder="İsim ara..."
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                  />
+                  <Select value={memberDeptFilter} onValueChange={setMemberDeptFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Departman / Şube" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tüm Departmanlar</SelectItem>
+                      {eligibleUsersData?.groups?.map((g: any) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.label} ({g.users.filter((u: any) => !existingMemberIds.has(u.id)).length})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* User List */}
+                  <div className="max-h-[250px] overflow-y-auto border rounded-md">
+                    {filteredMemberUsers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        {memberSearch ? "Sonuç bulunamadı" : "Eklenecek kullanıcı yok"}
+                      </p>
+                    ) : (
+                      filteredMemberUsers.map((u: any) => (
+                        <div
+                          key={u.id}
+                          className={`flex items-center gap-2 p-2 cursor-pointer transition-colors border-b last:border-b-0 ${selectedMemberId === u.id ? 'bg-primary/10' : 'hover:bg-muted'}`}
+                          onClick={() => setSelectedMemberId(u.id)}
+                        >
+                          <Avatar className="h-7 w-7 shrink-0">
+                            <AvatarImage src={u.profileImageUrl} />
+                            <AvatarFallback className="text-[10px]">{u.firstName?.[0]}{u.lastName?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{u.firstName} {u.lastName || ''}</p>
+                            <p className="text-[11px] text-muted-foreground">{u.role}</p>
+                          </div>
+                          {selectedMemberId === u.id && (
+                            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
+
                   <div className="space-y-1.5">
                     <Label>Proje Rolü</Label>
                     <Select value={selectedMemberRole} onValueChange={setSelectedMemberRole}>

@@ -1322,6 +1322,100 @@ router.get('/api/hq-users', isAuthenticated, async (req, res) => {
   }
 });
 
+// Project-eligible users: all active users grouped by department/branch
+router.get('/api/project-eligible-users', isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user;
+    if (!isHQRole(user.role) && user.role !== 'admin') {
+      return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
+    }
+
+    const search = (req.query.search as string || '').toLowerCase().trim();
+    const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : null;
+
+    // Get all active, approved users
+    const allUsers = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+      profileImageUrl: users.profileImageUrl,
+      branchId: users.branchId,
+      isActive: users.isActive,
+      accountStatus: users.accountStatus,
+    })
+      .from(users)
+      .where(
+        and(
+          eq(users.isActive, true),
+          eq(users.accountStatus, 'approved')
+        )
+      )
+      .orderBy(users.firstName);
+
+    // Get branches for grouping
+    const branchList = await db.select({
+      id: branches.id,
+      name: branches.name,
+      city: branches.city,
+    })
+      .from(branches)
+      .where(eq(branches.isActive, true))
+      .orderBy(branches.name);
+
+    // Filter by search if provided
+    let filtered = allUsers;
+    if (search) {
+      filtered = allUsers.filter(u => {
+        const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+        return fullName.includes(search) || (u.role || '').toLowerCase().includes(search);
+      });
+    }
+
+    // Filter by branch if provided
+    if (branchFilter) {
+      filtered = filtered.filter(u => u.branchId === branchFilter || !u.branchId);
+    }
+
+    // Define HQ roles and Factory roles
+    const hqRoles = ['admin', 'ceo', 'cgo', 'muhasebe', 'muhasebe_ik', 'satinalma', 'coach', 'trainer', 'marketing', 'kalite_kontrol', 'gida_muhendisi', 'teknik', 'destek', 'yatirimci_hq'];
+    const factoryRoles = ['fabrika_mudur', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'fabrika'];
+
+    // Group users
+    const hqUsers = filtered.filter(u => hqRoles.includes(u.role));
+    const factoryUsers = filtered.filter(u => factoryRoles.includes(u.role));
+    const branchUsers = filtered.filter(u => !hqRoles.includes(u.role) && !factoryRoles.includes(u.role) && u.branchId);
+
+    // Group branch users by branch
+    const branchGroups: Record<number, { branch: typeof branchList[0]; users: typeof filtered }> = {};
+    branchUsers.forEach(u => {
+      if (!u.branchId) return;
+      if (!branchGroups[u.branchId]) {
+        const branch = branchList.find(b => b.id === u.branchId);
+        if (branch) branchGroups[u.branchId] = { branch, users: [] };
+      }
+      if (branchGroups[u.branchId]) branchGroups[u.branchId].users.push(u);
+    });
+
+    res.json({
+      groups: [
+        { id: 'hq', label: 'Genel Merkez (HQ)', users: hqUsers },
+        { id: 'factory', label: 'Fabrika', users: factoryUsers },
+        ...Object.values(branchGroups).map(bg => ({
+          id: `branch-${bg.branch.id}`,
+          label: `${bg.branch.name}${bg.branch.city ? ' — ' + bg.branch.city : ''}`,
+          users: bg.users,
+        })),
+      ],
+      branches: branchList,
+      total: filtered.length,
+    });
+  } catch (error: unknown) {
+    console.error("Get project-eligible users error:", error);
+    res.status(500).json({ message: "Kullanıcılar alınamadı" });
+  }
+});
+
 // =============================================
 // NEW SHOP OPENING MANAGEMENT ROUTES
 // =============================================
