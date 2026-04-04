@@ -193,4 +193,28 @@ router.post('/api/dobody/check-sla', isAuthenticated, async (_req, res) => {
   }
 });
 
+// POST /api/dobody/weekly-brief — Haftalık brief oluştur
+router.post('/api/dobody/weekly-brief', isAuthenticated, async (_req, res) => {
+  try {
+    const { generateWeeklyBrief } = await import("../lib/dobody-workflow-engine");
+    const result = await generateWeeklyBrief();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("Weekly brief error:", error);
+    res.status(500).json({ message: "Haftalık brief oluşturulamadı" });
+  }
+});
+
+// POST /api/dobody/cleanup — Süresi dolmuş önerileri temizle
+router.post('/api/dobody/cleanup', isAuthenticated, async (_req, res) => {
+  try {
+    const { cleanupExpiredProposals } = await import("../lib/dobody-workflow-engine");
+    const result = await cleanupExpiredProposals();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("Cleanup error:", error);
+    res.status(500).json({ message: "Temizlik başarısız" });
+  }
+});
+
 export default router;

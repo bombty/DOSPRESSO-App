@@ -304,3 +304,124 @@ export async function checkPendingActions() {
     return { approaching: 0, breached: 0 };
   }
 }
+
+// ──────────────────────────────────────────
+// WF-8: HAFTALIK BRİEF
+// Her Pazartesi: rol bazlı geçmiş hafta özeti
+// ──────────────────────────────────────────
+export async function generateWeeklyBrief() {
+  try {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    let generated = 0;
+
+    // Geçen hafta denetim sayısı ve ortalama skor
+    const auditStats = await db.select({
+      count: sql<number>`count(*)::int`,
+      avgScore: sql<number>`coalesce(avg(${auditsV2.totalScore}::numeric), 0)::numeric(5,1)`,
+      minScore: sql<number>`coalesce(min(${auditsV2.totalScore}::numeric), 0)::numeric(5,1)`,
+    })
+      .from(auditsV2)
+      .where(and(
+        sql`${auditsV2.completedAt} >= ${weekAgo.toISOString()}`,
+        sql`${auditsV2.totalScore} IS NOT NULL`,
+      ));
+
+    const totalAudits = Number(auditStats[0]?.count || 0);
+    const avgScore = Number(auditStats[0]?.avgScore || 0);
+    const minScore = Number(auditStats[0]?.minScore || 0);
+
+    // Açık aksiyon sayısı
+    const openActions = await db.select({ count: sql<number>`count(*)::int` })
+      .from(auditActionsV2)
+      .where(or(eq(auditActionsV2.status, 'open'), eq(auditActionsV2.status, 'in_progress')));
+    const actionCount = Number(openActions[0]?.count || 0);
+
+    // Bekleyen öneri sayısı
+    const pendingProps = await db.select({ count: sql<number>`count(*)::int` })
+      .from(dobodyProposals)
+      .where(eq(dobodyProposals.status, 'pending'));
+    const pendingCount = Number(pendingProps[0]?.count || 0);
+
+    // CEO Brief
+    const ceoBrief = [
+      `Bu hafta ${totalAudits} denetim yapıldı.`,
+      totalAudits > 0 ? `Ortalama skor: ${avgScore}, en düşük: ${minScore}.` : '',
+      actionCount > 0 ? `${actionCount} açık aksiyon maddesi var.` : 'Tüm aksiyonlar tamamlandı.',
+      pendingCount > 0 ? `${pendingCount} bekleyen Dobody önerisi var.` : '',
+    ].filter(Boolean).join(' ');
+
+    const ok1 = await createProposal({
+      workflowType: 'WF-8', roleTarget: 'ceo',
+      proposalType: 'info', priority: 'bilgi',
+      title: `Haftalık Özet — ${now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}`,
+      description: ceoBrief,
+      sourceModule: 'sistem',
+    });
+    if (ok1) generated++;
+
+    // Coach Brief
+    const coachBrief = [
+      `Bu hafta ${totalAudits} denetim tamamlandı.`,
+      totalAudits > 0 ? `Ortalama skor: ${avgScore}.` : 'Hiç denetim yapılmadı.',
+      actionCount > 0 ? `${actionCount} açık aksiyon takip edilmeli.` : '',
+    ].filter(Boolean).join(' ');
+
+    const ok2 = await createProposal({
+      workflowType: 'WF-8', roleTarget: 'coach',
+      proposalType: 'info', priority: 'bilgi',
+      title: `Haftalık Denetim Özeti — ${now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}`,
+      description: coachBrief,
+      sourceModule: 'denetim',
+    });
+    if (ok2) generated++;
+
+    // Event kaydet
+    await db.insert(dobodyEvents).values({
+      eventType: 'weekly_brief', sourceModule: 'sistem',
+      eventData: { totalAudits, avgScore, minScore, actionCount, pendingCount },
+      proposalsGenerated: generated,
+    });
+
+    return { generated, totalAudits, avgScore, actionCount };
+  } catch (error) {
+    console.error("generateWeeklyBrief error:", error);
+    return { generated: 0 };
+  }
+}
+
+// ──────────────────────────────────────────
+// EXPIRED PROPOSAL CLEANUP
+// Süresi dolmuş pending önerileri expired yap
+// ──────────────────────────────────────────
+export async function cleanupExpiredProposals() {
+  try {
+    const now = new Date();
+    const result = await db.update(dobodyProposals)
+      .set({ status: 'expired' })
+      .where(and(
+        eq(dobodyProposals.status, 'pending'),
+        sql`${dobodyProposals.expiresAt} IS NOT NULL`,
+        lte(dobodyProposals.expiresAt, now),
+      ))
+      .returning({ id: dobodyProposals.id });
+
+    // Expired önerilerin öğrenme kaydı
+    for (const p of result) {
+      const [prop] = await db.select().from(dobodyProposals).where(eq(dobodyProposals.id, p.id));
+      if (prop) {
+        await db.insert(dobodyLearning).values({
+          workflowType: prop.workflowType,
+          proposalId: prop.id,
+          outcome: 'expired',
+          confidenceDelta: '-1.0',
+        });
+      }
+    }
+
+    return { expired: result.length };
+  } catch (error) {
+    console.error("cleanupExpired error:", error);
+    return { expired: 0 };
+  }
+}
