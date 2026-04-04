@@ -547,10 +547,12 @@ async function wfSystemHealth(data: Record<string, any>): Promise<number> {
 // ──────────────────────────────────────────
 
 export async function runPeriodicChecks() {
-  const results = { shifts: 0, stock: 0, equipment: 0, checklist: 0, system: 0 };
+  const results = { shifts: 0, dataQuality: 0, system: 0, security: 0, business: 0, total: 0 };
   
   try {
-    // 1. Yarınki vardiya planı kontrolü
+    // ═══════════════════════════════════════
+    // 1. VARDİYA PLANI KONTROLÜ
+    // ═══════════════════════════════════════
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
@@ -573,27 +575,141 @@ export async function runPeriodicChecks() {
       results.shifts += r.proposalsGenerated;
     }
 
-    // 2. SLA kontrol
-    const { checkPendingActions } = await import("./dobody-workflow-engine");
+    // ═══════════════════════════════════════
+    // 2. SLA KONTROL
+    // ═══════════════════════════════════════
     await checkPendingActions();
 
-    // 3. Sistem sağlık kontrolü (kritik tablolar)
-    const criticalTables = ['users','branches','shifts','notifications','audits_v2','dobody_proposals'];
+    // ═══════════════════════════════════════
+    // 3. VERİ KALİTESİ KONTROLLERİ
+    // ═══════════════════════════════════════
+
+    // 3a. branchId'si null olan aktif kullanıcılar
+    try {
+      const nullBranch = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM users 
+        WHERE is_active = true AND branch_id IS NULL 
+        AND role NOT IN ('admin','ceo','cgo','muhasebe_ik','muhasebe','satinalma','coach','marketing','trainer','kalite_kontrol','gida_muhendisi','fabrika_mudur','teknik','destek','yatirimci_hq','fabrika','fabrika_operator','fabrika_sorumlu','fabrika_personel','uretim_sefi','sube_kiosk')
+      `);
+      const cnt = Number((nullBranch as any).rows?.[0]?.cnt || 0);
+      if (cnt > 0) {
+        await fireEvent('system_health_issue', 'sistem', 'users', 0, {
+          issueType: 'Şubesiz kullanıcı', description: `${cnt} aktif şube çalışanının branchId'si boş — bu kullanıcılar şubeye atanmalı`,
+          severity: 'high', affectedModule: 'kullanıcı',
+        });
+        results.dataQuality++;
+      }
+    } catch (e) { /* skip */ }
+
+    // 3b. PDKS verisi gelmeyen şubeler (5+ gün)
+    try {
+      const noPdks = await db.execute(sql`
+        SELECT b.id, b.name, 
+          (SELECT max(date) FROM pdks_records WHERE branch_id = b.id) as last_record
+        FROM branches b WHERE b.is_active = true
+        HAVING (SELECT max(date) FROM pdks_records WHERE branch_id = b.id) < current_date - interval '5 days'
+        OR (SELECT max(date) FROM pdks_records WHERE branch_id = b.id) IS NULL
+        LIMIT 10
+      `);
+      for (const row of (noPdks as any).rows || []) {
+        await fireEvent('system_health_issue', 'sistem', 'branch', row.id, {
+          issueType: 'PDKS verisi yok', description: `${row.name} şubesinden 5+ gündür PDKS verisi gelmiyor. Kiosk bağlantısı kontrol edilmeli.`,
+          severity: 'critical', affectedModule: 'pdks',
+        });
+        results.dataQuality++;
+      }
+    } catch (e) { /* skip */ }
+
+    // 3c. Yetim aksiyon kayıtları (parent denetim silinmiş)
+    try {
+      const orphanActions = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM audit_actions_v2 a
+        WHERE NOT EXISTS (SELECT 1 FROM audits_v2 au WHERE au.id = a.audit_id)
+      `);
+      const cnt = Number((orphanActions as any).rows?.[0]?.cnt || 0);
+      if (cnt > 0) {
+        await fireEvent('system_health_issue', 'sistem', 'audit_actions_v2', 0, {
+          issueType: 'Yetim aksiyon kayıtları', description: `${cnt} aksiyon kaydının parent denetimi bulunamıyor — veri tutarsızlığı`,
+          severity: 'high', affectedModule: 'denetim',
+        });
+        results.dataQuality++;
+      }
+    } catch (e) { /* skip */ }
+
+    // 3d. Tamamlanmış denetimde totalScore null
+    try {
+      const nullScore = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM audits_v2 
+        WHERE status = 'completed' AND total_score IS NULL
+      `);
+      const cnt = Number((nullScore as any).rows?.[0]?.cnt || 0);
+      if (cnt > 0) {
+        await fireEvent('system_health_issue', 'sistem', 'audits_v2', 0, {
+          issueType: 'Skorsuz tamamlanmış denetim', description: `${cnt} denetim tamamlanmış ama skoru hesaplanmamış`,
+          severity: 'high', affectedModule: 'denetim',
+        });
+        results.dataQuality++;
+      }
+    } catch (e) { /* skip */ }
+
+    // 3e. Aktif olmayan kullanıcıya atanmış bekleyen görevler
+    try {
+      const inactiveAssigned = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM project_tasks pt
+        JOIN users u ON u.id = pt.assigned_to
+        WHERE pt.status != 'completed' AND u.is_active = false
+      `);
+      const cnt = Number((inactiveAssigned as any).rows?.[0]?.cnt || 0);
+      if (cnt > 0) {
+        await fireEvent('system_health_issue', 'sistem', 'project_tasks', 0, {
+          issueType: 'Pasif kullanıcıya atanmış görevler', description: `${cnt} görev artık aktif olmayan kullanıcılara atanmış — yeniden atanmalı`,
+          severity: 'medium', affectedModule: 'proje',
+        });
+        results.business++;
+      }
+    } catch (e) { /* skip */ }
+
+    // ═══════════════════════════════════════
+    // 4. KRİTİK TABLO ERİŞİM KONTROLÜ
+    // ═══════════════════════════════════════
+    const criticalTables = ['users','branches','shifts','notifications','audits_v2',
+      'dobody_proposals','equipment','checklists','inventory','pdks_records'];
     for (const table of criticalTables) {
       try {
         await db.execute(sql.raw(`SELECT 1 FROM ${table} LIMIT 1`));
       } catch {
         await fireEvent('system_health_issue', 'sistem', 'table', 0, {
-          issueType: 'Tablo erişim hatası', description: `${table} tablosuna erişilemiyor`,
+          issueType: 'Tablo erişim hatası', description: `${table} tablosuna erişilemiyor — veritabanı sorunu`,
           severity: 'critical', affectedModule: 'veritabanı',
         });
         results.system++;
       }
     }
 
+    // ═══════════════════════════════════════
+    // 5. İŞ MANTIĞI TUTARSIZLIKLARI
+    // ═══════════════════════════════════════
+
+    // 5a. Deadline geçmiş ama hala "open" aksiyonlar
+    try {
+      const overdueOpen = await db.execute(sql`
+        SELECT count(*)::int as cnt FROM audit_actions_v2
+        WHERE status = 'open' AND deadline < current_timestamp
+      `);
+      const cnt = Number((overdueOpen as any).rows?.[0]?.cnt || 0);
+      if (cnt > 0) {
+        await fireEvent('system_health_issue', 'sistem', 'audit_actions_v2', 0, {
+          issueType: 'Gecikmiş açık aksiyonlar', description: `${cnt} denetim aksiyonunun deadline'ı geçmiş ama hala açık durumda`,
+          severity: 'high', affectedModule: 'denetim',
+        });
+        results.business++;
+      }
+    } catch (e) { /* skip */ }
+
   } catch (error) {
     console.error("runPeriodicChecks error:", error);
   }
   
+  results.total = results.shifts + results.dataQuality + results.system + results.security + results.business;
   return results;
 }
