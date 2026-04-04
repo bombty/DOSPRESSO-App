@@ -35,6 +35,7 @@ import unifiedDashboardRoutes from "./routes/unified-dashboard-routes";
 import productionPlanningRoutes from "./routes/production-planning-routes";
 import dobodyGenerateMessageRoutes from "./routes/dobody-generate-message";
 import employeeSummaryRoutes from "./routes/employee-summary";
+import auditV2Routes from "./routes/audit-v2";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
@@ -1227,6 +1228,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(unifiedDashboardRoutes);
   app.use(productionPlanningRoutes);
   app.use(dobodyGenerateMessageRoutes);
+  app.use(auditV2Routes);
   async function seedDashboardWidgetItems() {
     try {
       const existingWidgets = await db.select().from(dashboardWidgetItems);
