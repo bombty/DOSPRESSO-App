@@ -18,3 +18,4 @@ export * from './schema/schema-17-snapshots';
 export * from './schema/schema-18-production-planning';
 export * from './schema/schema-19-workshop';
 export * from './schema/schema-20-audit-v2';
+export * from './schema/schema-21-dobody-proposals';
