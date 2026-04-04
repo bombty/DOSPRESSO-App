@@ -1,897 +1,527 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Plus, FileText, Edit, Trash2, CheckCircle2, XCircle, 
-  ClipboardList, Settings
-} from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
-import { AUDIT_CATEGORY_LABELS } from "@/lib/turkish-labels";
-import { 
-  insertAuditTemplateSchema, 
-  insertAuditTemplateItemSchema,
-  type AuditTemplate,
-  type AuditTemplateItem,
-} from "@shared/schema";
+import {
+  Plus, ArrowLeft, Trash2, Edit2, ClipboardList, Settings, CheckSquare,
+  ToggleLeft, Star, SlidersHorizontal, ListChecks, Camera, FileText,
+  Weight, GripVertical, ChevronRight, Copy, Eye
+} from "lucide-react";
 import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
+import { ListSkeleton } from "@/components/list-skeleton";
 
-// Template list with itemCount
-type AuditTemplateWithCount = AuditTemplate & { itemCount: number };
+// ─── Soru tipi config ─────────────────────────────────────
+const questionTypeConfig: Record<string, { label: string; icon: any; description: string }> = {
+  checkbox: { label: "Checkbox (Tik)", icon: CheckSquare, description: "Tik atma — tik=100, boş=0" },
+  yesno: { label: "Evet / Hayır", icon: ToggleLeft, description: "İki seçenek — Evet=100, Hayır=0" },
+  rating: { label: "Puan (0-100)", icon: SlidersHorizontal, description: "Slider veya sayı girişi" },
+  stars: { label: "Yıldız (1-5)", icon: Star, description: "★★★★★ — her yıldız ×20" },
+  select: { label: "Çoktan Seçmeli", icon: ListChecks, description: "Seçenekler + puanları tanımlanır" },
+  photo: { label: "Fotoğraf Zorunlu", icon: Camera, description: "Yüklendi = geçti" },
+  text: { label: "Metin Notu", icon: FileText, description: "Puansız açıklama alanı" },
+};
 
-// Form schema for template - omit only createdById (server fills this)
-// insertAuditTemplateSchema already omits id, createdAt, updatedAt
-const templateFormSchema = insertAuditTemplateSchema.omit({
-  createdById: true, // Server fills this from req.user
-}).extend({
-  auditType: z.enum(['branch', 'personnel']), // Make required and typed
-  category: z.string().min(1, "Kategori gerekli"),
-});
-
-// Form schema for template items - omit server-managed fields
-// insertAuditTemplateItemSchema already omits id, createdAt
-const templateItemFormSchema = insertAuditTemplateItemSchema.omit({ 
-  templateId: true, // Server fills this
-  maxPoints: true, // Legacy field not used
-}).extend({
-  itemText: z.string().min(1, "Madde metni gerekli"),
-  itemType: z.string().nullable().default('checkbox'),
-  weight: z.coerce.number().min(0).nullable().default(1),
-  sortOrder: z.number(),
-  options: z.array(z.string()).nullable().optional(), // For multiple choice questions
-  correctAnswer: z.string().nullable().optional(), // For test questions
-}).superRefine((data, ctx) => {
-  // Conditional validation for multiple_choice type
-  if (data.itemType === 'multiple_choice') {
-    // Filter out empty/whitespace-only options
-    const validOptions = (data.options || []).filter(opt => opt && opt.trim() !== '');
-    
-    if (validOptions.length < 2) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Çoktan seçmeli sorular için en az 2 geçerli şık gerekli (boş şıklar kabul edilmez)",
-        path: ['options'],
-      });
-    }
-    
-    // Check each option is non-empty
-    if (data.options) {
-      data.options.forEach((opt, idx) => {
-        if (!opt || opt.trim() === '') {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Şık ${idx + 1} boş olamaz`,
-            path: ['options', idx],
-          });
-        }
-      });
-    }
-    
-    if (!data.correctAnswer || data.correctAnswer.trim() === '') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Doğru cevap gerekli",
-        path: ['correctAnswer'],
-      });
-    }
-    
-    if (data.options && data.correctAnswer && !data.options.includes(data.correctAnswer)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Doğru cevap şıklardan biri olmalı",
-        path: ['correctAnswer'],
-      });
-    }
-  }
-});
-
-type TemplateFormData = z.infer<typeof templateFormSchema>;
-type TemplateItemFormData = z.infer<typeof templateItemFormSchema>;
+// ─── Types ────────────────────────────────────────────────
+type Template = {
+  id: number; name: string; description: string | null;
+  version: number; isActive: boolean; isDefault: boolean;
+  categoryCount: number; questionCount: number;
+  createdAt: string; updatedAt: string;
+};
+type Category = {
+  id: number; templateId: number; name: string; description: string | null;
+  weight: number; orderIndex: number; isActive: boolean;
+  questions: Question[];
+};
+type Question = {
+  id: number; categoryId: number; questionText: string;
+  questionType: string; options: { label: string; score: number }[] | null;
+  isRequired: boolean; weight: number; orderIndex: number; helpText: string | null;
+};
+type TemplateDetail = Template & { categories: Category[] };
 
 export default function DenetimSablonlariPage() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
-  
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterActive, setFilterActive] = useState<string>('all');
-  
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<AuditTemplate | null>(null);
-  const [items, setItems] = useState<TemplateItemFormData[]>([]);
 
-  // Form for template metadata
-  const form = useForm<TemplateFormData>({
-    resolver: zodResolver(templateFormSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      auditType: 'branch',
-      category: '',
-      isActive: true,
-      requiresPhoto: false,
-      aiAnalysisEnabled: false,
-    },
+  // ─── State ──────────────────────────────────────────────
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
+  const [isEditTemplateOpen, setIsEditTemplateOpen] = useState(false);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+
+  // Form state
+  const [templateForm, setTemplateForm] = useState({ name: "", description: "" });
+  const [categoryForm, setCategoryForm] = useState({ name: "", description: "", weight: 10 });
+  const [questionForm, setQuestionForm] = useState({
+    questionText: "", questionType: "checkbox", isRequired: true, weight: 1, helpText: "",
+    options: [{ label: "", score: 100 }, { label: "", score: 0 }] as { label: string; score: number }[],
   });
 
-  // Build filter object for query key segments
-  const filters = {
-    ...(filterType !== 'all' && { auditType: filterType }),
-    ...(filterCategory !== 'all' && { category: filterCategory }),
-    ...(filterActive !== 'all' && { isActive: filterActive }),
+  // ─── Queries ────────────────────────────────────────────
+  const { data: templates, isLoading } = useQuery<Template[]>({
+    queryKey: ["/api/v2/audit-templates"],
+  });
+
+  const { data: templateDetail, isLoading: detailLoading } = useQuery<TemplateDetail>({
+    queryKey: ["/api/v2/audit-templates", selectedTemplateId],
+    enabled: !!selectedTemplateId,
+  });
+
+  const activeTemplates = useMemo(() => templates?.filter(t => t.isActive) || [], [templates]);
+  const inactiveTemplates = useMemo(() => templates?.filter(t => !t.isActive) || [], [templates]);
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/v2/audit-templates"] });
+    if (selectedTemplateId) queryClient.invalidateQueries({ queryKey: ["/api/v2/audit-templates", selectedTemplateId] });
   };
-  
-  // Use array-based query key for proper invalidation
-  const { data: templates = [], isLoading, isError, refetch } = useQuery<AuditTemplateWithCount[]>({
-    queryKey: ['/api/audit-templates', filters],
-    queryFn: async () => {
-      const queryParams = new URLSearchParams(filters as Record<string, string>);
-      const url = queryParams.toString() 
-        ? `/api/audit-templates?${queryParams}` 
-        : '/api/audit-templates';
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) throw new Error('Şablonlar yüklenemedi');
-      return res.json();
-    },
+
+  // ─── Template Mutations ─────────────────────────────────
+  const createTemplateMut = useMutation({
+    mutationFn: async (data: typeof templateForm) => (await apiRequest("POST", "/api/v2/audit-templates", data)).json(),
+    onSuccess: (data: any) => { invalidateAll(); setIsCreateTemplateOpen(false); setTemplateForm({ name: "", description: "" }); setSelectedTemplateId(data.id); toast({ title: "Şablon oluşturuldu" }); },
+  });
+  const updateTemplateMut = useMutation({
+    mutationFn: async (data: any) => (await apiRequest("PATCH", `/api/v2/audit-templates/${selectedTemplateId}`, data)).json(),
+    onSuccess: () => { invalidateAll(); setIsEditTemplateOpen(false); toast({ title: "Şablon güncellendi" }); },
+  });
+  const deleteTemplateMut = useMutation({
+    mutationFn: async (id: number) => (await apiRequest("DELETE", `/api/v2/audit-templates/${id}`)).json(),
+    onSuccess: () => { invalidateAll(); setSelectedTemplateId(null); toast({ title: "Şablon silindi" }); },
+  });
+  const toggleTemplateMut = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => (await apiRequest("PATCH", `/api/v2/audit-templates/${id}`, { isActive })).json(),
+    onSuccess: () => invalidateAll(),
   });
 
-  // Create template mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: { template: TemplateFormData; items: TemplateItemFormData[] }) => {
-      return await apiRequest('POST', '/api/audit-templates', data);
-    },
+  // ─── Category Mutations ─────────────────────────────────
+  const createCategoryMut = useMutation({
+    mutationFn: async (data: typeof categoryForm) => (await apiRequest("POST", `/api/v2/audit-templates/${selectedTemplateId}/categories`, data)).json(),
+    onSuccess: () => { invalidateAll(); setIsAddCategoryOpen(false); setCategoryForm({ name: "", description: "", weight: 10 }); toast({ title: "Kategori eklendi" }); },
+  });
+  const updateCategoryMut = useMutation({
+    mutationFn: async ({ id, ...data }: any) => (await apiRequest("PATCH", `/api/v2/audit-categories/${id}`, data)).json(),
+    onSuccess: () => { invalidateAll(); setEditingCategoryId(null); toast({ title: "Kategori güncellendi" }); },
+  });
+  const deleteCategoryMut = useMutation({
+    mutationFn: async (id: number) => (await apiRequest("DELETE", `/api/v2/audit-categories/${id}`)).json(),
+    onSuccess: () => { invalidateAll(); toast({ title: "Kategori silindi" }); },
+  });
+
+  // ─── Question Mutations ─────────────────────────────────
+  const createQuestionMut = useMutation({
+    mutationFn: async (data: any) => (await apiRequest("POST", `/api/v2/audit-categories/${activeCategoryId}/questions`, data)).json(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/audit-templates'] });
-      toast({ title: "Şablon oluşturuldu", description: "Denetim şablonu başarıyla kaydedildi." });
-      handleCloseDialog();
-    },
-    onError: (error) => {
-      toast({ 
-        title: "Hata", 
-        description: error.message || "Şablon oluşturulurken hata oluştu",
-        variant: "destructive"
-      });
+      invalidateAll(); setIsAddQuestionOpen(false);
+      setQuestionForm({ questionText: "", questionType: "checkbox", isRequired: true, weight: 1, helpText: "", options: [{ label: "", score: 100 }, { label: "", score: 0 }] });
+      toast({ title: "Soru eklendi" });
     },
   });
-
-  // Update template mutation
-  const updateMutation = useMutation({
-    mutationFn: async (data: { id: number; template: Partial<TemplateFormData>; items?: TemplateItemFormData[] }) => {
-      return await apiRequest('PATCH', `/api/audit-templates/${data.id}`, { 
-        template: data.template, 
-        items: data.items 
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/audit-templates'] });
-      toast({ title: "Şablon güncellendi", description: "Değişiklikler kaydedildi." });
-      handleCloseDialog();
-    },
-    onError: (error) => {
-      toast({ 
-        title: "Hata", 
-        description: error.message || "Şablon güncellenirken hata oluştu",
-        variant: "destructive"
-      });
-    },
+  const deleteQuestionMut = useMutation({
+    mutationFn: async (id: number) => (await apiRequest("DELETE", `/api/v2/audit-questions/${id}`)).json(),
+    onSuccess: () => { invalidateAll(); toast({ title: "Soru silindi" }); },
   });
 
-  // Delete template mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return await apiRequest('DELETE', `/api/audit-templates/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/audit-templates'] });
-      toast({ title: "Şablon silindi", description: "Denetim şablonu başarıyla kaldırıldı." });
-    },
-    onError: (error) => {
-      toast({ 
-        title: "Hata", 
-        description: error.message || "Şablon silinirken hata oluştu",
-        variant: "destructive"
-      });
-    },
-  });
+  // ─── Toplam ağırlık hesapla ─────────────────────────────
+  const totalWeight = useMemo(() => {
+    if (!templateDetail?.categories) return 0;
+    return templateDetail.categories.reduce((sum, c) => sum + (c.weight || 0), 0);
+  }, [templateDetail]);
 
-  const handleOpenCreateDialog = () => {
-    setEditingTemplate(null);
-    form.reset({
-      title: '',
-      description: '',
-      auditType: 'branch',
-      category: '',
-      isActive: true,
-      requiresPhoto: false,
-      aiAnalysisEnabled: false,
-    });
-    setItems([]);
-    setIsCreateDialogOpen(true);
-  };
+  // ─── Loading ────────────────────────────────────────────
+  if (isLoading) return <div className="p-4"><ListSkeleton count={4} variant="card" showHeader /></div>;
 
-  const handleOpenEditDialog = async (template: AuditTemplate) => {
-    // Fetch full template with items using authenticated API
-    const fullTemplate = await queryClient.fetchQuery<AuditTemplate & { items: AuditTemplateItem[] }>({
-      queryKey: [`/api/audit-templates/${template.id}`],
-    });
-    
-    setEditingTemplate(template);
-    form.reset({
-      title: fullTemplate.title,
-      description: fullTemplate.description || '',
-      auditType: (fullTemplate.auditType as 'branch' | 'personnel') || 'branch',
-      category: fullTemplate.category,
-      isActive: fullTemplate.isActive,
-      requiresPhoto: fullTemplate.requiresPhoto,
-      aiAnalysisEnabled: fullTemplate.aiAnalysisEnabled,
-    });
-    
-    // Map items to form data (exclude id and templateId)
-    setItems(fullTemplate.items?.map((item: AuditTemplateItem) => ({
-      itemText: item.itemText,
-      itemType: item.itemType || 'checkbox',
-      weight: item.weight || 1,
-      sortOrder: item.sortOrder,
-      requiresPhoto: item.requiresPhoto || false,
-      aiCheckEnabled: item.aiCheckEnabled || false,
-      aiPrompt: item.aiPrompt || null,
-      options: item.options || null,
-      correctAnswer: item.correctAnswer || null,
-    })));
-    
-    setIsCreateDialogOpen(true);
-  };
+  // ═══════════════════════════════════════════════════════════
+  // TEMPLATE LIST VIEW
+  // ═══════════════════════════════════════════════════════════
+  if (!selectedTemplateId) {
+    return (
+      <div className="p-4 space-y-4 max-w-5xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" /> Denetim Şablonları
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">Şube denetim formlarını oluşturun ve yönetin</p>
+          </div>
+          <Button onClick={() => setIsCreateTemplateOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Yeni Şablon
+          </Button>
+        </div>
 
-  const handleCloseDialog = () => {
-    setIsCreateDialogOpen(false);
-    setEditingTemplate(null);
-    form.reset();
-    setItems([]);
-  };
+        {/* Active Templates */}
+        {activeTemplates.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground">Aktif Şablonlar ({activeTemplates.length})</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {activeTemplates.map(t => (
+                <Card key={t.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedTemplateId(t.id)}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm truncate">{t.name}</h3>
+                        {t.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {t.isDefault && <Badge variant="default" className="text-xs">Varsayılan</Badge>}
+                        <Badge variant="secondary" className="text-xs">v{t.version}</Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                      <span>{t.categoryCount} kategori</span>
+                      <span>{t.questionCount} soru</span>
+                      <ChevronRight className="h-3 w-3 ml-auto" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
-  const handleAddItem = () => {
-    setItems([
-      ...items,
-      {
-        itemText: '',
-        itemType: 'checkbox',
-        weight: 1,
-        sortOrder: items.length,
-        requiresPhoto: false,
-        aiCheckEnabled: false,
-        aiPrompt: null,
-        options: null,
-        correctAnswer: null,
-      },
-    ]);
-  };
+        {/* Inactive */}
+        {inactiveTemplates.length > 0 && (
+          <div className="space-y-2 mt-6">
+            <h2 className="text-sm font-medium text-muted-foreground">Pasif Şablonlar ({inactiveTemplates.length})</h2>
+            {inactiveTemplates.map(t => (
+              <Card key={t.id} className="opacity-60 cursor-pointer hover:opacity-80" onClick={() => setSelectedTemplateId(t.id)}>
+                <CardContent className="p-3 flex items-center justify-between">
+                  <span className="text-sm">{t.name}</span>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); toggleTemplateMut.mutate({ id: t.id, isActive: true }); }}>
+                    Aktifleştir
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
+        {(!templates || templates.length === 0) && (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Henüz şablon yok. İlk denetim şablonunuzu oluşturun.</p>
+              <Button className="mt-4" onClick={() => setIsCreateTemplateOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> İlk Şablonu Oluştur
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-  const handleUpdateItem = (index: number, field: keyof TemplateItemFormData, value) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    
-    // Auto-initialize options array when changing to multiple_choice
-    if (field === 'itemType' && value === 'multiple_choice' && !newItems[index].options) {
-      newItems[index].options = ['', ''];
-    }
-    
-    // Clear MC fields when changing away from multiple_choice
-    if (field === 'itemType' && value !== 'multiple_choice') {
-      newItems[index].options = null;
-      newItems[index].correctAnswer = null;
-    }
-    
-    setItems(newItems);
-  };
-
-  const onSubmit = (data: TemplateFormData) => {
-    // Validation
-    if (items.length === 0) {
-      toast({ title: "Hata", description: "En az bir denetim maddesi ekleyin", variant: "destructive" });
-      return;
-    }
-    
-    if (items.some(item => !item.itemText.trim())) {
-      toast({ title: "Hata", description: "Tüm maddelerin açıklaması olmalı", variant: "destructive" });
-      return;
-    }
-    
-    // Update sortOrder based on array index
-    const itemsWithOrder = (Array.isArray(items) ? items : []).map((item, index) => ({
-      ...item,
-      sortOrder: index,
-    }));
-
-    if (editingTemplate) {
-      updateMutation.mutate({
-        id: editingTemplate.id,
-        template: data,
-        items: itemsWithOrder,
-      });
-    } else {
-      createMutation.mutate({
-        template: data,
-        items: itemsWithOrder,
-      });
-    }
-  };
-
-  const handleDelete = (id: number, name?: string) => {
-    requestDelete(id, name || "Şablon");
-  };
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-full">Yükleniyor...</div>;
+        {/* Create Template Dialog */}
+        <Dialog open={isCreateTemplateOpen} onOpenChange={setIsCreateTemplateOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Yeni Denetim Şablonu</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Şablon Adı *</Label>
+                <Input value={templateForm.name} onChange={e => setTemplateForm({ ...templateForm, name: e.target.value })} placeholder="Örn: Standart Şube Denetimi" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Açıklama</Label>
+                <Textarea value={templateForm.description} onChange={e => setTemplateForm({ ...templateForm, description: e.target.value })} placeholder="Şablonun amacı ve kapsamı" rows={3} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateTemplateOpen(false)}>İptal</Button>
+              <Button onClick={() => { if (templateForm.name.trim()) createTemplateMut.mutate(templateForm); else toast({ title: "Şablon adı gerekli", variant: "destructive" }); }} disabled={createTemplateMut.isPending}>
+                {createTemplateMut.isPending ? "Oluşturuluyor..." : "Oluştur"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
   }
 
-  
-  if (isLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
+  // ═══════════════════════════════════════════════════════════
+  // TEMPLATE DETAIL VIEW
+  // ═══════════════════════════════════════════════════════════
+  if (detailLoading) return <div className="p-4"><ListSkeleton count={6} variant="card" showHeader /></div>;
+  if (!templateDetail) return <div className="p-4 text-center text-muted-foreground">Şablon bulunamadı</div>;
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4">
+    <div className="p-4 space-y-4 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Denetim Şablonları</h1>
-          <p className="text-muted-foreground">Şube ve personel denetim şablonlarını yönetin</p>
-        </div>
-        <Button onClick={handleOpenCreateDialog} data-testid="button-create-template">
-          <Plus className="mr-2 h-4 w-4" />
-          Yeni Şablon
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setSelectedTemplateId(null)}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h1 className="text-lg font-semibold flex-1 min-w-0 truncate">{templateDetail.name}</h1>
+        <Badge variant={templateDetail.isActive ? "default" : "secondary"}>
+          {templateDetail.isActive ? "Aktif" : "Pasif"}
+        </Badge>
+        <Button variant="outline" size="sm" onClick={() => { setTemplateForm({ name: templateDetail.name, description: templateDetail.description || "" }); setIsEditTemplateOpen(true); }}>
+          <Edit2 className="h-3.5 w-3.5 mr-1" /> Düzenle
+        </Button>
+        <Button variant="ghost" size="sm" className="text-red-400" onClick={() => requestDelete(templateDetail.id, templateDetail.name)}>
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
 
-      {/* Filters */}
+      {templateDetail.description && (
+        <p className="text-sm text-muted-foreground">{templateDetail.description}</p>
+      )}
+
+      {/* Weight Summary */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Filtreler
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2 sm:gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <Label htmlFor="filter-type">Denetim Türü</Label>
-            <Select value={filterType} onValueChange={setFilterType}>
-              <SelectTrigger id="filter-type" data-testid="select-filter-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" data-testid="option-type-all">Tümü</SelectItem>
-                <SelectItem value="branch" data-testid="option-type-branch">Şube Denetimi</SelectItem>
-                <SelectItem value="personnel" data-testid="option-type-personnel">Personel Denetimi</SelectItem>
-              </SelectContent>
-            </Select>
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Weight className="h-4 w-4" /> Toplam Ağırlık
+            </span>
+            <span className={`font-medium ${totalWeight === 100 ? 'text-green-600' : 'text-red-500'}`}>
+              %{totalWeight} {totalWeight === 100 ? '✓' : `(hedef: %100)`}
+            </span>
           </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <Label htmlFor="filter-category">Kategori</Label>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger id="filter-category" data-testid="select-filter-category">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" data-testid="option-category-all">Tümü</SelectItem>
-                <SelectItem value="hijyen" data-testid="option-category-hijyen">Hijyen</SelectItem>
-                <SelectItem value="hizmet_kalitesi" data-testid="option-category-hizmet">Hizmet Kalitesi</SelectItem>
-                <SelectItem value="stok_yonetimi" data-testid="option-category-stok">Stok Yönetimi</SelectItem>
-                <SelectItem value="ekipman" data-testid="option-category-ekipman">Ekipman</SelectItem>
-                <SelectItem value="bilgi_testi" data-testid="option-category-bilgi">Bilgi Testi</SelectItem>
-                <SelectItem value="beceri_degerlendirme" data-testid="option-category-beceri">Beceri Değerlendirme</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <Label htmlFor="filter-active">Durum</Label>
-            <Select value={filterActive} onValueChange={setFilterActive}>
-              <SelectTrigger id="filter-active" data-testid="select-filter-active">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" data-testid="option-active-all">Tümü</SelectItem>
-                <SelectItem value="true" data-testid="option-active-true">Aktif</SelectItem>
-                <SelectItem value="false" data-testid="option-active-false">Pasif</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Progress value={totalWeight} className={`h-1.5 mt-2 ${totalWeight === 100 ? '' : '[&>div]:bg-red-500'}`} />
         </CardContent>
       </Card>
 
-      {/* Templates Grid */}
-      <div className="flex flex-col gap-3 sm:gap-4">
-        {(Array.isArray(templates) ? templates : []).map((template) => (
-          <Card key={template.id} data-testid={`card-template-${template.id}`} className="hover-elevate">
-            <CardContent className="p-3">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-medium line-clamp-2" data-testid={`title-template-${template.id}`}>
-                    {template.title}
-                  </h3>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-4 w-4"
-                      onClick={() => handleOpenEditDialog(template)}
-                      data-testid={`button-edit-template-${template.id}`}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-4 w-4"
-                      onClick={() => handleDelete(template.id, template.name)}
-                      data-testid={`button-delete-template-${template.id}`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant={template.auditType === 'branch' ? 'default' : 'secondary'} className="text-xs" data-testid={`badge-type-${template.id}`}>
-                    {template.auditType === 'branch' ? 'Şube' : 'Personel'}
-                  </Badge>
-                  {template.category && (
-                    <Badge variant="outline" className="text-xs" data-testid={`badge-category-${template.id}`}>{AUDIT_CATEGORY_LABELS[template.category] || template.category}</Badge>
-                  )}
-                  <Badge variant={template.isActive ? 'default' : 'secondary'} className="text-xs" data-testid={`badge-status-${template.id}`}>
-                    {template.isActive ? 'Aktif' : 'Pasif'}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`itemcount-${template.id}`}>
-                  <ClipboardList className="h-3 w-3" />
-                  {template.itemCount} madde
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Categories + Questions */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Kategoriler ({templateDetail.categories?.length || 0})
+        </h2>
+        <Button size="sm" onClick={() => { setCategoryForm({ name: "", description: "", weight: 10 }); setIsAddCategoryOpen(true); }}>
+          <Plus className="h-4 w-4 mr-1" /> Kategori Ekle
+        </Button>
       </div>
 
-      {templates.length === 0 && (
+      {templateDetail.categories?.length === 0 && (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">Henüz şablon oluşturulmamış</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              İlk denetim şablonunuzu oluşturmak için yukarıdaki butona tıklayın
-            </p>
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            Henüz kategori eklenmemiş. Denetim formundaki ana bölümleri (Dış Mekan, Bar Düzeni, vb.) kategori olarak ekleyin.
           </CardContent>
         </Card>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle data-testid="dialog-title">
-              {editingTemplate ? 'Şablonu Düzenle' : 'Yeni Şablon Oluştur'}
-            </DialogTitle>
-            <DialogDescription>
-              Denetim şablonu detaylarını ve maddeleri tanımlayın
-            </DialogDescription>
-          </DialogHeader>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-2 sm:space-y-3">
-              {/* Template Info */}
-              <div className="flex flex-col gap-3 sm:gap-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Şablon Başlığı *</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="Örn: Hijyen Denetimi"
-                          data-testid="input-template-title"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Açıklama</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          value={field.value || ''}
-                          placeholder="Şablon açıklaması..."
-                          data-testid="input-template-description"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <FormField
-                    control={form.control}
-                    name="auditType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Denetim Türü *</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-audit-type">
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="branch" data-testid="option-audittype-branch">Şube Denetimi</SelectItem>
-                            <SelectItem value="personnel" data-testid="option-audittype-personnel">Personel Denetimi</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kategori *</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-category">
-                              <SelectValue placeholder="Kategori seçin" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="hijyen" data-testid="option-category-form-hijyen">Hijyen</SelectItem>
-                            <SelectItem value="hizmet_kalitesi" data-testid="option-category-form-hizmet">Hizmet Kalitesi</SelectItem>
-                            <SelectItem value="stok_yonetimi" data-testid="option-category-form-stok">Stok Yönetimi</SelectItem>
-                            <SelectItem value="ekipman" data-testid="option-category-form-ekipman">Ekipman</SelectItem>
-                            <SelectItem value="bilgi_testi" data-testid="option-category-form-bilgi">Bilgi Testi</SelectItem>
-                            <SelectItem value="beceri_degerlendirme" data-testid="option-category-form-beceri">Beceri Değerlendirme</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  <FormField
-                    control={form.control}
-                    name="requiresPhoto"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-requires-photo"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Fotoğraf Gerekli</FormLabel>
-                          <FormDescription>
-                            Bu denetim için fotoğraf zorunlu olsun
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="aiAnalysisEnabled"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-ai-analysis"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>AI Analizi Aktif</FormLabel>
-                          <FormDescription>
-                            Fotoğraflar AI ile otomatik analiz edilsin
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+      <Accordion type="multiple" className="space-y-2">
+        {templateDetail.categories?.map((cat) => (
+          <AccordionItem key={cat.id} value={`cat-${cat.id}`} className="border rounded-lg overflow-hidden">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                <span className="font-medium text-sm truncate">{cat.name}</span>
+                <Badge variant="outline" className="text-xs shrink-0">%{cat.weight}</Badge>
+                <Badge variant="secondary" className="text-xs shrink-0">{cat.questions?.length || 0} soru</Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-3 space-y-3">
+              {/* Category actions */}
+              <div className="flex items-center gap-2 pb-2 border-b">
+                <Button variant="outline" size="sm" onClick={() => { setCategoryForm({ name: cat.name, description: cat.description || "", weight: cat.weight }); setEditingCategoryId(cat.id); }}>
+                  <Edit2 className="h-3 w-3 mr-1" /> Düzenle
+                </Button>
+                <Button variant="outline" size="sm" className="text-red-400" onClick={() => deleteCategoryMut.mutate(cat.id)}>
+                  <Trash2 className="h-3 w-3 mr-1" /> Sil
+                </Button>
+                <div className="flex-1" />
+                <Button size="sm" onClick={() => { setActiveCategoryId(cat.id); setQuestionForm({ questionText: "", questionType: "checkbox", isRequired: true, weight: 1, helpText: "", options: [{ label: "", score: 100 }, { label: "", score: 0 }] }); setIsAddQuestionOpen(true); }}>
+                  <Plus className="h-3 w-3 mr-1" /> Soru Ekle
+                </Button>
               </div>
 
-              {/* Items */}
-              <div className="grid grid-cols-1 gap-2 sm:gap-3 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-lg">Denetim Maddeleri</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddItem}
-                    data-testid="button-add-item"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Madde Ekle
-                  </Button>
-                </div>
-
-                {(Array.isArray(items) ? items : []).map((item, index) => (
-                  <Card key={index} data-testid={`card-item-${index}`}>
-                    <CardContent className="pt-4 grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <Label className="text-sm font-medium">Madde {index + 1}</Label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveItem(index)}
-                          data-testid={`button-remove-item-${index}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+              {/* Questions list */}
+              {cat.questions?.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-3">Bu kategoride henüz soru yok</p>
+              )}
+              {cat.questions?.map((q, qi) => {
+                const typeInfo = questionTypeConfig[q.questionType] || questionTypeConfig.checkbox;
+                const TypeIcon = typeInfo.icon;
+                return (
+                  <div key={q.id} className="flex items-start gap-2 p-2 rounded-md border bg-card hover:bg-muted/30">
+                    <span className="text-xs text-muted-foreground mt-0.5 w-5 shrink-0">{qi + 1}.</span>
+                    <TypeIcon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">{q.questionText}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-[10px]">{typeInfo.label}</Badge>
+                        {q.isRequired && <Badge variant="secondary" className="text-[10px]">Zorunlu</Badge>}
+                        {q.helpText && <span className="text-[10px] text-muted-foreground truncate">💡 {q.helpText}</span>}
                       </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-400 shrink-0" onClick={() => deleteQuestionMut.mutate(q.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
 
-                      <div>
-                        <Label htmlFor={`item-text-${index}`}>Madde Metni *</Label>
-                        <Textarea
-                          id={`item-text-${index}`}
-                          value={item.itemText}
-                          onChange={(e) => handleUpdateItem(index, 'itemText', e.target.value)}
-                          placeholder="Örn: Tezgah temizliği uygun mu?"
-                          data-testid={`input-item-text-${index}`}
-                        />
-                      </div>
+      {/* ═══ DIALOGS ═══ */}
 
-                      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                        <div>
-                          <Label htmlFor={`item-type-${index}`}>Madde Tipi</Label>
-                          <Select
-                            value={item.itemType || 'checkbox'}
-                            onValueChange={(value) => handleUpdateItem(index, 'itemType', value)}
-                          >
-                            <SelectTrigger id={`item-type-${index}`} data-testid={`select-item-type-${index}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="checkbox" data-testid={`option-itemtype-${index}-checkbox`}>Checkbox</SelectItem>
-                              <SelectItem value="rating" data-testid={`option-itemtype-${index}-rating`}>Rating (1-5)</SelectItem>
-                              <SelectItem value="text" data-testid={`option-itemtype-${index}-text`}>Metin Yanıt</SelectItem>
-                              <SelectItem value="photo" data-testid={`option-itemtype-${index}-photo`}>Fotoğraf</SelectItem>
-                              <SelectItem value="multiple_choice" data-testid={`option-itemtype-${index}-multiple_choice`}>Çoktan Seçmeli Test</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label htmlFor={`weight-${index}`}>Puan Ağırlığı</Label>
-                          <Input
-                            id={`weight-${index}`}
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={item.weight || 1}
-                            onChange={(e) => handleUpdateItem(index, 'weight', parseInt(e.target.value) || 1)}
-                            data-testid={`input-weight-${index}`}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`requires-photo-${index}`}
-                            checked={item.requiresPhoto || false}
-                            onCheckedChange={(checked) => handleUpdateItem(index, 'requiresPhoto', checked)}
-                            data-testid={`checkbox-item-photo-${index}`}
-                          />
-                          <Label htmlFor={`requires-photo-${index}`} className="text-sm font-normal">
-                            Bu madde için fotoğraf gerekli
-                          </Label>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`ai-check-${index}`}
-                            checked={item.aiCheckEnabled || false}
-                            onCheckedChange={(checked) => handleUpdateItem(index, 'aiCheckEnabled', checked)}
-                            data-testid={`checkbox-item-ai-${index}`}
-                          />
-                          <Label htmlFor={`ai-check-${index}`} className="text-sm font-normal">
-                            AI kontrolü aktif
-                          </Label>
-                        </div>
-                      </div>
-
-                      {item.aiCheckEnabled && (
-                        <div>
-                          <Label htmlFor={`ai-prompt-${index}`}>AI Prompt (Opsiyonel)</Label>
-                          <Textarea
-                            id={`ai-prompt-${index}`}
-                            value={item.aiPrompt || ''}
-                            onChange={(e) => handleUpdateItem(index, 'aiPrompt', e.target.value || null)}
-                            placeholder="AI için özel talimatlar..."
-                            className="h-20"
-                            data-testid={`textarea-ai-prompt-${index}`}
-                          />
-                        </div>
-                      )}
-
-                      {/* Multiple Choice Options */}
-                      {item.itemType === 'multiple_choice' && (
-                        <div className="flex flex-col gap-3 sm:gap-4">
-                          <div>
-                            <Label>Şıklar (En az 2 şık gerekli)</Label>
-                            <div className="grid grid-cols-1 gap-2 mt-2">
-                              {(item.options || []).map((option: string, optionIndex: number) => (
-                                <div key={optionIndex} className="flex gap-2">
-                                  <Input
-                                    value={option}
-                                    onChange={(e) => {
-                                      const newOptions = [...(item.options || [])];
-                                      newOptions[optionIndex] = e.target.value;
-                                      handleUpdateItem(index, 'options', newOptions);
-                                    }}
-                                    placeholder={`Şık ${optionIndex + 1}`}
-                                    data-testid={`input-option-${index}-${optionIndex}`}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                      const newOptions = (item.options || []).filter((_, i: number) => i !== optionIndex);
-                                      handleUpdateItem(index, 'options', newOptions.length > 0 ? newOptions : null);
-                                      // Clear correctAnswer if it was the removed option
-                                      if (item.correctAnswer === option) {
-                                        handleUpdateItem(index, 'correctAnswer', null);
-                                      }
-                                    }}
-                                    data-testid={`button-remove-option-${index}-${optionIndex}`}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const newOptions = [...(item.options || []), ''];
-                                  handleUpdateItem(index, 'options', newOptions);
-                                }}
-                                data-testid={`button-add-option-${index}`}
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Şık Ekle
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor={`correct-answer-${index}`}>Doğru Cevap</Label>
-                            <Select
-                              value={item.correctAnswer || ''}
-                              onValueChange={(value) => handleUpdateItem(index, 'correctAnswer', value)}
-                            >
-                              <SelectTrigger id={`correct-answer-${index}`} data-testid={`select-correct-answer-${index}`}>
-                                <SelectValue placeholder="Doğru şıkkı seçin..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(item.options || []).map((option: string, optionIndex: number) => (
-                                  <SelectItem 
-                                    key={optionIndex} 
-                                    value={option}
-                                    data-testid={`option-correct-answer-${index}-${optionIndex}`}
-                                  >
-                                    {option || `Şık ${optionIndex + 1}`}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {items.length === 0 && (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-8">
-                      <ClipboardList className="h-4 w-4 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Henüz madde eklenmedi. "Madde Ekle" butonuna tıklayın
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseDialog}
-                  data-testid="button-dialog-cancel"
-                >
-                  İptal
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  data-testid="button-dialog-submit"
-                >
-                  {createMutation.isPending || updateMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+      {/* Edit Template */}
+      <Dialog open={isEditTemplateOpen} onOpenChange={setIsEditTemplateOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Şablonu Düzenle</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Şablon Adı</Label>
+              <Input value={templateForm.name} onChange={e => setTemplateForm({ ...templateForm, name: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Açıklama</Label>
+              <Textarea value={templateForm.description} onChange={e => setTemplateForm({ ...templateForm, description: e.target.value })} rows={3} />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={templateDetail.isActive} onCheckedChange={(v) => toggleTemplateMut.mutate({ id: templateDetail.id, isActive: v })} />
+              <Label>Aktif</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => updateTemplateMut.mutate({ name: templateForm.name, description: templateForm.description })} disabled={updateTemplateMut.isPending}>
+              Kaydet
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Add/Edit Category */}
+      <Dialog open={isAddCategoryOpen || editingCategoryId !== null} onOpenChange={(open) => { if (!open) { setIsAddCategoryOpen(false); setEditingCategoryId(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editingCategoryId ? "Kategori Düzenle" : "Yeni Kategori"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Kategori Adı *</Label>
+              <Input value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} placeholder="Örn: Dış Mekan, Bar Düzeni" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Açıklama</Label>
+              <Textarea value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} placeholder="Bu kategori neyi denetler?" rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ağırlık (%) — Toplam tüm kategoriler = %100</Label>
+              <Input type="number" min={1} max={100} value={categoryForm.weight} onChange={e => setCategoryForm({ ...categoryForm, weight: parseInt(e.target.value) || 10 })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              if (!categoryForm.name.trim()) { toast({ title: "Kategori adı gerekli", variant: "destructive" }); return; }
+              if (editingCategoryId) updateCategoryMut.mutate({ id: editingCategoryId, ...categoryForm });
+              else createCategoryMut.mutate(categoryForm);
+            }} disabled={createCategoryMut.isPending || updateCategoryMut.isPending}>
+              {editingCategoryId ? "Kaydet" : "Ekle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Question */}
+      <Dialog open={isAddQuestionOpen} onOpenChange={setIsAddQuestionOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Yeni Soru Ekle</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Soru Tipi *</Label>
+              <Select value={questionForm.questionType} onValueChange={v => setQuestionForm({ ...questionForm, questionType: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(questionTypeConfig).map(([key, cfg]) => {
+                    const Icon = cfg.icon;
+                    return (
+                      <SelectItem key={key} value={key}>
+                        <span className="flex items-center gap-2">
+                          <Icon className="h-3.5 w-3.5" /> {cfg.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{questionTypeConfig[questionForm.questionType]?.description}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Soru Metni *</Label>
+              <Input value={questionForm.questionText} onChange={e => setQuestionForm({ ...questionForm, questionText: e.target.value })} placeholder="Örn: Tabelalar temiz ve aydınlatması çalışıyor" />
+            </div>
+
+            {/* Çoktan seçmeli seçenekler */}
+            {questionForm.questionType === "select" && (
+              <div className="space-y-2">
+                <Label>Seçenekler (etiket + puan)</Label>
+                {questionForm.options.map((opt, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input className="flex-1" placeholder={`Seçenek ${i + 1}`} value={opt.label} onChange={e => {
+                      const opts = [...questionForm.options];
+                      opts[i] = { ...opts[i], label: e.target.value };
+                      setQuestionForm({ ...questionForm, options: opts });
+                    }} />
+                    <Input className="w-20" type="number" min={0} max={100} placeholder="Puan" value={opt.score} onChange={e => {
+                      const opts = [...questionForm.options];
+                      opts[i] = { ...opts[i], score: parseInt(e.target.value) || 0 };
+                      setQuestionForm({ ...questionForm, options: opts });
+                    }} />
+                    {questionForm.options.length > 2 && (
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-red-400" onClick={() => {
+                        setQuestionForm({ ...questionForm, options: questionForm.options.filter((_, j) => j !== i) });
+                      }}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={() => setQuestionForm({ ...questionForm, options: [...questionForm.options, { label: "", score: 0 }] })}>
+                  <Plus className="h-3 w-3 mr-1" /> Seçenek Ekle
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Ağırlık</Label>
+                <Input type="number" min={1} max={10} value={questionForm.weight} onChange={e => setQuestionForm({ ...questionForm, weight: parseInt(e.target.value) || 1 })} />
+              </div>
+              <div className="flex items-end gap-2 pb-1">
+                <Switch checked={questionForm.isRequired} onCheckedChange={v => setQuestionForm({ ...questionForm, isRequired: v })} />
+                <Label className="text-sm">Zorunlu</Label>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>İpucu / Yardım Metni</Label>
+              <Input value={questionForm.helpText} onChange={e => setQuestionForm({ ...questionForm, helpText: e.target.value })} placeholder="Denetçiye rehber not (opsiyonel)" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddQuestionOpen(false)}>İptal</Button>
+            <Button onClick={() => {
+              if (!questionForm.questionText.trim()) { toast({ title: "Soru metni gerekli", variant: "destructive" }); return; }
+              const data: any = { ...questionForm };
+              if (questionForm.questionType !== "select") delete data.options;
+              createQuestionMut.mutate(data);
+            }} disabled={createQuestionMut.isPending}>
+              {createQuestionMut.isPending ? "Ekleniyor..." : "Ekle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
       <ConfirmDeleteDialog
         open={deleteState.open}
         onOpenChange={(open) => !open && cancelDelete()}
-        onConfirm={() => {
-          const id = confirmDelete();
-          if (id !== null) deleteMutation.mutate(id as number);
-        }}
+        onConfirm={() => { const id = confirmDelete(); if (id !== null) deleteTemplateMut.mutate(id as number); }}
         title="Şablonu Sil"
-        description={`"${deleteState.itemName || ''}" şablonunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+        description={`"${deleteState.itemName || ''}" şablonunu pasif yapmak istediğinize emin misiniz?`}
       />
     </div>
   );
