@@ -78,7 +78,7 @@ router.post('/api/dobody/proposals', isAuthenticated, async (req, res) => {
       relatedEntityId: relatedEntityId || null,
       suggestedActionType: suggestedActionType || null,
       suggestedActionData: suggestedActionData || null,
-      expiresAt: expiresAt || null, status: 'pending',
+      expiresAt: expiresAt ? new Date(expiresAt) : null, status: 'pending',
     }).returning();
 
     res.status(201).json(proposal);

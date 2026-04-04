@@ -6,7 +6,7 @@
 import { db } from "../db";
 import { eq, and, desc, sql, lt, gt, lte, isNull, or } from "drizzle-orm";
 import {
-  dobodyProposals, dobodyEvents, dobodyWorkflowConfidence,
+  dobodyProposals, dobodyEvents, dobodyLearning, dobodyWorkflowConfidence,
   auditsV2, auditActionsV2, branches, users,
   shifts, projectTasks, projects,
 } from "@shared/schema";
