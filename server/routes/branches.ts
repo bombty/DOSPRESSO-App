@@ -1293,29 +1293,26 @@ router.get('/api/hq-users', isAuthenticated, async (req, res) => {
       return res.status(403).json({ message: "Bu veriye erişim yetkiniz yok" });
     }
     
-    const hqUsers = await db.select({
+    const hqRoles = ['admin', 'ceo', 'cgo', 'muhasebe', 'muhasebe_ik', 'satinalma', 'coach', 'trainer', 'marketing', 'kalite_kontrol', 'gida_muhendisi', 'teknik', 'destek', 'yatirimci_hq'];
+    
+    const hqUserList = await db.select({
       id: users.id,
       firstName: users.firstName,
       lastName: users.lastName,
       role: users.role,
       profileImageUrl: users.profileImageUrl,
+      branchId: users.branchId,
     })
       .from(users)
       .where(
-        or(
-          eq(users.role, 'admin'),
-          eq(users.role, 'muhasebe'),
-          eq(users.role, 'satinalma'),
-          eq(users.role, 'coach'),
-          eq(users.role, 'teknik'),
-          eq(users.role, 'destek'),
-          eq(users.role, 'fabrika'),
-          eq(users.role, 'yatirimci_hq')
+        and(
+          eq(users.isActive, true),
+          inArray(users.role, hqRoles)
         )
       )
       .orderBy(users.firstName);
     
-    res.json(hqUsers);
+    res.json(hqUserList);
   } catch (error: unknown) {
     console.error("Get HQ users error:", error);
     res.status(500).json({ message: "HQ kullanıcıları alınamadı" });
@@ -1333,7 +1330,7 @@ router.get('/api/project-eligible-users', isAuthenticated, async (req, res) => {
     const search = (req.query.search as string || '').toLowerCase().trim();
     const branchFilter = req.query.branchId ? parseInt(req.query.branchId as string) : null;
 
-    // Get all active, approved users
+    // Get all active users (don't require accountStatus=approved, some old users may not have it)
     const allUsers = await db.select({
       id: users.id,
       firstName: users.firstName,
@@ -1341,16 +1338,9 @@ router.get('/api/project-eligible-users', isAuthenticated, async (req, res) => {
       role: users.role,
       profileImageUrl: users.profileImageUrl,
       branchId: users.branchId,
-      isActive: users.isActive,
-      accountStatus: users.accountStatus,
     })
       .from(users)
-      .where(
-        and(
-          eq(users.isActive, true),
-          eq(users.accountStatus, 'approved')
-        )
-      )
+      .where(eq(users.isActive, true))
       .orderBy(users.firstName);
 
     // Get branches for grouping

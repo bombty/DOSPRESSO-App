@@ -792,6 +792,7 @@ export default function ProjeDetay() {
                     <Select value={selectedMemberRole} onValueChange={setSelectedMemberRole}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="owner">Proje Yöneticisi</SelectItem>
                         <SelectItem value="editor">Editör</SelectItem>
                         <SelectItem value="contributor">Katkıda Bulunan</SelectItem>
                         <SelectItem value="viewer">İzleyici</SelectItem>

@@ -513,6 +513,7 @@ export default function Projeler() {
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
+                                        <SelectItem value="owner">Proje Yöneticisi</SelectItem>
                                         <SelectItem value="editor">Editör</SelectItem>
                                         <SelectItem value="contributor">Katkıda Bulunan</SelectItem>
                                         <SelectItem value="viewer">Görüntüleyici</SelectItem>
