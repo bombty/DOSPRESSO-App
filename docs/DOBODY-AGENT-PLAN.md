@@ -1,268 +1,461 @@
-# DOSPRESSO Mr. Dobody — Yarı Otonom Agent Sistemi (Revize Plan)
-**Tarih:** 4 Nisan 2026 | **Durum:** Onaylandı
-**Hedef Otonomi:** %35-40 (öğrenme ile 6-12 ayda %50-55)
-**Yaklaşım:** İş akışı odaklı, girdi güvenlikli, öğrenen sistem
+# Mr. Dobody — Yarı Otonom Operasyon Asistanı (Final Plan)
+**Son güncelleme:** 5 Nisan 2026
+**Hedef otonomi:** %60-70 (öğrenme ile %75+)
 
 ---
 
-## 1. GÜVENLİK: GİRDİ KONTROLÜ (Çıktı filtresi DEĞİL)
-
-### Temel Kural: Erişemediği Veriyi Sızdıramaz
-
-Dobody her rol için çalışırken SADECE izin verilen tabloları sorgular.
-Çıktı filtreleme yerine girdi kısıtlama — %100 güvenli.
-
-### Dobody Scope (Rol Bazlı Veri Erişimi)
+## TEMEL PRENSİP
 
 ```
-CEO/CGO Scope:
-  OKUR: her şey (özet seviyede)
-  OKUMAZ: TCKN, banka bilgisi, kişisel adres
+Her Dobody bildirimi = SORUN + KÖK NEDEN + HAZIR ÇÖZÜM + TEK TIK AKSİYON
 
-Coach/Trainer Scope:
-  OKUR: tüm şube denetim, eğitim, personel performans, checklist
-  OKUMAZ: muhasebe, maaş, tedarikçi fiyat, fabrika maliyet
-
-Muhasebe Scope:
-  OKUR: bordro, PDKS, maliyet, gelir-gider (HQ+Fabrika+Işıklar)
-  OKUMAZ: yatırımcı şube İK detayları, kişisel sağlık verileri
-
-Satınalma Scope:
-  OKUR: stok, tedarikçi, sipariş, fabrika üretim planı
-  OKUMAZ: personel, maaş, denetim detayları
-
-Supervisor/Müdür Scope:
-  OKUR: KENDİ şubesi — vardiya, checklist, stok, denetim sonucu
-  OKUMAZ: diğer şubeler, HQ muhasebe, fabrika maliyet, tedarikçi fiyat, maaş
-
-Yatırımcı (Şube) Scope:
-  OKUR: KENDİ şubesi — genel performans, denetim sonucu
-  OKUMAZ: diğer şubeler, HQ iç verileri, maaş detayları
-
-Barista/Alt Scope:
-  OKUR: KENDİ görevleri, vardiya, eğitim, kendi denetim notu
-  OKUMAZ: şube skoru detayı, diğer personel, finansal hiçbir veri
-
-Fabrika Scope:
-  OKUR: üretim planı, kalite kontrol, stok/LOT, sevkiyat
-  OKUMAZ: şube satış, HQ muhasebe, personel maaş
-```
-
-### Teknik Uygulama
-
-```
-dobody_scopes tablosu:
-  role → allowed_tables[] → allowed_columns[] → branch_scope (own/all/none)
-
-Agent her sorgu öncesi:
-  1. Kullanıcının rolünü al
-  2. dobody_scopes'tan izinli tabloları çek
-  3. Sadece izinli tablolardan veri oku
-  4. branch_scope=own ise → branchId filtrele
-  5. İzinsiz tablo/kolon erişimi → logla + engelle
-```
-
-### Şube Çalışanı ASLA Ulaşamaz (Hardcoded)
-
-Fabrika üretim maliyeti, tedarikçi fiyatları, diğer şube verileri,
-HQ muhasebe, personel maaşları, franchise sözleşmeleri,
-sistem iç raporları — bunlar scope'ta tanımsız = erişim yok.
-
----
-
-## 2. USABILITY: GÜNDE MAX 3 ÖNERİ
-
-### Bildirim Yorgunluğu Çözümü
-
-```
-Öncelik Sistemi:
-  ACİL → hemen göster (SLA ihlali, stok bitti, güvenlik)
-  ÖNEMLİ → günlük brief'te (denetim hatırlatma, deadline)
-  BİLGİ → haftalık özette (trend, karşılaştırma)
-
-Kurallar:
-  - Günde max 3 öneri (rol başına)
-  - Tek dokunuş: Onayla / Reddet / Ertele
-  - Reddetme nedeni kaydedilir → öğrenme
-  - Aynı konuda tekrar etme (cooldown süresi)
+Dobody asla sadece "sorun var" demez.
+Her zaman "sorun var, sebebi bu, çözümü hazırladım, onayla" der.
 ```
 
 ---
 
-## 3. İŞ AKIŞI ODAKLI — 8 TEMEL WORKFLOW
+## 1. KULLANICI DENEYİMİ (UX) OPTİMİZASYONU
 
-### WF-1: Denetim Döngüsü
-```
-Tetik: Son denetimden X gün geçti
-Analiz: Şube risk skoru + geçmiş trend
-Öneri → Coach'a: "X şubesi denetlenmeli, öncelik: yüksek"
-Onay → takvime ekle → denetim → aksiyon takibi → kapanış
-```
+### Problem: Bildirim Yorgunluğu
+16 şubede vardiya planı yok = 16 ayrı bildirim → kimse okumaz.
 
-### WF-2: Aksiyon Takibi (SLA)
+### Çözüm: Grupla + Özetle + Toplu Aksiyon
 ```
-Tetik: Aksiyon deadline yaklaşıyor
-Gün-3 → Supervisor'a hatırlatma
-Gün-1 → Supervisor + Coach'a acil
-Gün+0 → SLA ihlali → CGO'ya escalation
-Çözüm → denetçi onayına sun
+ESKİ: 16 ayrı uyarı kartı
+YENİ: "16 şubede vardiya planı eksik" → tek kart
+  → Tıkla: şube listesi + toplu mesaj draft'ı
+  → "Hepsine Hatırlatma Gönder" tek buton
+  → Veya şube bazlı seç: sadece Batman + Kilis'e gönder
 ```
 
-### WF-3: Stok Yönetimi
+### Öncelik Sıralaması (En kritik 3 gösterilir)
 ```
-Tetik: Stok minimum eşiğin altında
-Analiz: Günlük tüketim → kaç gün kaldı
-Öneri → Supervisor'a sipariş (miktar hesaplanmış)
-Güven %90+ ise → otomatik sipariş talebi (sadece bildir)
-```
+1. ACIL → Hemen aksiyon gerekli (güvenlik, SLA ihlali, stok bitti)
+2. ÖNEMLİ → Bugün içinde çözülmeli (skor düşüş, plan eksik)
+3. BİLGİ → Haftalık brief'te gösterilir (trend, karşılaştırma)
+4. TEBRİK → İyi performans takdiri (motivasyon)
 
-### WF-4: Eğitim Lifecycle
-```
-Tetik: Yeni personel / sertifika bitiyor / denetim düşük
-Analiz: Hangi eğitim gerekli (denetim sonuçlarından)
-Öneri → Coach'a eğitim ataması
-Takip: Tamamlandı mı → skor iyileşti mi
-```
-
-### WF-5: Vardiya Optimizasyonu
-```
-Tetik: Yarınki plan eksik / geçmiş pattern
-Analiz: Satış geçmişi + personel müsaitlik
-Öneri → Supervisor'a düzenleme önerisi
-Onay → personele bildirim
-```
-
-### WF-6: Performans Erken Uyarı
-```
-Tetik: Şube skoru 2 hafta üst üste düştü
-Analiz: Hangi kategoriler düşüyor + nedenler
-Öneri → farklı kişilere farklı aksiyon:
-  Coach: denetim planla
-  Supervisor: checklist uyumunu artır
-  Trainer: eğitim tamamla
-```
-
-### WF-7: Proje Gecikme Yönetimi
-```
-Tetik: Görev deadline geçti / proje zamanın %80'inde ama %60 ilerleme
-Analiz: Kritik yoldaki engeller
-Öneri → Proje yöneticisine risk raporu + çözüm
-```
-
-### WF-8: Haftalık Brief
-```
-Tetik: Her Pazartesi 08:00
-CEO → portfolio + şube haritası + kritik konular (3 madde)
-Coach → denetim durumu + en riskli 3 şube
-Supervisor → kendi şubesinin haftalık performansı
+Dashboard'da max 3 kart → detaylı liste ayrı sayfada
 ```
 
 ---
 
-## 4. ÖĞRENME MEKANİZMASI
+## 2. GERÇEK OTONOMİ — Dobody ÇÖZÜMÜ BİZZAT UYGULAR
 
+### Şu anki sorun: Dobody "sipariş oluşturdum" diyor ama oluşturmuyor.
+
+### Yeni tasarım: Onay sonrası Dobody gerçekten DB'de işlem yapar
 ```
-Her öneri sonucu kaydedilir:
-  Onaylandı → bu pattern doğru
-  Reddedildi (gereksiz) → tetik eşiğini yükselt
-  Reddedildi (zamanlama) → farklı zaman dene
-  Ertele → önceliği düşür
-  Onaylandı + sonuç olumlu → güveni artır
+Aksiyon Tipleri ve Yapılacak İşlem:
 
-Güven Skoru (workflow bazlı):
-  %90+ kabul → rutin ise otomatik uygula, sadece bildir
-  %70-90 kabul → öneri + onay iste
-  <%70 kabul → sadece bilgilendir, aksiyon önerme
+send_message      → notifications tablosuna INSERT (gerçek bildirim)
+create_order      → purchase_orders tablosuna INSERT (gerçek sipariş)
+assign_training   → training_assignments tablosuna INSERT (gerçek atama)
+schedule_audit    → audits_v2 tablosuna INSERT (gerçek denetim planı)
+create_shift      → shifts tablosuna INSERT (gerçek vardiya)
+create_task       → project_tasks tablosuna INSERT (gerçek görev)
+create_maintenance→ maintenance_schedules tablosuna INSERT (gerçek bakım planı)
+send_reminder     → notifications tablosuna INSERT
+escalate          → üst rol'e notifications INSERT
 ```
 
----
-
-## 5. DB ŞEMASI
-
+### Onay Akışı:
 ```
-dobody_scopes:
-  id, role, allowed_tables(TEXT[]), allowed_columns(JSONB),
-  branch_scope(own/all/none), blocked_keywords(TEXT[])
-
-dobody_proposals:
-  id, workflow_type(WF-1..WF-8), role_target, user_id, branch_id,
-  proposal_type(info/action/warning),
-  title, description, priority(acil/onemli/bilgi),
-  source_module, related_entity_type, related_entity_id,
-  suggested_action_type, suggested_action_data(JSONB),
-  status(pending/approved/rejected/expired/auto_applied),
-  expires_at, approved_by, approved_at,
-  rejected_reason, created_at
-
-dobody_events:
-  id, event_type, source_module,
-  entity_type, entity_id, event_data(JSONB),
-  proposals_generated, processed_at
-
-dobody_learning:
-  id, workflow_type, proposal_id,
-  outcome(approved/rejected/expired),
-  rejection_reason, result_positive(BOOLEAN),
-  confidence_delta(NUMERIC), created_at
-
-dobody_workflow_confidence:
-  id, workflow_type, role,
-  confidence_score(0-100), total_proposals, approved_count,
-  auto_apply_enabled(BOOLEAN), updated_at
+Dobody → "Stok siparişi hazırladım" → Kullanıcı → [Düzenle + Onayla]
+  → Dobody gerçekten purchase_orders'a INSERT yapar
+  → Sipariş oluşturuldu bildirimi
+  → Güven skoru +2
 ```
 
 ---
 
-## 6. OTONOMİ SEVİYELERİ
+## 3. PROAKTİF TAHMİN (Sorun olmadan ÖNCE)
+
+### Şu an: Reaktif (sorun olduktan sonra tepki)
+### Yeni: Proaktif (sorun olmadan önce uyarı)
 
 ```
-Seviye 1 — Bilgilendir (şu an): %10
-  "Lara skoru düştü" bildirimi
+Stok Tahmini:
+  Tüketim hızı × gün sayısı = tahmini bitiş tarihi
+  "Süt stoğu mevcut tüketim hızıyla Cuma bitecek — sipariş önerisi"
 
-Seviye 2 — Öner (Sprint Dobody-1,2 sonrası): %25-30
-  "Lara'ya hijyen eğitimi öneriyorum" + [Onayla]
+Vardiya Tahmini:
+  Geçen yılın aynı haftası + mevsim faktörü
+  "Geçen yıl bu hafta satışlar %30 arttı → ek 1 barista vardiyası önerisi"
 
-Seviye 3 — Onaylı Aksiyon (Sprint Dobody-3,4 sonrası): %35-40
-  "Eğitim planladım, Coach onaylasın mı?" → onay → otomatik atama
+Personel Trend:
+  Son 2 haftada 3 geç kalma → trend kötüleşiyor
+  "Mehmet'in devam skoru düşüyor → görüşme önerisi"
 
-Seviye 3.5 — Güvenilir Rutin (6-12 ay kullanım sonrası): %50-55
-  Güven %90+ olan workflow'larda otomatik aksiyon + bildir
+Ekipman Ömür Tahmini:
+  3. arıza bu ay → "Bu espresso makinesi sık arızalanıyor → değişim önerisi"
 
-Seviye 4 — Yarı Otonom (12-24 ay): %60-65
-  Rutin kararlar otomatik, sadece istisnalar insana
+Sertifika Takibi:
+  30 gün önce hatırlat → 7 gün önce acil → bitiş günü escalation
 ```
 
 ---
 
-## 7. UYGULAMA PLANI
+## 4. BAĞLAMA ÖZEL MESAJ ÜRETİMİ (GPT-4o)
 
-### Önce: Denetim Sprint D — Trend Raporlama (1 gün)
+### Şu an: Template mesajlar (hep aynı, sıkıcı)
+### Yeni: GPT-4o ile bağlama özel mesaj
 
-### Sprint Dobody-1 (2-3 gün): Proposal Altyapısı
-- [ ] 5 yeni tablo (scopes, proposals, events, learning, confidence)
-- [ ] Scope seed data (tüm roller)
-- [ ] Proposal CRUD API
-- [ ] Centrum'da Dobody Proposal widget (Onayla/Reddet/Ertele)
-- [ ] Her rolün dashboard'unda öneri kartı
+```
+Batman şubesine (3 haftadır plan yok — kronik sorun):
+  "Batman şubesi 3 haftadır vardiya planı oluşturmamaktadır. 
+   Bu tekrarlayan durum operasyonel kaliteyi ciddi şekilde 
+   etkilemektedir. Acil düzeltme beklenmektedir."
+  Ton: Ciddi, deadline kısa
 
-### Sprint Dobody-2 (2-3 gün): 8 Workflow Bağlantısı
-- [ ] WF-1: Denetim döngüsü (son denetim tarihi kontrol)
-- [ ] WF-2: Aksiyon SLA takibi (hatırlatma + escalation)
-- [ ] WF-3: Stok yönetimi (kritik seviye tespiti)
-- [ ] WF-4: Eğitim lifecycle (sertifika takibi)
-- [ ] WF-5: Vardiya optimizasyonu
-- [ ] WF-6: Performans erken uyarı
-- [ ] WF-7: Proje gecikme
-- [ ] WF-8: Haftalık brief
+Antalya Beachpark'a (ilk kez eksik — muhtemelen unutmuş):
+  "Bu hafta vardiya planınız henüz oluşturulmamış görünüyor. 
+   Planlama sayfasından hızlıca oluşturabilirsiniz."
+  Ton: Yumuşak, hatırlatma
 
-### Sprint Dobody-3 (2 gün): Öğrenme + Brief
-- [ ] Öğrenme mekanizması (onay/ret → güven skoru)
-- [ ] Güven eşiklerine göre otomatik aksiyon
-- [ ] Haftalık brief generator (rol bazlı)
-- [ ] Cooldown sistemi (tekrar etmeme)
+En iyi şubeye (skor yükseldi):
+  "Tebrikler! Lara şubesi bu ay %92 skor ile en yüksek 
+   performansı gösterdi. Best practice paylaşımı önerisi."
+  Ton: Takdir, motivasyon
+```
 
-### Sprint Dobody-4 (1 gün): Güvenlik Audit
-- [ ] Tüm scope'lar test (barista → muhasebe erişim denemesi)
-- [ ] Cross-branch izolasyon testi
-- [ ] Dobody çıktısında veri sızıntısı kontrolü
-- [ ] Penetrasyon test raporu
+---
+
+## 5. GRUPLU AKSİYONLAR
+
+### Problem: 16 şubeye tek tek mesaj göndermek = 16 tıklama
+### Çözüm: Toplu işlem
+
+```
+Toplu Mesaj:
+  "16 şubede vardiya planı eksik"
+  → Tümüne Gönder (tek tık → 16 bildirim oluşur)
+  → Veya Seçerek Gönder (checkbox ile şube seç)
+
+Toplu Eğitim Ataması:
+  "5 personelin sertifikası bitiyor"
+  → Hepsine Yenileme Ata (tek tık → 5 eğitim ataması)
+
+Toplu Stok Siparişi:
+  "4 şubede kahve stoğu kritik"
+  → Toplu Sipariş Oluştur (tek tık → 4 sipariş talebi)
+```
+
+---
+
+## 6. ESKALASİYON ZİNCİRİ (Yanıt Alınmazsa)
+
+```
+Gün 0: Dobody → Supervisor'a öneri
+Gün 2: Yanıt yok → Dobody tekrar hatırlat (farklı mesaj)
+Gün 4: Hala yanıt yok → Müdür/Yatırımcı'ya escalation
+Gün 7: Hala çözülmedi → Coach'a escalation + acil badge
+
+Öğrenme:
+  "Batman şubesi mesajlara ortalama 5 günde yanıt veriyor"
+  → Batman için escalation süresini 3 güne kısalt
+  
+  "Lara şubesi mesajlara aynı gün yanıt veriyor"  
+  → Lara için escalation süresini 7 güne uzat
+```
+
+---
+
+## 7. TÜM MODÜL BAĞLANTILARI (14 Modül)
+
+### A. VARDİYA (❌ → ✅)
+```
+Tetikleyiciler:
+  - Yarınki vardiya planı oluşturulmadı
+  - Vardiyada personel eksik (izin var ama yedek atanmadı)
+  - Geç kalma trendi (3+ geç kalma → uyarı)
+  - Mola dönüşü check-in yapılmadı
+
+Çözüm Aksiyonları:
+  - Vardiya teklifi (müsait personele)
+  - Supervisor'a/personele hatırlatma
+  - Geç kalma eğilimi → görüşme önerisi
+```
+
+### B. STOK (❌ → ✅)
+```
+Tetikleyiciler:
+  - Stok minimum seviyenin altında
+  - SKT yaklaşan ürünler (30/7 gün)
+  - Tüketim hızı anormal (israf şüphesi)
+  - Sayım farkı yüksek
+
+Çözüm Aksiyonları:
+  - Sipariş talebi oluştur (miktar hesaplanmış)
+  - FIFO sevkiyat planı (SKT yaklaşan önce)
+  - Sayım hatırlatma
+  - İsraf uyarısı (Supervisor'a)
+```
+
+### C. EKİPMAN (❌ → ✅)
+```
+Tetikleyiciler:
+  - Bakım tarihi geçmiş
+  - Aynı ekipman 3+ arıza (kronik sorun)
+  - Arıza çözüm süresi SLA'yı aşmış
+  - Kalibrasyon geçmiş
+
+Çözüm Aksiyonları:
+  - Bakım planı oluştur
+  - Teknik'e/CGO'ya servis talebi
+  - Ekipman değişim önerisi (kronik arıza)
+```
+
+### D. EĞİTİM (❌ → ✅)
+```
+Tetikleyiciler:
+  - Sertifika bitiş tarihi yaklaşıyor (30/7 gün)
+  - Denetimde düşük skor → ilgili eğitim eksik
+  - Onboarding'de takılan personel
+  - Quiz başarısız (2+ deneme)
+
+Çözüm Aksiyonları:
+  - Eğitim otomatik ata
+  - Mentor'a hatırlatma
+  - Coach'a onboarding raporu
+```
+
+### E. CHECKLİST (❌ → ✅)
+```
+Tetikleyiciler:
+  - Açılış checklistesi tamamlanmadı (09:00'a kadar)
+  - Kapanış checklistesi tamamlanmadı
+  - Checklist skoru düşük trend
+  - Fotoğrafsız tamamlama (sahte mi?)
+
+Çözüm Aksiyonları:
+  - Personele anlık hatırlatma
+  - Supervisor'a bildirim
+  - Sahte tamamlama uyarısı
+```
+
+### F. CRM (❌ → ✅)
+```
+Tetikleyiciler:
+  - NPS 7 gün üst üste düştü
+  - Şikayet paterni (aynı konu 3+ şikayet)
+  - Çözülmemiş şikayet ticket'ı (SLA)
+  - Müşteri feedback'i çok düşük (1-2 puan)
+
+Çözüm Aksiyonları:
+  - Kök neden analizi (pattern → mesaj draft)
+  - Supervisor'a acil bildirim
+  - Coach'a trend raporu
+```
+
+### G. FABRİKA (❌ → ✅)
+```
+Tetikleyiciler:
+  - Yarınki üretim planı oluşturulmadı
+  - QC red oranı %5 aştı
+  - LOT SKT yaklaşıyor
+  - Fire oranı hedefin üstünde
+  - Hammadde stoku kritik
+
+Çözüm Aksiyonları:
+  - Üretim planı taslağı (geçen haftadan)
+  - FIFO sevkiyat planı
+  - Hammadde sipariş önerisi
+  - QC raporu + eğitim önerisi
+```
+
+### H. ONBOARDING (❌ → ✅)
+```
+Tetikleyiciler:
+  - Yeni personel 3+ gün adım tamamlamadı
+  - Check-in yapılmadı
+  - Quiz başarısız
+
+Çözüm Aksiyonları:
+  - Mentor'a hatırlatma
+  - Trainer'a rapor
+  - Personele teşvik mesajı
+```
+
+### I. İK (❌ → ✅)
+```
+Tetikleyiciler:
+  - İzin bakiyesi bitmek üzere
+  - PDKS eksikleri (bordro hesaplanamaz)
+  - Yüksek turnover riski (skor + devam düşük)
+
+Çözüm Aksiyonları:
+  - Muhasebe'ye PDKS eksik raporu
+  - İK'ya turnover risk uyarısı
+```
+
+---
+
+## 8. VERİ KALİTESİ TAKİBİ (En Kritik)
+
+### Problem: Veri kötüyse Dobody yanlış karar verir.
+### Çözüm: Dobody'nin İLK önceliği veri kalitesi kontrolü.
+
+```
+Veri Kalitesi Kontrolleri:
+  - "Batman şubesinden 5 gündür PDKS verisi gelmiyor" → ACİL
+  - "Kilis checklistleri %100 tik — sahte olabilir" → UYARI
+  - "Stok sayımı 30 gündür yapılmadı" → ÖNEMLİ
+  - "3 şubenin kiosk'u offline" → ACİL
+
+Bu kontroller diğer tüm önerilerden ÖNCE gelir.
+Veri eksik olan şube için Dobody öneri ÜRETMEZ.
+Bunun yerine: "Veri eksik — önce veri kalitesini düzeltin" der.
+```
+
+---
+
+## 9. ÖZEL DURUMLAR
+
+### Yeni Şube (İlk 30 gün — Onboarding Modu)
+```
+Dobody daha yumuşak tonla çalışır
+Daha fazla rehberlik, daha az ceza
+"Vardiya planı oluşturmayı unutmayın — nasıl yapılır: [link]"
+```
+
+### Tatil/Özel Günler
+```
+Ramazan: vardiya kuralları farklı
+Bayram: şubeler kapalı → uyarı bastırılır
+Yaz sezonu: turist bölgeleri ek personel önerisi
+```
+
+### Kapanan/Askıya Alınan Şube
+```
+Pasif şube için Dobody önerisi üretilmez
+Stok transferi önerisi (kapanan → aktif şubeye)
+```
+
+---
+
+## 10. ÖĞRENME VE GELİŞİM
+
+### Kısa Vadeli (Her onay/ret)
+```
+Onay → güven +2, o pattern'i tekrarla
+Ret (gereksiz) → tetik eşiğini yükselt
+Ret (zamanlama) → farklı saat/gün dene
+Ret (yanlış) → o veri kaynağını kontrol et
+```
+
+### Orta Vadeli (Aylık analiz)
+```
+Hangi workflow en çok kabul ediliyor? → ağırlığını artır
+Hangi şube en çok ret ediyor? → o şube için önermeyi azalt
+Hangi saat dilimi en çok onay alıyor? → o saatte öner
+```
+
+### Uzun Vadeli (6-12 ay)
+```
+Güven %90+ ve 10+ öneri = otonom eşik
+Otonom: Dobody aynı tip aksiyonu onaysız uygular, sadece bildirir
+"Süt siparişi otomatik oluşturuldu (her zamanki miktar)"
+```
+
+---
+
+## 11. GÜVENLİK (Girdi Scope + Aksiyon Scope)
+
+### Çift Katmanlı Güvenlik:
+```
+Katman 1 — Girdi: Dobody hangi veriyi okuyabilir (mevcut)
+Katman 2 — Aksiyon: Dobody hangi işlemi yapabilir (YENİ)
+
+Örnek: Supervisor Dobody'si
+  OKUR: kendi şube vardiya, stok, checklist, ekipman
+  YAPAR: send_reminder, create_shift (kendi şubesinde)
+  YAPAMAZ: create_order (satınalma yetkisi), schedule_audit (HQ yetkisi)
+```
+
+---
+
+## 12. TEKNİK MİMARİ
+
+### Mevcut (çalışıyor):
+```
+dobody_scopes              — rol bazlı erişim kuralları
+dobody_proposals            — öneri sistemi
+dobody_events              — olay kaydı
+dobody_learning            — öğrenme kaydı
+dobody_workflow_confidence  — güven skoru
+```
+
+### Eklenecek:
+```
+dobody_action_log          — gerçekleştirilen aksiyonlar (INSERT/UPDATE kaydı)
+dobody_group_proposals     — gruplu öneri (16 şube = 1 grup öneri)
+dobody_escalation_chain    — escalation zinciri (kim → kim → kim)
+dobody_context_templates   — GPT-4o prompt şablonları (bağlama özel mesaj)
+dobody_special_periods     — özel dönemler (tatil, Ramazan, sezon)
+```
+
+### Aksiyon Yürütme Motoru (YENİ):
+```
+Kullanıcı "Onayla" tıklar
+  → action_executor.ts çağrılır
+  → suggestedActionType'a göre:
+     send_message → notifications INSERT
+     create_order → purchase_orders INSERT
+     assign_training → training_assignments INSERT
+     create_shift → shifts INSERT
+     ...
+  → dobody_action_log'a kaydet
+  → Kullanıcıya "İşlem tamamlandı" bildirim
+```
+
+---
+
+## 13. UYGULAMA PLANI (Sprint'ler)
+
+### Sprint Dobody-5: Aksiyon Yürütme Motoru (2 gün)
+- action_executor.ts: onay sonrası gerçek DB işlemi
+- dobody_action_log tablosu
+- send_message + create_order + assign_training aksiyonları
+
+### Sprint Dobody-6: Eksik Modül Bağlantıları (3 gün)
+- Vardiya event'leri (plan eksik, geç kalma)
+- Stok event'leri (kritik seviye, SKT)
+- Ekipman event'leri (bakım gecikmesi, tekrar arıza)
+- Checklist event'leri (tamamlanmamış, düşük skor)
+
+### Sprint Dobody-7: Gruplu Aksiyon + Escalation (2 gün)
+- dobody_group_proposals tablosu
+- Toplu mesaj / toplu atama UI
+- Escalation zinciri (2→4→7 gün)
+
+### Sprint Dobody-8: CRM + Fabrika + Proaktif (2 gün)
+- CRM event'leri (NPS düşüş, şikayet paterni)
+- Fabrika event'leri (üretim planı, QC, SKT)
+- Proaktif stok tahmini (tüketim hızı)
+
+### Sprint Dobody-9: GPT-4o Entegrasyonu (2 gün)
+- Bağlama özel mesaj üretimi
+- Kök neden analizi
+- Cross-branch karşılaştırma önerileri
+
+### Sprint Dobody-10: Veri Kalitesi + Özel Dönemler (1 gün)
+- Veri kalitesi kontrol endpoint'i
+- Tatil/özel dönem takvimi
+- Yeni şube onboarding modu
+
+---
+
+## 14. OTONOMİ YÜZDESI TAHMİNİ
+
+```
+Şu an (Dobody 1-4):                    ~25%
++ Aksiyon yürütme motoru (Sprint 5):    ~35%
++ 4 yeni modül bağlantısı (Sprint 6):  ~45%
++ Gruplu aksiyon + escalation (Sprint 7): ~55%
++ CRM + Fabrika + Proaktif (Sprint 8):   ~60%
++ GPT-4o entegrasyonu (Sprint 9):        ~65%
++ Veri kalitesi + özel dönem (Sprint 10): ~68%
++ 6 ay öğrenme sonrası:                  ~75%
+```
