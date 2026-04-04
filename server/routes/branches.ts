@@ -1046,6 +1046,42 @@ router.post('/api/projects/:id/milestones', isAuthenticated, async (req, res) =>
   }
 });
 
+// Milestone PATCH — güncelleme
+router.patch('/api/milestones/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, dueDate, status, isCompleted } = req.body;
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (dueDate !== undefined) updateData.dueDate = dueDate;
+    if (status !== undefined) updateData.status = status;
+    if (isCompleted !== undefined) {
+      updateData.status = isCompleted ? 'completed' : 'pending';
+      updateData.completedAt = isCompleted ? new Date() : null;
+    }
+    const [updated] = await db.update(projectMilestones).set(updateData).where(eq(projectMilestones.id, parseInt(id))).returning();
+    if (!updated) return res.status(404).json({ message: "Milestone bulunamadı" });
+    res.json(updated);
+  } catch (error: unknown) {
+    console.error("Update milestone error:", error);
+    res.status(500).json({ message: "Milestone güncellenemedi" });
+  }
+});
+
+// Milestone DELETE — silme
+router.delete('/api/milestones/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [deleted] = await db.delete(projectMilestones).where(eq(projectMilestones.id, parseInt(id))).returning();
+    if (!deleted) return res.status(404).json({ message: "Milestone bulunamadı" });
+    res.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Delete milestone error:", error);
+    res.status(500).json({ message: "Milestone silinemedi" });
+  }
+});
+
 router.get('/api/project-tasks/:id/subtasks', isAuthenticated, async (req, res) => {
   try {
     const { id } = req.params;

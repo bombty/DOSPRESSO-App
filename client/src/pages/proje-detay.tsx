@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { useBreadcrumb } from "@/components/breadcrumb-navigation";
@@ -14,71 +14,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { EmptyState } from "@/components/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
-import { 
-  ArrowLeft, 
-  Plus, 
-  Calendar, 
-  Users, 
-  CheckCircle2, 
-  Check,
-  Clock, 
-  AlertCircle,
-  Target,
-  Send,
-  UserPlus,
-  X,
-  MoreVertical,
-  ListTodo,
-  MessageSquare,
-  Edit2,
-  Flag,
-  CalendarDays,
-  Milestone,
-  ChevronLeft,
-  ChevronRight
+import {
+  ArrowLeft, Plus, Calendar, Users, CheckCircle2, Clock, AlertCircle,
+  Send, UserPlus, X, ListTodo, Flag, LayoutDashboard,
+  MessageSquare, FolderOpen, GanttChart, Trash2,
+  AlertTriangle, TrendingUp, CircleDot, UserCheck, Eye, Edit2, UserCog
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, isSameMonth } from "date-fns";
+import { format, differenceInDays, isPast, addDays } from "date-fns";
 import { tr } from "date-fns/locale";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Trash2 } from "lucide-react";
 import { ErrorState } from "../components/error-state";
-import { LoadingState } from "../components/loading-state";
 
-const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  todo: { label: "Yapılacak", color: "text-slate-600", bgColor: "bg-slate-100 dark:bg-slate-800" },
-  in_progress: { label: "Devam Ediyor", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900" },
-  review: { label: "İnceleme", color: "text-yellow-600", bgColor: "bg-yellow-100 dark:bg-yellow-900" },
-  done: { label: "Tamamlandı", color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900" },
+// ─── Config Maps ────────────────────────────────────────────
+const statusConfig: Record<string, { label: string; color: string; bgColor: string; dotColor: string }> = {
+  todo: { label: "Yapılacak", color: "text-slate-600", bgColor: "bg-slate-100 dark:bg-slate-800", dotColor: "bg-slate-400" },
+  in_progress: { label: "Devam Ediyor", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900", dotColor: "bg-blue-500" },
+  review: { label: "İnceleme", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900", dotColor: "bg-amber-500" },
+  done: { label: "Tamamlandı", color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900", dotColor: "bg-green-500" },
 };
 
 const projectStatusConfig: Record<string, { label: string; color: string }> = {
-  planning: { label: "Planlama", color: "bg-muted" },
+  planning: { label: "Planlama", color: "bg-slate-500" },
   in_progress: { label: "Devam Ediyor", color: "bg-blue-500" },
   completed: { label: "Tamamlandı", color: "bg-green-500" },
-  on_hold: { label: "Beklemede", color: "bg-yellow-500" },
+  on_hold: { label: "Beklemede", color: "bg-amber-500" },
   cancelled: { label: "İptal", color: "bg-red-500" },
 };
 
-const priorityColors: Record<string, string> = {
-  low: "bg-muted",
-  medium: "bg-blue-400",
-  high: "bg-orange-400",
-  urgent: "bg-red-500",
+const priorityConfig: Record<string, { label: string; dotColor: string }> = {
+  low: { label: "Düşük", dotColor: "bg-slate-400" },
+  medium: { label: "Orta", dotColor: "bg-blue-500" },
+  high: { label: "Yüksek", dotColor: "bg-orange-500" },
+  urgent: { label: "Acil", dotColor: "bg-red-500" },
 };
 
-function DroppableColumn({ id, children, status }: { id: string; children: React.ReactNode; status: string }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
+const memberRoleConfig: Record<string, { label: string; icon: any; color: string }> = {
+  owner: { label: "Proje Lideri", icon: UserCog, color: "text-purple-600" },
+  editor: { label: "Editör", icon: Edit2, color: "text-blue-600" },
+  contributor: { label: "Katkıda Bulunan", icon: UserCheck, color: "text-green-600" },
+  viewer: { label: "İzleyici", icon: Eye, color: "text-slate-500" },
+};
 
+// ─── DnD Components ─────────────────────────────────────────
+function DroppableColumn({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div 
+    <div
       ref={setNodeRef}
-      className={`space-y-2 min-h-[100px] p-2 rounded-md transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
+      className={`space-y-2 min-h-[120px] p-2 rounded-lg transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
     >
       {children}
     </div>
@@ -104,36 +91,50 @@ function DraggableTask({ task, children }: { task: any; children: React.ReactNod
   );
 }
 
+// ─── Helper Functions ───────────────────────────────────────
+function getTrafficLight(tasks: any[]) {
+  if (!tasks?.length) return { color: "🟢", label: "Görev yok", status: "ok" };
+  const overdue = tasks.filter((t: any) => t.dueDate && isPast(new Date(t.dueDate)) && t.status !== "done");
+  const total = tasks.length;
+  const overdueRatio = overdue.length / total;
+  if (overdueRatio > 0.3) return { color: "🔴", label: `${overdue.length} gecikmiş görev`, status: "danger" };
+  if (overdueRatio > 0.1 || overdue.length > 0) return { color: "🟡", label: `${overdue.length} gecikmiş görev`, status: "warn" };
+  return { color: "🟢", label: "Yolunda", status: "ok" };
+}
+
+function getProgressPercent(tasks: any[]) {
+  if (!tasks?.length) return 0;
+  const done = tasks.filter((t: any) => t.status === "done").length;
+  return Math.round((done / tasks.length) * 100);
+}
+
+// ─── Main Component ─────────────────────────────────────────
 export default function ProjeDetay() {
   const params = useParams();
   const projectId = params.id;
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { deleteState, requestDelete, cancelDelete, confirmDelete } = useConfirmDelete();
-  
+
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isAddMilestoneOpen, setIsAddMilestoneOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [activeTask, setActiveTask] = useState<any>(null);
   const [newTask, setNewTask] = useState({
-    title: "",
-    description: "",
-    priority: "medium",
-    dueDate: "",
-    assignedToId: "",
+    title: "", description: "", priority: "medium", dueDate: "", assignedToId: "",
   });
   const [selectedMemberId, setSelectedMemberId] = useState("");
-  const [calendarDate, setCalendarDate] = useState(new Date());
-  const [isAddMilestoneOpen, setIsAddMilestoneOpen] = useState(false);
+  const [selectedMemberRole, setSelectedMemberRole] = useState("contributor");
   const [newMilestone, setNewMilestone] = useState({ title: "", description: "", dueDate: "" });
-  const [isEditMilestoneOpen, setIsEditMilestoneOpen] = useState(false);
-  const [editingMilestone, setEditingMilestone] = useState<any>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
+  // ─── Queries ──────────────────────────────────────────────
   const { data: project, isLoading, isError, refetch } = useQuery<any>({
     queryKey: ["/api/projects", projectId],
     enabled: !!projectId,
@@ -145,13 +146,53 @@ export default function ProjeDetay() {
 
   useBreadcrumb(project?.title || '');
 
+  // ─── Derived Data ─────────────────────────────────────────
+  const tasks = useMemo(() => Array.isArray(project?.tasks) ? project.tasks : [], [project?.tasks]);
+  const members = useMemo(() => Array.isArray(project?.members) ? project.members : [], [project?.members]);
+  const comments = useMemo(() => Array.isArray(project?.comments) ? project.comments : [], [project?.comments]);
+  const milestones = useMemo(() => Array.isArray(project?.milestones) ? project.milestones : [], [project?.milestones]);
+
+  const tasksByStatus = useMemo(() => ({
+    todo: tasks.filter((t: any) => t.status === "todo"),
+    in_progress: tasks.filter((t: any) => t.status === "in_progress"),
+    review: tasks.filter((t: any) => t.status === "review"),
+    done: tasks.filter((t: any) => t.status === "done"),
+  }), [tasks]);
+
+  const overdueTasks = useMemo(() =>
+    tasks.filter((t: any) => t.dueDate && isPast(new Date(t.dueDate)) && t.status !== "done"),
+    [tasks]
+  );
+
+  const progressPercent = useMemo(() => getProgressPercent(tasks), [tasks]);
+  const trafficLight = useMemo(() => getTrafficLight(tasks), [tasks]);
+
+  const existingMemberIds = useMemo(() => new Set(members.map((m: any) => m.userId)), [members]);
+  const availableUsers = useMemo(() => hqUsers?.filter((u: any) => !existingMemberIds.has(u.id)) || [], [hqUsers, existingMemberIds]);
+
+  // ─── Member workload ─────────────────────────────────────
+  const memberWorkload = useMemo(() => {
+    const workload: Record<string, { total: number; done: number; name: string }> = {};
+    members.forEach((m: any) => {
+      const uid = m.userId;
+      const name = m.user ? `${m.user.firstName} ${m.user.lastName || ''}`.trim() : 'Bilinmeyen';
+      const assigned = tasks.filter((t: any) => t.assignedToId === uid);
+      const completed = assigned.filter((t: any) => t.status === "done");
+      workload[uid] = { total: assigned.length, done: completed.length, name };
+    });
+    return workload;
+  }, [members, tasks]);
+
+  // ─── Mutations ────────────────────────────────────────────
+  const invalidateProject = () => queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+
   const addTaskMutation = useMutation({
     mutationFn: async (data: typeof newTask) => {
       const res = await apiRequest("POST", `/api/projects/${projectId}/tasks`, data);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      invalidateProject();
       setIsAddTaskOpen(false);
       setNewTask({ title: "", description: "", priority: "medium", dueDate: "", assignedToId: "" });
       toast({ title: "Görev oluşturuldu" });
@@ -163,20 +204,19 @@ export default function ProjeDetay() {
       const res = await apiRequest("PATCH", `/api/project-tasks/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-    },
+    onSuccess: invalidateProject,
   });
 
   const addMemberMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await apiRequest("POST", `/api/projects/${projectId}/members`, { userId });
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const res = await apiRequest("POST", `/api/projects/${projectId}/members`, { userId, role });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      invalidateProject();
       setIsAddMemberOpen(false);
       setSelectedMemberId("");
+      setSelectedMemberRole("contributor");
       toast({ title: "Üye eklendi" });
     },
   });
@@ -186,10 +226,7 @@ export default function ProjeDetay() {
       const res = await apiRequest("DELETE", `/api/projects/${projectId}/members/${memberId}`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-      toast({ title: "Üye çıkarıldı" });
-    },
+    onSuccess: () => { invalidateProject(); toast({ title: "Üye çıkarıldı" }); },
   });
 
   const addCommentMutation = useMutation({
@@ -197,10 +234,7 @@ export default function ProjeDetay() {
       const res = await apiRequest("POST", `/api/projects/${projectId}/comments`, { content });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-      setNewComment("");
-    },
+    onSuccess: () => { invalidateProject(); setNewComment(""); },
   });
 
   const addMilestoneMutation = useMutation({
@@ -209,25 +243,19 @@ export default function ProjeDetay() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      invalidateProject();
       setIsAddMilestoneOpen(false);
       setNewMilestone({ title: "", description: "", dueDate: "" });
-      toast({ title: "Milestone eklendi" });
-    },
-    onError: () => {
-      toast({ title: "Hata", description: "Milestone eklenemedi", variant: "destructive" });
+      toast({ title: "Kilometre taşı eklendi" });
     },
   });
 
   const updateMilestoneMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; isCompleted?: boolean; title?: string; description?: string; dueDate?: string }) => {
+    mutationFn: async ({ id, ...data }: any) => {
       const res = await apiRequest("PATCH", `/api/milestones/${id}`, data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-      toast({ title: "Milestone güncellendi" });
-    },
+    onSuccess: () => { invalidateProject(); toast({ title: "Kilometre taşı güncellendi" }); },
   });
 
   const deleteMilestoneMutation = useMutation({
@@ -235,75 +263,21 @@ export default function ProjeDetay() {
       const res = await apiRequest("DELETE", `/api/milestones/${id}`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-      toast({ title: "Milestone silindi" });
-    },
-    onError: () => {
-      toast({ title: "Hata", description: "Milestone silinemedi", variant: "destructive" });
-    },
+    onSuccess: () => { invalidateProject(); toast({ title: "Kilometre taşı silindi" }); },
   });
 
-  const updateTaskStatusMutation = useMutation({
-    mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
-      const res = await apiRequest("PATCH", `/api/project-tasks/${taskId}`, { status });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
-    },
-  });
-
-  const handleAddMilestone = () => {
-    if (!newMilestone.title.trim()) {
-      toast({ title: "Milestone adı gerekli", variant: "destructive" });
-      return;
-    }
-    addMilestoneMutation.mutate(newMilestone);
-  };
-
-  const handleEditMilestone = () => {
-    if (!editingMilestone.title.trim()) {
-      toast({ title: "Milestone adı gerekli", variant: "destructive" });
-      return;
-    }
-    updateMilestoneMutation.mutate({ id: editingMilestone.id, title: editingMilestone.title, description: editingMilestone.description, dueDate: editingMilestone.dueDate });
-    setIsEditMilestoneOpen(false);
-  };
-
-  const handleAddTask = () => {
-    if (!newTask.title.trim()) {
-      toast({ title: "Görev adı gerekli", variant: "destructive" });
-      return;
-    }
-    addTaskMutation.mutate(newTask);
-  };
-
-  const handleSendComment = () => {
-    if (!newComment.trim()) return;
-    addCommentMutation.mutate(newComment);
-  };
-
-  const handleTaskStatusChange = (taskId: number, newStatus: string) => {
-    updateTaskMutation.mutate({ id: taskId, status: newStatus });
-  };
-
-  const validStatuses = ["todo", "in_progress", "review", "done"];
-
+  // ─── Handlers ─────────────────────────────────────────────
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
     if (!over) return;
-    
     const overId = String(over.id);
+    const validStatuses = ["todo", "in_progress", "review", "done"];
     if (!validStatuses.includes(overId)) return;
-    
     const taskId = parseInt(String(active.id).replace("task-", ""));
-    const newStatus = overId;
-    const task = project?.tasks?.find((t: any) => t.id === taskId);
-    
-    if (task && task.status !== newStatus && !updateTaskMutation.isPending) {
-      handleTaskStatusChange(taskId, newStatus);
+    const task = tasks.find((t: any) => t.id === taskId);
+    if (task && task.status !== overId && !updateTaskMutation.isPending) {
+      updateTaskMutation.mutate({ id: taskId, status: overId });
     }
   };
 
@@ -312,139 +286,260 @@ export default function ProjeDetay() {
     if (task) setActiveTask(task);
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-4 space-y-4">
-        <ListSkeleton count={4} variant="card" showHeader />
-      </div>
-    );
-  }
-
+  // ─── Loading / Error ──────────────────────────────────────
+  if (isLoading) return <div className="p-4"><ListSkeleton count={4} variant="card" showHeader /></div>;
+  if (isError) return <div className="p-4"><ErrorState onRetry={() => refetch()} /></div>;
   if (!project) {
     return (
       <div className="p-4">
         <Button variant="ghost" onClick={() => navigate("/projeler")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Geri
+          <ArrowLeft className="h-4 w-4 mr-2" /> Geri
         </Button>
         <div className="mt-8 text-center text-muted-foreground">Proje bulunamadı</div>
       </div>
     );
   }
 
-  const tasksByStatus = {
-    todo: project.tasks?.filter((t: any) => t.status === "todo") || [],
-    in_progress: project.tasks?.filter((t: any) => t.status === "in_progress") || [],
-    review: project.tasks?.filter((t: any) => t.status === "review") || [],
-    done: project.tasks?.filter((t: any) => t.status === "done") || [],
-  };
-
-  const existingMemberIds = new Set(project.members?.map((m: any) => m.userId) || []);
-  const availableUsers = hqUsers?.filter(u => !existingMemberIds.has(u.id)) || [];
-
+  // ─── RENDER ───────────────────────────────────────────────
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate("/projeler")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-xl font-semibold flex-1">{project.title}</h1>
-        <Badge className={`${projectStatusConfig[project.status]?.color} text-white`}>
-          {projectStatusConfig[project.status]?.label}
+        <h1 className="text-lg sm:text-xl font-semibold flex-1 min-w-0 truncate">{project.title}</h1>
+        <Badge className={`${projectStatusConfig[project.status]?.color || 'bg-slate-500'} text-white text-xs`}>
+          {projectStatusConfig[project.status]?.label || project.status}
         </Badge>
+        <span className="text-2xl" title={trafficLight.label}>{trafficLight.color}</span>
       </div>
 
       {project.description && (
         <p className="text-sm text-muted-foreground">{project.description}</p>
       )}
 
-      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+      {/* Quick Stats Row */}
+      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
         {project.targetDate && (
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            <span>Hedef: {new Date(project.targetDate).toLocaleDateString('tr-TR')}</span>
+            <span>Hedef: {format(new Date(project.targetDate), "d MMM yyyy", { locale: tr })}</span>
           </div>
         )}
         <div className="flex items-center gap-1">
           <Users className="h-4 w-4" />
-          <span>{project.members?.length || 0} üye</span>
+          <span>{members.length} üye</span>
         </div>
         <div className="flex items-center gap-1">
           <ListTodo className="h-4 w-4" />
-          <span>{project.tasks?.length || 0} görev</span>
+          <span>{tasks.length} görev</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <span>%{progressPercent}</span>
         </div>
       </div>
 
-      <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="flex flex-wrap gap-1 h-auto p-1">
-          <TabsTrigger value="tasks" className="flex items-center gap-1">
-            <ListTodo className="h-4 w-4" />
-            Görevler
+      {/* Progress Bar */}
+      <Progress value={progressPercent} className="h-2" />
+
+      {/* 6 Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1 w-full">
+          <TabsTrigger value="dashboard" className="flex items-center gap-1 text-xs sm:text-sm">
+            <LayoutDashboard className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Dashboard</span>
           </TabsTrigger>
-          <TabsTrigger value="team" className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            Ekip
+          <TabsTrigger value="tasks" className="flex items-center gap-1 text-xs sm:text-sm">
+            <ListTodo className="h-3.5 w-3.5" /> Görevler
           </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-1">
-            <MessageSquare className="h-4 w-4" />
-            Timeline
+          <TabsTrigger value="timeline" className="flex items-center gap-1 text-xs sm:text-sm">
+            <GanttChart className="h-3.5 w-3.5" /> Timeline
           </TabsTrigger>
-          <TabsTrigger value="milestones" className="flex items-center gap-1">
-            <Flag className="h-4 w-4" />
-            Milestones
+          <TabsTrigger value="team" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Users className="h-3.5 w-3.5" /> Ekip
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="flex items-center gap-1">
-            <CalendarDays className="h-4 w-4" />
-            Takvim
+          <TabsTrigger value="messages" className="flex items-center gap-1 text-xs sm:text-sm">
+            <MessageSquare className="h-3.5 w-3.5" /> İletişim
           </TabsTrigger>
-          <TabsTrigger value="kanban" className="flex items-center gap-1">
-            <ListTodo className="h-4 w-4" />
-            Kanban
+          <TabsTrigger value="files" className="flex items-center gap-1 text-xs sm:text-sm">
+            <FolderOpen className="h-3.5 w-3.5" /> Dosyalar
           </TabsTrigger>
         </TabsList>
 
+        {/* ═══════════ TAB 1: DASHBOARD ═══════════ */}
+        <TabsContent value="dashboard" className="mt-4 space-y-4">
+          {/* KPI Chips */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("tasks")}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Toplam</p>
+                    <p className="text-xl font-bold">{tasks.length}</p>
+                  </div>
+                  <ListTodo className="h-5 w-5 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("tasks")}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tamamlanan</p>
+                    <p className="text-xl font-bold text-green-600">{tasksByStatus.done.length}</p>
+                  </div>
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("tasks")}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Devam Eden</p>
+                    <p className="text-xl font-bold text-blue-600">{tasksByStatus.in_progress.length + tasksByStatus.review.length}</p>
+                  </div>
+                  <Clock className="h-5 w-5 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className={`cursor-pointer hover:shadow-md transition-shadow ${overdueTasks.length > 0 ? 'ring-1 ring-red-300 dark:ring-red-800' : ''}`} onClick={() => setActiveTab("tasks")}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Gecikmiş</p>
+                    <p className={`text-xl font-bold ${overdueTasks.length > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>{overdueTasks.length}</p>
+                  </div>
+                  <AlertTriangle className={`h-5 w-5 ${overdueTasks.length > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Critical Tasks + Milestones */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  Kritik / Gecikmiş Görevler
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {overdueTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Gecikmiş görev yok</p>
+                ) : (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {overdueTasks.slice(0, 8).map((task: any) => (
+                      <div key={task.id} className="flex items-center justify-between p-2 rounded-md border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`h-2 w-2 rounded-full shrink-0 ${priorityConfig[task.priority]?.dotColor || 'bg-slate-400'}`} />
+                          <span className="text-sm truncate">{task.title}</span>
+                        </div>
+                        <span className="text-xs text-red-500 shrink-0 ml-2">
+                          {task.dueDate && `${differenceInDays(new Date(), new Date(task.dueDate))} gün`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-indigo-500" />
+                  Kilometre Taşları
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {milestones.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Henüz milestone yok</p>
+                ) : (
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {milestones.map((m: any) => (
+                      <div key={m.id} className="flex items-center justify-between p-2 rounded-md border">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CircleDot className={`h-3 w-3 shrink-0 ${m.status === 'completed' ? 'text-green-500' : 'text-indigo-500'}`} />
+                          <span className={`text-sm truncate ${m.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>{m.title}</span>
+                        </div>
+                        {m.dueDate && (
+                          <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                            {format(new Date(m.dueDate), "d MMM", { locale: tr })}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Status Distribution Bar */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" /> Görev Dağılımı
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-0.5 h-6 rounded-full overflow-hidden bg-muted">
+                {tasks.length > 0 && (
+                  <>
+                    {tasksByStatus.done.length > 0 && (
+                      <div className="bg-green-500 transition-all" style={{ width: `${(tasksByStatus.done.length / tasks.length) * 100}%` }} title={`Tamamlandı: ${tasksByStatus.done.length}`} />
+                    )}
+                    {tasksByStatus.review.length > 0 && (
+                      <div className="bg-amber-500 transition-all" style={{ width: `${(tasksByStatus.review.length / tasks.length) * 100}%` }} title={`İnceleme: ${tasksByStatus.review.length}`} />
+                    )}
+                    {tasksByStatus.in_progress.length > 0 && (
+                      <div className="bg-blue-500 transition-all" style={{ width: `${(tasksByStatus.in_progress.length / tasks.length) * 100}%` }} title={`Devam: ${tasksByStatus.in_progress.length}`} />
+                    )}
+                    {tasksByStatus.todo.length > 0 && (
+                      <div className="bg-slate-400 transition-all" style={{ width: `${(tasksByStatus.todo.length / tasks.length) * 100}%` }} title={`Yapılacak: ${tasksByStatus.todo.length}`} />
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
+                {Object.entries(statusConfig).map(([key, cfg]) => (
+                  <span key={key} className="flex items-center gap-1">
+                    <div className={`h-2 w-2 rounded-full ${cfg.dotColor}`} />
+                    {cfg.label}: {tasksByStatus[key as keyof typeof tasksByStatus]?.length || 0}
+                  </span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ═══════════ TAB 2: GÖREVLER (Kanban) ═══════════ */}
         <TabsContent value="tasks" className="mt-4 space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-muted-foreground">{tasks.length} görev</h2>
             <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-task">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Görev Ekle
-                </Button>
+                <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Görev Ekle</Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Yeni Görev</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
+                <DialogHeader><DialogTitle>Yeni Görev</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1.5">
                     <Label>Görev Adı</Label>
-                    <Input
-                      data-testid="input-task-title"
-                      value={newTask.title}
-                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                      placeholder="Görev adı"
-                    />
+                    <Input value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} placeholder="Görev adı" />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label>Açıklama</Label>
-                    <Textarea
-                      data-testid="input-task-description"
-                      value={newTask.description}
-                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                      placeholder="Görev açıklaması"
-                    />
+                    <Textarea value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} placeholder="Açıklama (opsiyonel)" rows={3} />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
                       <Label>Öncelik</Label>
-                      <Select
-                        value={newTask.priority}
-                        onValueChange={(v) => setNewTask({ ...newTask, priority: v })}
-                      >
-                        <SelectTrigger data-testid="select-task-priority">
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="low">Düşük</SelectItem>
                           <SelectItem value="medium">Orta</SelectItem>
@@ -453,29 +548,19 @@ export default function ProjeDetay() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Label>Bitiş Tarihi</Label>
-                      <Input
-                        data-testid="input-task-due-date"
-                        type="date"
-                        value={newTask.dueDate}
-                        onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                      />
+                      <Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} />
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <Label>Atanan Kişi</Label>
-                    <Select
-                      value={newTask.assignedToId}
-                      onValueChange={(v) => setNewTask({ ...newTask, assignedToId: v })}
-                    >
-                      <SelectTrigger data-testid="select-task-assignee">
-                        <SelectValue placeholder="Kişi seçin" />
-                      </SelectTrigger>
+                    <Select value={newTask.assignedToId} onValueChange={(v) => setNewTask({ ...newTask, assignedToId: v })}>
+                      <SelectTrigger><SelectValue placeholder="Seçiniz" /></SelectTrigger>
                       <SelectContent>
-                        {project.members?.map((m: any) => (
+                        {members.map((m: any) => (
                           <SelectItem key={m.userId} value={m.userId}>
-                            {m.user.firstName} {m.user.lastName}
+                            {m.user?.firstName} {m.user?.lastName || ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -483,281 +568,168 @@ export default function ProjeDetay() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddTaskOpen(false)}>İptal</Button>
-                  <Button 
-                    data-testid="button-create-task"
-                    onClick={handleAddTask} 
+                  <Button
+                    onClick={() => {
+                      if (newTask.title.trim()) addTaskMutation.mutate(newTask);
+                      else toast({ title: "Görev adı gerekli", variant: "destructive" });
+                    }}
                     disabled={addTaskMutation.isPending}
                   >
-                    {addTaskMutation.isPending ? "..." : "Oluştur"}
+                    {addTaskMutation.isPending ? "Ekleniyor..." : "Ekle"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
 
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {Object.entries(tasksByStatus).map(([status, tasks]) => (
+              {(["todo", "in_progress", "review", "done"] as const).map((status) => (
                 <div key={status} className="space-y-2">
-                  <div className={`p-2 rounded-md ${statusConfig[status].bgColor}`}>
-                    <h3 className={`text-sm font-medium ${statusConfig[status].color}`}>
-                      {statusConfig[status].label} ({(tasks as any[]).length})
-                    </h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`h-3 w-3 rounded-full ${statusConfig[status].dotColor}`} />
+                    <h3 className="font-semibold text-sm">{statusConfig[status].label}</h3>
+                    <Badge variant="secondary" className="text-xs h-5">{tasksByStatus[status].length}</Badge>
                   </div>
-                  <DroppableColumn id={status} status={status}>
-                    {(tasks as any[]).map((task) => (
+                  <DroppableColumn id={status}>
+                    {tasksByStatus[status].map((task: any) => (
                       <DraggableTask key={task.id} task={task}>
-                        <Card className="p-3" data-testid={`card-task-${task.id}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium line-clamp-2">{task.title}</p>
+                        <Card className="hover:shadow-md transition-shadow p-3 cursor-pointer" onClick={() => navigate(`/proje-gorev/${task.id}`)}>
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-medium text-sm flex-1 leading-tight">{task.title}</span>
+                              <div className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1 ${priorityConfig[task.priority]?.dotColor || 'bg-slate-400'}`} title={priorityConfig[task.priority]?.label} />
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              {task.assignee && (
+                                <div className="flex items-center gap-1">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarImage src={task.assignee?.profileImageUrl} />
+                                    <AvatarFallback className="text-[10px]">{task.assignee?.firstName?.[0]}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate max-w-[80px]">{task.assignee?.firstName}</span>
+                                </div>
+                              )}
                               {task.dueDate && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  <Calendar className="h-3 w-3 inline mr-1" />
-                                  {new Date(task.dueDate).toLocaleDateString('tr-TR')}
-                                </p>
+                                <span className={`flex items-center gap-0.5 ${isPast(new Date(task.dueDate)) && task.status !== 'done' ? 'text-red-500 font-medium' : ''}`}>
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(task.dueDate), "d MMM", { locale: tr })}
+                                </span>
                               )}
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {Object.entries(statusConfig).map(([s, info]) => (
-                                  <DropdownMenuItem
-                                    key={s}
-                                    onClick={() => handleTaskStatusChange(task.id, s)}
-                                    disabled={s === status}
-                                  >
-                                    {info.label}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <div className="flex items-center justify-between mt-2">
-                            <Badge className={`${priorityColors[task.priority]} text-white text-xs`}>
-                              {task.priority === "low" ? "Düşük" : task.priority === "medium" ? "Orta" : task.priority === "high" ? "Yüksek" : "Acil"}
-                            </Badge>
-                            {task.assignee && (
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={task.assignee.profileImageUrl} />
-                                <AvatarFallback className="text-xs">
-                                  {task.assignee.firstName?.[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                            )}
                           </div>
                         </Card>
                       </DraggableTask>
                     ))}
+                    {tasksByStatus[status].length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-6">Görev yok</p>
+                    )}
                   </DroppableColumn>
                 </div>
               ))}
             </div>
             <DragOverlay>
               {activeTask && (
-                <Card className="p-3 shadow-lg opacity-90">
-                  <p className="text-sm font-medium">{activeTask.title}</p>
+                <Card className="p-3 w-60 shadow-lg rotate-2">
+                  <span className="font-medium text-sm">{activeTask.title}</span>
                 </Card>
               )}
             </DragOverlay>
           </DndContext>
         </TabsContent>
 
-        <TabsContent value="team" className="mt-4 space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+        {/* ═══════════ TAB 3: TIMELINE (Gantt) ═══════════ */}
+        <TabsContent value="timeline" className="mt-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-muted-foreground">Proje Zaman Çizelgesi</h2>
+            <Dialog open={isAddMilestoneOpen} onOpenChange={setIsAddMilestoneOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-member">
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Üye Ekle
-                </Button>
+                <Button size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" /> Milestone</Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Üye Ekle</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                  <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                    <SelectTrigger data-testid="select-new-member">
-                      <SelectValue placeholder="Kullanıcı seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableUsers.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.firstName} {u.lastName} - {u.role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <DialogHeader><DialogTitle>Yeni Kilometre Taşı</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1.5">
+                    <Label>Başlık</Label>
+                    <Input value={newMilestone.title} onChange={(e) => setNewMilestone({ ...newMilestone, title: e.target.value })} placeholder="Milestone adı" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Açıklama</Label>
+                    <Textarea value={newMilestone.description} onChange={(e) => setNewMilestone({ ...newMilestone, description: e.target.value })} placeholder="Açıklama" rows={2} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Hedef Tarih</Label>
+                    <Input type="date" value={newMilestone.dueDate} onChange={(e) => setNewMilestone({ ...newMilestone, dueDate: e.target.value })} />
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddMemberOpen(false)}>İptal</Button>
                   <Button
-                    data-testid="button-confirm-add-member"
-                    onClick={() => selectedMemberId && addMemberMutation.mutate(selectedMemberId)}
-                    disabled={!selectedMemberId || addMemberMutation.isPending}
+                    onClick={() => {
+                      if (newMilestone.title.trim()) addMilestoneMutation.mutate(newMilestone);
+                      else toast({ title: "Başlık gerekli", variant: "destructive" });
+                    }}
+                    disabled={addMilestoneMutation.isPending}
                   >
-                    Ekle
+                    {addMilestoneMutation.isPending ? "Ekleniyor..." : "Ekle"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {project.members?.map((member: any) => (
-              <Card key={member.id} className="p-3" data-testid={`card-member-${member.id}`}>
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={member.user.profileImageUrl} />
-                    <AvatarFallback>
-                      {member.user.firstName?.[0]}{member.user.lastName?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">
-                      {member.user.firstName} {member.user.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground capitalize">{member.role}</p>
-                  </div>
-                  {member.role !== "owner" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => removeMemberMutation.mutate(member.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
+          <GanttChartView
+            tasks={tasks}
+            milestones={milestones}
+            project={project}
+            onDeleteMilestone={(id: number, name: string) => requestDelete(id, name)}
+            onToggleMilestone={(id: number, completed: boolean) =>
+              updateMilestoneMutation.mutate({ id, isCompleted: completed })
+            }
+          />
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-4 space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex gap-2">
-                <Textarea
-                  data-testid="input-comment"
-                  placeholder="Yorum yazın..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  className="resize-none"
-                  rows={2}
-                />
-                <Button 
-                  size="icon" 
-                  onClick={handleSendComment}
-                  disabled={!newComment.trim() || addCommentMutation.isPending}
-                  data-testid="button-send-comment"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-3">
-              {project.comments?.map((comment: any) => (
-                <Card key={comment.id} className={comment.isSystemMessage ? "bg-muted/50" : ""}>
-                  <CardContent className="p-3">
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={comment.user.profileImageUrl} />
-                        <AvatarFallback className="text-xs">
-                          {comment.user.firstName?.[0]}{comment.user.lastName?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {comment.user.firstName} {comment.user.lastName}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(comment.createdAt).toLocaleString('tr-TR')}
-                          </span>
-                        </div>
-                        <p className={`text-sm mt-1 ${comment.isSystemMessage ? "text-muted-foreground italic" : ""}`}>
-                          {comment.content}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {(!project.comments || project.comments.length === 0) && (
-                <div className="text-center text-muted-foreground py-8">
-                  Henüz yorum yok
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="milestones" className="mt-4 space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isAddMilestoneOpen} onOpenChange={setIsAddMilestoneOpen}>
+        {/* ═══════════ TAB 4: EKİP ═══════════ */}
+        <TabsContent value="team" className="mt-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-semibold text-muted-foreground">{members.length} üye</h2>
+            <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" data-testid="button-add-milestone">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Milestone Ekle
-                </Button>
+                <Button size="sm"><UserPlus className="h-4 w-4 mr-1" /> Üye Ekle</Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Yeni Milestone</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Milestone Adı</Label>
-                    <Input
-                      data-testid="input-milestone-title"
-                      value={newMilestone.title}
-                      onChange={(e) => setNewMilestone({ ...newMilestone, title: e.target.value })}
-                      placeholder="Milestone adı"
-                    />
+                <DialogHeader><DialogTitle>Üye Ekle</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-1.5">
+                    <Label>Kişi</Label>
+                    <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                      <SelectTrigger><SelectValue placeholder="Kişi seçin" /></SelectTrigger>
+                      <SelectContent>
+                        {availableUsers.map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>{u.firstName} {u.lastName || ''}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Açıklama</Label>
-                    <Textarea
-                      data-testid="input-milestone-description"
-                      value={newMilestone.description}
-                      onChange={(e) => setNewMilestone({ ...newMilestone, description: e.target.value })}
-                      placeholder="Milestone açıklaması"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hedef Tarih</Label>
-                    <Input
-                      data-testid="input-milestone-due-date"
-                      type="date"
-                      value={newMilestone.dueDate}
-                      onChange={(e) => setNewMilestone({ ...newMilestone, dueDate: e.target.value })}
-                    />
+                  <div className="space-y-1.5">
+                    <Label>Proje Rolü</Label>
+                    <Select value={selectedMemberRole} onValueChange={setSelectedMemberRole}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="editor">Editör</SelectItem>
+                        <SelectItem value="contributor">Katkıda Bulunan</SelectItem>
+                        <SelectItem value="viewer">İzleyici</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddMilestoneOpen(false)}>İptal</Button>
-                  <Button 
-                    data-testid="button-create-milestone"
-                    onClick={handleAddMilestone} 
-                    disabled={addMilestoneMutation.isPending}
+                  <Button
+                    onClick={() => {
+                      if (selectedMemberId) addMemberMutation.mutate({ userId: selectedMemberId, role: selectedMemberRole });
+                    }}
+                    disabled={!selectedMemberId || addMemberMutation.isPending}
                   >
-                    {addMilestoneMutation.isPending ? "..." : "Oluştur"}
+                    {addMemberMutation.isPending ? "Ekleniyor..." : "Ekle"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -765,339 +737,156 @@ export default function ProjeDetay() {
           </div>
 
           <div className="space-y-3">
-            {project.milestones?.length > 0 ? (
-              project.milestones?.map((milestone: any) => (
-                <Card 
-                  key={milestone.id} 
-                  data-testid={`card-milestone-${milestone.id}`} 
-                  className={`relative overflow-visible ${milestone.status === "completed" ? "border-2 border-green-500 bg-green-50 dark:bg-green-950/20" : ""}`}
-                >
-                  {milestone.status === "completed" && (
-                    <div className="absolute -top-3 -right-3 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full rotate-12 shadow-lg border-2 border-green-600 z-10">
-                      OK
-                    </div>
-                  )}
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <button
-                        className="mt-0.5 shrink-0 hover-elevate"
-                        disabled={updateMilestoneMutation.isPending}
-                        onClick={() => updateMilestoneMutation.mutate({ id: milestone.id, isCompleted: milestone.status !== "completed" })}
-                      >
-                        {updateMilestoneMutation.isPending ? (
-                          <div className="h-6 w-6 rounded-full border-2 border-muted-foreground animate-spin" />
-                        ) : milestone.status === "completed" ? (
-                          <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
-                            <Check className="h-4 w-4 text-white" />
-                          </div>
-                        ) : (
-                          <div className="h-6 w-6 rounded-full border-2 border-muted-foreground" />
-                        )}
-                      </button>
+            {/* Project Owner */}
+            {project.ownerId && (() => {
+              const ownerUser = hqUsers?.find((u: any) => u.id === project.ownerId);
+              const ownerWl = memberWorkload[project.ownerId];
+              return (
+                <Card className="border-purple-200 dark:border-purple-900">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={ownerUser?.profileImageUrl} />
+                        <AvatarFallback className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                          {ownerUser?.firstName?.[0] || 'P'}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className={`font-medium ${milestone.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                            {milestone.title}
-                          </h3>
-                        </div>
-                        {milestone.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
-                        )}
-                        <div className="flex flex-wrap gap-3 mt-2">
-                          {milestone.dueDate && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Calendar className="h-3 w-3" />
-                              Hedef: {format(new Date(milestone.dueDate), "d MMMM yyyy", { locale: tr })}
-                            </div>
-                          )}
-                          {milestone.status === "completed" && milestone.completedAt && (
-                            <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Tamamlandı: {format(new Date(milestone.completedAt), "d MMMM yyyy", { locale: tr })}
-                            </div>
-                          )}
-                        </div>
+                        <p className="font-medium text-sm">
+                          {ownerUser ? `${ownerUser.firstName} ${ownerUser.lastName || ''}` : 'Proje Sahibi'}
+                        </p>
+                        <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                          <UserCog className="h-3 w-3" /> Proje Lideri
+                        </p>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditingMilestone({ ...milestone }); setIsEditMilestoneOpen(true); }}>
-                            <Edit2 className="h-4 w-4 mr-2" />
-                            Düzenle
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => requestDelete(milestone.id, milestone.title)} className="text-red-600">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Sil
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {ownerWl && ownerWl.total > 0 && (
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">{ownerWl.done}/{ownerWl.total} görev</p>
+                          <Progress value={(ownerWl.done / ownerWl.total) * 100} className="h-1.5 w-20 mt-1" />
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))
-            ) : (
-              <Card className="p-8 text-center">
-                <Flag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-medium mb-2">Henüz milestone yok</h3>
-                <p className="text-sm text-muted-foreground">Projenin önemli aşamalarını belirlemek için milestone ekleyin.</p>
-              </Card>
+              );
+            })()}
+
+            {/* Members */}
+            {members.map((member: any) => {
+              const roleInfo = memberRoleConfig[member.role] || memberRoleConfig.contributor;
+              const RoleIcon = roleInfo.icon;
+              const wl = memberWorkload[member.userId];
+              return (
+                <Card key={member.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={member.user?.profileImageUrl} />
+                        <AvatarFallback>{member.user?.firstName?.[0] || '?'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{member.user?.firstName} {member.user?.lastName || ''}</p>
+                        <p className={`text-xs flex items-center gap-1 ${roleInfo.color}`}>
+                          <RoleIcon className="h-3 w-3" /> {roleInfo.label}
+                        </p>
+                      </div>
+                      {wl && wl.total > 0 && (
+                        <div className="text-right mr-2">
+                          <p className="text-xs text-muted-foreground">{wl.done}/{wl.total}</p>
+                          <Progress value={(wl.done / wl.total) * 100} className="h-1.5 w-16 mt-1" />
+                        </div>
+                      )}
+                      <Button
+                        variant="ghost" size="sm"
+                        className="h-8 w-8 p-0 text-red-400 hover:text-red-600"
+                        onClick={() => removeMemberMutation.mutate(member.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {members.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">Henüz ekip üyesi eklenmemiş</p>
             )}
           </div>
-
-          <Dialog open={isEditMilestoneOpen} onOpenChange={setIsEditMilestoneOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Milestone Düzenle</DialogTitle>
-              </DialogHeader>
-              {editingMilestone && (
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Milestone Adı</Label>
-                    <Input
-                      value={editingMilestone.title}
-                      onChange={(e) => setEditingMilestone({ ...editingMilestone, title: e.target.value })}
-                      placeholder="Milestone adı"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Açıklama</Label>
-                    <Textarea
-                      value={editingMilestone.description || ""}
-                      onChange={(e) => setEditingMilestone({ ...editingMilestone, description: e.target.value })}
-                      placeholder="Milestone açıklaması"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hedef Tarih</Label>
-                    <Input
-                      type="date"
-                      value={editingMilestone.dueDate?.split('T')[0] || ""}
-                      onChange={(e) => setEditingMilestone({ ...editingMilestone, dueDate: e.target.value })}
-                    />
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsEditMilestoneOpen(false)}>İptal</Button>
-                <Button onClick={handleEditMilestone} disabled={updateMilestoneMutation.isPending}>
-                  {updateMilestoneMutation.isPending ? "..." : "Kaydet"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </TabsContent>
 
-        <TabsContent value="calendar" className="mt-4 space-y-4">
+        {/* ═══════════ TAB 5: İLETİŞİM ═══════════ */}
+        <TabsContent value="messages" className="mt-4 space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" />
-                  {format(calendarDate, "MMMM yyyy", { locale: tr })}
-                </CardTitle>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => setCalendarDate(subMonths(calendarDate, 1))}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setCalendarDate(new Date())}>Bugün</Button>
-                  <Button variant="ghost" size="icon" onClick={() => setCalendarDate(addMonths(calendarDate, 1))}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              <CardTitle className="text-sm">Proje Mesajları</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-7 gap-px bg-muted rounded-md overflow-hidden">
-                {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map((day) => (
-                  <div key={day} className="bg-muted p-2 text-center text-xs font-medium text-muted-foreground">
-                    {day}
-                  </div>
-                ))}
-                {(() => {
-                  const monthStart = startOfMonth(calendarDate);
-                  const monthEnd = endOfMonth(calendarDate);
-                  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-                  const startDayOfWeek = (monthStart.getDay() + 6) % 7;
-                  const paddingDays = Array(startDayOfWeek).fill(null);
-                  
-                  return [...paddingDays, ...days].map((day, index) => {
-                    if (!day) {
-                      return <div key={`empty-${index}`} className="bg-background p-2 min-h-[60px]" />;
-                    }
-                    
-                    const dayTasks = project.tasks?.filter((t: any) => 
-                      t.dueDate && isSameDay(new Date(t.dueDate), day)
-                    ) || [];
-                    const dayMilestones = project.milestones?.filter((m: any) => 
-                      m.dueDate && isSameDay(new Date(m.dueDate), day)
-                    ) || [];
-                    
-                    const hasItems = dayTasks.length > 0 || dayMilestones.length > 0;
-                    
-                    return (
-                      <div 
-                        key={day.toISOString()} 
-                        className={`bg-background p-1 min-h-[60px] ${isToday(day) ? "ring-2 ring-primary ring-inset" : ""} ${!isSameMonth(day, calendarDate) ? "opacity-50" : ""}`}
-                      >
-                        <div className={`text-xs font-medium mb-1 ${isToday(day) ? "text-primary" : ""}`}>
-                          {format(day, "d")}
+              <div className="space-y-3 max-h-[400px] overflow-y-auto mb-4">
+                {comments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Henüz mesaj yok — ilk mesajı siz yazın!</p>
+                ) : (
+                  comments.map((c: any) => (
+                    <div key={c.id} className={`flex gap-2 ${c.isSystemMessage ? 'opacity-60' : ''}`}>
+                      <Avatar className="h-7 w-7 shrink-0 mt-0.5">
+                        <AvatarImage src={c.user?.profileImageUrl} />
+                        <AvatarFallback className="text-[10px]">{c.user?.firstName?.[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-medium">{c.user?.firstName} {c.user?.lastName || ''}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {c.createdAt && format(new Date(c.createdAt), "d MMM HH:mm", { locale: tr })}
+                          </span>
                         </div>
-                        <div className="space-y-0.5">
-                          {dayMilestones.slice(0, 1).map((m: any) => (
-                            <div key={m.id} className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded px-1 truncate flex items-center gap-0.5">
-                              <Flag className="h-2 w-2 shrink-0" />
-                              {m.title}
-                            </div>
-                          ))}
-                          {dayTasks.slice(0, 2).map((t: any) => (
-                            <div 
-                              key={t.id} 
-                              className={`text-[10px] rounded px-1 truncate ${statusConfig[t.status]?.bgColor}`}
-                            >
-                              {t.title}
-                            </div>
-                          ))}
-                          {(dayTasks.length + dayMilestones.length > 3) && (
-                            <div className="text-[10px] text-muted-foreground">
-                              +{dayTasks.length + dayMilestones.length - 3} daha
-                            </div>
-                          )}
-                        </div>
+                        <p className={`text-sm mt-0.5 ${c.isSystemMessage ? 'italic text-muted-foreground' : ''}`}>{c.content}</p>
                       </div>
-                    );
-                  });
-                })()}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Mesaj yazın..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && newComment.trim()) {
+                      e.preventDefault();
+                      addCommentMutation.mutate(newComment);
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => { if (newComment.trim()) addCommentMutation.mutate(newComment); }}
+                  disabled={!newComment.trim() || addCommentMutation.isPending}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Bu Ay Bitenler
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {project.tasks?.filter((t: any) => {
-                    if (!t.dueDate) return false;
-                    const dueDate = new Date(t.dueDate);
-                    return isSameMonth(dueDate, calendarDate);
-                  }).slice(0, 5).map((task: any) => (
-                    <div 
-                      key={task.id} 
-                      className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 cursor-pointer"
-                      onClick={() => navigate(`/proje-gorev/${task.id}`)}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`h-2 w-2 rounded-full ${priorityColors[task.priority]}`} />
-                        <span className="text-sm truncate">{task.title}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {task.dueDate && format(new Date(task.dueDate), "d MMM", { locale: tr })}
-                      </span>
-                    </div>
-                  ))}
-                  {!project.tasks?.some((t: any) => t.dueDate && isSameMonth(new Date(t.dueDate), calendarDate)) && (
-                    <p className="text-sm text-muted-foreground text-center py-2">Bu ay için görev yok</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Flag className="h-4 w-4" />
-                  Yaklaşan Milestones
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {project.milestones?.filter((m: any) => !m.isCompleted).slice(0, 5).map((milestone: any) => (
-                    <div key={milestone.id} className="flex items-center justify-between p-2 rounded-md border">
-                      <span className="text-sm truncate">{milestone.title}</span>
-                      {milestone.dueDate && (
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {format(new Date(milestone.dueDate), "d MMM", { locale: tr })}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                  {!project.milestones?.some((m: any) => !m.isCompleted) && (
-                    <p className="text-sm text-muted-foreground text-center py-2">Tamamlanmamış milestone yok</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
-        <TabsContent value="kanban" className="mt-4">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {["todo", "in_progress", "review", "done"].map((status) => (
-                <div key={status} className="space-y-2">
-                  <h3 className="font-semibold text-sm flex items-center gap-2">
-                    <div className={`h-3 w-3 rounded-full ${statusConfig[status]?.bgColor}`} />
-                    {statusConfig[status]?.label}
-                  </h3>
-                  <DroppableColumn id={status} status={status}>
-                    {project.tasks?.filter((t: any) => t.status === status).map((task: any) => (
-                      <DraggableTask key={task.id} task={task}>
-                        <div onClick={() => navigate(`/proje-gorev/${task.id}`)} className="cursor-pointer">
-                          <Card className="hover:shadow-md transition-shadow p-3">
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <span className="font-medium text-sm flex-1">{task.title}</span>
-                                <div className={`h-2 w-2 rounded-full shrink-0 ${priorityColors[task.priority]}`} />
-                              </div>
-                              {task.assignedToId && (
-                                <div className="flex items-center gap-2">
-                                  <Avatar className="h-6 w-6">
-                                    <AvatarImage src={task.assignee?.profileImageUrl} />
-                                    <AvatarFallback className="text-xs">{task.assignee?.firstName?.[0]}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs text-muted-foreground">{task.assignee?.firstName}</span>
-                                </div>
-                              )}
-                              {task.dueDate && (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3" />
-                                  {format(new Date(task.dueDate), "d MMM", { locale: tr })}
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        </div>
-                      </DraggableTask>
-                    ))}
-                  </DroppableColumn>
-                </div>
-              ))}
-            </div>
-            <DragOverlay>
-              {activeTask && (
-                <Card className="p-3 w-64 shadow-lg">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-medium text-sm flex-1">{activeTask.title}</span>
-                      <div className={`h-2 w-2 rounded-full shrink-0 ${priorityColors[activeTask.priority]}`} />
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </DragOverlay>
-          </DndContext>
+        {/* ═══════════ TAB 6: DOSYALAR ═══════════ */}
+        <TabsContent value="files" className="mt-4 space-y-4">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <FolderOpen className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-medium text-sm mb-1">Proje Dosyaları</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Dosya paylaşım özelliği Sprint 2'de eklenecek.
+                Şimdilik proje mesajlarında dosya bağlantıları paylaşabilirsiniz.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => setActiveTab("messages")}>
+                <MessageSquare className="h-4 w-4 mr-1" /> Mesajlara Git
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
+      {/* Delete Milestone Dialog */}
       <ConfirmDeleteDialog
         open={deleteState.open}
         onOpenChange={(open) => !open && cancelDelete()}
@@ -1106,8 +895,155 @@ export default function ProjeDetay() {
           if (id !== null) deleteMilestoneMutation.mutate(id as number);
         }}
         title="Kilometre Taşını Sil"
-        description={`"${deleteState.itemName || ''}" kilometre taşını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`}
+        description={`"${deleteState.itemName || ''}" kilometre taşını silmek istediğinize emin misiniz?`}
       />
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GANTT CHART VIEW (CSS-based, no library needed)
+// ═══════════════════════════════════════════════════════════════
+function GanttChartView({
+  tasks, milestones, project, onDeleteMilestone, onToggleMilestone,
+}: {
+  tasks: any[]; milestones: any[]; project: any;
+  onDeleteMilestone: (id: number, name: string) => void;
+  onToggleMilestone: (id: number, completed: boolean) => void;
+}) {
+  const allDates = [
+    project.startDate && new Date(project.startDate),
+    project.targetDate && new Date(project.targetDate),
+    ...tasks.filter((t: any) => t.startDate).map((t: any) => new Date(t.startDate)),
+    ...tasks.filter((t: any) => t.dueDate).map((t: any) => new Date(t.dueDate)),
+    ...milestones.filter((m: any) => m.dueDate).map((m: any) => new Date(m.dueDate)),
+  ].filter(Boolean) as Date[];
+
+  if (allDates.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <GanttChart className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Görevlere başlangıç/bitiş tarihi ekleyin</p>
+          <p className="text-xs text-muted-foreground mt-1">Timeline otomatik oluşturulacak</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+  minDate.setDate(minDate.getDate() - 3);
+  maxDate.setDate(maxDate.getDate() + 7);
+  const totalDays = Math.max(differenceInDays(maxDate, minDate), 14);
+
+  const getPosition = (date: Date) => {
+    const days = differenceInDays(date, minDate);
+    return Math.max(0, Math.min(100, (days / totalDays) * 100));
+  };
+
+  const getWidth = (start: Date, end: Date) => {
+    const days = differenceInDays(end, start);
+    return Math.max(2, (days / totalDays) * 100);
+  };
+
+  const weeks: Date[] = [];
+  let current = new Date(minDate);
+  while (current <= maxDate) {
+    weeks.push(new Date(current));
+    current = addDays(current, 7);
+  }
+
+  const tasksWithDates = tasks.filter((t: any) => t.startDate || t.dueDate);
+  const todayPos = getPosition(new Date());
+
+  return (
+    <Card>
+      <CardContent className="p-3 overflow-x-auto">
+        <div className="min-w-[600px] relative">
+          {/* Week headers */}
+          <div className="relative h-8 border-b mb-1">
+            {weeks.map((w, i) => (
+              <div key={i} className="absolute text-[10px] text-muted-foreground top-1" style={{ left: `${getPosition(w)}%` }}>
+                {format(w, "d MMM", { locale: tr })}
+              </div>
+            ))}
+          </div>
+
+          {/* Today line */}
+          {todayPos >= 0 && todayPos <= 100 && (
+            <div className="absolute top-8 bottom-0 w-px bg-red-400 z-10 pointer-events-none" style={{ left: `${todayPos}%` }}>
+              <div className="absolute -top-1 -left-1.5 w-3 h-3 rounded-full bg-red-500" />
+            </div>
+          )}
+
+          {/* Milestones */}
+          {milestones.filter((m: any) => m.dueDate).map((m: any) => (
+            <div key={`ms-${m.id}`} className="relative h-8 flex items-center group">
+              <div className="w-[140px] shrink-0 text-xs truncate pr-2 text-muted-foreground flex items-center gap-1">
+                <Flag className="h-3 w-3 text-indigo-500 shrink-0" />
+                <span className="truncate">{m.title}</span>
+              </div>
+              <div className="flex-1 relative h-full">
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 cursor-pointer z-20"
+                  style={{ left: `${getPosition(new Date(m.dueDate))}%` }}
+                  onClick={() => onToggleMilestone(m.id, m.status !== 'completed')}
+                  title={`${m.title} — ${format(new Date(m.dueDate), "d MMM yyyy", { locale: tr })}`}
+                >
+                  <div className={`w-3.5 h-3.5 rotate-45 border-2 ${m.status === 'completed' ? 'bg-green-500 border-green-600' : 'bg-indigo-500 border-indigo-600'}`} />
+                </div>
+                <Button
+                  variant="ghost" size="sm"
+                  className="absolute right-0 top-0 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => onDeleteMilestone(m.id, m.title)}
+                >
+                  <Trash2 className="h-3 w-3 text-red-400" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {/* Tasks as bars */}
+          {tasksWithDates.map((task: any) => {
+            const start = task.startDate ? new Date(task.startDate) : (task.dueDate ? addDays(new Date(task.dueDate), -3) : new Date());
+            const end = task.dueDate ? new Date(task.dueDate) : addDays(start, 5);
+            const left = getPosition(start);
+            const width = getWidth(start, end);
+            const isOverdue = task.dueDate && isPast(new Date(task.dueDate)) && task.status !== "done";
+
+            return (
+              <div key={`task-${task.id}`} className="relative h-8 flex items-center">
+                <div className="w-[140px] shrink-0 text-xs truncate pr-2 flex items-center gap-1">
+                  <div className={`h-2 w-2 rounded-full shrink-0 ${statusConfig[task.status]?.dotColor || 'bg-slate-400'}`} />
+                  <span className="truncate">{task.title}</span>
+                </div>
+                <div className="flex-1 relative h-full flex items-center">
+                  <div
+                    className={`absolute h-5 rounded-full transition-all ${
+                      task.status === 'done' ? 'bg-green-400/80 dark:bg-green-600/60' :
+                      isOverdue ? 'bg-red-400/80 dark:bg-red-600/60' :
+                      task.status === 'in_progress' ? 'bg-blue-400/80 dark:bg-blue-600/60' :
+                      task.status === 'review' ? 'bg-amber-400/80 dark:bg-amber-600/60' :
+                      'bg-slate-300/80 dark:bg-slate-600/60'
+                    }`}
+                    style={{ left: `${left}%`, width: `${width}%`, minWidth: '12px' }}
+                    title={`${task.title}${task.startDate ? ' — ' + format(new Date(task.startDate), "d MMM", { locale: tr }) : ''}${task.dueDate ? ' → ' + format(new Date(task.dueDate), "d MMM", { locale: tr }) : ''}`}
+                  >
+                    {task.assignee && width > 6 && (
+                      <span className="text-[9px] text-white px-1.5 leading-5 truncate block">{task.assignee.firstName}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {tasksWithDates.length === 0 && milestones.filter((m: any) => m.dueDate).length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-6">Tarihli görev veya milestone ekleyin</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

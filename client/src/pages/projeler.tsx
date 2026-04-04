@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -167,6 +167,7 @@ export default function Projeler() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   
   // Check if current user can see budget info
   const canSeeBudget = user?.role && BUDGET_VISIBLE_ROLES.includes(user.role);
@@ -199,6 +200,15 @@ export default function Projeler() {
   const { data: hqUsers } = useQuery<HQUser[]>({
     queryKey: ["/api/hq-users"],
   });
+
+  const filteredProjects = useMemo(() => {
+    if (!projects) return [];
+    if (statusFilter === "all") return projects;
+    if (statusFilter === "active") return projects.filter(p => p.status === 'in_progress' || p.status === 'planning');
+    if (statusFilter === "completed") return projects.filter(p => p.status === 'completed');
+    if (statusFilter === "held") return projects.filter(p => p.status === 'on_hold' || p.status === 'cancelled');
+    return projects;
+  }, [projects, statusFilter]);
 
   const createMutation = useMutation({
     mutationFn: async (data: { project: typeof newProject; team: typeof selectedTeam }) => {
@@ -582,41 +592,111 @@ export default function Projeler() {
         </div>
 
         <TabsContent value="all">
-          {projects?.length === 0 ? (
+          {/* Portfolio Mini Dashboard */}
+          {projects && projects.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <Card className="cursor-pointer" onClick={() => setStatusFilter("all")}>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Toplam</p>
+                  <p className="text-xl font-bold">{projects.length}</p>
+                </CardContent>
+              </Card>
+              <Card className="cursor-pointer" onClick={() => setStatusFilter("active")}>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Aktif</p>
+                  <p className="text-xl font-bold text-blue-600">{projects.filter(p => p.status === 'in_progress' || p.status === 'planning').length}</p>
+                </CardContent>
+              </Card>
+              <Card className="cursor-pointer" onClick={() => setStatusFilter("completed")}>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Tamamlanan</p>
+                  <p className="text-xl font-bold text-green-600">{projects.filter(p => p.status === 'completed').length}</p>
+                </CardContent>
+              </Card>
+              <Card className="cursor-pointer" onClick={() => setStatusFilter("held")}>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Beklemede</p>
+                  <p className="text-xl font-bold text-amber-600">{projects.filter(p => p.status === 'on_hold' || p.status === 'cancelled').length}</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Status Filter Chips */}
+          {projects && projects.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { key: "all", label: "Tümü", count: projects.length },
+                { key: "active", label: "Aktif", count: projects.filter(p => p.status === 'in_progress' || p.status === 'planning').length },
+                { key: "completed", label: "Tamamlanan", count: projects.filter(p => p.status === 'completed').length },
+                { key: "held", label: "Arşiv/Beklemede", count: projects.filter(p => p.status === 'on_hold' || p.status === 'cancelled').length },
+              ].map(f => (
+                <Badge
+                  key={f.key}
+                  variant={statusFilter === f.key ? "default" : "outline"}
+                  className="cursor-pointer px-3 py-1"
+                  onClick={() => setStatusFilter(f.key)}
+                >
+                  {f.label} ({f.count})
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {filteredProjects?.length === 0 ? (
             <EmptyState
               icon={FolderKanban}
               title="Proje bulunamadı"
-              description="Yeni bir proje oluşturarak başlayın."
-              actionLabel="Proje Oluştur"
-              onAction={() => setIsCreateOpen(true)}
+              description={statusFilter !== "all" ? "Bu filtrede proje yok. Filtre değiştirin." : "Yeni bir proje oluşturarak başlayın."}
+              actionLabel={statusFilter === "all" ? "Proje Oluştur" : undefined}
+              onAction={statusFilter === "all" ? () => setIsCreateOpen(true) : undefined}
               data-testid="empty-state-projects"
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects?.map((project) => {
+              {filteredProjects?.map((project) => {
                 const statusInfo = statusConfig[project.status || "planning"];
                 const priorityInfo = priorityConfig[project.priority || "medium"];
                 const progress = getTaskProgress(project.taskStats);
-                const totalTasks = Object.values(project.taskStats).reduce((a, b) => a + b, 0);
-                const doneTasks = project.taskStats.done || 0;
+                const totalTasks = Object.values(project.taskStats).reduce((a, b) => a + Number(b), 0);
+                const doneTasks = Number(project.taskStats.done || 0);
+                const todoTasks = Number(project.taskStats.todo || 0);
+                const overdueCount = totalTasks - doneTasks; // simplified — real overdue requires task dates
                 
+                // Traffic light
+                const trafficColor = project.status === 'completed' ? '🟢' :
+                  project.status === 'cancelled' ? '🔴' :
+                  project.status === 'on_hold' ? '🟡' :
+                  progress >= 80 ? '🟢' :
+                  progress >= 40 ? '🟡' : 
+                  totalTasks === 0 ? '⚪' : '🔴';
+
                 return (
                   <Card 
                     key={project.id} 
-                    className="hover-elevate cursor-pointer"
+                    className="hover-elevate cursor-pointer group"
                     onClick={() => navigate(`/projeler/${project.id}`)}
                     data-testid={`card-project-${project.id}`}
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base line-clamp-1">{project.title}</CardTitle>
-                        <Badge className={`${priorityInfo.color} text-white text-xs`}>{priorityInfo.label}</Badge>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-lg shrink-0" title={`Proje durumu: ${statusInfo.label}`}>{trafficColor}</span>
+                          <CardTitle className="text-base line-clamp-1">{project.title}</CardTitle>
+                        </div>
+                        <Badge className={`${priorityInfo.color} text-white text-xs shrink-0`}>{priorityInfo.label}</Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-xs">
                           <statusInfo.icon className="h-3 w-3 mr-1" />
                           {statusInfo.label}
                         </Badge>
+                        {todoTasks > 0 && project.status !== 'completed' && (
+                          <Badge variant="secondary" className="text-xs text-amber-600 dark:text-amber-400">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {todoTasks} bekliyor
+                          </Badge>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -627,15 +707,15 @@ export default function Projeler() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-muted-foreground">İlerleme</span>
-                          <span className="font-medium">{doneTasks}/{totalTasks} görev</span>
+                          <span className="font-medium">{doneTasks}/{totalTasks} görev — %{progress}</span>
                         </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+                          <div className={`h-full transition-all rounded-full ${progress === 100 ? 'bg-green-500' : 'bg-primary'}`} style={{ width: `${progress}%` }} />
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Users className="h-3.5 w-3.5" />
                             <span>{project.memberCount}</span>
@@ -643,7 +723,13 @@ export default function Projeler() {
                           {project.targetDate && (
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Calendar className="h-3.5 w-3.5" />
-                              <span>{new Date(project.targetDate).toLocaleDateString('tr-TR')}</span>
+                              <span>{format(new Date(project.targetDate), "d MMM", { locale: tr })}</span>
+                            </div>
+                          )}
+                          {project.updatedAt && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Clock className="h-3 w-3" />
+                              <span>{format(new Date(project.updatedAt), "d MMM", { locale: tr })}</span>
                             </div>
                           )}
                         </div>
