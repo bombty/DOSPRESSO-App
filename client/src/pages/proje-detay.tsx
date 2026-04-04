@@ -28,6 +28,7 @@ import {
 import { format, differenceInDays, isPast, addDays } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ErrorState } from "../components/error-state";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 // ─── Config Maps ────────────────────────────────────────────
 const statusConfig: Record<string, { label: string; color: string; bgColor: string; dotColor: string }> = {
@@ -772,7 +773,7 @@ export default function ProjeDetay() {
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{u.firstName} {u.lastName || ''}</p>
-                            <p className="text-[11px] text-muted-foreground">{u.role}</p>
+                            <p className="text-[11px] text-muted-foreground">{ROLE_LABELS[u.role] || u.role}</p>
                           </div>
                           {selectedMemberId === u.id && (
                             <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
