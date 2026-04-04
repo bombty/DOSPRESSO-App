@@ -75,7 +75,7 @@ async function wf1_auditCompleted(data: Record<string, any>): Promise<number> {
 
   // Düşük skor uyarısı (60 altı)
   if (score < 60) {
-    await createProposal({
+    const ok = await createProposal({
       workflowType: 'WF-1', roleTarget: 'coach', branchId,
       proposalType: 'warning', priority: 'acil',
       title: `${branchName || 'Şube'} denetim skoru kritik: ${score}/100`,
@@ -84,7 +84,7 @@ async function wf1_auditCompleted(data: Record<string, any>): Promise<number> {
       suggestedActionType: 'schedule_audit',
       suggestedActionData: { branchId, reason: 'low_score', score },
     });
-    count++;
+    if (ok) count++;
   }
 
   // Trend düşüşü kontrol (son 3 denetim)
@@ -99,7 +99,7 @@ async function wf1_auditCompleted(data: Record<string, any>): Promise<number> {
       const scores = history.map(h => Number(h.totalScore || 0));
       // 3 ardışık düşüş
       if (scores[0] < scores[1] && scores[1] < scores[2]) {
-        await createProposal({
+        const ok = await createProposal({
           workflowType: 'WF-1', roleTarget: 'cgo', branchId,
           proposalType: 'warning', priority: 'onemli',
           title: `${branchName || 'Şube'} — 3 denetimdir skor düşüyor`,
@@ -107,7 +107,7 @@ async function wf1_auditCompleted(data: Record<string, any>): Promise<number> {
           sourceModule: 'denetim', relatedEntityType: 'audit', relatedEntityId: auditId,
           suggestedActionType: 'schedule_audit',
         });
-        count++;
+        if (ok) count++;
       }
     }
   } catch (e) { /* trend analiz başarısız — devam */ }
@@ -220,6 +220,7 @@ async function createProposal(params: {
           eq(dobodyProposals.status, 'pending'),
           eq(dobodyProposals.relatedEntityId, params.relatedEntityId),
           eq(dobodyProposals.workflowType, params.workflowType),
+          eq(dobodyProposals.roleTarget, params.roleTarget),
         )).limit(1);
       if (existing.length > 0) return false; // duplikasyon engelle
     }
