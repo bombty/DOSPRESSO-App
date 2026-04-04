@@ -1,0 +1,62 @@
+Agent düzgün iş çıkarmış — 2 küçük bug'ı AGENTS.md kurallarına uyarak düzeltip push etmiş. Devam ediyorum:Agent'ın fix'i alındı. Dobody-3'e geçiyorum — haftalık brief + cooldown sistemi:Dobody-3 push edildi (`e54d4f78`). Artık Dobody-1,2,3 tamamlandı. İşte Replit talimatı:
+
+---
+
+**Replit'e kopyala-yapıştır:**
+
+```
+Sprint Dobody-3 push edildi (commit e54d4f78). Yapman gerekenler:
+
+1. ÖNCE AGENTS.md oku.
+2. git pull --rebase origin main
+3. Server restart
+
+4. TEST — Haftalık Brief:
+
+   A) Brief oluştur:
+      curl -b cookie.txt -X POST http://localhost:5000/api/dobody/weekly-brief
+      # Beklenen: {success:true, generated:2, totalAudits:N, avgScore:N, actionCount:N}
+      # CEO + Coach için 2 WF-8 proposal oluşmalı
+
+   B) Oluşan brifleri kontrol:
+      curl -b cookie.txt "http://localhost:5000/api/dobody/proposals?status=all" | jq '.[] | select(.workflowType=="WF-8")'
+      # WF-8 info/bilgi önerileri olmalı
+
+5. TEST — Expired Cleanup:
+
+   A) Expired süreli öneri oluştur (test):
+      curl -b cookie.txt -X POST http://localhost:5000/api/dobody/proposals \
+        -H "Content-Type: application/json" \
+        -d '{"workflowType":"WF-TEST","roleTarget":"coach","title":"Test expired","expiresAt":"2025-01-01T00:00:00Z"}'
+
+   B) Cleanup çalıştır:
+      curl -b cookie.txt -X POST http://localhost:5000/api/dobody/cleanup
+      # {success:true, expired:1} — süresi geçmiş 1 öneri expired yapıldı
+
+6. TEST — SLA check (tekrar):
+   curl -b cookie.txt -X POST http://localhost:5000/api/dobody/check-sla
+
+7. HATA BULURSAN:
+   - Küçük fix → düzelt + build + push
+   - Büyük hata → raporla
+```
+
+---
+
+## Dobody Sprint Durumu
+
+| Sprint | İçerik | Commit | Durum |
+|--------|--------|--------|-------|
+| Dobody-1 | DB (5 tablo) + API (9 endpoint) | `f7c0f5f8` | ✅ Test geçti |
+| Dobody-2 | Workflow Engine (WF-1,2,6,7) | `7545c7f8` | ✅ Test geçti |
+| Dobody-3 | Haftalık Brief (WF-8) + Cleanup | `e54d4f78` | ✅ Push edildi |
+| Dobody-4 | Güvenlik Audit | — | Replit test ile |
+
+Dobody-4 (Güvenlik Audit) aslında kod değil test — farklı rollerle giriş yapıp scope kurallarının çalıştığını doğrulamak. Bunu Replit Agent yapabilir.
+
+Sıradaki adımlar ne olsun? Seçenekler:
+
+1. **Dobody-4 güvenlik testi** — Replit'e talimat
+2. **Centrum'a Dobody widget** — dashboard'larda öneri kartı gösterme
+3. **Duyuru düzenleme bug'ı** — raporladığın sorun
+4. **Başka bir feature**
