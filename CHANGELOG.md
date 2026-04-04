@@ -32,3 +32,12 @@
 - İK Sprint 3 (useIKScope hook)
 - Manifest sistemi Sprint 2
 - Sistem sağlığı 7.5→9.5/10
+
+## 5 Nisan 2026
+- `9270631b` Sistem Atölyesi v4: 20 akış, modül filtre, yön göstergesi
+- `e09d4aac` DobodyProposalWidget: 4 dashboard entegrasyonu
+- `e54d4f78` Dobody-3: Haftalık brief + expired cleanup
+- `7545c7f8` Dobody-2: Workflow engine (WF-1,2,6,7)
+- `c68e4c99` Sistem Atölyesi: Canlı endpoint test sistemi (diagnostic)
+- 19 doküman dosyası oluşturuldu/güncellendi
+- 3 skill dosyası güncellendi
