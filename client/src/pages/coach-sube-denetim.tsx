@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -10,547 +10,544 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ListSkeleton } from "@/components/list-skeleton";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 import {
-  ClipboardCheck,
-  Plus,
-  Send,
-  Calendar,
-  Building2,
-  CheckSquare,
-  SlidersHorizontal,
-  FileText,
-  History,
-  AlertTriangle,
-  Target,
-  User,
-  Weight,
-  AlertCircle,
+  ClipboardCheck, Send, Calendar, Building2, CheckSquare,
+  SlidersHorizontal, History, Target, User, Star, Camera, FileText,
+  ToggleLeft, ListChecks, ChevronRight, ArrowLeft, Users, AlertCircle
 } from "lucide-react";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
-interface InspectionCategory {
-  key: string;
-  label: string;
-  weight: number;
-  items: string[];
-}
+// ─── Types ────────────────────────────────────────────────
+type Template = { id: number; name: string; description: string | null; categoryCount: number; questionCount: number };
+type Category = { id: number; name: string; weight: number; questions: Question[] };
+type Question = {
+  id: number; categoryId: number; questionText: string; questionType: string;
+  options: { label: string; score: number }[] | null; isRequired: boolean; weight: number; helpText: string | null;
+};
+type TemplateDetail = Template & { categories: Category[] };
+type Branch = { id: number; name: string; city: string | null };
+type StaffMember = { id: string; firstName: string; lastName: string; role: string; profileImageUrl: string | null };
 
-interface Branch {
-  id: number;
-  name: string;
-}
-
-interface PastInspection {
-  id: number;
-  branchId: number;
-  branchName: string;
-  auditorName: string;
-  auditDate: string;
-  overallScore: number;
-  notes: string | null;
-  followUpRequired: boolean;
-  exteriorScore: number;
-  buildingAppearanceScore: number;
-  barLayoutScore: number;
-  storageScore: number;
-  productPresentationScore: number;
-  staffBehaviorScore: number;
-  dressCodeScore: number;
-  cleanlinessScore: number;
-}
-
-function getScoreColor(score: number): string {
+// ─── Score helpers ────────────────────────────────────────
+function getScoreColor(score: number) {
   if (score >= 90) return "text-green-600 dark:text-green-400";
   if (score >= 75) return "text-amber-600 dark:text-amber-400";
   if (score >= 50) return "text-orange-600 dark:text-orange-400";
   return "text-red-600 dark:text-red-400";
 }
 
-function getScoreBadgeVariant(score: number): string {
-  if (score >= 90) return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-  if (score >= 75) return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  if (score >= 50) return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
-  return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-}
-
-function getProgressColor(score: number): string {
+function getProgressColor(score: number) {
   if (score >= 90) return "[&>div]:bg-green-500";
   if (score >= 75) return "[&>div]:bg-amber-500";
   if (score >= 50) return "[&>div]:bg-orange-500";
   return "[&>div]:bg-red-500";
 }
 
+// ─── Star Rating Component ─────────────────────────────────
+function StarRating({ value, onChange, size = "md" }: { value: number; onChange: (v: number) => void; size?: "sm" | "md" }) {
+  const sz = size === "sm" ? "h-5 w-5" : "h-7 w-7";
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(s => (
+        <button key={s} type="button" onClick={() => onChange(s)} className="focus:outline-none">
+          <Star className={`${sz} transition-colors ${s <= value ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground/30'}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 export default function CoachSubeDenetim() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("yeni");
 
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
-  const [auditDate, setAuditDate] = useState(new Date().toISOString().split("T")[0]);
-  const [followUpRequired, setFollowUpRequired] = useState(false);
+  // ─── Step state (0=seçim, 1=form, 2=personel, 3=özet) ──
+  const [step, setStep] = useState(0);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [auditId, setAuditId] = useState<number | null>(null);
   const [generalNotes, setGeneralNotes] = useState("");
 
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean[]>>({});
-  const [scores, setScores] = useState<Record<string, number>>({});
-  const [categoryNotes, setCategoryNotes] = useState<Record<string, string>>({});
-  const [userOverridden, setUserOverridden] = useState<Record<string, boolean>>({});
+  // Response state: questionId → responseValue
+  const [responses, setResponses] = useState<Record<number, { value: string; score: number }>>({});
 
-  const { data: categories, isLoading: categoriesLoading, isError, refetch } = useQuery<InspectionCategory[]>({
-    queryKey: ["/api/inspection-categories"],
+  // Personnel state
+  const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
+  const [personnelScores, setPersonnelScores] = useState<Record<string, { dress: number; hygiene: number; customer: number; friendly: number; notes: string }>>({});
+
+  // ─── Queries ────────────────────────────────────────────
+  const { data: templates, isLoading: tmplLoading } = useQuery<Template[]>({
+    queryKey: ["/api/v2/audit-templates"],
+  });
+  const activeTemplates = useMemo(() => templates?.filter(t => (t as any).isActive !== false) || [], [templates]);
+
+  const { data: templateDetail } = useQuery<TemplateDetail>({
+    queryKey: ["/api/v2/audit-templates", selectedTemplateId],
+    enabled: !!selectedTemplateId,
   });
 
-  const { data: branches, isLoading: branchesLoading } = useQuery<Branch[]>({
-    queryKey: ["/api/branches"],
-    staleTime: 300000,
+  const { data: branches } = useQuery<Branch[]>({ queryKey: ["/api/branches"], staleTime: 300000 });
+
+  const { data: branchStaff } = useQuery<StaffMember[]>({
+    queryKey: ["/api/v2/branch-on-shift", selectedBranchId],
+    enabled: !!selectedBranchId && step >= 2,
   });
 
-  const { data: pastInspections, isLoading: historyLoading } = useQuery<PastInspection[]>({
-    queryKey: ["/api/branch-inspections"],
+  const { data: auditHistory } = useQuery<{ audits: any[]; total: number }>({
+    queryKey: ["/api/v2/audits"],
+    enabled: activeTab === "gecmis",
   });
 
-  useEffect(() => {
-    if (categories && Object.keys(checkedItems).length === 0) {
-      const initialChecked: Record<string, boolean[]> = {};
-      const initialScores: Record<string, number> = {};
-      categories.forEach((cat) => {
-        initialChecked[cat.key] = new Array(cat.items.length).fill(false);
-        initialScores[cat.key] = 0;
+  // ─── Score Calculations ─────────────────────────────────
+  const categoryScores = useMemo(() => {
+    if (!templateDetail?.categories) return {};
+    const scores: Record<number, number> = {};
+    templateDetail.categories.forEach(cat => {
+      const qs = cat.questions || [];
+      if (qs.length === 0) { scores[cat.id] = 0; return; }
+      let totalWeight = 0;
+      let totalWeightedScore = 0;
+      qs.forEach(q => {
+        const resp = responses[q.id];
+        if (resp) {
+          totalWeight += q.weight;
+          totalWeightedScore += resp.score * q.weight;
+        } else {
+          totalWeight += q.weight;
+        }
       });
-      setCheckedItems(initialChecked);
-      setScores(initialScores);
-    }
-  }, [categories]);
-
-  const handleCheckItem = (categoryKey: string, itemIndex: number, checked: boolean) => {
-    setCheckedItems((prev) => {
-      const updated = { ...prev };
-      updated[categoryKey] = [...(updated[categoryKey] || [])];
-      updated[categoryKey][itemIndex] = checked;
-      return updated;
+      scores[cat.id] = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : 0;
     });
-
-    if (!userOverridden[categoryKey]) {
-      const items = checkedItems[categoryKey] || [];
-      const newItems = [...items];
-      newItems[itemIndex] = checked;
-      const checkedCount = newItems.filter(Boolean).length;
-      const suggestedScore = checkedCount * 20;
-      setScores((prev) => ({ ...prev, [categoryKey]: suggestedScore }));
-    }
-  };
-
-  const handleSliderChange = (categoryKey: string, value: number[]) => {
-    setScores((prev) => ({ ...prev, [categoryKey]: value[0] }));
-    setUserOverridden((prev) => ({ ...prev, [categoryKey]: true }));
-  };
+    return scores;
+  }, [templateDetail, responses]);
 
   const overallScore = useMemo(() => {
-    if (!categories) return 0;
+    if (!templateDetail?.categories) return 0;
     let totalWeighted = 0;
     let totalWeight = 0;
-    categories.forEach((cat) => {
-      const score = scores[cat.key] ?? 0;
-      totalWeighted += score * cat.weight;
+    templateDetail.categories.forEach(cat => {
+      totalWeighted += (categoryScores[cat.id] || 0) * cat.weight;
       totalWeight += cat.weight;
     });
     return totalWeight > 0 ? Math.round(totalWeighted / totalWeight) : 0;
-  }, [categories, scores]);
+  }, [templateDetail, categoryScores]);
 
-  const createMutation = useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      return await apiRequest("POST", "/api/branch-inspections", data);
+  // ─── Response handler ───────────────────────────────────
+  const setResponse = useCallback((questionId: number, value: string, score: number) => {
+    setResponses(prev => ({ ...prev, [questionId]: { value, score } }));
+  }, []);
+
+  // ─── Mutations ──────────────────────────────────────────
+  const startAuditMut = useMutation({
+    mutationFn: async () => (await apiRequest("POST", "/api/v2/audits", { templateId: selectedTemplateId, branchId: parseInt(selectedBranchId) })).json(),
+    onSuccess: (data: any) => { setAuditId(data.id); setStep(1); toast({ title: "Denetim başlatıldı" }); },
+    onError: () => toast({ title: "Hata", description: "Denetim başlatılamadı", variant: "destructive" }),
+  });
+
+  const submitAuditMut = useMutation({
+    mutationFn: async () => {
+      if (!auditId || !templateDetail) throw new Error("Denetim bilgileri eksik");
+
+      // 1. Cevapları kaydet
+      const responseList = Object.entries(responses).map(([qId, resp]) => {
+        const q = templateDetail.categories.flatMap(c => c.questions).find(q => q.id === parseInt(qId));
+        return {
+          questionId: parseInt(qId), categoryId: q?.categoryId, questionText: q?.questionText || '',
+          questionType: q?.questionType || 'checkbox', responseValue: resp.value, score: resp.score,
+        };
+      });
+
+      const catScoreList = templateDetail.categories.map(cat => ({
+        categoryId: cat.id, categoryName: cat.name, weight: cat.weight, score: categoryScores[cat.id] || 0,
+      }));
+
+      await apiRequest("POST", `/api/v2/audits/${auditId}/responses`, { responses: responseList, categoryScores: catScoreList });
+
+      // 2. Personel denetimi
+      if (selectedStaff.length > 0) {
+        const personnelList = selectedStaff.map(uid => ({
+          userId: uid,
+          dressCodeScore: personnelScores[uid]?.dress || null,
+          hygieneScore: personnelScores[uid]?.hygiene || null,
+          customerCareScore: personnelScores[uid]?.customer || null,
+          friendlinessScore: personnelScores[uid]?.friendly || null,
+          notes: personnelScores[uid]?.notes || null,
+        }));
+        await apiRequest("POST", `/api/v2/audits/${auditId}/personnel`, { personnel: personnelList });
+      }
+
+      // 3. Tamamla
+      await apiRequest("PATCH", `/api/v2/audits/${auditId}/complete`, { totalScore: overallScore, notes: generalNotes });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/branch-inspections"] });
-      toast({ title: "Başarılı", description: "Denetim başarıyla kaydedildi" });
+      toast({ title: "Denetim tamamlandı", description: `Genel skor: ${overallScore}/100` });
       resetForm();
       setActiveTab("gecmis");
+      queryClient.invalidateQueries({ queryKey: ["/api/v2/audits"] });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Hata",
-        description: error.message || "Denetim kaydedilirken hata oluştu",
-        variant: "destructive",
-      });
-    },
+    onError: () => toast({ title: "Hata", description: "Denetim kaydedilemedi", variant: "destructive" }),
   });
 
   const resetForm = () => {
-    setSelectedBranchId("");
-    setAuditDate(new Date().toISOString().split("T")[0]);
-    setFollowUpRequired(false);
-    setGeneralNotes("");
-    setCategoryNotes({});
-    setUserOverridden({});
-    if (categories) {
-      const initialChecked: Record<string, boolean[]> = {};
-      const initialScores: Record<string, number> = {};
-      categories.forEach((cat) => {
-        initialChecked[cat.key] = new Array(cat.items.length).fill(false);
-        initialScores[cat.key] = 0;
-      });
-      setCheckedItems(initialChecked);
-      setScores(initialScores);
-    }
+    setStep(0); setSelectedTemplateId(null); setSelectedBranchId(""); setAuditId(null);
+    setResponses({}); setSelectedStaff([]); setPersonnelScores({}); setGeneralNotes("");
   };
 
-  const handleSubmit = () => {
-    if (!selectedBranchId) {
-      toast({ title: "Hata", description: "Lütfen bir şube seçin", variant: "destructive" });
-      return;
-    }
-
-    const body: Record<string, unknown> = {
-      branchId: parseInt(selectedBranchId),
-      auditDate,
-      overallScore,
-      notes: generalNotes,
-      categoryNotes,
-      followUpRequired,
-      photoUrls: [],
-      serviceQualityScore: 0,
-      productQualityScore: 0,
-      safetyComplianceScore: 0,
-      equipmentMaintenanceScore: 0,
-    };
-
-    if (categories) {
-      categories.forEach((cat) => {
-        body[cat.key] = scores[cat.key] ?? 0;
-      });
-    }
-
-    createMutation.mutate(body);
-  };
-
-  if (categoriesLoading || branchesLoading) {
-    return (
-      <div className="p-4 space-y-4">
-        <ListSkeleton count={4} variant="card" showHeader />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <h3 className="text-lg font-semibold">Bir hata oluştu</h3>
-        <p className="text-muted-foreground mt-2">Veriler yüklenirken sorun oluştu.</p>
-        <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">Tekrar Dene</Button>
-      </div>
-    );
-  }
+  // ─── Loading ────────────────────────────────────────────
+  if (tmplLoading) return <div className="p-4"><ListSkeleton count={3} variant="card" showHeader /></div>;
 
   return (
-    <div className="p-3 flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="heading-sube-denetim">
-            Şube Denetim
-          </h1>
-          <p className="text-sm text-muted-foreground">Coach sube denetim formu</p>
-        </div>
-        <Button
-          data-testid="button-yeni-denetim"
-          onClick={() => {
-            resetForm();
-            setActiveTab("yeni");
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Yeni Denetim
-        </Button>
+    <div className="p-4 space-y-4 max-w-5xl mx-auto">
+      <div className="flex items-center gap-2">
+        <ClipboardCheck className="h-5 w-5 text-primary" />
+        <h1 className="text-lg font-semibold">Şube Denetim</h1>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="yeni" data-testid="tab-yeni-denetim">
-            <ClipboardCheck className="w-4 h-4 mr-1 hidden sm:inline" />
-            Yeni Denetim
-          </TabsTrigger>
-          <TabsTrigger value="gecmis" data-testid="tab-denetim-gecmisi">
-            <History className="w-4 h-4 mr-1 hidden sm:inline" />
-            Denetim Gecmisi
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="yeni" className="gap-1"><ClipboardCheck className="h-4 w-4" /> Yeni Denetim</TabsTrigger>
+          <TabsTrigger value="gecmis" className="gap-1"><History className="h-4 w-4" /> Denetim Geçmişi</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="yeni" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="p-4 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Şube
-                  </label>
-                  <Select
-                    value={selectedBranchId}
-                    onValueChange={setSelectedBranchId}
-                  >
-                    <SelectTrigger data-testid="select-branch">
-                      <SelectValue placeholder="Şube seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches?.map((branch) => (
-                        <SelectItem
-                          key={branch.id}
-                          value={branch.id.toString()}
-                          data-testid={`option-branch-${branch.id}`}
-                        >
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        {/* ═══ YENİ DENETİM ═══ */}
+        <TabsContent value="yeni" className="mt-4 space-y-4">
+
+          {/* STEP 0: Şablon + Şube Seçimi */}
+          {step === 0 && (
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Denetim Başlat</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Denetim Şablonu *</Label>
+                    <Select value={selectedTemplateId?.toString() || ""} onValueChange={v => setSelectedTemplateId(parseInt(v))}>
+                      <SelectTrigger><SelectValue placeholder="Şablon seçin" /></SelectTrigger>
+                      <SelectContent>
+                        {activeTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id.toString()}>
+                            {t.name} ({t.categoryCount} kategori, {t.questionCount} soru)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> Hedef Şube *</Label>
+                    <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                      <SelectTrigger><SelectValue placeholder="Şube seçin" /></SelectTrigger>
+                      <SelectContent>
+                        {branches?.map(b => (
+                          <SelectItem key={b.id} value={b.id.toString()}>
+                            {b.name}{b.city ? ` — ${b.city}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Denetim Tarihi
-                  </label>
-                  <Input
-                    type="date"
-                    value={auditDate}
-                    onChange={(e) => setAuditDate(e.target.value)}
-                    data-testid="input-audit-date"
-                  />
+                <Button onClick={() => startAuditMut.mutate()} disabled={!selectedTemplateId || !selectedBranchId || startAuditMut.isPending} className="w-full sm:w-auto">
+                  {startAuditMut.isPending ? "Başlatılıyor..." : "Denetimi Başlat"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* STEP 1: Form Doldurma */}
+          {step === 1 && templateDetail && (
+            <>
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Geri
+                </Button>
+                <div className="text-right">
+                  <span className={`text-2xl font-bold ${getScoreColor(overallScore)}`}>{overallScore}</span>
+                  <span className="text-sm text-muted-foreground">/100</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categories?.map((cat) => {
-              const catScore = scores[cat.key] ?? 0;
-              const catChecked = checkedItems[cat.key] || [];
-              const checkedCount = catChecked.filter(Boolean).length;
+              <Progress value={overallScore} className={`h-2 ${getProgressColor(overallScore)}`} />
 
-              return (
-                <Card key={cat.key} data-testid={`card-category-${cat.key}`}>
+              {/* Categories */}
+              {templateDetail.categories.map(cat => (
+                <Card key={cat.id}>
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <CheckSquare className="w-4 h-4" />
-                        {cat.label}
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <CheckSquare className="h-4 w-4" /> {cat.name}
+                        <Badge variant="outline" className="text-xs">%{cat.weight}</Badge>
                       </CardTitle>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          <Weight className="w-3 h-3 mr-1" />
-                          Agirlik: %{cat.weight}
-                        </Badge>
-                        <Badge className={getScoreBadgeVariant(catScore)}>
-                          {catScore}/100
-                        </Badge>
-                      </div>
+                      <span className={`text-lg font-bold ${getScoreColor(categoryScores[cat.id] || 0)}`}>
+                        {categoryScores[cat.id] || 0}
+                      </span>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="space-y-2">
-                      {cat.items?.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <Checkbox
-                            id={`${cat.key}-item-${idx}`}
-                            checked={catChecked[idx] || false}
-                            onCheckedChange={(checked) =>
-                              handleCheckItem(cat.key, idx, !!checked)
-                            }
-                            data-testid={`checkbox-${cat.key}-${idx}`}
-                          />
-                          <label
-                            htmlFor={`${cat.key}-item-${idx}`}
-                            className="text-sm leading-tight cursor-pointer"
-                          >
-                            {item}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="text-xs text-muted-foreground">
-                      {checkedCount}/5 madde isaretlendi
-                      {!userOverridden[cat.key] && " (otomatik skor)"}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <label className="text-xs font-medium flex items-center gap-1">
-                          <SlidersHorizontal className="w-3 h-3" />
-                          Skor
-                        </label>
-                        <span className={`text-sm font-bold ${getScoreColor(catScore)}`}>
-                          {catScore}
-                        </span>
-                      </div>
-                      <Slider
-                        value={[catScore]}
-                        onValueChange={(val) => handleSliderChange(cat.key, val)}
-                        max={100}
-                        step={5}
-                        data-testid={`slider-${cat.key}`}
-                      />
-                      <Progress
-                        value={catScore}
-                        className={`h-1 ${getProgressColor(catScore)}`}
-                      />
-                    </div>
-
-                    <Textarea
-                      placeholder="Kategori notlari..."
-                      value={categoryNotes[cat.key] || ""}
-                      onChange={(e) =>
-                        setCategoryNotes((prev) => ({
-                          ...prev,
-                          [cat.key]: e.target.value,
-                        }))
-                      }
-                      rows={2}
-                      className="text-sm"
-                      data-testid={`textarea-notes-${cat.key}`}
-                    />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          <Card data-testid="card-overall-score">
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5" />
-                  <span className="font-semibold text-lg">Genel Skor</span>
-                </div>
-                <span className={`text-2xl font-bold ${getScoreColor(overallScore)}`} data-testid="text-overall-score">
-                  {overallScore}/100
-                </span>
-              </div>
-              <Progress
-                value={overallScore}
-                className={`h-2 ${getProgressColor(overallScore)}`}
-              />
-
-              {categories && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {(Array.isArray(categories) ? categories : []).map((cat) => (
-                    <div key={cat.key} className="flex items-center justify-between gap-1 p-2 rounded-md bg-muted/50">
-                      <span className="truncate">{cat.label}</span>
-                      <span className={`font-bold ${getScoreColor(scores[cat.key] ?? 0)}`}>
-                        {scores[cat.key] ?? 0}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <Textarea
-                placeholder="Genel denetim notlari..."
-                value={generalNotes}
-                onChange={(e) => setGeneralNotes(e.target.value)}
-                rows={3}
-                data-testid="textarea-general-notes"
-              />
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="follow-up"
-                  checked={followUpRequired}
-                  onCheckedChange={(checked) => setFollowUpRequired(!!checked)}
-                  data-testid="checkbox-follow-up"
-                />
-                <label htmlFor="follow-up" className="text-sm cursor-pointer flex items-center gap-1">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  Takip gerekli
-                </label>
-              </div>
-
-              <Button
-                className="w-full"
-                onClick={handleSubmit}
-                disabled={createMutation.isPending || !selectedBranchId}
-                data-testid="button-submit-inspection"
-              >
-                {createMutation.isPending ? (
-                  "Kaydediliyor..."
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Denetimi Kaydet
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="gecmis" className="space-y-4 mt-4">
-          {historyLoading ? (
-            <ListSkeleton count={4} variant="card" />
-          ) : !pastInspections || pastInspections.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>Henuz denetim kaydi bulunmuyor</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pastInspections.map((inspection) => (
-                <Card key={inspection.id} data-testid={`card-inspection-${inspection.id}`}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-semibold" data-testid={`text-branch-name-${inspection.id}`}>
-                          {inspection.branchName || `Şube #${inspection.branchId}`}
-                        </span>
-                      </div>
-                      <Badge
-                        className={getScoreBadgeVariant(inspection.overallScore)}
-                        data-testid={`badge-score-${inspection.id}`}
-                      >
-                        {inspection.overallScore}/100
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {inspection.auditDate}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {inspection.auditorName || "Bilinmiyor"}
-                      </span>
-                    </div>
-
-                    <Progress
-                      value={inspection.overallScore}
-                      className={`h-1.5 ${getProgressColor(inspection.overallScore)}`}
-                    />
-
-                    {inspection.followUpRequired && (
-                      <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="w-3 h-3" />
-                        Takip gerekli
-                      </div>
-                    )}
-
-                    {inspection.notes && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {inspection.notes}
-                      </p>
+                    {cat.questions.map(q => (
+                      <QuestionRenderer key={q.id} question={q} value={responses[q.id]?.value || ""} score={responses[q.id]?.score || 0} onChange={setResponse} />
+                    ))}
+                    {cat.questions.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">Bu kategoride soru yok</p>
                     )}
                   </CardContent>
                 </Card>
               ))}
-            </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setStep(0)}>İptal</Button>
+                <Button onClick={() => setStep(2)}>
+                  <Users className="h-4 w-4 mr-1" /> Personel Denetimi →
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* STEP 2: Personel Denetimi */}
+          {step === 2 && (
+            <>
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+                  <ArrowLeft className="h-4 w-4 mr-1" /> Forma Dön
+                </Button>
+                <Badge variant="secondary">{selectedStaff.length} personel seçili</Badge>
+              </div>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Vardiyada Olan Personeli Seçin</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {!branchStaff || branchStaff.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">Bu şubede kayıtlı personel bulunamadı</p>
+                  ) : (
+                    branchStaff.map(s => {
+                      const isSelected = selectedStaff.includes(s.id);
+                      return (
+                        <div key={s.id} className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted border border-transparent'}`}
+                          onClick={() => {
+                            if (isSelected) { setSelectedStaff(prev => prev.filter(id => id !== s.id)); }
+                            else { setSelectedStaff(prev => [...prev, s.id]); setPersonnelScores(prev => ({ ...prev, [s.id]: { dress: 0, hygiene: 0, customer: 0, friendly: 0, notes: "" } })); }
+                          }}
+                        >
+                          <div className="pointer-events-none"><Checkbox checked={isSelected} /></div>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={s.profileImageUrl || undefined} />
+                            <AvatarFallback className="text-xs">{s.firstName?.[0]}{s.lastName?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{s.firstName} {s.lastName || ''}</p>
+                            <p className="text-xs text-muted-foreground">{ROLE_LABELS[s.role] || s.role}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Personnel Ratings */}
+              {selectedStaff.map(uid => {
+                const s = branchStaff?.find(x => x.id === uid);
+                if (!s) return null;
+                const ps = personnelScores[uid] || { dress: 0, hygiene: 0, customer: 0, friendly: 0, notes: "" };
+                const avg = [ps.dress, ps.hygiene, ps.customer, ps.friendly].filter(Boolean);
+                const avgScore = avg.length > 0 ? Math.round((avg.reduce((a, b) => a + b, 0) / avg.length) * 20) : 0;
+
+                return (
+                  <Card key={uid}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <User className="h-4 w-4" /> {s.firstName} {s.lastName || ''}
+                        </CardTitle>
+                        <span className={`font-bold ${getScoreColor(avgScore)}`}>{avgScore}/100</span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { key: "dress", label: "Kıyafet / Dress Code" },
+                          { key: "hygiene", label: "Hijyen" },
+                          { key: "customer", label: "Müşteri İlgisi" },
+                          { key: "friendly", label: "Güler Yüz" },
+                        ].map(dim => (
+                          <div key={dim.key} className="space-y-1">
+                            <Label className="text-xs">{dim.label}</Label>
+                            <StarRating value={(ps as any)[dim.key] || 0} onChange={v => setPersonnelScores(prev => ({ ...prev, [uid]: { ...prev[uid], [dim.key]: v } }))} size="sm" />
+                          </div>
+                        ))}
+                      </div>
+                      <Input placeholder="Not (opsiyonel)" value={ps.notes} onChange={e => setPersonnelScores(prev => ({ ...prev, [uid]: { ...prev[uid], notes: e.target.value } }))} />
+                    </CardContent>
+                  </Card>
+                );
+              })}
+
+              <div className="space-y-3">
+                <Label>Genel Denetim Notları</Label>
+                <Textarea value={generalNotes} onChange={e => setGeneralNotes(e.target.value)} placeholder="Genel gözlemler, öneriler..." rows={3} />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setStep(1)}>← Forma Dön</Button>
+                <Button onClick={() => submitAuditMut.mutate()} disabled={submitAuditMut.isPending} className="bg-green-600 hover:bg-green-700">
+                  <Send className="h-4 w-4 mr-1" /> {submitAuditMut.isPending ? "Kaydediliyor..." : "Denetimi Tamamla"}
+                </Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ═══ DENETİM GEÇMİŞİ ═══ */}
+        <TabsContent value="gecmis" className="mt-4 space-y-3">
+          {!auditHistory?.audits?.length ? (
+            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Henüz denetim geçmişi yok</CardContent></Card>
+          ) : (
+            auditHistory.audits.map((a: any) => (
+              <Card key={a.id} className="hover:shadow-sm transition-shadow">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{a.branchName}</p>
+                      <p className="text-xs text-muted-foreground">{a.auditorName} — {a.startedAt ? format(new Date(a.startedAt), "d MMM yyyy HH:mm", { locale: tr }) : ''}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={a.status === 'closed' ? 'default' : a.status === 'completed' ? 'secondary' : 'outline'}>
+                        {a.status === 'in_progress' ? 'Devam' : a.status === 'completed' ? 'Tamamlandı' : a.status === 'pending_actions' ? 'Aksiyonlar' : a.status === 'closed' ? 'Kapandı' : a.status}
+                      </Badge>
+                      {a.totalScore !== null && (
+                        <span className={`text-lg font-bold ${getScoreColor(Number(a.totalScore))}`}>
+                          {Number(a.totalScore).toFixed(0)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// QUESTION RENDERER — 7 soru tipi
+// ═══════════════════════════════════════════════════════════
+function QuestionRenderer({ question: q, value, score, onChange }: {
+  question: Question; value: string; score: number;
+  onChange: (qId: number, value: string, score: number) => void;
+}) {
+  const renderByType = () => {
+    switch (q.questionType) {
+      case "checkbox":
+        return (
+          <div className="flex items-center gap-2" onClick={() => onChange(q.id, value === "true" ? "false" : "true", value === "true" ? 0 : 100)}>
+            <div className="pointer-events-none"><Checkbox checked={value === "true"} /></div>
+            <span className="text-sm cursor-pointer">{q.questionText}</span>
+          </div>
+        );
+
+      case "yesno":
+        return (
+          <div className="space-y-1.5">
+            <Label className="text-sm">{q.questionText}</Label>
+            <div className="flex gap-2">
+              <Button variant={value === "true" ? "default" : "outline"} size="sm" onClick={() => onChange(q.id, "true", 100)} className={value === "true" ? "bg-green-600 hover:bg-green-700" : ""}>
+                Evet
+              </Button>
+              <Button variant={value === "false" ? "default" : "outline"} size="sm" onClick={() => onChange(q.id, "false", 0)} className={value === "false" ? "bg-red-600 hover:bg-red-700" : ""}>
+                Hayır
+              </Button>
+            </div>
+          </div>
+        );
+
+      case "rating":
+        return (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">{q.questionText}</Label>
+              <span className={`text-sm font-bold ${getScoreColor(Number(value) || 0)}`}>{value || 0}</span>
+            </div>
+            <Slider min={0} max={100} step={5} value={[Number(value) || 0]} onValueChange={v => onChange(q.id, v[0].toString(), v[0])} />
+          </div>
+        );
+
+      case "stars":
+        return (
+          <div className="space-y-1.5">
+            <Label className="text-sm">{q.questionText}</Label>
+            <div className="flex items-center gap-3">
+              <StarRating value={Number(value) || 0} onChange={v => onChange(q.id, v.toString(), v * 20)} />
+              <span className="text-xs text-muted-foreground">({(Number(value) || 0) * 20}/100)</span>
+            </div>
+          </div>
+        );
+
+      case "select":
+        return (
+          <div className="space-y-1.5">
+            <Label className="text-sm">{q.questionText}</Label>
+            <Select value={value} onValueChange={v => {
+              const opt = q.options?.find(o => o.label === v);
+              onChange(q.id, v, opt?.score || 0);
+            }}>
+              <SelectTrigger><SelectValue placeholder="Seçiniz" /></SelectTrigger>
+              <SelectContent>
+                {q.options?.map((opt, i) => (
+                  <SelectItem key={i} value={opt.label}>{opt.label} ({opt.score} puan)</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+
+      case "photo":
+        return (
+          <div className="space-y-1.5">
+            <Label className="text-sm flex items-center gap-1"><Camera className="h-3.5 w-3.5" /> {q.questionText}</Label>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => onChange(q.id, "uploaded", 100)}>
+                <Camera className="h-4 w-4 mr-1" /> Fotoğraf Yükle
+              </Button>
+              {value === "uploaded" && <Badge className="bg-green-500">Yüklendi ✓</Badge>}
+            </div>
+          </div>
+        );
+
+      case "text":
+        return (
+          <div className="space-y-1.5">
+            <Label className="text-sm">{q.questionText}</Label>
+            <Textarea value={value} onChange={e => onChange(q.id, e.target.value, 0)} placeholder="Not yazın..." rows={2} />
+          </div>
+        );
+
+      default:
+        return <p className="text-sm text-muted-foreground">Bilinmeyen soru tipi: {q.questionType}</p>;
+    }
+  };
+
+  return (
+    <div className={`p-3 rounded-md border ${value ? 'border-primary/20 bg-primary/5' : 'border-border'} transition-colors`}>
+      {q.questionType !== "checkbox" && q.helpText && (
+        <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" /> {q.helpText}
+        </p>
+      )}
+      {renderByType()}
     </div>
   );
 }

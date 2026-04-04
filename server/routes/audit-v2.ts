@@ -510,4 +510,219 @@ router.get('/api/v2/branch-audit-history/:branchId', isAuthenticated, async (req
   }
 });
 
+// ═══════════════════════════════════════════════════════════
+// DENETİM CEVAPLARI & TAMAMLAMA (Sprint B)
+// ═══════════════════════════════════════════════════════════
+
+// POST /api/v2/audits/:id/responses — Toplu cevap kaydet
+router.post('/api/v2/audits/:id/responses', isAuthenticated, async (req, res) => {
+  try {
+    if (!requireHQ(req, res)) return;
+    const auditId = parseInt(req.params.id);
+    const { responses, categoryScores } = req.body;
+
+    if (!Array.isArray(responses)) return res.status(400).json({ message: "Cevaplar gerekli" });
+
+    // Cevapları kaydet
+    if (responses.length > 0) {
+      await db.insert(auditResponsesV2).values(
+        responses.map((r: any) => ({
+          auditId,
+          questionId: r.questionId || null,
+          categoryId: r.categoryId || null,
+          questionText: r.questionText || '',
+          questionType: r.questionType || 'checkbox',
+          responseValue: r.responseValue?.toString() || null,
+          score: r.score?.toString() || '0',
+          photoUrl: r.photoUrl || null,
+          note: r.note || null,
+        }))
+      );
+    }
+
+    // Kategori skorlarını kaydet
+    if (Array.isArray(categoryScores) && categoryScores.length > 0) {
+      await db.insert(auditCategoryScores).values(
+        categoryScores.map((cs: any) => ({
+          auditId,
+          categoryId: cs.categoryId || null,
+          categoryName: cs.categoryName || '',
+          weight: cs.weight || 0,
+          score: cs.score?.toString() || '0',
+        }))
+      );
+    }
+
+    res.json({ success: true, count: responses.length });
+  } catch (error) {
+    console.error("Save audit responses error:", error);
+    res.status(500).json({ message: "Cevaplar kaydedilemedi" });
+  }
+});
+
+// POST /api/v2/audits/:id/personnel — Personel denetimi kaydet
+router.post('/api/v2/audits/:id/personnel', isAuthenticated, async (req, res) => {
+  try {
+    if (!requireHQ(req, res)) return;
+    const auditId = parseInt(req.params.id);
+    const { personnel } = req.body;
+
+    if (!Array.isArray(personnel)) return res.status(400).json({ message: "Personel listesi gerekli" });
+
+    if (personnel.length > 0) {
+      await db.insert(auditPersonnelV2).values(
+        personnel.map((p: any) => {
+          const scores = [p.dressCodeScore, p.hygieneScore, p.customerCareScore, p.friendlinessScore].filter(s => s != null);
+          const avg = scores.length > 0 ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0;
+          return {
+            auditId,
+            userId: p.userId,
+            dressCodeScore: p.dressCodeScore || null,
+            hygieneScore: p.hygieneScore || null,
+            customerCareScore: p.customerCareScore || null,
+            friendlinessScore: p.friendlinessScore || null,
+            overallScore: (avg * 20).toFixed(2), // 1-5 → 0-100
+            notes: p.notes || null,
+            photoUrl: p.photoUrl || null,
+          };
+        })
+      );
+    }
+
+    // Personel ortalamasını hesapla
+    const allScores = personnel.map((p: any) => {
+      const s = [p.dressCodeScore, p.hygieneScore, p.customerCareScore, p.friendlinessScore].filter(Boolean);
+      return s.length > 0 ? (s.reduce((a: number, b: number) => a + b, 0) / s.length) * 20 : 0;
+    });
+    const personnelAvg = allScores.length > 0 ? allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length : null;
+
+    if (personnelAvg !== null) {
+      await db.update(auditsV2).set({ personnelScore: personnelAvg.toFixed(2) }).where(eq(auditsV2.id, auditId));
+    }
+
+    res.json({ success: true, count: personnel.length, personnelScore: personnelAvg });
+  } catch (error) {
+    console.error("Save audit personnel error:", error);
+    res.status(500).json({ message: "Personel denetimi kaydedilemedi" });
+  }
+});
+
+// PATCH /api/v2/audits/:id/complete — Denetimi tamamla (skor hesapla)
+router.patch('/api/v2/audits/:id/complete', isAuthenticated, async (req, res) => {
+  try {
+    if (!requireHQ(req, res)) return;
+    const auditId = parseInt(req.params.id);
+    const { totalScore, notes } = req.body;
+
+    const updateData: any = {
+      status: 'completed',
+      completedAt: new Date(),
+      notes: notes || null,
+    };
+    if (totalScore !== undefined) updateData.totalScore = totalScore.toString();
+
+    const [updated] = await db.update(auditsV2)
+      .set(updateData)
+      .where(eq(auditsV2.id, auditId))
+      .returning();
+
+    if (!updated) return res.status(404).json({ message: "Denetim bulunamadı" });
+    res.json(updated);
+  } catch (error) {
+    console.error("Complete audit error:", error);
+    res.status(500).json({ message: "Denetim tamamlanamadı" });
+  }
+});
+
+// POST /api/v2/audits/:id/actions — Aksiyon maddesi oluştur
+router.post('/api/v2/audits/:id/actions', isAuthenticated, async (req, res) => {
+  try {
+    if (!requireHQ(req, res)) return;
+    const auditId = parseInt(req.params.id);
+    const { title, description, categoryId, assignedToId, priority, deadline, slaHours } = req.body;
+
+    if (!title?.trim() || !deadline) return res.status(400).json({ message: "Başlık ve son tarih gerekli" });
+
+    const [action] = await db.insert(auditActionsV2).values({
+      auditId,
+      title: title.trim(),
+      description: description || null,
+      categoryId: categoryId || null,
+      assignedToId: assignedToId || null,
+      priority: priority || 'medium',
+      deadline,
+      slaHours: slaHours || null,
+    }).returning();
+
+    // Denetim durumunu "pending_actions" yap
+    await db.update(auditsV2)
+      .set({ status: 'pending_actions' })
+      .where(eq(auditsV2.id, auditId));
+
+    res.status(201).json(action);
+  } catch (error) {
+    console.error("Create audit action error:", error);
+    res.status(500).json({ message: "Aksiyon oluşturulamadı" });
+  }
+});
+
+// PATCH /api/v2/audit-actions/:id — Aksiyon güncelle (çözüm bildir / onayla)
+router.patch('/api/v2/audit-actions/:id', isAuthenticated, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, resolvedNote, resolvedPhotoUrl } = req.body;
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (status === 'resolved') {
+      updateData.resolvedAt = new Date();
+      updateData.resolvedBy = req.user.id;
+      updateData.resolvedNote = resolvedNote || null;
+      updateData.resolvedPhotoUrl = resolvedPhotoUrl || null;
+    }
+    if (status === 'verified') {
+      updateData.verifiedAt = new Date();
+      updateData.verifiedBy = req.user.id;
+    }
+
+    const [updated] = await db.update(auditActionsV2)
+      .set(updateData)
+      .where(eq(auditActionsV2.id, parseInt(id)))
+      .returning();
+
+    if (!updated) return res.status(404).json({ message: "Aksiyon bulunamadı" });
+    res.json(updated);
+  } catch (error) {
+    console.error("Update audit action error:", error);
+    res.status(500).json({ message: "Aksiyon güncellenemedi" });
+  }
+});
+
+// GET /api/v2/branch-on-shift/:branchId — Şubede vardiyada olan personel
+router.get('/api/v2/branch-on-shift/:branchId', isAuthenticated, async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+
+    // Şubedeki aktif kullanıcıları getir (basit — ileride shift entegrasyonu eklenecek)
+    const staff = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+      profileImageUrl: users.profileImageUrl,
+    })
+      .from(users)
+      .where(and(
+        eq(users.branchId, branchId),
+        eq(users.isActive, true),
+      ))
+      .orderBy(users.firstName);
+
+    res.json(staff);
+  } catch (error) {
+    console.error("Get branch staff error:", error);
+    res.status(500).json({ message: "Personel listesi alınamadı" });
+  }
+});
+
 export default router;
