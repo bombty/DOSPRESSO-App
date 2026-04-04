@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,6 +71,7 @@ function StarRating({ value, onChange, size = "md" }: { value: number; onChange:
 export default function CoachSubeDenetim() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("yeni");
 
   // ─── Step state (0=seçim, 1=form, 2=personel, 3=özet) ──
@@ -414,7 +416,7 @@ export default function CoachSubeDenetim() {
             <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Henüz denetim geçmişi yok</CardContent></Card>
           ) : (
             auditHistory.audits.map((a: any) => (
-              <Card key={a.id} className="hover:shadow-sm transition-shadow">
+              <Card key={a.id} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/denetim-v2/${a.id}`)}>
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">

@@ -142,6 +142,7 @@ const FranchiseYatirimcilar = lazyWithRetry(() => import("@/pages/franchise-yati
 const FranchiseYatirimciDetay = lazyWithRetry(() => import("@/pages/franchise-yatirimci-detay"));
 const DenetimSablonlari = lazyWithRetry(() => import("@/pages/denetim-sablonlari"));
 const DenetimYurutme = lazyWithRetry(() => import("@/pages/denetim-yurutme"));
+const DenetimDetayV2 = lazyWithRetry(() => import("@/pages/denetim-detay-v2"));
 const Denetimler = lazyWithRetry(() => import("@/pages/denetimler"));
 const CapaDetay = lazyWithRetry(() => import("@/pages/capa-detay"));
 const BranchFeedback = lazyWithRetry(() => import("@/pages/branch-feedback"));
@@ -523,6 +524,7 @@ function Router() {
           <Route path="/denetim-sablonlari">{() => <ModuleGuard moduleKey="denetim"><DenetimSablonlari /></ModuleGuard>}</Route>
           <Route path="/denetimler">{() => <ModuleGuard moduleKey="denetim"><Denetimler /></ModuleGuard>}</Route>
           <Route path="/denetim/:id">{() => <ModuleGuard moduleKey="denetim"><DenetimYurutme /></ModuleGuard>}</Route>
+          <Route path="/denetim-v2/:id">{() => <ModuleGuard moduleKey="denetim"><DenetimDetayV2 /></ModuleGuard>}</Route>
           <Route path="/capa/:id">{() => <ModuleGuard moduleKey="denetim"><CapaDetay /></ModuleGuard>}</Route>
           <Route path="/misafir-geri-bildirim">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>
           <Route path="/misafir-memnuniyeti/:tab?">{() => { window.location.replace("/crm?channel=misafir"); return null; }}</Route>

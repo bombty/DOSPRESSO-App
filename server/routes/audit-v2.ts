@@ -698,6 +698,95 @@ router.patch('/api/v2/audit-actions/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+// GET /api/v2/audit-actions/:id/comments — Aksiyon yorumları
+router.get('/api/v2/audit-actions/:id/comments', isAuthenticated, async (req, res) => {
+  try {
+    const actionId = parseInt(req.params.id);
+    const comments = await db.select({
+      comment: auditActionComments,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+    })
+      .from(auditActionComments)
+      .innerJoin(users, eq(users.id, auditActionComments.userId))
+      .where(eq(auditActionComments.actionId, actionId))
+      .orderBy(asc(auditActionComments.createdAt));
+
+    res.json(comments.map(c => ({
+      ...c.comment,
+      userName: `${c.firstName} ${c.lastName || ''}`.trim(),
+      userRole: c.role,
+    })));
+  } catch (error) {
+    console.error("Get action comments error:", error);
+    res.status(500).json({ message: "Yorumlar alınamadı" });
+  }
+});
+
+// POST /api/v2/audit-actions/:id/comments — Yorum ekle
+router.post('/api/v2/audit-actions/:id/comments', isAuthenticated, async (req, res) => {
+  try {
+    const actionId = parseInt(req.params.id);
+    const { content, attachmentUrl } = req.body;
+    if (!content?.trim()) return res.status(400).json({ message: "Yorum içeriği gerekli" });
+
+    const [comment] = await db.insert(auditActionComments).values({
+      actionId,
+      userId: req.user.id,
+      content: content.trim(),
+      attachmentUrl: attachmentUrl || null,
+    }).returning();
+
+    res.status(201).json(comment);
+  } catch (error) {
+    console.error("Create action comment error:", error);
+    res.status(500).json({ message: "Yorum eklenemedi" });
+  }
+});
+
+// PATCH /api/v2/audits/:id/close — Denetimi kapat (tüm aksiyonlar kapandıysa)
+router.patch('/api/v2/audits/:id/close', isAuthenticated, async (req, res) => {
+  try {
+    if (!requireHQ(req, res)) return;
+    const auditId = parseInt(req.params.id);
+
+    // Açık aksiyon var mı kontrol et
+    const openActions = await db.select({ count: sql<number>`count(*)::int` })
+      .from(auditActionsV2)
+      .where(and(
+        eq(auditActionsV2.auditId, auditId),
+        inArray(auditActionsV2.status, ['open', 'in_progress'])
+      ));
+
+    if (Number(openActions[0]?.count) > 0) {
+      return res.status(400).json({ message: `${openActions[0].count} açık aksiyon var — önce kapatılmalı` });
+    }
+
+    // Aksiyon uyum skoru hesapla
+    const actionStats = await db.select({
+      total: sql<number>`count(*)::int`,
+      slaBreached: sql<number>`count(*) filter (where sla_breached = true)::int`,
+    }).from(auditActionsV2).where(eq(auditActionsV2.auditId, auditId));
+
+    const total = Number(actionStats[0]?.total || 0);
+    const breached = Number(actionStats[0]?.slaBreached || 0);
+    const complianceScore = total > 0 ? Math.round(((total - breached) / total) * 100) : 100;
+
+    const [updated] = await db.update(auditsV2).set({
+      status: 'closed',
+      closedAt: new Date(),
+      actionComplianceScore: complianceScore.toString(),
+    }).where(eq(auditsV2.id, auditId)).returning();
+
+    if (!updated) return res.status(404).json({ message: "Denetim bulunamadı" });
+    res.json(updated);
+  } catch (error) {
+    console.error("Close audit error:", error);
+    res.status(500).json({ message: "Denetim kapatılamadı" });
+  }
+});
+
 // GET /api/v2/branch-on-shift/:branchId — Şubede vardiyada olan personel
 router.get('/api/v2/branch-on-shift/:branchId', isAuthenticated, async (req, res) => {
   try {
