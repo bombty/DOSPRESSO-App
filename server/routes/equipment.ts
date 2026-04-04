@@ -140,6 +140,36 @@ const router = Router();
     }
   });
 
+  router.get('/api/equipment/stats', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      ensurePermission(user, 'equipment', 'view');
+      const allEquipment = await storage.getEquipment();
+      const branchFiltered = (user.role && isBranchRole(user.role as UserRoleType) && user.branchId)
+        ? allEquipment.filter(e => e.branchId === user.branchId)
+        : allEquipment;
+      const now = new Date();
+      const total = branchFiltered.length;
+      const maintenanceDue = branchFiltered.filter(e => e.nextMaintenanceDate && new Date(e.nextMaintenanceDate) <= now).length;
+      const faultRows = await db.execute(sql`
+        SELECT status, resolved_at, created_at FROM equipment_faults
+        WHERE 1=1
+        ${user.branchId && isBranchRole(user.role as UserRoleType) ? sql`AND branch_id = ${user.branchId}` : sql``}
+      `);
+      const faults = faultRows.rows as any[];
+      const activeFaults = faults.filter(f => f.status === 'acik' || f.status === 'devam_ediyor').length;
+      const resolved = faults.filter(f => f.resolved_at && f.created_at);
+      const avgResolutionHours = resolved.length > 0
+        ? Math.round(resolved.reduce((sum, f) => sum + (new Date(f.resolved_at).getTime() - new Date(f.created_at).getTime()) / 3600000, 0) / resolved.length)
+        : null;
+      res.json({ total, activeFaults, maintenanceDue, avgResolutionHours });
+    } catch (error: unknown) {
+      console.error("Error fetching equipment stats:", error);
+      if (error instanceof AuthorizationError) return res.status(403).json({ message: error.message });
+      res.status(500).json({ message: "Ekipman istatistikleri alınırken hata oluştu" });
+    }
+  });
+
   router.get('/api/equipment/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
@@ -932,8 +962,8 @@ const router = Router();
   router.get('/api/equipment-knowledge', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (user.role !== 'admin') {
-        return res.status(403).json({ message: "Bu sayfa sadece admin kullanıcıları içindir" });
+      if (user.role !== 'admin' && !isHQRole(user.role as UserRoleType)) {
+        return res.status(403).json({ message: "Bu sayfa sadece yönetici kullanıcıları içindir" });
       }
       const items = await storage.getEquipmentKnowledge();
       res.json(items);

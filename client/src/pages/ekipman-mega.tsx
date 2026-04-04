@@ -75,7 +75,7 @@ function MaintenanceCalendar() {
 
 // ═══ BİLGİ BANKASI ═══
 function KnowledgeBase() {
-  const { data: articles = [] } = useQuery<any[]>({ queryKey: ["/api/equipment/knowledge"], queryFn: async()=>{const r=await fetch("/api/equipment/knowledge",{credentials:"include"});return r.ok?r.json():[];} });
+  const { data: articles = [] } = useQuery<any[]>({ queryKey: ["/api/equipment-knowledge"], queryFn: async()=>{const r=await fetch("/api/equipment-knowledge",{credentials:"include"});return r.ok?r.json():[];} });
   const [selectedType, setSelectedType] = useState<string>("all");
   const [expanded, setExpanded] = useState<number|null>(null);
   const types = [...new Set(articles.map((a:any)=>a.equipmentType))].filter(Boolean).sort();
