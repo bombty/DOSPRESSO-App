@@ -73,6 +73,7 @@ export default function CoachSubeDenetim() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("yeni");
+  const [historyBranchFilter, setHistoryBranchFilter] = useState("all");
 
   // ─── Step state (0=seçim, 1=form, 2=personel, 3=özet) ──
   const [step, setStep] = useState(0);
@@ -110,6 +111,12 @@ export default function CoachSubeDenetim() {
     queryKey: ["/api/v2/audits"],
     enabled: activeTab === "gecmis",
   });
+
+  const filteredHistory = useMemo(() => {
+    if (!auditHistory?.audits) return [];
+    if (historyBranchFilter === "all") return auditHistory.audits;
+    return auditHistory.audits.filter((a: any) => String(a.branchId) === historyBranchFilter);
+  }, [auditHistory, historyBranchFilter]);
 
   // ─── Score Calculations ─────────────────────────────────
   const categoryScores = useMemo(() => {
@@ -411,32 +418,103 @@ export default function CoachSubeDenetim() {
         </TabsContent>
 
         {/* ═══ DENETİM GEÇMİŞİ ═══ */}
-        <TabsContent value="gecmis" className="mt-4 space-y-3">
-          {!auditHistory?.audits?.length ? (
-            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">Henüz denetim geçmişi yok</CardContent></Card>
-          ) : (
-            auditHistory.audits.map((a: any) => (
-              <Card key={a.id} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/denetim-v2/${a.id}`)}>
+        <TabsContent value="gecmis" className="mt-4 space-y-4">
+          {/* Branch Filter */}
+          <div className="flex gap-2 items-center">
+            <Select value={historyBranchFilter} onValueChange={setHistoryBranchFilter}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Tüm Şubeler" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Şubeler</SelectItem>
+                {branches?.map(b => (
+                  <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {filteredHistory.length > 0 && (
+              <span className="text-xs text-muted-foreground">{filteredHistory.length} denetim</span>
+            )}
+          </div>
+
+          {/* Trend Summary */}
+          {filteredHistory.length >= 2 && (() => {
+            const scored = filteredHistory.filter((a: any) => a.totalScore != null);
+            if (scored.length < 2) return null;
+            const latest = Number(scored[0].totalScore);
+            const prev = Number(scored[1].totalScore);
+            const diff = latest - prev;
+            const avg = scored.reduce((s: number, a: any) => s + Number(a.totalScore || 0), 0) / scored.length;
+            return (
+              <Card>
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{a.branchName}</p>
-                      <p className="text-xs text-muted-foreground">{a.auditorName} — {a.startedAt ? format(new Date(a.startedAt), "d MMM yyyy HH:mm", { locale: tr }) : ''}</p>
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Son Denetim</p>
+                        <p className={`text-xl font-bold ${getScoreColor(latest)}`}>{latest.toFixed(0)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Trend</p>
+                        <p className={`text-lg font-bold ${diff > 0 ? 'text-green-500' : diff < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                          {diff > 0 ? '▲' : diff < 0 ? '▼' : '—'} {Math.abs(diff).toFixed(0)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Ortalama</p>
+                        <p className={`text-lg font-bold ${getScoreColor(avg)}`}>{avg.toFixed(0)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={a.status === 'closed' ? 'default' : a.status === 'completed' ? 'secondary' : 'outline'}>
-                        {a.status === 'in_progress' ? 'Devam' : a.status === 'completed' ? 'Tamamlandı' : a.status === 'pending_actions' ? 'Aksiyonlar' : a.status === 'closed' ? 'Kapandı' : a.status}
-                      </Badge>
-                      {a.totalScore !== null && (
-                        <span className={`text-lg font-bold ${getScoreColor(Number(a.totalScore))}`}>
-                          {Number(a.totalScore).toFixed(0)}
-                        </span>
-                      )}
+                    <div className="flex items-end gap-0.5 h-8">
+                      {scored.slice(0, 10).reverse().map((a: any, i: number) => {
+                        const score = Number(a.totalScore || 0);
+                        return (
+                          <div key={a.id} className={`w-3 rounded-t transition-all ${
+                            score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                          }`} style={{ height: `${Math.max(4, (score / 100) * 32)}px` }}
+                          title={`${score.toFixed(0)} — ${a.startedAt ? format(new Date(a.startedAt), "d MMM", { locale: tr }) : ''}`} />
+                        );
+                      })}
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ))
+            );
+          })()}
+
+          {/* Audit List */}
+          {filteredHistory.length === 0 ? (
+            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
+              {historyBranchFilter !== "all" ? "Bu şubede denetim yok" : "Henüz denetim geçmişi yok"}
+            </CardContent></Card>
+          ) : (
+            filteredHistory.map((a: any) => {
+              const score = Number(a.totalScore || 0);
+              return (
+                <Card key={a.id} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => navigate(`/denetim-v2/${a.id}`)}>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{a.branchName}</p>
+                        <p className="text-xs text-muted-foreground">{a.auditorName} — {a.startedAt ? format(new Date(a.startedAt), "d MMM yyyy", { locale: tr }) : ''}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {a.openActions > 0 && (
+                          <Badge variant="destructive" className="text-xs">{a.openActions} açık</Badge>
+                        )}
+                        <Badge variant={a.status === 'closed' ? 'default' : a.status === 'completed' ? 'secondary' : 'outline'} className="text-xs">
+                          {a.status === 'in_progress' ? 'Devam' : a.status === 'completed' ? 'Tamamlandı' : a.status === 'pending_actions' ? 'Aksiyonlar' : a.status === 'closed' ? 'Kapandı' : a.status}
+                        </Badge>
+                        {a.totalScore != null && (
+                          <span className={`text-lg font-bold min-w-[36px] text-right ${getScoreColor(score)}`}>{score.toFixed(0)}</span>
+                        )}
+                      </div>
+                    </div>
+                    {a.totalScore != null && (
+                      <Progress value={score} className={`h-1 ${getProgressColor(score)}`} />
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </TabsContent>
       </Tabs>
