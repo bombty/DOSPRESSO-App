@@ -229,6 +229,26 @@ function RolMatrisi({ data }: { data: SystemMetadata }) {
                     {permissions[0]?.scope === "managed_branches" && "🏢 Yönettiği şubelerin verisini görür"}
                     {!permissions[0]?.scope && "—"}
                   </div>
+
+                  {/* Katıldığı Akışlar */}
+                  {(() => {
+                    const roleFlows = WORKFLOWS.filter(w => w.roles.includes(selectedRole!));
+                    if (roleFlows.length === 0) return null;
+                    return (
+                      <>
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-3">Katıldığı Akışlar ({roleFlows.length})</div>
+                        <div className="space-y-0.5">
+                          {roleFlows.map(f => (
+                            <div key={f.id} className="flex items-center gap-1.5 py-0.5">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${f.status === 'aktif' ? 'bg-green-500' : 'bg-amber-500'}`} />
+                              <span className="text-[10px]">{f.direction}</span>
+                              <span className="text-xs">{f.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 /* ═══ İZİN MODU ═══ */
@@ -255,66 +275,223 @@ function RolMatrisi({ data }: { data: SystemMetadata }) {
   );
 }
 
-// ═══ TAB 3: AKIŞ GÖRÜNTÜLEYİCİ ═══
-const WORKFLOWS = [
-  { id: "fabrika-sube", name: "Fabrika → Şube Stok", steps: [
-    { title: "Üretim Planı", role: "Fabrika Müdür", module: "Üretim", desc: "Haftalık üretim planı oluşturulur, reçeteler kontrol edilir." },
-    { title: "Üretim Kaydı", role: "Operatör", module: "Kiosk", desc: "Günlük üretim miktarları kiosk'tan kaydedilir." },
-    { title: "Kalite Kontrol", role: "Fabrika Müdür", module: "Kalite", desc: "QC sonucu girilir (onay/red)." },
-    { title: "Sevkiyat", role: "Depo", module: "Sevkiyat", desc: "QR kod ile paketleme ve çıkış." },
-    { title: "Şube Teslim", role: "Supervisor", module: "Stok", desc: "Teslim alınır, stok güncellenir." },
-    { title: "Rapor", role: "Coach/CEO", module: "Dashboard", desc: "Hedef vs gerçek karşılaştırma." },
+// ═══ TAB 3: AKIŞ GÖRÜNTÜLEYİCİ (GENİŞLETİLMİŞ) ═══
+type WfStep = { title: string; role: string; module: string; desc: string };
+type Workflow = { id: string; name: string; group: string; direction: "→"|"↔"; status: "aktif"|"kısmen"|"plan"; roles: string[]; steps: WfStep[] };
+
+const WORKFLOW_GROUPS = ["Fabrika","Şube Operasyon","HQ Denetim & Yönetim","Mr. Dobody","Finans & İK"] as const;
+const GROUP_COLORS: Record<string,string> = { "Fabrika":"bg-orange-500","Şube Operasyon":"bg-blue-500","HQ Denetim & Yönetim":"bg-purple-500","Mr. Dobody":"bg-red-500","Finans & İK":"bg-green-500" };
+
+const WORKFLOWS: Workflow[] = [
+  // ─── FABRİKA ───
+  { id:"A1", name:"Hammadde → Üretim → Mamül", group:"Fabrika", direction:"→", status:"aktif", roles:["satinalma","fabrika_mudur","fabrika_operator"], steps:[
+    { title:"Hammadde Sipariş", role:"Satınalma", module:"Satınalma", desc:"Tedarikçiden hammadde siparişi verilir." },
+    { title:"Teslim Alma", role:"Depo", module:"Stok", desc:"Hammadde teslim alınır, stok kaydı oluşturulur." },
+    { title:"Reçete Seçimi", role:"Fabrika Müdür", module:"Üretim", desc:"Hangi ürün üretilecek, reçete seçilir." },
+    { title:"Üretim Başlat", role:"Operatör", module:"Kiosk", desc:"İstasyon bazlı üretim kaydı." },
+    { title:"Mamül Çıkış", role:"Operatör", module:"Üretim", desc:"Bitmiş ürün çıktı olarak kaydedilir." },
   ]},
-  { id: "kiosk-pdks", name: "Kiosk → PDKS → Bordro", steps: [
-    { title: "Vardiya Giriş", role: "Personel", module: "Kiosk", desc: "QR/NFC ile giriş. Geç kalma otomatik tespit." },
-    { title: "PDKS Kaydı", role: "Sistem", module: "PDKS", desc: "Giriş/çıkış saatleri kaydedilir." },
-    { title: "Anomali", role: "Mr. Dobody", module: "PDKS", desc: "Geç kalma, eksik giriş tespiti." },
-    { title: "Bordro", role: "Muhasebe", module: "Bordro", desc: "PDKS + fazla mesai + kesinti hesaplanır." },
-    { title: "Maaş Onayı", role: "Muhasebe", module: "Bordro", desc: "Aylık bordro onaylanır." },
+  { id:"A2", name:"Kalite Kontrol (2 Aşama)", group:"Fabrika", direction:"→", status:"aktif", roles:["fabrika_operator","fabrika_mudur"], steps:[
+    { title:"Görsel Kontrol", role:"Fabrika Müdür", module:"Kalite", desc:"Renk, boyut, koku kontrolü." },
+    { title:"Ölçüm", role:"Fabrika Müdür", module:"Kalite", desc:"Ağırlık, nem ölçümü. Fotoğraf çekimi." },
+    { title:"Detaylı Test", role:"Fabrika Müdür", module:"Kalite", desc:"Lab ölçümü, cupping score." },
+    { title:"ONAY veya RED", role:"Fabrika Müdür", module:"Kalite", desc:"Onay→LOT oluştur. Red→iade/imha." },
+    { title:"LOT Oluşturma", role:"Sistem", module:"Stok", desc:"LOT no + SKT + miktar kaydı." },
   ]},
-  { id: "crm-ticket", name: "CRM Ticket → Çözüm", steps: [
-    { title: "GB Girişi", role: "Misafir", module: "CRM", desc: "QR kod ile geri bildirim." },
-    { title: "SLA Başlangıç", role: "Sistem", module: "CRM", desc: "Öncelik atanır, sayaç başlar." },
-    { title: "İşleme", role: "Destek", module: "CRM", desc: "İlgili kişi atanır." },
-    { title: "Çözüm", role: "Supervisor", module: "CRM", desc: "Sorun çözülür." },
-    { title: "Kapanış", role: "Sistem", module: "CRM", desc: "Ticket kapatılır, NPS güncellenir." },
+  { id:"A3", name:"Sevkiyat → Şube Teslim", group:"Fabrika", direction:"→", status:"aktif", roles:["fabrika_mudur","depo_sorumlusu","supervisor"], steps:[
+    { title:"Sevkiyat Planı", role:"Fabrika Müdür", module:"Sevkiyat", desc:"Hangi şubeye ne kadar gönderilecek." },
+    { title:"LOT Seçimi (FIFO)", role:"Sistem", module:"Stok", desc:"En eski SKT'li LOT otomatik seçilir." },
+    { title:"Paketleme", role:"Depo", module:"Sevkiyat", desc:"QR etiketleme ve paketleme." },
+    { title:"Çıkış Onayı", role:"Fabrika Müdür", module:"Sevkiyat", desc:"Sevkiyat onaylanır, yola çıkar." },
+    { title:"Şube Teslim", role:"Supervisor", module:"Stok", desc:"Teslim alınır, stok güncellenir." },
   ]},
-  { id: "onboarding", name: "Onboarding → Sertifika", steps: [
-    { title: "Kayıt", role: "İK", module: "İK", desc: "Yeni personel sisteme kaydedilir." },
-    { title: "Eğitim Planı", role: "Trainer", module: "Akademi", desc: "Eğitim programı atanır." },
-    { title: "Eğitim", role: "Personel", module: "Akademi", desc: "Video + quiz tamamlanır." },
-    { title: "Değerlendirme", role: "Trainer", module: "Akademi", desc: "Pratik sınav yapılır." },
-    { title: "Sertifika", role: "Sistem", module: "Sertifika", desc: "Dijital sertifika verilir." },
+  { id:"A4", name:"Reçete Yönetimi", group:"Fabrika", direction:"→", status:"aktif", roles:["ceo","cgo","fabrika_mudur"], steps:[
+    { title:"Reçete Oluştur", role:"CEO/CGO", module:"Reçete", desc:"Yeni ürün reçetesi tanımlanır." },
+    { title:"Malzeme + Maliyet", role:"Fabrika Müdür", module:"Reçete", desc:"Malzeme listesi, miktar, birim fiyat." },
+    { title:"Versiyon Kaydet", role:"Sistem", module:"Reçete", desc:"Her değişiklik yeni versiyon." },
+    { title:"Bildirim", role:"Sistem", module:"Bildirim", desc:"Şubelere değişiklik bildirimi." },
   ]},
-  { id: "denetim", name: "Denetim → Skor → Alarm", steps: [
-    { title: "Plan", role: "Coach", module: "Denetim", desc: "Denetim takvimi oluşturulur." },
-    { title: "Yürütme", role: "Coach", module: "Denetim", desc: "Checklist bazlı denetim yapılır." },
-    { title: "Sağlık Skoru", role: "Sistem", module: "Dashboard", desc: "5 boyutlu skor hesaplanır." },
-    { title: "Alarm", role: "Dobody", module: "Dobody", desc: "Düşük skor → otomatik uyarı." },
+  { id:"A5", name:"Fire & Atık Kaydı", group:"Fabrika", direction:"→", status:"aktif", roles:["fabrika_operator","fabrika_mudur","muhasebe"], steps:[
+    { title:"Fire Tespit", role:"Operatör", module:"Üretim", desc:"Üretim, QC veya SKT firesi." },
+    { title:"Neden + Miktar", role:"Operatör", module:"Üretim", desc:"Fire nedeni seçilir, miktar girilir." },
+    { title:"LOT İmha", role:"Fabrika Müdür", module:"Stok", desc:"İlgili LOT'tan düşülür." },
+    { title:"Fire Raporu", role:"Muhasebe", module:"Rapor", desc:"Aylık fire oranı raporlanır." },
   ]},
-  { id: "ariza", name: "Arıza → Servis → Çözüm", steps: [
-    { title: "Troubleshoot", role: "Personel", module: "Ekipman", desc: "Sorun giderme adımları tamamlanır." },
-    { title: "Arıza Kaydı", role: "Supervisor", module: "Ekipman", desc: "Form doldurulur, fotoğraf eklenir." },
-    { title: "Yönlendirme", role: "Sistem", module: "Ekipman", desc: "HQ veya şube servise yönlendirilir." },
-    { title: "Servis", role: "CGO/Şube", module: "Ekipman", desc: "Teknik servis mail ile bilgilendirilir." },
-    { title: "Takip", role: "CGO/Coach", module: "Ekipman", desc: "7 aşamalı durum takibi yapılır." },
-    { title: "Kapanış", role: "CGO", module: "Ekipman", desc: "Test edilir, arıza kapatılır." },
+
+  // ─── ŞUBE OPERASYON ───
+  { id:"B1", name:"Vardiya → Kiosk → PDKS → Bordro", group:"Şube Operasyon", direction:"→", status:"aktif", roles:["supervisor","barista","muhasebe"], steps:[
+    { title:"Haftalık Plan", role:"Supervisor", module:"Vardiya", desc:"Vardiya planı oluşturulur." },
+    { title:"Kiosk Check-in", role:"Personel", module:"Kiosk", desc:"QR/PIN ile giriş. Geç kalma tespiti." },
+    { title:"PDKS Kaydı", role:"Sistem", module:"PDKS", desc:"Giriş/çıkış saatleri otomatik kaydedilir." },
+    { title:"Gün Sınıflandırma", role:"Sistem", module:"PDKS", desc:"worked/absent/no_shift/leave ayrımı." },
+    { title:"Aylık Özet", role:"Sistem", module:"PDKS", desc:"Çalışılan gün, fazla mesai, devamsızlık." },
+    { title:"Bordro Hesaplama", role:"Muhasebe", module:"Bordro", desc:"Maaş - kesinti + mesai = net." },
+  ]},
+  { id:"B2", name:"Checklist Döngüsü", group:"Şube Operasyon", direction:"→", status:"aktif", roles:["barista","supervisor"], steps:[
+    { title:"Açılış/Kapanış", role:"Barista", module:"Checklist", desc:"Günlük checklist açılır." },
+    { title:"Madde Tikleme", role:"Barista", module:"Checklist", desc:"Her madde tik + opsiyonel fotoğraf." },
+    { title:"Tamamla", role:"Barista", module:"Checklist", desc:"Checklist tamamlanır." },
+    { title:"Skor", role:"Sistem", module:"Skor", desc:"Checklist skoru hesaplanır." },
+  ]},
+  { id:"B3", name:"Stok Sayım & Sipariş", group:"Şube Operasyon", direction:"↔", status:"aktif", roles:["supervisor","satinalma"], steps:[
+    { title:"Fiziksel Sayım", role:"Supervisor", module:"Stok", desc:"Manuel stok sayımı yapılır." },
+    { title:"Fark Tespiti", role:"Sistem", module:"Stok", desc:"Sistem stoku vs fiziksel fark." },
+    { title:"Sipariş Talebi", role:"Supervisor", module:"Stok", desc:"Eksik ürünler için talep." },
+    { title:"Satınalma Onayı", role:"Satınalma", module:"Satınalma", desc:"Talep incelenir ve sipariş verilir." },
+    { title:"Teslim + Güncelle", role:"Supervisor", module:"Stok", desc:"Teslim alınır, stok güncellenir." },
+  ]},
+  { id:"B4", name:"Müşteri Geri Bildirim (QR)", group:"Şube Operasyon", direction:"→", status:"aktif", roles:["supervisor","coach","cgo"], steps:[
+    { title:"QR Okutma", role:"Müşteri", module:"CRM", desc:"Şubedeki QR kodu okutulur." },
+    { title:"Form + Puan", role:"Müşteri", module:"CRM", desc:"Puan (1-5) ve yorum girilir." },
+    { title:"Anlık Bildirim", role:"Supervisor", module:"Bildirim", desc:"Düşük puan → supervisor'a uyarı." },
+    { title:"Şikayet İşleme", role:"Destek", module:"CRM", desc:"Ticket oluşturulur, SLA başlar." },
+    { title:"NPS Güncelleme", role:"Sistem", module:"CRM", desc:"Şube NPS skoru güncellenir." },
+  ]},
+  { id:"B5", name:"Arıza → Servis → Çözüm", group:"Şube Operasyon", direction:"↔", status:"aktif", roles:["barista","supervisor","cgo"], steps:[
+    { title:"Troubleshoot", role:"Personel", module:"Ekipman", desc:"Adımlı sorun giderme denenır." },
+    { title:"Arıza Bildir", role:"Supervisor", module:"Ekipman", desc:"Fotoğraf + açıklama ile bildirim." },
+    { title:"HQ Yönlendirme", role:"CGO/Teknik", module:"Ekipman", desc:"Dahili çözüm veya dış servis kararı." },
+    { title:"Servis Takip", role:"CGO", module:"Ekipman", desc:"7 aşamalı durum takibi." },
+    { title:"Test + Kapanış", role:"CGO", module:"Ekipman", desc:"Çözüm doğrulanır, arıza kapatılır." },
+  ]},
+  { id:"B6", name:"İzin Talebi → Onay", group:"Şube Operasyon", direction:"↔", status:"aktif", roles:["barista","supervisor","muhasebe_ik"], steps:[
+    { title:"Talep Oluştur", role:"Personel", module:"İK", desc:"İzin tipi, tarih seçimi." },
+    { title:"Çakışma Kontrol", role:"Sistem", module:"Vardiya", desc:"Vardiya çakışması kontrol edilir." },
+    { title:"Supervisor Onay", role:"Supervisor", module:"İK", desc:"Onay veya ret." },
+    { title:"PDKS + Bakiye", role:"Sistem", module:"PDKS", desc:"İzin günleri kaydedilir, bakiye düşer." },
+  ]},
+
+  // ─── HQ DENETİM & YÖNETİM ───
+  { id:"C1", name:"Denetim Döngüsü (v2)", group:"HQ Denetim & Yönetim", direction:"→", status:"aktif", roles:["coach","trainer","supervisor"], steps:[
+    { title:"Şablon Seç", role:"Coach", module:"Denetim", desc:"Kategoriler + 7 tip soru." },
+    { title:"Şube Seç + Başlat", role:"Coach", module:"Denetim", desc:"Hedef şube belirlenir." },
+    { title:"Form Doldur", role:"Coach", module:"Denetim", desc:"Checkbox, yıldız, slider, fotoğraf..." },
+    { title:"Personel Denetimi", role:"Coach", module:"Denetim", desc:"4 boyut: kıyafet, hijyen, güler yüz, müşteri." },
+    { title:"Skor Hesapla", role:"Sistem", module:"Skor", desc:"Kategori ağırlıklı genel skor." },
+    { title:"Aksiyon Oluştur", role:"Coach", module:"Denetim", desc:"Eksiklik + sorumlu + deadline + SLA." },
+    { title:"Çözüm Bildir", role:"Supervisor", module:"Denetim", desc:"Aksiyon çözülür, not eklenir." },
+    { title:"Onay + Kapat", role:"Coach", module:"Denetim", desc:"Denetçi onaylar, denetim kapanır." },
+  ]},
+  { id:"C2", name:"Proje Yönetimi (v2)", group:"HQ Denetim & Yönetim", direction:"↔", status:"aktif", roles:["ceo","cgo","coach","mudur"], steps:[
+    { title:"Proje Oluştur", role:"Proje Yöneticisi", module:"Proje", desc:"Kategori, ekip, tarih seçimi." },
+    { title:"Milestone Planla", role:"Proje Yöneticisi", module:"Proje", desc:"Kilometre taşları belirlenir." },
+    { title:"Görev Ata", role:"Proje Yöneticisi", module:"Proje", desc:"Kanban board'da görev yönetimi." },
+    { title:"İlerleme Takip", role:"Ekip", module:"Proje", desc:"Görev durumu güncelleme." },
+    { title:"Tamamla + Arşiv", role:"Proje Yöneticisi", module:"Proje", desc:"Proje kapatılır, arşivlenir." },
+  ]},
+  { id:"C3", name:"Eğitim → Quiz → Sertifika", group:"HQ Denetim & Yönetim", direction:"→", status:"aktif", roles:["trainer","coach","barista"], steps:[
+    { title:"Modül Oluştur", role:"Trainer", module:"Akademi", desc:"Video + metin + materyal." },
+    { title:"Quiz Ekle", role:"Trainer", module:"Akademi", desc:"Çoktan seçmeli sorular." },
+    { title:"Eğitim Ata", role:"Coach/Trainer", module:"Akademi", desc:"Personele eğitim atanır." },
+    { title:"İzle + Quiz Çöz", role:"Personel", module:"Akademi", desc:"Eğitim tamamlanır, sınav yapılır." },
+    { title:"Sertifika", role:"Sistem", module:"Akademi", desc:"Başarılı → dijital sertifika." },
+  ]},
+  { id:"C4", name:"Onboarding (Yeni Personel)", group:"HQ Denetim & Yönetim", direction:"→", status:"aktif", roles:["muhasebe_ik","trainer","supervisor"], steps:[
+    { title:"Sisteme Kayıt", role:"İK", module:"İK", desc:"Personel bilgileri girilir." },
+    { title:"Program Ata", role:"Trainer", module:"Onboarding", desc:"Haftalık program belirlenir." },
+    { title:"Eğitim + Görevler", role:"Personel", module:"Onboarding", desc:"Adım adım tamamlama." },
+    { title:"Check-in", role:"Supervisor", module:"Onboarding", desc:"Haftalık değerlendirme." },
+    { title:"Bağımsız Çalışma", role:"Personel", module:"Operasyon", desc:"Onboarding tamamlanır." },
+  ]},
+  { id:"C5", name:"Duyuru Yayınlama", group:"HQ Denetim & Yönetim", direction:"→", status:"aktif", roles:["admin","ceo","cgo"], steps:[
+    { title:"Oluştur", role:"Admin/CEO", module:"Duyuru", desc:"Başlık, içerik, hedef seçimi." },
+    { title:"Hedef Belirle", role:"Admin", module:"Duyuru", desc:"Rol veya şube bazlı hedef." },
+    { title:"Yayınla", role:"Admin", module:"Duyuru", desc:"Tüm hedeflere gönderilir." },
+    { title:"Okundu Takibi", role:"Sistem", module:"Duyuru", desc:"Kim okudu, kim okumadı." },
+  ]},
+
+  // ─── MR. DOBODY ───
+  { id:"D1", name:"Event → Analiz → Öneri → Onay", group:"Mr. Dobody", direction:"↔", status:"aktif", roles:["coach","ceo","supervisor"], steps:[
+    { title:"Olay Algıla", role:"Sistem", module:"Event", desc:"Denetim, SLA, skor değişimi..." },
+    { title:"Scope Kontrol", role:"Dobody", module:"Güvenlik", desc:"Bu rol bu veriyi görebilir mi?" },
+    { title:"Analiz", role:"Dobody", module:"Analiz", desc:"Pattern tespiti, trend analizi." },
+    { title:"Limit Kontrol", role:"Dobody", module:"Sistem", desc:"Günde max 3, duplikasyon engel." },
+    { title:"Öneri Oluştur", role:"Dobody", module:"Proposal", desc:"Kullanıcıya sunulacak öneri." },
+    { title:"Onayla / Reddet", role:"Kullanıcı", module:"Dashboard", desc:"Tek dokunuş onay veya ret." },
+    { title:"Öğrenme", role:"Dobody", module:"Öğrenme", desc:"Onay=+2, Ret=-3, güven güncelle." },
+  ]},
+  { id:"D2", name:"SLA Takip & Escalation", group:"Mr. Dobody", direction:"→", status:"aktif", roles:["supervisor","coach","cgo"], steps:[
+    { title:"Deadline Kontrol", role:"Dobody", module:"SLA", desc:"Açık aksiyonların deadline'ı kontrol edilir." },
+    { title:"Gün-3 Uyarı", role:"Supervisor", module:"Bildirim", desc:"3 gün kala hatırlatma." },
+    { title:"Gün-1 Acil", role:"Coach", module:"Bildirim", desc:"1 gün kala escalation." },
+    { title:"SLA İhlali", role:"CGO", module:"Bildirim", desc:"Deadline geçti → CGO bilgilendirilir." },
+  ]},
+  { id:"D3", name:"Haftalık Brief (WF-8)", group:"Mr. Dobody", direction:"→", status:"aktif", roles:["ceo","coach"], steps:[
+    { title:"Veri Topla", role:"Dobody", module:"Analiz", desc:"Geçen haftanın tüm metrikleri." },
+    { title:"CEO Briifi", role:"Dobody", module:"Brief", desc:"Denetim + aksiyon + proje özeti." },
+    { title:"Coach Briifi", role:"Dobody", module:"Brief", desc:"Denetim + eğitim + riskli şubeler." },
+  ]},
+
+  // ─── FİNANS & İK ───
+  { id:"E1", name:"Bordro Hesaplama", group:"Finans & İK", direction:"→", status:"aktif", roles:["muhasebe","muhasebe_ik","admin"], steps:[
+    { title:"PDKS Özet", role:"Sistem", module:"PDKS", desc:"Aylık çalışma verileri çekilir." },
+    { title:"Maaş Eşleme", role:"Sistem", module:"Bordro", desc:"Pozisyon → maaş tablosu." },
+    { title:"Kesinti Hesapla", role:"Sistem", module:"Bordro", desc:"Devamsızlık × günlük ücret." },
+    { title:"Mesai Hesapla", role:"Sistem", module:"Bordro", desc:"Fazla mesai × 1.5 çarpanı." },
+    { title:"Net Maaş", role:"Muhasebe", module:"Bordro", desc:"Brüt - kesinti + mesai = net." },
+    { title:"Kilitle", role:"Admin", module:"Bordro", desc:"Onaylanan bordro kilitlenir." },
+  ]},
+  { id:"E2", name:"Personel Yaşam Döngüsü", group:"Finans & İK", direction:"→", status:"aktif", roles:["muhasebe_ik","trainer","supervisor"], steps:[
+    { title:"İşe Alım", role:"İK", module:"İK", desc:"Personel sisteme kaydedilir." },
+    { title:"Onboarding", role:"Trainer", module:"Onboarding", desc:"Eğitim programı başlar." },
+    { title:"Aktif Çalışma", role:"Personel", module:"Operasyon", desc:"Günlük operasyona katılım." },
+    { title:"Performans", role:"Supervisor", module:"Skor", desc:"Composite score takibi." },
+    { title:"Ayrılış", role:"İK", module:"İK", desc:"İşten ayrılış kaydı, soft delete." },
   ]},
 ];
 
 function AkisGoruntüleyici() {
+  const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [flow, setFlow] = useState(WORKFLOWS[0]);
   const [step, setStep] = useState<number | null>(null);
+
+  const filtered = selectedGroup === "all" ? WORKFLOWS : WORKFLOWS.filter(w => w.group === selectedGroup);
+
   return (
     <div className="space-y-3">
+      {/* Modül Filtre */}
       <div className="flex flex-wrap gap-1.5">
-        {WORKFLOWS.map(w => (
-          <Badge key={w.id} variant={flow.id === w.id ? "default" : "outline"} className="cursor-pointer text-xs py-1"
-            onClick={() => { setFlow(w); setStep(null); }}>{w.name}</Badge>
+        <Badge variant={selectedGroup === "all" ? "default" : "outline"} className="cursor-pointer text-xs py-1"
+          onClick={() => setSelectedGroup("all")}>Tümü ({WORKFLOWS.length})</Badge>
+        {WORKFLOW_GROUPS.map(g => {
+          const count = WORKFLOWS.filter(w => w.group === g).length;
+          return (
+            <Badge key={g} variant={selectedGroup === g ? "default" : "outline"} className="cursor-pointer text-xs py-1"
+              onClick={() => { setSelectedGroup(g); setStep(null); }}>
+              {g} ({count})
+            </Badge>
+          );
+        })}
+      </div>
+
+      {/* Akış Listesi */}
+      <div className="flex flex-wrap gap-1.5">
+        {filtered.map(w => (
+          <Badge key={w.id} variant={flow.id === w.id ? "default" : "outline"}
+            className={`cursor-pointer text-xs py-1 ${flow.id === w.id ? '' : ''}`}
+            onClick={() => { setFlow(w); setStep(null); }}>
+            <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${w.status === 'aktif' ? 'bg-green-500' : w.status === 'kısmen' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+            {w.direction === "↔" ? "↔" : "→"} {w.name}
+          </Badge>
         ))}
       </div>
+
+      {/* Seçili Akış Detay */}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">{flow.name}</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              {flow.name}
+              <Badge variant="outline" className="text-[10px]">{flow.direction === "↔" ? "Çift Yön" : "Tek Yön"}</Badge>
+              <Badge className={`text-[10px] ${GROUP_COLORS[flow.group] || 'bg-slate-500'} text-white`}>{flow.group}</Badge>
+            </CardTitle>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {flow.roles.map(r => (
+              <span key={r} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{ROLE_LABELS[r] || r}</span>
+            ))}
+          </div>
+        </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-1">
             {flow.steps.map((s, i) => (
