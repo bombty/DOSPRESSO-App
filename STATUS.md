@@ -1,40 +1,32 @@
 # DOSPRESSO — Sistem Durumu
-**Son güncelleme:** 5 Nisan 2026 | **Son commit:** f7c0f5f8
+**Son güncelleme:** 5 Nisan 2026
 
 ---
 
 ## Aktif Sprint
-**Dobody-1: Proposal Altyapısı** — Backend tamamlandı, frontend widget sırada
+Dobody Widget entegrasyonu — 4 dashboard güncellendi
 
-## Bekleyen Test (Replit)
-Sprint C+D (denetim detay + aksiyon + trend) + Dobody-1 tabloları oluşturma
-
----
+## Tamamlanan Sprint'ler (4 Nisan)
+- Proje v2 Sprint 1 ✅
+- Denetim v2 Sprint A-D ✅  
+- Dobody Sprint 1-3 ✅
 
 ## Modül Durumları
 
-| Modül | Durum | Son Sprint |
-|-------|-------|------------|
-| Proje v2 | ✅ Çalışıyor | Sprint 1 |
-| Denetim v2 | ✅ Çalışıyor | Sprint A-D |
-| Dobody Proposals | ⏳ Backend OK, DB+UI bekliyor | Dobody-1 |
-| Ekipman Mega | ✅ Çalışıyor | 3 Nis |
-| Centrum v4 | ✅ Çalışıyor | Mart |
-| Vardiya/PDKS | ✅ Çalışıyor | 3 Nis |
+| Modül | Durum | Not |
+|-------|-------|-----|
+| Proje v2 | ✅ | 6 tab, portfolio dashboard |
+| Denetim v2 | ✅ | Şablon + form + aksiyon + trend |
+| Dobody Proposal | ✅ | 5 tablo, 8 workflow, öğrenme |
+| Dobody Widget | ✅ | CEO/CGO/Coach/Supervisor |
+| Ekipman Mega | ✅ | 9 sidebar |
+| Centrum v4 | ✅ | 16 rol dashboard |
+| Vardiya/PDKS | ✅ | Mimari fix tamamlandı |
 
 ## Bilinen Bug'lar
-
-| Bug | Durum |
-|-----|-------|
-| Kiosk token localStorage | ⚠️ Doğrulanmadı |
-| Duyuru düzenleme sorunları | 🔴 Detay bekleniyor |
+- [ ] Kiosk token localStorage (sube/kiosk.tsx)
+- [ ] module_flags unique constraint (production)
+- [ ] Duyuru düzenleme sorunları (detay bekleniyor)
 
 ## Güncel Rakamlar
-
-| Metrik | Değer |
-|--------|-------|
-| Sayfa | 304+ |
-| Endpoint | 1500+ |
-| DB tablo | 363+ (358+5 yeni Dobody) |
-| Schema dosyası | 21 |
-| Docs MD dosyası | 19 |
+363+ tablo | 1500+ endpoint | 304+ sayfa | 21 rol | 19 doküman | 8 workflow

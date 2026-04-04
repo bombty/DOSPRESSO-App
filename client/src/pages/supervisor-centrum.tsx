@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, FeedbackWidget, LostFoundBanner, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { DobodyProposalWidget } from "@/components/DobodyProposalWidget";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation } from "wouter";
 
@@ -55,14 +56,7 @@ export default function SupervisorCentrum() {
         <Button size="sm" variant="outline" onClick={() => setLocation("/checklistler")} className="text-xs h-7">Checklist</Button>
         <TimeFilter value={period} onChange={setPeriod} />
       </div>}
-      rightPanel={<DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
-        id: a.id, title: a.title || a.message, sub: a.description,
-        mode: (a.actionType === "info" ? "info" : "action") as any,
-        btnLabel: a.actionType !== "info" ? "İncele" : undefined,
-      })) : [
-        { id: 1, title: "Personel değerlendirme yap", sub: `${evalDone}/2 zorunlu`, mode: "action" as const, btnLabel: "Başla", onApprove: () => setLocation("/yonetici-degerlendirme") },
-        { id: 2, title: "Vardiya planı kontrol", sub: "Yarın izinli kişi var", mode: "info" as const },
-      ]} />}
+      rightPanel={<DobodyProposalWidget maxItems={4} />}
     >
       <LostFoundBanner item={lostItem ? { id: lostItem.id, description: lostItem.itemDescription, foundArea: lostItem.foundArea, foundTime: lostItem.foundTime } : null} onClick={() => setLocation("/kayip-esya")} />
 

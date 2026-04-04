@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CentrumShell, Widget, MiniStats, ListItem, DobodySlot, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { DobodyProposalWidget } from "@/components/DobodyProposalWidget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -146,14 +147,7 @@ export default function CGOTeknikKomuta() {
             );
           })}
         </Widget>
-        <DobodySlot actions={dobodyActions.slice(0, 4).map((a: any) => ({
-          id: a.id,
-          title: a.title ?? a.summary ?? "Öneri",
-          sub: a.description ?? a.targetBranchName ?? "",
-          mode: "action" as const,
-          btnLabel: a.actionLabel ?? "Onayla",
-          onApprove: () => {},
-        }))} />
+        <DobodyProposalWidget maxItems={4} />
       </>}
     >
       <div className="grid grid-cols-2 gap-2.5">

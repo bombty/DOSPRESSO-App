@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, ProgressWidget, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { DobodyProposalWidget } from "@/components/DobodyProposalWidget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -71,13 +72,7 @@ export default function CEOCommandCenter() {
         { label: "Dobody", value: dobodyActions.length, variant: "purple" as KpiVariant },
       ]}
       actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => setLocation("/task-atama")} className="text-xs h-7">+ Görev</Button><Button size="sm" variant="outline" onClick={() => setLocation("/raporlar")} className="text-xs h-7">Raporlar</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
-      rightPanel={
-        <DobodySlot actions={dobodyActions.slice(0, 5).map((a: any) => ({
-          id: a.id, title: a.title || a.summary || "Öneri", sub: a.description || a.detail || "",
-          mode: "action" as const, btnLabel: "Onayla",
-          onApprove: () => {},
-        }))} />
-      }
+      rightPanel={<DobodyProposalWidget maxItems={5} />}
     >
       <div className="grid grid-cols-2 gap-2.5">
         <Widget title="Şube Sağlık" onClick={() => setLocation("/sube-saglik-skoru")}

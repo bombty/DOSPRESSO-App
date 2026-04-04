@@ -5,6 +5,7 @@
  *             Işıklar Canlı, Eğitim + Sağ panel Dobody
  */
 import { useState } from "react";
+import { DobodyProposalWidget } from "@/components/DobodyProposalWidget";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, DobodyTaskPlan, TopFlop, ProgressWidget, TimeFilter, Badge, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
@@ -52,12 +53,7 @@ export default function CoachKontrolMerkezi() {
         <Button size="sm" variant="outline" onClick={() => navigate("/denetimler")} className="text-xs h-7">Denetim</Button>
         <TimeFilter value={period} onChange={setPeriod} />
       </div>}
-      rightPanel={
-        <DobodySlot actions={pendingActions.slice(0, 4).map((a: any) => ({
-          id: a.id, title: a.title || a.summary || "Öneri", sub: a.description || "",
-          mode: "action" as const, btnLabel: a.actionLabel || "Onayla", onApprove: () => {},
-        }))} />
-      }
+      rightPanel={<DobodyProposalWidget maxItems={4} />}
     >
       {tab === 0 && <>
         <div className="grid grid-cols-3 gap-2.5">
