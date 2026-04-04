@@ -44,8 +44,8 @@ router.get('/api/v2/audit-templates', isAuthenticated, async (req, res) => {
 
     const templates = await db.select({
       template: auditTemplatesV2,
-      categoryCount: sql<number>`(SELECT count(*) FROM audit_template_categories_v2 WHERE template_id = ${auditTemplatesV2.id})::int`,
-      questionCount: sql<number>`(SELECT count(*) FROM audit_template_questions_v2 q JOIN audit_template_categories_v2 c ON q.category_id = c.id WHERE c.template_id = ${auditTemplatesV2.id})::int`,
+      categoryCount: sql<number>`(SELECT count(*) FROM audit_template_categories_v2 WHERE template_id = audit_templates_v2.id)::int`,
+      questionCount: sql<number>`(SELECT count(*) FROM audit_template_questions_v2 q JOIN audit_template_categories_v2 c ON q.category_id = c.id WHERE c.template_id = audit_templates_v2.id)::int`,
     })
       .from(auditTemplatesV2)
       .orderBy(desc(auditTemplatesV2.updatedAt));
