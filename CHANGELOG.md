@@ -1,37 +1,34 @@
 # DOSPRESSO — Değişiklik Geçmişi
 
-## 4 Nisan 2026 (2. Oturum)
-- `e1526975` Sprint 1: Proje Detay 6 tab (Dashboard/Görevler/Timeline/Ekip/İletişim/Dosyalar)
-- `c55a1b87` Proje: departman bazlı üye seçimi + zengin oluşturma formu
-- `a140f3e7` Fix: Checkbox tıklama (pointer-events-none) + Proje Yöneticisi rolü
-- `5fa3a49e` Denetim v2: DB şeması (9 tablo) + tasarım planı
-- `105d2949` Sprint A: Denetim şablon yönetimi backend API (15 endpoint)
-- `b2adcb54` Sprint A: Denetim şablon yönetimi UI (kategori + 7 soru tipi)
-- `bfab23a7` Sprint B: Denetim formu (3 adım + personel denetimi + otomatik skor)
-- `7da94e90` Sprint C: Denetim detay sayfa + aksiyon yönetimi + SLA
-- `bfecfaa4` Sprint D: Denetim geçmişi trend raporlama + şube filtre
-- `816c7754` Dobody Agent Plan (revize — girdi güvenliği + 8 workflow + öğrenme)
-- `1c74f440` AGENTS.md — AI agent kural dosyası
+## 5 Nisan 2026
+- `e09d4aac` DobodyProposalWidget: 4 dashboard entegrasyonu (CEO/CGO/Coach/Supervisor)
+- `74a851cc` Hotfix: expiresAt Date dönüşümü + dobodyLearning import
+- `e54d4f78` Dobody-3: Haftalık brief (WF-8) + expired cleanup + öğrenme
+- `bfb4333a` Hotfix: Dedup roleTarget + count return kontrolü
+- `7545c7f8` Dobody-2: Workflow engine (WF-1,2,6,7) + SLA check
+- `e0088e9e` Dobody-1: 5 DB tablo + 9 API endpoint + STATUS güncelleme
+- Scope seed endpoint: 21 rol için erişim kuralları
 
-## 4 Nisan 2026 (1. Oturum)
-- `7665845` Proje sistemi planı (5 perspektif analiz)
-- `35ba507f` Devir teslim raporu (243 satır)
+## 4 Nisan 2026
+- `e1526975` Proje v2 Sprint 1: 6 tab detay sayfası
+- `b2adcb54` Denetim v2 Sprint A: Şablon yönetimi (15 endpoint)
+- `bfab23a7` Sprint B: Denetim formu (7 soru tipi + personel)
+- `7da94e90` Sprint C: Aksiyon + SLA + detay sayfa
+- `bfecfaa4` Sprint D: Trend raporlama + şube filtre
+- `1c74f440` AGENTS.md: AI agent kural dosyası
+- `90da5df0` 5 doküman: STATUS, CHANGELOG, BUSINESS-RULES, FACTORY, ROLES
+- `a587046d` PDKS-PAYROLL-SYSTEM.md
+- `887e4662` 10 sistem dokümanı (ekipman, stok, eğitim, CRM, bildirim...)
+- `816c7754` Dobody Agent Plan (revize)
 
 ## 3 Nisan 2026
-- Shift attendance mimari fix (her check-in'de kayıt)
+- Shift attendance mimari fix
 - Ekipman Mega Modül v2 (4→9 sidebar)
-- Fabrika haftalık üretim planı UI
-- Ana sayfa kart reorganizasyonu (CEO 14→8, CGO 15→9, Admin 17→10)
-- 19 orphan sayfa bağlandı
-- Sistem Atölyesi v3 (5 tab)
-- Cowork 5/5 tab
+- Ana sayfa kart reorganizasyonu
 - Seed data 35 gün genişletildi
 
 ## Mart 2026
 - Control Centrum v4 (16 rol dashboard)
-- Centrum Design System (CentrumShell + 7 bileşen)
-- İK Sprint 3 (7 dosyaya bölündü, useIKScope hook)
-- Manifest sistemi Sprint 2 (12 modül, 60 alt modül)
+- İK Sprint 3 (useIKScope hook)
+- Manifest sistemi Sprint 2
 - Sistem sağlığı 7.5→9.5/10
-- Mr. Dobody boş şube filtresi + 6-boyut sağlık skoru
-- Franchise eksik özellikler planı

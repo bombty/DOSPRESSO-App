@@ -217,4 +217,47 @@ router.post('/api/dobody/cleanup', isAuthenticated, async (_req, res) => {
   }
 });
 
+// POST /api/dobody/seed-scopes — Tüm roller için scope tanımla (ilk kurulum)
+router.post('/api/dobody/seed-scopes', isAuthenticated, async (_req, res) => {
+  try {
+    const existing = await db.select({ count: sql<number>`count(*)::int` }).from(dobodyScopes);
+    if (Number(existing[0]?.count || 0) > 0) {
+      return res.json({ message: "Scope'lar zaten tanımlı", count: existing[0].count });
+    }
+
+    const scopes = [
+      // HQ — tüm şubeleri görür
+      { role: 'ceo', allowedModules: ['denetim','proje','vardiya','stok','ekipman','egitim','crm','muhasebe','fabrika','pdks'], blockedKeywords: [], branchScope: 'all', maxDetailLevel: 'full' },
+      { role: 'cgo', allowedModules: ['denetim','proje','vardiya','stok','ekipman','egitim','crm','fabrika'], blockedKeywords: ['tckn','banka'], branchScope: 'all', maxDetailLevel: 'full' },
+      { role: 'admin', allowedModules: ['denetim','proje','vardiya','stok','ekipman','egitim','crm','muhasebe','fabrika','pdks'], blockedKeywords: [], branchScope: 'all', maxDetailLevel: 'full' },
+      { role: 'coach', allowedModules: ['denetim','egitim','vardiya','checklist','proje'], blockedKeywords: ['maliyet','fiyat','maas','tedarikci','tckn','banka'], branchScope: 'all', maxDetailLevel: 'detail' },
+      { role: 'trainer', allowedModules: ['egitim','denetim','checklist'], blockedKeywords: ['maliyet','fiyat','maas','tedarikci','tckn','banka'], branchScope: 'all', maxDetailLevel: 'detail' },
+      { role: 'muhasebe', allowedModules: ['muhasebe','pdks','vardiya','stok'], blockedKeywords: ['tckn'], branchScope: 'all', maxDetailLevel: 'full' },
+      { role: 'muhasebe_ik', allowedModules: ['muhasebe','pdks','vardiya'], blockedKeywords: [], branchScope: 'all', maxDetailLevel: 'full' },
+      { role: 'satinalma', allowedModules: ['stok','fabrika'], blockedKeywords: ['maas','tckn','banka'], branchScope: 'all', maxDetailLevel: 'detail' },
+      { role: 'marketing', allowedModules: ['crm','proje'], blockedKeywords: ['maas','maliyet','tckn'], branchScope: 'all', maxDetailLevel: 'summary' },
+      { role: 'kalite_kontrol', allowedModules: ['denetim','fabrika','checklist'], blockedKeywords: ['maas','tckn'], branchScope: 'all', maxDetailLevel: 'detail' },
+      { role: 'destek', allowedModules: ['ekipman','crm'], blockedKeywords: ['maas','maliyet','tckn'], branchScope: 'all', maxDetailLevel: 'summary' },
+      { role: 'yatirimci_hq', allowedModules: ['denetim','proje'], blockedKeywords: ['maas','tckn','banka','maliyet'], branchScope: 'all', maxDetailLevel: 'summary' },
+      // Şube — sadece kendi şubesi
+      { role: 'mudur', allowedModules: ['vardiya','checklist','stok','denetim','ekipman'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka'], branchScope: 'own', maxDetailLevel: 'detail' },
+      { role: 'yatirimci_branch', allowedModules: ['denetim','vardiya'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka'], branchScope: 'own', maxDetailLevel: 'summary' },
+      { role: 'supervisor', allowedModules: ['vardiya','checklist','stok','ekipman'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka','muhasebe'], branchScope: 'own', maxDetailLevel: 'detail' },
+      { role: 'supervisor_buddy', allowedModules: ['vardiya','checklist'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka','muhasebe'], branchScope: 'own', maxDetailLevel: 'summary' },
+      { role: 'barista', allowedModules: ['vardiya','checklist','egitim'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka','muhasebe','denetim'], branchScope: 'own', maxDetailLevel: 'summary' },
+      { role: 'bar_buddy', allowedModules: ['vardiya','egitim'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka','muhasebe','denetim','stok'], branchScope: 'own', maxDetailLevel: 'summary' },
+      { role: 'stajyer', allowedModules: ['egitim'], blockedKeywords: ['maas','maliyet','fiyat','tedarikci','tckn','banka','muhasebe','denetim','stok'], branchScope: 'own', maxDetailLevel: 'summary' },
+      // Fabrika
+      { role: 'fabrika_mudur', allowedModules: ['fabrika','stok','ekipman','vardiya'], blockedKeywords: ['maas','tckn','banka'], branchScope: 'none', maxDetailLevel: 'full' },
+      { role: 'fabrika_personel', allowedModules: ['fabrika','vardiya'], blockedKeywords: ['maas','maliyet','fiyat','tckn','banka','muhasebe'], branchScope: 'none', maxDetailLevel: 'summary' },
+    ];
+
+    await db.insert(dobodyScopes).values(scopes as any);
+    res.json({ success: true, count: scopes.length });
+  } catch (error) {
+    console.error("Seed scopes error:", error);
+    res.status(500).json({ message: "Scope seed başarısız" });
+  }
+});
+
 export default router;
