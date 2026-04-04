@@ -142,3 +142,49 @@ Her fazda:
 - project_task_dependencies tablosu var — Gantt bağımlılık gösterebilir
 - project_budget_lines tablosu var — bütçe takibi için hazır
 - API'ler branches.ts'te — ayrı projects-routes.ts'e taşınmalı
+
+## UI/UX OPTİMİZASYON BULGULARI
+
+### UI/UX Sorunları:
+- Proje listesi çok sade — geciken görev sayısı, renk kodu yok
+- Proje detayda "Görevler" tab'ı YOK (en önemli tab eksik!)
+- 15 faz kartı mobilde kalabalık (4 kolon → scroll gerekli)
+- Timeline/Gantt görünümü tamamen eksik
+- "Bugün benden beklenen" kişisel görünüm yok
+
+### Kullanıcı (Çalışan) Sorunları:
+- Görev atandığında bildirim yok
+- Cross-project "Görevlerim" görünümü yok
+- Görev tamamlamada fotoğraf/onay akışı yok
+- Dış paydaş (usta, mimar) sisteme erişemiyor
+- Mobil UX masaüstü odaklı
+
+### Yönetici (CEO/CGO) Sorunları:
+- Proje portfolio dashboard yok (tüm projeler tek ekran)
+- Traffic light (🟢🟡🔴) sistemi yok
+- İş yükü dağılım haritası yok
+- Bütçe vs gerçekleşen karşılaştırma yok
+- Otomatik risk tespiti yok (geciken faz = risk)
+
+### Operasyonel Verimlilik:
+- Şablon kütüphanesi yok (her proje sıfırdan)
+- Alt görev tamamlanınca faz otomatik ilerlemeli
+- Proje kapanışta "öğrenilen dersler" formu yok
+- Proje bazlı Cowork kanalı otomatik oluşmuyor
+
+### Entegrasyon Eksikleri:
+- Proje → Ekipman bağlantısı yok
+- Proje → İK onboarding bağlantısı yok
+- Proje → Muhasebe/bütçe bağlantısı yok
+- Milestone → Ajanda sync yok
+
+## ARŞİV SİSTEMİ
+- status: "archived" eklenecek
+- Tamamlanan proje → "Arşivle" → salt okunur
+- Arşiv tab'ı (ayrı görünüm)
+- Arşivden çıkarma mümkün
+
+## PROJE ŞABLONLARİ
+- Boş Proje, Franchise Açılış (15 faz), Kampanya, IT Proje
+- Şablonlar düzenlenebilir (faz ekle/sil/sırala)
+- Admin özel şablon oluşturabilir
