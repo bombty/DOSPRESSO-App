@@ -7,6 +7,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
 import { isHQRole } from "@shared/schema";
+import { fireEvent } from "../lib/dobody-workflow-engine";
 import { eq, desc, asc, and, sql, inArray, isNull, count } from "drizzle-orm";
 import {
   auditTemplatesV2,
@@ -627,6 +628,16 @@ router.patch('/api/v2/audits/:id/complete', isAuthenticated, async (req, res) =>
       .returning();
 
     if (!updated) return res.status(404).json({ message: "Denetim bulunamadı" });
+
+    // Dobody WF-1: Denetim tamamlandı → analiz + öneri
+    try {
+      const branchInfo = await db.select({ name: branches.name }).from(branches).where(eq(branches.id, updated.branchId!)).limit(1);
+      fireEvent('audit_completed', 'denetim', 'audit', auditId, {
+        auditId, branchId: updated.branchId, totalScore: updated.totalScore,
+        branchName: branchInfo[0]?.name || 'Bilinmiyor',
+      });
+    } catch (e) { /* event hatası denetimi engellemez */ }
+
     res.json(updated);
   } catch (error) {
     console.error("Complete audit error:", error);

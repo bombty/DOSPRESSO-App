@@ -181,4 +181,16 @@ async function updateConfidence(workflowType: string, role: string, approved: bo
   } catch (error) { console.error("Update confidence error:", error); }
 }
 
+// POST /api/dobody/check-sla — SLA kontrol tetikle (periodik)
+router.post('/api/dobody/check-sla', isAuthenticated, async (_req, res) => {
+  try {
+    const { checkPendingActions } = await import("../lib/dobody-workflow-engine");
+    const result = await checkPendingActions();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("Check SLA error:", error);
+    res.status(500).json({ message: "SLA kontrol başarısız" });
+  }
+});
+
 export default router;
