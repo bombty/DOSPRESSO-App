@@ -28,6 +28,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { AnnouncementAnalytics } from "@/components/AnnouncementAnalytics";
 
 const priorityLabels: Record<string, string> = {
   normal: "Normal",
@@ -830,7 +831,7 @@ export default function Announcements() {
                         data-testid={`button-read-status-${announcement.id}`}
                       >
                         <Eye className="w-3 h-3 mr-1" />
-                        Okuma
+                        Analitik
                       </Button>
                       <Button
                         variant="ghost"
@@ -928,44 +929,14 @@ export default function Announcements() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={readStatusDialogOpen} onOpenChange={setReadStatusDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Okuma Durumu
-            </DialogTitle>
-          </DialogHeader>
-          {readStatus ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <span className="font-medium">Okuyan</span>
-                <span className="text-xl font-bold">
-                  {readStatus.readCount} / {readStatus.totalTargetUsers}
-                </span>
-              </div>
-              {readStatus.readers.length > 0 && (
-                <ScrollArea className="h-48">
-                  <div className="space-y-2">
-                    {readStatus.readers?.map((reader, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
-                        <span className="text-sm">{reader.username}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(reader.readAt), "d MMM HH:mm", { locale: tr })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center p-8">
-              <Skeleton className="h-20 w-full" />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AnnouncementAnalytics
+        announcementId={selectedAnnouncementId}
+        open={readStatusDialogOpen}
+        onClose={() => {
+          setReadStatusDialogOpen(false);
+          setSelectedAnnouncementId(null);
+        }}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {

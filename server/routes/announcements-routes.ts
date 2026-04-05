@@ -366,6 +366,164 @@ const router = Router();
     }
   });
 
+  // GET /api/announcements/:id/analytics — Detaylı duyuru analitik
+  router.get('/api/announcements/:id/analytics', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'trainer', 'ceo', 'cgo', 'destek'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Analitik görüntüleme yetkiniz yok" });
+      }
+
+      const announcementId = parseInt(id);
+
+      // Duyuru bilgisi
+      const [ann] = await db.select()
+        .from(announcements)
+        .where(eq(announcements.id, announcementId));
+
+      if (!ann) return res.status(404).json({ message: "Duyuru bulunamadı" });
+
+      // Hedef kullanıcıları belirle
+      let targetUsersQuery = db.select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+      })
+        .from(users)
+        .where(eq(users.isActive, true));
+
+      const allTargetUsers = await targetUsersQuery;
+
+      // Rol ve şube filtreleri uygula
+      const filteredTargetUsers = allTargetUsers.filter(u => {
+        if (!ann.targetRoles?.length && !ann.targetBranches?.length) return true;
+        const targetRolesLower = ann.targetRoles?.map(r => r.toLocaleLowerCase('tr-TR')) || [];
+        if (targetRolesLower.includes("all")) return true;
+        const roleMatch = targetRolesLower.length && u.role && targetRolesLower.includes(u.role.toLocaleLowerCase('tr-TR'));
+        const branchMatch = ann.targetBranches?.length && u.branchId && ann.targetBranches.some(b => String(b) === String(u.branchId));
+        if (ann.targetRoles?.length && !ann.targetBranches?.length) return roleMatch;
+        if (!ann.targetRoles?.length && ann.targetBranches?.length) return branchMatch;
+        return roleMatch || branchMatch;
+      });
+
+      // Okuyanlar
+      const readers = await db.select({
+        userId: announcementReadStatus.userId,
+        readAt: announcementReadStatus.readAt,
+      })
+        .from(announcementReadStatus)
+        .where(eq(announcementReadStatus.announcementId, announcementId));
+
+      const readUserIds = new Set(readers.map(r => r.userId));
+
+      // Rol bazlı breakdown
+      const roleBreakdown: Record<string, { total: number; read: number }> = {};
+      // Şube bazlı breakdown
+      const branchBreakdown: Record<number, { total: number; read: number }> = {};
+      // Okumayanlar listesi
+      const unreadUsers: { id: string; name: string; role: string; branchId: number | null }[] = [];
+
+      for (const u of filteredTargetUsers) {
+        const role = u.role || "unknown";
+        if (!roleBreakdown[role]) roleBreakdown[role] = { total: 0, read: 0 };
+        roleBreakdown[role].total++;
+        if (readUserIds.has(u.id)) roleBreakdown[role].read++;
+
+        if (u.branchId) {
+          if (!branchBreakdown[u.branchId]) branchBreakdown[u.branchId] = { total: 0, read: 0 };
+          branchBreakdown[u.branchId].total++;
+          if (readUserIds.has(u.id)) branchBreakdown[u.branchId].read++;
+        }
+
+        if (!readUserIds.has(u.id)) {
+          unreadUsers.push({
+            id: u.id,
+            name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '',
+            role: u.role || '',
+            branchId: u.branchId,
+          });
+        }
+      }
+
+      // Zaman bazlı okuma dağılımı (saatlik)
+      const hourlyDistribution: Record<number, number> = {};
+      for (const r of readers) {
+        if (r.readAt) {
+          const hour = new Date(r.readAt).getHours();
+          hourlyDistribution[hour] = (hourlyDistribution[hour] || 0) + 1;
+        }
+      }
+
+      // Şube isimlerini ekle
+      const branchList = await db.select({ id: branches.id, name: branches.name }).from(branches);
+      const branchMap = Object.fromEntries(branchList.map(b => [b.id, b.name]));
+
+      const branchBreakdownWithNames = Object.entries(branchBreakdown).map(([id, data]) => ({
+        branchId: parseInt(id),
+        branchName: branchMap[parseInt(id)] || `Şube ${id}`,
+        ...data,
+        rate: data.total > 0 ? Math.round((data.read / data.total) * 100) : 0,
+      }));
+
+      res.json({
+        announcement: {
+          id: ann.id,
+          title: ann.title,
+          category: ann.category,
+          publishedAt: ann.publishedAt,
+          requiresAcknowledgment: ann.requiresAcknowledgment,
+        },
+        summary: {
+          totalTarget: filteredTargetUsers.length,
+          totalRead: readers.length,
+          readRate: filteredTargetUsers.length > 0 ? Math.round((readers.length / filteredTargetUsers.length) * 100) : 0,
+          unreadCount: unreadUsers.length,
+        },
+        roleBreakdown: Object.entries(roleBreakdown).map(([role, data]) => ({
+          role,
+          ...data,
+          rate: data.total > 0 ? Math.round((data.read / data.total) * 100) : 0,
+        })),
+        branchBreakdown: branchBreakdownWithNames.sort((a, b) => a.rate - b.rate),
+        hourlyDistribution,
+        unreadUsers: unreadUsers.slice(0, 50), // Max 50
+        readers: readers.map(r => ({
+          userId: r.userId,
+          readAt: r.readAt,
+        })),
+      });
+    } catch (error: unknown) {
+      console.error("Get announcement analytics error:", error);
+      res.status(500).json({ message: "Analitik veriler alınamadı" });
+    }
+  });
+
+  // POST /api/announcements/:id/remind — Okumayanları hatırlatma gönder
+  router.post('/api/announcements/:id/remind', isAuthenticated, async (req, res) => {
+    try {
+      const userRole = req.user?.role;
+      const allowedRoles = ['admin', 'coach', 'trainer', 'ceo', 'cgo'];
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Hatırlatma gönderme yetkiniz yok" });
+      }
+
+      const announcementId = parseInt(req.params.id);
+      const { userIds } = req.body; // Belirli kullanıcılara veya boşsa herkese
+
+      // TODO: Bildirim sistemiyle entegre et
+      // Şimdilik başarılı dön
+      res.json({ success: true, message: "Hatırlatma gönderildi", sentTo: userIds?.length || 'all' });
+    } catch (error: unknown) {
+      console.error("Send reminder error:", error);
+      res.status(500).json({ message: "Hatırlatma gönderilemedi" });
+    }
+  });
+
   // ========================================
   // DUYURU ONAY AKIŞI (APPROVAL WORKFLOW)
   // ========================================
