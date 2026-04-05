@@ -864,6 +864,9 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
   id: true,
   createdAt: true,
   publishedAt: true,
+  createdById: true,
+  updatedAt: true,
+  deletedAt: true,
 }).extend({
   attachments: z.array(z.string()).default([]),
 });
