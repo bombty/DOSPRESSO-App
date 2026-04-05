@@ -173,10 +173,25 @@ Yeni: /api/dobody/generate-ai-message (AI) — dobody-message-generator.ts
 - [ ] Kiosk'ta vardiya başı zorunlu okuma (ayrı oturum — kiosk 2186 satır)
 
 ### Sprint 4: Analitik + Dobody
-- [ ] Okuma/onay/tıklama oranları + rol/şube breakdown
-- [ ] Dobody 18. event: announcement_followup
-- [ ] "3 barista reçete değişikliğini onaylamadı" → hatırlatma + eskalasyon
-- [ ] Görev tamamlama takibi
+- [x] Analitik Dashboard (commit `fab1984`) — rol/şube/saatlik breakdown
+  4 özet kart + progress bar'lar + histogram + okumayanlar listesi + hatırlatma
+- [x] Dobody 18. event: announcement_followup (commit `9958462`)
+  3 senaryo: kritik okuma düşük → Coach, normal 48h düşük → Trainer, şube=0 → Coach
+  Periyodik checker: checkAnnouncementFollowups()
+- [ ] Görev tamamlama takibi (sonraki oturum)
+
+### Bug Fix'ler (Self-review, commit `5818bb8`)
+- [x] BUG#2: POST /api/announcements → /api/admin/announcements (endpoint mismatch)
+- [x] BUG#3: Acknowledgment — isRead kontrolü kaldırıldı (okuma ≠ onay)
+- [x] BUG#4: Status filtresi eklendi (taslak duyurular gizlendi)
+- [x] BUG#5: TipTap infinite loop — isExternalUpdate ref guard
+
+### Denetim Sistemi Genişletme
+- [x] 6 denetim şablonu, ~175 madde (seed-audit-templates.ts)
+- [x] Personel değerlendirme: 45 madde, 6 alt kategori, güler yüz %30
+- [x] personnel_audit_scores tablosu (personel skor agregasyonu)
+- [x] audit_personnel_feedback tablosu (denetçi→personel geri bildirim)
+- [x] 6 yeni API endpoint (my-results, my-feedback, respond, branch-scores...)
 
 ---
 
