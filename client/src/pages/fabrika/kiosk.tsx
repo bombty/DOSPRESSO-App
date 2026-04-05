@@ -1476,8 +1476,7 @@ export default function FactoryKiosk() {
                 <Button
                   className="h-24 text-lg flex flex-col items-center gap-2 bg-indigo-600"
                   onClick={() => {
-                    setStep('select-user'); // Kiosk'tan çık
-                    window.location.href = '/fabrika/uretim-planlama';
+                    setLocation('/fabrika/uretim-planlama');
                   }}
                   data-testid="button-uretim-planla"
                 >
