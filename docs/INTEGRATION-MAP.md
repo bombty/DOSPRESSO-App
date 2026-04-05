@@ -55,3 +55,54 @@
 ⚠️ Offline veri sync (henüz yok)
 ⚠️ Background sync (henüz yok)
 ```
+
+---
+
+## AI PROVIDER SİSTEMİ (Multi-Provider Hazır)
+
+### Mevcut Mimari:
+```
+server/ai.ts              — Ana AI yapılandırma + provider yönetimi
+server/services/ai-client.ts — Soyutlama katmanı (provider-agnostik)
+
+Desteklenen provider'lar:
+  1. OpenAI (GPT-4o, GPT-4o-mini) — varsayılan
+  2. Anthropic (Claude Sonnet/Opus) — hazır, API key gerekli
+  3. Gemini (gemini-2.0-flash) — hazır, API key gerekli
+```
+
+### Provider Değiştirme:
+```
+Admin paneli → AI Ayarları → Provider seç
+  → API key gir → Model seç → Kaydet
+  → Sistem otomatik yeni provider'a geçer
+  → Tüm AI çağrıları (Dobody, analiz, görsel) yeni provider'ı kullanır
+```
+
+### Teknik Detay:
+```
+ai-client.ts → chat() fonksiyonu:
+  1. getAIConfig() → DB'den aktif provider'ı çek
+  2. Provider'a göre model seç (OpenAI/Claude/Gemini)
+  3. İstek gönder (OpenAI SDK veya Anthropic REST)
+  4. Standart response formatına dönüştür
+  5. Cache + rate limiter uygula
+
+Provider değiştiğinde KOD DEĞİŞİKLİĞİ GEREKMEZ.
+Sadece admin panelinden API key + provider seçilir.
+```
+
+### Env Variables:
+```
+AI_INTEGRATIONS_OPENAI_API_KEY — OpenAI key
+AI_INTEGRATIONS_OPENAI_BASE_URL — OpenAI base URL (özel endpoint için)
+ANTHROPIC_API_KEY — Claude API key (DB'den de okunabilir)
+GEMINI_API_KEY — Gemini API key (DB'den de okunabilir)
+```
+
+### Kullanım Alanları:
+- Mr. Dobody analiz + öneri üretimi
+- Fotoğraf analizi (denetim, arıza)
+- Metin özetleme
+- Embedding (bilgi bankası arama)
+- AI rapor oluşturma
