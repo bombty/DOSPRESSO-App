@@ -1,95 +1,68 @@
-# DOSPRESSO Devir Teslim — 5 Nisan 2026 (Oturum 2)
+# DOSPRESSO Devir Teslim — 5 Nisan 2026 (Final)
 
-## ACİL DÜZELTME GEREKLİ (Barista Perspektifinden Bulunan Bug'lar)
+## BU OTURUMDA TAMAMLANAN İŞLER (~25 commit)
 
-### BUG-1: Barista "Benim Günüm" React Crash (KRİTİK)
-- Sayfa: personel-centrum.tsx (veya benim-gunum bileşeni)
-- Hata: "Rendered more hooks than during the previous render"
-- Sebep: Koşullu hook çağrısı (if içinde useQuery veya useState)
-- Etki: Barista ana sayfası tamamen çöküyor
-- Fix: Koşullu hook'ları bileşen dışına taşı veya early return öncesine al
-- Screenshot: IMG_1479
+### Dobody Agent Sistemi — 10 Sprint ✅
+| Sprint | İçerik | Durum |
+|--------|--------|:-----:|
+| 1 | DB (5 tablo) + API (9 endpoint) | ✅ |
+| 2 | Workflow Engine (WF-1,2,6,7) | ✅ |
+| 3 | Haftalık Brief + Cleanup | ✅ |
+| 4 | Güvenlik Test | ✅ |
+| 5 | Aksiyon Yürütme + 27 Rol Scope | ✅ |
+| 6 | 6 Modül + Sistem Sağlık İzleme | ✅ |
+| 7 | Gruplu Aksiyon + Toplu Onay | ✅ |
+| 8 | CRM + Fabrika Event Bağlantıları | ✅ |
+| 9 | AI Mesaj Üretimi (multi-provider) | ✅ |
+| 10 | Özel Dönemler + Veri Kalitesi | ✅ |
 
-### BUG-2: Barista "İzin Yönetimi" Crash
-- Sayfa: İK modülü → İzin Talepleri
-- Hata: "Bir hata oluştu — Beklenmeyen bir hata meydana geldi"
-- Sebep: Muhtemelen null veri veya API hatası
-- Etki: Barista izin talebi oluşturamıyor
-- Screenshot: IMG_1476
+Final: 17 event, 12 modül, 27 rol scope, 5 tablo, 16+ endpoint
 
-### BUG-3: Şube Ekipman Listesi Boş
-- Sayfa: Ekipman modülü (barista perspektifi)
-- Durum: Dashboard'da 8 ekipman görünüyor ama liste boş/tıklanamaz
-- Sebep: branchId scope filtresi veya ekipman-şube bağlantısı eksik
-- Screenshot: IMG_1480
+### Proje & Denetim
+- Proje v2 Sprint 1: 6 tab portfolio dashboard ✅
+- Denetim v2 Sprint A-D: şablon, form, aksiyon, SLA, trend ✅
 
-### BİLGİ: Çalışan Sayfalar (Barista)
-- Akademi/Onboarding: ✅ Çalışıyor (IMG_1478)
-- Mesai Talepleri: ✅ Çalışıyor, 0 kayıt (IMG_1477)
-- Yeni Arıza Bildirimi: ✅ Çalışıyor (IMG_1481)
+### Sistem Atölyesi v4
+- 20 akış (modül filtre + yön göstergesi) ✅
+- Roller tab: her rolün akışları ✅
+- Canlı endpoint testi (diagnostic) ✅
 
----
+### Bug Fix'ler
+- Barista "Benim Günüm" hooks crash ✅
+- Barista "İzin Yönetimi" crash ✅
+- Ekipman + Stok manifest eksik roller ✅
+- TÜM modüllerde eksik roller tamamlandı ✅
+- Çift yetki sistemi (manifest + PERMISSIONS) uyarısı ✅
 
-## SİSTEM ATÖLYESİ DİAGNOSTİK ÖZELLİĞİ (Planlanan)
+### Dokümantasyon (19+ dosya)
+AGENTS.md, STATUS.md, CHANGELOG.md, ROLES-AND-PERMISSIONS (27 rol),
+DOBODY-AGENT-PLAN (16 bölüm), BUSINESS-RULES, INTEGRATION-MAP,
+FACTORY, PDKS-PAYROLL, EQUIPMENT, STOCK, EDUCATION, CRM,
+CHECKLIST, NOTIFICATION, KPI-SCORING, DATA-PRIVACY-KVKK,
+DENETIM-PLAN, PROJE-PLAN, SISTEM-ATOLYESI-PLAN
 
-### Aslan'ın İsteği:
-Sistem Atölyesi'nde tek bir yerden:
-- Hangi sayfalar çalışıyor, hangisi kırık
-- Her rolün her sayfasındaki durum (✅ / ❌ / ⚠️)
-- Akışlardaki kırık adımlar
-- Link akışları (A sayfası → B sayfası → çalışıyor mu?)
-- Fonksiyon akışları (API call → DB sorgusu → sonuç)
+## ÖNEMLİ TEKNİK NOTLAR
 
-### Teknik Yaklaşım:
-1. Backend: `/api/system/health-check` endpoint
-   - Her modülün API endpoint'lerini çağırır
-   - Sonucu (200/401/403/500) kaydeder
-   - Rol bazlı test (barista olarak, coach olarak...)
+1. **Çift yetki sistemi:** module-manifest.ts (yeni) + schema-02.ts PERMISSIONS (eski). İkisini birlikte güncelle!
 
-2. Frontend: Sağlık tab'ına "Sayfa Durumu" bölümü
-   - Rol × Sayfa matrisi (ısı haritası)
-   - Tıklanabilir: hangi sayfa hangi rolde kırık
-   - Son test tarihi + sonucu
+2. **AI endpoint çakışması:** Eski `dobody-generate-message.ts` (template) vs yeni `dobody-message-generator.ts` (AI). Yeni endpoint: `/api/dobody/generate-ai-message`
 
-3. Otomatik güncelleme:
-   - Her deploy sonrası health check çalıştır
-   - Kırık sayfa → Dobody uyarı oluştur
+3. **Frontend crash raporlama:** ErrorBoundary → POST /api/system/crash-report → Dobody → Admin proposal
 
-### Bu Özellik İçin Sprint Planı:
-- Sprint SA-1: Health check API + temel matris UI
-- Sprint SA-2: Rol bazlı test + akış doğrulama
-- Sprint SA-3: Otomatik güncelleme + Dobody entegrasyonu
+## BEKLEYEN İŞLER (SONRAKİ OTURUM)
 
----
+### Kısa Vadeli
+- [ ] Duyuru düzenleme sorunları (detay bekleniyor)
+- [ ] Kiosk token bug doğrulama
+- [ ] Eski `dobody-generate-message.ts` ile yeni AI generator birleştirme
 
-## BU OTURUMDA TAMAMLANAN İŞLER
+### Orta Vadeli
+- [ ] Sistem Atölyesi: frontend crash tespiti + sayfa sağlık matrisi
+- [ ] Centrum'a proje portfolio widget
+- [ ] Dashboard'a duyuru + görevlerim widget
+- [ ] Dobody otonom eşik: güven %90+ → onaysız aksiyon
 
-### Kod (14 commit):
-- Proje v2 Sprint 1: 6 tab portfolio dashboard
-- Denetim v2 Sprint A-D: şablon, form, aksiyon, SLA, trend
-- Dobody Sprint 1-3: 5 tablo, 8 workflow, öğrenme, brief
-- DobodyProposalWidget: 4 dashboard entegrasyonu
-- Sistem Atölyesi v4: 20 akış, modül filtre, yön göstergesi
-
-### Dokümantasyon (19 dosya):
-AGENTS.md, STATUS.md, CHANGELOG.md
-docs/: BUSINESS-RULES, ROLES-AND-PERMISSIONS, FACTORY-SYSTEM,
-PDKS-PAYROLL-SYSTEM, EQUIPMENT-SYSTEM, STOCK-INVENTORY-SYSTEM,
-EDUCATION-ACADEMY, CRM-CUSTOMER-SYSTEM, CHECKLIST-SYSTEM,
-NOTIFICATION-SYSTEM, KPI-SCORING-SYSTEM, DATA-PRIVACY-KVKK,
-INTEGRATION-MAP, API-CATALOG, DOBODY-AGENT-PLAN,
-DENETIM-SISTEMI-PLAN, PROJE-SISTEMI-PLAN, SISTEM-ATOLYESI-PLAN
-
-### Skills (3 güncellendi):
-dospresso-architecture, dospresso-quality-gate, dospresso-debug-guide
-
----
-
-## SONRAKİ OTURUM ÖNCELİKLERİ
-
-1. BUG-1 düzelt (Barista ana sayfa crash) — ACİL
-2. BUG-2 düzelt (İzin Yönetimi crash)
-3. BUG-3 düzelt (Ekipman listesi boş)
-4. Sistem Atölyesi diagnostic özelliği Sprint SA-1
-5. Tüm rollerin tüm sayfalarını test et
-6. Duyuru düzenleme bug'ı (hala detay bekleniyor)
+### Uzun Vadeli
+- [ ] Dinamik yetki kaydırma UI (admin paneli)
+- [ ] Dobody GPT-4o cross-branch analiz
+- [ ] Franchise missing features (upselling, NPS, Excel import)
