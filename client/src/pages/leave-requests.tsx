@@ -81,7 +81,7 @@ export default function LeaveRequestsPage() {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.append("status", statusFilter);
       
-      const res = await fetch(`/api/leave-requests?${params}`);
+      const res = await fetch(`/api/leave-requests?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error(res.statusText);
       return res.json();
     },

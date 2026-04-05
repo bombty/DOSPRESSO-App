@@ -39,13 +39,14 @@ export default function PersonelCentrum() {
   });
 
   const { data: dobodyActions = [] } = useQuery<any[]>({ queryKey: ["/api/agent/actions", "pending"], queryFn: async () => { const r = await fetch("/api/agent/actions?status=pending&limit=5", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.data || d.actions || []); } });
-  if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
+
+  if (isLoading || !user) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>;
 
   const lostItem = lostFound?.items?.[0] ?? null;
   const streak = streakData?.currentStreak ?? 0;
   const score = briefing?.performanceScore ?? 0;
-  const tasks = briefing?.todayTasks ?? [];
-  const trainings = briefing?.trainings ?? [];
+  const tasks = Array.isArray(briefing?.todayTasks) ? briefing.todayTasks : [];
+  const trainings = Array.isArray(briefing?.trainings) ? briefing.trainings : [];
 
   const feedbackItems = (feedbackData?.recent ?? []).slice(0, 3).map((f: any) => ({
     id: f.id, rating: f.rating, comment: f.comment, time: f.timeAgo, source: f.source,
