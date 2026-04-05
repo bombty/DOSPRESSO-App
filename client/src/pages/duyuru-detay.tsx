@@ -1,6 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -105,9 +105,9 @@ export default function DuyuruDetay() {
   });
 
   // İlk açılışta okundu işaretle
-  useState(() => {
+  useEffect(() => {
     if (id) markReadMutation.mutate();
-  });
+  }, [id]);
 
   if (isLoading) {
     return (
