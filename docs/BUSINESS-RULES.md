@@ -117,3 +117,15 @@ Aksiyonlar kapanmadan denetim "Açık" kalır
 SLA aşılırsa → otomatik escalation (CGO'ya)
 Tüm denetim geçmişi sonsuza kadar arşivlenir
 ```
+
+---
+
+## KRİTİK: ÇİFT YETKİ SİSTEMİ
+
+İki ayrı yetki kontrolü var — HER İKİSİ de güncellenmelidir:
+
+1. `shared/module-manifest.ts` → Yeni sistem (modül bazlı, requireManifestAccess)
+2. `shared/schema/schema-02.ts` → Eski PERMISSIONS map (ensurePermission, hasPermission)
+
+Manifest'e rol eklerken schema-02.ts'deki PERMISSIONS haritasını da kontrol et!
+Aksi halde manifest izin verir ama eski kontrol 403 döner.
