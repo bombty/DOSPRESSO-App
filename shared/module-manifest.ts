@@ -272,12 +272,19 @@ export const M06_EKIPMAN: ModuleManifest = {
   ],
   roles: {
     admin:            { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
+    ceo:              { view: true, create: false, edit: false, delete: false, approve: true, scope: 'all_branches' },
+    cgo:              { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
     teknik:           { view: true, create: true, edit: true, delete: false, approve: true, scope: 'all_branches' },
     coach:            { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
-    trainer:            { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    trainer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    fabrika_mudur:    { view: true, create: true, edit: true, delete: false, approve: false, scope: 'all_branches' },
     mudur:            { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     supervisor:       { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     barista:          { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    bar_buddy:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    stajyer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
   },
 };
 
@@ -415,10 +422,16 @@ export const M10_STOK: ModuleManifest = {
   ],
   roles: {
     admin:            { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
-    satinalma:        { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
+    ceo:              { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
     cgo:              { view: true, create: false, edit: false, delete: false, approve: true, scope: 'all_branches' },
+    satinalma:        { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
+    coach:            { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    fabrika_mudur:    { view: true, create: true, edit: true, delete: false, approve: false, scope: 'all_branches' },
     mudur:            { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     supervisor:       { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    barista:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
   },
 };
 
