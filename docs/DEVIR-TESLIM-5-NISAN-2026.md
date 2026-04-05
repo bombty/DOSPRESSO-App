@@ -66,3 +66,81 @@ DENETIM-PLAN, PROJE-PLAN, SISTEM-ATOLYESI-PLAN
 - [ ] Dinamik yetki kaydırma UI (admin paneli)
 - [ ] Dobody GPT-4o cross-branch analiz
 - [ ] Franchise missing features (upselling, NPS, Excel import)
+
+---
+
+## REPLİT AGENT İLE ÇALIŞMA DÜZENİ
+
+### Genel Akış:
+```
+1. Claude (bu sohbet): Büyük feature, mimari değişiklik, yeni modül yazımı
+   → Kod yazar → npm run build (Vite+esbuild) → git commit → git push
+
+2. Aslan: Push sonrası Claude'un hazırladığı talimatı Replit Agent'a yapıştırır
+
+3. Replit Agent: 
+   → git pull --rebase origin main
+   → Server restart
+   → Test eder (API curl, DB kontrol, screenshot)
+   → Bug bulursa küçük hotfix yapar → push
+   → Büyük sorun varsa raporlar
+
+4. Aslan: Replit sonuçlarını (screenshot/rapor) Claude'a gönderir
+   → Döngü devam eder
+```
+
+### Claude Push Sonrası Replit Talimat Formatı:
+```
+[Kısa açıklama] push edildi. Yapman gerekenler:
+
+1. ÖNCE AGENTS.md oku.
+2. git pull --rebase origin main
+3. Server restart
+
+4. TEST — [test adımları]:
+   A) [adım 1]
+   B) [adım 2]
+   ...
+
+5. HATA BULURSAN: küçük fix → push, büyük → raporla
+```
+
+### Replit Agent'ın Yapabileceği İşler:
+- `git pull --rebase` (ASLA `git reset --hard` değil!)
+- Server restart
+- API endpoint testi (curl)
+- DB sorgusu (psql)
+- SQL sütun/tablo adı hotfix'leri (shifts.date → shift_date gibi)
+- Missing import düzeltmeleri
+- Screenshot alma
+- Build test (npm run build)
+
+### Replit Agent'ın YAPMAMASI Gereken İşler:
+- Büyük feature/sayfa yazımı
+- Mimari değişiklik
+- Yeni tablo/schema oluşturma
+- `git reset --hard` (schema fix'leri silinir!)
+
+### GitHub Push Pattern:
+```
+git push https://[TOKEN]@github.com/bombty/DOSPRESSO-App.git HEAD:main
+```
+⚠️ Token ASLA dosya içeriğine yazılmaz — repository kuralı push'u reddeder.
+
+### Build Kuralı:
+Her commit ÖNCE iki build başarılı olmalı:
+```
+npx vite build          # Frontend (React)
+npx esbuild server/...  # Backend (Node.js)
+```
+
+### Sık Karşılaşılan Replit Hotfix'ler:
+| Sorun | Fix |
+|-------|-----|
+| `column X does not exist` | SQL'de doğru sütun adını bul (schema kontrol) |
+| `relation X does not exist` | Tablo adını kontrol et |
+| `ensurePermission reject` | manifest + schema-02 PERMISSIONS'ı birlikte güncelle |
+| `HAVING without GROUP BY` | HAVING → WHERE subquery |
+| `import not found` | Eksik import ekle |
+| `category/metadata sütunu yok` | notifications tablosuna uygun alan kullan |
+
