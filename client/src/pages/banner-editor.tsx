@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Redirect, Link, useLocation } from "wouter";
+import { ImageStudio } from "@/components/ImageStudio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -321,6 +322,10 @@ export default function BannerEditor() {
   const [saveDraftDialogOpen, setSaveDraftDialogOpen] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
+  // Image Studio state
+  const [studioOpen, setStudioOpen] = useState(false);
+  const [studioImage, setStudioImage] = useState("");
+
   // Save as draft mutation - saves to banners table with isActive=false
   const saveDraftMutation = useMutation({
     mutationFn: async (data: { imageUrl: string; title: string }) => {
@@ -489,22 +494,29 @@ export default function BannerEditor() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const src = event.target?.result as string;
-      const newImage: ImageElement = {
-        id: `image-${Date.now()}`,
-        src,
-        x: 100,
-        y: 100,
-        width: 100,
-        height: 100,
-        rotation: 0,
-        scale: 100,
-        borderColor: "transparent",
-        borderWidth: 0,
-      };
-      setImageElements([...imageElements, newImage]);
-      setSelectedElement({ type: "image", id: newImage.id });
+      setStudioImage(src);
+      setStudioOpen(true);
     };
     reader.readAsDataURL(file);
+    // Reset input so same file can be selected again
+    e.target.value = "";
+  };
+
+  const handleStudioComplete = (processedImageUrl: string) => {
+    const newImage: ImageElement = {
+      id: `image-${Date.now()}`,
+      src: processedImageUrl,
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      scale: 100,
+      borderColor: "transparent",
+      borderWidth: 0,
+    };
+    setImageElements([...imageElements, newImage]);
+    setSelectedElement({ type: "image", id: newImage.id });
   };
 
   const updateTextElement = (id: string, updates: Partial<TextElement>) => {
@@ -1686,6 +1698,16 @@ export default function BannerEditor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImageStudio
+        open={studioOpen}
+        imageSrc={studioImage}
+        onClose={() => {
+          setStudioOpen(false);
+          setStudioImage("");
+        }}
+        onComplete={handleStudioComplete}
+      />
     </div>
   );
 }

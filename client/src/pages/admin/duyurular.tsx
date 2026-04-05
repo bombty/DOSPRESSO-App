@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ImageCropper } from "@/components/ImageCropper";
+import { ImageStudio } from "@/components/ImageStudio";
 import { 
   Megaphone, 
   ArrowLeft, 
@@ -828,14 +828,15 @@ export default function AdminDuyurular() {
         </DialogContent>
       </Dialog>
 
-      <ImageCropper
+      <ImageStudio
         open={cropperOpen}
         imageSrc={cropperImage}
         onClose={() => {
           setCropperOpen(false);
           setCropperImage("");
         }}
-        onCropComplete={handleImageCrop}
+        onComplete={handleImageCrop}
+        defaultAspect={3 / 1}
       />
 
       <ConfirmDeleteDialog
