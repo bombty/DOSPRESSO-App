@@ -291,3 +291,77 @@ router.post('/api/dobody/seed-scopes', isAuthenticated, async (_req, res) => {
 });
 
 export default router;
+
+// POST /api/dobody/proposals/bulk-approve — Toplu onay (aynı tipteki önerileri)
+router.post('/api/dobody/proposals/bulk-approve', isAuthenticated, async (req, res) => {
+  try {
+    const { proposalIds, message, recipient, deadline } = req.body;
+    if (!Array.isArray(proposalIds) || proposalIds.length === 0) {
+      return res.status(400).json({ message: "Öneri ID listesi gerekli" });
+    }
+
+    const results = [];
+    for (const id of proposalIds) {
+      try {
+        const [updated] = await db.update(dobodyProposals)
+          .set({ status: 'approved', approvedBy: req.user.id, approvedAt: new Date() })
+          .where(and(eq(dobodyProposals.id, id), eq(dobodyProposals.status, 'pending')))
+          .returning();
+
+        if (updated) {
+          await db.insert(dobodyLearning).values({
+            workflowType: updated.workflowType, proposalId: updated.id,
+            outcome: 'approved', confidenceDelta: '2.0',
+          });
+          await updateConfidence(updated.workflowType, updated.roleTarget, true);
+
+          // Aksiyon yürüt
+          try {
+            const { executeProposalAction } = await import("../lib/dobody-action-executor");
+            const actionResult = await executeProposalAction(id, req.user.id, message, recipient, deadline);
+            results.push({ id, success: true, actionResult });
+          } catch { results.push({ id, success: true, actionResult: null }); }
+        }
+      } catch { results.push({ id, success: false }); }
+    }
+
+    res.json({ approved: results.filter(r => r.success).length, total: proposalIds.length, results });
+  } catch (error) {
+    console.error("Bulk approve error:", error);
+    res.status(500).json({ message: "Toplu onay başarısız" });
+  }
+});
+
+// GET /api/dobody/proposals/grouped — Gruplu önerileri getir
+router.get('/api/dobody/proposals/grouped', isAuthenticated, async (req, res) => {
+  try {
+    const user = req.user;
+    const proposals = await db.select({ proposal: dobodyProposals, branchName: branches.name })
+      .from(dobodyProposals)
+      .leftJoin(branches, eq(branches.id, dobodyProposals.branchId))
+      .where(and(
+        eq(dobodyProposals.status, 'pending'),
+        or(eq(dobodyProposals.userId, user.id), eq(dobodyProposals.roleTarget, user.role)),
+      ))
+      .orderBy(desc(dobodyProposals.createdAt));
+
+    // Workflow tipine göre grupla
+    const groups: Record<string, { workflowType: string; title: string; count: number; priority: string; proposals: any[] }> = {};
+    for (const p of proposals) {
+      const key = p.proposal.workflowType;
+      if (!groups[key]) {
+        groups[key] = { workflowType: key, title: '', count: 0, priority: p.proposal.priority, proposals: [] };
+      }
+      groups[key].count++;
+      groups[key].title = groups[key].count > 1
+        ? `${groups[key].count} ${key === 'WF-5' ? 'şubede vardiya planı eksik' : key === 'WF-3' ? 'şubede stok kritik' : key === 'WF-1' ? 'denetim uyarısı' : 'öneri'}`
+        : p.proposal.title;
+      groups[key].proposals.push({ ...p.proposal, branchName: p.branchName });
+    }
+
+    res.json(Object.values(groups));
+  } catch (error) {
+    console.error("Grouped proposals error:", error);
+    res.status(500).json({ message: "Gruplu öneriler alınamadı" });
+  }
+});
