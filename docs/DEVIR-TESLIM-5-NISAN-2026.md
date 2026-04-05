@@ -166,10 +166,11 @@ Yeni: /api/dobody/generate-ai-message (AI) — dobody-message-generator.ts
 - [ ] Mini quiz + eski/yeni diff görünümü
 
 ### Sprint 3: Header Banner + Kiosk
-- [ ] Üst bar header banner sistemi (rol bazlı otomatik gösterim)
-- [ ] Banner fatigue kontrolü (max 2 aynı anda, frekans sınırı)
-- [ ] Kiosk'ta vardiya başı zorunlu okuma
-- [ ] Dismiss + tekrar gösterme mantığı
+- [x] Üst bar header banner sistemi (rol bazlı, commit `9d3ddf4`)
+- [x] Banner fatigue kontrolü (max 2 aynı anda)
+- [x] Dismiss + tekrar gösterme (kalıcı/geçici)
+- [x] announcement_dismissals tablosu
+- [ ] Kiosk'ta vardiya başı zorunlu okuma (ayrı oturum — kiosk 2186 satır)
 
 ### Sprint 4: Analitik + Dobody
 - [ ] Okuma/onay/tıklama oranları + rol/şube breakdown
