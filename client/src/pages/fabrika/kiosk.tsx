@@ -1471,16 +1471,20 @@ export default function FactoryKiosk() {
                   </Button>
                 )}
 
+                {/* Üretim Planla — sadece fabrika_mudur/fabrika_sorumlu görebilir */}
+                {selectedUser && ['fabrika_mudur', 'fabrika_sorumlu'].includes(selectedUser.role || '') && (
                 <Button
                   className="h-24 text-lg flex flex-col items-center gap-2 bg-indigo-600"
                   onClick={() => {
-                    window.open('/fabrika/uretim-planlama', '_blank');
+                    setStep('select-user'); // Kiosk'tan çık
+                    window.location.href = '/fabrika/uretim-planlama';
                   }}
                   data-testid="button-uretim-planla"
                 >
                   <ClipboardCheck className="h-8 w-8" />
                   Üretim Planla
                 </Button>
+                )}
 
                 <Button
                   className="h-24 text-lg flex flex-col items-center gap-2 bg-orange-500 hover:bg-orange-600"
@@ -1491,7 +1495,7 @@ export default function FactoryKiosk() {
                   data-testid="button-goto-break"
                 >
                   <Coffee className="h-8 w-8" />
-                  Molaya Cik
+                  Molaya Çık
                 </Button>
 
                 <Button
@@ -1505,7 +1509,7 @@ export default function FactoryKiosk() {
                   data-testid="button-goto-fault"
                 >
                   <AlertTriangle className="h-8 w-8" />
-                  Ariza Bildir
+                  Arıza Bildir
                 </Button>
               </div>
 
