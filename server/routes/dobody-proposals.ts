@@ -365,3 +365,41 @@ router.get('/api/dobody/proposals/grouped', isAuthenticated, async (req, res) =>
     res.status(500).json({ message: "Gruplu öneriler alınamadı" });
   }
 });
+
+// GET /api/dobody/data-quality — Veri kalitesi raporu
+router.get('/api/dobody/data-quality', isAuthenticated, async (_req, res) => {
+  try {
+    const { runDataQualityChecks } = await import("../lib/dobody-special-periods");
+    const issues = await runDataQualityChecks();
+    res.json({ timestamp: new Date().toISOString(), issueCount: issues.length, issues });
+  } catch (error) {
+    console.error("Data quality check error:", error);
+    res.status(500).json({ message: "Veri kalitesi kontrolü başarısız" });
+  }
+});
+
+// GET /api/dobody/special-periods — Aktif özel dönemler
+router.get('/api/dobody/special-periods', isAuthenticated, async (_req, res) => {
+  try {
+    const { getActiveSpecialPeriods, getStockThresholdMultiplier, shouldSuppressShiftWarning } = await import("../lib/dobody-special-periods");
+    const periods = getActiveSpecialPeriods();
+    res.json({
+      activePeriods: periods.map(p => ({ name: p.name, type: p.type })),
+      suppressShiftWarnings: shouldSuppressShiftWarning(),
+      stockMultiplier: getStockThresholdMultiplier(),
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Özel dönem kontrolü başarısız" });
+  }
+});
+
+// POST /api/dobody/generate-message — AI ile mesaj üret
+router.post('/api/dobody/generate-message', isAuthenticated, async (req, res) => {
+  try {
+    const { generateContextMessage } = await import("../lib/dobody-message-generator");
+    const message = await generateContextMessage(req.body);
+    res.json({ message });
+  } catch (error) {
+    res.status(500).json({ message: "Mesaj üretilemedi" });
+  }
+});
