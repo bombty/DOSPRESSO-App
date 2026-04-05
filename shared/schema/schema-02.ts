@@ -2846,6 +2846,7 @@ export const tasks = pgTable("tasks", {
   parentTaskId: integer("parent_task_id"),
   source: varchar("source", { length: 30 }).default("manual"),
   sourceId: varchar("source_id", { length: 50 }),
+  announcementId: integer("announcement_id"), // Duyuruya bağlı görev
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),

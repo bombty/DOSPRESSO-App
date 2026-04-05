@@ -841,6 +841,15 @@ export const announcements = pgTable("announcements", {
   publishedAt: timestamp("published_at").defaultNow(),
   validFrom: timestamp("valid_from"), // Geçerlilik başlangıç tarihi
   expiresAt: timestamp("expires_at"), // Geçerlilik bitiş tarihi
+  
+  // Onay akışı (Draft → Review → Approved → Published)
+  status: varchar("status", { length: 20 }).notNull().default("published"), // draft, review, approved, published, expired, archived
+  approvedById: varchar("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
+  
+  // Acknowledgment (reçete/kanuni duyurularda zorunlu onay)
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
@@ -848,6 +857,7 @@ export const announcements = pgTable("announcements", {
   publishedIdx: index("announcements_published_idx").on(table.publishedAt),
   categoryIdx: index("announcements_category_idx").on(table.category),
   dashboardIdx: index("announcements_dashboard_idx").on(table.showOnDashboard),
+  statusIdx: index("announcements_status_idx").on(table.status),
 }));
 
 export const insertAnnouncementSchema = createInsertSchema(announcements).omit({

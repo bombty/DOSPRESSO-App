@@ -278,5 +278,100 @@ const router = Router();
     }
   });
 
+  // ========================================
+  // DUYURU ONAY AKIŞI (APPROVAL WORKFLOW)
+  // ========================================
+
+  // PATCH /api/announcements/:id/status - Duyuru durumunu değiştir
+  // Akış: draft → review → approved → published
+  // Geri: published → archived, any → draft
+  router.patch('/api/announcements/:id/status', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const user = req.user;
+      
+      const validStatuses = ['draft', 'review', 'approved', 'published', 'archived'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Geçersiz durum" });
+      }
+
+      // Yetki kontrolü
+      const approverRoles = ['admin', 'ceo', 'cgo', 'coach'];
+      const editorRoles = ['admin', 'coach', 'destek', 'supervisor', 'marketing'];
+      
+      // Sadece admin/ceo/cgo/coach onaylayabilir
+      if (status === 'approved' && !approverRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Duyuru onaylama yetkiniz yok" });
+      }
+      
+      // Yayınlama yetkisi
+      if (status === 'published' && !approverRoles.includes(user.role)) {
+        return res.status(403).json({ message: "Duyuru yayınlama yetkiniz yok" });
+      }
+
+      const updates: Record<string, any> = { 
+        status, 
+        updatedAt: new Date() 
+      };
+
+      if (status === 'approved') {
+        updates.approvedById = user.id;
+        updates.approvedAt = new Date();
+      }
+
+      if (status === 'published') {
+        updates.publishedAt = new Date();
+        // Eğer henüz onaylanmadıysa, yayınlayan aynı zamanda onaylayan
+        const [current] = await db.select()
+          .from(announcements)
+          .where(eq(announcements.id, parseInt(id)));
+        if (current && !current.approvedById) {
+          updates.approvedById = user.id;
+          updates.approvedAt = new Date();
+        }
+      }
+
+      const [updated] = await db.update(announcements)
+        .set(updates)
+        .where(eq(announcements.id, parseInt(id)))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Duyuru bulunamadı" });
+      }
+
+      res.json(updated);
+    } catch (error: unknown) {
+      console.error("Update announcement status error:", error);
+      res.status(500).json({ message: "Durum güncellenemedi" });
+    }
+  });
+
+  // ========================================
+  // DUYURU ACKNOWLEDGMENT (ONAYLAMA)
+  // ========================================
+
+  // POST /api/announcements/:id/acknowledge - Duyuruyu onayladım
+  router.post('/api/announcements/:id/acknowledge', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+      
+      // Upsert — okundu + acknowledge olarak işaretle
+      await db.insert(announcementReadStatus)
+        .values({
+          announcementId: parseInt(id),
+          userId: user.id,
+        })
+        .onConflictDoNothing();
+      
+      res.json({ success: true, acknowledgedAt: new Date() });
+    } catch (error: unknown) {
+      console.error("Acknowledge announcement error:", error);
+      res.status(500).json({ message: "Onay kaydedilemedi" });
+    }
+  });
+
 
 export default router;
