@@ -244,6 +244,7 @@ const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 // ── Orphan → Linked (Sistem Atölyesi kararı) ──
 const Announcements = lazyWithRetry(() => import("@/pages/announcements"));
+const DuyuruDetay = lazyWithRetry(() => import("@/pages/duyuru-detay"));
 const Mesajlar = lazyWithRetry(() => import("@/pages/mesajlar"));
 const PersonelOnboarding = lazyWithRetry(() => import("@/pages/personel-onboarding"));
 const EkipmanKatalog = lazyWithRetry(() => import("@/pages/ekipman-katalog"));
@@ -558,6 +559,7 @@ function Router() {
           <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
           {/* ── Orphan → Linked (17 sayfa) ── */}
           <Route path="/duyuru-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach"]}><Announcements /></ProtectedRoute>}</Route>
+          <Route path="/duyuru/:id">{() => <DuyuruDetay />}</Route>
           <Route path="/mesajlarim" component={Mesajlar} />
           <Route path="/personel-onboarding-akisi">{() => <ProtectedRoute allowedRoles={["muhasebe_ik","admin","mudur","coach","trainer"]}><PersonelOnboarding /></ProtectedRoute>}</Route>
           <Route path="/ekipman-katalog">{() => <ProtectedRoute allowedRoles={["cgo","admin","teknik"]}><EkipmanKatalog /></ProtectedRoute>}</Route>

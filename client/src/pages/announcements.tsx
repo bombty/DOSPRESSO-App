@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +93,7 @@ type ReadStatus = {
 export default function Announcements() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [bannerImageUrl, setBannerImageUrl] = useState<string>("");
@@ -166,8 +168,7 @@ export default function Announcements() {
   };
 
   const handleOpenDetail = (announcement: AnnouncementWithUser) => {
-    setSelectedAnnouncement(announcement);
-    setDetailDialogOpen(true);
+    setLocation(`/duyuru/${announcement.id}`);
   };
 
   const form = useForm<InsertAnnouncement>({

@@ -1,16 +1,13 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Megaphone, AlertCircle, ShoppingBag, BookOpen, PartyPopper, FileText, Calendar, ExternalLink, X } from "lucide-react";
+
+import { ChevronLeft, ChevronRight, Megaphone, AlertCircle, ShoppingBag, BookOpen, PartyPopper, FileText, Calendar } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import ReactMarkdown from "react-markdown";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+
 
 type AnnouncementBanner = {
   id: number;
@@ -21,24 +18,6 @@ type AnnouncementBanner = {
   bannerTitle?: string;
   bannerSubtitle?: string;
   bannerPriority?: number;
-};
-
-type AnnouncementDetail = {
-  id: number;
-  title: string;
-  message: string;
-  summary?: string;
-  category?: string;
-  detailedContent?: string;
-  ctaText?: string;
-  ctaLink?: string;
-  bannerImageUrl?: string;
-  bannerTitle?: string;
-  bannerSubtitle?: string;
-  priority?: string;
-  publishedAt?: string;
-  expiresAt?: string;
-  isRead?: boolean;
 };
 
 const CATEGORY_CONFIG: Record<string, { icon: any; gradient: string; label: string }> = {
@@ -55,23 +34,11 @@ export function AnnouncementBannerCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [imageLoadErrors, setImageLoadErrors] = useState<Record<number, boolean>>({});
-  const [selectedBannerId, setSelectedBannerId] = useState<number | null>(null);
+  const [, setLocation] = useLocation();
 
   const { data: banners = [] } = useQuery<AnnouncementBanner[]>({
     queryKey: ["/api/announcements/banners"],
     staleTime: 30000,
-  });
-
-  const { data: announcementDetail, isLoading: detailLoading } = useQuery<AnnouncementDetail>({
-    queryKey: ["/api/announcements", selectedBannerId],
-    queryFn: async () => {
-      const res = await fetch(`/api/announcements/${selectedBannerId}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch announcement");
-      return res.json();
-    },
-    enabled: !!selectedBannerId,
   });
 
   const handleImageError = (bannerId: number) => {
@@ -106,22 +73,14 @@ export function AnnouncementBannerCarousel() {
   };
 
   const handleBannerClick = (id: number) => {
-    setSelectedBannerId(id);
     markReadMutation.mutate(id);
-  };
-
-  const handleCloseDialog = () => {
-    setSelectedBannerId(null);
+    setLocation(`/duyuru/${id}`);
   };
 
   const currentBanner = banners[currentIndex];
   const category = currentBanner?.category || "general";
   const categoryConfig = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.general;
   const CategoryIcon = categoryConfig.icon;
-
-  const detailCategory = announcementDetail?.category || "general";
-  const detailCategoryConfig = CATEGORY_CONFIG[detailCategory] || CATEGORY_CONFIG.general;
-  const DetailCategoryIcon = detailCategoryConfig.icon;
 
   return (
     <>
@@ -204,115 +163,6 @@ export function AnnouncementBannerCarousel() {
           </>
         )}
       </div>
-
-      <Dialog open={!!selectedBannerId} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden" data-testid="dialog-announcement-detail">
-          {detailLoading ? (
-            <div className="p-6 space-y-4">
-              <Skeleton className="h-40 w-full" />
-              <Skeleton className="h-8 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-32 w-full" />
-            </div>
-          ) : announcementDetail ? (
-            <>
-              {announcementDetail.bannerImageUrl && (
-                <div className="relative w-full h-48">
-                  <img 
-                    src={announcementDetail.bannerImageUrl}
-                    alt={announcementDetail.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <Badge className={`bg-gradient-to-r ${detailCategoryConfig.gradient} text-white mb-2`}>
-                      <DetailCategoryIcon className="h-3 w-3 mr-1" />
-                      {detailCategoryConfig.label}
-                    </Badge>
-                    <h2 className="text-xl font-bold text-white" data-testid="text-announcement-detail-title">
-                      {announcementDetail.bannerTitle || announcementDetail.title}
-                    </h2>
-                  </div>
-                </div>
-              )}
-              
-              <ScrollArea className="max-h-[calc(90vh-200px)]">
-                <div className="p-6 space-y-4">
-                  {!announcementDetail.bannerImageUrl && (
-                    <DialogHeader>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={`bg-gradient-to-r ${detailCategoryConfig.gradient} text-white`}>
-                          <DetailCategoryIcon className="h-3 w-3 mr-1" />
-                          {detailCategoryConfig.label}
-                        </Badge>
-                        {announcementDetail.priority === "urgent" && (
-                          <Badge variant="destructive">Acil</Badge>
-                        )}
-                      </div>
-                      <DialogTitle className="text-xl" data-testid="text-announcement-detail-title">
-                        {announcementDetail.title}
-                      </DialogTitle>
-                      {announcementDetail.publishedAt && (
-                        <DialogDescription>
-                          {format(new Date(announcementDetail.publishedAt), "d MMMM yyyy, HH:mm", { locale: tr })}
-                        </DialogDescription>
-                      )}
-                    </DialogHeader>
-                  )}
-
-                  {announcementDetail.bannerImageUrl && announcementDetail.publishedAt && (
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(announcementDetail.publishedAt), "d MMMM yyyy, HH:mm", { locale: tr })}
-                    </p>
-                  )}
-
-                  <div className="space-y-4">
-                    {announcementDetail.message && (
-                      <p className="text-base leading-relaxed" data-testid="text-announcement-message">
-                        {announcementDetail.message}
-                      </p>
-                    )}
-
-                    {announcementDetail.detailedContent && (
-                      <div className="prose prose-sm dark:prose-invert max-w-none" data-testid="text-announcement-detailed-content">
-                        <ReactMarkdown>
-                          {announcementDetail.detailedContent}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-
-                  {announcementDetail.ctaText && announcementDetail.ctaLink && (
-                    <div className="pt-4">
-                      <Button 
-                        asChild
-                        className="w-full sm:w-auto"
-                        data-testid="button-announcement-cta"
-                      >
-                        <a href={announcementDetail.ctaLink} target="_blank" rel="noopener noreferrer">
-                          {announcementDetail.ctaText}
-                          <ExternalLink className="h-4 w-4 ml-2" />
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-
-                  {announcementDetail.expiresAt && (
-                    <p className="text-xs text-muted-foreground pt-2">
-                      Geçerlilik: {format(new Date(announcementDetail.expiresAt), "d MMMM yyyy", { locale: tr })} tarihine kadar
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </>
-          ) : (
-            <div className="p-6 text-center text-muted-foreground">
-              Duyuru yüklenemedi
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
