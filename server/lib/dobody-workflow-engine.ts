@@ -604,11 +604,13 @@ export async function runPeriodicChecks() {
     // 3b. PDKS verisi gelmeyen şubeler (5+ gün)
     try {
       const noPdks = await db.execute(sql`
-        SELECT b.id, b.name, 
-          (SELECT max(date) FROM pdks_records WHERE branch_id = b.id) as last_record
+        SELECT b.id, b.name,
+          (SELECT max(record_date) FROM pdks_records WHERE branch_id = b.id) as last_record
         FROM branches b WHERE b.is_active = true
-        HAVING (SELECT max(date) FROM pdks_records WHERE branch_id = b.id) < current_date - interval '5 days'
-        OR (SELECT max(date) FROM pdks_records WHERE branch_id = b.id) IS NULL
+        AND (
+          (SELECT max(record_date) FROM pdks_records WHERE branch_id = b.id) < current_date - interval '5 days'
+          OR (SELECT max(record_date) FROM pdks_records WHERE branch_id = b.id) IS NULL
+        )
         LIMIT 10
       `);
       for (const row of (noPdks as any).rows || []) {
@@ -656,7 +658,7 @@ export async function runPeriodicChecks() {
     try {
       const inactiveAssigned = await db.execute(sql`
         SELECT count(*)::int as cnt FROM project_tasks pt
-        JOIN users u ON u.id = pt.assigned_to
+        JOIN users u ON u.id = pt.assigned_to_id
         WHERE pt.status != 'completed' AND u.is_active = false
       `);
       const cnt = Number((inactiveAssigned as any).rows?.[0]?.cnt || 0);
