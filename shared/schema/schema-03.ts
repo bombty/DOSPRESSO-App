@@ -892,6 +892,18 @@ export const insertAnnouncementReadStatusSchema = createInsertSchema(announcemen
 export type InsertAnnouncementReadStatus = z.infer<typeof insertAnnouncementReadStatusSchema>;
 export type AnnouncementReadStatus = typeof announcementReadStatus.$inferSelect;
 
+// Announcement Dismissals — Header banner kapatma takibi
+export const announcementDismissals = pgTable("announcement_dismissals", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  dismissedAt: timestamp("dismissed_at").defaultNow(),
+  showAgainAfter: timestamp("show_again_after"), // null = kalıcı kapatma, tarih = geçici kapatma
+}, (table) => [
+  unique("unique_announcement_dismissal").on(table.announcementId, table.userId),
+  index("dismissal_user_idx").on(table.userId),
+]);
+
 // Daily Cash Reports table - Supervisor daily cash summary for accounting
 export const dailyCashReports = pgTable("daily_cash_reports", {
   id: serial("id").primaryKey(),

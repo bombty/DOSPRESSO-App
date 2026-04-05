@@ -10,6 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { BottomNav } from "@/components/bottom-nav";
 import { BreadcrumbNavigation, BreadcrumbProvider } from "@/components/breadcrumb-navigation";
+import { AnnouncementHeaderBanner } from "@/components/AnnouncementHeaderBanner";
 import { GlobalSearch } from "@/components/global-search";
 
 import { AppHeader } from "@/components/app-header";
@@ -728,6 +729,9 @@ function AppContent() {
               <BreadcrumbNavigation />
             </div>
           )}
+          
+          {/* Announcement Header Banner — rol bazlı aktif duyurular */}
+          {!isFullWidthPage && user && <AnnouncementHeaderBanner />}
           
           {/* Main Content */}
           <main className="flex-1 overflow-auto pb-20 md:pb-4">

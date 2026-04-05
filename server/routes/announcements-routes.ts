@@ -8,6 +8,7 @@ import {
   branches,
   users,
   banners,
+  announcementDismissals,
 } from "@shared/schema";
 
 const router = Router();
@@ -15,6 +16,93 @@ const router = Router();
   // ========================================
   // DUYURU (ANNOUNCEMENTS) API
   // ========================================
+
+  // GET /api/announcements/header-active — Aktif header banner duyuruları (kullanıcı rolüne göre, max 2)
+  router.get('/api/announcements/header-active', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user;
+      const now = new Date();
+      
+      // Yayınlanmış, süresi dolmamış, dashboard'da gösterilecek duyuruları al
+      const results = await db.select()
+        .from(announcements)
+        .where(and(
+          eq(announcements.showOnDashboard, true),
+          lte(announcements.publishedAt, now),
+          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+          isNull(announcements.deletedAt)
+        ))
+        .orderBy(desc(announcements.isPinned), desc(announcements.bannerPriority), desc(announcements.publishedAt))
+        .limit(10);
+      
+      // Kullanıcının kapattığı duyuruları al
+      const dismissals = await db.select()
+        .from(announcementDismissals)
+        .where(eq(announcementDismissals.userId, user.id));
+      
+      const dismissedIds = new Set(
+        dismissals
+          .filter(d => !d.showAgainAfter || new Date(d.showAgainAfter) > now)
+          .map(d => d.announcementId)
+      );
+      
+      // Rol ve şube filtresi + dismiss filtresi
+      const filtered = results.filter(ann => {
+        // Kapatılmış mı?
+        if (dismissedIds.has(ann.id)) return false;
+        
+        // Hedefleme kontrolü
+        const hasNoTargeting = !ann.targetRoles?.length && !ann.targetBranches?.length;
+        const targetRolesLower = ann.targetRoles?.map(r => r.toLocaleLowerCase('tr-TR')) || [];
+        const isTargetAll = targetRolesLower.includes("all");
+        if (hasNoTargeting || isTargetAll) return true;
+        
+        const userRoleLower = user.role?.toLocaleLowerCase('tr-TR');
+        if (targetRolesLower.length && userRoleLower && targetRolesLower.includes(userRoleLower)) return true;
+        
+        if (ann.targetBranches?.length && user.branchId != null) {
+          if (ann.targetBranches.some(b => String(b) === String(user.branchId))) return true;
+        }
+        
+        return false;
+      });
+      
+      // Max 2 header banner (banner fatigue kontrolü)
+      res.json(filtered.slice(0, 2));
+    } catch (error: unknown) {
+      console.error("Get header active error:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  // POST /api/announcements/:id/dismiss — Header banner'ı kapat
+  router.post('/api/announcements/:id/dismiss', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+      const { temporary } = req.body; // temporary: true → bugün gösterme, false → kalıcı kapat
+      
+      const showAgainAfter = temporary 
+        ? new Date(new Date().setHours(23, 59, 59, 999)) // Bugün gece yarısı sonra tekrar göster
+        : null; // Kalıcı kapatma
+      
+      await db.insert(announcementDismissals)
+        .values({
+          announcementId: parseInt(id),
+          userId: user.id,
+          showAgainAfter,
+        })
+        .onConflictDoUpdate({
+          target: [announcementDismissals.announcementId, announcementDismissals.userId],
+          set: { dismissedAt: new Date(), showAgainAfter },
+        });
+      
+      res.json({ success: true });
+    } catch (error: unknown) {
+      console.error("Dismiss announcement error:", error);
+      res.status(500).json({ message: "Kapatılamadı" });
+    }
+  });
 
   // GET /api/announcements - Tüm yayınlanmış duyuruları getir
   router.get('/api/announcements', isAuthenticated, async (req, res) => {
