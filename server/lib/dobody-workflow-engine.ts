@@ -64,6 +64,25 @@ export async function fireEvent(eventType: string, sourceModule: string, entityT
       case 'system_health_issue':
         generated += await wfSystemHealth(eventData || {});
         break;
+      // Dobody-8: CRM + Fabrika
+      case 'nps_dropped':
+        generated += await wfNpsDrop(eventData || {});
+        break;
+      case 'complaint_pattern':
+        generated += await wfComplaintPattern(eventData || {});
+        break;
+      case 'production_plan_missing':
+        generated += await wfProductionPlanMissing(eventData || {});
+        break;
+      case 'qc_rejection_high':
+        generated += await wfQcRejectionHigh(eventData || {});
+        break;
+      case 'lot_skt_approaching':
+        generated += await wfLotSktApproaching(eventData || {});
+        break;
+      case 'raw_material_critical':
+        generated += await wfRawMaterialCritical(eventData || {});
+        break;
     }
 
     // Event'i güncelle
@@ -714,4 +733,96 @@ export async function runPeriodicChecks() {
   
   results.total = results.shifts + results.dataQuality + results.system + results.security + results.business;
   return results;
+}
+
+// ──────────────────────────────────────────
+// DOBODY-8: CRM + FABRİKA BAĞLANTILARI
+// ──────────────────────────────────────────
+
+// CRM: NPS düşüşü
+async function wfNpsDrop(data: Record<string, any>): Promise<number> {
+  const { branchId, branchName, currentNps, previousNps, dropPercent } = data;
+  if (!branchId) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-CRM', roleTarget: 'supervisor', branchId,
+    proposalType: 'warning', priority: (currentNps && currentNps < 3) ? 'acil' : 'onemli',
+    title: `${branchName || 'Şube'} NPS düştü: ${previousNps || '?'} → ${currentNps || '?'}`,
+    description: `Müşteri memnuniyeti ${dropPercent || ''}% düştü. Son feedback'ler incelenmeli, kök neden analizi yapılmalı.`,
+    sourceModule: 'crm',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// CRM: Şikayet paterni (aynı konu 3+ kez)
+async function wfComplaintPattern(data: Record<string, any>): Promise<number> {
+  const { branchId, branchName, complaintType, count, period } = data;
+  if (!branchId) return 0;
+  const ok = await createProposal({
+    workflowType: 'WF-CRM', roleTarget: 'coach',
+    proposalType: 'action', priority: count >= 5 ? 'acil' : 'onemli',
+    title: `${branchName || 'Şube'} — "${complaintType || 'Bilinmeyen'}" şikayeti ${count || '?'} kez tekrarlandı`,
+    description: `Son ${period || '30 gün'} içinde aynı konu tekrarlanıyor. Kök neden araştırması ve aksiyon planı önerilir.`,
+    sourceModule: 'crm',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// Fabrika: Üretim planı oluşturulmadı
+async function wfProductionPlanMissing(data: Record<string, any>): Promise<number> {
+  const { date, dayOfWeek } = data;
+  const ok = await createProposal({
+    workflowType: 'WF-FAB', roleTarget: 'fabrika_mudur',
+    proposalType: 'warning', priority: 'onemli',
+    title: `Yarınki üretim planı henüz oluşturulmadı (${date || ''})`,
+    description: `${dayOfWeek || ''} için üretim planı eksik. Geçen haftanın aynı gününü baz alarak plan oluşturulabilir.`,
+    sourceModule: 'fabrika',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// Fabrika: QC red oranı yüksek
+async function wfQcRejectionHigh(data: Record<string, any>): Promise<number> {
+  const { rejectionRate, threshold, period, productName } = data;
+  const ok = await createProposal({
+    workflowType: 'WF-FAB', roleTarget: 'fabrika_mudur',
+    proposalType: 'warning', priority: rejectionRate > 10 ? 'acil' : 'onemli',
+    title: `QC red oranı yüksek: %${rejectionRate || '?'} (hedef: <%${threshold || '5'})`,
+    description: `${productName ? productName + ' — ' : ''}Son ${period || '7 gün'} QC red oranı hedefin üzerinde. Kalibrasyon ve operatör eğitimi kontrol edilmeli.`,
+    sourceModule: 'fabrika',
+    suggestedActionType: 'send_message',
+  });
+  return ok ? 1 : 0;
+}
+
+// Fabrika: LOT SKT yaklaşıyor
+async function wfLotSktApproaching(data: Record<string, any>): Promise<number> {
+  const { lotNumber, productName, expiresIn, quantity } = data;
+  const ok = await createProposal({
+    workflowType: 'WF-FAB', roleTarget: 'fabrika_mudur',
+    proposalType: 'action', priority: expiresIn && expiresIn <= 3 ? 'acil' : 'onemli',
+    title: `LOT ${lotNumber || '?'} — SKT ${expiresIn || '?'} gün kaldı`,
+    description: `${productName || 'Ürün'} (${quantity || '?'} adet) — FIFO sevkiyat veya indirimli satış önerilir.`,
+    sourceModule: 'fabrika',
+    suggestedActionType: 'send_message',
+    suggestedActionData: { lotNumber, productName, quantity, expiresIn },
+  });
+  return ok ? 1 : 0;
+}
+
+// Fabrika: Hammadde stoku kritik
+async function wfRawMaterialCritical(data: Record<string, any>): Promise<number> {
+  const { materialName, currentStock, minLevel, daysLeft } = data;
+  const ok = await createProposal({
+    workflowType: 'WF-FAB', roleTarget: 'satinalma',
+    proposalType: 'action', priority: daysLeft && daysLeft <= 2 ? 'acil' : 'onemli',
+    title: `Hammadde kritik: ${materialName || 'Bilinmeyen'} — ${daysLeft || '?'} gün kaldı`,
+    description: `Mevcut: ${currentStock || '?'}, minimum: ${minLevel || '?'}. Tedarikçi siparişi önerilir.`,
+    sourceModule: 'fabrika',
+    suggestedActionType: 'send_message',
+    suggestedActionData: { materialName, currentStock, suggestedOrder: minLevel ? Number(minLevel) * 3 : null },
+  });
+  return ok ? 1 : 0;
 }
