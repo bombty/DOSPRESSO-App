@@ -1004,6 +1004,132 @@ export default function Announcements() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="showOnDashboard"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between">
+                        <FormLabel>Dashboard'da göster</FormLabel>
+                        <FormControl>
+                          <Switch
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="targetRoles"
+                    render={({ field }) => {
+                      const roles = [
+                        { value: "supervisor", label: "Supervisor" },
+                        { value: "barista", label: "Barista" },
+                        { value: "stajyer", label: "Stajyer" },
+                        { value: "coach", label: "Coach (HQ)" },
+                        { value: "muhasebe", label: "Muhasebe (HQ)" },
+                        { value: "teknik", label: "Teknik (HQ)" },
+                      ];
+                      const selectedRoles = field.value || [];
+                      return (
+                        <FormItem>
+                          <FormLabel>Hedef Roller (Opsiyonel)</FormLabel>
+                          <div className="flex flex-wrap gap-2 p-2 border rounded-lg min-h-[40px]">
+                            {roles.map((role) => {
+                              const isSelected = selectedRoles.includes(role.value);
+                              return (
+                                <Badge
+                                  key={role.value}
+                                  variant={isSelected ? "default" : "outline"}
+                                  className="cursor-pointer"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      field.onChange(selectedRoles.filter((r: string) => r !== role.value));
+                                    } else {
+                                      field.onChange([...selectedRoles, role.value]);
+                                    }
+                                  }}
+                                  data-testid={`badge-edit-role-${role.value}`}
+                                >
+                                  {role.label}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                          <FormDescription>
+                            Rol seçmezsen tüm rollere gönderilir
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="targetBranches"
+                    render={({ field }) => {
+                      const selectedBranches = field.value || [];
+                      return (
+                        <FormItem>
+                          <FormLabel>Hedef Şubeler (Opsiyonel)</FormLabel>
+                          <ScrollArea className="max-h-32 border rounded-lg p-2">
+                            <div className="flex flex-wrap gap-2">
+                              {branches?.map((branch) => {
+                                const isSelected = selectedBranches.includes(branch.id);
+                                return (
+                                  <Badge
+                                    key={branch.id}
+                                    variant={isSelected ? "default" : "outline"}
+                                    className="cursor-pointer text-xs"
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        field.onChange(selectedBranches.filter((id: number) => id !== branch.id));
+                                      } else {
+                                        field.onChange([...selectedBranches, branch.id]);
+                                      }
+                                    }}
+                                    data-testid={`badge-edit-branch-${branch.id}`}
+                                  >
+                                    {branch.name}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          </ScrollArea>
+                          <FormDescription>
+                            Şube seçmezsen tüm şubelere gönderilir
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="expiresAt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Son Geçerlilik Tarihi (Opsiyonel)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="datetime-local"
+                            value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ''}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value).toISOString() : null)}
+                            data-testid="input-edit-expires-at"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Boş bırakılırsa duyuru süresiz aktif kalır
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
               <DialogFooter className="p-6 pt-4 border-t shrink-0">
