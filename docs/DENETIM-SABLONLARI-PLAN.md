@@ -236,22 +236,99 @@ Her item: checkbox (evet/hayır), rating (1-5), text (serbest metin), photo (fot
 ---
 
 ## KATEGORİ 14: PERSONEL DEĞERLENDİRME (personnel)
-*Her mevcut personel için ayrı ayrı doldurulur*
+*Her mevcut personel için ayrı ayrı doldurulur. Bağımsız şablon olarak da kullanılabilir.*
 
-| # | Madde | Tip | Fotoğraf |
-|---|-------|-----|----------|
-| 14.1 | Misafir karşılama (selamlama, göz teması) | rating | |
-| 14.2 | Güler yüz ve pozitif tutum | rating | |
-| 14.3 | Dress code uygunluğu (üniforma, isimlik) | checkbox+text | ✅ |
-| 14.4 | Kişisel temizlik ve hijyen | rating | |
-| 14.5 | Saç bakımı — uzun saçlar toplanmış mı? | checkbox | |
-| 14.6 | Sakal/bıyık bakımı düzenli mi? | checkbox | |
-| 14.7 | Tırnak bakımı (kısa, temiz, ojeli değil) | checkbox | |
-| 14.8 | Takı/aksesuar kuralına uyum (yüzük, bilezik, piercing) | checkbox | |
-| 14.9 | Ürün bilgisi yeterliliği (soru sorularak test) | rating | |
-| 14.10 | Sipariş alma ve sunma hızı | rating | |
-| 14.11 | İş istasyonu düzeni ve temizliği | rating | |
-| 14.12 | Ekip çalışması ve iletişim | rating | |
+### 14-A: MİSAFİR DENEYİMİ & GÜLER YÜZ (Ağırlık: %30 — EN KRİTİK)
+
+| # | Madde | Tip | Not |
+|---|-------|-----|-----|
+| 14.1 | ⭐ Güler yüzlü mü? Samimi ve sıcak bir tavır sergiliyor mu? | rating (1-5) | EN ÖNEMLİ KRİTER |
+| 14.2 | Misafiri kapıda/kasada selamlıyor mu? (göz teması + sözel) | rating | |
+| 14.3 | Misafire ismiyle hitap ediyor mu? (düzenli müşterilerde) | checkbox | |
+| 14.4 | Sipariş alırken sabırlı ve yardımcı mı? | rating | |
+| 14.5 | Ürün sunumunda "Afiyet olsun" diyor mu? | checkbox | |
+| 14.6 | Misafir ayrılırken vedalaşıyor mu? "İyi günler, tekrar bekleriz" | checkbox | |
+| 14.7 | Zor/sinirli müşteriye nasıl yaklaşıyor? (gözlem veya senaryo) | rating | |
+| 14.8 | Misafir şikayetine yaklaşımı profesyonel mi? | rating | |
+
+### 14-B: ÜRÜN BİLGİSİ & YETKİNLİK (Ağırlık: %25)
+
+| # | Madde | Tip | Not |
+|---|-------|-----|-----|
+| 14.9 | Menüdeki ürünleri tanıyor mu? (rastgele 3 ürün sor) | rating | Sözlü test |
+| 14.10 | Ürün içeriklerini biliyor mu? (allerjen soru: "Bunda fındık var mı?") | rating | |
+| 14.11 | Ürün önerisi yapabiliyor mu? ("Ne önerirsiniz?" sorusuna cevap) | rating | |
+| 14.12 | Upselling yapıyor mu? ("Yanına kurabiye ister misiniz?") | checkbox | |
+| 14.13 | Espresso ayar bilgisi (shot süresi, öğütme, tamping) | rating | Barista rolü için |
+| 14.14 | Reçete bilgisi — son değişiklikleri biliyor mu? | checkbox+text | |
+| 14.15 | Kasa kullanım yetkinliği (hızlı ve doğru) | rating | |
+| 14.16 | Alternatif süt seçeneklerini biliyor mu? (soya, badem, yulaf farkları) | checkbox | |
+
+### 14-C: DRESS CODE & KİŞİSEL BAKIM (Ağırlık: %15)
+
+| # | Madde | Tip | Fotoğraf | Not |
+|---|-------|-----|----------|-----|
+| 14.17 | DOSPRESSO üniforması giyiyor mu? | checkbox | ✅ | |
+| 14.18 | Üniforma temiz ve ütülü mü? | checkbox | | |
+| 14.19 | İsimlik takıyor mu? | checkbox | | |
+| 14.20 | Ayakkabı uygun mu? (kapalı, kaymaz, temiz) | checkbox | | |
+| 14.21 | Saç bakımı — uzun saçlar toplanmış/ağ içinde mi? | checkbox | | Gıda güvenliği |
+| 14.22 | Sakal/bıyık düzenli ve bakımlı mı? | checkbox | | |
+| 14.23 | Tırnak kısa, temiz ve ojeli değil mi? | checkbox | | Gıda güvenliği |
+| 14.24 | Takı kuralı — yüzük (evlilik hariç), bilezik, piercing yok mu? | checkbox | | |
+| 14.25 | Parfüm/koku aşırı değil mi? (kahve aromasını bastırmamalı) | checkbox | | |
+| 14.26 | Genel kişisel hijyen (ter kokusu, ağız kokusu) | checkbox | | Hassas konu — özel not |
+
+### 14-D: HİJYEN KURALLARINA UYUM (Ağırlık: %10)
+
+| # | Madde | Tip | Not |
+|---|-------|-----|-----|
+| 14.27 | El yıkama sıklığı (gözlem: para sonrası, yemek öncesi, tuvalet sonrası) | rating | |
+| 14.28 | Eldiven kullanımı gerektiğinde kullanıyor mu? | checkbox | |
+| 14.29 | Yiyeceklere çıplak elle dokunmuyor mu? | checkbox | Kritik |
+| 14.30 | Öksürük/hapşırık esnasında ağzını kapatıyor mu? Yiyecekten uzaklaşıyor mu? | checkbox | |
+| 14.31 | Bardak/kupayı üst kısmından tutmuyor mu? (alt/kulptan tutmalı) | checkbox | |
+| 14.32 | Telefon kullanımı — bar içinde kişisel telefon kullanıyor mu? | checkbox | Yasak |
+
+### 14-E: TAKIM RUHU & İLETİŞİM (Ağırlık: %15)
+
+| # | Madde | Tip | Not |
+|---|-------|-----|-----|
+| 14.33 | Ekip arkadaşlarıyla iletişimi olumlu mu? | rating | |
+| 14.34 | Yardımlaşma — iş yoğunluğunda destek oluyor mu? | rating | |
+| 14.35 | İstasyon devir teslimini düzgün yapıyor mu? | checkbox | |
+| 14.36 | Supervisor/müdür talimatlarına uyuyor mu? | checkbox | |
+| 14.37 | Proaktif mi? (boş durmuyor, yapılacak iş arıyor) | rating | |
+| 14.38 | Stres altında sakin kalabiliyor mu? (yoğun saatlerde gözlem) | rating | |
+| 14.39 | Yeni gelen ekip arkadaşına yardımcı mı? | checkbox | |
+| 14.40 | Vardiya saatlerine uyum (geç kalma, erken çıkma) | checkbox | PDKS verisinden |
+
+### 14-F: GELİŞİM & MOTİVASYON (Ağırlık: %5)
+
+| # | Madde | Tip | Not |
+|---|-------|-----|-----|
+| 14.41 | Eğitimlere katılım durumu | checkbox | Sistemden kontrol |
+| 14.42 | Öğrenme isteği var mı? Yeni teknik/reçete deniyor mu? | rating | |
+| 14.43 | Geri bildirime açık mı? | rating | |
+| 14.44 | İyileştirme önerisi sunuyor mu? | checkbox | |
+| 14.45 | Genel motivasyon ve enerji seviyesi | rating | |
+
+### PERSONEL PUANLAMA ÖZETİ
+| Alt Kategori | Ağırlık | Max Puan |
+|--------------|---------|----------|
+| Misafir Deneyimi & Güler Yüz | %30 | 40 |
+| Ürün Bilgisi & Yetkinlik | %25 | 40 |
+| Dress Code & Kişisel Bakım | %15 | 50 |
+| Hijyen Kuralları | %10 | 30 |
+| Takım Ruhu & İletişim | %15 | 40 |
+| Gelişim & Motivasyon | %5 | 25 |
+| **TOPLAM** | **%100** | **225** |
+
+**Sonuç kategorileri:**
+- 200-225: ⭐ Mükemmel — ödül/terfi adayı
+- 170-199: ✅ İyi — standart karşılıyor
+- 140-169: ⚠️ Gelişime açık — aksiyon planı gerekli
+- <140: ❌ Yetersiz — acil iyileştirme + takip
 
 ---
 
@@ -321,9 +398,10 @@ Anomali bulunursa "Tam Denetim Gerekli" flag'ı.
 ---
 
 ## TOPLAM
-- 15 kategori
-- ~130 madde (tam denetim)
+- 15 kategori (personel 6 alt kategoriye ayrıldı)
+- ~175 madde (tam denetim + personel)
 - 6 şablon tipi
 - 3 Dobody entegrasyon noktası
 - Sıcaklık kontrolleri: 8 nokta (kabul aralıkları tanımlı)
 - Fotoğraf gerektiren: ~25 madde
+- Personel değerlendirme: 45 madde, 6 alt kategori, 225 puan, güler yüz %30 ağırlık
