@@ -1,32 +1,26 @@
 # DOSPRESSO — Sistem Durumu
 **Son güncelleme:** 5 Nisan 2026
 
----
-
-## Aktif Sprint
-Dobody Widget entegrasyonu — 4 dashboard güncellendi
-
-## Tamamlanan Sprint'ler (4 Nisan)
+## Tamamlanan Sprint'ler (4-5 Nisan)
 - Proje v2 Sprint 1 ✅
-- Denetim v2 Sprint A-D ✅  
-- Dobody Sprint 1-3 ✅
+- Denetim v2 Sprint A-D ✅
+- Dobody Sprint 1-7 ✅ (proposal + workflow + brief + aksiyon + sağlık + gruplu)
 
 ## Modül Durumları
-
-| Modül | Durum | Not |
-|-------|-------|-----|
-| Proje v2 | ✅ | 6 tab, portfolio dashboard |
-| Denetim v2 | ✅ | Şablon + form + aksiyon + trend |
-| Dobody Proposal | ✅ | 5 tablo, 8 workflow, öğrenme |
-| Dobody Widget | ✅ | CEO/CGO/Coach/Supervisor |
-| Ekipman Mega | ✅ | 9 sidebar |
-| Centrum v4 | ✅ | 16 rol dashboard |
-| Vardiya/PDKS | ✅ | Mimari fix tamamlandı |
+| Modül | Durum |
+|-------|-------|
+| Proje v2 | ✅ 6 tab, portfolio |
+| Denetim v2 | ✅ Şablon + form + aksiyon + trend |
+| Dobody Agent | ✅ 11 event, 27 rol scope, aksiyon yürütme |
+| Dobody Widget | ✅ Draft mesaj + düzenle + gönder |
+| Sistem Atölyesi v4 | ✅ 20 akış + diagnostic |
+| AI Provider | ✅ OpenAI/Claude/Gemini multi-provider |
 
 ## Bilinen Bug'lar
-- [ ] Kiosk token localStorage (sube/kiosk.tsx)
-- [ ] module_flags unique constraint (production)
-- [ ] Duyuru düzenleme sorunları (detay bekleniyor)
+- [ ] Barista "Benim Günüm" hooks crash
+- [ ] Barista "İzin Yönetimi" crash  
+- [ ] Şube ekipman listesi boş
+- [ ] Duyuru düzenleme sorunları
 
 ## Güncel Rakamlar
-363+ tablo | 1500+ endpoint | 304+ sayfa | 21 rol | 19 doküman | 8 workflow
+363+ tablo | 1500+ endpoint | 304+ sayfa | 27 rol | 19+ doküman | 11 event tipi
