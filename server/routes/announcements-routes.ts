@@ -179,7 +179,9 @@ const router = Router();
         .where(and(
           eq(announcements.showOnDashboard, true),
           lte(announcements.publishedAt, now),
-          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now))
+          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+          isNull(announcements.deletedAt),
+          or(eq(announcements.status, 'published'), isNull(announcements.status))
         ))
         .orderBy(
           desc(announcements.isPinned),        // Sabitlenmiş olanlar önce
