@@ -148,3 +148,28 @@ router.post('/api/system/test-endpoint', isAuthenticated, async (req, res) => {
 });
 
 export default router;
+
+// POST /api/system/crash-report — Frontend crash raporla (Dobody Admin bildirimi)
+router.post('/api/system/crash-report', async (req, res) => {
+  try {
+    const { error, componentStack, url, role, userId } = req.body;
+    if (!error) return res.status(400).json({ message: "Error message gerekli" });
+
+    // Dobody'ye sistem sağlık event'i gönder
+    try {
+      const { fireEvent } = await import("../lib/dobody-workflow-engine");
+      await fireEvent('system_health_issue', 'frontend', 'crash', 0, {
+        issueType: 'Frontend Sayfa Crash',
+        description: `Sayfa: ${url || 'bilinmiyor'} | Rol: ${role || '?'} | Hata: ${(error || '').slice(0, 300)}`,
+        severity: 'critical',
+        affectedModule: 'frontend',
+        affectedEndpoint: url,
+      });
+    } catch (e) { /* dobody unavailable */ }
+
+    console.error(`[CRASH REPORT] ${url} | ${role} | ${error?.slice(0, 200)}`);
+    res.json({ received: true });
+  } catch (error) {
+    res.status(500).json({ message: "Rapor alınamadı" });
+  }
+});

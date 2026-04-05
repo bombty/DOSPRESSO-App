@@ -26,6 +26,16 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary] Yakalanan hata:", error, errorInfo);
+    // Dobody'ye crash raporu gönder
+    try {
+      fetch("/api/system/crash-report", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: error.message, componentStack: errorInfo.componentStack?.slice(0, 500),
+          url: window.location.pathname, role: sessionStorage.getItem("userRole") || "unknown",
+        }),
+      }).catch(() => {});
+    } catch {}
   }
 
   handleRetry = () => {
