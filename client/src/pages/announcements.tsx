@@ -259,6 +259,17 @@ export default function Announcements() {
     createMutation.mutate(submitData);
   };
 
+  const handleSaveAsDraft = () => {
+    const data = form.getValues();
+    const submitData = {
+      ...data,
+      status: "draft" as const,
+      targetRoles: data.targetRoles && data.targetRoles.length > 0 ? data.targetRoles : null,
+      targetBranches: data.targetBranches && data.targetBranches.length > 0 ? data.targetBranches : null,
+    };
+    createMutation.mutate(submitData);
+  };
+
   const handleEditSubmit = (data: InsertAnnouncement) => {
     if (!editingAnnouncement) return;
     const submitData = {
@@ -684,6 +695,15 @@ export default function Announcements() {
                       İptal
                     </Button>
                     <Button 
+                      type="button"
+                      variant="secondary"
+                      disabled={createMutation.isPending}
+                      onClick={handleSaveAsDraft}
+                      data-testid="button-save-draft"
+                    >
+                      {createMutation.isPending ? "Kaydediliyor..." : "Taslak Kaydet"}
+                    </Button>
+                    <Button 
                       type="submit" 
                       disabled={createMutation.isPending}
                       data-testid="button-submit"
@@ -781,6 +801,18 @@ export default function Announcements() {
                     <Badge variant="outline" className="text-xs">
                       {categoryLabels[announcement.category] || announcement.category}
                     </Badge>
+                    {(announcement as any).status && (announcement as any).status !== "published" && (
+                      <Badge 
+                        variant={(announcement as any).status === "draft" ? "secondary" : "default"}
+                        className="text-xs"
+                      >
+                        {(announcement as any).status === "draft" ? "Taslak" 
+                          : (announcement as any).status === "review" ? "İncelemede" 
+                          : (announcement as any).status === "approved" ? "Onaylı"
+                          : (announcement as any).status === "archived" ? "Arşivlendi"
+                          : (announcement as any).status}
+                      </Badge>
+                    )}
                   </div>
 
                   {isHQ && (
