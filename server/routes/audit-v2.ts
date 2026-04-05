@@ -19,6 +19,10 @@ import {
   auditPersonnelV2,
   auditActionsV2,
   auditActionComments,
+  auditInstances,
+  auditTemplates,
+  auditPersonnelFeedback,
+  personnelAuditScores,
   branches,
   users,
 } from "@shared/schema";
@@ -822,6 +826,190 @@ router.get('/api/v2/branch-on-shift/:branchId', isAuthenticated, async (req, res
   } catch (error) {
     console.error("Get branch staff error:", error);
     res.status(500).json({ message: "Personel listesi alınamadı" });
+  }
+});
+
+// ========================================
+// PERSONEL DENETİM SONUÇLARI & GERİ BİLDİRİM
+// ========================================
+
+// GET /api/audit/my-results — Personel kendi denetim sonuçlarını görür
+router.get('/api/audit/my-results', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Personele ait denetim instance'ları
+    const results = await db.select({
+      instance: auditInstances,
+      templateTitle: auditTemplates.title,
+    })
+      .from(auditInstances)
+      .innerJoin(auditTemplates, eq(auditInstances.templateId, auditTemplates.id))
+      .where(and(
+        eq(auditInstances.userId, userId),
+        eq(auditInstances.status, "completed")
+      ))
+      .orderBy(desc(auditInstances.auditDate))
+      .limit(20);
+
+    // Okunmamış geri bildirim sayısı
+    const [unreadCount] = await db.select({ count: sql<number>`count(*)` })
+      .from(auditPersonnelFeedback)
+      .where(and(
+        eq(auditPersonnelFeedback.personnelId, userId),
+        eq(auditPersonnelFeedback.isReadByPersonnel, false)
+      ));
+
+    res.json({
+      audits: results.map(r => ({
+        ...r.instance,
+        templateTitle: r.templateTitle,
+      })),
+      unreadFeedbackCount: Number(unreadCount?.count ?? 0),
+    });
+  } catch (error) {
+    console.error("Get my audit results error:", error);
+    res.status(500).json({ message: "Denetim sonuçları alınamadı" });
+  }
+});
+
+// GET /api/audit/my-feedback — Personel kendine gelen geri bildirimleri görür
+router.get('/api/audit/my-feedback', isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const feedback = await db.select({
+      feedback: auditPersonnelFeedback,
+      auditorName: users.firstName,
+    })
+      .from(auditPersonnelFeedback)
+      .innerJoin(users, eq(auditPersonnelFeedback.auditorId, users.id))
+      .where(eq(auditPersonnelFeedback.personnelId, userId))
+      .orderBy(desc(auditPersonnelFeedback.createdAt))
+      .limit(50);
+
+    res.json(feedback.map(f => ({
+      ...f.feedback,
+      auditorName: f.auditorName,
+    })));
+  } catch (error) {
+    console.error("Get my feedback error:", error);
+    res.status(500).json({ message: "Geri bildirimler alınamadı" });
+  }
+});
+
+// PATCH /api/audit/feedback/:id/read — Personel geri bildirimi okudu olarak işaretle
+router.patch('/api/audit/feedback/:id/read', isAuthenticated, async (req, res) => {
+  try {
+    const feedbackId = parseInt(req.params.id);
+    const userId = req.user.id;
+
+    await db.update(auditPersonnelFeedback)
+      .set({ isReadByPersonnel: true, readAt: new Date() })
+      .where(and(
+        eq(auditPersonnelFeedback.id, feedbackId),
+        eq(auditPersonnelFeedback.personnelId, userId)
+      ));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Mark feedback read error:", error);
+    res.status(500).json({ message: "İşaretlenemedi" });
+  }
+});
+
+// POST /api/audit/feedback/:id/respond — Personel geri bildirime yanıt verir
+router.post('/api/audit/feedback/:id/respond', isAuthenticated, async (req, res) => {
+  try {
+    const feedbackId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const { response } = req.body;
+
+    if (!response?.trim()) {
+      return res.status(400).json({ message: "Yanıt boş olamaz" });
+    }
+
+    await db.update(auditPersonnelFeedback)
+      .set({
+        personnelResponse: response,
+        respondedAt: new Date(),
+        isReadByPersonnel: true,
+        readAt: new Date(),
+      })
+      .where(and(
+        eq(auditPersonnelFeedback.id, feedbackId),
+        eq(auditPersonnelFeedback.personnelId, userId)
+      ));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Respond to feedback error:", error);
+    res.status(500).json({ message: "Yanıt gönderilemedi" });
+  }
+});
+
+// POST /api/audit/:instanceId/feedback — Denetçi personele geri bildirim yazar
+router.post('/api/audit/:instanceId/feedback', isAuthenticated, async (req, res) => {
+  try {
+    const auditorRole = req.user.role;
+    const allowedRoles = ['admin', 'coach', 'trainer', 'ceo', 'cgo'];
+    if (!allowedRoles.includes(auditorRole)) {
+      return res.status(403).json({ message: "Geri bildirim yazma yetkiniz yok" });
+    }
+
+    const instanceId = parseInt(req.params.instanceId);
+    const { personnelId, feedback, category, severity } = req.body;
+
+    if (!personnelId || !feedback?.trim()) {
+      return res.status(400).json({ message: "Personel ve geri bildirim gerekli" });
+    }
+
+    const [created] = await db.insert(auditPersonnelFeedback)
+      .values({
+        auditInstanceId: instanceId,
+        personnelId,
+        auditorId: req.user.id,
+        feedback,
+        category: category || null,
+        severity: severity || "info",
+      })
+      .returning();
+
+    res.json(created);
+  } catch (error) {
+    console.error("Create feedback error:", error);
+    res.status(500).json({ message: "Geri bildirim oluşturulamadı" });
+  }
+});
+
+// GET /api/audit/branch/:branchId/personnel-scores — Yatırımcı/Supervisor personel skorlarını görür
+router.get('/api/audit/branch/:branchId/personnel-scores', isAuthenticated, async (req, res) => {
+  try {
+    const userRole = req.user.role;
+    const branchId = parseInt(req.params.branchId);
+
+    // Yetki: admin, coach, trainer, yatirimci_branch (kendi şubesi), supervisor (kendi şubesi), ceo, cgo
+    const hqRoles = ['admin', 'coach', 'trainer', 'ceo', 'cgo'];
+    const branchRoles = ['yatirimci_branch', 'supervisor', 'mudur'];
+
+    if (!hqRoles.includes(userRole)) {
+      if (branchRoles.includes(userRole) && req.user.branchId !== branchId) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      if (!branchRoles.includes(userRole)) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+    }
+
+    const scores = await db.select()
+      .from(personnelAuditScores)
+      .where(eq(personnelAuditScores.branchId, branchId))
+      .orderBy(desc(personnelAuditScores.overallScore));
+
+    res.json(scores);
+  } catch (error) {
+    console.error("Get personnel scores error:", error);
+    res.status(500).json({ message: "Personel skorları alınamadı" });
   }
 });
 

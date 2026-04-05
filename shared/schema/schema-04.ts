@@ -465,6 +465,60 @@ export type InsertAuditInstanceItem = z.infer<typeof insertAuditInstanceItemSche
 export type AuditInstanceItem = typeof auditInstanceItems.$inferSelect;
 
 // ========================================
+// PERSONNEL AUDIT SCORES (Personel Denetim Skorları)
+// ========================================
+
+// Personel bazlı denetim skor agregasyonu
+export const personnelAuditScores = pgTable("personnel_audit_scores", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  branchId: integer("branch_id").references(() => branches.id),
+  periodType: varchar("period_type", { length: 20 }).notNull(), // weekly, monthly, quarterly
+  periodStart: date("period_start").notNull(),
+  periodEnd: date("period_end").notNull(),
+  auditCount: integer("audit_count").notNull().default(0),
+  // Alt kategori ortalamaları (0-100)
+  gulerYuzAvg: integer("guler_yuz_avg"),     // Misafir Deneyimi & Güler Yüz
+  urunBilgisiAvg: integer("urun_bilgisi_avg"), // Ürün Bilgisi
+  dressCodeAvg: integer("dress_code_avg"),     // Dress Code & Bakım
+  hijyenAvg: integer("hijyen_avg"),            // Hijyen Kuralları
+  takimRuhuAvg: integer("takim_ruhu_avg"),     // Takım Ruhu
+  gelisimAvg: integer("gelisim_avg"),          // Gelişim & Motivasyon
+  // Ağırlıklı genel ortalama
+  overallScore: integer("overall_score"),
+  // Trend
+  previousScore: integer("previous_score"),
+  trend: varchar("trend", { length: 10 }), // up, down, stable
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("personnel_audit_scores_user_idx").on(table.userId),
+  index("personnel_audit_scores_branch_idx").on(table.branchId),
+  index("personnel_audit_scores_period_idx").on(table.periodType, table.periodStart),
+]);
+
+// Denetçi → Personel özel geri bildirim notları
+export const auditPersonnelFeedback = pgTable("audit_personnel_feedback", {
+  id: serial("id").primaryKey(),
+  auditInstanceId: integer("audit_instance_id").notNull().references(() => auditInstances.id, { onDelete: "cascade" }),
+  personnelId: varchar("personnel_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  auditorId: varchar("auditor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  feedback: text("feedback").notNull(), // Denetçinin özel notu
+  category: varchar("category", { length: 30 }), // guler_yuz, urun_bilgisi, dress_code, hijyen, takim_ruhu, gelisim
+  severity: varchar("severity", { length: 10 }).default("info"), // info, warning, critical
+  isReadByPersonnel: boolean("is_read_by_personnel").default(false),
+  readAt: timestamp("read_at"),
+  // Personelin yanıtı/aksiyonu
+  personnelResponse: text("personnel_response"),
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("audit_feedback_personnel_idx").on(table.personnelId),
+  index("audit_feedback_instance_idx").on(table.auditInstanceId),
+  index("audit_feedback_unread_idx").on(table.personnelId, table.isReadByPersonnel),
+]);
+
+// ========================================
 // CORRECTIVE ACTIONS (CAPA - Müdahale Masası)
 // ========================================
 
