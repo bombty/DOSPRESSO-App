@@ -133,6 +133,9 @@ export const M02_IK: ModuleManifest = {
     supervisor:       { view: true, create: false, edit: false, delete: false, approve: true, scope: 'own_branch' },
     yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     barista:          { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_data' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    bar_buddy:        { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_data' },
+    stajyer:          { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_data' },
   },
 };
 
@@ -209,6 +212,9 @@ export const M04_BORDRO: ModuleManifest = {
     supervisor:       { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     barista:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    bar_buddy:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
+    stajyer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
   },
 };
 
@@ -245,6 +251,9 @@ export const M05_OPERASYON: ModuleManifest = {
     supervisor:       { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
     supervisor_buddy: { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
     barista:          { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    bar_buddy:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    stajyer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
   },
 };
 
@@ -321,6 +330,10 @@ export const M07_AKADEMI: ModuleManifest = {
     barista:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
     bar_buddy:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
     stajyer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
+    ceo:              { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    cgo:              { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
   },
 };
 
@@ -356,6 +369,10 @@ export const M08_CRM: ModuleManifest = {
     destek:           { view: true, create: true, edit: true, delete: false, approve: false, scope: 'all_branches' },
     mudur:            { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
     supervisor:       { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    cgo:              { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    barista:          { view: true, create: true, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
   },
 };
 
@@ -501,6 +518,15 @@ export const M12_DOBODY: ModuleManifest = {
     mudur:            { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     supervisor:       { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     barista:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
+    supervisor_buddy: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    yatirimci_branch: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
+    satinalma:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    fabrika_mudur:    { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    bar_buddy:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
+    stajyer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
+    destek:           { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    teknik:           { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
+    marketing:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
   },
 };
 
