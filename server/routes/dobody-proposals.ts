@@ -393,8 +393,8 @@ router.get('/api/dobody/special-periods', isAuthenticated, async (_req, res) => 
   }
 });
 
-// POST /api/dobody/generate-message — AI ile mesaj üret
-router.post('/api/dobody/generate-message', isAuthenticated, async (req, res) => {
+// POST /api/dobody/generate-ai-message — AI ile bağlama özel mesaj üret (Sprint-9)
+router.post('/api/dobody/generate-ai-message', isAuthenticated, async (req, res) => {
   try {
     const { generateContextMessage } = await import("../lib/dobody-message-generator");
     const message = await generateContextMessage(req.body);
