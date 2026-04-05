@@ -579,7 +579,7 @@ export default function FabrikaUretimPlanlama() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5" />
-                  {Number(currentDate ?? 0).toLocaleString('tr-TR', { month: 'long', year: 'numeric' })}
+                  {currentDate.toLocaleString('tr-TR', { month: 'long', year: 'numeric' })}
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   <Button

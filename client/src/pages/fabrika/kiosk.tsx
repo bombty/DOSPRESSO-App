@@ -166,7 +166,7 @@ interface TodayStats {
   shiftCount: number;
 }
 
-const FABRIKA_ALLOWED_ROLES = ['fabrika_operator', 'fabrika_personel', 'fabrika_sorumlu', 'admin'];
+const FABRIKA_ALLOWED_ROLES = ['fabrika_mudur', 'fabrika_operator', 'fabrika_personel', 'fabrika_sorumlu', 'admin'];
 
 export default function FactoryKiosk() {
   const { toast } = useToast();
