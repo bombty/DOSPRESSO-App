@@ -295,7 +295,8 @@ const router = Router();
       
       res.json({
         ...result.announcement,
-        isRead: !!result.readStatus
+        isRead: !!result.readStatus,
+        isAcknowledged: !!(result.readStatus?.acknowledgedAt),
       });
     } catch (error: unknown) {
       console.error("Get announcement error:", error);
@@ -609,15 +610,20 @@ const router = Router();
       const { id } = req.params;
       const user = req.user;
       
-      // Upsert — okundu + acknowledge olarak işaretle
+      // Upsert — okundu + acknowledge olarak işaretle (acknowledgedAt set)
+      const now = new Date();
       await db.insert(announcementReadStatus)
         .values({
           announcementId: parseInt(id),
           userId: user.id,
+          acknowledgedAt: now,
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: [announcementReadStatus.announcementId, announcementReadStatus.userId],
+          set: { acknowledgedAt: now },
+        });
       
-      res.json({ success: true, acknowledgedAt: new Date() });
+      res.json({ success: true, acknowledgedAt: now });
     } catch (error: unknown) {
       console.error("Acknowledge announcement error:", error);
       res.status(500).json({ message: "Onay kaydedilemedi" });

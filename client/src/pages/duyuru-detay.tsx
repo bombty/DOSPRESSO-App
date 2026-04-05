@@ -48,6 +48,7 @@ type AnnouncementDetail = {
   mediaUrls?: string[];
   attachments?: string[];
   isRead?: boolean;
+  isAcknowledged?: boolean;
   requiresAcknowledgment?: boolean;
   status?: string;
   createdBy?: { fullName: string };
@@ -108,6 +109,11 @@ export default function DuyuruDetay() {
   useEffect(() => {
     if (id) markReadMutation.mutate();
   }, [id]);
+
+  // Sunucudan gelen isAcknowledged durumunu yerel state ile senkronize et
+  useEffect(() => {
+    if (announcement?.isAcknowledged) setAcknowledged(true);
+  }, [announcement?.isAcknowledged]);
 
   if (isLoading) {
     return (
@@ -309,7 +315,7 @@ export default function DuyuruDetay() {
         {announcement.requiresAcknowledgment && (
           <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30">
             <CardContent className="p-4 sm:p-6">
-              {acknowledged || announcement.isRead ? (
+              {acknowledged ? (
                 <div className="flex items-center gap-3 text-green-700 dark:text-green-400">
                   <CheckCircle2 className="h-6 w-6 shrink-0" />
                   <div>

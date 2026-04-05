@@ -881,6 +881,7 @@ export const announcementReadStatus = pgTable("announcement_read_status", {
   announcementId: integer("announcementId").notNull().references(() => announcements.id, { onDelete: "cascade" }),
   userId: varchar("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   readAt: timestamp("readAt").defaultNow(),
+  acknowledgedAt: timestamp("acknowledgedAt"),
 }, (table) => [
   index("announcement_read_user_idx").on(table.userId),
   index("announcement_read_announcement_idx").on(table.announcementId),
