@@ -69,6 +69,43 @@ DENETIM-PLAN, PROJE-PLAN, SISTEM-ATOLYESI-PLAN
 
 ---
 
+---
+
+## DUYURU SİSTEMİ v2 (AKTİF GELİŞTİRME)
+
+### Tamamlanan
+- [x] ImageStudio.tsx bileşeni (commit `f0d988c`)
+  - 5 sekmeli görsel düzenleme: Kırp, Arkaplan Silme, Ayar, Filtre, Şekil
+  - @imgly/background-removal entegrasyonu (tarayıcı tabanlı AI)
+  - banner-editor.tsx ve admin/duyurular.tsx entegrasyonu
+
+### Sprint 1: Tasarım Stüdyosu + Onay Akışı (devam ediyor)
+- [ ] Duyuru düzenleme bug fix
+- [ ] Kategori şablonları (8 tip)
+- [ ] TipTap zengin metin editörü
+- [ ] Draft → Review → Approve → Publish yaşam döngüsü
+- [ ] Görev bağlama (mevcut tasks tablosuna announcementId FK)
+
+### Sprint 2: Landing Page + Onay
+- [ ] /duyuru/:id tam sayfa route
+- [ ] Hero banner + içerik blokları
+- [ ] Acknowledgment butonu (kritik duyurularda zorunlu)
+- [ ] Mini quiz (reçete/kanuni değişiklikler)
+
+### Sprint 3: Header + Kiosk
+- [ ] Üst bar header banner sistemi
+- [ ] Banner fatigue kontrolü (max 2 aynı anda)
+- [ ] Kiosk'ta vardiya başı zorunlu okuma
+
+### Sprint 4: Analitik + Dobody
+- [ ] Okuma/onay/tıklama oranları
+- [ ] Dobody 18. event: announcement_followup
+- [ ] Hatırlatma + eskalasyon
+
+---
+
+---
+
 ## REPLİT AGENT İLE ÇALIŞMA DÜZENİ
 
 ### Genel Akış:
@@ -143,4 +180,3 @@ npx esbuild server/...  # Backend (Node.js)
 | `HAVING without GROUP BY` | HAVING → WHERE subquery |
 | `import not found` | Eksik import ekle |
 | `category/metadata sütunu yok` | notifications tablosuna uygun alan kullan |
-
