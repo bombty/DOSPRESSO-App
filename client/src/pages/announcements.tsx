@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Megaphone, Plus, AlertCircle, Calendar, User, Image, Eye, Users, X, Pencil, Trash2, Layout } from "lucide-react";
+import { Megaphone, Plus, AlertCircle, Calendar, User, Image, Eye, Users, X, Pencil, Trash2, Layout, Palette } from "lucide-react";
 import BannerEditor from "./banner-editor";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
@@ -25,6 +25,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 const priorityLabels: Record<string, string> = {
   normal: "Normal",
@@ -39,6 +40,40 @@ const categoryLabels: Record<string, string> = {
   urgent: "Acil",
   training: "Eğitim",
   event: "Etkinlik",
+  recipe: "Reçete Değişikliği",
+};
+
+const CATEGORY_TEMPLATES: Record<string, { title: string; message: string; detailedContent: string }> = {
+  new_product: {
+    title: "Yeni Ürün: ",
+    message: "Menümüze yeni bir ürün eklendi!",
+    detailedContent: `<h2>Ürün Bilgileri</h2><p>Ürün adı, fiyatı ve açıklamasını buraya yazın.</p><h2>Hazırlama Notları</h2><p>Barista'lar için hazırlama talimatlarını buraya ekleyin.</p><h2>Lansman Tarihi</h2><p>Ürünün satışa sunulacağı tarihi belirtin.</p>`,
+  },
+  recipe: {
+    title: "Reçete Değişikliği: ",
+    message: "Bir reçetede güncelleme yapıldı.",
+    detailedContent: `<h2>Değişen Reçete</h2><p>Hangi ürünün reçetesi değiştiğini yazın.</p><h2>Eski Reçete</h2><p>Önceki tarifi buraya yazın.</p><h2>Yeni Reçete</h2><p>Güncellenmiş tarifi buraya yazın.</p><h2>Değişiklik Nedeni</h2><p>Neden değişiklik yapıldığını açıklayın.</p>`,
+  },
+  policy: {
+    title: "Kanuni Yenilik: ",
+    message: "Yeni bir yasal düzenleme hakkında bilgilendirme.",
+    detailedContent: `<h2>Düzenleme Özeti</h2><p>Yasal değişikliği kısaca özetleyin.</p><h2>Etkilenen Alanlar</h2><p>Bu değişiklik hangi süreçleri etkiliyor?</p><h2>Yapılması Gerekenler</h2><p>Personelin uyması gereken yeni kuralları listeleyin.</p><h2>Yürürlük Tarihi</h2><p>Değişikliğin ne zaman geçerli olacağını belirtin.</p>`,
+  },
+  campaign: {
+    title: "Kampanya: ",
+    message: "Yeni kampanya başlatıldı!",
+    detailedContent: `<h2>Kampanya Detayları</h2><p>Kampanyanın ne olduğunu açıklayın.</p><h2>Geçerlilik Süresi</h2><p>Başlangıç ve bitiş tarihlerini yazın.</p><h2>Hedefler</h2><p>Satış hedeflerini belirtin.</p>`,
+  },
+  training: {
+    title: "Eğitim: ",
+    message: "Yeni eğitim programı başlıyor.",
+    detailedContent: `<h2>Eğitim Konusu</h2><p>Eğitimin ne hakkında olduğunu açıklayın.</p><h2>Katılımcılar</h2><p>Kimlerin katılması gerektiğini belirtin.</p><h2>Tarih ve Süre</h2><p>Eğitimin ne zaman ve ne kadar süreceğini yazın.</p>`,
+  },
+  event: {
+    title: "Etkinlik: ",
+    message: "Yaklaşan etkinlik hakkında bilgilendirme.",
+    detailedContent: `<h2>Etkinlik Bilgileri</h2><p>Etkinliğin ne olduğunu açıklayın.</p><h2>Tarih ve Yer</h2><p>Ne zaman ve nerede yapılacağını yazın.</p><h2>Katılım</h2><p>Katılım şartlarını belirtin.</p>`,
+  },
 };
 
 type AnnouncementWithUser = Announcement & {
@@ -139,6 +174,7 @@ export default function Announcements() {
     defaultValues: {
       title: "",
       message: "",
+      detailedContent: "",
       priority: "normal",
       category: "general",
       targetRoles: null,
@@ -240,6 +276,7 @@ export default function Announcements() {
     form.reset({
       title: announcement.title,
       message: announcement.message,
+      detailedContent: announcement.detailedContent || "",
       priority: announcement.priority,
       category: announcement.category,
       targetRoles: announcement.targetRoles || [],
@@ -330,15 +367,60 @@ export default function Announcements() {
                       name="message"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Mesaj</FormLabel>
+                          <FormLabel>Mesaj (Kısa Özet)</FormLabel>
                           <FormControl>
                             <Textarea 
                               {...field} 
-                              placeholder="Duyuru içeriği..."
-                              rows={3}
+                              placeholder="Duyuru kısa özeti..."
+                              rows={2}
                               data-testid="input-message"
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Kategori Şablonu Butonu */}
+                    {form.watch("category") && form.watch("category") !== "general" && CATEGORY_TEMPLATES[form.watch("category")] && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs"
+                        onClick={() => {
+                          const template = CATEGORY_TEMPLATES[form.watch("category")];
+                          if (template) {
+                            if (!form.getValues("title")) form.setValue("title", template.title);
+                            if (!form.getValues("message")) form.setValue("message", template.message);
+                            form.setValue("detailedContent", template.detailedContent);
+                          }
+                        }}
+                        data-testid="button-apply-template"
+                      >
+                        <Palette className="h-3 w-3 mr-1" />
+                        {categoryLabels[form.watch("category")] || "Kategori"} şablonunu uygula
+                      </Button>
+                    )}
+
+                    {/* Detaylı İçerik - TipTap Editör */}
+                    <FormField
+                      control={form.control}
+                      name="detailedContent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Detaylı İçerik (Landing Page)</FormLabel>
+                          <FormControl>
+                            <RichTextEditor
+                              content={field.value || ""}
+                              onChange={field.onChange}
+                              placeholder="Duyurunun detaylı içeriğini buraya yazın... Başlık, liste, link, görsel ekleyebilirsiniz."
+                              minHeight="180px"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Bu alan duyuru landing sayfasında görünecek. Zengin metin formatı destekler.
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -471,6 +553,7 @@ export default function Announcements() {
                                 <SelectItem value="policy">Politika</SelectItem>
                                 <SelectItem value="training">Eğitim</SelectItem>
                                 <SelectItem value="event">Etkinlik</SelectItem>
+                                <SelectItem value="recipe">Reçete Değişikliği</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -889,9 +972,29 @@ export default function Announcements() {
                     name="message"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mesaj</FormLabel>
+                        <FormLabel>Mesaj (Kısa Özet)</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="Duyuru içeriği..." rows={3} data-testid="input-edit-message" />
+                          <Textarea {...field} placeholder="Duyuru kısa özeti..." rows={2} data-testid="input-edit-message" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Detaylı İçerik - TipTap Editör */}
+                  <FormField
+                    control={form.control}
+                    name="detailedContent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Detaylı İçerik (Landing Page)</FormLabel>
+                        <FormControl>
+                          <RichTextEditor
+                            content={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="Duyurunun detaylı içeriğini buraya yazın..."
+                            minHeight="150px"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -997,6 +1100,7 @@ export default function Announcements() {
                               <SelectItem value="policy">Politika</SelectItem>
                               <SelectItem value="training">Eğitim</SelectItem>
                               <SelectItem value="event">Etkinlik</SelectItem>
+                                <SelectItem value="recipe">Reçete Değişikliği</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
