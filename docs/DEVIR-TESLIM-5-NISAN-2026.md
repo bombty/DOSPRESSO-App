@@ -138,6 +138,41 @@ Yeni: /api/dobody/generate-ai-message (AI) — dobody-message-generator.ts
 
 ## BEKLEYEN İŞLER
 
-### Kısa: duyuru düzenleme bug, kiosk token, eski Dobody message birleştirme
+### Kısa: ~~duyuru düzenleme bug~~ ✅, kiosk token, eski Dobody message birleştirme
 ### Orta: Atölye sağlık matrisi, proje portfolio widget, dinamik yetki kaydırma UI
 ### Uzun: Franchise features (~38 ekran), POS API, Dobody otonom eşik
+
+---
+
+## DUYURU SİSTEMİ v2 (AKTİF GELİŞTİRME — 5 Nisan 2026+)
+
+### Tamamlanan
+- [x] ImageStudio.tsx (commit `f0d988c`) — 5 sekmeli görsel düzenleme
+  - Kırp (7 aspect preset), Arkaplan Silme (AI @imgly/background-removal),
+    Ayar (parlaklık/kontrast/doygunluk/blur), Filtre (8 preset), Şekil (5 mask)
+  - banner-editor.tsx + admin/duyurular.tsx entegrasyonu
+- [x] Duyuru düzenleme bug fix (commit `1bad311`) — 5 eksik alan eklendi
+
+### Sprint 1: Tasarım Stüdyosu + Onay Akışı (devam ediyor)
+- [ ] Kategori şablonları (yeni ürün, reçete değişikliği, kanuni, kampanya...)
+- [ ] TipTap zengin metin editörü (detailedContent alanı)
+- [ ] Draft → Review → Approve → Publish yaşam döngüsü
+- [ ] Görev bağlama (mevcut tasks tablosuna announcementId FK)
+
+### Sprint 2: Landing Page + Acknowledgment
+- [ ] /duyuru/:id tam sayfa route (şu an Dialog'da açılıyor)
+- [ ] Hero banner + içerik blokları + CTA
+- [ ] Acknowledgment butonu (reçete/kanuni duyurularda zorunlu)
+- [ ] Mini quiz + eski/yeni diff görünümü
+
+### Sprint 3: Header Banner + Kiosk
+- [ ] Üst bar header banner sistemi (rol bazlı otomatik gösterim)
+- [ ] Banner fatigue kontrolü (max 2 aynı anda, frekans sınırı)
+- [ ] Kiosk'ta vardiya başı zorunlu okuma
+- [ ] Dismiss + tekrar gösterme mantığı
+
+### Sprint 4: Analitik + Dobody
+- [ ] Okuma/onay/tıklama oranları + rol/şube breakdown
+- [ ] Dobody 18. event: announcement_followup
+- [ ] "3 barista reçete değişikliğini onaylamadı" → hatırlatma + eskalasyon
+- [ ] Görev tamamlama takibi
