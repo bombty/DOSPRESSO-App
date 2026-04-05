@@ -147,8 +147,6 @@ router.post('/api/system/test-endpoint', isAuthenticated, async (req, res) => {
   }
 });
 
-export default router;
-
 // POST /api/system/crash-report — Frontend crash raporla (Dobody Admin bildirimi)
 router.post('/api/system/crash-report', async (req, res) => {
   try {
@@ -173,3 +171,5 @@ router.post('/api/system/crash-report', async (req, res) => {
     res.status(500).json({ message: "Rapor alınamadı" });
   }
 });
+
+export default router;
