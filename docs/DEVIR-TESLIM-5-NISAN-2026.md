@@ -176,3 +176,76 @@ Yeni: /api/dobody/generate-ai-message (AI) — dobody-message-generator.ts
 - [ ] Dobody 18. event: announcement_followup
 - [ ] "3 barista reçete değişikliğini onaylamadı" → hatırlatma + eskalasyon
 - [ ] Görev tamamlama takibi
+
+---
+
+## CODEBASE YAPISI
+
+```
+DOSPRESSO-App/
+├── client/src/
+│   ├── pages/          — 195 sayfa (.tsx)
+│   ├── components/     — 83 bileşen
+│   │   ├── centrum/    — CentrumShell (tüm dashboard'lar bunu kullanır)
+│   │   ├── home-screen/— role-module-config.ts (her rolün ana sayfa kartları)
+│   │   ├── ui/         — Shadcn/ui
+│   │   └── DobodyProposalWidget.tsx — Dobody öneri kartı
+│   ├── hooks/          — useAuth.ts
+│   ├── lib/            — queryClient, role-routes, turkish-labels
+│   └── App.tsx         — TÜM route tanımları
+├── server/
+│   ├── routes/         — 106 route dosyası
+│   ├── lib/            — dobody-workflow-engine, action-executor, message-generator
+│   ├── services/       — ai-client.ts (multi-provider)
+│   ├── ai.ts           — AI config + provider
+│   ├── storage.ts      — DB erişim
+│   └── routes.ts       — Route birleştirici
+├── shared/
+│   ├── schema/         — 21 schema (schema-01: UserRole, schema-02: PERMISSIONS)
+│   └── module-manifest.ts — Modül yetkileri (yeni)
+├── docs/               — 40+ MD doküman
+└── AGENTS.md / STATUS.md / CHANGELOG.md
+```
+
+### En Kırılgan Dosyalar
+| Dosya | Satır | Dikkat |
+|-------|------:|--------|
+| server/routes/factory.ts | 7655 | Fabrika tüm endpoint |
+| server/routes/hr.ts | 7460 | İK + izin + bordro |
+| shared/schema/schema-02.ts | 3311 | PERMISSIONS — manifest ile birlikte güncelle! |
+| shared/module-manifest.ts | ~600 | Yetki — schema-02 ile birlikte güncelle! |
+| client/src/App.tsx | ~600 | Route tanımları — bozulursa hiçbir sayfa açılmaz |
+
+---
+
+## ASLAN NASIL ÇALIŞIR
+
+- Türkçe konuşur, UI Türkçe, DB enum karışık (TR+EN)
+- Gece çalışır (01:00-05:00 arası)
+- Önce plan ister, onaylar, sonra kod. Bazen direkt "devam et" der
+- iPad'den Replit üzerinden test, screenshot gönderir
+- Aslan iş sahibi — mimari kararları o verir, Claude önerir
+
+---
+
+## TEST ORTAMI
+
+- Dev: `*.riker.replit.dev` (değişebilir)
+- Prod: `dospressohq.replit.app` (sabit)
+- Test kullanıcıları: Yavuz(Coach), Cihan(Barista/Işıklar), Aslan(Admin)
+- DB: PostgreSQL Neon serverless (Replit env'de)
+
+---
+
+## YAPILAN HATALAR (TEKRARLAMA!)
+
+| Hata | Ders |
+|------|------|
+| Token dosya içine yazıldı | Token SADECE komut satırında |
+| `git reset --hard` | SADECE `git pull --rebase` |
+| `view: 'own'` (string) | `view: true` (boolean) kullan |
+| Manifest güncelle ama PERMISSIONS güncelleme | İKİSİNİ BİRLİKTE |
+| SQL'de yanlış sütun (date→shift_date) | Schema'yı kontrol et |
+| notifications'a category/metadata INSERT | Tablo yapısını kontrol et |
+| Aynı endpoint path iki route'ta | Path çakışma kontrol et |
+| Hook koşullu çağrılmış (if içinde useQuery) | Hook'lar her zaman aynı sırada |
