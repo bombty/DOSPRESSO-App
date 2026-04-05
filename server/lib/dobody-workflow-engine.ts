@@ -4,11 +4,12 @@
 // ========================================
 
 import { db } from "../db";
-import { eq, and, desc, sql, lt, gt, lte, isNull, or } from "drizzle-orm";
+import { eq, and, desc, sql, lt, gt, gte, lte, isNull, or } from "drizzle-orm";
 import {
   dobodyProposals, dobodyEvents, dobodyLearning, dobodyWorkflowConfidence,
   auditsV2, auditActionsV2, branches, users,
   shifts, projectTasks, projects,
+  announcements, announcementReadStatus,
 } from "@shared/schema";
 
 // ──────────────────────────────────────────
@@ -82,6 +83,10 @@ export async function fireEvent(eventType: string, sourceModule: string, entityT
         break;
       case 'raw_material_critical':
         generated += await wfRawMaterialCritical(eventData || {});
+        break;
+      // Dobody-18: Duyuru takip
+      case 'announcement_followup':
+        generated += await wfAnnouncementFollowup(eventData || {});
         break;
     }
 
@@ -825,4 +830,131 @@ async function wfRawMaterialCritical(data: Record<string, any>): Promise<number>
     suggestedActionData: { materialName, currentStock, suggestedOrder: minLevel ? Number(minLevel) * 3 : null },
   });
   return ok ? 1 : 0;
+}
+
+// ═══════════════════════════════════════════
+// Dobody-18: Duyuru Takip (announcement_followup)
+// ═══════════════════════════════════════════
+
+async function wfAnnouncementFollowup(data: Record<string, any>): Promise<number> {
+  const { announcementId, title, category, readRate, unreadCount, totalTarget, requiresAcknowledgment, hoursOld } = data;
+  let generated = 0;
+
+  // Senaryo 1: Kritik duyuru (acknowledgment gerektiren) ve düşük okuma oranı
+  if (requiresAcknowledgment && readRate < 70) {
+    const ok = await createProposal({
+      workflowType: 'WF-ANN', roleTarget: 'coach',
+      proposalType: 'action', priority: readRate < 30 ? 'acil' : 'onemli',
+      title: `Kritik duyuru onaylanmadı: "${title || 'Duyuru'}" — %${readRate || 0} okuma`,
+      description: `${unreadCount || '?'} personel henüz "${title}" duyurusunu okumadı/onaylamadı. Toplam hedef: ${totalTarget || '?'} kişi. ${category === 'recipe' ? 'Reçete değişikliği uygulanmayabilir.' : category === 'policy' ? 'Kanuni uyumsuzluk riski.' : 'Takip önerilir.'}`,
+      sourceModule: 'duyuru',
+      relatedEntityType: 'announcement',
+      relatedEntityId: announcementId,
+      suggestedActionType: 'send_message',
+      suggestedActionData: { announcementId, unreadCount, action: 'remind_unread' },
+    });
+    if (ok) generated++;
+  }
+
+  // Senaryo 2: Normal duyuru ama 48 saatten fazla geçmiş ve hala düşük okuma
+  if (!requiresAcknowledgment && hoursOld && hoursOld > 48 && readRate < 50) {
+    const ok = await createProposal({
+      workflowType: 'WF-ANN', roleTarget: 'trainer',
+      proposalType: 'info', priority: 'bilgi',
+      title: `Duyuru düşük etkileşim: "${title || 'Duyuru'}" — %${readRate || 0}`,
+      description: `${hoursOld} saattir yayında ancak hedef kitlenin sadece %${readRate}'i okumuş. ${unreadCount} kişi okumamış. Hatırlatma banner'ı veya kiosk gösterimi düşünülebilir.`,
+      sourceModule: 'duyuru',
+      relatedEntityType: 'announcement',
+      relatedEntityId: announcementId,
+      suggestedActionType: 'send_message',
+      suggestedActionData: { announcementId, readRate, suggestion: 'increase_visibility' },
+    });
+    if (ok) generated++;
+  }
+
+  // Senaryo 3: Şube bazlı anomali — bir şube hiç okumamış
+  if (data.branchZeroRead && data.branchZeroRead.length > 0) {
+    const branchNames = data.branchZeroRead.map((b: any) => b.name).join(', ');
+    const ok = await createProposal({
+      workflowType: 'WF-ANN', roleTarget: 'coach',
+      proposalType: 'action', priority: 'onemli',
+      title: `Şube(ler) duyuruyu hiç okumadı: ${branchNames}`,
+      description: `"${title}" duyurusu şu şubelerde hiç okunmamış: ${branchNames}. Supervisor ile iletişime geçilmesi önerilir.`,
+      sourceModule: 'duyuru',
+      relatedEntityType: 'announcement',
+      relatedEntityId: announcementId,
+      suggestedActionType: 'send_message',
+      suggestedActionData: { announcementId, branches: data.branchZeroRead },
+    });
+    if (ok) generated++;
+  }
+
+  return generated;
+}
+
+// ═══════════════════════════════════════════
+// Duyuru Takip Kontrol — Periyodik çağrılır
+// ═══════════════════════════════════════════
+
+export async function checkAnnouncementFollowups() {
+  try {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Son 7 günde yayınlanmış, aktif duyuruları al
+    const activeAnnouncements = await db.select()
+      .from(announcements)
+      .where(and(
+        gte(announcements.publishedAt, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
+        lte(announcements.publishedAt, now),
+        or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+        isNull(announcements.deletedAt)
+      ));
+
+    let totalFired = 0;
+
+    for (const ann of activeAnnouncements) {
+      // Okuma oranını hesapla
+      const [readCount] = await db.select({ count: sql<number>`count(*)` })
+        .from(announcementReadStatus)
+        .where(eq(announcementReadStatus.announcementId, ann.id));
+
+      const [totalUsers] = await db.select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.isActive, true));
+
+      const total = Number(totalUsers?.count ?? 0);
+      const read = Number(readCount?.count ?? 0);
+      const readRate = total > 0 ? Math.round((read / total) * 100) : 100;
+      const hoursOld = Math.round((now.getTime() - new Date(ann.publishedAt || now).getTime()) / (1000 * 60 * 60));
+
+      // Kontrol: Düşük okuma oranı + yeterli süre geçmiş
+      const needsFollowup = 
+        (ann.requiresAcknowledgment && readRate < 70 && hoursOld > 12) ||
+        (!ann.requiresAcknowledgment && readRate < 50 && hoursOld > 48);
+
+      if (needsFollowup) {
+        await fireEvent('announcement_followup', 'duyuru', 'announcement', ann.id, {
+          announcementId: ann.id,
+          title: ann.title,
+          category: ann.category,
+          readRate,
+          unreadCount: total - read,
+          totalTarget: total,
+          requiresAcknowledgment: ann.requiresAcknowledgment,
+          hoursOld,
+        });
+        totalFired++;
+      }
+    }
+
+    if (totalFired > 0) {
+      console.log(`[Dobody] Duyuru takip: ${totalFired} event tetiklendi`);
+    }
+
+    return totalFired;
+  } catch (error) {
+    console.error("[Dobody] checkAnnouncementFollowups error:", error);
+    return 0;
+  }
 }
