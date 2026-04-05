@@ -193,7 +193,7 @@ export default function Announcements() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertAnnouncement) => {
-      await apiRequest('POST', '/api/announcements', { 
+      await apiRequest('POST', '/api/admin/announcements', { 
         ...data, 
         bannerImageUrl: bannerImageUrl || null,
       });

@@ -30,7 +30,8 @@ const router = Router();
           eq(announcements.showOnDashboard, true),
           lte(announcements.publishedAt, now),
           or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
-          isNull(announcements.deletedAt)
+          isNull(announcements.deletedAt),
+          or(eq(announcements.status, 'published'), isNull(announcements.status))
         ))
         .orderBy(desc(announcements.isPinned), desc(announcements.bannerPriority), desc(announcements.publishedAt))
         .limit(10);
@@ -122,7 +123,9 @@ const router = Router();
         ))
         .where(and(
           lte(announcements.publishedAt, now),
-          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now))
+          or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+          isNull(announcements.deletedAt),
+          or(eq(announcements.status, 'published'), isNull(announcements.status))
         ))
         .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt))
         .limit(parseInt(limit as string));

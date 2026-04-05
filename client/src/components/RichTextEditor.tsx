@@ -5,7 +5,7 @@ import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,7 @@ export function RichTextEditor({
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
+  const isExternalUpdate = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -77,14 +78,18 @@ export function RichTextEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      if (!isExternalUpdate.current) {
+        onChange(editor.getHTML());
+      }
     },
   });
 
-  // Sync content from outside
+  // Sync content from outside (parent form reset, template apply)
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
+      isExternalUpdate.current = true;
       editor.commands.setContent(content || "");
+      isExternalUpdate.current = false;
     }
   }, [content]);
 

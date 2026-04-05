@@ -141,7 +141,7 @@ export default function DuyuruDetay() {
   const category = announcement.category || "general";
   const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.general;
   const CategoryIcon = config.icon;
-  const needsAck = announcement.requiresAcknowledgment && !acknowledged && !announcement.isRead;
+  const needsAck = announcement.requiresAcknowledgment && !acknowledged;
 
   return (
     <div className="min-h-screen" data-testid="page-duyuru-detay">
