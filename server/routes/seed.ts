@@ -1353,4 +1353,16 @@ router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, asy
   }
 });
 
+// POST /api/admin/seed-audit-templates — Denetim şablonlarını oluştur
+router.post('/api/admin/seed-audit-templates', isAuthenticated, requireAdmin, async (req, res) => {
+  try {
+    const { seedAuditTemplates } = await import('../seeds/seed-audit-templates');
+    await seedAuditTemplates(req.user.id);
+    res.json({ success: true, message: "Denetim şablonları oluşturuldu" });
+  } catch (error: any) {
+    console.error('[SeedAuditTemplates] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
