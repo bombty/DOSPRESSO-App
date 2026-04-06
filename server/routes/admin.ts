@@ -2417,13 +2417,14 @@ function isAdminOrCeo(req: any, res: any, next: any) {
   router.get('/api/admin/announcements', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'coach', 'destek'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'marketing', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       
       const results = await db.select()
         .from(announcements)
+        .where(isNull(announcements.deletedAt))
         .orderBy(desc(announcements.createdAt));
       
       res.json(results);
@@ -2436,14 +2437,15 @@ function isAdminOrCeo(req: any, res: any, next: any) {
   router.post('/api/admin/announcements', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'coach', 'destek'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'marketing', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
       
       const { title, message, summary, category, targetRoles, targetBranches, priority, 
               bannerImageUrl, bannerTitle, bannerSubtitle, showOnDashboard, bannerPriority,
-              isPinned, expiresAt } = req.body;
+              isPinned, expiresAt, detailedContent, ctaLink, ctaText, 
+              requiresAcknowledgment, status } = req.body;
       
       if (!title || !message) {
         return res.status(400).json({ message: "Başlık ve mesaj gerekli" });
@@ -2465,7 +2467,12 @@ function isAdminOrCeo(req: any, res: any, next: any) {
           showOnDashboard: showOnDashboard || false,
           bannerPriority: bannerPriority || 0,
           isPinned: isPinned || false,
-          expiresAt: expiresAt ? new Date(expiresAt) : null
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          detailedContent: detailedContent || null,
+          ctaLink: ctaLink || null,
+          ctaText: ctaText || null,
+          requiresAcknowledgment: requiresAcknowledgment || false,
+          status: status || 'published',
         })
         .returning();
       
@@ -2479,7 +2486,7 @@ function isAdminOrCeo(req: any, res: any, next: any) {
   router.patch('/api/admin/announcements/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'coach', 'destek'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'marketing', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -2512,7 +2519,7 @@ function isAdminOrCeo(req: any, res: any, next: any) {
   router.delete('/api/admin/announcements/:id', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'coach', 'destek'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'marketing', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }

@@ -16,6 +16,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
     roles: ['admin', 'ceo', 'cgo'],
     items: [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/' },
+      { key: 'duyurular', icon: 'Megaphone', label: 'Duyurular', path: '/duyurular' },
       { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek', badge: true },
       { key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi' },
       { key: 'sube', icon: 'Building2', label: 'Şubeler', path: '/subeler' },
@@ -27,6 +28,7 @@ export const NAV_RAIL_CONFIGS: NavRailConfig[] = [
     roles: ['coach', 'trainer'],
     items: [
       { key: 'home', icon: 'Home', label: 'Ana Sayfa', path: '/' },
+      { key: 'duyurular', icon: 'Megaphone', label: 'Duyurular', path: '/duyurular' },
       { key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi', badge: true },
       { key: 'sube', icon: 'Building2', label: 'Şubeler', path: '/subeler' },
       { key: 'crm', icon: 'MessageSquare', label: 'İletişim', path: '/hq-destek' },

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import {
   Home, MessageSquare, GraduationCap, Building2, Factory,
-  BarChart2, CheckSquare, Timer, User,
+  BarChart2, CheckSquare, Timer, User, Megaphone,
 } from "lucide-react";
 import { getNavRailItems } from "@/lib/navigation-config";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,7 @@ import {
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Home, MessageSquare, GraduationCap, Building2, Factory,
-  BarChart2, CheckSquare, Timer, User,
+  BarChart2, CheckSquare, Timer, User, Megaphone,
 };
 
 export function NavRail({ className }: { className?: string }) {

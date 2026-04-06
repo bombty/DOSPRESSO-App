@@ -86,7 +86,7 @@ export default function IcerikStudyosu() {
   const isHQ = user?.role && isHQRole(user.role as any);
 
   const { data: announcements, isLoading: announcementsLoading, isError, refetch } = useQuery<AnnouncementWithUser[]>({
-    queryKey: ['/api/announcements'],
+    queryKey: ['/api/admin/announcements'],
     enabled: !!isHQ,
   });
 
@@ -122,7 +122,7 @@ export default function IcerikStudyosu() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertAnnouncement) => {
-      await apiRequest('POST', '/api/announcements', { 
+      await apiRequest('POST', '/api/admin/announcements', { 
         ...data, 
         bannerImageUrl: bannerImageUrl || null,
         detailedContent: data.detailedContent || null,
