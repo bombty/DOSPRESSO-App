@@ -15,6 +15,7 @@ const MODULES = [
   { key: "gorevler", label: "Operasyon & Görevler" },
   { key: "ekipman",  label: "Ekipman & Arıza" },
   { key: "akademi",  label: "Akademi & Eğitim" },
+  { key: "duyurular", label: "Duyurular & İçerik" },
   { key: "crm",      label: "CRM & Müşteri" },
   { key: "raporlar", label: "Raporlar & Analitik" },
   { key: "dobody",   label: "Mr. Dobody Agent" },
@@ -37,12 +38,12 @@ const PERM_LABELS: Record<string, string> = {
 
 // Manifest'teki varsayılan yetkiler
 const MANIFEST_DEFAULTS: Record<string, Record<string, Record<string, boolean>>> = {
-  coach:    { admin: {canView:true}, ik: {canView:true}, vardiya: {canView:true}, gorevler: {canView:true,canCreate:true,canEdit:true,canApprove:true}, ekipman: {canView:true}, akademi: {canView:true,canCreate:true,canEdit:true,canApprove:true}, crm: {canView:true}, raporlar: {canView:true}, dobody: {canView:true} },
-  trainer:  { admin: {canView:true}, ik: {canView:true}, vardiya: {canView:true}, gorevler: {canView:true,canCreate:true,canEdit:true,canApprove:true}, ekipman: {canView:true}, akademi: {canView:true,canCreate:true,canEdit:true,canApprove:true}, crm: {canView:true}, raporlar: {canView:true}, dobody: {canView:true} },
-  cgo:      { admin: {canView:true}, ik: {canView:true,canCreate:true,canEdit:true,canApprove:true}, vardiya: {canView:true}, gorevler: {canView:true,canCreate:true,canEdit:true,canApprove:true}, ekipman: {canView:true,canApprove:true}, akademi: {canView:true,canApprove:true}, crm: {canView:true}, raporlar: {canView:true,canCreate:true}, dobody: {canView:true,canApprove:true} },
-  mudur:    { ik: {canView:true,canCreate:true}, vardiya: {canView:true,canCreate:true,canEdit:true}, gorevler: {canView:true,canCreate:true,canEdit:true}, ekipman: {canView:true,canCreate:true}, akademi: {canView:true}, crm: {canView:true}, raporlar: {canView:true} },
-  supervisor: { vardiya: {canView:true,canCreate:true,canEdit:true}, gorevler: {canView:true,canCreate:true}, ekipman: {canView:true,canCreate:true}, akademi: {canView:true} },
-  muhasebe_ik: { ik: {canView:true,canCreate:true,canEdit:true}, bordro: {canView:true,canCreate:true,canEdit:true,canApprove:true}, raporlar: {canView:true} },
+  coach:    { admin: {canView:true}, ik: {canView:true}, vardiya: {canView:true}, gorevler: {canView:true,canCreate:true,canEdit:true,canApprove:true}, ekipman: {canView:true}, akademi: {canView:true,canCreate:true,canEdit:true,canApprove:true}, duyurular: {canView:true,canCreate:true,canEdit:true}, crm: {canView:true}, raporlar: {canView:true}, dobody: {canView:true} },
+  trainer:  { admin: {canView:true}, ik: {canView:true}, vardiya: {canView:true}, gorevler: {canView:true,canCreate:true,canEdit:true,canApprove:true}, ekipman: {canView:true}, akademi: {canView:true,canCreate:true,canEdit:true,canApprove:true}, duyurular: {canView:true,canCreate:true}, crm: {canView:true}, raporlar: {canView:true}, dobody: {canView:true} },
+  cgo:      { admin: {canView:true}, ik: {canView:true,canCreate:true,canEdit:true,canApprove:true}, vardiya: {canView:true}, gorevler: {canView:true,canCreate:true,canEdit:true,canApprove:true}, ekipman: {canView:true,canApprove:true}, akademi: {canView:true,canApprove:true}, duyurular: {canView:true,canCreate:true,canEdit:true,canDelete:true,canApprove:true}, crm: {canView:true}, raporlar: {canView:true,canCreate:true}, dobody: {canView:true,canApprove:true} },
+  mudur:    { ik: {canView:true,canCreate:true}, vardiya: {canView:true,canCreate:true,canEdit:true}, gorevler: {canView:true,canCreate:true,canEdit:true}, ekipman: {canView:true,canCreate:true}, akademi: {canView:true}, duyurular: {canView:true}, crm: {canView:true}, raporlar: {canView:true} },
+  supervisor: { vardiya: {canView:true,canCreate:true,canEdit:true}, gorevler: {canView:true,canCreate:true}, ekipman: {canView:true,canCreate:true}, akademi: {canView:true}, duyurular: {canView:true} },
+  muhasebe_ik: { ik: {canView:true,canCreate:true,canEdit:true}, bordro: {canView:true,canCreate:true,canEdit:true,canApprove:true}, duyurular: {canView:true}, raporlar: {canView:true} },
 };
 
 // ─── Eskalasyon Konfigürasyon Bileşeni ─────────────────────────────────────
