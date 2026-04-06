@@ -52,7 +52,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 
-type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'working' | 'end-shift-summary' | 'qr-scan' | 'qr-action';
+type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'announcements' | 'working' | 'end-shift-summary' | 'qr-scan' | 'qr-action';
 
 interface StaffMember {
   id: string;
@@ -113,6 +113,7 @@ export default function BranchKiosk() {
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
   const [teamStatus, setTeamStatus] = useState<any[]>([]);
+  const [pendingAnnouncements, setPendingAnnouncements] = useState<any[]>([]);
   const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
@@ -518,6 +519,22 @@ export default function BranchKiosk() {
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
       }
+      // Vardiya başı zorunlu duyuru kontrolü
+      try {
+        const userId = data.user?.id || selectedUser?.id;
+        if (userId && branchId) {
+          const annRes = await fetch(`/api/branches/${branchId}/kiosk/pending-announcements/${userId}`, { credentials: 'include' });
+          if (annRes.ok) {
+            const pending = await annRes.json();
+            if (Array.isArray(pending) && pending.length > 0) {
+              setPendingAnnouncements(pending);
+              setStep('announcements');
+              toast({ title: "Duyuru", description: `${pending.length} onay bekleyen duyuru var` });
+              return;
+            }
+          }
+        }
+      } catch (e) { /* skip — duyuru kontrolü başarısız olsa da vardiya başlasın */ }
       setStep('working');
       toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user?.firstName}` });
     },
@@ -1847,6 +1864,97 @@ export default function BranchKiosk() {
     );
   };
 
+  // Tüm duyurular onaylandığında otomatik çalışmaya geç
+  useEffect(() => {
+    if (step === 'announcements' && pendingAnnouncements.length === 0) {
+      setStep('working');
+      toast({ title: "Giriş başarılı", description: "Tüm duyurular onaylandı" });
+    }
+  }, [pendingAnnouncements.length, step]);
+
+  // Duyuru onaylama — kiosk içi
+  const acknowledgeAnnouncementMutation = useMutation({
+    mutationFn: async (announcementId: number) => {
+      const res = await apiRequest('POST', `/api/announcements/${announcementId}/acknowledge`, {});
+      return res.json();
+    },
+    onSuccess: (_, announcementId) => {
+      setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+    },
+  });
+
+  const renderAnnouncementsStep = () => {
+    if (pendingAnnouncements.length === 0) {
+      return null; // useEffect handles transition
+    }
+
+    const current = pendingAnnouncements[0];
+    const remaining = pendingAnnouncements.length - 1;
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-2 p-3 rounded-full bg-red-100 dark:bg-red-900/30">
+              <Megaphone className="h-8 w-8 text-red-600 dark:text-red-400" />
+            </div>
+            <CardTitle className="text-lg" data-testid="title-announcement">
+              Zorunlu Duyuru
+            </CardTitle>
+            <CardDescription>
+              Vardiyaya başlamadan önce okumanız gereken {pendingAnnouncements.length} duyuru var
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Banner görseli */}
+            {current.bannerImageUrl && (
+              <div className="rounded-lg overflow-hidden">
+                <img 
+                  src={current.bannerImageUrl} 
+                  alt={current.title} 
+                  className="w-full h-40 object-cover"
+                />
+              </div>
+            )}
+
+            {/* Başlık ve mesaj */}
+            <div className="space-y-2">
+              <h3 className="font-semibold text-base">{current.title}</h3>
+              {current.category && (
+                <Badge variant="outline" className="text-xs">
+                  {current.category === 'recipe' ? 'Reçete Değişikliği' :
+                   current.category === 'policy' ? 'Kanuni/Politika' :
+                   current.category === 'campaign' ? 'Kampanya' :
+                   current.category === 'training' ? 'Eğitim' :
+                   current.category === 'product' ? 'Yeni Ürün' :
+                   current.category}
+                </Badge>
+              )}
+              <p className="text-sm text-muted-foreground leading-relaxed">{current.message}</p>
+            </div>
+
+            {/* Onay butonu */}
+            <Button
+              className="w-full h-14 text-lg bg-green-600 hover:bg-green-700"
+              onClick={() => acknowledgeAnnouncementMutation.mutate(current.id)}
+              disabled={acknowledgeAnnouncementMutation.isPending}
+              data-testid="button-acknowledge-announcement"
+            >
+              <CheckCircle2 className="h-5 w-5 mr-2" />
+              Okudum ve Anladım
+            </Button>
+
+            {remaining > 0 && (
+              <p className="text-center text-xs text-muted-foreground">
+                {remaining} duyuru daha kaldı
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (step) {
       case 'password':
@@ -1855,6 +1963,8 @@ export default function BranchKiosk() {
         return renderSelectUserStep();
       case 'enter-pin':
         return renderEnterPinStep();
+      case 'announcements':
+        return renderAnnouncementsStep();
       case 'working':
         return renderWorkingStep();
       case 'end-shift-summary':

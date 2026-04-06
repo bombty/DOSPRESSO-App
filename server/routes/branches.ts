@@ -64,6 +64,7 @@ import {
   hqShiftEvents,
   notifications,
   announcements,
+  announcementReadStatus,
   scheduledOffs,
   qrCheckinNonces,
   pdksRecords,
@@ -3875,6 +3876,72 @@ router.get('/api/branches/:branchId/kiosk/announcements', isKioskOrAuthenticated
   } catch (error: unknown) {
     console.error("Error fetching kiosk announcements:", error);
     res.status(500).json({ message: "Duyurular alınamadı" });
+  }
+});
+
+// GET /api/branches/:branchId/kiosk/pending-announcements/:userId — Vardiya başı zorunlu duyurular
+router.get('/api/branches/:branchId/kiosk/pending-announcements/:userId', isKioskOrAuthenticated, async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const userId = req.params.userId;
+    const now = new Date();
+
+    // Aktif, onay gerektiren duyuruları al
+    const activeAnnouncements = await db.select()
+      .from(announcements)
+      .where(and(
+        lte(announcements.publishedAt, now),
+        or(isNull(announcements.expiresAt), gte(announcements.expiresAt, now)),
+        isNull(announcements.deletedAt),
+        eq(announcements.requiresAcknowledgment, true),
+        or(eq(announcements.status, 'published'), isNull(announcements.status))
+      ))
+      .orderBy(desc(announcements.isPinned), desc(announcements.publishedAt))
+      .limit(10);
+
+    // Şube filtresi
+    const branchFiltered = activeAnnouncements.filter(ann => {
+      const hasNoTarget = !ann.targetRoles?.length && !ann.targetBranches?.length;
+      if (hasNoTarget) return true;
+      if (ann.targetBranches?.some(b => String(b) === String(branchId))) return true;
+      return false;
+    });
+
+    if (branchFiltered.length === 0) {
+      return res.json([]);
+    }
+
+    // Kullanıcının zaten onayladıklarını kontrol et
+    const readStatuses = await db.select()
+      .from(announcementReadStatus)
+      .where(and(
+        eq(announcementReadStatus.userId, userId),
+        inArray(announcementReadStatus.announcementId, branchFiltered.map(a => a.id))
+      ));
+
+    const acknowledgedIds = new Set(
+      readStatuses
+        .filter(rs => rs.acknowledgedAt != null)
+        .map(rs => rs.announcementId)
+    );
+
+    // Onaylanmamış duyuruları döndür
+    const pending = branchFiltered
+      .filter(ann => !acknowledgedIds.has(ann.id))
+      .map(ann => ({
+        id: ann.id,
+        title: ann.title,
+        message: ann.message,
+        category: ann.category,
+        bannerImageUrl: ann.bannerImageUrl,
+        priority: ann.priority,
+        publishedAt: ann.publishedAt,
+      }));
+
+    res.json(pending);
+  } catch (error: unknown) {
+    console.error("Error fetching pending announcements:", error);
+    res.status(500).json({ message: "Bekleyen duyurular alınamadı" });
   }
 });
 
