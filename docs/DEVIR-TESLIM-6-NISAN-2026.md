@@ -93,6 +93,37 @@
 
 ---
 
+
+
+### 5. KİOSK DUYURU ENTEGRASYONU ✅
+| Commit | İçerik |
+|--------|--------|
+| `dbb12a8` | Sidebar'a Duyurular menü linki (Megaphone ikonu) |
+| `7851f36` | Kiosk duyuru entegrasyonu — vardiya başı zorunlu okuma |
+| `6fd27e8` | Replit hotfix: kiosk acknowledge personel ID düzeltmesi |
+
+**Akış:** PIN giriş → pending duyuru kontrolü → zorunlu duyurular göster → onaylandıktan sonra çalışmaya geç
+**Endpoint:** GET /api/branches/:branchId/kiosk/pending-announcements/:userId
+
+### 6. ÜRETİM MALİYETİ HESAPLAMA API ✅
+| Commit | İçerik |
+|--------|--------|
+| `a80ce2b` | Batch maliyet hesaplama (enerji + işçilik breakdown) |
+
+**Endpoint'ler:**
+- GET /api/factory/batch-cost/:batchSpecId — Tek batch detaylı maliyet
+- GET /api/factory/batch-costs-all — Tüm istasyonların maliyet özeti
+- POST /api/admin/seed-cost-settings — Maliyet parametreleri seed
+
+### 7. DOBODY SCHEDULER BAĞLANTISI ✅
+| Commit | İçerik |
+|--------|--------|
+| `569ed20` | runPeriodicChecks → tick-1hr scheduler'a bağlandı |
+
+**Kritik:** Dobody periyodik kontroller daha önce HİÇ otomatik çalışmıyordu!
+
+---
+
 ## SONRAKİ OTURUM İÇİN BEKLEYEN İŞLER
 
 ### Yüksek öncelik:
