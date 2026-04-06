@@ -21,7 +21,7 @@ const router = Router();
   router.post('/api/announcements/from-banner', isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'supervisor', 'coach'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'supervisor', 'marketing', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
@@ -101,7 +101,7 @@ const router = Router();
 
       // Rate limiting check - kullanıcı başına günde max 10 görsel
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'coach', 'destek'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'marketing', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "AI görsel oluşturma yetkiniz yok" });
       }

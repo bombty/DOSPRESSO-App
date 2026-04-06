@@ -412,7 +412,7 @@ export default function BannerEditor() {
     [dragging, textElements, iconElements, imageElements]
   );
 
-  if (!user || !["admin", "supervisor"].includes(user.role || "")) {
+  if (!user || !["admin", "ceo", "cgo", "coach", "trainer", "supervisor", "marketing", "destek", "kalite_kontrol", "satinalma", "muhasebe", "muhasebe_ik", "teknik"].includes(user.role || "")) {
     return <Redirect to="/" />;
   }
 

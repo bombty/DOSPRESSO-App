@@ -330,7 +330,7 @@ const router = Router();
     try {
       const { id } = req.params;
       const userRole = req.user?.role;
-      const allowedRoles = ['admin', 'coach', 'destek'];
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'destek'];
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ message: "Yetkiniz yok" });
       }
