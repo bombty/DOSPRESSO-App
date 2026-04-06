@@ -1353,6 +1353,36 @@ router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, asy
   }
 });
 
+// POST /api/admin/seed-cost-settings — Fabrika maliyet parametreleri
+router.post('/api/admin/seed-cost-settings', isAuthenticated, requireAdmin, async (req, res) => {
+  try {
+    const costSettings = [
+      { key: 'electricity_tl_per_kwh', value: '3.50', desc: 'Endüstriyel elektrik birim fiyatı (₺/kWh)' },
+      { key: 'gas_tl_per_m3', value: '8.00', desc: 'Doğalgaz birim fiyatı (₺/m³)' },
+      { key: 'water_tl_per_liter', value: '0.03', desc: 'Su birim fiyatı (₺/L = 30 ₺/m³)' },
+      { key: 'hourly_wage_tl', value: '120', desc: 'Ortalama saatlik işçilik ücreti (₺/saat)' },
+      { key: 'packaging_cost_per_unit', value: '1.50', desc: 'Ortalama ambalaj maliyeti (₺/adet)' },
+      { key: 'overhead_percentage', value: '15', desc: 'Genel gider yüzdesi (%)' },
+    ];
+
+    let created = 0;
+    for (const s of costSettings) {
+      const existing = await db.execute(sql`SELECT id FROM factory_cost_settings WHERE setting_key = ${s.key}`);
+      if ((existing.rows as any[]).length > 0) continue;
+      await db.execute(sql`
+        INSERT INTO factory_cost_settings (setting_key, setting_value, description) 
+        VALUES (${s.key}, ${s.value}, ${s.desc})
+      `);
+      created++;
+    }
+
+    res.json({ success: true, message: `${created} maliyet ayarı oluşturuldu`, created });
+  } catch (error: any) {
+    console.error('[SeedCostSettings] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/admin/seed-batch-specs — 9 istasyon için batch spec oluştur
 router.post('/api/admin/seed-batch-specs', isAuthenticated, requireAdmin, async (req, res) => {
   try {

@@ -7356,6 +7356,207 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // BATCH MALİYET HESAPLAMA — Ürün bazlı üretim maliyeti breakdown
+  // ═══════════════════════════════════════════════════════════════
+
+  // Varsayılan maliyet parametreleri (factory_cost_settings'den okunacak, yoksa bunlar)
+  const DEFAULT_COSTS = {
+    electricity_tl_per_kwh: 3.50,    // Endüstriyel elektrik ₺/kWh (2026 Türkiye)
+    gas_tl_per_m3: 8.00,             // Doğalgaz ₺/m³
+    water_tl_per_liter: 0.03,        // Su ₺/L (30 ₺/m³)
+    hourly_wage_tl: 120,             // Saatlik ortalama işçilik ₺
+  };
+
+  // GET /api/factory/batch-cost/:batchSpecId — Batch başına maliyet hesapla
+  router.get('/api/factory/batch-cost/:batchSpecId', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!['admin', 'fabrika_mudur', 'fabrika_sorumlu', 'ceo', 'cgo', 'muhasebe'].includes(user.role)) {
+        return res.status(403).json({ message: "Maliyet verilerine erişim yetkiniz yok" });
+      }
+
+      const batchSpecId = parseInt(req.params.batchSpecId);
+
+      // Batch spec + ürün + istasyon bilgisi
+      const specResult = await db.execute(sql`
+        SELECT bs.*, fp.name as product_name, fp.category as product_category,
+               fs.name as station_name
+        FROM factory_batch_specs bs
+        LEFT JOIN factory_products fp ON fp.id = bs.product_id
+        LEFT JOIN factory_stations fs ON fs.id = bs.station_id
+        WHERE bs.id = ${batchSpecId}
+      `);
+
+      if (!specResult.rows.length) {
+        return res.status(404).json({ message: "Batch spec bulunamadı" });
+      }
+
+      const spec = specResult.rows[0] as any;
+
+      // Maliyet ayarlarını oku (varsa DB'den, yoksa default)
+      const settingsResult = await db.execute(sql`
+        SELECT setting_key, CAST(setting_value AS numeric) as val 
+        FROM factory_cost_settings
+      `);
+      const settings: Record<string, number> = {};
+      for (const row of (settingsResult.rows as any[])) {
+        settings[row.setting_key] = Number(row.val);
+      }
+
+      const elecPrice = settings['electricity_tl_per_kwh'] || DEFAULT_COSTS.electricity_tl_per_kwh;
+      const gasPrice = settings['gas_tl_per_m3'] || DEFAULT_COSTS.gas_tl_per_m3;
+      const waterPrice = settings['water_tl_per_liter'] || DEFAULT_COSTS.water_tl_per_liter;
+      const hourlyWage = settings['hourly_wage_tl'] || DEFAULT_COSTS.hourly_wage_tl;
+
+      const energyKwh = Number(spec.energy_kwh_per_batch || 0);
+      const gasM3 = Number(spec.gas_m3_per_batch || 0);
+      const waterL = Number(spec.water_l_per_batch || 0);
+      const minWorkers = Number(spec.min_workers || 1);
+      const durationMin = Number(spec.target_duration_minutes || 60);
+      const prepMin = Number(spec.prep_duration_minutes || 0);
+      const expectedPieces = Number(spec.expected_pieces || 1);
+      const wastePercent = Number(spec.expected_waste_percent || 0);
+
+      // Hesaplamalar
+      const totalDurationHours = (durationMin + prepMin) / 60;
+
+      // Enerji maliyeti (batch başına)
+      const electricityCost = energyKwh * elecPrice;
+      const gasCost = gasM3 * gasPrice;
+      const waterCost = waterL * waterPrice;
+      const totalEnergyCost = electricityCost + gasCost + waterCost;
+
+      // İşçilik maliyeti (batch başına)
+      const laborCost = minWorkers * totalDurationHours * hourlyWage;
+
+      // Fire maliyeti (%)
+      const effectivePieces = expectedPieces * (1 - wastePercent / 100);
+
+      // Birim maliyetler
+      const energyPerUnit = effectivePieces > 0 ? totalEnergyCost / effectivePieces : 0;
+      const laborPerUnit = effectivePieces > 0 ? laborCost / effectivePieces : 0;
+      const totalPerUnit = energyPerUnit + laborPerUnit;
+
+      res.json({
+        batchSpec: {
+          id: spec.id,
+          productName: spec.product_name,
+          productCategory: spec.product_category,
+          stationName: spec.station_name,
+          batchWeight: `${spec.batch_weight_kg} ${spec.batch_weight_unit}`,
+          expectedPieces,
+          minWorkers,
+          duration: `${durationMin} dk (+ ${prepMin} dk hazırlık)`,
+          wastePercent: `%${wastePercent}`,
+        },
+        costParameters: {
+          electricityPrice: `${elecPrice} ₺/kWh`,
+          gasPrice: `${gasPrice} ₺/m³`,
+          waterPrice: `${waterPrice} ₺/L`,
+          hourlyWage: `${hourlyWage} ₺/saat`,
+          source: Object.keys(settings).length > 0 ? 'DB (factory_cost_settings)' : 'Varsayılan',
+        },
+        batchCosts: {
+          electricity: { kwh: energyKwh, cost: Math.round(electricityCost * 100) / 100 },
+          gas: { m3: gasM3, cost: Math.round(gasCost * 100) / 100 },
+          water: { liters: waterL, cost: Math.round(waterCost * 100) / 100 },
+          totalEnergy: Math.round(totalEnergyCost * 100) / 100,
+          labor: { workers: minWorkers, hours: Math.round(totalDurationHours * 100) / 100, cost: Math.round(laborCost * 100) / 100 },
+          totalBatchCost: Math.round((totalEnergyCost + laborCost) * 100) / 100,
+        },
+        unitCosts: {
+          effectivePieces: Math.round(effectivePieces),
+          energyPerUnit: Math.round(energyPerUnit * 100) / 100,
+          laborPerUnit: Math.round(laborPerUnit * 100) / 100,
+          totalPerUnit: Math.round(totalPerUnit * 100) / 100,
+          note: 'Hammadde ve ambalaj maliyeti dahil değil — ayrı hesaplanır',
+        },
+      });
+    } catch (error: unknown) {
+      console.error("Batch cost calculation error:", error);
+      res.status(500).json({ message: "Maliyet hesaplanamadı" });
+    }
+  });
+
+  // GET /api/factory/batch-costs-all — Tüm aktif batch spec'lerin maliyet özeti
+  router.get('/api/factory/batch-costs-all', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!['admin', 'fabrika_mudur', 'fabrika_sorumlu', 'ceo', 'cgo', 'muhasebe'].includes(user.role)) {
+        return res.status(403).json({ message: "Maliyet verilerine erişim yetkiniz yok" });
+      }
+
+      // Maliyet ayarları
+      const settingsResult = await db.execute(sql`
+        SELECT setting_key, CAST(setting_value AS numeric) as val FROM factory_cost_settings
+      `);
+      const settings: Record<string, number> = {};
+      for (const row of (settingsResult.rows as any[])) {
+        settings[row.setting_key] = Number(row.val);
+      }
+
+      const elecPrice = settings['electricity_tl_per_kwh'] || DEFAULT_COSTS.electricity_tl_per_kwh;
+      const gasPrice = settings['gas_tl_per_m3'] || DEFAULT_COSTS.gas_tl_per_m3;
+      const waterPrice = settings['water_tl_per_liter'] || DEFAULT_COSTS.water_tl_per_liter;
+      const hourlyWage = settings['hourly_wage_tl'] || DEFAULT_COSTS.hourly_wage_tl;
+
+      const specsResult = await db.execute(sql`
+        SELECT bs.*, fp.name as product_name, fs.name as station_name
+        FROM factory_batch_specs bs
+        LEFT JOIN factory_products fp ON fp.id = bs.product_id
+        LEFT JOIN factory_stations fs ON fs.id = bs.station_id
+        WHERE bs.is_active = true
+        ORDER BY fs.sort_order, fp.name
+      `);
+
+      const costSummary = (specsResult.rows as any[]).map(spec => {
+        const energyKwh = Number(spec.energy_kwh_per_batch || 0);
+        const gasM3 = Number(spec.gas_m3_per_batch || 0);
+        const waterL = Number(spec.water_l_per_batch || 0);
+        const minW = Number(spec.min_workers || 1);
+        const durMin = Number(spec.target_duration_minutes || 60);
+        const prepMin = Number(spec.prep_duration_minutes || 0);
+        const pieces = Number(spec.expected_pieces || 1);
+        const waste = Number(spec.expected_waste_percent || 0);
+
+        const totalHours = (durMin + prepMin) / 60;
+        const energyCost = energyKwh * elecPrice + gasM3 * gasPrice + waterL * waterPrice;
+        const laborCost = minW * totalHours * hourlyWage;
+        const effectivePcs = pieces * (1 - waste / 100);
+        const unitCost = effectivePcs > 0 ? (energyCost + laborCost) / effectivePcs : 0;
+
+        return {
+          id: spec.id,
+          stationName: spec.station_name || '—',
+          productName: spec.product_name || '—',
+          batchWeight: `${spec.batch_weight_kg} kg`,
+          expectedPieces: pieces,
+          minWorkers: minW,
+          energyCostBatch: Math.round(energyCost * 100) / 100,
+          laborCostBatch: Math.round(laborCost * 100) / 100,
+          totalBatchCost: Math.round((energyCost + laborCost) * 100) / 100,
+          unitCost: Math.round(unitCost * 100) / 100,
+          wastePercent: waste,
+        };
+      });
+
+      res.json({
+        costParameters: { elecPrice, gasPrice, waterPrice, hourlyWage },
+        specs: costSummary,
+        summary: {
+          totalSpecs: costSummary.length,
+          avgUnitCost: costSummary.length > 0 ? Math.round(costSummary.reduce((s, c) => s + c.unitCost, 0) / costSummary.length * 100) / 100 : 0,
+          highestCostStation: costSummary.sort((a, b) => b.unitCost - a.unitCost)[0]?.stationName || '—',
+          lowestCostStation: costSummary.sort((a, b) => a.unitCost - b.unitCost)[0]?.stationName || '—',
+        },
+      });
+    } catch (error: unknown) {
+      console.error("Batch costs all error:", error);
+      res.status(500).json({ message: "Maliyet özeti alınamadı" });
+    }
+  });
+
 export default router;
 
 // Seed functions — called once on startup
