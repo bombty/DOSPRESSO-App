@@ -737,6 +737,16 @@ export async function runPeriodicChecks() {
   }
   
   results.total = results.shifts + results.dataQuality + results.system + results.security + results.business;
+  
+  // ═══════════════════════════════════════
+  // 7. DUYURU TAKİP
+  // ═══════════════════════════════════════
+  try {
+    const annFollowups = await checkAnnouncementFollowups();
+    results.business += annFollowups;
+    results.total += annFollowups;
+  } catch (e) { /* skip */ }
+
   return results;
 }
 

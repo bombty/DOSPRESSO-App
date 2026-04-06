@@ -56,13 +56,11 @@ Kaç batch? → Tahmini süre/çıktı otomatik hesaplanır
 **Ama:** Kullanıcı worker-home'da istasyon seçmeden sadece vardiyada olabilir
 **Eksik:** Vardiya süresini istasyondan bağımsız takip etmek (şu an station assignment sonrası başlıyor gibi)
 
-### SORUN-F4: Minimum personel kontrolü yok
-**Senaryo:** Donut hamur hattında 3 kişi çalışıyor. Biri molaya çıkmak istiyor.
-**Olması gereken:** Sistem uyarmalı: "Donut Hamur Hattı minimum 3 kişi gerektirir. 1 kişi molaya çıkarsa 2 kişi kalır — üretim kalitesi etkilenebilir."
-**Gerekli:**
-1. factoryBatchSpecs'e `minWorkers` alanı ekle
-2. Mola isteğinde aktif istasyondaki kişi sayısını kontrol et
-3. Min altına düşecekse uyar (engelleme değil, uyarı)
+### SORUN-F4: Minimum personel kontrolü ~~yok~~ → ZATEN VAR ✅
+**Durum:** Backend endpoint `GET /api/factory/kiosk/station-worker-count/:stationId` mevcut.
+`willBeUnderMin` hesaplaması `batch_specs.min_workers` üzerinden yapılıyor.
+Frontend: Kırmızı uyarı banner'ı mola ekranında gösteriliyor (`data-testid="min-worker-warning"`).
+**Not:** İlk analizde "eksik" yazılmıştı — double-check'te düzeltildi.
 
 ### SORUN-F5: Yetkilendirme eksik
 **Screenshot'lardan:** Eren ve Ümit usta üretim planı yapabilir, diğerleri sadece üretim yapabilir

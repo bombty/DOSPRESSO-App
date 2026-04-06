@@ -591,6 +591,12 @@ function startConsolidatedHourlyJobs() {
     try {
       await cleanupStaleShiftSessions();
     } catch (e) { console.error("Error in stale shift cleanup:", e); }
+    // Dobody periyodik kontroller (saatlik)
+    try {
+      const { runPeriodicChecks } = await import("./lib/dobody-workflow-engine");
+      const result = await runPeriodicChecks();
+      if (result.total > 0) log(`[Dobody] Periodic checks: ${result.total} proposals (shifts:${result.shifts} data:${result.dataQuality} sys:${result.system} biz:${result.business})`);
+    } catch (e) { console.error("Error in Dobody periodic checks:", e); }
 
     const now = new Date();
     if (now.getDate() === 1 && now.getHours() === 0) {
