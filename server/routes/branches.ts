@@ -3930,13 +3930,15 @@ router.get('/api/branches/:branchId/kiosk/pending-announcements/:userId', isKios
     const quizPassedIds = new Set<number>();
     const quizAnnIds = branchFiltered.filter(a => a.quizRequired).map(a => a.id);
     if (quizAnnIds.length > 0) {
+      // ANY(array) yerine kullanıcının tüm passed quiz'lerini çekip JS'de filtrele
       const quizResults = await db.execute(sql`
         SELECT announcement_id FROM announcement_quiz_results 
-        WHERE user_id = ${userId} AND passed = true 
-        AND announcement_id = ANY(${quizAnnIds})
+        WHERE user_id = ${userId} AND passed = true
       `);
       for (const r of (quizResults.rows as any[])) {
-        quizPassedIds.add(r.announcement_id);
+        if (quizAnnIds.includes(r.announcement_id)) {
+          quizPassedIds.add(r.announcement_id);
+        }
       }
     }
 
