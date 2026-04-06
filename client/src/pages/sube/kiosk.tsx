@@ -1872,10 +1872,10 @@ export default function BranchKiosk() {
     }
   }, [pendingAnnouncements.length, step]);
 
-  // Duyuru onaylama — kiosk içi
+  // Duyuru onaylama — kiosk içi (selectedUser.id gönder — session user değil personel onaylasın)
   const acknowledgeAnnouncementMutation = useMutation({
     mutationFn: async (announcementId: number) => {
-      const res = await apiRequest('POST', `/api/announcements/${announcementId}/acknowledge`, {});
+      const res = await apiRequest('POST', `/api/announcements/${announcementId}/acknowledge`, { userId: selectedUser?.id });
       return res.json();
     },
     onSuccess: (_, announcementId) => {

@@ -609,13 +609,15 @@ const router = Router();
     try {
       const { id } = req.params;
       const user = req.user;
+      // Kiosk modunda personel kendi onaylamalı — body'den userId kabul et (fallback: session user)
+      const targetUserId: string = req.body.userId || user.id;
       
       // Upsert — okundu + acknowledge olarak işaretle (acknowledgedAt set)
       const now = new Date();
       await db.insert(announcementReadStatus)
         .values({
           announcementId: parseInt(id),
-          userId: user.id,
+          userId: targetUserId,
           acknowledgedAt: now,
         })
         .onConflictDoUpdate({
