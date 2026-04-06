@@ -1353,6 +1353,73 @@ router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, asy
   }
 });
 
+// POST /api/admin/seed-batch-specs — 9 istasyon için batch spec oluştur
+router.post('/api/admin/seed-batch-specs', isAuthenticated, requireAdmin, async (req, res) => {
+  try {
+    // İstasyonları al
+    const stations = await db.execute(sql`SELECT id, name, code, product_type_id FROM factory_stations WHERE is_active = true ORDER BY sort_order`);
+    const stationList = stations.rows as any[];
+
+    if (stationList.length === 0) {
+      return res.status(400).json({ error: 'Aktif fabrika istasyonu bulunamadı' });
+    }
+
+    // Her istasyonun ürününü bul (product_type_id veya isme göre)
+    const stationSpecs: Record<string, { batchKg: string; pieces: number; pieceWeight: string; pieceUnit: string; duration: number; minW: number; maxW: number; prep: number; waste: string; desc: string; productSearch: string; kwh: string; gas: string; water: string }> = {
+      'DONUT_HAMUR': { batchKg: '50', pieces: 500, pieceWeight: '80', pieceUnit: 'g', duration: 120, minW: 3, maxW: 5, prep: 30, waste: '8', desc: 'Donut hamuru hazırlama — yoğurma, mayalama, şekillendirme', productSearch: 'Donut', kwh: '18.5', gas: '2.5', water: '50' },
+      'KONSANTRE': { batchKg: '500', pieces: 550, pieceWeight: '950', pieceUnit: 'ml', duration: 120, minW: 2, maxW: 3, prep: 20, waste: '3', desc: 'Konsantre şurup dolum hattı', productSearch: 'Şurup', kwh: '8.0', gas: '0', water: '120' },
+      'CHEESECAKE': { batchKg: '25', pieces: 50, pieceWeight: '450', pieceUnit: 'g', duration: 90, minW: 2, maxW: 3, prep: 25, waste: '5', desc: 'Cheesecake üretimi — taban, dolgu, pişirme', productSearch: 'Cheesecake', kwh: '12.0', gas: '1.8', water: '30' },
+      'MAMABON': { batchKg: '20', pieces: 60, pieceWeight: '300', pieceUnit: 'g', duration: 60, minW: 2, maxW: 3, prep: 15, waste: '5', desc: 'Mamabon üretimi', productSearch: 'Mamabon', kwh: '10.0', gas: '1.5', water: '25' },
+      'WRAPITOS': { batchKg: '30', pieces: 100, pieceWeight: '250', pieceUnit: 'g', duration: 75, minW: 2, maxW: 4, prep: 20, waste: '4', desc: 'Wrapitos üretimi — hamur sarma ve doldurma', productSearch: 'Wrapitos', kwh: '9.5', gas: '1.2', water: '20' },
+      'COOKIES': { batchKg: '15', pieces: 90, pieceWeight: '150', pieceUnit: 'g', duration: 60, minW: 1, maxW: 3, prep: 15, waste: '6', desc: 'Cookie üretimi — hamur hazırlama, şekillendirme, pişirme', productSearch: 'Cookie', kwh: '14.0', gas: '2.0', water: '15' },
+      'DONUT_SUSLEME': { batchKg: '30', pieces: 200, pieceWeight: '120', pieceUnit: 'g', duration: 90, minW: 2, maxW: 4, prep: 10, waste: '4', desc: 'Donut süsleme — kaplama, dolgu, dekorasyon', productSearch: 'Donut', kwh: '5.0', gas: '0', water: '10' },
+      'DONUT_PAKETLEME': { batchKg: '40', pieces: 300, pieceWeight: '120', pieceUnit: 'g', duration: 60, minW: 2, maxW: 4, prep: 10, waste: '2', desc: 'Donut paketleme — kutu, etiket, sevkiyat hazırlık', productSearch: 'Donut', kwh: '3.0', gas: '0', water: '5' },
+      'CINNABOOM': { batchKg: '20', pieces: 60, pieceWeight: '280', pieceUnit: 'g', duration: 75, minW: 2, maxW: 3, prep: 20, waste: '5', desc: 'Cinnaboom üretimi — hamur, dolgu, pişirme', productSearch: 'Cinnaboom', kwh: '13.0', gas: '1.8', water: '20' },
+    };
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const station of stationList) {
+      const spec = stationSpecs[station.code];
+      if (!spec) { skipped++; continue; }
+
+      // Bu istasyon için zaten batch spec var mı?
+      const existing = await db.execute(sql`SELECT id FROM factory_batch_specs WHERE station_id = ${station.id} AND is_active = true LIMIT 1`);
+      if ((existing.rows as any[]).length > 0) { skipped++; continue; }
+
+      // İstasyonun ürününü bul
+      let productId = station.product_type_id;
+      if (!productId) {
+        const products = await db.execute(sql`SELECT id FROM factory_products WHERE name ILIKE ${'%' + spec.productSearch + '%'} AND is_active = true LIMIT 1`);
+        productId = (products.rows as any[])[0]?.id;
+      }
+      if (!productId) {
+        // İlk aktif ürünü al (fallback)
+        const fallback = await db.execute(sql`SELECT id FROM factory_products WHERE is_active = true LIMIT 1`);
+        productId = (fallback.rows as any[])[0]?.id || 1;
+      }
+
+      // İstasyonun product_type_id'sini güncelle
+      if (!station.product_type_id && productId) {
+        await db.execute(sql`UPDATE factory_stations SET product_type_id = ${productId} WHERE id = ${station.id}`);
+      }
+
+      // Batch spec oluştur
+      await db.execute(sql`
+        INSERT INTO factory_batch_specs (product_id, station_id, batch_weight_kg, batch_weight_unit, expected_pieces, piece_weight_grams, piece_weight_unit, target_duration_minutes, min_workers, max_workers, prep_duration_minutes, expected_waste_percent, energy_kwh_per_batch, gas_m3_per_batch, water_l_per_batch, description, is_active)
+        VALUES (${productId}, ${station.id}, ${spec.batchKg}, 'kg', ${spec.pieces}, ${spec.pieceWeight}, ${spec.pieceUnit}, ${spec.duration}, ${spec.minW}, ${spec.maxW}, ${spec.prep}, ${spec.waste}, ${spec.kwh}, ${spec.gas}, ${spec.water}, ${spec.desc}, true)
+      `);
+      created++;
+    }
+
+    res.json({ success: true, message: `${created} batch spec oluşturuldu, ${skipped} atlandı`, created, skipped, totalStations: stationList.length });
+  } catch (error: any) {
+    console.error('[SeedBatchSpecs] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/admin/seed-audit-templates — Denetim şablonlarını oluştur
 router.post('/api/admin/seed-audit-templates', isAuthenticated, requireAdmin, async (req, res) => {
   try {

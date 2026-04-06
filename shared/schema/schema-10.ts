@@ -788,6 +788,10 @@ export const factoryBatchSpecs = pgTable("factory_batch_specs", {
   maxWorkers: integer("max_workers").default(4), // Maksimum verimli personel sayısı
   prepDurationMinutes: integer("prep_duration_minutes").default(15), // Ön hazırlık süresi (dk)
   expectedWastePercent: numeric("expected_waste_percent", { precision: 5, scale: 2 }).default("5"), // Beklenen fire oranı %
+  // Enerji & maliyet alanları
+  energyKwhPerBatch: numeric("energy_kwh_per_batch", { precision: 10, scale: 2 }), // Batch başına elektrik tüketimi (kWh)
+  gasM3PerBatch: numeric("gas_m3_per_batch", { precision: 10, scale: 3 }), // Batch başına doğalgaz (m³)
+  waterLPerBatch: numeric("water_l_per_batch", { precision: 10, scale: 1 }), // Batch başına su (litre)
   recipeId: integer("recipe_id"),
   description: text("description"),
   isActive: boolean("is_active").default(true),

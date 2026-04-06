@@ -1260,6 +1260,51 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  // GET /api/factory/kiosk/station-worker-count/:stationId — İstasyondaki aktif personel sayısı + min kontrolü
+  router.get('/api/factory/kiosk/station-worker-count/:stationId', isKioskAuthenticated, async (req, res) => {
+    try {
+      const stationId = parseInt(req.params.stationId);
+      if (!stationId) return res.status(400).json({ message: "Geçersiz istasyon ID" });
+
+      // Aktif çalışan sayısı (bu istasyonda, aktif session, mola dışında)
+      const activeWorkers = await db.execute(sql`
+        SELECT COUNT(*) as count FROM factory_shift_sessions 
+        WHERE station_id = ${stationId} AND status = 'active'
+      `);
+      const workerCount = parseInt((activeWorkers.rows[0] as any)?.count || '0');
+
+      // Bu istasyonun batch spec'inden min_workers al
+      const batchSpec = await db.execute(sql`
+        SELECT min_workers, max_workers FROM factory_batch_specs 
+        WHERE station_id = ${stationId} AND is_active = true 
+        LIMIT 1
+      `);
+      const minWorkers = parseInt((batchSpec.rows[0] as any)?.min_workers || '1');
+      const maxWorkers = parseInt((batchSpec.rows[0] as any)?.max_workers || '4');
+
+      // İstasyon adı
+      const station = await db.execute(sql`SELECT name FROM factory_stations WHERE id = ${stationId}`);
+      const stationName = (station.rows[0] as any)?.name || `İstasyon ${stationId}`;
+
+      const willBeUnderMin = (workerCount - 1) < minWorkers;
+
+      res.json({
+        stationId,
+        stationName,
+        activeWorkers: workerCount,
+        minWorkers,
+        maxWorkers,
+        willBeUnderMin,
+        warning: willBeUnderMin
+          ? `${stationName} için minimum ${minWorkers} personel gerekli. Şu an ${workerCount} kişi çalışıyor. Molaya çıkarsanız ${workerCount - 1} kişi kalır — üretim kalitesi etkilenebilir.`
+          : null,
+      });
+    } catch (error: any) {
+      console.error("Station worker count error:", error);
+      res.status(500).json({ message: "Kontrol yapılamadı" });
+    }
+  });
+
   router.get('/api/factory/kiosk/worker-today-stats', isKioskAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).kioskUserId || req.query.userId as string;
@@ -3215,6 +3260,61 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     } catch (error: unknown) {
       console.error("Error fetching factory products:", error);
       res.status(500).json({ message: "Ürünler alınamadı" });
+    }
+  });
+
+  // Mola öncesi kontrol — istasyonda yeterli personel var mı?
+  router.get('/api/factory/kiosk/break-check/:sessionId', isKioskAuthenticated, async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+
+      // Mevcut session'ın istasyon bilgisini al
+      const [session] = await db.select({
+        stationId: factoryShiftSessions.stationId,
+        userId: factoryShiftSessions.userId,
+      }).from(factoryShiftSessions).where(eq(factoryShiftSessions.id, sessionId));
+
+      if (!session?.stationId) {
+        return res.json({ canBreak: true, warning: null });
+      }
+
+      // Bu istasyondaki aktif çalışan sayısını bul (mola/çıkış yapanlar hariç)
+      const activeAtStation = await db.select({ id: factoryShiftSessions.id })
+        .from(factoryShiftSessions)
+        .where(and(
+          eq(factoryShiftSessions.stationId, session.stationId),
+          eq(factoryShiftSessions.status, 'active'),
+          isNull(factoryShiftSessions.checkOutTime)
+        ));
+
+      const currentWorkers = activeAtStation.length;
+
+      // Batch spec'ten min worker bilgisini al
+      const batchSpecs = await db.execute(
+        sql`SELECT min_workers FROM factory_batch_specs WHERE station_id = ${session.stationId} AND is_active = true LIMIT 1`
+      );
+      const minWorkers = (batchSpecs.rows as any[])[0]?.min_workers || 1;
+
+      // İstasyon adını al
+      const [station] = await db.select({ name: factoryStations.name })
+        .from(factoryStations)
+        .where(eq(factoryStations.id, session.stationId));
+
+      const willFallBelow = (currentWorkers - 1) < minWorkers;
+
+      res.json({
+        canBreak: true, // Engelleme değil, sadece uyarı
+        warning: willFallBelow ? {
+          message: `${station?.name || 'İstasyon'} için minimum ${minWorkers} personel gerekiyor. Siz molaya çıkarsanız ${currentWorkers - 1} kişi kalacak.`,
+          stationName: station?.name,
+          currentWorkers,
+          minWorkers,
+          afterBreak: currentWorkers - 1,
+        } : null,
+      });
+    } catch (error: unknown) {
+      console.error("Break check error:", error);
+      res.json({ canBreak: true, warning: null });
     }
   });
 

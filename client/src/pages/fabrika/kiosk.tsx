@@ -380,6 +380,15 @@ export default function FactoryKiosk() {
     refetchInterval: 60000,
   });
 
+  // Mola öncesi min personel kontrolü
+  const { data: stationWorkerWarning } = useQuery<{
+    activeWorkers: number; minWorkers: number; willBeUnderMin: boolean; warning: string | null; stationName: string;
+  }>({
+    queryKey: ['/api/factory/kiosk/station-worker-count', currentStationInfo?.id],
+    queryFn: () => kioskFetchJson(`/api/factory/kiosk/station-worker-count/${currentStationInfo?.id}`, null),
+    enabled: !!currentStationInfo?.id && step === 'stop-options',
+  });
+
   const deviceAuthMutation = useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
       const res = await apiRequest('POST', '/api/factory/kiosk/device-auth', data);
@@ -1766,6 +1775,17 @@ export default function FactoryKiosk() {
             <div className="space-y-6">
               <h3 className="text-xl font-semibold text-center text-slate-200">Ne yapmak istiyorsunuz?</h3>
               
+              {/* Min personel uyarısı */}
+              {currentStationInfo?.id && stationWorkerWarning?.willBeUnderMin && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-red-900/40 border border-red-500/50" data-testid="min-worker-warning">
+                  <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-300 text-sm font-medium">Minimum Personel Uyarısı</p>
+                    <p className="text-red-400/80 text-xs mt-1">{stationWorkerWarning.warning}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <Button
                   variant="outline"
