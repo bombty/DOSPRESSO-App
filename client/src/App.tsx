@@ -555,7 +555,7 @@ function Router() {
           <Route path="/waste/:tab?">{() => <FabrikaOnly><WasteMegaModule /></FabrikaOnly>}</Route>
           <Route path="/hub/:sectionId" component={HubPage} />
           <Route path="/yeni-sube/:tab?">{() => <ExecutiveOnly><YeniSubeMegaModule /></ExecutiveOnly>}</Route>
-          <Route path="/banner-editor">{() => <AdminOnly><BannerEditor /></AdminOnly>}</Route>
+          <Route path="/banner-editor">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","supervisor","marketing","destek"]}><BannerEditor /></ProtectedRoute>}</Route>
           <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
           <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
           {/* ── Orphan → Linked (17 sayfa) ── */}
