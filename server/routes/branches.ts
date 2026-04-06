@@ -3926,8 +3926,22 @@ router.get('/api/branches/:branchId/kiosk/pending-announcements/:userId', isKios
     );
 
     // Onaylanmamış duyuruları döndür
+    // Quiz geçmiş mi kontrol et
+    const quizPassedIds = new Set<number>();
+    const quizAnnIds = branchFiltered.filter(a => a.quizRequired).map(a => a.id);
+    if (quizAnnIds.length > 0) {
+      const quizResults = await db.execute(sql`
+        SELECT announcement_id FROM announcement_quiz_results 
+        WHERE user_id = ${userId} AND passed = true 
+        AND announcement_id = ANY(${quizAnnIds})
+      `);
+      for (const r of (quizResults.rows as any[])) {
+        quizPassedIds.add(r.announcement_id);
+      }
+    }
+
     const pending = branchFiltered
-      .filter(ann => !acknowledgedIds.has(ann.id))
+      .filter(ann => !acknowledgedIds.has(ann.id) || (ann.quizRequired && !quizPassedIds.has(ann.id)))
       .map(ann => ({
         id: ann.id,
         title: ann.title,
@@ -3936,6 +3950,9 @@ router.get('/api/branches/:branchId/kiosk/pending-announcements/:userId', isKios
         bannerImageUrl: ann.bannerImageUrl,
         priority: ann.priority,
         publishedAt: ann.publishedAt,
+        quizRequired: ann.quizRequired || false,
+        acknowledged: acknowledgedIds.has(ann.id),
+        quizPassed: quizPassedIds.has(ann.id),
       }));
 
     res.json(pending);

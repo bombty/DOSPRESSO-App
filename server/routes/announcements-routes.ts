@@ -5,6 +5,7 @@ import { eq, desc, and, or, gte, lte, sql, isNull, count } from "drizzle-orm";
 import {
   announcements,
   announcementReadStatus,
+  announcementQuizResults,
   branches,
   users,
   banners,
@@ -629,6 +630,138 @@ const router = Router();
     } catch (error: unknown) {
       console.error("Acknowledge announcement error:", error);
       res.status(500).json({ message: "Onay kaydedilemedi" });
+    }
+  });
+  // ========================================
+  // DUYURU MİNİ QUIZ
+  // ========================================
+
+  // GET /api/announcements/:id/quiz — Quiz sorularını getir (doğru cevap gönderilmez)
+  router.get('/api/announcements/:id/quiz', isAuthenticated, async (req, res) => {
+    try {
+      const announcementId = parseInt(req.params.id);
+      const userId = req.body?.userId || req.user?.id;
+
+      const [ann] = await db.select()
+        .from(announcements)
+        .where(eq(announcements.id, announcementId));
+
+      if (!ann || !ann.quizRequired || !ann.quizQuestions) {
+        return res.json({ hasQuiz: false, questions: [] });
+      }
+
+      let questions: any[] = [];
+      try { questions = JSON.parse(ann.quizQuestions); } catch { return res.json({ hasQuiz: false, questions: [] }); }
+
+      // Kullanıcı daha önce geçmiş mi?
+      const previousResults = await db.select()
+        .from(announcementQuizResults)
+        .where(and(
+          eq(announcementQuizResults.announcementId, announcementId),
+          eq(announcementQuizResults.userId, userId)
+        ))
+        .orderBy(desc(announcementQuizResults.attemptedAt))
+        .limit(1);
+
+      const alreadyPassed = previousResults.length > 0 && previousResults[0].passed;
+      const attemptCount = previousResults.length > 0 ? (previousResults[0].attemptNumber || 0) : 0;
+
+      // Doğru cevapları gizle (frontend'e gönderme)
+      const safeQuestions = questions.map((q: any, i: number) => ({
+        index: i,
+        question: q.question,
+        options: q.options,
+        // correctIndex gönderilmiyor — güvenlik
+      }));
+
+      res.json({
+        hasQuiz: true,
+        passScore: ann.quizPassScore || 80,
+        totalQuestions: questions.length,
+        alreadyPassed,
+        attemptCount,
+        questions: alreadyPassed ? [] : safeQuestions,
+      });
+    } catch (error) {
+      console.error("Get quiz error:", error);
+      res.status(500).json({ message: "Quiz yüklenemedi" });
+    }
+  });
+
+  // POST /api/announcements/:id/quiz-submit — Quiz cevaplarını gönder
+  router.post('/api/announcements/:id/quiz-submit', isAuthenticated, async (req, res) => {
+    try {
+      const announcementId = parseInt(req.params.id);
+      const userId = req.body?.userId || req.user?.id;
+      const { answers } = req.body; // [{questionIndex, selectedIndex}]
+
+      if (!userId || !answers || !Array.isArray(answers)) {
+        return res.status(400).json({ message: "Cevaplar gerekli" });
+      }
+
+      const [ann] = await db.select()
+        .from(announcements)
+        .where(eq(announcements.id, announcementId));
+
+      if (!ann || !ann.quizQuestions) {
+        return res.status(404).json({ message: "Quiz bulunamadı" });
+      }
+
+      let questions: any[] = [];
+      try { questions = JSON.parse(ann.quizQuestions); } catch { return res.status(400).json({ message: "Quiz verisi bozuk" }); }
+
+      // Cevapları kontrol et
+      let correct = 0;
+      const results = answers.map((a: any) => {
+        const q = questions[a.questionIndex];
+        if (!q) return { questionIndex: a.questionIndex, selectedIndex: a.selectedIndex, correct: false };
+        const isCorrect = a.selectedIndex === q.correctIndex;
+        if (isCorrect) correct++;
+        return { questionIndex: a.questionIndex, selectedIndex: a.selectedIndex, correct: isCorrect };
+      });
+
+      const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+      const passScore = ann.quizPassScore || 80;
+      const passed = score >= passScore;
+
+      // Deneme sayısını bul
+      const prevAttempts = await db.select({ max: sql<number>`COALESCE(MAX(attempt_number), 0)` })
+        .from(announcementQuizResults)
+        .where(and(
+          eq(announcementQuizResults.announcementId, announcementId),
+          eq(announcementQuizResults.userId, userId)
+        ));
+      const attemptNumber = Number(prevAttempts[0]?.max ?? 0) + 1;
+
+      // Sonucu kaydet
+      await db.insert(announcementQuizResults).values({
+        announcementId,
+        userId,
+        score,
+        passed,
+        totalQuestions: questions.length,
+        correctAnswers: correct,
+        answers: JSON.stringify(results),
+        attemptNumber,
+      });
+
+      res.json({
+        score,
+        passed,
+        passScore,
+        correctAnswers: correct,
+        totalQuestions: questions.length,
+        attemptNumber,
+        // Doğru cevapları göster (quiz bittikten sonra eğitim amaçlı)
+        corrections: results.map((r: any, i: number) => ({
+          ...r,
+          correctIndex: questions[r.questionIndex]?.correctIndex,
+          explanation: questions[r.questionIndex]?.explanation || null,
+        })),
+      });
+    } catch (error) {
+      console.error("Quiz submit error:", error);
+      res.status(500).json({ message: "Quiz gönderilemedi" });
     }
   });
 

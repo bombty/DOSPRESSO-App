@@ -849,6 +849,10 @@ export const announcements = pgTable("announcements", {
   
   // Acknowledgment (reçete/kanuni duyurularda zorunlu onay)
   requiresAcknowledgment: boolean("requires_acknowledgment").default(false),
+  // Mini Quiz (reçete/kanuni duyurularda bilgi kontrolü)
+  quizQuestions: text("quiz_questions"), // JSON: [{question, options[], correctIndex, explanation}]
+  quizPassScore: integer("quiz_pass_score").default(80), // Geçme notu (%)
+  quizRequired: boolean("quiz_required").default(false), // Quiz zorunlu mu?
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -895,6 +899,24 @@ export const insertAnnouncementReadStatusSchema = createInsertSchema(announcemen
 
 export type InsertAnnouncementReadStatus = z.infer<typeof insertAnnouncementReadStatusSchema>;
 export type AnnouncementReadStatus = typeof announcementReadStatus.$inferSelect;
+
+// Announcement Quiz Results — Duyuru mini quiz sonuçları
+export const announcementQuizResults = pgTable("announcement_quiz_results", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  score: integer("score").notNull(), // 0-100
+  passed: boolean("passed").notNull(),
+  totalQuestions: integer("total_questions").notNull(),
+  correctAnswers: integer("correct_answers").notNull(),
+  answers: text("answers"), // JSON: [{questionIndex, selectedIndex, correct}]
+  attemptNumber: integer("attempt_number").default(1),
+  attemptedAt: timestamp("attempted_at").defaultNow(),
+}, (table) => [
+  index("aqr_announcement_idx").on(table.announcementId),
+  index("aqr_user_idx").on(table.userId),
+  index("aqr_user_ann_idx").on(table.userId, table.announcementId),
+]);
 
 // Announcement Dismissals — Header banner kapatma takibi
 export const announcementDismissals = pgTable("announcement_dismissals", {

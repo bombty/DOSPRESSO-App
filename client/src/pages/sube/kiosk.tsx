@@ -114,6 +114,10 @@ export default function BranchKiosk() {
   const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
   const [teamStatus, setTeamStatus] = useState<any[]>([]);
   const [pendingAnnouncements, setPendingAnnouncements] = useState<any[]>([]);
+  const [quizMode, setQuizMode] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizResult, setQuizResult] = useState<any>(null);
   const [kioskNotifications, setKioskNotifications] = useState<any[]>([]);
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
@@ -1879,18 +1883,119 @@ export default function BranchKiosk() {
       return res.json();
     },
     onSuccess: (_, announcementId) => {
-      setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+      const current = pendingAnnouncements.find(a => a.id === announcementId);
+      if (current?.quizRequired && !current?.quizPassed) {
+        fetchQuizQuestions(announcementId);
+      } else {
+        setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+      }
+    },
+  });
+
+  const fetchQuizQuestions = async (announcementId: number) => {
+    try {
+      const res = await fetch(`/api/announcements/${announcementId}/quiz`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hasQuiz && data.questions.length > 0) {
+          setQuizQuestions(data.questions);
+          setQuizAnswers({});
+          setQuizResult(null);
+          setQuizMode(true);
+          return;
+        }
+      }
+    } catch (e) { /* skip */ }
+    setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+  };
+
+  const submitQuizMutation = useMutation({
+    mutationFn: async ({ announcementId, answers }: { announcementId: number; answers: any[] }) => {
+      const res = await apiRequest('POST', `/api/announcements/${announcementId}/quiz-submit`, { userId: selectedUser?.id, answers });
+      return res.json();
+    },
+    onSuccess: (result, { announcementId }) => {
+      setQuizResult(result);
+      if (result.passed) {
+        setTimeout(() => {
+          setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+          setQuizMode(false); setQuizResult(null); setQuizQuestions([]); setQuizAnswers({});
+        }, 2500);
+      }
     },
   });
 
   const renderAnnouncementsStep = () => {
-    if (pendingAnnouncements.length === 0) {
-      return null; // useEffect handles transition
-    }
-
+    if (pendingAnnouncements.length === 0) return null;
     const current = pendingAnnouncements[0];
     const remaining = pendingAnnouncements.length - 1;
 
+    // Quiz sonuç ekranı
+    if (quizMode && quizResult) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader className="text-center pb-2">
+              <div className={`mx-auto mb-2 p-3 rounded-full ${quizResult.passed ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                {quizResult.passed ? <CheckCircle2 className="h-8 w-8 text-green-600" /> : <AlertCircle className="h-8 w-8 text-red-600" />}
+              </div>
+              <CardTitle className="text-lg">{quizResult.passed ? 'Tebrikler! Quiz Geçildi' : 'Quiz Geçilemedi'}</CardTitle>
+              <CardDescription>
+                {quizResult.correctAnswers}/{quizResult.totalQuestions} doğru — %{quizResult.score}
+                {!quizResult.passed && ` (Geçme notu: %${quizResult.passScore})`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {quizResult.passed ? (
+                <p className="text-center text-sm text-green-600">Sonraki adıma geçiliyor...</p>
+              ) : (
+                <Button className="w-full h-12 bg-amber-600 hover:bg-amber-700" onClick={() => { setQuizMode(false); setQuizResult(null); setQuizQuestions([]); setQuizAnswers({}); }}>
+                  Duyuruyu Tekrar Oku ve Dene
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // Quiz soruları
+    if (quizMode && quizQuestions.length > 0) {
+      const allAnswered = quizQuestions.every((_, i) => quizAnswers[i] !== undefined);
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader className="text-center pb-2">
+              <CardTitle className="text-lg">Mini Quiz — {current.title}</CardTitle>
+              <CardDescription>{quizQuestions.length} soru</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {quizQuestions.map((q: any, qi: number) => (
+                <div key={qi} className="space-y-2 p-3 rounded-lg bg-muted/50">
+                  <p className="font-medium text-sm">{qi + 1}. {q.question}</p>
+                  <div className="space-y-1.5">
+                    {q.options?.map((opt: string, oi: number) => (
+                      <button key={oi} className={`w-full text-left p-2.5 rounded-md text-sm transition-all ${quizAnswers[qi] === oi ? 'bg-blue-600 text-white' : 'bg-background border hover:bg-muted'}`}
+                        onClick={() => setQuizAnswers(prev => ({ ...prev, [qi]: oi }))}>
+                        {String.fromCharCode(65 + oi)}) {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+            <div className="p-4 pt-0">
+              <Button className="w-full h-12 bg-green-600 hover:bg-green-700" disabled={!allAnswered || submitQuizMutation.isPending}
+                onClick={() => { submitQuizMutation.mutate({ announcementId: current.id, answers: quizQuestions.map((_, i) => ({ questionIndex: i, selectedIndex: quizAnswers[i] })) }); }}>
+                {submitQuizMutation.isPending ? 'Kontrol ediliyor...' : `Cevapları Gönder (${Object.keys(quizAnswers).length}/${quizQuestions.length})`}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Duyuru okuma ekranı
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 p-4">
         <Card className="w-full max-w-lg">
@@ -1898,57 +2003,26 @@ export default function BranchKiosk() {
             <div className="mx-auto mb-2 p-3 rounded-full bg-red-100 dark:bg-red-900/30">
               <Megaphone className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
-            <CardTitle className="text-lg" data-testid="title-announcement">
-              Zorunlu Duyuru
-            </CardTitle>
-            <CardDescription>
-              Vardiyaya başlamadan önce okumanız gereken {pendingAnnouncements.length} duyuru var
-            </CardDescription>
+            <CardTitle className="text-lg" data-testid="title-announcement">Zorunlu Duyuru</CardTitle>
+            <CardDescription>Vardiyaya başlamadan önce okumanız gereken {pendingAnnouncements.length} duyuru var</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Banner görseli */}
-            {current.bannerImageUrl && (
-              <div className="rounded-lg overflow-hidden">
-                <img 
-                  src={current.bannerImageUrl} 
-                  alt={current.title} 
-                  className="w-full h-40 object-cover"
-                />
-              </div>
-            )}
-
-            {/* Başlık ve mesaj */}
+            {current.bannerImageUrl && (<div className="rounded-lg overflow-hidden"><img src={current.bannerImageUrl} alt={current.title} className="w-full h-40 object-cover" /></div>)}
             <div className="space-y-2">
               <h3 className="font-semibold text-base">{current.title}</h3>
               {current.category && (
                 <Badge variant="outline" className="text-xs">
-                  {current.category === 'recipe' ? 'Reçete Değişikliği' :
-                   current.category === 'policy' ? 'Kanuni/Politika' :
-                   current.category === 'campaign' ? 'Kampanya' :
-                   current.category === 'training' ? 'Eğitim' :
-                   current.category === 'product' ? 'Yeni Ürün' :
-                   current.category}
+                  {current.category === 'recipe' ? 'Reçete Değişikliği' : current.category === 'policy' ? 'Kanuni/Politika' : current.category === 'campaign' ? 'Kampanya' : current.category === 'training' ? 'Eğitim' : current.category === 'product' ? 'Yeni Ürün' : current.category}
                 </Badge>
               )}
+              {current.quizRequired && <Badge variant="destructive" className="text-xs ml-1">Quiz Var</Badge>}
               <p className="text-sm text-muted-foreground leading-relaxed">{current.message}</p>
             </div>
-
-            {/* Onay butonu */}
-            <Button
-              className="w-full h-14 text-lg bg-green-600 hover:bg-green-700"
-              onClick={() => acknowledgeAnnouncementMutation.mutate(current.id)}
-              disabled={acknowledgeAnnouncementMutation.isPending}
-              data-testid="button-acknowledge-announcement"
-            >
+            <Button className="w-full h-14 text-lg bg-green-600 hover:bg-green-700" onClick={() => acknowledgeAnnouncementMutation.mutate(current.id)} disabled={acknowledgeAnnouncementMutation.isPending} data-testid="button-acknowledge-announcement">
               <CheckCircle2 className="h-5 w-5 mr-2" />
-              Okudum ve Anladım
+              {current.quizRequired ? "Okudum — Quiz'e Geç" : 'Okudum ve Anladım'}
             </Button>
-
-            {remaining > 0 && (
-              <p className="text-center text-xs text-muted-foreground">
-                {remaining} duyuru daha kaldı
-              </p>
-            )}
+            {remaining > 0 && <p className="text-center text-xs text-muted-foreground">{remaining} duyuru daha kaldı</p>}
           </CardContent>
         </Card>
       </div>
