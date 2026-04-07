@@ -52,6 +52,9 @@ router.post('/api/pdks-payroll/calculate', isAuthenticated, requireManifestAcces
         absenceDeduction: r.absenceDeduction,
         bonusDeduction: r.bonusDeduction,
         overtimePay: r.overtimePay,
+        holidayWorkedDays: r.holidayWorkedDays,
+        holidayPay: r.holidayPay,
+        mealAllowance: r.mealAllowance,
         netPay: r.netPay,
       }))
     });

@@ -1462,4 +1462,44 @@ router.post('/api/admin/seed-audit-templates', isAuthenticated, requireAdmin, as
   }
 });
 
+// POST /api/admin/seed-holidays-2026 — 2026 Türkiye resmi tatilleri
+router.post('/api/admin/seed-holidays-2026', isAuthenticated, requireAdmin, async (req, res) => {
+  try {
+    const holidays2026 = [
+      { name: "Yılbaşı", date: "2026-01-01", year: 2026, is_half_day: false },
+      { name: "Ramazan Bayramı Arife", date: "2026-03-19", year: 2026, is_half_day: true },
+      { name: "Ramazan Bayramı 1. Gün", date: "2026-03-20", year: 2026, is_half_day: false },
+      { name: "Ramazan Bayramı 2. Gün", date: "2026-03-21", year: 2026, is_half_day: false },
+      { name: "Ramazan Bayramı 3. Gün", date: "2026-03-22", year: 2026, is_half_day: false },
+      { name: "Ulusal Egemenlik ve Çocuk Bayramı", date: "2026-04-23", year: 2026, is_half_day: false },
+      { name: "Emek ve Dayanışma Günü", date: "2026-05-01", year: 2026, is_half_day: false },
+      { name: "Atatürk'ü Anma, Gençlik ve Spor Bayramı", date: "2026-05-19", year: 2026, is_half_day: false },
+      { name: "Kurban Bayramı Arife", date: "2026-05-26", year: 2026, is_half_day: true },
+      { name: "Kurban Bayramı 1. Gün", date: "2026-05-27", year: 2026, is_half_day: false },
+      { name: "Kurban Bayramı 2. Gün", date: "2026-05-28", year: 2026, is_half_day: false },
+      { name: "Kurban Bayramı 3. Gün", date: "2026-05-29", year: 2026, is_half_day: false },
+      { name: "Kurban Bayramı 4. Gün", date: "2026-05-30", year: 2026, is_half_day: false },
+      { name: "Demokrasi ve Milli Birlik Günü", date: "2026-07-15", year: 2026, is_half_day: false },
+      { name: "Zafer Bayramı", date: "2026-08-30", year: 2026, is_half_day: false },
+      { name: "Cumhuriyet Bayramı", date: "2026-10-29", year: 2026, is_half_day: false },
+    ];
+
+    // Mevcut 2026 tatilleri temizle
+    await db.execute(sql`DELETE FROM public_holidays WHERE year = 2026`);
+
+    // Yenilerini ekle
+    for (const h of holidays2026) {
+      await db.execute(sql`
+        INSERT INTO public_holidays (name, date, year, is_half_day, is_active)
+        VALUES (${h.name}, ${h.date}, ${h.year}, ${h.is_half_day}, true)
+      `);
+    }
+
+    res.json({ success: true, message: `2026 yılı için ${holidays2026.length} resmi tatil oluşturuldu` });
+  } catch (error: any) {
+    console.error('[SeedHolidays2026] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

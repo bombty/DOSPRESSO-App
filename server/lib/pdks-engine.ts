@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { pdksRecords, scheduledOffs, leaveRequests, shifts } from "@shared/schema";
+import { pdksRecords, scheduledOffs, leaveRequests, shifts, publicHolidays } from "@shared/schema";
 import { eq, and, gte, lte, sql, isNull } from "drizzle-orm";
 
 export interface DayClassification {
@@ -8,6 +8,8 @@ export interface DayClassification {
   records: { time: string; type: string; source: string | null }[];
   workedMinutes: number;
   overtimeMinutes: number;
+  isHoliday: boolean;
+  holidayName?: string;
 }
 
 export interface PdksMonthSummary {
@@ -22,6 +24,7 @@ export interface PdksMonthSummary {
   sickLeaveDays: number;
   annualLeaveDays: number;
   totalOvertimeMinutes: number;
+  holidayWorkedDays: number;
 }
 
 function timeDiffMinutes(time1: string, time2: string): number {
@@ -58,9 +61,11 @@ export function classifyDay(
   dayRecords: { time: string; type: string; source: string | null }[],
   isScheduledOff: boolean,
   leaveType: string | null,
-  plannedMinutes?: number // undefined = vardiya planlanmamış, number = planlanan süre
+  plannedMinutes?: number, // undefined = vardiya planlanmamış, number = planlanan süre
+  holidayInfo?: { isHoliday: boolean; name?: string }
 ): DayClassification {
-  const base = { date: dateStr, records: dayRecords, workedMinutes: 0, overtimeMinutes: 0 };
+  const holiday = holidayInfo ?? { isHoliday: false };
+  const base = { date: dateStr, records: dayRecords, workedMinutes: 0, overtimeMinutes: 0, isHoliday: holiday.isHoliday, holidayName: holiday.name };
   const hasPlannedShift = plannedMinutes !== undefined;
   const effectivePlannedMinutes = plannedMinutes ?? 480;
 
@@ -96,7 +101,9 @@ export function classifyDay(
   if (hasWorkStamp) {
     const workedMinutes = calculateWorkedMinutes(dayRecords);
     if (workedMinutes > 0) {
-      const overtimeMinutes = Math.max(0, workedMinutes - effectivePlannedMinutes);
+      const rawOvertime = Math.max(0, workedMinutes - effectivePlannedMinutes);
+      // FM eşiği: 30 dakika altı fazla mesai sayılmaz (DOSPRESSO iç kuralı)
+      const overtimeMinutes = rawOvertime >= 30 ? rawOvertime : 0;
       return { ...base, status: 'worked', workedMinutes, overtimeMinutes };
     }
     const hasGiris = dayRecords.some(r => r.type === 'giris');
@@ -118,7 +125,7 @@ export async function getMonthClassification(
   const daysInMonth = new Date(year, month, 0).getDate();
   const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-  const [records, offs, leaves, userShifts] = await Promise.all([
+  const [records, offs, leaves, userShifts, holidays] = await Promise.all([
     db.select({
       recordDate: pdksRecords.recordDate,
       recordTime: pdksRecords.recordTime,
@@ -167,9 +174,27 @@ export async function getMonthClassification(
       lte(shifts.shiftDate, endDate),
       isNull(shifts.deletedAt),
     )),
+
+    // Resmi tatiller
+    db.select({
+      date: publicHolidays.date,
+      name: publicHolidays.name,
+      isHalfDay: publicHolidays.isHalfDay,
+    })
+    .from(publicHolidays)
+    .where(and(
+      eq(publicHolidays.year, year),
+      eq(publicHolidays.isActive, true),
+    )),
   ]);
 
   const offSet = new Set(offs.map(o => o.offDate));
+
+  // Tatil haritası: tarih → { isHoliday, name }
+  const holidayMap = new Map<string, { isHoliday: boolean; name: string }>();
+  for (const h of holidays) {
+    holidayMap.set(h.date, { isHoliday: true, name: h.name });
+  }
 
   // Build date → planned shift minutes map
   const shiftMinutesMap = new Map<string, number>();
@@ -201,7 +226,7 @@ export async function getMonthClassification(
       }
     }
 
-    days.push(classifyDay(dateStr, dayRecords, isOff, leaveType, shiftMinutesMap.get(dateStr)));
+    days.push(classifyDay(dateStr, dayRecords, isOff, leaveType, shiftMinutesMap.get(dateStr), holidayMap.get(dateStr)));
   }
 
   const workedDays = days.filter(d => d.status === 'worked').length;
@@ -211,11 +236,12 @@ export async function getMonthClassification(
   const sickLeaveDays = days.filter(d => d.status === 'sick_leave').length;
   const annualLeaveDays = days.filter(d => d.status === 'annual_leave').length;
   const totalOvertimeMinutes = days.reduce((sum, d) => sum + d.overtimeMinutes, 0);
+  const holidayWorkedDays = days.filter(d => d.status === 'worked' && d.isHoliday).length;
 
   return {
     userId, year, month, days,
     workedDays, offDays, absentDays,
     unpaidLeaveDays, sickLeaveDays, annualLeaveDays,
-    totalOvertimeMinutes
+    totalOvertimeMinutes, holidayWorkedDays
   };
 }

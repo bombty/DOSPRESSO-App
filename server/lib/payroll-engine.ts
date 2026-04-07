@@ -18,6 +18,7 @@ export interface PayrollResult {
   unpaidLeaveDays: number;
   sickLeaveDays: number;
   overtimeMinutes: number;
+  holidayWorkedDays: number;
   totalSalary: number;
   baseSalary: number;
   bonus: number;
@@ -25,9 +26,26 @@ export interface PayrollResult {
   absenceDeduction: number;
   bonusDeduction: number;
   overtimePay: number;
+  holidayPay: number;
+  mealAllowance: number;
   netPay: number;
   isTerminated: boolean;
 }
+
+/** Aylık bordro konfigürasyonu — ileride payroll_month_config tablosundan okunacak */
+export interface PayrollMonthConfig {
+  absencePenaltyPlusOne: boolean;   // "+1 ceza" kuralı
+  mealAllowancePerDay: number;      // yemek bedeli TL/gün (kuruş cinsinden)
+  mealAllowanceRoles: string[];     // hangi roller alır
+  holidayMultiplier: number;        // tatil çarpanı (1.0 veya 2.0)
+}
+
+const DEFAULT_CONFIG: PayrollMonthConfig = {
+  absencePenaltyPlusOne: false,
+  mealAllowancePerDay: 33000,       // 330 TL = 33000 kuruş
+  mealAllowanceRoles: ['stajyer'],
+  holidayMultiplier: 1.0,           // Excel'de ×1 uygulanıyordu
+};
 
 const ROLE_TO_POSITION: Record<string, string> = {
   stajyer: 'stajyer',
@@ -59,8 +77,11 @@ export async function getPositionSalary(positionCode: string, year: number, mont
 export async function calculatePayroll(
   userId: string,
   year: number,
-  month: number
+  month: number,
+  config: Partial<PayrollMonthConfig> = {}
 ): Promise<PayrollResult | null> {
+  const cfg = { ...DEFAULT_CONFIG, ...config };
+  
   const user = await db.select({
     id: users.id,
     firstName: users.firstName,
@@ -87,28 +108,51 @@ export async function calculatePayroll(
   const effectiveOffDays = Math.min(classification.offDays, 4);
   const isTerminated = u.isActive === false;
 
+  // İş Kanunu Md.49: Günlük ücret = Aylık maaş ÷ 30
   const dailyRate = Math.round(salary.totalSalary / 30);
+  // Saatlik ücret = Aylık maaş ÷ 240 (30 gün × 8 saat)
   const hourlyRate = Math.round(salary.totalSalary / 240);
 
+  // ── Devamsızlık Kesintisi ──
   let absenceDeduction = 0;
   if (classification.absentDays > 0) {
-    // Devamsızlık kesintisi: devamsız gün × günlük ücret
-    // Not: Önceki formül (absentDays + 1) fazla kesinti yapıyordu
-    absenceDeduction = classification.absentDays * dailyRate;
+    if (cfg.absencePenaltyPlusOne) {
+      // "+1 ceza" kuralı: eksik gün + 1 günlük kesinti
+      absenceDeduction = (classification.absentDays + 1) * dailyRate;
+    } else {
+      absenceDeduction = classification.absentDays * dailyRate;
+    }
   }
 
+  // ── Prim Kesintisi (Ücretsiz İzin) ──
   let bonusDeduction = 0;
   if (classification.unpaidLeaveDays > 0) {
     bonusDeduction = Math.round((classification.unpaidLeaveDays / 30) * salary.bonus);
   }
 
+  // ── Fazla Mesai (FM eşik pdks-engine'de uygulanıyor: 30 dk altı 0) ──
   const overtimePay = Math.round((classification.totalOvertimeMinutes / 60) * hourlyRate * 1.5);
 
+  // ── Tatil/Bayram Mesai ──
+  const holidayPay = Math.round(classification.holidayWorkedDays * dailyRate * cfg.holidayMultiplier);
+
+  // ── Yemek Bedeli (pozisyon bazlı) ──
+  const mealAllowance = cfg.mealAllowanceRoles.includes(positionCode)
+    ? classification.workedDays * cfg.mealAllowancePerDay
+    : 0;
+
+  // ── Net Hesap ──
   let netPay: number;
   if (isTerminated) {
-    netPay = classification.workedDays * dailyRate + overtimePay;
+    // İşten ayrılan: çalışılan gün × günlük ücret + yemek
+    netPay = classification.workedDays * dailyRate + mealAllowance;
   } else {
-    netPay = salary.totalSalary - absenceDeduction - bonusDeduction + overtimePay;
+    netPay = salary.totalSalary
+      - absenceDeduction
+      - bonusDeduction
+      + overtimePay
+      + holidayPay
+      + mealAllowance;
   }
   if (netPay < 0) netPay = 0;
 
@@ -127,6 +171,7 @@ export async function calculatePayroll(
     unpaidLeaveDays: classification.unpaidLeaveDays,
     sickLeaveDays: classification.sickLeaveDays,
     overtimeMinutes: classification.totalOvertimeMinutes,
+    holidayWorkedDays: classification.holidayWorkedDays,
     totalSalary: salary.totalSalary,
     baseSalary: salary.baseSalary,
     bonus: salary.bonus,
@@ -134,6 +179,8 @@ export async function calculatePayroll(
     absenceDeduction,
     bonusDeduction,
     overtimePay,
+    holidayPay,
+    mealAllowance,
     netPay,
     isTerminated
   };
@@ -184,6 +231,9 @@ export async function savePayrollResults(results: PayrollResult[], dbClient: typ
         absenceDeduction: r.absenceDeduction,
         bonusDeduction: r.bonusDeduction,
         overtimePay: r.overtimePay,
+        holidayWorkedDays: r.holidayWorkedDays,
+        holidayPay: r.holidayPay,
+        mealAllowance: r.mealAllowance,
         netPay: r.netPay,
         status: 'calculated',
         calculatedAt: new Date(),
@@ -207,6 +257,9 @@ export async function savePayrollResults(results: PayrollResult[], dbClient: typ
           absenceDeduction: r.absenceDeduction,
           bonusDeduction: r.bonusDeduction,
           overtimePay: r.overtimePay,
+          holidayWorkedDays: r.holidayWorkedDays,
+          holidayPay: r.holidayPay,
+          mealAllowance: r.mealAllowance,
           netPay: r.netPay,
           status: 'calculated',
           calculatedAt: new Date(),
