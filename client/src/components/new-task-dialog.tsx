@@ -68,13 +68,14 @@ interface NewTaskDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultScope?: string;
   defaultBranchId?: number;
+  defaultDescription?: string;
   source?: string;
   sourceId?: string;
 }
 
 type StepKey = 'scope' | 'target' | 'details' | 'summary';
 
-export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchId, source, sourceId }: NewTaskDialogProps) {
+export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchId, defaultDescription, source, sourceId }: NewTaskDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const isHQUser = HQ_ROLES.includes(user?.role as string);
@@ -88,7 +89,7 @@ export function NewTaskDialog({ open, onOpenChange, defaultScope, defaultBranchI
   const [acceptanceRequired, setAcceptanceRequired] = useState(false);
   const [allowExtension, setAllowExtension] = useState(true);
 
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(defaultDescription || '');
   const [priority, setPriority] = useState('orta');
   const [dueDate, setDueDate] = useState('');
   const [subTasks, setSubTasks] = useState<string[]>([]);

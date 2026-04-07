@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
-import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench, CheckCircle2, Users } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Send, Paperclip, UserPlus, Bell, FileText, Image, X, Loader2, Clock, Wrench, CheckCircle2, Users, ListTodo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { getDeptConfig, getStatusConfig, isHQRole } from './categoryConfig';
+import { NewTaskDialog } from '@/components/new-task-dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -156,6 +157,7 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
   });
 
   const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
 
   const statusMutation = useMutation({
@@ -788,6 +790,14 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
                   {slaRemindMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
                   SLA Hatırlat
                 </button>
+                <button
+                  onClick={() => setShowCreateTask(true)}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
+                  data-testid="button-create-task-from-ticket"
+                >
+                  <ListTodo className="w-3.5 h-3.5" />
+                  Görev Oluştur
+                </button>
                 {isHQ && (
                 <div className="relative">
                   <button
@@ -881,6 +891,16 @@ export function TicketChatPanel({ ticket, isLoading, onClose }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {ticket && (
+        <NewTaskDialog
+          open={showCreateTask}
+          onOpenChange={setShowCreateTask}
+          source="ticket"
+          sourceId={String(ticket.id)}
+          defaultDescription={`[Ticket #${ticket.ticket_number}] ${ticket.title}\n\n${ticket.description || ''}`}
+        />
+      )}
     </div>
   );
 }
