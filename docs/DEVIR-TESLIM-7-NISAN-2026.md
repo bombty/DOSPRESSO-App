@@ -272,3 +272,39 @@ npx esbuild server/index.ts --bundle --platform=node --outdir=dist --format=esm 
 4. Tasarım planını oku: docs/DUYURU-REDESIGN-PLAN.md
 5. DuyuruStudioV2 Sprint D-R1'e başla
 ```
+
+---
+
+## 10. KRİTİK OPERASYONEL NOTLAR (Yeni Claude için)
+
+### Replit Test Talimatı — Her Push'tan Sonra
+**Her commit push'landığında proaktif olarak Replit test talimatı hazırla.**
+Aslan'ın hatırlatmasını BEKLEME. Dosyayı `/mnt/user-data/outputs/` altına yaz ve `present_files` ile sun.
+
+### Kiosk Auth Modeli — Dikkat!
+Kiosk standalone modunda `req.user` = şube müdürünün session'ı.
+Gerçek personel ID'si `req.body.userId` ile gönderilmeli.
+Bu pattern tüm kiosk endpoint'lerinde geçerli (acknowledge, quiz-submit, vb.)
+
+### DB Migration Yöntemi
+Drizzle-kit push çalışmıyor (timeout). Tüm migration'lar **Replit'te raw SQL** ile yapılır.
+Her schema değişikliğinde Replit'e ALTER TABLE komutları gönder.
+
+### Replit Sunucu Davranışı
+`resetNonAdminPasswords()` her server restart'ta çalışır.
+Tüm non-admin şifreler "0000" olur. Test yaparken bunu bil.
+
+### BannerEditor DOKUNMA
+`banner-editor.tsx` (1713 satır) popup layout BOZUK.
+Küçük fix deneme — baştan DuyuruStudioV2 olarak yeniden yaz.
+Plan: `docs/DUYURU-REDESIGN-PLAN.md`
+
+### Oturum Uzunluğu Limiti
+Bu oturum 40 commit'e ulaştı — çok fazla. Context window dolunca hata riski artar.
+Sonraki oturumlarda **max 15-20 commit** hedefle, sonra devir teslim yap.
+
+### Çift Yetki — TEKRAR HATIRLATMA
+Her rol değişikliğinde İKİSİNİ BİRLİKTE güncelle:
+1. `shared/module-manifest.ts`
+2. `shared/schema/schema-02.ts` → PERMISSIONS map
+Biri eksik kalırsa kullanıcı erişim kaybeder veya yetkisiz erişim elde eder.
