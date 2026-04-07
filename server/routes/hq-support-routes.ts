@@ -74,6 +74,9 @@ const router = Router();
     try {
       const user = req.user;
       
+      // DEPRECATED: Bu eski ticket sistemi. Yeni ticket'lar /api/iletisim/tickets üzerinden oluşturulmalı.
+      console.warn(`[DEPRECATED] hq-support/tickets POST called by user ${user.id} (${user.role}). Use /api/iletisim/tickets instead.`);
+      
       const ticketData = {
         ...req.body,
         createdById: user.id,

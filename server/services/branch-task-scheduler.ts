@@ -74,6 +74,15 @@ export async function generateDailyTaskInstances(): Promise<number> {
       );
       if (overrideCheck.rows && overrideCheck.rows.length > 0) continue;
 
+      // Max açık instance limiti: Bu şube+task için 3'ten fazla tamamlanmamış varsa yeni oluşturma
+      const openCount = await db.execute(
+        sql`SELECT COUNT(*)::int as cnt FROM branch_task_instances
+            WHERE recurring_task_id = ${task.id} AND branch_id = ${branchId}
+              AND status IN ('pending', 'claimed') AND is_overdue = false`
+      );
+      const openInstances = (openCount.rows?.[0] as any)?.cnt ?? 0;
+      if (openInstances >= 3) continue;
+
       const result = await db.execute(
         sql`INSERT INTO branch_task_instances (recurring_task_id, branch_id, due_date, status, assigned_to_user_id)
             VALUES (${task.id}, ${branchId}, ${today}, 'pending', ${task.assigned_to_user_id})

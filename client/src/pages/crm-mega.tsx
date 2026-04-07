@@ -50,7 +50,7 @@ const HqTasksTab = lazy(() => import("@/pages/iletisim-merkezi/HqTasksTab"));
 const BroadcastTab = lazy(() => import("@/pages/iletisim-merkezi/BroadcastTab"));
 const CoworkContent = lazy(() => import("@/pages/mesajlar"));
 
-type Channel = "franchise" | "misafir" | "task";
+type Channel = "franchise" | "misafir";
 
 interface DashboardData {
   openTickets: number;
@@ -131,7 +131,6 @@ function ChannelToggle({
   const channels: { key: Channel; label: string; icon: typeof Building2 }[] = [
     { key: "franchise", label: "Franchise", icon: Building2 },
     { key: "misafir", label: "Misafir", icon: Coffee },
-    { key: "task", label: "Görevler", icon: ListTodo },
   ];
 
   return (
@@ -488,7 +487,6 @@ export default function CRMMegaModule() {
     const params = new URLSearchParams(window.location.search);
     const ch = params.get("channel");
     if (ch === "misafir") return "misafir";
-    if (ch === "task") return "task";
     return "franchise";
   });
 
@@ -639,12 +637,12 @@ export default function CRMMegaModule() {
             CRM
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {channel === "franchise" ? "Franchise talep ve destek yönetimi" : channel === "misafir" ? "Misafir geri bildirim ve memnuniyet" : "Görev takibi ve yönetimi"}
+            {channel === "franchise" ? "Franchise talep ve destek yönetimi" : "Misafir geri bildirim ve memnuniyet"}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <ChannelToggle channel={channel} onChange={handleChannelChange} />
-          {channel !== "task" && canCreateTicket(user.role) && (
+          {canCreateTicket(user.role) && (
             <Button onClick={() => setShowNewTicket(true)} size="sm" data-testid="button-new-ticket">
               <Plus className="h-4 w-4 mr-1.5" />
               {channel === "franchise" ? "Yeni Ticket" : "Yeni GB"}
@@ -653,11 +651,8 @@ export default function CRMMegaModule() {
         </div>
       </div>
 
-      {isHQ && channel !== "task" && <ChannelKPIStrip data={dashStats} channel={channel} />}
+      {isHQ && <ChannelKPIStrip data={dashStats} channel={channel} />}
 
-      {channel === "task" ? (
-        <TaskChannelContent />
-      ) : (
       <>
       {/* MOBILE LAYOUT */}
       <div className="md:hidden flex flex-col flex-1 overflow-hidden">
@@ -841,7 +836,6 @@ export default function CRMMegaModule() {
       </div>
 
       </>
-      )}
 
       <NewTicketDialog open={showNewTicket} onOpenChange={setShowNewTicket} channel={channel} />
     </div>
