@@ -473,3 +473,98 @@ Bu analiz sonrası PDKS-EXCEL-IMPORT-PLAN.md güncellenmeli:
 5. PDKS-2 (Hesaplama)             (mevcut)
 6. PDKS-3 (Raporlama)             (mevcut)
 ```
+
+---
+
+## EK ANALİZ: İKİ AYRI MAAŞ MOTORU (KRİTİK BULGU)
+
+Kodda **iki ayrı** maaş hesaplama sistemi var. Bu daha önce fark edilmemişti.
+
+### Motor 1: Basit Motor (`server/lib/payroll-engine.ts`)
+```
+Endpoint: POST /api/pdks-payroll/calculate
+Çağıran: calculateBranchPayroll() → calculatePayroll()
+Veri kaynağı: pdks-engine.ts → otomatik PDKS'ten okur
+Tablo: monthly_payroll (schema-12.ts)
+```
+
+**Ne yapar:**
+- PDKS'ten gün sınıflandırması alır (worked/off/absent/leave)
+- Toplam maaş - devamsızlık kesintisi - prim kesintisi + FM = net
+- **EKSİKLER**: SGK yok, vergi yok, tatil mesai yok, FM eşiği yok
+
+### Motor 2: Detaylı Motor (`server/services/payroll-calculation-service.ts`)
+```
+Endpoint: POST /api/payroll/calculate-detailed
+Çağıran: calculatePayroll(input: PayrollInput)
+Veri kaynağı: MANUEL GİRDİ (PDKS'e bağlı DEĞİL)
+Tablo: payroll_parameters (schema-07.ts) + monthly_payrolls
+```
+
+**Ne yapar:**
+- SGK işçi/işveren payı hesaplar
+- 5 kademeli gelir vergisi hesaplar
+- Damga vergisi hesaplar
+- AGI (asgari geçim indirimi) hesaplar
+- Off gün: ×1.5, Tatil: ×2.0
+- Kasa prim, performans prim, satış primi AYRI
+- Kümülatif vergi matrahı takibi
+- **EKSİK**: PDKS entegrasyonu yok — tüm veriler elle girilmeli
+
+### Karşılaştırma Tablosu
+
+| Özellik | Motor 1 (Basit) | Motor 2 (Detaylı) |
+|---------|-----------------|-------------------|
+| PDKS otomatik okuma | ✅ | ❌ |
+| Gün sınıflandırma | ✅ | ❌ |
+| Off gün takibi | ✅ | ❌ |
+| İzin entegrasyonu | ✅ | ❌ |
+| SGK hesabı | ❌ | ✅ |
+| Gelir vergisi | ❌ | ✅ |
+| Damga vergisi | ❌ | ✅ |
+| AGI | ❌ | ✅ |
+| Tatil mesai ×2 | ❌ | ✅ |
+| Off gün mesai ×1.5 | ❌ | ✅ |
+| FM eşik (30 dk) | ❌ | ❌ (her iki motorda da yok) |
+| Kasa/perf prim ayrımı | ❌ | ✅ |
+| Yemek bedeli | ❌ | ❌ |
+| "+1 ceza" | ❌ | ❌ |
+| Kümülatif vergi matrahı | ❌ | ✅ |
+
+### SONUÇ: Motorlar BİRLEŞTİRİLMELİ
+
+Doğru yaklaşım:
+1. Motor 2'nin hesaplama kalitesini koru (SGK, vergi, AGI)
+2. Motor 1'in PDKS otomatik okuma özelliğini ekle
+3. Eksik özellikleri her ikisine de ekle (FM eşik, yemek, +1)
+
+```
+Hedef Mimari:
+  PDKS Engine (gün sınıflandırma)
+       ↓
+  Payroll Bridge (PDKS → PayrollInput dönüşümü)
+       ↓
+  Payroll Calculation Service (SGK + vergi + net)
+       ↓
+  monthly_payrolls tablosu (sonuç)
+```
+
+### Yeni Sprint Eklenmeli: PAYROLL-MERGE
+
+**Sprint PAYROLL-MERGE (~4-5 saat):**
+1. Payroll Bridge fonksiyonu: PDKS özeti → PayrollInput dönüştürücü
+2. FM 30 dk eşik ekleme (pdks-engine)
+3. Tatil günü çapraz kontrol (publicHolidays 2026 seed)
+4. payroll_month_config tablosu (aylık parametreler)
+5. Yemek bedeli, "+1 ceza" parametreleri
+6. UI: /maas sayfasını birleşik motora bağlama
+
+**Revize Sprint Sıralaması:**
+```
+1. DuyuruStudioV2 D-R2, D-R3
+2. Fabrika F2
+3. ★ PAYROLL-MERGE (motorları birleştir + eksikleri ekle)
+4. PDKS-1 (Excel import altyapısı)
+5. PDKS-2 (PDKS→Payroll entegrasyonu)
+6. PDKS-3 (Raporlama + trend)
+```
