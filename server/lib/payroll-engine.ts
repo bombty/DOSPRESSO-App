@@ -32,20 +32,58 @@ export interface PayrollResult {
   isTerminated: boolean;
 }
 
-/** Aylık bordro konfigürasyonu — ileride payroll_month_config tablosundan okunacak */
+/** Aylık bordro konfigürasyonu — payroll_deduction_config tablosundan okunur */
 export interface PayrollMonthConfig {
-  absencePenaltyPlusOne: boolean;   // "+1 ceza" kuralı
-  mealAllowancePerDay: number;      // yemek bedeli TL/gün (kuruş cinsinden)
-  mealAllowanceRoles: string[];     // hangi roller alır
-  holidayMultiplier: number;        // tatil çarpanı (1.0 veya 2.0)
+  absencePenaltyPlusOne: boolean;
+  mealAllowancePerDay: number;       // kuruş cinsinden
+  mealAllowanceRoles: string[];
+  holidayMultiplier: number;         // 1.0 veya 2.0
+  overtimeThresholdMinutes: number;  // FM eşiği (dk)
+  overtimeMultiplier: number;        // 150 = ×1.5
+  lateToleranceMinutes: number;      // geç kalma toleransı
+  deficitToleranceMinutes: number;   // eksik saat toleransı
+  maxOffDays: number;
+  dailyRateDivisor: number;          // İş Kanunu: 30
+  unpaidLeaveBonusDeduction: boolean;
 }
 
 const DEFAULT_CONFIG: PayrollMonthConfig = {
   absencePenaltyPlusOne: false,
-  mealAllowancePerDay: 33000,       // 330 TL = 33000 kuruş
+  mealAllowancePerDay: 33000,
   mealAllowanceRoles: ['stajyer'],
-  holidayMultiplier: 1.0,           // Excel'de ×1 uygulanıyordu
+  holidayMultiplier: 1.0,
+  overtimeThresholdMinutes: 30,
+  overtimeMultiplier: 150,
+  lateToleranceMinutes: 15,
+  deficitToleranceMinutes: 15,
+  maxOffDays: 4,
+  dailyRateDivisor: 30,
+  unpaidLeaveBonusDeduction: true,
 };
+
+/** DB'den şube+dönem bazlı konfigürasyon yükle (cascade: şube→genel→varsayılan) */
+export async function loadPayrollConfig(branchId: number, year: number, month: number): Promise<PayrollMonthConfig> {
+  try {
+    const { getEffectiveConfig } = await import("../routes/payroll-config");
+    const dbConfig = await getEffectiveConfig(branchId, year, month);
+    return {
+      absencePenaltyPlusOne: dbConfig.absencePenaltyPlusOne ?? DEFAULT_CONFIG.absencePenaltyPlusOne,
+      mealAllowancePerDay: dbConfig.mealAllowancePerDay ?? DEFAULT_CONFIG.mealAllowancePerDay,
+      mealAllowanceRoles: dbConfig.mealAllowanceRoles ?? DEFAULT_CONFIG.mealAllowanceRoles,
+      holidayMultiplier: (dbConfig.holidayMultiplier ?? 100) / 100,
+      overtimeThresholdMinutes: dbConfig.overtimeThresholdMinutes ?? DEFAULT_CONFIG.overtimeThresholdMinutes,
+      overtimeMultiplier: dbConfig.overtimeMultiplier ?? DEFAULT_CONFIG.overtimeMultiplier,
+      lateToleranceMinutes: dbConfig.lateToleranceMinutes ?? DEFAULT_CONFIG.lateToleranceMinutes,
+      deficitToleranceMinutes: dbConfig.deficitToleranceMinutes ?? DEFAULT_CONFIG.deficitToleranceMinutes,
+      maxOffDays: dbConfig.maxOffDays ?? DEFAULT_CONFIG.maxOffDays,
+      dailyRateDivisor: dbConfig.dailyRateDivisor ?? DEFAULT_CONFIG.dailyRateDivisor,
+      unpaidLeaveBonusDeduction: dbConfig.unpaidLeaveBonusDeduction ?? DEFAULT_CONFIG.unpaidLeaveBonusDeduction,
+    };
+  } catch {
+    // DB'de tablo yoksa veya hata olursa varsayılan kullan
+    return DEFAULT_CONFIG;
+  }
+}
 
 const ROLE_TO_POSITION: Record<string, string> = {
   stajyer: 'stajyer',
@@ -105,13 +143,14 @@ export async function calculatePayroll(
   const classification = await getMonthClassification(userId, year, month);
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  const effectiveOffDays = Math.min(classification.offDays, 4);
+  const effectiveOffDays = Math.min(classification.offDays, cfg.maxOffDays);
   const isTerminated = u.isActive === false;
 
-  // İş Kanunu Md.49: Günlük ücret = Aylık maaş ÷ 30
-  const dailyRate = Math.round(salary.totalSalary / 30);
-  // Saatlik ücret = Aylık maaş ÷ 240 (30 gün × 8 saat)
-  const hourlyRate = Math.round(salary.totalSalary / 240);
+  // İş Kanunu Md.49: Günlük ücret = Aylık maaş ÷ bölen (varsayılan 30)
+  const divisor = cfg.dailyRateDivisor;
+  const dailyRate = Math.round(salary.totalSalary / divisor);
+  // Saatlik ücret = Aylık maaş ÷ (bölen × 8)
+  const hourlyRate = Math.round(salary.totalSalary / (divisor * 8));
 
   // ── Devamsızlık Kesintisi ──
   let absenceDeduction = 0;
@@ -126,12 +165,12 @@ export async function calculatePayroll(
 
   // ── Prim Kesintisi (Ücretsiz İzin) ──
   let bonusDeduction = 0;
-  if (classification.unpaidLeaveDays > 0) {
-    bonusDeduction = Math.round((classification.unpaidLeaveDays / 30) * salary.bonus);
+  if (cfg.unpaidLeaveBonusDeduction && classification.unpaidLeaveDays > 0) {
+    bonusDeduction = Math.round((classification.unpaidLeaveDays / divisor) * salary.bonus);
   }
 
   // ── Fazla Mesai (FM eşik pdks-engine'de uygulanıyor: 30 dk altı 0) ──
-  const overtimePay = Math.round((classification.totalOvertimeMinutes / 60) * hourlyRate * 1.5);
+  const overtimePay = Math.round((classification.totalOvertimeMinutes / 60) * hourlyRate * (cfg.overtimeMultiplier / 100));
 
   // ── Tatil/Bayram Mesai ──
   const holidayPay = Math.round(classification.holidayWorkedDays * dailyRate * cfg.holidayMultiplier);
@@ -191,6 +230,9 @@ export async function calculateBranchPayroll(
   year: number,
   month: number
 ): Promise<PayrollResult[]> {
+  // Şube+dönem bazlı konfigürasyonu DB'den yükle
+  const config = await loadPayrollConfig(branchId, year, month);
+
   const branchUsers = await db.select({ id: users.id })
     .from(users)
     .where(and(
@@ -200,7 +242,7 @@ export async function calculateBranchPayroll(
 
   const results: PayrollResult[] = [];
   for (const u of branchUsers) {
-    const result = await calculatePayroll(u.id, year, month);
+    const result = await calculatePayroll(u.id, year, month, config);
     if (result) results.push(result);
   }
 

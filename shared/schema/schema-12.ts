@@ -1251,3 +1251,69 @@ export const branchTaskCategories = pgTable("branch_task_categories", {
 export const insertBranchTaskCategorySchema = createInsertSchema(branchTaskCategories).omit({ id: true, createdAt: true });
 export type BranchTaskCategory = typeof branchTaskCategories.$inferSelect;
 export type InsertBranchTaskCategory = z.infer<typeof insertBranchTaskCategorySchema>;
+
+// =====================================================
+// BORDRO KESİNTİ KONFİGÜRASYONU
+// HQ Operasyon tarafından şube/fabrika/merkez bazında düzenlenir
+// =====================================================
+
+export const payrollDeductionConfig = pgTable("payroll_deduction_config", {
+  id: serial("id").primaryKey(),
+  
+  // Scope: null = tüm şubeler (varsayılan), number = belirli şube
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }),
+  
+  // Dönem: null = kalıcı kural, year+month = döneme özel
+  year: integer("year"),
+  month: integer("month"),                            // 1-12
+
+  // ── Devam Takip Parametreleri ──
+  trackingDays: integer("tracking_days"),              // Ayın devam takip günü (28/30/31) — null=ayın gün sayısı
+  dailyRateDivisor: integer("daily_rate_divisor").notNull().default(30), // Günlük ücret böleni (İş Kanunu: 30)
+  maxOffDays: integer("max_off_days").notNull().default(4),             // Max haftalık izin/ay
+
+  // ── Devamsızlık Kesintisi ──
+  absencePenaltyPlusOne: boolean("absence_penalty_plus_one").notNull().default(false), // "+1 ceza" kuralı
+  
+  // ── Geç Kalma Kesintisi ──
+  lateToleranceMinutes: integer("late_tolerance_minutes").notNull().default(15),       // Geç kalma toleransı (dk)
+  lateHalfDeductionMinutes: integer("late_half_deduction_minutes").notNull().default(30), // Yarım saat kesinti eşiği
+  latePerMinuteRate: integer("late_per_minute_rate").default(0),                       // Dakika başı kesinti (kuruş) — 0=sabit kural
+  
+  // ── Eksik Saat Kesintisi ──
+  deficitToleranceMinutes: integer("deficit_tolerance_minutes").notNull().default(15),  // 15 dk tolerans
+  deficitHalfHourThreshold: integer("deficit_half_hour_threshold").notNull().default(30), // 30 dk = yarım saat kesinti
+  
+  // ── Fazla Mesai ──
+  overtimeThresholdMinutes: integer("overtime_threshold_minutes").notNull().default(30), // FM eşiği (30 dk altı sayılmaz)
+  overtimeMultiplier: integer("overtime_multiplier").notNull().default(150),            // FM çarpanı (150 = ×1.5, 200 = ×2.0)
+  
+  // ── Tatil/Bayram Mesai ──
+  holidayMultiplier: integer("holiday_multiplier").notNull().default(100),              // Tatil çarpanı (100 = ×1.0, 200 = ×2.0)
+  
+  // ── Yemek Bedeli ──
+  mealAllowancePerDay: integer("meal_allowance_per_day").notNull().default(33000),     // TL/gün kuruş (330 TL)
+  mealAllowanceRoles: text("meal_allowance_roles").array().default(sql`ARRAY['stajyer']::text[]`),  // Hangi roller alır
+  
+  // ── Prim Kesintisi (Ücretsiz İzin) ──
+  unpaidLeaveBonusDeduction: boolean("unpaid_leave_bonus_deduction").notNull().default(true), // Ücretsiz izinde prim kesilsin mi
+  
+  // ── Yönetim ──
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),                                // Konfigürasyon notu
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  // Bir şube + dönem için tek konfigürasyon
+  unique("uq_payroll_config_branch_period").on(table.branchId, table.year, table.month),
+  index("payroll_config_branch_idx").on(table.branchId),
+  index("payroll_config_period_idx").on(table.year, table.month),
+]);
+
+export const insertPayrollDeductionConfigSchema = createInsertSchema(payrollDeductionConfig).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type PayrollDeductionConfig = typeof payrollDeductionConfig.$inferSelect;
+export type InsertPayrollDeductionConfig = z.infer<typeof insertPayrollDeductionConfigSchema>;
