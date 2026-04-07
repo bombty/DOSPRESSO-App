@@ -187,6 +187,7 @@ const CoachKontrolMerkezi = lazyWithRetry(() => import("@/pages/coach-kontrol-me
 const TrainerEgitimMerkezi = lazyWithRetry(() => import("@/pages/trainer-egitim-merkezi"));
 const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici-degerlendirme"));
 const BannerEditor = lazyWithRetry(() => import("@/pages/banner-editor"));
+const DuyuruStudioV2 = lazyWithRetry(() => import("@/components/DuyuruStudioV2/DuyuruStudio"));
 const KaliteKontrolDashboard = lazyWithRetry(() => import("@/pages/kalite-kontrol-dashboard"));
 const GidaGuvenligiDashboard = lazyWithRetry(() => import("@/pages/gida-guvenligi-dashboard"));
 const Setup = lazyWithRetry(() => import("@/pages/setup"));
@@ -556,6 +557,7 @@ function Router() {
           <Route path="/hub/:sectionId" component={HubPage} />
           <Route path="/yeni-sube/:tab?">{() => <ExecutiveOnly><YeniSubeMegaModule /></ExecutiveOnly>}</Route>
           <Route path="/banner-editor">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","supervisor","marketing","destek"]}><BannerEditor /></ProtectedRoute>}</Route>
+          <Route path="/duyuru-studio">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","supervisor","marketing","destek"]}><DuyuruStudioV2 /></ProtectedRoute>}</Route>
           <Route path="/pilot-baslat">{() => <AdminOnly><PilotLaunch /></AdminOnly>}</Route>
           <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
           {/* ── Orphan → Linked (17 sayfa) ── */}

@@ -36,7 +36,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import BannerEditor from "./banner-editor";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import ReactMarkdown from "react-markdown";
 import { ErrorState } from "../components/error-state";
@@ -76,7 +75,6 @@ export default function IcerikStudyosu() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("drafts");
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<BannerItem | null>(null);
   const [bannerImageUrl, setBannerImageUrl] = useState("");
@@ -204,12 +202,6 @@ export default function IcerikStudyosu() {
     setDeleteDialogOpen(true);
   };
 
-  const handleEditorComplete = () => {
-    setIsEditorOpen(false);
-    queryClient.invalidateQueries({ queryKey: ['/api/admin/banners'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/announcements/banners'] });
-  };
-
   const publishedAnnouncements = announcements?.filter(a => a.publishedAt) || [];
   const carouselBanners = banners?.filter(b => b.isActive) || [];
   const draftBanners = banners?.filter(b => !b.isActive) || [];
@@ -230,7 +222,7 @@ export default function IcerikStudyosu() {
           </p>
         </div>
 
-        <Button onClick={() => setIsEditorOpen(true)} data-testid="button-create-content">
+        <Button onClick={() => navigate("/duyuru-studio")} data-testid="button-create-content">
           <Plus className="w-4 h-4 mr-2" />
           Yeni İçerik Oluştur
         </Button>
@@ -313,8 +305,7 @@ export default function IcerikStudyosu() {
               title="Henüz taslak yok"
               description="Yeni içerik oluşturmak için butonu kullanın."
               actionLabel="İçerik Oluştur"
-              onAction={() => setIsEditorOpen(true)}
-              data-testid="empty-state-drafts"
+              onAction={() => navigate("/duyuru-studio")}
             />
           )}
         </TabsContent>
@@ -368,7 +359,7 @@ export default function IcerikStudyosu() {
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        onClick={() => navigate(`/banner-editor?announcementId=${announcement.id}`)}
+                        onClick={() => navigate(`/duyuru-studio?announcementId=${announcement.id}`)}
                         data-testid={`button-edit-${announcement.id}`}
                       >
                         <Pencil className="w-3 h-3" />
@@ -432,7 +423,7 @@ export default function IcerikStudyosu() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => navigate(`/banner-editor?bannerId=${banner.id}`)}
+                        onClick={() => navigate(`/duyuru-studio?bannerId=${banner.id}`)}
                         data-testid={`button-edit-carousel-${banner.id}`}
                       >
                         <Pencil className="w-3 h-3" />
@@ -454,21 +445,14 @@ export default function IcerikStudyosu() {
             <EmptyState
               icon={LayoutGrid}
               title="Carousel'da banner yok"
-              description="Banner Editör ile yeni carousel banner'ı oluşturun."
-              actionLabel="Banner Editörüne Git"
-              onAction={() => setIsEditorOpen(true)}
+              description="Duyuru Stüdyosu ile yeni banner oluşturun."
+              actionLabel="Duyuru Stüdyosuna Git"
+              onAction={() => navigate("/duyuru-studio")}
               data-testid="empty-state-carousel"
             />
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Banner Editor Dialog */}
-      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden">
-          <BannerEditor />
-        </DialogContent>
-      </Dialog>
 
       {/* Publish Dialog */}
       <Dialog open={isPublishDialogOpen} onOpenChange={(open) => {
