@@ -489,4 +489,63 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
   }
 });
 
+// ── Birleşik Bordro Hesaplama (PDKS + SGK/Vergi) ──────────────────
+
+router.post('/api/payroll/calculate-unified', isAuthenticated, requireManifestAccess('bordro', 'create'), async (req: any, res: Response) => {
+  try {
+    const { branchId, year, month, config } = req.body;
+    if (!branchId || !year || !month) {
+      return res.status(400).json({ error: 'branchId, year ve month gerekli' });
+    }
+
+    const { calculateBranchUnifiedPayroll } = await import('../services/payroll-bridge');
+    const results = await calculateBranchUnifiedPayroll(
+      Number(branchId),
+      Number(year),
+      Number(month),
+      config || {}
+    );
+
+    res.json({
+      calculated: results.length,
+      mode: "unified",
+      results: results.map(r => ({
+        userId: r.userId,
+        userName: r.userName,
+        positionCode: r.positionCode,
+        positionName: r.positionName,
+        // PDKS
+        workedDays: r.workedDays,
+        offDays: r.offDays,
+        absentDays: r.absentDays,
+        overtimeMinutes: r.overtimeMinutes,
+        holidayWorkedDays: r.holidayWorkedDays,
+        // Maaş
+        baseSalaryGross: r.baseSalaryGross,
+        cashBonus: r.cashBonus,
+        performanceBonus: r.performanceBonus,
+        mealAllowance: r.mealAllowance,
+        // Hesaplama
+        overtimePay: r.overtimePay,
+        holidayPay: r.holidayPay,
+        grossTotal: r.grossTotal,
+        absenceDeduction: r.absenceDeduction,
+        // SGK & Vergi
+        sgkEmployee: r.sgkEmployee,
+        incomeTax: r.incomeTax,
+        stampTax: r.stampTax,
+        agi: r.agi,
+        totalDeductions: r.totalDeductions,
+        netSalary: r.netSalary,
+        // İşveren
+        totalEmployerCost: r.totalEmployerCost,
+      })),
+    });
+  } catch (error: unknown) {
+    console.error("Unified payroll calculate error:", error);
+    const msg = error instanceof Error ? error.message : 'Birleşik bordro hesaplanamadı';
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default router;
