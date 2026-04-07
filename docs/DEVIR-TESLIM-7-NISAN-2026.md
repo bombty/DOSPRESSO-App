@@ -1,310 +1,90 @@
-# DOSPRESSO Devir Teslim — 7 Nisan 2026 (v2)
-**Son commit:** `5508529` — Admin paneline Duyurular yetki yönetimi  
-**Önceki devir teslim:** `docs/DEVIR-TESLIM-6-NISAN-2026.md`  
-**Oturum:** 6-7 Nisan 2026, ~10 saat, 39 commit, 3490 satır eklendi
+# DOSPRESSO Devir Teslim — 7 Nisan 2026
+## Oturum: Payroll + CRM/Görev Sistemi Yeniden Yapılandırma
+## Son Commit: `8a2170b0` (Claude) + `c36d6415` (Replit)
 
 ---
 
-## 1. SİSTEM DURUMU
+## 1. TAMAMLANAN İŞLER (12 Claude Commit + 1 Replit Commit)
 
-| Metrik | Değer |
-|--------|-------|
-| Tablolar | 427 (21 schema dosyası) |
-| API Endpoint | 1662 |
-| Sayfa | 307 |
-| Roller | 27 |
-| Commit (bu oturum) | 39 |
+### A. DuyuruStudioV2 Sprint D-R1
+- 8 modüler dosya: DuyuruStudio, CanvasPreview, BackgroundPanel, TextPanel, ImagePanel, TemplatePanel, GradientPresets, useCanvas
+- Route: `/duyuru-studio` (App.tsx ProtectedRoute)
+- D-R2 BEKLİYOR: AI görsel + yayın akışı. announcements.tsx hala eski BannerEditor Dialog (3 yerde)
 
-**Son build:** Frontend ✅ Backend ✅ (hata yok)
+### B. Payroll Motor İyileştirme
+- İKİ AYRI maaş motoru keşfedildi: Motor1 (basit+PDKS, aktif UI) vs Motor2 (SGK/vergi, orphan)
+- pdks-engine: FM 30dk eşik, publicHolidays join, holidayWorkedDays
+- payroll-engine: PayrollMonthConfig (15 parametrik alan), loadPayrollConfig(), DB'den config
+- payroll-bridge.ts: PDKS + SGK birleşik motor
+- DB: monthly_payroll 3 kolon + payroll_deduction_config (25 kolon, cascade)
+- Seed: 2026 tatiller (16 kayıt)
 
----
+### C. Kesinti Konfigürasyon Sistemi
+- payroll_deduction_config: branchId + year + month bazlı, 15 parametre
+- CRUD API + cascade effective config (6 katman)
+- Yetki: admin/ceo/cgo tüm, muhasebe HQ+Fabrika+Işıklar
+- payroll-engine hardcoded değerler yerine DB config
 
-## 2. BU OTURUMDA TAMAMLANAN İŞLER
+### D. CRM/Görev Sistemi Faz 1+2
+- CRM Task channel kaldırıldı (sadece Franchise + Misafir)
+- Ticket->Görev dönüştürme butonu (yeşil, ticket bilgisi pre-fill)
+- Scheduler max 3 instance limiti
+- Legacy ticket guard (deprecated uyarı)
+- Dead code temizliği (164 satır: TaskChannelContent + imports)
+- Pilot veri temizliği (597 kayıt arşivlendi)
 
-### A. DUYURU SİSTEMİ v2 — 4 Sprint ✅
-| Sprint | İçerik | Commit'ler | Replit |
-|--------|--------|-----------|--------|
-| S1 | ImageStudio, TipTap editör, kategori şablonları, onay akışı, taslak kaydet | `f0d988c`→`4287b54` | ✅ Doğrulandı |
-| S2 | Landing page (/duyuru/:id), Acknowledgment | `72c6a13` | ✅ Doğrulandı |
-| S3 | Header banner, dismiss tracking | `9d3ddf4` | ✅ Doğrulandı |
-| S4 | Analitik dashboard, Dobody 18. event | `fab1984`, `9958462` | ✅ Doğrulandı |
-
-**Dosyalar:**
-- `client/src/components/ImageStudio.tsx` — 5 sekmeli görsel düzenleme
-- `client/src/components/RichTextEditor.tsx` — TipTap zengin metin editörü
-- `client/src/components/AnnouncementHeaderBanner.tsx` — Üst bar banner
-- `client/src/components/AnnouncementAnalytics.tsx` — Analitik dashboard
-- `client/src/pages/duyuru-detay.tsx` — Landing page
-
-### B. KIOSK DUYURU ENTEGRASYONU ✅
-**Commit:** `7851f36` + Replit fix `6fd27e8`
-- Vardiya başı zorunlu duyuru okuma
-- `GET /api/branches/:branchId/kiosk/pending-announcements/:userId`
-- Acknowledge mutation: `selectedUser?.id` gönderilir (session user değil)
-- **Replit bulgusu:** Kiosk modunda `req.user.id` = branch manager → `req.body.userId` ile düzeltildi
-
-### C. DUYURU MİNİ QUİZ ✅
-**Commit:** `8ddc6de` + Replit fix `003cd36`
-- Schema: `quizQuestions` (JSON), `quizPassScore`, `quizRequired` alanları announcements'a eklendi
-- `announcement_quiz_results` tablosu
-- API: `GET /quiz` (correctIndex gizli), `POST /quiz-submit` (deneme takibi)
-- Kiosk: 3 ekranlı quiz akışı (duyuru → quiz → sonuç)
-- **Replit bulgusu:** `= ANY(${quizAnnIds})` SQL array hatası → JS filter ile düzeltildi
-
-### D. DENETİM SİSTEMİ GENİŞLETME ✅
-**Commit'ler:** `c84374f`→`dd22d25`
-- 6 denetim şablonu, ~175 madde (seed: `POST /api/admin/seed-audit-templates`)
-- Personel değerlendirme: 45 madde, 6 alt kategori, güler yüz %30
-- `personnel_audit_scores` tablosu (6 alt kategori avg + trend)
-- `audit_personnel_feedback` tablosu (denetçi→personel + yanıt)
-- 6 yeni API endpoint (my-results, my-feedback, respond, branch-scores)
-
-### E. FABRİKA SPRİNT F1 ✅
-**Commit'ler:** `acd38c7`→`828a441`
-- Takvim tarih fix: `Number(currentDate)` → `currentDate.toLocaleString()`
-- `fabrika_mudur` kiosk erişimi eklendi (`FABRIKA_ALLOWED_ROLES`)
-- Üretim Planla butonu yetki kontrolü (sadece fabrika_mudur/fabrika_sorumlu)
-- BatchSpec genişletme: 7 yeni kolon (min/maxWorkers, prepDuration, expectedWaste, stationId, energyKwh, gasM3, waterL)
-- 9 istasyon batch spec seed (enerji verileriyle) — `POST /api/admin/seed-batch-specs`
-
-### F. MALİYET HESAPLAMA API ✅
-**Commit:** `a80ce2b`
-- `GET /api/factory/batch-cost/:batchSpecId` — Tek batch maliyet detayı
-- `GET /api/factory/batch-costs-all` — Tüm istasyonların maliyet özeti
-- `POST /api/admin/seed-cost-settings` — Maliyet parametreleri seed
-- Yetki: admin, fabrika_mudur, fabrika_sorumlu, ceo, cgo, muhasebe
-
-### G. ALTYAPI İYİLEŞTİRMELERİ ✅
-| İş | Commit | Detay |
-|----|--------|-------|
-| Dobody scheduler | `569ed20` | `runPeriodicChecks` → `tick-1hr` bağlandı (DAHA ÖNCE HİÇ OTOMATİK ÇALIŞMIYORDU!) |
-| Sidebar Megaphone | `dbb12a8` | admin/ceo/cgo/coach/trainer için Duyurular linki |
-| 4 rol erişim fix | `1fb62f2` | BannerEditor redirect + from-banner/generate-image/read-status 403 |
-| Banner route fix | `76a3a52` | AdminOnly → ProtectedRoute (HQ roller) |
-| Admin yetki UI | `5508529` | rol-yetkileri'ne "Duyurular & İçerik" modülü |
-| Skill güncelleme | — | `/mnt/skills/user/dospresso-architecture/SKILL.md` güncel |
+### E. Diğer
+- Dobody branchPerf undefined fix
+- Şube Panel sidebar 5 eksik path mapping (Replit)
 
 ---
 
-## 3. ÇALIŞAN SİSTEMLER (DOKUNMA)
-
-### Duyuru Sistemi
-- ✅ Duyuru oluşturma (`/duyuru-yonetimi` — TipTap editör)
-- ✅ İçerik Stüdyosu (`/duyurular` — BannerEditor dialog)
-- ✅ Banner Editor standalone (`/banner-editor`)
-- ✅ Landing page (`/duyuru/:id`)
-- ✅ Header banner + dismiss
-- ✅ Analitik dashboard (rol/şube/saatlik)
-- ✅ Kiosk zorunlu duyuru okuma + acknowledge
-- ✅ Mini quiz (kiosk entegrasyonlu)
-- ✅ Dobody takip (announcement_followup)
-- ✅ Sidebar Megaphone linki
-- ✅ Admin yetki yönetimi
-
-### Denetim Sistemi
-- ✅ 6 şablon seed (175 madde)
-- ✅ Personel skor entegrasyonu
-- ✅ Geri bildirim sistemi (denetçi↔personel)
-
-### Fabrika
-- ✅ Sprint F1 (takvim, kiosk, batch spec, enerji)
-- ✅ 9 istasyon batch spec seed
-- ✅ Maliyet hesaplama API
-- ✅ Min personel mola uyarısı (ZATEN VARDI)
-
-### Dobody Agent
-- ✅ 18 event tipi (17 + announcement_followup)
-- ✅ Saatlik scheduler bağlı (tick-1hr → runPeriodicChecks)
+## 2. SİSTEM: 427+ tablo, 1662+ endpoint, 307+ sayfa, 27 rol
 
 ---
 
-## 4. BİLİNEN SORUNLAR VE BOZUK ŞEYLER
+## 3. BİLİNEN SORUNLAR
 
-### KRİTİK — Hemen yapılmalı
-| # | Sorun | Dosya | Detay |
-|---|-------|-------|-------|
-| 1 | **BannerEditor popup layout bozuk** | `banner-editor.tsx` (1713 satır) | Mobil/tablet'te canvas sıkışık, gradient kesilmiş, ImageStudio popup içinde popup |
-| 2 | **ImageStudio popup bozuk** | `ImageStudio.tsx` (899 satır) | Kırpma alanı küçük, 5 sekme mobilde kullanılamaz |
-
-### ORTA — Planlı yapılmalı
-| # | Sorun | Dosya | Detay |
-|---|-------|-------|-------|
-| 3 | API endpoint'ler hardcoded rol dizileri kullanıyor | `announcements-routes.ts`, `admin-announcements-routes.ts` | `canAccess('announcements','create')` ile değiştirilmeli |
-| 4 | "64 hammadde düşük stok" KPI doğruluğu | `factory.ts` → stock-overview | Genel inventory tablosu sorgulanıyor, fabrika-spesifik olmalı |
-| 5 | Kavurma sayfası boş | `fabrika/kavurma.tsx` | `coffee_roasting_logs` tablosu 0 kayıt — test verisi lazım |
-| 6 | Fabrika üretim planı ↔ vardiya bağlantısı yok | `schema-10.ts` | `factory_production_plans` ↔ `factory_shift_sessions` FK eksik |
-| 7 | Kiosk token bug şüphesi | `sube/kiosk.tsx` | `loginMutation` → `localStorage.setItem("kiosk-token")` doğrulanmalı |
-
-### DÜŞÜK — Sonraki fazda
-| # | Sorun | Detay |
-|---|-------|-------|
-| 8 | Eski/yeni reçete diff görünümü | Reçete değişikliği duyurusunda before/after gösterim |
-| 9 | Dinamik yetki kaydırma UI | Supervisor → müdür arası geçici yetki devri |
-| 10 | Dobody autonomous threshold | %90+ confidence → onaysız aksiyon |
+| # | Sorun | Ciddiyet |
+|---|-------|----------|
+| 1 | announcements.tsx eski BannerEditor Dialog (3 yerde) | Orta |
+| 2 | Ticket->Görev geri bağlantı eksik | Orta |
+| 3 | guest_complaints boş (0 kayıt) | Düşük |
+| 4 | branch_audit_scores boş (uyum skorlama aktif değil) | Orta |
+| 5 | payroll_deduction_config boş (admin dolduracak) | Beklenen |
+| 6 | Pilot şifre sıfırlama (162 non-admin 0000) | Pilot sonrası kapat |
+| 7 | Tatil mesai çarpanı x1 mi x2 mi? | Soru açık |
 
 ---
 
-## 5. SONRAKİ OTURUM ÖNCELİKLERİ
+## 4. SIRADAKİ ADIMLAR
 
-### 1. DuyuruStudioV2 — BannerEditor Yeniden Tasarım 🔴
-**Plan hazır:** `docs/DUYURU-REDESIGN-PLAN.md`
-**Kapsam:**
-- BannerEditor 1713 satır monolitik → ~800 satır modüler (8 dosya)
-- ImageStudio 899 satır → ~400 satır sadeleştirme
-- DOSPRESSO branded gradient presetleri (12 preset)
-- Responsive layout (desktop grid + mobil bottom sheet)
-- 5 hazır şablon (yeni ürün, reçete, kampanya, eğitim, kanuni)
-- Ürün yerleştirme (isolated product + arka plan)
-
-**Sprint planı:**
-- D-R1 (~3-4 saat): Temel layout + canvas + gradientler + paneller
-- D-R2 (~2-3 saat): AI görsel + yayın akışı + eski→yeni geçiş
-- D-R3 (~1-2 saat): Şablonlar + dark mode + test
-
-### 2. Fabrika Sprint F2 🟡
-- Üretim planı ↔ vardiya bağlantısı
-- min_stock_level + düşük stok KPI düzeltmesi
-- Kavurma test verisi
-
-### 3. Maliyet Dashboard UI 🟡
-- API hazır (`batch-cost`, `batch-costs-all`)
-- Frontend: istasyon bazlı maliyet karşılaştırma tablosu
-- Birim maliyet breakdown (enerji + işçilik + hammadde)
+1. DuyuruStudioV2 D-R2 (AI görsel + yayın + BannerEditor geçişi) ~3-4 saat
+2. PDKS Excel Import Sprint PDKS-1 (plan: docs/PDKS-EXCEL-IMPORT-PLAN.md) ~4 saat
+3. Faz 3: Dobody CRM entegrasyonu ~3 saat
+4. CRM Dashboard KPI'ları ~2 saat
+5. Ticket->Görev geri bağlantı ~1 saat
+6. Payroll UI: Kesinti config admin paneli ~3 saat
+7. Motor birleştirme: Bridge UI bağlama ~2 saat
+8. Uyum Merkezi: Audit skorlama aktivasyonu ~2 saat
+9. Fabrika F2: Üretim-vardiya bağlantı, stok KPI fix ~3 saat
 
 ---
 
-## 6. TEKNİK REFERANSLAR
+## 5. DOKÜMANLAR
 
-### Dosya Konumları
-| Ne | Nerede |
-|----|--------|
-| Schema dosyaları | `shared/schema/schema-01.ts` → `schema-21-dobody-proposals.ts` |
-| Module manifest | `shared/module-manifest.ts` |
-| PERMISSIONS map | `shared/schema/schema-02.ts` satır 44 |
-| Sidebar config | `client/src/lib/navigation-config.ts` |
-| Nav-rail bileşeni | `client/src/components/nav-rail.tsx` |
-| Menu service | `server/menu-service.ts` |
-| Dobody workflow engine | `server/lib/dobody-workflow-engine.ts` |
-| Skill dosyaları | `/mnt/skills/user/dospresso-*` (read-only mount) |
-
-### Seed Endpoint'leri (Admin ile çağır)
-| Endpoint | Ne yapar |
-|----------|----------|
-| `POST /api/admin/seed-audit-templates` | 6 denetim şablonu, 175 madde |
-| `POST /api/admin/seed-batch-specs` | 9 istasyon batch spec + enerji |
-| `POST /api/admin/seed-cost-settings` | 6 maliyet parametresi |
-| `POST /api/admin/seed-checklists` | Kontrol listeleri |
-| `POST /api/admin/seed-salaries` | Maaş verileri |
-
-### Push Komutu
-```bash
-git push https://[TOKEN]@github.com/bombty/DOSPRESSO-App.git HEAD:main
-```
-**Token ASLA dosya içine yazılmaz.**
-
-### Çalışma Akışı
-```
-Claude → büyük feature/architecture → GitHub push
-    ↓
-Aslan talimatı Replit'e yapıştırır
-    ↓
-Replit: pull → test → bug varsa fix + push → rapor
-    ↓
-Claude: pull --rebase → Replit fix'lerini çeker → devam
-```
-**Her push'tan sonra Replit test talimatı hazırla** (Aslan hatırlatmasını bekleme!)
-
-### Çift Yetki Kuralı (KRİTİK)
-Her rol/yetki değişikliğinde İKİSİNİ BİRLİKTE güncelle:
-1. `shared/module-manifest.ts` — modül erişim
-2. `shared/schema/schema-02.ts` → `PERMISSIONS` map
-
-### Build Komutları
-```bash
-# Frontend
-NODE_OPTIONS="--max-old-space-size=3072" npx vite build --outDir dist/public
-
-# Backend
-npx esbuild server/index.ts --bundle --platform=node --outdir=dist --format=esm --packages=external --loader:.node=file
-```
+- docs/PDKS-EXCEL-IMPORT-PLAN.md (4 sprint, 5 tablo)
+- docs/PUANTAJ-KURALLARI-ANALIZ.md (5 bakış açısı)
+- docs/CRM-GOREV-ANALIZ-7-NISAN-2026.md (duplikasyon, vizyon, 3 katman)
 
 ---
 
-## 7. REPLİT İŞBİRLİĞİ NOTLARI
+## 6. ÇALIŞMA KURALLARI
 
-### Replit'in Bu Oturumda Bulduğu Kritik Bug'lar (6 adet)
-1. `createdById` schema omit — form submit kırılıyordu
-2. `acknowledgedAt` kolonu — read ≠ acknowledge ayrımı gerekiyordu
-3. `setLocation` SPA iyileştirmesi — window.location.href → wouter
-4. Kiosk acknowledge personel ID — session user değil body'den alınmalı
-5. SQL array literal — `= ANY(${array})` → JS filter
-6. Fabrika Sprint F1 doğrulama + DB migration
-
-### Replit Kuralları
-- `git reset --hard` KULLANMAZ
-- Küçük fix → commit + push
-- Büyük mimari değişiklik YAPMAZ
-- Plan modunda kod değiştirmez, sadece analiz
-
----
-
-## 8. DOUBLE-CHECK SONUÇLARI (Bu oturumda yapılan)
-
-### Doğrulanmış tespitler:
-- ✅ Min personel mola uyarısı ZATEN VAR (analizde yanlış "eksik" yazmıştım)
-- ✅ "64 hammadde düşük stok" bug değil, genel inventory sorgusu (doğru veri)
-- ✅ Dobody runPeriodicChecks daha önce HİÇ otomatik çalışmıyordu → düzeltildi
-- ✅ Kavurma boş card = veri eksikliği (bug değil)
-
-### Dikkat edilmesi gerekenler:
-- BannerEditor: 1713 satır monolitik, refactor gerekli
-- API endpoint'ler: hardcoded rol dizileri → DB-driven yapılmalı
-- Fabrika: 163 ürün var ama sadece 9'u batch spec'li
-
----
-
-## 9. YENİ OTURUMDA İLK YAPILACAKLAR
-
-```
-1. Bu dokümanı oku: docs/DEVIR-TESLIM-7-NISAN-2026.md
-2. Skill dosyalarını oku: /mnt/skills/user/dospresso-*
-3. git clone + git pull --rebase (Replit fix'leri olabilir)
-4. Tasarım planını oku: docs/DUYURU-REDESIGN-PLAN.md
-5. DuyuruStudioV2 Sprint D-R1'e başla
-```
-
----
-
-## 10. KRİTİK OPERASYONEL NOTLAR (Yeni Claude için)
-
-### Replit Test Talimatı — Her Push'tan Sonra
-**Her commit push'landığında proaktif olarak Replit test talimatı hazırla.**
-Aslan'ın hatırlatmasını BEKLEME. Dosyayı `/mnt/user-data/outputs/` altına yaz ve `present_files` ile sun.
-
-### Kiosk Auth Modeli — Dikkat!
-Kiosk standalone modunda `req.user` = şube müdürünün session'ı.
-Gerçek personel ID'si `req.body.userId` ile gönderilmeli.
-Bu pattern tüm kiosk endpoint'lerinde geçerli (acknowledge, quiz-submit, vb.)
-
-### DB Migration Yöntemi
-Drizzle-kit push çalışmıyor (timeout). Tüm migration'lar **Replit'te raw SQL** ile yapılır.
-Her schema değişikliğinde Replit'e ALTER TABLE komutları gönder.
-
-### Replit Sunucu Davranışı
-`resetNonAdminPasswords()` her server restart'ta çalışır.
-Tüm non-admin şifreler "0000" olur. Test yaparken bunu bil.
-
-### BannerEditor DOKUNMA
-`banner-editor.tsx` (1713 satır) popup layout BOZUK.
-Küçük fix deneme — baştan DuyuruStudioV2 olarak yeniden yaz.
-Plan: `docs/DUYURU-REDESIGN-PLAN.md`
-
-### Oturum Uzunluğu Limiti
-Bu oturum 40 commit'e ulaştı — çok fazla. Context window dolunca hata riski artar.
-Sonraki oturumlarda **max 15-20 commit** hedefle, sonra devir teslim yap.
-
-### Çift Yetki — TEKRAR HATIRLATMA
-Her rol değişikliğinde İKİSİNİ BİRLİKTE güncelle:
-1. `shared/module-manifest.ts`
-2. `shared/schema/schema-02.ts` → PERMISSIONS map
-Biri eksik kalırsa kullanıcı erişim kaybeder veya yetkisiz erişim elde eder.
+- Yeni oturumda İLK İŞ: Bu dosyayı oku
+- Skill dosyaları: dospresso-architecture, quality-gate, debug-guide
+- Çift yetki: module-manifest.ts + schema-02.ts PERMISSIONS birlikte
+- Git pull: Oturum başında rebase ile Replit fix'lerini al
+- Build: Her commit öncesi frontend + backend
+- Token: ASLA dosya içine yazılmaz
+- Replit: Claude büyük feature, Replit test + DB migration + seed
