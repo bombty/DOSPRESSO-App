@@ -261,6 +261,7 @@ export async function analyzeForBranchMgmt(userId: string): Promise<AnalysisResu
     } catch {}
 
 
+    let branchPerf: any[] = [];
     try {
       branchPerf = await db.select().from(employeePerformanceScores)
         .where(sql`${employeePerformanceScores.userId} IN (${sql.join(branchUsers.map(u => sql`${u.id}`), sql`, `)})`);
