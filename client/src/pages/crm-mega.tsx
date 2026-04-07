@@ -24,10 +24,6 @@ import {
   Star,
   TrendingUp,
   CheckCircle2,
-  ListTodo,
-  Timer,
-  PlayCircle,
-  Radio,
 } from "lucide-react";
 
 import { CrmNav } from "@/pages/iletisim-merkezi/crm-nav";
@@ -43,7 +39,6 @@ import {
   DEPARTMENTS,
   getDeptConfig,
 } from "@/pages/iletisim-merkezi/categoryConfig";
-import { NewTaskDialog } from "@/components/new-task-dialog";
 
 const DashboardTab = lazy(() => import("@/pages/iletisim-merkezi/DashboardTab"));
 const HqTasksTab = lazy(() => import("@/pages/iletisim-merkezi/HqTasksTab"));
@@ -248,165 +243,6 @@ function ChannelKPIStrip({ data, channel }: { data: DashboardData | undefined; c
     </div>
   );
 }
-
-const TASK_STATUS_LABELS: Record<string, string> = {
-  beklemede: "Bekleyen",
-  devam_ediyor: "Devam",
-  foto_bekleniyor: "Foto Bekliyor",
-  incelemede: "İncelemede",
-  onaylandi: "Tamamlanan",
-  reddedildi: "Reddedildi",
-  iptal_edildi: "İptal",
-  gecikmiş: "Gecikmiş",
-};
-
-const TASK_STATUS_COLORS: Record<string, string> = {
-  beklemede: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  devam_ediyor: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
-  foto_bekleniyor: "bg-purple-500/10 text-purple-700 dark:text-purple-400",
-  incelemede: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400",
-  onaylandi: "bg-green-500/10 text-green-700 dark:text-green-400",
-  reddedildi: "bg-red-500/10 text-red-700 dark:text-red-400",
-  iptal_edildi: "bg-muted text-muted-foreground",
-  gecikmiş: "bg-red-500/10 text-red-700 dark:text-red-400",
-  overdue: "bg-red-500/10 text-red-700 dark:text-red-400",
-};
-
-function TaskChannelContent() {
-  const [taskFilter, setTaskFilter] = useState<string>("all");
-  const [showNewTask, setShowNewTask] = useState(false);
-
-  const { data: tasks = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/tasks"],
-  });
-
-  const now = new Date();
-  const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < now && !['onaylandi', 'iptal_edildi', 'reddedildi'].includes(t.status));
-  const pending = tasks.filter(t => t.status === "beklemede");
-  const inProgress = tasks.filter(t => t.status === "devam_ediyor" || t.status === "foto_bekleniyor" || t.status === "incelemede");
-  const done = tasks.filter(t => t.status === "onaylandi");
-
-  const kpis = [
-    { label: "Gecikmiş", value: overdue.length, icon: AlertTriangle, color: overdue.length > 0 ? "text-red-500" : "text-foreground", filter: "overdue" },
-    { label: "Bekleyen", value: pending.length, icon: Clock, color: pending.length > 3 ? "text-amber-500" : "text-foreground", filter: "beklemede" },
-    { label: "Devam", value: inProgress.length, icon: PlayCircle, color: "text-blue-500", filter: "devam" },
-    { label: "Tamamlanan", value: done.length, icon: CheckCircle2, color: "text-green-600 dark:text-green-400", filter: "onaylandi" },
-  ];
-
-  const displayTasks = taskFilter === "overdue"
-    ? overdue
-    : taskFilter === "beklemede"
-    ? pending
-    : taskFilter === "devam"
-    ? inProgress
-    : taskFilter === "onaylandi"
-    ? done
-    : tasks;
-
-  return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4" data-testid="task-channel">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-sm font-medium">Görev Yönetimi</p>
-        <Button size="sm" onClick={() => setShowNewTask(true)} data-testid="button-new-task-crm">
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Yeni Görev
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {(Array.isArray(kpis) ? kpis : []).map((kpi, i) => {
-          const Icon = kpi.icon;
-          return (
-            <Card
-              key={i}
-              className={cn("bg-muted/50 border-0 cursor-pointer", taskFilter === kpi.filter && "ring-1 ring-primary")}
-              onClick={() => setTaskFilter(taskFilter === kpi.filter ? "all" : kpi.filter)}
-              data-testid={`task-kpi-${i}`}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{kpi.label}</p>
-                </div>
-                <p className={cn("text-xl font-medium", kpi.color)}>{kpi.value}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center gap-1 flex-wrap">
-        {[
-          { key: "all", label: "Tümü" },
-          { key: "overdue", label: "Gecikmiş" },
-          { key: "beklemede", label: "Bekleyen" },
-          { key: "devam", label: "Devam" },
-          { key: "onaylandi", label: "Tamamlanan" },
-        ].map(f => (
-          <Button
-            key={f.key}
-            size="sm"
-            variant={taskFilter === f.key ? "default" : "ghost"}
-            onClick={() => setTaskFilter(f.key)}
-            data-testid={`task-filter-${f.key}`}
-          >
-            {f.label}
-          </Button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16" />)}
-        </div>
-      ) : displayTasks.length === 0 ? (
-        <div className="text-center py-8">
-          <ListTodo className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Görev bulunamadı</p>
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          {displayTasks.slice(0, 50).map((task: any) => {
-            const isTaskOverdue = task.dueDate && new Date(task.dueDate) < now && !['onaylandi', 'iptal_edildi', 'reddedildi'].includes(task.status);
-            return (
-              <Link key={task.id} href={`/gorev-detay/${task.id}`} className="block">
-                <Card className="hover-elevate" data-testid={`task-item-${task.id}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-medium flex-1 line-clamp-1">{task.description}</span>
-                      <Badge variant="secondary" className={`text-[10px] ${TASK_STATUS_COLORS[isTaskOverdue ? "overdue" : task.status] || ""}`}>
-                        {isTaskOverdue ? "Gecikmiş" : TASK_STATUS_LABELS[task.status] || task.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
-                      {task.dueDate && (
-                        <span className={`flex items-center gap-1 ${isTaskOverdue ? "text-red-500 font-medium" : ""}`}>
-                          <Timer className="h-3 w-3" />
-                          {new Date(task.dueDate).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                        </span>
-                      )}
-                      {task.priority && (
-                        <Badge variant="secondary" className="text-[10px] py-0">
-                          {task.priority}
-                        </Badge>
-                      )}
-                      {task.isGroupTask && (
-                        <Badge variant="outline" className="text-[10px] py-0">Grup</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-
-      <NewTaskDialog open={showNewTask} onOpenChange={setShowNewTask} source="crm" />
-    </div>
-  );
-}
-
 
 // P0: Şube Misafir Cevap Formu
 function BranchFeedbackRespond({ feedbackId, onSuccess }: { feedbackId: number; onSuccess: () => void }) {
