@@ -8,7 +8,7 @@ import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
 import { isHQRole } from "@shared/schema";
 import { fireEvent } from "../lib/dobody-workflow-engine";
-import { eq, desc, asc, and, sql, inArray, isNull, count } from "drizzle-orm";
+import { eq, desc, asc, and, sql, inArray, isNull, count, gte, lt } from "drizzle-orm";
 import {
   auditTemplatesV2,
   auditTemplateCategoriesV2,
@@ -23,6 +23,7 @@ import {
   auditTemplates,
   auditPersonnelFeedback,
   personnelAuditScores,
+  branchAuditScores,
   branches,
   users,
 } from "@shared/schema";
@@ -1010,6 +1011,118 @@ router.get('/api/audit/branch/:branchId/personnel-scores', isAuthenticated, asyn
   } catch (error) {
     console.error("Get personnel scores error:", error);
     res.status(500).json({ message: "Personel skorları alınamadı" });
+  }
+});
+
+// ═══════════════════════════════════════
+// UYUM MERKEZİ — Şube Denetim Skor Hesaplama
+// ═══════════════════════════════════════
+
+// POST /api/v2/audit-scores/calculate — Aylık skor hesapla ve kaydet
+router.post('/api/v2/audit-scores/calculate', isAuthenticated, async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    if (!month || !year) return res.status(400).json({ message: "month ve year gerekli" });
+
+    const role = (req as any).user?.role;
+    if (!["admin", "ceo", "cgo", "coach", "kalite_kontrol"].includes(role)) {
+      return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+
+    // Tamamlanmış denetimler (bu ay)
+    const periodStart = `${year}-${String(month).padStart(2, '0')}-01`;
+    const periodEnd = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+
+    const completedAudits = await db.select({
+      id: auditsV2.id,
+      branchId: auditsV2.branchId,
+      totalScore: auditsV2.totalScore,
+    }).from(auditsV2)
+      .where(and(
+        eq(auditsV2.status, "completed"),
+        gte(auditsV2.completedAt, new Date(periodStart)),
+        lt(auditsV2.completedAt, new Date(periodEnd)),
+      ));
+
+    if (completedAudits.length === 0) {
+      return res.json({ message: "Bu dönemde tamamlanmış denetim yok", created: 0 });
+    }
+
+    // Şube bazında grupla
+    const byBranch = new Map<number, { scores: number[]; auditIds: number[] }>();
+    for (const a of completedAudits) {
+      if (!byBranch.has(a.branchId)) byBranch.set(a.branchId, { scores: [], auditIds: [] });
+      byBranch.get(a.branchId)!.scores.push(Number(a.totalScore || 0));
+      byBranch.get(a.branchId)!.auditIds.push(a.id);
+    }
+
+    let created = 0;
+    for (const [branchId, data] of byBranch) {
+      const avgScore = Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length);
+
+      // Kategori bazlı ortalamalar
+      const categoryScores = await db.select({
+        categoryName: auditCategoryScores.categoryName,
+        avgScore: sql<number>`ROUND(AVG(CAST(${auditCategoryScores.score} AS NUMERIC)))`,
+      }).from(auditCategoryScores)
+        .where(sql`${auditCategoryScores.auditId} IN (${sql.raw(data.auditIds.join(','))})`)
+        .groupBy(auditCategoryScores.categoryName);
+
+      const catMap = new Map(categoryScores.map(c => [c.categoryName.toLowerCase(), Number(c.avgScore)]));
+
+      // Kategori → kolon eşleştirme (fuzzy)
+      const findScore = (keywords: string[]) => {
+        for (const [name, score] of catMap) {
+          if (keywords.some(kw => name.includes(kw))) return score;
+        }
+        return null;
+      };
+
+      await db.insert(branchAuditScores).values({
+        branchId,
+        periodType: "monthly",
+        periodStart,
+        periodEnd,
+        auditCount: data.scores.length,
+        overallScore: avgScore,
+        gidaGuvenligiAvg: findScore(["gıda", "gida", "hijyen", "temizlik"]),
+        urunStandardiAvg: findScore(["ürün", "urun", "standart", "kalite"]),
+        servisAvg: findScore(["servis", "hizmet", "müşteri"]),
+        operasyonAvg: findScore(["operasyon", "süreç", "isleyis"]),
+        markaAvg: findScore(["marka", "görsel", "brand"]),
+        ekipmanAvg: findScore(["ekipman", "cihaz", "makine"]),
+      }).onConflictDoNothing();
+      created++;
+    }
+
+    res.json({ message: `${created} şube skoru hesaplandı`, created, period: periodStart });
+  } catch (error) {
+    console.error("Audit score calculation error:", error);
+    res.status(500).json({ message: "Skor hesaplama başarısız" });
+  }
+});
+
+// GET /api/v2/audit-scores/branch-summary — Tüm şube skorları
+router.get('/api/v2/audit-scores/branch-summary', isAuthenticated, async (req, res) => {
+  try {
+    const scores = await db.select({
+      branchId: branchAuditScores.branchId,
+      branchName: branches.name,
+      periodType: branchAuditScores.periodType,
+      periodStart: branchAuditScores.periodStart,
+      overallScore: branchAuditScores.overallScore,
+      auditCount: branchAuditScores.auditCount,
+      gidaGuvenligiAvg: branchAuditScores.gidaGuvenligiAvg,
+      servisAvg: branchAuditScores.servisAvg,
+      operasyonAvg: branchAuditScores.operasyonAvg,
+    }).from(branchAuditScores)
+      .leftJoin(branches, eq(branchAuditScores.branchId, branches.id))
+      .orderBy(desc(branchAuditScores.periodStart), branchAuditScores.branchId);
+
+    res.json(scores);
+  } catch (error) {
+    console.error("Branch audit summary error:", error);
+    res.status(500).json({ message: "Şube skorları yüklenemedi" });
   }
 });
 
