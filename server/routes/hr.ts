@@ -115,7 +115,7 @@ const HR_ALLOWED_ROLES = new Set([
   // Branch management
   'supervisor', 'supervisor_buddy', 'mudur',
   // Factory management
-  'fabrika_mudur', 'uretim_sefi',
+  'fabrika_mudur', 'uretim_sefi', 'sef', 'recete_gm',
   // Kiosk roles — limited access, kendi data'larına erişir
   'sube_kiosk', 'fabrika_kiosk',
   // Branch roles — self-service access

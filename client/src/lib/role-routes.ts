@@ -30,6 +30,8 @@ export const ROLE_HOME_ROUTES: Record<string, string> = {
   fabrika_mudur: '/',
   fabrika: '/',
   uretim_sefi: '/',
+  sef: '/',
+  recete_gm: '/',
   ceo: '/',
   cgo: '/',
   admin: '/',
@@ -68,6 +70,8 @@ export const ROLE_CONTROL_PATH: Record<string, string> = {
   // Fabrika + Depo
   fabrika_mudur: '/fabrika-centrum',
   uretim_sefi: '/fabrika-centrum',
+  sef: '/fabrika-centrum',
+  recete_gm: '/fabrika-centrum',
   fabrika_depo: '/depo-centrum',
   fabrika_pisman: '/fabrika-centrum',
   fabrika_kalite: '/fabrika-centrum',
