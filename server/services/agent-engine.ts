@@ -5,6 +5,7 @@ import {
   checklistCompletions, trainingCompletions, inventory, supplierQuotes,
   purchaseOrders, productComplaints, leaveRequests, productionBatches,
   employeePerformanceScores, agentPendingActions, agentRuns, aiAgentLogs, shifts,
+  supportTickets,
   type InsertAgentPendingAction, type InsertAgentRun, type AgentPendingAction,
   type UserRoleType,
 } from "@shared/schema";
@@ -292,12 +293,13 @@ export async function analyzeForHQOps(userId: string): Promise<AnalysisResult> {
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     if (!user) return { actions, kpis, anomaliesDetected: false };
 
-    const [allBranches, allFaults, allComplaints, allFeedback, allTraining] = await Promise.all([
+    const [allBranches, allFaults, allComplaints, allFeedback, allTraining, allTickets] = await Promise.all([
       db.select().from(branches),
       db.select().from(equipmentFaults),
       db.select().from(productComplaints),
       db.select().from(customerFeedback),
       db.select().from(trainingCompletions),
+      db.select().from(supportTickets),
     ]);
 
     const openFaults = allFaults.filter((f: any) => f.status === "acik" || f.status === "open" || f.status === "in_progress" || f.status === "atandi");
@@ -308,6 +310,41 @@ export async function analyzeForHQOps(userId: string): Promise<AnalysisResult> {
     kpis.openFaults = openFaults.length;
     kpis.criticalFaults = criticalFaults.length;
     kpis.openComplaints = openComplaints.length;
+
+    // ── CRM Ticket Monitoring ──
+    const ticketNow = new Date();
+    const openTickets = allTickets.filter((t: any) => 
+      t.status !== "resolved" && t.status !== "cozuldu" && t.status !== "closed" && t.status !== "kapatildi"
+    );
+    const sla24h = new Date(ticketNow.getTime() - 24 * 60 * 60 * 1000);
+    const slaBreachedTickets = openTickets.filter((t: any) => {
+      const created = t.createdAt ? new Date(t.createdAt) : null;
+      return created && created < sla24h && (t.slaBreach || t.slaBreached);
+    });
+    const highPriorityOpen = openTickets.filter((t: any) => 
+      t.priority === "high" || t.priority === "yuksek" || t.priority === "urgent" || t.priority === "acil"
+    );
+
+    kpis.openTickets = openTickets.length;
+    kpis.slaBreachedTickets = slaBreachedTickets.length;
+
+    if (openTickets.length >= 10) {
+      actions.push(makeAction("alert", `${openTickets.length} açık destek talebi birikmiş`,
+        `CRM sisteminde ${openTickets.length} çözülmemiş ticket var. ${slaBreachedTickets.length} tanesi SLA süresini aşmış. Backlog büyüyor — operasyonel akış aksayabilir.`,
+        openTickets.length >= 20 ? "high" : "med", {
+        deepLink: "/crm?channel=franchise",
+        metadata: { openCount: openTickets.length, slaBreached: slaBreachedTickets.length },
+      }));
+    }
+
+    if (highPriorityOpen.length >= 3) {
+      actions.push(makeAction("escalate", `${highPriorityOpen.length} yüksek öncelikli ticket bekliyor`,
+        `Acil/yüksek öncelikli ${highPriorityOpen.length} destek talebi hâlâ açık. Bu talepler öncelikle ele alınmalı.`,
+        "high", {
+        deepLink: "/crm?channel=franchise",
+        metadata: { ticketIds: highPriorityOpen.map((t: any) => t.id).slice(0, 10) },
+      }));
+    }
 
     if (criticalFaults.length >= 3) {
       const faultsByBranch: Record<number, number> = {};
