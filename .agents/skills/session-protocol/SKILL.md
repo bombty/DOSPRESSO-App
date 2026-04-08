@@ -129,6 +129,6 @@ Test edilmesi gereken endpoint'ler:
 | Route dosyaları | 94 |
 | Schema dosyaları | 16 |
 | Quality Gate maddeleri | 19 |
-| Debug guide bölümleri | §17 |
+| Debug guide bölümleri | §20 |
 | Son Sprint | R-4 (tamamlandı) |
 | Bekleyen | product_recipes→factory_recipes migration (12 kayıt) |

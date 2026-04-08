@@ -22,6 +22,9 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 | SLA deadline wrong | §11 SLA Business Hours |
 | Delegated module not visible | §12 Delegation |
 | Drizzle INSERT → HTTP 500 | §17 Schema-DB Kolon Uyuşmazlığı |
+| Dobody şube analizi çalışmıyor | §18 Dobody branchPerf Undefined |
+| Görev patlaması (yüzlerce overdue) | §19 Scheduler Max Instance Limiti |
+| CRM görev tab duplikasyonu | §20 CRM Task Channel Duplikasyonu |
 
 ---
 
@@ -378,6 +381,97 @@ ALTER TABLE factory_tablo_adi
 - [ ] `psql \d [tablo]` çıktısındaki kolonlar Drizzle schema ile tam eşleşiyor mu?
 - [ ] Drizzle schema'da comment değerleri ("gluten", "soya", "gr", "ml") kolon ismi gibi görünebilir — dikkatli oku
 - [ ] Kolon ismi farklılığına dikkat: DB'de `show_to_gm` varken schema `show_name_to_gm` bekleyebilir
+
+---
+
+## §18 — Dobody branchPerf Undefined (Şube Analizi Çalışmıyor)
+
+**Belirti:**
+- Mr. Dobody agent şube yönetim analizi kategorisi hiç çalışmıyor
+- Server logda: `branchPerf is not defined` (agent-engine.ts:268 civarı)
+- Agent diğer skill'leri çalıştırıyor ama şube bazlı performans analizi atlanıyor
+
+**Kök Neden:**
+`server/services/agent-engine.ts` satır ~148 civarında `branchPerf` değişkeni tanımlanmadan
+satır ~268'de kullanılıyor. Eksik satır: `let branchPerf: any[] = [];`
+
+**Fix:**
+```typescript
+// agent-engine.ts, satır ~148 civarına ekle:
+let branchPerf: any[] = [];
+```
+
+**Etki:** Bu fix olmadan Dobody'nin şube karşılaştırma, düşük performans uyarısı ve
+branch-level analiz skill'leri çalışamıyor. Tek satır fix.
+
+**Durum:** Tespit edildi (7 Nisan 2026 analizi), henüz uygulanmadı (Faz 1 kapsamında planlandı ama cancel edildi).
+
+---
+
+## §19 — Scheduler Görev Patlaması (Yüzlerce Overdue Birikmesi)
+
+**Belirti:**
+- `/sube-gorevleri` sayfasında yüzlerce overdue görev görünüyor
+- `branch_task_instances` tablosunda 479+ overdue pending kayıt birikmiş
+- Şube çalışanları görev listesinde gerçek görevleri bulamıyor
+
+**Kök Neden:**
+`server/services/branch-task-scheduler.ts` → `generateDailyTaskInstances()`:
+- Her gün çalışıyor (startup + 08:00)
+- Aynı gün dedup: `ON CONFLICT (recurring_task_id, branch_id, due_date) DO NOTHING`
+- **AMA:** Max açık instance limiti YOK
+- Tamamlanmamış eski instance'lar birikmeye devam ediyor
+- Pilot döneminde kimse görev tamamlamadığı için birikim kontrolsüz büyüdü
+
+**Planlanan Fix (henüz uygulanmadı):**
+```typescript
+// generateDailyTaskInstances içine:
+// "Bu şube + recurring_task için 3'ten fazla tamamlanmamış instance varsa oluşturma"
+const openCount = await db.select({ count: sql`count(*)` })
+  .from(branchTaskInstances)
+  .where(and(
+    eq(branchTaskInstances.recurringTaskId, template.id),
+    eq(branchTaskInstances.branchId, branchId),
+    inArray(branchTaskInstances.status, ['pending', 'overdue'])
+  ));
+if (openCount[0].count >= 3) continue; // skip
+```
+
+**Geçici Temizlik (pilot öncesi):**
+```sql
+-- Overdue olanları toplu temizle
+UPDATE branch_task_instances SET status = 'cancelled'
+WHERE status IN ('overdue', 'pending') AND due_date < CURRENT_DATE - INTERVAL '7 days';
+```
+
+**İlgili Dosyalar:** `server/services/branch-task-scheduler.ts`, `shared/schema/schema-03.ts`
+
+---
+
+## §20 — CRM Task Channel Duplikasyonu
+
+**Belirti:**
+- CRM İletişim Merkezi'ndeki "Görevler" tab'ı ile Operasyon → "Görev Takip" sayfası aynı veriyi gösteriyor
+- Kullanıcılar iki farklı yerden aynı görevleri görüyor → karışıklık
+
+**Kök Neden:**
+- CRM `task` channel'ı → `/api/tasks` endpoint → `tasks` tablosu
+- Operasyon task-takip sayfası → `/api/tasks` endpoint → `tasks` tablosu (AYNI!)
+- Bunlar ayrı: CRM HQ Tasks tab'ı → `/api/iletisim/hq-tasks` → `hq_tasks` tablosu (bu CRM'e özgü)
+
+**Karıştırılmaması Gereken Ayrım:**
+| Bileşen | Endpoint | Tablo | Bağımsız mı? |
+|---|---|---|---|
+| CRM "Görevler" tab | `/api/tasks` | `tasks` | HAYIR — task-takip ile aynı |
+| Operasyon task-takip | `/api/tasks` | `tasks` | HAYIR — CRM ile aynı |
+| CRM "HQ Görevler" tab | `/api/iletisim/hq-tasks` | `hq_tasks` | EVET — CRM'e özgü |
+
+**Planlanan Çözüm (henüz uygulanmadı):**
+- CRM'den "Task" channel'ını kaldır
+- Yerine ticket detay sayfasına "Görev Oluştur" butonu ekle
+- Operasyon → task-takip TEK görev merkezi olsun
+
+**İlgili Dosyalar:** `client/src/pages/crm-mega.tsx`, `server/routes/crm-iletisim.ts`
 
 ---
 

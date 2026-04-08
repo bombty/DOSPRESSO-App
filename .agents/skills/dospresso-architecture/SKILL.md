@@ -192,6 +192,45 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - PDF generator: `server/utils/pdf-generator.ts` (pdf-lib)
 - PDF export: `GET /api/payroll/:periodId/pdf` (payslip), `GET /api/payroll/:periodId/pdf?type=pdks` (PDKS report)
 
+## Known Architectural Issues (Analiz: 7 Nisan 2026)
+
+### İki Ayrı Görev Sistemi
+Platform'da iki bağımsız görev sistemi paralel çalışıyor:
+
+| Sistem | Tablo | Kaynak | Kullanıldığı Yer |
+|---|---|---|---|
+| HQ Görevler | `tasks` (1330 kayıt) | HQ manual atama | `/task-takip` + CRM "Görevler" tab |
+| Şube Günlük Görevler | `branch_task_instances` (500+ kayıt) | Scheduler otomatik | `/sube-gorevleri` |
+
+**Çakışma:** CRM → "Görevler" channel'ı (`/api/tasks`) ve Operasyon → "Görev Takip" AYNI `tasks` tablosunu gösteriyor = gereksiz duplikasyon.
+**Planlanan çözüm:** CRM'den "Task" channel'ını kaldır, yerine "Ticket→Görev Dönüştür" butonu ekle (Faz 2, henüz uygulanmadı).
+
+### Üç Ayrı Ticket Sistemi
+| Sistem | Tablo | Kayıt | Durum |
+|---|---|---|---|
+| Unified CRM | `support_tickets` | 66 | **AKTİF — Ana sistem** |
+| HQ Support (Legacy) | `hq_support_tickets` | 4 | LEGACY — devre dışı bırakılmalı |
+| Misafir Şikayet | `guest_complaints` | 0 | BOŞ — support_tickets'a birleştirilmeli |
+
+**Planlanan çözüm:** `support_tickets` tek ticket sistemi olarak kalacak, legacy sistemler yavaşça devre dışı (Faz 2, henüz uygulanmadı).
+
+### Uyum Merkezi Boş Durumda
+- `branch_audit_scores` = **0 kayıt** (tamamen boş)
+- 23 audit tablosu mevcut ama hiçbirinde skor hesaplanmamış
+- Audit template'ler tanımlanmalı ve denetim akışı başlatılmalı (Faz 4, henüz uygulanmadı)
+
+### Scheduler Görev Patlaması Riski
+- `branch-task-scheduler.ts` → `generateDailyTaskInstances()` her gün yeni instance oluşturuyor
+- Dedup: `ON CONFLICT (recurring_task_id, branch_id, due_date) DO NOTHING` (aynı gün)
+- **EKSİK:** Max açık instance limiti YOK → pilot öncesi 479 overdue birikmiş
+- **Planlanan fix:** Scheduler'a "3'ten fazla tamamlanmamış instance varsa oluşturma" limiti ekle (Faz 1, henüz uygulanmadı)
+
+### Pilot Öncesi Temizlik Gereken Veriler
+- `tasks` tablosunda 93 adet `source_type='seed_test'` kayıt (test verisi)
+- `tasks` tablosunda 37+ aynı açıklamalı duplikat beklemede görev
+- `branch_task_instances`'da 479 overdue pending kayıt
+- Faz 1 kapsamında temizlenecek (henüz uygulanmadı)
+
 ## Module Connections (Key Dependencies)
 - Composite Score depends on: checklist, training, attendance, feedback, tasks
 - Payroll depends on: PDKS, position_salaries, scheduled_offs
