@@ -1021,15 +1021,17 @@ router.get('/api/audit/branch/:branchId/personnel-scores', isAuthenticated, asyn
 // POST /api/v2/audit-scores/calculate — Aylık skor hesapla ve kaydet
 router.post('/api/v2/audit-scores/calculate', isAuthenticated, async (req, res) => {
   try {
-    const { month, year } = req.body;
-    if (!month || !year) return res.status(400).json({ message: "month ve year gerekli" });
+    const month = Number(req.body.month);
+    const year = Number(req.body.year);
+    if (!month || !year || month < 1 || month > 12 || year < 2020 || year > 2100) {
+      return res.status(400).json({ message: "Geçerli month (1-12) ve year gerekli" });
+    }
 
     const role = (req as any).user?.role;
     if (!["admin", "ceo", "cgo", "coach", "kalite_kontrol"].includes(role)) {
       return res.status(403).json({ message: "Yetkiniz yok" });
     }
 
-    // Tamamlanmış denetimler (bu ay)
     const periodStart = `${year}-${String(month).padStart(2, '0')}-01`;
     const periodEnd = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
 
@@ -1102,9 +1104,14 @@ router.post('/api/v2/audit-scores/calculate', isAuthenticated, async (req, res) 
   }
 });
 
-// GET /api/v2/audit-scores/branch-summary — Tüm şube skorları
+// GET /api/v2/audit-scores/branch-summary — Tüm şube skorları (HQ only)
 router.get('/api/v2/audit-scores/branch-summary', isAuthenticated, async (req, res) => {
   try {
+    const role = (req as any).user?.role;
+    if (!isHQRole(role)) {
+      return res.status(403).json({ message: "Bu verilere sadece HQ rolleri erişebilir" });
+    }
+
     const scores = await db.select({
       branchId: branchAuditScores.branchId,
       branchName: branches.name,
