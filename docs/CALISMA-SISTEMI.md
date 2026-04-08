@@ -78,3 +78,39 @@ SQL migration Claude tarafından yazılır → Replit kopyala-yapıştır
 ### Pilot (~Nisan 2026): Fabrika + HQ + Işıklar + Lara
 ### Kısa Vade: PDKS Excel, Dobody CRM, Fabrika F2
 ### Orta Vade: Motor birleştirme, SGK entegrasyon, 55 şube ölçeklendirme
+
+## MALİYET OPTİMİZASYONU — Replit Agent Kullanımı
+
+### Replit'e SADECE bunlar gönderilir:
+1. `git pull` + `npm run build` (sunucu ortamı)
+2. DB migration SQL'leri (CREATE TABLE, ALTER TABLE, INSERT seed)
+3. API endpoint test (curl ile gerçek session)
+4. Frontend sayfa açılma kontrolü
+5. Kısa rapor: BUILD/DB/API/FRONTEND ✅/❌
+
+### Claude BURADAN yapar (Replit'e göndermez):
+1. Kod doğrulama (grep, route kontrol, yetki analiz)
+2. Skill dosyaları güncelleme (4 skill)
+3. Sayısal kontrol (tablo, sayfa, route, rol sayımı)
+4. Denetim raporu hazırlama
+5. Doküman yazma/güncelleme
+
+### Replit talimat formatı (KISA):
+```
+# [Başlık] — DB + Test
+## Commit: [hash]
+git pull --rebase origin main && npm run build
+
+## DB:
+[SQL komutları]
+
+## TEST:
+[curl komutları + beklenen sonuç]
+
+## RAPOR (5 satır):
+BUILD: ✅/❌
+DB: ✅/❌
+API: ✅/❌
+FRONTEND: ✅/❌
+PUSH: hayır
+```
