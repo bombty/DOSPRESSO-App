@@ -20,8 +20,11 @@ description: DOSPRESSO oturum sonu zorunlu protokolü (Çalışma Sistemi v2.0).
 ```bash
 git add -A
 git commit -m "fix/feat: [konu] — [özet]"
-git push https://[TOKEN]@github.com/bombty/DOSPRESSO-App.git HEAD:main
+git push origin main
 ```
+
+> Not: Token gerektiren durumlarda AGENTS.md §1 "Push Komutu" bölümüne bakın.
+> Token'ı doğrudan komuta gömmeyin — repo push reject eder.
 
 Commit mesajı formatı:
 - `fix:` → hotfix (typo, import, SQL ALTER TABLE)
