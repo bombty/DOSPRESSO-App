@@ -1,6 +1,6 @@
 ---
 name: dospresso-architecture
-description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 27-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
+description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 29-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
 ---
 
 # DOSPRESSO Architecture Map
@@ -26,7 +26,7 @@ DOSPRESSO uses a Navy Blue + Light Blue Gradient + Red Accent corporate palette.
 ## Project Structure
 ```
 client/src/
-├── pages/          # 273 page components
+├── pages/          # 278 page components
 ├── components/     # 148 components (custom + Shadcn UI)
 ├── contexts/       # DobodyFlow, Theme, Auth
 ├── hooks/          # Custom React hooks
@@ -34,7 +34,7 @@ client/src/
 └── App.tsx         # Root with providers + 155 lazy route definitions
 
 server/
-├── routes/         # 92 route files, ~1700+ endpoints
+├── routes/         # 94 route files, ~1700+ endpoints
 ├── agent/          # Mr. Dobody agent system
 │   ├── skills/     # 29 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
@@ -42,10 +42,10 @@ server/
 ├── lib/            # Business logic (pdks-engine, payroll-engine)
 ├── menu-service.ts # Sidebar blueprint + RBAC menu config
 ├── seed-sla-rules.ts # SLA defaults seeded on startup
-└── shared/schema/  # 379 tables across 15 modular schema files (barrel: shared/schema.ts)
+└── shared/schema/  # 16 modular schema files (barrel: shared/schema.ts)
 ```
 
-## Role System (27 Roles)
+## Role System (29 Roles)
 
 ### System:
 admin
@@ -65,6 +65,10 @@ stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur, yatirimci_bran
 ### Factory Floor Roles:
 fabrika_operator, fabrika_sorumlu, fabrika_personel
 
+### Fabrika Reçete Rolleri (Sprint R-1):
+sef — Üretim şefi; tüm reçeteleri görür, üretim başlatır/tamamlar, adım adım kiosk modu
+recete_gm — Reçete Genel Müdürü (İlker); keyblend içeriklerini tam görür, yeni reçete oluşturur/düzenler
+
 ### Kiosk Roles:
 sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out at branch kiosks
 
@@ -73,6 +77,7 @@ sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out
 - `EXECUTIVE_ROLES` — admin + ceo + cgo
 - `BRANCH_ROLES` — stajyer through yatirimci_branch
 - `FACTORY_FLOOR_ROLES` — fabrika_operator, fabrika_sorumlu, fabrika_personel
+- `PRODUCTION_ROLES` — ["admin", "recete_gm", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "uretim_sefi"] — üretim log başlatma yetkisi (factory-recipes.ts)
 - `DEPARTMENT_DASHBOARD_ROUTES` — maps roles to dedicated dashboard paths
 
 ## App Layout
@@ -201,6 +206,7 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 Operations: Dashboard, Tasks, Checklists, Equipment/Faults, Lost & Found, Branch Orders/Stock
 HR & Shifts: Staff Management, Shifts, Attendance (PDKS), Payroll
 Factory: Dashboard, Kiosk, Quality Control, Stations, Performance, Compliance, Shipments, Food Safety
+Fabrika Reçete Yönetim Sistemi: Reçete listesi/detay (fabrika-receteler.tsx, fabrika-recete-detay.tsx), Keyblend yönetimi (fabrika-keyblend-yonetimi.tsx), Reçete düzenleme (fabrika-recete-duzenle.tsx), Kiosk üretim modu adım adım (fabrika-uretim-modu.tsx), AR-GE üretimi, AI besin değer hesaplama — Sprint R-1/R-4
 Training & Academy: Academy V3 (gamification, badges, leaderboard, learning paths, AI assistant), Knowledge Base
 Audit & Analytics: Quality Control, Branch Inspection, Health Score, Food Safety Dashboard
 Finance & Procurement: Accounting, Procurement (Satınalma), Inventory, Suppliers, Purchase Orders, Goods Receipt
@@ -244,6 +250,17 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `webinars` — Webinar definitions
 - `webinar_registrations` — Webinar attendance records
 
+### Fabrika Reçete Tabloları (schema-22-factory-recipes.ts — Sprint R-1):
+- `factory_keyblends` — Gizli premix karışımları (kod, ağırlık, GM'e gösterme kontrolü)
+- `factory_keyblend_ingredients` — Keyblend içerikleri (is_allergen, allergen_type, show_name_to_gm)
+- `factory_recipes` — Ana reçete tanımları (kod, kategori, batch çarpanı, maliyet, output tipi)
+- `factory_recipe_ingredients` — Reçete malzemeleri (keyblend FK dahil, ingredient_type, ingredient_category)
+- `factory_recipe_steps` — Üretim adımları (sıralı, fotoğraflı, süre)
+- `factory_production_logs` — Üretim kayıtları (in_progress → completed, batch, kalite skoru)
+- `factory_recipe_versions` — Reçete versiyonlama (değişiklik tarihi, onaylayan)
+- `factory_recipe_category_access` — Rol bazlı kategori erişim kontrolü
+- `factory_ingredient_nutrition` — Malzeme besin değerleri (AI ile hesaplanıyor, alerjen tespiti)
+
 ## New Route Files (Recent Sprints)
 - `server/routes/crm-iletisim.ts` — İletişim Merkezi (tickets, HQ tasks, broadcasts, dashboard, SLA)
 - `server/routes/delegation-routes.ts` — Module delegation CRUD
@@ -257,6 +274,8 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `server/routes/dobody-flow.ts` — Guided workflow mode for daily tasks
 - `server/routes/coach-summary.ts` — Coach role dashboard summaries
 - `server/routes/hq-summary.ts` — HQ executive dashboard summaries
+- `server/routes/factory-recipes.ts` — Fabrika reçete CRUD + keyblend yönetimi + üretim log (start/complete) + kategori erişim
+- `server/routes/factory-recipe-nutrition.ts` — AI besin değer hesaplama + alerjen tespiti + Cinnabon seed endpoint
 
 ## Database Naming Conventions
 - Table names: snake_case (factory_products, branch_inventory)

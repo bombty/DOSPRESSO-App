@@ -1,9 +1,9 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 17-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, and mobile compactness. Run after every sprint build or code change.
+description: DOSPRESSO 19-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, payroll/QC integrity, and schema-DB column sync. Run after every sprint build or code change.
 ---
 
-# DOSPRESSO Quality Gate — 17-Point Checklist
+# DOSPRESSO Quality Gate — 19-Point Checklist
 
 Run after EVERY sprint build or significant code change. Report each item as PASS or FAIL.
 
@@ -271,6 +271,30 @@ grep -rn "createAutoLot" server/routes/factory.ts | head -5
 
 ---
 
+## 19. Schema-DB Kolon Senkronizasyonu
+
+Her yeni raw SQL migration (CREATE TABLE) sonrası zorunlu kontrol.
+Drizzle ORM schema'da tanımlı kolon DB'de yoksa INSERT anında HTTP 500 verir.
+
+```bash
+# DB kolon listesi
+PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" \
+  -c "\d [yeni_tablo_adi]" | awk '{print $1}' | grep -v "^$\|Table\|Column\|---\|Index\|Foreign"
+
+# Drizzle schema kolon listesi
+grep -A 50 "^export const factoryYeniTablo\s*=" shared/schema/schema-22-factory-recipes.ts \
+  | grep 'varchar\|boolean\|integer\|numeric\|text\|timestamp\|serial' \
+  | grep -oP '"[a-z_]+"' | head -30
+```
+
+**PASS**: Tüm Drizzle schema kolonları DB'de mevcut.
+**FAIL**: Eksik kolon var → `ALTER TABLE [tablo] ADD COLUMN IF NOT EXISTS [kolon] [tip];` hotfix.
+
+**Kritik Not:** Drizzle schema comment satırlarındaki string değerler ("gluten", "soya", "gr") kolon ismi
+gibi görünebilir — gerçek kolon tanımlarını `varchar(...)\|boolean...` ile filtrele.
+
+---
+
 After running all checks, report:
 
 ```
@@ -293,7 +317,8 @@ DOSPRESSO Quality Gate — [DATE]
 16. Module Flags:       PASS / FAIL (details)
 17. Mobile Compactness: PASS / FAIL (details)
 
-18. Payroll/QC Svc:   PASS / FAIL (details)
+18. Payroll/QC Svc:    PASS / FAIL (details)
+19. Schema-DB Sync:    PASS / FAIL (details)
 
-Score: X/18 PASS
+Score: X/19 PASS
 ```

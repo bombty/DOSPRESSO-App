@@ -1,6 +1,6 @@
 ---
 name: dospresso-debug-guide
-description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, and delegation system issues. Use when investigating any bug or unexpected behavior.
+description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, delegation system issues, and Drizzle schema vs DB column mismatches. Use when investigating any bug or unexpected behavior.
 ---
 
 # DOSPRESSO Debug Checklist
@@ -21,6 +21,7 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 | Kiosk login/PIN fails | §10 Kiosk Auth |
 | SLA deadline wrong | §11 SLA Business Hours |
 | Delegated module not visible | §12 Delegation |
+| Drizzle INSERT → HTTP 500 | §17 Schema-DB Kolon Uyuşmazlığı |
 
 ---
 
@@ -333,6 +334,50 @@ Checklist:
 - [ ] Print window opens? Check browser popup blocker
 - [ ] DOSPRESSO logo renders? Check logo file path in public/ directory
 - [ ] `issued_certificates` row exists? `SELECT * FROM issued_certificates WHERE user_id='[userId]' ORDER BY issued_at DESC LIMIT 5;`
+
+---
+
+## §17 — Drizzle Schema vs DB Kolon Uyuşmazlığı (HTTP 500)
+
+**Belirti:**
+- POST endpoint HTTP 500 dönüyor ("Seed başarısız" veya genel error mesajı)
+- Server logda: `error: column "X" of relation "Y" does not exist`
+- Drizzle INSERT statement başarısız oluyor
+
+**Neden Oluşur:**
+IT danışman raw SQL ile tablo oluşturduğunda, Drizzle schema'daki bazı kolonları
+CREATE TABLE'a eklemeyi unutuyor. Drizzle ORM, INSERT sırasında schema'da tanımlı
+TÜM kolonları SQL'e dahil eder → PostgreSQL hata verir.
+
+**Bu Oturumda Görülen Örnek (Sprint R-1):**
+- Tablo: `factory_keyblend_ingredients`
+- Eksik kolonlar: `allergen_type VARCHAR(50)`, `show_name_to_gm BOOLEAN`
+- DB'de sadece `is_allergen` ve `show_to_gm` vardı (farklı isimle!)
+
+**Teşhis:**
+```bash
+# DB gerçek kolonlarını gör
+PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" \
+  -c "\d factory_tablo_adi"
+
+# Drizzle schema kolonlarını gör (yorum satırlarını filtrele)
+grep -A 40 "^export const factoryTabloAdi\s*=" shared/schema/schema-22-factory-recipes.ts \
+  | grep 'varchar\|boolean\|integer\|numeric\|text\|timestamp\|serial' \
+  | grep -oP '"[a-z_]+"'
+```
+
+**Fix:**
+```sql
+ALTER TABLE factory_tablo_adi
+  ADD COLUMN IF NOT EXISTS kolon_adi VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS baska_kolon BOOLEAN DEFAULT false;
+```
+
+**Önleme Checklist:**
+- [ ] Yeni tablo oluştururken Drizzle schema ile SQL'i yan yana karşılaştır
+- [ ] `psql \d [tablo]` çıktısındaki kolonlar Drizzle schema ile tam eşleşiyor mu?
+- [ ] Drizzle schema'da comment değerleri ("gluten", "soya", "gr", "ml") kolon ismi gibi görünebilir — dikkatli oku
+- [ ] Kolon ismi farklılığına dikkat: DB'de `show_to_gm` varken schema `show_name_to_gm` bekleyebilir
 
 ---
 
