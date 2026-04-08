@@ -265,6 +265,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         scope: "both",
       },
       {
+        id: "factory-recipes",
+        titleTr: "Reçeteler",
+        path: "/fabrika/receteler",
+        icon: "BookOpen",
+        moduleKey: "factory_production",
+        scope: "both",
+      },
+      {
         id: "factory-quality",
         titleTr: "Kalite Kontrol",
         path: "/fabrika/kalite-kontrol",
@@ -725,7 +733,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications', 'crm-main',
   ],
   fabrika_mudur: [
-    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
     'factory-analytics', 'factory-compliance', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'crm-main',
   ],
@@ -748,7 +756,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'admin-panel', 'project-list', 'sistem-atolyesi',
   ],
   uretim_sefi: [
-    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
     'factory-analytics', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'crm-main',
   ],
@@ -759,11 +767,11 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'factory-dashboard', 'factory-kiosk', 'notifications',
   ],
   sef: [
-    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality',
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality',
     'notifications',
   ],
   recete_gm: [
-    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
     'factory-analytics', 'factory-compliance', 'reports',
     'notifications',
   ],
