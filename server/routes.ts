@@ -412,6 +412,7 @@ import payrollConfigRouter from "./routes/payroll-config";
 import factoryRecipesRouter from "./routes/factory-recipes";
 import factoryRecipeNutritionRouter from "./routes/factory-recipe-nutrition";
 import pdksExcelImportRouter from "./routes/pdks-excel-import";
+import factoryF2Router from "./routes/factory-f2";
 import changeRequestsRouter from "./routes/change-requests";
 import stubEndpointsRouter from "./routes/stub-endpoints";
 import { crmIletisimRouter } from "./routes/crm-iletisim";
@@ -876,6 +877,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(factoryRecipesRouter);
   app.use(factoryRecipeNutritionRouter);
   app.use(pdksExcelImportRouter);
+  app.use(factoryF2Router);
   app.use(changeRequestsRouter);
   app.use(stubEndpointsRouter);
   app.use(lostFoundRouter);
