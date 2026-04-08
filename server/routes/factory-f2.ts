@@ -83,8 +83,9 @@ router.get("/api/factory/production-dashboard", isAuthenticated, async (req: any
     // Özet KPI'lar
     const totalShiftOutput = shiftProduction.reduce((sum, p) => sum + (p.quantityProduced || 0), 0);
     const totalShiftWaste = shiftProduction.reduce((sum, p) => sum + (p.quantityWaste || 0), 0);
-    const avgQuality = shiftProduction.length > 0
-      ? Math.round(shiftProduction.reduce((sum, p) => sum + (p.qualityScore || 0), 0) / shiftProduction.filter(p => p.qualityScore).length)
+    const scoredProduction = shiftProduction.filter(p => p.qualityScore);
+    const avgQuality = scoredProduction.length > 0
+      ? Math.round(scoredProduction.reduce((sum, p) => sum + (p.qualityScore || 0), 0) / scoredProduction.length)
       : 0;
     
     const completedRecipes = recipeProduction.filter(r => r.status === "completed");
@@ -127,7 +128,8 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
   try {
     if (!F2_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Erişim yok" });
 
-    // Ürün bazlı stok durumu
+    // NOTE: current_stock ve max_stock_level kolonları henüz factory_products tablosunda mevcut değil
+    // IT danışmana bildirildi — kolonlar eklendiğinde buradaki sql`0` stub'ları gerçek kolonlarla değiştirilecek
     const products = await db.select({
       id: factoryProducts.id,
       name: factoryProducts.name,
@@ -145,7 +147,7 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    let weeklyOutputs: any[] = [];
+    let weeklyOutputs: { productId: number | null; totalQuantity: number }[] = [];
     try {
       weeklyOutputs = await db.select({
         productId: factoryProductionOutputs.productId,
@@ -153,7 +155,9 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
       }).from(factoryProductionOutputs)
         .where(gte(factoryProductionOutputs.createdAt, weekAgo))
         .groupBy(factoryProductionOutputs.productId);
-    } catch { /* tablo boş olabilir */ }
+    } catch (err) {
+      console.error("[F2] Weekly outputs query failed:", err instanceof Error ? err.message : err);
+    }
 
     const outputMap = new Map(weeklyOutputs.map(o => [o.productId, Number(o.totalQuantity)]));
 
