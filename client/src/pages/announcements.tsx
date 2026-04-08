@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Megaphone, Plus, AlertCircle, Calendar, User, Image, Eye, Users, X, Pencil, Trash2, Layout, Palette } from "lucide-react";
-import BannerEditor from "./banner-editor";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ConfirmDeleteDialog, useConfirmDelete } from "@/components/confirm-delete-dialog";
 import { useForm } from "react-hook-form";
@@ -323,17 +322,12 @@ export default function Announcements() {
             </p>
           </div>
           {isHQ && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8">
-                  <Layout className="w-4 h-4 mr-2" />
-                  Banner Düzenleyici
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden">
-                <BannerEditor />
-              </DialogContent>
-            </Dialog>
+            <Link href="/duyuru-studio">
+              <Button variant="outline" size="sm" className="h-8">
+                <Layout className="w-4 h-4 mr-2" />
+                Duyuru Stüdyosu
+              </Button>
+            </Link>
           )}
         </div>
 
@@ -446,16 +440,11 @@ export default function Announcements() {
                           <Image className="w-4 h-4" />
                           <FormLabel className="text-base font-medium">Banner Görseli</FormLabel>
                         </div>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" type="button" className="h-7 text-xs">
-                              Banner Editörü
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
-                            <BannerEditor />
-                          </DialogContent>
-                        </Dialog>
+                        <Link href="/duyuru-studio">
+                          <Button variant="outline" size="sm" type="button" className="h-7 text-xs">
+                            Stüdyoda Düzenle
+                          </Button>
+                        </Link>
                       </div>
                       
                       {bannerImageUrl ? (
@@ -1012,16 +1001,11 @@ export default function Announcements() {
                         <Image className="w-4 h-4" />
                         <FormLabel className="text-base font-medium">Banner Görseli</FormLabel>
                       </div>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" type="button" className="h-7 text-xs">
-                            Banner Editörü
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
-                          <BannerEditor />
-                        </DialogContent>
-                      </Dialog>
+                      <Link href="/duyuru-studio">
+                        <Button variant="outline" size="sm" type="button" className="h-7 text-xs">
+                          Stüdyoda Düzenle
+                        </Button>
+                      </Link>
                     </div>
                     
                     {bannerImageUrl ? (
