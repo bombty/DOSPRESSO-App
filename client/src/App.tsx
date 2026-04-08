@@ -217,6 +217,7 @@ const SatinalmaCentrum = lazyWithRetry(() => import("@/pages/satinalma-centrum")
 const FabrikaCentrum = lazyWithRetry(() => import("@/pages/fabrika-centrum"));
 const FabrikaReceteler = lazyWithRetry(() => import("@/pages/fabrika-receteler"));
 const FabrikaReceteDetay = lazyWithRetry(() => import("@/pages/fabrika-recete-detay"));
+const FabrikaUretimModu = lazyWithRetry(() => import("@/pages/fabrika-uretim-modu"));
 const DepoCentrum = lazyWithRetry(() => import("@/pages/depo-centrum"));
 const SubeCentrum = lazyWithRetry(() => import("@/pages/sube-centrum"));
 const SupervisorCentrum = lazyWithRetry(() => import("@/pages/supervisor-centrum"));
@@ -497,6 +498,7 @@ function Router() {
           <Route path="/fabrika/:tab?">{() => <FabrikaOnly><FabrikaMegaModule /></FabrikaOnly>}</Route>
           <Route path="/hq-fabrika-analitik">{() => <FabrikaOnly><HQFabrikaAnalitik /></FabrikaOnly>}</Route>
           <Route path="/fabrika/receteler">{() => <FabrikaOnly><FabrikaReceteler /></FabrikaOnly>}</Route>
+          <Route path="/fabrika/receteler/:id/uretim">{() => <FabrikaOnly><FabrikaUretimModu /></FabrikaOnly>}</Route>
           <Route path="/fabrika/receteler/:id">{() => <FabrikaOnly><FabrikaReceteDetay /></FabrikaOnly>}</Route>
           <Route path="/canli-takip">{() => <ExecutiveOnly><CanliTakip /></ExecutiveOnly>}</Route>
           <Route path="/sube-bordro-ozet">{() => <ExecutiveOnly><SubeBordroOzet /></ExecutiveOnly>}</Route>
