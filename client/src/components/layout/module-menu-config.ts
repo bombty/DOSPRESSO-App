@@ -6,7 +6,7 @@ import {
   BookOpen, Video, Target, Award,
   Building2, Settings, Bell, Search,
   BarChart2, FileBarChart, Sun, User, Briefcase,
-  Home, Wallet, Headphones, Megaphone, GraduationCap,
+  Home, Wallet, Headphones, Megaphone, GraduationCap, Lock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -57,6 +57,7 @@ const FABRIKA_MENU: ModuleMenuConfig = {
   items: [
     { id: "dashboard", label: "Dashboard", path: "/fabrika/dashboard", icon: Factory },
     { id: "receteler", label: "Reçeteler", path: "/fabrika/receteler", icon: FileBarChart },
+    { id: "keyblend", label: "Keyblend", path: "/fabrika/keyblend-yonetimi", icon: Lock },
     { id: "kalite", label: "Kalite Kontrol", path: "/fabrika/kalite-kontrol", icon: Beaker },
     { id: "kavurma", label: "Kavurma", path: "/fabrika/kavurma", icon: Factory },
     { id: "lot", label: "Lot İzleme", path: "/fabrika/lot-izleme", icon: Package },
@@ -199,6 +200,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/ekipman-analitics": EKIPMAN_MENU,
   "/hq-fabrika-analitik": FABRIKA_MENU,
   "/fabrika/receteler": FABRIKA_MENU,
+  "/fabrika/keyblend-yonetimi": FABRIKA_MENU,
   "/kalite-kontrol-dashboard": FABRIKA_MENU,
   "/gida-guvenligi-dashboard": FABRIKA_MENU,
   "/misafir-memnuniyeti": CRM_MENU,
