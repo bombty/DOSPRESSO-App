@@ -1,7 +1,7 @@
 # DOSPRESSO Franchise Management Platform
 
 ## Overview
-DOSPRESSO is a comprehensive franchise management platform designed for a coffee/food franchise network. Its primary purpose is to streamline and centralize operations across various departments including HR, factory management, training, finance, CRM, quality control, and equipment management for 22 locations (20 branches, 1 HQ, 1 Factory). The platform aims to support a large user base (270 users) with diverse roles (28 distinct roles) and manage extensive data, enabling efficient management and operational oversight for a multi-location franchise business.
+DOSPRESSO is a comprehensive franchise management platform designed for a coffee/food franchise network. Its primary purpose is to streamline and centralize operations across various departments including HR, factory management, training, finance, CRM, quality control, and equipment management for 22 locations (20 branches, 1 HQ, 1 Factory). The platform aims to support a large user base (270 users) with diverse roles (29 distinct roles) and manage extensive data, enabling efficient management and operational oversight for a multi-location franchise business.
 
 ## User Preferences
 - Preferred communication: Simple, everyday language, Turkish preferred
@@ -15,8 +15,9 @@ The platform utilizes React 18, TypeScript, and Vite for the frontend, with Shad
 
 ### Technical Implementations
 - **Authentication:** Session-based authentication using Passport.js supports both web (username/password with bcrypt) and kiosk (PIN-based with bcrypt) logins. Security features include password stripping, account lockout, and account status management.
-- **Role System:** A robust role-based access control system defines 28 distinct roles across HQ, branches, and factory. Permissions are managed via a static map (`PERMISSIONS`) and can be dynamically extended. Module feature flags (`module_flags` table) allow granular control over module visibility at global, branch, and role levels.
-- **Database Schema:** The data model is extensive, organized across 18 schema files, covering core entities like users, roles, branches, HR, academy, factory operations, CRM, notifications, and financial data.
+- **Role System:** A robust role-based access control system defines 29 distinct roles across HQ, branches, and factory. Permissions are managed via a static map (`PERMISSIONS`) and can be dynamically extended. Module feature flags (`module_flags` table) allow granular control over module visibility at global, branch, and role levels.
+- **Database Schema:** The data model is extensive, organized across 16 modular schema files, covering core entities like users, roles, branches, HR, academy, factory operations, CRM, notifications, PDKS Excel import, and financial data.
+- **PDKS Excel Import:** 5-table system (pdks_excel_imports, pdks_excel_records, pdks_daily_summary, pdks_monthly_stats, pdks_employee_mappings) for importing attendance data from external Excel files. Route: `server/routes/pdks-excel-import.ts`, Frontend: `client/src/pages/pdks-excel-import.tsx`.
 - **Key Architectural Patterns:**
     - **Soft Deletion:** Implemented across all business tables using a `deleted_at` column.
     - **Data Locking:** Time and status-based data locking with a change request workflow.

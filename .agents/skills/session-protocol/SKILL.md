@@ -46,8 +46,8 @@ Commit mesajı formatı:
 
 **dospresso-architecture:**
 - [ ] Rol sayısı doğru mu? (şu an: 29)
-- [ ] `pages/` sayısı doğru mu? (şu an: 278)
-- [ ] `routes/` sayısı doğru mu? (şu an: 94)
+- [ ] `pages/` sayısı doğru mu? (şu an: 311)
+- [ ] `routes/` sayısı doğru mu? (şu an: 110)
 - [ ] Schema dosyası sayısı doğru mu? (şu an: 16)
 - [ ] Yeni tablolar "New Tables" bölümünde mi?
 - [ ] Yeni route dosyaları "New Route Files" bölümünde mi?
@@ -125,10 +125,10 @@ Test edilmesi gereken endpoint'ler:
 | Metrik | Değer |
 |---|---|
 | Roller | 29 |
-| Sayfalar | 278 |
-| Route dosyaları | 94 |
+| Sayfalar | 311 |
+| Route dosyaları | 110 |
 | Schema dosyaları | 16 |
 | Quality Gate maddeleri | 19 |
 | Debug guide bölümleri | §20 |
-| Son Sprint | R-4 (tamamlandı) |
+| Son Sprint | PDKS-1 (tamamlandı) |
 | Bekleyen | product_recipes→factory_recipes migration (12 kayıt) |

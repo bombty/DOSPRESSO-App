@@ -26,15 +26,15 @@ DOSPRESSO uses a Navy Blue + Light Blue Gradient + Red Accent corporate palette.
 ## Project Structure
 ```
 client/src/
-├── pages/          # 278 page components
+├── pages/          # 311 page components
 ├── components/     # 148 components (custom + Shadcn UI)
 ├── contexts/       # DobodyFlow, Theme, Auth
 ├── hooks/          # Custom React hooks
 ├── lib/            # Utilities, role-routes.ts
-└── App.tsx         # Root with providers + 155 lazy route definitions
+└── App.tsx         # Root with providers + 210 lazy route definitions
 
 server/
-├── routes/         # 94 route files, ~1700+ endpoints
+├── routes/         # 110 route files, ~1700+ endpoints
 ├── agent/          # Mr. Dobody agent system
 │   ├── skills/     # 29 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
@@ -289,6 +289,13 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `webinars` — Webinar definitions
 - `webinar_registrations` — Webinar attendance records
 
+### PDKS Excel Import Tabloları (schema-12.ts — Sprint PDKS-1):
+- `pdks_excel_imports` — Excel import meta (branch, ay/yıl, durum, eşleşme oranları)
+- `pdks_excel_records` — Bireysel kart basım kayıtları (swipe_time, match_method)
+- `pdks_daily_summary` — Günlük PDKS özeti (giriş/çıkış, net dk, mesai) — UNIQUE(import_id, user_id, work_date)
+- `pdks_monthly_stats` — Aylık PDKS istatistikleri (devamsızlık, geç kalma, uyum skoru) — UNIQUE(user_id, branch_id, month, year)
+- `pdks_employee_mappings` — PDKS kodu↔kullanıcı eşleştirme — UNIQUE(branch_id, pdks_code)
+
 ### Fabrika Reçete Tabloları (schema-22-factory-recipes.ts — Sprint R-1):
 - `factory_keyblends` — Gizli premix karışımları (kod, ağırlık, GM'e gösterme kontrolü)
 - `factory_keyblend_ingredients` — Keyblend içerikleri (is_allergen, allergen_type, show_name_to_gm)
@@ -315,6 +322,7 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `server/routes/hq-summary.ts` — HQ executive dashboard summaries
 - `server/routes/factory-recipes.ts` — Fabrika reçete CRUD + keyblend yönetimi + üretim log (start/complete) + kategori erişim
 - `server/routes/factory-recipe-nutrition.ts` — AI besin değer hesaplama + alerjen tespiti + Cinnabon seed endpoint
+- `server/routes/pdks-excel-import.ts` — PDKS Excel import API (upload, eşleştirme, onaylama, istatistik)
 
 ## Database Naming Conventions
 - Table names: snake_case (factory_products, branch_inventory)
