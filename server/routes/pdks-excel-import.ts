@@ -343,4 +343,120 @@ router.post("/api/pdks-import/:id/calculate-daily", isAuthenticated, async (req:
   }
 });
 
+// ═══════════════════════════════════════
+// SPRINT PDKS-2: AYLIK İSTATİSTİK + UYUMLULUK SKORU
+// ═══════════════════════════════════════
+
+// POST /api/pdks-import/:id/calculate-monthly — Aylık özet hesapla
+router.post("/api/pdks-import/:id/calculate-monthly", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const importId = Number(req.params.id);
+    const importRec = await db.select().from(pdksExcelImports).where(eq(pdksExcelImports.id, importId)).limit(1);
+    if (!importRec[0]) return res.status(404).json({ error: "Import bulunamadı" });
+
+    const { branchId, month, year, importType } = importRec[0];
+    const isHistorical = importType === "historical";
+
+    // Günlük özetler
+    const dailies = await db.select().from(pdksDailySummary)
+      .where(eq(pdksDailySummary.importId, importId));
+
+    // Kullanıcı bazında grupla
+    const byUser = new Map<string, typeof dailies>();
+    for (const d of dailies) {
+      if (!byUser.has(d.userId)) byUser.set(d.userId, []);
+      byUser.get(d.userId)!.push(d);
+    }
+
+    let created = 0;
+    for (const [userId, days] of byUser) {
+      const workDays = days.filter(d => !d.isOffDay && !d.isHoliday);
+      const offDays = days.filter(d => d.isOffDay);
+      const totalMinutes = workDays.reduce((sum, d) => sum + (d.netMinutes || 0), 0);
+      const avgDaily = workDays.length > 0 ? Math.round(totalMinutes / workDays.length) : 0;
+      const totalOT = workDays.reduce((sum, d) => sum + (d.overtimeMinutes || 0), 0);
+
+      // Geç kalma: giriş 09:15'ten sonra (9*60+15=555dk)
+      const lateCount = workDays.filter(d => {
+        if (!d.firstSwipe) return false;
+        const swipeDate = new Date(d.firstSwipe);
+        const minutesFromMidnight = swipeDate.getHours() * 60 + swipeDate.getMinutes();
+        return minutesFromMidnight > 555; // 09:15
+      }).length;
+
+      // Erken çıkma: çıkış 17:00'den önce (1020dk)
+      const earlyLeaveCount = workDays.filter(d => {
+        if (!d.lastSwipe) return false;
+        const swipeDate = new Date(d.lastSwipe);
+        const minutesFromMidnight = swipeDate.getHours() * 60 + swipeDate.getMinutes();
+        return minutesFromMidnight < 1020; // 17:00
+      }).length;
+
+      // Uyumluluk skoru (0-100)
+      const totalDaysInMonth = new Date(year, month, 0).getDate();
+      const expectedWorkDays = totalDaysInMonth - offDays.length;
+      const onTimeRate = workDays.length > 0 ? Math.max(0, 100 - (lateCount / workDays.length * 100)) : 0;
+      const fullShiftRate = workDays.length > 0 ? Math.min(100, (workDays.filter(d => (d.netMinutes || 0) >= 450).length / workDays.length * 100)) : 0;
+      const attendanceRate = expectedWorkDays > 0 ? Math.min(100, (workDays.length / expectedWorkDays * 100)) : 0;
+      const complianceScore = Math.round(
+        onTimeRate * 0.30 + fullShiftRate * 0.30 + attendanceRate * 0.20 + (100 - Math.min(100, earlyLeaveCount * 10)) * 0.20
+      );
+
+      await db.insert(pdksMonthlyStats).values({
+        userId,
+        branchId,
+        month,
+        year,
+        totalWorkDays: workDays.length,
+        totalOffDays: offDays.length,
+        totalAbsentDays: Math.max(0, expectedWorkDays - workDays.length),
+        avgDailyMinutes: avgDaily,
+        totalOvertimeMinutes: totalOT,
+        totalLateCount: lateCount,
+        totalEarlyLeaveCount: earlyLeaveCount,
+        complianceScore,
+        isHistorical,
+        sourceImportId: importId,
+      }).onConflictDoNothing();
+      created++;
+    }
+
+    res.json({ created, message: `${created} personel aylık istatistiği hesaplandı` });
+  } catch (error) {
+    console.error("PDKS monthly calculation error:", error);
+    res.status(500).json({ error: "Aylık hesaplama başarısız" });
+  }
+});
+
+// GET /api/pdks-import/monthly-stats — Aylık istatistikler
+router.get("/api/pdks-import/monthly-stats", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const { branchId, month, year } = req.query;
+
+    let query = db.select({
+      stats: pdksMonthlyStats,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, 'Bilinmiyor')`,
+    })
+    .from(pdksMonthlyStats)
+    .leftJoin(users, eq(pdksMonthlyStats.userId, users.id))
+    .orderBy(desc(pdksMonthlyStats.complianceScore));
+
+    const results = await query;
+
+    let filtered = results;
+    if (branchId) filtered = filtered.filter(r => r.stats.branchId === Number(branchId));
+    if (month) filtered = filtered.filter(r => r.stats.month === Number(month));
+    if (year) filtered = filtered.filter(r => r.stats.year === Number(year));
+
+    res.json(filtered.map(r => ({ ...r.stats, userName: r.userName })));
+  } catch (error) {
+    console.error("PDKS monthly stats error:", error);
+    res.status(500).json({ error: "Aylık istatistikler yüklenemedi" });
+  }
+});
+
 export default router;
