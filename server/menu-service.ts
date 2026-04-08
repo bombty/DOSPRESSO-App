@@ -758,6 +758,15 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   fabrika_personel: [
     'factory-dashboard', 'factory-kiosk', 'notifications',
   ],
+  sef: [
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality',
+    'notifications',
+  ],
+  recete_gm: [
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-quality', 'factory-stations',
+    'factory-analytics', 'factory-compliance', 'reports',
+    'notifications',
+  ],
 };
 
 // Startup validation: verify all SIDEBAR_ALLOWED_ITEMS IDs exist in MENU_BLUEPRINT

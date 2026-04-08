@@ -416,6 +416,8 @@ export const M09_FABRIKA: ModuleManifest = {
     fabrika_sorumlu:  { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
     fabrika_personel: { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' },
     fabrika:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_branch' }, // Legacy
+    sef:              { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    recete_gm:        { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
   },
 };
 

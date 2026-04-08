@@ -83,6 +83,9 @@ export const UserRole = {
   FABRIKA_OPERATOR: "fabrika_operator",
   FABRIKA_SORUMLU: "fabrika_sorumlu",
   FABRIKA_PERSONEL: "fabrika_personel",
+  // Factory Recipe Roles
+  SEF: "sef",
+  RECETE_GM: "recete_gm",
   // Kiosk Roles
   SUBE_KIOSK: "sube_kiosk",
 } as const;
@@ -107,6 +110,8 @@ export const HQ_ROLES: ReadonlySet<UserRoleType> = new Set([
   UserRole.DESTEK,
   UserRole.FABRIKA,
   UserRole.YATIRIMCI_HQ,
+  UserRole.SEF,
+  UserRole.RECETE_GM,
 ]);
 
 // Executive roles with full read access
@@ -229,7 +234,7 @@ export function isBranchRole(role: UserRoleType): boolean {
   return BRANCH_ROLES.has(role);
 }
 
-const FACTORY_ROLES = new Set<UserRoleType>(['fabrika_mudur', 'uretim_sefi', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel']);
+const FACTORY_ROLES = new Set<UserRoleType>(['fabrika_mudur', 'uretim_sefi', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'sef', 'recete_gm']);
 
 export function isFactoryRole(role: UserRoleType): boolean {
   return FACTORY_ROLES.has(role);

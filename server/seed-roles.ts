@@ -25,6 +25,8 @@ const SYSTEM_ROLES = [
   { name: "fabrika_operator", displayName: "Fabrika Operatör", description: "Fabrika üretim operatörü" },
   { name: "fabrika_sorumlu", displayName: "Fabrika Sorumlu", description: "Fabrika vardiya sorumlusu" },
   { name: "fabrika_personel", displayName: "Fabrika Personel", description: "Fabrika genel personel" },
+  { name: "sef", displayName: "Pasta Şefi", description: "Fabrika pasta şefi, sınırlı kategori reçete erişimi" },
+  { name: "recete_gm", displayName: "Reçete Genel Müdürü", description: "Reçete GM, keyblend master, tam reçete kontrolü" },
 ];
 
 export async function seedRoles() {
