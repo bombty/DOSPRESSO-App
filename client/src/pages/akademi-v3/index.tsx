@@ -1,7 +1,9 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { isHQRole } from "@shared/schema";
+import { lazyWithRetry } from "@/lib/lazy-with-retry";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,10 +19,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-const HomeTab = lazy(() => import("./HomeTab"));
-const TrainingTab = lazy(() => import("./TrainingTab"));
-const WebinarTab = lazy(() => import("./WebinarTab"));
-const CareerTab = lazy(() => import("./CareerTab"));
+const HomeTab = lazyWithRetry(() => import("./HomeTab"));
+const TrainingTab = lazyWithRetry(() => import("./TrainingTab"));
+const WebinarTab = lazyWithRetry(() => import("./WebinarTab"));
+const CareerTab = lazyWithRetry(() => import("./CareerTab"));
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -63,7 +65,7 @@ function TabSkeleton() {
   );
 }
 
-const HQ_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol', 'gida_muhendisi'];
+// HQ rolü tespiti: shared/schema isHQRole kullanılıyor (tüm HQ rolleri otomatik dahil)
 
 export default function AkademiV3() {
   const { user } = useAuth();
@@ -75,10 +77,10 @@ export default function AkademiV3() {
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(urlCategory);
-  const isHQUser = user && HQ_ROLES.includes(user.role);
+  const isHQUser = user && isHQRole(user.role);
 
   useEffect(() => {
-    if (user && HQ_ROLES.includes(user.role) && !isPreviewMode) {
+    if (user && isHQRole(user.role) && !isPreviewMode) {
       setLocation('/akademi-hq');
     }
   }, [user, setLocation, isPreviewMode]);

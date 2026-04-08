@@ -91,9 +91,9 @@ const AKADEMI_MENU: ModuleMenuConfig = {
   title: "Akademi & Eğitim",
   items: [
     { id: "anasayfa", label: "Akademi", path: "/akademi", icon: BookOpen },
-    { id: "egitimler", label: "Eğitim Modülleri", path: "/egitim", icon: BookOpen },
-    { id: "webinar", label: "Webinar", path: "/akademi", icon: Video },
-    { id: "kariyer", label: "Kariyer Yolu", path: "/akademi", icon: Target },
+    { id: "egitimler", label: "Eğitim Modülleri", path: "/akademi?tab=egitim", icon: BookOpen },
+    { id: "webinar", label: "Webinar", path: "/akademi?tab=webinar", icon: Video },
+    { id: "kariyer", label: "Kariyer Yolu", path: "/akademi?tab=kariyer", icon: Target },
     { id: "sertifikalar", label: "Sertifikalar", path: "/akademi-certificates", icon: Award },
     { id: "liderlik", label: "Liderlik Tablosu", path: "/akademi-leaderboard", icon: BarChart3 },
     { id: "bilgi", label: "Bilgi Bankası", path: "/bilgi-bankasi", icon: Search },
