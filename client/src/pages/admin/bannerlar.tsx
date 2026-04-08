@@ -222,10 +222,10 @@ export default function AdminBannerlar() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href="/admin/banner-editor">
+          <Link href="/duyuru-studio">
             <Button variant="outline" data-testid="button-banner-editor">
               <Image className="h-4 w-4 mr-2" />
-              Banner Editoru
+              Duyuru Stüdyosu
             </Button>
           </Link>
           <Button onClick={() => setCreateDialog(true)} data-testid="button-create-banner">

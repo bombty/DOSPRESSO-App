@@ -501,9 +501,9 @@ function Router() {
           <Route path="/fabrika/:tab?">{() => <FabrikaOnly><FabrikaMegaModule /></FabrikaOnly>}</Route>
           <Route path="/hq-fabrika-analitik">{() => <FabrikaOnly><HQFabrikaAnalitik /></FabrikaOnly>}</Route>
           <Route path="/fabrika/receteler">{() => <FabrikaOnly><FabrikaReceteler /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/receteler/yeni">{() => <FabrikaOnly><FabrikaReceteDuzenle /></FabrikaOnly>}</Route>
+          <Route path="/fabrika/receteler/yeni">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","sef"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
           <Route path="/fabrika/receteler/:id/uretim">{() => <FabrikaOnly><FabrikaUretimModu /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/receteler/:id/duzenle">{() => <FabrikaOnly><FabrikaReceteDuzenle /></FabrikaOnly>}</Route>
+          <Route path="/fabrika/receteler/:id/duzenle">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","sef"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
           <Route path="/fabrika/receteler/:id">{() => <FabrikaOnly><FabrikaReceteDetay /></FabrikaOnly>}</Route>
           <Route path="/fabrika/keyblend-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","recete_gm"]}><FabrikaKeyblendYonetimi /></ProtectedRoute>}</Route>
           <Route path="/canli-takip">{() => <ExecutiveOnly><CanliTakip /></ExecutiveOnly>}</Route>
