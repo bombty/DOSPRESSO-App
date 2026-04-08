@@ -133,9 +133,9 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
       name: factoryProducts.name,
       sku: factoryProducts.sku,
       category: factoryProducts.category,
-      currentStock: factoryProducts.currentStock,
-      minStock: factoryProducts.minStockLevel,
-      maxStock: factoryProducts.maxStockLevel,
+      currentStock: sql<number>`0`, // TODO: currentStock kolonu eklenecek
+      minStock: factoryProducts.minStock,
+      maxStock: sql<number>`0`, // TODO: maxStockLevel kolonu eklenecek
       unit: factoryProducts.unit,
     }).from(factoryProducts)
       .where(eq(factoryProducts.isActive, true))
@@ -149,7 +149,7 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
     try {
       weeklyOutputs = await db.select({
         productId: factoryProductionOutputs.productId,
-        totalQuantity: sql<number>`COALESCE(SUM(${factoryProductionOutputs.quantity}), 0)`,
+        totalQuantity: sql<number>`COALESCE(SUM(CAST(${factoryProductionOutputs.producedQuantity} AS NUMERIC)), 0)`,
       }).from(factoryProductionOutputs)
         .where(gte(factoryProductionOutputs.createdAt, weekAgo))
         .groupBy(factoryProductionOutputs.productId);
