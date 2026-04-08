@@ -246,6 +246,7 @@ const SistemAtolyesi = lazyWithRetry(() => import("@/pages/sistem-atolyesi"));
 const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazyWithRetry(() => import("@/pages/pdks"));
 const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"));
+const PdksExcelImport = lazyWithRetry(() => import("@/pages/pdks-excel-import"));
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
@@ -615,6 +616,7 @@ function Router() {
           <Route path="/franchise-ozet">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","yatirimci_hq","yatirimci_branch","mudur"]}><FranchiseOzet /></ProtectedRoute>}</Route>
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>
+          <Route path="/pdks-excel-import">{() => <ProtectedRoute allowedRoles={["admin","muhasebe","muhasebe_ik"]}><PdksExcelImport /></ProtectedRoute>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
           <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />
