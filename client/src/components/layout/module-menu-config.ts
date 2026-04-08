@@ -56,6 +56,7 @@ const FABRIKA_MENU: ModuleMenuConfig = {
   title: "Fabrika",
   items: [
     { id: "dashboard", label: "Dashboard", path: "/fabrika/dashboard", icon: Factory },
+    { id: "receteler", label: "Reçeteler", path: "/fabrika/receteler", icon: FileBarChart },
     { id: "kalite", label: "Kalite Kontrol", path: "/fabrika/kalite-kontrol", icon: Beaker },
     { id: "kavurma", label: "Kavurma", path: "/fabrika/kavurma", icon: Factory },
     { id: "lot", label: "Lot İzleme", path: "/fabrika/lot-izleme", icon: Package },
@@ -197,6 +198,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/ariza-yeni": EKIPMAN_MENU,
   "/ekipman-analitics": EKIPMAN_MENU,
   "/hq-fabrika-analitik": FABRIKA_MENU,
+  "/fabrika/receteler": FABRIKA_MENU,
   "/kalite-kontrol-dashboard": FABRIKA_MENU,
   "/gida-guvenligi-dashboard": FABRIKA_MENU,
   "/misafir-memnuniyeti": CRM_MENU,
