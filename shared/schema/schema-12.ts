@@ -1317,3 +1317,99 @@ export const insertPayrollDeductionConfigSchema = createInsertSchema(payrollDedu
 });
 export type PayrollDeductionConfig = typeof payrollDeductionConfig.$inferSelect;
 export type InsertPayrollDeductionConfig = z.infer<typeof insertPayrollDeductionConfigSchema>;
+
+// =====================================================
+// PDKS EXCEL İÇE AKTARMA SİSTEMİ
+// =====================================================
+
+export const pdksExcelImports = pgTable("pdks_excel_imports", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  fileName: text("file_name").notNull(),
+  importType: text("import_type").notNull().default("historical"), // current | historical
+  status: text("status").default("processing"), // processing | completed | error
+  totalRecords: integer("total_records").default(0),
+  matchedRecords: integer("matched_records").default(0),
+  unmatchedRecords: integer("unmatched_records").default(0),
+  warnings: jsonb("warnings").default([]),
+  importedBy: varchar("imported_by").references(() => users.id),
+  isFinalized: boolean("is_finalized").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+  finalizedBy: varchar("finalized_by").references(() => users.id),
+});
+
+export const pdksExcelRecords = pgTable("pdks_excel_records", {
+  id: serial("id").primaryKey(),
+  importId: integer("import_id").notNull().references(() => pdksExcelImports.id, { onDelete: "cascade" }),
+  sourceRowNo: integer("source_row_no"),
+  sourceCode: text("source_code"),
+  sourceName: text("source_name"),
+  swipeTime: timestamp("swipe_time", { withTimezone: true }).notNull(),
+  matchedUserId: varchar("matched_user_id").references(() => users.id),
+  matchMethod: text("match_method"), // code | name | manual
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const pdksDailySummary = pgTable("pdks_daily_summary", {
+  id: serial("id").primaryKey(),
+  importId: integer("import_id").notNull().references(() => pdksExcelImports.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  branchId: integer("branch_id").notNull().references(() => branches.id),
+  workDate: timestamp("work_date", { withTimezone: true }).notNull(),
+  firstSwipe: timestamp("first_swipe", { withTimezone: true }),
+  lastSwipe: timestamp("last_swipe", { withTimezone: true }),
+  totalSwipes: integer("total_swipes").default(0),
+  grossMinutes: integer("gross_minutes").default(0),
+  breakMinutes: integer("break_minutes").default(0),
+  netMinutes: integer("net_minutes").default(0),
+  overtimeMinutes: integer("overtime_minutes").default(0),
+  isOffDay: boolean("is_off_day").default(false),
+  isHoliday: boolean("is_holiday").default(false),
+  isHistorical: boolean("is_historical").default(false),
+  warnings: jsonb("warnings").default([]),
+}, (table) => [
+  unique("pdks_daily_unique").on(table.importId, table.userId, table.workDate),
+]);
+
+export const pdksMonthlyStats = pgTable("pdks_monthly_stats", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  branchId: integer("branch_id").notNull().references(() => branches.id),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  totalWorkDays: integer("total_work_days").default(0),
+  totalOffDays: integer("total_off_days").default(0),
+  totalAbsentDays: integer("total_absent_days").default(0),
+  avgDailyMinutes: integer("avg_daily_minutes").default(0),
+  totalOvertimeMinutes: integer("total_overtime_minutes").default(0),
+  totalLateCount: integer("total_late_count").default(0),
+  totalEarlyLeaveCount: integer("total_early_leave_count").default(0),
+  complianceScore: integer("compliance_score").default(0),
+  isHistorical: boolean("is_historical").default(false),
+  sourceImportId: integer("source_import_id").references(() => pdksExcelImports.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique("pdks_monthly_unique").on(table.userId, table.branchId, table.month, table.year),
+]);
+
+export const pdksEmployeeMappings = pgTable("pdks_employee_mappings", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id),
+  pdksCode: text("pdks_code").notNull(),
+  pdksName: text("pdks_name").notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdBy: varchar("created_by").references(() => users.id),
+}, (table) => [
+  unique("pdks_mapping_unique").on(table.branchId, table.pdksCode),
+]);
+
+export const insertPdksExcelImportSchema = createInsertSchema(pdksExcelImports).omit({ id: true, createdAt: true });
+export type PdksExcelImport = typeof pdksExcelImports.$inferSelect;
+export const insertPdksExcelRecordSchema = createInsertSchema(pdksExcelRecords).omit({ id: true, createdAt: true });
+export type PdksExcelRecord = typeof pdksExcelRecords.$inferSelect;
+export const insertPdksDailySummarySchema = createInsertSchema(pdksDailySummary).omit({ id: true });
+export type PdksDailySummary = typeof pdksDailySummary.$inferSelect;
