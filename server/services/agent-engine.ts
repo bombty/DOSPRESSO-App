@@ -6,6 +6,7 @@ import {
   purchaseOrders, productComplaints, leaveRequests, productionBatches,
   employeePerformanceScores, agentPendingActions, agentRuns, aiAgentLogs, shifts,
   supportTickets,
+  pdksMonthlyStats,
   type InsertAgentPendingAction, type InsertAgentRun, type AgentPendingAction,
   type UserRoleType,
 } from "@shared/schema";
@@ -345,6 +346,27 @@ export async function analyzeForHQOps(userId: string): Promise<AnalysisResult> {
         metadata: { ticketIds: highPriorityOpen.map((t: any) => t.id).slice(0, 10) },
       }));
     }
+
+    // ── PDKS Uyumluluk Takibi ──
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const lowCompliance = await db.select().from(pdksMonthlyStats)
+        .where(and(
+          eq(pdksMonthlyStats.month, currentMonth),
+          eq(pdksMonthlyStats.year, currentYear),
+          sql`${pdksMonthlyStats.complianceScore} < 60`
+        ));
+      if (lowCompliance.length >= 3) {
+        actions.push(makeAction("alert",
+          `${lowCompliance.length} personel düşük PDKS uyumluluğu`,
+          `Bu ay ${lowCompliance.length} personelin uyumluluk skoru %60'ın altında. Geç kalma, devamsızlık veya erken çıkma sorunları tespit edildi.`,
+          lowCompliance.length >= 5 ? "high" : "med", {
+          deepLink: "/pdks-excel-import",
+          metadata: { lowComplianceCount: lowCompliance.length },
+        }));
+      }
+    } catch { /* PDKS tablosu boş olabilir */ }
 
     if (criticalFaults.length >= 3) {
       const faultsByBranch: Record<number, number> = {};

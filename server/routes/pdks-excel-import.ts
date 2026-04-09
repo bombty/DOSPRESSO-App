@@ -459,4 +459,162 @@ router.get("/api/pdks-import/monthly-stats", isAuthenticated, async (req: any, r
   }
 });
 
+// ═══════════════════════════════════════
+// SPRINT PDKS-3: PROFİL + TREND + ŞUBE RAPORU
+// ═══════════════════════════════════════
+
+// GET /api/pdks-import/user/:userId/profile — Personel PDKS profili (12 aylık trend)
+router.get("/api/pdks-import/user/:userId/profile", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const viewRoles = [...IMPORT_ROLES, "ceo", "cgo", "coach", "fabrika_mudur"];
+    if (!viewRoles.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const userId = req.params.userId;
+
+    // Son 12 aylık istatistikler
+    const stats = await db.select().from(pdksMonthlyStats)
+      .where(eq(pdksMonthlyStats.userId, userId))
+      .orderBy(desc(pdksMonthlyStats.year), desc(pdksMonthlyStats.month))
+      .limit(12);
+
+    // Kullanıcı bilgisi
+    const [user] = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+      branchId: users.branchId,
+    }).from(users).where(eq(users.id, userId));
+
+    if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+
+    // Trend hesapla
+    const avgCompliance = stats.length > 0
+      ? Math.round(stats.reduce((sum, s) => sum + (s.complianceScore || 0), 0) / stats.length)
+      : 0;
+    const avgDailyMinutes = stats.length > 0
+      ? Math.round(stats.reduce((sum, s) => sum + (s.avgDailyMinutes || 0), 0) / stats.length)
+      : 0;
+    const totalLate = stats.reduce((sum, s) => sum + (s.totalLateCount || 0), 0);
+    const totalOT = stats.reduce((sum, s) => sum + (s.totalOvertimeMinutes || 0), 0);
+
+    // Trend yönü (son 3 ay vs önceki 3 ay)
+    let trend: "up" | "down" | "stable" = "stable";
+    if (stats.length >= 6) {
+      const recent3 = stats.slice(0, 3).reduce((s, v) => s + (v.complianceScore || 0), 0) / 3;
+      const prev3 = stats.slice(3, 6).reduce((s, v) => s + (v.complianceScore || 0), 0) / 3;
+      if (recent3 > prev3 + 5) trend = "up";
+      else if (recent3 < prev3 - 5) trend = "down";
+    }
+
+    res.json({
+      user,
+      summary: { avgCompliance, avgDailyMinutes, totalLate, totalOT, trend, monthCount: stats.length },
+      monthlyData: stats.reverse(), // kronolojik sıra (eski→yeni)
+    });
+  } catch (error) {
+    console.error("PDKS user profile error:", error);
+    res.status(500).json({ error: "Profil yüklenemedi" });
+  }
+});
+
+// GET /api/pdks-import/branch/:branchId/compliance — Şube uyumluluk raporu
+router.get("/api/pdks-import/branch/:branchId/compliance", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const viewRoles = [...IMPORT_ROLES, "ceo", "cgo", "coach", "fabrika_mudur"];
+    if (!viewRoles.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const branchId = Number(req.params.branchId);
+    const month = req.query.month ? Number(req.query.month) : new Date().getMonth() + 1;
+    const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+
+    const stats = await db.select({
+      stats: pdksMonthlyStats,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, 'Bilinmiyor')`,
+    })
+    .from(pdksMonthlyStats)
+    .leftJoin(users, eq(pdksMonthlyStats.userId, users.id))
+    .where(and(
+      eq(pdksMonthlyStats.branchId, branchId),
+      eq(pdksMonthlyStats.month, month),
+      eq(pdksMonthlyStats.year, year),
+    ))
+    .orderBy(desc(pdksMonthlyStats.complianceScore));
+
+    const personnel = stats.map(s => ({ ...s.stats, userName: s.userName }));
+    const avgScore = personnel.length > 0
+      ? Math.round(personnel.reduce((sum, p) => sum + (p.complianceScore || 0), 0) / personnel.length)
+      : 0;
+    const lowPerformers = personnel.filter(p => (p.complianceScore || 0) < 60);
+    const topPerformers = personnel.filter(p => (p.complianceScore || 0) >= 90);
+
+    res.json({
+      branchId, month, year,
+      summary: {
+        avgScore,
+        personnelCount: personnel.length,
+        topPerformers: topPerformers.length,
+        lowPerformers: lowPerformers.length,
+      },
+      personnel,
+    });
+  } catch (error) {
+    console.error("PDKS branch compliance error:", error);
+    res.status(500).json({ error: "Şube raporu yüklenemedi" });
+  }
+});
+
+// GET /api/pdks-import/alerts — Dobody entegrasyonu için düşük uyumluluk uyarıları
+router.get("/api/pdks-import/alerts", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!["admin", "ceo", "cgo", "coach", "muhasebe_ik"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Yetkisiz" });
+    }
+
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+
+    // Bu ayki düşük uyumluluk (<60)
+    const lowCompliance = await db.select({
+      userId: pdksMonthlyStats.userId,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, 'Bilinmiyor')`,
+      branchId: pdksMonthlyStats.branchId,
+      branchName: branches.name,
+      complianceScore: pdksMonthlyStats.complianceScore,
+      totalLateCount: pdksMonthlyStats.totalLateCount,
+      totalAbsentDays: pdksMonthlyStats.totalAbsentDays,
+    })
+    .from(pdksMonthlyStats)
+    .leftJoin(users, eq(pdksMonthlyStats.userId, users.id))
+    .leftJoin(branches, eq(pdksMonthlyStats.branchId, branches.id))
+    .where(and(
+      eq(pdksMonthlyStats.month, currentMonth),
+      eq(pdksMonthlyStats.year, currentYear),
+      sql`${pdksMonthlyStats.complianceScore} < 60`,
+    ))
+    .orderBy(pdksMonthlyStats.complianceScore);
+
+    // Kronik geç kalma (son 3 ayda toplam 10+ geç)
+    const chronicLate = await db.select({
+      userId: pdksMonthlyStats.userId,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, 'Bilinmiyor')`,
+      totalLate: sql<number>`SUM(${pdksMonthlyStats.totalLateCount})`,
+    })
+    .from(pdksMonthlyStats)
+    .leftJoin(users, eq(pdksMonthlyStats.userId, users.id))
+    .where(sql`${pdksMonthlyStats.year} = ${currentYear} AND ${pdksMonthlyStats.month} >= ${Math.max(1, currentMonth - 2)}`)
+    .groupBy(pdksMonthlyStats.userId, users.firstName, users.lastName)
+    .having(sql`SUM(${pdksMonthlyStats.totalLateCount}) >= 10`);
+
+    res.json({
+      lowCompliance,
+      chronicLate,
+      alertCount: lowCompliance.length + chronicLate.length,
+    });
+  } catch (error) {
+    console.error("PDKS alerts error:", error);
+    res.status(500).json({ error: "Uyarılar yüklenemedi" });
+  }
+});
+
 export default router;
