@@ -283,7 +283,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       {
         id: "factory-stations",
         titleTr: "Üretim İstasyonları",
-        path: "/fabrika/istasyonlar",
+        path: "/fabrika/uretim-planlama",
         icon: "Grid",
         moduleKey: "factory_stations",
         scope: "both",
