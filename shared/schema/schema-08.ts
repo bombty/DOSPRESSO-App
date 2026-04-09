@@ -111,6 +111,8 @@ export const factoryProducts = pgTable("factory_products", {
   unit: varchar("unit", { length: 20 }).notNull(), // kg, lt, adet
   unitPrice: integer("unit_price").default(0), // Kuruş cinsinden
   minStock: integer("min_stock").default(0),
+  currentStock: integer("current_stock").default(0),
+  maxStockLevel: integer("max_stock_level").default(0),
   description: text("description"),
   isActive: boolean("is_active").default(true),
   

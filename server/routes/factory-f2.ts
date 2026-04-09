@@ -133,9 +133,9 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
       name: factoryProducts.name,
       sku: factoryProducts.sku,
       category: factoryProducts.category,
-      currentStock: sql<number>`0`, // TODO: currentStock kolonu eklenecek
+      currentStock: factoryProducts.currentStock,
       minStock: factoryProducts.minStock,
-      maxStock: sql<number>`0`, // TODO: maxStockLevel kolonu eklenecek
+      maxStock: factoryProducts.maxStockLevel,
       unit: factoryProducts.unit,
     }).from(factoryProducts)
       .where(eq(factoryProducts.isActive, true))
