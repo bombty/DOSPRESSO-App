@@ -617,4 +617,226 @@ router.get("/api/pdks-import/alerts", isAuthenticated, async (req: any, res: Res
   }
 });
 
+// ═══════════════════════════════════════
+// SPRINT PDKS-4: BATCH IMPORT + EXPORT + FİNALİZE
+// ═══════════════════════════════════════
+
+// POST /api/pdks-import/batch-upload — Çoklu şube batch import
+router.post("/api/pdks-import/batch-upload", isAuthenticated, upload.array("files", 10), async (req: any, res: Response) => {
+  try {
+    if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) return res.status(400).json({ error: "En az 1 dosya gerekli" });
+
+    const { branchIds, month, year, importType } = req.body;
+    // branchIds = "1,2,3" veya array
+    const branchIdList = typeof branchIds === "string" 
+      ? branchIds.split(",").map((s: string) => Number(s.trim()))
+      : Array.isArray(branchIds) ? branchIds.map(Number) : [];
+
+    if (branchIdList.length === 0) return res.status(400).json({ error: "branchIds gerekli" });
+    if (!month || !year) return res.status(400).json({ error: "month ve year gerekli" });
+
+    // Her dosya bir şubeye karşılık gelir (dosya sayısı = şube sayısı veya tek dosya çoklu şube)
+    const results: any[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const branchId = branchIdList[i] || branchIdList[0]; // Eşleşme yoksa ilk şubeye ata
+
+      // Excel parse (tek dosya mantığını tekrar kullan)
+      const workbook = XLSX.read(file.buffer, { type: "buffer", cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, dateNF: "yyyy-mm-dd hh:mm:ss" });
+
+      // Başlık satırını bul
+      let headerRow = -1;
+      for (let r = 0; r < Math.min(rows.length, 10); r++) {
+        if (rows[r]?.some((cell: any) => String(cell).toUpperCase().includes("KOD") || String(cell).toUpperCase().includes("İSİM"))) {
+          headerRow = r;
+          break;
+        }
+      }
+      if (headerRow === -1) {
+        results.push({ branchId, fileName: file.originalname, error: "Format tanınamadı" });
+        continue;
+      }
+
+      const headers = rows[headerRow].map((h: any) => String(h).trim().toUpperCase());
+      const codeIdx = headers.findIndex((h: string) => h.includes("KOD"));
+      const nameIdx = headers.findIndex((h: string) => h.includes("İSİM") || h.includes("ISIM"));
+      const dateIdx = headers.findIndex((h: string) => h.includes("TARİH") || h.includes("TARIH"));
+
+      if (codeIdx === -1 || nameIdx === -1 || dateIdx === -1) {
+        results.push({ branchId, fileName: file.originalname, error: "KOD/İSİM/TARİH sütunu bulunamadı" });
+        continue;
+      }
+
+      // Import kaydı
+      const [importRecord] = await db.insert(pdksExcelImports).values({
+        branchId, month: Number(month), year: Number(year),
+        fileName: file.originalname || `batch-${i}.xlsx`,
+        importType: importType || "historical",
+        importedBy: req.user.id, status: "processing",
+      }).returning();
+
+      // Eşleştirmeler
+      const existingMappings = await db.select().from(pdksEmployeeMappings)
+        .where(eq(pdksEmployeeMappings.branchId, branchId));
+      const mappingByCode = new Map(existingMappings.map(m => [m.pdksCode, m.userId]));
+
+      const branchUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.branchId, branchId));
+
+      // Parse
+      const records: any[] = [];
+      let matched = 0;
+      const unmatchedNames = new Set<string>();
+
+      for (let r = headerRow + 1; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row || !row[dateIdx]) continue;
+
+        const code = String(row[codeIdx] || "").trim();
+        const name = String(row[nameIdx] || "").trim();
+        let swipeTime: Date | null = null;
+        const dateStr = row[dateIdx];
+        if (dateStr instanceof Date) swipeTime = dateStr;
+        else { const p = new Date(String(dateStr)); if (!isNaN(p.getTime())) swipeTime = p; }
+        if (!swipeTime) continue;
+
+        let matchedUserId: string | null = null;
+        let matchMethod: string | null = null;
+
+        if (code && mappingByCode.has(code)) {
+          matchedUserId = mappingByCode.get(code)!; matchMethod = "code";
+        } else {
+          const lowerName = name.toLowerCase();
+          const found = branchUsers.find(u => {
+            const full = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+            return full.includes(lowerName) || lowerName.includes((u.firstName || "").toLowerCase());
+          });
+          if (found) {
+            matchedUserId = found.id; matchMethod = "name";
+            if (code) {
+              await db.insert(pdksEmployeeMappings).values({
+                branchId, pdksCode: code, pdksName: name, userId: found.id, createdBy: req.user.id,
+              }).onConflictDoNothing();
+              mappingByCode.set(code, found.id);
+            }
+          }
+        }
+
+        if (matchedUserId) matched++; else unmatchedNames.add(name);
+        records.push({ importId: importRecord.id, sourceRowNo: r + 1, sourceCode: code, sourceName: name, swipeTime, matchedUserId, matchMethod });
+      }
+
+      // Batch insert
+      for (let b = 0; b < records.length; b += 100) {
+        await db.insert(pdksExcelRecords).values(records.slice(b, b + 100));
+      }
+
+      await db.update(pdksExcelImports).set({
+        status: "completed", totalRecords: records.length, matchedRecords: matched,
+        unmatchedRecords: records.length - matched,
+        warnings: unmatchedNames.size > 0 ? Array.from(unmatchedNames).map(n => ({ type: "unmatched", name: n })) : [],
+      }).where(eq(pdksExcelImports.id, importRecord.id));
+
+      results.push({
+        branchId, fileName: file.originalname, importId: importRecord.id,
+        totalRecords: records.length, matchedRecords: matched,
+        unmatchedRecords: records.length - matched, status: "completed",
+      });
+    }
+
+    res.json({ batchCount: results.length, results });
+  } catch (error) {
+    console.error("PDKS batch upload error:", error);
+    res.status(500).json({ error: "Batch import başarısız" });
+  }
+});
+
+// POST /api/pdks-import/:id/finalize — Import'u kilitle (geri alınamaz)
+router.post("/api/pdks-import/:id/finalize", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const importId = Number(req.params.id);
+    const existing = await db.select().from(pdksExcelImports).where(eq(pdksExcelImports.id, importId)).limit(1);
+    if (!existing[0]) return res.status(404).json({ error: "Import bulunamadı" });
+    if (existing[0].isFinalized) return res.status(400).json({ error: "Bu import zaten finalize edilmiş" });
+
+    const [updated] = await db.update(pdksExcelImports).set({
+      isFinalized: true,
+      finalizedAt: new Date(),
+      finalizedBy: req.user.id,
+    }).where(eq(pdksExcelImports.id, importId)).returning();
+
+    res.json(updated);
+  } catch (error) {
+    console.error("PDKS finalize error:", error);
+    res.status(500).json({ error: "Finalize başarısız" });
+  }
+});
+
+// GET /api/pdks-import/:id/export — PDKS verisini Excel'e export
+router.get("/api/pdks-import/:id/export", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const importId = Number(req.params.id);
+    const importRec = await db.select().from(pdksExcelImports).where(eq(pdksExcelImports.id, importId)).limit(1);
+    if (!importRec[0]) return res.status(404).json({ error: "Import bulunamadı" });
+
+    // Günlük özetler
+    const dailies = await db.select({
+      workDate: pdksDailySummary.workDate,
+      userName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, '')`,
+      firstSwipe: pdksDailySummary.firstSwipe,
+      lastSwipe: pdksDailySummary.lastSwipe,
+      totalSwipes: pdksDailySummary.totalSwipes,
+      grossMinutes: pdksDailySummary.grossMinutes,
+      breakMinutes: pdksDailySummary.breakMinutes,
+      netMinutes: pdksDailySummary.netMinutes,
+      overtimeMinutes: pdksDailySummary.overtimeMinutes,
+      isOffDay: pdksDailySummary.isOffDay,
+    })
+    .from(pdksDailySummary)
+    .leftJoin(users, eq(pdksDailySummary.userId, users.id))
+    .where(eq(pdksDailySummary.importId, importId))
+    .orderBy(pdksDailySummary.workDate);
+
+    // Excel oluştur
+    const wsData = [
+      ["Tarih", "Personel", "Giriş", "Çıkış", "Okutma", "Brüt (dk)", "Mola (dk)", "Net (dk)", "FM (dk)", "Off"],
+      ...dailies.map(d => [
+        d.workDate ? new Date(d.workDate).toLocaleDateString("tr-TR") : "",
+        d.userName,
+        d.firstSwipe ? new Date(d.firstSwipe).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "",
+        d.lastSwipe ? new Date(d.lastSwipe).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "",
+        d.totalSwipes || 0,
+        d.grossMinutes || 0,
+        d.breakMinutes || 0,
+        d.netMinutes || 0,
+        d.overtimeMinutes || 0,
+        d.isOffDay ? "Off" : "",
+      ]),
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "PDKS Özet");
+
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=PDKS_${importRec[0].year}_${importRec[0].month}.xlsx`);
+    res.send(buffer);
+  } catch (error) {
+    console.error("PDKS export error:", error);
+    res.status(500).json({ error: "Export başarısız" });
+  }
+});
+
 export default router;
