@@ -706,7 +706,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   gida_muhendisi: [
     'dashboard', 'food-safety', 'quality-control', 'factory-quality',
-    'factory-dashboard', 'reports', 'notifications',
+    'factory-dashboard', 'factory-recipes', 'reports', 'notifications',
     'crm-main',
   ],
   marketing: [
