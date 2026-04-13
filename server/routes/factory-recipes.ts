@@ -453,10 +453,25 @@ router.post("/api/factory/recipes/:id/start-production", isAuthenticated, async 
     const [recipe] = await db.select().from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
     if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
 
+    // Aktif reçete versiyonunu yakala (onaylanmış en son versiyon)
+    const [latestVersion] = await db.select({
+      id: factoryRecipeVersions.id,
+      versionNumber: factoryRecipeVersions.versionNumber,
+    })
+    .from(factoryRecipeVersions)
+    .where(and(
+      eq(factoryRecipeVersions.recipeId, recipeId),
+      eq(factoryRecipeVersions.status, "approved")
+    ))
+    .orderBy(desc(factoryRecipeVersions.versionNumber))
+    .limit(1);
+
     const expectedOutput = Math.round((recipe.baseBatchOutput || 1) * Number(batchMultiplier || 1));
 
     const [log] = await db.insert(factoryProductionLogs).values({
       recipeId,
+      recipeVersionId: latestVersion?.id || null,
+      recipeVersionNumber: latestVersion?.versionNumber || recipe.version || 1,
       sessionId: sessionId || null,
       batchMultiplier: String(batchMultiplier || 1),
       expectedOutput,

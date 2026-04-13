@@ -275,6 +275,10 @@ export const factoryProductionLogs = pgTable("factory_production_logs", {
   id: serial("id").primaryKey(),
   recipeId: integer("recipe_id").notNull().references(() => factoryRecipes.id),
 
+  // Reçete versiyonu — üretim başlarken aktif versiyonu yakalar
+  recipeVersionId: integer("recipe_version_id").references(() => factoryRecipeVersions.id, { onDelete: "set null" }),
+  recipeVersionNumber: integer("recipe_version_number"),
+
   // Vardiya bağlantısı (Replit önerisi — kim üretim yaptı)
   sessionId: integer("session_id").references(() => factoryShiftSessions.id, { onDelete: "set null" }),
 
@@ -310,6 +314,7 @@ export const factoryProductionLogs = pgTable("factory_production_logs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("fpl_recipe_idx").on(table.recipeId),
+  index("fpl_recipe_version_idx").on(table.recipeVersionId),
   index("fpl_session_idx").on(table.sessionId),
   index("fpl_status_idx").on(table.status),
 ]);
@@ -329,6 +334,13 @@ export const factoryRecipeVersions = pgTable("factory_recipe_versions", {
   // Snapshot
   ingredientsSnapshot: jsonb("ingredients_snapshot"),
   stepsSnapshot: jsonb("steps_snapshot"),
+  costSnapshot: jsonb("cost_snapshot").$type<{
+    rawMaterialCost: number;
+    laborCost: number;
+    energyCost: number;
+    totalBatchCost: number;
+    unitCost: number;
+  }>(),
 
   // Kim, ne zaman, neden
   changedBy: varchar("changed_by").references(() => users.id, { onDelete: "set null" }),
