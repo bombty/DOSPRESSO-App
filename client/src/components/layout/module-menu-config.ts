@@ -317,12 +317,22 @@ export function getActiveMenuItemForPath(path: string): string | null {
   const config = getModuleMenuForPath(cleanPath);
   if (!config) return null;
   
-  // Exact match
+  // Full URL with query string (wouter gives path only, browser has full URL)
+  const fullPath = cleanPath + (typeof window !== "undefined" ? window.location.search : "");
+  
+  // 1. Exact match WITH query params (for items like /akademi?tab=egitimler)
+  const exactFull = config.items.find(item => item.path === fullPath);
+  if (exactFull) return exactFull.id;
+  
+  // 2. Exact match on clean path (for items like /gorevler)
   const exact = config.items.find(item => item.path === cleanPath);
   if (exact) return exact.id;
   
-  // Starts with match
-  const startsWith = config.items.find(item => cleanPath.startsWith(item.path));
+  // 3. Starts-with match on clean path (for nested routes like /fabrika/receteler/123)
+  const startsWith = config.items.find(item => {
+    const itemClean = item.path.split("?")[0];
+    return itemClean !== "/" && cleanPath.startsWith(itemClean) && cleanPath !== itemClean;
+  });
   if (startsWith) return startsWith.id;
   
   return config.items[0]?.id || null;
