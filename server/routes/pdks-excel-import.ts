@@ -278,6 +278,7 @@ router.post("/api/pdks-import/:id/calculate-daily", isAuthenticated, async (req:
     const importId = Number(req.params.id);
     const importRec = await db.select().from(pdksExcelImports).where(eq(pdksExcelImports.id, importId)).limit(1);
     if (!importRec[0]) return res.status(404).json({ error: "Import bulunamadı" });
+    if (importRec[0].isFinalized) return res.status(400).json({ error: "Bu import finalize edilmiş, değiştirilemez" });
 
     const isHistorical = importRec[0].importType === "historical";
 
@@ -355,6 +356,7 @@ router.post("/api/pdks-import/:id/calculate-monthly", isAuthenticated, async (re
     const importId = Number(req.params.id);
     const importRec = await db.select().from(pdksExcelImports).where(eq(pdksExcelImports.id, importId)).limit(1);
     if (!importRec[0]) return res.status(404).json({ error: "Import bulunamadı" });
+    if (importRec[0].isFinalized) return res.status(400).json({ error: "Bu import finalize edilmiş, değiştirilemez" });
 
     const { branchId, month, year, importType } = importRec[0];
     const isHistorical = importType === "historical";
@@ -638,7 +640,12 @@ router.post("/api/pdks-import/batch-upload", isAuthenticated, upload.array("file
     if (branchIdList.length === 0) return res.status(400).json({ error: "branchIds gerekli" });
     if (!month || !year) return res.status(400).json({ error: "month ve year gerekli" });
 
-    // Her dosya bir şubeye karşılık gelir (dosya sayısı = şube sayısı veya tek dosya çoklu şube)
+    // Dosya/şube sayısı uyumsuzluğu uyarısı
+    const warnings: string[] = [];
+    if (files.length !== branchIdList.length && branchIdList.length > 1) {
+      warnings.push(`Dosya sayısı (${files.length}) ile şube sayısı (${branchIdList.length}) eşleşmiyor`);
+    }
+
     const results: any[] = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -750,7 +757,7 @@ router.post("/api/pdks-import/batch-upload", isAuthenticated, upload.array("file
       });
     }
 
-    res.json({ batchCount: results.length, results });
+    res.json({ batchCount: results.length, warnings, results });
   } catch (error) {
     console.error("PDKS batch upload error:", error);
     res.status(500).json({ error: "Batch import başarısız" });

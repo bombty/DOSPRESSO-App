@@ -1065,7 +1065,7 @@ router.post('/api/v2/audit-scores/calculate', isAuthenticated, async (req, res) 
         categoryName: auditCategoryScores.categoryName,
         avgScore: sql<number>`ROUND(AVG(CAST(${auditCategoryScores.score} AS NUMERIC)))`,
       }).from(auditCategoryScores)
-        .where(sql`${auditCategoryScores.auditId} IN (${sql.raw(data.auditIds.join(','))})`)
+        .where(inArray(auditCategoryScores.auditId, data.auditIds))
         .groupBy(auditCategoryScores.categoryName);
 
       const catMap = new Map(categoryScores.map(c => [c.categoryName.toLowerCase(), Number(c.avgScore)]));
