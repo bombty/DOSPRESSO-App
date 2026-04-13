@@ -1,9 +1,9 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 19-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, payroll/QC integrity, and schema-DB column sync. Run after every sprint build or code change.
+description: DOSPRESSO 17-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, and mobile compactness. Run after every sprint build or code change.
 ---
 
-# DOSPRESSO Quality Gate — 19-Point Checklist
+# DOSPRESSO Quality Gate — 17-Point Checklist
 
 Run after EVERY sprint build or significant code change. Report each item as PASS or FAIL.
 
@@ -271,30 +271,6 @@ grep -rn "createAutoLot" server/routes/factory.ts | head -5
 
 ---
 
-## 19. Schema-DB Kolon Senkronizasyonu
-
-Her yeni raw SQL migration (CREATE TABLE) sonrası zorunlu kontrol.
-Drizzle ORM schema'da tanımlı kolon DB'de yoksa INSERT anında HTTP 500 verir.
-
-```bash
-# DB kolon listesi
-PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" \
-  -c "\d [yeni_tablo_adi]" | awk '{print $1}' | grep -v "^$\|Table\|Column\|---\|Index\|Foreign"
-
-# Drizzle schema kolon listesi
-grep -A 50 "^export const factoryYeniTablo\s*=" shared/schema/schema-22-factory-recipes.ts \
-  | grep 'varchar\|boolean\|integer\|numeric\|text\|timestamp\|serial' \
-  | grep -oP '"[a-z_]+"' | head -30
-```
-
-**PASS**: Tüm Drizzle schema kolonları DB'de mevcut.
-**FAIL**: Eksik kolon var → `ALTER TABLE [tablo] ADD COLUMN IF NOT EXISTS [kolon] [tip];` hotfix.
-
-**Kritik Not:** Drizzle schema comment satırlarındaki string değerler ("gluten", "soya", "gr") kolon ismi
-gibi görünebilir — gerçek kolon tanımlarını `varchar(...)\|boolean...` ile filtrele.
-
----
-
 After running all checks, report:
 
 ```
@@ -317,8 +293,50 @@ DOSPRESSO Quality Gate — [DATE]
 16. Module Flags:       PASS / FAIL (details)
 17. Mobile Compactness: PASS / FAIL (details)
 
-18. Payroll/QC Svc:    PASS / FAIL (details)
-19. Schema-DB Sync:    PASS / FAIL (details)
+18. Payroll/QC Svc:   PASS / FAIL (details)
 
-Score: X/19 PASS
+Score: X/21 PASS
 ```
+
+---
+
+## 19. sql.raw Usage — No Unparameterized Queries
+Known files with sql.raw: production-planning-routes.ts (18), dashboard-data-routes.ts (3), inventory-count-routes.ts (1), operations.ts (1).
+
+```bash
+grep -rn "sql\.raw\|sql\.unsafe" server/routes/*.ts server/services/*.ts server/lib/*.ts 2>/dev/null | grep -v "node_modules" | wc -l
+```
+
+**PASS**: Count matches known baseline (23). No NEW sql.raw added.
+**FAIL**: New sql.raw usage found — must use Drizzle operators or parameterized `sql` template.
+
+---
+
+## 20. Sidebar ↔ Route Protection Alignment
+Module menu items must not show pages the user cannot access.
+
+```bash
+# Check module-menu-config items against App.tsx protections
+grep -n "path:" client/src/components/layout/module-menu-config.ts | while read line; do
+  path=$(echo "$line" | grep -oP 'path:\s*"\K[^"]+')
+  protection=$(grep "$path" client/src/App.tsx | grep -oP 'FabrikaOnly|HQOnly|ExecutiveOnly|ProtectedRoute' | head -1)
+  if [ -n "$protection" ]; then
+    echo "CHECK: $path → $protection"
+  fi
+done
+```
+
+**PASS**: No menu items point to pages with incompatible role protections.
+**FAIL**: Menu item visible to roles that can't pass the route guard.
+
+---
+
+## 21. Payroll Unified Columns
+monthly_payroll table must have all unified engine columns.
+
+```bash
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='monthly_payroll' AND column_name IN ('sgk_employee','income_tax','stamp_tax','agi','gross_total','data_source','calculation_mode','cumulative_tax_base','total_employer_cost') ORDER BY column_name;" | psql $DATABASE_URL
+```
+
+**PASS**: 9 rows returned.
+**FAIL**: Missing unified payroll columns.

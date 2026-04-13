@@ -15,6 +15,8 @@ export interface ModuleMenuItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  /** Optional: only show this item to these roles. If omitted, all roles see it. */
+  allowedRoles?: string[];
 }
 
 export interface ModuleMenuConfig {
@@ -49,7 +51,7 @@ const OPERASYON_MENU: ModuleMenuConfig = {
     { id: "projeler", label: "Projeler", path: "/projeler", icon: FolderKanban },
     { id: "denetimler", label: "Denetimler", path: "/denetimler", icon: ClipboardCheck },
     { id: "bildirimler", label: "Bildirimler", path: "/bildirimler", icon: Bell },
-    { id: "duyurular", label: "Duyurular", path: "/duyurular", icon: Megaphone },
+    { id: "duyurular", label: "Duyurular", path: "/duyurular", icon: Megaphone, allowedRoles: ["admin", "ceo", "cgo", "coach", "trainer", "marketing", "muhasebe_ik", "muhasebe", "satinalma", "kalite_kontrol", "gida_muhendisi", "teknik", "destek", "fabrika", "fabrika_mudur"] },
   ],
 };
 
@@ -97,7 +99,6 @@ const AKADEMI_MENU: ModuleMenuConfig = {
     { id: "sertifikalar", label: "Sertifikalar", path: "/akademi-certificates", icon: Award },
     { id: "liderlik", label: "Liderlik Tablosu", path: "/akademi-leaderboard", icon: BarChart3 },
     { id: "bilgi", label: "Bilgi Bankası", path: "/bilgi-bankasi", icon: Search },
-    { id: "receteler", label: "Reçeteler", path: "/receteler", icon: BookOpen },
   ],
 };
 
@@ -107,7 +108,7 @@ const SUBELER_MENU: ModuleMenuConfig = {
     { id: "liste", label: "Şube Listesi", path: "/subeler", icon: Building2 },
     { id: "denetim", label: "Şube Denetim", path: "/coach-sube-denetim", icon: ClipboardCheck },
     { id: "stok", label: "Stok Yönetimi", path: "/sube/siparis-stok", icon: Package },
-    { id: "canli", label: "Canlı Takip", path: "/canli-takip", icon: TrendingUp },
+    { id: "canli", label: "Canlı Takip", path: "/canli-takip", icon: TrendingUp, allowedRoles: ["admin", "ceo", "cgo", "coach", "trainer", "muhasebe", "muhasebe_ik", "satinalma", "teknik", "destek", "fabrika"] },
     { id: "uyum", label: "Uyum Merkezi", path: "/sube-uyum-merkezi", icon: BarChart2 },
     { id: "uyum-panel", label: "Uyum Paneli", path: "/coach-uyum-paneli", icon: TrendingUp },
     { id: "cgo-teknik", label: "Teknik Komuta", path: "/cgo-teknik-komuta", icon: Wrench },
@@ -213,7 +214,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/franchise-yatirimcilar": CRM_MENU,
   "/muhasebe-geribildirimi": CRM_MENU,
   "/bilgi-bankasi": AKADEMI_MENU,
-  "/receteler": AKADEMI_MENU,
+  "/receteler": FABRIKA_MENU,
   "/egitim-ata": AKADEMI_MENU,
   "/icerik-studyosu": AKADEMI_MENU,
   "/duyuru-studio": AKADEMI_MENU,

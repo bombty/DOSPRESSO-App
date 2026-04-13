@@ -1,20 +1,33 @@
 import { useLocation } from "wouter";
 import { getModuleMenuForPath, getActiveMenuItemForPath } from "./module-menu-config";
+import { useAuth } from "@/hooks/useAuth";
 
 /**
  * Route-aware module sidebar — automatically shows the correct module sub-menu
  * based on the current URL path. Returns null for home/control pages.
+ * Filters items by allowedRoles when specified.
  * 
  * Desktop: vertical sidebar (140px)
  * Mobile: hidden (BottomNav handles navigation)
  */
 export function RouteModuleSidebar() {
   const [location, setLocation] = useLocation();
+  const { user } = useAuth();
   
   const config = getModuleMenuForPath(location);
   if (!config) return null;
   
   const activeId = getActiveMenuItemForPath(location);
+  const userRole = user?.role || "";
+
+  // Filter items by allowedRoles — if not specified, show to all
+  const visibleItems = config.items.filter(item => {
+    if (!item.allowedRoles || item.allowedRoles.length === 0) return true;
+    return item.allowedRoles.includes(userRole);
+  });
+
+  // Don't show sidebar if no items are visible for this role
+  if (visibleItems.length === 0) return null;
 
   return (
     <div
@@ -42,7 +55,7 @@ export function RouteModuleSidebar() {
       </div>
 
       {/* Menu items */}
-      {config.items.map((item) => {
+      {visibleItems.map((item) => {
         const isActive = item.id === activeId;
         const Icon = item.icon;
         return (

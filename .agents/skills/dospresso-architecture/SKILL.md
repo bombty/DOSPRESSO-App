@@ -1,6 +1,6 @@
 ---
 name: dospresso-architecture
-description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 29-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
+description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 27-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
 ---
 
 # DOSPRESSO Architecture Map
@@ -26,26 +26,26 @@ DOSPRESSO uses a Navy Blue + Light Blue Gradient + Red Accent corporate palette.
 ## Project Structure
 ```
 client/src/
-├── pages/          # 311 page components
+├── pages/          # 313 page components
 ├── components/     # 148 components (custom + Shadcn UI)
 ├── contexts/       # DobodyFlow, Theme, Auth
 ├── hooks/          # Custom React hooks
 ├── lib/            # Utilities, role-routes.ts
-└── App.tsx         # Root with providers + 210 lazy route definitions
+└── App.tsx         # Root with providers + 155 lazy route definitions
 
 server/
-├── routes/         # 110 route files, ~1700+ endpoints
+├── routes/         # 111 route files, ~1708+ endpoints
 ├── agent/          # Mr. Dobody agent system
 │   ├── skills/     # 29 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
-├── services/       # agent-scheduler, data-lock, change-tracking, business-hours
+├── services/       # agent-scheduler, data-lock, change-tracking, business-hours, payroll-bridge
 ├── lib/            # Business logic (pdks-engine, payroll-engine)
 ├── menu-service.ts # Sidebar blueprint + RBAC menu config
 ├── seed-sla-rules.ts # SLA defaults seeded on startup
-└── shared/schema/  # 16 modular schema files (barrel: shared/schema.ts)
+└── shared/schema/  # 463 tables across 22 modular schema files (barrel: shared/schema.ts)
 ```
 
-## Role System (29 Roles)
+## Role System (30 Roles)
 
 ### System:
 admin
@@ -63,11 +63,7 @@ muhasebe, teknik, destek, fabrika, yatirimci_hq
 stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur, yatirimci_branch
 
 ### Factory Floor Roles:
-fabrika_operator, fabrika_sorumlu, fabrika_personel
-
-### Fabrika Reçete Rolleri (Sprint R-1):
-sef — Üretim şefi; tüm reçeteleri görür, üretim başlatır/tamamlar, adım adım kiosk modu
-recete_gm — Reçete Genel Müdürü (İlker); keyblend içeriklerini tam görür, yeni reçete oluşturur/düzenler
+fabrika_operator, fabrika_sorumlu, fabrika_personel, sef, recete_gm, uretim_sefi
 
 ### Kiosk Roles:
 sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out at branch kiosks
@@ -77,7 +73,6 @@ sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out
 - `EXECUTIVE_ROLES` — admin + ceo + cgo
 - `BRANCH_ROLES` — stajyer through yatirimci_branch
 - `FACTORY_FLOOR_ROLES` — fabrika_operator, fabrika_sorumlu, fabrika_personel
-- `PRODUCTION_ROLES` — ["admin", "recete_gm", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "uretim_sefi"] — üretim log başlatma yetkisi (factory-recipes.ts)
 - `DEPARTMENT_DASHBOARD_ROUTES` — maps roles to dedicated dashboard paths
 
 ## App Layout
@@ -182,54 +177,15 @@ Production → QC (2-stage) → LOT → Shipment → Branch Inventory
 - ALL status changes use transactions + FOR UPDATE
 - FIFO LOT assignment by expiry date
 
-### Shift → PDKS → Payroll:
+### Shift → PDKS → Payroll (Unified Engine):
 Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
-- Daily = monthly/30, absent days deducted, overtime ×1.5
-- Payroll calculation service: `server/services/payroll-calculation-service.ts`
-- PDKS engine: `server/lib/pdks-engine.ts` (188 lines)
-- Payroll engine: `server/lib/payroll-engine.ts` (217 lines)
-- SGK rates: integers ÷1000 (14%=140), amounts ÷100 (33030TL=3303000)
+- Motor 1 (pdks-engine): PDKS → gün sınıflandırma → PdksMonthSummary
+- Motor 2 (payroll-calculation-service): SGK/vergi/AGI hesaplama
+- Bridge (payroll-bridge): Motor1 + Motor2 birleşik, Excel adapter, kiosk/excel dual source
+- monthly_payroll tablosu: SGK, vergi, AGI, kümülatif vergi matrahı, dataSource (kiosk/excel), calculationMode (unified/simple)
+- API: POST /api/payroll/calculate-unified (branchId, year, month, dataSource, importId)
 - PDF generator: `server/utils/pdf-generator.ts` (pdf-lib)
-- PDF export: `GET /api/payroll/:periodId/pdf` (payslip), `GET /api/payroll/:periodId/pdf?type=pdks` (PDKS report)
-
-## Known Architectural Issues (Analiz: 7 Nisan 2026)
-
-### İki Ayrı Görev Sistemi
-Platform'da iki bağımsız görev sistemi paralel çalışıyor:
-
-| Sistem | Tablo | Kaynak | Kullanıldığı Yer |
-|---|---|---|---|
-| HQ Görevler | `tasks` (1330 kayıt) | HQ manual atama | `/task-takip` + CRM "Görevler" tab |
-| Şube Günlük Görevler | `branch_task_instances` (500+ kayıt) | Scheduler otomatik | `/sube-gorevleri` |
-
-**Çakışma:** CRM → "Görevler" channel'ı (`/api/tasks`) ve Operasyon → "Görev Takip" AYNI `tasks` tablosunu gösteriyor = gereksiz duplikasyon.
-**Planlanan çözüm:** CRM'den "Task" channel'ını kaldır, yerine "Ticket→Görev Dönüştür" butonu ekle (Faz 2, henüz uygulanmadı).
-
-### Üç Ayrı Ticket Sistemi
-| Sistem | Tablo | Kayıt | Durum |
-|---|---|---|---|
-| Unified CRM | `support_tickets` | 66 | **AKTİF — Ana sistem** |
-| HQ Support (Legacy) | `hq_support_tickets` | 4 | LEGACY — devre dışı bırakılmalı |
-| Misafir Şikayet | `guest_complaints` | 0 | BOŞ — support_tickets'a birleştirilmeli |
-
-**Planlanan çözüm:** `support_tickets` tek ticket sistemi olarak kalacak, legacy sistemler yavaşça devre dışı (Faz 2, henüz uygulanmadı).
-
-### Uyum Merkezi Boş Durumda
-- `branch_audit_scores` = **0 kayıt** (tamamen boş)
-- 23 audit tablosu mevcut ama hiçbirinde skor hesaplanmamış
-- Audit template'ler tanımlanmalı ve denetim akışı başlatılmalı (Faz 4, henüz uygulanmadı)
-
-### Scheduler Görev Patlaması Riski
-- `branch-task-scheduler.ts` → `generateDailyTaskInstances()` her gün yeni instance oluşturuyor
-- Dedup: `ON CONFLICT (recurring_task_id, branch_id, due_date) DO NOTHING` (aynı gün)
-- **EKSİK:** Max açık instance limiti YOK → pilot öncesi 479 overdue birikmiş
-- **Planlanan fix:** Scheduler'a "3'ten fazla tamamlanmamış instance varsa oluşturma" limiti ekle (Faz 1, henüz uygulanmadı)
-
-### Pilot Öncesi Temizlik Gereken Veriler
-- `tasks` tablosunda 93 adet `source_type='seed_test'` kayıt (test verisi)
-- `tasks` tablosunda 37+ aynı açıklamalı duplikat beklemede görev
-- `branch_task_instances`'da 479 overdue pending kayıt
-- Faz 1 kapsamında temizlenecek (henüz uygulanmadı)
+- PDF export: `GET /api/payroll/export/pdf/:year/:month`
 
 ## Module Connections (Key Dependencies)
 - Composite Score depends on: checklist, training, attendance, feedback, tasks
@@ -245,7 +201,6 @@ Platform'da iki bağımsız görev sistemi paralel çalışıyor:
 Operations: Dashboard, Tasks, Checklists, Equipment/Faults, Lost & Found, Branch Orders/Stock
 HR & Shifts: Staff Management, Shifts, Attendance (PDKS), Payroll
 Factory: Dashboard, Kiosk, Quality Control, Stations, Performance, Compliance, Shipments, Food Safety
-Fabrika Reçete Yönetim Sistemi: Reçete listesi/detay (fabrika-receteler.tsx, fabrika-recete-detay.tsx), Keyblend yönetimi (fabrika-keyblend-yonetimi.tsx), Reçete düzenleme (fabrika-recete-duzenle.tsx), Kiosk üretim modu adım adım (fabrika-uretim-modu.tsx), AR-GE üretimi, AI besin değer hesaplama — Sprint R-1/R-4
 Training & Academy: Academy V3 (gamification, badges, leaderboard, learning paths, AI assistant), Knowledge Base
 Audit & Analytics: Quality Control, Branch Inspection, Health Score, Food Safety Dashboard
 Finance & Procurement: Accounting, Procurement (Satınalma), Inventory, Suppliers, Purchase Orders, Goods Receipt
@@ -289,24 +244,6 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `webinars` — Webinar definitions
 - `webinar_registrations` — Webinar attendance records
 
-### PDKS Excel Import Tabloları (schema-12.ts — Sprint PDKS-1):
-- `pdks_excel_imports` — Excel import meta (branch, ay/yıl, durum, eşleşme oranları)
-- `pdks_excel_records` — Bireysel kart basım kayıtları (swipe_time, match_method)
-- `pdks_daily_summary` — Günlük PDKS özeti (giriş/çıkış, net dk, mesai) — UNIQUE(import_id, user_id, work_date)
-- `pdks_monthly_stats` — Aylık PDKS istatistikleri (devamsızlık, geç kalma, uyum skoru) — UNIQUE(user_id, branch_id, month, year)
-- `pdks_employee_mappings` — PDKS kodu↔kullanıcı eşleştirme — UNIQUE(branch_id, pdks_code)
-
-### Fabrika Reçete Tabloları (schema-22-factory-recipes.ts — Sprint R-1):
-- `factory_keyblends` — Gizli premix karışımları (kod, ağırlık, GM'e gösterme kontrolü)
-- `factory_keyblend_ingredients` — Keyblend içerikleri (is_allergen, allergen_type, show_name_to_gm)
-- `factory_recipes` — Ana reçete tanımları (kod, kategori, batch çarpanı, maliyet, output tipi)
-- `factory_recipe_ingredients` — Reçete malzemeleri (keyblend FK dahil, ingredient_type, ingredient_category)
-- `factory_recipe_steps` — Üretim adımları (sıralı, fotoğraflı, süre)
-- `factory_production_logs` — Üretim kayıtları (in_progress → completed, batch, kalite skoru)
-- `factory_recipe_versions` — Reçete versiyonlama (değişiklik tarihi, onaylayan)
-- `factory_recipe_category_access` — Rol bazlı kategori erişim kontrolü
-- `factory_ingredient_nutrition` — Malzeme besin değerleri (AI ile hesaplanıyor, alerjen tespiti)
-
 ## New Route Files (Recent Sprints)
 - `server/routes/crm-iletisim.ts` — İletişim Merkezi (tickets, HQ tasks, broadcasts, dashboard, SLA)
 - `server/routes/delegation-routes.ts` — Module delegation CRUD
@@ -320,9 +257,6 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `server/routes/dobody-flow.ts` — Guided workflow mode for daily tasks
 - `server/routes/coach-summary.ts` — Coach role dashboard summaries
 - `server/routes/hq-summary.ts` — HQ executive dashboard summaries
-- `server/routes/factory-recipes.ts` — Fabrika reçete CRUD + keyblend yönetimi + üretim log (start/complete) + kategori erişim
-- `server/routes/factory-recipe-nutrition.ts` — AI besin değer hesaplama + alerjen tespiti + Cinnabon seed endpoint
-- `server/routes/pdks-excel-import.ts` — PDKS Excel import API (upload, eşleştirme, onaylama, istatistik)
 
 ## Database Naming Conventions
 - Table names: snake_case (factory_products, branch_inventory)
