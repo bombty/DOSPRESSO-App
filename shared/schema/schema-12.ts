@@ -667,6 +667,26 @@ export const monthlyPayroll = pgTable("monthly_payroll", {
   holidayPay: integer("holiday_pay").notNull().default(0),
   mealAllowance: integer("meal_allowance").notNull().default(0),
   netPay: integer("net_pay").notNull().default(0),
+  // ── SGK & Vergi (Motor Birleştirme) ──
+  grossTotal: integer("gross_total").default(0),
+  sgkEmployee: integer("sgk_employee").default(0),
+  unemploymentEmployee: integer("unemployment_employee").default(0),
+  incomeTax: integer("income_tax").default(0),
+  stampTax: integer("stamp_tax").default(0),
+  agi: integer("agi").default(0),
+  totalDeductions: integer("total_deductions").default(0),
+  sgkEmployer: integer("sgk_employer").default(0),
+  unemploymentEmployer: integer("unemployment_employer").default(0),
+  totalEmployerCost: integer("total_employer_cost").default(0),
+  cumulativeTaxBase: integer("cumulative_tax_base").default(0),
+  // ── Ek PDKS Alanları ──
+  annualLeaveDays: integer("annual_leave_days").default(0),
+  totalWorkedMinutes: integer("total_worked_minutes").default(0),
+  // ── Kaynak & Mod ──
+  calculationMode: varchar("calculation_mode", { length: 20 }).default("simple"),
+  dataSource: varchar("data_source", { length: 20 }).default("kiosk"),
+  sourceImportId: integer("source_import_id"),
+  // ── Durum ──
   status: varchar("status", { length: 20 }).default("draft"),
   calculatedAt: timestamp("calculated_at"),
   approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),

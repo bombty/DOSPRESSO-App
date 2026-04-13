@@ -25,22 +25,27 @@ function canViewPayroll(role: string): boolean {
 
 router.post('/api/pdks-payroll/calculate', isAuthenticated, requireManifestAccess('bordro', 'create'), async (req: any, res: Response) => {
   try {
-    const user = req.user;
-
-    const { branchId, year, month } = req.body;
+    const { branchId, year, month, dataSource, importId } = req.body;
     if (!branchId || !year || !month) {
       return res.status(400).json({ error: 'branchId, year ve month gerekli' });
     }
 
+    const source = dataSource === 'excel' ? 'excel' as const : 'kiosk' as const;
+    const { calculateBranchUnifiedPayroll, saveUnifiedResults } = await import('../services/payroll-bridge');
+
     const result = await db.transaction(async (tx) => {
-      const results = await calculateBranchPayroll(Number(branchId), Number(year), Number(month));
-      const saved = await savePayrollResults(results, tx);
+      const results = await calculateBranchUnifiedPayroll(
+        Number(branchId), Number(year), Number(month),
+        {}, source, importId ? Number(importId) : undefined
+      );
+      const saved = await saveUnifiedResults(results, tx);
       return { results, saved };
     });
 
     res.json({
       calculated: result.results.length,
       saved: result.saved,
+      dataSource: source,
       results: result.results.map(r => ({
         userId: r.userId,
         userName: r.userName,
@@ -48,14 +53,21 @@ router.post('/api/pdks-payroll/calculate', isAuthenticated, requireManifestAcces
         workedDays: r.workedDays,
         offDays: r.offDays,
         absentDays: r.absentDays,
-        totalSalary: r.totalSalary,
+        totalSalary: r.baseSalaryGross,
         absenceDeduction: r.absenceDeduction,
         bonusDeduction: r.bonusDeduction,
         overtimePay: r.overtimePay,
         holidayWorkedDays: r.holidayWorkedDays,
         holidayPay: r.holidayPay,
         mealAllowance: r.mealAllowance,
-        netPay: r.netPay,
+        netPay: r.netSalary,
+        // Yeni alanlar
+        grossTotal: r.grossTotal,
+        sgkEmployee: r.sgkEmployee,
+        incomeTax: r.incomeTax,
+        totalDeductions: r.totalDeductions,
+        totalEmployerCost: r.totalEmployerCost,
+        calculationMode: r.calculationMode,
       }))
     });
   } catch (error: unknown) {
@@ -101,6 +113,18 @@ router.get('/api/pdks-payroll/summary', isAuthenticated, async (req: any, res: R
       bonusDeduction: monthlyPayroll.bonusDeduction,
       overtimePay: monthlyPayroll.overtimePay,
       netPay: monthlyPayroll.netPay,
+      grossTotal: monthlyPayroll.grossTotal,
+      sgkEmployee: monthlyPayroll.sgkEmployee,
+      unemploymentEmployee: monthlyPayroll.unemploymentEmployee,
+      incomeTax: monthlyPayroll.incomeTax,
+      stampTax: monthlyPayroll.stampTax,
+      agi: monthlyPayroll.agi,
+      totalDeductions: monthlyPayroll.totalDeductions,
+      sgkEmployer: monthlyPayroll.sgkEmployer,
+      unemploymentEmployer: monthlyPayroll.unemploymentEmployer,
+      totalEmployerCost: monthlyPayroll.totalEmployerCost,
+      calculationMode: monthlyPayroll.calculationMode,
+      dataSource: monthlyPayroll.dataSource,
       status: monthlyPayroll.status,
       firstName: users.firstName,
       lastName: users.lastName,
@@ -493,52 +517,60 @@ router.get('/api/payroll/export/pdf/:year/:month', isAuthenticated, async (req: 
 
 router.post('/api/payroll/calculate-unified', isAuthenticated, requireManifestAccess('bordro', 'create'), async (req: any, res: Response) => {
   try {
-    const { branchId, year, month, config } = req.body;
+    const { branchId, year, month, config, dataSource, importId } = req.body;
     if (!branchId || !year || !month) {
       return res.status(400).json({ error: 'branchId, year ve month gerekli' });
     }
 
-    const { calculateBranchUnifiedPayroll } = await import('../services/payroll-bridge');
-    const results = await calculateBranchUnifiedPayroll(
-      Number(branchId),
-      Number(year),
-      Number(month),
-      config || {}
-    );
+    const source = dataSource === 'excel' ? 'excel' : 'kiosk';
+    const { calculateBranchUnifiedPayroll, saveUnifiedResults } = await import('../services/payroll-bridge');
+
+    const result = await db.transaction(async (tx) => {
+      const results = await calculateBranchUnifiedPayroll(
+        Number(branchId),
+        Number(year),
+        Number(month),
+        config || {},
+        source,
+        importId ? Number(importId) : undefined
+      );
+      const saved = await saveUnifiedResults(results, tx);
+      return { results, saved };
+    });
 
     res.json({
-      calculated: results.length,
+      calculated: result.results.length,
+      saved: result.saved,
       mode: "unified",
-      results: results.map(r => ({
+      dataSource: source,
+      results: result.results.map(r => ({
         userId: r.userId,
         userName: r.userName,
         positionCode: r.positionCode,
         positionName: r.positionName,
-        // PDKS
         workedDays: r.workedDays,
         offDays: r.offDays,
         absentDays: r.absentDays,
         overtimeMinutes: r.overtimeMinutes,
         holidayWorkedDays: r.holidayWorkedDays,
-        // Maaş
         baseSalaryGross: r.baseSalaryGross,
         cashBonus: r.cashBonus,
         performanceBonus: r.performanceBonus,
         mealAllowance: r.mealAllowance,
-        // Hesaplama
         overtimePay: r.overtimePay,
         holidayPay: r.holidayPay,
         grossTotal: r.grossTotal,
         absenceDeduction: r.absenceDeduction,
-        // SGK & Vergi
         sgkEmployee: r.sgkEmployee,
+        unemploymentEmployee: r.unemploymentEmployee,
         incomeTax: r.incomeTax,
         stampTax: r.stampTax,
         agi: r.agi,
         totalDeductions: r.totalDeductions,
         netSalary: r.netSalary,
-        // İşveren
         totalEmployerCost: r.totalEmployerCost,
+        dataSource: r.dataSource,
+        calculationMode: r.calculationMode,
       })),
     });
   } catch (error: unknown) {

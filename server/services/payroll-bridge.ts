@@ -1,28 +1,32 @@
 /**
- * Payroll Bridge — PDKS Otomatik Sınıflandırma → Detaylı SGK/Vergi Hesaplama
- * 
- * Motor 1 (pdks-engine + payroll-engine): PDKS bağlı, basit hesap, SGK yok
- * Motor 2 (payroll-calculation-service): SGK/vergi/AGI, PDKS bağlı değil
- * 
- * Bu bridge ikisini birleştirir:
- *   PDKS Engine → classifyDay → PdksMonthSummary
+ * Payroll Bridge — Birleşik Bordro Motoru
+ *
+ * Motor 1 (pdks-engine): PDKS → gün sınıflandırma → PdksMonthSummary
+ * Motor 2 (payroll-calculation-service): SGK/vergi/AGI hesaplama
+ * Excel Adapter: pdks_daily_summary → PdksMonthSummary formatı
+ *
+ * Akış:
+ *   Kaynak (kiosk | excel) → PdksMonthSummary
  *       ↓
- *   Bridge → mapToPayrollInput
+ *   Bridge → mapToPayrollInput → Motor 2
  *       ↓
- *   PayrollCalculationService → SGK + vergi + net
+ *   UnifiedPayrollResult → monthly_payroll (DB kayıt)
  */
 
 import { db } from "../db";
-import { eq, and, lt, sql } from "drizzle-orm";
-import { getMonthClassification, type PdksMonthSummary } from "../lib/pdks-engine";
-import { getPositionSalary, type PayrollMonthConfig, type PayrollResult as SimplePayrollResult } from "../lib/payroll-engine";
+import { eq, and, sql } from "drizzle-orm";
+import { getMonthClassification, type PdksMonthSummary, type DayClassification } from "../lib/pdks-engine";
+import { getPositionSalary, loadPayrollConfig, type PayrollMonthConfig } from "../lib/payroll-engine";
 import { calculatePayroll as calculateDetailed, type PayrollInput, type PayrollResult as DetailedResult } from "./payroll-calculation-service";
-import { users, monthlyPayroll, positionSalaries } from "@shared/schema";
+import { users, monthlyPayroll, pdksDailySummary, pdksExcelImports, publicHolidays, leaveRequests } from "@shared/schema";
+
+// ─── Veri Kaynağı ─────────────────────────────────────────────────
+
+export type DataSource = "kiosk" | "excel" | "manual";
 
 // ─── Birleşik Sonuç Tipi ─────────────────────────────────────────
 
 export interface UnifiedPayrollResult {
-  // Kimlik
   userId: string;
   userName: string;
   branchId: number;
@@ -30,8 +34,7 @@ export interface UnifiedPayrollResult {
   month: number;
   positionCode: string;
   positionName: string;
-
-  // PDKS Verileri (Motor 1)
+  // PDKS
   totalCalendarDays: number;
   workedDays: number;
   offDays: number;
@@ -42,14 +45,12 @@ export interface UnifiedPayrollResult {
   totalWorkedMinutes: number;
   overtimeMinutes: number;
   holidayWorkedDays: number;
-
-  // Maaş Bileşenleri
+  // Maaş
   baseSalaryGross: number;
   cashBonus: number;
   performanceBonus: number;
   mealAllowance: number;
-
-  // Detaylı Hesaplama (Motor 2)
+  // Hesaplama
   dailyRate: number;
   hourlyRate: number;
   overtimePay: number;
@@ -58,8 +59,7 @@ export interface UnifiedPayrollResult {
   grossTotal: number;
   absenceDeduction: number;
   bonusDeduction: number;
-
-  // SGK & Vergi (Motor 2)
+  // SGK & Vergi
   sgkEmployee: number;
   unemploymentEmployee: number;
   incomeTax: number;
@@ -67,15 +67,16 @@ export interface UnifiedPayrollResult {
   agi: number;
   totalDeductions: number;
   netSalary: number;
-
-  // İşveren Maliyeti
+  // İşveren
   sgkEmployer: number;
   unemploymentEmployer: number;
   totalEmployerCost: number;
-
   // Meta
   isTerminated: boolean;
   calculationMode: "unified" | "simple";
+  dataSource: DataSource;
+  sourceImportId: number | null;
+  cumulativeTaxBase: number;
 }
 
 // ─── Rol → Pozisyon Kodu ──────────────────────────────────────────
@@ -89,63 +90,212 @@ const ROLE_TO_POSITION: Record<string, string> = {
   mudur: "supervisor",
 };
 
-// ─── Kümülatif Vergi Matrahı ──────────────────────────────────────
+const KASA_PRIMI = 350000; // 3500 TL kuruş cinsinden
+
+// ═══════════════════════════════════════════════════════════════════
+// EXCEL → PdksMonthSummary ADAPTER
+// ═══════════════════════════════════════════════════════════════════
+
+async function getExcelMonthSummary(
+  userId: string,
+  branchId: number,
+  year: number,
+  month: number,
+  importId?: number
+): Promise<{ summary: PdksMonthSummary; importId: number | null }> {
+  let effectiveImportId = importId ?? null;
+
+  if (!effectiveImportId) {
+    const imports = await db.select({ id: pdksExcelImports.id })
+      .from(pdksExcelImports)
+      .where(and(
+        eq(pdksExcelImports.branchId, branchId),
+        eq(pdksExcelImports.month, month),
+        eq(pdksExcelImports.year, year),
+      ))
+      .orderBy(sql`${pdksExcelImports.id} DESC`)
+      .limit(1);
+    if (imports[0]) effectiveImportId = imports[0].id;
+  }
+
+  if (!effectiveImportId) {
+    throw new Error(`Excel import bulunamadı: şube=${branchId}, ${year}/${month}`);
+  }
+
+  const dailies = await db.select()
+    .from(pdksDailySummary)
+    .where(and(
+      eq(pdksDailySummary.importId, effectiveImportId),
+      eq(pdksDailySummary.userId, userId),
+    ));
+
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const endDate = `${year}-${String(month).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+
+  const [leaves, holidays] = await Promise.all([
+    db.select({
+      startDate: leaveRequests.startDate,
+      endDate: leaveRequests.endDate,
+      leaveType: leaveRequests.leaveType,
+    })
+    .from(leaveRequests)
+    .where(and(
+      eq(leaveRequests.userId, userId),
+      eq(leaveRequests.status, "approved"),
+      sql`${leaveRequests.startDate} <= ${endDate}`,
+      sql`${leaveRequests.endDate} >= ${startDate}`,
+    )),
+    db.select({ date: publicHolidays.date, name: publicHolidays.name })
+      .from(publicHolidays)
+      .where(and(eq(publicHolidays.year, year), eq(publicHolidays.isActive, true))),
+  ]);
+
+  const holidaySet = new Set(holidays.map(h => h.date));
+  const dailyMap = new Map<string, typeof dailies[0]>();
+  for (const d of dailies) {
+    const dateStr = new Date(d.workDate).toISOString().slice(0, 10);
+    dailyMap.set(dateStr, d);
+  }
+
+  const leaveStatusMap: Record<string, DayClassification["status"]> = {
+    unpaid: "unpaid_leave",
+    sick: "sick_leave",
+    annual: "annual_leave",
+    personal: "annual_leave",
+  };
+
+  const days: DayClassification[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const excel = dailyMap.get(dateStr);
+    const isHoliday = holidaySet.has(dateStr);
+    const holidayName = holidays.find(h => h.date === dateStr)?.name;
+    const base = { date: dateStr, records: [] as any[], workedMinutes: 0, overtimeMinutes: 0, isHoliday, holidayName };
+
+    // İzin kontrolü
+    let leaveType: string | null = null;
+    for (const leave of leaves) {
+      if (dateStr >= leave.startDate && dateStr <= leave.endDate) {
+        leaveType = leave.leaveType;
+        break;
+      }
+    }
+
+    if (leaveType) {
+      days.push({ ...base, status: leaveStatusMap[leaveType] || "annual_leave" });
+      continue;
+    }
+
+    if (!excel) {
+      const isWeekend = new Date(dateStr).getDay() === 0;
+      days.push({ ...base, status: isWeekend ? "program_off" : "no_shift" });
+      continue;
+    }
+
+    if (excel.isOffDay) {
+      days.push({
+        ...base,
+        status: "program_off",
+        workedMinutes: excel.netMinutes && excel.netMinutes > 0 ? excel.netMinutes : 0,
+      });
+      continue;
+    }
+
+    const netMinutes = excel.netMinutes ?? 0;
+    const otMinutes = excel.overtimeMinutes ?? 0;
+    days.push({
+      ...base,
+      status: netMinutes > 0 ? "worked" : "absent",
+      workedMinutes: netMinutes,
+      overtimeMinutes: otMinutes >= 30 ? otMinutes : 0,
+    });
+  }
+
+  return {
+    summary: {
+      userId, year, month, days,
+      workedDays: days.filter(d => d.status === "worked").length,
+      offDays: days.filter(d => ["program_off", "kapanish_off", "no_shift"].includes(d.status)).length,
+      absentDays: days.filter(d => d.status === "absent").length,
+      unpaidLeaveDays: days.filter(d => d.status === "unpaid_leave").length,
+      sickLeaveDays: days.filter(d => d.status === "sick_leave").length,
+      annualLeaveDays: days.filter(d => d.status === "annual_leave").length,
+      totalOvertimeMinutes: days.reduce((sum, d) => sum + d.overtimeMinutes, 0),
+      holidayWorkedDays: days.filter(d => d.status === "worked" && d.isHoliday).length,
+    },
+    importId: effectiveImportId,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// KÜMÜLATİF VERGİ MATRAHI — Önceki aylardan oku
+// ═══════════════════════════════════════════════════════════════════
 
 async function getCumulativeTaxBase(userId: string, year: number, month: number): Promise<number> {
-  // Önceki ayların brüt toplamından SGK düşülerek hesaplanmış vergi matrahı
-  // Basit yaklaşım: önceki ayların net pay toplamı × 1.3 (yaklaşık brüt/net oranı)
-  // İdeal: Detaylı hesaplama yapılmış aylardan cumulativeTaxBase okumak
-  // Şimdilik 0 — ilk hesaplamada Ocak'tan başlıyor varsayıyoruz
-  // TODO: monthly_payrolls tablosundan (Motor 2) newCumulativeTaxBase okuma
-  
-  const prevMonths = await db.select({
-    totalSalary: monthlyPayroll.totalSalary,
+  if (month <= 1) return 0;
+
+  // En son unified hesaplamadan oku
+  const prev = await db.select({
+    cumulativeTaxBase: monthlyPayroll.cumulativeTaxBase,
+    grossTotal: monthlyPayroll.grossTotal,
+    sgkEmployee: monthlyPayroll.sgkEmployee,
+    unemploymentEmployee: monthlyPayroll.unemploymentEmployee,
+    calculationMode: monthlyPayroll.calculationMode,
   })
   .from(monthlyPayroll)
   .where(and(
     eq(monthlyPayroll.userId, userId),
     eq(monthlyPayroll.year, year),
-    sql`${monthlyPayroll.month} < ${month}`
-  ));
+    sql`${monthlyPayroll.month} < ${month}`,
+  ))
+  .orderBy(sql`${monthlyPayroll.month} DESC`)
+  .limit(1);
 
-  // Yaklaşık kümülatif matrah: brüt maaş toplamı × 0.85 (SGK sonrası)
-  const totalBrut = prevMonths.reduce((sum, p) => sum + (p.totalSalary || 0), 0);
+  if (prev[0] && prev[0].calculationMode === "unified" && prev[0].cumulativeTaxBase) {
+    const gross = prev[0].grossTotal ?? 0;
+    const sgk = prev[0].sgkEmployee ?? 0;
+    const unemp = prev[0].unemploymentEmployee ?? 0;
+    return (prev[0].cumulativeTaxBase ?? 0) + Math.max(0, gross - sgk - unemp);
+  }
+
+  // Fallback: tüm önceki ayların brüt toplamından yaklaşık
+  const allPrev = await db.select({ totalSalary: monthlyPayroll.totalSalary })
+    .from(monthlyPayroll)
+    .where(and(
+      eq(monthlyPayroll.userId, userId),
+      eq(monthlyPayroll.year, year),
+      sql`${monthlyPayroll.month} < ${month}`,
+    ));
+
+  if (allPrev.length === 0) return 0;
+  const totalBrut = allPrev.reduce((sum, p) => sum + (p.totalSalary || 0), 0);
   return Math.round(totalBrut * 0.85);
 }
 
-// ─── PDKS → PayrollInput Dönüşümü ────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// PDKS → PayrollInput DÖNÜŞÜMÜ
+// ═══════════════════════════════════════════════════════════════════
 
 function mapPdksToPayrollInput(
   pdks: PdksMonthSummary,
   salary: { totalSalary: number; baseSalary: number; bonus: number },
-  config: Partial<PayrollMonthConfig>,
   cumulativeTaxBase: number
 ): PayrollInput {
   const daysInMonth = new Date(pdks.year, pdks.month, 0).getDate();
-  
-  // Toplam çalışılan dakika
   const workedMinutes = pdks.days.reduce((sum, d) => sum + d.workedMinutes, 0);
-  
-  // Beklenen dakika: planlı vardiya günleri × 8 saat
   const workingDays = daysInMonth - pdks.offDays;
-  const expectedMinutes = workingDays * 480; // 8 saat × 60 dk
-  
-  // Eksik dakika
-  const deficitMinutes = Math.max(0, expectedMinutes - workedMinutes - (pdks.totalOvertimeMinutes));
-  
-  // Off günlerde çalışma (program_off veya kapanish_off ama PDKS'te kayıt var)
+  const expectedMinutes = workingDays * 480;
+  const deficitMinutes = Math.max(0, expectedMinutes - workedMinutes - pdks.totalOvertimeMinutes);
+
   const offDayWorkedMinutes = pdks.days
-    .filter(d => (d.status === 'program_off' || d.status === 'kapanish_off') && d.workedMinutes > 0)
+    .filter(d => (d.status === "program_off" || d.status === "kapanish_off") && d.workedMinutes > 0)
     .reduce((sum, d) => sum + d.workedMinutes, 0);
-  
-  // Tatil günlerde çalışma
+
   const holidayWorkedMinutes = pdks.days
     .filter(d => d.isHoliday && d.workedMinutes > 0)
     .reduce((sum, d) => sum + d.workedMinutes, 0);
-  
-  // Prim ayrımı — şimdilik position_salaries'te tek "bonus" var
-  // Kasa primi sabit 3500 TL (350000 kuruş) — DOSPRESSO standardı
-  const KASA_PRIMI = 350000; // 3500 TL kuruş cinsinden
+
   const cashBonus = Math.min(KASA_PRIMI, salary.bonus);
   const performanceBonus = salary.bonus - cashBonus;
 
@@ -165,15 +315,18 @@ function mapPdksToPayrollInput(
   };
 }
 
-// ─── Birleşik Hesaplama ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// BİRLEŞİK HESAPLAMA (TEK KİŞİ)
+// ═══════════════════════════════════════════════════════════════════
 
 export async function calculateUnifiedPayroll(
   userId: string,
   year: number,
   month: number,
-  config: Partial<PayrollMonthConfig> = {}
+  config: Partial<PayrollMonthConfig> = {},
+  dataSource: DataSource = "kiosk",
+  importId?: number
 ): Promise<UnifiedPayrollResult | null> {
-  // 1. Kullanıcı bilgisi
   const userResult = await db.select({
     id: users.id,
     firstName: users.firstName,
@@ -192,106 +345,85 @@ export async function calculateUnifiedPayroll(
   const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ") || "Bilinmiyor";
   const positionCode = ROLE_TO_POSITION[u.role] || "barista";
 
-  // 2. Pozisyon maaşı
   const salary = await getPositionSalary(positionCode, year, month);
   if (!salary) return null;
 
-  // 3. PDKS sınıflandırması
-  const pdks = await getMonthClassification(userId, year, month);
+  // Kaynağa göre PDKS verisi
+  let pdks: PdksMonthSummary;
+  let resolvedImportId: number | null = null;
+
+  if (dataSource === "excel") {
+    const excelResult = await getExcelMonthSummary(userId, u.branchId, year, month, importId);
+    pdks = excelResult.summary;
+    resolvedImportId = excelResult.importId;
+  } else {
+    pdks = await getMonthClassification(userId, year, month);
+  }
+
   const daysInMonth = new Date(year, month, 0).getDate();
   const isTerminated = u.isActive === false;
-
-  // 4. Kümülatif vergi matrahı
   const cumulativeTaxBase = await getCumulativeTaxBase(userId, year, month);
+  const payrollInput = mapPdksToPayrollInput(pdks, salary, cumulativeTaxBase);
 
-  // 5. PDKS → PayrollInput dönüşümü
-  const payrollInput = mapPdksToPayrollInput(pdks, salary, config, cumulativeTaxBase);
-
-  // 6. Detaylı hesaplama (SGK + Vergi + AGI)
   let detailed: DetailedResult;
   try {
     detailed = await calculateDetailed(payrollInput);
   } catch (err) {
-    // Payroll parametreleri yoksa basit moda düş
-    console.warn(`[PayrollBridge] Detaylı hesaplama başarısız (${userId}), basit mod kullanılıyor:`, err);
-    return null; // Caller basit motoru kullanır
+    console.warn(`[PayrollBridge] Detaylı hesaplama başarısız (${userId}):`, err);
+    return null;
   }
 
-  // 7. Yemek bedeli (Motor 1'den)
   const MEAL_ROLES = config.mealAllowanceRoles ?? ["stajyer"];
   const MEAL_PER_DAY = config.mealAllowancePerDay ?? 33000;
-  const mealAllowance = MEAL_ROLES.includes(positionCode)
-    ? pdks.workedDays * MEAL_PER_DAY
-    : 0;
-
-  // Net'e yemek bedeli ekle (vergisiz yan haklar)
+  const mealAllowance = MEAL_ROLES.includes(positionCode) ? pdks.workedDays * MEAL_PER_DAY : 0;
   const adjustedNet = detailed.netSalary + mealAllowance;
+  const totalWorkedMinutes = pdks.days.reduce((s, d) => s + d.workedMinutes, 0);
 
   return {
-    userId,
-    userName: fullName,
-    branchId: u.branchId,
-    year,
-    month,
-    positionCode,
+    userId, userName: fullName, branchId: u.branchId, year, month, positionCode,
     positionName: salary.positionName,
-
-    // PDKS
     totalCalendarDays: daysInMonth,
     workedDays: pdks.workedDays,
-    offDays: Math.min(pdks.offDays, 4),
+    offDays: Math.min(pdks.offDays, config.maxOffDays ?? 4),
     absentDays: pdks.absentDays,
     unpaidLeaveDays: pdks.unpaidLeaveDays,
     sickLeaveDays: pdks.sickLeaveDays,
     annualLeaveDays: pdks.annualLeaveDays,
-    totalWorkedMinutes: pdks.days.reduce((s, d) => s + d.workedMinutes, 0),
-    overtimeMinutes: pdks.totalOvertimeMinutes,
+    totalWorkedMinutes, overtimeMinutes: pdks.totalOvertimeMinutes,
     holidayWorkedDays: pdks.holidayWorkedDays,
-
-    // Maaş
     baseSalaryGross: salary.totalSalary,
-    cashBonus: payrollInput.cashBonus,
-    performanceBonus: payrollInput.performanceBonus,
+    cashBonus: Math.min(KASA_PRIMI, salary.bonus),
+    performanceBonus: salary.bonus - Math.min(KASA_PRIMI, salary.bonus),
     mealAllowance,
-
-    // Hesaplama
-    dailyRate: detailed.dailyRate,
-    hourlyRate: detailed.hourlyRate,
-    overtimePay: detailed.overtimePay,
-    holidayPay: detailed.holidayPay,
-    offDayPay: detailed.offDayPay,
-    grossTotal: detailed.grossTotal,
-    absenceDeduction: detailed.deficitDeduction,
-    bonusDeduction: 0, // detaylı motorda ayrı hesaplanmıyor
-
-    // SGK & Vergi
-    sgkEmployee: detailed.sgkEmployee,
-    unemploymentEmployee: detailed.unemploymentEmployee,
-    incomeTax: detailed.incomeTax,
-    stampTax: detailed.stampTax,
-    agi: detailed.agi,
-    totalDeductions: detailed.totalDeductions,
+    dailyRate: detailed.dailyRate, hourlyRate: detailed.hourlyRate,
+    overtimePay: detailed.overtimePay, holidayPay: detailed.holidayPay,
+    offDayPay: detailed.offDayPay, grossTotal: detailed.grossTotal,
+    absenceDeduction: detailed.deficitDeduction, bonusDeduction: 0,
+    sgkEmployee: detailed.sgkEmployee, unemploymentEmployee: detailed.unemploymentEmployee,
+    incomeTax: detailed.incomeTax, stampTax: detailed.stampTax,
+    agi: detailed.agi, totalDeductions: detailed.totalDeductions,
     netSalary: adjustedNet,
-
-    // İşveren
-    sgkEmployer: detailed.sgkEmployer,
-    unemploymentEmployer: detailed.unemploymentEmployer,
+    sgkEmployer: detailed.sgkEmployer, unemploymentEmployer: detailed.unemploymentEmployer,
     totalEmployerCost: detailed.totalEmployerCost,
-
-    // Meta
-    isTerminated,
-    calculationMode: "unified",
+    isTerminated, calculationMode: "unified", dataSource,
+    sourceImportId: resolvedImportId, cumulativeTaxBase,
   };
 }
 
-// ─── Şube Bazlı Birleşik Hesaplama ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// ŞUBE BAZLI BİRLEŞİK HESAPLAMA
+// ═══════════════════════════════════════════════════════════════════
 
 export async function calculateBranchUnifiedPayroll(
   branchId: number,
   year: number,
   month: number,
-  config: Partial<PayrollMonthConfig> = {}
+  config: Partial<PayrollMonthConfig> = {},
+  dataSource: DataSource = "kiosk",
+  importId?: number
 ): Promise<UnifiedPayrollResult[]> {
+  const effectiveConfig = { ...(await loadPayrollConfig(branchId, year, month)), ...config };
+
   const branchUsers = await db.select({ id: users.id })
     .from(users)
     .where(and(
@@ -301,9 +433,73 @@ export async function calculateBranchUnifiedPayroll(
 
   const results: UnifiedPayrollResult[] = [];
   for (const u of branchUsers) {
-    const result = await calculateUnifiedPayroll(u.id, year, month, config);
+    const result = await calculateUnifiedPayroll(u.id, year, month, effectiveConfig, dataSource, importId);
     if (result) results.push(result);
   }
-
   return results;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DB KAYIT — monthly_payroll'a unified sonuçları yaz
+// ═══════════════════════════════════════════════════════════════════
+
+export async function saveUnifiedResults(
+  results: UnifiedPayrollResult[],
+  dbClient: typeof db = db
+): Promise<number> {
+  let saved = 0;
+  for (const r of results) {
+    const values = {
+      userId: r.userId,
+      branchId: r.branchId,
+      year: r.year,
+      month: r.month,
+      positionCode: r.positionCode,
+      totalCalendarDays: r.totalCalendarDays,
+      workedDays: r.workedDays,
+      offDays: r.offDays,
+      absentDays: r.absentDays,
+      unpaidLeaveDays: r.unpaidLeaveDays,
+      sickLeaveDays: r.sickLeaveDays,
+      annualLeaveDays: r.annualLeaveDays,
+      overtimeMinutes: r.overtimeMinutes,
+      totalWorkedMinutes: r.totalWorkedMinutes,
+      totalSalary: r.baseSalaryGross,
+      baseSalary: r.baseSalaryGross - (r.cashBonus + r.performanceBonus),
+      bonus: r.cashBonus + r.performanceBonus,
+      dailyRate: r.dailyRate,
+      absenceDeduction: r.absenceDeduction,
+      bonusDeduction: r.bonusDeduction,
+      overtimePay: r.overtimePay,
+      holidayWorkedDays: r.holidayWorkedDays,
+      holidayPay: r.holidayPay,
+      mealAllowance: r.mealAllowance,
+      netPay: r.netSalary,
+      grossTotal: r.grossTotal,
+      sgkEmployee: r.sgkEmployee,
+      unemploymentEmployee: r.unemploymentEmployee,
+      incomeTax: r.incomeTax,
+      stampTax: r.stampTax,
+      agi: r.agi,
+      totalDeductions: r.totalDeductions,
+      sgkEmployer: r.sgkEmployer,
+      unemploymentEmployer: r.unemploymentEmployer,
+      totalEmployerCost: r.totalEmployerCost,
+      cumulativeTaxBase: r.cumulativeTaxBase,
+      calculationMode: r.calculationMode,
+      dataSource: r.dataSource,
+      sourceImportId: r.sourceImportId,
+      status: "calculated" as const,
+      calculatedAt: new Date(),
+    };
+
+    await dbClient.insert(monthlyPayroll)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [monthlyPayroll.userId, monthlyPayroll.year, monthlyPayroll.month],
+        set: { ...values, updatedAt: new Date() },
+      });
+    saved++;
+  }
+  return saved;
 }
