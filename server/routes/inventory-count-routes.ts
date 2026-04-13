@@ -80,8 +80,7 @@ const router = Router();
         activeItems = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
       } else {
         const cats = categoryMap[cType] || [cType];
-        const catConditions = cats.map(c => `category = '${c}'`).join(' OR ');
-        const result = await db.execute(sql.raw(`SELECT id FROM inventory WHERE is_active = true AND (${catConditions}) ORDER BY category, name`));
+        const result = await db.execute(sql`SELECT id FROM inventory WHERE is_active = true AND category IN (${sql.join(cats.map(c => sql`${c}`), sql`, `)}) ORDER BY category, name`);
         activeItems = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
       }
       

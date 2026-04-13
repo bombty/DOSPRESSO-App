@@ -301,13 +301,18 @@ Score: X/21 PASS
 ---
 
 ## 19. sql.raw Usage — No Unparameterized Queries
-Known files with sql.raw: production-planning-routes.ts (18), dashboard-data-routes.ts (3), inventory-count-routes.ts (1), operations.ts (1).
+Known files with sql.raw (baseline April 2026):
+- dashboard-data-routes.ts: 3 (utility functions, 39 callers — migration planned)
+- unified-dashboard-routes.ts: 3 (same pattern)
+- seed.ts: 3 (dev-only, INTERVAL interpolation)
+- system-health.ts: 1 (table name check)
+Total baseline: 10. Refactored: production-planning-routes (18→0), inventory-count (1→0), operations (1→0).
 
 ```bash
 grep -rn "sql\.raw\|sql\.unsafe" server/routes/*.ts server/services/*.ts server/lib/*.ts 2>/dev/null | grep -v "node_modules" | wc -l
 ```
 
-**PASS**: Count matches known baseline (23). No NEW sql.raw added.
+**PASS**: Count matches known baseline (10). No NEW sql.raw added.
 **FAIL**: New sql.raw usage found — must use Drizzle operators or parameterized `sql` template.
 
 ---

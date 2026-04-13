@@ -20,6 +20,9 @@ export async function seedModuleFlags() {
   await db.execute(sql`ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS parent_key VARCHAR(100)`);
   await db.execute(sql`ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS target_role VARCHAR(50)`);
 
+  // Eski constraint/index'leri temizle — constraint varsa önce onu kaldır (index'i de siler)
+  await db.execute(sql`ALTER TABLE module_flags DROP CONSTRAINT IF EXISTS uq_module_flags_key_scope_branch`);
+  await db.execute(sql`ALTER TABLE module_flags DROP CONSTRAINT IF EXISTS uq_module_flags_key_scope_branch_role`);
   await db.execute(sql`DROP INDEX IF EXISTS uq_module_flags_key_scope_branch`);
   await db.execute(sql`DROP INDEX IF EXISTS uq_module_flags_key_scope_branch_role`);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_module_flags_key_scope_branch_role ON module_flags (module_key, scope, COALESCE(branch_id, 0), COALESCE(target_role, ''))`);

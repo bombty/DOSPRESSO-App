@@ -3075,7 +3075,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
         .where(and(
           branchFilter ? eq(auditInstances.branchId, branchFilter) : sql`1=1`,
           eq(auditInstances.status, 'completed'),
-          sql`${auditInstances.auditDate} >= NOW() - INTERVAL '${sql.raw(String(monthCount))} months'`
+          sql`${auditInstances.auditDate} >= NOW() - make_interval(months => ${monthCount})`
         ))
         .groupBy(sql`to_char(${auditInstances.auditDate}, 'YYYY-MM')`)
         .orderBy(sql`to_char(${auditInstances.auditDate}, 'YYYY-MM')`);
