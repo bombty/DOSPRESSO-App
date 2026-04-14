@@ -167,6 +167,67 @@ async function deactivateInactiveUsers(): Promise<void> {
   }
 }
 
+// ── Satınalma Fiyat Hatırlatma (Aylık) ──
+async function checkStalePriceReminder(): Promise<void> {
+  try {
+    const turkeyDate = getTurkeyDate();
+    const dayOfMonth = turkeyDate.getDate();
+
+    // Sadece ayın 1'inde çalış
+    if (dayOfMonth !== 1) return;
+
+    // Bu ay zaten hatırlatma gönderildi mi?
+    const thisMonth = turkeyDate.toISOString().slice(0, 7); // "2026-04"
+    const [existing] = await db.select({ id: agentPendingActions.id })
+      .from(agentPendingActions)
+      .where(and(
+        eq(agentPendingActions.category, "price_update_reminder"),
+        sql`${agentPendingActions.createdAt} >= ${thisMonth + "-01"}::date`
+      ))
+      .limit(1);
+
+    if (existing) return; // Bu ay zaten gönderilmiş
+
+    // Stale fiyat sayısını kontrol et
+    const [staleResult] = await db.execute(sql`
+      SELECT count(*)::int as cnt FROM inventory
+      WHERE is_active = true
+        AND material_type IN ('hammadde', 'yari_mamul')
+        AND (market_price_updated_at IS NULL OR market_price_updated_at < NOW() - INTERVAL '30 days')
+    `);
+
+    const staleCount = (staleResult as any)?.cnt || 0;
+    if (staleCount === 0) return;
+
+    // Satınalma kullanıcılarını bul
+    const satinalmaUsers = await db.select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.role, "satinalma"), eq(users.isActive, true)));
+
+    for (const su of satinalmaUsers) {
+      await db.insert(agentPendingActions).values({
+        actionType: "notification",
+        targetUserId: su.id,
+        targetRoleScope: "satinalma",
+        title: `Aylık Fiyat Güncelleme: ${staleCount} malzeme`,
+        description: `${staleCount} hammadde/yarı mamülün piyasa fiyatı 30+ gündür güncellenmedi. Satınalma → Stok Yönetimi'nden fiyatları güncelleyin.`,
+        deepLink: "/satinalma/stok-yonetimi",
+        severity: staleCount > 20 ? "high" : "med",
+        status: "pending",
+        category: "price_update_reminder",
+        subcategory: "monthly_reminder",
+        expiresAt: new Date(Date.now() + 30 * 86400000), // 30 gün geçerli
+      });
+    }
+
+    if (satinalmaUsers.length > 0) {
+      console.log(`[AgentScheduler] Fiyat hatırlatma: ${staleCount} stale malzeme → ${satinalmaUsers.length} satınalma kullanıcıya gönderildi`);
+    }
+  } catch (err) {
+    console.error("[AgentScheduler] Stale price reminder error:", err);
+  }
+}
+
 let dailyInterval: NodeJS.Timeout | null = null;
 let weeklyInterval: NodeJS.Timeout | null = null;
 let eventCheckInterval: NodeJS.Timeout | null = null;
@@ -541,7 +602,9 @@ export function startAgentScheduler(): void {
   console.log(`[AgentScheduler] Inactive user check ${Math.round(inactiveUsersDelayMs / 60000)} dakika sonra calisacak (02:00 TR)`);
   schedulerManager.registerTimeout('inactive-users-delay', () => {
     deactivateInactiveUsers();
+    checkStalePriceReminder();
     schedulerManager.registerInterval('inactive-users', deactivateInactiveUsers, 24 * 60 * 60 * 1000);
+    schedulerManager.registerInterval('stale-price-check', checkStalePriceReminder, 24 * 60 * 60 * 1000);
   }, inactiveUsersDelayMs);
 
   const outcomeDelayMs = getMillisUntilTurkeyTime(8, 0);
