@@ -216,7 +216,16 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - `supervisor`, `supervisor_buddy`, `barista`, `bar_buddy`, `stajyer`, `mudur`, `yatirimci_branch` → ['sube']
 - Guards: HQOnly=['admin','hq'], FabrikaOnly=['admin','hq','fabrika'], ExecutiveOnly=explicit role list
 
+### MRP-Light (Malzeme Çekme Sistemi — schema-23):
+- 4 tables: daily_material_plans, daily_material_plan_items, production_area_leftovers, material_pick_logs
+- Flow: Üretim planı → malzeme ihtiyaç hesapla → artan kontrol → net çekme → depocu hazırla → operatör teslim → gün sonu artan
+- daily_material_plans: tarih bazlı unique, status (draft→confirmed→in_progress→completed)
+- plan_items: inventory×recipe, requiredQuantity - leftoverQuantity = netPickQuantity
+- leftovers: condition (good/marginal/unusable), storageTemp, usableForRecipes (auto-calculated)
+- pick_logs: audit trail, fromLocation (depo_ana/soguk/kuru), lotNumber, FEFO
+
 ### Key Role Notes:
+- `fabrika_depo` (Depocu): Malzeme çekme, stok sayım, mal kabul, FEFO, sevkiyat hazırlama. Fabrika group.
 - `gida_muhendisi` (Sema): Factory-only, QC approve, food safety. NO branch_orders/inventory. Has factory-recipes sidebar (read-only)
 - `recete_gm` (RGM): Full recipe control + Keyblend + production planning + cost analysis. Fabrika group
 - `sef`: Recipe edit (category-restricted), production mode. Fabrika group
