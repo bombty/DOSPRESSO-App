@@ -83,6 +83,7 @@ export const UserRole = {
   FABRIKA_OPERATOR: "fabrika_operator",
   FABRIKA_SORUMLU: "fabrika_sorumlu",
   FABRIKA_PERSONEL: "fabrika_personel",
+  FABRIKA_DEPO: "fabrika_depo",         // Fabrika depocu — malzeme çekme, stok, FEFO
   // Factory Recipe Roles
   SEF: "sef",
   RECETE_GM: "recete_gm",
@@ -234,7 +235,7 @@ export function isBranchRole(role: UserRoleType): boolean {
   return BRANCH_ROLES.has(role);
 }
 
-const FACTORY_ROLES = new Set<UserRoleType>(['fabrika_mudur', 'uretim_sefi', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'sef', 'recete_gm']);
+const FACTORY_ROLES = new Set<UserRoleType>(['fabrika_mudur', 'uretim_sefi', 'fabrika_operator', 'fabrika_sorumlu', 'fabrika_personel', 'fabrika_depo', 'sef', 'recete_gm']);
 
 export function isFactoryRole(role: UserRoleType): boolean {
   return FACTORY_ROLES.has(role);

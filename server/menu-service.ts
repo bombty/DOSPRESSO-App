@@ -743,6 +743,9 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   fabrika_operator: [
     'factory-dashboard', 'factory-kiosk', 'notifications',
   ],
+  fabrika_depo: [
+    'factory-dashboard', 'factory-kiosk', 'stock-management', 'factory-quality', 'reports', 'notifications',
+  ],
   admin: [
     'dashboard', 'ajanda', 'tasks-list', 'checklists', 'equipment', 'faults',
     'branches-list', 'hr', 'shifts', 'attendance',

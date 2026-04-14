@@ -401,6 +401,7 @@ export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   sef: [CONTROL, FABRIKA_MODUL, RECETELER, RAPORLAR],
   fabrika_sorumlu: [CONTROL, FABRIKA_MODUL, PROFIL],
   fabrika_operator: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
+  fabrika_depo: [CONTROL, FABRIKA_MODUL, STOK, PROFIL],
   fabrika_personel: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
   fabrika: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL], // Legacy → fabrika_personel ile aynı
 

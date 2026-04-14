@@ -72,7 +72,7 @@ export const ROLE_CONTROL_PATH: Record<string, string> = {
   uretim_sefi: '/fabrika-centrum',
   sef: '/fabrika-centrum',
   recete_gm: '/fabrika-centrum',
-  fabrika_depo: '/depo-centrum',
+  fabrika_depo: '/fabrika-centrum',
   fabrika_pisman: '/fabrika-centrum',
   fabrika_kalite: '/fabrika-centrum',
 

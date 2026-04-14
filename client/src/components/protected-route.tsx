@@ -29,6 +29,7 @@ const ROLE_MAPPING: Record<string, RoleGroup[]> = {
   sef: ['fabrika'],
   recete_gm: ['fabrika'],
   uretim_sefi: ['fabrika'],
+  fabrika_depo: ['fabrika'],
   supervisor: ['sube'],
   supervisor_buddy: ['sube'],
   barista: ['sube'],
