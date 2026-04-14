@@ -193,12 +193,65 @@ router.patch("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: 
       if (!access) return res.status(403).json({ error: "Bu kategoride düzenleme yetkiniz yok" });
     }
 
+    // ── Otomatik versiyon snapshot (düzenlemeden ÖNCE) ──
+    const { changeDescription, skipVersion, ...updateFields } = req.body;
+    let newVersionNumber: number | null = null;
+
+    if (!skipVersion) {
+      // Mevcut malzeme + adımları snapshot al
+      const currentIngredients = await db.select().from(factoryRecipeIngredients)
+        .where(eq(factoryRecipeIngredients.recipeId, id))
+        .orderBy(asc(factoryRecipeIngredients.sortOrder));
+      const currentSteps = await db.select().from(factoryRecipeSteps)
+        .where(eq(factoryRecipeSteps.recipeId, id))
+        .orderBy(asc(factoryRecipeSteps.stepNumber));
+
+      // Son versiyon numarasını bul
+      const [lastVersion] = await db.select({ vn: factoryRecipeVersions.versionNumber })
+        .from(factoryRecipeVersions)
+        .where(eq(factoryRecipeVersions.recipeId, id))
+        .orderBy(desc(factoryRecipeVersions.versionNumber))
+        .limit(1);
+
+      newVersionNumber = (lastVersion?.vn || recipe.version || 0) + 1;
+
+      // Maliyet snapshot
+      const costSnapshot = {
+        rawMaterialCost: Number(recipe.rawMaterialCost || 0),
+        laborCost: Number(recipe.laborCost || 0),
+        energyCost: Number(recipe.energyCost || 0),
+        totalBatchCost: Number(recipe.totalBatchCost || 0),
+        unitCost: Number(recipe.unitCost || 0),
+      };
+
+      // Versiyon oluştur
+      await db.insert(factoryRecipeVersions).values({
+        recipeId: id,
+        versionNumber: newVersionNumber,
+        ingredientsSnapshot: currentIngredients,
+        stepsSnapshot: currentSteps,
+        costSnapshot,
+        changedBy: req.user.id,
+        changeDescription: changeDescription || `v${newVersionNumber} — ${req.user.role} tarafından güncellendi`,
+        status: RECIPE_ADMIN_ROLES.includes(req.user.role) ? "approved" : "pending",
+        ...(RECIPE_ADMIN_ROLES.includes(req.user.role) ? { approvedBy: req.user.id, approvedAt: new Date() } : {}),
+      });
+    }
+
+    // ── Güncellemeyi uygula ──
+    const setData: Record<string, any> = {
+      ...updateFields,
+      updatedBy: req.user.id,
+      updatedAt: new Date(),
+    };
+    if (newVersionNumber) setData.version = newVersionNumber;
+
     const [updated] = await db.update(factoryRecipes)
-      .set({ ...req.body, updatedBy: req.user.id, updatedAt: new Date() })
+      .set(setData)
       .where(eq(factoryRecipes.id, id))
       .returning();
 
-    res.json(updated);
+    res.json({ ...updated, versionCreated: newVersionNumber });
   } catch (error) {
     console.error("Update factory recipe error:", error);
     res.status(500).json({ error: "Reçete güncellenemedi" });
