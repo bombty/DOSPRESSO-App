@@ -191,11 +191,21 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - 9 tables in schema-22: factory_recipes, ingredients, steps, keyblends, keyblend_ingredients, production_logs, recipe_versions, category_access, ingredient_nutrition
 - 4-tier permission: admin > recete_gm > sef > view-only (gida_muhendisi, operators)
 - Keyblend secret: only admin + recete_gm see contents. Others see name + total percentage only
-- Recipe versioning: factory_recipe_versions (snapshot + costSnapshot + diff + approval)
+- Auto-versioning: PATCH /api/factory/recipes/:id → snapshot (ingredients + steps + cost) BEFORE update
+  - RGM/Admin edit → auto-approved. Sef edit → pending (needs RGM approval)
+  - skipVersion: true for minor changes (name/description only)
 - Production logs: recipeVersionId + recipeVersionNumber captured at start-production
 - QC link: production_logs.qualityScore + qcNotes
 - 14 EU/TR allergens auto-detected from ingredients
-- Cinnabon seed data: 15 ingredients, 10 steps, 1 keyblend (KB-CIN01)
+- rawMaterialId FK: factory_recipe_ingredients → inventory (for MRP-Light)
+
+### Inventory Price Structure:
+- Dual price: lastPurchasePrice (gerçek alım) + marketPrice (güncel piyasa, ürün fiyatlama)
+- inventory_price_history: fiyat geçmişi (purchase/market), kaynak (excel_import/manual/purchase_order)
+- materialType: HM/YM/MM/TM/TK (Excel import mapping)
+- Unit conversion: purchaseUnit (KG/ADET) ↔ recipeUnit (g/ml) via conversionFactor
+- Excel Import API: POST /api/inventory/import-excel (preview + import modes, 408 material parse)
+- Price update API: PATCH /api/inventory/:id/market-price (satınalma monthly update)
 
 ### Protected Route Group Mapping (client/src/components/protected-route.tsx):
 - `admin` → ['admin']
