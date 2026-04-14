@@ -325,7 +325,7 @@ const RECETELER: ModuleCardConfig = {
   icon: BookOpen,
   iconBg: "#ef4444",
   iconColor: "#ffffff",
-  path: "/receteler",
+  path: "/fabrika/receteler",
   order: 16,
 };
 
@@ -379,7 +379,7 @@ export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   muhasebe: [CONTROL, IK_PERSONEL, BORDRO_PDKS, RAPORLAR, FINANS],
   satinalma: [CONTROL, OPERASYON, STOK, RAPORLAR],
   marketing: [CONTROL, MUSTERI, RAPORLAR, OPERASYON],
-  gida_muhendisi: [CONTROL, FABRIKA, OPERASYON, RAPORLAR],
+  gida_muhendisi: [CONTROL, FABRIKA_MODUL, RECETELER, OPERASYON, RAPORLAR],
   kalite_kontrol: [CONTROL, FABRIKA, OPERASYON, RAPORLAR],
   teknik: [CONTROL, EKIPMAN_ARIZA, OPERASYON, RAPORLAR],
   destek: [CONTROL, MUSTERI, OPERASYON, RAPORLAR],
@@ -397,6 +397,8 @@ export const ROLE_MODULES: Record<string, ModuleCardConfig[]> = {
   // ── Factory ──
   fabrika_mudur: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR, RECETELER],
   uretim_sefi: [CONTROL, FABRIKA_MODUL, PERSONEL_YONETIMI, RAPORLAR, RECETELER],
+  recete_gm: [CONTROL, FABRIKA_MODUL, RECETELER, STOK, RAPORLAR],
+  sef: [CONTROL, FABRIKA_MODUL, RECETELER, RAPORLAR],
   fabrika_sorumlu: [CONTROL, FABRIKA_MODUL, PROFIL],
   fabrika_operator: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],
   fabrika_personel: [BENIM_GUNUM, FABRIKA_MODUL, PROFIL],

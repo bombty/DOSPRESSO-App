@@ -772,7 +772,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   recete_gm: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'factory-compliance', 'reports',
+    'factory-analytics', 'factory-compliance', 'stock-management', 'reports',
     'notifications',
   ],
 };

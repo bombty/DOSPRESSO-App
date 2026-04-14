@@ -26,7 +26,7 @@ const SUPERVISOR_ROLES = ["supervisor", "supervisor_buddy", "mudur"];
 const STAFF_ROLES = ["stajyer", "bar_buddy", "barista"];
 const FACTORY_ROLES = [
   "fabrika_mudur", "uretim_sefi", "fabrika_sorumlu", "fabrika_personel",
-  "fabrika_pisman", "fabrika_depo", "fabrika_kalite",
+  "fabrika_pisman", "fabrika_depo", "fabrika_kalite", "recete_gm", "sef",
 ];
 
 function MCLoading() {
