@@ -920,6 +920,18 @@ export const inventory = pgTable("inventory", {
   unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).default("0"),
   lastPurchasePrice: numeric("last_purchase_price", { precision: 10, scale: 2 }),
   
+  // Piyasa fiyatı (güncel — ürün satış fiyatı hesabında kullanılır)
+  marketPrice: numeric("market_price", { precision: 10, scale: 2 }),
+  marketPriceUpdatedAt: timestamp("market_price_updated_at"),
+  
+  // Malzeme sınıfı (Excel: HM/YM/MM/TM/TK)
+  materialType: varchar("material_type", { length: 10 }),
+  
+  // Birim dönüşümü (satınalma birimi ↔ reçete birimi)
+  purchaseUnit: varchar("purchase_unit", { length: 20 }),  // Excel/satınalma birimi: KG, ADET, LT
+  recipeUnit: varchar("recipe_unit", { length: 20 }),      // Reçete birimi: g, ml
+  conversionFactor: numeric("conversion_factor", { precision: 12, scale: 4 }), // 1 purchaseUnit = X recipeUnit (örn: 1 KG = 1000 g)
+  
   warehouseLocation: varchar("warehouse_location", { length: 100 }),
   storageConditions: text("storage_conditions"),
   shelfLife: integer("shelf_life"),
@@ -939,6 +951,7 @@ export const inventory = pgTable("inventory", {
   index("inventory_barcode_idx").on(table.barcode),
   index("inventory_active_idx").on(table.isActive),
   index("inventory_qr_code_idx").on(table.qrCode),
+  index("inventory_material_type_idx").on(table.materialType),
 ]);
 
 export const insertInventorySchema = createInsertSchema(inventory).omit({
@@ -949,6 +962,40 @@ export const insertInventorySchema = createInsertSchema(inventory).omit({
 
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
 export type Inventory = typeof inventory.$inferSelect;
+
+// ── Fiyat Geçmişi (Piyasa + Alım fiyat takibi) ──
+
+export const inventoryPriceHistory = pgTable("inventory_price_history", {
+  id: serial("id").primaryKey(),
+  inventoryId: integer("inventory_id").notNull().references(() => inventory.id, { onDelete: "cascade" }),
+  
+  priceType: varchar("price_type", { length: 20 }).notNull(), // "purchase" | "market"
+  price: numeric("price", { precision: 12, scale: 2 }).notNull(),
+  previousPrice: numeric("previous_price", { precision: 12, scale: 2 }),
+  changePercent: numeric("change_percent", { precision: 6, scale: 2 }),
+  
+  // Kaynak
+  source: varchar("source", { length: 30 }).notNull(), // "excel_import" | "manual" | "purchase_order" | "market_update"
+  sourceReferenceId: integer("source_reference_id"), // purchaseOrder ID veya import batch ID
+  
+  effectiveDate: date("effective_date").notNull(),
+  notes: text("notes"),
+  
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("iph_inventory_idx").on(table.inventoryId),
+  index("iph_type_idx").on(table.priceType),
+  index("iph_date_idx").on(table.effectiveDate),
+  index("iph_inventory_type_date_idx").on(table.inventoryId, table.priceType, table.effectiveDate),
+]);
+
+export const insertInventoryPriceHistorySchema = createInsertSchema(inventoryPriceHistory).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertInventoryPriceHistory = z.infer<typeof insertInventoryPriceHistorySchema>;
+export type InventoryPriceHistory = typeof inventoryPriceHistory.$inferSelect;
 
 // Stok Hareketleri
 export const inventoryMovementTypeEnum = ["giris", "cikis", "transfer", "uretim_giris", "uretim_cikis", "sayim_duzeltme", "fire", "iade"] as const;

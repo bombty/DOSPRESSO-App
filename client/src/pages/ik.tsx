@@ -67,7 +67,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
-  Building2,
+  Landmark,
   MapPin,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
@@ -938,7 +938,7 @@ export default function IKPage() {
                                   </div>
                                 ) : (employee as any).department ? (
                                   <div className="flex items-center gap-1">
-                                    <Building2 className="h-3 w-3" />
+                                    <Landmark className="h-3 w-3" />
                                     <span className="truncate">{(employee as any).department}</span>
                                   </div>
                                 ) : (
@@ -1002,7 +1002,7 @@ export default function IKPage() {
                                       </div>
                                     ) : (employee as any).department ? (
                                       <div className="flex items-center gap-1">
-                                        <Building2 className="h-3 w-3" />
+                                        <Landmark className="h-3 w-3" />
                                         <span className="truncate">{(employee as any).department}</span>
                                       </div>
                                     ) : (

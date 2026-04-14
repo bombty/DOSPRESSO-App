@@ -11,6 +11,7 @@ import { z } from "zod";
 import { users } from "./schema-02";
 import { factoryProducts, factoryStations } from "./schema-08";
 import { factoryShiftSessions } from "./schema-08";
+import { inventory } from "./schema-09";
 import { sql } from "drizzle-orm";
 
 // ────────────────────────────────────────
@@ -63,7 +64,7 @@ export const factoryKeyblendIngredients = pgTable("factory_keyblend_ingredients"
   showNameToGm: boolean("show_name_to_gm").default(false),    // İsim gösterilsin mi?
   // Oran ASLA gösterilmez GM'e — sadece admin+recete_gm görür
 
-  rawMaterialId: integer("raw_material_id"),                  // Stok takibi FK (opsiyonel)
+  rawMaterialId: integer("raw_material_id").references(() => inventory.id, { onDelete: "set null" }),
   sortOrder: integer("sort_order").default(0),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -212,7 +213,7 @@ export const factoryRecipeIngredients = pgTable("factory_recipe_ingredients", {
   // Keyblend bağlantısı (ingredient_type='keyblend' ise)
   keyblendId: integer("keyblend_id").references(() => factoryKeyblends.id, { onDelete: "set null" }),
 
-  rawMaterialId: integer("raw_material_id"),                  // Stok FK (opsiyonel)
+  rawMaterialId: integer("raw_material_id").references(() => inventory.id, { onDelete: "set null" }),
   sortOrder: integer("sort_order").default(0),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
