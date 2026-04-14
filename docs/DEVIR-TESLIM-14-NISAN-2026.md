@@ -1,54 +1,70 @@
 # DOSPRESSO Devir Teslim — 14 Nisan 2026 (MEGA OTURUM)
-## Son Commit: 2c7490eb | Sistem: 464 tablo, 1711 endpoint, 313 sayfa, 30 rol
+## Son Commit: 0b406c42 | Sistem: 468 tablo, 1720 endpoint, 31 rol, 24 QG
 
 ---
 
-## TAMAMLANAN İŞLER (20 commit)
+## TAMAMLANAN İŞLER (25+ commit)
 
-| # | İş | Commit | Replit |
-|---|-----|--------|:-----:|
-| 1 | Motor birleştirme (unified payroll) | d3ff92bd | ✅ |
-| 2 | Sidebar rol çakışmaları (allowedRoles) | 64c2c950 | ✅ |
-| 3 | Sidebar active highlight (?tab=) | bbf0cc21 | ✅ |
-| 4 | sql.raw refactoring (23→10) | fdbc1c57 | ✅ |
-| 5 | moduleFlags seed fix | fdbc1c57 | ✅ |
-| 6 | 3 fabrika rolü ROLE_MAPPING | c7611876 | ✅ |
-| 7 | Reçete versiyonlama altyapısı (schema) | 3438ed8e | ✅ |
-| 8 | gida_muhendisi yetki temizliği | 3438ed8e | ✅ |
-| 9 | MRP-Light tasarım dokümanı (373 satır) | 01540cd0 | — |
-| 10 | İK Building2 crash fix | 8defacff | ✅ |
-| 11 | Inventory fiyat yapısı (6 kolon + 1 tablo) | 8defacff | ✅ |
-| 12 | rawMaterialId FK (recipe→inventory) | 8defacff | ✅ |
-| 13 | RGM/Şef dashboard modülleri (0 modül fix) | 8a76670e | ✅ |
-| 14 | Inventory Excel import API (3 endpoint) | 8a76670e | ✅ |
-| 15 | Otomatik reçete versiyonlama (PATCH→snapshot) | 817c5a8c | ✅ |
-| 16 | 805 malzeme seed data (JSON) | bde2898f | ✅ |
-| 17 | Quality gate 21→24 madde | 171be59e | ✅ |
-| 18 | 805 malzeme seed scripti | 4702b9b3 | ✅ |
-| 19 | 805 malzeme DB import (920 toplam) | Replit #94 | ✅ |
-| 20 | Reçete→Inventory eşleştirme scripti | 2c7490eb | ⏳ |
+### Altyapı
+- Motor birleştirme (unified payroll) — PDKS + Excel + SGK/Vergi
+- sql.raw refactoring (23→10)
+- moduleFlags seed fix
+- Sidebar rol çakışmaları + highlight fix
+- İK Building2 crash fix
+
+### Rol Sistemi (30→31 rol)
+- 3 fabrika rolü ROLE_MAPPING (sef, recete_gm, uretim_sefi)
+- gida_muhendisi yetki temizliği (branch→factory only)
+- RGM/Şef dashboard modülleri (0 modül→5 modül fix)
+- **Depocu rolü (fabrika_depo)** — 8 dosya tam tanımlama
+
+### Reçete Sistemi
+- Versiyonlama altyapısı (schema + FK)
+- **Otomatik PATCH→snapshot** (ingredients + steps + cost)
+- rawMaterialId FK (recipe→inventory bağlantısı)
+- **14/14 reçete eşleştirme** (fuzzy matching + manuel fix)
+
+### Inventory & Fiyat
+- Fiyat yapısı (6 kolon + 1 tablo: inventory_price_history)
+- **926 malzeme** (115 mevcut + 805 Excel + 6 yeni hammadde)
+- **1501 fiyat kaydı** (2025+2026 aylık alım geçmişi)
+- Excel import API (3 endpoint)
+- Birim dönüşümü (KG→g, LT→ml)
+
+### MRP-Light (YENİ)
+- **4 tablo:** daily_material_plans, plan_items, leftovers, pick_logs
+- **9 endpoint:** plan oluşturma, çekme, teslim alma, artan kayıt, doğrulama
+- Cinnabon×2 batch test: 14 kalem otomatik hesaplandı ✅
+- Artan malzeme→ertesi gün eşleştirme algoritması
+
+### Dokümanlar
+- MRP-Light tasarım dokümanı (373 satır)
+- Quality gate 21→24 madde
+- Skill dosyaları güncel
+
+---
 
 ## VERİ DURUMU
-- **Inventory:** 920 malzeme (115 mevcut + 805 yeni)
-- **Fiyat geçmişi:** 1501 kayıt
-- **Malzeme türleri:** HM(146), YM(67), MM(93), TM(453), TK(46)
-- **Fiyatlı malzeme:** 590 / 805
+| Metrik | Değer |
+|--------|:-----:|
+| Tablo (schema) | 468 |
+| Tablo (DB) | 435 |
+| Endpoint | 1720 |
+| Rol (kod) | 31 |
+| QG madde | 24 |
+| Inventory | 926 |
+| Fiyat kaydı | 1501 |
+| Reçete eşleştirme | 14/14 |
+| MRP plan test | Cinnabon×2=14 kalem ✅ |
+
+---
 
 ## YENİ OTURUMDA YAPILACAK
 | # | İş | Öncelik |
 |---|-----|:------:|
-| 1 | Reçete→inventory eşleştirme sonuçlarını kontrol et | 🔴 |
-| 2 | Depocu rolü oluşturma | 🟡 |
-| 3 | Satınalma aylık fiyat hatırlatma (Dobody) | 🟡 |
-| 4 | MRP-Light (4 tablo + API) | 🟡 |
-| 5 | Dashboard widgetları (gıda müh. + RGM) | 🟡 |
-| 6 | Control Centrum v4 (15 rol dashboard) | 🟢 |
-
-## GÜNCEL SAYILAR
-| Metrik | Değer |
-|--------|:-----:|
-| Tablo (schema) | 464 |
-| Endpoint | 1711 |
-| QG madde | 24 |
-| Inventory | 920 |
-| Fiyat kaydı | 1501 |
+| 1 | MRP maliyet hesaplama düzeltmesi (birim dönüşüm) | 🔴 |
+| 2 | Satınalma aylık fiyat hatırlatma (Dobody) | 🟡 |
+| 3 | Dashboard widgetları (gıda müh. + RGM + depocu) | 🟡 |
+| 4 | MRP UI sayfaları (plan görünümü, çekme listesi) | 🟡 |
+| 5 | Control Centrum v4 (15 rol dashboard) | 🟢 |
+| 6 | dashboard-data sql.raw (39 çağrıcı) | 🟢 |

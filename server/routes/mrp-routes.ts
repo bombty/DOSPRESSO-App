@@ -165,10 +165,17 @@ router.post("/api/mrp/generate-daily-plan", isAuthenticated, requireRole(PLAN_RO
       const leftoverQty = leftoverMap.get(invId) || 0;
       const netPick = Math.max(0, item.totalRequired - leftoverQty);
 
-      // Birim maliyet
-      const [inv] = await db.select({ unitCost: inventory.unitCost })
-        .from(inventory).where(eq(inventory.id, invId)).limit(1);
-      totalCost += netPick * Number(inv?.unitCost || 0);
+      // Birim maliyet hesapla (marketPrice KG başına, netPick gram cinsinden)
+      const [inv] = await db.select({
+        marketPrice: inventory.marketPrice,
+        lastPurchasePrice: inventory.lastPurchasePrice,
+        conversionFactor: inventory.conversionFactor,
+      }).from(inventory).where(eq(inventory.id, invId)).limit(1);
+
+      const pricePerPurchaseUnit = Number(inv?.marketPrice || inv?.lastPurchasePrice || 0);
+      const convFactor = Number(inv?.conversionFactor || 1000); // 1 KG = 1000 g default
+      const pricePerRecipeUnit = convFactor > 0 ? pricePerPurchaseUnit / convFactor : 0;
+      totalCost += netPick * pricePerRecipeUnit;
 
       await db.insert(dailyMaterialPlanItems).values({
         planId,
@@ -185,7 +192,7 @@ router.post("/api/mrp/generate-daily-plan", isAuthenticated, requireRole(PLAN_RO
 
     // Toplam maliyet güncelle
     await db.update(dailyMaterialPlans).set({
-      totalCostEstimate: String(totalCost),
+      totalCostEstimate: String(Math.round(totalCost * 100) / 100),
     }).where(eq(dailyMaterialPlans.id, planId));
 
     // Kullanılan artanları işaretle
@@ -203,7 +210,7 @@ router.post("/api/mrp/generate-daily-plan", isAuthenticated, requireRole(PLAN_RO
       planId,
       planDate,
       totalItems: mergedItems.size,
-      totalCostEstimate: totalCost,
+      totalCostEstimate: Math.round(totalCost * 100) / 100,
       leftoverUsed: [...leftoverMap.entries()].filter(([k]) => mergedItems.has(k)).length,
     });
   } catch (error) {
