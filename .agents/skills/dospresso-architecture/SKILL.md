@@ -187,6 +187,30 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - PDF generator: `server/utils/pdf-generator.ts` (pdf-lib)
 - PDF export: `GET /api/payroll/export/pdf/:year/:month`
 
+### Recipe System (Factory):
+- 9 tables in schema-22: factory_recipes, ingredients, steps, keyblends, keyblend_ingredients, production_logs, recipe_versions, category_access, ingredient_nutrition
+- 4-tier permission: admin > recete_gm > sef > view-only (gida_muhendisi, operators)
+- Keyblend secret: only admin + recete_gm see contents. Others see name + total percentage only
+- Recipe versioning: factory_recipe_versions (snapshot + costSnapshot + diff + approval)
+- Production logs: recipeVersionId + recipeVersionNumber captured at start-production
+- QC link: production_logs.qualityScore + qcNotes
+- 14 EU/TR allergens auto-detected from ingredients
+- Cinnabon seed data: 15 ingredients, 10 steps, 1 keyblend (KB-CIN01)
+
+### Protected Route Group Mapping (client/src/components/protected-route.tsx):
+- `admin` → ['admin']
+- `ceo`, `cgo` → ['admin', 'hq']
+- `muhasebe`, `muhasebe_ik`, `teknik`, `destek`, `coach`, `satinalma`, `marketing`, `trainer`, `kalite_kontrol`, `gida_muhendisi` → ['hq']
+- `fabrika`, `fabrika_mudur` → ['fabrika', 'hq']
+- `fabrika_operator`, `sef`, `recete_gm`, `uretim_sefi` → ['fabrika']
+- `supervisor`, `supervisor_buddy`, `barista`, `bar_buddy`, `stajyer`, `mudur`, `yatirimci_branch` → ['sube']
+- Guards: HQOnly=['admin','hq'], FabrikaOnly=['admin','hq','fabrika'], ExecutiveOnly=explicit role list
+
+### Key Role Notes:
+- `gida_muhendisi` (Sema): Factory-only, QC approve, food safety. NO branch_orders/inventory. Has factory-recipes sidebar (read-only)
+- `recete_gm` (RGM): Full recipe control + Keyblend + production planning + cost analysis. Fabrika group
+- `sef`: Recipe edit (category-restricted), production mode. Fabrika group
+
 ## Module Connections (Key Dependencies)
 - Composite Score depends on: checklist, training, attendance, feedback, tasks
 - Payroll depends on: PDKS, position_salaries, scheduled_offs

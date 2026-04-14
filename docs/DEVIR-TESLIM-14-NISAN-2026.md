@@ -1,12 +1,12 @@
 # DOSPRESSO Devir Teslim — 14 Nisan 2026
-## Son Commit: fdbc1c57 | Sistem: 463 tablo (schema), 1708 endpoint, 313 sayfa, 30 rol
+## Son Commit: 01540cd0 | Sistem: 463 tablo (schema), 430 (DB), 1708 endpoint, 313 sayfa, 30 rol
 
 ---
 
 ## 1. OTURUM ÖZETİ
 
-Bu oturumda 4 commit, 12 dosya değişti.
-Devir teslim listesindeki tüm işler + Replit sağlık raporundan gelen ek sorunlar tamamlandı.
+Bu oturumda 9 commit, ~20 dosya değişti.
+Devir teslim listesindeki tüm işler + Replit raporundan gelen ek sorunlar + gıda mühendisi rol analizi tamamlandı.
 
 ---
 
@@ -55,8 +55,30 @@ Devir teslim listesindeki tüm işler + Replit sağlık raporundan gelen ek soru
 - product_recipes tablosu korundu (silinmedi)
 
 ### 2.7 Skill Dosyaları Güncelleme ✅
-- `dospresso-architecture`: 463 tablo, 1708 endpoint, 30 rol, unified payroll engine, 3 yeni fabrika rolü
+- `dospresso-architecture`: 463 tablo, 1708 endpoint, 30 rol, unified payroll engine, 3 yeni fabrika rolü, reçete sistemi, ROLE_MAPPING dokümantasyonu
 - `dospresso-quality-gate`: +3 yeni madde (19: sql.raw baseline, 20: sidebar↔route, 21: payroll unified) → 21 madde
+
+### 2.8 Fabrika Rol Fix ✅
+- `protected-route.tsx`: sef, recete_gm, uretim_sefi → fabrika grubu (FabrikaOnly erişim)
+- `menu-service.ts`: gida_muhendisi sidebar'ına factory-recipes eklendi (read-only)
+- Bu fix olmadan 3 fabrika rolü hiçbir FabrikaOnly sayfaya erişemiyordu
+
+### 2.9 Reçete Versiyonlama Altyapısı ✅
+- `factory_production_logs`: +recipeVersionId, +recipeVersionNumber (üretim→versiyon bağlantısı)
+- `factory_recipe_versions`: +costSnapshot (maliyet snapshot'ı per versiyon)
+- `start-production` endpoint: aktif reçete versiyonunu otomatik yakalar
+- Otomatik versiyon oluşturma (PATCH → snapshot) Sprint 2'de planlanıyor
+
+### 2.10 Gıda Mühendisi Yetki Temizliği ✅
+- gida_muhendisi: branch_orders→[], branch_inventory→[], branch_inspection→[view]
+- Sema sadece fabrikada, şube işlemleri Coach/Trainer'a ait
+
+### 2.11 Gıda Mühendisi Analiz & MRP-Light Tasarımı ✅
+- 373 satırlık planlama dokümanı: `docs/GIDA-MUHENDISI-ANALIZ-VE-MRP-TASARIMI.md`
+- 11 eksik gıda mühendisi işlevi tespit edildi
+- 7 aksiyon→etki senaryosu (QC ret, HACCP fail, allerjen güncelleme, hammadde ret, reçete değişikliği, artan malzeme, malzeme çekme)
+- 4 yeni tablo tasarımı (daily_material_plans, plan_items, leftovers, pick_logs)
+- 5 fazlı uygulama planı (F0-F5)
 
 ---
 
@@ -68,27 +90,37 @@ Devir teslim listesindeki tüm işler + Replit sağlık raporundan gelen ek soru
 | 64c2c950 (Sidebar rol fix) | Build + rol filtreleme | ✅ |
 | bbf0cc21 (Sidebar highlight) | Build + mantıksal simülasyon | ✅ |
 | fdbc1c57 (sql.raw + seed fix) | Build + seed log + API test | ✅ |
+| c7611876 (Fabrika rol fix) | ROLE_MAPPING + sidebar | ✅ |
+| 3438ed8e (Reçete versiyonlama) | DB migration + API + login | ✅ |
 
 ---
 
-## 4. BİLİNEN SORUNLAR (düşük öncelik)
+## 4. BİLİNEN SORUNLAR
 
-1. **sql.raw kalan 10**: dashboard-data-routes (3 utility fn, 39 çağrıcı), unified-dashboard-routes (3), seed.ts (3, dev-only), system-health.ts (1)
-2. **6 orphan sayfa dosyası**: academy-explore, ai-assistant, coach-content-library, misafir-memnuniyeti-modul, raporlar-finansal, raporlar-insight
-3. **31 eski payroll kaydı**: gross_total=0 (eski motor, yeniden hesaplama kararı gerekiyor)
-4. **Eski monthly_payrolls tablosu**: schema-07'de tanımlı, monthly_payroll (schema-12) ile çakışma potansiyeli
+1. **Reçete→Inventory bağlantısı KOPUK**: 14 ingredient'ın tamamında raw_material_id=NULL. MRP-Light için önkoşul
+2. **Inventory verisi eksik**: DB'de 115 malzeme, Excel'de 408. Kategori isimleri farklı
+3. **Depocu rolü YOK**: Sistemde tanımlı değil, oluşturulması gerekiyor
+4. **Birim dönüşümü**: Excel KG/ADET, reçeteler gram kullanıyor
+5. **İki fiyat katmanı**: Piyasa fiyatı (güncel) vs gerçek stok maliyeti (alım fiyatı) — ikisi farklı
+6. **factory_recipe_versions boş**: Henüz hiç versiyon oluşturulmamış (beklenen — Sprint 2'de otomatik)
+7. **sql.raw kalan 10**: dashboard-data (3+3), seed (3), system-health (1)
+8. **6 orphan sayfa dosyası**: erişilemiyor, ölü kod
 
 ---
 
-## 5. YENİ OTURUMDA YAPILABİLECEKLER
+## 5. YENİ OTURUMDA YAPILACAK
 
 | # | İş | Süre | Öncelik |
 |---|-----|------|:-------:|
-| 1 | dashboard-data sql.raw refactoring (39 çağrıcı migrasyon) | 3 saat | 🟡 |
-| 2 | Eski payroll kayıtları unified ile yeniden hesaplama | 1 saat | 🟡 |
-| 3 | Cost dashboard UI | 4+ saat | 🟡 |
-| 4 | Orphan sayfa temizliği (6 dosya) | 30 dk | 🟢 |
-| 5 | Control Centrum v4 (15 rol dashboard) | 8+ saat | 🔴 |
+| 1 | Inventory fiyat yapısı (piyasa + stok maliyeti) | 2-3 saat | 🔴 |
+| 2 | Excel import → inventory + fiyat geçmişi (408 malzeme) | 3-4 saat | 🔴 |
+| 3 | Reçete → inventory bağlantısı (raw_material_id) | 2 saat | 🔴 |
+| 4 | Otomatik reçete versiyonlama (PATCH → snapshot) | 2-3 saat | 🟡 |
+| 5 | Satınalma aylık fiyat hatırlatma (Dobody) | 1 saat | 🟡 |
+| 6 | Depocu rolü oluşturma | 1 saat | 🟡 |
+| 7 | Malzeme çekme (MRP-Light) — 4 tablo + API | 4-6 saat | 🟡 |
+| 8 | Dashboard widgetları (gıda müh. + RGM) | 3-4 saat | 🟢 |
+| 9 | Control Centrum v4 (15 rol dashboard) | 8+ saat | 🟢 |
 
 ---
 
