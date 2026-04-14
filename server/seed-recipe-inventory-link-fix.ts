@@ -25,7 +25,7 @@ const MISSING_MATERIALS = [
 const UNCERTAIN_FIXES: { ingredientName: string; inventoryCode: string }[] = [
   { ingredientName: "Yaş maya", inventoryCode: "H-1006" },           // Yaş Maya 500 gr*24
   { ingredientName: "Vanilya özütü", inventoryCode: "H-1009" },      // Vanilya Dkt
-  { ingredientName: "İnvert şeker", inventoryCode: "HM-NEW-007" },
+  { ingredientName: "İnvert şeker", inventoryCode: "M-1104" },        // Creamice Base Şurup = İnvert şeker (kendi üretim)
   { ingredientName: "Whey protein tozu", inventoryCode: "HM-NEW-006" },
 ];
 
@@ -38,10 +38,6 @@ async function fixLinks() {
   // Whey protein de ekle
   MISSING_MATERIALS.push({
     code: "HM-NEW-006", name: "Whey Protein Tozu", category: "hammadde", unit: "kg",
-    materialType: "hammadde", purchaseUnit: "KG", recipeUnit: "g", conversionFactor: "1000",
-  });
-  MISSING_MATERIALS.push({
-    code: "HM-NEW-007", name: "İnvert Şeker", category: "hammadde", unit: "kg",
     materialType: "hammadde", purchaseUnit: "KG", recipeUnit: "g", conversionFactor: "1000",
   });
 
@@ -112,7 +108,7 @@ async function fixLinks() {
       else if (nameLower.includes("alba") || nameLower.includes("margarin")) invCode = "HM-NEW-004";
       else if (nameLower.includes("gliserin") || nameLower.includes("glycerin")) invCode = "HM-NEW-005";
       else if (nameLower.includes("whey") || nameLower.includes("protein tozu")) invCode = "HM-NEW-006";
-      else if (nameLower.includes("invert") || nameLower.includes("İnvert")) invCode = "HM-NEW-007";
+      else if (nameLower.includes("invert") || nameLower.includes("İnvert")) invCode = "M-1104"; // Creamice Base = İnvert şeker
     }
 
     if (invCode) {
