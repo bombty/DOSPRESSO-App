@@ -39,7 +39,7 @@ export default function SatinalmaCentrum() {
         { label: "Kritik Stok", value: criticalStock, variant: criticalStock > 0 ? "alert" as KpiVariant : "ok" as KpiVariant },
         { label: "Açık Sipariş", value: (orders ?? []).length, variant: "info" as KpiVariant },
       ]}
-      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => navigate("/stok")} className="text-xs h-7">Sipariş</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
+      actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => navigate("/satinalma/stok-yonetimi")} className="text-xs h-7">Sipariş</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={
         <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({
           id: a.id, title: a.title || a.message, sub: a.description, mode: (a.actionType === "info" ? "info" : "action") as any,
@@ -61,15 +61,15 @@ export default function SatinalmaCentrum() {
           { label: "Güncellenen", value: dashData?.priceUpdated ?? "—" },
           { label: "Artış olan", value: dashData?.priceIncreased ?? "—", color: "#f87171" },
           { label: "Stoktaki fark", value: dashData?.priceDiff ?? "—", color: "#f87171" },
-        ]} onLink={() => navigate("/stok")} />
+        ]} onLink={() => navigate("/satinalma/stok-yonetimi")} />
         <MiniStats title="📋 Sipariş Giriş-Çıkış" rows={[
           { label: "Bu ay sipariş", value: dashData?.totalOrders ?? "—" },
           { label: "Giriş yapılan", value: dashData?.receivedOrders ?? "—" },
           { label: "Giriş bekleyen", value: dashData?.pendingReceipt ?? "—", color: "#fbbf24" },
-        ]} onLink={() => navigate("/stok")} />
+        ]} onLink={() => navigate("/satinalma/stok-yonetimi")} />
       </div>
 
-      <Widget title="Tedarikçi Performans" onClick={() => navigate("/stok")}>
+      <Widget title="Tedarikçi Performans" onClick={() => navigate("/satinalma/stok-yonetimi")}>
         {(dashData?.suppliers ?? []).slice(0, 5).map((s: any, i: number) => (
           <ListItem key={i} title={`${s.name}: %${s.onTimeRate} zamanında`}
             priority={s.onTimeRate >= 85 ? "✓" : "⚠"} priorityColor={s.onTimeRate >= 85 ? "#4ade80" : "#fbbf24"} />

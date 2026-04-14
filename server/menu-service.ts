@@ -681,7 +681,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'ajanda', 'tasks-list', 'checklists', 'faults', 'equipment',
     'customer-satisfaction', 'lost-found', 'qr-scan', 'reports', 'knowledge-base', 'performance-dashboard',
     'notifications', 'ai-assistant', 'branch-stock-orders', 'crm-main',
-    'hr', 'shifts', 'attendance',
+    'hr', 'shifts', 'attendance', 'branch-shift-tracking',
   ],
   supervisor_buddy: [
     'branch-dashboard', 'tasks-list', 'checklists', 'lost-found', 'knowledge-base',
@@ -691,7 +691,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'branch-dashboard', 'ajanda', 'tasks-list', 'checklists', 'equipment', 'faults',
     'reports', 'customer-satisfaction', 'lost-found', 'qr-scan', 'knowledge-base', 'performance-dashboard',
     'notifications', 'branch-stock-orders', 'crm-main',
-    'hr', 'shifts', 'attendance',
+    'hr', 'shifts', 'attendance', 'branch-shift-tracking',
   ],
   yatirimci_branch: [
     'branch-dashboard', 'reports', 'financial-management', 'notifications',
@@ -778,7 +778,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
     'lost-found-hq', 'onboarding-programs', 'factory-keyblend',
     'notifications',
-    'admin-panel', 'project-list', 'sistem-atolyesi',
+    'admin-panel', 'dashboard-ayarlari', 'rol-yetkileri', 'project-list', 'sistem-atolyesi',
   ],
   uretim_sefi: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
