@@ -669,7 +669,7 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
 
 const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   barista: [
-    'branch-dashboard', 'tasks-list', 'training-academy', 'notifications', 'crm-main',
+    'branch-dashboard', 'tasks-list', 'training-academy', 'lost-found', 'notifications', 'crm-main',
   ],
   stajyer: [
     'branch-dashboard', 'training-academy', 'notifications', 'crm-main',
@@ -679,17 +679,17 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   supervisor: [
     'branch-dashboard', 'ajanda', 'tasks-list', 'checklists', 'faults', 'equipment',
-    'customer-satisfaction', 'reports', 'knowledge-base', 'performance-dashboard',
+    'customer-satisfaction', 'lost-found', 'qr-scan', 'reports', 'knowledge-base', 'performance-dashboard',
     'notifications', 'ai-assistant', 'branch-stock-orders', 'crm-main',
     'hr', 'shifts', 'attendance',
   ],
   supervisor_buddy: [
-    'branch-dashboard', 'tasks-list', 'checklists', 'knowledge-base',
+    'branch-dashboard', 'tasks-list', 'checklists', 'lost-found', 'knowledge-base',
     'notifications', 'ai-assistant', 'crm-main',
   ],
   mudur: [
     'branch-dashboard', 'ajanda', 'tasks-list', 'checklists', 'equipment', 'faults',
-    'reports', 'customer-satisfaction', 'knowledge-base', 'performance-dashboard',
+    'reports', 'customer-satisfaction', 'lost-found', 'qr-scan', 'knowledge-base', 'performance-dashboard',
     'notifications', 'branch-stock-orders', 'crm-main',
     'hr', 'shifts', 'attendance',
   ],
@@ -700,24 +700,29 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'dashboard', 'ceo-command-center', 'crm-main', 'tasks-list', 'reports', 'cowork', 'sistem-atolyesi',
   ],
   cgo: [
-    'dashboard', 'cgo-teknik-komuta', 'crm-main', 'tasks-list', 'reports', 'cowork', 'sistem-atolyesi',
+    'dashboard', 'cgo-teknik-komuta', 'branches-list', 'equipment', 'faults',
+    'crm-main', 'tasks-list', 'performance-dashboard', 'reports', 'cowork', 'sistem-atolyesi',
   ],
   yatirimci_hq: [
     'dashboard', 'reports', 'financial-management', 'notifications',
   ],
   coach: [
-    'dashboard', 'coach-kontrol-merkezi', 'crm-main', 'tasks-list', 'reports', 'cowork', 'sistem-atolyesi',
+    'dashboard', 'coach-kontrol-merkezi', 'branches-list', 'branch-inspection', 'checklists',
+    'crm-main', 'tasks-list', 'onboarding-programs', 'performance-dashboard',
+    'reports', 'knowledge-base', 'cowork', 'sistem-atolyesi',
   ],
   destek: [
     'dashboard', 'branches-list', 'equipment', 'faults',
     'crm-main', 'notifications',
   ],
   trainer: [
-    'dashboard', 'trainer-egitim-merkezi', 'crm-main', 'tasks-list', 'training-academy-hq', 'cowork', 'sistem-atolyesi',
+    'dashboard', 'trainer-egitim-merkezi', 'branches-list', 'branch-inspection',
+    'crm-main', 'tasks-list', 'training-academy-hq', 'onboarding-programs',
+    'knowledge-base', 'performance-dashboard', 'reports', 'cowork', 'sistem-atolyesi',
   ],
   kalite_kontrol: [
     'dashboard', 'quality-control', 'customer-satisfaction', 'food-safety',
-    'factory-quality', 'reports', 'notifications',
+    'factory-quality', 'branch-inspection', 'product-complaints', 'reports', 'notifications',
     'crm-main',
   ],
   gida_muhendisi: [
@@ -771,6 +776,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'accounting-main', 'financial-management', 'pdks', 'pdks-izin-gunleri', 'maas',
     'procurement-dashboard', 'stock-management',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
+    'lost-found-hq', 'onboarding-programs', 'factory-keyblend',
     'notifications',
     'admin-panel', 'project-list', 'sistem-atolyesi',
   ],
