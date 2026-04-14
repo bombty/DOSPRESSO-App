@@ -345,3 +345,42 @@ echo "SELECT column_name FROM information_schema.columns WHERE table_name='month
 
 **PASS**: 9 rows returned.
 **FAIL**: Missing unified payroll columns.
+
+---
+
+## 22. Recipe Auto-Versioning
+PATCH /api/factory/recipes/:id must create version snapshot before update.
+
+```bash
+grep "skipVersion\|changeDescription\|factoryRecipeVersions.*insert\|ingredientsSnapshot\|costSnapshot" server/routes/factory-recipes.ts | wc -l
+```
+
+**PASS**: 5+ lines found (version snapshot logic present).
+**FAIL**: Auto-versioning code missing from PATCH endpoint.
+
+---
+
+## 23. Inventory Price Structure
+inventory table must have dual price columns + inventory_price_history table must exist.
+
+```bash
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='inventory' AND column_name IN ('market_price','material_type','purchase_unit','recipe_unit','conversion_factor','market_price_updated_at') ORDER BY column_name;" | psql $DATABASE_URL
+echo "SELECT count(*) FROM information_schema.tables WHERE table_name='inventory_price_history';" | psql $DATABASE_URL
+```
+
+**PASS**: 6 columns + 1 table found.
+**FAIL**: Missing inventory price infrastructure.
+
+---
+
+## 24. RGM/Sef Dashboard Module Config
+recete_gm and sef must have module cards in ROLE_MODULES and be in FACTORY_ROLES.
+
+```bash
+grep "recete_gm:" client/src/components/home-screen/role-module-config.ts
+grep "sef:" client/src/components/home-screen/role-module-config.ts
+grep "recete_gm\|\"sef\"" client/src/components/mission-control/DashboardRouter.tsx
+```
+
+**PASS**: Both roles have ROLE_MODULES entries and are in FACTORY_ROLES.
+**FAIL**: "0 modül" on dashboard — role config missing.
