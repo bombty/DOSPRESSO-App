@@ -61,7 +61,6 @@ const Login = lazyWithRetry(() => import("@/pages/login"));
 const Register = lazyWithRetry(() => import("@/pages/register"));
 const ForgotPassword = lazyWithRetry(() => import("@/pages/forgot-password"));
 const ResetPassword = lazyWithRetry(() => import("@/pages/reset-password"));
-const Dashboard = lazyWithRetry(() => import("@/pages/dashboard"));
 const ControlDashboard = lazyWithRetry(() => import("@/pages/control-dashboard"));
 const HomeScreen = lazyWithRetry(() => import("@/components/home-screen/HomeScreen"));
 const Subeler = lazyWithRetry(() => import("@/pages/subeler"));
@@ -241,7 +240,6 @@ const HubPage = lazyWithRetry(() => import("@/pages/hub-page"));
 const AgentMerkezi = lazyWithRetry(() => import("@/pages/agent-merkezi"));
 const BenimGunum = lazyWithRetry(() => import("@/pages/benim-gunum"));
 const SubeOzet = lazyWithRetry(() => import("@/pages/sube-ozet"));
-const HQOzet = lazyWithRetry(() => import("@/pages/hq-ozet"));
 const KoclukPaneli = lazyWithRetry(() => import("@/pages/kocluk-paneli"));
 const SistemAtolyesi = lazyWithRetry(() => import("@/pages/sistem-atolyesi"));
 const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
@@ -405,7 +403,7 @@ function Router() {
         <>
           <Route path="/" component={HomeScreen} />
           <Route path="/control" component={ControlDashboard} />
-          <Route path="/control-legacy">{() => <ExecutiveOnly><Dashboard /></ExecutiveOnly>}</Route>
+          <Route path="/control-legacy">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/control"); }, []); return null; }}</Route>
           <Route path="/merkez-dashboard">{() => <ExecutiveOnly><MerkezDashboard /></ExecutiveOnly>}</Route>
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc">{() => <ExecutiveOnly><SubeNFCDetay /></ExecutiveOnly>}</Route>
