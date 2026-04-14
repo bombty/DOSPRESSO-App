@@ -312,6 +312,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "factory_production",
         scope: "both",
       },
+      {
+        id: "factory-keyblend",
+        titleTr: "Keyblend Yönetimi",
+        path: "/fabrika/keyblend-yonetimi",
+        icon: "FlaskConical",
+        moduleKey: "factory_production",
+        scope: "hq",
+      },
     ],
   },
 
@@ -782,7 +790,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'notifications',
   ],
   recete_gm: [
-    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
+    'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-keyblend', 'factory-quality', 'factory-stations',
     'factory-analytics', 'factory-compliance', 'factory-mrp', 'stock-management', 'reports',
     'notifications',
   ],
