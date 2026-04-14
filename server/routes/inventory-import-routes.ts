@@ -390,4 +390,72 @@ router.patch("/api/inventory/:id/market-price", isAuthenticated, async (req: any
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// GET /api/inventory/stale-prices — 30+ gün güncellenmemiş fiyatlar
+// ═══════════════════════════════════════════════════════════════════
+
+router.get("/api/inventory/stale-prices", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!IMPORT_ROLES.includes(user.role || "") && !["ceo", "cgo", "gida_muhendisi", "recete_gm", "fabrika_mudur"].includes(user.role || "")) {
+      return res.status(403).json({ error: "Yetkisiz" });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+
+    const staleItems = await db.execute(sql`
+      SELECT id, code, name, category, material_type, unit,
+        market_price, market_price_updated_at, last_purchase_price
+      FROM inventory
+      WHERE is_active = true
+        AND material_type IN ('hammadde', 'yari_mamul')
+        AND (market_price_updated_at IS NULL OR market_price_updated_at < ${thirtyDaysAgo}::timestamp)
+      ORDER BY market_price_updated_at ASC NULLS FIRST
+      LIMIT 50
+    `);
+
+    const totalStale = await db.execute(sql`
+      SELECT count(*)::int as count FROM inventory
+      WHERE is_active = true
+        AND material_type IN ('hammadde', 'yari_mamul')
+        AND (market_price_updated_at IS NULL OR market_price_updated_at < ${thirtyDaysAgo}::timestamp)
+    `);
+
+    res.json({
+      staleCount: totalStale.rows?.[0]?.count || 0,
+      items: staleItems.rows || [],
+      threshold: "30 gün",
+    });
+  } catch (error) {
+    console.error("[StalePrices] error:", error);
+    res.status(500).json({ error: "Stale fiyatlar yüklenemedi" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// GET /api/inventory/price-summary — Fiyat durumu özeti (dashboard)
+// ═══════════════════════════════════════════════════════════════════
+
+router.get("/api/inventory/price-summary", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const summary = await db.execute(sql`
+      SELECT
+        count(*)::int as total,
+        count(*) FILTER (WHERE market_price IS NOT NULL AND market_price::numeric > 0)::int as with_price,
+        count(*) FILTER (WHERE material_type = 'hammadde')::int as hammadde_count,
+        count(*) FILTER (WHERE material_type = 'yari_mamul')::int as yari_mamul_count,
+        count(*) FILTER (
+          WHERE material_type IN ('hammadde', 'yari_mamul')
+          AND (market_price_updated_at IS NULL OR market_price_updated_at < NOW() - INTERVAL '30 days')
+        )::int as stale_price_count
+      FROM inventory WHERE is_active = true
+    `);
+
+    res.json(summary.rows?.[0] || {});
+  } catch (error) {
+    console.error("[PriceSummary] error:", error);
+    res.status(500).json({ error: "Fiyat özeti yüklenemedi" });
+  }
+});
+
 export default router;
