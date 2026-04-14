@@ -215,6 +215,7 @@ const SatinalmaMega = lazyWithRetry(() => import("@/pages/satinalma-mega"));
 const MuhasebeCentrum = lazyWithRetry(() => import("@/pages/muhasebe-centrum"));
 const SatinalmaCentrum = lazyWithRetry(() => import("@/pages/satinalma-centrum"));
 const FabrikaCentrum = lazyWithRetry(() => import("@/pages/fabrika-centrum"));
+const MRPDailyPlan = lazyWithRetry(() => import("@/pages/mrp-daily-plan"));
 const FabrikaReceteler = lazyWithRetry(() => import("@/pages/fabrika-receteler"));
 const FabrikaReceteDetay = lazyWithRetry(() => import("@/pages/fabrika-recete-detay"));
 const FabrikaUretimModu = lazyWithRetry(() => import("@/pages/fabrika-uretim-modu"));
@@ -521,6 +522,7 @@ function Router() {
           <Route path="/muhasebe-centrum">{() => <ProtectedRoute allowedRoles={["muhasebe_ik","muhasebe","admin","ceo"]}><MuhasebeCentrum /></ProtectedRoute>}</Route>
           <Route path="/satinalma-centrum">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo"]}><SatinalmaCentrum /></ProtectedRoute>}</Route>
           <Route path="/fabrika-centrum">{() => <FabrikaOnly><FabrikaCentrum /></FabrikaOnly>}</Route>
+          <Route path="/fabrika/malzeme-cekme">{() => <FabrikaOnly><MRPDailyPlan /></FabrikaOnly>}</Route>
           <Route path="/depo-centrum">{() => <FabrikaOnly><DepoCentrum /></FabrikaOnly>}</Route>
           <Route path="/sube-centrum">{() => <ProtectedRoute allowedRoles={["mudur","supervisor","supervisor_buddy","admin","ceo","cgo","coach"]}><SubeCentrum /></ProtectedRoute>}</Route>
           <Route path="/supervisor-centrum">{() => <ProtectedRoute allowedRoles={["supervisor","supervisor_buddy","admin","ceo","cgo","coach","mudur"]}><SupervisorCentrum /></ProtectedRoute>}</Route>

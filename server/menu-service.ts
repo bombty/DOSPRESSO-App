@@ -304,6 +304,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "factory_compliance",
         scope: "both",
       },
+      {
+        id: "factory-mrp",
+        titleTr: "Malzeme Çekme",
+        path: "/fabrika/malzeme-cekme",
+        icon: "Package",
+        moduleKey: "factory_production",
+        scope: "both",
+      },
     ],
   },
 
@@ -734,7 +742,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   fabrika_mudur: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'factory-compliance', 'hr', 'shifts', 'reports',
+    'factory-analytics', 'factory-compliance', 'factory-mrp', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'crm-main',
   ],
   fabrika: [
@@ -744,7 +752,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'factory-dashboard', 'factory-kiosk', 'notifications',
   ],
   fabrika_depo: [
-    'factory-dashboard', 'factory-kiosk', 'stock-management', 'factory-quality', 'reports', 'notifications',
+    'factory-dashboard', 'factory-kiosk', 'factory-mrp', 'stock-management', 'factory-quality', 'reports', 'notifications',
   ],
   admin: [
     'dashboard', 'ajanda', 'tasks-list', 'checklists', 'equipment', 'faults',
@@ -760,7 +768,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   uretim_sefi: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'hr', 'shifts', 'reports',
+    'factory-analytics', 'factory-mrp', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'crm-main',
   ],
   fabrika_sorumlu: [
@@ -775,7 +783,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   recete_gm: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'factory-compliance', 'stock-management', 'reports',
+    'factory-analytics', 'factory-compliance', 'factory-mrp', 'stock-management', 'reports',
     'notifications',
   ],
 };
