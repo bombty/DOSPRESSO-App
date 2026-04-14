@@ -20,3 +20,4 @@ export * from './schema/schema-19-workshop';
 export * from './schema/schema-20-audit-v2';
 export * from './schema/schema-21-dobody-proposals';
 export * from './schema/schema-22-factory-recipes';
+export * from './schema/schema-23-mrp-light';
