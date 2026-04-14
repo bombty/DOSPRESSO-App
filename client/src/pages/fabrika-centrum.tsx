@@ -4,6 +4,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, Widget, MiniStats, ProgressWidget, ListItem, DobodySlot, Badge, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FabrikaCentrum() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const role = user?.role || "";
   const [period, setPeriod] = useState<TimePeriod>("today");
 
   const { data: stats, isLoading } = useQuery<any>({ queryKey: ["/api/factory/production-stats"], refetchInterval: 60000 });
@@ -33,6 +36,16 @@ export default function FabrikaCentrum() {
 
   // Reçete versiyonları (son değişiklikler)
   const { data: recipes = [] } = useQuery<any[]>({ queryKey: ["/api/factory/recipes"], staleTime: 300000 });
+
+  // Artan malzeme (gıda mühendisi doğrulama bekleyenler)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const { data: leftovers = [] } = useQuery<any[]>({
+    queryKey: ["/api/mrp/leftovers", yesterday],
+    queryFn: async () => { const r = await fetch(`/api/mrp/leftovers/${yesterday}`, { credentials: "include" }); if (!r.ok) return []; return r.json(); },
+    enabled: ["gida_muhendisi", "recete_gm", "admin"].includes(role),
+    staleTime: 120000,
+  });
+  const unverifiedLeftovers = leftovers.filter((l: any) => !l.verified_by && !l.verifiedBy);
 
   if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
@@ -138,6 +151,31 @@ export default function FabrikaCentrum() {
           { label: "Versiyon", value: recipes[0]?.version ? `v${recipes[0].version}` : "—" },
         ]} onLink={() => navigate("/fabrika/receteler")} />
       </div>
+
+      {/* ── Rol Bazlı Widgetlar ────────────────────────────── */}
+
+      {/* Gıda Mühendisi: Artan malzeme doğrulama */}
+      {["gida_muhendisi", "recete_gm", "admin"].includes(role) && unverifiedLeftovers.length > 0 && (
+        <Widget title="Artan Malzeme Doğrulama" badge={<Badge text={`${unverifiedLeftovers.length} bekliyor`} color="#fbbf24" />}
+          onClick={() => navigate("/fabrika/malzeme-cekme")}>
+          {unverifiedLeftovers.slice(0, 4).map((lo: any, i: number) => (
+            <ListItem key={i}
+              title={lo.inventory_name || lo.inventoryName || "Malzeme"}
+              meta={`${Number(lo.remaining_quantity || lo.remainingQuantity || 0).toLocaleString("tr-TR")} ${lo.unit}`}
+              priority={lo.condition === "good" ? "✓" : lo.condition === "marginal" ? "⚠" : "✗"}
+              priorityColor={lo.condition === "good" ? "#22c55e" : lo.condition === "marginal" ? "#fbbf24" : "#ef4444"} />
+          ))}
+        </Widget>
+      )}
+
+      {/* Depocu: Bugünkü çekme özeti */}
+      {["fabrika_depo", "admin"].includes(role) && mrpPlan?.plan && (
+        <MiniStats title="Bugünkü Çekme" rows={[
+          { label: "Toplam", value: `${mrpPlan.items?.length ?? 0} kalem` },
+          { label: "Çekilen", value: `${mrpPlan.items?.filter((i: any) => i.status === "picked" || i.status === "verified").length ?? 0}`, color: "#22c55e" },
+          { label: "Bekleyen", value: `${mrpPlan.items?.filter((i: any) => i.status === "pending").length ?? 0}`, color: "#fbbf24" },
+        ]} onLink={() => navigate("/fabrika/malzeme-cekme")} />
+      )}
     </CentrumShell>
   );
 }
