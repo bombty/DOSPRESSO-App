@@ -47,6 +47,13 @@ export default function FabrikaCentrum() {
   });
   const unverifiedLeftovers = leftovers.filter((l: any) => !l.verified_by && !l.verifiedBy);
 
+  // Stale fiyat uyarısı (satınalma, RGM, fabrika müdür)
+  const { data: priceSummary } = useQuery<any>({
+    queryKey: ["/api/inventory/price-summary"],
+    enabled: ["satinalma", "recete_gm", "fabrika_mudur", "admin"].includes(role),
+    staleTime: 300000,
+  });
+
   if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
   const efficiency = stats?.efficiency ?? 0;
@@ -175,6 +182,15 @@ export default function FabrikaCentrum() {
           { label: "Çekilen", value: `${mrpPlan.items?.filter((i: any) => i.status === "picked" || i.status === "verified").length ?? 0}`, color: "#22c55e" },
           { label: "Bekleyen", value: `${mrpPlan.items?.filter((i: any) => i.status === "pending").length ?? 0}`, color: "#fbbf24" },
         ]} onLink={() => navigate("/fabrika/malzeme-cekme")} />
+      )}
+
+      {/* Fiyat Uyarısı (satınalma, RGM, fabrika müdür) */}
+      {priceSummary && priceSummary.stale_price_count > 0 && ["satinalma", "recete_gm", "fabrika_mudur", "admin"].includes(role) && (
+        <MiniStats title="⚠ Fiyat Güncelleme" rows={[
+          { label: "Güncellenecek", value: `${priceSummary.stale_price_count} malzeme`, color: "#fbbf24" },
+          { label: "Toplam HM", value: `${priceSummary.hammadde_count}` },
+          { label: "Fiyatlı", value: `${priceSummary.with_price}/${priceSummary.total}` },
+        ]} onLink={() => navigate("/satinalma/stok-yonetimi")} />
       )}
     </CentrumShell>
   );
