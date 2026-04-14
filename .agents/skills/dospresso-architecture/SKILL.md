@@ -230,6 +230,27 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - `recete_gm` (RGM): Full recipe control + Keyblend + production planning + cost analysis. Fabrika group
 - `sef`: Recipe edit (category-restricted), production mode. Fabrika group
 
+### ROLE CONSISTENCY RULES (CRITICAL — check after every new role):
+When adding a new role, ALL 8 files must be updated:
+1. `shared/schema/schema-01.ts` — UserRole enum + FACTORY_ROLES/HQ_ROLES set
+2. `shared/schema/schema-02.ts` — PERMISSIONS map (every permission module)
+3. `client/src/components/protected-route.tsx` — ROLE_MAPPING (group assignment)
+4. `server/menu-service.ts` — MENU_BLUEPRINT + SIDEBAR_ALLOWED_ITEMS
+5. `client/src/components/home-screen/role-module-config.ts` — ROLE_MODULES (HomeScreen cards)
+6. `client/src/components/mission-control/DashboardRouter.tsx` — role routing
+7. `shared/module-manifest.ts` — module access per role
+8. `client/src/lib/role-routes.ts` — ROLE_HOME_ROUTES + ROLE_CONTROL_PATH
+
+Validation: 30/31 roles must be consistent (sube_kiosk intentionally excluded from ROLE_MAPPING).
+Sidebar audit doc: docs/SIDEBAR-AUDIT-14-NISAN-2026.md
+
+### Inventory & Price Data:
+- 926 materials (115 original + 805 Excel + 6 new raw materials)
+- 1501 price history records (2025+2026 monthly purchase prices)
+- 14/14 recipe→inventory links (raw_material_id)
+- İnvert şeker = M-1104 Creamice Base (dual: branch frappe + factory invert)
+- Stale price API: GET /api/inventory/stale-prices, GET /api/inventory/price-summary
+
 ## Module Connections (Key Dependencies)
 - Composite Score depends on: checklist, training, attendance, feedback, tasks
 - Payroll depends on: PDKS, position_salaries, scheduled_offs

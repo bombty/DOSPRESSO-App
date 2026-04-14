@@ -384,3 +384,54 @@ grep "recete_gm\|\"sef\"" client/src/components/mission-control/DashboardRouter.
 
 **PASS**: Both roles have ROLE_MODULES entries and are in FACTORY_ROLES.
 **FAIL**: "0 modül" on dashboard — role config missing.
+
+---
+
+## 25. Role Consistency Matrix
+All 30 non-kiosk roles must exist in: PERMISSIONS, ROLE_MAPPING, SIDEBAR, ROLE_MODULES, ROLE_HOME_ROUTES.
+
+```bash
+python3 -c "
+import re
+files = {
+  'PERM': 'shared/schema/schema-02.ts',
+  'MAP': 'client/src/components/protected-route.tsx',
+  'SIDE': 'server/menu-service.ts',
+  'MOD': 'client/src/components/home-screen/role-module-config.ts',
+  'HOME': 'client/src/lib/role-routes.ts',
+}
+for name, path in files.items():
+  with open(path) as f: c = f.read()
+  roles = set(re.findall(r'(\w+):\s*[\[\{]', c))
+  print(f'{name}: {len(roles)} roles')
+"
+```
+
+**PASS**: 30/31 roles consistent (sube_kiosk excluded).
+**FAIL**: Missing role in any file — add before commit.
+
+---
+
+## 26. Sidebar Blueprint Coverage
+Every MENU_BLUEPRINT item must be assigned to at least 1 role.
+
+```bash
+grep 'id: "' server/menu-service.ts | wc -l
+# Compare with roles that use them
+```
+
+**PASS**: 0 unassigned blueprint items.
+**FAIL**: Unused sidebar items found — assign to appropriate roles.
+
+---
+
+## 27. MRP-Light Tables
+4 MRP tables must exist in schema-23 and be exported.
+
+```bash
+grep "pgTable" shared/schema/schema-23-mrp-light.ts | grep -v import | wc -l
+grep "schema-23" shared/schema.ts
+```
+
+**PASS**: 4 tables, export present.
+**FAIL**: MRP schema missing or not exported.
