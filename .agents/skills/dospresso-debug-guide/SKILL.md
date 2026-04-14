@@ -482,3 +482,52 @@ curl -s http://localhost:5000/api/health
 grep -i "error\|crash\|FATAL" /tmp/server.log 2>/dev/null | tail -10
 grep -i "scheduler\|agent\|skill" /tmp/server.log 2>/dev/null | tail -5
 ```
+
+---
+
+## Role & Sidebar Access Debugging
+
+### Symptom: User can't access a page (403 or blank screen)
+1. Check ROLE_MAPPING in `client/src/components/protected-route.tsx`
+   - Role must be mapped to a group (e.g., fabrika, hq, branch)
+   - FabrikaOnly requires group `fabrika`, HQOnly requires group `hq`
+2. Check route protection in `client/src/App.tsx`
+   - FabrikaOnly, HQOnly, ExecutiveOnly, ProtectedRoute wrappers
+3. Check API endpoint auth: `requireRole()` or `requireManifestAccess()`
+
+```bash
+# Quick check: is role in ROLE_MAPPING?
+grep "fabrika_depo" client/src/components/protected-route.tsx
+
+# Quick check: what group is the role in?
+grep "ROLE_MAPPING" -A50 client/src/components/protected-route.tsx | grep "your_role"
+```
+
+### Symptom: Sidebar item missing for a role
+1. Check MENU_BLUEPRINT has the item (id + path)
+2. Check SIDEBAR_ALLOWED_ITEMS has the item for that role
+3. Check moduleKey matches an enabled module
+
+```bash
+# Is item in blueprint?
+grep 'id: "factory-mrp"' server/menu-service.ts
+
+# Is item assigned to role?
+grep -A5 "recete_gm:" server/menu-service.ts
+```
+
+### Symptom: HomeScreen shows 0 modules
+1. Check `client/src/components/home-screen/role-module-config.ts` has the role
+2. Check module-manifest.ts has the role in at least one module
+3. Run: `grep "your_role:" client/src/components/home-screen/role-module-config.ts`
+
+### Role Consistency Matrix Check
+```bash
+python3 -c "
+import re
+for name, path in [('PERM','shared/schema/schema-02.ts'),('MAP','client/src/components/protected-route.tsx'),('SIDE','server/menu-service.ts'),('MOD','client/src/components/home-screen/role-module-config.ts'),('HOME','client/src/lib/role-routes.ts')]:
+  with open(path) as f: c = f.read()
+  roles = set(re.findall(r'(\w+):\s*[\[\{\'\\']', c))
+  print(f'{name}: {len(roles)} roles')
+"
+```
