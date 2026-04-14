@@ -25,6 +25,15 @@ export default function FabrikaCentrum() {
     queryFn: async () => { const r = await fetch("/api/agent/actions?status=pending&limit=5", { credentials: "include" }); if (!r.ok) return []; const d = await r.json(); return Array.isArray(d) ? d : (d.data || d.actions || []); },
   });
 
+  // MRP — bugünkü malzeme planı
+  const today = new Date().toISOString().split("T")[0];
+  const { data: mrpPlan } = useQuery<any>({ queryKey: ["/api/mrp/daily-plan", today], queryFn: async () => {
+    const r = await fetch(`/api/mrp/daily-plan/${today}`, { credentials: "include" }); if (!r.ok) return null; return r.json();
+  }, staleTime: 60000 });
+
+  // Reçete versiyonları (son değişiklikler)
+  const { data: recipes = [] } = useQuery<any[]>({ queryKey: ["/api/factory/recipes"], staleTime: 300000 });
+
   if (isLoading) return <div className="p-4 space-y-4"><Skeleton className="h-10 w-64" /><Skeleton className="h-40 w-full" /></div>;
 
   const efficiency = stats?.efficiency ?? 0;
@@ -108,26 +117,26 @@ export default function FabrikaCentrum() {
       </div>
 
       <div className="grid grid-cols-3 gap-2.5">
-        {/* Personel Skor */}
-        <MiniStats title="Personel Performans" rows={[
-          { label: "Ort Hız", value: `${stats?.avgSpeed ?? "—"}/s` },
-          { label: "En İyi", value: stats?.topWorker ?? "—", color: "#22c55e" },
-          { label: "Devamsız", value: `${stats?.absentCount ?? 0}`, color: stats?.absentCount > 0 ? "#ef4444" : undefined },
-        ]} onLink={() => navigate("/ik")} />
+        {/* Malzeme Çekme (MRP) */}
+        <MiniStats title="Malzeme Çekme" rows={[
+          { label: "Bugün Plan", value: mrpPlan?.plan ? `${mrpPlan.items?.length ?? 0} kalem` : "Plan yok" },
+          { label: "Çekilen", value: mrpPlan?.plan ? `${mrpPlan.items?.filter((i: any) => i.status === "picked" || i.status === "verified").length ?? 0}` : "—", color: "#22c55e" },
+          { label: "Bekleyen", value: mrpPlan?.plan ? `${mrpPlan.items?.filter((i: any) => i.status === "pending").length ?? 0}` : "—", color: mrpPlan?.items?.some((i: any) => i.status === "pending") ? "#fbbf24" : undefined },
+        ]} onLink={() => navigate("/satinalma/stok-yonetimi")} />
 
         {/* Stok Durumu */}
         <MiniStats title="Ham Madde Stok" rows={[
           { label: "Toplam Ürün", value: `${(inventory ?? []).length}` },
           { label: "Kritik", value: `${criticalStock}`, color: criticalStock > 0 ? "#ef4444" : "#22c55e" },
           { label: "Sipariş Bkl", value: "—" },
-        ]} onLink={() => navigate("/fabrika/dashboard")} />
+        ]} onLink={() => navigate("/satinalma/stok-yonetimi")} />
 
         {/* Reçete */}
-        <MiniStats title="Reçete & Üretim" rows={[
-          { label: "Aktif Reçete", value: `${stats?.activeRecipes ?? "—"}` },
-          { label: "Güncellenen", value: `${stats?.updatedRecipes ?? 0}` },
-          { label: "Haftalık Plan", value: stats?.weeklyPlanStatus ?? "—" },
-        ]} onLink={() => navigate("/receteler")} />
+        <MiniStats title="Reçete & Versiyon" rows={[
+          { label: "Aktif Reçete", value: `${recipes.length || stats?.activeRecipes || "—"}` },
+          { label: "Son Güncelleme", value: recipes[0]?.updatedAt ? new Date(recipes[0].updatedAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" }) : "—" },
+          { label: "Versiyon", value: recipes[0]?.version ? `v${recipes[0].version}` : "—" },
+        ]} onLink={() => navigate("/fabrika/receteler")} />
       </div>
     </CentrumShell>
   );
