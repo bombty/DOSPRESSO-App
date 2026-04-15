@@ -463,4 +463,80 @@ router.get("/api/mrp/pick-logs", isAuthenticated, requireRole(VIEW_ROLES), async
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// STOCK DEDUCTION — Üretim sonrası stok düşme
+// ═══════════════════════════════════════════════════════════════
+
+// POST /api/mrp/deduct-stock — Reçete × batch stok düşme
+router.post("/api/mrp/deduct-stock", isAuthenticated, requireRole(PLAN_ROLES), async (req: any, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    const { recipeId, batchCount, notes } = req.body;
+
+    if (!recipeId || !batchCount || batchCount <= 0) {
+      return res.status(400).json({ error: "recipeId ve batchCount gerekli" });
+    }
+
+    // Reçete malzemelerini al
+    const ingredients = await db.select({
+      id: factoryRecipeIngredients.id,
+      name: factoryRecipeIngredients.name,
+      amount: factoryRecipeIngredients.amount,
+      unit: factoryRecipeIngredients.unit,
+      inventoryId: factoryRecipeIngredients.rawMaterialId,
+      ingredientType: factoryRecipeIngredients.ingredientType,
+    })
+    .from(factoryRecipeIngredients)
+    .where(eq(factoryRecipeIngredients.recipeId, recipeId));
+
+    let deducted = 0;
+    let skipped = 0;
+    const movements: any[] = [];
+
+    for (const ing of ingredients) {
+      if (!ing.inventoryId || ing.ingredientType === "keyblend") {
+        skipped++;
+        continue;
+      }
+
+      const totalUsed = Number(ing.amount || 0) * Number(batchCount);
+      if (totalUsed <= 0) continue;
+
+      // Stoktan düş
+      await db.update(inventory)
+        .set({
+          currentStock: sql`GREATEST(0, ${inventory.currentStock}::numeric - ${totalUsed})`,
+        })
+        .where(eq(inventory.id, ing.inventoryId));
+
+      // Hareket kaydı
+      const [inv] = await db.select({ name: inventory.name, code: inventory.code, currentStock: inventory.currentStock })
+        .from(inventory).where(eq(inventory.id, ing.inventoryId)).limit(1);
+
+      movements.push({
+        ingredient: ing.name,
+        inventoryCode: inv?.code,
+        deducted: totalUsed,
+        unit: ing.unit,
+        remainingStock: inv?.currentStock,
+      });
+
+      deducted++;
+    }
+
+    res.json({
+      success: true,
+      recipeId,
+      batchCount,
+      deducted,
+      skipped,
+      movements,
+      note: notes || `${batchCount} batch üretim stok düşme`,
+    });
+  } catch (error) {
+    console.error("[MRP/DeductStock]", error);
+    res.status(500).json({ error: "Stok düşme başarısız" });
+  }
+});
+
 export default router;
