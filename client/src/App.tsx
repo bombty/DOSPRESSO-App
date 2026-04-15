@@ -497,14 +497,15 @@ function Router() {
           <Route path="/performans" component={Performance} />
           <Route path="/muhasebe">{() => <ModuleGuard moduleKey="finans"><Muhasebe /></ModuleGuard>}</Route>
           <Route path="/mali-yonetim">{() => <ModuleGuard moduleKey="finans"><MaliYonetim /></ModuleGuard>}</Route>
-          <Route path="/fabrika/:tab?">{() => <FabrikaOnly><FabrikaMegaModule /></FabrikaOnly>}</Route>
           <Route path="/hq-fabrika-analitik">{() => <FabrikaOnly><HQFabrikaAnalitik /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/receteler">{() => <FabrikaOnly><FabrikaReceteler /></FabrikaOnly>}</Route>
           <Route path="/fabrika/receteler/yeni">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","sef"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
           <Route path="/fabrika/receteler/:id/uretim">{() => <FabrikaOnly><FabrikaUretimModu /></FabrikaOnly>}</Route>
           <Route path="/fabrika/receteler/:id/duzenle">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","sef"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
           <Route path="/fabrika/receteler/:id">{() => <FabrikaOnly><FabrikaReceteDetay /></FabrikaOnly>}</Route>
+          <Route path="/fabrika/receteler">{() => <FabrikaOnly><FabrikaReceteler /></FabrikaOnly>}</Route>
           <Route path="/fabrika/keyblend-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","recete_gm"]}><FabrikaKeyblendYonetimi /></ProtectedRoute>}</Route>
+          <Route path="/fabrika/malzeme-cekme">{() => <FabrikaOnly><MRPDailyPlan /></FabrikaOnly>}</Route>
+          <Route path="/fabrika/:tab?">{() => <FabrikaOnly><FabrikaMegaModule /></FabrikaOnly>}</Route>
           <Route path="/canli-takip">{() => <ExecutiveOnly><CanliTakip /></ExecutiveOnly>}</Route>
           <Route path="/sube-bordro-ozet">{() => <ExecutiveOnly><SubeBordroOzet /></ExecutiveOnly>}</Route>
           <Route path="/sube-uyum-merkezi">{() => <ExecutiveOnly><SubeUyumMerkezi /></ExecutiveOnly>}</Route>
@@ -520,7 +521,6 @@ function Router() {
           <Route path="/muhasebe-centrum">{() => <ProtectedRoute allowedRoles={["muhasebe_ik","muhasebe","admin","ceo"]}><MuhasebeCentrum /></ProtectedRoute>}</Route>
           <Route path="/satinalma-centrum">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo"]}><SatinalmaCentrum /></ProtectedRoute>}</Route>
           <Route path="/fabrika-centrum">{() => <FabrikaOnly><FabrikaCentrum /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/malzeme-cekme">{() => <FabrikaOnly><MRPDailyPlan /></FabrikaOnly>}</Route>
           <Route path="/depo-centrum">{() => <FabrikaOnly><DepoCentrum /></FabrikaOnly>}</Route>
           <Route path="/sube-centrum">{() => <ProtectedRoute allowedRoles={["mudur","supervisor","supervisor_buddy","admin","ceo","cgo","coach"]}><SubeCentrum /></ProtectedRoute>}</Route>
           <Route path="/supervisor-centrum">{() => <ProtectedRoute allowedRoles={["supervisor","supervisor_buddy","admin","ceo","cgo","coach","mudur"]}><SupervisorCentrum /></ProtectedRoute>}</Route>
