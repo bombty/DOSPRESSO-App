@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -7,11 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft, ChefHat, Clock, Users, Package, Zap, Droplets,
   Lock, Unlock, FlaskConical, AlertTriangle, Scale,
   Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
+  Link2, Unlink, DollarSign, Pencil, Search,
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -42,8 +49,12 @@ export default function FabrikaReceteDetay() {
   const params = useParams<{ id: string }>();
   const recipeId = Number(params.id);
 
+  const { toast } = useToast();
   const [multiplier, setMultiplier] = useState(1);
   const [activeTab, setActiveTab] = useState("malzemeler");
+  const [editingIngredient, setEditingIngredient] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: "", amount: "", unit: "", rawMaterialId: "" });
+  const [inventorySearch, setInventorySearch] = useState("");
 
   const { data: recipe, isLoading } = useQuery<any>({
     queryKey: ["/api/factory/recipes", recipeId],
@@ -57,6 +68,32 @@ export default function FabrikaReceteDetay() {
 
   const canEdit = ["admin", "recete_gm", "sef"].includes(user?.role || "") && !recipe?.editLocked;
   const isAdmin = ["admin", "recete_gm"].includes(user?.role || "");
+  const canEditIngredients = recipe?.canEditIngredients;
+  const canViewCost = recipe?.canViewCost;
+
+  const { data: inventoryItems } = useQuery<any[]>({
+    queryKey: ["/api/inventory", inventorySearch],
+    queryFn: async () => {
+      const res = await fetch(`/api/inventory?search=${encodeURIComponent(inventorySearch)}&limit=20`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!editingIngredient && inventorySearch.length >= 2,
+  });
+
+  const updateIngredientMutation = useMutation({
+    mutationFn: async (data: { ingredientId: number; name?: string; amount?: string; unit?: string; rawMaterialId?: number | null }) => {
+      return apiRequest("PATCH", `/api/factory/recipes/${recipeId}/ingredients/${data.ingredientId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/recipes", recipeId] });
+      setEditingIngredient(null);
+      toast({ title: "Malzeme güncellendi" });
+    },
+    onError: () => {
+      toast({ title: "Hata", description: "Malzeme güncellenemedi", variant: "destructive" });
+    },
+  });
   const presets = recipe?.batchPresets || BATCH_PRESETS_DEFAULT;
   const totalTime = (recipe?.prepTimeMinutes || 0) + (recipe?.productionTimeMinutes || 0) + (recipe?.cleaningTimeMinutes || 0);
   const scaledOutput = Math.round((recipe?.baseBatchOutput || 1) * multiplier);
@@ -201,6 +238,11 @@ export default function FabrikaReceteDetay() {
             <TabsTrigger value="notlar" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
               Teknik Notlar
             </TabsTrigger>
+            {canViewCost && (
+              <TabsTrigger value="maliyet" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
+                <DollarSign className="h-3.5 w-3.5 mr-1" /> Maliyet
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* MALZEMELER TAB */}
@@ -214,29 +256,67 @@ export default function FabrikaReceteDetay() {
                   {(ingredients as any[]).map((ing: any) => {
                     const scaled = Math.round(Number(ing.amount) * multiplier * 100) / 100;
                     const isKeyblend = ing.ingredientType === "keyblend";
+                    const scaledCost = canViewCost && ing.lineCost ? (ing.lineCost * multiplier) : null;
 
                     return (
                       <div
                         key={ing.id}
                         className={cn(
-                          "flex items-center justify-between py-2 px-3 rounded-lg",
-                          isKeyblend ? "bg-purple-950/20 border border-purple-800/30" : "bg-muted/30"
+                          "flex items-center justify-between py-2 px-3 rounded-lg gap-2",
+                          isKeyblend ? "bg-purple-950/20 border border-purple-800/30" : "bg-muted/30",
+                          !ing.linked && !isKeyblend && "border border-amber-800/30"
                         )}
                         data-testid={`ingredient-${ing.refId}`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {isKeyblend && <Lock className="h-3.5 w-3.5 text-purple-400 shrink-0" />}
-                          <span className="text-sm truncate">
-                            {isKeyblend ? `Keyblend ${ing.name}` : ing.name}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground shrink-0">[{ing.refId}]</span>
+                          {!isKeyblend && ing.linked && <Link2 className="h-3 w-3 text-emerald-500 shrink-0" />}
+                          {!isKeyblend && !ing.linked && <Unlink className="h-3 w-3 text-amber-500 shrink-0" />}
+                          <div className="min-w-0">
+                            <span className="text-sm truncate block">
+                              {isKeyblend ? `Keyblend ${ing.name}` : ing.name}
+                            </span>
+                            {ing.inventoryCode && (
+                              <span className="text-[10px] text-emerald-500/70">{ing.inventoryCode}</span>
+                            )}
+                            {!ing.linked && !isKeyblend && (
+                              <span className="text-[10px] text-amber-500">Eşleşmemiş</span>
+                            )}
+                          </div>
                         </div>
-                        <span className={cn(
-                          "text-sm font-mono font-medium tabular-nums shrink-0 ml-3",
-                          isKeyblend && "text-purple-300"
-                        )}>
-                          {Number.isInteger(scaled) ? scaled : scaled.toFixed(1)} {ing.unit}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {canViewCost && scaledCost !== null && scaledCost > 0 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              ₺{scaledCost.toFixed(2)}
+                            </span>
+                          )}
+                          <span className={cn(
+                            "text-sm font-mono font-medium tabular-nums",
+                            isKeyblend && "text-purple-300"
+                          )}>
+                            {Number.isInteger(scaled) ? scaled : scaled.toFixed(1)} {ing.unit}
+                          </span>
+                          {canEditIngredients && !isKeyblend && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              data-testid={`btn-edit-ingredient-${ing.refId}`}
+                              onClick={() => {
+                                setEditingIngredient(ing);
+                                setEditForm({
+                                  name: ing.name,
+                                  amount: String(ing.amount),
+                                  unit: ing.unit,
+                                  rawMaterialId: ing.rawMaterialId ? String(ing.rawMaterialId) : "",
+                                });
+                                setInventorySearch("");
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -381,8 +461,182 @@ export default function FabrikaReceteDetay() {
               )}
             </div>
           </TabsContent>
+
+          {/* MALİYET TAB */}
+          {canViewCost && (
+            <TabsContent value="maliyet" className="space-y-4 pb-8">
+              {(() => {
+                const allIngs = recipe?.ingredients || [];
+                let totalCost = 0;
+                let missingCount = 0;
+                const costRows = allIngs.filter((i: any) => i.ingredientType !== "keyblend").map((ing: any) => {
+                  const amount = Number(ing.amount || 0) * multiplier;
+                  const cost = (ing.lineCost || 0) * multiplier;
+                  totalCost += cost;
+                  if (!ing.hasPrice) missingCount++;
+                  return { ...ing, scaledAmount: amount, scaledCost: cost };
+                });
+                const unitCost = scaledOutput > 0 ? totalCost / scaledOutput : 0;
+
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Card className="p-3 text-center">
+                        <div className="text-lg font-bold">₺{totalCost.toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">Batch Maliyet</div>
+                      </Card>
+                      <Card className="p-3 text-center">
+                        <div className="text-lg font-bold">₺{unitCost.toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">Birim Maliyet</div>
+                      </Card>
+                      <Card className="p-3 text-center">
+                        <div className="text-lg font-bold">{allIngs.length - missingCount}/{allIngs.length}</div>
+                        <div className="text-[10px] text-muted-foreground">Fiyatlı Malzeme</div>
+                      </Card>
+                    </div>
+                    {missingCount > 0 && (
+                      <Card className="border-amber-800/30 bg-amber-950/10 p-3">
+                        <p className="text-xs text-amber-400 flex items-center gap-1">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          {missingCount} malzemenin fiyatı eksik — gerçek maliyet daha yüksek olabilir
+                        </p>
+                      </Card>
+                    )}
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-xs border-b border-border px-3 py-2 font-semibold text-muted-foreground">
+                          <span>Malzeme</span>
+                          <span className="text-right">Miktar</span>
+                          <span className="text-right w-20">Maliyet</span>
+                        </div>
+                        {costRows.map((row: any) => (
+                          <div key={row.id} className={cn("grid grid-cols-[1fr_auto_auto] gap-x-3 text-xs px-3 py-1.5 border-b border-border/30", !row.hasPrice && "text-amber-500")}>
+                            <span className="truncate">{row.name} {row.inventoryCode && <span className="text-muted-foreground">({row.inventoryCode})</span>}</span>
+                            <span className="text-right font-mono tabular-nums">{row.scaledAmount.toFixed(1)} {row.unit}</span>
+                            <span className="text-right font-mono tabular-nums w-20">{row.hasPrice ? `₺${row.scaledCost.toFixed(2)}` : "—"}</span>
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-xs px-3 py-2 font-semibold bg-muted/50">
+                          <span>TOPLAM</span>
+                          <span></span>
+                          <span className="text-right font-mono tabular-nums w-20">₺{totalCost.toFixed(2)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
+
+      {/* Malzeme Düzenleme Dialog */}
+      {editingIngredient && (
+        <Dialog open={!!editingIngredient} onOpenChange={() => setEditingIngredient(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Malzeme Düzenle</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Malzeme Adı</Label>
+                <Input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  data-testid="input-ingredient-name"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Miktar</Label>
+                  <Input
+                    type="number"
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm(f => ({ ...f, amount: e.target.value }))}
+                    data-testid="input-ingredient-amount"
+                  />
+                </div>
+                <div>
+                  <Label>Birim</Label>
+                  <Input
+                    value={editForm.unit}
+                    onChange={(e) => setEditForm(f => ({ ...f, unit: e.target.value }))}
+                    data-testid="input-ingredient-unit"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Hammadde Eşleştirme</Label>
+                <div className="mt-1 space-y-2">
+                  {editingIngredient.inventoryCode && (
+                    <div className="flex items-center gap-2 text-xs p-2 bg-muted/50 rounded">
+                      <Link2 className="h-3 w-3 text-emerald-500" />
+                      <span>Mevcut: <strong>{editingIngredient.inventoryCode}</strong> — {editingIngredient.inventoryName}</span>
+                    </div>
+                  )}
+                  <Input
+                    placeholder="Hammadde ara (kod veya isim)..."
+                    value={inventorySearch}
+                    onChange={(e) => setInventorySearch(e.target.value)}
+                    data-testid="input-inventory-search"
+                  />
+                  {inventoryItems && inventoryItems.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto border rounded space-y-0.5 p-1">
+                      {inventoryItems.map((item: any) => (
+                        <button
+                          key={item.id}
+                          className={cn(
+                            "w-full text-left text-xs px-2 py-1.5 rounded hover-elevate",
+                            String(item.id) === editForm.rawMaterialId && "bg-primary/10"
+                          )}
+                          onClick={() => setEditForm(f => ({ ...f, rawMaterialId: String(item.id) }))}
+                          data-testid={`btn-select-inventory-${item.id}`}
+                        >
+                          <span className="font-mono text-emerald-500">{item.code}</span>
+                          {" — "}
+                          <span>{item.name}</span>
+                          <span className="text-muted-foreground ml-1">({item.unit})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {editingIngredient.rawMaterialId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-amber-500"
+                      onClick={() => setEditForm(f => ({ ...f, rawMaterialId: "" }))}
+                    >
+                      <Unlink className="h-3 w-3 mr-1" /> Eşleşmeyi Kaldır
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingIngredient(null)}>
+                Vazgeç
+              </Button>
+              <Button
+                onClick={() => {
+                  updateIngredientMutation.mutate({
+                    ingredientId: editingIngredient.id,
+                    name: editForm.name,
+                    amount: editForm.amount,
+                    unit: editForm.unit,
+                    rawMaterialId: editForm.rawMaterialId ? Number(editForm.rawMaterialId) : null,
+                  });
+                }}
+                disabled={updateIngredientMutation.isPending}
+                data-testid="btn-save-ingredient"
+              >
+                {updateIngredientMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Türev Reçeteler (Yarı Mamül ise) */}
       {recipe.childRecipes?.length > 0 && (

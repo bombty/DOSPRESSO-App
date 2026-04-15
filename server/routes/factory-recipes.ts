@@ -11,6 +11,7 @@ import {
   factoryKeyblends, factoryKeyblendIngredients,
   factoryProductionLogs, factoryRecipeVersions,
   factoryRecipeCategoryAccess, factoryIngredientNutrition,
+  inventory,
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
@@ -92,17 +93,43 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
       if (!access) return res.status(403).json({ error: "Bu kategoriye erişiminiz yok" });
     }
 
-    // Malzemeler
-    const ingredients = await db.select().from(factoryRecipeIngredients)
+    // Malzemeler — inventory bilgisi ile birlikte
+    const ingredientRows = await db.select({
+      ing: factoryRecipeIngredients,
+      invCode: inventory.code,
+      invName: inventory.name,
+      invUnit: inventory.unit,
+      invMarketPrice: inventory.marketPrice,
+      invConversionFactor: inventory.conversionFactor,
+    }).from(factoryRecipeIngredients)
+      .leftJoin(inventory, eq(factoryRecipeIngredients.rawMaterialId, inventory.id))
       .where(eq(factoryRecipeIngredients.recipeId, id))
       .orderBy(asc(factoryRecipeIngredients.sortOrder));
 
-    // Keyblend bilgilerini gizle (personel sadece kod+ağırlık görür)
-    const safeIngredients = ingredients.map(ing => {
-      if (ing.ingredientType === "keyblend" && !KEYBLEND_ROLES.includes(req.user.role)) {
-        return { ...ing, notes: null }; // Keyblend notları gizle
+    const COST_VIEW_ROLES = ["admin", "ceo", "recete_gm", "gida_muhendisi", "satinalma"];
+    const canViewCost = COST_VIEW_ROLES.includes(req.user.role);
+
+    const safeIngredients = ingredientRows.map(row => {
+      const ing = row.ing;
+      const base: any = {
+        ...ing,
+        inventoryCode: row.invCode || null,
+        inventoryName: row.invName || null,
+        linked: !!row.invCode,
+      };
+      if (canViewCost) {
+        const price = Number(row.invMarketPrice || 0);
+        const conv = Number(row.invConversionFactor || 1000);
+        const amount = Number(ing.amount || 0);
+        const pricePerUnit = conv > 0 ? price / conv : 0;
+        base.unitPrice = pricePerUnit;
+        base.lineCost = amount * pricePerUnit;
+        base.hasPrice = price > 0;
       }
-      return ing;
+      if (ing.ingredientType === "keyblend" && !KEYBLEND_ROLES.includes(req.user.role)) {
+        base.notes = null;
+      }
+      return base;
     });
 
     // Adımlar
@@ -122,11 +149,17 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
         .where(and(eq(factoryRecipes.parentRecipeId, id), eq(factoryRecipes.isActive, true)));
     }
 
+    const INGREDIENT_EDIT_ROLES = ["admin", "ceo", "gida_muhendisi"];
+    const PRICE_EDIT_ROLES = ["admin", "ceo", "satinalma"];
+
     res.json({
       ...recipe,
       ingredients: safeIngredients,
       steps,
       childRecipes,
+      canViewCost,
+      canEditIngredients: INGREDIENT_EDIT_ROLES.includes(req.user.role),
+      canEditPrices: PRICE_EDIT_ROLES.includes(req.user.role),
     });
   } catch (error) {
     console.error("Factory recipe detail error:", error);
@@ -290,6 +323,33 @@ router.post("/api/factory/recipes/:id/lock", isAuthenticated, async (req: any, r
 // ═══════════════════════════════════════
 // MALZEMELER — CRUD
 // ═══════════════════════════════════════
+
+// PATCH /api/factory/recipes/:recipeId/ingredients/:id — Malzeme düzenle
+router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const INGREDIENT_EDIT_ROLES = ["admin", "ceo", "gida_muhendisi"];
+    if (!INGREDIENT_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const ingredientId = Number(req.params.id);
+    const { name, amount, unit, rawMaterialId } = req.body;
+
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (amount !== undefined) updateData.amount = String(amount);
+    if (unit !== undefined) updateData.unit = unit;
+    if (rawMaterialId !== undefined) updateData.rawMaterialId = rawMaterialId;
+
+    const [updated] = await db.update(factoryRecipeIngredients)
+      .set(updateData)
+      .where(eq(factoryRecipeIngredients.id, ingredientId))
+      .returning();
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update ingredient error:", error);
+    res.status(500).json({ error: "Malzeme güncellenemedi" });
+  }
+});
 
 // POST /api/factory/recipes/:id/ingredients — Malzeme ekle
 router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req: any, res: Response) => {
