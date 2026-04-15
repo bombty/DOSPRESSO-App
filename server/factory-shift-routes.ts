@@ -17,6 +17,9 @@ import {
   productRecipeIngredients,
   rawMaterials,
   notifications,
+  factoryRecipes,
+  factoryRecipeIngredients,
+  inventory,
   insertFactoryShiftSchema,
   insertFactoryShiftWorkerSchema,
   insertFactoryBatchSpecSchema,
@@ -716,6 +719,41 @@ export function registerFactoryShiftRoutes(app: Express) {
       }
       
       if (warnings.length > 0) warning = warnings.join(" | ");
+
+      // ── Otomatik stok düşme (non-blocking) ──
+      try {
+        // factoryRecipe bul (product → recipe)
+        const [factoryRecipe] = await db.select({ id: factoryRecipes.id })
+          .from(factoryRecipes)
+          .where(and(
+            eq(factoryRecipes.productId, result.batch.productId),
+            eq(factoryRecipes.isVisible, true)
+          ))
+          .limit(1);
+
+        if (factoryRecipe) {
+          const ingredients = await db.select({
+            amount: factoryRecipeIngredients.amount,
+            inventoryId: factoryRecipeIngredients.rawMaterialId,
+            ingredientType: factoryRecipeIngredients.ingredientType,
+          })
+          .from(factoryRecipeIngredients)
+          .where(eq(factoryRecipeIngredients.recipeId, factoryRecipe.id));
+
+          for (const ing of ingredients) {
+            if (!ing.inventoryId || ing.ingredientType === "keyblend") continue;
+            const used = Number(ing.amount || 0); // 1 batch = reçete miktarı
+            if (used <= 0) continue;
+
+            await db.update(inventory)
+              .set({ currentStock: sql`GREATEST(0, ${inventory.currentStock}::numeric - ${used})` })
+              .where(eq(inventory.id, ing.inventoryId));
+          }
+          console.log(`[BatchComplete] Stok düşme: recipe ${factoryRecipe.id}, ${ingredients.filter(i => i.inventoryId && i.ingredientType !== "keyblend").length} malzeme`);
+        }
+      } catch (stockErr) {
+        console.error("[BatchComplete] Stok düşme hatası (batch tamamlandı, stok düşülemedi):", stockErr);
+      }
 
       res.json({ 
         ...result.updated, 
