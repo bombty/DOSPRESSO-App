@@ -539,4 +539,78 @@ router.post("/api/mrp/deduct-stock", isAuthenticated, requireRole(PLAN_ROLES), a
   }
 });
 
+// POST /api/mrp/calculate-waste — Fire hesaplama (çekilen - kullanılan - artan)
+router.post("/api/mrp/calculate-waste", isAuthenticated, requireRole(VIEW_ROLES), async (req: any, res: Response) => {
+  try {
+    const { date } = req.body;
+    const targetDate = date || new Date().toISOString().split("T")[0];
+
+    // 1. Çekilen malzemeler (plan items)
+    const pickedItems = await db.execute(sql`
+      SELECT dmi.inventory_id, i.name, i.code,
+        SUM(COALESCE(dmi.actual_picked_quantity, dmi.net_pick_quantity)::numeric) as total_picked,
+        dmi.unit
+      FROM daily_material_plan_items dmi
+      JOIN daily_material_plans dmp ON dmp.id = dmi.plan_id
+      JOIN inventory i ON i.id = dmi.inventory_id
+      WHERE dmp.plan_date = ${targetDate}
+        AND dmi.status IN ('picked', 'verified')
+      GROUP BY dmi.inventory_id, i.name, i.code, dmi.unit
+    `);
+
+    // 2. Artan malzemeler
+    const leftovers = await db.execute(sql`
+      SELECT inventory_id,
+        SUM(remaining_quantity::numeric) as total_leftover
+      FROM production_area_leftovers
+      WHERE record_date = ${targetDate}
+        AND condition != 'unusable'
+      GROUP BY inventory_id
+    `);
+
+    const leftoverMap = new Map<number, number>();
+    for (const lo of (leftovers.rows || []) as any[]) {
+      leftoverMap.set(lo.inventory_id, Number(lo.total_leftover || 0));
+    }
+
+    // 3. Fire hesapla: picked - leftover = kullanılan + fire
+    // (Kesin fire için üretilen adet × birim gramaj lazım — şimdilik basit hesap)
+    const wasteReport = ((pickedItems.rows || []) as any[]).map((item: any) => {
+      const picked = Number(item.total_picked || 0);
+      const leftover = leftoverMap.get(item.inventory_id) || 0;
+      const consumed = picked - leftover; // kullanılan + fire toplamı
+      const wasteEstimate = Math.max(0, consumed * 0.05); // ~%5 fire tahmini (gerçek üretim verisine göre düzeltilecek)
+
+      return {
+        inventoryId: item.inventory_id,
+        name: item.name,
+        code: item.code,
+        picked,
+        leftover,
+        consumed,
+        wasteEstimate,
+        unit: item.unit,
+      };
+    });
+
+    const totalPicked = wasteReport.reduce((s, r) => s + r.picked, 0);
+    const totalLeftover = wasteReport.reduce((s, r) => s + r.leftover, 0);
+    const totalConsumed = wasteReport.reduce((s, r) => s + r.consumed, 0);
+
+    res.json({
+      date: targetDate,
+      summary: {
+        totalPicked,
+        totalLeftover,
+        totalConsumed,
+        wasteRate: totalPicked > 0 ? ((totalPicked - totalLeftover - totalConsumed * 0.95) / totalPicked * 100).toFixed(2) : "0",
+      },
+      items: wasteReport,
+    });
+  } catch (error) {
+    console.error("[MRP/Waste]", error);
+    res.status(500).json({ error: "Fire hesaplama başarısız" });
+  }
+});
+
 export default router;
