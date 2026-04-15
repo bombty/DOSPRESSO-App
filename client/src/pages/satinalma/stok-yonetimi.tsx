@@ -496,6 +496,7 @@ export default function StokYonetimi() {
                 <TableHead>Kategori</TableHead>
                 <TableHead className="text-right">Stok</TableHead>
                 <TableHead className="text-right">Min. Stok</TableHead>
+                <TableHead className="text-right">Birim Fiyat</TableHead>
                 <TableHead>Durum</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
               </TableRow>
@@ -525,6 +526,15 @@ export default function StokYonetimi() {
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {parseFloat(item.minimumStock).toLocaleString("tr-TR")} {item.unit}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const price = parseFloat(item.marketPrice || item.lastPurchasePrice || "0");
+                          const conv = parseFloat(item.conversionFactor || "1000");
+                          if (price <= 0) return <span className="text-muted-foreground text-xs">—</span>;
+                          const perKg = conv > 0 ? (price / conv * 1000) : 0;
+                          return <span className="font-medium text-emerald-500">₺{perKg.toFixed(2)}/KG</span>;
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={status.variant}>{status.label}</Badge>
