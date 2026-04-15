@@ -410,6 +410,23 @@ export default function SiparisYonetimi() {
   const [branchFilter, setBranchFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [orderItems, setOrderItems] = useState<Array<{
+    inventoryId: number; name: string; code: string; quantity: string; unit: string; unitPrice: number; convFactor: number;
+  }>>([]);
+  const [itemSearch, setItemSearch] = useState("");
+
+  // Inventory for item selection
+  const { data: inventoryItems = [] } = useQuery<any[]>({
+    queryKey: ["/api/inventory", itemSearch],
+    queryFn: async () => {
+      const params = itemSearch ? `?search=${encodeURIComponent(itemSearch)}&category=hammadde` : "?category=hammadde";
+      const r = await fetch(`/api/inventory${params}`, { credentials: "include" });
+      if (!r.ok) return [];
+      return r.json();
+    },
+    enabled: isAddDialogOpen,
+    staleTime: 60000,
+  });
   const [paymentDialogOrder, setPaymentDialogOrder] = useState<PurchaseOrder | null>(null);
   const [detailDialogOrder, setDetailDialogOrder] = useState<PurchaseOrder | null>(null);
   const [rejectDialogOrder, setRejectDialogOrder] = useState<PurchaseOrder | null>(null);
@@ -452,6 +469,8 @@ export default function SiparisYonetimi() {
       });
       setIsAddDialogOpen(false);
       setSelectedSupplierId("");
+      setOrderItems([]);
+      setItemSearch("");
       toast({ title: "Sipariş oluşturuldu" });
     },
     onError: () => {
@@ -517,7 +536,13 @@ export default function SiparisYonetimi() {
       supplierId: parseInt(selectedSupplierId),
       expectedDeliveryDate: formData.get("expectedDeliveryDate") || null,
       status: "taslak",
-      items: []
+      items: orderItems.map(item => ({
+        inventoryId: item.inventoryId,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unitPrice.toFixed(2),
+        notes: "",
+      })),
     });
   };
 
@@ -598,37 +623,130 @@ export default function SiparisYonetimi() {
               Yeni Siparis
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Yeni Satınalma Siparişi</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="supplierId">Tedarikçi</Label>
-                <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
-                  <SelectTrigger data-testid="select-supplier">
-                    <SelectValue placeholder="Tedarikçi seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {suppliers?.map(supplier => (
-                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                        {supplier.name} ({supplier.code})
-                      </SelectItem>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="supplierId">Tedarikçi</Label>
+                  <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
+                    <SelectTrigger data-testid="select-supplier">
+                      <SelectValue placeholder="Tedarikçi seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers?.map(supplier => (
+                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                          {supplier.name} ({supplier.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expectedDeliveryDate">Teslimat Tarihi</Label>
+                  <Input id="expectedDeliveryDate" name="expectedDeliveryDate" type="date" data-testid="input-delivery-date" />
+                </div>
+              </div>
+
+              {/* Malzeme Ekleme */}
+              <div className="space-y-2 border rounded-lg p-3">
+                <Label>Malzeme Ekle</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Malzeme ara..."
+                    value={itemSearch}
+                    onChange={e => setItemSearch(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+                {itemSearch && inventoryItems.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto border rounded-md divide-y">
+                    {inventoryItems.slice(0, 8).map((inv: any) => {
+                      const price = parseFloat(inv.marketPrice || inv.lastPurchasePrice || "0");
+                      const conv = parseFloat(inv.conversionFactor || "1000");
+                      const perKg = conv > 0 ? (price / conv * 1000) : 0;
+                      const alreadyAdded = orderItems.some(i => i.inventoryId === inv.id);
+                      return (
+                        <div
+                          key={inv.id}
+                          className={`px-3 py-1.5 flex items-center justify-between text-sm cursor-pointer hover:bg-muted/50 ${alreadyAdded ? "opacity-40" : ""}`}
+                          onClick={() => {
+                            if (alreadyAdded) return;
+                            setOrderItems([...orderItems, {
+                              inventoryId: inv.id,
+                              name: inv.name,
+                              code: inv.code,
+                              quantity: "1",
+                              unit: inv.purchaseUnit || inv.unit || "KG",
+                              unitPrice: price,
+                              convFactor: conv,
+                            }]);
+                            setItemSearch("");
+                          }}
+                        >
+                          <div>
+                            <span className="font-mono text-xs text-muted-foreground mr-2">{inv.code}</span>
+                            <span>{inv.name}</span>
+                          </div>
+                          <span className="text-emerald-500 text-xs font-medium">
+                            {perKg > 0 ? `₺${perKg.toFixed(2)}/KG` : "—"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Sipariş Kalemleri */}
+              {orderItems.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Sipariş Kalemleri ({orderItems.length})</Label>
+                  <div className="border rounded-lg divide-y">
+                    {orderItems.map((item, idx) => (
+                      <div key={idx} className="px-3 py-2 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{item.name}</div>
+                          <div className="text-xs text-muted-foreground">{item.code} · ₺{item.unitPrice.toLocaleString("tr-TR")}/paket</div>
+                        </div>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={e => {
+                            const n = [...orderItems];
+                            n[idx].quantity = e.target.value;
+                            setOrderItems(n);
+                          }}
+                          className="w-20 h-8 text-sm text-right"
+                        />
+                        <span className="text-xs text-muted-foreground w-8">{item.unit}</span>
+                        <span className="text-sm font-medium w-24 text-right">
+                          ₺{(parseFloat(item.quantity || "0") * item.unitPrice).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-400"
+                          onClick={() => setOrderItems(orderItems.filter((_, i) => i !== idx))}
+                        >✕</Button>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="expectedDeliveryDate">Beklenen Teslimat Tarihi</Label>
-                <Input 
-                  id="expectedDeliveryDate" 
-                  name="expectedDeliveryDate" 
-                  type="date" 
-                  data-testid="input-delivery-date"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-order">
-                {createMutation.isPending ? "Oluşturuluyor..." : "Sipariş Oluştur"}
+                    <div className="px-3 py-2 flex justify-between bg-muted/30">
+                      <span className="text-sm font-medium">Toplam (KDV hariç)</span>
+                      <span className="text-sm font-bold text-emerald-500">
+                        ₺{orderItems.reduce((sum, i) => sum + parseFloat(i.quantity || "0") * i.unitPrice, 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={createMutation.isPending || !selectedSupplierId} data-testid="button-submit-order">
+                {createMutation.isPending ? "Oluşturuluyor..." : `Sipariş Oluştur${orderItems.length > 0 ? ` (${orderItems.length} kalem)` : ""}`}
               </Button>
             </form>
           </DialogContent>
