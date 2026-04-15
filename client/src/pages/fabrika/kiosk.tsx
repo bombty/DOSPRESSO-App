@@ -69,6 +69,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ObjectUploader } from "@/components/ObjectUploader";
+import { KioskMRPPanel } from "@/components/kiosk/KioskMRPPanel";
 
 interface GuidanceItem {
   id: string;
@@ -1692,6 +1693,11 @@ export default function FactoryKiosk() {
                 <div className="bg-slate-700/30 rounded-lg p-3 text-center" data-testid="no-plan-message">
                   <p className="text-sm text-slate-400">Bugün için atanmış üretim planı yok</p>
                 </div>
+              )}
+
+              {/* MRP Malzeme Durumu Paneli */}
+              {selectedUser && (
+                <KioskMRPPanel userId={selectedUser.id} userRole={selectedUser.role} />
               )}
 
               {currentPhase === 'uretim' && (
