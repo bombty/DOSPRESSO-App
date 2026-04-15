@@ -215,6 +215,7 @@ const MuhasebeCentrum = lazyWithRetry(() => import("@/pages/muhasebe-centrum"));
 const SatinalmaCentrum = lazyWithRetry(() => import("@/pages/satinalma-centrum"));
 const FabrikaCentrum = lazyWithRetry(() => import("@/pages/fabrika-centrum"));
 const MRPDailyPlan = lazyWithRetry(() => import("@/pages/mrp-daily-plan"));
+const FabrikaStokMerkezi = lazyWithRetry(() => import("@/pages/fabrika-stok-merkezi"));
 const FabrikaReceteler = lazyWithRetry(() => import("@/pages/fabrika-receteler"));
 const MaliyetAnalizi = lazyWithRetry(() => import("@/pages/maliyet-analizi"));
 const FabrikaReceteDetay = lazyWithRetry(() => import("@/pages/fabrika-recete-detay"));
@@ -507,6 +508,7 @@ function Router() {
           <Route path="/fabrika/keyblend-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","recete_gm"]}><FabrikaKeyblendYonetimi /></ProtectedRoute>}</Route>
           <Route path="/fabrika/malzeme-cekme">{() => <FabrikaOnly><MRPDailyPlan /></FabrikaOnly>}</Route>
           <Route path="/fabrika/maliyet-analizi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe","muhasebe_ik","satinalma","recete_gm","gida_muhendisi","fabrika_mudur","uretim_sefi"]}><MaliyetAnalizi /></ProtectedRoute>}</Route>
+          <Route path="/fabrika/stok-merkezi">{() => <FabrikaOnly><FabrikaStokMerkezi /></FabrikaOnly>}</Route>
           <Route path="/fabrika/:tab?">{() => <FabrikaOnly><FabrikaMegaModule /></FabrikaOnly>}</Route>
           <Route path="/canli-takip">{() => <ExecutiveOnly><CanliTakip /></ExecutiveOnly>}</Route>
           <Route path="/sube-bordro-ozet">{() => <ExecutiveOnly><SubeBordroOzet /></ExecutiveOnly>}</Route>

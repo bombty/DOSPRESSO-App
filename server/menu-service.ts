@@ -306,9 +306,9 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
       },
       {
         id: "factory-mrp",
-        titleTr: "Malzeme Çekme",
-        path: "/fabrika/malzeme-cekme",
-        icon: "Package",
+        titleTr: "Stok Merkezi",
+        path: "/fabrika/stok-merkezi",
+        icon: "Warehouse",
         moduleKey: "factory_production",
         scope: "both",
       },
