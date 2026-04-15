@@ -554,7 +554,7 @@ async function seedRecipes() {
     let hasMissing = false;
 
     console.log(`\n  ${r.code} — ${r.name} (${r.baseBatchOutput} adet/batch)`);
-    console.log(`  ${"Malzeme":<30s} ${"Miktar":<15s} ${"Birim Fiyat":<15s} ${"Maliyet":<12s}`);
+    console.log(`  ${"Malzeme".padEnd(30)} ${"Miktar".padEnd(15)} ${"Birim Fiyat".padEnd(15)} ${"Maliyet".padEnd(12)}`);
     console.log(`  ${"-".repeat(72)}`);
 
     for (const ing of (ingredients.rows || []) as any[]) {
@@ -568,7 +568,7 @@ async function seedRecipes() {
       const priceStr = price > 0 ? `₺${pricePerUnit.toFixed(4)}/g` : "FİYAT YOK";
       const costStr = price > 0 ? `₺${cost.toFixed(2)}` : "—";
       const linked = ing.raw_material_id ? "" : " ⚠";
-      console.log(`  ${(ing.ing_name + linked):<30s} ${amount.toLocaleString("tr-TR") + " " + (ing.unit || "g"):<15s} ${priceStr:<15s} ${costStr:<12s}`);
+      console.log(`  ${(ing.ing_name + linked).padEnd(30)} ${(amount.toLocaleString("tr-TR") + " " + (ing.unit || "g")).padEnd(15)} ${priceStr.padEnd(15)} ${costStr.padEnd(12)}`);
 
       if (!ing.raw_material_id || price === 0) hasMissing = true;
     }

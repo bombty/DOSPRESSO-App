@@ -155,7 +155,7 @@ export default function MRPDailyPlanPage() {
         </button>
       </div>
 
-      {activeTab === "pick" && (<>
+      {activeTab === "pick" && !plan && (
         <Card>
           <CardContent className="py-8 text-center">
             <Package className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
