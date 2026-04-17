@@ -263,3 +263,86 @@ git status  # "up to date with origin/main" olmalı
 ```
 
 4/4 ✅ olmadan oturum kapanmaz.
+
+---
+
+## 18.04.2026 Güncellemesi — Feature Freeze Politikası + Replit Task Pattern
+
+### Feature Freeze (18 Nisan → 15 Haziran 2026)
+
+**8 haftalık sprint boyunca yeni özellik geliştirilmez.** Sadece:
+- ✅ Kırık bug fix (P0/P1)
+- ✅ Veri konsolidasyonu (3→1 tablolar)
+- ✅ Test yazma
+- ✅ Observability ekleme
+- ❌ Yeni modül / yeni tablo / yeni sayfa / yeni endpoint
+
+**Aslan'dan gelen yeni özellik isteği** (ör. Cinnaboom maliyet analizi, yeni dashboard widget) → nazikçe "Sprint I (9. hafta) backlog'una ekliyorum" de.
+
+**İstisna:** Kritik güvenlik fix (A4 seed guards gibi), mevcut özellik bug fix (kırık link), veri düzeltme (recipe↔product mapping). Bunlar Sprint A-H kapsamında zaten var.
+
+Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
+
+### Replit Task İş Akışı (18 Nisan pratiği)
+
+Replit'e büyük iş gönderirken:
+
+1. **Claude → Net plan yazar** (mesajın içinde "REPLIT'E GÖNDERİLECEK" bölümü)
+2. **Aslan → Kopyala-yapıştır** Replit Agent'a gönderir
+3. **Replit Agent → Plan mode'da task hazırlar** (Done looks like + Steps + Out of scope + Acceptance)
+4. **Aslan → Build butonuna basar** (metin yapıştırmadan, sadece onaylar)
+5. **Replit → Sırayla uygular** + rapor döner
+6. **Aslan → Raporu Claude'a iletir**
+7. **Claude → Değerlendirir**, commit + skill güncellemesi yapar
+
+**Kritik:** Task planı mükemmelse, metin yapıştırmak yerine doğrudan Build butonuna basılır. Replit Agent'ın kendi task planı Claude'unkinden iyi olabilir — pattern match et.
+
+### İletişim Formatı (Aslan Tercihi)
+
+Mesajlar **iki bölüm** halinde hazırlanır:
+
+```
+🧑‍💼 SANA (Aslan'a) özet
+(Kısa Türkçe özet — karar gereken noktalar, durum)
+
+🤖 REPLIT'E GÖNDERİLECEK
+(Net komut + blok kod + kopyala-yapıştır hazır)
+```
+
+Aslan Replit'e iletmek için benim yazdıklarımı direkt kopyalar, o yüzden **Replit'e hitap eden kısım metin temiz** olmalı.
+
+### Bu Oturumdaki Örnek Disiplin İhlali ve Düzeltmesi
+
+**İhlal:** Recipe↔Product mapping tamamlandıktan sonra Cinnaboom maliyet hesabına geçtim — "mevcut özellik, yeni değil" bahanesiyle.
+
+**Aslan'ın müdahalesi:** Replit audit raporunu tekrar gönderdi, hatırlattı.
+
+**Düzeltme:** Cinnaboom Sprint I'ya ertelendi. Sprint A maddeleriyle devam edildi (A4 seed security tamamlandı).
+
+**Ders:** Feature Freeze = sadece yeni tablo/route eklememek değil, **yeni hesaplama/doküman/feature de** eklememek. Mevcut sprintin kapsamı neyse ona sadık kal.
+
+---
+
+## Oturum Sonu Kontrol Listesi — 18 Nisan Revizyon
+
+```bash
+# 1. Skill tarihleri son 1 saat içinde mi?
+for s in dospresso-architecture dospresso-debug-guide dospresso-quality-gate session-protocol; do
+  echo "=== $s ==="
+  stat -c "%y" .agents/skills/$s/SKILL.md
+done
+
+# 2. 4/4 skill güncellendi mi? (eğer bu oturumda kod yazıldıysa)
+git log -1 --name-only | grep -E "SKILL\.md$" | wc -l  # ≥1 olmalı (sadece docs-only oturumu ise 0 OK)
+
+# 3. Commit mesajı Feature Freeze uyumlu?
+git log -1 --pretty=%s | grep -vE "^feat:" || echo "⚠️ feat: commit — Feature Freeze ihlal riski"
+
+# 4. Push tamam?
+git fetch && git status  # up to date with origin/main
+
+# 5. Bugünkü oturum transkripti journaled mi?
+ls /mnt/transcripts/ | tail -3
+```
+
+5/5 ✅ = oturum temiz kapanır.
