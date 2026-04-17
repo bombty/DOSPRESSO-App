@@ -301,4 +301,146 @@ router.get("/api/cost-analysis/profit-summary", isAuthenticated, requireCost, as
   }
 });
 
+// GET /api/cost-analysis/donut-scenarios — Donut 3 senaryo maliyet analizi
+router.get("/api/cost-analysis/donut-scenarios", isAuthenticated, requireCost, async (req: any, res: Response) => {
+  try {
+    const [recipe] = await db.select().from(factoryRecipes).where(eq(factoryRecipes.code, "DON-001")).limit(1);
+    if (!recipe) return res.status(404).json({ error: "DON-001 reçetesi bulunamadı" });
+
+    // Hammadde toplam maliyeti
+    const ings = await db.execute(sql`
+      SELECT fri.name, fri.amount, fri.unit, fri.ingredient_type, fri.ingredient_category,
+        i.market_price, i.conversion_factor, i.name as inv_name, i.code as inv_code
+      FROM factory_recipe_ingredients fri
+      LEFT JOIN inventory i ON i.id = fri.raw_material_id
+      WHERE fri.recipe_id = ${recipe.id}
+      ORDER BY fri.sort_order
+    `);
+
+    let hamurCost = 0;
+    const ingredientDetails = [];
+    for (const ing of (ings.rows || []) as any[]) {
+      const amount = Number(ing.amount || 0);
+      const price = Number(ing.market_price || 0);
+      const conv = Number(ing.conversion_factor || 1000);
+      const pricePerKg = conv > 0 ? price / conv * 1000 : 0;
+      const cost = conv > 0 ? amount * (price / conv) : 0;
+      hamurCost += cost;
+      ingredientDetails.push({
+        name: ing.name, amount, unit: ing.unit,
+        type: ing.ingredient_type, category: ing.ingredient_category,
+        inventoryCode: ing.inv_code, pricePerKg: Math.round(pricePerKg * 100) / 100,
+        cost: Math.round(cost * 100) / 100,
+      });
+    }
+
+    const batchCount = recipe.baseBatchOutput || 630;
+    const unitWeight = Number(recipe.expectedUnitWeight || 65);
+
+    // 1. Sade hamur maliyeti
+    const hamurPerDonut = hamurCost / batchCount;
+    const kizartmaYagPerDonut = 0.020 * 86.27;  // 20g ayçiçek yağı emilimi
+    const elektrikPerDonut = (57.82 * 6.0) / batchCount;
+    const personelPerDonut = (2 * 76.25 * 2) / batchCount;
+    const ambalajPerDonut = 1.50;
+    const sadeDonut = hamurPerDonut + kizartmaYagPerDonut + elektrikPerDonut + personelPerDonut + ambalajPerDonut;
+
+    // 2. Çikolata kaplamalı (10g konfiseri ort)
+    const konfiseriOrt = (236.54 + 220 + 290) / 3;
+    const konfiseri10g = 0.010 * konfiseriOrt;
+    const kaplamaDonut = sadeDonut + konfiseri10g;
+
+    // 3. Kaplama + Dolgu (12g)
+    const dolguOrt = 252.71;
+    const dolgu12g = 0.012 * dolguOrt;
+    const tamDonut = kaplamaDonut + dolgu12g;
+
+    // 4. Gourmet
+    const gourmetDonut = tamDonut + 2.0;
+
+    const SATIS_SADE = 39.60;
+    const SATIS_GOURMET = 52.50;
+
+    res.json({
+      recipe: {
+        id: recipe.id, code: recipe.code, name: recipe.name,
+        batchCount, unitWeight, batchHamurKg: (batchCount * unitWeight) / 1000,
+      },
+      scenarios: [
+        {
+          id: "sade", name: "Sade Hamur",
+          description: "Sadece pişmiş donut, topping/dolgu yok",
+          breakdown: {
+            hamur: Math.round(hamurPerDonut * 100) / 100,
+            kizartmaYag: Math.round(kizartmaYagPerDonut * 100) / 100,
+            elektrik: Math.round(elektrikPerDonut * 100) / 100,
+            personel: Math.round(personelPerDonut * 100) / 100,
+            ambalaj: ambalajPerDonut,
+          },
+          unitCost: Math.round(sadeDonut * 100) / 100,
+          sellingPrice: SATIS_SADE,
+          profit: Math.round((SATIS_SADE - sadeDonut) * 100) / 100,
+          margin: Math.round((SATIS_SADE - sadeDonut) / SATIS_SADE * 1000) / 10,
+        },
+        {
+          id: "kaplamali", name: "Çikolata Kaplamalı",
+          description: "Sade + 10g konfiseri çikolata ortalaması",
+          breakdown: {
+            sadeBase: Math.round(sadeDonut * 100) / 100,
+            cikolataKaplama: Math.round(konfiseri10g * 100) / 100,
+          },
+          unitCost: Math.round(kaplamaDonut * 100) / 100,
+          sellingPrice: SATIS_SADE,
+          profit: Math.round((SATIS_SADE - kaplamaDonut) * 100) / 100,
+          margin: Math.round((SATIS_SADE - kaplamaDonut) / SATIS_SADE * 1000) / 10,
+          variations: {
+            beyaz: { cost: Math.round((sadeDonut + 0.01 * 236.54) * 100) / 100 },
+            sutlu: { cost: Math.round((sadeDonut + 0.01 * 220) * 100) / 100 },
+            bitter: { cost: Math.round((sadeDonut + 0.01 * 290) * 100) / 100 },
+          },
+        },
+        {
+          id: "tam", name: "Kaplama + Dolgu (Klasik)",
+          description: "Kaplama + 12g dolgu (ortalama)",
+          breakdown: {
+            kaplamaBase: Math.round(kaplamaDonut * 100) / 100,
+            dolgu: Math.round(dolgu12g * 100) / 100,
+          },
+          unitCost: Math.round(tamDonut * 100) / 100,
+          sellingPrice: SATIS_SADE,
+          profit: Math.round((SATIS_SADE - tamDonut) * 100) / 100,
+          margin: Math.round((SATIS_SADE - tamDonut) / SATIS_SADE * 1000) / 10,
+          variations: {
+            vizyonVanilya: { cost: Math.round((kaplamaDonut + 0.012 * 250) * 100) / 100 },
+            foFrambuaz: { cost: Math.round((kaplamaDonut + 0.012 * 400) * 100) / 100 },
+            waffleCikolata: { cost: Math.round((kaplamaDonut + 0.012 * 200) * 100) / 100 },
+            lotus: { cost: Math.round((kaplamaDonut + 0.012 * 250) * 100) / 100 },
+            karamel: { cost: Math.round((kaplamaDonut + 0.012 * 163.53) * 100) / 100 },
+          },
+        },
+        {
+          id: "gourmet", name: "Donut Gourmet",
+          description: "Klasik + ₺2 ekstra süsleme",
+          unitCost: Math.round(gourmetDonut * 100) / 100,
+          sellingPrice: SATIS_GOURMET,
+          profit: Math.round((SATIS_GOURMET - gourmetDonut) * 100) / 100,
+          margin: Math.round((SATIS_GOURMET - gourmetDonut) / SATIS_GOURMET * 1000) / 10,
+        },
+      ],
+      batchAnalysis: {
+        hamurBatchCost: Math.round(hamurCost * 100) / 100,
+        hamurPerDonut: Math.round(hamurPerDonut * 1000) / 1000,
+        totalIngredients: ingredientDetails.length,
+        batchProfit630: Math.round((SATIS_SADE - tamDonut) * batchCount * 100) / 100,
+        dailyProfit5Batch: Math.round((SATIS_SADE - tamDonut) * batchCount * 5 * 100) / 100,
+        monthlyProfit26Days: Math.round((SATIS_SADE - tamDonut) * batchCount * 5 * 26 * 100) / 100,
+      },
+      ingredients: ingredientDetails,
+    });
+  } catch (error) {
+    console.error("[CostAnalysis] donut-scenarios error:", error);
+    res.status(500).json({ error: "Donut senaryoları yüklenemedi" });
+  }
+});
+
 export default router;
