@@ -5,15 +5,53 @@ import { sql } from "drizzle-orm";
 
 const router = Router();
 
+/**
+ * SEED ENDPOINT GÜVENLİĞİ (Sprint A4 — 18 Nisan 2026)
+ *
+ * Katmanlı savunma:
+ *   1. isAuthenticated — login şart
+ *   2. requireAdmin — sadece admin rolü
+ *   3. productionSafeGuard — NODE_ENV=production ise sadece
+ *      ALLOW_SEED_IN_PRODUCTION=true env flag ile açılır
+ *
+ * Log: Her seed çağrısı audit için kaydedilir.
+ *
+ * PILOT LAUNCH İÇİN NOT: Production'da seed normalde KAPALI.
+ * Açmak için Replit Secrets → ALLOW_SEED_IN_PRODUCTION=true set edilmeli
+ * (sadece initial setup veya acil data reset için).
+ */
 function requireAdmin(req: any, res: any, next: any) {
   const user = req.user as any;
   if (!user || user.role !== 'admin') {
+    console.warn(`[SEED-AUTH-DENY] User ${user?.id || 'anon'} (${user?.role || 'no-role'}) tried to access ${req.path}`);
     return res.status(403).json({ error: 'Yalnızca admin bu işlemi yapabilir' });
   }
   next();
 }
 
-router.post('/api/admin/seed-checklists', isAuthenticated, requireAdmin, async (req, res) => {
+function productionSafeGuard(req: any, res: any, next: any) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const seedAllowed = process.env.ALLOW_SEED_IN_PRODUCTION === 'true';
+
+  if (isProduction && !seedAllowed) {
+    const user = req.user as any;
+    console.error(`[SEED-PROD-BLOCKED] ${user?.id || 'anon'} attempted ${req.path} in production (ALLOW_SEED_IN_PRODUCTION not set)`);
+    return res.status(403).json({
+      error: 'Seed endpoint\'leri production ortamında devre dışı',
+      hint: 'Geliştirici: ALLOW_SEED_IN_PRODUCTION=true set et ve server\'ı yeniden başlat'
+    });
+  }
+
+  // Audit log: her çağrı kaydedilir
+  const user = req.user as any;
+  console.log(`[SEED-CALL] ${new Date().toISOString()} — user=${user?.id} role=${user?.role} path=${req.path} env=${process.env.NODE_ENV || 'dev'}`);
+  next();
+}
+
+// Tüm seed endpoint'leri için standart guard zinciri
+const SEED_GUARDS = [isAuthenticated, requireAdmin, productionSafeGuard];
+
+router.post('/api/admin/seed-checklists', ...SEED_GUARDS, async (req, res) => {
   try {
     const templates = [
       {
@@ -154,7 +192,7 @@ router.post('/api/admin/seed-checklists', isAuthenticated, requireAdmin, async (
   }
 });
 
-router.post('/api/admin/seed-quiz-questions', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-quiz-questions', ...SEED_GUARDS, async (req, res) => {
   try {
     const modules = await db.execute(sql`SELECT id, title FROM training_modules LIMIT 51`);
     const moduleList = modules.rows as any[];
@@ -301,7 +339,7 @@ router.post('/api/admin/seed-quiz-questions', isAuthenticated, requireAdmin, asy
   }
 });
 
-router.post('/api/admin/seed-salaries', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-salaries', ...SEED_GUARDS, async (req, res) => {
   try {
     const salaries = [
       { code: 'stajyer', name: 'Stajyer', total: 3300000, base: 3100000, bonus: 200000 },
@@ -349,7 +387,7 @@ router.post('/api/admin/seed-salaries', isAuthenticated, requireAdmin, async (re
   }
 });
 
-router.post('/api/admin/seed-pdks', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-pdks', ...SEED_GUARDS, async (req, res) => {
   try {
     const branchId = 5;
     const usersResult = await db.execute(sql`
@@ -419,7 +457,7 @@ router.post('/api/admin/seed-pdks', isAuthenticated, requireAdmin, async (req, r
   }
 });
 
-router.post('/api/admin/seed-factory-chain', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-factory-chain', ...SEED_GUARDS, async (req, res) => {
   try {
     const products = await db.execute(sql`SELECT id, name, category FROM factory_products WHERE id IN (1, 3, 8, 12, 6) LIMIT 5`);
     const productList = products.rows as any[];
@@ -566,7 +604,7 @@ router.post('/api/admin/seed-factory-chain', isAuthenticated, requireAdmin, asyn
   }
 });
 
-router.post('/api/admin/seed-training-completions', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-training-completions', ...SEED_GUARDS, async (req, res) => {
   try {
     const usersResult = await db.execute(sql`
       SELECT id, role FROM users WHERE branch_id = 5 AND is_active = true
@@ -666,7 +704,7 @@ router.post('/api/admin/seed-training-completions', isAuthenticated, requireAdmi
   }
 });
 
-router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-feedback', ...SEED_GUARDS, async (req, res) => {
   try {
     const branchId = 5;
     const feedbackData = [
@@ -726,7 +764,7 @@ router.post('/api/admin/seed-feedback', isAuthenticated, requireAdmin, async (re
   }
 });
 
-router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-branch-inventory', ...SEED_GUARDS, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM branch_inventory`);
     if (parseInt((existing.rows[0] as any).c) > 10) {
@@ -770,7 +808,7 @@ router.post('/api/admin/seed-branch-inventory', isAuthenticated, requireAdmin, a
   }
 });
 
-router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-flow-completions', ...SEED_GUARDS, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM dobody_flow_completions`);
     if (parseInt((existing.rows[0] as any).c) > 0) {
@@ -807,7 +845,7 @@ router.post('/api/admin/seed-flow-completions', isAuthenticated, requireAdmin, a
   }
 });
 
-router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-training-assignments', ...SEED_GUARDS, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM training_assignments`);
     if (parseInt((existing.rows[0] as any).c) > 0) {
@@ -870,7 +908,7 @@ router.post('/api/admin/seed-training-assignments', isAuthenticated, requireAdmi
   }
 });
 
-router.post('/api/admin/seed-announcements', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-announcements', ...SEED_GUARDS, async (req, res) => {
   try {
     const existing = await db.execute(sql`SELECT COUNT(*)::text as c FROM announcements`);
     if (parseInt((existing.rows[0] as any).c) >= 3) {
@@ -941,7 +979,7 @@ router.post('/api/admin/seed-announcements', isAuthenticated, requireAdmin, asyn
   }
 });
 
-router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-factory-extended', ...SEED_GUARDS, async (req, res) => {
   try {
     const existingBatches = await db.execute(sql`SELECT COUNT(*)::text as c FROM production_batches`);
     if (parseInt((existingBatches.rows[0] as any).c) > 20) {
@@ -1006,7 +1044,7 @@ router.post('/api/admin/seed-factory-extended', isAuthenticated, requireAdmin, a
   }
 });
 
-router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-agent-routing', ...SEED_GUARDS, async (req, res) => {
   try {
     const existingCount = await db.execute(sql`SELECT COUNT(*) as cnt FROM agent_routing_rules`);
     const cnt = Number((existingCount.rows[0] as any).cnt);
@@ -1048,7 +1086,7 @@ router.post('/api/admin/seed-agent-routing', isAuthenticated, requireAdmin, asyn
   }
 });
 
-router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-factory-full', ...SEED_GUARDS, async (req, res) => {
   try {
     const results: Record<string, any> = {};
 
@@ -1335,7 +1373,7 @@ router.post('/api/admin/seed-factory-full', isAuthenticated, requireAdmin, async
   }
 });
 
-router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-kiosk-accounts', ...SEED_GUARDS, async (req, res) => {
   try {
     const { seedAllKioskAccounts } = await import('../lib/kiosk-accounts');
     const results = await seedAllKioskAccounts();
@@ -1354,7 +1392,7 @@ router.post('/api/admin/seed-kiosk-accounts', isAuthenticated, requireAdmin, asy
 });
 
 // POST /api/admin/seed-cost-settings — Fabrika maliyet parametreleri
-router.post('/api/admin/seed-cost-settings', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-cost-settings', ...SEED_GUARDS, async (req, res) => {
   try {
     const costSettings = [
       { key: 'electricity_tl_per_kwh', value: '3.50', desc: 'Endüstriyel elektrik birim fiyatı (₺/kWh)' },
@@ -1384,7 +1422,7 @@ router.post('/api/admin/seed-cost-settings', isAuthenticated, requireAdmin, asyn
 });
 
 // POST /api/admin/seed-batch-specs — 9 istasyon için batch spec oluştur
-router.post('/api/admin/seed-batch-specs', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-batch-specs', ...SEED_GUARDS, async (req, res) => {
   try {
     // İstasyonları al
     const stations = await db.execute(sql`SELECT id, name, code, product_type_id FROM factory_stations WHERE is_active = true ORDER BY sort_order`);
@@ -1451,7 +1489,7 @@ router.post('/api/admin/seed-batch-specs', isAuthenticated, requireAdmin, async 
 });
 
 // POST /api/admin/seed-audit-templates — Denetim şablonlarını oluştur
-router.post('/api/admin/seed-audit-templates', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-audit-templates', ...SEED_GUARDS, async (req, res) => {
   try {
     const { seedAuditTemplates } = await import('../seeds/seed-audit-templates');
     await seedAuditTemplates(req.user.id);
@@ -1463,7 +1501,7 @@ router.post('/api/admin/seed-audit-templates', isAuthenticated, requireAdmin, as
 });
 
 // POST /api/admin/seed-holidays-2026 — 2026 Türkiye resmi tatilleri
-router.post('/api/admin/seed-holidays-2026', isAuthenticated, requireAdmin, async (req, res) => {
+router.post('/api/admin/seed-holidays-2026', ...SEED_GUARDS, async (req, res) => {
   try {
     const holidays2026 = [
       { name: "Yılbaşı", date: "2026-01-01", year: 2026, is_half_day: false },
