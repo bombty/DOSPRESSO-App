@@ -29,6 +29,17 @@ const TOPPING_DEFAULTS: Record<string,{toppingGrams:number;toppingPriceKg:number
   "default":{toppingGrams:0,toppingPriceKg:0,fillingGrams:0,fillingPriceKg:0,fryOilGrams:0},
 };
 
+// Cheesecake 180g kalıp yapılandırması
+// unit_total_g = taban_g + krem_g + sos_g = 180g
+// Batch'ten çıkan adet = karışım_toplam / krem_g
+const CHEESECAKE_MOLD: Record<string, { unitTotalG: number; tabanG: number; sosG: number; tabanPriceKg: number; sosPriceKg: number }> = {
+  "CHE-001": { unitTotalG: 180, tabanG: 50, sosG: 10, tabanPriceKg: 150, sosPriceKg: 316.80 }, // Lotus
+  "CHE-002": { unitTotalG: 180, tabanG: 50, sosG: 10, tabanPriceKg: 150, sosPriceKg: 600 },     // Frambuaz
+  "CHE-003": { unitTotalG: 180, tabanG: 50, sosG: 10, tabanPriceKg: 150, sosPriceKg: 316.80 }, // Limon
+  "CHE-004": { unitTotalG: 180, tabanG: 30, sosG: 10, tabanPriceKg: 318.21, sosPriceKg: 287.74 }, // Oreo
+  "CHE-005": { unitTotalG: 180, tabanG: 0, sosG: 0, tabanPriceKg: 0, sosPriceKg: 0 },           // San Sebastian (tabansız)
+};
+
 const OH_DEFAULTS: Record<string,number> = {
   electricity_kwh_price:6,electricity_kwh_per_batch:57.82,
   personnel_hourly_rate:76.25,personnel_count:2,personnel_hours:2,fry_oil_price_kg:86.27,
