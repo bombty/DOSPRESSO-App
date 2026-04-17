@@ -1,6 +1,6 @@
 ---
 name: dospresso-architecture
-description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 27-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
+description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 31-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
 ---
 
 # DOSPRESSO Architecture Map
@@ -34,7 +34,7 @@ client/src/
 └── App.tsx         # Root with providers + 155 lazy route definitions
 
 server/
-├── routes/         # 111 route files, ~1708+ endpoints
+├── routes/         # 111 route files, ~1800+ endpoints
 ├── agent/          # Mr. Dobody agent system
 │   ├── skills/     # 29 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
@@ -42,7 +42,7 @@ server/
 ├── lib/            # Business logic (pdks-engine, payroll-engine)
 ├── menu-service.ts # Sidebar blueprint + RBAC menu config
 ├── seed-sla-rules.ts # SLA defaults seeded on startup
-└── shared/schema/  # 463 tables across 22 modular schema files (barrel: shared/schema.ts)
+└── shared/schema/  # 468 tables across 23 modular schema files (barrel: shared/schema.ts)
 ```
 
 ## Role System (30 Roles)
