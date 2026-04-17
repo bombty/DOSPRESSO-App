@@ -95,13 +95,13 @@ async function seedDonutRecipe() {
     
     if (materialId) linked++; else unlinked++;
     
-    // Malzemeyi ekle
+    const refId = `D${String(i + 1).padStart(3, "0")}`;
     await db.execute(sql`
       INSERT INTO factory_recipe_ingredients (
-        recipe_id, name, amount, unit, ingredient_type, ingredient_category,
+        recipe_id, ref_id, name, amount, unit, ingredient_type, ingredient_category,
         raw_material_id, sort_order
       ) VALUES (
-        ${recipeId}, ${ing.name}, ${ing.amount}, ${ing.unit}, ${ing.type}, ${ing.category},
+        ${recipeId}, ${refId}, ${ing.name}, ${ing.amount}, ${ing.unit}, ${ing.type}, ${ing.category},
         ${materialId}, ${i + 1}
       )
     `);
@@ -118,7 +118,6 @@ async function seedDonutRecipe() {
       expected_unit_weight = '65',
       expected_output_count = 630,
       output_unit = 'adet',
-      expected_unit_weight_unit = 'g',
       updated_at = NOW()
     WHERE id = ${recipeId}
   `);
