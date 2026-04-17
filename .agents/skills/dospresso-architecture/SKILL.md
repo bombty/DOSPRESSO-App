@@ -259,6 +259,38 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
   - Personel: ₺216.35/saat (₺45K/ay SGK dahil ÷ 26 gün ÷ 8 saat)
 
 ### Key Role Notes:
+
+### 🗺️ Pilot Hazırlık Yol Haritası (18 Nisan 2026 eklendi — AKTİF):
+**⚠️ FEATURE FREEZE — 8 hafta yeni özellik YOK, sadece konsolidasyon + bug fix**
+
+Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
+
+**8 Sprint Planı (18 Nisan 2026 → 18 Haziran 2026):**
+- **Sprint A (Hafta 1):** Stop the Bleeding — 17 kırık link, enum fix, seed security, notification spam
+- **Sprint B (Hafta 2):** Veri konsolidasyon — 3 puantaj→1, 3 izin→1, 2 onboarding→1
+- **Sprint C (Hafta 3):** Akademi v1/v2/v3→v3, CRM tablolarını düzgün oluştur
+- **Sprint D (Hafta 4):** Satınalma modülü + Bordro hesaplama job
+- **Sprint E (Hafta 5):** Dashboard tamamlama 14 rol, Rol konsolidasyon 27→18
+- **Sprint F (Hafta 6):** Test altyapısı (Vitest + Playwright 10 E2E) + CI/CD
+- **Sprint G (Hafta 7):** Performans (n+1, cache, materialized view, bundle split)
+- **Sprint H (Hafta 8):** Observability (Pino + Sentry + slow query log + 404 tracking)
+
+**Kritik P0 (Sprint A) acil işler:**
+1. ✅ Recipe↔Product mapping (`server/scripts/fix-recipe-product-mapping.ts` hazır) — 14 reçete yeni ürünlere bağlanacak
+2. ⏳ 17 kırık sidebar linki (Satınalma 5 + Fabrika 4 + /admin + /akademi + /ekipman + /ik + /raporlar)
+3. ⏳ `/api/seed/*` → admin-only middleware
+4. ⏳ Equipment enum TR→EN migration
+5. ⏳ Agent notification aggregation (20K okunmamış → saatlik özet)
+
+**İş bölümü:**
+- Aslan: Öncelik + sprint onay + pilot kararı
+- Claude (IT): Mimari + schema + sprint planlama + code review
+- Replit Agent: Build + hotfix + audit + script execution
+
+**Haftalık sync:** Pazartesi plan, Çarşamba mid-check, Cuma Replit audit + sprint kapanış
+
+---
+
 - `fabrika_depo` (Depocu): Malzeme çekme, stok sayım, mal kabul, FEFO, sevkiyat hazırlama. Fabrika group.
 - `gida_muhendisi` (Sema): Factory-only, QC approve, food safety. NO branch_orders/inventory. Has factory-recipes sidebar (read-only)
 - `recete_gm` (RGM): Full recipe control + Keyblend + production planning + cost analysis. Fabrika group
