@@ -435,3 +435,47 @@ grep "schema-23" shared/schema.ts
 
 **PASS**: 4 tables, export present.
 **FAIL**: MRP schema missing or not exported.
+
+## 28. Maliyet Analizi Yapısı
+
+Cost analysis router registered + 5 endpoint aktif:
+
+```bash
+grep "costAnalysisRouter" server/routes.ts
+grep -c "router\.\(get\|post\)" server/routes/cost-analysis-routes.ts
+# Expected: 5+ endpoints (recipes, recipe/:id, profit-summary, settings, donut-scenarios)
+```
+
+SALES_PRICES map minimum 10 ürün içerir:
+```bash
+grep -c "\".*-00[1-9]\"" server/routes/cost-analysis-routes.ts
+# Expected: ≥10 (DON, CIN, CHE×5, BRW×2, COK×2, EKM×2)
+```
+
+Cost analysis sayfası 6+ role erişilebilir:
+```bash
+grep "factory-cost-analysis" server/menu-service.ts | wc -l
+# Expected: ≥7 (sidebar item + 6 role allowed list)
+```
+
+**PASS**: 5 endpoint, SALES_PRICES map ≥10 ürün, 6+ rol.
+**FAIL**: Endpoint veya fiyat eksik.
+
+## 29. Reçete Malzeme Ayrıştırma (Keyblend Transparency)
+
+DON-001 reçetesinin keyblend bileşenleri ayrıştırılmış olmalı (tek "Katkı Maddeleri" satırı ❌):
+
+```bash
+psql $DATABASE_URL -c "
+SELECT ingredient_type, COUNT(*) 
+FROM factory_recipe_ingredients fri
+JOIN factory_recipes fr ON fr.id = fri.recipe_id
+WHERE fr.code = 'DON-001'
+GROUP BY ingredient_type;
+"
+# Expected: keyblend ≥10, hammadde ≥15 (29 toplam)
+```
+
+**PASS**: Keyblend bileşenleri ayrı satırlarda (CMC, DATEM, SSL, L-sistein, aromalar).
+**FAIL**: Tek "Katkı Maddeleri" satırı (doğru hesap yapılamaz).
+

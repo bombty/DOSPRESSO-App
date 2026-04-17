@@ -223,6 +223,18 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - plan_items: inventory×recipe, requiredQuantity - leftoverQuantity = netPickQuantity
 - leftovers: condition (good/marginal/unusable), storageTemp, usableForRecipes (auto-calculated)
 - pick_logs: audit trail, fromLocation (depo_ana/soguk/kuru), lotNumber, FEFO
+- 11 endpoints: generate-plan, get, confirm, pick, verify, leftovers CRUD, pick-logs, deduct-stock, calculate-waste
+
+### Maliyet Analizi Sistemi (Cost Analysis — cost-analysis-routes.ts):
+- 5 endpoints: GET /recipes (özet), GET /recipe/:id (detay), GET /profit-summary (kategori), GET /settings, GET /donut-scenarios (3 senaryo)
+- Hesaplama: hammadde + elektrik (57.82 KWh × ₺6) + personel (2 kişi × 2 saat × ₺76.25) + topping + dolgu + ambalaj
+- SALES_PRICES map hardcoded (şubelere satış fiyatları — DON-001:39.60, CHE-001-004:76, CIN:54.35, BRW:49.50, vb.)
+- TOPPING_DEFAULTS map: reçete koduna göre topping/dolgu gramaj+fiyat
+- PACKAGING map: kategori bazlı ambalaj maliyeti
+- Sayfa: /fabrika/maliyet-analizi (6 rol: admin, muhasebe, satinalma, recete_gm, gida_muhendisi, fabrika_mudur + uretim_sefi)
+- DON-001 Donut reçetesi: 29 ayrıştırılmış bileşen (katkı maddeleri ayrı — CMC, DATEM, SSL, L-sistein, aromalar)
+- Donut maliyet (Aslan metodolojisi): Sade ₺7.33 → Kaplamalı ₺9.82 → Klasik ₺12.85 → Gourmet ₺14.85
+- Kritik fiyat düzeltme notları: keyblend ₺215/KG (9210/KG DEĞİL), maya ₺77/KG (1869/KG DEĞİL — paket/12), konfiseri ₺249/KG ort, dolgu ₺260/KG ort
 
 ### Key Role Notes:
 - `fabrika_depo` (Depocu): Malzeme çekme, stok sayım, mal kabul, FEFO, sevkiyat hazırlama. Fabrika group.

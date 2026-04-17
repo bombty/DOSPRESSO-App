@@ -531,3 +531,73 @@ for name, path in [('PERM','shared/schema/schema-02.ts'),('MAP','client/src/comp
   print(f'{name}: {len(roles)} roles')
 "
 ```
+
+## §21 — Maliyet Hesaplama Yanlışlıkları (Cost Analysis Errors)
+
+**Semptom:** Reçete maliyeti gerçeğin 2-3 katı veya hiç hesaplanmıyor
+
+**Tipik hatalar:**
+
+### 1. Paket fiyatı KG fiyatı olarak kullanılmış (maya vakası)
+```
+Yaş Maya 500g × 24 paket = 12 KG, fiyat ₺925
+Yanlış: ₺925/KG  → 1 kg × 925 = ₺925 ❌
+Doğru: ₺925/12KG = ₺77/KG → 1 kg × 77 = ₺77 ✅
+```
+**Çözüm:** `conversion_factor` kolonunu paket ağırlığına eşitle (gram olarak)
+
+### 2. Keyblend karışımı tek ₺/KG ile hesaplanmış
+```
+"Katkı Maddeleri" 1265g × ₺9.21/g = ₺11,651 ❌ ASIRI YANLIŞ
+Gerçek: 14 ayrıştırılmış bileşen (CMC+DATEM+SSL+Xanthan+L-sistein+aromalar)
+        Toplam ~480g, ortalama ₺215/KG → ₺103 ✅
+```
+**Çözüm:** Reçete malzemelerini ayrıştırılmış olarak gir. `ingredient_type: 'keyblend'` etiketi koy.
+
+### 3. Birim dönüşüm unutulmuş (LT vs KG)
+```
+Creamice Base 950ml (0.95 LT ≈ 0.95 KG)
+Fiyat ₺199.75/paket → ₺199.75/0.95 = ₺210.26/KG
+```
+
+### Debug Adımları:
+```bash
+# 1. Envanter fiyatı doğru mu?
+psql $DATABASE_URL -c "SELECT code, name, market_price, conversion_factor FROM inventory WHERE code = 'H-1082';"
+# conversion_factor = paket ağırlığı (gram). 12000 = 12 KG paket
+
+# 2. Reçete malzeme bağlantısı var mı?
+psql $DATABASE_URL -c "
+SELECT fri.name, fri.amount, fri.ingredient_type, i.code, i.market_price, i.conversion_factor
+FROM factory_recipe_ingredients fri
+LEFT JOIN inventory i ON i.id = fri.raw_material_id
+WHERE fri.recipe_id = 1;
+"
+
+# 3. Hesap doğru mu?
+# amount (g) × market_price / conversion_factor = cost (₺)
+# 1000 × 925 / 12000 = ₺77.08 ✅
+```
+
+### Aslan Metodolojisi (Donut Örnek):
+- **Hamur:** 29 ayrıştırılmış malzeme (keyblend ayrı işaretli) — 41 KG parti
+- **Kızartma yağı:** 20g emilim × ₺86.27/KG = ₺1.73
+- **Elektrik:** 57.82 KWh × ₺6 / 630 adet = ₺0.55
+- **Personel:** 2 kişi × 2 saat × ₺76.25 / 630 = ₺0.48
+- **Topping:** 10g konfiseri × ₺249/KG = ₺2.49 (Beyaz/Sütlü/Bitter ort)
+- **Dolgu:** 12g × ₺260/KG = ₺3.12 (Vizyon/Frambuaz/Waffle/Lotus/Karamel ort)
+- **Ambalaj:** ₺1.50
+- **Toplam:** Sade ₺7.33 → Kaplamalı ₺9.82 → Klasik ₺12.85 (satış ₺39.60 = %68-81 marj)
+
+### SALES_PRICES Map Güncelleme:
+```ts
+// server/routes/cost-analysis-routes.ts
+const SALES_PRICES = {
+  "DON-001": 39.60, "CIN-001/002/003": 54.35,
+  "CHE-001/002/003/004": 76.00, "CHE-005": 115.62 (San Sebastian),
+  "BRW-001/002": 49.50, "COK-001/002": 49.50,
+  "EKM-001": 49.50, "EKM-002": 56.80,  // Blueberry Crown
+};
+```
+Not: Satış fiyatları şubelere fabrika çıkış fiyatı (KDV hariç). Fiyat listesi Excel dosyasından alındı.
+
