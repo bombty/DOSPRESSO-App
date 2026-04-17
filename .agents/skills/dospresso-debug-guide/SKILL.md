@@ -641,3 +641,94 @@ Seed script çalıştırmadan önce:
 psql "$DATABASE_URL" -c "\d <hedef_tablo>"
 ```
 ile NOT NULL ve mevcut kolonları doğrula. Unique constraint varsa (recipe_id+ref_id gibi) deterministik üretim kullan.
+
+---
+
+## §22 — Recipe-Product Mapping Drift (18.04.2026 — Replit Audit keşfi)
+
+**Semptom:** `factory_recipes.productId` tüm satırlarda `NULL`, "üretim planlama reçete seçince ürün göstermiyor".
+
+**Kök sebep:** Prefix tutarsızlığı — reçete kodları 3 harfli (`DON-`, `CIN-`, `CHE-`, `BRW-`), ürün SKU'ları 4-5 harfli (`DNT-`, `CINNA-`, `CHEE-`, `BROW-`). Otomatik eşleşme imkansız, mantıksal mapping gerekli.
+
+**Debug:**
+```sql
+-- Orphan sayısı
+SELECT COUNT(*) FROM factory_recipes WHERE product_id IS NULL;
+-- 27 ise: hiç eşleşme yok, 0 ise: tamam
+
+-- Prefix farkını gör
+SELECT DISTINCT SUBSTRING(code FROM 1 FOR 4) FROM factory_recipes
+UNION ALL
+SELECT DISTINCT SUBSTRING(sku FROM 1 FOR 4) FROM factory_products;
+```
+
+**Çözüm:** `server/scripts/fix-recipe-product-mapping.ts` — mantıksal eşleme tablosu (`RECIPE_PRODUCT_MAP`) kullanır, eksik ürünleri `FP-*` prefix ile otomatik oluşturur.
+
+**Önleme:** Yeni reçete/ürün eklendiğinde `RECIPE_PRODUCT_MAP`'e ekle, seed'de `productId` doldur.
+
+---
+
+## §23 — Fatura Fiyat Senkronizasyon Drift (18.04.2026)
+
+**Semptom:** "Maliyet hesabı gerçek alım fiyatından farklı" — örn. maya ₺1,869/KG (yanlış, paket fiyatı) veya keyblend ₺9,210/KG (yanlış, gram fiyatı).
+
+**Kök sebep:** Excel'den elle fiyat girilmesi → paket fiyatı KG fiyatı olarak kaydedildi, küçük bileşen fiyatı da tüm keyblend fiyatı olarak atandı.
+
+**Debug:**
+```sql
+-- Şüpheli yüksek fiyatlar
+SELECT code, name, last_purchase_price
+FROM inventory
+WHERE last_purchase_price > 1000
+ORDER BY last_purchase_price DESC
+LIMIT 20;
+
+-- Price history'de kaynağı gör
+SELECT price, source, notes, effective_date
+FROM inventory_price_history
+WHERE inventory_id = <id>
+ORDER BY effective_date DESC;
+```
+
+**Çözüm:** `npx tsx server/scripts/update-prices-from-invoices.ts` — 143 malzemenin son fatura fiyatını gerçek muhasebe Excel'inden alır, `source='excel_import'` ile izlenebilir.
+
+**Önleme:** Envanter kaydı oluşturulurken:
+- İsimde **mutlaka paket ağırlığı** yaz (`Yaş Maya 500 gr*24`, `Un 25 kg`)
+- Fiyat **paket başına** yazılır (`lastPurchasePrice`), `unitCost` da aynı (script hesabını yapacak)
+- Paket içeriği belirsizse `packageSizeKg=null` bırak, manuel fiyat/KG hesabı yapma
+
+---
+
+## §24 — Feature Freeze İhlal Tespiti (18.04.2026 — 8 haftalık sprint boyunca)
+
+**Semptom:** Sprint A-H arasında "yeni özellik eklendi" benzeri bir commit var.
+
+**Kontrol:**
+```bash
+# Commit öneklerini kontrol et
+git log --oneline --since="2026-04-18" --until="2026-06-15" | grep -E "^[a-f0-9]+ feat:" | head
+
+# Yeni route/tablo kontrolü
+git diff --stat origin/main~50 HEAD -- shared/schema/ client/src/pages/ server/routes/
+```
+
+**Önleme:**
+- Her commit öncesi `.agents/skills/dospresso-session-protocol/SKILL.md` § Feature Freeze bölümünü oku
+- Aslan'dan gelen "Cinnaboom maliyet hesabı" gibi istekler → nazikçe "Sprint I'ya (9. hafta) ertelendi" de
+- **İstisnalar**: kritik güvenlik fix (A4 gibi), kırık link düzeltmesi (A1), veri konsolidasyon (B)
+
+---
+
+## §25 — Seed Production Blocked (18.04.2026 — Sprint A4 sonrası yeni davranış)
+
+**Semptom:** Admin olarak `/api/admin/seed-*` çağırıyor, production'da 403 alıyor.
+
+**Çözüm:** Bu artık **beklenen davranış**. Seed endpoint'leri production'da kapalı. Açmak için:
+
+1. Replit Secrets → `ALLOW_SEED_IN_PRODUCTION=true` ekle
+2. Workflow restart (yeni env değeri yüklenmesi için)
+3. Seed çalıştır (tek sefer)
+4. Secrets'tan flag'i SIL veya `false` yap
+5. Workflow restart
+
+**Önleme:** Dev ortamda bu check çalışmıyor, dev DB'de her zaman izinli. Production'da **kasıtlı bariyer** — audit log `[SEED-PROD-BLOCKED]` mesajı bırakır.

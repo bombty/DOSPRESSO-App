@@ -496,3 +496,99 @@ grep -E "INSERT INTO|VALUES" server/seed-*.ts
 
 **PASS:** Tüm NOT NULL kolonlar INSERT'te var (örn. `ref_id` varchar(10) NOT NULL), UPDATE SET listesi yalnızca var olan kolonları referans ediyor.
 **FAIL:** "null value in column ... violates not-null constraint" (code 23502) veya "column ... does not exist" (code 42703). Örnek: `seed-donut-recipe-v2.ts` orijinali → bkz. `dospresso-debug-guide` §21.
+
+---
+
+## Madde 30 — Fatura Fiyat Senkronizasyonu (18.04.2026)
+
+Envanter fiyatları muhasebe fatura verileriyle senkron olmalı. Ayda bir veya yeni fatura bloğu geldiğinde çalıştırılır.
+
+```bash
+# Script çalıştır (idempotent, aynı fiyatı tekrar yazmak zararsız)
+npx tsx server/scripts/update-prices-from-invoices.ts
+
+# Doğrulama
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM inventory_price_history WHERE source = 'excel_import' AND created_at > NOW() - INTERVAL '24 hours';"
+```
+
+**PASS:**
+- `inventory.lastPurchasePrice` son fatura tutarı ile eşit
+- `inventory_price_history` her malzeme için `source='excel_import'` kaydı var
+- Değişim %10'u aşan malzemeler loglanmış (🔴 işaretli)
+
+**FAIL:**
+- Envanterde yok olan kod script output'unda uyarı veriyor → manuel inventory seed gerekli
+- `pricePerKg=null` olan 54 malzeme var (paket ağırlığı belirsiz) → Aslan'dan manuel netleştirme
+
+Kaynak: `server/data/invoice-prices.json` (143 malzeme, 2024-2026 Bombtea muhasebe)
+
+---
+
+## Madde 31 — Recipe ↔ Product Mapping (18.04.2026)
+
+`factory_recipes` tablosundaki her reçete `factory_products` ile `productId` ile bağlı olmalı. Yetim reçete (productId=NULL) olmamalı.
+
+```bash
+# Doğrulama
+psql "$DATABASE_URL" -c "
+SELECT 'linked' as status, COUNT(*) FROM factory_recipes WHERE product_id IS NOT NULL
+UNION ALL
+SELECT 'orphan', COUNT(*) FROM factory_recipes WHERE product_id IS NULL;
+"
+
+# Script (eksik ürünleri otomatik oluşturur, mapping tablosundan)
+npx tsx server/scripts/fix-recipe-product-mapping.ts
+```
+
+**PASS:**
+- orphan = 0 (tüm reçeteler ürüne bağlı)
+- Mapping tablosunda (`RECIPE_PRODUCT_MAP`) her reçete için hedef SKU tanımlı
+- Yeni ürünler otomatik oluşuyorsa isimlendirme `FP-*` prefix'i kullanıyor
+
+**FAIL:**
+- `productId IS NULL` satır var → mapping tamamlanmamış
+- SKU prefix tutarsızlığı (BROW vs BRW gibi) → mapping açıkça tanımlanmalı
+
+Hedef durum (18.04.2026 sonrası): **27/27 eşleşme, 0 orphan.**
+
+---
+
+## Madde 32 — Seed Endpoint Production Safeguard (18.04.2026 — Sprint A4)
+
+Production ortamında `/api/seed/*` endpoint'leri env flag olmadan çalışmamalı.
+
+```bash
+# Code review
+grep -c "SEED_GUARDS" server/routes/seed.ts  # 20 olmalı (1 tanım + 19 endpoint)
+
+# Middleware zincirini doğrula
+grep -A 2 "productionSafeGuard" server/routes/seed.ts | head -10
+```
+
+**PASS:**
+- `SEED_GUARDS = [isAuthenticated, requireAdmin, productionSafeGuard]` tanımlı
+- Tüm 19 seed endpoint `...SEED_GUARDS` kullanıyor (eski `isAuthenticated, requireAdmin` pattern yok)
+- Production'da `ALLOW_SEED_IN_PRODUCTION` env yoksa 403 dönüyor
+- Her çağrı console.log ile izlenebilir (`[SEED-CALL]`, `[SEED-PROD-BLOCKED]`)
+
+**FAIL:**
+- `SEED_GUARDS` sayısı <20 → bazı endpoint eski pattern kullanıyor
+- Production'da env flag olmadan 200 döndü → middleware zinciri bozuk
+
+---
+
+## Madde 33 — Feature Freeze Disiplini (18.04.2026)
+
+8 haftalık pilot hazırlık sprinti süresince (18 Nisan → 15 Haziran 2026) **yeni özellik geliştirilmez.**
+
+**PASS:**
+- Commit mesajları `feat(roadmap):`, `fix(security):`, `chore(data):`, `docs:` öneklerinden başlıyor
+- Yeni route eklenmemiş (sadece kırık link düzeltmesi)
+- Yeni tablo eklenmemiş (sadece mevcut tablolara kolon/index)
+- Yeni endpoint eklenmemiş (sadece mevcut endpoint hot-fix)
+
+**FAIL:**
+- `feat:` commit'inde yeni modül/tablo/sayfa var → Sprint I (Hafta 9) backlog'una al
+- Cinnaboom/cheesecake/brownie gibi yeni maliyet analiz feature'ı → DURDUR
+
+Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`

@@ -134,3 +134,132 @@ Test edilmesi gereken endpoint'ler:
 | Son commit | ce3635317 (hotfix: seed-donut-recipe-v2 ref_id + expected_unit_weight_unit) |
 | Bekleyen | Task #92 fabrika_depo erişim sorunu (HR_ACCESS_DENIED leftovers/inventory), Task #93 düşük stok→satınalma, Task #94 LOT&SKT girişi |
 | Güncel Değerler | 29 rol, 311+ sayfa, 110+ route dosyası, 16 schema, §21 debug, 19 quality-gate |
+
+---
+
+## Feature Freeze Politikası (18.04.2026 — 8 haftalık pilot hazırlık)
+
+**18 Nisan 2026 → 15 Haziran 2026** arasında **yeni özellik geliştirilmez**. Sadece:
+- ✅ Kırık bug fix
+- ✅ Veri konsolidasyonu
+- ✅ Test yazma
+- ✅ Observability ekleme
+- ❌ Yeni modül / yeni tablo / yeni özellik
+
+### Aslan'dan Yeni Özellik İsteği Geldiğinde:
+
+Örnek: "Cinnaboom maliyet hesabı", "Yeni CRM widget", "Brownie reçete ekle"
+
+**Cevap şablonu:**
+> "Bu istek Sprint I (9. hafta, 16 Haziran sonrası) backlog'una eklendi. Şu an Sprint [X] kapsamında [konu] üzerinde çalışıyoruz. Feature Freeze politikası gereği yeni özellik sırada bekliyor."
+
+### İstisnalar (Freeze'e aykırı değil):
+- **Kritik güvenlik fix** (A4 seed safeguard gibi)
+- **Kırık link düzeltmesi** (A1)
+- **Veri konsolidasyon** (Sprint B — 3 puantaj → 1)
+- **Mevcut veri kalibrasyonu** (fatura fiyat senkronizasyonu gibi)
+
+### Commit Mesajı Ön Ekleri (Freeze döneminde):
+- ✅ `fix(security):` — güvenlik patch
+- ✅ `fix:` — bug fix
+- ✅ `chore(data):` — veri senkronizasyon/migration
+- ✅ `docs:` — dokümantasyon
+- ✅ `refactor:` — kod temizliği
+- ✅ `test:` — test yazma
+- ❌ `feat:` — yeni özellik **YASAK** (istisnalar: Sprint hedefi + roadmap referansı)
+
+### Her Commit Öncesi Check:
+```bash
+# Son commit mesajını kontrol et
+git log -1 --pretty=%s | grep -E "^(fix|chore|docs|refactor|test)" || echo "⚠️ FEATURE FREEZE İHLALİ — prefix değişti mi?"
+```
+
+---
+
+## 8 Haftalık Yol Haritası Referansı
+
+**Her oturum başında ilk okunacak:**
+`docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
+
+**Mevcut sprint durumu:**
+- **Sprint A** (21-27 Nisan): Stop the Bleeding — 🟡 %33 (A2, A4 tamam)
+- **Sprint B** (28 Nisan-4 Mayıs): Veri konsolidasyon
+- **Sprint C** (5-11 Mayıs): Akademi + CRM
+- **Sprint D** (12-18 Mayıs): Satınalma + Bordro
+- **Sprint E** (19-25 Mayıs): Dashboard + Rol temizliği
+- **Sprint F** (26 Mayıs-1 Haziran): Test + CI/CD
+- **Sprint G** (2-8 Haziran): Performans
+- **Sprint H** (9-15 Haziran): Observability
+
+**12 KPI Hedef** (şu an 2/12 yeşil, final: 12/12)
+
+---
+
+## İletişim Modu — "SANA + REPLIT'E" Formatı (18.04.2026)
+
+Aslan, Claude'un yazdıklarını **doğrudan Replit Agent'a kopyalıyor.** Bu nedenle her yanıt **iki bölümlü** olmalı:
+
+### 🧑‍💼 SANA (Aslan'a) özet:
+- Kısa Türkçe özet
+- Ne oldu, hangi kararı vermesi gerekiyor
+- Teknik detaylar (ama özlü)
+
+### 🤖 REPLIT'E GÖNDERİLECEK:
+- Kod bloğu içinde (``` ile çevrili)
+- Net komutlar, net soru
+- Kopyala-yapıştır hazır, yorum yok
+- Acceptance kriterleri dahil
+
+**Örnek:**
+```
+🤖 REPLIT'E GÖNDERİLECEK:
+
+[Task adı]
+cd /home/runner/workspace && git pull --rebase && \
+npx tsx server/scripts/X.ts && \
+echo "Beklenen: ..."
+
+Acceptance: ...
+```
+
+### Task Planı Sunulduğunda:
+- Replit **doğru task planı** hazırladıysa → Aslan doğrudan butona basar, metin göndermeye gerek yok
+- Task planı **yanlış/eksikse** → Claude düzeltme metni hazırlar, Aslan Replit'e yapıştırır
+
+---
+
+## Replit ↔ Claude Maliyet Optimizasyonu (18.04.2026)
+
+**Replit'e gönderilecek:** Sadece **DB migration + build + API test + frontend open test** (~30 satır max).
+
+**Claude yapar (Replit'e gitmez):**
+- Kod validation (manifest vs schema)
+- Skill güncellemeleri
+- Audit raporları analizi
+- Numerical check (tablolar, rakamlar)
+- Dokümantasyon
+- Sprint planlama
+
+**Hesaplama:** Replit'e giden iş ~%40-50 azalır, agent maliyeti düşer, Claude daha etkin kullanılır.
+
+---
+
+## Oturum Sonu Kontrol Listesi (Güncellenmiş)
+
+```bash
+# 1. Tüm skill güncellemeleri commit edildi mi?
+git status --short .agents/skills/
+
+# 2. Skill'ler aynı tarihte mi?
+for s in dospresso-architecture dospresso-debug-guide dospresso-quality-gate session-protocol; do
+  stat -c "%y %n" .agents/skills/$s/SKILL.md
+done
+
+# 3. Son commit Feature Freeze uyumlu mu?
+git log -1 --pretty=%s | grep -E "^(fix|chore|docs|refactor|test)"
+
+# 4. Push tamam mı?
+git status  # "up to date with origin/main" olmalı
+```
+
+4/4 ✅ olmadan oturum kapanmaz.
