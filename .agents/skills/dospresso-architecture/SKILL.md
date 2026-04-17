@@ -238,6 +238,26 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - Fabrika Stok Merkezi: `/fabrika/stok-merkezi` (790 satır, FabrikaOnly guard) — 4 tab: Günlük Çekme / Artan Malzeme / Stok Durumu / Hareketler. Sidebar "Stok Merkezi" (Warehouse icon)
 - Kritik fiyat düzeltme notları: keyblend ₺215/KG (9210/KG DEĞİL), maya ₺77/KG (1869/KG DEĞİL — paket/12), konfiseri ₺249/KG ort, dolgu ₺260/KG ort
 
+### Fatura Bazlı Fiyat Senkronizasyonu (18 Nisan 2026):
+- **Veri kaynağı**: `server/data/invoice-prices.json` (143 malzeme, 2024-2026 Bombtea muhasebe)
+- **Script**: `server/scripts/update-prices-from-invoices.ts` — envanter `lastPurchasePrice` + `inventoryPriceHistory` günceller
+- **Komut**: `npx tsx server/scripts/update-prices-from-invoices.ts`
+- **89 malzeme ₺/KG kesin** (paket ağırlığı isimde bilinen), **54 malzeme paket belirsiz** (sonra netleştir)
+- **Kritik fatura fiyatları** (02/2026-04/2026 son alımlar):
+  - H-1001 Şeker: ₺37.81/KG | H-1006 Maya: ₺77.08/KG | H-1008 Gluten: ₺7.88/KG
+  - H-1012 Turyağ: ₺77.50/KG | H-1014 Turyağ Fritöz: ₺93.33/LT (KIZARTMA)
+  - H-1049 Beyaz Konfiseri: ₺236.54/KG | H-1050 Sütlü: ₺220/KG | H-1051 Bitter: ₺290/KG (KAPLAMA)
+  - H-1175-1178 Donut Sos (FO Zelandya 6KG kova): ₺300/KG (DOLGU — 4 çeşit aynı fiyat)
+  - H-1081 Labne kova 2.75 KG: ₺195.51/KG | H-1088 Tereyağ 1 KG: ₺549.91/KG
+- **Fatura dosyasında OLMAYAN** (envanter/web fiyatı kullanılıyor):
+  - Un 25 KG, Tuz, Ayçiçek Yağ, Soya Unu, Dekstroz
+  - CMC, DATEM, Vitamin C, E471 (web tahmin)
+  - Alba Bitkisel Yağ (paket ağırlığı bilinmiyor)
+- **Donut klasik maliyet (18 Nisan nihai)**: ₺17.02/adet (%57 marj, ₺39.60 satış)
+  - Breakdown: Hammadde ₺2.92 + Kızartma ₺1.87 + Kaplama ₺3.73 + Dolgu ₺4.50 + Elektrik ₺0.53 + Personel ₺1.97 + Ambalaj ₺1.50
+  - Batch: 58.17 KG ham → 660 temiz ürün (65-70g), %23 fire, 3 saat üretim
+  - Personel: ₺216.35/saat (₺45K/ay SGK dahil ÷ 26 gün ÷ 8 saat)
+
 ### Key Role Notes:
 - `fabrika_depo` (Depocu): Malzeme çekme, stok sayım, mal kabul, FEFO, sevkiyat hazırlama. Fabrika group.
 - `gida_muhendisi` (Sema): Factory-only, QC approve, food safety. NO branch_orders/inventory. Has factory-recipes sidebar (read-only)
