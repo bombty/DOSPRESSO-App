@@ -320,6 +320,14 @@ const MENU_BLUEPRINT: SidebarMenuSection[] = [
         moduleKey: "factory_production",
         scope: "hq",
       },
+      {
+        id: "factory-cost-analysis",
+        titleTr: "Maliyet",
+        path: "/fabrika/maliyet-analizi",
+        icon: "Calculator",
+        moduleKey: "factory_production",
+        scope: "hq",
+      },
     ],
   },
 
@@ -727,7 +735,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   gida_muhendisi: [
     'dashboard', 'food-safety', 'quality-control', 'factory-quality',
-    'factory-dashboard', 'factory-recipes', 'reports', 'notifications',
+    'factory-dashboard', 'factory-recipes', 'factory-cost-analysis', 'reports', 'notifications',
     'crm-main',
   ],
   marketing: [
@@ -741,12 +749,12 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   muhasebe: [
     'dashboard', 'accounting-main', 'financial-management', 'financial-reports',
-    'pdks', 'pdks-izin-gunleri', 'maas', 'reports', 'notifications',
+    'pdks', 'pdks-izin-gunleri', 'maas', 'factory-cost-analysis', 'reports', 'notifications',
     'crm-main',
   ],
   satinalma: [
     'dashboard', 'ajanda', 'procurement-dashboard', 'stock-management', 'supplier-management',
-    'order-management', 'goods-receipt', 'reports',
+    'order-management', 'goods-receipt', 'factory-cost-analysis', 'reports',
     'notifications', 'crm-main',
   ],
   teknik: [
@@ -755,7 +763,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   fabrika_mudur: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'factory-compliance', 'factory-mrp', 'hr', 'shifts', 'reports',
+    'factory-analytics', 'factory-compliance', 'factory-mrp', 'factory-cost-analysis', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'crm-main',
   ],
   fabrika: [
@@ -776,13 +784,13 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
     'accounting-main', 'financial-management', 'pdks', 'pdks-izin-gunleri', 'maas',
     'procurement-dashboard', 'stock-management',
     'ai-assistant', 'agent-center', 'crm-main', 'franchise-investors',
-    'lost-found-hq', 'onboarding-programs', 'factory-keyblend',
+    'lost-found-hq', 'onboarding-programs', 'factory-keyblend', 'factory-cost-analysis',
     'notifications',
     'admin-panel', 'dashboard-ayarlari', 'rol-yetkileri', 'project-list', 'sistem-atolyesi',
   ],
   uretim_sefi: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'factory-mrp', 'hr', 'shifts', 'reports',
+    'factory-analytics', 'factory-mrp', 'factory-cost-analysis', 'hr', 'shifts', 'reports',
     'performance-dashboard', 'notifications', 'crm-main',
   ],
   fabrika_sorumlu: [
@@ -797,7 +805,7 @@ const SIDEBAR_ALLOWED_ITEMS: Partial<Record<UserRoleType, string[]>> = {
   ],
   recete_gm: [
     'factory-dashboard', 'ajanda', 'factory-kiosk', 'factory-recipes', 'factory-keyblend', 'factory-quality', 'factory-stations',
-    'factory-analytics', 'factory-compliance', 'factory-mrp', 'stock-management', 'reports',
+    'factory-analytics', 'factory-compliance', 'factory-mrp', 'factory-cost-analysis', 'stock-management', 'reports',
     'notifications',
   ],
 };

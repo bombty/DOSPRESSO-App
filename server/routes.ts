@@ -459,6 +459,7 @@ import employeeOfMonthRouter from "./routes/employee-of-month-routes";
 import inventoryReportsRouter from "./routes/inventory-reports-routes";
 import inventoryImportRouter from "./routes/inventory-import-routes";
 import mrpRouter from "./routes/mrp-routes";
+import costAnalysisRouter from "./routes/cost-analysis-routes";
 import usageGuideRouter from "./routes/usage-guide-routes";
 import guideDocsRouter from "./routes/guide-docs-routes";
 import onboardingV2Router from "./routes/onboarding-v2-routes";
@@ -921,6 +922,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(inventoryReportsRouter);
   app.use(inventoryImportRouter);
   app.use(mrpRouter);
+  app.use(costAnalysisRouter);
   app.use(usageGuideRouter);
   app.use(guideDocsRouter);
   app.use(onboardingV2Router);
