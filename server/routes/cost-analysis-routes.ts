@@ -42,7 +42,7 @@ const CHEESECAKE_MOLD: Record<string, { unitTotalG: number; tabanG: number; sosG
 
 const OH_DEFAULTS: Record<string,number> = {
   electricity_kwh_price:6,electricity_kwh_per_batch:57.82,
-  personnel_hourly_rate:76.25,personnel_count:2,personnel_hours:2,fry_oil_price_kg:86.27,
+  personnel_hourly_rate:216.35,personnel_count:2,personnel_hours:2,fry_oil_price_kg:86.27,
 };
 
 function requireCost(req:any,res:any,next:any){
@@ -352,7 +352,7 @@ router.get("/api/cost-analysis/donut-scenarios", isAuthenticated, requireCost, a
     const hamurPerDonut = hamurCost / batchCount;
     const kizartmaYagPerDonut = 0.020 * 86.27;  // 20g ayçiçek yağı emilimi
     const elektrikPerDonut = (57.82 * 6.0) / batchCount;
-    const personelPerDonut = (2 * 76.25 * 2) / batchCount;
+    const personelPerDonut = (2 * 216.35 * 2) / batchCount;
     const ambalajPerDonut = 1.50;
     const sadeDonut = hamurPerDonut + kizartmaYagPerDonut + elektrikPerDonut + personelPerDonut + ambalajPerDonut;
 
