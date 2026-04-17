@@ -233,7 +233,9 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 - PACKAGING map: kategori bazlı ambalaj maliyeti
 - Sayfa: /fabrika/maliyet-analizi (6 rol: admin, muhasebe, satinalma, recete_gm, gida_muhendisi, fabrika_mudur + uretim_sefi)
 - DON-001 Donut reçetesi: 29 ayrıştırılmış bileşen (katkı maddeleri ayrı — CMC, DATEM, SSL, L-sistein, aromalar)
-- Donut maliyet (Aslan metodolojisi): Sade ₺7.33 → Kaplamalı ₺9.82 → Klasik ₺12.85 → Gourmet ₺14.85
+- Donut maliyet (DB'den hesaplanır, 17.04.2026): Sade ₺7.13 → Kaplamalı ₺9.62 → Klasik ₺12.65 → Gourmet ₺14.65 (630 adet/batch × ₺39.60 → ₺2.21M/ay kâr potansiyeli)
+- Donut seed: `server/seed-donut-recipe-v2.ts` (29 malzeme, 28 inventory bağlı, 1 "Su" bağlanamaz)
+- Fabrika Stok Merkezi: `/fabrika/stok-merkezi` (790 satır, FabrikaOnly guard) — 4 tab: Günlük Çekme / Artan Malzeme / Stok Durumu / Hareketler. Sidebar "Stok Merkezi" (Warehouse icon)
 - Kritik fiyat düzeltme notları: keyblend ₺215/KG (9210/KG DEĞİL), maya ₺77/KG (1869/KG DEĞİL — paket/12), konfiseri ₺249/KG ort, dolgu ₺260/KG ort
 
 ### Key Role Notes:

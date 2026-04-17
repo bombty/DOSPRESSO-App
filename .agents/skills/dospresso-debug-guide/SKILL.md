@@ -25,6 +25,7 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 | Dobody şube analizi çalışmıyor | §18 Dobody branchPerf Undefined |
 | Görev patlaması (yüzlerce overdue) | §19 Scheduler Max Instance Limiti |
 | CRM görev tab duplikasyonu | §20 CRM Task Channel Duplikasyonu |
+| Seed script INSERT → NOT NULL violation | §21 Seed Script DB Kolon Uyumsuzluğu |
 
 ---
 
@@ -601,3 +602,42 @@ const SALES_PRICES = {
 ```
 Not: Satış fiyatları şubelere fabrika çıkış fiyatı (KDV hariç). Fiyat listesi Excel dosyasından alındı.
 
+
+---
+
+## §21 — Seed Script DB Kolon Uyuşmazlığı (17.04.2026)
+
+IT danışmanın yazdığı seed script'ler (örn. `seed-donut-recipe-v2.ts`) DB'deki gerçek kolonlarla eşleşmeyebilir. İki tipik hata:
+
+### A) NOT NULL constraint violation
+```
+error: null value in column "ref_id" of relation "factory_recipe_ingredients" violates not-null constraint
+code: '23502'
+```
+
+Sebep: Seed INSERT deyimi `ref_id` kolonunu yazmıyor ama kolon NOT NULL. `factory_recipe_ingredients.ref_id` varchar(10) NOT NULL, unique (recipe_id, ref_id).
+
+Hotfix: Döngü indeksinden otomatik üret:
+```ts
+const refId = `D${String(i + 1).padStart(3, "0")}`; // D001..D029
+```
+
+### B) Olmayan kolona UPDATE
+```
+error: column "expected_unit_weight_unit" of relation "factory_recipes" does not exist
+code: '42703'
+```
+
+Sebep: Seed script eski schema draft'ına göre yazılmış; production schema'da o kolon hiç oluşturulmamış.
+
+Hotfix: UPDATE SET listesinden o satırı kaldır. Kontrol:
+```bash
+psql "$DATABASE_URL" -c "\d factory_recipes" | grep -E "kolon_adı"
+```
+
+### Önlem
+Seed script çalıştırmadan önce:
+```bash
+psql "$DATABASE_URL" -c "\d <hedef_tablo>"
+```
+ile NOT NULL ve mevcut kolonları doğrula. Unique constraint varsa (recipe_id+ref_id gibi) deterministik üretim kullan.

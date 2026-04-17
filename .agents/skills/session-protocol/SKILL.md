@@ -130,5 +130,7 @@ Test edilmesi gereken endpoint'ler:
 | Schema dosyaları | 16 |
 | Quality Gate maddeleri | 19 |
 | Debug guide bölümleri | §20 |
-| Son Sprint | PDKS-1 (tamamlandı) |
-| Bekleyen | product_recipes→factory_recipes migration (12 kayıt) |
+| Son Sprint | TASK #117 (tamamlandı — Donut seed + senaryo API) |
+| Son commit | ce3635317 (hotfix: seed-donut-recipe-v2 ref_id + expected_unit_weight_unit) |
+| Bekleyen | Task #92 fabrika_depo erişim sorunu (HR_ACCESS_DENIED leftovers/inventory), Task #93 düşük stok→satınalma, Task #94 LOT&SKT girişi |
+| Güncel Değerler | 29 rol, 311+ sayfa, 110+ route dosyası, 16 schema, §21 debug, 19 quality-gate |

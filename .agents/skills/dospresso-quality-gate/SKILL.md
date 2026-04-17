@@ -479,3 +479,20 @@ GROUP BY ingredient_type;
 **PASS**: Keyblend bileşenleri ayrı satırlarda (CMC, DATEM, SSL, L-sistein, aromalar).
 **FAIL**: Tek "Katkı Maddeleri" satırı (doğru hesap yapılamaz).
 
+
+---
+
+## Madde 20 — Seed Script DB Sync (17.04.2026)
+
+Seed script çalıştırmadan önce hedef tablonun gerçek DB şemasıyla uyumlu olduğunu doğrula.
+
+```bash
+# Seed INSERT listesindeki kolonların NOT NULL + varlık kontrolü
+psql "$DATABASE_URL" -c "\d <hedef_tablo>" | grep -E "not null|^ \w"
+
+# Seed script'teki INSERT kolonlarını listele
+grep -E "INSERT INTO|VALUES" server/seed-*.ts
+```
+
+**PASS:** Tüm NOT NULL kolonlar INSERT'te var (örn. `ref_id` varchar(10) NOT NULL), UPDATE SET listesi yalnızca var olan kolonları referans ediyor.
+**FAIL:** "null value in column ... violates not-null constraint" (code 23502) veya "column ... does not exist" (code 42703). Örnek: `seed-donut-recipe-v2.ts` orijinali → bkz. `dospresso-debug-guide` §21.
