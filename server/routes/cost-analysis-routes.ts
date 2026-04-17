@@ -254,4 +254,51 @@ router.post("/api/cost-analysis/fixed-costs",isAuthenticated,async(req:any,res:R
   }catch(e){res.status(500).json({error:"Sabit gider eklenemedi"});}
 });
 
+// GET /api/cost-analysis/profit-summary — Kategori bazlı kâr özeti
+router.get("/api/cost-analysis/profit-summary", isAuthenticated, requireCost, async (req: any, res: Response) => {
+  try {
+    const SALES: Record<string, number> = {
+      "DON-001": 39.60, "CIN-001": 54.35, "CIN-002": 54.35, "CIN-003": 54.35,
+      "CHE-001": 76, "CHE-002": 76, "CHE-003": 76, "CHE-004": 76, "CHE-005": 115.62,
+      "BRW-001": 49.50, "BRW-002": 49.50, "COK-001": 49.50, "COK-002": 49.50,
+      "EKM-001": 49.50, "EKM-002": 56.80,
+    };
+    const recipes = await db.select({
+      id: factoryRecipes.id, code: factoryRecipes.code, name: factoryRecipes.name,
+      category: factoryRecipes.category, baseBatchOutput: factoryRecipes.baseBatchOutput,
+    }).from(factoryRecipes).where(eq(factoryRecipes.isVisible, true));
+
+    const catStats: Record<string, { count: number; totalMargin: number; revenue: number; cost: number }> = {};
+    for (const r of recipes) {
+      const sp = SALES[r.code] || 0;
+      if (sp <= 0) continue;
+      const costRows = await db.execute(sql`
+        SELECT COALESCE(SUM(CASE WHEN fri.ingredient_type != 'keyblend' AND i.market_price IS NOT NULL
+          THEN fri.amount::numeric * (i.market_price::numeric / NULLIF(i.conversion_factor::numeric, 0)) ELSE 0 END), 0) as tc
+        FROM factory_recipe_ingredients fri LEFT JOIN inventory i ON i.id = fri.raw_material_id
+        WHERE fri.recipe_id = ${r.id}`);
+      const bc = Number((costRows.rows?.[0] as any)?.tc || 0);
+      const uc = bc / (r.baseBatchOutput || 1);
+      const margin = (sp - uc) / sp * 100;
+      const cat = r.category || "diger";
+      if (!catStats[cat]) catStats[cat] = { count: 0, totalMargin: 0, revenue: 0, cost: 0 };
+      catStats[cat].count++;
+      catStats[cat].totalMargin += margin;
+      catStats[cat].revenue += sp;
+      catStats[cat].cost += uc;
+    }
+    res.json({
+      categories: Object.entries(catStats).map(([cat, s]) => ({
+        category: cat, productCount: s.count,
+        avgMargin: Math.round(s.totalMargin / s.count * 10) / 10,
+        avgRevenue: Math.round(s.revenue / s.count * 100) / 100,
+        avgCost: Math.round(s.cost / s.count * 100) / 100,
+      })),
+    });
+  } catch (e) {
+    console.error("[CostAnalysis] profit-summary error:", e);
+    res.status(500).json({ error: "Kâr özeti yüklenemedi" });
+  }
+});
+
 export default router;
