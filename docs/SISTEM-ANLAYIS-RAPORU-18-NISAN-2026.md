@@ -630,6 +630,16 @@ DOSPRESSO KAPSAMI                    │  HARİCİ SİSTEM
 - Eğer 2 sistemi birleştirmek istenirse → **Sprint K-L** (Hafta 11+, uzun vade)
 - Pilot'ta ve ilk 8 haftada gerek yok
 
+**Aslan'ın ek açıklaması (18 Nis, gece):**
+> "Şimdilik şubelere sevkiyat başka sistem üzerinden ama ilerde burdan planlıyorum hepsini bir ihtimal. Olmayabilir."
+
+**Bu bilgiye dayanarak mimari kararım:**
+- ✅ Sevkiyat modülü kodu **dormant (uykuda)** tutulacak — silinmeyecek
+- ✅ 20 fabrika tablosu (factory_shipments, factory_shipment_items, vb.) **korunacak**
+- ⚠️ Sprint E'de "ölü modül temizliği" yapılırken bu modül **silinmemeli**
+- 🔄 İlerde aktif edilme ihtimali → kod hazır bekliyor, 1-2 haftalık açma sprint'i yeterli
+- 🔒 Bu bilgi skill dosyalarına (`dospresso-architecture`) işaretlenecek — gelecekte başka IT danışman "bu modül kullanılmıyor, sileyim" demesin
+
 ### 6.4 "%100" Ne Zaman Olacak?
 
 Benim gerçekçi tahminim:

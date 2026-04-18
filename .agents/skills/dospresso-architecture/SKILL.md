@@ -496,3 +496,48 @@ When a module is disabled:
 88 permission module keys defined in `shared/schema.ts` as `PermissionModule` type.
 Key groups: dashboard, tasks, checklists, equipment, faults, hr, training, factory_*, academy_*, satinalma, crm_*, food_safety, branch_inspection, cost_management.
 Full permission matrix in `PERMISSIONS` record maps each role to allowed actions per module.
+
+## KAPSAM SINIRI — DORMANT MODÜLLER (KRİTİK!)
+
+**DOSPRESSO'nun kapsamı:** Üretim → QC → LOT → Depo Hazırlık (sevk için hazır noktası)
+
+**DOSPRESSO DIŞINDA:** Sevkiyat (lojistik) + Şube teslim alımı — başka sistemde yapılıyor
+
+### Dormant Modüller (Kod Var, Şu An Kullanılmıyor — SİLİNMEMELİ)
+
+1. **Sevkiyat Modülü** (Aslan onayı 18 Nis 2026):
+   - Tablolar: `factory_shipments`, `factory_shipment_items`, `branch_stock_receipts`
+   - Sayfa: `/fabrika-sevkiyat`, `/depo-sevkiyat`, `/sube-teslim-alim`
+   - Durum: `factory_shipments` = 2 kayıt (fiilen kullanılmıyor)
+   - **Önemli:** Aslan "ilerde burdan planlıyorum bir ihtimal. Olmayabilir." dedi
+   - **Karar:** Kod dormant tutulacak, ölü kod temizliğinde SİLİNMEMELİ
+   - **Gelecek:** Sprint K-L'de (Hafta 11+) aktif edilme ihtimali
+
+2. **Franchise Proje Yönetimi** (Aslan onayı 18 Nis 2026):
+   - 20 tablo: `franchise_projects`, `project_phases`, `project_budget_lines`,
+     `project_milestones`, `project_risks`, `project_vendors`, vb.
+   - Durum: 0 kayıt (henüz kullanılmıyor)
+   - **Karar:** Sprint I (Hafta 9+) canlıya alınacak
+   - **Tetikleyici:** Yeni franchise şube açılışı
+
+3. **Gate Sınav Sistemi** (Aslan onayı 18 Nis 2026):
+   - 18 tablo: `gate_attempts`, `exam_requests`, `career_gates`, `user_career_progress`
+   - Durum: 0 gate_attempts, 0 exam_requests
+   - **Karar:** Pilot'ta aktif edilecek — Hibrit model:
+     `Terfi = (Skor >= Eşik) ∩ (Gate Geçti) ∩ (Yönetici Önerisi)`
+   - Sprint C/D'de UI test + akış aktifleştirme
+
+4. **Employee Onboarding** (Aslan onayı 18 Nis 2026):
+   - Tablo: `employee_onboarding` = 2 kayıt
+   - 14 günlük Stajyer programı kodda tanımlı
+   - **Karar:** Pilot sonrası aktif olacak, şu an beklemede
+
+### KURAL: Dormant Modül Silme Yasağı
+
+Sprint E (rol konsolidasyon / ölü kod temizliği) veya başka bir sprint'te
+"kullanılmayan modül sil" dürtüsü geldiğinde BU LİSTEYİ KONTROL ET:
+
+- ✅ Dormant modüller = gelecekte kullanılacak, SİLİNMEZ
+- ❌ Gerçek ölü modül = dokümante edilmemiş, karar alınmamış → sil
+
+Referans doküman: `docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md` Bölüm 1.3 + 6.3
