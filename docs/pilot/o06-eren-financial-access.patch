@@ -1,0 +1,69 @@
+--- a/shared/schema/schema-02.ts
++++ b/shared/schema/schema-02.ts
+@@ -1889,7 +1889,7 @@
+     overtime_requests: ['view', 'approve'],
+     admin_settings: [],
+     bulk_data: [],
+-    accounting: [],
++    accounting: ['view'],  // O06: Eren mali widget 403 fix (read-only)
+     customer_satisfaction: [],
+     lost_found: [],
+     lost_found_hq: [],
+@@ -1939,11 +1939,15 @@
+     inventory: ['view', 'edit'],
+     suppliers: ['view'],
+     purchase_orders: ['view'],
+     goods_receipt: ['view', 'create', 'edit'],
+     cost_management: ['view', 'create', 'edit'],
++    // O06: Fabrika finansal raporlar (read-only — yazma muhasebe rolüne ait)
++    financial_reports: ['view'],
++    factory_financial_overview: ['view'],
+     branch_inspection: [],
+     product_complaints: [],
+     food_safety: [],
+     ajanda: ['view', 'create', 'edit', 'delete'],
+   },
+   uretim_sefi: {
+
+# =====================================================================
+# O06 — Fabrika Müdürü (Eren) Mali Yetki Senkron
+# =====================================================================
+#
+# BULGU: dashboard_role_widgets DB'sinde fabrika_mudur rolüne
+# 'financial_overview' widget atanmış AMA PERMISSIONS map'inde
+# accounting yetkisi YOK → widget endpoint çağrısı 403 dönüyor.
+#
+# DÜZELTME: 3 yeni permission ekle (hepsi read-only):
+#   - accounting: ['view']
+#   - financial_reports: ['view']
+#   - factory_financial_overview: ['view']
+#
+# YAZMA YETKİSİ YOK: Eren mali rapor görüntüleyebilir ama:
+#   - Bordro işleyemez (muhasebe_ik rolüne ait)
+#   - Mali kayıt değiştiremez (muhasebe rolüne ait)
+#   - Sadece fabrika operasyonel maliyet (cost_management) yazabilir
+#
+# UYGULAMA:
+#   1) git apply docs/pilot/o06-eren-financial-access.patch
+#   2) Build doğrulama: npm run check (TypeScript)
+#   3) Smoke test:
+#      curl -X GET "$REPLIT_DEV_DOMAIN/api/me/dashboard-data" \
+#        -H "Cookie: connect.sid=<eren_session>" \
+#        | jq '.widgets[] | select(.key == "financial_overview")'
+#      Beklenen: 200 + data, 403 yok
+#
+# ENDPOINT GÜNCELLEMESİ (server/routes/unified-dashboard-routes.ts):
+#   case 'financial_overview':
+#     if (user.role === 'fabrika_mudur') {
+#       // Sadece fabrika maliyet verisi (tüm finans değil)
+#       return await getFinancialOverviewForFabrika(user.branchId);
+#     } else if (['admin', 'ceo', 'cgo', 'muhasebe', 'muhasebe_ik'].includes(user.role)) {
+#       return await getFinancialOverviewFull();
+#     } else {
+#       throw new Error('FORBIDDEN');
+#     }
+#
+# RİSK: Eren tüm finansal veriye erişim kazanır
+#   MİTİGASYON: read-only permission + endpoint'te branchId filtresi
+#
+# AUDIT: PERMISSIONS değişiklikleri git commit log'unda izlenir

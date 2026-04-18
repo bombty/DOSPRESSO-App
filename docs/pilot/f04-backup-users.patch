@@ -1,0 +1,90 @@
+--- a/shared/schema/schema-02.ts
++++ b/shared/schema/schema-02.ts
+@@ -1700,6 +1700,12 @@
+     branch_inspection: [],
+     product_complaints: [],
+     food_safety: [],
+     ajanda: ['view', 'create', 'edit', 'delete'],
++    // F04 SPOF BACKUP — kalite_kontrol backup user atanmış (recete_gm tatil/hastalık fallback)
++    // Aslan kararı 19 Nis 2026: karşılıklı backup
++    _backup_for: ['kalite_kontrol'],
++    _backup_perms: {
++      kalite_audit: ['view', 'approve'],
++      production_quality: ['view', 'approve'],
++    },
+   },
+   // KALITE_KONTROL - Kalite Kontrol
+   kalite_kontrol: {
+@@ -1782,6 +1788,16 @@
+     branch_inspection: [],
+     product_complaints: [],
+     food_safety: ['view', 'create', 'edit', 'approve'],
++    // F04 SPOF BACKUP — recete_gm + gida_muhendisi backup user
++    // Aslan kararı 19 Nis 2026: karşılıklı backup zinciri
++    _backup_for: ['recete_gm', 'gida_muhendisi'],
++    _backup_perms: {
++      recipes: ['view', 'approve'],
++      recipe_changes: ['view', 'approve'],
++      raw_material_approval: ['view', 'approve'],
++      supplier_audit: ['view', 'approve'],
++    },
+   },
+   // GIDA_MUHENDISI - Gıda Mühendisi
+   gida_muhendisi: {
+@@ -1862,6 +1878,12 @@
+     branch_inspection: [],
+     product_complaints: [],
+     food_safety: ['view', 'create', 'edit', 'approve'],
++    // F04 SPOF BACKUP — kalite_kontrol backup user
++    // Aslan kararı 19 Nis 2026: karşılıklı backup
++    _backup_for: ['kalite_kontrol'],
++    _backup_perms: {
++      kalite_audit: ['view', 'approve'],
++      branch_inspection: ['view', 'approve'],
++    },
+   },
+   // FABRIKA_MUDUR - Fabrika Müdürü
+   fabrika_mudur: {
+
+# =====================================================================
+# AÇIKLAMA
+# =====================================================================
+#
+# F04 (Single Point of Failure) bulgu için Aslan'ın 19 Nis kararı:
+#   recete_gm        ↔ kalite_kontrol  (karşılıklı backup)
+#   kalite_kontrol   ↔ gida_muhendisi  (karşılıklı backup)
+#
+# Backup zinciri:
+#   Primary user 24h offline ise (backup_active=true) → backup_perms aktif olur
+#   Bu davranış server/services/permissions.service.ts'de implement edilecek
+#
+# DB tarafı: scripts/pilot/02-f04-spof-backup.sql
+#   - users.backup_roles TEXT[] kolonu
+#   - users.backup_active BOOLEAN
+#
+# Schema patch (bu dosya): PERMISSIONS map'e _backup_for ve _backup_perms
+# meta-data ekler. Resolver şu mantıkla çalışır:
+#
+#   function isPermitted(user, module, action) {
+#     // 1) Kendi rolünün yetkisi
+#     if (PERMISSIONS[user.role][module]?.includes(action)) return true;
+#
+#     // 2) Backup mode aktifse, backup yetkilerine bak
+#     if (user.backup_active && user.backup_roles?.length) {
+#       for (const backupRole of user.backup_roles) {
+#         const backupPerms = PERMISSIONS[backupRole]._backup_perms || {};
+#         if (backupPerms[module]?.includes(action)) return true;
+#       }
+#     }
+#     return false;
+#   }
+#
+# UYGULAMA:
+#   1) Bu patch'i uygula:
+#      git apply docs/pilot/f04-backup-users.patch
+#   2) DB SQL'i çalıştır:
+#      psql "$DATABASE_URL" < scripts/pilot/02-f04-spof-backup.sql
+#   3) permissions.service.ts'e resolver güncelleme (50 satır)
+#   4) Smoke test:
+#      - kalite_kontrol user backup_active=true set et
+#      - recete approve endpoint'i 200 dönmeli
