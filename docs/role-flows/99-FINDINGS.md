@@ -3,6 +3,8 @@
 **Kapsam**: 31 rol × 80+ modül × 250 route taraması — manuel + algoritmik gap detection.  
 **Toplam Bulgu**: 42 (5 kritik + 12 yüksek + 15 orta + 10 düşük)
 
+**Not**: "_HİPOTEZ_" tag'li bulgular runtime/DB testi ile doğrulanmalı; F01-F05 KRİTİK bulgular için pilot öncesi reproducible kanıt (test logu/screenshot) zorunlu.
+
 **Format**: Her bulgu **File:Line** referansı, **Tekrar Üretim Adımları (Repro)** ve **Önerilen Düzeltme (Fix)** içerir.
 
 ---
@@ -11,7 +13,7 @@
 
 ### F01 — Module Flags Disabled Audit _(Pilot Hazırlık)_
 
-**Konum**: `shared/schema/schema-08.ts:moduleFlags + DB seed`
+**Konum**: `shared/schema/schema-12.ts:1235 (moduleFlags pgTable) + DB seed`
 
 **Açıklama**: 13 modül `module_flags.is_enabled=false` global: delegasyon, dobody.flow, iletisim_merkezi, fabrika.hammadde, fabrika.kalite, fabrika.kavurma, fabrika.sayim, fabrika.sevkiyat, fabrika.siparis, fabrika.stok, stok, dobody.chat, checklist (branch).
 
@@ -25,7 +27,7 @@ Pilot öncesi her flag'in legacy mi gerçek devre dışı mı doğrula. Gerekenl
 
 ### F02 — Fabrika Naming Çakışması _(Schema Drift)_
 
-**Konum**: `shared/schema/schema-08.ts + DB module_flags`
+**Konum**: `shared/schema/schema-12.ts:1235-1256 + DB module_flags`
 
 **Açıklama**: `fabrika.stok` (disabled) vs `fabrika.production` (enabled), `fabrika.sayim` (disabled) vs `fabrika.haccp` (enabled). İki naming şeması paralel.
 
@@ -139,9 +141,9 @@ Yeni widget: pending_certifications, pending_quiz_grades, student_progress. Trai
 
 ### F10 — Fabrika Müdür Mali Widget vs Yetki _(Permission Mismatch)_
 
-**Konum**: `shared/schema/schema-02.ts (fabrika_mudur.accounting) + dashboard_role_widgets`
+**Konum**: `shared/schema/schema-02.ts:1868 (fabrika_mudur.accounting) + dashboard_role_widgets DB`
 
-**Açıklama**: fabrika_mudur rolüne financial_overview widget atanmış ama PERMISSIONS'da accounting yetkisi sadece view. Widget endpoint çağrısında 403 muhtemel.
+**Açıklama**: fabrika_mudur rolüne financial_overview widget atanmış ama PERMISSIONS'da accounting yetkisi sadece view. Widget endpoint çağrısında 403 muhtemel _(HİPOTEZ — pilot öncesi runtime test ile doğrulanmalı)_.
 
 **Tekrar Üretim Adımları**:
 1) Fabrika müdür login → financial_overview widget yüklenirken /api/financial-summary çağrısı.
@@ -223,7 +225,7 @@ Mudur dashboard'unda "Skip wizard" admin onaylı buton VEYA migration: pilot 4 l
 
 ### F16 — Aşırı Geniş Yetki _(Stajyer)_
 
-**Konum**: `shared/schema/schema-02.ts:PERMISSIONS.stajyer`
+**Konum**: `shared/schema/schema-02.ts:1052 (stajyer block)`
 
 **Açıklama**: stajyer rolünde 31 modül erişim yetkisi var (5 yazma yetkisi dahil): tasks.create, messages.create, vs.
 
@@ -281,12 +283,12 @@ Real-time vardiya panosu widget (WebSocket veya 30s poll).
 
 ### F20 — Fabrika Operator Görev Atayamaz _(Workflow)_
 
-**Konum**: `shared/schema/schema-02.ts:PERMISSIONS.fabrika_operator.tasks`
+**Konum**: `shared/schema/schema-02.ts:2031 (fabrika_operator.tasks)`
 
 **Açıklama**: fabrika_operator tasks.create yetkisi yok. Hat lideri istasyondan görev atayamaz.
 
 **Tekrar Üretim Adımları**:
-1) Operatör login → görev atama sayfası 403.
+1) Operatör login → görev atama sayfası 403 _(HİPOTEZ — runtime test gerekli)_.
 
 **Önerilen Düzeltme**:
 PERMISSIONS'a fabrika_operator.tasks=[view, create] ekle (kendi vardiyasındaki ekibe).
@@ -297,7 +299,7 @@ PERMISSIONS'a fabrika_operator.tasks=[view, create] ekle (kendi vardiyasındaki 
 
 **Konum**: `shared/schema/schema-02.ts:PERMISSIONS.teknik`
 
-**Açıklama**: teknik rolünde equipment_maintenance view yetkisi yok PERMISSIONS'da (sadece widget). Sayfa 403 alabilir.
+**Açıklama**: teknik rolünde equipment_maintenance view yetkisi yok PERMISSIONS'da (sadece widget). Sayfa 403 alabilir _(HİPOTEZ — runtime test gerekli)_.
 
 **Tekrar Üretim Adımları**:
 1) Teknik login → /ekipman-bakim ziyaret → 403.
@@ -342,7 +344,7 @@ Tek tablo, scope filtresi (branch_id), notification HQ'ya tetiklensin.
 **Açıklama**: sef rolü recipes modülünde sadece view. Mutfakta reçete adaptasyonu yapamayacak.
 
 **Tekrar Üretim Adımları**:
-1) Sef login → reçete edit 403.
+1) Sef login → reçete edit 403 _(HİPOTEZ — endpoint test gerekli)_.
 
 **Önerilen Düzeltme**:
 PERMISSIONS'a sef.recipes=[view, edit] ekle (sadece kendi mutfak scope'unda).
@@ -507,7 +509,7 @@ Push notification policy dokümanı: rol × event matrisi.
 
 ### F36 — Stajyer Yazma Detay _(Permission)_
 
-**Konum**: `shared/schema/schema-02.ts:PERMISSIONS.stajyer`
+**Konum**: `shared/schema/schema-02.ts:1052 (stajyer block)`
 
 **Açıklama**: F12 ile bağlı: stajyer'in yazma yetkili 5 modül listesi audit gerekli.
 
