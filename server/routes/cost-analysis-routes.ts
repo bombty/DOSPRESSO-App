@@ -7,8 +7,8 @@
 
 import { Router, Response } from "express";
 import { db } from "../db";
-import { factoryRecipes, factoryRecipeIngredients, inventory, factoryCostSettings, factoryFixedCosts } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { factoryRecipes, factoryRecipeIngredients, inventory, factoryCostSettings, factoryFixedCosts, factoryProducts, factoryProductPriceHistory, users } from "@shared/schema";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import type { AuthUser } from "../types/auth";
 
@@ -205,6 +205,7 @@ router.get("/api/cost-analysis/recipe/:id",isAuthenticated,requireCost,async(req
 
     res.json({
       recipe:{id:recipe.id,code:recipe.code,name:recipe.name,category:recipe.category,
+        productId:(recipe as any).productId??null,
         batchOutput:bo,outputUnit:recipe.outputUnit,unitWeight:recipe.expectedUnitWeight},
       ingredients:details,
       keyblendIngredients:kbIngredients,
@@ -451,6 +452,88 @@ router.get("/api/cost-analysis/donut-scenarios", isAuthenticated, requireCost, a
   } catch (error) {
     console.error("[CostAnalysis] donut-scenarios error:", error);
     res.status(500).json({ error: "Donut senaryoları yüklenemedi" });
+  }
+});
+
+// GET /api/factory-products/:id/price-history
+// Optional filters: ?source=cost_calc&from=2026-01-01&to=2026-04-30
+router.get("/api/factory-products/:id/price-history", isAuthenticated, requireCost, async (req: any, res: Response) => {
+  try {
+    const productId = Number(req.params.id);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: "Geçersiz ürün ID" });
+    }
+
+    const product = await db.select().from(factoryProducts).where(eq(factoryProducts.id, productId)).limit(1);
+    if (!product.length) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    const conds: any[] = [eq(factoryProductPriceHistory.productId, productId)];
+
+    const sourceParam = String(req.query.source || "").trim();
+    if (sourceParam && sourceParam !== "all") {
+      const sources = sourceParam.split(",").map(s => s.trim()).filter(Boolean);
+      if (sources.length === 1) conds.push(eq(factoryProductPriceHistory.source, sources[0]));
+      else if (sources.length > 1) conds.push(inArray(factoryProductPriceHistory.source, sources));
+    }
+
+    const fromParam = String(req.query.from || "").trim();
+    if (fromParam) {
+      const d = new Date(fromParam);
+      if (!isNaN(d.getTime())) conds.push(gte(factoryProductPriceHistory.changedAt, d));
+    }
+    const toParam = String(req.query.to || "").trim();
+    if (toParam) {
+      const d = new Date(toParam);
+      if (!isNaN(d.getTime())) {
+        d.setHours(23, 59, 59, 999);
+        conds.push(lte(factoryProductPriceHistory.changedAt, d));
+      }
+    }
+
+    const rows = await db
+      .select({
+        id: factoryProductPriceHistory.id,
+        productId: factoryProductPriceHistory.productId,
+        oldBasePrice: factoryProductPriceHistory.oldBasePrice,
+        newBasePrice: factoryProductPriceHistory.newBasePrice,
+        oldSuggestedPrice: factoryProductPriceHistory.oldSuggestedPrice,
+        newSuggestedPrice: factoryProductPriceHistory.newSuggestedPrice,
+        changePercent: factoryProductPriceHistory.changePercent,
+        source: factoryProductPriceHistory.source,
+        sourceReferenceId: factoryProductPriceHistory.sourceReferenceId,
+        notes: factoryProductPriceHistory.notes,
+        changedById: factoryProductPriceHistory.changedById,
+        changedAt: factoryProductPriceHistory.changedAt,
+        changedByName: users.firstName,
+      })
+      .from(factoryProductPriceHistory)
+      .leftJoin(users, eq(users.id, factoryProductPriceHistory.changedById))
+      .where(and(...conds))
+      .orderBy(desc(factoryProductPriceHistory.changedAt))
+      .limit(500);
+
+    const sourcesAvail = await db
+      .selectDistinct({ source: factoryProductPriceHistory.source })
+      .from(factoryProductPriceHistory)
+      .where(eq(factoryProductPriceHistory.productId, productId));
+
+    res.json({
+      product: {
+        id: product[0].id,
+        sku: product[0].sku,
+        name: product[0].name,
+        basePrice: product[0].basePrice,
+        suggestedPrice: product[0].suggestedPrice,
+        currentSellingPrice: product[0].currentSellingPrice,
+      },
+      history: rows,
+      availableSources: sourcesAvail.map(s => s.source).filter(Boolean),
+    });
+  } catch (error) {
+    console.error("[CostAnalysis] price-history error:", error);
+    res.status(500).json({ error: "Fiyat geçmişi yüklenemedi" });
   }
 });
 

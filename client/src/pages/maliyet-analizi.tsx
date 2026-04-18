@@ -14,11 +14,15 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   TrendingUp, TrendingDown, DollarSign, Package, AlertTriangle, 
-  ChevronLeft, BarChart3, Calculator, Layers,
+  ChevronLeft, BarChart3, Calculator, Layers, History, Minus,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend,
+} from "recharts";
 
 interface RecipeCost {
   id: number;
@@ -58,6 +62,248 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function formatTL(val: number): string {
   return `₺${val.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+interface PriceHistoryEntry {
+  id: number;
+  productId: number;
+  oldBasePrice: string | number | null;
+  newBasePrice: string | number | null;
+  oldSuggestedPrice: string | number | null;
+  newSuggestedPrice: string | number | null;
+  changePercent: string | number | null;
+  source: string;
+  notes: string | null;
+  changedById: string | null;
+  changedByName: string | null;
+  changedAt: string;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  cost_calc: "Maliyet Hesabı",
+  recipe_recalc: "Reçete Yeniden Hesap",
+  script: "Script",
+  manual: "Manuel",
+  import: "İçeri Aktarım",
+};
+
+function PriceHistoryTab({ productId, recipeCode }: { productId: number | null; recipeCode: string }) {
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [from, setFrom] = useState<string>("");
+  const [to, setTo] = useState<string>("");
+
+  const { data, isLoading } = useQuery<{
+    product: { id: number; sku: string; name: string; basePrice: string; suggestedPrice: string };
+    history: PriceHistoryEntry[];
+    availableSources: string[];
+  }>({
+    queryKey: ["/api/factory-products", productId, "price-history", sourceFilter, from, to],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (sourceFilter !== "all") params.set("source", sourceFilter);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const r = await fetch(`/api/factory-products/${productId}/price-history?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error("Yüklenemedi");
+      return r.json();
+    },
+    enabled: !!productId,
+  });
+
+  if (!productId) {
+    return (
+      <div className="text-center py-8 text-sm text-muted-foreground" data-testid="text-no-product-link">
+        <Package className="h-8 w-8 mx-auto mb-2 opacity-40" />
+        <p>"{recipeCode}" reçetesi henüz bir fabrika ürününe bağlı değil.</p>
+        <p className="text-xs mt-1">Fiyat geçmişi görüntüleme için reçeteyi bir ürünle ilişkilendirin.</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8 text-sm text-muted-foreground">
+        <History className="h-6 w-6 mx-auto animate-pulse mb-2" />
+        <p>Fiyat geçmişi yükleniyor...</p>
+      </div>
+    );
+  }
+
+  const history = data?.history || [];
+  const availableSources = data?.availableSources || [];
+
+  const merged: Record<string, { date: string; base?: number; suggested?: number }> = {};
+  for (const h of [...history].reverse()) {
+    const date = new Date(h.changedAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    if (!merged[date]) merged[date] = { date };
+    if (h.newBasePrice !== null && h.newBasePrice !== undefined) merged[date].base = Number(h.newBasePrice);
+    if (h.newSuggestedPrice !== null && h.newSuggestedPrice !== undefined) merged[date].suggested = Number(h.newSuggestedPrice);
+  }
+  const mergedArr = Object.values(merged);
+
+  return (
+    <div className="space-y-4">
+      {/* Filtreler */}
+      <div className="flex flex-wrap gap-2 items-end">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Kaynak</label>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-44 h-9" data-testid="select-source-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tüm Kaynaklar</SelectItem>
+              {availableSources.map(s => (
+                <SelectItem key={s} value={s}>{SOURCE_LABELS[s] || s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Başlangıç</label>
+          <Input
+            type="date"
+            value={from}
+            onChange={e => setFrom(e.target.value)}
+            className="w-36 h-9"
+            data-testid="input-date-from"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Bitiş</label>
+          <Input
+            type="date"
+            value={to}
+            onChange={e => setTo(e.target.value)}
+            className="w-36 h-9"
+            data-testid="input-date-to"
+          />
+        </div>
+        {(sourceFilter !== "all" || from || to) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setSourceFilter("all"); setFrom(""); setTo(""); }}
+            data-testid="button-clear-filters"
+          >
+            Temizle
+          </Button>
+        )}
+      </div>
+
+      {/* Chart */}
+      {mergedArr.length > 0 ? (
+        <Card>
+          <CardContent className="p-3">
+            <div className="h-56" data-testid="chart-price-history">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={mergedArr} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip
+                    formatter={(v: any) => formatTL(Number(v))}
+                    contentStyle={{ fontSize: 12 }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="base"
+                    name="Baz Fiyat"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="suggested"
+                    name="Önerilen Fiyat"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="text-center py-6 text-sm text-muted-foreground border rounded-md" data-testid="text-no-history">
+          <History className="h-6 w-6 mx-auto mb-2 opacity-40" />
+          Bu filtrelere uyan fiyat değişikliği kaydı bulunamadı.
+        </div>
+      )}
+
+      {/* Tablo */}
+      {history.length > 0 && (
+        <div className="border rounded-md max-h-72 overflow-y-auto">
+          <Table>
+            <TableHeader className="sticky top-0 bg-background z-10">
+              <TableRow>
+                <TableHead className="text-xs">Tarih</TableHead>
+                <TableHead className="text-xs text-right">Baz (Eski → Yeni)</TableHead>
+                <TableHead className="text-xs text-right">Önerilen (Eski → Yeni)</TableHead>
+                <TableHead className="text-xs text-right">Değişim</TableHead>
+                <TableHead className="text-xs">Kaynak</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map(h => {
+                const change = h.changePercent !== null && h.changePercent !== undefined ? Number(h.changePercent) : null;
+                const fmt = (v: string | number | null) => v !== null && v !== undefined ? formatTL(Number(v)) : "—";
+                return (
+                  <TableRow key={h.id} data-testid={`row-history-${h.id}`}>
+                    <TableCell className="text-xs py-1.5">
+                      {new Date(h.changedAt).toLocaleString("tr-TR", {
+                        day: "2-digit", month: "2-digit", year: "2-digit",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </TableCell>
+                    <TableCell className="text-xs text-right py-1.5">
+                      <span className="text-muted-foreground">{fmt(h.oldBasePrice)}</span>
+                      <span className="mx-1 text-muted-foreground">→</span>
+                      <span className="font-medium">{fmt(h.newBasePrice)}</span>
+                    </TableCell>
+                    <TableCell className="text-xs text-right py-1.5">
+                      <span className="text-muted-foreground">{fmt(h.oldSuggestedPrice)}</span>
+                      <span className="mx-1 text-muted-foreground">→</span>
+                      <span className="font-medium">{fmt(h.newSuggestedPrice)}</span>
+                    </TableCell>
+                    <TableCell className="text-xs text-right py-1.5">
+                      {change === null ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : change > 0 ? (
+                        <span className="text-red-500 inline-flex items-center gap-0.5">
+                          <TrendingUp className="h-3 w-3" />%{change.toFixed(2)}
+                        </span>
+                      ) : change < 0 ? (
+                        <span className="text-emerald-500 inline-flex items-center gap-0.5">
+                          <TrendingDown className="h-3 w-3" />%{Math.abs(change).toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground inline-flex items-center gap-0.5">
+                          <Minus className="h-3 w-3" />0
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs py-1.5">
+                      <Badge variant="secondary" className="text-[10px]">
+                        {SOURCE_LABELS[h.source] || h.source}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MarginBadge({ margin }: { margin: number }) {
@@ -271,6 +517,18 @@ export default function MaliyetAnalizi() {
                 </DialogTitle>
               </DialogHeader>
 
+              <Tabs defaultValue="cost" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="cost" data-testid="tab-cost">
+                    <Calculator className="h-4 w-4 mr-1" /> Maliyet Detayı
+                  </TabsTrigger>
+                  <TabsTrigger value="history" data-testid="tab-price-history">
+                    <History className="h-4 w-4 mr-1" /> Fiyat Geçmişi
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="cost" className="space-y-4 mt-4">
+
               {/* Maliyet Özeti */}
               <div className="grid grid-cols-3 gap-3">
                 <Card className="border-blue-500/30">
@@ -387,6 +645,15 @@ export default function MaliyetAnalizi() {
                   </Table>
                 </div>
               </div>
+                </TabsContent>
+
+                <TabsContent value="history" className="mt-4">
+                  <PriceHistoryTab
+                    productId={(detail.recipe as any).productId ?? null}
+                    recipeCode={detail.recipe.code}
+                  />
+                </TabsContent>
+              </Tabs>
             </>
           )}
         </DialogContent>
