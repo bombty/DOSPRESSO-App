@@ -400,13 +400,13 @@ DOSPRESSO 181 modüle bölünmüş. Ana **14 modül** hepsini kapsıyor (Replit 
 | 1 | **Kiosk (Vardiya)** | Personel giriş/çıkış, PIN/QR, PDKS | ⚠️ pdks_records son 7g: 10, shift_attendance son 7g: 0 — fiilen düşük | **EVET** |
 | 2 | **Checklist** | Açılış/kapanış/vardiya kontrolleri | ✅ 5,098 tamamlama — **en çok kullanılan modül** | **EVET** |
 | 3 | **Görev Sistemi** | Görev atama, takip, tamamlama | ⚠️ 1,332 görev ama %48.8 iptal (UX sorunu) | **EVET** |
-| 4 | **Denetim (Audit)** | Coach/Trainer şube denetimi, 6 şablon | ⚠️ audits_v2=7, audit_actions_v2=2 — az kullanım (+ v1/v2 paralel) | Evet |
-| 5 | **Akademi (Eğitim)** | Modül, quiz, sertifika | ⚠️ v1/v2/v3 paralel (training_* + academy_* + quiz*) | Kısmen |
+| 4 | **Denetim (Audit)** | Coach/Trainer şube denetimi | 🔄 **v1 İÇERİK + v2 AKTİVİTE** — 10 template/203 item v1'de, 7 denetim v2'de → content migration gerekli | Evet |
+| 5 | **Akademi (Eğitim)** | Modül, quiz, sertifika | ✅ **51 modül, 27 progress, 12 hub, 5 career level** — aktif kullanılıyor (v1/v2/v3 konsolidasyon GEREKSİZ) | Kısmen |
 | 6 | **Fabrika Üretim** | Reçete, batch, kalite, stok | ✅ 27/27 reçete bağlı, 33 production batch | **EVET** |
 | 7 | **Maliyet Analizi** | Reçete maliyeti, fatura fiyat sync | ✅ 143 malzeme, donut ₺17.02 | Evet |
 | 8 | **Bordro (PDKS+Payroll)** | PDKS Excel, maaş hesapla | ❌ payroll_records = 0 (modül hiç kullanılmamış) | **EVET** |
 | 9 | **Ekipman & Arıza** | 177 ekipman, 75 arıza takibi | ✅ Çalışıyor (A3: enum TR→EN tamam) | Evet |
-| 10 | **CRM Ticket Sistemi** | Ticket, şikayet, iletişim | ❌ crm_* tablo 0 (başka isim altında — research gerekli) | Hayır |
+| 10 | **CRM / Müşteri İlişkileri** | Feedback, ticket, şikayet | ✅ **461 customer_feedback + 66 support_tickets aktif** (crm_* prefix'li tablo gereksiz) | Evet — dashboard gerekli |
 | 11 | **Duyuru / Announcement** | DuyuruStudioV2, feed | ⚠️ announcements=18, banners=0 | Evet |
 | 12 | **Mr. Dobody** | Yarı otonom AI asistan | ✅ A6 sonrası: 3,895 okunmamış (20K'dan düştü) | Kısmen |
 | 13 | **🆕 Franchise Proje Yönetimi** | Yeni şube açma süreci, proje aşamaları, bütçe, risk | 📊 **20 TABLO** — franchise_projects, project_phases, budget_lines, milestones, risks, vendors, collaborators | Araştırılmalı |
@@ -489,7 +489,7 @@ Sprint C (Akademi konsolidasyonu) sırasında audit için de aynı yaklaşım ku
 | Görev | 60% | 50% | ⚠️ | 1,332 görev ama %48.8 iptal |
 | Akademi | 50% | 40% | ⚠️ | v1/v2/v3 karışık, orphan sayfalar |
 | **Bordro** | 30% | **0%** | ❌ | **payroll_records=0, hiç kullanılmamış** |
-| CRM Ticket | 40% | 10% | ❌ | crm_* tablo yok (başka isim altında) |
+| CRM Ticket | 70% | 60% | ⚠️ | customer_feedback=461 + support_tickets=66, dashboard eksik (C.3'te yapılacak) |
 | Dobody | 60% | 40% | ⚠️ | A6 sonrası spam çözüldü (3,895) |
 | Satınalma | 20% | 10% | ❌ | Tüm modül kırıktı (A1'de düzelttim) |
 | **🆕 Franchise Proje** | ? | **?** | ? | 20 tablo var, kullanım bilinmiyor — Aslan'a soru |
@@ -935,6 +935,39 @@ Replit'in yakaladığı **4 büyük kör nokta** bu versiyona eklendi:
 3. ✅ **Audit v1/v2 Dualizmi** — Akademi v1/v2/v3 gibi teknik borç
 4. ✅ **Dobody Event Type kanıtsız** — "17" iddiası belgelenmemiş
 
+### 10.1b Replit Sprint B+C Doğrulaması (18 Nisan 2026 — 2. tur)
+
+Sprint B ve C kapsamını netleştirmek için 2. bir DB doğrulaması alındı. Sonuçlar raporu **daha da keskinleştirdi**:
+
+**Replit'in kanıtlanan 4 tezi:**
+1. ✅ İzin konsolidasyonu **GEREKSİZ** — leave_requests tek tablo, 4 tip (35 kayıt)
+2. ✅ Onboarding konsolidasyonu **GEREKSİZ** — 5 tablo farklı domain (doğru tasarım)
+3. ✅ Akademi v1/v2/v3 **KONSOLİDASYON GEREKSİZ** — DB'de tek sistem (51 modül, 12 hub, aktif). Kod tarafı v1/v2/v3 görünüyor ama DB'de paralel kullanım yok.
+4. ✅ CRM ayrı modül **DEĞİL** — customer_feedback (461) + support_tickets (66) aktif; `crm_*` prefix gereksiz
+
+**Replit'in eklediği 2 yeni önemli bulgu:**
+
+**🔴 A) Attendance Pipeline BOZUK (Sprint B'nin gerçek işi)**
+- `pdks_records` 1,282 ham event var
+- `shift_attendance` sadece 175 aggregate kayıt
+- Son 7 günde 4 user pdks'te, 0 user shift_attendance'da → **aggregate job çalışmıyor**
+- `monthly_attendance_summaries` = 0, `branch_weekly_attendance_summary` = 0 → **2 scheduler bozuk**
+- **Pilot etkisi:** Bordro shift_attendance üzerinden hesaplanır, aggregate olmazsa maaş YANLIŞ
+
+**🔄 B) Audit v1/v2 — Konsolidasyon değil, MIGRATION lazım**
+- v1 tarafında **içerik dolu**: 10 template + 203 item
+- v2 tarafında **aktivite dolu ama içerik boş**: 1 template + 7 soru, 7 denetim + 17 yanıt
+- Coach yeni denetim yapıyor (v2 kullanıyor) ama v1'deki 10 template'i kullanamıyor
+- **Gerçek iş:** v1 → v2 content migration scripti (203 item taşı)
+
+**Sprint Planı Güncellendi:**
+| Sprint | Eski Plan | **Yeni Plan (Replit doğruladı)** |
+|:--:|---|---|
+| B | "3 konsolidasyon" | **Attendance Pipeline Repair** (aggregate + 2 scheduler + backfill) |
+| C | "Akademi v1/v2/v3 konsolide" | **3 Paralel İş**: Gate aktivasyon + Audit v1→v2 migration + CRM dashboard |
+
+**Güvenilirlik artışı:** Revize 1.1 %72 → Revize 1.5 %95+ (Replit 2 tur doğrulama sonrası)
+
 ### 10.2 Soruların Birer Cümlelik Cevabı (Revize)
 
 **DOSPRESSO'yu ne kadar iyi anladın?**
@@ -980,10 +1013,12 @@ Sormak istediğin her şeyi **iş diliyle** sorabilirsin. Ben teknik detayları 
 
 ---
 
-*Rapor son güncelleme: 19 Nisan 2026, 00:15*
-*Revize 1.3 — FINAL — Aslan'ın 4 stratejik cevabı dahil*
-*Güvenilirlik seviyesi: %95+ (Replit DB doğrulaması + Aslan iş onayı)*
+*Rapor son güncelleme: 18 Nisan 2026, 15:55 (2. oturum, öğleden sonra)*
+*Revize 1.5 — FINAL — Replit Sprint B+C doğrulaması dahil*
+*Güvenilirlik seviyesi: %95+ (Replit DB 2-tur doğrulama + Aslan iş onayı)*
+*Sprint B yeni kapsam: Attendance Pipeline Repair (pdks→shift aggregate)*
+*Sprint C yeni kapsam: 3 Paralel İş (Gate aktivasyon + Audit migration + CRM dashboard)*
 *Hazırlayan: Claude (IT Danışman)*
-*Veri kaynağı: 65 docs/ markdown + 13 bugünkü commit + Replit DB raporu + Aslan stratejik cevapları + kod tabanı*
+*Veri kaynağı: 66 docs/ markdown + 25+ bugünkü commit + Replit 2 DB raporu + Aslan stratejik cevapları + kod tabanı*
 
 ---
