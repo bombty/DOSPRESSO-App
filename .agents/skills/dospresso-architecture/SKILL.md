@@ -5,6 +5,47 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
+## Platform Metrics (18 Nisan 2026 — Sprint A sonrası)
+- **Database tablosu (kodda):** 446 pgTable tanımı
+- **Database tablosu (DB'de gerçek):** 435 (11 fark — dormant modüller)
+- **Backend endpoint:** 1,963 (Sprint A5 sonrası, -14)
+- **Backend route dosyası:** 114
+- **Frontend sayfa:** 316
+- **Frontend route:** 250 (App.tsx)
+- **Aktif kullanıcı:** 159 (372 toplam — Replit DB doğrulaması)
+- **Rol sayısı:** 27 (hedef 18, Sprint E'de konsolidasyon)
+- **Şube:** 22 (20 aktif + HQ + Fabrika)
+- **Toplam kod:** ~410,000 satır TS/TSX
+- **Doküman:** 66 markdown (docs/)
+- **Schema dosyası:** 23 (shared/schema/schema-01.ts → schema-23.ts)
+
+## Dormant Module Policy (18 Nisan 2026)
+
+**"Dormant modül" = Kodda + DB'de tam tanımlı ama fiilen kullanılmayan, ilerde aktif edilecek modül.**
+
+DOSPRESSO'nun bazı modülleri bu statüde:
+- **Franchise Proje Yönetimi** (20 tablo, 0 kayıt) — İlerde yeni şube açılışlarında aktif
+- **Gate Sınav Sistemi** (18 tablo, 0 attempt) — Pilot sonrası hibrit terfi modeli
+- **Factory Shipments** (kod hazır, 2 kayıt) — Şu an dış sistem, ilerde opsiyonel
+- **Onboarding Akışı** (2 kayıt, 14 günlük Stajyer) — Pilot'ta aktif olacak
+
+**Dormant modül kuralları:**
+1. ❌ **Silme** — asla silmeyin, ileride kullanılabilir
+2. ✅ **Koruma** — schema + endpoint + UI hazır tutulur
+3. ✅ **Test** — pilot öncesi temel smoke test yapılır
+4. ⚠️ **Raporlama** — "%X hazır" demek yerine "Hazır, aktivasyon bekliyor" denir
+5. ⚠️ **Sürüm notları** — dormant modüller sürümde açıkça belirtilir
+
+**"Kodda var" ≠ "Kullanılıyor":** Rapor yazarken **fiili kullanım verisi** kontrol edilmeli:
+```sql
+-- Örnek: Gerçek kullanım kontrolü
+SELECT COUNT(*) FROM franchise_projects;  -- 0 = dormant
+SELECT COUNT(*) FROM gate_attempts;        -- 0 = dormant
+SELECT COUNT(*) FROM factory_shipments;    -- 2 = dormant (dış sistem)
+```
+
+Referans: `docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md` Bölüm 1.3 (Kapsam Sınırı) ve Bölüm 4.1 (Kör Noktalar)
+
 ## Tech Stack
 - Frontend: React 18 + TypeScript + Vite (SPA, NOT Next.js)
 - UI: Shadcn/ui + Tailwind CSS + CVA
@@ -266,26 +307,33 @@ Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
 Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
 
 **8 Sprint Planı (18 Nisan 2026 → 18 Haziran 2026):**
-- **Sprint A (Hafta 1):** Stop the Bleeding — 17 kırık link, enum fix, seed security, notification spam
-- **Sprint B (Hafta 2):** Veri konsolidasyon — 3 puantaj→1, 3 izin→1, 2 onboarding→1
-- **Sprint C (Hafta 3):** Akademi v1/v2/v3→v3, CRM tablolarını düzgün oluştur
-- **Sprint D (Hafta 4):** Satınalma modülü + Bordro hesaplama job
-- **Sprint E (Hafta 5):** Dashboard tamamlama 14 rol, Rol konsolidasyon 27→18
-- **Sprint F (Hafta 6):** Test altyapısı (Vitest + Playwright 10 E2E) + CI/CD
+- **Sprint A (Hafta 1) ✅ TAMAMLANDI (18 Nis):** Stop the Bleeding
+- **Sprint B (Hafta 2):** Veri konsolidasyon — 2 puantaj→1, 3 izin→1, 2 onboarding→1
+- **Sprint C (Hafta 3):** Akademi v1/v2/v3→v3, Audit v1/v2→v2, CRM tablolarını düzgün oluştur
+- **Sprint D (Hafta 4):** Satınalma modülü + Bordro hesaplama job + Gate sınav akışı aktif
+- **Sprint E (Hafta 5):** Dashboard tamamlama (2 rol eksik), Rol konsolidasyon 27→18
+- **Sprint F (Hafta 6):** Test dosyası yazım (Vitest kurulu) + Playwright 10 E2E + CI/CD
 - **Sprint G (Hafta 7):** Performans (n+1, cache, materialized view, bundle split)
 - **Sprint H (Hafta 8):** Observability (Pino + Sentry + slow query log + 404 tracking)
 
-**Kritik P0 (Sprint A) acil işler:**
-1. ✅ Recipe↔Product mapping (`server/scripts/fix-recipe-product-mapping.ts` hazır) — 14 reçete yeni ürünlere bağlanacak
-2. ⏳ 17 kırık sidebar linki (Satınalma 5 + Fabrika 4 + /admin + /akademi + /ekipman + /ik + /raporlar)
-3. ⏳ `/api/seed/*` → admin-only middleware
-4. ⏳ Equipment enum TR→EN migration
-5. ⏳ Agent notification aggregation (20K okunmamış → saatlik özet)
+**Sprint A Sonuçları (6/6 ✅ — 18 Nisan 2026):**
+| # | Sprint | Hedef | Gerçek | Commit |
+|---|--------|-------|--------|--------|
+| A1 | Kırık sidebar link | 26→0 | 26→0 | `b83b5cdd`, `ef0b5ec5` |
+| A2 | Recipe↔Product | 14/27 | **27/27** (hedef üstü) | `9b152384`, `b628b275` |
+| A3 | Equipment enum TR→EN | 6 varyant → 3 | 4/4 acceptance | `2822c8e9` |
+| A4 | Seed security | prod-safe | 19 endpoint korumalı | `ad035b89` |
+| A5 | Stub endpoint cleanup | 52 analiz | 14 silindi, 38 kullanılıyor | `18896c81`, `137ba7b2` |
+| A6 | Notification spam fix | <5K okunmamış | **3,895** (19,643'ten, %80 iyileşme) | `c8618e1a` |
+
+**Sprint A Bonus Bug Fix:**
+- `server/storage.ts:7239` — `shifts.userId` → `shifts.assignedToId` (column adı yanlıştı, career score job her 10 dk'da fail oluyordu)
+- `migrations/sprint-a1-fix-broken-links.sql` v1→v2 — `label`/`updated_at` kolon adı hatası (gerçek `title_tr`, `updated_at` yok)
 
 **İş bölümü:**
 - Aslan: Öncelik + sprint onay + pilot kararı
 - Claude (IT): Mimari + schema + sprint planlama + code review
-- Replit Agent: Build + hotfix + audit + script execution
+- Replit Agent: Build + hotfix + audit + script execution + **bağımsız DB doğrulama**
 
 **Haftalık sync:** Pazartesi plan, Çarşamba mid-check, Cuma Replit audit + sprint kapanış
 

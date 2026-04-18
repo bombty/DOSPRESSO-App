@@ -592,3 +592,65 @@ grep -A 2 "productionSafeGuard" server/routes/seed.ts | head -10
 - Cinnaboom/cheesecake/brownie gibi yeni maliyet analiz feature'ı → DURDUR
 
 Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
+
+---
+
+## Madde 34 — Dormant Modül Raporlamada Doğru Dil (18.04.2026)
+
+**Kural:** Bir modülün DB'de 0/az kaydı var diye "bozuk" veya "eksik" demek yasak.
+
+**PASS:**
+- Rapor/commit'te dormant modül kelimesi kullanılıyor
+- "Hazır, aktivasyon bekleniyor" gibi nötr ifade
+- Referans verilmiş: `docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md` Bölüm 4.1
+
+**FAIL:**
+- "Bu modül çalışmıyor" (dormant olabilir)
+- "Modül eksik, yapılmalı" (kod var, aktivasyon sorunu)
+- "Silinmeli" (ilerde gerekli olabilir)
+
+**Bilinen dormant modüller:** Franchise Projects (20 tablo), Gate Sınav (18 tablo), Factory Shipments (5 tablo), Employee Onboarding (3 tablo)
+
+**Önleme:** Rapor yazarken `SELECT COUNT(*)` sorgusu yap + Aslan'a sor "aktif mi, dormant mı?"
+
+---
+
+## Madde 35 — Endpoint Silme Öncesi Frontend Usage Check (18.04.2026 — Sprint A5 dersi)
+
+**Kural:** Herhangi bir backend endpoint silmeden önce frontend'de kullanılıp kullanılmadığı kontrol edilmeli. Aksi takdirde 404 + kırık sayfa riski.
+
+**PASS:**
+```bash
+# Silmeden önce kontrol:
+grep -rn "/api/silinecek-endpoint" client/src/ --include="*.ts" --include="*.tsx"
+# 0 sonuç → silinebilir ✅
+# 1+ sonuç → DURMA, frontend kırılır
+```
+
+**FAIL:**
+- Silinmiş bir endpoint frontend'de hala çağrılıyor → 404 (prod) veya SPA fallback (dev — §26)
+- Silme commit'inde sadece server/ değişiklikleri var, client/ değişmemiş (hem sil hem client'tan kaldır lazım)
+
+**Alternatif (silmek yerine):** Stub endpoint bırak, response'a `_deprecated: true` + `_message: "Bu endpoint kullanımdan kaldırıldı"` ekle. Frontend'i Sprint D/E'de temizle.
+
+**Sprint A5 Yaklaşımı:** 52 stub endpoint'ten 14'ü frontend'de kullanılmıyordu → silindi. 38'i kullanılıyordu → bırakıldı, Sprint D/E/F'de düzgünleştirilecek.
+
+---
+
+## Madde 36 — Sprint Bitiş Checklist (Replit Verification)
+
+Her sprint sonunda Replit'ten **bağımsız DB doğrulaması** iste:
+
+**PASS kriterleri:**
+- Sprint hedef metriği (count) Replit SQL ile doğrulandı
+- Browser smoke test yapıldı (auth olmadan 401 beklenmeli, 404 değil)
+- Build başarılı (`npm run build` exit 0)
+- Workflow restart sonrası "System health: HEALTHY"
+- Regresyon yok (kullanılan endpoint'ler hala çalışıyor)
+
+**FAIL kriterleri:**
+- Sadece Claude'un kodda kontrol ettiğine güvenilmiş (Replit DB ile kontrol YOK)
+- Browser smoke test atlanmış
+- Build warning'leri ignored (bazen error'a dönüşebilir)
+
+**Sprint A Verification Örneği:** A1-A6 her biri için Replit raporu alındı, sayısal acceptance doğrulandı.

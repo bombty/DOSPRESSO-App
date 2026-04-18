@@ -732,3 +732,78 @@ git diff --stat origin/main~50 HEAD -- shared/schema/ client/src/pages/ server/r
 5. Workflow restart
 
 **Önleme:** Dev ortamda bu check çalışmıyor, dev DB'de her zaman izinli. Production'da **kasıtlı bariyer** — audit log `[SEED-PROD-BLOCKED]` mesajı bırakır.
+
+---
+
+## §26 — Vite SPA Fallback: Silinen API Endpoint 200 Dönüyor (Dev Mode)
+
+**Semptom:** Bir API endpoint'i `server/routes/stub-endpoints.ts` veya başka dosyadan sildin, ama `curl` hala 200 dönüyor. 404 vermiyor.
+
+**Sebep:** Dev modda Vite middleware Express'in üzerine biniyor. Express `/api/foo` için route handler bulamıyor, Vite devreye giriyor, **SPA fallback** olarak `index.html` döndürüyor (45-50 KB HTML).
+
+```bash
+# Test komutu:
+curl -s -o /dev/null -w "%{http_code} (%{size_download}B)\n" \
+  http://localhost:5000/api/silinmis-endpoint
+
+# Beklenen (dev):    200 (46345B)  ← Vite SPA fallback, NORMAL
+# Beklenen (prod):   404 (0B)       ← Gerçek Express davranışı
+```
+
+**Çözüm:** Bu bir bug DEĞİL — kasıtlı React SPA davranışı. Yapılabilecekler:
+
+**1. Test etmek için:**
+```bash
+# Response body'ye bak: HTML mi JSON mu?
+curl -s http://localhost:5000/api/silinmis-endpoint | head -5
+# HTML geldi → SPA fallback (endpoint gerçekten silinmiş)
+# JSON geldi → endpoint hala var, başka dosyadadır
+```
+
+**2. Gerçek durumu doğrulamak için:**
+```bash
+# Express route definition'ını ara
+grep -rn '"/api/silinmis-endpoint"' server/routes/ --include="*.ts"
+# Hiç sonuç → silinmiş ✅
+# 1+ sonuç → hala var, başka dosyada
+```
+
+**3. Prod benzeri test için:**
+```bash
+# Production build + start
+npm run build && npm start
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5000/api/silinmis-endpoint
+# Beklenen: 404 ✅
+```
+
+**Önleme:** Sprint A5 verification sırasında Replit bu pattern'i buldu. **Silme + smoke test yaparken yalnızca HTTP status'a bakma, response body'yi de kontrol et** (HTML = SPA fallback, JSON = route var).
+
+**Referans:** Sprint A5 Replit raporu (18 Nis 2026 commit `137ba7b2`) — "İlk testte tüm silinenler 200 verdi, derinleştim, Vite SPA fallback çıktı"
+
+---
+
+## §27 — Dormant Module "Eksik" Sanmak (18.04.2026 — Rapor hatası dersi)
+
+**Semptom:** Bir modülün DB'de 0 veya çok az kaydı var (`factory_shipments=2`, `gate_attempts=0`). Rapor yazarken "bu modül bozuk, eksik, kullanılmıyor" diye sunmak.
+
+**Sebep:** Bu modüller **kasıtlı olarak dormant** olabilir — pilot sonrası aktif edilecek ya da başka sistem kullanılıyor olabilir. "Kodda var = kullanılıyor" varsayımı yanlış.
+
+**Doğru yaklaşım:**
+
+1. **Önce Aslan'a sor:** "Bu modül aktif mi, yoksa ilerde mi kullanılacak?"
+2. **Raporda dil dikkat:** 
+   - ❌ "Modül bozuk / eksik / kullanılmıyor"
+   - ✅ "Modül hazır, aktivasyon bekleniyor"
+   - ✅ "DOSPRESSO kapsamı dışında (başka sistem)"
+3. **Sprint planına eklemeden önce Aslan onayı al**
+
+**Bilinen dormant modüller (18 Nis 2026):**
+| Modül | Tablo | Kayıt | Durum |
+|-------|:--:|:--:|-------|
+| Franchise Projects | 20 | 0 | Yeni şube açılışında aktif |
+| Gate Sınav Sistemi | 18 | 0 | Pilot sonrası hibrit terfi |
+| Factory Shipments | 5 | 2 | Dış sistem, opsiyonel |
+| Employee Onboarding | 3 | 2 | Pilot'ta aktif |
+
+**Önleme:** Bir modül için "bozuk" demeden önce `conversation_search` ile Aslan'ın önceki açıklamasına bak, `docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md` Bölüm 4.1'i oku.
+
