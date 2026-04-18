@@ -1,0 +1,109 @@
+🔴 ACİL — 2 KARAR NET, DEVAM ET
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KARAR 1 — GitHub Auth ŞİMDİ Yenile
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Aslan onayladı: GitHub token şimdi yenile, push'u bu gece bitir.
+
+Adımlar:
+1) Replit sol panel → Tools → Git → "Reconnect to GitHub"
+   (Veya Aslan'dan yeni token iste → git remote set-url)
+
+2) Token yenilenince:
+   cd /home/runner/workspace
+   git push origin main
+
+3) Doğrulama:
+   git log --oneline origin/main..HEAD   # boş olmalı (her şey push)
+   git log --oneline -10                  # son commit'ler origin'de
+   
+4) Rapor: 
+   - HEAD hash (yeni push sonrası)
+   - "docs/role-flows/ 35 dosya origin/main'de ✅" doğrulaması
+   - origin/main şu 3 commit'i içeriyor mu:
+     * Task #112 orijinal (16e8b3a10 → rebased yeni hash)
+     * Task #112 fix1 code review (f0630d859 → rebased)
+     * Task #112 fix2 APPROVED_WITH_COMMENTS (2bec3aece → rebased)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KARAR 2 — 7 Hazırlık Dosyası ONAYLI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Aslan senin planını onayladı. Bu hafta sonu (19-20 Nis) 7 dosya yaz:
+
+[1] docs/pilot/pzt-28-nis-sprint-plan.md
+    - Saat saat iş akışı (08:00-18:00)
+    - Her iş için owner + beklenen süre + acceptance
+    - Smoke test checklist (17:00-18:00)
+    - Rollback planı (her iş için: nasıl geri al)
+    
+[2] scripts/pilot/f01-module-flags-toggle.sql
+    - BEGIN + 4 enable + 8 delete + commit
+    - Dry-run için EXPLAIN analyze
+    - Rollback script ayrı dosya: f01-rollback.sql
+    - NOT: F02 4 modül (hammadde/siparis/sayim/stok) 
+      kod inceleme sonrası ayrı SQL'de
+    
+[3] shared/schema/schema-02.ts diff (F04 backup PERMISSIONS)
+    - recete_gm ↔ kalite_kontrol karşılıklı backup
+    - kalite_kontrol ↔ gida_muhendisi karşılıklı backup
+    - Patch dosyası olarak: docs/pilot/f04-backup-users.patch
+    
+[4] docs/pilot/f03-password-rotation-runbook.md
+    - Adım 1: Aslan + IT hazırda
+    - Adım 2: scripts/reset-admin-password.ts çalıştır
+    - Adım 3: must_change_password=false doğrula
+    - Adım 4: Aslan + IT yeni parolayı güvenli kaydeder
+    - Adım 5: replit.md ve docs'taki REDACTED referansları kontrol
+    
+[5] scripts/pilot/o13-branch-setup-complete.sql
+    - 4 lokasyon: HQ + Fabrika + Işıklar + Lara
+    - UPDATE branches SET setup_complete=true, setup_completed_at=NOW()
+    - Onboarding wizard bypass kanıt: pilot-baslat log
+    
+[6] shared/schema/schema-02.ts diff (O06 Eren mali yetki)
+    - fabrika_mudur rolüne mali widget permission ekle
+    - Eren için 403 engelleme kalkacak
+    - Patch: docs/pilot/o06-eren-financial-access.patch
+    
+[7] scripts/pilot/o03-mudur-branch-score.sql
+    - dashboard_role_widgets tablosuna:
+      INSERT INTO dashboard_role_widgets (role, widget_id) 
+      VALUES ('mudur', 'branch_score_detail') ON CONFLICT DO NOTHING;
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EK — F02 Kod İncelemesi (Pazartesi değil, BU HAFTA SONU)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7 dosya yazarken paralel olarak F02 4 modül kod incelemesi yap:
+
+- fabrika.hammadde  → sidebar ref? page ref? route ref? endpoint?
+- fabrika.siparis   → Sprint D branch_orders ile ilişki var mı?
+- fabrika.sayim     → gerçek aktif mi yoksa dead kod mu?
+- fabrika.stok      → production'dan farklı şekilde kullanılıyor mu?
+
+Raporu docs/pilot/f02-kod-inceleme-raporu.md olarak yaz.
+Pazartesi 14:00'te Aslan+Claude bu raporu okuyup karar verir.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ÖZET — BU HAFTA SONU BEKLENEN ÇIKTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pazar 27 Nis gece öncesi:
+✅ GitHub push tamam (role-flows origin'de)
+✅ 7 pilot hazırlık dosyası GitHub'da
+✅ F02 kod inceleme raporu GitHub'da
+✅ Her script dry-run test edilmiş (EXPLAIN analyze geçmiş)
+✅ Her patch build clean (vite + esbuild)
+
+Pazartesi 09:00 Aslan+IT+Claude+sen birlikte kickoff başlar.
+Hazırlık mükemmel olsun, pilot başarılı olsun!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Herhangi bir soru olursa BU hafta sonu sor (Aslan WhatsApp'ta).
+Pazartesi sabah "hazırlık tamam mı?" sormayacağız — 
+Pazar gece raporu bekliyoruz.
+
+İyi çalışmalar!
