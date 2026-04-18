@@ -25,7 +25,7 @@ const faultReportSchema = z.object({
   equipmentId: z.coerce.number().int().optional(),
   equipmentName: z.string().min(3, "Ekipman adı en az 3 karakter olmalı"),
   description: z.string().min(10, "Açıklama en az 10 karakter olmalı"),
-  priority: z.enum(["dusuk", "orta", "yuksek"]).default("orta"),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
   immediateImpact: z.boolean().default(false),
   safetyHazard: z.boolean().default(false),
   symptoms: z.string().optional(),
@@ -67,7 +67,7 @@ export default function NewFaultReport() {
       equipmentId: undefined,
       equipmentName: "",
       description: "",
-      priority: "orta",
+      priority: "medium",
       immediateImpact: false,
       safetyHazard: false,
       symptoms: "",
@@ -115,7 +115,7 @@ export default function NewFaultReport() {
         equipmentName: data.equipmentName,
         description: data.description,
         priority: data.priority,
-        status: "acik",
+        status: "open",
         photoUrl: data.photoUrl || null,
         faultReportDetails: {
           symptoms: data.symptoms?.split(",").map(s => s.trim()).filter(Boolean) || [],
@@ -126,7 +126,7 @@ export default function NewFaultReport() {
           notes: data.notes || "",
         },
         currentStage: "bekliyor",
-        priorityLevel: data.priority === "yuksek" ? "red" : data.priority === "dusuk" ? "green" : "yellow",
+        priorityLevel: data.priority === "high" ? "red" : data.priority === "low" ? "green" : "yellow",
         troubleshootingCompleted: hasTroubleshootingSteps ? allStepsCompleted : true,
         completedTroubleshootingSteps: tsSteps,
       });
@@ -363,9 +363,9 @@ export default function NewFaultReport() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="dusuk">Düşük - Beklenebilir</SelectItem>
-                        <SelectItem value="orta">Orta - Kısa zamanda çözülmeli</SelectItem>
-                        <SelectItem value="yuksek">Yüksek - Acil müdahale</SelectItem>
+                        <SelectItem value="low">Düşük - Beklenebilir</SelectItem>
+                        <SelectItem value="medium">Orta - Kısa zamanda çözülmeli</SelectItem>
+                        <SelectItem value="high">Yüksek - Acil müdahale</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -303,9 +303,9 @@ export default function EkipmanServis() {
           equipmentId: createEquipment.id,
           equipmentName: createEquipment.equipmentType,
           description: faultDescription,
-          priority: 'orta',
+          priority: 'medium',
           severity: faultSeverity,
-          status: 'acik',
+          status: 'open',
           branchId: parseInt(createBranch),
           reportedById: 'current-user',
         });

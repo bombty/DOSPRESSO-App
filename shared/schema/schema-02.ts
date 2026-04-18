@@ -3469,8 +3469,8 @@ export const equipmentFaults = pgTable("equipment_faults", {
   aiAnalysis: text("ai_analysis"),
   aiSeverity: varchar("ai_severity", { length: 50 }), // low, medium, high, critical
   aiRecommendations: text("ai_recommendations").array(),
-  status: varchar("status", { length: 50 }).notNull().default("acik"), // acik, devam_ediyor, cozuldu (legacy)
-  priority: varchar("priority", { length: 50 }).default("orta"), // dusuk, orta, yuksek (legacy)
+  status: varchar("status", { length: 50 }).notNull().default("open"), // open, in_progress, resolved (Sprint A3 — 18 Nis 2026 TR→EN)
+  priority: varchar("priority", { length: 50 }).default("medium"), // low, medium, high, critical (Sprint A3)
   // New multi-stage fault tracking
   priorityLevel: varchar("priority_level", { length: 20 }).notNull().default(PRIORITY_LEVELS.YELLOW), // green, yellow, red
   currentStage: varchar("current_stage", { length: 50 }).notNull().default(FAULT_STAGES.BEKLIYOR),

@@ -444,8 +444,8 @@ ${branch}`
       equipmentId: equipmentId,
       equipmentName: (EQUIPMENT_METADATA as any)[equipment?.equipmentType]?.nameTr || equipment?.equipmentType || "",
       description: "",
-      status: "acik",
-      priority: "orta",
+      status: "open",
+      priority: "medium",
       branchId: equipment?.branchId || 0,
       reportedById: user?.id || "",
     },
@@ -457,8 +457,8 @@ ${branch}`
         equipmentId: parseInt(id!),
         equipmentName: (EQUIPMENT_METADATA as any)[equipment.equipmentType]?.nameTr || equipment.equipmentType || "",
         description: "",
-        status: "acik",
-        priority: "orta",
+        status: "open",
+        priority: "medium",
         branchId: equipment.branchId || 0,
         reportedById: user.id || "",
       });
@@ -916,7 +916,7 @@ ${branch}`
                   <Link key={f.id} href={`/ariza-detay/${f.id}`} asChild>
                     <Button size="sm" variant="outline" data-testid={`button-alert-fault-${f.id}`}>
                       <ExternalLink className="h-3 w-3 mr-1" />
-                      Arıza #{f.id} - {f.priority === 'yuksek' ? 'Yüksek' : f.priority === 'dusuk' ? 'Düşük' : 'Orta'}
+                      Arıza #{f.id} - {(f.priority === 'high' || f.priority === 'yuksek') ? 'Yüksek' : (f.priority === 'low' || f.priority === 'dusuk') ? 'Düşük' : (f.priority === 'critical' || f.priority === 'kritik') ? 'Kritik' : 'Orta'}
                     </Button>
                   </Link>
                 ))}
@@ -2611,9 +2611,9 @@ ${branch}`
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="dusuk">Düşük</SelectItem>
-                        <SelectItem value="orta">Orta</SelectItem>
-                        <SelectItem value="yuksek">Yüksek</SelectItem>
+                        <SelectItem value="low">Düşük</SelectItem>
+                        <SelectItem value="medium">Orta</SelectItem>
+                        <SelectItem value="high">Yüksek</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

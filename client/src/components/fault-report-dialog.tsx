@@ -31,7 +31,7 @@ import {
 
 const createFaultSchema = z.object({
   description: z.string().min(10, "Arıza açıklaması en az 10 karakter olmalı"),
-  priority: z.enum(['dusuk', 'orta', 'yuksek']),
+  priority: z.enum(['low', 'medium', 'high']),
   notes: z.string().optional(),
   photoUrl: z.string().optional(),
   estimatedCost: z.string().optional(),
@@ -157,7 +157,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     resolver: zodResolver(createFaultSchema),
     defaultValues: {
       description: '',
-      priority: 'orta',
+      priority: 'medium',
       notes: '',
       estimatedCost: '',
     },
@@ -322,7 +322,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
     y = addSection(doc, 'Arıza Detayları', y);
     y = addKeyValue(doc, 'Arıza No', `#${createdFault.id}`, y);
     y = addKeyValue(doc, 'Sorumlu', isHQResponsible ? 'Merkez Teknik Ekip' : 'Şube Sorumlusu', y);
-    y = addKeyValue(doc, 'Öncelik', createdFault.priority === 'yuksek' ? 'Yüksek' : createdFault.priority === 'dusuk' ? 'Düşük' : 'Orta', y);
+    y = addKeyValue(doc, 'Öncelik', (createdFault.priority === 'high' || createdFault.priority === 'yuksek') ? 'Yüksek' : (createdFault.priority === 'low' || createdFault.priority === 'dusuk') ? 'Düşük' : 'Orta', y);
     y = addKeyValue(doc, 'Raporlayan', sanitizeText(user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Bilinmiyor'), y);
     if (createdFault.estimatedCost) {
       y = addKeyValue(doc, 'Tahmini Maliyet', `${createdFault.estimatedCost} TL`, y);
@@ -382,7 +382,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
       '',
       `Ekipman: ${metadata?.nameTr || equipment.equipmentType}`,
       `Seri No: ${equipment.serialNumber || '-'}`,
-      `Öncelik: ${createdFault.priority === 'yuksek' ? 'Yüksek' : createdFault.priority === 'dusuk' ? 'Düşük' : 'Orta'}`,
+      `Öncelik: ${(createdFault.priority === 'high' || createdFault.priority === 'yuksek') ? 'Yüksek' : (createdFault.priority === 'low' || createdFault.priority === 'dusuk') ? 'Düşük' : 'Orta'}`,
       `Rapor Tarihi: ${format(new Date(), "dd.MM.yyyy HH:mm")}`,
       '',
       `Açıklama: ${createdFault.description}`,
@@ -672,7 +672,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
                     </p>
                   </div>
                   <Badge
-                    variant={fault.priority === 'yuksek' ? 'destructive' : fault.priority === 'orta' ? 'default' : 'secondary'}
+                    variant={(fault.priority === 'high' || fault.priority === 'yuksek' || fault.priority === 'critical') ? 'destructive' : (fault.priority === 'medium' || fault.priority === 'orta') ? 'default' : 'secondary'}
                   >
                     {fault.priority}
                   </Badge>
@@ -913,7 +913,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div><span className="font-medium">Ekipman:</span> {metadata?.nameTr}</div>
                       <div><span className="font-medium">Seri No:</span> {equipment.serialNumber}</div>
-                      <div><span className="font-medium">Öncelik:</span> {createdFault?.priority === 'yuksek' ? 'Yüksek' : createdFault?.priority === 'dusuk' ? 'Düşük' : 'Orta'}</div>
+                      <div><span className="font-medium">Öncelik:</span> {(createdFault?.priority === 'high' || createdFault?.priority === 'yuksek') ? 'Yüksek' : (createdFault?.priority === 'low' || createdFault?.priority === 'dusuk') ? 'Düşük' : 'Orta'}</div>
                       <div><span className="font-medium">Durum:</span> Beklemede</div>
                     </div>
                   </CardContent>
@@ -943,7 +943,7 @@ export function FaultReportDialog({ equipment, isOpen, onOpenChange }: FaultRepo
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div><span className="font-medium">Ekipman:</span> {metadata?.nameTr}</div>
                       <div><span className="font-medium">Seri No:</span> {equipment.serialNumber}</div>
-                      <div><span className="font-medium">Öncelik:</span> {createdFault?.priority === 'yuksek' ? 'Yüksek' : createdFault?.priority === 'dusuk' ? 'Düşük' : 'Orta'}</div>
+                      <div><span className="font-medium">Öncelik:</span> {(createdFault?.priority === 'high' || createdFault?.priority === 'yuksek') ? 'Yüksek' : (createdFault?.priority === 'low' || createdFault?.priority === 'dusuk') ? 'Düşük' : 'Orta'}</div>
                       <div><span className="font-medium">Arıza No:</span> #{createdFault?.id}</div>
                     </div>
                   </CardContent>

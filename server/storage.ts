@@ -2364,7 +2364,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(equipmentFaults)
       .set({ 
-        status: "cozuldu", 
+        status: "resolved",  // Sprint A3 (18 Nis 2026): TR→EN ("cozuldu" → "resolved")
         resolvedAt: new Date(),
         updatedAt: new Date()
       })

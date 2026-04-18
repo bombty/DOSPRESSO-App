@@ -662,7 +662,7 @@ export default function BranchKiosk() {
       const res = await apiRequest("POST", "/api/faults", {
         description: `[Kiosk] [${body.category}] ${body.description}`,
         equipmentName: body.category,
-        priority: "orta",
+        priority: "medium",
         branchId: Number(branchId),
         reportedById: selectedUser?.id,
       });
