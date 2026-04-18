@@ -1,0 +1,1409 @@
+{
+  "runId": "recalc-2026-04-18T12-49-00-675Z-4fbe82",
+  "generatedAt": "2026-04-18T12:49:01.019Z",
+  "coverageThreshold": 0,
+  "totalRecipes": 27,
+  "applied": 15,
+  "appliedPartial": 0,
+  "skippedEmpty": 12,
+  "updatedProducts": 15,
+  "bigIncreases": 0,
+  "bigDecreases": 0,
+  "newPriced": 15,
+  "unitCostBigIncreases": 0,
+  "unitCostBigDecreases": 0,
+  "reports": [
+    {
+      "recipeId": 2,
+      "recipeCode": "PR-003",
+      "recipeName": "Donut Base Hamuru Reçetesi",
+      "productId": 40,
+      "productSku": "DONUT-BASE",
+      "baseBatchOutput": 58,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 8313.85,
+      "newRawMaterialCost": 8313.85,
+      "oldUnitCost": 8313.85,
+      "newUnitCost": 8313.85,
+      "oldBasePrice": 8313.85,
+      "newBasePrice": 8313.85,
+      "oldSuggestedPrice": 11223.7,
+      "newSuggestedPrice": 11223.7,
+      "profitMargin": 1.35,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 3,
+      "recipeCode": "PR-004",
+      "recipeName": "Cinnaboom Classic Reçetesi",
+      "productId": 41,
+      "productSku": "CINNA-CLASSIC",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 8.42,
+      "newRawMaterialCost": 8.42,
+      "oldUnitCost": 8.42,
+      "newUnitCost": 8.42,
+      "oldBasePrice": 8.42,
+      "newBasePrice": 8.42,
+      "oldSuggestedPrice": 11.36,
+      "newSuggestedPrice": 11.36,
+      "profitMargin": 1.35,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 4,
+      "recipeCode": "PR-005",
+      "recipeName": "Cinnaboom Brownie Reçetesi",
+      "productId": 42,
+      "productSku": "CINNA-BROWNIE",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 7.75,
+      "newRawMaterialCost": 7.75,
+      "oldUnitCost": 7.75,
+      "newUnitCost": 7.75,
+      "oldBasePrice": 7.75,
+      "newBasePrice": 7.75,
+      "oldSuggestedPrice": 10.46,
+      "newSuggestedPrice": 10.46,
+      "profitMargin": 1.35,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 5,
+      "recipeCode": "PR-006",
+      "recipeName": "New York Cookie Reçetesi",
+      "productId": 43,
+      "productSku": "COOKIE-NY",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 26.27,
+      "newRawMaterialCost": 26.27,
+      "oldUnitCost": 26.27,
+      "newUnitCost": 26.27,
+      "oldBasePrice": 26.27,
+      "newBasePrice": 26.27,
+      "oldSuggestedPrice": 31.53,
+      "newSuggestedPrice": 31.53,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 6,
+      "recipeCode": "PR-007",
+      "recipeName": "Crumble Cookie Reçetesi",
+      "productId": 44,
+      "productSku": "COOKIE-CRUMBLE",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 24.53,
+      "newRawMaterialCost": 24.53,
+      "oldUnitCost": 24.53,
+      "newUnitCost": 24.53,
+      "oldBasePrice": 24.52,
+      "newBasePrice": 24.52,
+      "oldSuggestedPrice": 29.43,
+      "newSuggestedPrice": 29.43,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 7,
+      "recipeCode": "PR-008",
+      "recipeName": "Cheesecake Base Reçetesi",
+      "productId": 45,
+      "productSku": "CHEESE-BASE",
+      "baseBatchOutput": 50,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 624.53,
+      "newRawMaterialCost": 624.53,
+      "oldUnitCost": 630.46,
+      "newUnitCost": 630.46,
+      "oldBasePrice": 630.46,
+      "newBasePrice": 630.46,
+      "oldSuggestedPrice": 756.55,
+      "newSuggestedPrice": 756.55,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 8,
+      "recipeCode": "PR-009",
+      "recipeName": "Oreo Cheesecake Reçetesi",
+      "productId": 46,
+      "productSku": "CHEESE-OREO",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 19.6,
+      "newRawMaterialCost": 19.6,
+      "oldUnitCost": 22.44,
+      "newUnitCost": 22.44,
+      "oldBasePrice": 22.44,
+      "newBasePrice": 22.44,
+      "oldSuggestedPrice": 26.92,
+      "newSuggestedPrice": 26.92,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 9,
+      "recipeCode": "PR-010",
+      "recipeName": "San Sebastian Reçetesi",
+      "productId": 47,
+      "productSku": "CHEESE-SANSEB",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 93.6,
+      "newRawMaterialCost": 93.6,
+      "oldUnitCost": 93.6,
+      "newUnitCost": 93.6,
+      "oldBasePrice": 93.6,
+      "newBasePrice": 93.6,
+      "oldSuggestedPrice": 112.32,
+      "newSuggestedPrice": 112.32,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 10,
+      "recipeCode": "PR-011",
+      "recipeName": "Bombty Latte Powder Reçetesi",
+      "productId": 61,
+      "productSku": "POWDER-BOMBTY",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 117.2,
+      "newRawMaterialCost": 117.2,
+      "oldUnitCost": 117.2,
+      "newUnitCost": 117.2,
+      "oldBasePrice": 117.2,
+      "newBasePrice": 117.2,
+      "oldSuggestedPrice": 140.64,
+      "newSuggestedPrice": 140.64,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 11,
+      "recipeCode": "PR-012",
+      "recipeName": "Chocolate Powder Reçetesi",
+      "productId": 62,
+      "productSku": "POWDER-CHOCO",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 1054,
+      "newRawMaterialCost": 1054,
+      "oldUnitCost": 1054,
+      "newUnitCost": 1054,
+      "oldBasePrice": 1054,
+      "newBasePrice": 1054,
+      "oldSuggestedPrice": 1264.8,
+      "newSuggestedPrice": 1264.8,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 12,
+      "recipeCode": "PR-013",
+      "recipeName": "Creambase Powder Reçetesi",
+      "productId": 63,
+      "productSku": "POWDER-CREAM",
+      "baseBatchOutput": 1,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 705,
+      "newRawMaterialCost": 705,
+      "oldUnitCost": 705,
+      "newUnitCost": 705,
+      "oldBasePrice": 705,
+      "newBasePrice": 705,
+      "oldSuggestedPrice": 846,
+      "newSuggestedPrice": 846,
+      "profitMargin": 1.2,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 13,
+      "recipeCode": "PR-014",
+      "recipeName": "Donut",
+      "productId": 1,
+      "productSku": "DONUT-001",
+      "baseBatchOutput": 630,
+      "coveragePercent": 0,
+      "ingredientCount": 0,
+      "resolvedIngredientCount": 0,
+      "oldRawMaterialCost": 6118.69,
+      "newRawMaterialCost": 6118.69,
+      "oldUnitCost": 6689.8,
+      "newUnitCost": 6689.8,
+      "oldBasePrice": 6689.8,
+      "newBasePrice": 6689.8,
+      "oldSuggestedPrice": 9031.24,
+      "newSuggestedPrice": 9031.24,
+      "profitMargin": 1.35,
+      "status": "skipped_empty",
+      "reason": "Reçetede malzeme satırı yok — eski fiyat korundu (placeholder/legacy)",
+      "changePercent": 0,
+      "missingIngredients": []
+    },
+    {
+      "recipeId": 16,
+      "recipeCode": "CHE-002",
+      "recipeName": "Cheesecake Frambuaz",
+      "productId": 105358,
+      "productSku": "FP-CHE-002",
+      "baseBatchOutput": 225,
+      "coveragePercent": 22.2,
+      "ingredientCount": 9,
+      "resolvedIngredientCount": 2,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1811.49,
+      "oldUnitCost": 0,
+      "newUnitCost": 8.05,
+      "oldBasePrice": 0,
+      "newBasePrice": 1811.49,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1829.61,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "H-1081",
+          "name": "Labne",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-006",
+          "name": "Kremali Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 17,
+      "recipeCode": "CHE-003",
+      "recipeName": "Cheesecake Limon",
+      "productId": 105359,
+      "productSku": "FP-CHE-003",
+      "baseBatchOutput": 225,
+      "coveragePercent": 22.2,
+      "ingredientCount": 9,
+      "resolvedIngredientCount": 2,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1811.49,
+      "oldUnitCost": 0,
+      "newUnitCost": 8.05,
+      "oldBasePrice": 0,
+      "newBasePrice": 1811.49,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1829.61,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "H-1081",
+          "name": "Labne",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-006",
+          "name": "Kremali Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 18,
+      "recipeCode": "CHE-004",
+      "recipeName": "Cheesecake Oreo",
+      "productId": 105360,
+      "productSku": "FP-CHE-004",
+      "baseBatchOutput": 225,
+      "coveragePercent": 20,
+      "ingredientCount": 10,
+      "resolvedIngredientCount": 2,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1811.49,
+      "oldUnitCost": 0,
+      "newUnitCost": 8.05,
+      "oldBasePrice": 0,
+      "newBasePrice": 1811.49,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1829.61,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "H-1081",
+          "name": "Labne",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-006",
+          "name": "Kremali Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "CHEE-003",
+          "name": "Cheesecake Oreo",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 14,
+      "recipeCode": "EKM-001",
+      "recipeName": "Ciabatta Ana Hamur",
+      "productId": 105366,
+      "productSku": "FP-EKM-001",
+      "baseBatchOutput": 192,
+      "coveragePercent": 40,
+      "ingredientCount": 5,
+      "resolvedIngredientCount": 2,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 183.33,
+      "oldUnitCost": 0,
+      "newUnitCost": 0.95,
+      "oldBasePrice": 0,
+      "newBasePrice": 183.33,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 185.16,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 19,
+      "recipeCode": "CHE-005",
+      "recipeName": "San Sebastian Cheesecake",
+      "productId": 105361,
+      "productSku": "FP-CHE-005",
+      "baseBatchOutput": 225,
+      "coveragePercent": 25,
+      "ingredientCount": 8,
+      "resolvedIngredientCount": 2,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 3480.65,
+      "oldUnitCost": 0,
+      "newUnitCost": 15.47,
+      "oldBasePrice": 0,
+      "newBasePrice": 3480.65,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 3515.46,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-006",
+          "name": "Kremali Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 20,
+      "recipeCode": "BRW-001",
+      "recipeName": "Beyaz Brownie",
+      "productId": 105362,
+      "productSku": "FP-BRW-001",
+      "baseBatchOutput": 100,
+      "coveragePercent": 42.9,
+      "ingredientCount": 14,
+      "resolvedIngredientCount": 6,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 298.1,
+      "oldUnitCost": 0,
+      "newUnitCost": 2.98,
+      "oldBasePrice": 0,
+      "newBasePrice": 298.1,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 301.08,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "T-0098",
+          "name": "Beyaz Çikolata Parçacığı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "KRUV-001",
+          "name": "Kruvasan Sade Tereyağlı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-007",
+          "name": "Badem Sutu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 21,
+      "recipeCode": "BRW-002",
+      "recipeName": "Brownie",
+      "productId": 105363,
+      "productSku": "FP-BRW-002",
+      "baseBatchOutput": 100,
+      "coveragePercent": 50,
+      "ingredientCount": 14,
+      "resolvedIngredientCount": 7,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1753.75,
+      "oldUnitCost": 0,
+      "newUnitCost": 17.54,
+      "oldBasePrice": 0,
+      "newBasePrice": 1753.75,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1771.29,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "KRUV-001",
+          "name": "Kruvasan Sade Tereyağlı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-004",
+          "name": "Kakao Tozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "SIR-007",
+          "name": "Creamice Base Şurup 950ml",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=950.0000)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 22,
+      "recipeCode": "COK-001",
+      "recipeName": "Siyah Cookie",
+      "productId": 105364,
+      "productSku": "FP-COK-001",
+      "baseBatchOutput": 300,
+      "coveragePercent": 41.2,
+      "ingredientCount": 17,
+      "resolvedIngredientCount": 7,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 6569.94,
+      "oldUnitCost": 0,
+      "newUnitCost": 21.9,
+      "oldBasePrice": 0,
+      "newBasePrice": 6569.94,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 6635.64,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "KRUV-001",
+          "name": "Kruvasan Sade Tereyağlı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "SIR-007",
+          "name": "Creamice Base Şurup 950ml",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=950.0000)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-004",
+          "name": "Kakao Tozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "Y-1142",
+          "name": "Karbonat 1 Kg",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1067",
+          "name": "Kalsiyum Propiyanat E282 1 kg",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "T-0098",
+          "name": "Beyaz Çikolata Parçacığı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 23,
+      "recipeCode": "COK-002",
+      "recipeName": "Yulaflı Cookie",
+      "productId": 105365,
+      "productSku": "FP-COK-002",
+      "baseBatchOutput": 300,
+      "coveragePercent": 40,
+      "ingredientCount": 15,
+      "resolvedIngredientCount": 6,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 9959.96,
+      "oldUnitCost": 0,
+      "newUnitCost": 33.2,
+      "oldBasePrice": 0,
+      "newBasePrice": 9959.96,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 10059.56,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "KRUV-001",
+          "name": "Kruvasan Sade Tereyağlı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "Y-1142",
+          "name": "Karbonat 1 Kg",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-001",
+          "name": "Espresso Kahve Cekirdegi",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "T-0098",
+          "name": "Beyaz Çikolata Parçacığı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 24,
+      "recipeCode": "EKM-002",
+      "recipeName": "Blueberry Crown",
+      "productId": 105367,
+      "productSku": "FP-EKM-002",
+      "baseBatchOutput": 100,
+      "coveragePercent": 50,
+      "ingredientCount": 8,
+      "resolvedIngredientCount": 4,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 120.98,
+      "oldUnitCost": 0,
+      "newUnitCost": 1.21,
+      "oldBasePrice": 0,
+      "newBasePrice": 120.98,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 122.19,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "KRUV-001",
+          "name": "Kruvasan Sade Tereyağlı",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 25,
+      "recipeCode": "CIN-002",
+      "recipeName": "Beyaz Cinebom",
+      "productId": 105369,
+      "productSku": "FP-CIN-002",
+      "baseBatchOutput": 65,
+      "coveragePercent": 59.3,
+      "ingredientCount": 27,
+      "resolvedIngredientCount": 16,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 610.1,
+      "oldUnitCost": 0,
+      "newUnitCost": 9.39,
+      "oldBasePrice": 0,
+      "newBasePrice": 610.1,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 616.2,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "M-1130",
+          "name": "Dekstroz",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "SIR-007",
+          "name": "Creamice Base Şurup 950ml",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=950.0000)"
+        },
+        {
+          "code": "H-1011",
+          "name": "Turyağ T2",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1150",
+          "name": "L-Sistein HCI E920 1 Kg",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1067",
+          "name": "Kalsiyum Propiyanat E282 1 kg",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1039",
+          "name": "Şeker Kamışı Aroma Vericisi",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 26,
+      "recipeCode": "CIN-003",
+      "recipeName": "Siyah Brownie Cinebom",
+      "productId": 105370,
+      "productSku": "FP-CIN-003",
+      "baseBatchOutput": 65,
+      "coveragePercent": 62.1,
+      "ingredientCount": 29,
+      "resolvedIngredientCount": 18,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1545.82,
+      "oldUnitCost": 0,
+      "newUnitCost": 23.78,
+      "oldBasePrice": 0,
+      "newBasePrice": 1545.82,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1561.28,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "HM-002",
+          "name": "Tam Yagli Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "SIR-007",
+          "name": "Creamice Base Şurup 950ml",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=950.0000)"
+        },
+        {
+          "code": "HM-004",
+          "name": "Kakao Tozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1039",
+          "name": "Şeker Kamışı Aroma Vericisi",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1041",
+          "name": "Karbon Black",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "T-0192",
+          "name": "Tds Metre Tuz Ölçer",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "M-1130",
+          "name": "Dekstroz",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1150",
+          "name": "L-Sistein HCI E920 1 Kg",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 27,
+      "recipeCode": "DON-001",
+      "recipeName": "Donut",
+      "productId": 72,
+      "productSku": "DNT-009",
+      "baseBatchOutput": 630,
+      "coveragePercent": 34.5,
+      "ingredientCount": 29,
+      "resolvedIngredientCount": 10,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1660.7,
+      "oldUnitCost": 0,
+      "newUnitCost": 2.64,
+      "oldBasePrice": 0,
+      "newBasePrice": 1660.7,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1677.31,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": null,
+          "name": "(eşleşmemiş)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": "M-1130",
+          "name": "Dekstroz",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "SIR-007",
+          "name": "Creamice Base Şurup 950ml",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=950.0000)"
+        },
+        {
+          "code": "T-0261",
+          "name": "Soya Sütü",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1087",
+          "name": "Peynir Altı Suyu Tozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": "H-1009",
+          "name": "Vanilya Dkt",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        },
+        {
+          "code": null,
+          "name": "(keyblend referansı yok)",
+          "reason": "no_inventory"
+        }
+      ]
+    },
+    {
+      "recipeId": 15,
+      "recipeCode": "CHE-001",
+      "recipeName": "Cheesecake Lotus",
+      "productId": 105357,
+      "productSku": "FP-CHE-001",
+      "baseBatchOutput": 225,
+      "coveragePercent": 20,
+      "ingredientCount": 10,
+      "resolvedIngredientCount": 2,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 1811.49,
+      "oldUnitCost": 0,
+      "newUnitCost": 8.05,
+      "oldBasePrice": 0,
+      "newBasePrice": 1811.49,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 1829.61,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "TEST-003",
+          "name": "Test Urun 3",
+          "reason": "no_price"
+        },
+        {
+          "code": "H-1081",
+          "name": "Labne",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "HM-006",
+          "name": "Kremali Sut",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "KN-001",
+          "name": "Karamel Konsantre",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "HM-005",
+          "name": "Vanilya Ozu",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1062",
+          "name": "Potasyum Sorbat E202",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        },
+        {
+          "code": "H-1064",
+          "name": "Ksantan Gam",
+          "reason": "unit_mismatch",
+          "detail": "g ↔ ADET (cf=0)"
+        }
+      ]
+    },
+    {
+      "recipeId": 1,
+      "recipeCode": "CIN-001",
+      "recipeName": "Cinnabon Full Revizyon — Endüstriyel",
+      "productId": 105368,
+      "productSku": "FP-CIN-001",
+      "baseBatchOutput": 65,
+      "coveragePercent": 42.9,
+      "ingredientCount": 14,
+      "resolvedIngredientCount": 6,
+      "oldRawMaterialCost": 0,
+      "newRawMaterialCost": 2032,
+      "oldUnitCost": 0,
+      "newUnitCost": 31.26,
+      "oldBasePrice": 0,
+      "newBasePrice": 2032,
+      "oldSuggestedPrice": 0,
+      "newSuggestedPrice": 2052.32,
+      "profitMargin": 1.01,
+      "status": "applied",
+      "reason": null,
+      "changePercent": null,
+      "missingIngredients": [
+        {
+          "code": "HM-008",
+          "name": "Un",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ ? (cf=0)"
+        },
+        {
+          "code": "Y-1153",
+          "name": "TUZ 3 KG",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ ADET (cf=3000.0000)"
+        },
+        {
+          "code": "HM-NEW-003",
+          "name": "Su",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ LT (cf=1000.0000)"
+        },
+        {
+          "code": "H-1007",
+          "name": "Yağsız Süt Tozu 25 kg",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ ADET (cf=25000.0000)"
+        },
+        {
+          "code": "HM-010",
+          "name": "Yumurta",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ ? (cf=0)"
+        },
+        {
+          "code": "H-1006",
+          "name": "Yaş Maya 500 gr*24",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ ADET (cf=12000.0000)"
+        },
+        {
+          "code": "H-1009",
+          "name": "Vanilya Dkt",
+          "reason": "unit_mismatch",
+          "detail": "ml ↔ ADET (cf=0)"
+        },
+        {
+          "code": "M-1104",
+          "name": "Creamice Base Şurup 950 ml",
+          "reason": "unit_mismatch",
+          "detail": "gr ↔ ADET (cf=950.0000)"
+        }
+      ]
+    }
+  ]
+}

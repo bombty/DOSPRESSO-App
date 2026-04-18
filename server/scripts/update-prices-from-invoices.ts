@@ -25,7 +25,11 @@ interface InvoicePrice {
   packageUnit: string;     // "KG" | "LT" | "paket" | "adet"
   pricePerKg: number | null;
   purchaseCount: number;
+  isEstimate?: boolean;    // true → muhasebeden gerçek fatura beklenen tahmini fiyat
+  sourceCode?: string;     // alias → gerçek H-* kodunun referansı
 }
+
+const ESTIMATE_TAG = "[TAHMINI - 18 Nis 2026 - muhasebeden bekleniyor]";
 
 const PRICES = invoicePrices as InvoicePrice[];
 
@@ -67,26 +71,42 @@ async function run() {
     const newPrice = item.packagePrice;
     const changePercent = oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice) * 100 : 0;
 
-    // 1. Envanter fiyatını güncelle
+    // 1. Envanter fiyatını güncelle (description'a tahmini etiketi ekle/çıkar)
+    const currentDesc = (existing.description ?? "").replace(ESTIMATE_TAG, "").trim();
+    const newDesc = item.isEstimate
+      ? (currentDesc ? `${currentDesc} ${ESTIMATE_TAG}` : ESTIMATE_TAG)
+      : (currentDesc || null);
+
     await db
       .update(inventory)
       .set({
         lastPurchasePrice: newPrice.toFixed(2),
         unitCost: newPrice.toFixed(2), // Alım fiyatı = birim maliyet
+        description: newDesc,
         updatedAt: new Date(),
       })
       .where(eq(inventory.code, item.code));
 
     // 2. Price history kaydı oluştur
+    const sourceTag = item.isEstimate
+      ? "estimate"
+      : item.sourceCode
+      ? "invoice_alias"
+      : "excel_import";
+    const noteSuffix = item.isEstimate
+      ? ` ⚠️ TAHMINI fiyat — gerçek fatura muhasebeden bekleniyor (18 Nis 2026)`
+      : item.sourceCode
+      ? ` ✓ Fatura kaynağı: ${item.sourceCode} (aynı fiziksel malzeme)`
+      : "";
     await db.insert(inventoryPriceHistory).values({
       inventoryId: existing.id,
       priceType: "purchase",
       price: newPrice.toFixed(2),
       previousPrice: oldPrice > 0 ? oldPrice.toFixed(2) : null,
       changePercent: oldPrice > 0 ? changePercent.toFixed(2) : null,
-      source: "excel_import",
+      source: sourceTag,
       effectiveDate: item.date,
-      notes: `Son fatura alımı ${item.period} (${item.purchaseCount} alım, 3 yıllık veri). Paket: ${item.packageSizeKg ?? "?"} ${item.packageUnit}${item.pricePerKg ? ` → ₺${item.pricePerKg.toFixed(2)}/KG` : ""}`,
+      notes: `Son fatura alımı ${item.period} (${item.purchaseCount} alım, 3 yıllık veri). Paket: ${item.packageSizeKg ?? "?"} ${item.packageUnit}${item.pricePerKg ? ` → ₺${item.pricePerKg.toFixed(2)}/KG` : ""}.${noteSuffix}`,
     });
 
     priceHistoryCreated++;

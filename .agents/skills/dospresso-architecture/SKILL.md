@@ -299,10 +299,12 @@ Shift planning → Kiosk check-in/out → pdks_records (raw) → Payroll calcula
 - Kritik fiyat düzeltme notları: keyblend ₺215/KG (9210/KG DEĞİL), maya ₺77/KG (1869/KG DEĞİL — paket/12), konfiseri ₺249/KG ort, dolgu ₺260/KG ort
 
 ### Fatura Bazlı Fiyat Senkronizasyonu (18 Nisan 2026):
-- **Veri kaynağı**: `server/data/invoice-prices.json` (143 malzeme, 2024-2026 Bombtea muhasebe)
+- **Veri kaynağı**: `server/data/invoice-prices.json` (177 malzeme: 143 muhasebe + 7 alias + 27 tahmini)
 - **Script**: `server/scripts/update-prices-from-invoices.ts` — envanter `lastPurchasePrice` + `inventoryPriceHistory` günceller
 - **Komut**: `npx tsx server/scripts/update-prices-from-invoices.ts`
 - **89 malzeme ₺/KG kesin** (paket ağırlığı isimde bilinen), **54 malzeme paket belirsiz** (sonra netleştir)
+- **Task #105 alias eşleşmeleri (gerçek fatura)**: HM-NEW-002→H-1008, HM-NEW-005→H-1091, HM-NEW-010→H-1050, HM-NEW-018→H-1067, HM-010→H-1005, KN-001→H-1019, T-0098→H-1106 (`source: invoice_alias`)
+- **Task #105 tahmini kalemler (27 adet)**: HM-NEW-001/003/004/006/007/008/009/011-017/019, HM-001/002/004/005/006/007/008, KRUV-001, CHEE-003, T-0261, M-1104, SIR-007 — `source: estimate`, envanter `description` alanına `[TAHMINI - 18 Nis 2026 - muhasebeden bekleniyor]` etiketi yazılı. ⚠️ **Aslan ile pilot sonrası muhasebe görüşmesi → gerçek fatura ile değiştirilecek**.
 - **Kritik fatura fiyatları** (02/2026-04/2026 son alımlar):
   - H-1001 Şeker: ₺37.81/KG | H-1006 Maya: ₺77.08/KG | H-1008 Gluten: ₺7.88/KG
   - H-1012 Turyağ: ₺77.50/KG | H-1014 Turyağ Fritöz: ₺93.33/LT (KIZARTMA)
