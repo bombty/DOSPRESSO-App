@@ -1,9 +1,9 @@
 # DEVİR TESLİM — 18 NİSAN 2026 (CUMARTESİ)
 
-**Oturum türü:** Marathon — Sabah → Gece → Cumartesi öğleden sonra  
-**Toplam commit:** 27+ (Claude + Replit birleşik)  
-**Hedef:** Sprint A tamamlanması + 8 haftalık yol haritası netleşmesi  
-**Sonuç:** ✅ **Sprint A 6/6 tamam + Sprint B/C/D/E kapsamları netleşti**
+**Oturum türü:** Marathon — Sabah → Gece → Cumartesi akşam (20:15)  
+**Toplam commit:** 29 (Claude + Replit birleşik)  
+**Hedef:** Sprint A tamamlanması + 8 haftalık yol haritası + **Sprint D'de bordro keşfi**  
+**Sonuç:** ✅ **Sprint A 6/6 + Sprint B/C/D/E kapsamları FINAL** + **Bordro keşfi düzeltildi**
 
 ---
 
@@ -101,6 +101,52 @@ Bu oturum **olağanüstü üretken bir gündü**. Tek oturumda:
 | **H** | 8 | Observability | Pino + Sentry + slow query | Değişmedi |
 
 **Büyük değişiklik:** Sprint B, C, D, E'nin içerikleri tamamen revize edildi. Kod + DB analizi sonrası **gerçek işler** ortaya çıktı, **yanlış iddialar** düzeltildi.
+
+---
+
+## 🔴 EN ÖNEMLİ KEŞİF — Bordro Aslında Çalışıyor!
+
+Bugünün **en değerli bulgusu** Sprint D+E doğrulaması sırasında geldi:
+
+**Önceki iddiam (2 hafta tekrarlanmış):** "Bordro = 0 kayıt, hiç kullanılmamış"  
+**Gerçek (Replit 3. tur raporu):**
+```
+monthly_payroll (yeni schema-12):  51 kayıt ✅
+  - 51 farklı kullanıcı
+  - 2026-03 + 2026-04 (2 ay)
+  - /api/payroll/calculate-unified MOTOR AKTİF
+```
+
+**Ne demek:**
+- "Motor birleştirme tamamlandı" iddiası (14 Nisan) DOĞRUYMUŞ
+- Bordro modülü %10 değil, **%60-70 hazır**
+- Ben 2 haftadır yanlış tabloyu baktım (payroll_records=0 yanıltıcı)
+
+**Sprint D'nin yönü tamamen değişti:**
+- ❌ Eskisi: "3 bordro tablosunu konsolide et" 
+- ✅ Yenisi: "Eski schema arşivle + UI sabitle + Satınalma aktivasyonu"
+
+## 🚨 İKİNCİ BÜYÜK KEŞİF — Satınalma FIILEN DORMANT
+
+Kod açısından satınalma **sağlam görünüyordu** (50 endpoint, 9 UI sayfa). Ama DB'de:
+
+```
+suppliers:          5 tanımlı ✅
+purchase_orders:    1 taslak (hiç sipariş yapılmamış)
+goods_receipts:     0 🔴 mal kabul hiç yapılmamış
+branch_orders:      0 🔴🔴 şube→fabrika sipariş HİÇ
+```
+
+**Pilot için kritik:** `branch_orders` = 0 → Fabrika'dan şubelere sevkiyat DOSPRESSO üzerinden yapılmıyor. Sprint D.4'te aktivasyon gerekli.
+
+## ⚠️ PAZARTESİ SPRINT B İÇİN KRİTİK UYARI
+
+Replit çok önemli bir risk yakaladı: **monthly_payroll zaten 51 kayıt ile çalışıyor.** 
+
+- PDKS → shift_attendance aggregate job yazacağız
+- Ama monthly_payroll bu veriyi **nereden** alıyor?
+- Eğer doğrudan `pdks_records`'tan besleniyorsa, shift_attendance düzeldiğinde **duplicate hesap** riski var
+- **Sprint B'nin ilk 30 dakikası:** Veri kaynağı analizi
 
 ---
 

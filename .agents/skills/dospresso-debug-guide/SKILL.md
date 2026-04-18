@@ -807,3 +807,51 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5000/api/silinmis-endp
 
 **Önleme:** Bir modül için "bozuk" demeden önce `conversation_search` ile Aslan'ın önceki açıklamasına bak, `docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md` Bölüm 4.1'i oku.
 
+
+---
+
+## §28 — Yanlış Tabloya Bakmak: Bordro Dersi (18.04.2026)
+
+**Semptom:** Bir modül için "0 kayıt, hiç kullanılmamış" raporlanır. Sonra DB'ye başka bir tablo ile bakılınca modül aslında aktif çıkar.
+
+**Örnek (Nisan 2026):**
+```
+Claude raporu: "Bordro modülü kullanılmamış — payroll_records=0"
+Gerçek: monthly_payroll=51 kayıt, 2 ay aktif kullanım
+```
+
+Yani `payroll_records` tablosu aslında **farklı amaçlı/boş**, asıl bordro tablosu `monthly_payroll`'du.
+
+**Neden olur:**
+- 3 paralel isim: `monthly_payrolls` (eski), `monthly_payroll` (yeni), `payroll_records` (ayrı)
+- İlk bakılan tablo dead schema olduğunda yanılgı
+- Kod tarafı "3 tablo var konsolide et" der, DB "tek tablo çalışıyor" der
+
+**Çözüm (Önleme):**
+
+1. **Bir modül için rapor yazmadan önce TÜM ilgili tabloları tara:**
+   ```sql
+   -- Örnek: bordro
+   SELECT 'monthly_payrolls' as tbl, COUNT(*) FROM monthly_payrolls
+   UNION ALL SELECT 'monthly_payroll', COUNT(*) FROM monthly_payroll
+   UNION ALL SELECT 'payroll_records', COUNT(*) FROM payroll_records;
+   ```
+
+2. **Tek tablo 0 ise, o modülü "kullanılmıyor" ilan etme.** Farklı isimlendirme varyantları olabilir:
+   - `monthly_X` vs `monthly_Xs` (tekil/çoğul)
+   - `X_records` vs `X_entries` vs `X_log`
+   - `X` vs `X_v2`
+
+3. **Kod'dan ipucu al:**
+   ```bash
+   # Hangi endpoint bordro yazıyor?
+   grep -rn "INSERT INTO.*monthly\|insert.*MonthlyPayroll\|insert.*Payroll" server/ --include="*.ts"
+   ```
+
+**Audit trail:** Bir modül için "dormant" demeden önce:
+- ✅ Frontend ne çağırıyor? (grep client/src/)
+- ✅ Hangi tablo INSERT alıyor? (grep server/)
+- ✅ Her tablonun count'u var mı?
+- ✅ Aynı domain'de N farklı tablo var mı?
+
+**Referans:** Sprint D raporu (18 Nis 2026, commit `fd37f0f1`) — "monthly_payroll=51 keşfi"

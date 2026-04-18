@@ -5,7 +5,7 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
-## Platform Metrics (18 Nisan 2026 — Sprint A sonrası)
+## Platform Metrics (18 Nisan 2026 — Sprint D+E doğrulaması sonrası)
 - **Database tablosu (kodda):** 446 pgTable tanımı
 - **Database tablosu (DB'de gerçek):** 435 (11 fark — dormant modüller)
 - **Backend endpoint:** 1,963 (Sprint A5 sonrası, -14)
@@ -13,11 +13,27 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 - **Frontend sayfa:** 316
 - **Frontend route:** 250 (App.tsx)
 - **Aktif kullanıcı:** 159 (372 toplam — Replit DB doğrulaması)
-- **Rol sayısı:** 27 (hedef 18, Sprint E'de konsolidasyon)
+- **Rol sayısı:** 27 aktif (schema'da 31, 4 hayalet/legacy)
 - **Şube:** 22 (20 aktif + HQ + Fabrika)
 - **Toplam kod:** ~410,000 satır TS/TSX
-- **Doküman:** 66 markdown (docs/)
+- **Doküman:** 68 markdown (docs/)
 - **Schema dosyası:** 23 (shared/schema/schema-01.ts → schema-23.ts)
+
+### Aktif Modül Gerçek Durumu (Replit DB 3 tur doğrulama)
+
+| Modül | Kod Durumu | DB Fiili Kullanım |
+|-------|:--:|:--|
+| Kiosk (PDKS) | %95 kod | pdks_records=1,282 aktif, shift_attendance aggregate BOZUK |
+| Bordro | %70 kod | **monthly_payroll=51 kayıt AKTİF** (motor çalışıyor) — eski tablolar (monthly_payrolls=0, payroll_records=0) dead |
+| Satınalma | %60 kod | **DORMANT**: 1 taslak PO, 0 goods_receipt, 0 branch_orders |
+| Akademi | %80 kod | training_modules=51 aktif, user_training_progress=27, quizzes=27 |
+| Gate Sistemi | %85 kod | **DORMANT**: 5 gate tanımlı, 0 attempt, 0 exam_request |
+| CRM | %40 kod | customer_feedback=461 + support_tickets=66 (dashboard yok) |
+| Audit v1 | %90 kod | 10 template + 203 item (İÇERİK) + 6 instance |
+| Audit v2 | %30 kod | 1 template + 7 soru (AKTİVİTE, içerik yok — migration lazım) |
+| Franchise Projects | %100 kod | 0 kayıt (pilot sonrası aktif) |
+
+**Kritik ders:** Kod durumu ≠ fiili kullanım. Raporlarda her zaman Replit DB kontrolü yap.
 
 ## Dormant Module Policy (18 Nisan 2026)
 
