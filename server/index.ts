@@ -1206,11 +1206,14 @@ function startPdksAutoWeekendScheduler() {
   log("[PDKS-B1] Auto weekend off scheduler started (runs on 1st of month 01:00)");
 }
 
-async function calculateWeeklySummaries() {
+async function calculateWeeklySummaries(weekEndDate?: Date) {
   try {
+    // weekEndDate verilmezse DÜN (geriye uyumlu: scheduler Pazar 23:00'da dünü işler)
+    // Verilirse o tarih weekEnd kabul edilir (Sprint B.2 catch-up için)
     const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-    const weekEnd = new Date(now);
-    weekEnd.setDate(now.getDate() - 1);
+    const weekEnd = weekEndDate
+      ? new Date(weekEndDate)
+      : (() => { const d = new Date(now); d.setDate(now.getDate() - 1); return d; })();
     const weekStart = new Date(weekEnd);
     weekStart.setDate(weekEnd.getDate() - 6);
 
@@ -1382,6 +1385,29 @@ async function sendWeeklyDeficitNotifications(weekStartStr: string) {
   }
 }
 
+/**
+ * Sprint B.2 Fix — Haftalık özet catch-up.
+ * Son N haftayı geriye dönük hesaplar. Server restart sonrası Pazar 23:00
+ * tetiğini kaçırmış olabilir; bu fonksiyon startup'ta çağrılarak eksikleri
+ * doldurur. INSERT'ler onConflictDoNothing() kullanır → idempotent.
+ */
+async function catchUpWeeklySummaries(weeks: number = 4): Promise<void> {
+  log(`[PDKS-B2] Starting catch-up for last ${weeks} weeks`);
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+  for (let i = 0; i < weeks; i++) {
+    const weekEnd = new Date(now);
+    // i=0: dün (bu hafta), i=1: 8 gün önce (geçen hafta), ...
+    weekEnd.setDate(now.getDate() - 1 - (i * 7));
+    try {
+      await calculateWeeklySummaries(weekEnd);
+    } catch (e) {
+      console.error(`[PDKS-B2] Catch-up week -${i} error:`, e);
+      // Bir hafta başarısız olursa diğerlerini denemeye devam
+    }
+  }
+  log(`[PDKS-B2] Catch-up complete: ${weeks} weeks processed`);
+}
+
 function startPdksWeeklySummaryScheduler() {
   schedulerManager.registerInterval('pdks-weekly-summary', async () => {
     const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
@@ -1395,7 +1421,13 @@ function startPdksWeeklySummaryScheduler() {
     }
   }, 10 * 60 * 1000);
 
-  log("[PDKS-B2] Weekly summary scheduler started (Sunday 23:00, deficit notifications Monday 08:30)");
+  // Startup catch-up: son 4 haftanın eksiklerini doldur (non-blocking)
+  // Idempotent — var olan kayıtlar onConflictDoNothing ile atlanır.
+  catchUpWeeklySummaries(4).catch(e =>
+    console.error("[PDKS-B2] Startup catch-up error:", e)
+  );
+
+  log("[PDKS-B2] Weekly summary scheduler started (Sunday 23:00, deficit notifications Monday 08:30, startup catch-up: 4 weeks)");
 }
 
 async function sendDailyAbsenceReport() {
