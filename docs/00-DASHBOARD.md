@@ -69,23 +69,37 @@
 
 Referans: `docs/role-flows/99-FINDINGS.md` (Replit push sonrası)
 
-### Replit ek iş (Pazartesi ~1.5 saat):
+### 🚨 F01 ÖNCELİK REVİZYONU (18 Nis gece, Replit F02 kod incelemesi sonrası)
 
-- [ ] **F01** — 13 disabled modül listesi çıkar + pilot için gerekli olanları aç
-  (delegasyon, dobody.flow, iletisim_merkezi, fabrika.hammadde/kalite/kavurma/sayim/sevkiyat/siparis/stok, stok, dobody.chat, checklist branch — Pazartesi liste gelince Aslan+Claude hangileri açılacak karar verir)
+**Büyük bulgu:** Replit F02 incelemesinde tespit etti — `pages/fabrika/*.tsx`'te `useModuleFlag` çağrısı **0 sonuç.** Module flag'ler runtime'da etkisiz, sadece admin paneli görünümü için.
 
-- [ ] **F02** — `fabrika.stok` (disabled) vs `fabrika.production` (enabled) naming çakışması — hangisi kalacak karar + toggle (30 dk)
+**Sonuç:** F01 "13 disabled modül aç" işi P0'dan **P2'ye düştü.**
 
-- [ ] **F03** — adminhq parola rotate (zaten planda ✅, F03 ile örtüşüyor)
+- F01 → 🟡 **P2 (kozmetik)** — 30 dk, Pazartesi 16:00'da 4 modül aç (delegation, iletisim_merkezi, dobody.flow, checklist)
+- F02 → 🟢 **P3 (Sprint D pilot sonrası)** — 3 Türkçe modül soft-delete pilot'tan sonra
+- F03, F04, F05 → 🔴 **P0 KALIYOR** (gerçek pilot bloker)
 
-- [ ] **F04** — 3 SPOF role backup user (30 dk):
-  - `recete_gm` ↔ `kalite_kontrol` (backup her iki yönde)
-  - `kalite_kontrol` ↔ `gida_muhendisi` (backup her iki yönde)
-  - Konfig: manuel user role ekleme (is_backup=true flag)
+**Pazartesi tasarrufu:** 9 saat → 6-7 saat.  
+**Madde 37 §23 dersi:** "Flag/config tablolarında `is_enabled=false` görünce runtime etkisini grep ile kontrol et, sonra bloker kararı ver." Skill'e eklenecek.
 
-- [ ] **F05** — Yatirimci_HQ dashboard: pilot'ta bu rol kullanılıyor mu? (Aslan sorulacak; yoksa Sprint I)
+### Replit ek iş (Pazartesi ~1 saat, revize):
+
+- [ ] **F01 (P2 kozmetik)** — 4 modül aç (30 dk)
+- [ ] **F02 (P3 ertelendi)** — Sprint D'ye taşındı
+- [ ] **F03** — adminhq parola rotate (15 dk, zaten planda)
+- [ ] **F04** — 3 SPOF role karşılıklı backup (30 dk)
+  - `recete_gm` ↔ `kalite_kontrol` (Senaryo A: users.backup_roles[] array kolonu)
+  - `kalite_kontrol` ↔ `gida_muhendisi`
+- [ ] **F05** — Yatirimci_HQ status=inactive (5 dk)
 
 ### 🕑 Kalan 37 bulgu (12 YÜKSEK + 15 ORTA + 10 DÜŞÜK) Sprint I (28 Nis+) backlog
+
+### 📦 Replit'in 15 Hazırlık Dosyası (Pazar 27 Nis sabah'a kadar hazır)
+
+- 5 doküman: sprint plan, f02 kod inceleme, parola runbook, 2 patch dosyası
+- 10 script: F01+F02 toggle+rollback, F04 SPOF, test-branch cleanup, Nisan bordro backfill (--dry-run/--commit), O13+O06+O03
+
+Push bekleniyor — Aslan GitHub token yenileyecek.
 
 ---
 
