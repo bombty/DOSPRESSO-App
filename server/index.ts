@@ -420,6 +420,7 @@ app.use((req, res, next) => {
 
       startPdksAutoWeekendScheduler();
       startPdksWeeklySummaryScheduler();
+      startMonthlyPayrollScheduler();
       startPdksDailyAbsenceScheduler();
       startPdksMonthlyPayrollScheduler();
 
@@ -1428,6 +1429,119 @@ function startPdksWeeklySummaryScheduler() {
   );
 
   log("[PDKS-B2] Weekly summary scheduler started (Sunday 23:00, deficit notifications Monday 08:30, startup catch-up: 4 weeks)");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint B.5 — Monthly Payroll Scheduler
+//
+// Bağlam: monthly_payroll tablosu şu ana kadar manuel tetikleniyordu
+// (/api/payroll/calculate-unified endpoint). Nisan 2026'da sadece 10/41
+// kullanıcı için hesap yapılmış çünkü kimse "Bordro Hesapla" butonuna
+// toplu basmamış.
+//
+// Madde 37 envanteri (18 Nis 2026 gece):
+//   - monthly_payroll yazıcıları: saveUnifiedResults (bridge) + savePayrollResults (engine)
+//   - Her ikisi de UPSERT (onConflictDoUpdate) → idempotent
+//   - UNIQUE: (userId, year, month)
+//   - Çakışma riski: YOK (manuel trigger ile scheduler aynı anda çalışsa son hesap kalır)
+//
+// Tetik: Her ayın 1'i Türkiye saati 02:15-02:25 (02:00 branch snapshot'ları için ayrılmış)
+// Kapsam: ÖNCEKİ AY (bitmiş ayı hesapla — cari ay yarım veri verir)
+// ═══════════════════════════════════════════════════════════════════
+
+async function calculateMonthlyPayrollForAllBranches(
+  year: number,
+  month: number
+): Promise<{ processed: number; saved: number; errors: number }> {
+  log(`[PDKS-B5] Monthly payroll calculation start: ${year}-${String(month).padStart(2, "0")}`);
+
+  const { calculateBranchUnifiedPayroll, saveUnifiedResults } = await import("./services/payroll-bridge");
+
+  const activeBranches = await db
+    .select({ id: branches.id, name: branches.name })
+    .from(branches)
+    .where(and(eq(branches.isActive, true), sql`${branches.deletedAt} IS NULL`));
+
+  let processed = 0;
+  let saved = 0;
+  let errors = 0;
+
+  for (const branch of activeBranches) {
+    try {
+      const results = await calculateBranchUnifiedPayroll(
+        branch.id,
+        year,
+        month,
+        {}, // config: loadPayrollConfig içinde default'lar okunuyor
+        "kiosk"
+      );
+      const savedCount = await saveUnifiedResults(results);
+      saved += savedCount;
+      processed++;
+    } catch (e) {
+      errors++;
+      console.error(`[PDKS-B5] Branch ${branch.id} (${branch.name}) payroll error:`, e);
+      // Diğer şubeler devam etsin — her şube bağımsız
+    }
+  }
+
+  log(
+    `[PDKS-B5] Monthly payroll done: ${year}-${String(month).padStart(2, "0")} — ` +
+      `${processed}/${activeBranches.length} branches, ${saved} user records, ${errors} errors`
+  );
+  return { processed, saved, errors };
+}
+
+/**
+ * Sprint B.5 catch-up: son N tamamlanmış ayı hesapla.
+ * UPSERT idempotent olduğu için var olanları günceller, eksikleri ekler.
+ * Cari ay DAHIL EDILMEZ (yarım veri riski).
+ */
+async function catchUpMonthlyPayroll(months: number = 3): Promise<void> {
+  log(`[PDKS-B5] Starting catch-up for last ${months} completed months`);
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+
+  for (let i = 1; i <= months; i++) {
+    // i=1: önceki ay, i=2: iki ay önce, ...
+    const target = new Date(now);
+    target.setDate(1); // ay taşmasını önle (31→1 problemi)
+    target.setMonth(target.getMonth() - i);
+
+    const year = target.getFullYear();
+    const month = target.getMonth() + 1;
+
+    try {
+      await calculateMonthlyPayrollForAllBranches(year, month);
+    } catch (e) {
+      console.error(`[PDKS-B5] Catch-up month ${year}-${month} error:`, e);
+    }
+  }
+  log(`[PDKS-B5] Catch-up complete: ${months} months processed`);
+}
+
+function startMonthlyPayrollScheduler() {
+  schedulerManager.registerInterval("pdks-monthly-payroll", async () => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    // Ayın 1'i 02:15-02:25 aralığı (02:00-02:10 branch snapshot'lar için)
+    if (now.getDate() === 1 && now.getHours() === 2 && now.getMinutes() >= 15 && now.getMinutes() < 25) {
+      // Önceki ayı hesapla
+      const prev = new Date(now);
+      prev.setDate(1); // ay taşma koruması
+      prev.setMonth(prev.getMonth() - 1);
+      try {
+        await calculateMonthlyPayrollForAllBranches(prev.getFullYear(), prev.getMonth() + 1);
+      } catch (e) {
+        console.error("[PDKS-B5] Monthly payroll scheduler error:", e);
+      }
+    }
+  }, 10 * 60 * 1000);
+
+  // Startup catch-up: son 3 tamamlanmış ay (idempotent UPSERT)
+  catchUpMonthlyPayroll(3).catch(e =>
+    console.error("[PDKS-B5] Startup catch-up error:", e)
+  );
+
+  log("[PDKS-B5] Monthly payroll scheduler started (1st of month 02:15-02:25 Turkey time, startup catch-up: 3 months)");
 }
 
 async function sendDailyAbsenceReport() {
