@@ -25,9 +25,31 @@
 | # | Sorun | Kanıt | Süre | Zaman |
 |---|---|---|---|---|
 | 1 | Devamsızlık pipeline ölü | shift_attendance son 7g=0, summary tabloları=0 | 2 gün | Pazartesi (Sprint B) |
-| 2 | Bildirim spam regression | 21,482 okunmamış, haftalık 7,975 yeni (escalation_info+franchise_escalation) | 2 saat | Bu hafta sonu |
-| 3 | Schema drift (fiyat geçmişi) | factory_product_price_history + factory_recipe_price_history DB'de YOK, frontend 500 | 30 dk | Bu hafta sonu |
+| 2 | Bildirim spam regression | 21,482 okunmamış, haftalık 7,975 yeni (escalation_info+franchise_escalation) | 2 saat | 🟡 Plan B uygulanıyor (Replit T004) |
+| 3 | Schema drift (fiyat geçmişi) | ✅ ÇÖZÜLDÜ (Replit Task #106 + #103) | - | Tamam |
 | 4 | adminhq parolası `0000` | users tablosunda, pilot öncesi rotate şart | 5 dk | Pazartesi öncesi |
+
+---
+
+## 📍 ZORUNLU KONTROL NOKTASI — 25 Nisan 2026 (1 hafta sonra)
+
+**Plan B (notification spam fix, 18 Nis uygulanan) ölçümü:**
+
+```sql
+SELECT type, COUNT(*)
+FROM notifications
+WHERE created_at >= NOW() - INTERVAL '7 days'
+  AND type IN ('escalation_info','franchise_escalation','agent_escalation_info')
+GROUP BY type;
+```
+
+**Karar kuralı:**
+- Toplam < **2,000**/hafta → Plan B başarılı, Plan A.2 gereksiz
+- Toplam > **3,000**/hafta → Plan A.2 (task_escalation_log) Sprint I (16 Haz+) başına ekle
+- Arası (2,000-3,000) → monitörde tut, pilot başlangıcında (15 Haz) tekrar ölç
+
+**Baseline (18 Nis):** 6,305/hafta (3 type toplamı)
+**Plan B tahmini:** ~1,890/hafta (-70%)
 
 ---
 
