@@ -11,16 +11,31 @@
 
 ### 1.1 Tek Cümleyle
 
-DOSPRESSO, **Türkiye'de 25+ şubeli bir Türk kahvesi franchise zincirinin** merkez (HQ), fabrika ve şubeleri arasındaki tüm operasyonları tek bir platform üzerinden yöneten **rol bazlı kurumsal yönetim yazılımıdır**. Hedefi: her şubede aynı kalite, aynı prosedür, aynı standartla hizmet vermeyi sağlamak.
+DOSPRESSO, **Türkiye'de 25+ şubeli bir Donut & Coffee Shop franchise zincirinin** (adın kökeni: **DO**nut + es**PRESSO**) merkez (HQ), fabrika ve şubeleri arasındaki tüm operasyonları tek bir platform üzerinden yöneten **rol bazlı kurumsal yönetim yazılımıdır**. Hedefi: her şubede aynı kalite, aynı prosedür, aynı standartla hizmet vermeyi sağlamak.
+
+**Ürün yelpazesi:**
+- **Donut'lar** — klasik + gourmet (DNT-001 → DNT-025, 25 çeşit). Fabrika'da merkezi üretilir, şubelere sevkiyat
+- **Cinnaboom** — 6'lı paket cinnamon roll (3 çeşit: klasik, beyaz, siyah brownie)
+- **Cheesecake** — 5 çeşit (klasik, çikolata, karamel, frambuaz, NY stili)
+- **Brownie, Cookie, Ekmek** — küçük atıştırmalıklar
+- **Kahve ürünleri** — espresso, americano, latte, filtre (şubede hazırlanır — SYR, KHV, CAY kodlu)
+- **Satış fiyatları** — Donut ₺33-39, Cinnaboom ₺54 (6'lı), Cheesecake ₺76
 
 ### 1.2 İş Modelinin Temeli
 
 DOSPRESSO'nun rekabet avantajı **ölçeklenebilir standart**. Bu şu demek:
-- Lara şubesindeki bir Cinnaboom ile Işıklar şubesindeki Cinnaboom **aynı** olmalı (aynı reçete, aynı gramaj, aynı görsel)
-- Her şubede kahve hazırlamak 2 dakika sürmeli (eğitim + checklist ile)
+- Lara şubesindeki bir Cinnaboom ile Işıklar şubesindeki Cinnaboom **aynı** olmalı (aynı reçete, aynı gramaj, aynı görsel — merkezi fabrikada üretilip dondurularak sevk ediliyor)
+- Her şubede espresso hazırlamak 2 dakika sürmeli (eğitim + checklist ile)
 - Müşteri hangi şubeye giderse gitsin **aynı deneyim**
 
 Bu tutarlılık **yazılımla** sağlanır. Yoksa 25 şube × 25 farklı uygulama = kaos.
+
+**Merkezi Üretim Modeli (Fabrika → Şube):**
+- Fabrika **hamur ürünlerini** (donut, cinnaboom, cheesecake, brownie, cookie, ekmek) üretir
+- Şok dondurucuda -35°C'ye kadar indirip -18°C'de depolanır
+- Şubelere sevk edilir, şubede oda ısısında çözülüp satışa sunulur (48-72 saat raf ömrü)
+- Şubede sadece **kahve + servis + ısıtma** yapılır (hazırlık değil)
+- Bu model şubelerde mutfak/fırın gerektirmez → **düşük franchise maliyeti + tutarlı kalite**
 
 ### 1.3 Platform'un 3 Ana Fonksiyonu
 
@@ -50,6 +65,56 @@ HQ (Genel Merkez — Antalya)
 
 Bu ayrım **iş modelinin belirleyicisi**. HQ her şeyi yönetmez — sadece **standardı** dikter. Yatırımcı kendi bordrosunu, kendi personel işini yapar.
 
+**Şube Çalışan Hiyerarşisi — Kariyer Yolu (ALTAN ÜSTE)**
+
+Şube çalışanları **7 seviyeli bir kariyer yolunda** ilerler. Her seviyenin üstüne çıkmak için **Gate sınavı** geçmek, belli günleri tamamlamak ve skor eşiğini aşmak gerekir.
+
+```
+SEVIYE 7  │  Yatırımcı Şube (franchise sahibi — kendi şubesi)
+          │       ▲ (yatırım yaparak)
+SEVIYE 6  │  Müdür (şubenin genel yönetimi)
+          │       ▲ (terfi — Gate-3 + süre + skor)
+SEVIYE 5  │  Supervisor (günlük operasyon, vardiya, checklist)
+          │       ▲ (terfi — Gate-2 + süre + skor)
+SEVIYE 4  │  Supervisor Buddy (supervisor yardımcısı)
+          │       ▲ (terfi — supervisor yetkileri öğrenme)
+SEVIYE 3  │  Barista (temel operasyon — usta çalışan)
+          │       ▲ (terfi — Gate-1 + 30 gün + composite >=70)
+SEVIYE 2  │  Bar Buddy (barista yardımcısı)
+          │       ▲ (terfi — Gate-0 sınavı 14 gün sonunda)
+SEVIYE 1  │  Stajyer (14 günlük onboarding)
+          │       ▲ (giriş — yeni işe alım)
+```
+
+**Özel durum:**
+- **Yatırımcı Şube** bir terfi değil, **yatırımcı olarak satın alınan pozisyon**. Yatırımcı aynı zamanda Müdür olabilir (çoğu durumda öyle) ama bağımsız franchise sahibi olarak da sadece bir şubeyi temsil edebilir. HQ onun İK'sına karışmaz, kendi personelini kendi yönetir.
+
+**Kariyer İlerlemesi (Detay):**
+
+| # | Seviye | Terfi Şartı | Süre | Skor |
+|---|--------|-------------|:--:|:--:|
+| 1 | Stajyer | Yeni işe alım | — | — |
+| 2 | Bar Buddy | Gate-0 sınavı geç | 14 gün | — |
+| 3 | Barista | Gate-1 sınavı geç | +30 gün | >=70 |
+| 4 | Supervisor Buddy | Supervisor önerisi + Coach onayı | +60 gün | >=75 |
+| 5 | Supervisor | Gate-2 sınavı geç | +90 gün | >=80 |
+| 6 | Müdür | Gate-3 + Coach + CGO onayı | +180 gün | >=85 |
+| 7 | Yatırımcı Şube | Franchise satın alma (terfi değil) | — | — |
+
+**Composite Score Kriterleri (her seviye için takip edilir):**
+- Checklist tamamlama (%25)
+- Eğitim + quiz sonuçları (%25)
+- PDKS / devam (%25)
+- Yönetici değerlendirmesi (%25)
+
+**Skor Bölgeleri:**
+- 90-100 → Yeşil (mükemmel, terfiye hazır)
+- 75-89 → Amber (iyi, gelişime açık)
+- 60-74 → Turuncu (warning zone)
+- 0-59 → Kırmızı (danger zone — 3 ay üst üste danger = terfi geri alma)
+
+---
+
 ### 2.2 Rol Hiyerarşisi (Şu An 27 Rol, Hedef 18)
 
 **Sistem (1 rol)**
@@ -60,36 +125,37 @@ Bu ayrım **iş modelinin belirleyicisi**. HQ her şeyi yönetmez — sadece **s
 - CGO — operasyon + büyüme sorumlusu
 
 **HQ Departmanları (12 rol)**
-- Coach — şubeleri denetler, performans takip eder
-- Trainer — eğitim + reçete sorumlusu
-- Muhasebe İK — bordro + İK (HQ + Fabrika + Işıklar kapsamında)
-- Satın Alma — tedarik, sipariş
-- Marketing — pazarlama
-- Kalite Kontrol — fabrika QC + müşteri feedback
-- Gıda Mühendisi — HACCP, gıda güvenliği
-- Fabrika Müdürü — üretim genel yönetim
+- Coach — şubeleri denetler, performans takip eder (Yavuz)
+- Trainer — eğitim + reçete sorumlusu (Ece)
+- Muhasebe İK — bordro + İK (HQ + Fabrika + Işıklar kapsamında) (Mahmut)
+- Satın Alma — tedarik, sipariş (Samet)
+- Marketing — pazarlama (Diana)
+- Kalite Kontrol — fabrika QC + müşteri feedback (Ümran)
+- Gıda Mühendisi — HACCP, gıda güvenliği (Sema)
+- Fabrika Müdürü — üretim genel yönetim (Eren)
 - Üretim Şefi — üretim hattı
 - Teknik — ekipman + IT destek
 - Destek — müşteri + operasyon destek
 - Yatırımcı HQ — franchise yönetim
 
-**Fabrika (3 rol)**
+**Fabrika (4 rol)**
+- Üretim Şefi — üretim hattı yönetimi
 - Fabrika Operatörü — istasyon çalışanı
-- Fabrika Sorumlusu — hat sorumlusu
+- Fabrika Sorumlusu — hat sorumlusu (0 kullanıcı — ölü rol)
 - Fabrika Depo — depocu (malzeme çıkış)
 
-**Şube Yönetim (2 rol)**
-- Müdür — şube genel yönetimi
-- Yatırımcı Şube — franchise sahibi
+**Fabrika Reçete (2 rol)**
+- Şef (sef) — kategori bazlı reçete editi
+- Reçete GM (recete_gm) — reçete genel müdür
 
-**Şube Operasyon (2 rol)**
-- Supervisor — günlük operasyon, vardiya, checklist
-- Supervisor Buddy — supervisor yardımcısı
-
-**Şube Personel (3 rol)**
-- Barista — temel operasyon
-- Bar Buddy — barista yardımcısı
-- Stajyer — onboarding, eğitim (14 günlük program)
+**Şube (7 rol — YUKARIDAKI KARİYER YOLU)**
+- Stajyer
+- Bar Buddy
+- Barista
+- Supervisor Buddy
+- Supervisor
+- Müdür
+- Yatırımcı Şube
 
 **Kiosk (1 rol)**
 - Şube Kiosk — sadece giriş/çıkış terminali (PIN bazlı)
@@ -646,7 +712,7 @@ DOSPRESSO'nun yaptığı şey **Türkiye'de benzersiz** diyebilirim:
 > Çok iyi. 65 dokümanı okudum, 11 commit bugün yazdım, 410K satırın mimarisi zihnimde. 6 ayda bir sistem değil, **olgun bir platform**.
 
 **Sistemin hedefi?**
-> 25 şubeli Türk kahvesi franchise zincirinde **her şubede aynı kalite, aynı operasyon, aynı standart** — bunu yazılımla sağlamak.
+> 25 şubeli **Donut & Coffee Shop franchise zincirinde** (DOSPRESSO = DOnut + esPRESSO) **her şubede aynı kalite, aynı operasyon, aynı standart** — bunu yazılımla sağlamak. Merkezi fabrika üretir, dondurulmuş gönderir, şube sadece servis eder.
 
 **Rollere göre görevler, akışlar?**
 > 27 rol, 3 katman (HQ + Fabrika + Şube), her rolün günlük/haftalık ritmi belli. Stajyer 14 günlük onboarding → Bar Buddy → Barista → Supervisor yolu tanımlı. Coach şubeleri denetler, Müdür şubeyi yönetir, Aslan stratejiyi belirler.
