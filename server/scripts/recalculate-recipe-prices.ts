@@ -29,6 +29,7 @@ import { sql, eq } from "drizzle-orm";
 import {
   factoryRecipes,
   factoryRecipeIngredients,
+  factoryRecipePriceHistory,
   type FactoryRecipe,
 } from "@shared/schema/schema-22-factory-recipes";
 import {
@@ -509,10 +510,9 @@ async function run(): Promise<void> {
         ? ((writtenUnitCost - oldUnitCost) / oldUnitCost) * 100
         : null;
 
-    // Recipe seviyesinde audit kaydı devre dışı
-    // (factory_recipe_price_history şeması task-97'den sonra kaldırıldı — follow-up #106).
+    // Recipe seviyesinde audit kaydı (Task #106 ile yeniden açıldı).
     // Product seviyesi denetim Task #99 ile factory_product_price_history tablosuna yazılır (yukarıda).
-    const _auditPayload = ({
+    await db.insert(factoryRecipePriceHistory).values({
       recipeId: recipe.id,
       productId: recipe.productId ?? null,
       oldRawMaterialCost: oldRaw.toFixed(4),
@@ -653,7 +653,7 @@ async function run(): Promise<void> {
   console.log(`  basePrice büyük düşüş (<-%10):    ${summary.bigDecreases}`);
   console.log(`  unitCost büyük artış (>%10):      ${summary.unitCostBigIncreases}`);
   console.log(`  unitCost büyük düşüş (<-%10):     ${summary.unitCostBigDecreases}`);
-  console.log(`\n  Recipe-level audit:  devre dışı (factory_recipe_price_history kaldırıldı — follow-up #106)`);
+  console.log(`\n  Recipe-level audit:  factory_recipe_price_history (Task #106 — her reçete için 1 kayıt)`);
   console.log(`  Product-level audit: factory_product_price_history (Task #99)`);
   console.log(`  Run ID:              ${RUN_ID}`);
   console.log(`  JSON raporu:         ${reportPath}`);

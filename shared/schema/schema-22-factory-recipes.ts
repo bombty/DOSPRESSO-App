@@ -421,3 +421,57 @@ export const factoryIngredientNutrition = pgTable("factory_ingredient_nutrition"
 
 export const insertFactoryIngredientNutritionSchema = createInsertSchema(factoryIngredientNutrition).omit({ id: true, createdAt: true, updatedAt: true });
 export type FactoryIngredientNutrition = typeof factoryIngredientNutrition.$inferSelect;
+
+// ────────────────────────────────────────
+// 9. REÇETE FİYAT DEĞİŞİKLİK GEÇMİŞİ (Audit)
+//    Recalc script ve manuel fiyat güncellemeleri için kalıcı denetim kaydı.
+//    Task #98'de geçici olarak kaldırılmıştı, Task #106 ile yeniden açıldı.
+// ────────────────────────────────────────
+
+export const factoryRecipePriceHistory = pgTable("factory_recipe_price_history", {
+  id: serial("id").primaryKey(),
+
+  recipeId: integer("recipe_id").notNull().references(() => factoryRecipes.id, { onDelete: "cascade" }),
+  productId: integer("product_id").references(() => factoryProducts.id, { onDelete: "set null" }),
+
+  // Maliyet (per batch) — eski/yeni
+  oldRawMaterialCost: numeric("old_raw_material_cost", { precision: 12, scale: 4 }),
+  newRawMaterialCost: numeric("new_raw_material_cost", { precision: 12, scale: 4 }),
+  oldUnitCost: numeric("old_unit_cost", { precision: 12, scale: 4 }),
+  newUnitCost: numeric("new_unit_cost", { precision: 12, scale: 4 }),
+
+  // Ürün fiyatı (varsa) — eski/yeni
+  oldBasePrice: numeric("old_base_price", { precision: 12, scale: 2 }),
+  newBasePrice: numeric("new_base_price", { precision: 12, scale: 2 }),
+  oldSuggestedPrice: numeric("old_suggested_price", { precision: 12, scale: 2 }),
+  newSuggestedPrice: numeric("new_suggested_price", { precision: 12, scale: 2 }),
+
+  changePercent: numeric("change_percent", { precision: 8, scale: 2 }),
+
+  // Çalıştırma bağlamı
+  status: varchar("status", { length: 30 }).notNull(),       // applied | applied_partial | skipped_empty | manual
+  reason: text("reason"),
+  ingredientCount: integer("ingredient_count").default(0),
+  resolvedIngredientCount: integer("resolved_ingredient_count").default(0),
+  coveragePercent: numeric("coverage_percent", { precision: 5, scale: 2 }),
+  missingIngredients: jsonb("missing_ingredients").$type<Array<{
+    code: string | null;
+    name: string;
+    reason: string;
+    detail?: string;
+  }>>().default(sql`'[]'::jsonb`),
+
+  source: varchar("source", { length: 30 }).notNull(),       // recalc_script | manual | api
+  runId: varchar("run_id", { length: 100 }),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("frph_recipe_idx").on(table.recipeId),
+  index("frph_product_idx").on(table.productId),
+  index("frph_run_idx").on(table.runId),
+  index("frph_created_idx").on(table.createdAt),
+]);
+
+export const insertFactoryRecipePriceHistorySchema = createInsertSchema(factoryRecipePriceHistory).omit({ id: true, createdAt: true });
+export type FactoryRecipePriceHistory = typeof factoryRecipePriceHistory.$inferSelect;
+export type InsertFactoryRecipePriceHistory = z.infer<typeof insertFactoryRecipePriceHistorySchema>;
