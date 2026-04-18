@@ -18,7 +18,7 @@
 ---
 
 ## 2. Dashboard (Komuta Merkezi) Widget'ları
-_(Widget atanmamış — ${role} rolü için `dashboard_role_widgets` tablosunda kayıt yok!)_
+_(Widget atanmamış — `recete-gm` rolü için `dashboard_role_widgets` tablosunda kayıt yok!)_
 
 **Kategori dağılımı**:
 - Operasyon: 0

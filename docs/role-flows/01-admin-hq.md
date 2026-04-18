@@ -246,7 +246,7 @@ Standart username/password login. Kiosk erişimi yok.
 
 ## 11. Pilot İçin Kritik Notlar (28 Nisan 2026)
 ✅ 5 aktif kullanıcı pilotta yer alacak.
-- 🔑 Pilot başlangıç: adminhq parolası `0000` (Pzt 09:00 rotate edilecek).
+- 🔑 Pilot başlangıç parolası: **REDACTED** — IT'den özel kanal ile alınır, Pzt 09:00 rotate edilecek.
 - 🔄 `/pilot-baslat` sayfası ile sistem reset (notifikasyon, audit log, score temizliği).
 
 

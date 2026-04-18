@@ -1,110 +1,201 @@
-# 00 — Çapraz Rol Matrisi (Cross-Role Matrix)
+# 00 — Çapraz Rol Matrisi (31×31, 4-Boyutlu)
 **Üretim Tarihi**: 2026-04-18  
-**Kapsam**: 31 rol × tüm modüller — onay zincirleri, görev akışı, bildirim hiyerarşisi.
+**Kapsam**: 31 rol × 31 rol → **4 boyut**: (1) Görev Atama, (2) Onay, (3) Eskalasyon, (4) Bildirim.
+
+**Hücre işaretleri**:
+- `✓` = ilişki var (satır rolü, sütun rolüne ilgili aksiyonu yapabilir)
+- `·` = ilişki yok
+- Diyagonal: kendisine yapma yok ⊘
 
 ---
 
-## 1. Rol Kategorileri & Kullanıcı Sayıları
+## 1. Rol Kategorileri & Aktif Kullanıcı
 
-| Kategori | Roller | Toplam Aktif Kullanıcı |
-|----------|--------|------------------------|
+| Kategori | Roller | Toplam Aktif |
+|----------|--------|--------------|
 | **EXECUTIVE** | admin, ceo, cgo | **9** |
 | **HQ_DEPARTMENT** | muhasebe, muhasebe_ik, satinalma, coach, trainer, marketing, kalite_kontrol, gida_muhendisi, teknik, destek, yatirimci_hq | **13** |
 | **BRANCH** | mudur, supervisor, supervisor_buddy, bar_buddy, barista, stajyer, yatirimci_branch, sube_kiosk | **339** |
 | **FACTORY** | fabrika, fabrika_mudur, uretim_sefi, fabrika_operator, fabrika_sorumlu, fabrika_personel, fabrika_depo, sef, recete_gm | **11** |
 
-GENEL TOPLAM: **372** aktif kullanıcı (372 hedef pilotta dahil).
+GENEL TOPLAM: **372** aktif kullanıcı.
 
 ---
 
-## 2. Onay Yetkisi Matrisi (Approve Permission)
+## 2. Boyut 1 — Görev Atama Matrisi (Task Assignment)
 
-| Modül | Onay Yetkisi Olan Roller | Toplam |
-|-------|--------------------------|--------|
-| `branch_inspection` | admin, coach | 2 |
-| `checklists` | supervisor, mudur | 2 |
-| `complaints` | admin | 1 |
-| `crm_campaigns` | admin, cgo | 2 |
-| `crm_complaints` | admin, cgo | 2 |
-| `crm_dashboard` | admin, cgo | 2 |
-| `crm_feedback` | admin, cgo | 2 |
-| `customer_satisfaction` | admin, coach | 2 |
-| `employees` | admin, coach, supervisor, mudur | 4 |
-| `equipment_faults` | admin, satinalma, teknik | 3 |
-| `factory_compliance` | admin | 1 |
-| `factory_food_safety` | admin, gida_muhendisi | 2 |
-| `factory_quality` | admin, gida_muhendisi | 2 |
-| `faults` | admin, satinalma, teknik | 3 |
-| `food_safety` | admin, gida_muhendisi | 2 |
-| `hr` | admin, coach | 2 |
-| `knowledge_base` | admin, coach | 2 |
-| `leave_requests` | admin, muhasebe_ik, coach, fabrika_mudur, supervisor, mudur | 6 |
-| `overtime_requests` | admin, muhasebe_ik, coach, fabrika_mudur, supervisor, mudur | 6 |
-| `product_complaints` | admin, kalite_kontrol, gida_muhendisi | 3 |
-| `projects` | admin, coach | 2 |
-| `purchase_orders` | admin, satinalma | 2 |
-| `quality_audit` | admin, coach, gida_muhendisi | 3 |
-| `support` | destek | 1 |
-| `tasks` | admin, ceo, cgo, coach, fabrika_mudur, supervisor, mudur, recete_gm | 8 |
-| `training` | admin, coach, supervisor, mudur | 4 |
+Satır = "Yapan rol" → Sütun = "Yapılan rol"
 
-**Tek onaylayıcısı olan modüller (SPOF risk)**:
-- `support` → SADECE `destek` (admin hariç)
-
----
-
-## 3. Görev Atama Hiyerarşisi
-
-| Rol | Görev Oluşturabilir | Görev Doğrulayabilir | Tipik Atayan → Atanan |
-|-----|---------------------|----------------------|------------------------|
-| `admin` | ✅ | ✅ | admin → tüm roller |
-| `ceo` | ✅ | ✅ | ceo → tüm roller |
-| `cgo` | ✅ | ✅ | cgo → tüm roller |
-| `muhasebe_ik` | ❌ | ❌ | muhasebe_ik → HQ + şube müdür/supervisor |
-| `satinalma` | ✅ | ❌ | satinalma → HQ + şube müdür/supervisor |
-| `coach` | ✅ | ✅ | coach → HQ + şube müdür/supervisor |
-| `marketing` | ❌ | ❌ | marketing → HQ + şube müdür/supervisor |
-| `trainer` | ❌ | ❌ | trainer → HQ + şube müdür/supervisor |
-| `kalite_kontrol` | ❌ | ❌ | kalite_kontrol → HQ + şube müdür/supervisor |
-| `gida_muhendisi` | ✅ | ❌ | gida_muhendisi → HQ + şube müdür/supervisor |
-| `fabrika_mudur` | ✅ | ✅ | fabrika_mudur → uretim_sefi/operator/depo |
-| `muhasebe` | ❌ | ❌ | muhasebe → HQ + şube müdür/supervisor |
-| `teknik` | ❌ | ❌ | teknik → HQ + şube müdür/supervisor |
-| `destek` | ✅ | ❌ | destek → HQ + şube müdür/supervisor |
-| `fabrika` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `yatirimci_hq` | ❌ | ❌ | yatirimci_hq → HQ + şube müdür/supervisor |
-| `stajyer` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `bar_buddy` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `barista` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `supervisor_buddy` | ✅ | ❌ | _(görev alır, atamaz)_ |
-| `supervisor` | ✅ | ✅ | supervisor → barista/bar_buddy/stajyer |
-| `mudur` | ✅ | ✅ | mudur → supervisor/barista/stajyer |
-| `yatirimci_branch` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `uretim_sefi` | ✅ | ❌ | uretim_sefi → fabrika_operator |
-| `fabrika_operator` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `fabrika_sorumlu` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `fabrika_personel` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `fabrika_depo` | ❌ | ❌ | _(görev alır, atamaz)_ |
-| `sef` | ✅ | ❌ | _(görev alır, atamaz)_ |
-| `recete_gm` | ✅ | ✅ | _(görev alır, atamaz)_ |
-| `sube_kiosk` | ❌ | ❌ | _(görev alır, atamaz)_ |
+| FROM \ TO | admin | ceo | cgo | muhasebe | satinalm | coach | marketin | trainer | kalite_k | gida_muh | fabrika_ | muhasebe | teknik | destek | fabrika | yatirimc | stajyer | bar_budd | barista | supervis | supervis | mudur | yatirimc | uretim_s | fabrika_ | fabrika_ | fabrika_ | fabrika_ | sef | recete_g | sube_kio |
+|-----------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| **admin** | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **ceo** | ✓ | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **cgo** | ✓ | ✓ | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **muhasebe_ik** | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **satinalma** | · | · | · | · | ⊘ | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | · |
+| **coach** | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · |
+| **marketing** | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **trainer** | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **kalite_kontrol** | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **gida_muhendisi** | · | · | · | · | · | · | · | · | · | ⊘ | ✓ | · | · | · | · | · | · | · | · | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | · |
+| **fabrika_mudur** | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| **muhasebe** | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **teknik** | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **destek** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | ⊘ | · | · | · | · | · | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | · |
+| **fabrika** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **yatirimci_hq** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **stajyer** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **bar_buddy** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **barista** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · |
+| **supervisor_buddy** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | · | · | · |
+| **supervisor** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | · | · |
+| **mudur** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | ✓ |
+| **yatirimci_branch** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · |
+| **uretim_sefi** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | ✓ | ✓ | ✓ | · | · | · | · |
+| **fabrika_operator** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · |
+| **fabrika_sorumlu** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · |
+| **fabrika_personel** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · |
+| **fabrika_depo** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · |
+| **sef** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · |
+| **recete_gm** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · |
+| **sube_kiosk** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ |
 
 ---
 
-## 4. Bildirim Eskalasyon Zinciri
+## 3. Boyut 2 — Onay Matrisi (Approval)
 
-### 4.1 İzin (Leave Request) Akışı
+Satır = "Yapan rol" → Sütun = "Yapılan rol"
+
+| FROM \ TO | admin | ceo | cgo | muhasebe | satinalm | coach | marketin | trainer | kalite_k | gida_muh | fabrika_ | muhasebe | teknik | destek | fabrika | yatirimc | stajyer | bar_budd | barista | supervis | supervis | mudur | yatirimc | uretim_s | fabrika_ | fabrika_ | fabrika_ | fabrika_ | sef | recete_g | sube_kio |
+|-----------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| **admin** | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **ceo** | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **cgo** | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **muhasebe_ik** | ✓ | ✓ | ✓ | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **satinalma** | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **coach** | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **marketing** | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **trainer** | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **kalite_kontrol** | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **gida_muhendisi** | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **fabrika_mudur** | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · | · |
+| **muhasebe** | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **teknik** | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **destek** | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **fabrika** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **yatirimci_hq** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **stajyer** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **bar_buddy** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **barista** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · |
+| **supervisor_buddy** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · |
+| **supervisor** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | · | ⊘ | · | · | · | · | · | · | · | · | · | · |
+| **mudur** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | · |
+| **yatirimci_branch** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · |
+| **uretim_sefi** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · |
+| **fabrika_operator** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · |
+| **fabrika_sorumlu** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · |
+| **fabrika_personel** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · |
+| **fabrika_depo** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · |
+| **sef** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · |
+| **recete_gm** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · |
+| **sube_kiosk** | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ |
+
+---
+
+## 4. Boyut 3 — Eskalasyon Matrisi (Escalation)
+
+Satır = "Yapan rol" → Sütun = "Yapılan rol"
+
+| FROM \ TO | admin | ceo | cgo | muhasebe | satinalm | coach | marketin | trainer | kalite_k | gida_muh | fabrika_ | muhasebe | teknik | destek | fabrika | yatirimc | stajyer | bar_budd | barista | supervis | supervis | mudur | yatirimc | uretim_s | fabrika_ | fabrika_ | fabrika_ | fabrika_ | sef | recete_g | sube_kio |
+|-----------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| **admin** | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **ceo** | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **cgo** | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **muhasebe_ik** | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **satinalma** | ✓ | ✓ | ✓ | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **coach** | ✓ | ✓ | ✓ | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **marketing** | ✓ | ✓ | ✓ | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **trainer** | ✓ | ✓ | ✓ | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **kalite_kontrol** | ✓ | ✓ | ✓ | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **gida_muhendisi** | ✓ | ✓ | ✓ | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **fabrika_mudur** | · | · | ✓ | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **muhasebe** | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **teknik** | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **destek** | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **fabrika** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **yatirimci_hq** | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **stajyer** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **bar_buddy** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **barista** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · |
+| **supervisor_buddy** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · |
+| **supervisor** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | · | ⊘ | ✓ | · | · | · | · | · | · | · | · | · |
+| **mudur** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · |
+| **yatirimci_branch** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · |
+| **uretim_sefi** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · |
+| **fabrika_operator** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · |
+| **fabrika_sorumlu** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · |
+| **fabrika_personel** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · |
+| **fabrika_depo** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · |
+| **sef** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · |
+| **recete_gm** | · | · | · | · | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · |
+| **sube_kiosk** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ |
+
+---
+
+## 5. Boyut 4 — Bildirim Matrisi (Notification)
+
+Satır = "Yapan rol" → Sütun = "Yapılan rol"
+
+| FROM \ TO | admin | ceo | cgo | muhasebe | satinalm | coach | marketin | trainer | kalite_k | gida_muh | fabrika_ | muhasebe | teknik | destek | fabrika | yatirimc | stajyer | bar_budd | barista | supervis | supervis | mudur | yatirimc | uretim_s | fabrika_ | fabrika_ | fabrika_ | fabrika_ | sef | recete_g | sube_kio |
+|-----------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
+| **admin** | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **ceo** | ✓ | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **cgo** | ✓ | ✓ | ⊘ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **muhasebe_ik** | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **satinalma** | ✓ | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | · |
+| **coach** | ✓ | ✓ | ✓ | ✓ | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · |
+| **marketing** | ✓ | ✓ | ✓ | ✓ | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **trainer** | ✓ | ✓ | ✓ | ✓ | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **kalite_kontrol** | ✓ | ✓ | ✓ | ✓ | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **gida_muhendisi** | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | ⊘ | ✓ | · | · | · | · | · | · | · | · | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | · |
+| **fabrika_mudur** | ✓ | · | ✓ | ✓ | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | · |
+| **muhasebe** | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **teknik** | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **destek** | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | · | ✓ | · | · | ⊘ | · | · | · | · | · | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | · |
+| **fabrika** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **yatirimci_hq** | ✓ | ✓ | ✓ | ✓ | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · |
+| **stajyer** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | ⊘ | · | · | · | ✓ | ✓ | · | · | · | · | · | · | · | · | · |
+| **bar_buddy** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | ⊘ | · | · | ✓ | ✓ | · | · | · | · | · | · | · | · | · |
+| **barista** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | ⊘ | · | ✓ | ✓ | · | · | · | · | · | · | · | · | · |
+| **supervisor_buddy** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | ⊘ | · | ✓ | · | · | · | · | · | · | · | · | · |
+| **supervisor** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | ✓ | ⊘ | ✓ | · | · | · | · | · | · | · | · | · |
+| **mudur** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | ✓ | ✓ | ✓ | ✓ | ✓ | ⊘ | · | · | · | · | · | · | · | · | ✓ |
+| **yatirimci_branch** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · | · | · |
+| **uretim_sefi** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | ✓ | ✓ | ✓ | · | · | · | · |
+| **fabrika_operator** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · | · |
+| **fabrika_sorumlu** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · | · |
+| **fabrika_personel** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · | · |
+| **fabrika_depo** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · | · |
+| **sef** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · | · |
+| **recete_gm** | ✓ | · | · | ✓ | · | · | · | · | · | · | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ | · |
+| **sube_kiosk** | ✓ | · | ✓ | ✓ | · | ✓ | · | · | · | · | · | · | ✓ | ✓ | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | ⊘ |
+
+---
+
+## 6. Onay Akışı Diyagramları (8 Senaryo)
+
+### 6.1 İzin (Leave Request)
 ```
 [Personel] → POST /api/leave-requests
     ↓
 [mudur (şube)] → POST /api/leave-requests/:id/approve
-    ↓ (onay verirse)
-[muhasebe_ik] → bordro hesaplamasına entegre
-    ↓ (reddedilirse)
+    ↓ (onay)
+[muhasebe_ik] → bordro entegrasyon
+    ↓ (red)
 [Personel] → bildirim + sebep
 ```
 
-### 4.2 Mesai (Overtime) Akışı
+### 6.2 Mesai (Overtime)
 ```
 [Personel] → POST /api/overtime-requests
     ↓
@@ -112,21 +203,21 @@ GENEL TOPLAM: **372** aktif kullanıcı (372 hedef pilotta dahil).
     ↓
 [mudur] → 2. seviye onay (saatlik eşik üstü)
     ↓
-[muhasebe_ik] → bordro entegrasyon
+[muhasebe_ik] → bordro
 ```
 
-### 4.3 Vardiya Değişimi (Shift Swap) — Çift Onay
+### 6.3 Vardiya Değişimi (Çift Onay)
 ```
-[Personel A] → POST /api/shift-swaps (target=Personel B)
+[Personel A] → POST /api/shift-swaps (target=B)
     ↓
 [Personel B] → onay/red (target_approved)
-    ↓ (B onayladıysa)
+    ↓
 [supervisor/mudur] → ikinci onay (supervisor_approved)
     ↓
-[Sistem] → vardiya değişimi otomatik uygulanır
+[Sistem] → vardiya değişimi
 ```
 
-### 4.4 Satın Alma (Purchase Order) Akışı
+### 6.4 Satın Alma (Purchase Order)
 ```
 [satinalma] → POST /api/purchase-orders (draft)
     ↓
@@ -136,51 +227,51 @@ GENEL TOPLAM: **372** aktif kullanıcı (372 hedef pilotta dahil).
     ↓ (₺ eşik üstü)
 [muhasebe_ik / cgo] → ikinci onay
     ↓
-[Tedarikçi] → siparişi alır
+[Tedarikçi]
     ↓
-[fabrika_depo / mudur] → mal kabul (goods_receipt)
+[fabrika_depo / mudur] → mal kabul
 ```
 
-### 4.5 Ekipman Arıza (Equipment Fault) Akışı
+### 6.5 Ekipman Arıza
 ```
-[barista/supervisor/mudur] → POST /api/equipment-faults (severity)
+[barista/supervisor/mudur] → POST /api/equipment-faults
     ↓
-[teknik] → triaj + servis sağlayıcı seçimi
+[teknik] → triaj + servis sağlayıcı
     ↓
-[teknik / satinalma] → faultServiceTracking güncelleme
-    ↓ (status=servis_tamamlandi)
-[mudur] → teslim alma + kalibrasyon test
+[teknik / satinalma] → faultServiceTracking
     ↓
-[teknik] → kapanış (kapandi)
+[mudur] → teslim alma + kalibrasyon
+    ↓
+[teknik] → kapanış
 ```
 
-### 4.6 Müşteri Şikâyeti (Customer Complaint) Akışı
+### 6.6 Müşteri Şikâyeti
 ```
 [Müşteri] → QR feedback / form / telefon
     ↓
-[Sistem] → guestComplaints (SLA hesaplama)
+[Sistem] → guestComplaints (SLA)
     ↓
 [destek] → triaj + atama
-    ↓ (severity=high/critical)
+    ↓ (severity high/critical)
 [mudur (şube)] / [marketing] / [kalite_kontrol] → aksiyon
     ↓
-[destek] → kapanış + müşteri memnuniyet anketi
+[destek] → kapanış + memnuniyet anketi
 ```
 
-### 4.7 Kalite Denetimi (Branch Inspection) Akışı
+### 6.7 Kalite Denetimi (Branch Inspection)
 ```
-[coach] → /coach-sube-denetim → denetim formu doldurur
+[coach] → /coach-sube-denetim → form
     ↓
 [Sistem] → branchQualityAudits + actionItems
     ↓ (skor < eşik)
-[mudur] → CAPA aç (capa-detay)
+[mudur] → CAPA aç
     ↓
-[coach] → follow-up denetim (followUpDate)
+[coach] → follow-up denetim
     ↓
-[cgo] → trend görür (CGO Command Center)
+[cgo] → trend (CGO Command Center)
 ```
 
-### 4.8 Üretim Hata / Atık (Factory Waste) Akışı
+### 6.8 Üretim Atık (Factory Waste)
 ```
 [fabrika_operator] → atık raporlar (kiosk)
     ↓
@@ -188,86 +279,38 @@ GENEL TOPLAM: **372** aktif kullanıcı (372 hedef pilotta dahil).
     ↓ (kritik fire)
 [fabrika_mudur] → CAPA + eğitim
     ↓
-[gida_muhendisi] → reçete revizyonu (gerekiyorsa)
+[gida_muhendisi] → reçete revizyonu
     ↓
 [recete_gm] → reçete onay & yayınlama
 ```
 
 ---
 
-## 5. Modül Erişim Yoğunluk Matrisi (Heatmap)
+## 7. Tek Onaylayıcı SPOF Tespiti
 
-Her hücre: rolün modüldeki yetki seviyesi (V=View, W=Write/CRUD, A=Approve, .=hiç yok).
-
-| Modül | admi | ceo  | cgo  | muha | sati | coac | mark | trai | kali | gida | fabr | muha | tekn | dest | fabr | yati | staj | bar_ | bari | supe | supe | mudu | yati | uret | fabr | fabr | fabr | fabr | sef  | rece | sube |
-|--------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|------|
-| `dashboard         ` |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |
-| `tasks             ` |   A   |   A   |   A   |   V   |   W   |   A   |   V   |   V   |   V   |   W   |   A   |   V   |   V   |   W   |   V   |   .   |   V   |   W   |   W   |   W   |   A   |   A   |   .   |   W   |   W   |   W   |   W   |   W   |   W   |   A   |   W   |
-| `checklists        ` |   W   |   V   |   W   |   V   |   V   |   W   |   V   |   V   |   W   |   W   |   W   |   V   |   V   |   V   |   V   |   .   |   V   |   W   |   W   |   V   |   A   |   A   |   .   |   W   |   W   |   W   |   W   |   V   |   W   |   W   |   W   |
-| `equipment         ` |   W   |   V   |   V   |   V   |   W   |   V   |   .   |   .   |   V   |   V   |   W   |   V   |   W   |   V   |   V   |   .   |   V   |   V   |   V   |   V   |   V   |   W   |   V   |   W   |   V   |   W   |   V   |   V   |   V   |   W   |   V   |
-| `equipment_faults  ` |   A   |   V   |   V   |   V   |   A   |   V   |   .   |   .   |   V   |   V   |   W   |   V   |   A   |   W   |   V   |   .   |   .   |   W   |   W   |   W   |   W   |   W   |   .   |   W   |   W   |   W   |   W   |   W   |   W   |   W   |   W   |
-| `hr                ` |   A   |   V   |   V   |   W   |   .   |   A   |   .   |   .   |   .   |   .   |   V   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   V   |   W   |   W   |   .   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |
-| `training          ` |   A   |   V   |   V   |   V   |   V   |   A   |   V   |   W   |   V   |   W   |   V   |   V   |   V   |   V   |   V   |   .   |   V   |   V   |   V   |   V   |   A   |   A   |   .   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |
-| `leave_requests    ` |   A   |   V   |   V   |   A   |   .   |   A   |   .   |   .   |   .   |   .   |   A   |   V   |   .   |   .   |   .   |   .   |   W   |   W   |   W   |   W   |   A   |   A   |   .   |   V   |   .   |   W   |   .   |   .   |   .   |   .   |   .   |
-| `overtime_requests ` |   A   |   V   |   V   |   A   |   .   |   A   |   .   |   .   |   .   |   .   |   A   |   V   |   .   |   .   |   .   |   .   |   W   |   W   |   W   |   W   |   A   |   A   |   .   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |
-| `accounting        ` |   W   |   V   |   V   |   W   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   W   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |
-| `factory_production` |   W   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   W   |   W   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   W   |   .   |   .   |   .   |   V   |   V   |   W   |   .   |
-| `factory_quality   ` |   A   |   V   |   V   |   .   |   .   |   V   |   .   |   .   |   W   |   A   |   W   |   .   |   .   |   .   |   W   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   W   |   W   |   W   |   V   |   V   |   V   |   W   |   .   |
-| `satinalma         ` |   W   |   V   |   V   |   V   |   W   |   .   |   .   |   .   |   .   |   .   |   V   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   V   |   .   |   .   |   .   |   .   |   .   |   V   |   .   |
-| `purchase_orders   ` |   A   |   V   |   V   |   V   |   A   |   .   |   .   |   .   |   .   |   .   |   V   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   V   |   .   |   .   |   .   |   V   |   .   |   V   |   .   |
-| `crm_dashboard     ` |   A   |   V   |   A   |   .   |   .   |   V   |   V   |   .   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |
-| `quality_audit     ` |   A   |   V   |   V   |   V   |   .   |   A   |   .   |   .   |   W   |   A   |   V   |   V   |   .   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   V   |   .   |   V   |   .   |   .   |   .   |   V   |   .   |
-| `academy           ` |   W   |   V   |   V   |   V   |   W   |   W   |   V   |   W   |   V   |   V   |   V   |   W   |   V   |   V   |   W   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |
-| `reports           ` |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   V   |   .   |   .   |   .   |   V   |   V   |   V   |   V   |   V   |   .   |   V   |   .   |   V   |   V   |   V   |   .   |
-| `users             ` |   W   |   V   |   V   |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |
-| `admin_settings    ` |   V   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |   .   |
-
-**Renk yorumu**: `A` = Onay yetkisi (en yüksek), `W` = Yazma yetkisi, `V` = Sadece görüntüleme, `.` = Yetki yok.
+| Modül | Tek Onaylayıcı (admin hariç) | Risk |
+|-------|------------------------------|------|
+| `branch_inspection` | coach (2 user) | 🟡 ORTA |
+| `crm_campaigns` | cgo (1 user) | 🔴 KRİTİK |
+| `crm_complaints` | cgo (1 user) | 🔴 KRİTİK |
+| `crm_dashboard` | cgo (1 user) | 🔴 KRİTİK |
+| `crm_feedback` | cgo (1 user) | 🔴 KRİTİK |
+| `customer_satisfaction` | coach (2 user) | 🟡 ORTA |
+| `factory_food_safety` | gida_muhendisi (1 user) | 🔴 KRİTİK |
+| `factory_quality` | gida_muhendisi (1 user) | 🔴 KRİTİK |
+| `food_safety` | gida_muhendisi (1 user) | 🔴 KRİTİK |
+| `hr` | coach (2 user) | 🟡 ORTA |
+| `knowledge_base` | coach (2 user) | 🟡 ORTA |
+| `projects` | coach (2 user) | 🟡 ORTA |
+| `purchase_orders` | satinalma (1 user) | 🔴 KRİTİK |
+| `support` | destek (1 user) | 🔴 KRİTİK |
 
 ---
 
-## 6. Dashboard Widget Atama Matrisi
-
-| Rol | Atanan Widget | Eksik Tipik Widget |
-|-----|---------------|---------------------|
-| `admin` | 19 adet | ✅ tam |
-| `ceo` | 15 adet | ✅ tam |
-| `cgo` | 11 adet | financial_overview |
-| `muhasebe_ik` | 8 adet | ✅ tam |
-| `satinalma` | 6 adet | ✅ tam |
-| `coach` | 12 adet | ✅ tam |
-| `marketing` | 6 adet | ✅ tam |
-| `trainer` | 5 adet | ✅ tam |
-| `kalite_kontrol` | 6 adet | ✅ tam |
-| `gida_muhendisi` | 6 adet | ✅ tam |
-| `fabrika_mudur` | 10 adet | ✅ tam |
-| `muhasebe` | 7 adet | ✅ tam |
-| `teknik` | 8 adet | ✅ tam |
-| `destek` | 7 adet | ✅ tam |
-| `fabrika` | 0 adet | factory_production, qc_stats, staff_count, todays_tasks |
-| `yatirimci_hq` | 1 adet | ai_briefing, todays_tasks, quick_actions |
-| `stajyer` | 3 adet | branch_status, staff_count |
-| `bar_buddy` | 3 adet | branch_status, staff_count |
-| `barista` | 3 adet | branch_status, staff_count |
-| `supervisor_buddy` | 5 adet | ✅ tam |
-| `supervisor` | 11 adet | ✅ tam |
-| `mudur` | 10 adet | ✅ tam |
-| `yatirimci_branch` | 10 adet | todays_tasks |
-| `uretim_sefi` | 7 adet | ✅ tam |
-| `fabrika_operator` | 3 adet | qc_stats, staff_count |
-| `fabrika_sorumlu` | 0 adet | factory_production, qc_stats, staff_count, todays_tasks |
-| `fabrika_personel` | 0 adet | factory_production, qc_stats, staff_count, todays_tasks |
-| `fabrika_depo` | 0 adet | factory_production, qc_stats, staff_count, todays_tasks |
-| `sef` | 0 adet | factory_production, qc_stats, staff_count, todays_tasks |
-| `recete_gm` | 0 adet | factory_production, qc_stats, staff_count, todays_tasks |
-| `sube_kiosk` | 0 adet | todays_tasks, branch_status, staff_count, quick_actions |
-
----
-
-## 7. Kiosk & PIN-Based Roller
+## 8. Kiosk & PIN Roller
 
 | Rol | Login Tipi | Endpoint |
 |-----|-----------|----------|
-| `sube_kiosk` | PIN (4-6 haneli) | `POST /api/kiosk/sube/login` |
-| `fabrika_operator` | PIN (vardiya açılışı) | `POST /api/kiosk/fabrika/login` |
-| Diğer roller | username + bcrypt password | `POST /api/login` |
+| `sube_kiosk` | PIN (4-6 hane) | `POST /api/kiosk/sube/login` |
+| `fabrika_operator` | PIN (vardiya) | `POST /api/kiosk/fabrika/login` |
+| Diğer 29 rol | username + bcrypt | `POST /api/login` |
