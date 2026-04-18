@@ -521,7 +521,65 @@ Her beklenti için dürüst yüzde:
 
 **Genel ortalama: ~72%**
 
-### 6.3 "%100" Ne Zaman Olacak?
+### 6.3 Aslan'ın Stratejik Cevapları (18 Nisan 2026 — Rapora İş Girdisi)
+
+Raporu finalize etmek için sorduğum 4 kritik soruya Aslan'ın cevapları:
+
+**S1: Pilot kullanıcı sayısı 159 mı 372 mi?**
+> "2 şube denemeler yapılınca hızlı bir şekilde tüm şubeler dahil edilecek."
+
+✅ **Strateji: Kontrollü Hızlı Rollout**
+
+```
+Pre-pilot (şu an)     → Test kullanıcıları, sistem stabilitesi
+    ↓ (2 hafta)
+Pilot Faz 1           → ~50 aktif (HQ + Fabrika + Işıklar + Lara)
+    ↓ (2-4 hafta — alışkanlık + hata yakalama)
+Pilot Faz 2           → ~159 aktif (tüm aktif şubeler)
+    ↓ (2 hafta — ölçek stress testi)
+Tam Üretim            → 372 hedef (yeni personel + büyüme)
+```
+
+**Teknik karşılık:**
+- Sistem **159 kullanıcı için optimize** ediliyor (Sprint G performans hedefi)
+- Mimari **372'ye ölçeklenebilir** bırakılıyor
+- p95 latency <300ms hedefi 159 concurrent user için
+
+**S2: Franchise Proje Yönetimi (20 tablo) kullanılıyor mu?**
+> "Bu sistemde ilk defa kullanmaya başlayacağız — franchise yeni açılış kurulum eğitim vs süreci."
+
+✅ **Strateji: Pilot Sonrası Canlıya Alınacak Modül**
+
+- 20 tablo **kodda hazır, DB'de 0 kayıt** — yeni şube açılışında ilk kullanıcı olacak
+- Pilot'ta kapsam dışı (Sprint A-H'de yok)
+- **Sprint I (Hafta 9+)** franchise modülü aktif edilecek
+- İlk müşteri: Yeni açılan franchise şubesi (açılış tarihi belli değil)
+- Süreç: Proje oluşturma → aşamalar → bütçe → eğitim → açılış
+
+**S3: Kariyer Yolu — Terfi Nasıl Olacak?**
+> "Kariyer bu sistem hayata geçerse hem sistem üzerinden (kişisel skor) hem yöneticinin önermesi ile terfi alabilir. Tabi sınavları da belli skorun üzerine geçmesi ile oluşur."
+
+✅ **Hibrit Terfi Modeli (3 Katmanlı)**
+
+```
+Terfi Şartı = (Composite Skor >= Eşik) 
+            ∩ (Gate Sınavı Geçildi >= Skor)
+            ∩ (Yönetici Önerisi Var)
+```
+
+**3 katmanlı güvenlik:**
+- ✅ Sistem (skor + sınav) objektif tarafı sağlıyor
+- ✅ Yönetici önerisi insan yargısını dahil ediyor
+- ✅ Hiçbir taraf tek başına yeterli değil
+
+**Teknik karşılık:**
+- `gate_attempts` tablosu zaten var (şu an 0 kayıt)
+- `exam_requests` tablosu zaten var (yönetici önerisi için)
+- `user_career_progress` tablosu composite skoru tutuyor
+- Pilot'ta bu akış **aktif edilecek** — Sprint C/D'de UI düzeltme + test
+- Bu raporun önceki "gate sistemi fiilen kullanılmıyor" bulgusunun cevabı: **pilot sonrası aktif olacak**
+
+### 6.4 "%100" Ne Zaman Olacak?
 
 Benim gerçekçi tahminim:
 
