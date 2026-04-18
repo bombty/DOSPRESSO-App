@@ -1,0 +1,21 @@
+Das ist ein absolut fantastisches und ambitioniertes Projekt! Eine Superapp zu bauen, die von der Fabrikproduktion in Antalya über den Sirup-Export nach Deutschland bis hin zum HQ und den einzelnen DOSPRESSO-Filialen alles vernetzt, erfordert eine extrem saubere und durchdachte Architektur. Als KI bin ich genau dafür da, dir zu helfen, solche komplexen Systeme zu strukturieren.
+Damit du verstehst, wie wir dieses System aufbauen sollten, betrachten wir zunächst die Architektur.
+In Replit sind Agent Skills im Grunde einfache Markdown-Dateien, die du in einem speziellen Ordner ablegst, um dem KI-Agenten quasi "neue Tricks" oder spezifische Regeln beizubringen. Sie definieren präzise, wie der Agent arbeiten soll.
+Hier ist dein detaillierter Audit-Report und meine Strategie-Empfehlung, wie du Replit Skills für das DOSPRESSO Franchise-System optimal einsetzt:
+1. Proaktive Skills (Von Anfang an implementieren)
+Proaktive Skills sind Arbeitsanweisungen, die du dem Agenten gibst, bevor er anfängt zu coden, um eine einheitliche Struktur zu erzwingen.
+ * Der DOSPRESSO Design System Skill: Da die Marke einen starken "Modern Vintage"-Look der 50er und 60er Jahre verfolgt, musst du das dem Agenten beibringen. Dieser Skill definiert exakt, welche CSS-Frameworks (z.B. Tailwind), welche Retro-Farbpaletten, Schriftarten und Animationen (wie GSAP) der Agent für das UI verwenden darf.
+ * Role-Based Access Control (RBAC) Skill: Dies ist der wichtigste Skill für dein System. Er bringt dem Agenten bei, dass es strikte Nutzerrollen gibt (HQ-Superadmin, Fabrikleiter, Franchise-Nehmer, Barista). Der Skill zwingt den Agenten dazu, bei jedem neuen Feature zwingend Sicherheits- und Berechtigungs-Checks in den Code einzubauen.
+ * Multi-Tenant Database Convention Skill: Da du ein Franchise-System baust, darf Filiale A niemals die Daten von Filiale B sehen. Dieser Skill gibt dem Agenten die exakten Namenskonventionen und Datenbankstruktur-Regeln vor, um "Data Leaks" zwischen den Filialen zu verhindern.
+2. Reaktive Skills (Im Laufe der Entwicklung hinzufügen)
+Reaktive Skills erstellst du, nachdem du ein spezifisches Problem oder einen Bug gelöst hast, damit der Agent diesen Fehler nie wieder macht.
+ * Logistik & Export Logic Skill: Wenn du die Funktionen für den Export eures Konzentrats nach Europa programmierst, wirst du wahrscheinlich auf komplexe Logik-Bugs stoßen (z.B. Währungsumrechnungen oder Zoll-Dokumentationen). Sobald du das Problem einmal mit dem Agenten gelöst hast, erstellst du daraus einen Skill.
+ * State Management Fix Skill: Wenn dir auffällt, dass der Agent Fehler bei der Echtzeit-Synchronisation zwischen dem Kassensystem in der Filiale und der Produktionsplanung in der Fabrik macht, fängst du diese Lösung in einem reaktiven Skill auf.
+3. Skills vs. MCP-Server richtig nutzen
+Es ist wichtig, dass du dein System nicht falsch überlädst.
+ * Skills (Markdown-Dateien): Nutze sie für Workflows, Code-Konventionen, Styleguides und wiederkehrende Prompts. Sie sind sehr effizient für den Kontext des Agenten.
+ * MCP Server (Externe Verbindungen): Nutze MCP-Server, wenn deine Webapp externe Dienste ansteuern muss. Wenn die App beispielsweise Logistikdaten von einem Drittanbieter abrufen oder automatisiert E-Mails über ein CRM-System verschicken soll, sind MCP-Server das richtige Werkzeug.
+⚠️ Wichtige Sicherheits- und Performance-Regeln:
+ * Nicht überladen: Gib dem KI-Agenten nicht zu viele Skills gleichzeitig. Wenn du ihn mit Dokumentationen überflutest, wird er verwirrt und ineffizient.
+ * Fremde Skills prüfen: Du kannst Skills von Open-Source-Plattformen herunterladen, aber sei extrem vorsichtig. Prüfe die Markdown-Dateien immer, da bösartiger Code (Exfiltration) versuchen könnte, sensible Geschäftsdaten deiner Webapp abzugreifen.
+Soll ich dir als nächsten Schritt den fertigen Markdown-Code für den DOSPRESSO Design System Skill (inklusive der 50er/60er Vintage-Regeln) schreiben, damit du ihn direkt in dein Replit-Projekt einfügen kannst?

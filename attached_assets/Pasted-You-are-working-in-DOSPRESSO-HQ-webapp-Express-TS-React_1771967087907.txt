@@ -1,0 +1,39 @@
+You are working in DOSPRESSO HQ webapp (Express + TS + React). 
+Objective: implement <FEATURE_NAME> with minimal diff and production safety.
+
+NON-NEGOTIABLE CONSTRAINTS
+- Do NOT refactor unrelated files. Smallest possible change-set.
+- Do NOT add heavy agent frameworks (LangGraph/CrewAI/etc.). Use existing patterns.
+- No write-path actions. Only write allowed: ai_agent_logs (no PII).
+- All LLM outputs must be validated with strict JSON schema; on failure/timeout -> deterministic fallback.
+- RBAC must hold: HQ roles see all, branch roles see only own branch, others 403.
+- Add/modify routes in the established pattern (server/routes/* + register in server/routes.ts).
+
+DELIVERABLES
+- Backend: new route file under server/routes/<...>.ts
+- Register route in server/routes.ts
+- Frontend: minimal UI integration (card/section) in the existing relevant page
+- Update replit.md with what changed + manual test steps
+
+PLAN (max 6 tasks)
+1) Read key files to match existing patterns (auth middleware, role scoping, routes registration, existing UI components).
+2) Implement backend route + schema validation + circuit breaker + ai_agent_logs entry.
+3) Implement frontend UI card consuming the new endpoint (read-only).
+4) Add role scoping tests via runtime curls/logins (no new test framework required).
+5) Run targeted static checks on changed files (0 TS/LSP errors) + targeted esbuild.
+6) Produce a short QA evidence table + propose a single commit message. Then commit.
+
+QA REQUIREMENTS (must be executed and reported)
+A) Static:
+- LSP/TS diagnostics on CHANGED files must be 0 errors
+- Targeted esbuild compile for changed TS/TSX files
+B) Runtime:
+- Unauth -> 401
+- Auth -> 200 + JSON schema valid (not HTML)
+- DeepLinks start with "/" if returned
+- Role scoping: HQ >=2 branches, Branch ==1, Other ==403
+- ai_agent_logs insert verified; no PII in payload
+C) UI smoke:
+- Page renders + card renders
+- Range/filter changes trigger re-fetch and updates UI
+Output FINAL QA REPORT with PASS/FAIL/SKIP and evidence snippets + exact commands.

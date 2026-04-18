@@ -1,0 +1,464 @@
+{
+  "template_meta": {
+    "template_id": "dospresso_audit_v1",
+    "name": "DOSPRESSO Operasyon Denetimi (V1)",
+    "language": "tr",
+    "version": "1.0.0",
+    "scoring_scale": {
+      "type": "0-5",
+      "labels": {
+        "5": "Tam uyum / örnek uygulama",
+        "4": "Küçük iyileştirme alanı",
+        "3": "Kabul edilebilir ama zayıf",
+        "2": "Uygunsuz – düzeltme gerekli",
+        "1": "Ciddi uygunsuzluk",
+        "0": "Kritik ihlal"
+      }
+    },
+    "sections": [
+      { "section_id": "S1", "name": "Gıda Güvenliği & Hijyen", "weight": 25 },
+      { "section_id": "S2", "name": "Ürün Standardı", "weight": 25 },
+      { "section_id": "S3", "name": "Servis & Hız", "weight": 15 },
+      { "section_id": "S4", "name": "Operasyon & Süreç", "weight": 15 },
+      { "section_id": "S5", "name": "Marka & Görsel Standart", "weight": 10 },
+      { "section_id": "S6", "name": "Ekipman & Bakım", "weight": 10 }
+    ]
+  },
+  "items": [
+    {
+      "item_id": "S1-001",
+      "section_id": "S1",
+      "title": "El yıkama istasyonu aktif ve ulaşılabilir mi?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Sabun, kâğıt havlu, çöp kutusu ve uyarı levhası kontrol edilir."
+    },
+    {
+      "item_id": "S1-002",
+      "section_id": "S1",
+      "title": "Personel eldiven/maşa gibi temas önleyici ekipmanı doğru kullanıyor mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Eldiven varsa değişim sıklığı ve çapraz kullanım kontrol edilir."
+    },
+    {
+      "item_id": "S1-003",
+      "section_id": "S1",
+      "title": "Açık yara/korumasız bandaj ile gıda teması var mı?",
+      "type": "observation",
+      "critical": true,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 4, "severity": "critical" },
+      "guidance": "Uygunsuzluk varsa anında görev değişimi gerekir."
+    },
+    {
+      "item_id": "S1-004",
+      "section_id": "S1",
+      "title": "Soğuk dolap sıcaklıkları 0–4°C aralığında mı?",
+      "type": "measurement",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 4, "severity": "critical" },
+      "guidance": "Dolap içi termometre okuması + kayıt defteri kontrol edilir."
+    },
+    {
+      "item_id": "S1-005",
+      "section_id": "S1",
+      "title": "Dondurucu sıcaklığı -18°C ve altında mı?",
+      "type": "measurement",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 4, "severity": "critical" },
+      "guidance": "Kayıt yoksa puan kırılır; limit dışı ise kritik."
+    },
+    {
+      "item_id": "S1-006",
+      "section_id": "S1",
+      "title": "Açılmış ürünlerde tarih/etiketleme (açılış tarihi, SKT, sorumlu) var mı?",
+      "type": "document",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 3, "severity": "major" },
+      "guidance": "Etiketsiz açık ürün = en az major; bozulma şüphesi kritik."
+    },
+    {
+      "item_id": "S1-007",
+      "section_id": "S1",
+      "title": "Son kullanma tarihi geçmiş ürün bulunuyor mu?",
+      "type": "observation",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 5, "severity": "critical" },
+      "guidance": "Bulunursa puan 0; ürün anında imha prosedürü."
+    },
+    {
+      "item_id": "S1-008",
+      "section_id": "S1",
+      "title": "Çapraz bulaş riski (çiğ/temiz-kirli alan ayrımı) kontrol altında mı?",
+      "type": "observation",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 3, "severity": "critical" },
+      "guidance": "Kesme tahtası/bez/ekipman ayrımı ve saklama düzeni."
+    },
+    {
+      "item_id": "S1-009",
+      "section_id": "S1",
+      "title": "Temizlik kimyasalları doğru etiketli ve gıdadan ayrı depolanıyor mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "MSDS/etiket, kilitli dolap, karışım şişeleri."
+    },
+    {
+      "item_id": "S1-010",
+      "section_id": "S1",
+      "title": "Haşere bulgusu (dışkı, iz, canlı) var mı?",
+      "type": "observation",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 5, "severity": "critical" },
+      "guidance": "Varsa puan 0 ve acil aksiyon + ilaçlama kayıt kontrolü."
+    },
+
+    {
+      "item_id": "S2-001",
+      "section_id": "S2",
+      "title": "Espresso shot standardı (single/double gramaj & süre) uygulanıyor mu?",
+      "type": "measurement",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Reçete ekranı/standard kartına göre kontrol; sapma kayıt altına alınır."
+    },
+    {
+      "item_id": "S2-002",
+      "section_id": "S2",
+      "title": "Süt miktarı ve sıcaklığı standart mı (Massivo/Long Diva vb.)?",
+      "type": "measurement",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Pitcher ölçümü/termometre; köpük dokusu gözlemi."
+    },
+    {
+      "item_id": "S2-003",
+      "section_id": "S2",
+      "title": "Şurup/püre dozajı reçeteye uygun mu (pompa sayısı/gramaj)?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Pompa standardı ve kalibrasyon kontrol edilir."
+    },
+    {
+      "item_id": "S2-004",
+      "section_id": "S2",
+      "title": "Soğuk içeceklerde buz standardı (tipi, miktarı, hijyen) doğru mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Buz küreği, kapalı saklama, buz makinesi hijyeni ile birlikte değerlendirilir."
+    },
+    {
+      "item_id": "S2-005",
+      "section_id": "S2",
+      "title": "Donut/pastane ürünlerinde çözündürme ve bekleme süresi standarda uygun mu?",
+      "type": "document",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 3, "severity": "critical" },
+      "guidance": "Oda sıcaklığında bekleme limitleri, etiketleme, vitrin rotasyonu."
+    },
+    {
+      "item_id": "S2-006",
+      "section_id": "S2",
+      "title": "Vitrin ürün sunumu (etiket, tazelik, görsel) standart mı?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Bozulmuş/kurumuş ürün varsa major; SKT ihlali varsa kritik."
+    },
+    {
+      "item_id": "S2-007",
+      "section_id": "S2",
+      "title": "İçecek sunumu (kapak, sleeve, logo yönü, garnish) standart mı?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Take-away paketleme ve etiketleme kontrol edilir."
+    },
+    {
+      "item_id": "S2-008",
+      "section_id": "S2",
+      "title": "Reçete dışı üretim/kişisel yorumla ürün hazırlanıyor mu?",
+      "type": "observation",
+      "critical": true,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 4, "severity": "critical" },
+      "guidance": "Tespit edilirse anında düzeltim + eğitim atama."
+    },
+    {
+      "item_id": "S2-009",
+      "section_id": "S2",
+      "title": "Hammadde (kahve, süt, şurup) FIFO/FEFO uygulanıyor mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Öne alma, tarih sırası, açık kapalı ürün düzeni."
+    },
+    {
+      "item_id": "S2-010",
+      "section_id": "S2",
+      "title": "Alerjen bilgilendirmesi / çapraz temas uyarıları mevcut mu?",
+      "type": "document",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 3, "severity": "major" },
+      "guidance": "Menü/kitapçık veya kasa ekranında görünür olmalı."
+    },
+
+    {
+      "item_id": "S3-001",
+      "section_id": "S3",
+      "title": "Müşteri karşılama (ilk 10 saniye) ve iletişim standardı uygun mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Güler yüz, göz teması, net yönlendirme."
+    },
+    {
+      "item_id": "S3-002",
+      "section_id": "S3",
+      "title": "Sipariş doğruluğu (ürün/ölçü/sıcak-soğuk) kontrol ediliyor mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Çıkışta kısa teyit rutini."
+    },
+    {
+      "item_id": "S3-003",
+      "section_id": "S3",
+      "title": "Yoğun saatte hazırlama SLA (örn. 5 dk) yönetilebiliyor mu?",
+      "type": "measurement",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Rastgele 3 sipariş zaman ölçümü önerilir."
+    },
+    {
+      "item_id": "S3-004",
+      "section_id": "S3",
+      "title": "Upsell / öneri cümleleri uygulanıyor mu (nazik, baskısız)?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Kampanya/ikili satış yönlendirmeleri."
+    },
+    {
+      "item_id": "S3-005",
+      "section_id": "S3",
+      "title": "Şikâyet yönetimi (özür, telafi, kayıt) prosedüre uygun mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Olay kaydı açılması ve merkez bilgilendirme."
+    },
+    {
+      "item_id": "S3-006",
+      "section_id": "S3",
+      "title": "Kasa önü düzeni ve sıra yönetimi iyi mi?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Menü okunabilirliği, bekleme alanı."
+    },
+    {
+      "item_id": "S3-007",
+      "section_id": "S3",
+      "title": "Take-away paketleme (sızdırmazlık, etiket, peçete) uygun mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Sıcak-soğuk ayrımı, taşıma güvenliği."
+    },
+    {
+      "item_id": "S3-008",
+      "section_id": "S3",
+      "title": "Temas noktaları (masa, kapı kolu, POS) temizlik sıklığı yeterli mi?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Yoğun saatlerde ara temizlik rutini."
+    },
+
+    {
+      "item_id": "S4-001",
+      "section_id": "S4",
+      "title": "Açılış checklist’i tam ve zamanında yapılmış mı?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Webapp kayıtlarına göre kontrol."
+    },
+    {
+      "item_id": "S4-002",
+      "section_id": "S4",
+      "title": "Kapanış checklist’i tam ve zamanında yapılmış mı?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Temizlik, stok kapama, kasa işlemleri."
+    },
+    {
+      "item_id": "S4-003",
+      "section_id": "S4",
+      "title": "Stok sayım doğruluğu (kritik SKU’lar) tutarlı mı?",
+      "type": "measurement",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Rastgele 5 SKU sayımı ile sistem karşılaştırma."
+    },
+    {
+      "item_id": "S4-004",
+      "section_id": "S4",
+      "title": "Fire / zayiat kayıtları düzenli mi?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Sebep sınıflaması: üretim/taşıma/bozulma."
+    },
+    {
+      "item_id": "S4-005",
+      "section_id": "S4",
+      "title": "Personel vardiya planı ve görev dağılımı net mi?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Yoğun saatlerde rol ayrımı (kasa/bar/runner)."
+    },
+    {
+      "item_id": "S4-006",
+      "section_id": "S4",
+      "title": "Eğitim tamamlama oranı (zorunlu eğitimler) hedefte mi?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Yeni başlayan onboarding + hijyen/ürün standardı."
+    },
+    {
+      "item_id": "S4-007",
+      "section_id": "S4",
+      "title": "Kampanya uygulamaları (fiyat/ürün kuralı) doğru mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Yanlış uygulama müşteri şikayeti riski doğurur."
+    },
+
+    {
+      "item_id": "S5-001",
+      "section_id": "S5",
+      "title": "Tabelalar, menü board ve fiyat listesi güncel mi?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Merkez yayınladığı versiyonla eşleşmeli."
+    },
+    {
+      "item_id": "S5-002",
+      "section_id": "S5",
+      "title": "Personel uniformu, isimlik ve kişisel görünüm standarda uygun mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Temizlik, bütünlük, logo görünürlüğü."
+    },
+    {
+      "item_id": "S5-003",
+      "section_id": "S5",
+      "title": "Masa/salon düzeni ve genel temizlik algısı marka standardında mı?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Tuvalet/zemin/oturma alanı."
+    },
+    {
+      "item_id": "S5-004",
+      "section_id": "S5",
+      "title": "Müzik, koku, aydınlatma ve genel atmosfer uygun mu?",
+      "type": "observation",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Aşırı yüksek ses, uygunsuz içerik kontrolü."
+    },
+
+    {
+      "item_id": "S6-001",
+      "section_id": "S6",
+      "title": "Espresso makinesi günlük temizlik/backflush yapılıyor mu?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Temizlik kaydı ve uygulama kontrol edilir."
+    },
+    {
+      "item_id": "S6-002",
+      "section_id": "S6",
+      "title": "Öğütücü ayarı ve öğütüm stabilitesi kontrol ediliyor mu?",
+      "type": "measurement",
+      "critical": false,
+      "evidence_required": { "photo": false, "video": true, "measurement": true },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "minor" },
+      "guidance": "Shot süre varyansı yüksekse aksiyon aç."
+    },
+    {
+      "item_id": "S6-003",
+      "section_id": "S6",
+      "title": "Su filtrasyonu ve bakım periyodu takip ediliyor mu?",
+      "type": "document",
+      "critical": false,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 2, "severity": "major" },
+      "guidance": "Filtre değişim tarihi, kireçlenme riski."
+    },
+    {
+      "item_id": "S6-004",
+      "section_id": "S6",
+      "title": "Buz makinesi hijyen/bakım planı uygulanıyor mu?",
+      "type": "document",
+      "critical": true,
+      "evidence_required": { "photo": true, "video": false, "measurement": false },
+      "auto_action": { "enabled": true, "threshold_score": 3, "severity": "major" },
+      "guidance": "Koku, slime, görünür kir = kritik değerlendirme."
+    }
+  ]
+}

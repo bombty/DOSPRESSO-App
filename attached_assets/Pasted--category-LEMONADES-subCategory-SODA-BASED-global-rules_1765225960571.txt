@@ -1,0 +1,194 @@
+{
+  "category": "LEMONADES",
+  "subCategory": "SODA_BASED",
+  "global_rules": {
+    "cup_sizes_ml": {
+      "massivo": 400,
+      "long_diva": 650
+    },
+    "ice_policy": "Sunum çizgisine kadar küp buz",
+    "sweetness": "Aroma pompaları sabittir, ekstra şeker eklenmez.",
+    "water_type": "Soğuk arıtma suyu veya soda (ürüne göre)."
+  },
+  "items": [
+    {
+      "no": 1,
+      "code": "CLD_LMN",
+      "name_tr": "Cloudy Lemonade",
+      "name_en": "Cloudy Lemonade",
+      "coffee_free": true,
+      "base_type": "lemon_soda",
+      "flavor": "Klasik limon",
+      "sizes": {
+        "massivo": {
+          "cup_ml": 400,
+          "liquids_ml": {
+            "lemon_syrup_ml": 30,
+            "water_or_soda_ml": 220
+          },
+          "pumps": {
+            "lemon_syrup": 3
+          },
+          "ice": "Sunum çizgisine kadar buz",
+          "garnish": [
+            "2 dilim limon",
+            "taze nane dalı (opsiyonel)"
+          ],
+          "steps": [
+            "Massivo PET bardağa 3 pump Cloudy Lemonade şurubu ekle (≈30 ml).",
+            "Boğum çizgisine kadar soğuk arıtma suyu veya soda ekle (≈220 ml).",
+            "Bar kaşığı ile 4–5 sn karıştır.",
+            "Sunum çizgisine kadar buz ekle.",
+            "2 ince dilim limon ve isteğe göre nane dalı ekle.",
+            "Düz pipetli kapak ile servis et."
+          ]
+        },
+        "long_diva": {
+          "cup_ml": 650,
+          "liquids_ml": {
+            "lemon_syrup_ml": 50,
+            "water_or_soda_ml": 350
+          },
+          "pumps": {
+            "lemon_syrup": 5
+          },
+          "ice": "Sunum çizgisine kadar buz",
+          "garnish": [
+            "2–3 dilim limon",
+            "nane dalı (opsiyonel)"
+          ],
+          "steps": [
+            "Long Diva bardağa 5 pump Cloudy Lemonade şurubu ekle (≈50 ml).",
+            "Boğuma kadar soğuk su/soda ekle (≈350 ml).",
+            "Karıştır.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Limon dilimleri ve nane ile garnish.",
+            "Düz pipetli kapak ile servis et."
+          ]
+        }
+      }
+    },
+
+    {
+      "no": 2,
+      "code": "MJT",
+      "name_tr": "Virgin Mojito",
+      "name_en": "Virgin Mojito",
+      "coffee_free": true,
+      "base_type": "lime_mint_soda",
+      "flavor": "Lime + Nane",
+      "sizes": {
+        "massivo": {
+          "cup_ml": 400,
+          "liquids_ml": {
+            "mojito_syrup_ml": 30,
+            "soda_ml": 220
+          },
+          "pumps": {
+            "mojito_syrup": 3
+          },
+          "ice": "Sunum çizgisine kadar buz",
+          "garnish": [
+            "lime dilimleri",
+            "taze nane yaprakları"
+          ],
+          "steps": [
+            "Massivo bardağın içine 4–5 taze nane yaprağı ve 2 lime dilimi koy.",
+            "Muddler ile hafifçe ezerek aromayı çıkar (lime kabuğunu parçalama).",
+            "3 pump mojito şurubu ekle (≈30 ml).",
+            "Boğuma kadar soda veya soğuk su ekle (≈220 ml).",
+            "Karıştır.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Üstüne 1 lime dilimi ve nane yaprağı ekle.",
+            "Düz pipetli kapak ile servis et."
+          ]
+        },
+        "long_diva": {
+          "cup_ml": 650,
+          "liquids_ml": {
+            "mojito_syrup_ml": 50,
+            "soda_ml": 350
+          },
+          "pumps": {
+            "mojito_syrup": 5
+          },
+          "ice": "Sunum çizgisine kadar buz",
+          "garnish": [
+            "lime dilimleri",
+            "nane dalları"
+          ],
+          "steps": [
+            "Long Diva bardağın altına 6–7 nane yaprağı ve 3 lime dilimi ekle.",
+            "Muddler ile hafif ez.",
+            "5 pump mojito şurubu ekle.",
+            "Boğuma kadar soda ekle ve karıştır.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Üstüne lime dilimi ve nane dalı ekle.",
+            "Düz pipetli kapak ile servis et."
+          ]
+        }
+      }
+    },
+
+    {
+      "no": 3,
+      "code": "PNK_LMN",
+      "name_tr": "Pink Lemonade",
+      "name_en": "Pink Lemonade",
+      "coffee_free": true,
+      "base_type": "lemon_berry_soda",
+      "flavor": "Limon + Berry",
+      "sizes": {
+        "massivo": {
+          "cup_ml": 400,
+          "liquids_ml": {
+            "lemon_syrup_ml": 20,
+            "pinkberry_syrup_ml": 10,
+            "water_or_soda_ml": 220
+          },
+          "pumps": {
+            "lemon": 2,
+            "pinkberry": 1
+          },
+          "ice": "Sunum çizgisine kadar buz",
+          "garnish": [
+            "1 dilim limon",
+            "kırmızı meyve (opsiyonel)"
+          ],
+          "steps": [
+            "Massivo bardağa 2 pump limon şurubu + 1 pump Pinkberry şurubu ekle.",
+            "Boğuma kadar soda veya soğuk su ekle.",
+            "Karıştır.",
+            "Sunum çizgisine kadar buz doldur.",
+            "Limon ve pinkberry/kırmızı meyve ile garnish.",
+            "Düz pipetli kapak ile servis."
+          ]
+        },
+        "long_diva": {
+          "cup_ml": 650,
+          "liquids_ml": {
+            "lemon_syrup_ml": 30,
+            "pinkberry_syrup_ml": 20,
+            "water_or_soda_ml": 350
+          },
+          "pumps": {
+            "lemon": 3,
+            "pinkberry": 2
+          },
+          "ice": "Sunum çizgisine kadar buz",
+          "garnish": [
+            "2 dilim limon",
+            "berry karışımı"
+          ],
+          "steps": [
+            "Long Diva bardağa 3 pump limon + 2 pump Pinkberry şurubu ekle.",
+            "Boğuma kadar soda veya su ekle, karıştır.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Limon ve berry garnish ile servis.",
+            "Düz pipetli kapak kullan."
+          ]
+        }
+      }
+    }
+  ]
+}

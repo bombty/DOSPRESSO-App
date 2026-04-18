@@ -1,0 +1,170 @@
+Seçenek 4: Henüz muhasebeden veri gelmedi, 
+bu görevi şimdilik beklemeye al.
+
+Açıklama:
+- 27 kalem zaten isEstimate:true ile işaretli ve description'da
+  [TAHMINI - 18 Nis 2026 - muhasebeden bekleniyor] etiketi var
+- Sistem şeffaf çalışıyor — tahmini fiyatlar raporlarda açıkça 
+  görünüyor
+- Aslan Pazartesi (21 Nis) Samet (Satınalma) ile konuşacak,
+  gerekirse Salı (22 Nis) muhasebeden yedek kaynak alacak
+- Reminder sistemde kuruldu, unutulmayacak
+- Fatura verileri geldiğinde YENİ bir task açılıp 27 kalem TOPLU
+  olarak gerçek faturalara güncellenecek
+
+Bu task'ı "Beklemede — Muhasebe/Satınalma Verisi Gerekli" 
+durumuna al ve kapat. Task #105 ana işi tamamlandı (7 kalem 
+gerçek fatura + 27 kalem şeffaf tahmini).
+
+═══════════════════════════════════════════════════════════
+
+Şimdi FARKLI bir göreve geçelim — Sprint D + E için READ-ONLY
+DB doğrulama:
+
+📋 Sprint D + E Planning — Ek DB Doğrulaması (READ-ONLY, ~15dk)
+
+Merhaba Replit,
+
+Harika bir Sprint B+C raporu verdin (1d3e4acf ref). Sprint D 
+ve E için kısa bir DB kontrolü gerekli. Pazartesi 21 Nis 
+Sprint B (Attendance Pipeline Repair) başlayacak, ondan önce
+D+E kapsamları netleşmeli.
+
+═══════════════════════════════════════════════════════════
+GÖREV
+═══════════════════════════════════════════════════════════
+
+1. git pull --rebase origin main
+2. docs/SPRINT-D-SATINALMA-BORDRO-ANALIZI.md oku
+3. docs/SPRINT-E-DASHBOARD-ROL-ANALIZI.md oku
+4. Aşağıdaki 2 set SQL'i çalıştır
+
+═══════════════════════════════════════════════════════════
+SET D — BORDRO 3 TABLO KONSOLİDASYON KARARI
+═══════════════════════════════════════════════════════════
+
+-- D1. 3 bordro tablosu ve yardımcılar kayıt sayısı
+SELECT 'monthly_payrolls (schema-07 eski)' as tbl, COUNT(*) FROM monthly_payrolls
+UNION ALL SELECT 'monthly_payroll (schema-12 yeni)', COUNT(*) FROM monthly_payroll
+UNION ALL SELECT 'payroll_records (kuruş)', COUNT(*) FROM payroll_records
+UNION ALL SELECT 'branch_monthly_payroll_summary', COUNT(*) FROM branch_monthly_payroll_summary
+UNION ALL SELECT 'salary_scales', COUNT(*) FROM salary_scales
+UNION ALL SELECT 'payroll_parameters', COUNT(*) FROM payroll_parameters
+UNION ALL SELECT 'payroll_deduction_config', COUNT(*) FROM payroll_deduction_config
+UNION ALL SELECT 'salary_deduction_types', COUNT(*) FROM salary_deduction_types
+UNION ALL SELECT 'salary_deductions', COUNT(*) FROM salary_deductions;
+
+-- D2. Eğer bordro tablolarında kayıt varsa detay
+SELECT 
+  'monthly_payrolls' as source,
+  COUNT(DISTINCT user_id) as users,
+  COUNT(*) as records,
+  MIN(year || '-' || LPAD(month::text, 2, '0')) as oldest,
+  MAX(year || '-' || LPAD(month::text, 2, '0')) as newest
+FROM monthly_payrolls
+UNION ALL
+SELECT 'monthly_payroll', COUNT(DISTINCT user_id), COUNT(*),
+  MIN(year || '-' || LPAD(month::text, 2, '0')),
+  MAX(year || '-' || LPAD(month::text, 2, '0'))
+FROM monthly_payroll;
+
+-- D3. Satınalma ana tabloları kullanım
+SELECT 'suppliers' as tbl, COUNT(*) FROM suppliers
+UNION ALL SELECT 'purchase_orders', COUNT(*) FROM purchase_orders
+UNION ALL SELECT 'purchase_order_items', COUNT(*) FROM purchase_order_items
+UNION ALL SELECT 'goods_receipts', COUNT(*) FROM goods_receipts
+UNION ALL SELECT 'goods_receipt_items', COUNT(*) FROM goods_receipt_items
+UNION ALL SELECT 'branch_orders', COUNT(*) FROM branch_orders
+UNION ALL SELECT 'branch_order_items', COUNT(*) FROM branch_order_items
+UNION ALL SELECT 'product_suppliers', COUNT(*) FROM product_suppliers
+UNION ALL SELECT 'supplier_quotes', COUNT(*) FROM supplier_quotes
+UNION ALL SELECT 'supplier_performance_scores', COUNT(*) FROM supplier_performance_scores;
+
+-- D4. Son 30 gün satınalma aktivitesi
+SELECT 
+  DATE_TRUNC('week', created_at) as week,
+  COUNT(*) as po_count,
+  COUNT(DISTINCT supplier_id) as unique_suppliers
+FROM purchase_orders 
+WHERE created_at >= NOW() - INTERVAL '30 days'
+GROUP BY DATE_TRUNC('week', created_at)
+ORDER BY week DESC;
+
+-- D5. PO status dağılımı
+SELECT status, COUNT(*) FROM purchase_orders GROUP BY status ORDER BY 2 DESC;
+
+═══════════════════════════════════════════════════════════
+SET E — DASHBOARD WIDGET + HAYALET ROLLER
+═══════════════════════════════════════════════════════════
+
+-- E1. Dashboard widget eksikliği olan aktif roller
+SELECT DISTINCT u.role, COUNT(u.id) as user_count
+FROM users u
+WHERE u.is_active = true 
+  AND u.role NOT IN (
+    SELECT DISTINCT role FROM dashboard_role_widgets WHERE is_enabled = true
+  )
+GROUP BY u.role
+ORDER BY user_count DESC;
+
+-- E2. Her rolün widget sayısı
+SELECT role, 
+       COUNT(*) as toplam_widget,
+       SUM(CASE WHEN is_enabled THEN 1 ELSE 0 END) as aktif_widget
+FROM dashboard_role_widgets
+GROUP BY role
+ORDER BY toplam_widget DESC;
+
+-- E3. HAYALET ROL KONTROLÜ (Aslan'a sorulacak)
+SELECT role, COUNT(*) as user_count, 
+       COUNT(*) FILTER (WHERE is_active = true) as aktif_user
+FROM users
+WHERE role IN ('fabrika_pisman', 'fabrika_kalite', 'fabrika_operator', 
+               'fabrika_sorumlu', 'fabrika_personel', 'fabrika')
+GROUP BY role
+ORDER BY user_count DESC;
+
+-- E4. TÜM ROL DAĞILIMI
+SELECT role, 
+       COUNT(*) FILTER (WHERE is_active = true) as aktif,
+       COUNT(*) FILTER (WHERE is_active = false) as pasif,
+       COUNT(*) as toplam
+FROM users
+GROUP BY role
+ORDER BY aktif DESC;
+
+-- E5. Schema'da olmayan ama DB'de kullanılan roller
+SELECT DISTINCT role 
+FROM users
+WHERE role NOT IN (
+  'admin', 'ceo', 'cgo', 'muhasebe_ik', 'satinalma', 'coach',
+  'marketing', 'trainer', 'kalite_kontrol', 'gida_muhendisi',
+  'fabrika_mudur', 'muhasebe', 'teknik', 'destek', 'fabrika',
+  'yatirimci_hq', 'stajyer', 'bar_buddy', 'barista',
+  'supervisor_buddy', 'supervisor', 'mudur', 'yatirimci_branch',
+  'uretim_sefi', 'fabrika_operator', 'fabrika_sorumlu',
+  'fabrika_personel', 'fabrika_depo', 'sef', 'recete_gm', 'sube_kiosk'
+);
+
+═══════════════════════════════════════════════════════════
+RAPOR FORMATI
+═══════════════════════════════════════════════════════════
+
+### SPRINT D RAPORU
+1. Bordro tabloları: Hangisi gerçekten kullanılıyor?
+2. "Motor birleştirme" iddiası doğrulanabilir mi?
+3. Satınalma: Aktif kullanımda mı?
+4. Senin Sprint D önerin (bordro konsolidasyon gerekli mi?)
+
+### SPRINT E RAPORU
+1. Dashboard widget eksik 2 rol HANGİSİ?
+2. fabrika_pisman / fabrika_kalite kullanıcısı VAR MI?
+3. Ölü roller (0 kullanıcılı) hangileri?
+4. Schema'da olmayan ama DB'de kullanılan rol VAR MI?
+5. Senin Sprint E önerin
+
+Kod değişikliği: YOK
+Commit: YOK (sadece chat yanıtı)
+
+Son bölüm: "Pazartesi Sprint B için hazırım" onayı — Attendance
+Pipeline Repair için kod taslağını Pazartesi sabah gönderebilirim.

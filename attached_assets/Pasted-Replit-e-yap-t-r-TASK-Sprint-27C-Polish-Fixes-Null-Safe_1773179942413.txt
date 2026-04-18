@@ -1,0 +1,125 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 27C — Polish Fixes (Null Safety + Dark Mode + ASCII Turkish)
+
+Small but important fixes before pilot launch. ~30 issues across 3 categories.
+
+### T001 — Null Safety Fixes (~1 hour)
+
+Find ALL `.toFixed()` and `.toLocaleString()` calls without null guard:
+
+```bash
+grep -rn "\.toFixed\|\.toLocaleString" client/src/ --include="*.tsx" | grep -v "??\||| 0\|?\.toFixed\|?\.toLocale\|node_modules" | head -20
+```
+
+Fix pattern:
+```typescript
+// WRONG:
+value.toFixed(1)
+data.count.toLocaleString()
+
+// CORRECT:
+(value ?? 0).toFixed(1)
+(data?.count ?? 0).toLocaleString()
+```
+
+Also check `.map()` and `.length` on potentially undefined arrays:
+```bash
+grep -rn "\.map(\|\.filter(\|\.length" client/src/ --include="*.tsx" | grep -v "|| \[\]\|??\|?\.\|node_modules\|import\|className" | grep "data\.\|result\.\|items\.\|records\.\|staff\.\|tasks\.\|actions\." | head -20
+```
+
+Fix pattern:
+```typescript
+// WRONG:
+data.items.map(...)
+records.length
+
+// CORRECT:
+(data?.items || []).map(...)
+(records || []).length
+```
+
+### T002 — Dark Mode Color Fixes (~1 hour)
+
+Find hardcoded colors without dark mode variant:
+
+```bash
+grep -rn "bg-white\b" client/src/ --include="*.tsx" | grep -v "dark:\|print:\|node_modules\|className.*dark" | head -20
+```
+
+```bash
+grep -rn "text-black\b" client/src/ --include="*.tsx" | grep -v "dark:\|print:\|node_modules" | head -10
+```
+
+```bash
+grep -rn "border-gray-200\b\|border-gray-300\b" client/src/ --include="*.tsx" | grep -v "dark:\|node_modules" | head -10
+```
+
+Fix pattern:
+```typescript
+// WRONG:
+className="bg-white text-black border-gray-200"
+
+// CORRECT:
+className="bg-white dark:bg-gray-900 text-black dark:text-white border-gray-200 dark:border-gray-700"
+
+// OR use Shadcn semantic classes (preferred):
+className="bg-background text-foreground border-border"
+```
+
+**Prefer Shadcn semantic classes** (`bg-background`, `text-foreground`, `border-border`, `bg-card`, `text-muted-foreground`) over manual dark: variants. These automatically handle dark mode.
+
+### T003 — ASCII Turkish Fixes (~15 min)
+
+```bash
+grep -rn '"[^"]*"' client/src/ server/lib/ --include="*.tsx" --include="*.ts" | grep -v "className\|import\|require\|node_modules\|route\|path\|key\|type\|status\|console\|//" | grep -i "Ozet\b\|Musteri\|tamamlandi\|Iletisim\|basarili\|guncelle\|olustur\|bulunamadi\|Gorev\b\|sayfayi\|yuklemeyi\|hata olustu" | head -15
+```
+
+Fix each found string with correct Turkish characters:
+```
+Ozet → Özet
+Musteri → Müşteri  
+tamamlandi → tamamlandı
+Iletisim → İletişim
+basarili → başarılı
+guncelle → güncelle
+olustur → oluştur
+bulunamadi → bulunamadı
+Gorev → Görev
+sayfayi → sayfayı
+yuklemeyi → yüklemeyi
+hata olustu → hata oluştu
+```
+
+### VERIFICATION
+
+```bash
+# 1. No unguarded .toFixed remaining
+grep -rn "\.toFixed\|\.toLocaleString" client/src/ --include="*.tsx" | grep -v "??\||| 0\|?\." | wc -l
+# Should be 0 or very low
+
+# 2. No bg-white without dark variant
+grep -rn "bg-white" client/src/ --include="*.tsx" | grep -v "dark:\|print:\|bg-background" | wc -l
+# Should be 0
+
+# 3. No ASCII Turkish
+grep -rn "Ozet\b\|Musteri\|tamamlandi\|bulunamadi" client/src/ --include="*.tsx" | grep -v "className\|import\|node_modules" | wc -l
+# Should be 0
+
+# 4. Vite build succeeds
+npx vite build 2>&1 | tail -5
+
+# 5. App loads correctly in dark mode (no white flashes)
+```
+
+### DO NOT BREAK:
+- Any existing functionality
+- Dark mode toggle
+- Shadcn UI component styling
+- Any API responses
+
+---
+
+Kısa sprint — 3 task, ~2 saat. Pilot öncesi son polish. Sonucu getir.

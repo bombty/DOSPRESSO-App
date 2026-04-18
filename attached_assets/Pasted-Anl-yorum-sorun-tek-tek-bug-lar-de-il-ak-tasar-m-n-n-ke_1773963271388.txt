@@ -1,0 +1,841 @@
+Anlıyorum — sorun tek tek bug'lar değil, **akış tasarımının kendisi yanlış.** Mevcut akış:
+
+> Login → İstasyon Seç → Çalışma → Stop
+
+Olması gereken:
+
+> Login → **Personel Ana Sayfa** (vardiya otomatik başlar) → İstasyon seç VEYA mola VEYA vardiya bitir
+
+Bu tam bir yeniden tasarım. Replit'e yapıştırın:
+
+---
+
+```
+## CRITICAL REDESIGN: Factory Kiosk — Complete Flow Overhaul
+
+### Context
+The factory kiosk flow is fundamentally broken. The current design forces workers to select a station immediately after login. But the kiosk is ALSO a shift/attendance tracking system. Workers should be able to:
+1. Login → shift starts automatically (PDKS giriş)
+2. See their "home screen" with options
+3. Choose to select a station and start production OR just be on shift without production
+4. Take breaks and return to home screen (not re-login)
+5. Switch stations during the day
+6. End shift when leaving
+
+The ENTIRE kiosk.tsx flow needs to be redesigned. Do NOT patch — rebuild the state machine.
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+### CRITICAL RULES
+- Turkish UI, users.id is VARCHAR
+- Use kioskFetch() for ALL API calls (already implemented)
+- Keep device-auth and login-by-username endpoints as-is (they work)
+- Do NOT touch server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+
+---
+
+## NEW STATE MACHINE
+
+```
+device-password
+  → enter-credentials (username + PIN)
+    → worker-home (SHIFT STARTS AUTOMATICALLY on login)
+        ├── "İstasyon Seç" → select-station → working (phases: hazırlık→üretim→temizlik)
+        │     └── "Üretimi Bitir" → production-entry (log quantity) → worker-home
+        │     └── "İstasyon Değiştir" → select-station
+        │     └── "STOP" → stop-options
+        │           ├── "Mola" → on-break (timer) → worker-home
+        │           ├── "Özel İhtiyaç" → on-break (timer) → worker-home  
+        │           ├── "Arıza Bildir" → fault-report → worker-home
+        │           └── "Yardım İste" → worker-home (notification sent)
+        ├── "Molaya Çık" → on-break (timer) → worker-home
+        ├── "Vardiya Bitir" → end-shift-summary (6s countdown) → enter-credentials
+        └── "Arıza Bildir" → fault-report → worker-home
+```
+
+KEY CHANGES from current design:
+1. `worker-home` is the NEW central hub (replaces forced station selection)
+2. Shift starts on login (no separate "start shift" step)
+3. Station selection is OPTIONAL (worker can just be on shift)
+4. After production/break/fault — always return to worker-home
+5. Only "Vardiya Bitir" exits to login screen
+6. Worker can switch stations multiple times during shift
+
+---
+
+## PART 1: Define New Step Types
+
+Replace the current KioskStep type:
+
+```typescript
+type KioskStep = 
+  | 'device-password'      // Tablet boot — device auth
+  | 'enter-credentials'    // Username + PIN login
+  | 'worker-home'          // NEW — Main hub after login
+  | 'select-station'       // Choose production station
+  | 'working'              // Active production (phases: hazırlık→üretim→temizlik)
+  | 'production-entry'     // Log production quantity after completing work
+  | 'stop-options'         // STOP menu during production
+  | 'on-break'             // Break screen with timer
+  | 'fault-report'         // Report equipment fault
+  | 'end-shift-summary';   // Shift summary before logout
+```
+
+Remove these old steps (no longer needed):
+- `auto-logout` (replaced by going back to enter-credentials)
+- `log-break` (merged into on-break)
+
+---
+
+## PART 2: Worker Home Screen (NEW — Central Hub)
+
+This is the MOST IMPORTANT new screen. After login, this is what the worker sees:
+
+```typescript
+{step === 'worker-home' && selectedWorker && (
+  <div className="flex flex-col items-center p-6 max-w-md mx-auto">
+    
+    {/* Worker info header */}
+    <div className="text-center mb-8">
+      <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+        <span className="text-2xl font-bold">
+          {selectedWorker.firstName?.[0]}{selectedWorker.lastName?.[0]}
+        </span>
+      </div>
+      <h2 className="text-xl font-bold">
+        {selectedWorker.firstName} {selectedWorker.lastName}
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Vardiya başlangıç: {shiftStartTime || new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'})}
+      </p>
+      {currentStation && (
+        <p className="text-sm text-primary mt-1">
+          Aktif İstasyon: {currentStation.name}
+        </p>
+      )}
+    </div>
+    
+    {/* Main action buttons — large, touch-friendly */}
+    <div className="grid grid-cols-1 gap-4 w-full">
+      
+      {/* Primary: Start/Resume Production */}
+      <Button 
+        size="lg"
+        className="h-20 text-lg bg-green-600 hover:bg-green-700 text-white"
+        onClick={() => {
+          if (currentStation) {
+            // Already has station — go to working
+            setStep('working');
+          } else {
+            // No station yet — select one first
+            setStep('select-station');
+          }
+        }}
+      >
+        {currentStation ? (
+          <>Üretime Devam — {currentStation.name}</>
+        ) : (
+          <>İstasyon Seç ve Üretime Başla</>
+        )}
+      </Button>
+      
+      {/* Change station (if already has one) */}
+      {currentStation && (
+        <Button 
+          variant="outline"
+          size="lg"
+          className="h-14 text-base"
+          onClick={() => setStep('select-station')}
+        >
+          İstasyon Değiştir
+        </Button>
+      )}
+      
+      {/* Break */}
+      <Button 
+        variant="outline"
+        size="lg"
+        className="h-14 text-base"
+        onClick={() => handleStartBreak('mola')}
+      >
+        Molaya Çık
+      </Button>
+      
+      {/* Fault report */}
+      <Button 
+        variant="outline"
+        size="lg"
+        className="h-14 text-base"
+        onClick={() => setStep('fault-report')}
+      >
+        Arıza Bildir
+      </Button>
+      
+      {/* End shift — less prominent */}
+      <Button 
+        variant="ghost"
+        size="lg"
+        className="h-14 text-base text-destructive hover:text-destructive"
+        onClick={handleEndShift}
+      >
+        Vardiya Bitir
+      </Button>
+    </div>
+    
+    {/* Today's stats (compact) */}
+    <div className="mt-8 w-full grid grid-cols-3 gap-3 text-center">
+      <div className="p-3 bg-muted rounded-lg">
+        <p className="text-2xl font-bold">{todayStats.produced || 0}</p>
+        <p className="text-xs text-muted-foreground">Üretim</p>
+      </div>
+      <div className="p-3 bg-muted rounded-lg">
+        <p className="text-2xl font-bold">{todayStats.breakMinutes || 0}dk</p>
+        <p className="text-xs text-muted-foreground">Mola</p>
+      </div>
+      <div className="p-3 bg-muted rounded-lg">
+        <p className="text-2xl font-bold">{todayStats.shiftHours || '0:00'}</p>
+        <p className="text-xs text-muted-foreground">Vardiya</p>
+      </div>
+    </div>
+  </div>
+)}
+```
+
+---
+
+## PART 3: Login → Auto Shift Start
+
+When login succeeds, automatically start the shift:
+
+```typescript
+// In loginByUsernameMutation.onSuccess:
+onSuccess: async (data) => {
+  // Store kiosk token
+  if (data.kioskToken) {
+    localStorage.setItem("factory-kiosk-token", data.kioskToken);
+  }
+  
+  // Set worker data
+  setSelectedWorker(data.user);
+  setShiftStartTime(new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}));
+  
+  // Check for active session (if worker was already on shift)
+  if (data.activeSession) {
+    // Resume existing session
+    setActiveSessionId(data.activeSession.id);
+    if (data.activeSession.stationId) {
+      const station = stations.find(s => s.id === data.activeSession.stationId);
+      setCurrentStation(station || null);
+    }
+  } else {
+    // Start new shift automatically
+    try {
+      const shiftRes = await kioskFetch('/api/factory/kiosk/start-shift', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          userId: data.user.id,
+          // NO stationId — shift starts without station
+        }),
+      });
+      const shiftData = await shiftRes.json();
+      if (shiftData.sessionId) {
+        setActiveSessionId(shiftData.sessionId);
+      }
+    } catch (err) {
+      console.error('[Kiosk] Auto shift start failed:', err);
+    }
+  }
+  
+  // Go to worker home — NOT select-station
+  setStep('worker-home');
+}
+```
+
+---
+
+## PART 4: Update start-shift Backend — Station Optional
+
+```bash
+grep -B2 -A30 "start-shift" server/routes/factory.ts | head -40
+```
+
+Make stationId OPTIONAL in the start-shift endpoint:
+
+```typescript
+// POST /api/factory/kiosk/start-shift
+// stationId is now OPTIONAL — shift can start without station assignment
+router.post("/api/factory/kiosk/start-shift", isKioskAuthenticated, async (req, res) => {
+  const { userId, stationId } = req.body; // stationId can be null
+  
+  if (!userId) {
+    return res.status(400).json({ error: "userId gerekli" });
+  }
+  
+  // Check for existing active session
+  const existingSession = await db.select().from(factoryShiftSessions)
+    .where(and(
+      eq(factoryShiftSessions.userId, userId),
+      eq(factoryShiftSessions.status, 'active')
+    )).limit(1);
+  
+  if (existingSession.length > 0) {
+    // Return existing session instead of creating new one
+    return res.json({ 
+      sessionId: existingSession[0].id,
+      message: "Mevcut vardiya devam ediyor",
+      existingSession: existingSession[0]
+    });
+  }
+  
+  // Create new shift session (stationId can be null)
+  const [session] = await db.insert(factoryShiftSessions).values({
+    userId,
+    stationId: stationId || null,  // NULL is OK — station selected later
+    status: 'active',
+    startedAt: new Date(),
+  }).returning();
+  
+  // Log PDKS clock-in
+  try {
+    await db.insert(pdksRecords).values({
+      userId,
+      type: 'clock_in',
+      timestamp: new Date(),
+      source: 'factory_kiosk',
+    });
+  } catch (err) {
+    console.error('[Kiosk] PDKS clock-in failed:', err);
+  }
+  
+  res.json({ sessionId: session.id, message: "Vardiya başladı" });
+});
+```
+
+---
+
+## PART 5: Add Station Assignment Endpoint
+
+Workers can select/change station during their shift:
+
+```typescript
+// POST /api/factory/kiosk/assign-station
+// Assigns or changes station for current shift
+router.post("/api/factory/kiosk/assign-station", isKioskAuthenticated, async (req, res) => {
+  const { sessionId, stationId } = req.body;
+  
+  if (!sessionId || !stationId) {
+    return res.status(400).json({ error: "sessionId ve stationId gerekli" });
+  }
+  
+  // Update shift session with new station
+  const [updated] = await db.update(factoryShiftSessions)
+    .set({ stationId, updatedAt: new Date() })
+    .where(and(
+      eq(factoryShiftSessions.id, sessionId),
+      eq(factoryShiftSessions.status, 'active')
+    ))
+    .returning();
+  
+  if (!updated) {
+    return res.status(404).json({ error: "Aktif vardiya bulunamadı" });
+  }
+  
+  // Log station change event
+  await db.insert(factoryKioskSessionEvents).values({
+    sessionId,
+    eventType: 'station_change',
+    stationId,
+    notes: `İstasyon değiştirildi: ${stationId}`,
+    createdAt: new Date(),
+  }).catch(err => console.error('[Kiosk] Station change log:', err));
+  
+  res.json({ success: true, message: "İstasyon atandı" });
+});
+```
+
+---
+
+## PART 6: Working Screen — Phase Transitions
+
+The working screen has 3 phases. Make transitions clear and simple:
+
+```typescript
+// Phase flow: hazırlık → üretim → temizlik → production-entry → worker-home
+
+{step === 'working' && currentStation && (
+  <div className="flex flex-col items-center p-6 max-w-md mx-auto">
+    
+    {/* Station & phase header */}
+    <div className="text-center mb-6">
+      <h2 className="text-lg font-bold">{currentStation.name}</h2>
+      <p className="text-sm text-muted-foreground">
+        {selectedWorker?.firstName} {selectedWorker?.lastName}
+      </p>
+    </div>
+    
+    {/* Phase indicator — show all 3 phases with active highlight */}
+    <div className="flex items-center gap-2 mb-8 w-full">
+      {['hazirlik', 'uretim', 'temizlik'].map((phase, i) => (
+        <div key={phase} className="flex items-center flex-1">
+          <div className={`flex-1 h-12 rounded-lg flex items-center justify-center text-sm font-medium transition-colors ${
+            currentPhase === phase 
+              ? 'bg-primary text-primary-foreground' 
+              : phases.indexOf(phase) < phases.indexOf(currentPhase)
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                : 'bg-muted text-muted-foreground'
+          }`}>
+            {phase === 'hazirlik' && 'Hazırlık'}
+            {phase === 'uretim' && 'Üretim'}
+            {phase === 'temizlik' && 'Temizlik'}
+          </div>
+          {i < 2 && <span className="mx-1 text-muted-foreground">→</span>}
+        </div>
+      ))}
+    </div>
+    
+    {/* Phase timer */}
+    <div className="text-center mb-6">
+      <p className="text-4xl font-mono font-bold">{phaseTimer}</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        {currentPhase === 'hazirlik' && 'Hazırlık süresi'}
+        {currentPhase === 'uretim' && 'Üretim süresi'}
+        {currentPhase === 'temizlik' && 'Temizlik süresi'}
+      </p>
+    </div>
+    
+    {/* Phase action buttons */}
+    <div className="w-full space-y-3">
+      
+      {/* Next phase button */}
+      {currentPhase === 'hazirlik' && (
+        <Button size="lg" className="w-full h-16 text-lg bg-blue-600 hover:bg-blue-700 text-white"
+          onClick={() => handlePhaseTransition('uretim')}>
+          Hazırlık Tamam — Üretime Başla
+        </Button>
+      )}
+      
+      {currentPhase === 'uretim' && (
+        <Button size="lg" className="w-full h-16 text-lg bg-blue-600 hover:bg-blue-700 text-white"
+          onClick={() => handlePhaseTransition('temizlik')}>
+          Üretim Tamam — Temizliğe Geç
+        </Button>
+      )}
+      
+      {currentPhase === 'temizlik' && (
+        <Button size="lg" className="w-full h-16 text-lg bg-green-600 hover:bg-green-700 text-white"
+          onClick={() => {
+            handlePhaseTransition('tamamlandi');
+            setStep('production-entry'); // Log what was produced
+          }}>
+          Temizlik Tamam — Üretimi Kaydet
+        </Button>
+      )}
+      
+      {/* STOP button — always visible */}
+      <Button variant="destructive" size="lg" className="w-full h-14 text-base"
+        onClick={() => setStep('stop-options')}>
+        STOP — Ara Ver / Değiştir
+      </Button>
+    </div>
+  </div>
+)}
+```
+
+### Phase Transition Handler:
+```typescript
+async function handlePhaseTransition(nextPhase: string) {
+  setCurrentPhase(nextPhase);
+  setPhaseStartTime(new Date());
+  
+  // Log phase change to backend
+  if (activeSessionId) {
+    kioskFetch(`/api/factory/kiosk/session/${activeSessionId}/phase`, {
+      method: 'PATCH',
+      body: JSON.stringify({ phase: nextPhase }),
+    }).catch(err => console.error('[Kiosk] Phase transition log:', err));
+  }
+}
+```
+
+---
+
+## PART 7: Production Entry — After Completing Work
+
+After temizlik phase, worker logs what they produced:
+
+```typescript
+{step === 'production-entry' && (
+  <div className="flex flex-col items-center p-6 max-w-md mx-auto">
+    <h2 className="text-lg font-bold mb-6">Üretim Kaydı</h2>
+    
+    {/* Product selection */}
+    <div className="w-full mb-4">
+      <label className="text-sm text-muted-foreground mb-1 block">Ürün</label>
+      <select className="w-full h-12 border rounded-lg px-3 text-base"
+        value={selectedProductId || ''}
+        onChange={e => setSelectedProductId(Number(e.target.value))}>
+        <option value="">Ürün seçin...</option>
+        {products?.map(p => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+    </div>
+    
+    {/* Quantity input — large for touch */}
+    <div className="w-full mb-4">
+      <label className="text-sm text-muted-foreground mb-1 block">Üretim Adedi</label>
+      <input type="number" className="w-full h-14 border rounded-lg px-3 text-2xl text-center"
+        value={productionQuantity || ''}
+        onChange={e => setProductionQuantity(Number(e.target.value))}
+        min="0" step="1" inputMode="numeric" />
+    </div>
+    
+    {/* Waste/reject count (optional) */}
+    <div className="w-full mb-6">
+      <label className="text-sm text-muted-foreground mb-1 block">Fire Adedi (opsiyonel)</label>
+      <input type="number" className="w-full h-12 border rounded-lg px-3 text-lg text-center"
+        value={wasteQuantity || ''}
+        onChange={e => setWasteQuantity(Number(e.target.value))}
+        min="0" step="1" inputMode="numeric" />
+    </div>
+    
+    <div className="w-full space-y-3">
+      <Button size="lg" className="w-full h-14 text-base bg-green-600 hover:bg-green-700 text-white"
+        disabled={!selectedProductId || !productionQuantity}
+        onClick={handleSaveProduction}>
+        Üretimi Kaydet
+      </Button>
+      
+      <Button variant="outline" size="lg" className="w-full h-14 text-base"
+        onClick={() => setStep('worker-home')}>
+        Atla — Ana Sayfaya Dön
+      </Button>
+    </div>
+  </div>
+)}
+```
+
+### Save Production Handler:
+```typescript
+async function handleSaveProduction() {
+  try {
+    await kioskFetch('/api/factory/kiosk/production-output', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: activeSessionId,
+        stationId: currentStation?.id,
+        productId: selectedProductId,
+        quantity: productionQuantity,
+        wasteQuantity: wasteQuantity || 0,
+        userId: selectedWorker?.id,
+      }),
+    });
+    
+    // Reset production form
+    setSelectedProductId(null);
+    setProductionQuantity(0);
+    setWasteQuantity(0);
+    
+    // Return to home
+    setStep('worker-home');
+  } catch (err) {
+    console.error('[Kiosk] Save production error:', err);
+  }
+}
+```
+
+---
+
+## PART 8: Stop Options — Updated
+
+```typescript
+{step === 'stop-options' && (
+  <div className="flex flex-col items-center p-6 max-w-md mx-auto">
+    <h2 className="text-lg font-bold mb-6">Ne yapmak istiyorsunuz?</h2>
+    
+    <div className="w-full space-y-3">
+      <Button variant="outline" size="lg" className="w-full h-14 text-base"
+        onClick={() => handleStartBreak('mola')}>
+        Mola
+      </Button>
+      
+      <Button variant="outline" size="lg" className="w-full h-14 text-base"
+        onClick={() => handleStartBreak('ozel_ihtiyac')}>
+        Özel İhtiyaç
+      </Button>
+      
+      <Button variant="outline" size="lg" className="w-full h-14 text-base"
+        onClick={() => {
+          // Save current production first, then go home
+          setStep('production-entry');
+        }}>
+        Üretimi Bitir — Kaydet
+      </Button>
+      
+      <Button variant="outline" size="lg" className="w-full h-14 text-base"
+        onClick={() => setStep('select-station')}>
+        İstasyon Değiştir
+      </Button>
+      
+      <Button variant="outline" size="lg" className="w-full h-14 text-base"
+        onClick={() => setStep('fault-report')}>
+        Arıza Bildir
+      </Button>
+      
+      {/* Back to production */}
+      <Button variant="ghost" size="lg" className="w-full h-14 text-base"
+        onClick={() => setStep('working')}>
+        ← Üretime Dön
+      </Button>
+    </div>
+  </div>
+)}
+```
+
+---
+
+## PART 9: On-Break Screen — Return to Worker Home
+
+```typescript
+{step === 'on-break' && (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+    <div className="text-center">
+      <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center mx-auto mb-4">
+        <Coffee className="h-10 w-10 text-amber-600" />
+      </div>
+      <h2 className="text-2xl font-bold">
+        {breakReason === 'ozel_ihtiyac' ? 'Özel İhtiyaç' : 'Mola'}
+      </h2>
+      <p className="text-muted-foreground mt-2">
+        {selectedWorker?.firstName} {selectedWorker?.lastName}
+      </p>
+    </div>
+    
+    <BreakTimer />
+    
+    <Button size="lg" className="w-64 h-16 text-lg bg-green-600 hover:bg-green-700 text-white"
+      onClick={handleReturnFromBreak}>
+      Üretime / Ana Sayfaya Dön
+    </Button>
+  </div>
+)}
+```
+
+### Return from Break:
+```typescript
+function handleReturnFromBreak() {
+  // Log break end (fire-and-forget)
+  if (currentBreakLogId) {
+    kioskFetch('/api/factory/kiosk/end-break', {
+      method: 'POST',
+      body: JSON.stringify({ breakLogId: currentBreakLogId }),
+    }).catch(err => console.error('[Kiosk] End break error:', err));
+  }
+  
+  setCurrentBreakLogId(null);
+  setBreakReason(null);
+  
+  // Return to worker-home — NOT working
+  setStep('worker-home');
+}
+```
+
+---
+
+## PART 10: End Shift
+
+```typescript
+async function handleEndShift() {
+  try {
+    // End the shift session
+    if (activeSessionId) {
+      await kioskFetch('/api/factory/kiosk/end-shift', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId: activeSessionId }),
+      });
+    }
+    
+    // Log PDKS clock-out
+    if (selectedWorker?.id) {
+      kioskFetch('/api/pdks/clock-out', {
+        method: 'POST', 
+        body: JSON.stringify({ userId: selectedWorker.id, source: 'factory_kiosk' }),
+      }).catch(() => {});
+    }
+    
+    setStep('end-shift-summary');
+  } catch (err) {
+    console.error('[Kiosk] End shift error:', err);
+    setStep('end-shift-summary'); // Show summary anyway
+  }
+}
+```
+
+### End Shift Summary → Auto-return to Login
+```typescript
+{step === 'end-shift-summary' && (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+    <div className="text-center">
+      <h2 className="text-2xl font-bold">Vardiya Tamamlandı</h2>
+      <p className="text-muted-foreground mt-2">
+        {selectedWorker?.firstName} {selectedWorker?.lastName}
+      </p>
+    </div>
+    
+    {/* Shift summary stats */}
+    <div className="grid grid-cols-2 gap-4 w-64">
+      <div className="p-3 bg-muted rounded-lg text-center">
+        <p className="text-2xl font-bold">{todayStats.produced || 0}</p>
+        <p className="text-xs text-muted-foreground">Toplam Üretim</p>
+      </div>
+      <div className="p-3 bg-muted rounded-lg text-center">
+        <p className="text-2xl font-bold">{todayStats.breakMinutes || 0}dk</p>
+        <p className="text-xs text-muted-foreground">Toplam Mola</p>
+      </div>
+    </div>
+    
+    {/* Auto-countdown: 6 seconds */}
+    <p className="text-sm text-muted-foreground">
+      {autoLogoutCountdown} saniye sonra giriş ekranına dönecek...
+    </p>
+    
+    <Button variant="outline" onClick={resetWorker}>
+      Şimdi Çık
+    </Button>
+  </div>
+)}
+```
+
+### resetWorker (go back to login, keep device auth):
+```typescript
+function resetWorker() {
+  setSelectedWorker(null);
+  setCurrentStation(null);
+  setActiveSessionId(null);
+  setCurrentPhase('hazirlik');
+  setShiftStartTime(null);
+  setBreakReason(null);
+  setCurrentBreakLogId(null);
+  // Do NOT clear factory-kiosk-token — device stays authenticated
+  setStep('enter-credentials');
+}
+```
+
+---
+
+## PART 11: Today Stats API
+
+The worker-home screen shows today's production stats. Create or update an endpoint:
+
+```bash
+grep -n "today.*stats\|daily.*stats\|shift.*stats\|worker.*today" server/routes/factory.ts | head -10
+```
+
+If no endpoint exists, add:
+
+```typescript
+// GET /api/factory/kiosk/worker-today-stats?userId=xxx
+router.get("/api/factory/kiosk/worker-today-stats", isKioskAuthenticated, async (req, res) => {
+  const userId = req.query.userId as string;
+  if (!userId) return res.status(400).json({ error: "userId gerekli" });
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Total production today
+  const production = await db.select({ 
+    total: sql`COALESCE(sum(quantity), 0)` 
+  }).from(factoryProductionOutputs)
+    .where(and(
+      eq(factoryProductionOutputs.userId, userId),
+      gte(factoryProductionOutputs.createdAt, today)
+    ));
+  
+  // Total break minutes today
+  const breaks = await db.select({ 
+    total: sql`COALESCE(sum(duration_minutes), 0)` 
+  }).from(factoryBreakLogs)
+    .where(and(
+      eq(factoryBreakLogs.userId, userId),
+      gte(factoryBreakLogs.startedAt, today)
+    ));
+  
+  // Shift start time
+  const shift = await db.select().from(factoryShiftSessions)
+    .where(and(
+      eq(factoryShiftSessions.userId, userId),
+      eq(factoryShiftSessions.status, 'active')
+    ))
+    .orderBy(desc(factoryShiftSessions.startedAt))
+    .limit(1);
+  
+  const shiftStart = shift[0]?.startedAt;
+  const shiftMinutes = shiftStart ? Math.floor((Date.now() - new Date(shiftStart).getTime()) / 60000) : 0;
+  const shiftHours = `${Math.floor(shiftMinutes / 60)}:${String(shiftMinutes % 60).padStart(2, '0')}`;
+  
+  res.json({
+    produced: Number(production[0]?.total || 0),
+    breakMinutes: Number(breaks[0]?.total || 0),
+    shiftHours,
+    shiftStartTime: shiftStart,
+  });
+});
+```
+
+---
+
+## PART 12: Fault Report — Return to Worker Home
+
+After submitting fault report, go back to worker-home (not logout):
+
+```typescript
+// In fault report submit handler:
+onSuccess: () => {
+  toast({ title: "Arıza bildirildi" });
+  setStep('worker-home'); // NOT auto-logout
+}
+```
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- kioskFetch helper (already working)
+- localStorage token handling (already working)
+- Scoring service (already working)
+- Branch kiosk (different system)
+
+## Testing — Full E2E:
+1. Device auth → enter-credentials screen
+2. Login with Arife (PIN 0000) → worker-home screen with shift auto-started
+3. Worker-home shows: name, "İstasyon Seç ve Üretime Başla", "Molaya Çık", "Vardiya Bitir"
+4. Select station → working screen with phase indicator (hazırlık active)
+5. Click "Üretime Başla" → phase changes to üretim
+6. Click "Temizliğe Geç" → phase changes to temizlik
+7. Click "Üretimi Kaydet" → production-entry form
+8. Enter quantity → saves → returns to worker-home
+9. Worker-home now shows "Üretime Devam — [station name]"
+10. Click "Molaya Çık" → on-break screen with timer
+11. Click "Üretime / Ana Sayfaya Dön" → worker-home
+12. Click "Vardiya Bitir" → end-shift-summary → 6s countdown → enter-credentials
+13. All API calls work with kiosk token only (no web session)
+14. Today stats show production count and break minutes
+
+## After:
+1. Report: total lines changed
+2. Report: steps removed vs added
+3. Screenshot or describe worker-home screen
+4. E2E API chain test results
+```
+
+---
+
+Bu **tam bir akış yeniden tasarımı.** Artık:
+- Vardiya otomatik başlıyor (login = shift start)
+- İstasyon seçimi isteğe bağlı
+- Her şey worker-home'a dönüyor
+- Fazlar net: hazırlık → üretim → temizlik → kaydet → ana sayfa
+
+Direkt yapıştırın!

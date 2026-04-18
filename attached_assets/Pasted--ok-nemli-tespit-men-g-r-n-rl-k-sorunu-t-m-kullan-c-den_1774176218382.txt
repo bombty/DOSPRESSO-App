@@ -1,0 +1,132 @@
+Çok önemli tespit — menü görünürlük sorunu tüm kullanıcı deneyimini etkiler. Önce sorunu tam anlayalım. Replit'e yapıştırın:
+
+---
+
+**"Kullanıcı menü görünürlüğünde sorun bildiriyor:**
+
+**Belirtiler:**
+- Admin dashboard'da "Ayarlar" gibi menü başlıkları görünmüyor
+- Coach sayfasında İK bölümü yok
+- Profil linki eksik veya görünmüyor
+- Genel olarak menü görünürlüğünde tutarsızlık var
+
+**Bu evrensel bir sorun olabilir. Kapsamlı araştırma yap — hiçbir değişiklik yapma:**
+
+```bash
+echo "══════════════════════════════════════════"
+echo "MENÜ GÖRÜNÜRLüK FULL AUDIT"
+echo "══════════════════════════════════════════"
+
+echo ""
+echo "=== 1. MENÜ SİSTEMİ NASIL ÇALIŞIYOR? ==="
+echo "--- Menu service dosyası ---"
+wc -l server/menu-service.ts 2>/dev/null
+head -50 server/menu-service.ts 2>/dev/null
+
+echo "--- Menu endpoint ---"
+grep -n "menu\|sidebar" server/routes/*.ts | grep -i "get\|router" | head -15
+
+echo "--- Frontend sidebar bileşeni ---"
+find client/src -name "*sidebar*" -o -name "*nav*" -o -name "*menu*" | grep -v node_modules | sort
+wc -l client/src/components/sidebar*.tsx client/src/components/layout/sidebar*.tsx 2>/dev/null
+
+echo ""
+echo "=== 2. ROL BAZLI MENÜ TANIMLARI ==="
+echo "--- SIDEBAR_ALLOWED_ITEMS veya benzeri ---"
+grep -n "SIDEBAR_ALLOWED\|MENU_ITEMS\|menuItems\|allowedItems" server/menu-service.ts | head -20
+
+echo "--- Hangi roller hangi menüleri görüyor? ---"
+grep -n "admin\|coach\|supervisor\|stajyer\|barista" server/menu-service.ts | head -30
+
+echo "--- Ayarlar menüsü tanımlı mı? ---"
+grep -in "ayarlar\|settings\|profil\|profile" server/menu-service.ts | head -10
+
+echo "--- İK menüsü tanımlı mı? ---"
+grep -in "ik\|insan.kaynaklar\|hr\|personel\|İK" server/menu-service.ts | head -10
+
+echo ""
+echo "=== 3. FRONTEND MENÜ RENDER ==="
+echo "--- Sidebar component ---"
+find client/src -name "*sidebar*" -o -name "*Sidebar*" | head -5
+for f in $(find client/src -name "*sidebar*" -o -name "*Sidebar*" | head -3); do
+  echo "--- $f ($(wc -l < $f) satır) ---"
+  grep -n "menu\|item\|ayarlar\|settings\|profil\|ik\|İK" "$f" | head -15
+done
+
+echo ""
+echo "=== 4. HER ROL İÇİN MENÜ TESTİ ==="
+echo "--- Admin menüsü ---"
+# Admin login ve menu endpoint çağrısı
+curl -s -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}' \
+  -c /tmp/admin_cookie 2>/dev/null | head -1
+
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie 2>/dev/null | python3 -m json.tool 2>/dev/null | head -40
+
+echo ""
+echo "--- Coach menüsü ---"
+# Bir coach kullanıcısı var mı?
+echo "SELECT username, role FROM users WHERE role='coach' AND is_active=true LIMIT 1;" | psql -t
+
+echo ""
+echo "--- Supervisor menüsü ---"
+echo "SELECT username, role FROM users WHERE role='supervisor' AND is_active=true LIMIT 1;" | psql -t
+
+echo ""
+echo "--- Stajyer menüsü ---"
+echo "SELECT username, role FROM users WHERE role='stajyer' AND is_active=true LIMIT 1;" | psql -t
+
+echo ""
+echo "=== 5. MODULE FLAGS ETKİSİ ==="
+echo "--- Hangi modüller gizli? ---"
+echo "SELECT module_key, flag_behavior, display_name FROM module_flags WHERE flag_behavior IN ('fully_hidden', 'ui_hidden_data_continues') AND deleted_at IS NULL ORDER BY flag_behavior, module_key;" | psql
+
+echo ""
+echo "=== 6. ROL-MODÜL İZİNLERİ ==="
+echo "--- role_module_permissions tablosu ---"
+echo "SELECT count(*) FROM role_module_permissions;" | psql -t
+echo "--- Admin için izinler ---"
+echo "SELECT module_key, can_view, can_edit FROM role_module_permissions WHERE role='admin' ORDER BY module_key;" | psql | head -30
+echo "--- Coach için izinler ---"
+echo "SELECT module_key, can_view, can_edit FROM role_module_permissions WHERE role='coach' ORDER BY module_key;" | psql | head -30
+
+echo ""
+echo "=== 7. PROFIL LİNKİ ==="
+echo "--- Header/topbar profil linki ---"
+grep -rn "profil\|profile\|avatar\|user.*menu\|dropdown" client/src/components/layout/ --include="*.tsx" | head -15
+grep -rn "profil\|profile" client/src/components/header*.tsx client/src/components/app-header*.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== 8. AYARLAR SAYFASI ==="
+echo "--- Ayarlar route ---"
+grep -rn "ayarlar\|settings\|admin.*settings" client/src/App.tsx | head -5
+find client/src/pages -name "*ayarlar*" -o -name "*settings*" | sort
+
+echo ""
+echo "=== 9. SAYFA ERİŞİLEBİLİRLİK ==="
+echo "--- App.tsx route tanımları (menüde olup sayfası olan/olmayan) ---"
+grep -n "Route\|path=" client/src/App.tsx | head -50
+
+echo ""
+echo "=== 10. TÜM ROLLER VE MENÜ SAYILARI ==="
+echo "SELECT role, count(*) FROM users WHERE is_active=true GROUP BY role ORDER BY count DESC;" | psql
+
+echo "══════════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. Menü sistemi nasıl çalışıyor (akış)"
+echo "2. Her rol kaç menü öğesi görüyor"
+echo "3. Ayarlar menüsü neden görünmüyor"
+echo "4. İK menüsü hangi rollerde görünüyor/görünmüyor"
+echo "5. Profil linki nerede, çalışıyor mu"
+echo "6. Module flags hangi menüleri gizliyor"
+echo "7. Sorunun kök nedeni ne"
+echo "8. Çözüm önerisi"
+echo "══════════════════════════════════════════"
+```
+
+**Sadece araştır ve raporla — değişiklik yapma."**
+
+---
+
+Yapıştırın. Bu 10 noktalı audit sorunun tam kaynağını gösterecek. Sonucu paylaşın — birlikte çözüm planlayacağız.

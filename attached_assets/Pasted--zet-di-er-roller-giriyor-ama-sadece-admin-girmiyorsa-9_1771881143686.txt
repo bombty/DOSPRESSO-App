@@ -1,0 +1,97 @@
+Özet: diğer roller giriyor ama sadece admin girmiyorsa, %90 ihtimalle prod DB’deki admin kaydı (password_hash / aktiflik / username) beklediğin gibi değil. Agent’in “admin/0000 hash’i eşleşiyor” demesi çoğu zaman dev DB içindir; sen prod URL’den girerken prod DB farklı olabilir.
+
+Aşağıdaki adımları sırayla yap.
+
+⸻
+
+1) En hızlı UI kontrol (1 dk)
+	1.	Prod URL’de olduğundan emin ol (Publish domain: https://dospressoHQ.replit.app gibi).
+	2.	iPad Safari’de:
+	•	Private tab aç → admin login dene
+	•	Olmazsa: Site verisini temizle (Safari Ayarları → Gelişmiş → Web Sitesi Verileri → ilgili siteyi sil)
+
+Ama diğer roller giriyorsa, bu adım genelde çözmez; asıl tanı DB’de.
+
+⸻
+
+2) Prod DB’de admin gerçekten ne durumda? (DB Console’da çalıştır)
+
+Replit’te Database → Console (prod DB) aç ve şunu çalıştır:
+
+SELECT id, username, role, is_active, is_blocked, employee_type_id, updated_at
+FROM users
+WHERE username='admin'
+LIMIT 5;
+
+Beklenen: 1 satır, role=admin, is_active=true, is_blocked=false.
+	•	Satır yoksa → admin prod’da yok / username farklı.
+	•	is_active false / is_blocked true → bu yüzden giremiyor.
+	•	role admin değilse → yetki düşmüş.
+	•	Birden fazla satır varsa → login yanlış kayda gidiyor.
+
+⸻
+
+3) Admin şifresini prod’da güvenli şekilde resetle (en pratik yöntem)
+
+3A) Yeni bir şifre belirle (örnek: TempAdmin#9274)
+
+Sonra Replit Shell/Console’da (proje içinde) şunu çalıştır:
+
+node -e "const bcrypt=require('bcryptjs'); console.log(bcrypt.hashSync('TempAdmin#9274', 10));"
+
+Çıkan hash’i kopyala.
+
+3B) Prod DB Console’da admin’i güncelle
+
+UPDATE users
+SET password_hash = '<BURAYA_HASH>',
+    is_active = true,
+    is_blocked = false,
+    role = 'admin',
+    updated_at = NOW()
+WHERE username='admin';
+
+Eğer username alanı farklıysa (mesela email ile login): 2. adımda gördüğün gerçek kolonla WHERE’i düzelt.
+
+⸻
+
+4) Admin kaydı hiç yoksa: prod’a yeni admin oluştur
+
+Önce hash üret (3A), sonra:
+
+INSERT INTO users (username, password_hash, role, is_active, is_blocked, created_at, updated_at)
+VALUES ('admin', '<BURAYA_HASH>', 'admin', true, false, NOW(), NOW());
+
+Tabloda ek zorunlu alanlar varsa (email vb.), DB hata mesajı hangi kolonları istiyorsa onları da ekle.
+
+⸻
+
+5) Hâlâ girmiyorsa: login endpoint prod’da HTML dönüyor olabilir
+
+Senin geçmiş loglarda “login HTML dönüyor (SPA catchall)” gibi bir durum vardı. Bu şu demek olabilir:
+	•	Frontend yanlış endpoint’e istek atıyor
+	•	Prod’da route mount farklı
+
+Bunu netleştirmek için:
+	1.	Login ekranında DevTools/Network (mümkünse desktop) ile login request’ine bak:
+	•	Status 200 ama HTML → yanlış endpoint
+	•	Status 401/403 → kullanıcı/şifre/aktiflik
+	2.	Replit’te server logs’da login request path’i gör.
+
+⸻
+
+Şu an “neyi yapıştıracağım?”
+
+DB Console’a şu iki şeyi sırayla yapıştır:
+	1.	Admin var mı?
+
+SELECT id, username, role, is_active, is_blocked, employee_type_id, updated_at
+FROM users
+WHERE username='admin'
+LIMIT 5;
+
+	2.	(Gerekiyorsa) reset/update SQL’i (3B’deki).
+
+⸻
+
+İstersen hemen ilerleyelim: 2. adımın SELECT çıktısını (satır sayısı + role/active/blocked değerleri) buraya yaz; ona göre sana tek satırlık doğru UPDATE/INSERT komutunu söyleyeyim.

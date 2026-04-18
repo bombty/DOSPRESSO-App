@@ -28,9 +28,6 @@ server/data/*recalc*.json
 server/data/*-report-*.json
 server/data/report-*.json
 
-# Attached assets (Replit paste content — not code)
-attached_assets/*
-!attached_assets/.gitkeep
 
 # Environment
 .env

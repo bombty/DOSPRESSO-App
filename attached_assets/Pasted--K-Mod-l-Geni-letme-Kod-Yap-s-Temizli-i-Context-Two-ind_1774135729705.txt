@@ -1,0 +1,372 @@
+## İK Modülü Genişletme + Kod Yapısı Temizliği
+
+### Context
+Two independent but bundleable tasks:
+1. İK (HR) module: add özlük dosyası, tutanak sistemi, granüler yetki
+2. Code structure: split misc.ts (13K lines) + schema.ts (15K lines) + TypeScript :any cleanup
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts
+- Do NOT break existing imports — when splitting files, re-export from original
+- Do NOT change any business logic
+- users.id is VARCHAR, Turkish UI
+
+---
+
+## ═══ SECTION A: İK MODULE ENHANCEMENT ═══
+
+## STEP 0: INVESTIGATE CURRENT İK SYSTEM
+
+```bash
+echo "═══ İK INVESTIGATION ═══"
+
+# Existing İK routes
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/hr.ts | head -30
+wc -l server/routes/hr.ts
+
+# İK frontend pages
+find client/src/pages -name "*ik*" -o -name "*hr*" -o -name "*personel*" | sort
+
+# Employee data structure
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='users' ORDER BY ordinal_position;" | psql | head -40
+
+# Existing document/file tables
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%document%' OR table_name LIKE '%dosya%' OR table_name LIKE '%file%' OR table_name LIKE '%tutanak%';" | psql
+
+# Leave system
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='employee_leaves';" | psql
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='leave_requests';" | psql
+
+# Disciplinary records
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%disciplin%' OR table_name LIKE '%tutanak%' OR table_name LIKE '%warning%';" | psql
+
+# Performance records
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%performance%' OR table_name LIKE '%degerlendirme%';" | psql
+```
+
+---
+
+## PART A1: ÖZLÜK DOSYASI (Personnel File)
+
+Each employee should have a digital personnel file with sections:
+
+### Database — if not already exists:
+```sql
+CREATE TABLE IF NOT EXISTS employee_documents (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  document_type VARCHAR(50) NOT NULL, 
+  -- Types: 'kimlik', 'adli_sicil', 'ikametgah', 'diploma', 'saglik_raporu', 
+  -- 'is_sozlesmesi', 'sgk_bildirge', 'maas_bordrosu', 'izin_formu',
+  -- 'tutanak', 'performans', 'egitim_sertifika', 'diger'
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  file_url TEXT,              -- uploaded file URL (Replit Object Storage)
+  file_type VARCHAR(20),      -- pdf, jpg, png, docx
+  file_size INTEGER,          -- bytes
+  uploaded_by VARCHAR(36) REFERENCES users(id),
+  is_required BOOLEAN DEFAULT false,
+  expiry_date DATE,           -- for documents that expire (health report, etc.)
+  status VARCHAR(20) DEFAULT 'active', -- active, archived, expired
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_employee_docs_user ON employee_documents(user_id, document_type);
+```
+
+### API endpoints:
+```typescript
+// GET /api/hr/employees/:userId/documents — list all documents
+// POST /api/hr/employees/:userId/documents — upload document
+// DELETE /api/hr/employees/:userId/documents/:docId — remove document
+// GET /api/hr/documents/missing — list employees with missing required docs
+// GET /api/hr/documents/expiring — list documents expiring within 30 days
+```
+
+### Frontend — Özlük dosyası tab on employee detail page:
+- Sections: Kimlik, İş Sözleşmesi, SGK, Sağlık, Eğitim, Diğer
+- Each section: list of uploaded docs + "Ekle" button
+- Missing required docs shown in red
+- Expiring docs shown in amber with date
+
+---
+
+## PART A2: TUTANAK SİSTEMİ (Disciplinary Records)
+
+### Database:
+```sql
+CREATE TABLE IF NOT EXISTS disciplinary_records (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  record_type VARCHAR(30) NOT NULL,
+  -- Types: 'sozlu_uyari', 'yazili_uyari', 'ihtar', 'savunma_talebi', 
+  -- 'kinama', 'ucret_kesintisi', 'fesih', 'odullendirme', 'tesekkur'
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  incident_date DATE NOT NULL,
+  witnesses TEXT,              -- comma-separated names or user IDs
+  evidence_urls TEXT,          -- comma-separated file URLs
+  response TEXT,               -- employee's written response
+  response_date DATE,
+  action_taken TEXT,
+  created_by VARCHAR(36) NOT NULL REFERENCES users(id),
+  approved_by VARCHAR(36) REFERENCES users(id),
+  status VARCHAR(20) DEFAULT 'active', -- draft, active, responded, closed
+  severity VARCHAR(20) DEFAULT 'medium', -- low, medium, high, critical
+  affects_score BOOLEAN DEFAULT true,
+  score_impact INTEGER DEFAULT 0,  -- negative for warnings, positive for rewards
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_disciplinary_user ON disciplinary_records(user_id, status);
+```
+
+### API:
+```typescript
+// GET /api/hr/disciplinary — list all records (filtered by branch for supervisors)
+// GET /api/hr/disciplinary/:userId — records for specific employee
+// POST /api/hr/disciplinary — create new record (supervisor+)
+// PATCH /api/hr/disciplinary/:id — update (add response, close, etc.)
+// POST /api/hr/disciplinary/:id/respond — employee submits written response
+```
+
+### Frontend — Tutanak page:
+- List view: date, employee, type, severity, status
+- Create form: select employee → select type → description → witnesses → attach evidence
+- Detail view: full record + employee response + action taken
+- Integration: disciplinary records appear on employee profile
+
+---
+
+## PART A3: İK DASHBOARD ENHANCEMENTS
+
+Add to existing İK page:
+- **Özlük tamamlama oranı:** % of employees with all required docs
+- **Yaklaşan son kullanma:** Documents expiring within 30 days
+- **Aktif tutanaklar:** Open disciplinary records count
+- **İzin özeti:** This month's leave usage vs. allowance
+
+---
+
+## ═══ SECTION B: CODE STRUCTURE CLEANUP ═══
+
+## PART B1: SPLIT misc.ts (13K+ lines)
+
+```bash
+echo "═══ misc.ts ANALYSIS ═══"
+wc -l server/routes/misc.ts
+
+# Find logical sections
+echo "--- Route groups in misc.ts ---"
+grep -n "// ===\|// ---\|// ###\|router\.\(get\|post\|patch\|delete\).*\"/api/" server/routes/misc.ts | head -50
+
+# Count routes per section
+echo "--- Route count ---"
+grep -c "router\.\(get\|post\|patch\|delete\)" server/routes/misc.ts
+```
+
+### Split strategy — create focused route files:
+
+Based on what's in misc.ts, split into:
+
+```
+server/routes/
+  misc.ts                    → KEEP (reduced to truly miscellaneous, <500 lines)
+  dashboard-stats.ts         → Dashboard data endpoints
+  notifications.ts           → Notification CRUD
+  messaging.ts               → Internal messaging
+  reports.ts                 → Report generation
+  admin-settings.ts          → System config, module flags
+  user-profile.ts            → Profile, preferences
+  file-uploads.ts            → File upload/download
+```
+
+### CRITICAL — backward compatibility:
+```typescript
+// In the NEW file (e.g., dashboard-stats.ts):
+export const dashboardStatsRouter = express.Router();
+dashboardStatsRouter.get("/api/dashboard/stats", ...);
+
+// In misc.ts — REMOVE the endpoint (it's now in dashboard-stats.ts)
+
+// In server/index.ts — ADD the new router:
+import { dashboardStatsRouter } from './routes/dashboard-stats';
+app.use(dashboardStatsRouter);
+```
+
+### Do this incrementally:
+1. Pick the largest logical group (dashboard stats? notifications?)
+2. Extract to new file
+3. Verify app works
+4. Pick next group
+5. Repeat until misc.ts < 500 lines
+
+---
+
+## PART B2: SPLIT schema.ts (15K+ lines)
+
+```bash
+echo "═══ schema.ts ANALYSIS ═══"
+wc -l shared/schema.ts
+
+# Find table definitions
+echo "--- Table count ---"
+grep -c "pgTable\b" shared/schema.ts
+
+# Find logical groups
+grep -n "// ===\|// ---\|export const.*pgTable" shared/schema.ts | head -40
+```
+
+### Split strategy:
+
+```
+shared/
+  schema.ts              → KEEP as barrel file (re-exports everything)
+  schema/
+    users.ts             → users, roles, role_templates, sessions
+    branches.ts          → branches, branch_health, branch_settings
+    factory.ts           → factory_*, production_*, qc_*
+    shifts.ts            → shifts, shift_schedules, shift_templates
+    pdks.ts              → pdks_records, attendance
+    payroll.ts           → payroll_*, salary_scales
+    tasks.ts             → tasks, assignments, checklists
+    training.ts          → training_modules, certificates, quizzes
+    messaging.ts         → messages, notifications, announcements
+    crm.ts               → customers, orders, feedback
+    agent.ts             → agent_*, mr_dobody, skills
+    settings.ts          → module_flags, ai_system_config, sla_rules
+    hr.ts                → employee_*, leave_*, disciplinary_*
+  schema-types.ts        → Shared types, enums, constants
+```
+
+### CRITICAL — barrel re-export:
+```typescript
+// shared/schema.ts becomes:
+export * from './schema/users';
+export * from './schema/branches';
+export * from './schema/factory';
+// ... etc
+
+// This way, ALL existing imports like:
+// import { users, branches } from '@shared/schema';
+// STILL WORK without any changes!
+```
+
+### Do this incrementally:
+1. Create `shared/schema/` directory
+2. Move ONE group at a time (e.g., factory tables first)
+3. Add re-export to schema.ts
+4. Verify TypeScript compiles
+5. Repeat
+
+---
+
+## PART B3: TypeScript :any CLEANUP (first 100)
+
+```bash
+echo "═══ TypeScript :any AUDIT ═══"
+
+# Count :any usage
+echo "--- Total :any count ---"
+grep -rn ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+
+# Top files
+echo "--- Top 15 files with :any ---"
+grep -rl ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | while read f; do
+  count=$(grep -c ": any\|:any\|as any" "$f")
+  echo "$count $f"
+done | sort -rn | head -15
+
+# Most common patterns
+echo "--- Common :any patterns ---"
+grep -rn "as any" server/ --include="*.ts" | grep -v node_modules | head -10
+grep -rn "(req.user as any)" server/ --include="*.ts" | wc -l
+grep -rn "catch.*any\|error.*any" server/ --include="*.ts" | wc -l
+```
+
+### Priority fixes:
+
+**Pattern 1: `req.user as any` → proper type**
+```typescript
+// BEFORE:
+const user = req.user as any;
+// AFTER:
+interface AuthUser {
+  id: string;
+  username: string;
+  role: string;
+  branchId: number;
+  firstName: string;
+  lastName: string;
+  // ... add fields as needed
+}
+const user = req.user as AuthUser;
+```
+
+Create `server/types/auth.ts` with AuthUser interface.
+Then replace all `req.user as any` with `req.user as AuthUser`.
+
+**Pattern 2: `catch (error: any)` → `catch (error: unknown)`**
+```typescript
+// BEFORE:
+catch (error: any) { console.error(error.message); }
+// AFTER:
+catch (error: unknown) { 
+  console.error(error instanceof Error ? error.message : 'Unknown error'); 
+}
+```
+
+**Pattern 3: Query results `as any`**
+```typescript
+// BEFORE:
+const result = await db.select()... as any;
+// AFTER:
+const result = await db.select()...;
+// Drizzle already infers types — remove unnecessary `as any`
+```
+
+### Target: Fix 100 most impactful :any occurrences
+Focus on:
+1. All `req.user as any` (create AuthUser type)
+2. All `catch (error: any)` → `catch (error: unknown)`
+3. Remove `as any` from Drizzle query results where types are already inferred
+4. Skip: complex generic situations where :any is genuinely needed
+
+---
+
+## DO NOT TOUCH:
+- localAuth.ts, vite.ts, vite.config.ts, package.json
+- Scoring services
+- Kiosk pages
+- Mission Control components
+
+## Testing:
+### Section A (İK):
+1. employee_documents table created
+2. disciplinary_records table created
+3. Upload document for employee → file saved, record created
+4. Create tutanak → record saved with severity + witnesses
+5. İK dashboard shows completion rates
+6. Employee profile shows documents + disciplinary tab
+
+### Section B (Code cleanup):
+7. misc.ts reduced to < 500 lines
+8. All extracted routes work (same URLs, same responses)
+9. schema.ts barrel file works (all imports still resolve)
+10. TypeScript :any reduced by 100+ occurrences
+11. `req.user as AuthUser` pattern works everywhere
+12. App starts without TypeScript errors
+13. No broken imports anywhere
+
+## After:
+1. Report: misc.ts — before/after line count, files extracted
+2. Report: schema.ts — before/after line count, schema files created
+3. Report: :any — before count vs after count
+4. Report: İK — tables created, endpoints added
+5. Report: which routes were extracted from misc.ts (list)

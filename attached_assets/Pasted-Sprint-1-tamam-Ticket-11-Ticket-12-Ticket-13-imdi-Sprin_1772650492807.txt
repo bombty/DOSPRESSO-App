@@ -1,0 +1,122 @@
+Sprint 1 tamam! Ticket 11 ✅ Ticket 12 ✅ Ticket 13 ✅
+
+Şimdi **Sprint 1.5** — pilot'ta en büyük farkı yaratacak quick wins. İki ticket'a bölüyorum:
+
+**Ticket 14A:** Bildirim Sistemi Acil Düzeltmeler
+**Ticket 14B:** Görev Sistemi Frontend Bağlantıları
+
+Önce en acil olanı:
+
+---
+
+```
+TICKET 14A: Notification System Critical Fixes — Stop Spam + UX Relief
+Priority: HIGH (BLOCKER for pilot)
+Estimated effort: 3-4 hours (5 tasks, mostly independent)
+
+Do NOT use subagents or delegation for this ticket. Execute all tasks sequentially.
+
+CONTEXT: The notification system is generating ~15,866 notifications per week (~2,266/day for 174 users = ~13 notifications per person per day). Barista Cihan has 200 notifications, 185 of which are task notifications 80-106 days overdue. Dedup was added but notifications are still overwhelming. This ticket applies 3 fixes that together should reduce notification volume by ~70-80%.
+
+TASK 1 — Auto-Archive Notifications Older Than 30 Days
+Files: server/reminders.ts (or wherever background jobs are defined), and the notifications table/queries
+
+(a) Create a new background job (or add to existing daily job) that runs once daily at 02:00 Europe/Istanbul:
+```sql
+UPDATE notifications 
+SET is_archived = true 
+WHERE created_at < NOW() - INTERVAL '30 days' 
+AND is_archived = false;
+```
+If there's no `is_archived` column, add one:
+```sql
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false;
+```
+
+(b) Update ALL notification list queries to exclude archived notifications:
+```sql
+WHERE is_archived = false (or is_archived IS NOT TRUE)
+```
+
+(c) Run the archive query once immediately on deployment to clean existing old notifications.
+
+(d) Log how many notifications were archived: "Archived X notifications older than 30 days"
+
+TASK 2 — Add "Tümünü Okundu İşaretle" (Mark All Read) Button
+Files: The notification list page component (likely in bildirimler.tsx or notifications page)
+
+(a) Add a button at the top of the notification list: "Tümünü Okundu İşaretle"
+(b) On click, call API: PUT /api/notifications/mark-all-read (or similar existing endpoint)
+(c) If no such endpoint exists, create one:
+```sql
+UPDATE notifications SET is_read = true 
+WHERE user_id = :userId AND is_read = false AND is_archived = false;
+```
+(d) After marking, refresh the notification list and update badge count to 0
+(e) Add confirmation: show toast "Tüm bildirimler okundu olarak işaretlendi"
+(f) Button style: secondary/outline, not primary — positioned top-right of notification list
+
+TASK 3 — Notification Grouping for Repeated Task Reminders
+Files: The background job that generates task reminder notifications (likely in reminders.ts or a cron job file)
+
+Currently, each overdue task generates a separate notification every time the reminder job runs. Fix:
+
+(a) Before creating a new notification, check if an UNREAD notification of the same type for the same entity already exists:
+```sql
+SELECT id FROM notifications 
+WHERE user_id = :userId 
+AND type = :type 
+AND reference_id = :referenceId 
+AND is_read = false 
+AND is_archived = false
+AND created_at > NOW() - INTERVAL '24 hours';
+```
+(b) If exists, UPDATE the existing notification's timestamp and increment a `reminder_count` field (add column if needed) instead of creating a new one
+(c) Display grouped notification text: "Göreviniz bekliyor (3. hatırlatma)" instead of 3 separate "Göreviniz bekliyor" notifications
+(d) Apply this to ALL recurring notification types: task reminders, checklist reminders, shift reminders
+
+TASK 4 — Throttle Notification Generation Per User
+Files: The notification creation function (wherever INSERT INTO notifications happens)
+
+Add a global throttle: maximum 20 notifications per user per day. After 20:
+
+(a) Check count before creating:
+```sql
+SELECT COUNT(*) FROM notifications 
+WHERE user_id = :userId 
+AND created_at > NOW() - INTERVAL '24 hours'
+AND is_archived = false;
+```
+(b) If count >= 20, skip creation and log: "Throttled notification for user {userId}: daily limit reached"
+(c) Exception: notifications with priority = 'critical' or 'urgent' should bypass throttle
+(d) This is a safety net — Tasks 1 and 3 should reduce volume enough, but this prevents any future spam
+
+TASK 5 — Verify Notification Count Reduction
+(a) Count current total notifications: SELECT COUNT(*) FROM notifications;
+(b) Run the 30-day archive job manually
+(c) Count again after archive: SELECT COUNT(*) FROM notifications WHERE is_archived = false;
+(d) Report the reduction: "Before: X, After: Y, Archived: Z (reduction: N%)"
+(e) Check barista Cihan's notifications specifically: how many remain after archive?
+(f) Verify the "Tümünü Okundu İşaretle" button works in the UI
+
+DO NOT BREAK:
+- Notification dedup system (DB-based, already working)
+- Notification filter chips (Görevler/Arızalar/Checklistler/Duyurular/İK/Stok)
+- Badge count on bottom nav notification icon
+- Push notification preparation (don't block future push implementation)
+- Background job scheduling (12 jobs running in same process)
+- Critical notifications (SLA breach, PIN lockout, etc.) must always get through
+
+ACCEPTANCE CRITERIA:
+- Notifications older than 30 days are archived and not shown in list
+- "Tümünü Okundu İşaretle" button exists and works
+- Repeated task reminders show as single grouped notification, not duplicates
+- Max 20 non-critical notifications per user per day
+- Barista Cihan's notification count drops from 200 to reasonable number (<30)
+- Zero console errors
+- Notification page loads faster (fewer items to render)
+```
+
+---
+
+Bunu Replit'e gönder. Bitince cevabını getir, sonra **Ticket 14B** (görev butonları: Ek Süre İste, Onaya Gönder, Soru Sor + Atadıklarım dashboard) hazırlarım.

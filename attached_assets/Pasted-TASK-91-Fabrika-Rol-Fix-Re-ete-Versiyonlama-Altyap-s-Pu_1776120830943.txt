@@ -1,0 +1,62 @@
+TASK #91: Fabrika Rol Fix + Reçete Versiyonlama Altyapısı — Pull + Build + Migration + Test
+Step 1: Pull + Build
+
+git pull origin main
+npm run build
+
+
+Step 2: DB Migration
+
+npx drizzle-kit push
+
+
+Verify:
+
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_production_logs' AND column_name IN ('recipe_version_id','recipe_version_number') ORDER BY column_name;" | psql $DATABASE_URL
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_recipe_versions' AND column_name = 'cost_snapshot';" | psql $DATABASE_URL
+
+
+Expected: 3 new columns.
+Step 3: Server + ROLE_MAPPING Test
+
+npm run dev
+
+
+COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"adminhq","password":"TestPass123!"}' | grep connect.sid | awk '{print $NF}')
+
+# Recipe list (should work)
+curl -s -b "connect.sid=$COOKIE" "http://localhost:5000/api/factory/recipes" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Recipes: {len(d)} items')"
+
+# Production planning (should work)
+curl -s -b "connect.sid=$COOKIE" "http://localhost:5000/api/production-planning/plans" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Plans: {len(d)} items')"
+
+
+Step 4: Role verification
+
+# Check ROLE_MAPPING has new roles
+grep -A3 "fabrika_operator" client/src/components/protected-route.tsx
+# Expected: sef, recete_gm, uretim_sefi lines after fabrika_operator
+
+# Check gida_muhendisi permissions cleaned
+grep -A3 "branch_orders" shared/schema/schema-02.ts | grep "gida_muhendisi" -B5 | head -5
+
+
+Step 5: Login test as RGM (if user exists)
+
+# Try RGM user login
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"RGM","password":"TestPass123!"}' | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('role','NO LOGIN'), d.get('error',''))"
+
+
+If RGM user exists, verify they can access /fabrika/receteler (FabrikaOnly page should now work).
+DO NOT BREAK: Factory kiosk, recipe editing, production logs, QC flow, existing permissions.
+Report:
+
+PULL+BUILD: ✅/❌
+MIGRATION: ✅/❌ (3 new columns)
+RECIPE API: ✅/❌
+ROLE_MAPPING: ✅/❌ (sef, recete_gm, uretim_sefi in fabrika group)
+PERMISSION CLEANUP: ✅/❌ (gida_muhendisi branch_orders=[])
+RGM LOGIN: ✅/❌/SKIPPED
+
+
+Bu talimatı Replit’e gönder. Sonuçta 6 soruya cevap verirsen bir sonraki oturumda MRP-Light veya otomatik versiyonlamaya başlarız.​​​​​​​​​​​​​​​​

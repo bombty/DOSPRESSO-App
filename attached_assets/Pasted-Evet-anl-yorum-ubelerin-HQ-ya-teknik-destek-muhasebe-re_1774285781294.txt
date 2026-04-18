@@ -1,0 +1,56 @@
+Evet, anlıyorum — şubelerin HQ'ya teknik destek, muhasebe, reçete gibi konularda talep/ticket açtığı iç mesajlaşma sistemi. İletişim Merkezi / HQ Destek modülü.
+
+Problem büyük ihtimalle şu: menü konsolidasyonunda "İletişim Merkezi" kaldırılıp "Destek Merkezi" Yönetim bölümüne taşındı — ama Yönetim sadece admin/ceo/cgo görüyor. Yani şube çalışanları (supervisor, barista vb.) artık talep oluşturma ekranına menüden erişemiyor olabilir.
+
+Replit'e şunu yapıştır:
+
+```
+ACİL — değişiklik yapma, sadece araştır:
+
+Şubelerden HQ'ya talep/ticket gönderme sistemi kontrolü.
+
+1. Şube rolleri talep menüsü görüyor mu?
+for ROLE in supervisor mudur barista stajyer; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+  if [ -n "$USER" ]; then
+    curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" -c /tmp/t_${ROLE}.txt > /dev/null 2>&1
+    echo "=== $ROLE menüsü (tüm öğeler) ==="
+    curl -s http://localhost:5000/api/me/menu -b /tmp/t_${ROLE}.txt | node -e "
+      const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      let found=false;
+      d.forEach(s=>{
+        if(s.items) s.items.forEach(i=>{
+          console.log('  ['+s.label+'] '+i.label+' → '+i.path);
+          if(i.path && (i.path.includes('destek') || i.path.includes('support') || i.path.includes('iletisim') || i.path.includes('talep') || i.path.includes('ticket') || i.path.includes('crm'))) found=true;
+        });
+      });
+      if(!found) console.log('  ❌ TALEP/DESTEK/CRM MENÜ ÖĞESİ YOK — ŞUBECİ TALEP OLUŞTURAMAZ!');
+    "
+    echo ""
+  fi
+done
+
+2. SIDEBAR_ALLOWED_ITEMS — şube rolleri neye erişebilir?
+echo "=== Destek/talep SIDEBAR tanımları ==="
+grep -B2 -A15 "supervisor:" server/menu-service.ts | head -20
+echo "---"
+grep -B2 -A15 "barista:" server/menu-service.ts | head -20
+
+3. HQ Destek / İletişim Merkezi / Destek Merkezi menüde nerede?
+echo "=== Destek menü öğesi hangi bölümde? ==="
+grep -n "hq-destek\|destek-merkezi\|support-center\|iletisim-merkezi\|hq-support" server/menu-service.ts | head -15
+
+4. Bu sayfanın route'u ve dosyası var mı?
+echo "=== Route ==="
+grep -n "hq-destek\|hq-support\|destek\|support\|iletisim" client/src/App.tsx | head -10
+echo "=== Sayfa dosyaları ==="
+find client/src/pages -name "*destek*" -o -name "*support*" -o -name "*iletisim*" | sort
+
+5. Şubecilerin talep oluşturma endpoint'i var mı?
+echo "=== Ticket/talep oluşturma endpoint ==="
+grep -n "router.post.*ticket\|router.post.*talep\|router.post.*support\|router.post.*request" server/routes/crm*.ts server/routes/operations*.ts server/routes/misc.ts 2>/dev/null | head -10
+
+Sadece rapor ver, değişiklik yapma.
+```
+
+Sonucu paylaş — eğer şube rollerinde talep erişimi yoksa hemen düzelteceğiz.

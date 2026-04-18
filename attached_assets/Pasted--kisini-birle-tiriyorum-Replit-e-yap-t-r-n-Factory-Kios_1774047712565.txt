@@ -1,0 +1,373 @@
+İkisini birleştiriyorum. Replit'e yapıştırın:
+
+---
+
+```
+## Factory Kiosk — Combined Fixes (Timer + Auto-Checkout + Shift Logic + Production Entry)
+
+### Context
+Factory kiosk redesign is working. 6 fixes needed in one sprint:
+1. Inactivity timeout 5s → 30s
+2. Shift starts on PIN entry (not station selection) — verify
+3. Auto-checkout at 20:30 for forgotten logouts
+4. Forgotten checkout = normal hours (not overtime), but -5 score penalty
+5. Shift tracking independent from station/production
+6. Production entry: remove empty product dropdown, auto-fill from station
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json
+- Do NOT touch sube/kiosk.tsx (branch kiosk)
+- Do NOT touch employee-summary-service.ts
+- Do NOT rename any database columns
+- MINIMAL changes — do NOT rewrite working code
+- Turkish UI, users.id is VARCHAR
+
+---
+
+## FIX 1: Inactivity Timer 5s → 30s
+
+```bash
+grep -n "INACTIVITY\|inactivity\|5000\|AUTO_RETURN" client/src/pages/fabrika/kiosk.tsx | head -10
+```
+
+Change:
+```typescript
+// BEFORE:
+const INACTIVITY_MS = 5000;
+
+// AFTER:
+const INACTIVITY_MS = 30000; // 30 seconds
+```
+
+One number change only.
+
+---
+
+## FIX 2: Verify Shift Starts on PIN Entry
+
+```bash
+grep -B5 -A30 "handlePinSubmit\|pinSubmit\|autoStartShift" client/src/pages/fabrika/kiosk.tsx | head -50
+grep -B3 -A20 "start-shift" server/routes/factory.ts | head -30
+```
+
+Verify these 3 things are TRUE:
+1. After PIN login → start-shift is called automatically (no station required)
+2. start-shift creates factory_shift_sessions record with station_id = NULL
+3. PDKS clock-in record is created at login time
+
+Business rule: **Shift = attendance (when did they arrive/leave). Station = production (what did they produce). INDEPENDENT.**
+
+If already working, confirm and move on. If not, fix.
+
+---
+
+## FIX 3: Auto-Checkout at 20:30 for Forgotten Logouts
+
+```bash
+grep -n "shift.*cleanup\|stale.*shift\|auto.*close\|cleanupStale\|forceClose" server/index.ts server/scheduler-manager.ts | head -10
+grep -n "shift.*cleanup\|12.*hour\|stale" server/index.ts | head -5
+```
+
+Add a daily 20:30 auto-close job. Add it near the existing stale shift cleanup:
+
+```typescript
+// Schedule daily factory auto-checkout at 20:30 Istanbul time
+function scheduleFactoryAutoCheckout() {
+  const checkAndSchedule = () => {
+    const now = new Date();
+    const istanbul = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+    
+    const target = new Date(istanbul);
+    target.setHours(20, 30, 0, 0);
+    if (istanbul >= target) {
+      target.setDate(target.getDate() + 1);
+    }
+    
+    const msUntil = target.getTime() - istanbul.getTime();
+    
+    setTimeout(async () => {
+      await forceCloseAllFactoryShifts();
+      checkAndSchedule(); // Reschedule for next day
+    }, msUntil);
+    
+    console.log(`[Factory] Auto-checkout scheduled for 20:30 (in ${Math.round(msUntil / 60000)} min)`);
+  };
+  
+  checkAndSchedule();
+}
+
+async function forceCloseAllFactoryShifts() {
+  try {
+    const activeShifts = await db.select()
+      .from(factoryShiftSessions)
+      .where(eq(factoryShiftSessions.status, 'active'));
+    
+    if (activeShifts.length === 0) return;
+    
+    const now = new Date();
+    
+    for (const shift of activeShifts) {
+      // Close the shift — mark as auto-closed
+      await db.update(factoryShiftSessions)
+        .set({
+          status: 'completed',
+          endedAt: now,
+          notes: '[Otomatik kapatıldı — 20:30 çıkış unutuldu]',
+        })
+        .where(eq(factoryShiftSessions.id, shift.id));
+      
+      // Create PDKS clock-out record
+      try {
+        await db.insert(pdksRecords).values({
+          userId: shift.userId,
+          recordType: 'cikis',
+          source: 'auto_checkout',
+          timestamp: now,
+          notes: 'Otomatik çıkış — 20:30 çıkış unutuldu',
+        });
+      } catch (e) {
+        console.error('[Factory] PDKS auto-checkout error:', e);
+      }
+      
+      // Close any open breaks for this worker
+      try {
+        await db.update(factoryBreakLogs)
+          .set({
+            endedAt: now,
+            durationMinutes: 15,
+            notes: '[Otomatik kapatıldı]',
+          })
+          .where(and(
+            eq(factoryBreakLogs.userId, shift.userId),
+            isNull(factoryBreakLogs.endedAt)
+          ));
+      } catch (e) {}
+      
+      // Remove kiosk session
+      try {
+        await db.delete(kioskSessions)
+          .where(eq(kioskSessions.userId, shift.userId));
+      } catch (e) {}
+    }
+    
+    console.log(`[Factory] Auto-checkout: ${activeShifts.length} shifts force-closed at 20:30`);
+    
+  } catch (error) {
+    console.error('[Factory] Auto-checkout failed:', error);
+  }
+}
+
+// Register on startup
+scheduleFactoryAutoCheckout();
+```
+
+Make sure to import required tables at the top of the file:
+```bash
+grep -n "import.*factoryShiftSessions\|import.*factoryBreakLogs\|import.*kioskSessions\|import.*pdksRecords" server/index.ts | head -5
+```
+
+If not imported, add them from shared/schema.
+
+---
+
+## FIX 4: Forgotten Checkout — Normal Hours + Score Penalty
+
+```bash
+# Find attendance calculation in factory scoring
+grep -n "attendance\|devam\|workMinutes\|shiftDuration\|actualWork" server/services/factory-scoring-service.ts | head -20
+```
+
+In the attendance score calculation, detect auto-closed shifts:
+
+```typescript
+// When calculating attendance score for a shift:
+const isAutoClosed = shift.notes?.includes('[Otomatik kapatıldı');
+
+if (isAutoClosed) {
+  // Use STANDARD shift hours (8.5h = 510min) — worker was NOT here until 20:30
+  // They forgot to log out — count as normal workday
+  actualWorkMinutes += 510; // 8.5 hours standard
+  
+  // But penalize for improper checkout
+  attendancePenalty += 5; // -5 points per forgotten checkout
+} else {
+  // Normal shift — use actual duration
+  const durationMin = Math.round((new Date(shift.endedAt).getTime() - new Date(shift.startedAt).getTime()) / 60000);
+  actualWorkMinutes += durationMin;
+}
+```
+
+Apply penalty to final score:
+```typescript
+let attendanceScore = Math.min(100, (actualWorkMinutes / expectedMinutes) * 100);
+attendanceScore = Math.max(0, attendanceScore - attendancePenalty);
+```
+
+IMPORTANT: Only modify the attendance calculation logic. Do NOT change production_score, quality_score, break_score, or waste_score formulas.
+
+---
+
+## FIX 5: Verify Shift ≠ Station Independence
+
+```bash
+echo "SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name='factory_shift_sessions' AND column_name='station_id';" | psql
+grep -A20 "start-shift" server/routes/factory.ts | grep "stationId\|station" | head -5
+```
+
+Confirm:
+1. factory_shift_sessions.station_id allows NULL ✓
+2. start-shift endpoint works without stationId ✓
+3. Worker can be on worker-home without a station ✓
+4. Production scoring only counts when station assigned ✓
+
+If all true, just confirm. If any broken, fix.
+
+---
+
+## FIX 6: Production Entry — Remove Empty Product Dropdown
+
+```bash
+# How does current production entry look?
+grep -B5 -A50 "production-entry\|log-production\|Ürün Seçimi\|productId\|selectedProduct" client/src/pages/fabrika/kiosk.tsx | head -70
+
+# Station → product mapping?
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_stations' AND column_name LIKE '%product%';" | psql
+echo "SELECT id, name, code FROM factory_stations WHERE is_active=true LIMIT 10;" | psql
+
+# Products query — why is dropdown empty?
+grep -B10 "factory/products\|productsQuery\|products.*enabled" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# What does log-production endpoint expect?
+grep -B5 -A25 "log-production" server/routes/factory.ts | head -35
+```
+
+### Two scenarios:
+
+**Scenario A: Station has product_id column**
+→ Auto-fill productId from currentStation.productId
+→ Remove dropdown, show product name as read-only text
+
+**Scenario B: Station has NO product_id (more likely)**
+→ Add product selection to the station selection step (select-station), NOT production entry
+→ When worker picks a station, they also pick what they'll produce
+→ Store as state: setSelectedProduct(product)
+→ At production entry, product is pre-filled from state
+
+### Fix the production entry UI:
+
+Replace the "Ürün Seçimi" dropdown section with:
+
+```typescript
+{/* Station & Product info — read only */}
+<div className="bg-muted rounded-lg p-3 mb-4 text-sm text-left">
+  {currentStation && (
+    <p><span className="text-muted-foreground">İstasyon:</span> <span className="font-medium">{currentStation.name}</span></p>
+  )}
+  {selectedProduct && (
+    <p><span className="text-muted-foreground">Ürün:</span> <span className="font-medium">{selectedProduct.name}</span></p>
+  )}
+</div>
+```
+
+### If dropdown must stay (no station-product link):
+At minimum, fix the empty dropdown bug:
+
+```bash
+# Check if products query runs
+grep -n "enabled.*product\|products.*enabled" client/src/pages/fabrika/kiosk.tsx | head -5
+```
+
+The products query likely has `enabled: step === 'some-old-step-name'` that doesn't match the current step name. Fix the enabled condition:
+
+```typescript
+// BEFORE (broken):
+enabled: step === 'production-entry',
+
+// AFTER (works for both steps):
+enabled: step === 'production-entry' || step === 'log-production',
+```
+
+### Fix handleSaveProduction:
+```typescript
+async function handleSaveProduction() {
+  // Priority: selectedProduct → currentStation.productId → first product
+  const productId = selectedProduct?.id 
+    || currentStation?.productId 
+    || currentStation?.defaultProductId
+    || products?.[0]?.id;
+  
+  if (!productId && !selectedProduct) {
+    // If truly no product available, show error
+    console.error('[Kiosk] No product ID for production entry');
+    return;
+  }
+  
+  // Continue with existing save logic using productId
+  // ...
+}
+```
+
+### Simplify production entry — larger inputs for tablet:
+
+```typescript
+{/* Quantity — large touch-friendly input */}
+<div className="mb-4">
+  <label className="text-sm text-muted-foreground block mb-1">Üretim Miktarı (Adet)</label>
+  <input type="number" inputMode="numeric"
+    className="w-full h-14 text-center text-2xl border rounded-lg bg-background"
+    value={productionQuantity || ''}
+    onChange={e => setProductionQuantity(Number(e.target.value))}
+    min="0" step="1" placeholder="0" />
+</div>
+
+{/* Waste — smaller but still touch-friendly */}
+<div className="mb-4">
+  <label className="text-sm text-muted-foreground block mb-1">Fire / Zaiyat (Adet)</label>
+  <input type="number" inputMode="numeric"
+    className="w-full h-12 text-center text-lg border rounded-lg bg-background"
+    value={wasteQuantity || ''}
+    onChange={e => setWasteQuantity(Number(e.target.value))}
+    min="0" step="1" placeholder="0" />
+</div>
+```
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- server/localAuth.ts
+- client/src/pages/sube/kiosk.tsx (branch kiosk)
+- server/services/employee-summary-service.ts
+- factory-scoring-service.ts production/quality/break/waste formulas (ONLY attendance)
+- Database column names
+
+## Testing:
+1. Inactivity: stay on worker-home 25s → nothing. Wait 30s → returns to select-user ✓
+2. PIN login → factory_shift_sessions has new record with status='active' ✓
+3. Worker on shift without station → worker-home shows "İstasyon Seç" button ✓
+4. Production entry: NO empty product dropdown. Shows station+product info as text ✓
+5. Enter quantity + waste → save → worker-home ✓
+6. Auto-checkout: console shows "[Factory] Auto-checkout scheduled for 20:30" on startup ✓
+7. Manual test: set a shift started_at to yesterday via SQL → trigger forceCloseAllFactoryShifts → shift closed ✓
+8. Closed shift has notes "[Otomatik kapatıldı — 20:30 çıkış unutuldu]" ✓
+9. PDKS record created with source='auto_checkout' ✓
+10. Scoring: auto-closed shift uses 510min (8.5h), not actual duration ✓
+11. Scoring: -5 penalty per auto-closed shift ✓
+12. Branch kiosk NOT broken ✓
+13. Factory scoring NOT broken (check /api/factory/analytics/workers) ✓
+
+## After:
+1. Report: inactivity timeout value changed to what
+2. Report: shift starts at which step (PIN or station)
+3. Report: auto-checkout scheduler registered (show log line)
+4. Report: scoring handles auto-closed shifts (show code location)
+5. Report: production entry — dropdown removed or fixed?
+6. Report: how station→product mapping works
+```
+
+---
+
+Direkt yapıştırın! 6 fix tek sprint'te.

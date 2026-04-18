@@ -1,0 +1,125 @@
+Evet — bunu admin tarafından yönetilebilir bir “AI Policy Console” (ayar sayfası) olarak yapmak en doğru yol. Çünkü Dobody (LLM) tarafında “prompt ile güvenlik” tek başına yeterli değil; DB-temelli, izlenebilir (audit), role+scope+redaction ile çalışan bir policy katmanı gerekiyor.
+
+Senin ekran görüntülerindeki sorular üzerinden doğru yaklaşım şöyle:
+
+1) Dobody neyi cevaplamalı / neyi saklamalı? (pratik kural seti)
+
+Her rolde GENEL KURAL
+	•	PII (telefon, email, maaş, kimlik) → HER ZAMAN DENY
+	•	“Kim en kötü personel?” gibi sorular → isim vermez, sadece agg/no_names (şube bazlı sayım, trend) veya “Personel Listesi sayfasına git” gibi yönlendirme.
+	•	“Satınalma fiyatları, batch maliyeti, tedarikçi sözleşmesi” → çoğu rolde DENY (bazı executive için numeric_only ile AGG olabilir).
+
+Coach (HQ Ops) için
+	•	Şube kıyasları, denetim sonuçları, checklist uyumu, eğitim ilerlemeleri → ALLOW/AGG(no_names)
+	•	Personel performansı → AGG(no_names / initials_only) (isim yok, en fazla “A.Y.”)
+	•	Tedarik/satınalma fiyatları, fabrika batch maliyetleri → DENY (veya çok üst yönetimse numeric_only)
+
+CGO / Executive için
+	•	Operasyon KPI, şube health, arıza yoğunluğu → ALLOW/AGG
+	•	Fabrika maliyetleri / satınalma fiyatları → AGG(numeric_only) (kalem bazlı değil; toplam/ortalamalar)
+	•	Tedarikçi sözleşme metinleri → DENY (en fazla “sözleşme sayısı / yenileme tarihi” gibi agg)
+
+Senin testlerinde Dobody’nin “erişim yetkin yok” diyerek reddetmesi doğru. Ama bunu koda gömülü tekil kurallar yerine admin’in değiştirebildiği policy tablosu ile yapmak doğru.
+
+⸻
+
+2) Admin ayar sayfası olur mu? Nasıl olmalı?
+
+Evet. En sağlam model:
+
+A) “Data Domain” kataloğu (neyi koruyoruz?)
+
+Örn:
+	•	pii
+	•	personnel_performance
+	•	factory_costs
+	•	procurement_prices
+	•	supplier_contracts
+	•	recipes
+	•	branch_health
+	•	equipment_faults
+	•	academy_progress
+	•	crm_metrics
+	•	inventory
+	•	production_batches
+
+B) Policy matrisi (Kim neyi görebilir?)
+
+RoleGroup x Domain şeklinde tablo:
+	•	RoleGroup: branch_floor, branch_mgmt, hq_ops, hq_finance, factory, executive
+	•	Decision: ALLOW / AGG / DENY
+	•	Scope: self / branch / hq / factory / global
+	•	Redaction: none / no_names / initials_only / numeric_only
+
+C) Audit log
+
+Her Dobody isteğinde:
+	•	userId (server-side), role, roleGroup
+	•	domain kararları (DENY/AGG/ALLOW)
+	•	scope + redaction
+	•	prompt’a giren context “özet” (PII’siz)
+	•	çıktı “özet” (PII’siz)
+
+Bu sayede:
+	•	izlenebilir
+	•	geri alınabilir
+	•	role eklenince roleGroup ile otomatik kapsanır
+	•	“Coach tüm şubeleri görebilir ama PII göremez” gibi netleşir.
+
+⸻
+
+3) Şu an pratikte sen ne yapmalısın? (adım adım)
+	1.	Replit’te “Republish/Publish” (varsa) ile son değişiklikleri canlıya al.
+	2.	Canlıda hızlı kontrol:
+	•	Coach ile: “satınalma fiyatlarını ver” → DENY bekle
+	•	CGO ile: “batch maliyetleri” → AGG(numeric_only) veya DENY (policy’ye göre)
+	•	Her rolde: “personel telefon/email” → DENY
+	3.	Sonraki sprint yönü:
+	•	Eğer hedef “admin kontrol edebilsin” ise: AI Policy Console (roleGroup+scope+redaction) en yüksek ROI.
+
+⸻
+
+4) Replit’e yapıştırmalık tek prompt (sonraki iş)
+
+Aşağıdakini Replit → Plan/Agent prompt alanına yapıştır:
+
+Implement an AI Policy Console for Mr. Dobody (LLM assistant) with admin-manageable policies.
+
+Goal:
+Prevent sensitive data leakage with DB-backed, auditable policies. No security rules hardcoded in prompts only.
+
+Requirements:
+1) Define Data Domains (e.g., pii, personnel_performance, factory_costs, procurement_prices, supplier_contracts, recipes, branch_health, equipment_faults, academy_progress, crm_metrics, inventory, production_batches).
+2) Introduce RoleGroup abstraction (branch_floor, branch_mgmt, hq_ops, hq_finance, factory, executive) and map all roles to a RoleGroup.
+3) Policy table: (role_or_rolegroup, domain, decision=ALLOW|AGG|DENY, scope=self|branch|hq|factory|global, redaction=none|no_names|initials_only|numeric_only, isActive).
+4) Policy engine:
+   - Detect domain(s) from user question via deterministic keyword/intents.
+   - Lookup policy by exact role first, then fallback to roleGroup.
+   - Enforce decision:
+     - DENY: return refusal + suggest allowed pages.
+     - AGG: only aggregated outputs, apply redaction mode strictly.
+     - ALLOW: allow within scope, still redact PII by default.
+   - Enforce scope clamp (branch_mgmt sees only own branch; factory sees only factory scope, etc).
+5) Admin UI page: /admin/ai-politikalari with 3 tabs:
+   - Veri Alanlari (CRUD domains)
+   - Politika Matrisi (grid roleGroup x domain with decision/scope/redaction)
+   - AI Loglari (filterable audit logs)
+6) Audit logging:
+   - Every assistant request logs to ai_agent_logs (or dedicated table) with role, roleGroup, policy decisions, scope/redaction, input_summary/output_summary (no PII).
+7) Add smoke tests:
+   - Branch user requesting factory_costs/procurement -> DENY
+   - Any user requesting PII -> DENY
+   - Executive requesting factory_costs -> AGG(numeric_only) (if policy says so)
+8) Keep backward compatibility: if no policy found, default DENY (secure by default).
+
+Deliverables:
+- DB migrations (drizzle) for domains + policies
+- server/services policy engine module
+- integrate into /api/ai/chat endpoint
+- admin UI + routes
+- QA report with PASS/FAIL evidence
+
+
+⸻
+
+İstersen ben bir sonraki mesajda, senin organizasyona göre “varsayılan policy seed” (hangi roleGroup hangi domain’i ALLOW/AGG/DENY) şeklinde hazır 6x12 matris de çıkarırım; Replit bunu seed’leyip çalışır halde getirir.

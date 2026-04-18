@@ -1,0 +1,973 @@
+# MEGA SPRİNT 3: MR. DOBODY + MENÜ KONSOLİDASYONU + SAYFA TEMİZLİĞİ
+# Tahmini süre: 8-10 saat | Öncelik: ÖNEMLİ
+# BÖLÜM A: 3 yeni agent skill + aksiyon iyileştirme (5 saat)
+# BÖLÜM B: Menü 39→25 + öksüz sayfa temizliği + duplikat birleştirme + admin yeniden yapı (4 saat)
+
+---
+
+## ⚠ KRİTİK KURAL: DANIŞMA MEKANİZMASI
+
+**Bu sprint'te bazı kararlar sistemi etkileyebilir. Şu durumlarda DURUR ve kullanıcıya danışırsın:**
+
+1. **Mevcut skill dosyalarını DEĞİŞTİRMEK gerekirse** → DUR, mevcut kodu göster, ne değiştirmek istediğini açıkla, onay al
+2. **Scheduler zamanlamaları değişecekse** → DUR, mevcut scheduler listesini göster, çakışma riski varsa bildir
+3. **Agent engine veya escalation service'e dokunmak gerekirse** → DUR, mevcut yapıyı göster, değişiklik planını açıkla
+4. **DB şeması değişikliği gerekirse** → DUR, raw SQL göster, onay al (drizzle-kit push timeout sorunu var)
+5. **Bildirim spam riski varsa** (bir skill çok fazla bildirim üretebilecekse) → DUR, hesaplamayı göster
+6. **Mevcut 19 skill'den herhangi birinin davranışı değişecekse** → DUR, eski vs yeni davranışı karşılaştır
+7. **500+ satır tek dosya oluşturmak gerekirse** → DUR, bölme planı öner
+8. **Herhangi bir compile/runtime hatası oluşursa** → DUR, hatayı göster, düzeltme planı öner, onay al
+9. **Menü öğesi SİLMEK veya TAŞIMAK gerekirse** → DUR, etkilenen rolleri listele, hangi kullanıcılar ne görecek/görmeyecek göster
+10. **Route veya sayfa KALDIRMAK gerekirse** → DUR, sayfanın kullanılıp kullanılmadığını doğrula (App.tsx + menü referansı kontrol)
+11. **Admin mega modül yapısını değiştirmek gerekirse** → DUR, mevcut tab yapısını göster, yeni yapıyı öner
+
+**Danışma formatı:**
+```
+⚠ DANIŞMA GEREKLİ
+
+Durum: [ne oldu / ne yapmak istiyorum]
+Risk: [ne kırılabilir]
+Seçenekler:
+  A) [seçenek 1]
+  B) [seçenek 2]
+Önerim: [hangisini öneriyorum ve neden]
+
+Onay bekliyor...
+```
+
+---
+
+---
+
+# BÖLÜM A: MR. DOBODY İYİLEŞTİRME + YENİ SKİLL'LER (5 saat)
+
+## BÖLÜM A ÖN ARAŞTIRMA (önce mevcut agent yapısını tam öğren)
+
+```bash
+echo "════════════════════════════════════════════════"
+echo "SPRINT 3 ÖN ARAŞTIRMA — AGENT SİSTEMİ HARİTASI"
+echo "════════════════════════════════════════════════"
+
+echo "=== 1: Mevcut skill dosyaları ve yapıları ==="
+ls -la server/agent/skills/*.ts 2>/dev/null
+echo ""
+echo "--- Her skill'in satır sayısı ve export'u ---"
+for f in server/agent/skills/*.ts; do
+  name=$(basename "$f" .ts)
+  lines=$(wc -l < "$f")
+  exports=$(grep "export" "$f" | head -3)
+  echo "  $name ($lines satır)"
+  echo "    $exports"
+done
+
+echo ""
+echo "=== 2: Skill registry — skill'ler nasıl kaydediliyor? ==="
+cat server/agent/skills/skill-registry.ts
+
+echo ""
+echo "=== 3: Agent engine — skill nasıl çalıştırılıyor? ==="
+echo "--- analyzeForFactory fonksiyonu (fabrika skill'leri nasıl tetikleniyor) ---"
+grep -A30 "analyzeForFactory\|factory.*analyze" server/services/agent-engine.ts | head -40
+
+echo ""
+echo "--- analyzeForBranchMgmt fonksiyonu (şube skill'leri nasıl tetikleniyor) ---"
+grep -A30 "analyzeForBranchMgmt\|branchMgmt.*analyze" server/services/agent-engine.ts | head -40
+
+echo ""
+echo "=== 4: Agent scheduler — skill'ler ne zaman çalışıyor? ==="
+grep -A5 "skill-daily\|skill-weekly\|skill.*queue\|registerSkill\|runSkill" server/services/agent-scheduler.ts | head -40
+
+echo ""
+echo "=== 5: Mevcut bir skill örneği — production-director.ts (referans) ==="
+cat server/agent/skills/production-director.ts
+
+echo ""
+echo "=== 6: Mevcut bir skill örneği — team-tracker.ts (referans) ==="
+cat server/agent/skills/team-tracker.ts
+
+echo ""
+echo "=== 7: Agent escalation — mevcut kurallar ==="
+grep -A10 "escalat.*level\|level.*escalat\|severity.*map\|ESCALATION" server/services/agent-escalation.ts | head -30
+
+echo ""
+echo "=== 8: Bildirim oluşturma pattern (agent'tan) ==="
+grep -B2 -A8 "createNotification\|storage.createNotification" server/services/agent-engine.ts | head -30
+grep -B2 -A8 "createNotification\|storage.createNotification" server/services/agent-escalation.ts | head -20
+
+echo ""
+echo "=== 9: Scheduler çakışma kontrolü ==="
+grep -n "registerInterval\|registerTimeout\|schedule\|cron" server/services/agent-scheduler.ts | head -20
+grep -n "registerInterval\|registerTimeout\|schedule\|cron" server/index.ts | head -20
+
+echo ""
+echo "=== 10: Token bütçe sistemi (throttling) ==="
+grep -A20 "tokenBudget\|TOKEN_BUDGET\|tier\|dailyLimit\|weeklyLimit" server/services/agent-engine.ts | head -30
+
+echo ""
+echo "=== 11: Mevcut notification tipleri (agent kaynaklı) ==="
+echo "SELECT type, COUNT(*) FROM notifications WHERE type LIKE 'agent%' OR type LIKE 'factory%' OR type LIKE 'branch_task%' GROUP BY type ORDER BY count DESC;" | psql
+
+echo ""
+echo "=== 12: Agent pending actions durumu ==="
+echo "SELECT action_type, status, COUNT(*) FROM agent_pending_actions GROUP BY action_type, status ORDER BY status, count DESC;" | psql
+
+echo ""
+echo "=== 13: Kiosk giriş verileri (geç kalma tespiti için) ==="
+echo "
+SELECT 
+  'factory_shift_sessions' as tablo,
+  COUNT(*) as kayit,
+  COUNT(CASE WHEN started_at IS NOT NULL THEN 1 END) as giris_var,
+  MIN(started_at) as ilk_giris,
+  MAX(started_at) as son_giris
+FROM factory_shift_sessions;
+" | psql
+
+echo ""
+echo "=== 14: Şube kiosk session verileri ==="
+echo "
+SELECT 
+  'branch_shift_sessions' as tablo,
+  COUNT(*) as kayit
+FROM branch_shift_sessions;
+" | psql 2>/dev/null || echo "branch_shift_sessions tablosu yok veya boş"
+
+echo ""
+echo "=== 15: shifts tablosunda geç kalma bilgisi var mı? ==="
+echo "
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'shifts' 
+AND column_name LIKE '%late%' OR column_name LIKE '%gec%' OR column_name LIKE '%delay%' OR column_name LIKE '%actual%start%'
+ORDER BY ordinal_position;
+" | psql
+echo "
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'factory_shift_sessions' 
+AND (column_name LIKE '%start%' OR column_name LIKE '%check%' OR column_name LIKE '%actual%')
+ORDER BY ordinal_position;
+" | psql
+```
+
+**Bu çıktıları oku. Özellikle şunları not et:**
+1. Skill registry nasıl çalışıyor (yeni skill nasıl eklenir)
+2. Agent engine'deki analyze fonksiyonları (yeni skill hangi tier'a eklenecek)
+3. Scheduler zamanlamaları (çakışma riski var mı)
+4. Token bütçe sistemi (yeni skill'ler bütçeyi aşar mı)
+5. Geç kalma verisi hangi tabloda (late-arrival-tracker için)
+
+**Araştırma sonucunda beklenmedik bir yapı görürsen → DANIŞMA MEKANİZMASINI kullan.**
+
+---
+
+## ADIM 1: YENİ SKİLL — branch-task-tracker.ts (1.5 saat)
+
+**Amaç:** Şube görevlerini takip eden, hatırlatan, gecikme uyarısı veren skill.
+
+**Hedef roller:** supervisor, mudur, coach, trainer
+**Schedule:** daily (sabah) + hourly (gün içi kontrol)
+
+### 1A: Skill dosyası oluştur
+
+Mevcut skill'lerin yapısını referans al (production-director.ts veya team-tracker.ts). Aynı pattern'ı takip et.
+
+**Skill'in yapması gerekenler:**
+
+```
+GÜNLÜK (sabah — skill-daily tetiklemesiyle):
+1. Bugün tamamlanması gereken görevleri say
+2. Dünden kalan (overdue) görevleri say
+3. Supervisor/müdür için özet bildirim oluştur:
+   "Bugün 5 görev var (2 dünden kalan). 3'ü açık havuzda."
+
+SAATLIK (skill-hourly tetiklemesiyle, varsa):
+4. Açık havuzda 3+ saat bekleyen görev varsa uyar:
+   "2 görev 3+ saattir sahipsiz"
+5. Bugünkü görevlerden tamamlanmayanları kontrol et
+
+HAFTALIK (Pazartesi — skill-weekly tetiklemesiyle):
+6. Geçen haftanın tamamlama oranını hesapla
+7. Coach + müdür için karşılaştırma:
+   "Geçen hafta %78 tamamlama (önceki hafta %85 — düşüş)"
+```
+
+**Veri kaynakları:**
+```sql
+-- Bugünkü görevler
+SELECT * FROM branch_task_instances 
+WHERE DATE(due_date) = CURRENT_DATE AND branch_id = ?;
+
+-- Overdue görevler
+SELECT * FROM branch_task_instances 
+WHERE status = 'pending' AND due_date < NOW() AND branch_id = ?;
+
+-- Açık havuzda bekleyenler
+SELECT * FROM branch_task_instances 
+WHERE status = 'pending' AND claimed_by_user_id IS NULL AND branch_id = ?;
+
+-- Haftalık tamamlama oranı
+SELECT 
+  COUNT(CASE WHEN status = 'completed' THEN 1 END) as tamamlanan,
+  COUNT(*) as toplam
+FROM branch_task_instances
+WHERE due_date BETWEEN ? AND ? AND branch_id = ?;
+```
+
+**⚠ DİKKAT:** branch_task_instances tablosunun kolon isimlerini önce kontrol et:
+```bash
+echo "SELECT column_name FROM information_schema.columns WHERE table_name = 'branch_task_instances' ORDER BY ordinal_position;" | psql
+```
+Eğer kolon isimleri farklıysa (due_date yerine scheduled_date, vb.) → kodu uyarla.
+
+### 1B: Skill'i registry'ye kaydet
+
+Mevcut skill-registry.ts'nin pattern'ına göre yeni skill'i ekle. **Önce mevcut registry'yi oku, sonra ekle.**
+
+### 1C: Agent engine'e entegre et
+
+`analyzeForBranchMgmt` fonksiyonuna branch-task-tracker'ı ekle (supervisor, mudur için).
+`analyzeForHQOps` fonksiyonuna da ekle (coach, trainer için).
+
+**⚠ DANIŞMA NOKTASI:** Eğer agent engine'deki analyze fonksiyonları hardcoded skill listesi kullanıyorsa ve yeni skill eklemek yapıyı değiştirecekse → DUR, mevcut yapıyı göster, onay al.
+
+### 1D: Test
+
+```bash
+echo "=== branch-task-tracker test ==="
+echo "--- Dosya oluştu mu? ---"
+ls -la server/agent/skills/branch-task-tracker.ts
+wc -l server/agent/skills/branch-task-tracker.ts
+
+echo "--- Registry'de kayıtlı mı? ---"
+grep "branch-task-tracker\|branchTaskTracker" server/agent/skills/skill-registry.ts
+
+echo "--- Agent engine'de entegre mi? ---"
+grep "branch.*task.*tracker\|branchTask" server/services/agent-engine.ts
+
+echo "--- Compile hatası var mı? ---"
+# Server restart + log kontrolü
+```
+
+---
+
+## ADIM 2: YENİ SKİLL — factory-daily-summary.ts (1 saat)
+
+**Amaç:** Fabrika günlük üretim/fire/QC özetini müdüre ve üst yönetime raporlayan skill.
+
+**Hedef roller:** fabrika_mudur, ceo, cgo
+**Schedule:** daily (akşam 18:00 veya skill-daily tetiklemesiyle)
+
+**Skill'in yapması gerekenler:**
+
+```
+GÜNLÜK:
+1. Bugünkü toplam üretim miktarı (tüm istasyonlar)
+2. Bugünkü toplam fire miktarı + fire oranı
+3. QC bekleyen LOT sayısı
+4. QC onaylanan/reddedilen sayısı
+5. Fabrika müdüre özet bildirim:
+   "Bugün: 450 adet üretim, %2.3 fire, 3 LOT QC bekliyor, 2 QC onaylandı"
+6. CEO/CGO'ya sadece önemli sapmalarda:
+   "Fabrika: Fire oranı %5.2 (hedef: <%3)" → sadece eşik aşımında
+
+HAFTALIK (Pazartesi):
+7. Geçen haftanın üretim trendi
+8. İstasyon bazlı verimlilik karşılaştırması
+9. Çalışan skor özeti (ortalama + en düşük)
+```
+
+**Veri kaynakları:**
+```sql
+-- Bugünkü üretim
+SELECT SUM(produced_quantity) as toplam_uretim, SUM(waste_quantity) as toplam_fire
+FROM factory_production_outputs 
+WHERE DATE(created_at) = CURRENT_DATE;
+
+-- QC bekleyen
+SELECT COUNT(*) FROM production_lots WHERE status = 'kalite_bekliyor';
+
+-- QC sonuçları (bugün)
+SELECT decision, COUNT(*) FROM factory_quality_checks 
+WHERE DATE(checked_at) = CURRENT_DATE GROUP BY decision;
+
+-- Haftalık skor ortalaması
+SELECT AVG(total_score), MIN(total_score), MAX(total_score) 
+FROM factory_worker_scores 
+WHERE period_type = 'weekly' AND period_date >= CURRENT_DATE - INTERVAL '7 days';
+```
+
+**⚠ DANIŞMA NOKTASI:** Eğer mevcut production-director.ts veya waste-analyzer.ts skill'leri zaten benzer veri çekiyorsa → DUR, overlap'i göster. Birleştirmek mi ayrı tutmak mı daha iyi? Onay al.
+
+**Bildirim spam önleme:** CEO/CGO'ya sadece eşik aşımında bildirim (fire >%3, QC red >%10, üretim hedefin <%80). Normal günlerde gönderme.
+
+---
+
+## ADIM 3: YENİ SKİLL — late-arrival-tracker.ts (1 saat)
+
+**Amaç:** Personel geç kalma takibi, escalation, aylık trend.
+
+**Hedef roller:** supervisor, mudur, cgo, yatirimci_branch, coach, trainer
+**Schedule:** daily + aylık kontrol
+
+**⚠ ÖNEMLİ ÖN ARAŞTIRMA:**
+
+Geç kalma verisi nerede? Olası kaynaklar:
+- `factory_shift_sessions.started_at` vs planlanan saat
+- `shifts` tablosundaki actual_start vs planned_start
+- `branch_shift_sessions` (varsa)
+- Kiosk giriş zamanı
+
+```bash
+echo "=== Geç kalma veri kaynağı araştırması ==="
+
+echo "--- factory_shift_sessions kolonları ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'factory_shift_sessions' ORDER BY ordinal_position;" | psql
+
+echo ""
+echo "--- shifts kolonları (start ilişkili) ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'shifts' AND (column_name LIKE '%start%' OR column_name LIKE '%time%' OR column_name LIKE '%check%' OR column_name LIKE '%actual%' OR column_name LIKE '%plan%') ORDER BY ordinal_position;" | psql
+
+echo ""
+echo "--- branch_shift_sessions var mı? ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name = 'branch_shift_sessions' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+echo ""
+echo "--- Vardiya başlangıç saatleri nasıl kaydediliyor? ---"
+echo "SELECT id, user_id, started_at, ended_at, shift_date FROM factory_shift_sessions ORDER BY started_at DESC LIMIT 5;" | psql
+
+echo ""
+echo "--- Planlanan vardiya saati nerede? ---"
+echo "SELECT id, name, start_time, end_time FROM factory_shifts LIMIT 5;" | psql
+```
+
+**⚠ DANIŞMA NOKTASI:** Eğer geç kalma hesaplamak için gerekli veri (planlanan saat vs gerçek giriş saati) tablolarda yoksa veya farklı yapıdaysa → DUR, mevcut veri yapısını göster, nasıl hesaplanacağını öner, onay al.
+
+**Skill'in yapması gerekenler (veri varsa):**
+
+```
+GÜNLÜK:
+1. Bugün geç kalan personeli tespit et
+   (actual_start > planned_start + 30 dakika → geç)
+2. ≤30 dk geç → personele bildirim: "Bugün 15 dk geç kaldınız"
+3. >1 saat geç → supervisor'a anlık bildirim
+
+AYLIK (her ayın 1'i):
+4. Geçen ay kaç kez geç kalındığını hesapla (kişi bazında)
+5. 2+ kez geç kalan → supervisor uyarı
+6. 4+ kez geç kalan → supervisor + yatırımcı + CGO + trainer
+7. Şube geneli oran yüksekse (>%20 personel düzenli geç) → CGO
+
+ÖNEMLİ KURAL:
+- Bireysel günlük gecikmeler HQ'ya BİLDİRİLMEZ
+- Sadece şube geneli sistemik sorun → CGO
+- Aylık 4+ tekrar → escalation (bireysel ama ciddi)
+```
+
+---
+
+## ADIM 4: AGENT AKSİYON İYİLEŞTİRME (1.5 saat)
+
+**Sorun:** Agent aksiyonlarının %2.3'ü onaylanmış, %65'i expire olmuş. Kullanıcılar aksiyonları görmezden geliyor.
+
+### 4A: Ön analiz
+
+```bash
+echo "=== Agent aksiyon analizi ==="
+
+echo "--- Aksiyon durumları ---"
+echo "SELECT action_type, status, COUNT(*), AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/3600) as ort_saat FROM agent_pending_actions GROUP BY action_type, status ORDER BY status, count DESC;" | psql
+
+echo ""
+echo "--- Expire süreleri ---"
+echo "SELECT action_type, AVG(EXTRACT(EPOCH FROM (expires_at - created_at))/3600) as expire_saat FROM agent_pending_actions WHERE expires_at IS NOT NULL GROUP BY action_type;" | psql
+
+echo ""
+echo "--- En çok expire olan aksiyon tipleri ---"
+echo "SELECT action_type, severity, title, COUNT(*) FROM agent_pending_actions WHERE status LIKE 'expired%' GROUP BY action_type, severity, title ORDER BY count DESC LIMIT 10;" | psql
+
+echo ""
+echo "--- Onaylanan aksiyonların ortak özellikleri ---"
+echo "SELECT action_type, severity, title, approved_at FROM agent_pending_actions WHERE status = 'approved' ORDER BY approved_at DESC;" | psql
+```
+
+### 4B: İyileştirmeler
+
+**⚠ DANIŞMA NOKTASI:** Aşağıdaki değişikliklerden herhangi biri agent-engine.ts veya agent-escalation.ts'in ana mantığını değiştiriyorsa → DUR, eski ve yeni davranışı karşılaştır, onay al.
+
+**İyileştirme 1: Expire süresini uzat**
+Mevcut expire süresi çok kısa olabilir. Analiz sonucuna göre:
+- alert tipi: en az 48 saat (şu an ne kadar?)
+- remind tipi: en az 72 saat
+- escalate tipi: en az 24 saat (aciliyet yüksek)
+
+**İyileştirme 2: Expired aksiyonları temizle**
+```sql
+-- 30 günden eski expired aksiyonları arşivle/sil
+-- ⚠ Bu SQL'i çalıştırmadan önce sayıyı göster, onay al
+SELECT COUNT(*) FROM agent_pending_actions 
+WHERE status LIKE 'expired%' AND created_at < NOW() - INTERVAL '30 days';
+```
+
+**İyileştirme 3: Bildirim kalitesi**
+Agent'ın ürettiği insight'lar daha actionable olmalı. Mevcut agent_guidance bildirimlerinin içeriğini kontrol et:
+```bash
+echo "--- Son 10 agent_guidance bildirimi ---"
+echo "SELECT title, message, created_at FROM notifications WHERE type = 'agent_guidance' ORDER BY created_at DESC LIMIT 10;" | psql
+```
+
+Eğer mesajlar çok genel ise ("performans düşük" gibi) → skill'lerdeki mesaj template'lerini daha spesifik yap. Ama **mevcut skill dosyalarını değiştirmeden önce DANIŞMA MEKANİZMASINI kullan.**
+
+**İyileştirme 4: Guidance widget refresh**
+System-completeness-service.ts'in gap detection'ı yeni bildirim tipleriyle uyumlu mu kontrol et:
+```bash
+grep -n "factory_production_log\|branch_task_claimed\|qc_result\|evaluation_result\|payroll_calculated" server/services/system-completeness-service.ts | head -10
+```
+
+---
+
+## ADIM 5: DOĞRULAMA
+
+### 5A: Dosya kontrolü
+
+```bash
+echo "=== Yeni skill dosyaları ==="
+for f in branch-task-tracker factory-daily-summary late-arrival-tracker; do
+  FILE="server/agent/skills/${f}.ts"
+  if [ -f "$FILE" ]; then
+    echo "✅ $f: $(wc -l < "$FILE") satır"
+  else
+    echo "❌ $f: DOSYA YOK"
+  fi
+done
+
+echo ""
+echo "=== Registry kontrolü ==="
+grep -c "skill" server/agent/skills/skill-registry.ts
+echo "Kayıtlı skill sayısı (önceki: 19, şimdi 22 olmalı)"
+
+echo ""
+echo "=== Toplam agent skill sayısı ==="
+ls server/agent/skills/*.ts | wc -l
+```
+
+### 5B: Sunucu kontrolü
+
+```bash
+echo "=== Sunucu durumu ==="
+# Server restart
+# Log'larda hata kontrolü
+# Compile hatası var mı?
+```
+
+### 5C: Skill çalışma testi
+
+```bash
+echo "=== Agent run kontrolü ==="
+echo "SELECT COUNT(*) as son_1_saat FROM agent_runs WHERE created_at > NOW() - INTERVAL '1 hour';" | psql
+
+echo ""
+echo "--- Yeni skill'ler çalıştı mı? ---"
+echo "SELECT skill_name, status, created_at FROM agent_runs WHERE skill_name LIKE '%task%tracker%' OR skill_name LIKE '%daily%summary%' OR skill_name LIKE '%late%arrival%' ORDER BY created_at DESC LIMIT 10;" | psql
+```
+
+### 5D: E2E test
+
+```bash
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -15
+```
+
+---
+
+## BÖLÜM A BAŞARI KRİTERLERİ
+
+1. ✅ branch-task-tracker.ts oluşturuldu ve registry'ye kayıtlı
+2. ✅ factory-daily-summary.ts oluşturuldu ve registry'ye kayıtlı
+3. ✅ late-arrival-tracker.ts oluşturuldu ve registry'ye kayıtlı (veya veri yetersizse → neden yapılamadığı raporlanmış)
+4. ✅ 3 yeni skill agent engine'e entegre (doğru tier'lara)
+5. ✅ Agent expire süresi iyileştirildi
+6. ✅ Eski expired aksiyonlar temizlendi
+7. ✅ Toplam skill sayısı: 22 (önceki: 19)
+8. ✅ Scheduler çakışması yok
+9. ✅ Token bütçesi aşılmıyor
+10. ✅ Sunucu hatasız çalışıyor
+11. ✅ E2E testler PASS
+12. ✅ Mevcut 19 skill'in hiçbirinin davranışı DEĞİŞMEDİ
+
+---
+
+## BÖLÜM A YAPMA LİSTESİ
+
+- ❌ Mevcut skill'leri değiştirme (danışmadan)
+- ❌ Agent engine ana mantığını değiştirme (danışmadan)
+- ❌ Escalation kurallarını değiştirme (danışmadan)
+- ❌ Frontend değişikliği
+- ❌ DB şema değişikliği (danışmadan)
+- ❌ Module flag değişikliği
+- ❌ Bildirim tiplerini değiştirme (yeni tip eklemek OK)
+
+**Yeni dosya OLUŞTURMAK her zaman güvenlidir. Mevcut dosyayı DEĞİŞTİRMEK risklidir — danış.**
+
+---
+---
+
+# BÖLÜM B: MENÜ KONSOLİDASYONU + SAYFA TEMİZLİĞİ (4 saat)
+
+**Bu bölümün tüm değişiklikleri menu-service.ts + birkaç frontend dosyasında. Sayfa KODLARINA dokunulmaz — sadece menü yapısı ve route bağlantıları değişir.**
+
+---
+
+## BÖLÜM B ÖN ARAŞTIRMA
+
+```bash
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM B: MENÜ + SAYFA ANALİZİ"
+echo "════════════════════════════════════════════════"
+
+echo "=== B0.1: Mevcut menü yapısı (admin) ==="
+# Admin olarak login yap
+ADMIN_USER=$(echo "SELECT username FROM users WHERE role='admin' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+curl -s -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"$ADMIN_USER\",\"password\":\"$(echo $ADMIN_BOOTSTRAP_PASSWORD)\"}" \
+  -c /tmp/admin_menu.txt > /dev/null 2>&1
+
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_menu.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+let total=0;
+d.forEach(s=>{
+  const count = (s.items||[]).length;
+  total += count;
+  console.log('\n=== '+s.label+' ('+count+' öğe) ===');
+  if(s.items) s.items.forEach(i=>console.log('  '+i.id+' → '+i.label+' → '+(i.path||'?')));
+});
+console.log('\nTOPLAM: '+total+' menü öğesi');
+" 2>/dev/null
+
+echo ""
+echo "=== B0.2: menu-service.ts konumu ve yapısı ==="
+find server -name "menu*service*" -o -name "menu*" | grep -v node_modules | head -10
+MENU_FILE=$(find server -name "menu-service.ts" -o -name "menuService.ts" | grep -v node_modules | head -1)
+echo "Dosya: $MENU_FILE ($(wc -l < "$MENU_FILE" 2>/dev/null) satır)"
+echo ""
+echo "--- Menü bölüm tanımları ---"
+grep -n "section\|label.*:\|items\|id.*:" "$MENU_FILE" | head -50
+
+echo ""
+echo "=== B0.3: SIDEBAR_ALLOWED_ITEMS listesi ==="
+grep -n "SIDEBAR_ALLOWED\|allowedItems\|whitelist" "$MENU_FILE" | head -10
+grep -A30 "SIDEBAR_ALLOWED\|allowedItems" "$MENU_FILE" | head -40
+
+echo ""
+echo "=== B0.4: Öksüz sayfalar (route'suz dosyalar) ==="
+find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  if ! grep -q "$base" client/src/App.tsx 2>/dev/null; then
+    size=$(wc -l < "$f")
+    echo "  ROUTE YOK: $base ($size satır) → $f"
+  fi
+done | sort -t'(' -k2 -rn | head -30
+
+echo ""
+echo "=== B0.5: Duplikat dosyalar ==="
+find client/src/pages -name "*.tsx" | xargs -I{} basename {} | sort | uniq -d | while read dup; do
+  echo "  DUPLIKAT: $dup"
+  find client/src/pages -name "$dup" | while read f; do
+    echo "    $(wc -l < "$f") satır → $f"
+  done
+done
+
+echo ""
+echo "=== B0.6: Merkez Destek vs İletişim Merkezi ==="
+echo "--- Aynı API kullanıyor mu? ---"
+for page in "hq-support" "iletisim-merkezi" "destek"; do
+  found=$(find client/src/pages -name "*${page}*" | head -1)
+  if [ -n "$found" ]; then
+    echo "  $page ($(wc -l < "$found") satır):"
+    grep "/api/" "$found" | sort -u | head -5
+  fi
+done
+
+echo ""
+echo "=== B0.7: Admin dizini vs Yönetim dizini ==="
+echo "--- admin/ ---"
+find client/src/pages/admin -name "*.tsx" 2>/dev/null | while read f; do echo "  $(wc -l < "$f") $(basename "$f")"; done | sort -rn
+echo "--- yonetim/ ---"
+find client/src/pages/yonetim -name "*.tsx" 2>/dev/null | while read f; do echo "  $(wc -l < "$f") $(basename "$f")"; done | sort -rn
+
+echo ""
+echo "=== B0.8: Profilim ve Kılavuz nerede tanımlı? ==="
+grep -rn "profilim\|kilavuz\|profil\|guide\|help.*button" "$MENU_FILE" | head -10
+grep -rn "profilim\|kilavuz" client/src/components/app-header*.tsx client/src/components/header*.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== B0.9: Coach menüsü (karşılaştırma için) ==="
+COACH_USER=$(echo "SELECT username FROM users WHERE role='coach' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+curl -s -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"$COACH_USER\",\"password\":\"0000\"}" \
+  -c /tmp/coach_menu.txt > /dev/null 2>&1
+curl -s http://localhost:5000/api/me/menu -b /tmp/coach_menu.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+let total=0;
+d.forEach(s=>{
+  const count = (s.items||[]).length;
+  total += count;
+  console.log(s.label+' ('+count+'): '+(s.items||[]).map(i=>i.label).join(', '));
+});
+console.log('TOPLAM: '+total);
+" 2>/dev/null
+```
+
+**Bu çıktıyı oku. Özellikle:**
+1. menu-service.ts'nin yapısını öğren (bölümler nasıl tanımlı)
+2. SIDEBAR_ALLOWED_ITEMS nasıl çalışıyor
+3. Hangi sayfalar öksüz (route yok)
+4. Duplikat dosyalar hangileri
+5. Profilim/Kılavuz nerede tanımlı (menü mü, header mı)
+
+---
+
+## ADIM B1: MENÜ KONSOLİDASYONU — 39→25 (1.5 saat)
+
+**Tüm değişiklikler menu-service.ts'de yapılır. Sayfa dosyalarına DOKUNULMAZ.**
+
+### B1.1: İletişim bölümü 7→2
+
+Mevcut İletişim bölümü:
+```
+[İletişim]  Merkez Destek, Bildirimler, İletişim Merkezi, AI Asistan, Agent Merkezi, Kılavuz, Profilim
+```
+
+Hedef:
+```
+[İletişim]  Bildirimler, İletişim Merkezi
+```
+
+**Yapılacaklar:**
+- `Merkez Destek` → KALDIR (İletişim Merkezi ile aynı API)
+- `AI Asistan` → Eğitim bölümüne TAŞI
+- `Agent Merkezi` → Yönetim bölümüne TAŞI (sadece admin görür)
+- `Kılavuz` → KALDIR menüden, header'da yardım ikonu olarak ekle
+- `Profilim` → KALDIR menüden, header avatar dropdown'a taşı
+
+**⚠ DANIŞMA NOKTASI:** Profilim ve Kılavuz'u menüden kaldırmadan önce hangi rollerin bunlara eriştiğini kontrol et. `alwaysVisible: true` ayarı varsa tüm roller etkilenir.
+
+### B1.2: CRM + Pazarlama birleştirme → Müşteri İlişkileri
+
+Mevcut:
+```
+[CRM]        CRM, Yatırımcılar
+[Pazarlama]  Kampanyalar
++ Denetim'de: Misafir Memnuniyeti
+```
+
+Hedef:
+```
+[Müşteri İlişkileri]  CRM, Misafir Memnuniyeti, Yatırımcılar
+```
+
+**Yapılacaklar:**
+- `Pazarlama` bölümünü SİL (tek öğelik bölüm anlamsız)
+- `Kampanyalar` → CRM'in tab'ı zaten, menüden KALDIR
+- `Misafir Memnuniyeti` → Denetim'den buraya TAŞI
+- Bölüm adı: `CRM` → `Müşteri İlişkileri`
+
+### B1.3: Finans bölümünden İK'ya taşıma
+
+Mevcut:
+```
+[Finans & Tedarik]  Muhasebe, Mali Yönetim, Satınalma, Stok, PDKS, Maaş Hesaplama
+```
+
+Hedef:
+```
+[Finans & Tedarik]  Muhasebe, Mali Yönetim, Satınalma, Stok
+[İK & Personel]     Personel, Vardiyalar, Devam Takibi, PDKS, Maaş Hesaplama   ← PDKS + Maaş taşındı
+```
+
+### B1.4: Denetim bölümü düzenleme
+
+Mevcut:
+```
+[Denetim & Analitik]  Performans, Raporlar, Kalite Denetimi, Misafir Memnuniyeti, Gıda Güvenliği
+```
+
+Hedef:
+```
+[Kalite & Denetim]  Performans, Raporlar, Kalite Denetimi, Gıda Güvenliği
+```
+(Misafir Memnuniyeti → Müşteri İlişkileri'ne taşındı)
+
+### B1.5: Doğrulama
+
+```bash
+echo "=== Menü konsolidasyonu doğrulama ==="
+# Admin menüsü kontrol
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_menu.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+let total=0;
+d.forEach(s=>{total += (s.items||[]).length});
+console.log('Toplam menü öğesi: '+total+' (hedef: <=28)');
+console.log('Bölüm sayısı: '+d.length+' (hedef: <=8)');
+"
+
+# Coach menüsü kontrol (kırılmadı mı)
+curl -s http://localhost:5000/api/me/menu -b /tmp/coach_menu.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+let total=0;
+d.forEach(s=>{total += (s.items||[]).length});
+console.log('Coach menü öğesi: '+total+' (kırılmamış olmalı)');
+"
+
+# Kaldırılan öğeler menüde yok mu?
+echo "--- Kaldırılan öğeler kontrol ---"
+MENU=$(curl -s http://localhost:5000/api/me/menu -b /tmp/admin_menu.txt)
+for removed in "Merkez Destek" "Kampanyalar" "Kılavuz"; do
+  if echo "$MENU" | grep -q "$removed"; then
+    echo "❌ '$removed' hâlâ menüde!"
+  else
+    echo "✅ '$removed' menüden kaldırıldı"
+  fi
+done
+```
+
+---
+
+## ADIM B2: PROFİLİM + KILAVUZ HEADER'A TAŞI (30 dk)
+
+**Profilim** → Header'daki avatar/kullanıcı adı tıklanınca dropdown menü: Profilim, Tema, Çıkış
+
+**Kılavuz** → Header'da soru işareti (?) ikonu, tıklanınca kılavuz sayfasına yönlendir
+
+```bash
+echo "=== Header dosyası ==="
+find client/src/components -name "*header*" -o -name "*app-header*" -o -name "*top-bar*" | sort
+# Header component'ini bul ve yapısını incele
+```
+
+**⚠ DANIŞMA NOKTASI:** Header component'ini değiştirmek tüm sayfalarda görünür. Değişiklik planını göster, onay al.
+
+**Yapılacaklar:**
+1. Header'daki kullanıcı adı/avatar alanına dropdown menü ekle (Shadcn DropdownMenu)
+2. Dropdown: Profilim → /profilim, Tema toggle, Çıkış Yap
+3. Header'a yardım ikonu ekle (?) → /kilavuz'a link
+4. menu-service.ts'den Profilim ve Kılavuz öğelerini KALDIR
+
+---
+
+## ADIM B3: ÖKSÜZ SAYFALAR TEMİZLİĞİ (1 saat)
+
+**Öksüz sayfa = App.tsx'te route'u olmayan sayfa dosyası. Kimse erişemiyor, sadece disk işgal ediyor.**
+
+```bash
+echo "=== Öksüz sayfa tam listesi ==="
+find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  if ! grep -q "$base" client/src/App.tsx 2>/dev/null; then
+    size=$(wc -l < "$f")
+    # Başka dosyadan import ediliyor mu?
+    imports=$(grep -rl "from.*$base\|import.*$base" client/src/ --include="*.tsx" 2>/dev/null | grep -v "$f" | wc -l)
+    if [ "$imports" -eq "0" ]; then
+      echo "  TAMAMEN ÖKSÜZ: $base ($size satır) → SİLİNEBİLİR"
+    else
+      echo "  ROUTE YOK AMA IMPORT EDİLİYOR ($imports dosya): $base ($size satır)"
+    fi
+  fi
+done | sort -t'(' -k2 -rn
+```
+
+**⚠ DANIŞMA NOKTASI:** Her öksüz sayfayı silmeden önce:
+1. Başka dosyadan import ediliyor mu? (import eden varsa SİLME)
+2. Menüde referansı var mı?
+3. Deep link'te referansı var mı?
+
+**Silme yöntemi:** Dosyaları silmek yerine `_archived/` dizinine TAŞI. Böylece geri alınabilir.
+
+```bash
+mkdir -p client/src/pages/_archived
+# Her onaylanan öksüz dosya için:
+# mv client/src/pages/DOSYA.tsx client/src/pages/_archived/
+```
+
+---
+
+## ADIM B4: DUPLİKAT SAYFALARI BİRLEŞTİR (1 saat)
+
+### B4.1: kullanicilar.tsx duplikatı
+
+```bash
+echo "=== kullanicilar.tsx duplikat analizi ==="
+echo "--- admin/kullanicilar.tsx ---"
+wc -l client/src/pages/admin/kullanicilar.tsx 2>/dev/null
+head -20 client/src/pages/admin/kullanicilar.tsx 2>/dev/null
+echo ""
+echo "--- yonetim/kullanicilar.tsx ---"
+wc -l client/src/pages/yonetim/kullanicilar.tsx 2>/dev/null
+head -20 client/src/pages/yonetim/kullanicilar.tsx 2>/dev/null
+echo ""
+echo "--- Hangisi App.tsx'te kullanılıyor? ---"
+grep "kullanicilar" client/src/App.tsx | head -5
+```
+
+**Karar:** Kullanılan route'a bağlı dosyayı TUT, diğerini `_archived/` dizinine taşı.
+
+### B4.2: destek.tsx / hq-support.tsx / iletisim-merkezi çakışması
+
+```bash
+echo "=== Destek/support duplikat analizi ==="
+for name in "destek" "hq-support" "iletisim-merkezi"; do
+  found=$(find client/src/pages -name "*${name}*" | head -1)
+  if [ -n "$found" ]; then
+    echo "--- $name ($(wc -l < "$found") satır) ---"
+    grep -c "useQuery\|queryKey\|/api/" "$found"
+    grep "/api/" "$found" | sort -u | head -3
+  fi
+done
+```
+
+**Karar:** Aynı API'yi kullanan sayfalardan en kapsamlı olanı TUT, diğerlerini `_archived/` dizinine taşı. Menüde kalan link'i güncel sayfaya yönlendir.
+
+### B4.3: duyurular duplikatı
+
+```bash
+echo "=== Duyurular duplikat ==="
+find client/src/pages -name "*duyuru*" -o -name "*announce*" | while read f; do
+  echo "$(wc -l < "$f") $(basename "$f") → $f"
+done | sort -rn
+```
+
+---
+
+## ADIM B5: ADMİN BÖLÜMÜ YENİDEN YAPILANDIRMA (1 saat)
+
+**Hedef:** admin/ + yonetim/ → tek admin merkezi. Yönetim bölümündeki sayfaları admin altına taşı.
+
+### B5.1: Mevcut yapıyı analiz et
+
+```bash
+echo "=== Admin mega modül tab'ları ==="
+grep -n "id.*:\|label.*:\|tab" client/src/pages/admin-mega.tsx | head -20
+
+echo ""
+echo "=== Yönetim dizini ne içeriyor? ==="
+ls -la client/src/pages/yonetim/*.tsx 2>/dev/null
+
+echo ""
+echo "=== App.tsx'te admin ve yonetim route'ları ==="
+grep -n "admin\|yonetim" client/src/App.tsx | head -20
+```
+
+### B5.2: Yönetim → Admin birleştirme
+
+**⚠ DANIŞMA NOKTASI:** admin-mega.tsx'in tab yapısını değiştirmek geniş etki alanına sahip. Mevcut tab listesini göster, yeni listeyi öner, onay al.
+
+**Yapılacaklar:**
+1. Yönetim menü bölümü → Admin/Yönetim olarak birleştir
+2. Yönetim dizinindeki sayfalara admin altından route ekle (varsa)
+3. Menü yapısında: admin görmesi gereken Yönetim öğeleri admin bölümüne taşınsın
+4. Yönetim bölümü menüden kaldırılsın (admin bölümüne entegre)
+
+**DİKKAT:** Admin olmayan roller (coach, supervisor) Yönetim'in altında Şubeler öğesini görüyor olabilir. Bu öğeyi uygun bölüme taşı (Operasyon veya ayrı kalabilir).
+
+---
+
+## ADIM B6: BÖLÜM B DOĞRULAMA (30 dk)
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM B DOĞRULAMA"
+echo "════════════════════════════════════════"
+
+echo "=== B6.1: Admin menü öğe sayısı ==="
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_menu.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+let total=0;
+d.forEach(s=>{
+  const count=(s.items||[]).length;
+  total+=count;
+  console.log(s.label+': '+count+' öğe');
+});
+console.log('\nTOPLAM: '+total+' (hedef: <=28, önceki: 39)');
+console.log('BÖLÜM: '+d.length+' (hedef: <=8, önceki: 10)');
+" 2>/dev/null
+
+echo ""
+echo "=== B6.2: Tüm roller menü testi (kırılan var mı?) ==="
+for ROLE in admin ceo cgo coach trainer muhasebe_ik supervisor mudur barista stajyer fabrika_mudur; do
+  RUSER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+  if [ -n "$RUSER" ]; then
+    curl -s -X POST http://localhost:5000/api/login \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"$RUSER\",\"password\":\"0000\"}" \
+      -c /tmp/btest_${ROLE}.txt > /dev/null 2>&1
+    COUNT=$(curl -s http://localhost:5000/api/me/menu -b /tmp/btest_${ROLE}.txt | node -e "
+      const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      let c=0;d.forEach(s=>{c+=(s.items||[]).length});console.log(c);
+    " 2>/dev/null)
+    echo "  $ROLE: $COUNT menü öğesi"
+  fi
+done
+
+echo ""
+echo "=== B6.3: Kaldırılan menü öğeleri kontrolü ==="
+ADMIN_MENU=$(curl -s http://localhost:5000/api/me/menu -b /tmp/admin_menu.txt)
+for item in "Merkez Destek" "Kampanyalar"; do
+  if echo "$ADMIN_MENU" | grep -qi "$item"; then
+    echo "❌ '$item' hâlâ menüde"
+  else
+    echo "✅ '$item' kaldırıldı"
+  fi
+done
+
+echo ""
+echo "=== B6.4: Öksüz dosya sayısı ==="
+ORPHAN_COUNT=$(find client/src/pages -name "*.tsx" -not -path "*/components/*" -not -path "*/_archived/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  if ! grep -q "$base" client/src/App.tsx 2>/dev/null; then
+    imports=$(grep -rl "from.*$base\|import.*$base" client/src/ --include="*.tsx" 2>/dev/null | grep -v "$f" | wc -l)
+    if [ "$imports" -eq "0" ]; then echo "orphan"; fi
+  fi
+done | wc -l)
+echo "Kalan öksüz sayfa: $ORPHAN_COUNT (hedef: 0 veya çok az)"
+
+echo ""
+echo "=== B6.5: Arşivlenen dosyalar ==="
+ls client/src/pages/_archived/ 2>/dev/null | wc -l
+echo "dosya arşivlendi"
+
+echo ""
+echo "=== B6.6: Sunucu + E2E ==="
+# Compile hatası var mı?
+# E2E testler PASS mı?
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -10
+```
+
+---
+
+## BÖLÜM B BAŞARI KRİTERLERİ
+
+1. ✅ Admin menüsü: ≤28 öğe (önceki: 39)
+2. ✅ Menü bölümü: ≤8 (önceki: 10)
+3. ✅ İletişim bölümü: 2 öğe (önceki: 7)
+4. ✅ Merkez Destek: menüden kaldırıldı
+5. ✅ Kampanyalar: menüden kaldırıldı (CRM tab'ı)
+6. ✅ PDKS + Maaş: İK bölümüne taşındı
+7. ✅ Misafir Memnuniyeti: Müşteri İlişkileri bölümünde
+8. ✅ Profilim: header avatar dropdown'da
+9. ✅ Kılavuz: header yardım ikonu
+10. ✅ Öksüz sayfalar: _archived/ dizinine taşındı
+11. ✅ Duplikat sayfalar: birleştirildi veya arşivlendi
+12. ✅ Tüm roller menüyü sorunsuz görüyor
+13. ✅ E2E testler PASS
+14. ✅ Sunucu hatasız
+
+---
+
+## BÖLÜM B YAPMA LİSTESİ
+
+- ❌ Sayfa KODLARINI değiştirme (sadece menü yapısı + route'lar)
+- ❌ Yeni sayfa oluşturma (mevcut sayfalar yeterli)
+- ❌ Öksüz dosyaları doğrudan SİLME (_archived/ dizinine TAŞI)
+- ❌ Admin mega modül tab kodunu değiştirme (danışmadan)
+- ❌ Header'ı tamamen yeniden yazma (sadece dropdown + yardım ikonu EKLE)

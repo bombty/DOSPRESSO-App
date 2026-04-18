@@ -1,0 +1,502 @@
+Mükemmel audit — sistem beklenenden çok daha olgun. Public form, 37 kolonluk tablo, GPS doğrulama, device fingerprint hepsi var. Eksik olan: otomasyon, bildirim, skor entegrasyonu ve senin istediğin sorumluluk matrisi.
+
+Sprint 3 ticket'ını yazıyorum. Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 3 — Misafir Geri Bildirim Sistemi Aktivasyon & Skor Entegrasyonu
+
+### ÖZET
+
+Public müşteri formu çok olgun (QR, 7 dil, GPS, fingerprint). Ama hiçbir şube için yapılandırılmamış, bildirim gitmiyor, skor entegrasyonu yok. Bu ticket sistemi "var ama çalışmıyor"dan "tam aktif ve otomatik"e çeviriyor.
+
+**En kritik yenilik:** Müşteri geri bildirimleri sorumluluk matrisine göre doğru kişilerin skorunu etkiliyor — temizlik → Supervisor/Supervisor Buddy, güler yüzlülük → ismi verilen personel.
+
+---
+
+### T001 — Tüm Şubeler İçin Form Settings Yapılandır (~1 saat)
+
+**Problem:** feedback_form_settings tablosu 0 kayıt. Hiçbir şube için form aktif değil.
+
+**Yapılacak:**
+
+1. Mevcut tablo yapısını kontrol et:
+```sql
+SELECT column_name, data_type FROM information_schema.columns 
+WHERE table_name = 'feedback_form_settings' ORDER BY ordinal_position;
+```
+
+2. Tüm aktif şubeler için varsayılan ayarları oluştur:
+```sql
+-- Aktif şubeleri listele
+SELECT id, name FROM branches WHERE is_active = true ORDER BY name;
+```
+
+3. Her aktif şube için feedback_form_settings kaydı oluştur:
+- Tüm kategori puanları aktif (genel, hizmet, temizlik, ürün, personel)
+- Anonim gönderim varsayılan açık
+- Fotoğraf yükleme açık (max 3)
+- Lokasyon doğrulama açık (500m yarıçap)
+- Dil: Türkçe varsayılan, tüm diller aktif
+- Personel listesi gösterilsin (güler yüzlülük değerlendirmesi için)
+
+4. Fabrika ve HQ şubeleri için feedback form kapatılsın (müşteri yok)
+
+**Doğrulama:**
+```sql
+SELECT fs.id, b.name, fs.is_active FROM feedback_form_settings fs 
+JOIN branches b ON fs.branch_id = b.id ORDER BY b.name;
+-- Tüm aktif şubeler için kayıt olmalı
+```
+
+---
+
+### T002 — Bildirim Entegrasyonu (~2-3 saat)
+
+**Problem:** Yeni feedback veya şikayet gelince kimseye bildirim gitmiyor. createNotification() altyapısı hazır, sadece bağlanması lazım.
+
+**Yapılacak:**
+
+**A) Feedback Gelince Bildirim:**
+
+Feedback form submit endpoint'ini bul ve sonuna bildirim ekle:
+
+```bash
+grep -rn "feedback.*create\|submit.*feedback\|post.*feedback" server/ --include="*.ts" | head -10
+```
+
+Feedback kaydedildikten sonra:
+
+1. **Düşük puan (1-2 yıldız genel):** Acil bildirim
+   - Şube Supervisor'a: "⚠️ Düşük müşteri puanı — [Şube Adı] — Genel: 1/5"
+   - Şube Müdürüne: aynı bildirim
+   - HQ'ya (CGO): "Kritik müşteri geri bildirimi — [Şube Adı]"
+
+2. **Orta puan (3 yıldız):** Normal bildirim
+   - Sadece Şube Supervisor'a: "Yeni müşteri geri bildirimi — [Şube Adı] — 3/5"
+
+3. **Yüksek puan (4-5 yıldız):** Pozitif bildirim
+   - Supervisor'a: "✅ Pozitif müşteri geri bildirimi — [Şube Adı] — 5/5"
+   - Eğer personel ismi verilmişse, o personele de: "Bir müşteri seni 5/5 puanladı! 🎉"
+
+**B) Şikayet Gelince Bildirim:**
+
+Eğer feedback_type = 'complaint' ise:
+- Şube Supervisor'a: "🔴 Yeni müşteri şikayeti — [Şube Adı] — [Kategori]"
+- Şube Müdürüne: aynı
+- HQ (CGO + ilgili departman): "Müşteri şikayeti — [Şube Adı]"
+- priority = 'high' olarak ayarla
+
+**C) "Cevap Bekliyorum" İşaretliyse:**
+
+- response_deadline = NOW() + 24 saat olarak ayarla
+- Supervisor'a ekstra bildirim: "⏰ Müşteri yanıt bekliyor — 24 saat süreniz var"
+
+**Bildirim oluştururken mevcut createNotification() fonksiyonunu kullan.** Sprint 1.5'teki throttle sistemi (20/gün) ve dedup sistemi otomatik çalışacak.
+
+---
+
+### T003 — SLA Background Job (~1-2 saat)
+
+**Problem:** response_deadline hesaplanıyor ama breach kontrolü yapan background job yok.
+
+**Yapılacak:**
+
+1. Mevcut background job pattern'ini bul:
+```bash
+grep -rn "setInterval\|schedule\|background.*job\|cron" server/ --include="*.ts" | head -10
+```
+
+2. Yeni job ekle: **Her saat çalışsın** (mevcut job pattern'ini takip et)
+
+3. Job mantığı:
+```sql
+-- SLA breach olan feedback'leri bul
+SELECT id, branch_id, response_deadline, status 
+FROM customer_feedback 
+WHERE response_deadline IS NOT NULL 
+AND response_deadline < NOW() 
+AND status = 'new' 
+AND sla_breached = false;
+```
+
+4. Breach tespit edilince:
+   - `sla_breached = true` olarak güncelle
+   - Supervisor'a kırmızı bildirim: "🔴 SLA ihlali — Müşteri yanıtı 24 saati aştı — [Şube]"
+   - HQ'ya (CGO): "SLA ihlali — [Şube] — [Gün sayısı] gündür yanıtsız"
+   - Bu bildirimler throttle'dan muaf olsun (critical notification)
+
+5. Breach sonrası her 24 saatte tekrar bildirim gönder (yanıtlanana kadar)
+
+**Doğrulama:**
+- Test: 1 feedback kaydının response_deadline'ını geçmiş bir tarihe güncelle
+- Job çalışsın, sla_breached = true olsun, bildirim gitsin
+
+---
+
+### T004 — Sorumluluk Matrisi & Skor Entegrasyonu (~3-4 saat)
+
+**Problem:** Müşteri geri bildirimleri kimsenin skorunu etkilemiyor. customer_feedback puanları şube sağlık skoruna dahil değil.
+
+**Bu en kritik task — DOSPRESSO'nun özel iş kuralları burada.**
+
+**A) Sorumluluk Matrisi Tanımla:**
+
+Yeni bir yapılandırma oluştur (kod içinde veya DB'de):
+
+```typescript
+const FEEDBACK_RESPONSIBILITY_MATRIX = {
+  temizlik: {
+    affectsRoles: ['supervisor', 'supervisor_buddy'],
+    scoreImpact: 'direct',       // doğrudan bu rollerin skoruna yansır
+    requiresName: false,          // isim sorulmaz
+    escalationDays: 15,           // 15 gün üst üste düşükse müdüre de yansır
+  },
+  hizmet_guler_yuzluluk: {
+    affectsRoles: ['named_staff'], // ismi verilen personel
+    scoreImpact: 'individual',     
+    requiresName: true,            // isim ZORUNLU
+    minRatingsForImpact: 3,        // tek yorum etkilemez, 3+ birikince etkiler
+  },
+  urun_kalitesi: {
+    affectsRoles: ['branch_general'], // şube genel (hafif etki)
+    scoreImpact: 'light',
+    requiresName: false,
+    notifyFabrika: true,           // fabrikaya da bildirim git
+  },
+  hiz_servis: {
+    affectsRoles: ['shift_staff'],  // o vardiyada çalışanlar
+    scoreImpact: 'shift_based',
+    requiresName: false,
+  },
+  mekan_ambiyans: {
+    affectsRoles: ['mudur', 'supervisor'],
+    scoreImpact: 'direct',
+    requiresName: false,
+  },
+};
+```
+
+**B) Composite Score'a Entegrasyon:**
+
+Mevcut Composite Score'un "Practical" bileşenine (%25) müşteri geri bildirim etkisini ekle:
+
+Mevcut Practical hesaplamayı bul:
+```bash
+grep -rn "practical\|Practical\|checklist.*score\|task.*score" server/ --include="*.ts" | head -15
+```
+
+Yeni Practical hesaplama:
+- Checklist tamamlama: %40 ağırlık (mevcut)
+- Görev zamanında bitirilme: %30 ağırlık (mevcut)
+- **Müşteri geri bildirim etkisi: %30 ağırlık (YENİ)**
+
+Müşteri geri bildirim etkisi hesaplama:
+
+**Temizlik puanı (supervisor/supervisor_buddy için):**
+```sql
+-- Son 30 günde şubenin temizlik ortalaması
+SELECT AVG(cleanliness_rating) FROM customer_feedback 
+WHERE branch_id = [şube] AND created_at > NOW() - INTERVAL '30 days'
+AND cleanliness_rating IS NOT NULL;
+```
+- 4.0+ → +10 puan (bonus)
+- 3.5-4.0 → 0 (nötr)
+- 3.0-3.5 → -5 puan
+- <3.0 → -10 puan
+- Bu etki SADECE supervisor ve supervisor_buddy'nin Practical skoruna yansır
+
+**Güler yüzlülük (bireysel personel için):**
+```sql
+-- Son 30 günde bu personele gelen puanlar
+SELECT AVG(staff_rating) FROM customer_feedback 
+WHERE staff_id = [personel_id] AND created_at > NOW() - INTERVAL '30 days'
+AND staff_rating IS NOT NULL;
+```
+- Minimum 3 değerlendirme biriktikten sonra aktif olur
+- 4.0+ → +10 puan (bonus)
+- 3.5-4.0 → 0 (nötr)
+- <3.5 → -8 puan
+- Bu etki SADECE ismi verilen personelin skoruna yansır
+
+**Ürün kalitesi (şube genel):**
+```sql
+SELECT AVG(product_rating) FROM customer_feedback 
+WHERE branch_id = [şube] AND created_at > NOW() - INTERVAL '30 days';
+```
+- Tüm şube personeline hafif etki: ±3 puan max
+
+**C) Şube Sağlık Skoruna Dahil Et:**
+
+Mevcut 5 bileşen: Denetimler %25, Şikayetler %25, Ekipman %20, Eğitim %15, Ops Hijyen %15
+
+Yeni bileşen ekle veya mevcut ağırlıkları güncelle:
+- **Seçenek 1 (önerilen):** 6. bileşen ekle — Müşteri Memnuniyeti %15, diğerlerini orantılı azalt
+- **Seçenek 2:** Şikayetler bileşenine dahil et (guest_complaints + customer_feedback birleşik)
+
+Sağlık skoru hesaplama servisini bul:
+```bash
+grep -rn "health.*score\|calculateHealth\|branchHealth" server/ --include="*.ts" -l
+```
+
+Müşteri memnuniyet bileşeni hesaplama:
+```sql
+-- Son 30 gün şube ortalaması (tüm kategoriler)
+SELECT 
+  AVG(overall_rating) as genel,
+  AVG(service_rating) as hizmet,
+  AVG(cleanliness_rating) as temizlik,
+  AVG(product_rating) as urun,
+  COUNT(*) as toplam_degerlendirme
+FROM customer_feedback 
+WHERE branch_id = [şube] AND created_at > NOW() - INTERVAL '30 days';
+```
+- 0 değerlendirme varsa → bileşen nötr (50/100)
+- <5 değerlendirme → "yetersiz veri" uyarısı, bileşen nötr
+- 5+ değerlendirme → gerçek ortalama (1-5 → 0-100 ölçeğine çevir)
+
+**D) Composite Score Job'una Entegre Et:**
+
+Sprint 2A'da oluşturulan gece job'unu (03:00) güncelle — müşteri geri bildirim etkisini de hesapla. Mevcut job'u bul:
+```bash
+grep -rn "composite.*score.*job\|score.*update.*job\|03:00\|calculateComposite" server/ --include="*.ts" | head -10
+```
+
+---
+
+### T005 — Personel Listesi Vardiya Bazlı Filtreleme (~1-2 saat)
+
+**Problem:** Müşteri formunda tüm aktif personel görünüyor, o an mesaide olup olmadığına bakılmıyor. Suistimale açık.
+
+**Yapılacak:**
+
+1. Public feedback form'da personel listesi çekilirken, o anki aktif vardiya kontrolü ekle:
+
+```bash
+# Form'un personel listesini nereden çektiğini bul
+grep -rn "staff.*list\|personnel.*list\|employee.*list\|personel.*liste" server/ --include="*.ts" | grep -i "feedback\|guest\|public" | head -10
+```
+
+2. Personel listesi endpoint'ini güncelle:
+```sql
+-- Şu an çalışan personel (aktif vardiyada olan)
+SELECT u.id, u.full_name, u.role 
+FROM users u 
+JOIN shift_assignments sa ON sa.user_id = u.id 
+JOIN shifts s ON s.id = sa.shift_id 
+WHERE u.branch_id = [şube_id] 
+AND s.start_time <= NOW() AND s.end_time >= NOW()
+AND u.is_active = true
+AND u.role IN ('barista', 'bar_buddy', 'stajyer', 'supervisor', 'supervisor_buddy');
+```
+
+3. Eğer vardiya verisi yoksa veya boşsa → tüm aktif personeli göster (fallback)
+
+4. Frontend'de personel seçimi zorunluluk kontrolü:
+   - "Güler Yüzlülük / Personel Davranışı" kategorisine puan verilirse → personel seçimi ZORUNLU
+   - Diğer kategorilerde → personel seçimi opsiyonel
+
+---
+
+### T006 — Suspicious Hard Reject + Günlük Limit (~1-2 saat)
+
+**Problem:** Şüpheli değerlendirmeler flag'leniyor ama yine kabul ediliyor. Suistimali gerçekten engellemeli.
+
+**Yapılacak:**
+
+1. Feedback submit endpoint'ini bul:
+```bash
+grep -rn "feedback.*submit\|feedback.*create\|post.*feedback" server/routes/ --include="*.ts" | head -10
+```
+
+2. Aşağıdaki kontrolleri REJECT (reddetme) olarak değiştir:
+
+**Hard Reject kuralları (form kabul edilmez):**
+- Aynı device_fingerprint + aynı şube → son 24 saatte zaten gönderilmişse → REJECT: "Bugün zaten değerlendirme yaptınız. Yarın tekrar deneyebilirsiniz."
+- GPS mesafesi > 500m VE GPS izni verilmediyse → REJECT: "Değerlendirme yapabilmek için şubede olmanız gerekmektedir."
+- Tüm kategorilere 1 yıldız + yorum yok + isim yok → REJECT değil ama `is_suspicious = true` ve ağırlığı %50 azalt (skor hesaplamasında)
+
+**Soft Flag kuralları (kabul edilir ama işaretlenir):**
+- Aynı device_fingerprint farklı şubede aynı hafta → flag: "Çoklu şube değerlendirmesi"
+- 30 saniyeden kısa sürede tamamlanan form → flag: "Çok hızlı tamamlandı"
+- Yönetici panelinde "Şüpheli Değerlendirmeler" filtresi ile görülebilir
+
+3. Müşteriye gösterilen reject mesajları Türkçe ve nazik olmalı — "Şubemize güvendiğiniz için teşekkürler. [sebep]"
+
+---
+
+### T007 — Müşteriye Otomatik Teşekkür Emaili (~1 saat)
+
+**Problem:** Müşteri email bırakıp "Cevap bekliyorum" dese bile otomatik yanıt gitmiyor.
+
+**Yapılacak:**
+
+1. Email gönderim altyapısını bul (IONOS SMTP + Nodemailer mevcut):
+```bash
+grep -rn "sendEmail\|nodemailer\|smtp\|transporter" server/ --include="*.ts" | head -10
+```
+
+2. Feedback kaydedildikten sonra, eğer email alanı doluysa:
+
+**Tüm geri bildirimler için:**
+- Otomatik teşekkür emaili: "Değerli misafirimiz, geri bildiriminiz için teşekkür ederiz. DOSPRESSO ekibi olarak deneyiminizi sürekli iyileştirmek için çalışıyoruz."
+
+**"Cevap Bekliyorum" işaretliyse:**
+- Ek mesaj: "Geri bildiriminiz ekibimize iletildi. En kısa sürede sizinle iletişime geçeceğiz."
+- response_deadline ayarla (24 saat)
+
+**Şikayet ise:**
+- Farklı template: "Yaşadığınız olumsuz deneyim için özür dileriz. Şikayetiniz yönetim ekibimize iletildi ve en geç 24 saat içinde sizinle iletişime geçilecektir."
+
+3. Email gönderim kaydı tut (feedback_responses tablosuna)
+
+---
+
+### T008 — Tekrarlayan Sorun Pattern Analizi (~2-3 saat)
+
+**Problem:** Bir şubede sürekli aynı kategori düşükse otomatik tespit ve eskale edilmiyor.
+
+**Yapılacak:**
+
+1. Haftalık background job ekle (her Pazartesi 08:00):
+
+2. Her şube için son 30 günlük kategori ortalamalarını hesapla:
+```sql
+SELECT 
+  branch_id,
+  AVG(cleanliness_rating) as temizlik_ort,
+  AVG(service_rating) as hizmet_ort,
+  AVG(product_rating) as urun_ort,
+  AVG(staff_rating) as personel_ort,
+  AVG(overall_rating) as genel_ort,
+  COUNT(*) as toplam
+FROM customer_feedback 
+WHERE created_at > NOW() - INTERVAL '30 days'
+GROUP BY branch_id;
+```
+
+3. Eşik kontrolleri:
+
+| Durum | Koşul | Aksiyon |
+|-------|-------|---------|
+| Dikkat | Kategori ort. < 3.5, 7+ gündür | Supervisor'a bildirim |
+| Uyarı | Kategori ort. < 3.5, 15+ gündür | Supervisor + Müdür'e bildirim, Katman 1 skor etkisi başlar |
+| Kritik | Kategori ort. < 3.0, 15+ gündür | HQ'ya bildirim, Katman 2 skor etkisi, aksiyon planı talebi |
+| İyileşme | Önceki ay < 3.5, bu ay > 4.0 | Supervisor'a pozitif bildirim: "Temizlik puanı iyileşti!" |
+
+4. Pattern tespiti sonuçlarını kaydet (yeni tablo veya mevcut bir log tablosuna):
+- şube_id, kategori, ortalama, durum (dikkat/uyarı/kritik), tarih
+- Dashboard'da "Trend Uyarıları" olarak gösterilsin
+
+5. **Temizlik pattern'ı → Supervisor/Supervisor Buddy skoru:**
+   - 15 gün üst üste temizlik < 3.5 → Supervisor'ın Practical bileşeninden -5 puan
+   - 30 gün üst üste < 3.5 → -10 puan + Müdüre de -3 puan
+
+---
+
+### T009 — Feedback ↔ Complaint Senkronizasyonu (~1 saat)
+
+**Problem:** customer_feedback'te feedback_type='complaint' olan kayıtlar guest_complaints tablosuna senkronize olmuyor.
+
+**Yapılacak:**
+
+1. Feedback submit endpoint'inde: eğer feedback_type = 'complaint' veya overall_rating <= 2 ise:
+   - Otomatik olarak guest_complaints tablosuna da kayıt oluştur
+   - Status: 'new', priority: rating 1 ise 'critical', rating 2 ise 'high'
+   - Source: 'customer_feedback_form'
+   - İki tablo arasında referans bağlantısı kur (feedback_id ↔ complaint_id)
+
+2. guest_complaints endpoint'lerini public erişime açmaya GEREK YOK — senkronizasyon backend'de otomatik
+
+---
+
+### T010 — Supervisor Dashboard Entegrasyonu (~1-2 saat)
+
+**Problem:** Supervisor ve HQ dashboard'larında müşteri geri bildirim özeti yok.
+
+**Yapılacak:**
+
+**A) Supervisor Dashboard Widget:**
+- "Misafir Geri Bildirimleri" kartı
+- Bugünkü ortalama puan: "⭐ 4.2/5 (8 değerlendirme)"
+- Son 7 günlük trend: mini çizgi grafik veya ok (↑ iyileşiyor, ↓ kötüleşiyor)
+- Bekleyen şikayetler: "🔴 2 yanıtsız şikayet"
+- Kategori bazlı mini skor: Temizlik 3.8, Hizmet 4.1, Ürün 4.5
+- "Detay →" linki misafir memnuniyeti sayfasına
+
+**B) HQ Dashboard Widget:**
+- "Şube Müşteri Memnuniyeti" kartı
+- 22 şubenin genel ortalaması
+- En düşük 3 şube kırmızı highlight
+- En yüksek 3 şube yeşil highlight
+- "SLA ihlali: 3 şubede" uyarısı (varsa)
+
+**Mevcut widget sistemiyle entegre et** (Sprint 1.5 T014B pattern'ini takip et — AtadiklarimWidget gibi)
+
+---
+
+### T011 — E2E Test & Doğrulama (~1 saat)
+
+**Senaryo 1 — Müşteri feedback gönderir:**
+1. Public form URL'i aç (QR token ile)
+2. Genel puan ver (3/5), temizlik puanı ver (2/5)
+3. Personel seç, güler yüzlülük puanı ver (2/5)
+4. Gönder → teşekkür mesajı
+5. Kontrol: customer_feedback'te kayıt var mı?
+6. Kontrol: Supervisor'a bildirim gitti mi? (düşük puan)
+
+**Senaryo 2 — Skor etkisi:**
+1. Composite Score job'unu tetikle
+2. Temizlik düşük → Supervisor'ın skoru etkilendi mi?
+3. Güler yüzlülük düşük + personel ismi → o personelin skoru etkilendi mi?
+4. Diğer personel etkilenmedi mi? (adalet kontrolü)
+
+**Senaryo 3 — Anti-suistimal:**
+1. Aynı cihazdan tekrar gönder → reject mesajı mı?
+2. GPS uzak → reject veya uyarı mı?
+
+**Senaryo 4 — SLA:**
+1. "Cevap bekliyorum" ile feedback gönder
+2. 24 saat geçmiş gibi deadline'ı geriye al
+3. SLA job çalıştır → breach bildirimi gitti mi?
+
+**Senaryo 5 — Dashboard:**
+1. Supervisor ile giriş → "Misafir Geri Bildirimleri" widget'ı var mı?
+2. Admin/CGO ile giriş → şube karşılaştırma widget'ı var mı?
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T005 → T006 → T004 → T009 → T007 → T008 → T010 → T011
+
+### DO NOT BREAK:
+- Mevcut public feedback formu (misafir-geri-bildirim.tsx — çalışıyor, bozmayın)
+- Mevcut misafir-memnuniyeti.tsx sayfası (HQ görüntüleme)
+- QR token sistemi
+- 7 dil desteği
+- GPS/fingerprint mevcut altyapısı
+- Mevcut 11 feedback + 3 complaint kaydı
+- Sprint 2A/2B'deki tüm değişiklikler (akademi, skor job, anti-cheat)
+- Bildirim sistemi (throttle, dedup, arşivleme)
+- Şube sağlık skoru mevcut 5 bileşeni (üzerine ekle, değiştirme)
+
+### KABUL KRİTERLERİ:
+- [ ] Tüm aktif şubelerin feedback_form_settings kaydı var
+- [ ] Düşük puan gelince Supervisor'a bildirim gidiyor
+- [ ] Şikayet gelince Supervisor + HQ'ya bildirim gidiyor
+- [ ] SLA breach otomatik tespit ediliyor ve bildirim gönderiliyor
+- [ ] Temizlik düşükse Supervisor/Supervisor Buddy skoru etkileniyor
+- [ ] Güler yüzlülük düşükse ismi verilen personelin skoru etkileniyor
+- [ ] Diğer personelin skoru haksız etkilenmiyor
+- [ ] Müşteri memnuniyeti şube sağlık skoruna dahil
+- [ ] Aynı cihazdan 24 saat içinde tekrar gönderim engelleniyor
+- [ ] GPS uzaksa gönderim engelleniyor
+- [ ] Personel listesi aktif vardiyaya göre filtreleniyor
+- [ ] Email bırakan müşteriye otomatik teşekkür gidiyor
+- [ ] Pattern analizi haftalık çalışıyor
+- [ ] Supervisor dashboard'da feedback widget'ı var
+- [ ] HQ dashboard'da şube karşılaştırma widget'ı var
+- [ ] 0 console error
+
+---
+
+Replit'e yapıştır ve çalıştır. Sonucu getirince doğrularız.

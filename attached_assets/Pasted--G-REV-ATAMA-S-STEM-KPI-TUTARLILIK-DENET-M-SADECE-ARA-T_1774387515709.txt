@@ -1,0 +1,162 @@
+# GÖREV ATAMA SİSTEMİ + KPI TUTARLILIK DENETİMİ
+# SADECE ARAŞTIR VE RAPORLA — DEĞİŞİKLİK YAPMA
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "GÖREV ATAMA SİSTEMİ + UI TUTARLILIK DENETİMİ"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. GÖREV (TASK) MEVCUT YAPI ████"
+
+echo "=== tasks tablosu kolonları ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='tasks' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+echo ""
+echo "=== task ilişkili tablolar ==="
+for tbl in task_assignees task_evidence task_ratings task_status_history task_steps task_triggers; do
+  echo "--- $tbl ---"
+  echo "SELECT column_name FROM information_schema.columns WHERE table_name='$tbl' ORDER BY ordinal_position;" | psql -t 2>/dev/null | head -15
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  Kayıt: $count"
+done
+
+echo ""
+echo "=== Task kayıt durumu ==="
+echo "SELECT status, count(*) FROM tasks GROUP BY status ORDER BY count DESC;" | psql 2>/dev/null
+echo ""
+echo "SELECT priority, count(*) FROM tasks GROUP BY priority ORDER BY count DESC;" | psql 2>/dev/null
+echo ""
+echo "--- Toplam task ---"
+echo "SELECT count(*) FROM tasks;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== Task atama yapısı ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='task_assignees' ORDER BY ordinal_position;" | psql -t 2>/dev/null
+echo ""
+echo "--- Kaç task'a kaç kişi atanmış? ---"
+echo "SELECT t.id, t.title, count(ta.id) as assignee_count FROM tasks t LEFT JOIN task_assignees ta ON t.id = ta.task_id GROUP BY t.id, t.title ORDER BY assignee_count DESC LIMIT 10;" | psql 2>/dev/null
+
+echo ""
+echo "████ 2. GÖREV ATAMA FRONTEND ████"
+
+echo "=== Görev sayfaları ==="
+find client/src/pages -name "*gorev*" -o -name "*task*" | grep -v node_modules | sort
+echo ""
+echo "--- Görev bileşenleri ---"
+find client/src/components -name "*task*" -o -name "*gorev*" | grep -v node_modules | sort
+
+echo ""
+echo "=== Görev oluşturma/atama formu ==="
+grep -rn "NewTask\|CreateTask\|TaskForm\|TaskDialog\|GorevOlustur\|gorev.*form\|task.*create\|task.*assign" client/src/ --include="*.tsx" | grep -v node_modules | head -15
+
+echo ""
+echo "=== Header profil menüsü (destek + görev ata) ==="
+grep -rn "Destek\|destek\|support\|hq-destek\|GorevAta\|gorev-ata\|task.*assign\|TaskAssign" client/src/components/app-header*.tsx client/src/components/app-layout*.tsx client/src/components/*header*.tsx client/src/components/*profile*.tsx 2>/dev/null | head -15
+echo ""
+echo "--- Header profil dropdown içeriği ---"
+find client/src/components -name "*header*" -o -name "*profile*menu*" -o -name "*user*menu*" -o -name "*avatar*menu*" | while read f; do
+  echo "--- $f ---"
+  grep -n "DropdownMenu\|MenuItem\|menu.*item\|Destek\|Görev\|Profil\|Çıkış\|Logout" "$f" 2>/dev/null | head -10
+done
+
+echo ""
+echo "████ 3. CRM TASK KANALI MEVCUT DURUM ████"
+
+echo "=== CRM'de Task kanalı nasıl çalışıyor? ==="
+grep -n "channel.*task\|task.*channel\|TaskChannel\|gorevler\|Görevler" client/src/pages/crm-mega.tsx 2>/dev/null | head -15
+echo ""
+echo "--- Task kanalında gösterilen veri ---"
+grep -n "useQuery.*task\|/api/tasks" client/src/pages/crm-mega.tsx 2>/dev/null | head -10
+
+echo ""
+echo "████ 4. GÖREV API ENDPOINTLERİ ████"
+
+echo "=== Task route dosyası ==="
+wc -l server/routes/tasks.ts 2>/dev/null
+echo ""
+echo "--- Task endpoint'leri ---"
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/tasks.ts 2>/dev/null | head -20
+echo ""
+echo "--- Task oluşturma endpoint detay ---"
+grep -A30 "router.post.*\"/\"" server/routes/tasks.ts 2>/dev/null | head -35
+
+echo ""
+echo "=== HQ Destek endpoint ==="
+grep -rn "router\.\(get\|post\).*hq-support\|router\.\(get\|post\).*destek" server/routes/ --include="*.ts" | head -10
+
+echo ""
+echo "████ 5. KPI BİLEŞENLERİ TUTARLILIK ████"
+
+echo "=== Mevcut KPI bileşenleri ==="
+find client/src/components -name "*KPI*" -o -name "*kpi*" -o -name "*Pill*" -o -name "*pill*" -o -name "*metric*" -o -name "*Metric*" | sort
+echo ""
+echo "--- KPIStrip / KPIPills kullanımı ---"
+grep -rn "KPIStrip\|KPIPills\|KpiStrip\|kpiStrip" client/src/ --include="*.tsx" | grep -v node_modules | head -20
+
+echo ""
+echo "=== Her sayfadaki KPI boyut/pattern ==="
+echo "--- Mission Control HQ ---"
+grep -n "KPI\|kpi\|metric\|stat\|grid-cols" client/src/components/mission-control/MissionControlHQ.tsx | head -10
+echo ""
+echo "--- Supervisor ---"
+grep -n "KPI\|kpi\|metric\|stat\|grid-cols" client/src/components/mission-control/MissionControlSupervisor.tsx | head -10
+echo ""
+echo "--- CRM ---"
+grep -n "KPI\|kpi\|metric\|stat\|grid-cols\|pill" client/src/pages/crm-mega.tsx | head -10
+echo ""
+echo "--- Ekipman ---"
+grep -rn "KPI\|kpi\|metric\|stat\|grid-cols" client/src/pages/*ekipman* client/src/components/*ekipman* 2>/dev/null | head -10
+echo ""
+echo "--- İK ---"
+grep -n "KPI\|kpi\|metric\|stat\|grid-cols" client/src/pages/ik.tsx 2>/dev/null | head -10
+echo ""
+echo "--- Akademi ---"
+grep -rn "KPI\|kpi\|metric\|stat\|grid-cols" client/src/pages/*akademi* 2>/dev/null | head -10
+echo ""
+echo "--- Görevler ---"
+grep -n "KPI\|kpi\|metric\|stat\|grid-cols" client/src/pages/*gorev* 2>/dev/null | head -10
+
+echo ""
+echo "████ 6. EVRENSEL TASARIM TUTARLILIK ████"
+
+echo "=== Farklı KPI boyutları ==="
+echo "--- Büyük kart KPI (eski stil) ---"
+grep -rn "text-2xl\|text-3xl\|text-4xl" client/src/components/mission-control/ client/src/pages/ --include="*.tsx" | grep -i "kpi\|metric\|stat\|count" | head -10
+echo ""
+echo "--- Compact pill KPI (yeni stil) ---"
+grep -rn "pill\|Pill\|badge.*kpi\|kpi.*badge\|compact.*kpi" client/src/ --include="*.tsx" | head -10
+echo ""
+echo "--- ModuleLayout KPI strip ---"
+grep -n "metric\|kpi\|stat" client/src/components/shared/ModuleLayout.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== Sidebar tutarlılık ==="
+echo "--- Farklı sidebar pattern'ları ---"
+grep -rn "ModuleSidebar\|CollapsibleSidebar\|AppSidebar" client/src/ --include="*.tsx" | grep -v node_modules | head -15
+
+echo ""
+echo "████ 7. QUICK ACTION / GÖREV ATAMA BUTONU ████"
+
+echo "=== Header'daki quick action dropdown ==="
+find client/src/components -name "*quick*action*" -o -name "*QuickAction*" | sort
+grep -rn "QuickAction\|quick-action\|hizli-islem\|GorevAta" client/src/components/ --include="*.tsx" | head -10
+
+echo ""
+echo "=== quick-action backend ==="
+grep -rn "quick-action\|quickAction" server/routes/ --include="*.ts" | head -10
+wc -l server/routes/quick-action.ts 2>/dev/null
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPORLA:"
+echo "1. Görev atama sistemi nasıl çalışıyor (mevcut akış)"
+echo "2. Header profil dropdown'da ne var (Destek, Görev Ata, vb.)"
+echo "3. CRM Task kanalı mevcut işlevsellik"
+echo "4. KPI boyut tutarsızlıkları (büyük/küçük nerede)"
+echo "5. Evrensel tasarım tutarsızlıkları (font, spacing, layout)"
+echo "6. Görev atama formu eksikleri (departman, şube, toplu atama)"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```

@@ -1,0 +1,105 @@
+PAYROLL Motor İyileştirme — Replit Test Talimatı
+Commit: 2e47102d
+Tarih: 7 Nisan 2026
+HAZIRLIK
+bashgit pull --rebase origin main
+npm install
+ADIM 1: VERİTABANI MİGRASYONU (ÖNCELİKLİ!)
+Schema'ya 3 yeni kolon eklendi. DB'ye manuel ALTER TABLE gerekli:
+sql-- monthly_payroll tablosuna yeni kolonlar
+ALTER TABLE monthly_payroll ADD COLUMN IF NOT EXISTS holiday_worked_days INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE monthly_payroll ADD COLUMN IF NOT EXISTS holiday_pay INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE monthly_payroll ADD COLUMN IF NOT EXISTS meal_allowance INTEGER NOT NULL DEFAULT 0;
+Migration sonrası doğrulama:
+sqlSELECT column_name, data_type, column_default
+FROM information_schema.columns
+WHERE table_name = 'monthly_payroll'
+AND column_name IN ('holiday_worked_days', 'holiday_pay', 'meal_allowance');
+-- 3 satır dönmeli
+ADIM 2: BUILD
+bashnpm run build
+Frontend + backend hata olmadan build olmalı.
+ADIM 3: 2026 TATİL SEED
+Server çalışırken admin ile:
+bashcurl -X POST http://localhost:5000/api/admin/seed-holidays-2026 \
+  -H "Cookie: connect.sid=SESSION_COOKIE" \
+  -H "Content-Type: application/json"
+Doğrulama:
+sqlSELECT name, date, is_half_day FROM public_holidays WHERE year = 2026 ORDER BY date;
+-- 16 satır dönmeli (Yılbaşı'ndan Cumhuriyet Bayramı'na)
+ADIM 4: BORDRO HESAPLAMA TESTİ
+Test A: Mart 2026 — Lara Şubesi (branchId=5)
+bashcurl -X POST http://localhost:5000/api/pdks-payroll/calculate \
+  -H "Cookie: connect.sid=SESSION_COOKIE" \
+  -H "Content-Type: application/json" \
+  -d '{"branchId": 5, "year": 2026, "month": 3}'
+Kontrol edilecek:
+
+✅ Response'ta holidayWorkedDays, holidayPay, mealAllowance alanları var mı?
+✅ Mart 2026'da Ramazan Bayramı (19-22 Mart) var — o günlerde çalışan personelin holidayWorkedDays > 0 olmalı
+✅ Stajyer rolündeki personelin mealAllowance > 0 olmalı (çalışılan gün × 33000 kuruş)
+✅ Barista/Supervisor rollerinin mealAllowance = 0 olmalı
+
+Test B: FM Eşik Doğrulama
+Önceki hesaplamada: 1 dakika bile FM sayılıyordu.
+Şimdi: 30 dk altı FM sayılmamalı.
+sql-- Önce eski hesaplama sonuçlarını kontrol et
+SELECT user_id, overtime_minutes, overtime_pay
+FROM monthly_payroll WHERE year = 2026 AND month = 3
+ORDER BY overtime_minutes DESC LIMIT 5;
+Tekrar hesaplat:
+bashcurl -X POST http://localhost:5000/api/pdks-payroll/calculate \
+  -d '{"branchId": 5, "year": 2026, "month": 3}'
+sql-- Yeni hesaplama — overtime_minutes azalmış olabilir (30 dk altı FM'ler elendi)
+SELECT user_id, overtime_minutes, overtime_pay
+FROM monthly_payroll WHERE year = 2026 AND month = 3
+ORDER BY overtime_minutes DESC LIMIT 5;
+Test C: Tatil Mesai
+sql-- Mart 2026'da tatil günlerinde çalışan personel
+SELECT mp.user_id, u.first_name, u.last_name,
+       mp.holiday_worked_days, mp.holiday_pay, mp.net_pay
+FROM monthly_payroll mp
+JOIN users u ON mp.user_id = u.id
+WHERE mp.year = 2026 AND mp.month = 3 AND mp.holiday_worked_days > 0;
+Test D: Yemek Bedeli (Stajyer)
+sql-- Stajyer rolündeki personel meal_allowance kontrolü
+SELECT mp.user_id, u.first_name, u.role, mp.position_code,
+       mp.worked_days, mp.meal_allowance,
+       mp.worked_days * 33000 as expected_meal
+FROM monthly_payroll mp
+JOIN users u ON mp.user_id = u.id
+WHERE mp.year = 2026 AND mp.month = 3 AND u.role = 'stajyer';
+-- meal_allowance = worked_days × 33000 olmalı
+ADIM 5: /maas SAYFASI UI TESTİ
+
+/maas sayfasını aç
+Lara şubesi, Mart 2026 seç
+"Hesapla" butonuna bas
+Tablo'da yeni sütunlar görünüyor mu? (API'de dönen veriler)
+Not: Frontend henüz yeni sütunları göstermeyebilir — sadece API'nin doğru dönüş yaptığını kontrol et
+
+
+RAPOR FORMATI
+MİGRASYON: ✅/❌ (3 kolon eklendi mi?)
+BUILD: ✅/❌
+TATİL SEED: ✅/❌ (16 tatil oluştu mu?)
+TEST A (Bordro hesaplama): ✅/❌
+  - holidayWorkedDays alanı var mı: ✅/❌
+  - holidayPay alanı var mı: ✅/❌
+  - mealAllowance alanı var mı: ✅/❌
+TEST B (FM eşik): ✅/❌
+  - overtime_minutes azaldı mı: evet/hayır
+TEST C (Tatil mesai): ✅/❌
+  - Tatilde çalışan personel tespit edildi mi: evet/hayır
+TEST D (Yemek bedeli): ✅/❌
+  - Stajyer meal_allowance doğru mu: evet/hayır
+
+NOTLAR: [ek bulgular]
+PUSH: hayır (sadece migration + test)
+DOKUNMA LİSTESİ
+Bu dosyalara/tablolara dokunma:
+
+announcements.tsx, AnnouncementAnalytics.tsx
+Denetim sistemi
+Dobody agent
+Fabrika batch spec + maliyet

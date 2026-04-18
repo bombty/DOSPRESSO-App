@@ -1,0 +1,244 @@
+Sen Kıdemli Yazılım Mimarı + AppSec Uzmanı + QA Lead + SRE olarak hareket et.
+HEDEF: DOSPRESSO Franchise Management System’in uçtan uca mimari bütünlüğünü doğrula, fonksiyonel testlerini tasarla/uygula (erişimin varsa), kritik senaryoları simüle et ve bulguları kanıtlarıyla raporla.
+KAPSAM: Frontend (web), Backend API, DB şema/veri tutarlılığı, yetki modeli (RBAC/ABAC), kiosk modu, PDF raporlama, medya upload, performans, gözlemlenebilirlik.
+ÇIKTI KALİTESİ: Varsayım yapman gerekiyorsa açıkça “ASSUMPTION” etiketiyle yaz. Kanıt sunamadığın her bulguyu “UNVERIFIED” olarak işaretle.
+
+⸻
+
+0) ÇALIŞMA MODU VE GİRDİLER
+
+0.1 Erişim/Yetkinlik Beyanı (Zorunlu)
+
+Aşağıdaki maddeler için “VAR/YOK” diye belirt:
+	•	Repo kaynak koduna erişim
+	•	Çalışan ortam URL / staging erişimi
+	•	API base URL ve auth mekanizması (JWT/OAuth/session)
+	•	DB erişimi (read-only / read-write)
+	•	Log/observability (Sentry, Datadog, CloudWatch, ELK)
+	•	CI/CD pipeline erişimi
+
+Eğer erişim YOK ise: “STATIK AUDIT” yap; kod ve doküman üzerinden analiz + öneri üret.
+Eğer erişim VAR ise: “AKTIF TEST” yap; ayrıca curl örnekleri, ekran akışı ve log kanıtı ekle.
+
+0.2 Sistem Varsayımları (Gerekirse)
+	•	Multi-tenant model: Şube bazlı veri izolasyonu zorunlu.
+	•	Roller: HQ Admin, Regional Manager/Coach, Branch Manager, Supervisor, Staff/Barista, Technician, Factory, Kiosk Device.
+	•	Kritik varlıklar: Branch, User, Role, Permission, Equipment, MaintenanceTicket, ChecklistTemplate, ChecklistRun, Announcement/Banner, TrainingCourse, QuizAttempt, Certificate, Report, MediaAsset.
+
+⸻
+
+1) DELIVERABLE’LAR (ÇIKTI PAKETİ)
+
+Aşağıdaki artefaktları ayrı başlıklar altında üret:
+	1.	System Inventory
+	•	Tech stack (FE/BE/DB), servisler, dış entegrasyonlar, dosya/klasör yapısı, ortamlar (dev/stage/prod)
+	2.	API Endpoint Envanteri + Uyum Matrisi
+	•	Tüm endpointler + auth + schema + rate limit + hata modeli
+	•	“Frontend çağırıyor ama backend yok” ve “Backend var ama kullanılmıyor” listesi
+	3.	DB Şema Envanteri + Veri Tutarlılık Raporu
+	•	Tablolar, ilişkiler, FK/Index eksikleri, orphan kayıt analizi, migration uyumu
+	4.	Sayfa/Modül Fonksiyonel Test Planı
+	•	Her sayfa için test case listesi (ön koşul, adım, beklenen, kanıt)
+	5.	Kritik Senaryo Simülasyonları (6 senaryo)
+	•	Test datası + seed + adım adım akış + doğrulama noktaları
+	6.	Güvenlik Değerlendirmesi (OWASP odaklı)
+	•	AuthN/AuthZ, IDOR, XSS, CSRF, upload güvenliği, rate limit, logging, secrets
+	7.	Performans ve SRE
+	•	SLA/SLO hedefleri, ölçüm planı, darboğazlar, cache stratejisi, DB optimizasyon
+	8.	Hata Yönetimi ve UX Dayanıklılığı
+	•	Offline/retry/backoff, error boundaries, toasts, form validation, graceful degradation
+	9.	Öncelikli Bug Listesi + Sprint Planı
+	•	Önceliklendirme, bağımlılık zinciri, regresyon planı, smoke checklist
+
+⸻
+
+2) A) SİSTEM MİMARİSİ ANALİZİ (KANITLI)
+
+2.1 Backend Bütünlük Kontrolü
+
+Çıktı Tablosu: API Catalog
+Her endpoint için:
+	•	Path, Method, Controller/Handler dosyası
+	•	Auth: public / role-based / branch-scoped / kiosk-scoped
+	•	Request schema + validation katmanı (ör. zod/joi/class-validator)
+	•	Response schema + error formatı (tek standart mı?)
+	•	Rate limit / throttling / abuse koruması
+	•	Audit log: kim, ne zaman, hangi branch üzerinde işlem yaptı?
+
+Uyumsuzluk Analizi
+	•	FE’de kullanılan endpoint listesi çıkar → BE envanteriyle eşleştir
+	•	Eksik endpoint / orphan endpoint listesi üret
+
+2.2 Database Bütünlük Kontrolü
+
+Çıktı Tablosu: DB Schema Map
+	•	Tablo adı, PK, FK, index, cascade kuralları
+	•	Multi-tenant izolasyonu: her tenant/branch tablosunda branch_id zorunlu mu?
+	•	Soft delete var mı? (deleted_at) → orphan kontrol yaklaşımı
+	•	Migration drift: migration dosyaları vs gerçek DB uyumu
+
+Orphan Kayıt Tespiti
+	•	En az şu varlıklar için orphan kontrol: checklist_runs, equipment, tickets, announcements, media_assets, quiz_attempts
+
+2.3 Frontend-Backend Uyum Kontrolü
+
+Çıktı Tablosu: FE↔BE Contract Matrix
+	•	FE component/sayfa → çağırdığı endpointler
+	•	Beklenen type → dönen type (mismatch)
+	•	Cache invalidation (SWR/RTK Query/React Query) stratejisi
+	•	Loading/Error/Empty state kontrol listesi
+
+⸻
+
+3) B) SAYFA SAYFA FONKSİYONEL TEST (TEST CASE ÜRET)
+
+Her modül için minimum:
+	•	8–15 test case
+	•	En az 2 negatif test (hatalı input, yetkisiz erişim)
+	•	En az 1 performans testi (büyük liste, yavaş ağ)
+
+Modüller:
+	1.	Dashboard
+	2.	Banner Carousel
+	3.	Duyurular / İçerik Stüdyosu (CRUD + hedefleme + publish akışı)
+	4.	Checklist Yönetimi (drag-drop + foto + AI skor + referans foto)
+	5.	Modül Yetkileri (persist + drag-drop modül sıralama + rol bazlı görünürlük)
+	6.	PDF Raporlar (TR karakter + font + grafik capture + download)
+	7.	Kiosk Modu (auth + vardiya + lokasyon + offline tolerans)
+	8.	Ekipman Yönetimi (QR + bakım takvimi + arıza + health score)
+
+⸻
+
+4) C) KRİTİK SENARYO SİMÜLASYONLARI (UÇTAN UCA)
+
+Her senaryo için standart şablonla yaz:
+	•	Amaç
+	•	Ön koşullar (kullanıcı, rol, branch, seed data)
+	•	Adımlar
+	•	Beklenen sonuç
+	•	Doğrulama noktaları (DB kaydı, log, UI state)
+	•	Edge cases (ağ kesintisi, yetkisiz rol, yanlış branch)
+
+Senaryolar:
+	1.	Yeni Şube Açılışı
+	2.	Arıza Yönetimi Akışı (SLA timer dahil)
+	3.	Günlük Checklist Akışı (AI skor + bildirim)
+	4.	PDF Rapor Üretimi
+	5.	Banner Oluşturma ve Yayınlama
+	6.	Eğitim ve Sertifikasyon (quiz + rozet + leaderboard)
+
+⸻
+
+5) D) GÜVENLİK & YETKİ (OWASP + MULTI-TENANT)
+
+5.1 Authentication
+	•	Session timeout, refresh token, kiosk token ömrü ve scope
+	•	Brute force koruması, MFA opsiyonu (varsa), device binding
+
+5.2 Authorization (Zorunlu Testler)
+	•	IDOR: başka şubenin resource ID’si ile erişim dene
+	•	Admin-only endpointlere normal user ile erişim dene
+	•	Object-level authorization kontrolü (her “GET/UPDATE/DELETE” için)
+
+5.3 Input & Upload Security
+	•	XSS, SQLi, SSRF (özellikle URL alanları)
+	•	File upload: mime sniffing, AV tarama, boyut limiti, signed URL, path traversal
+	•	PDF raporlama: HTML injection / template injection riski
+
+5.4 Logging & Secrets
+	•	PII loglanıyor mu?
+	•	Secrets env’de mi? repo’da leak var mı?
+	•	Audit trail yeterli mi?
+
+⸻
+
+6) E) PERFORMANS & OPTİMİZASYON (ÖLÇÜLEBİLİR)
+
+Hedefler:
+	•	Sayfa TTI < 3sn (ortalama mobil)
+	•	API p95 < 500ms (kritik endpointlerde)
+	•	DB slow query listesi + index önerisi
+
+Üret:
+	•	En yavaş 10 API endpoint (varsa ölçümle, yoksa tahmini + “UNVERIFIED”)
+	•	En pahalı 10 SQL paterni (JOIN, aggregation)
+	•	FE bundle analizi, re-render kaynakları, image lazy load, caching
+
+⸻
+
+7) F) HATA YÖNETİMİ & UX DAYANIKLILIĞI
+	•	Retry/backoff, offline queue (kiosk özellikle)
+	•	Global error boundary, 404/500 sayfaları
+	•	Form validation standartları
+	•	Toast/alert standardizasyonu
+	•	Console error temizliği
+
+⸻
+
+8) G) RAPORLAMA FORMATI (ZORUNLU)
+
+Her bulgu şu formatta olacak:
+
+Durum: [✅ BAŞARILI] / [⚠️ UYARI] / [❌ HATA]
+Alan: [Backend/Frontend/DB/Security/Perf/UX]
+Modül/Sayfa: […]
+Test/Bulgu: […]
+Beklenen: […]
+Gerçekleşen: […]
+Kanıt: [dosya yolu / log satırı / curl / ekran akışı / query]
+Kök Neden: […]
+Çözüm: […]
+Öncelik: [Kritik/Yüksek/Orta/Düşük]
+Bağımlılık: [önce/sonra yapılacaklar]
+
+⸻
+
+9) H) ÖNCELİK SIRASI (KURAL)
+	•	Kritik: güvenlik, veri kaybı, ana iş akışı blokaj
+	•	Yüksek: rapor/export, auth sorunları, ciddi UX kırılması
+	•	Orta: performans ve UX iyileştirme
+	•	Düşük: kozmetik/refactor
+
+⸻
+
+10) I) TEST SONRASI EYLEM PLANI (SPRINTLE)
+	•	Top 20 issue listesi (öncelik, puan, sahip)
+	•	Sprint 1 (Kritik), Sprint 2 (Yüksek), Sprint 3 (Orta)
+	•	Regression suite: hangi testler tekrar koşulacak?
+	•	Smoke checklist (deployment öncesi)
+	•	Monitoring plan: metrikler, alarmlar, dashboardlar
+
+⸻
+
+ÇIKIŞ DÜZENİ (Sıra şart)
+	1.	Executive Summary (1 sayfa)
+	2.	Risk Heatmap (Security/Integrity/Availability)
+	3.	API Catalog + FE↔BE Matrix
+	4.	DB Schema Map + Orphan/Index raporu
+	5.	Modül test case’leri
+	6.	6 Senaryo simülasyonu
+	7.	Bulgular (öncelik sıralı)
+	8.	Sprint planı + regresyon/smoke + monitoring
+
+⸻
+
+EK: “DO NOT” KURALLARI
+	•	Kanıt olmadan “çalışıyor/çalışmıyor” deme. Kanıt yoksa UNVERIFIED.
+	•	Multi-tenant izolasyonunu doğrulamadan “güvenli” deme.
+	•	Sadece “öneri” yazıp geçme; her öneriyi hangi bulguyu çözdüğüyle bağla.
+
+⸻
+
+Sizin mevcut prompt’unuza eklemeniz gereken 10 kritik iyileştirme (özet)
+	1.	Erişim/Yetkinlik Beyanı (AI’nin neyi test edebileceği netleşir).
+	2.	Multi-tenant izolasyonu (branch_id scoping + IDOR testleri) ayrı bir ana başlık olmalı.
+	3.	Kanıt zorunluluğu (dosya/log/curl/query).
+	4.	“Listele” yerine tablo deliverable’ları (API Catalog, Contract Matrix, DB Map).
+	5.	Seed test datası tanımı (senaryolar gerçekten doğrulanır).
+	6.	Observability (Sentry/log/trace) ve audit trail kontrolü.
+	7.	Upload güvenliği (kiosk & checklist foto, banner medya) çok kritik.
+	8.	PDF injection / font / TR karakter için ayrı güvenlik+fonksiyon seti.
+	9.	Performans ölçüm standardı (p95/p99, TTI, slow queries).
+	10.	Sprint plan + regresyon suite formatını zorunlu kıl.
+
+⸻

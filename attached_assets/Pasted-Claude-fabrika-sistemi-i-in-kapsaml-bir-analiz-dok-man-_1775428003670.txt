@@ -1,0 +1,79 @@
+Claude fabrika sistemi için kapsamlı bir analiz dokümanı hazırladı: docs/FABRIKA-ANALIZ-6-NISAN-2026.md
+Ayrıca 3 quick fix push etti. Senden istenen:
+
+GÜNCELLEME:
+git pull --rebase origin main
+npm install
+npm run build (hata varsa fix + push)
+ANALİZ DOKÜMANINI OKU:
+docs/FABRIKA-ANALIZ-6-NISAN-2026.md dosyasını oku ve değerlendir.
+QUICK FIX'LERİ DOĞRULA:
+a) Fabrika kiosk'a gir (fabrika kullanıcı ile)
+b) "Molaya Çık" ve "Arıza Bildir" düzeltildi mi? (Türkçe karakter)
+c) "Üretim Planla" butonu: fabrika_mudur/fabrika_sorumlu'da GÖRÜNMELİ, diğerlerinde GÖRÜNMEMELİ
+d) Üretim Planla tıklanınca yeni sekme açılmamalı (aynı sekmede)
+FABRİKA SİSTEMİNİ KENDİN TEST ET:
+a) Fabrika kiosk akışını baştan sona dene (PIN giriş → vardiya başla → istasyon seç → üretim → mola → vardiya bitir)
+b) Üretim planlama sayfasını test et (takvim, plan oluşturma, batch spec)
+c) Kalite kontrol akışını test et
+d) Kavurma sayfasını test et (boş card'lar var mı?)
+e) Dashboard KPI'larını kontrol et
+ANALİZ DOKÜMANINA KATKI:
+Claude'un analiz dokümanını oku ve şu perspektiflerden değerlendir:
+a) DOĞRULAMA: Claude'un tespit ettiği bug'lar gerçekten var mı? Canlı sistemde doğrula.
+b) EKSİK TESPİTLER: Claude'un kaçırdığı başka sorunlar var mı?
+c) ÖNCELİK: Claude'un öncelik sıralaması doğru mu? Sence farklı sıralama olmalı mı?
+d) TEKNİK DETAY: Her sorun için teknik çözüm önerisi var mı?
+e) VERİ DURUMU: DB'de mevcut batch_specs, factory_stations, factory_products verisi nasıl?
+
+Kaç batch spec tanımlı?
+Kaç istasyon aktif?
+Kaç ürün kayıtlı?
+factoryShiftSessions son 7 günde kaç kayıt var?
+f) API KONTROLÜ: Fabrika API endpoint'leri doğru çalışıyor mu?
+GET /api/factory/kiosk/staff
+GET /api/factory/stations
+GET /api/factory/products
+POST /api/factory/kiosk/start-shift
+g) FRONTEND KONTROLÜ:
+Kavurma sayfası neden boş card gösteriyor? (Screenshot #6)
+Üretim Planlama takvim tarih formatı bozuk mu? (Screenshot #10)
+Dashboard'daki "Düşük Stok Uyarısı: 64 hammadde" doğru mu?
+
+
+RAPOR FORMATI:
+=== CLAUDE ANALİZİ DOĞRULAMA ===
+BUG-F1 (window.open): ✅ düzeltildi / ❌ hala var
+BUG-F2 (Türkçe): ✅ düzeltildi / ❌ hala var
+BUG-F3 (takvim tarih): ✅ doğru / ❌ Claude yanılıyor
+SORUN-F1 (batch spec kopuk): ✅ doğru / ❌ aslında çalışıyor
+SORUN-F2 (istasyon→ürün): ✅ doğru / ❌ zaten bağlı
+SORUN-F3 (vardiya≠üretim): ✅ doğru / ❌ zaten bağımsız
+SORUN-F4 (min personel): ✅ doğru / ❌ zaten var
+SORUN-F5 (yetkilendirme): ✅ düzeltildi / ❌ eksik kaldı
+=== EKSİK TESPİTLER (Claude kaçırmış) ===
+
+...
+...
+
+=== VERİ DURUMU ===
+Batch spec sayısı: ?
+Aktif istasyon: ?
+Ürün sayısı: ?
+Son 7 gün shift session: ?
+=== ÖNCELİK ÖNERİSİ ===
+
+(en acil) ...
+...
+
+=== ORTAK PLAN ÖNERİSİ ===
+Sprint 1: ...
+Sprint 2: ...
+PUSH YAPTIN MI: evet/hayır
+
+KURALLAR:
+
+git reset --hard KULLANMA
+Küçük fix bulursan → commit + push
+Büyük mimari değişiklik YAPMA — sadece analiz ve rapor
+Bu sefer amacın KOD YAZMAK değil, ANALİZ ve GERİ BİLDİRİM

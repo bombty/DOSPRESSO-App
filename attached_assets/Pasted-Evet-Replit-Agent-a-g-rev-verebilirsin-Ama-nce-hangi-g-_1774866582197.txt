@@ -1,0 +1,70 @@
+Evet, Replit Agent'a görev verebilirsin. Ama önce hangi görevlerin güvenli olduğunu ayıralım:
+
+---
+
+## Replit Agent'a Verilebilecek Görevler
+
+**✅ Güvenli (tekrarlayan, net scope):**
+- toFixed crash fix (~200 satır)
+- Array safety `.map()` korumaları
+- Türkçe toast mesajları kontrol
+- Dark mode hardcoded renkler fix
+
+**⚠️ Dikkatli (mimari bilgi gerekir):**
+- Onboarding crash fix
+- Manifest auth genişletme
+
+**❌ Replit'e verme (kritik iş mantığı):**
+- Kiosk akışı değişiklikleri
+- PDKS/bordro hesaplamaları
+- Auth middleware
+
+---
+
+## Replit Agent Prompt
+
+Şunu kopyala, Replit Agent'a yapıştır:
+
+```
+DOSPRESSO-App projesinde aşağıdaki teknik borç görevlerini yap. 
+Her görev sonrası ne değiştirdiğini listele.
+
+GÖREV 1 — toFixed güvenlik fix:
+client/src/pages/ altındaki tüm .tsx dosyalarında:
+- `.toFixed(` kullanımlarını `Number(value ?? 0).toFixed(` ile değiştir
+- `.toLocaleString(` kullanımlarını `Number(value ?? 0).toLocaleString(` ile değiştir
+- Sadece değişken üzerinde çağrılan kullanımları fix et (string literal üzerinde değil)
+- Her dosyada değişiklik yaptıysan dosya adını ve satır sayısını raporla
+
+GÖREV 2 — Array safety fix:
+client/src/pages/ altındaki tüm .tsx dosyalarında:
+- `.map(` çağrısından önce Array.isArray() kontrolü olmayan yerleri bul
+- Pattern: `someVar.map(` → `(Array.isArray(someVar) ? someVar : []).map(`
+- Sadece API'den gelen data üzerindeki .map() çağrılarını fix et
+- State veya sabit array'lere dokunma
+
+GÖREV 3 — Türkçe UI kontrol:
+client/src/pages/sube/ ve client/src/pages/admin/ altında:
+- İngilizce kalan buton/label metinleri Türkçeye çevir
+- "Save" → "Kaydet", "Cancel" → "İptal", "Delete" → "Sil", "Edit" → "Düzenle"
+- data-testid attribute'larına dokunma
+
+Her görev bittikten sonra:
+- Kaç dosya değiştirildi
+- Toplam kaç satır
+- Build başarılı mı (npx vite build çalıştır)
+bilgilerini raporla.
+```
+
+---
+
+## Benim Rolüm
+
+Replit Agent çalışırken ben:
+- Onboarding crash fix
+- Şifre değiştirme UI kontrol
+- E2E test hazırlığı
+
+yapabilirim. Replit rapor verince ben review ederim, sorun varsa düzeltirim.
+
+Deneyelim mi?

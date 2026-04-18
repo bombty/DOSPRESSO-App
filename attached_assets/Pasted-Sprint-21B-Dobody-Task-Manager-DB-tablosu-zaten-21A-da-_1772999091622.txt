@@ -1,0 +1,333 @@
+Sprint 21B — Dobody Task Manager. DB tablosu zaten 21A'da oluşturuldu, şimdi admin UI. Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 21B — Mr. Dobody Task Manager (Admin UI for Manual Task Assignment)
+
+The `dobody_flow_tasks` and `dobody_flow_completions` tables were created in Sprint 21A. This sprint adds the admin UI so HQ staff can create, manage, and monitor tasks that appear in users' Mr. Dobody Flow Mode.
+
+### T001 — Backend CRUD API for Flow Tasks (~2 hours)
+
+Create endpoints in a new file `server/routes/dobody-task-manager.ts`:
+
+**Endpoints:**
+
+```
+GET    /api/admin/dobody-tasks          — List all manual tasks (with filters)
+GET    /api/admin/dobody-tasks/:id      — Get single task details + completion stats
+POST   /api/admin/dobody-tasks          — Create new task
+PATCH  /api/admin/dobody-tasks/:id      — Update task
+DELETE /api/admin/dobody-tasks/:id      — Soft delete (set is_active=false)
+GET    /api/admin/dobody-tasks/:id/stats — Completion statistics for a task
+```
+
+**Auth:** All endpoints require `isAuthenticated`. Role check: only these roles can manage tasks:
+- `admin` — full access, any target
+- `ceo`, `cgo` — can create for any role/branch
+- `coach` — can create for branches they supervise
+- `trainer` — can create for training-related tasks only
+- `supervisor`, `mudur` — can create for their own branch staff only
+- `fabrika_mudur` — can create for factory staff only
+
+**GET /api/admin/dobody-tasks query params:**
+- `?status=active|expired|all` (default: active)
+- `?createdBy=userId`
+- `?targetRole=barista`
+- `?page=1&limit=20`
+
+**POST /api/admin/dobody-tasks body:**
+```json
+{
+  "title": "Yeni Temizlik Protokolü",
+  "description": "Bu hafta güncellenen temizlik protokolünü okuyun",
+  "navigateTo": "/egitim/modul/45",
+  "estimatedMinutes": 5,
+  "priority": "high",
+  "targetRoles": ["barista", "supervisor"],
+  "targetBranches": null,
+  "targetUsers": null,
+  "startDate": "2026-03-08",
+  "endDate": "2026-03-15"
+}
+```
+
+**Validation rules:**
+- title required, max 255 chars
+- priority must be: high, normal, low
+- startDate required, must be today or future
+- endDate optional, must be >= startDate
+- At least one of targetRoles, targetBranches, or targetUsers must be provided
+- If coach: targetBranches must be within their assigned branches
+- If supervisor/mudur: targetBranches must be their own branch only
+
+**GET /api/admin/dobody-tasks/:id/stats response:**
+```json
+{
+  "taskId": 12,
+  "title": "Yeni Temizlik Protokolü",
+  "totalTargetUsers": 45,
+  "completedUsers": 28,
+  "completionRate": 62.2,
+  "completions": [
+    { "userName": "Cihan Kolakan", "role": "barista", "branch": "Işıklar", "completedAt": "2026-03-08T14:30:00" },
+    { "userName": "Ayşe Demir", "role": "barista", "branch": "Batman", "completedAt": "2026-03-08T15:10:00" }
+  ],
+  "pendingUsers": [
+    { "userName": "Mehmet Kaya", "role": "barista", "branch": "Antalya Lara" }
+  ]
+}
+```
+
+Register the routes in server/routes.ts or wherever routes are registered:
+```bash
+grep -rn "registerRoutes\|app.use.*routes\|router.*use" server/index.ts server/routes.ts 2>/dev/null | head -10
+```
+
+### T002 — Task Manager Page (Frontend) (~4 hours)
+
+Create: `client/src/pages/admin/dobody-gorev-yonetimi.tsx`
+
+**Page layout:**
+
+**Top section — Summary cards:**
+```
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Aktif    │ │ Bu Hafta │ │ Ort.     │ │ Toplam   │
+│ Görevler │ │ Oluşturulan│ │ Tamamlama│ │ Tamamlama│
+│    8     │ │     3     │ │   %72    │ │   234    │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘
+```
+
+**Middle section — Task list table:**
+```
+┌────────────────────────────────────────────────────────────────┐
+│ [+ Yeni Görev]  [Filtre: Aktif ▼]  [Arama: ________]         │
+├────────────────────────────────────────────────────────────────┤
+│ Başlık          │ Hedef      │ Süre    │ Tamamlama │ İşlem    │
+├─────────────────┼────────────┼─────────┼───────────┼──────────┤
+│ ⭐ Yeni Temizlik│ Barista    │ 8-15 Mar│ %62 (28/45│ ✏️ 📊 🗑│
+│   Protokolü     │ Supervisor │         │           │          │
+├─────────────────┼────────────┼─────────┼───────────┼──────────┤
+│ Stok Sayım      │ Işıklar    │ Bugün   │ %0 (0/11) │ ✏️ 📊 🗑│
+│   Hatırlatma    │ şubesi     │         │           │          │
+└─────────────────┴────────────┴─────────┴───────────┴──────────┘
+```
+
+**Action buttons per row:**
+- ✏️ Edit → opens edit dialog
+- 📊 Stats → opens completion stats dialog
+- 🗑 Delete → confirmation then soft delete
+
+**"+ Yeni Görev" button → opens create dialog:**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🤖 Yeni Mr. Dobody Görevi                           │
+│                                                      │
+│ Başlık *                                             │
+│ ┌──────────────────────────────────────────────┐    │
+│ │ Yeni temizlik protokolünü okuyun             │    │
+│ └──────────────────────────────────────────────┘    │
+│                                                      │
+│ Açıklama                                             │
+│ ┌──────────────────────────────────────────────┐    │
+│ │ Bu hafta güncellenen protokolü inceleyin...  │    │
+│ └──────────────────────────────────────────────┘    │
+│                                                      │
+│ Yönlendirme Sayfası                                  │
+│ ┌──────────────────────────────────────────────┐    │
+│ │ /egitim/modul/45                      [Seç ▼]│    │
+│ └──────────────────────────────────────────────┘    │
+│                                                      │
+│ Tahmini Süre    Öncelik                              │
+│ [5] dakika      ◉ Yüksek ○ Normal ○ Düşük          │
+│                                                      │
+│ ── Hedef Kitle ──                                    │
+│                                                      │
+│ Roller:                                              │
+│ ☑ Barista  ☑ Bar Buddy  ☐ Stajyer  ☐ Supervisor   │
+│ ☐ Müdür   ☐ Coach      ☐ Trainer  ☐ Fabrika Op.   │
+│ ☐ Tümü                                              │
+│                                                      │
+│ Şubeler:                                             │
+│ ◉ Tüm Şubeler  ○ Seçili Şubeler                    │
+│   (seçili ise multi-select dropdown)                 │
+│                                                      │
+│ Belirli Kişiler: (opsiyonel)                         │
+│ ┌──────────────────────────────────────────────┐    │
+│ │ Kullanıcı ara...                             │    │
+│ └──────────────────────────────────────────────┘    │
+│                                                      │
+│ ── Zamanlama ──                                      │
+│                                                      │
+│ Başlangıç: [2026-03-08]  Bitiş: [2026-03-15]       │
+│                                                      │
+│        [ İptal ]          [ Kaydet ve Yayınla ]      │
+└─────────────────────────────────────────────────────┘
+```
+
+**"Yönlendirme Sayfası" dropdown options** (common destinations):
+- /checklists — Checklist
+- /egitim — Eğitim Akademi
+- /gorevler — Görevler
+- /raporlar — Raporlar
+- /fabrika/dashboard — Fabrika
+- /misafir-memnuniyeti — Müşteri Memnuniyeti
+- /stok-yonetimi — Stok Yönetimi
+- Custom URL (free text input)
+
+**Stats dialog (📊 button):**
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 📊 Görev İstatistikleri                              │
+│                                                      │
+│ "Yeni Temizlik Protokolü"                            │
+│                                                      │
+│ ████████████████░░░░░░ %62 tamamlandı (28/45)       │
+│                                                      │
+│ ── Tamamlayanlar (28) ──                             │
+│ ✅ Cihan Kolakan    Barista   Işıklar     14:30     │
+│ ✅ Ayşe Demir       Barista   Batman      15:10     │
+│ ✅ Mehmet Yıldız    Sup.      Samsun      16:00     │
+│ ... (scrollable)                                     │
+│                                                      │
+│ ── Bekleyenler (17) ──                               │
+│ ⏳ Ali Kara         Barista   Antalya Lara          │
+│ ⏳ Fatma Demir      Barista   Konya Meram           │
+│ ... (scrollable)                                     │
+│                                                      │
+│ [ Bekleyenlere Hatırlatma Gönder ]    [ Kapat ]     │
+└─────────────────────────────────────────────────────┘
+```
+
+**"Bekleyenlere Hatırlatma Gönder" button:**
+- Sends in-app notification to all pending users
+- Message: "Hatırlatma: '[task title]' görevi sizi bekliyor"
+- Uses existing createNotification system
+
+### T003 — Add to Admin Mega Module (~30 min)
+
+Add "Dobody Görev Yönetimi" tab to admin-mega.tsx:
+
+```bash
+grep -rn "ADMIN_TABS\|adminTabs" client/src/pages/admin-mega.tsx | head -5
+```
+
+Add a new tab in the "Operasyon" group:
+```typescript
+{
+  key: 'dobody-gorevler',
+  label: 'Mr. Dobody Görevler',
+  icon: Bot, // or Robot or Wand icon from lucide-react
+  component: DobodyGorevYonetimi,
+  permissionModule: 'admin_panel',
+  group: 'operasyon'
+}
+```
+
+Also add to sidebar for roles that can create tasks. In menu-service.ts, check if there's a menu item for this page. If not, it's accessible through admin mega module — no sidebar entry needed.
+
+### T004 — Non-Admin Access (Coach/Supervisor Simplified View) (~1 hour)
+
+Coach and Supervisor should also be able to create tasks for their scope, but they don't access the admin panel.
+
+**Option:** Add a "Görev Ata" button to existing pages:
+
+**For Coach (/kocluk-paneli):**
+Add a button "🤖 Dobody Görev Ata" that opens a simplified create dialog (same as T002 dialog but with pre-filtered scope — only their assigned branches, only branch roles).
+
+**For Supervisor (/sube-ozet):**
+Add a button "🤖 Ekibe Görev Ata" that opens a simplified dialog (their branch only, their staff only).
+
+**For Fabrika Müdür (/fabrika/dashboard):**
+Add a button "🤖 Ekibe Görev Ata" (factory staff only).
+
+These use the same POST /api/admin/dobody-tasks endpoint — the backend validates their scope.
+
+**Simplified dialog (fewer fields):**
+```
+┌─────────────────────────────────────────┐
+│ 🤖 Ekibe Görev Ata                      │
+│                                          │
+│ Başlık *  [________________________]    │
+│ Açıklama  [________________________]    │
+│ Süre      [5] dk    Öncelik [Normal ▼]  │
+│                                          │
+│ Kime:                                    │
+│ ◉ Tüm ekip  ○ Seçili kişiler           │
+│                                          │
+│ Süre: [Bugün ▼]                         │
+│                                          │
+│    [ İptal ]     [ Görev Ata ]          │
+└─────────────────────────────────────────┘
+```
+
+### T005 — Service Worker Cache Bump (~5 min)
+
+```bash
+grep -n "CACHE_VERSION\|cache-v" client/public/service-worker.js | head -3
+```
+
+Bump to next version.
+
+### VERIFICATION
+
+After implementation:
+
+1. **Admin login → Admin Panel → Operasyon → Mr. Dobody Görevler:**
+   - Task list shows (empty initially)
+   - Click "+ Yeni Görev" → create dialog opens
+   - Fill in: title, target roles (barista), all branches, priority high, this week
+   - Save → task appears in list
+
+2. **Barista login:**
+   - Flow Mode card shows the new task with ⭐ badge at top
+   - "Yeni Temizlik Protokolü (HQ)" appears as first task
+
+3. **Admin → Stats (📊):**
+   - Shows 0/X completion initially
+   - After barista completes → shows 1/X
+
+4. **Coach login → Koçluk Paneli → "Dobody Görev Ata":**
+   - Simplified dialog opens
+   - Can only target their branches
+   - Creates task → appears in target users' flow
+
+5. **Supervisor login → Şube Özet → "Ekibe Görev Ata":**
+   - Can only target their own branch staff
+   - Creates task → appears in staff flow
+
+6. **"Bekleyenlere Hatırlatma Gönder":**
+   - Sends notifications to pending users
+   - Check notification count increases
+
+### PRIORITY ORDER: T001 → T002 → T003 → T004 → T005
+
+### DO NOT BREAK:
+- Existing Flow Mode (Sprint 21A) — auto-generated tasks must still work
+- Manual tasks from DB must merge with auto tasks (already implemented in 21A)
+- Admin mega module existing 31 tabs
+- Quick-action system
+- Notification system
+- Any Sprint 1-21A features
+
+### ACCEPTANCE CRITERIA:
+- [ ] CRUD API works for dobody_flow_tasks
+- [ ] Admin can create/edit/delete tasks from admin panel
+- [ ] Task list shows with filters and stats
+- [ ] Stats dialog shows completion rate + user list
+- [ ] "Bekleyenlere Hatırlatma Gönder" sends notifications
+- [ ] Created tasks appear in target users' Flow Mode with ⭐ badge
+- [ ] Coach can create scoped tasks from coaching panel
+- [ ] Supervisor can create scoped tasks from branch dashboard
+- [ ] Fabrika müdür can create scoped tasks from factory dashboard
+- [ ] Backend validates scope (supervisor can't target other branches)
+- [ ] Service Worker cache bumped
+- [ ] Mobile (375px) dialogs work correctly
+- [ ] Dark mode compatible
+- [ ] 0 console errors
+
+---
+
+Replit'e yapıştır. Bu Sprint 21B — Dobody artık sadece otomatik değil, HQ ve yöneticiler tarafından da yönlendirilebilir olacak.

@@ -1,0 +1,337 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 14 — Offline Resilience & WiFi Kesinti Koruma
+
+### ÖZET
+
+Şubelerde WiFi bazen kesiliyor. Barista görev tamamlıyor, quiz çözüyor, form dolduruyor — tam gönder'e basarken internet kesilirse veri kayboluyor. Bu sprint tüm kritik akışlara retry mekanizması, offline algılama ve veri kurtarma ekliyor.
+
+**Prensip:** Kullanıcı hiçbir zaman "verilerim kayboldu" dememeli. İnternet kesilirse: kaydet, geri gelince gönder, kullanıcıyı bilgilendir.
+
+---
+
+### T001 — Offline Algılama & Global Durum Göstergesi (~1-2 saat)
+
+**Problem:** Kullanıcı internetin kesildiğini fark etmiyor. Form doldurup gönder'e basıyor, hata alıyor, verisi kayboluyor.
+
+**Yapılacak:**
+
+1. Global offline/online algılama hook'u oluştur:
+
+```typescript
+// client/src/hooks/useNetworkStatus.ts
+// navigator.onLine + online/offline event listener
+// Ayrıca periyodik ping kontrolü (30 sn'de bir /api/health)
+// Çünkü navigator.onLine bazı durumlarda yanlış true dönebilir
+```
+
+2. Global offline banner component'i:
+```
+İnternet kesildiğinde ekranın üstünde sabit kırmızı banner:
+"⚠️ İnternet bağlantısı yok — Değişiklikleriniz kaydedildi, bağlantı gelince otomatik gönderilecek"
+
+İnternet geldiğinde yeşil banner (3 saniye):
+"✅ İnternet bağlantısı geri geldi — Bekleyen veriler gönderiliyor..."
+```
+
+3. Banner'ı App layout'a ekle — tüm sayfalarda görünsün
+
+4. Bottom nav'da küçük offline ikonu (kırmızı nokta veya WiFi çarpı ikonu)
+
+**Doğrulama:**
+- Chrome DevTools → Network → Offline → kırmızı banner görünüyor
+- Online'a dön → yeşil banner 3 sn görünüp kaybolur
+- Bottom nav'da offline göstergesi var
+
+---
+
+### T002 — API İstek Retry Mekanizması (~2-3 saat)
+
+**Problem:** Tek bir API isteği başarısız olunca (network error, timeout) kullanıcıya hata gösteriliyor ve veri kayboluyor.
+
+**Yapılacak:**
+
+1. Global fetch wrapper / React Query retry konfigürasyonu:
+
+```bash
+# Mevcut React Query konfigürasyonunu bul
+grep -rn "QueryClient\|queryClient\|defaultOptions\|retry" client/src/ --include="*.tsx" --include="*.ts" | head -15
+```
+
+2. React Query retry ayarları:
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,                    // 3 kez dene
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000), // exponential backoff
+      networkMode: 'offlineFirst', // offline'da cache'ten göster
+      staleTime: 5 * 60 * 1000,   // 5 dk cache
+    },
+    mutations: {
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      networkMode: 'offlineFirst',
+    },
+  },
+});
+```
+
+3. Mutation (POST/PUT/DELETE) için özel retry:
+- Network error → otomatik 3 kez dene (exponential backoff: 1s, 2s, 4s)
+- 500 error → 2 kez dene
+- 400/401/403 → retry YAPMA (kullanıcı hatası, tekrar denemek anlamsız)
+- Timeout (10s) → 2 kez dene
+
+4. Retry sırasında kullanıcıya gösterge:
+```
+"Gönderiliyor..." → "Bağlantı sorunu, tekrar deneniyor (2/3)..." → Başarılı veya "Gönderim başarısız — tekrar dene"
+```
+
+---
+
+### T003 — Offline Mutation Queue (Kritik Veri Kurtarma) (~2-3 saat)
+
+**Problem:** Retry bile başarısız olursa (internet tamamen kesilmiş), kullanıcının girdiği veri tamamen kaybolur.
+
+**Yapılacak:**
+
+1. Başarısız mutation'ları localStorage kuyruğuna kaydet:
+
+```typescript
+// client/src/lib/offline-queue.ts
+
+interface QueuedMutation {
+  id: string;
+  url: string;
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body: any;
+  timestamp: number;
+  retryCount: number;
+  description: string; // "Görev tamamlama", "Quiz cevabı", "İzin talebi"
+}
+
+// Kuyruğa ekle
+function addToQueue(mutation: QueuedMutation): void
+
+// Kuyruktan gönder (internet gelince)
+function processQueue(): Promise<void>
+
+// Kuyruk durumu
+function getQueueSize(): number
+function getQueueItems(): QueuedMutation[]
+function clearQueue(): void
+```
+
+2. İnternet geldiğinde otomatik kuyruk işleme:
+```typescript
+window.addEventListener('online', () => {
+  processQueue(); // Bekleyen tüm mutation'ları sırayla gönder
+});
+```
+
+3. Kuyrukta bekleyen öğe varsa bottom nav'da badge göster:
+```
+[📤 3] — 3 bekleyen gönderim
+```
+
+4. Kuyruk işleme sırasında progress göster:
+```
+"Bekleyen veriler gönderiliyor... (2/3)"
+→ Başarılı: "Tüm veriler başarıyla gönderildi ✅"
+→ Hâlâ hata: "1 gönderim hâlâ bekliyor — internet bağlantınızı kontrol edin"
+```
+
+5. 24 saatten eski kuyruk öğelerini temizle (artık geçerliliğini yitirmiş olabilir)
+
+**KRİTİK:** Quiz cevapları kuyruğa eklenmemeli — anti-cheat sistemiyle çakışır. Quiz sırasında internet kesilirse sınav iptal edilmeli (mevcut davranış korunur).
+
+---
+
+### T004 — Kritik Akışlarda Offline Koruma (~2 saat)
+
+Her kritik kullanıcı akışında offline durumu kontrol et ve uygun davran:
+
+**A) Görev Tamamlama:**
+- Gönder basılınca internet yoksa → kuyruğa ekle + "İnternet gelince gönderilecek" mesajı
+- Görev kartında "Beklemede 📤" badge göster
+
+**B) Checklist Tamamlama:**
+- Aynı mantık — kuyruğa ekle
+- Tamamlama durumunu local state'te işaretle, gönderilince server'a senkronize
+
+**C) İzin Talebi:**
+- Form dolduruldu, gönder basıldı, internet yok → kuyruğa ekle
+- "Talebiniz internet gelince gönderilecek" mesajı
+
+**D) Arıza Bildirimi:**
+- Fotoğraf dahil kuyruğa ekle (localStorage boyut sınırına dikkat — fotoğrafları küçült veya IndexedDB kullan)
+- "Arıza bildiriminiz internet gelince gönderilecek"
+
+**E) Quiz/Sınav:**
+- Quiz sırasında internet kesilirse: "İnternet bağlantısı kesildi. Sınavınız geçersiz sayılacak." uyarısı
+- Quiz cevapları KUYRUKLANMAZ — anti-cheat prensipleriyle çakışır
+- Sınav iptal edilir, kullanıcı daha sonra tekrar deneyebilir
+
+**F) Misafir Geri Bildirim (Public Form):**
+- Müşteri formu doldurup gönder'e bastıysa → kuyruğa ekle
+- "Teşekkürler! Değerlendirmeniz internet gelince iletilecek." mesajı
+- Bu çok önemli — müşteri feedback'ini kaybetmek kabul edilemez
+
+**G) Mesaj Gönderme:**
+- Mesaj kuyrukta → "Gönderiliyor..." göstergesi
+- İnternet gelince otomatik gönderilir
+
+**Her akış için:**
+```bash
+# İlgili mutation hook'ları bul
+grep -rn "useMutation\|mutation" client/src/ --include="*.tsx" | grep -i "task\|gorev\|checklist\|leave\|izin\|fault\|ariza\|feedback\|message\|mesaj" | head -20
+```
+
+Her mutation hook'una offline fallback ekle:
+```typescript
+const mutation = useMutation({
+  mutationFn: submitTask,
+  onError: (error) => {
+    if (isNetworkError(error)) {
+      addToQueue({
+        url: '/api/tasks/123/complete',
+        method: 'POST',
+        body: { ... },
+        description: 'Görev tamamlama'
+      });
+      toast.info("İnternet gelince gönderilecek");
+    } else {
+      toast.error(error.message);
+    }
+  }
+});
+```
+
+---
+
+### T005 — Offline Sayfa Gösterimi (Cache) (~1 saat)
+
+**Problem:** İnternet kesildiğinde sayfa yenilenirse veya yeni sayfaya geçilirse boş ekran çıkıyor.
+
+**Yapılacak:**
+
+1. Mevcut Service Worker'ı kontrol et:
+```bash
+grep -rn "service.*worker\|serviceWorker\|sw.js\|workbox" client/src/ --include="*.ts" --include="*.tsx" --include="*.js" | head -10
+cat client/public/sw.js 2>/dev/null | head -30
+```
+
+2. Service Worker stratejisi güncelle:
+- HTML shell: cache-first (her zaman gösterilsin)
+- API response'ları: network-first, cache fallback
+- Static assets (JS, CSS, images): cache-first
+
+3. Offline'da sayfa yenilendiğinde:
+- App shell yüklensin (sidebar, bottom nav, header)
+- Son cache'lenen veri gösterilsin
+- "Çevrimdışı — son bilinen veriler gösteriliyor" uyarısı
+
+4. Tamamen cache'te olmayan sayfalarda:
+- "Bu sayfa çevrimdışı kullanılamıyor. İnternet bağlantınızı kontrol edin." mesajı
+- Ana sayfaya dön butonu
+
+---
+
+### T006 — Kuyruk Yönetim UI (~30 dakika)
+
+**Yapılacak:**
+
+Bildirimler sayfasına veya profil sayfasına "Bekleyen Gönderimler" bölümü ekle:
+
+```
+📤 Bekleyen Gönderimler (3)
+
+1. Görev tamamlama — "Sabah açılış checklist" — 5 dk önce
+   [Tekrar Dene] [İptal]
+
+2. İzin talebi — "23 Mart yıllık izin" — 12 dk önce
+   [Tekrar Dene] [İptal]
+
+3. Arıza bildirimi — "Espresso makinesi" — 20 dk önce
+   [Tekrar Dene] [İptal]
+```
+
+- "Tümünü Gönder" butonu
+- "Tümünü Temizle" butonu (onay ile)
+- Her öğede "Tekrar Dene" ve "İptal" butonu
+
+---
+
+### T007 — E2E Offline Test (~1 saat)
+
+**Senaryo 1 — Offline Banner:**
+1. Chrome DevTools → Network → Offline
+2. Kırmızı banner görünüyor mu?
+3. Online'a dön → yeşil banner 3 sn
+4. Bottom nav'da offline göstergesi
+
+**Senaryo 2 — API Retry:**
+1. Network → Slow 3G (çok yavaş)
+2. Görev tamamla → "Tekrar deneniyor..." mesajı
+3. Bağlantı düzelince başarılı
+
+**Senaryo 3 — Offline Queue:**
+1. Network → Offline
+2. Görev tamamla → "İnternet gelince gönderilecek" mesajı
+3. Checklist tamamla → kuyruğa eklendi
+4. Online'a dön → "Bekleyen veriler gönderiliyor... (2/2)" → "Başarılı ✅"
+
+**Senaryo 4 — Quiz Offline:**
+1. Quiz başlat → Network → Offline
+2. "İnternet bağlantısı kesildi. Sınav geçersiz." mesajı
+3. Quiz kuyruğa EKLENMEMİŞ
+
+**Senaryo 5 — Public Feedback Form:**
+1. QR ile formu aç → Network → Offline
+2. Form doldur → Gönder
+3. "Teşekkürler! İnternet gelince iletilecek."
+
+**Senaryo 6 — Sayfa Yenileme:**
+1. Dashboard aç → Network → Offline
+2. Sayfayı yenile → son cache'lenen veri görünüyor + "Çevrimdışı" uyarısı
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T004 → T005 → T006 → T007
+
+### DO NOT BREAK:
+- Sprint 1-13'teki tüm değişiklikler
+- Quiz anti-cheat sistemi (quiz offline'da kuyruğa EKLENMEMELİ)
+- Mevcut React Query cache yapısı
+- Mevcut Service Worker (varsa, üzerine ekle)
+- Agent sistemi (Mr. Dobody)
+- CRM modülü
+- Bildirim sistemi
+- Background job'lar
+
+### KABUL KRİTERLERİ:
+- [ ] Offline banner tüm sayfalarda görünüyor (internet kesilince)
+- [ ] Online banner 3 sn görünüp kayboluyor (internet gelince)
+- [ ] Bottom nav'da offline göstergesi var
+- [ ] API retry 3 kez deniyor (exponential backoff)
+- [ ] Network error'da mutation kuyruğa ekleniyor
+- [ ] İnternet gelince kuyruk otomatik işleniyor
+- [ ] Kuyruk badge'i bottom nav'da görünüyor
+- [ ] Görev tamamlama offline'da çalışıyor (kuyruk)
+- [ ] Checklist offline'da çalışıyor (kuyruk)
+- [ ] İzin talebi offline'da çalışıyor (kuyruk)
+- [ ] Arıza bildirimi offline'da çalışıyor (kuyruk)
+- [ ] Quiz offline'da KUYRUĞA EKLENMİYOR (sınav iptal)
+- [ ] Public feedback form offline'da çalışıyor (kuyruk)
+- [ ] Sayfa yenileme offline'da cache gösteriyor
+- [ ] "Bekleyen Gönderimler" UI var
+- [ ] 24 saatten eski kuyruk öğeleri temizleniyor
+- [ ] 0 console error
+- [ ] Online performans etkilenmemiş
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.

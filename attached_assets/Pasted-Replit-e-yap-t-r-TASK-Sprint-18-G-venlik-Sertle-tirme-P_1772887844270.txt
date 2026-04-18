@@ -1,0 +1,568 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 18 — Güvenlik Sertleştirme + Push Notification
+
+### ÖZET
+
+Sistem pilota hazırlanıyor. Güvenlik açıkları kapatılmalı ve kullanıcılara gerçek zamanlı push notification gönderilmeli. Bu sprint CSP header'ları, rate limiting, audit logging, CORS sertleştirme ve Web Push API entegrasyonu yapıyor.
+
+---
+
+### T001 — HTTP Güvenlik Header'ları (~1 saat)
+
+**Problem:** Mevcut sistemde CSP, HSTS, X-Frame-Options gibi güvenlik header'ları eksik olabilir.
+
+**Araştırma:**
+```bash
+# Mevcut güvenlik header'ları
+grep -rn "helmet\|csp\|Content-Security-Policy\|X-Frame\|X-Content-Type\|Strict-Transport\|HSTS" server/ --include="*.ts" | head -15
+
+# Express middleware sırası
+grep -rn "app.use" server/index.ts | head -30
+```
+
+**Yapılacak:**
+
+1. `helmet` paketi yoksa ekle (veya manuel header'lar):
+```typescript
+// Güvenlik header'ları
+app.use((req, res, next) => {
+  // XSS koruması
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Clickjacking koruması
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  // HTTPS zorlama (production'da)
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  
+  // Referrer politikası
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Permissions Policy
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  
+  next();
+});
+```
+
+2. CSP (Content Security Policy) — dikkatli tanımla, Vite HMR'ı ve mevcut CDN'leri kırma:
+```typescript
+// Development'ta gevşek, production'da sıkı
+const cspPolicy = process.env.NODE_ENV === 'production'
+  ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.openai.com; font-src 'self';"
+  : "default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src *;";
+
+res.setHeader('Content-Security-Policy', cspPolicy);
+```
+
+**ÖNEMLİ:** CSP eklerken mevcut fonksiyonelliği test et — Vite dev server, CDN scriptleri, OpenAI API çağrıları çalışmaya devam etmeli.
+
+---
+
+### T002 — API Rate Limiting (~1-2 saat)
+
+**Problem:** Sprint 9'da login rate limiting eklendi (5 deneme/15dk). Ama genel API rate limiting yok — bir kullanıcı saniyede 1000 istek yapabilir.
+
+**Araştırma:**
+```bash
+grep -rn "rate.*limit\|rateLimit\|limiter\|throttle" server/ --include="*.ts" | head -10
+```
+
+**Yapılacak:**
+
+1. Genel API rate limiter:
+```typescript
+// Tüm API endpoint'leri için: 100 istek/dakika/IP
+const apiLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 dakika
+  max: 100,
+  message: { error: 'Çok fazla istek — lütfen biraz bekleyin' },
+  standardHeaders: true,
+  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown'
+});
+app.use('/api/', apiLimiter);
+```
+
+2. Hassas endpoint'ler için sıkı limit:
+```typescript
+// Login: 5/15dk (mevcut — kontrol et)
+// Şifre değiştirme: 3/saat
+// AI chat: 20/saat/kullanıcı
+// Agent run-now: 5/saat
+// Bildirim gönderme: 50/saat
+```
+
+3. Rate limit in-memory (mevcut) → Redis varsa Redis, yoksa Map tabanlı:
+```bash
+grep -rn "Map\|rateLimit\|loginAttempts" server/ --include="*.ts" | head -10
+```
+
+---
+
+### T003 — CORS Sertleştirme (~30 dakika)
+
+**Araştırma:**
+```bash
+grep -rn "cors\|CORS\|Access-Control" server/ --include="*.ts" | head -10
+```
+
+**Yapılacak:**
+
+1. Production'da sadece kendi domain'e izin ver:
+```typescript
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.APP_URL || 'https://dospresso.com'] 
+    : true, // Development'ta tüm origin'ler
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+};
+app.use(cors(corsOptions));
+```
+
+---
+
+### T004 — Audit Logging Genişletme (~1-2 saat)
+
+**Problem:** Mevcut ai_agent_logs sadece agent aksiyonlarını logluyor. Kritik kullanıcı aksiyonları (yetki değişikliği, kullanıcı silme, şifre sıfırlama, stok düzeltme) loglanmıyor.
+
+**Yapılacak:**
+
+1. Genel audit log tablosu (yoksa):
+```sql
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id),
+  action VARCHAR(100) NOT NULL, -- 'user_create', 'role_change', 'password_reset', 'stock_adjust', 'shipment_create'
+  entity_type VARCHAR(50), -- 'user', 'branch', 'product', 'shipment', 'permission'
+  entity_id VARCHAR(255), -- İlgili kaydın ID'si
+  old_value JSONB, -- Önceki değer
+  new_value JSONB, -- Yeni değer
+  ip_address VARCHAR(45),
+  user_agent TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_audit_user ON audit_logs(user_id);
+CREATE INDEX idx_audit_action ON audit_logs(action);
+CREATE INDEX idx_audit_created ON audit_logs(created_at);
+```
+
+2. Audit helper fonksiyonu:
+```typescript
+async function logAudit(params: {
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  oldValue?: any;
+  newValue?: any;
+  req?: Request;
+}) {
+  await db.insert(auditLogs).values({
+    userId: params.userId,
+    action: params.action,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    oldValue: params.oldValue ? JSON.stringify(params.oldValue) : null,
+    newValue: params.newValue ? JSON.stringify(params.newValue) : null,
+    ipAddress: params.req?.ip,
+    userAgent: params.req?.headers['user-agent']
+  });
+}
+```
+
+3. Loglanacak kritik aksiyonlar (mevcut endpoint'lere ekle):
+```
+- Kullanıcı oluşturma/silme/deaktif
+- Rol değişikliği
+- Şifre sıfırlama
+- İzin değişikliği
+- Şube oluşturma/silme
+- Stok düzeltme (sayım)
+- Sevkiyat oluşturma/teslim
+- Sipariş onay/red
+- Agent skill toggle
+- Sistem ayarı değişikliği
+```
+
+4. Admin panelde audit log görüntüleme:
+```
+GET /api/admin/audit-logs — Liste (filtreli: kullanıcı, aksiyon, tarih)
+```
+
+Mevcut admin panele "Audit Logları" tab'ı veya bölümü ekle — tablo halinde son 100 kayıt, filtreler.
+
+---
+
+### T005 — Web Push Notification Altyapısı (~2-3 saat)
+
+**Problem:** Bildirimlerin tümü uygulama içi (in-app). Kullanıcı uygulamayı açmadığında bildirimi göremez. Push notification ile telefon/tablet'e gerçek zamanlı bildirim gitmeli.
+
+**Yapılacak:**
+
+1. VAPID anahtar çifti oluştur:
+```bash
+# VAPID key generation
+npx web-push generate-vapid-keys
+```
+- Public key → frontend'e
+- Private key → backend'e (.env)
+
+2. Service Worker push handler (mevcut SW'ye ekle):
+```bash
+grep -rn "service.worker\|sw.js\|serviceWorker" client/ --include="*.ts" --include="*.tsx" --include="*.js" | head -10
+```
+
+Mevcut service worker'a push event handler ekle:
+```javascript
+// service-worker.js veya sw.ts
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() || {};
+  const options = {
+    body: data.message || 'Yeni bildirim',
+    icon: '/icon-192.png',
+    badge: '/badge-72.png',
+    tag: data.tag || 'default',
+    data: { url: data.link || '/' },
+    vibrate: [200, 100, 200],
+    actions: data.actions || []
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'DOSPRESSO', options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(clients.openWindow(url));
+});
+```
+
+3. Push subscription kayıt tablosu:
+```sql
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id) NOT NULL,
+  endpoint TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  device_info VARCHAR(255), -- 'iPhone Safari', 'Android Chrome'
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, endpoint)
+);
+```
+
+4. Push subscription endpoint'leri:
+```
+POST /api/push/subscribe — Subscription kaydet
+POST /api/push/unsubscribe — Subscription kaldır
+GET /api/push/vapid-key — Public VAPID key döndür
+POST /api/push/test — Test bildirimi gönder (sadece kendine)
+```
+
+5. Push gönderme fonksiyonu:
+```typescript
+// server/lib/push-service.ts (yeni)
+import webPush from 'web-push';
+
+webPush.setVapidDetails(
+  'mailto:info@dospresso.com',
+  process.env.VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
+);
+
+async function sendPushNotification(userId: string, payload: {
+  title: string;
+  message: string;
+  link?: string;
+  tag?: string;
+}) {
+  const subscriptions = await db.select()
+    .from(pushSubscriptions)
+    .where(and(
+      eq(pushSubscriptions.userId, userId),
+      eq(pushSubscriptions.isActive, true)
+    ));
+  
+  for (const sub of subscriptions) {
+    try {
+      await webPush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload)
+      );
+    } catch (error: any) {
+      if (error.statusCode === 410) {
+        // Subscription expired — deaktif et
+        await db.update(pushSubscriptions)
+          .set({ isActive: false })
+          .where(eq(pushSubscriptions.id, sub.id));
+      }
+    }
+  }
+}
+```
+
+---
+
+### T006 — Push Notification Entegrasyonu (~1-2 saat)
+
+**Problem:** Push altyapısı (T005) kuruldu ama mevcut bildirim sistemi push göndermiyoruz.
+
+**Yapılacak:**
+
+1. Mevcut `createNotification` fonksiyonunu bul:
+```bash
+grep -rn "createNotification\|function.*Notification\|insertNotification" server/ --include="*.ts" | head -15
+```
+
+2. `createNotification` sonrasına push gönderim ekle:
+```typescript
+// Mevcut createNotification akışı:
+// 1. DB'ye bildirim kaydet (mevcut)
+// 2. YENİ: Push bildirim gönder
+async function createNotification(data: InsertNotification) {
+  // Mevcut kayıt mantığı...
+  const notification = await db.insert(notifications).values(data);
+  
+  // YENİ: Push bildirim
+  if (data.userId) {
+    await sendPushNotification(data.userId, {
+      title: data.title || 'DOSPRESSO',
+      message: data.message || '',
+      link: data.link || '/',
+      tag: data.type || 'default'
+    });
+  }
+  
+  return notification;
+}
+```
+
+3. Push gönderilecek bildirim tipleri (hepsi değil — sadece önemliler):
+```typescript
+const PUSH_ENABLED_TYPES = [
+  // Acil
+  'sla_breach', 'critical_fault', 'security_alert', 'pin_lockout',
+  // Görev
+  'task_assigned', 'task_reminder',
+  // Eğitim
+  'gate_passed', 'certificate_earned', 'training_assigned',
+  // Müşteri
+  'feedback_received', // sadece düşük puan (<=2)
+  'complaint_received',
+  // Fabrika
+  'quality_rejected', 'skt_warning',
+  // Agent
+  'agent_suggestion', 'daily_report', 'weekly_report',
+  // Sipariş
+  'order_approved', 'shipment_delivered'
+];
+```
+
+4. Kullanıcının push tercihini kontrol et:
+- Mevcut notification_preferences sistemini kullan
+- Sessizleştirilen kategoride push DA gönderilmez
+- Quiet hours (20:00-07:00): push gönderilmez (acil hariç)
+
+---
+
+### T007 — Frontend Push Subscription (~1-2 saat)
+
+**Yapılacak:**
+
+1. Push izni isteme component'i:
+```typescript
+// client/src/components/push-permission.tsx
+
+function PushPermissionBanner() {
+  const [showBanner, setShowBanner] = useState(false);
+  
+  useEffect(() => {
+    // Service Worker destekliyor mu?
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    
+    // Zaten izin verilmiş mi?
+    if (Notification.permission === 'granted') return;
+    if (Notification.permission === 'denied') return;
+    
+    // İlk giriş sonrası 5 saniye bekle, sonra sor
+    const timer = setTimeout(() => setShowBanner(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  const handleAllow = async () => {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      await subscribeToPush();
+    }
+    setShowBanner(false);
+  };
+  
+  if (!showBanner) return null;
+  
+  return (
+    <div className="fixed bottom-20 left-4 right-4 bg-card border rounded-lg p-4 shadow-lg z-50">
+      <p className="text-sm font-medium">🔔 Bildirimleri telefonunuza almak ister misiniz?</p>
+      <p className="text-xs text-muted-foreground mt-1">Görev hatırlatmaları, eğitim bildirimleri ve önemli uyarılar</p>
+      <div className="flex gap-2 mt-3">
+        <Button size="sm" onClick={handleAllow}>İzin Ver</Button>
+        <Button size="sm" variant="ghost" onClick={() => setShowBanner(false)}>Şimdi Değil</Button>
+      </div>
+    </div>
+  );
+}
+```
+
+2. Push subscription fonksiyonu:
+```typescript
+async function subscribeToPush() {
+  const registration = await navigator.serviceWorker.ready;
+  
+  // VAPID key al
+  const response = await fetch('/api/push/vapid-key');
+  const { publicKey } = await response.json();
+  
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey)
+  });
+  
+  // Backend'e gönder
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
+      auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
+      deviceInfo: navigator.userAgent.substring(0, 200)
+    })
+  });
+}
+```
+
+3. PushPermissionBanner'ı App layout'a ekle — login sonrası göster
+
+4. Profil sayfasına push ayarları:
+```
+🔔 Push Bildirimleri
+  ✅ Aktif (iPhone Safari)
+  [Test Bildirimi Gönder]
+  [Push'u Kapat]
+```
+
+---
+
+### T008 — Session Güvenlik İyileştirmeleri (~1 saat)
+
+**Araştırma:**
+```bash
+grep -rn "session\|cookie\|maxAge\|httpOnly\|secure\|sameSite" server/ --include="*.ts" | head -15
+```
+
+**Yapılacak:**
+
+1. Session cookie güvenlik ayarları:
+```typescript
+{
+  httpOnly: true,      // JavaScript ile erişilemez
+  secure: process.env.NODE_ENV === 'production', // HTTPS only
+  sameSite: 'lax',     // CSRF koruması
+  maxAge: 8 * 60 * 60 * 1000, // 8 saat (Sprint 9'da ayarlandı — doğrula)
+}
+```
+
+2. Session fixation koruması — login sonrası session ID yenileme:
+```typescript
+// Login başarılı olduktan sonra:
+req.session.regenerate((err) => {
+  // Yeni session ID ile devam
+  req.session.userId = user.id;
+  // ...
+});
+```
+
+3. Concurrent session kontrolü:
+- Aynı kullanıcı 3'ten fazla aktif session açamaz
+- 4. giriş yapıldığında en eski session sonlandırılır
+- Admin'e bildirim: "Cihan hesabı 4 farklı cihazdan giriş yaptı"
+
+---
+
+### T009 — E2E Test (~1 saat)
+
+**Senaryo 1 — Güvenlik Header'ları:**
+```bash
+curl -I https://[app-url]/api/health
+# X-Content-Type-Options: nosniff ✓
+# X-Frame-Options: DENY ✓
+# X-XSS-Protection: 1; mode=block ✓
+# Referrer-Policy: strict-origin-when-cross-origin ✓
+```
+
+**Senaryo 2 — Rate Limiting:**
+1. 101 istek/dakika gönder → 429 Too Many Requests
+2. Login'e 6 kez yanlış şifre → kilitlendi
+
+**Senaryo 3 — Audit Log:**
+1. Admin ile kullanıcı oluştur → audit_logs'ta kayıt var mı?
+2. Rol değiştir → audit_logs'ta eski/yeni değer var mı?
+3. Admin panelde audit logları görünüyor mu?
+
+**Senaryo 4 — Push Notification:**
+1. Push izni ver → subscription kayıt edildi mi?
+2. Test bildirimi gönder → telefona geldi mi?
+3. Bildirim tıkla → doğru sayfaya yönlendiriyor mu?
+
+**Senaryo 5 — Session:**
+1. Login → cookie httpOnly mu?
+2. 8 saat sonra session expire mi?
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T008 → T004 → T005 → T006 → T007 → T009
+
+### DO NOT BREAK:
+- Mevcut login/session sistemi (Sprint 9'da güçlendirildi)
+- Mevcut login rate limiting (5 deneme/15dk)
+- Mevcut bildirim sistemi (createNotification)
+- Mevcut service worker (offline resilience — Sprint 14)
+- Mevcut bildirim tercihleri (Sprint 15)
+- Agent skill engine (Sprint 17B)
+- Vite dev server HMR
+- OpenAI API çağrıları
+- Kiosk PIN giriş sistemi
+
+### KABUL KRİTERLERİ:
+- [ ] X-Content-Type-Options, X-Frame-Options, X-XSS-Protection header'ları var
+- [ ] CSP header production'da aktif, development'ta gevşek
+- [ ] API rate limit: 100 istek/dk/IP
+- [ ] Hassas endpoint'lerde sıkı rate limit
+- [ ] CORS production'da kendi domain'e kısıtlı
+- [ ] audit_logs tablosu ve 10+ kritik aksiyon loglanıyor
+- [ ] Admin panelde audit logları görüntülenebiliyor
+- [ ] VAPID key çifti oluşturuldu
+- [ ] Push subscription kayıt/kaldırma çalışıyor
+- [ ] Bildirim oluşturulduğunda push da gönderiliyor
+- [ ] PUSH_ENABLED_TYPES sadece önemli bildirimlere
+- [ ] Push quiet hours (20:00-07:00) çalışıyor
+- [ ] Push izni banner'ı login sonrası gösteriliyor
+- [ ] Profil'de push ayarları var
+- [ ] Session cookie httpOnly + secure (prod) + sameSite
+- [ ] Mevcut bildirim sistemi bozulmamış
+- [ ] Mevcut offline resilience bozulmamış
+- [ ] 0 console error
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.

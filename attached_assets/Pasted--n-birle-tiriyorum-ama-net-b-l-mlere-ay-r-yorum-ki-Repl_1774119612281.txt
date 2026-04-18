@@ -1,0 +1,687 @@
+Üçünü birleştiriyorum — ama net bölümlere ayırıyorum ki Replit karıştırmasın. Replit'e yapıştırın:
+
+---
+
+```
+## Launch Preparation — Excel Import + Data Reset Script + Launch Checklist
+
+### Context
+DOSPRESSO launches in ~3 days (target: 26 March 2026). Three things needed:
+1. HQ bulk personnel import via Excel (permanent feature, not just launch)
+2. Data reset script (prepared but NOT executed — will run on launch day)
+3. Launch readiness checklist document
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Turkish UI
+- users.id is VARCHAR (UUID)
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Do NOT execute the reset script — only CREATE it
+- Do NOT delete any existing data
+- Excel import is HQ-only (not branch-level)
+
+---
+
+## ═══════════════════════════════════════════
+## PART 1: EXCEL PERSONNEL IMPORT SYSTEM
+## ═══════════════════════════════════════════
+
+### Business Rules:
+- ONLY HQ roles can bulk import (admin, ceo, cgo, muhasebe_ik, coach)
+- Branch managers/supervisors CANNOT do bulk import (data safety)
+- Available permanently (not just for launch)
+- Location: İK modülü → Personel Yönetimi → "Toplu Personel Yükle" button
+- Must handle: new users + updating existing users (by TC No match)
+
+### Step 1: Excel Template Definition
+
+Create a downloadable Excel template with these columns (Turkish headers):
+
+**Sayfa 1: Personel Bilgileri**
+
+```
+Kolon A: Ad *
+Kolon B: Soyad *
+Kolon C: TC Kimlik No * (11 haneli, benzersiz)
+Kolon D: Doğum Tarihi (GG.AA.YYYY)
+Kolon E: Telefon * (05XX XXX XX XX)
+Kolon F: E-posta
+Kolon G: Adres
+Kolon H: Acil Durum Kişisi
+Kolon I: Acil Durum Telefonu
+Kolon J: Şube * (şube adı veya ID)
+Kolon K: Rol * (barista, supervisor, stajyer, bar_buddy, supervisor_buddy, mudur, fabrika_operator, fabrika_personel, fabrika_sorumlu)
+Kolon L: Unvan (Kıdemli Barista, Barista, vb.)
+Kolon M: İşe Başlama Tarihi * (GG.AA.YYYY)
+Kolon N: Çalışma Tipi * (tam_zamanli / yari_zamanli / yevmiye)
+Kolon O: Kiosk PIN (4 haneli, boş bırakılırsa otomatik oluşturulur)
+Kolon P: Brüt Maaş (TL)
+Kolon Q: Net Maaş (TL)
+Kolon R: AGI
+Kolon S: Yol Yardımı (TL)
+Kolon T: Yemek Yardımı (TL)
+Kolon U: Prim (TL)
+Kolon V: Yıllık İzin Hakkı (gün)
+Kolon W: Kullanılan İzin (gün)
+Kolon X: Kalan İzin (gün)
+Kolon Y: Eksik Günler
+Kolon Z: Toplam Mesai Saati (o güne kadar)
+Kolon AA: Yazılı Uyarı Sayısı
+Kolon AB: Tutanak Sayısı
+Kolon AC: Not (serbest metin)
+```
+
+`*` = zorunlu alan
+
+**Sayfa 2: Açıklamalar**
+- Her kolonun açıklaması
+- Rol seçenekleri listesi
+- Şube listesi (DB'den dinamik olarak doldurulacak)
+- Çalışma tipi seçenekleri
+- Örnek satır
+
+### Step 2: Template Download Endpoint
+
+```typescript
+// GET /api/hr/personnel-import/template — download Excel template
+router.get("/api/hr/personnel-import/template", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  const allowedRoles = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'coach'];
+  if (!allowedRoles.includes(user.role)) {
+    return res.status(403).json({ error: "Toplu personel yükleme yetkiniz yok" });
+  }
+  
+  try {
+    // Get branches for the dropdown/reference sheet
+    const branchList = await db.select({ id: branches.id, name: branches.name })
+      .from(branches).where(eq(branches.isActive, true)).orderBy(branches.name);
+    
+    // Build Excel with ExcelJS or xlsx library
+    // Sheet 1: Empty template with headers + data validation
+    // Sheet 2: Reference data (branches, roles, employment types)
+    // Sheet 3: Example row
+    
+    // Set column widths, add data validation dropdowns for:
+    // - Rol (from role enum)
+    // - Şube (from branch list)
+    // - Çalışma Tipi (tam_zamanli, yari_zamanli, yevmiye)
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=DOSPRESSO_Personel_Sablonu.xlsx');
+    // Send Excel buffer
+  } catch (error) {
+    console.error("[HR Import] Template download error:", error);
+    res.status(500).json({ error: "Şablon oluşturulamadı" });
+  }
+});
+```
+
+Check which Excel library is available:
+```bash
+grep -r "exceljs\|xlsx\|sheetjs\|openpyxl" package.json node_modules/.package-lock.json 2>/dev/null | head -5
+# If none installed, use the xlsx library (already in many node projects)
+# Or install: npm install exceljs
+```
+
+### Step 3: Upload & Preview Endpoint
+
+```typescript
+// POST /api/hr/personnel-import/preview — upload Excel, validate, return preview
+router.post("/api/hr/personnel-import/preview", isAuthenticated, upload.single('file'), async (req, res) => {
+  const user = req.user as any;
+  const allowedRoles = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'coach'];
+  if (!allowedRoles.includes(user.role)) {
+    return res.status(403).json({ error: "Yetkiniz yok" });
+  }
+  
+  try {
+    // Parse Excel file
+    // Validate each row:
+    //   - Required fields present?
+    //   - TC No format (11 digits)?
+    //   - TC No already exists in DB? (mark as "update" vs "new")
+    //   - Branch name valid?
+    //   - Role valid?
+    //   - Phone format?
+    //   - Date format?
+    //   - PIN 4 digits?
+    
+    // Return preview:
+    res.json({
+      totalRows: 15,
+      newUsers: 12,      // TC No not in DB
+      updateUsers: 3,     // TC No already exists — will update
+      errors: [           // Rows with problems
+        { row: 4, column: "TC Kimlik No", error: "11 haneli olmalı" },
+        { row: 7, column: "Şube", error: "Geçersiz şube adı: 'Ankra'" },
+      ],
+      warnings: [         // Non-blocking issues
+        { row: 2, column: "E-posta", error: "Boş bırakıldı" },
+      ],
+      preview: [          // First 5 rows for user to verify
+        { row: 1, firstName: "Ahmet", lastName: "Yılmaz", branch: "Işıklar", role: "barista", status: "new" },
+        { row: 2, firstName: "Arife", lastName: "Demir", branch: "Fabrika", role: "fabrika_personel", status: "update" },
+      ]
+    });
+  } catch (error) {
+    console.error("[HR Import] Preview error:", error);
+    res.status(500).json({ error: "Dosya okunamadı" });
+  }
+});
+```
+
+### Step 4: Confirm & Import Endpoint
+
+```typescript
+// POST /api/hr/personnel-import/confirm — actually create/update users
+router.post("/api/hr/personnel-import/confirm", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  const allowedRoles = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'coach'];
+  if (!allowedRoles.includes(user.role)) {
+    return res.status(403).json({ error: "Yetkiniz yok" });
+  }
+  
+  try {
+    // Re-parse the uploaded file (stored temporarily)
+    // For each valid row:
+    
+    // === NEW USER ===
+    // 1. Generate UUID for user ID
+    // 2. Generate username: firstnamelastname0 (lowercase, Turkish chars normalized)
+    // 3. Generate temporary password: "Dospresso2026!" (will be force-changed on first login)
+    // 4. Hash password with bcrypt
+    // 5. Generate 4-digit PIN if not provided
+    // 6. INSERT into users table
+    // 7. INSERT into employee_salaries (if salary data provided)
+    // 8. INSERT into employee_leaves (if leave data provided)
+    // 9. INSERT into employee_warnings (if warning count > 0)
+    // 10. Set mustChangePassword = true
+    
+    // === UPDATE EXISTING USER ===
+    // 1. Find user by TC No
+    // 2. Update fields that are provided (don't overwrite with empty)
+    // 3. Update salary if changed
+    // 4. Update leave balances if provided
+    
+    // === AFTER ALL ===
+    // Create audit log entry
+    // Return summary
+    
+    res.json({
+      success: true,
+      created: 12,
+      updated: 3,
+      failed: 0,
+      users: [
+        { name: "Ahmet Yılmaz", username: "ahmetyilmaz0", status: "created", tempPassword: "Dospresso2026!" },
+        { name: "Arife Demir", username: "arifedemir0", status: "updated" },
+      ]
+    });
+  } catch (error) {
+    console.error("[HR Import] Import error:", error);
+    res.status(500).json({ error: "İçe aktarma başarısız" });
+  }
+});
+```
+
+### Step 5: Frontend UI
+
+Create or add to the İK/Personel page:
+
+```bash
+# Find the current İK personnel management page
+grep -rn "personel\|personnel\|ik.*yonetim\|hr.*manage" client/src/pages/ --include="*.tsx" -l | head -10
+find client/src/pages -name "*ik*" -o -name "*hr*" -o -name "*personel*" | head -10
+```
+
+Add a "Toplu Personel Yükle" section (accessible only to HQ roles):
+
+```typescript
+// Import flow:
+// Step 1: Show "Şablonu İndir" button + "Dosya Yükle" dropzone
+// Step 2: After upload → show preview table with validation results
+//         - Green rows: new users
+//         - Blue rows: existing users (will update)
+//         - Red rows: errors (won't import)
+//         - Yellow rows: warnings (will import but check)
+// Step 3: "Onayla ve İçe Aktar" button → confirm dialog → import
+// Step 4: Show results summary + downloadable report with usernames/passwords
+
+// UI components:
+<Card className="mt-6">
+  <CardHeader>
+    <CardTitle className="text-base">Toplu Personel Yükleme</CardTitle>
+    <CardDescription>Excel şablonunu indirin, doldurun ve yükleyin</CardDescription>
+  </CardHeader>
+  <CardContent>
+    {importStep === 'upload' && (
+      <div className="space-y-4">
+        <Button variant="outline" onClick={downloadTemplate}>
+          <Download className="h-4 w-4 mr-2" /> Şablonu İndir (.xlsx)
+        </Button>
+        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+          <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" id="excel-upload" />
+          <label htmlFor="excel-upload" className="cursor-pointer">
+            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Doldurulan Excel dosyasını buraya sürükleyin veya tıklayın</p>
+          </label>
+        </div>
+      </div>
+    )}
+    
+    {importStep === 'preview' && (
+      <div className="space-y-4">
+        <div className="grid grid-cols-4 gap-3">
+          <div className="p-3 bg-green-500/10 rounded-lg text-center">
+            <p className="text-lg font-bold text-green-500">{preview.newUsers}</p>
+            <p className="text-xs text-muted-foreground">Yeni Personel</p>
+          </div>
+          <div className="p-3 bg-blue-500/10 rounded-lg text-center">
+            <p className="text-lg font-bold text-blue-500">{preview.updateUsers}</p>
+            <p className="text-xs text-muted-foreground">Güncellenecek</p>
+          </div>
+          <div className="p-3 bg-red-500/10 rounded-lg text-center">
+            <p className="text-lg font-bold text-red-500">{preview.errors.length}</p>
+            <p className="text-xs text-muted-foreground">Hatalı Satır</p>
+          </div>
+          <div className="p-3 bg-amber-500/10 rounded-lg text-center">
+            <p className="text-lg font-bold text-amber-500">{preview.warnings.length}</p>
+            <p className="text-xs text-muted-foreground">Uyarı</p>
+          </div>
+        </div>
+        
+        {/* Preview table */}
+        <Table>...</Table>
+        
+        {/* Error list */}
+        {preview.errors.length > 0 && (
+          <div className="bg-red-500/10 p-3 rounded-lg">
+            <h4 className="text-sm font-medium text-red-400 mb-2">Hatalar (düzeltilmeden yüklenemez)</h4>
+            {preview.errors.map(err => (
+              <p className="text-xs text-red-300">Satır {err.row}: {err.column} — {err.error}</p>
+            ))}
+          </div>
+        )}
+        
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setImportStep('upload')}>Geri</Button>
+          <Button onClick={confirmImport} disabled={preview.errors.length > 0}
+            className="bg-green-600 hover:bg-green-700 text-white">
+            Onayla ve {preview.newUsers + preview.updateUsers} Personeli İçe Aktar
+          </Button>
+        </div>
+      </div>
+    )}
+    
+    {importStep === 'result' && (
+      <div className="space-y-4 text-center">
+        <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
+          <Check className="h-6 w-6 text-green-500" />
+        </div>
+        <h3 className="font-bold">{result.created} personel oluşturuldu, {result.updated} güncellendi</h3>
+        <p className="text-sm text-muted-foreground">Tüm yeni personelin geçici şifresi: Dospresso2026!</p>
+        <p className="text-sm text-muted-foreground">İlk girişte şifre değiştirmeleri zorunludur.</p>
+        <Button variant="outline" onClick={downloadResultReport}>
+          <Download className="h-4 w-4 mr-2" /> Sonuç Raporunu İndir
+        </Button>
+      </div>
+    )}
+  </CardContent>
+</Card>
+```
+
+### Step 6: File upload middleware
+
+```bash
+# Check if multer or similar file upload middleware exists
+grep -rn "multer\|upload\|fileUpload\|multipart" server/ --include="*.ts" | grep -v node_modules | head -10
+```
+
+If multer exists, use it. If not, add a simple file handler.
+
+---
+
+## ═══════════════════════════════════════════
+## PART 2: DATA RESET SCRIPT (DO NOT EXECUTE)
+## ═══════════════════════════════════════════
+
+Create a file: `server/scripts/launch-reset.ts`
+
+This script will be run MANUALLY on launch day. It must:
+- KEEP: users, branches, factory_stations, factory_products, product_recipes, raw_materials, module_flags, sla_rules, checklist_templates, branch_recurring_tasks, certificate_settings, certificate_templates, training_modules, module_lessons, module_quizzes, quiz_questions, roles, role_permissions, career_levels, factory_kiosk_config, factory_waste_reasons
+- DELETE: all transactional/operational data (test data)
+
+```typescript
+// server/scripts/launch-reset.ts
+// USAGE: Run manually with: npx tsx server/scripts/launch-reset.ts
+// WARNING: This DELETES all operational data. Only run before launch.
+
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+
+const CONFIRM_CODE = process.argv[2];
+if (CONFIRM_CODE !== "LAUNCH-2026-DOSPRESSO") {
+  console.error("SAFETY CHECK: Run with confirmation code:");
+  console.error("  npx tsx server/scripts/launch-reset.ts LAUNCH-2026-DOSPRESSO");
+  process.exit(1);
+}
+
+async function launchReset() {
+  console.log("═══════════════════════════════════════");
+  console.log("DOSPRESSO LAUNCH RESET — STARTING");
+  console.log("═══════════════════════════════════════");
+  
+  // Order matters — delete child tables before parent tables (FK constraints)
+  const tablesToClear = [
+    // Agent & Guidance
+    "agent_pending_actions",
+    "guidance_dismissals",
+    "skill_notification_queue",
+    "agent_runs",
+    "ai_agent_logs",
+    "ai_usage_logs",
+    
+    // Notifications & Messages
+    "notifications",
+    "messages",
+    "announcements",
+    "hq_support_messages",
+    
+    // Factory operational data
+    "factory_production_outputs",
+    "factory_break_logs",
+    "factory_session_events",
+    "factory_worker_scores",
+    "factory_management_scores",
+    "factory_shift_sessions",
+    "factory_production_runs",
+    "production_batches",
+    "factory_daily_targets",
+    "production_lots",
+    "coffee_roasting_logs",
+    
+    // Kiosk sessions
+    "kiosk_sessions",
+    
+    // PDKS & Shifts
+    "pdks_records",
+    // Do NOT clear "shifts" table if it has template data
+    // Only clear shift RECORDS, not definitions
+    
+    // Tasks operational
+    "task_status_history",
+    "task_assignees",
+    "task_ratings",
+    "task_evidence",
+    "task_steps",
+    "branch_task_instances",
+    // Keep branch_recurring_tasks (templates)
+    // Keep tasks that are templates, clear completed ones
+    
+    // Checklist completions (keep templates)
+    "checklist_task_completions",
+    "checklist_completions",
+    "checklist_ratings",
+    
+    // Training progress (keep modules/quizzes)
+    "user_training_progress",
+    "user_quiz_attempts",
+    "quiz_results",
+    "training_completions",
+    "training_assignments",
+    "professional_training_progress",
+    "professional_training_quiz_cache",
+    "user_badges",
+    
+    // Certificates (keep templates/settings)
+    "issued_certificates",
+    
+    // Career progress
+    "user_career_progress",
+    "career_score_history",
+    "exam_requests",
+    
+    // HR operational (keep structure)
+    "employee_performance_scores",
+    "staff_evaluations",
+    "manager_evaluations",
+    "employee_satisfaction_scores",
+    "performance_metrics",
+    "employee_onboarding",
+    "employee_onboarding_progress",
+    
+    // CRM operational
+    "customer_feedback",
+    "feedback_responses",
+    "guest_complaints",
+    "product_complaints",
+    "support_tickets",
+    "support_ticket_comments",
+    "ticket_attachments",
+    "hq_support_tickets",
+    "campaigns",
+    
+    // Equipment operational (keep equipment catalog)
+    "equipment_faults",
+    "fault_stage_transitions",
+    "fault_comments",
+    "equipment_maintenance_logs",
+    "equipment_comments",
+    "equipment_service_requests",
+    "fault_service_tracking",
+    "fault_service_status_updates",
+    
+    // Inventory movements (keep base inventory)
+    "inventory_counts",
+    "goods_receipts",
+    
+    // Audit & Logs
+    "audit_logs",
+    "data_change_log",
+    "backup_records",
+    
+    // Disciplinary
+    "disciplinary_reports",
+    "employee_warnings",
+  ];
+  
+  let totalDeleted = 0;
+  
+  for (const table of tablesToClear) {
+    try {
+      const result = await db.execute(sql.raw(`DELETE FROM "${table}"`));
+      const count = (result as any).rowCount || 0;
+      if (count > 0) {
+        console.log(`  ✓ ${table}: ${count} rows deleted`);
+        totalDeleted += count;
+      } else {
+        console.log(`  - ${table}: already empty`);
+      }
+    } catch (error: any) {
+      // Table might not exist or FK constraint
+      console.log(`  ✗ ${table}: ${error.message?.substring(0, 80)}`);
+    }
+  }
+  
+  // Reset sequences if needed
+  console.log("\n--- Resetting ID sequences ---");
+  for (const table of tablesToClear) {
+    try {
+      await db.execute(sql.raw(`ALTER SEQUENCE IF EXISTS "${table}_id_seq" RESTART WITH 1`));
+    } catch (e) {
+      // Not all tables have sequences
+    }
+  }
+  
+  // Reset all user passwords to Dospresso2026! and set mustChangePassword
+  console.log("\n--- Resetting all passwords ---");
+  const bcrypt = require("bcrypt");
+  const hashedPassword = await bcrypt.hash("Dospresso2026!", 10);
+  const pwResult = await db.execute(
+    sql.raw(`UPDATE users SET password = '${hashedPassword}', must_change_password = true WHERE role != 'admin'`)
+  );
+  console.log(`  ✓ ${(pwResult as any).rowCount} user passwords reset`);
+  
+  // Summary
+  console.log("\n═══════════════════════════════════════");
+  console.log(`LAUNCH RESET COMPLETE`);
+  console.log(`Total rows deleted: ${totalDeleted}`);
+  console.log(`Passwords reset: all non-admin users`);
+  console.log(`Default password: Dospresso2026!`);
+  console.log("═══════════════════════════════════════");
+  
+  process.exit(0);
+}
+
+launchReset().catch(err => {
+  console.error("RESET FAILED:", err);
+  process.exit(1);
+});
+```
+
+IMPORTANT: Do NOT run this script. Only create the file. It will be executed manually on launch day with:
+```
+npx tsx server/scripts/launch-reset.ts LAUNCH-2026-DOSPRESSO
+```
+
+---
+
+## ═══════════════════════════════════════════
+## PART 3: LAUNCH READINESS CHECKLIST
+## ═══════════════════════════════════════════
+
+Create a file: `.local/reports/LAUNCH-CHECKLIST-2026-03-26.md`
+
+```markdown
+# DOSPRESSO Lansman Kontrol Listesi
+## Hedef Tarih: 26 Mart 2026
+## Başlangıç Şubeleri: Fabrika + HQ + Işıklar + Lara
+
+---
+
+### 1 GÜN ÖNCE (25 Mart)
+
+#### Personel Hazırlığı
+- [ ] Lara şubesi personeli sisteme girildi (Excel import veya manuel)
+- [ ] Tüm şubelerde müdür + supervisor atanmış
+- [ ] Fabrika personeli PIN'leri doğrulandı
+- [ ] HQ personeli (13 kişi) hesapları aktif
+
+#### Veri Hazırlığı
+- [ ] Test verileri temizlendi (launch-reset.ts çalıştırıldı)
+- [ ] Şifre reset yapıldı (tüm kullanıcılar Dospresso2026!)
+- [ ] Vardiya planı girildi (Işıklar + Lara: en az 1 haftalık)
+- [ ] Checklist şablonları kontrol edildi (açılış/kapanış)
+
+#### Teknik Kontrol
+- [ ] App hatasız açılıyor (tüm sayfalar)
+- [ ] Fabrika kiosk çalışıyor (PIN → vardiya → üretim → çıkış)
+- [ ] Şube kiosk çalışıyor (branch login → checklist → PDKS)
+- [ ] Bildirimler çalışıyor
+- [ ] Module flags doğru (11 açık, 15 gizli)
+
+---
+
+### LANSMAN GÜNÜ SABAHI (26 Mart 08:00)
+
+#### İlk Adımlar
+- [ ] Sunucu durumu kontrol (health check)
+- [ ] Fabrika kiosk tablet'i açık ve çalışır durumda
+- [ ] Işıklar tablet'i açık ve çalışır durumda
+- [ ] Lara tablet'i açık ve çalışır durumda
+- [ ] İlk PDKS giriş testi (1 kişi deneme)
+
+#### Canlı Doğrulama
+- [ ] Fabrika: 1 personel PIN ile giriş yapabildi
+- [ ] Fabrika: vardiya başladı, PDKS kaydı oluştu
+- [ ] Işıklar: 1 barista kiosk'tan giriş yapabildi
+- [ ] Işıklar: açılış checklist'i göründü
+- [ ] HQ dashboard veriler geliyor (aktif personel, şube durumu)
+
+---
+
+### LANSMAN GÜNÜ AKŞAMI (26 Mart 17:00)
+
+#### Gün Sonu Kontrol
+- [ ] Tüm vardiyalar düzgün kapandı
+- [ ] PDKS kayıtları oluştu
+- [ ] Checklist tamamlama kayıtları var
+- [ ] Fabrika üretim kayıtları girildi
+- [ ] 20:30 auto-checkout çalıştı (fabrika)
+- [ ] Bildirimler teslim edildi
+- [ ] Mr. Dobody guidance widget veri gösteriyor
+
+---
+
+### İLK HAFTA TAKİP (27 Mart - 2 Nisan)
+
+#### Günlük Kontrol
+- [ ] Her şubede günlük PDKS kayıtları var
+- [ ] Checklist tamamlama oranı > %80
+- [ ] Fabrika üretim kayıtları giriliyor
+- [ ] Bildirimler zamanında geliyor
+- [ ] Hata raporları (varsa) not edildi
+
+#### Hafta Sonu Kontrol
+- [ ] Branch health score hesaplandı
+- [ ] Factory worker scores hesaplandı
+- [ ] Employee summary skorları anlamlı
+- [ ] Mr. Dobody haftalık rapor gönderdi
+- [ ] Kullanıcı geri bildirimleri toplandı
+
+---
+
+### AÇIK KALAN ÖZELLİKLER (Lansman sonrası)
+- [ ] QC kalite kontrol sistemi (haftalık atama + kiosk butonu + lot takibi)
+- [ ] Vardiya AI optimizasyonu (45h FT, yoğun günler Cu-Ct-Pz)
+- [ ] Excel import/export (tedarikçi, stok, reçete)
+- [ ] İK modülü genişletme (özlük, tutanak, granüler yetki)
+- [ ] İş ilanı + QR başvuru + havuz sistemi
+- [ ] Akademi modülü aktifleştirme
+- [ ] QR müşteri geri bildirim başlatma
+
+---
+
+### ACİL DURUM PLANI
+- Sunucu çökerse: Replit dashboard → Restart
+- Veritabanı hatası: Replit console → son backup'tan geri yükleme
+- Kiosk çalışmazsa: Tarayıcıyı yenile, WiFi kontrol, URL kontrol
+- Şifre unutulursa: Admin → Kullanıcılar → Şifre Sıfırla
+- Yanlış veri girilirse: Admin → ilgili modül → düzelt veya sil
+```
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, drizzle.config.ts
+- server/localAuth.ts
+- Any scoring service
+- Any existing working endpoint
+- Do NOT run the reset script
+
+## Testing (Excel Import only):
+1. GET /api/hr/personnel-import/template → downloads .xlsx file
+2. Fill template with 3 test rows
+3. POST /api/hr/personnel-import/preview → returns validation results
+4. POST /api/hr/personnel-import/confirm → creates users
+5. New users appear in admin user list
+6. New users can login with Dospresso2026!
+7. New users see mustChangePassword dialog on first login
+8. Salary data appears in employee profile
+9. Leave balances appear in employee profile
+10. HQ roles can access import, branch roles cannot
+
+## After:
+1. Report: template column count
+2. Report: which Excel library used
+3. Report: where the import UI was added (which page)
+4. Report: launch-reset.ts created (NOT executed)
+5. Report: launch checklist created
+```
+
+---
+
+Bu **Autonomous + Power** modunda yapıştırın. Büyük sprint ama 3 bağımsız parça — birini bozarsa diğerleri etkilenmez. Sonucu bekleyin!

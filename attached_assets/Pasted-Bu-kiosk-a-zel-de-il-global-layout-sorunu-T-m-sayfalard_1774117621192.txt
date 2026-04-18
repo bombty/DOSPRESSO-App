@@ -1,0 +1,190 @@
+Bu kiosk'a özel değil — **global layout sorunu**. Tüm sayfalarda header kayıyor. O zaman kiosk'u tek tek düzeltmek yerine kök sorunu çözelim. Replit'e yapıştırın:
+
+---
+
+```
+## URGENT: Global Header Scroll Issue — All Pages
+
+### Problem
+On ALL pages (dashboards, kiosk, admin, etc.), the header/navbar scrolls OUT OF VIEW when the user scrolls down. On tablet/mobile, pulling down causes the header to disappear. This affects EVERY page in the app, not just the kiosk.
+
+This is a GLOBAL layout issue — the fix must be in the shared layout component, NOT in individual pages.
+
+### CRITICAL: CSS-only fix. Do NOT change any page logic, routes, or backend.
+
+---
+
+## STEP 1: Find the global layout structure
+
+```bash
+# Where is the main layout defined?
+grep -rn "Layout\|MainLayout\|AppLayout\|SidebarLayout" client/src/App.tsx | head -10
+grep -rn "Layout\|MainLayout" client/src/components/ --include="*.tsx" -l | head -10
+
+# What wraps all pages?
+head -60 client/src/App.tsx | tail -40
+
+# Find the header/navbar component
+grep -rn "Header\|Navbar\|TopBar\|header\|navbar" client/src/components/ --include="*.tsx" -l | head -10
+
+# Show the layout wrapper structure
+grep -B3 -A20 "function.*Layout\|const.*Layout\|export.*Layout" client/src/components/layout*.tsx client/src/components/Layout*.tsx client/src/components/app-layout*.tsx 2>/dev/null | head -50
+
+# Find the sidebar + main content wrapper
+grep -n "sidebar\|Sidebar\|main-content\|mainContent\|flex.*h-screen\|flex.*min-h-screen" client/src/components/ -r --include="*.tsx" | head -15
+
+# Check for overflow settings in global CSS
+grep -n "overflow\|scroll\|min-h-screen\|h-screen" client/src/index.css client/src/App.css 2>/dev/null | head -15
+
+# Check body/html styles
+grep -n "body\|html" client/src/index.css | head -10
+
+# What does the mobile hamburger menu layout look like?
+grep -rn "hamburger\|mobile.*menu\|MobileMenu\|sheet\|Sheet" client/src/components/ --include="*.tsx" -l | head -5
+```
+
+## STEP 2: Understand the current structure
+
+The typical DOSPRESSO layout is:
+```
+<html>
+  <body>
+    <div id="root">
+      <App>
+        <Layout>
+          <Header /> ← This scrolls away (BUG)
+          <div className="flex">
+            <Sidebar />   ← Desktop only
+            <main>        ← Page content
+              <PageComponent />
+            </main>
+          </div>
+        </Layout>
+      </App>
+    </div>
+  </body>
+</html>
+```
+
+## STEP 3: Apply the fix
+
+The layout must be restructured so the header is FIXED and content scrolls independently:
+
+```tsx
+// Layout component should be:
+<div className="h-screen flex flex-col overflow-hidden">
+  
+  {/* Header — FIXED at top, never scrolls */}
+  <header className="flex-shrink-0 h-14 border-b border-border bg-background z-50">
+    {/* logo, nav, user menu, hamburger */}
+  </header>
+  
+  {/* Below header — sidebar + content */}
+  <div className="flex-1 flex overflow-hidden">
+    
+    {/* Sidebar — desktop only, fixed height, scrolls internally */}
+    <aside className="hidden md:flex flex-shrink-0 w-64 border-r border-border overflow-y-auto">
+      {/* sidebar nav items */}
+    </aside>
+    
+    {/* Main content — scrolls independently */}
+    <main className="flex-1 overflow-y-auto">
+      {/* Page content renders here */}
+      <Outlet /> {/* or children or Route */}
+    </main>
+    
+  </div>
+</div>
+```
+
+### Key CSS rules:
+- Outer: `h-screen flex flex-col overflow-hidden` — locks to viewport
+- Header: `flex-shrink-0` — never compressed
+- Content row: `flex-1 flex overflow-hidden` — fills remaining space
+- Sidebar: `overflow-y-auto` — scrolls if menu is long
+- Main: `flex-1 overflow-y-auto` — page content scrolls HERE, not at body level
+
+### Also fix body/html:
+```css
+/* In index.css or global styles */
+html, body, #root {
+  height: 100%;
+  overflow: hidden; /* Prevent body-level scroll */
+}
+```
+
+### Remove conflicting styles:
+```bash
+# Find and remove any min-h-screen on the layout wrapper
+grep -rn "min-h-screen" client/src/components/layout*.tsx client/src/components/Layout*.tsx client/src/components/app-layout*.tsx 2>/dev/null | head -10
+
+# Find body scroll styles
+grep -n "overflow.*scroll\|overflow.*auto" client/src/index.css | head -10
+```
+
+Remove `min-h-screen` from the layout — replace with `h-screen overflow-hidden`.
+Remove `overflow: auto` or `overflow: scroll` from body/html if present.
+
+## STEP 4: Special handling for standalone pages
+
+Some pages render WITHOUT the layout (kiosk, login):
+```bash
+# Check which pages render outside the layout
+grep -n "element.*kiosk\|element.*login\|element.*Kiosk\|element.*Login" client/src/App.tsx | head -10
+```
+
+For standalone pages (kiosk, login), they already handle their own viewport. The global fix should NOT affect them — they are outside the Layout wrapper.
+
+For the factory kiosk specifically, apply the same pattern:
+```tsx
+// Kiosk page (standalone, no Layout wrapper):
+<div className="fixed inset-0 flex flex-col bg-background">
+  <header className="flex-shrink-0 h-12 ...">...</header>
+  <div className="flex-1 overflow-y-auto">
+    {/* kiosk content */}
+  </div>
+</div>
+```
+
+## STEP 5: Verify on key pages
+
+After fix, these pages must all have fixed headers:
+- HQ Dashboard (/hq-dashboard)
+- CEO Command Center (/ceo-command-center)
+- Factory Dashboard (/fabrika/dashboard)
+- Factory Kiosk (/fabrika/kiosk)
+- Branch Dashboard (/sube-ozet)
+- Admin panel (/admin)
+- Any page with scrollable content
+
+---
+
+## DO NOT TOUCH:
+- server/ (any backend file)
+- vite.config.ts, package.json
+- Page component logic (only CSS classes on layout wrappers)
+- Route definitions
+- Sidebar menu items
+
+## Testing:
+1. Open HQ Dashboard on tablet → scroll down → header stays visible ✓
+2. Open CEO Command Center → scroll down → header stays visible ✓
+3. Open Factory Kiosk → scroll down → header stays visible ✓
+4. Open Admin panel → scroll down → header stays visible ✓
+5. Open any page with long content → internal scroll, header fixed ✓
+6. Sidebar still works on desktop (visible, scrollable if long) ✓
+7. Mobile hamburger menu still opens ✓
+8. Login page not affected (standalone) ✓
+9. No horizontal scroll anywhere ✓
+10. Bottom of long pages still reachable (scroll to end works) ✓
+
+## After:
+1. Report: which layout file was changed
+2. Report: what CSS classes were changed (before → after)
+3. Report: was body/html overflow changed?
+4. Screenshot: any dashboard page scrolled down with header visible
+```
+
+---
+
+Bu global fix — tüm sayfaların header'ını sabitleyecek. Yapıştırın!

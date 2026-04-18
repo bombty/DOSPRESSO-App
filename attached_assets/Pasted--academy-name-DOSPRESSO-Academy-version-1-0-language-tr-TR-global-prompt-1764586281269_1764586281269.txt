@@ -1,0 +1,564 @@
+{
+  "academy_name": "DOSPRESSO Academy",
+  "version": "1.0",
+  "language": "tr-TR",
+  "global_prompt": "Sen DOSPRESSO Academy için çalışan bir Uzman Eğitim Tasarımcısı (LMS Instructional Designer) ve İçerik Geliştirici yapay zekasın. Görevin, sana verilen her bir modül girdisini kullanarak çok detaylı bir eğitim modülü JSON çıktısı üretmek. Bu JSON çıktısı, bir online eğitim platformunda (web tabanlı LMS) doğrudan kullanılacaktır.\n\nHer modül için:\n- Rol seviyesine (Stajyer, Bar Buddy, Barista, Supervisor Buddy, Supervisor) uygun dil ve seviye kullan.\n- DOSPRESSO marka kültürü, bar operasyonları, makine-ekipman kalibrasyonları, hijyen, müşteri deneyimi ve liderlik prensiplerini temel al.\n- Modül süresi 8–15 dakika aralığında, micro-learning mantığında olsun.\n- İçerik \"öğreten\" bir akışla, step-step ilerlemeli (multistep).\n- Makine ve ekipman modüllerinde; kalibrasyon, bakım, arıza diagnostiği ve servis iletişimi mutlaka yer alsın.\n- Her modül: öğrenme hedefleri, detaylı eğitim adımları, quiz, senaryo görevleri ve supervisor checklist içermelidir.\n\nÇıktıyı mutlaka 'module_output_schema' bölümünde tanımlanan JSON yapısına birebir uyarak üret.",
+  "module_output_schema": {
+    "description": "Her eğitim modülü için AI'nin üretmesi gereken JSON yapısı.",
+    "type": "object",
+    "properties": {
+      "module_id": { "type": "string" },
+      "role_id": { "type": "string" },
+      "role_level": { "type": "integer" },
+      "title": { "type": "string" },
+      "estimated_duration_min": { "type": "integer" },
+      "short_description": { "type": "string" },
+      "learning_objectives": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 3,
+        "maxItems": 6
+      },
+      "content_steps": {
+        "description": "Eğitim modülünün multistep akışı. Her step ayrı ekran/slide gibi düşünülmeli.",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "step_id": { "type": "string" },
+            "title": { "type": "string" },
+            "body_paragraphs": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 2
+            },
+            "key_points_bullets": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "media_suggestions": {
+              "description": "Bu step için kullanılabilecek görseller/video/ikonlar.",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "haccp_or_safety_notes": {
+              "description": "Veya yoksa boş dizi.",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "machine_or_calibration_notes": {
+              "description": "Makine/ekipman modüllerinde kullanılan teknik notlar; diğer modüllerde boş olabilir.",
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["step_id", "title", "body_paragraphs"]
+        }
+      },
+      "quiz": {
+        "description": "Modül sonu bilgi ölçümü. 3–6 soru.",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "question_id": { "type": "string" },
+            "question_type": { "type": "string", "enum": ["mcq", "true_false"] },
+            "question_text": { "type": "string" },
+            "options": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "correct_option_index": { "type": "integer" },
+            "feedback_correct": { "type": "string" },
+            "feedback_incorrect": { "type": "string" }
+          },
+          "required": ["question_id", "question_type", "question_text", "options", "correct_option_index"]
+        }
+      },
+      "scenario_tasks": {
+        "description": "Senaryo bazlı davranış soruları (role-play).",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "scenario_id": { "type": "string" },
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "suggested_branches": {
+              "description": "Kullanıcıya sunulacak seçenekler.",
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "expected_best_actions": {
+              "description": "AI'nin doğru kabul ettiği davranış/aksiyon listesi.",
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["scenario_id", "title", "description"]
+        }
+      },
+      "supervisor_checklist": {
+        "description": "Supervisor, sahada bu modülle ilgili hangi davranışları gözlemlemeli?",
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "practical_tasks": {
+        "description": "Uygulamalı görevler (örn. makine kalibrasyonu yap, 3 içecek hazırla vb.).",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "task_id": { "type": "string" },
+            "description": { "type": "string" },
+            "acceptance_criteria": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "required": ["task_id", "description"]
+        }
+      },
+      "media_requirements_overall": {
+        "description": "Tüm modül için çekilmesi/üretilmesi gereken görsel & video listesi.",
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "evaluation_rules": {
+        "description": "Bu modülü geçme kriterleri.",
+        "type": "object",
+        "properties": {
+          "min_quiz_score_percent": { "type": "integer" },
+          "require_all_practical_tasks": { "type": "boolean" },
+          "require_supervisor_approval": { "type": "boolean" }
+        }
+      }
+    },
+    "required": [
+      "module_id",
+      "role_id",
+      "role_level",
+      "title",
+      "estimated_duration_min",
+      "short_description",
+      "learning_objectives",
+      "content_steps",
+      "quiz",
+      "scenario_tasks",
+      "supervisor_checklist",
+      "evaluation_rules"
+    ]
+  },
+  "modules": [
+    {
+      "module_id": "S1",
+      "role_id": "stajyer",
+      "role_level": 1,
+      "title": "DOSPRESSO Kültürü ve Disiplin Code",
+      "estimated_duration_min": 10,
+      "focus_area": "kültür_disiplin",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "DOSPRESSO marka kültürünü ve temel değerlerini açıklayabilmek.",
+        "İş disiplini ve davranış kurallarının neden önemli olduğunu anlamak.",
+        "Kariyer basamaklarına göre davranış beklentilerini bilmek."
+      ]
+    },
+    {
+      "module_id": "S2",
+      "role_id": "stajyer",
+      "role_level": 1,
+      "title": "Dress Code ve Kişisel Bakım",
+      "estimated_duration_min": 10,
+      "focus_area": "hijyen_görünüm",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Doğru üniforma ve kişisel bakım standartlarını sıralamak.",
+        "Hijyen kurallarının gıda güvenliği ile ilişkisini anlamak.",
+        "Marka imajını destekleyen görünüm alışkanlıkları kazanmak."
+      ]
+    },
+    {
+      "module_id": "S3",
+      "role_id": "stajyer",
+      "role_level": 1,
+      "title": "Vardiya, Mola ve İzin Prosedürü",
+      "estimated_duration_min": 10,
+      "focus_area": "vardiya_disiplin",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Vardiya başlangıcı-bitişi ve mola kavramlarını doğru tanımlamak.",
+        "İzin taleplerini dijital sistem (Kolay İK vb.) üzerinden yönetebilmek.",
+        "Zamanında ve hazırlıklı vardiyaya başlama alışkanlığı kazanmak."
+      ]
+    },
+    {
+      "module_id": "S4",
+      "role_id": "stajyer",
+      "role_level": 1,
+      "title": "Misafir Karşılama Temelleri",
+      "estimated_duration_min": 10,
+      "focus_area": "müşteri_deneyimi",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Standart karşılama cümlelerini uygulamak.",
+        "Göz teması, beden dili ve ses tonunu doğru kullanmak.",
+        "Kararsız misafire kibarca rehberlik edebilmek."
+      ]
+    },
+    {
+      "module_id": "S5",
+      "role_id": "stajyer",
+      "role_level": 1,
+      "title": "Güvenlik ve Soygun Protokolü",
+      "estimated_duration_min": 10,
+      "focus_area": "güvenlik_acil_durum",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Soygun ve tehdit anında can güvenliğini önceleyen davranışları bilmek.",
+        "Yapılması ve yapılmaması gereken hareketleri ayırt etmek.",
+        "Olay sonrası raporlama basamaklarını sıralamak."
+      ]
+    },
+    {
+      "module_id": "S6",
+      "role_id": "stajyer",
+      "role_level": 1,
+      "title": "Şube Alanları ve Sorumluluk Zonları",
+      "estimated_duration_min": 10,
+      "focus_area": "bar_istasyonları",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Şubedeki istasyonları (Coffee, Freshess, POS, Food, Checkout, Merch) tanımak.",
+        "Her istasyonun temel görevini açıklayabilmek.",
+        "İstasyon değişiminde alanı düzenli devretme alışkanlığı kazanmak."
+      ]
+    },
+
+    {
+      "module_id": "BB1",
+      "role_id": "bar_buddy",
+      "role_level": 2,
+      "title": "Coffee Station Temelleri",
+      "estimated_duration_min": 12,
+      "focus_area": "coffee_station_operasyon",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Coffee Station ekipmanlarını (espresso makinesi, grinder, filtre makinesi) tanımak.",
+        "Açılış hazırlığını doğru sırayla yapabilmek.",
+        "Sipariş akışını bozmadan temel kahve içeceklerini hazırlayabilmek."
+      ]
+    },
+    {
+      "module_id": "BB2",
+      "role_id": "bar_buddy",
+      "role_level": 2,
+      "title": "POS ve Sipariş Yönetimi",
+      "estimated_duration_min": 10,
+      "focus_area": "pos_sipariş",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "POS ekranında ürün, boy, ekstra seçimlerini hatasız girmek.",
+        "Sipariş tekrar ederek doğrulama alışkanlığı kazanmak.",
+        "İptal/iade süreçlerini prosedüre uygun yönetmek."
+      ]
+    },
+    {
+      "module_id": "BB3",
+      "role_id": "bar_buddy",
+      "role_level": 2,
+      "title": "Bar Temizliği ve HACCP Giriş",
+      "estimated_duration_min": 10,
+      "focus_area": "hijyen_haccp",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Gün içi ve kapanış bar temizlik adımlarını bilmek.",
+        "Çapraz bulaşma risklerini azaltacak şekilde çalışmak.",
+        "HACCP mantığına giriş seviyesinde hâkim olmak."
+      ]
+    },
+    {
+      "module_id": "BB4",
+      "role_id": "bar_buddy",
+      "role_level": 2,
+      "title": "Donut Sunum ve Tazelik Kontrol",
+      "estimated_duration_min": 10,
+      "focus_area": "donut_sunum_tazelik",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Donut çözündürme ve sergileme kurallarını bilmek.",
+        "Tazelik süresini takip ederek fireyi doğru kaydetmek.",
+        "Görsel sunum standardına uygun vitrin hazırlamak."
+      ]
+    },
+    {
+      "module_id": "BB5",
+      "role_id": "bar_buddy",
+      "role_level": 2,
+      "title": "Freshess Station Şurup ve Bardak Çizgisi Kalibrasyonu",
+      "estimated_duration_min": 10,
+      "focus_area": "freshess_kalibrasyon",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Bardak çizgilerini (Less Ice, Freshess Ice vb.) doğru yorumlamak.",
+        "Şurup ve baz dozajını tarif kartına göre uygulamak.",
+        "Tat ve maliyet dengesi için standardı korumak."
+      ]
+    },
+    {
+      "module_id": "BB6",
+      "role_id": "bar_buddy",
+      "role_level": 2,
+      "title": "Müşteri Memnuniyeti Temelleri",
+      "estimated_duration_min": 10,
+      "focus_area": "müşteri_memnuniyeti",
+      "difficulty": "beginner",
+      "suggested_learning_objectives": [
+        "Misafirle saygılı ve çözüm odaklı iletişim kurmak.",
+        "Küçük şikayetleri büyümeden çözmek.",
+        "Teşekkür ve vedalaşma alışkanlığı kazanmak."
+      ]
+    },
+
+    {
+      "module_id": "B1",
+      "role_id": "barista",
+      "role_level": 3,
+      "title": "Espresso Makinesi Kalibrasyon Master",
+      "estimated_duration_min": 15,
+      "focus_area": "espresso_kalibrasyon",
+      "difficulty": "intermediate",
+      "suggested_learning_objectives": [
+        "Single/Double shot için akış süresi, gramaj ve hacim değerlerini bilmek.",
+        "Under/over extraction durumlarına göre grinder ayarını doğru yönde değiştirmek.",
+        "Su basıncı ve filtrasyon kalitesinin espresso tadına etkisini açıklamak."
+      ]
+    },
+    {
+      "module_id": "B2",
+      "role_id": "barista",
+      "role_level": 3,
+      "title": "Süt Buhar Çubuğu ve Latte Milk Tekstürü",
+      "estimated_duration_min": 12,
+      "focus_area": "süt_latte_art",
+      "difficulty": "intermediate",
+      "suggested_learning_objectives": [
+        "Süt ısıtma ve mikrofoam tekniklerini doğru uygulamak.",
+        "Latte ve cappuccino için uygun tekstürü ayırt etmek.",
+        "Buhar çubuğu hijyeni ve süt güvenliği kurallarını bilmek."
+      ]
+    },
+    {
+      "module_id": "B3",
+      "role_id": "barista",
+      "role_level": 3,
+      "title": "Makine Gün Sonu Temizliği ve Kimyasal Kullanımı",
+      "estimated_duration_min": 12,
+      "focus_area": "makine_temizlik",
+      "difficulty": "intermediate",
+      "suggested_learning_objectives": [
+        "Espresso makinesi kapanış temizliği adımlarını uygulamak.",
+        "Grinder temizliğini doğru ekipmanla yapmak.",
+        "Gıda yüzeylerinde kimyasal kullanım güvenliğini bilmek."
+      ]
+    },
+    {
+      "module_id": "B4",
+      "role_id": "barista",
+      "role_level": 3,
+      "title": "Filter Coffee Pro – BUNN ICBA",
+      "estimated_duration_min": 10,
+      "focus_area": "filtre_kahve",
+      "difficulty": "intermediate",
+      "suggested_learning_objectives": [
+        "Half/Full brew için doğru gramaj ve öğütme ayarlarını kullanmak.",
+        "Filtre kahve tazelik süresini takip etmek.",
+        "Makine temizliği ve termos hijyenini sağlamak."
+      ]
+    },
+    {
+      "module_id": "B5",
+      "role_id": "barista",
+      "role_level": 3,
+      "title": "Donut Production Standard – Glaze & Dekor",
+      "estimated_duration_min": 12,
+      "focus_area": "donut_production",
+      "difficulty": "intermediate",
+      "suggested_learning_objectives": [
+        "Glaze kıvamını gözle ve akış testiyle kontrol etmek.",
+        "Dekor ve topping’leri marka standardına uygun uygulamak.",
+        "Üretim hız ve kalite dengesini yönetmek."
+      ]
+    },
+    {
+      "module_id": "B6",
+      "role_id": "barista",
+      "role_level": 3,
+      "title": "Speed & Workflow Optimization",
+      "estimated_duration_min": 12,
+      "focus_area": "hız_akış",
+      "difficulty": "intermediate",
+      "suggested_learning_objectives": [
+        "Yoğun saatlerde siparişleri etkili şekilde önceliklendirmek.",
+        "İstasyonlar arası iş paylaşımı ile bekleme süresini azaltmak.",
+        "Hızı artırırken kaliteyi korumak."
+      ]
+    },
+
+    {
+      "module_id": "SB1",
+      "role_id": "supervisor_buddy",
+      "role_level": 4,
+      "title": "Opening & Closing Yönetimi",
+      "estimated_duration_min": 12,
+      "focus_area": "opening_closing",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Opening ve closing checklist’lerini eksiksiz yürütmek.",
+        "Ekip üyelerine görev dağılımı yapmak.",
+        "Gün başı ve sonu hazırlıklarının kontrolünü sağlamak."
+      ]
+    },
+    {
+      "module_id": "SB2",
+      "role_id": "supervisor_buddy",
+      "role_level": 4,
+      "title": "Envanter – Fire – COGS Temelleri",
+      "estimated_duration_min": 12,
+      "focus_area": "envanter_fire_cogs",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Stok sayım ve fire kayıt süreçlerini bilmek.",
+        "Fire nedenlerini analiz etmek.",
+        "COGS kavramına temel düzeyde hakim olmak."
+      ]
+    },
+    {
+      "module_id": "SB3",
+      "role_id": "supervisor_buddy",
+      "role_level": 4,
+      "title": "Eğitim Koçluğu – Stajyer & Bar Buddy Gelişimi",
+      "estimated_duration_min": 12,
+      "focus_area": "koçluk",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Yeni çalışanlara iş üzerinde koçluk verebilmek.",
+        "Yapıcı ve davranış odaklı geri bildirim sunmak.",
+        "Gelişim takibini basit formlar üzerinden yapmak."
+      ]
+    },
+    {
+      "module_id": "SB4",
+      "role_id": "supervisor_buddy",
+      "role_level": 4,
+      "title": "Hijyen ve HACCP Uygulamaları",
+      "estimated_duration_min": 12,
+      "focus_area": "hijyen_haccp_denetime",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Kritik kontrol noktalarını (soğuk zincir, sıcaklık vb.) denetlemek.",
+        "Alerjen yönetiminde doğru bilgi vermek.",
+        "HACCP prensiplerini ekibe anlatabilmek."
+      ]
+    },
+    {
+      "module_id": "SB5",
+      "role_id": "supervisor_buddy",
+      "role_level": 4,
+      "title": "Performans Gözlemi ve Geri Bildirim",
+      "estimated_duration_min": 10,
+      "focus_area": "performans_geri_bildirim",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Ekip performansını objektif gözlemlemek.",
+        "Spesifik ve geliştirici geri bildirim vermek.",
+        "Gelişim planları hazırlayıp takip etmek."
+      ]
+    },
+
+    {
+      "module_id": "SP1",
+      "role_id": "supervisor",
+      "role_level": 5,
+      "title": "Operasyon Yönetimi ve KPI’lar",
+      "estimated_duration_min": 15,
+      "focus_area": "kpi_operasyon",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Satış, COGS, fire, eğitim gibi KPI’ları takip etmek.",
+        "Günlük operasyonu KPI’lara göre planlamak.",
+        "Şube performansını raporlayabilmek."
+      ]
+    },
+    {
+      "module_id": "SP2",
+      "role_id": "supervisor",
+      "role_level": 5,
+      "title": "İş Güvenliği ve Disiplin Uygulamaları",
+      "estimated_duration_min": 15,
+      "focus_area": "iş_güvenliği_disiplin",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Temel iş güvenliği risklerini tanımak.",
+        "Disiplin sürecini adil ve tutarlı yürütmek.",
+        "İK ile hangi durumlarda nasıl iletişim kurulacağını bilmek."
+      ]
+    },
+    {
+      "module_id": "SP3",
+      "role_id": "supervisor",
+      "role_level": 5,
+      "title": "Marka Bütünlüğü ve Audit Yönetimi",
+      "estimated_duration_min": 12,
+      "focus_area": "audit_marka",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Marka standart checklist’lerini uygulamak.",
+        "Audit öncesi şubeyi hazırlamak.",
+        "Audit sonrası aksiyon planı oluşturmak."
+      ]
+    },
+    {
+      "module_id": "SP4",
+      "role_id": "supervisor",
+      "role_level": 5,
+      "title": "Satış Artırma ve Kampanya Yönetimi",
+      "estimated_duration_min": 12,
+      "focus_area": "satış_kampanya",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Upsell ve cross-sell davranışlarını ekibe uygulatmak.",
+        "Kampanyaları doğru uygulamak ve takip etmek.",
+        "Ticket size ve ürün karmasını optimize etmek."
+      ]
+    },
+    {
+      "module_id": "SP5",
+      "role_id": "supervisor",
+      "role_level": 5,
+      "title": "Kriz ve Teknik Arıza Yönetimi",
+      "estimated_duration_min": 12,
+      "focus_area": "kriz_teknik_ariza",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Kritik teknik arızalarda doğru kontrol ve aksiyonları almak.",
+        "Servis ile eksiksiz bilgi paylaşmak.",
+        "Krizde ekip ve misafir iletişimini yönetmek."
+      ]
+    },
+    {
+      "module_id": "SP6",
+      "role_id": "supervisor",
+      "role_level": 5,
+      "title": "Bölge ve HQ ile Raporlama",
+      "estimated_duration_min": 10,
+      "focus_area": "raporlama_hq",
+      "difficulty": "advanced",
+      "suggested_learning_objectives": [
+        "Günlük/haftalık rapor türlerini bilmek.",
+        "Verileri tutarlı ve anlaşılır formatta sunmak.",
+        "Geri bildirim ve aksiyonları merkeze iletebilmek."
+      ]
+    }
+  ]
+}

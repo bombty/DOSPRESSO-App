@@ -1,0 +1,400 @@
+# Delegasyon-Sprint-1 — Modül Delegasyon Sistemi (Backend + Frontend)
+
+## Context
+DOSPRESSO franchise management platform. Stack: React 18 + TypeScript + Tailwind CSS, Shadcn/ui, TanStack Query v5, Drizzle ORM, PostgreSQL, Wouter routing.
+
+**What is module delegation?**
+HQ staff count sometimes decreases (vacation, resignation, etc.).
+Admin can temporarily or permanently delegate a module's responsibility 
+from one role to another — e.g. "Teknik Destek" from "Teknik Sorumlu" to "CGO".
+The receiving role sees the module in their dashboard and CRM nav with a 🔄 badge.
+No data is lost. Both roles can see ticket history. 
+Temporary delegations auto-expire on a set date.
+
+Do NOT touch: auth system, existing page contents (except dashboard + CRM nav), 
+dark/light mode system, factory/academy modules.
+
+---
+
+## BACKEND — TASK 1: Database Schema
+
+**File:** `shared/schema.ts`
+
+Add the following table at the end of the schema file:
+
+```typescript
+// Module Delegations
+export const moduleDelegations = pgTable('module_delegations', {
+  id: serial('id').primaryKey(),
+  
+  // Which module is being delegated
+  moduleKey: varchar('module_key', { length: 100 }).notNull(),
+  moduleName: varchar('module_name', { length: 200 }).notNull(),
+  
+  // From role → To role
+  fromRole: varchar('from_role', { length: 100 }).notNull(),
+  toRole: varchar('to_role', { length: 100 }).notNull(),
+  
+  // Type: 'gecici' (temporary) or 'kalici' (permanent)
+  delegationType: varchar('delegation_type', { length: 20 }).notNull().default('gecici'),
+  
+  // Active toggle — admin can pause without deleting
+  isActive: boolean('is_active').notNull().default(true),
+  
+  // Optional expiry for temporary delegations
+  expiresAt: timestamp('expires_at'),
+  
+  // Reason / note
+  note: varchar('note', { length: 500 }),
+  
+  // Who created this delegation
+  createdBy: varchar('created_by', { length: 100 }).notNull(), // users.id (VARCHAR)
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type ModuleDelegation = typeof moduleDelegations.$inferSelect;
+export type InsertModuleDelegation = typeof moduleDelegations.$inferInsert;
+```
+
+After adding, run: `npm run db:push` to create the table.
+
+---
+
+## BACKEND — TASK 2: API Routes
+
+**Create new file:** `server/routes/delegation-routes.ts`
+
+```typescript
+import { Router } from 'express';
+import { db } from '../db';
+import { moduleDelegations } from '../../shared/schema';
+import { eq, and } from 'drizzle-orm';
+import { requireAuth, requireRole } from '../middleware/auth'; // use actual middleware paths
+
+const router = Router();
+
+// GET /api/delegations — list all delegations (admin only)
+router.get('/', requireAuth, requireRole(['admin', 'ceo']), async (req, res) => {
+  try {
+    const delegations = await db.select().from(moduleDelegations).orderBy(moduleDelegations.createdAt);
+    res.json(delegations);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch delegations' });
+  }
+});
+
+// GET /api/delegations/active — list active delegations for current user's role
+router.get('/active', requireAuth, async (req, res) => {
+  try {
+    const userRole = (req as any).user?.role;
+    if (!userRole) return res.json([]);
+    
+    const now = new Date();
+    const active = await db
+      .select()
+      .from(moduleDelegations)
+      .where(
+        and(
+          eq(moduleDelegations.toRole, userRole),
+          eq(moduleDelegations.isActive, true)
+        )
+      );
+    
+    // Filter out expired temporary delegations
+    const valid = active.filter(d => {
+      if (d.delegationType === 'kalici') return true;
+      if (!d.expiresAt) return true;
+      return d.expiresAt > now;
+    });
+    
+    res.json(valid);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active delegations' });
+  }
+});
+
+// POST /api/delegations — create new delegation (admin only)
+router.post('/', requireAuth, requireRole(['admin', 'ceo']), async (req, res) => {
+  try {
+    const { moduleKey, moduleName, fromRole, toRole, delegationType, expiresAt, note } = req.body;
+    const userId = (req as any).user?.id;
+    
+    if (!moduleKey || !fromRole || !toRole || !delegationType) {
+      return res.status(400).json({ error: 'moduleKey, fromRole, toRole, delegationType required' });
+    }
+    
+    // Check for duplicate active delegation on same module
+    const existing = await db
+      .select()
+      .from(moduleDelegations)
+      .where(
+        and(
+          eq(moduleDelegations.moduleKey, moduleKey),
+          eq(moduleDelegations.isActive, true)
+        )
+      );
+    
+    if (existing.length > 0) {
+      return res.status(409).json({ 
+        error: 'Bu modül zaten başka bir role devredilmiş. Önce mevcut delegasyonu kaldırın.' 
+      });
+    }
+    
+    const [created] = await db.insert(moduleDelegations).values({
+      moduleKey,
+      moduleName: moduleName || moduleKey,
+      fromRole,
+      toRole,
+      delegationType,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      note: note || null,
+      createdBy: userId,
+    }).returning();
+    
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create delegation' });
+  }
+});
+
+// PATCH /api/delegations/:id — update delegation (admin only)
+router.patch('/:id', requireAuth, requireRole(['admin', 'ceo']), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { isActive, expiresAt, note, toRole } = req.body;
+    
+    const updateData: any = { updatedAt: new Date() };
+    if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (note !== undefined) updateData.note = note;
+    if (toRole) updateData.toRole = toRole;
+    
+    const [updated] = await db
+      .update(moduleDelegations)
+      .set(updateData)
+      .where(eq(moduleDelegations.id, id))
+      .returning();
+    
+    if (!updated) return res.status(404).json({ error: 'Delegation not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update delegation' });
+  }
+});
+
+// DELETE /api/delegations/:id — delete delegation (admin only)
+router.delete('/:id', requireAuth, requireRole(['admin', 'ceo']), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await db.delete(moduleDelegations).where(eq(moduleDelegations.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete delegation' });
+  }
+});
+
+export default router;
+```
+
+**Register the router in the main server file** (find where other routers are registered, typically `server/index.ts` or `server/routes.ts`):
+
+```typescript
+import delegationRouter from './routes/delegation-routes';
+// ...
+app.use('/api/delegations', delegationRouter);
+```
+
+---
+
+## FRONTEND — TASK 3: Admin Delegation Panel
+
+**Create new file:** `client/src/pages/admin/delegasyon.tsx`
+
+This page lives inside the existing admin panel structure.
+Check how other admin sub-pages are structured (e.g. `pages/admin/yetkilendirme.tsx`) 
+and follow the same pattern for consistency.
+
+The page has 3 sections:
+
+### Section A: Active Delegations Table
+
+```tsx
+// Shows all current delegations in a table:
+// Columns: Module | From Role → To Role | Type | Since | Note | Active (toggle) | Actions (edit/delete)
+
+// Use useQuery to fetch: GET /api/delegations
+// Each row has:
+// - Toggle switch to activate/deactivate (PATCH /api/delegations/:id)
+// - Edit button (opens modal)
+// - Delete button (with confirmation)
+```
+
+### Section B: New Delegation Form (modal or inline)
+
+```tsx
+// Fields:
+// 1. Module selector — dropdown with these options:
+const DELEGATABLE_MODULES = [
+  { key: 'crm_teknik',    label: 'CRM — Teknik Destek',    fromRole: 'teknik_sorumlu' },
+  { key: 'crm_lojistik',  label: 'CRM — Lojistik',         fromRole: 'satinalma' },
+  { key: 'crm_muhasebe',  label: 'CRM — Muhasebe',         fromRole: 'muhasebe' },
+  { key: 'crm_marketing', label: 'CRM — Marketing',        fromRole: 'pazarlama' },
+  { key: 'crm_ik',        label: 'CRM — İK',               fromRole: 'ik' },
+  { key: 'akademi',       label: 'Akademi Yönetimi',       fromRole: 'coach' },
+  { key: 'raporlar',      label: 'Raporlar',               fromRole: 'muhasebe' },
+];
+
+// 2. Target role selector — dropdown:
+const TARGET_ROLES = ['cgo', 'ceo', 'admin', 'coach', 'trainer'];
+
+// 3. Type: radio — "Geçici" / "Kalıcı"
+// 4. If Geçici: date picker for expiresAt
+// 5. Note: text input
+// 6. Preview section showing what will happen (static text based on selections)
+// 7. Submit: POST /api/delegations
+```
+
+### Section C: Delegation Rules Info Box
+
+Static info box explaining the rules:
+- Veri bütünlüğü: Tüm ticket geçmişi erişilebilir kalır
+- Bildirimler: Devir anında ilgili rollere bildirim gönderilir (info only — actual notifications are future work)
+- Geçici devir: Bitiş tarihinde otomatik etkisiz hale gelir
+- Çakışma: Aynı modül aynı anda yalnızca bir role devredilebilir
+
+---
+
+## FRONTEND — TASK 4: Register Admin Page
+
+Find where admin sub-pages are routed. This may be in:
+- `client/src/App.tsx` under admin routes
+- `client/src/pages/admin/index.tsx` 
+- A tab system in the admin panel
+
+Add the delegasyon page to the admin navigation.
+
+Check how `yetkilendirme.tsx` or other admin pages are registered and follow the same pattern.
+The route should be something like `/admin/delegasyon` or a tab in the existing admin panel.
+
+---
+
+## FRONTEND — TASK 5: Dashboard Integration
+
+When a user's role has active delegations (from `GET /api/delegations/active`),
+their dashboard should show delegated modules with a 🔄 indicator.
+
+**File:** `client/src/pages/hq-ozet.tsx` (and other dashboard files updated in CI-Sprint-3)
+
+Add a hook to fetch active delegations:
+
+```tsx
+const { data: activeDelegations = [] } = useQuery({
+  queryKey: ['/api/delegations/active'],
+  queryFn: () => fetch('/api/delegations/active').then(r => r.json()),
+});
+```
+
+Then in the ModuleCards section, add delegated modules dynamically:
+
+```tsx
+// After the static module cards, add delegated ones:
+{activeDelegations.map(del => (
+  <ModuleCard
+    key={del.moduleKey}
+    label={del.moduleName}
+    sublabel="Devralınan modül"
+    path={getDelegatedModulePath(del.moduleKey)} // map moduleKey to path
+    icon="🔄"
+    gradient="bg-gradient-to-br from-blue-100 to-blue-200"
+    badge="🔄 DEVİR"
+    badgeVariant="blue"
+    className="ring-2 ring-blue-300 dark:ring-blue-700" // visual indicator
+  />
+))}
+```
+
+Add this helper function:
+```tsx
+function getDelegatedModulePath(moduleKey: string): string {
+  const pathMap: Record<string, string> = {
+    crm_teknik:    '/iletisim-merkezi',
+    crm_lojistik:  '/iletisim-merkezi',
+    crm_muhasebe:  '/iletisim-merkezi',
+    crm_marketing: '/iletisim-merkezi',
+    crm_ik:        '/iletisim-merkezi',
+    akademi:       '/akademi',
+    raporlar:      '/raporlar',
+  };
+  return pathMap[moduleKey] ?? '/';
+}
+```
+
+---
+
+## FRONTEND — TASK 6: CRM Nav Delegation Badge
+
+**File:** `client/src/pages/iletisim-merkezi/crm-nav.tsx`
+
+When a department is delegated to the current user's role, show a 🔄 badge next to it in CRM Nav.
+
+```tsx
+// Add prop:
+interface CrmNavProps {
+  // ... existing props
+  delegatedDepts?: string[]; // list of dept keys delegated to current user
+}
+
+// In the nav item render, check if dept is delegated:
+{isDelegated && (
+  <span className="text-[7px] font-bold ml-1 px-1 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+    🔄
+  </span>
+)}
+```
+
+In `iletisim-merkezi/index.tsx`, pass the delegated depts:
+```tsx
+// Map delegation moduleKeys to CRM nav dept keys
+const delegatedDepts = activeDelegations
+  .filter(d => d.moduleKey.startsWith('crm_'))
+  .map(d => d.moduleKey.replace('crm_', ''));
+```
+
+---
+
+## Verification Checklist
+
+**Backend:**
+- [ ] `module_delegations` table created in database
+- [ ] `GET /api/delegations` returns list (admin only, returns 403 for other roles)
+- [ ] `GET /api/delegations/active` returns delegations for current user's role
+- [ ] `POST /api/delegations` creates delegation, returns 409 if module already delegated
+- [ ] `PATCH /api/delegations/:id` toggles isActive correctly
+- [ ] `DELETE /api/delegations/:id` removes delegation
+- [ ] Expired temporary delegations NOT returned in `/active` endpoint
+
+**Frontend — Admin Panel:**
+- [ ] Delegasyon page accessible from admin panel
+- [ ] Active delegations table renders with toggle switch
+- [ ] Toggle switch calls PATCH and updates UI
+- [ ] New delegation form has all required fields
+- [ ] Duplicate delegation shows error toast
+- [ ] Delete shows confirmation dialog
+
+**Frontend — Dashboard:**
+- [ ] Delegated modules appear in dashboard with 🔄 badge and blue ring
+- [ ] No delegated modules = no extra cards (empty state)
+- [ ] CGO with Teknik Destek delegated sees it in their dashboard
+
+**Frontend — CRM Nav:**
+- [ ] Delegated departments show 🔄 badge in CRM nav
+- [ ] Non-delegated depts show no badge
+
+**General:**
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors
+- [ ] Mobile layout unchanged
+- [ ] Dark mode works on all new components

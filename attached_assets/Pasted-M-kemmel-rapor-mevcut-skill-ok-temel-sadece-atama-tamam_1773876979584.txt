@@ -1,0 +1,433 @@
+Mükemmel rapor — mevcut skill çok temel (sadece atama/tamamlama oranı). 7 kullanılmayan veri kaynağı var. Şimdi kapsamlı genişletme promptunu yazıyorum. Replit'e yapıştırın:
+
+---
+
+```
+## Mr. Dobody Academy Skill — Complete Enhancement
+
+### Context
+The existing training_optimizer skill only checks assignment completion rates. It needs to be expanded to analyze quiz performance, identify knowledge gaps, track branch comparisons, suggest personalized training, and report usage patterns. The skill runs WEEKLY and sends insights to coach/trainer roles.
+
+Read skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Do NOT break existing skill functionality — EXTEND it
+- Keep the same skill ID: training_optimizer
+- Keep schedule: weekly, autonomyLevel: info_only
+- Turkish notification text
+- All DB queries must handle null/empty gracefully
+- Do NOT touch server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+
+---
+
+### STEP 1: Expand the analyze() function
+
+Rewrite `server/agent/skills/training-optimizer.ts` to add 8 new insight types (keeping the existing 3):
+
+```typescript
+async analyze(context: SkillContext): Promise<SkillInsight[]> {
+  const insights: SkillInsight[] = [];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  
+  // ============================================
+  // EXISTING INSIGHTS (keep these, improve them)
+  // ============================================
+  
+  // 1. overall_completion_rate — KEEP (already exists)
+  // 2. low_completion_modules — KEEP (already exists)  
+  // 3. high_completion_modules — KEEP (already exists)
+  
+  // ============================================
+  // NEW INSIGHT: Quiz Performance Analysis
+  // ============================================
+  
+  // 4. hardest_quiz_questions
+  // Query: userQuizAttempts + quizQuestions tables
+  // Find questions with lowest correct answer rate (< 50%)
+  // Group by question, calculate: total attempts, correct count, correct %
+  // Return top 5 hardest questions with their module name
+  // Insight: "5 soru %50'nin altında doğru cevaplanıyor — içerik gözden geçirilmeli"
+  // Severity: medium
+  // DeepLink: /akademi-hq (Quiz Yönetimi tab)
+  
+  // 5. quiz_score_trends
+  // Query: quizResults table, last 30 days vs previous 30 days
+  // Calculate: average quiz score trend (improving/declining/stable)
+  // Per-module breakdown: which modules' quiz scores are dropping?
+  // Insight: "Gıda Güvenliği modülü quiz ortalaması %78'den %62'ye düştü"
+  // Severity: high if declining > 10 points, medium if 5-10, low if stable/improving
+  
+  // ============================================
+  // NEW INSIGHT: Branch Comparison
+  // ============================================
+  
+  // 6. branch_training_comparison
+  // Query: userTrainingProgress + users (with branchId) tables
+  // For each active branch: calculate avg completion %, avg quiz score, active learners count
+  // Find: bottom 3 branches (lowest completion rate)
+  // Find: branches with 0 activity in last 14 days (completely inactive)
+  // Insight: "3 şubede eğitim tamamlama oranı %30'un altında: Batman, Siirt, Kilis"
+  // Insight: "2 şubede son 14 günde hiç eğitim aktivitesi yok: Nizip, Şanlıurfa"
+  // Severity: high for inactive branches, medium for low completion
+  // DeepLink: /akademi-hq (Şube Analiz tab)
+  
+  // ============================================
+  // NEW INSIGHT: Individual Training Recommendations (NBA)
+  // ============================================
+  
+  // 7. personal_training_recommendations
+  // Query: userTrainingProgress + trainingAssignments + users tables
+  // Find employees who:
+  //   a) Have assigned but incomplete modules older than 14 days
+  //   b) Failed a quiz (score < pass threshold) and haven't retried
+  //   c) Are at a career level but haven't started the next level's required modules
+  // Generate per-person recommendations:
+  //   "Cihan Kolakan — 3 zorunlu modül 14+ gündür tamamlanmadı"
+  //   "Elif Balık — Gıda Güvenliği quizinde başarısız, tekrar denemedi"
+  // Target: Send to the employee's branch mudur/supervisor AND to coach
+  // Severity: medium per person, high if >5 employees in same branch
+  // NOTE: This insight should generate MULTIPLE actions — one per employee
+  
+  // ============================================
+  // NEW INSIGHT: Onboarding Tracking
+  // ============================================
+  
+  // 8. onboarding_status
+  // Query: employeeOnboardingProgress table
+  // Find employees whose onboarding is incomplete and started > 7 days ago
+  // Insight: "4 çalışanın onboarding'i 7+ gündür tamamlanmadı"
+  // List: employee names + which onboarding steps are missing
+  // Severity: high (new employees need to complete onboarding quickly)
+  // DeepLink: /akademi-hq (Modüller tab → Onboarding filter)
+  
+  // ============================================
+  // NEW INSIGHT: Usage/Engagement Report
+  // ============================================
+  
+  // 9. usage_report
+  // Query: userTrainingProgress table (createdAt/updatedAt for activity)
+  // Calculate per branch: 
+  //   - Total active users (any academy activity in last 7 days)
+  //   - Total users in branch
+  //   - Usage rate = active / total * 100
+  // Find: branches with < 20% usage rate
+  // Find: branches with > 80% usage rate (celebrate!)
+  // Insight: "Eğitim kullanım oranı: Işıklar %92 (en yüksek), Batman %8 (en düşük)"
+  // Severity: low (informational — weekly summary)
+  
+  // ============================================
+  // NEW INSIGHT: Certificate & Exam Pipeline
+  // ============================================
+  
+  // 10. certification_pipeline
+  // Query: examRequests + issuedCertificates + userCareerProgress tables
+  // Find: pending exam requests older than 3 days (not yet scheduled)
+  // Find: employees who completed all requirements for next level but haven't requested exam
+  // Find: certificates issued this week (celebration!)
+  // Insight: "5 sınav talebi 3+ gündür bekliyor — planlanması gerekiyor"
+  // Insight: "3 çalışan Barista seviyesi için tüm modülleri tamamladı ama sınav talebinde bulunmadı"
+  // Insight: "Bu hafta 2 yeni sertifika verildi: Cihan → Barista, Elif → Bar Buddy"
+  // Severity: medium for pending exams, low for ready-for-exam, low for celebrations
+  
+  // ============================================
+  // NEW INSIGHT: Auto Quiz Question Generation
+  // ============================================
+  
+  // 11. quiz_gap_detection  
+  // Query: moduleQuizzes + quizQuestions + trainingMaterials
+  // Find modules that have:
+  //   a) No quiz at all (module exists but no quiz linked)
+  //   b) Very few questions (< 5 questions)
+  //   c) All questions have > 90% correct rate (too easy — need harder questions)
+  // Insight: "3 modülde hiç quiz yok: [module names]"
+  // Insight: "2 modülde sorular çok kolay (>%90 doğru) — yeni sorular eklenmeli"
+  // Action: suggest_approve with deepLink to quiz editor
+  // NOTE: This insight suggests adding questions but doesn't auto-create them
+  //   (AI question generation would need OpenAI API call — mark as future enhancement)
+  
+  return insights;
+}
+```
+
+### STEP 2: Expand generateActions() function
+
+The generateActions function must handle all new insight types and create appropriate actions:
+
+```typescript
+async generateActions(insights: SkillInsight[]): Promise<SkillAction[]> {
+  const actions: SkillAction[] = [];
+  
+  for (const insight of insights) {
+    switch (insight.type) {
+      // Existing types
+      case "overall_completion_rate":
+      case "low_completion_modules":
+      case "high_completion_modules":
+        // Keep existing action generation
+        break;
+        
+      // New types
+      case "hardest_quiz_questions":
+        actions.push({
+          actionType: "report",
+          title: "Quiz Soru Analizi",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: insight.severity,
+          category: "training",
+          subcategory: "quiz_analysis",
+          targetRoleScope: ["trainer", "coach"],
+        });
+        break;
+        
+      case "quiz_score_trends":
+        actions.push({
+          actionType: "report",
+          title: "Quiz Puan Trendi",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: insight.severity,
+          category: "training",
+          subcategory: "quiz_trends",
+          targetRoleScope: ["trainer", "coach"],
+        });
+        break;
+        
+      case "branch_training_comparison":
+        actions.push({
+          actionType: "report",
+          title: "Şube Eğitim Karşılaştırması",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: insight.severity,
+          category: "training",
+          subcategory: "branch_comparison",
+          targetRoleScope: ["coach", "ceo", "cgo"],
+        });
+        break;
+        
+      case "personal_training_recommendations":
+        // Generate individual actions for each employee
+        if (insight.metadata?.employees) {
+          for (const emp of insight.metadata.employees) {
+            actions.push({
+              actionType: "task",
+              title: `Eğitim Takibi: ${emp.name}`,
+              description: emp.recommendation,
+              deepLink: `/akademi-hq`,
+              severity: "medium",
+              category: "training",
+              subcategory: "personal_recommendation",
+              targetRoleScope: ["coach", "trainer"],
+              branchId: emp.branchId,
+              metadata: { employeeId: emp.userId, employeeName: emp.name },
+            });
+          }
+        }
+        break;
+        
+      case "onboarding_status":
+        actions.push({
+          actionType: "report",
+          title: "Onboarding Durumu",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: "high",
+          category: "training",
+          subcategory: "onboarding",
+          targetRoleScope: ["coach", "trainer"],
+        });
+        break;
+        
+      case "usage_report":
+        actions.push({
+          actionType: "report",
+          title: "Haftalık Eğitim Kullanım Raporu",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: "low",
+          category: "training",
+          subcategory: "usage",
+          targetRoleScope: ["coach", "trainer", "ceo", "cgo"],
+        });
+        break;
+        
+      case "certification_pipeline":
+        actions.push({
+          actionType: "report",
+          title: "Sertifika ve Sınav Durumu",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: insight.severity,
+          category: "training",
+          subcategory: "certification",
+          targetRoleScope: ["trainer", "coach"],
+        });
+        break;
+        
+      case "quiz_gap_detection":
+        actions.push({
+          actionType: "report",
+          title: "Quiz Eksiklik Tespiti",
+          description: insight.description,
+          deepLink: "/akademi-hq",
+          severity: "medium",
+          category: "training",
+          subcategory: "quiz_gaps",
+          targetRoleScope: ["trainer"],
+        });
+        break;
+    }
+  }
+  
+  return actions;
+}
+```
+
+### STEP 3: Update dataSources
+
+Update the skill's dataSources array to include all tables it now queries:
+
+```typescript
+dataSources: [
+  "trainingAssignments",
+  "trainingCompletions",
+  "userTrainingProgress",
+  "userQuizAttempts",
+  "quizResults",
+  "quizQuestions",
+  "moduleQuizzes",
+  "userCareerProgress",
+  "examRequests",
+  "employeeOnboardingProgress",
+  "issuedCertificates",
+  "branches",
+  "users",
+],
+```
+
+### STEP 4: Update targetRoles
+
+Expand who receives training insights:
+
+```typescript
+targetRoles: ["trainer", "coach", "ceo", "cgo", "admin"],
+```
+
+CEO/CGO get the summary reports (branch comparison, usage). Trainer/Coach get the detailed operational insights.
+
+### STEP 5: Add aiEnrich function (optional but powerful)
+
+If the skill has an aiEnrich function, use it to generate human-readable summaries:
+
+```typescript
+async aiEnrich(insights: SkillInsight[]): Promise<EnrichedInsight[]> {
+  // Use OpenAI to generate a natural language weekly summary
+  // Input: all insights data
+  // Output: "Bu hafta eğitim sisteminde öne çıkanlar: 
+  //   Işıklar şubesi %92 kullanım oranıyla lider.
+  //   Batman şubesinde 14 gündür aktivite yok — coach müdahale etmeli.
+  //   Gıda Güvenliği quiz ortalaması düşüyor — sorular gözden geçirilmeli.
+  //   3 çalışan sınava hazır ama talep oluşturmamış."
+  
+  // Check if OpenAI is available:
+  // grep -rn "openai\|OPENAI" server/agent/ --include="*.ts" | head -5
+  
+  // If OpenAI integration exists in agent system, use it
+  // If not, skip aiEnrich (it's optional)
+}
+```
+
+Check if other skills use aiEnrich:
+```bash
+grep -rn "aiEnrich" server/agent/skills/ --include="*.ts" | head -10
+```
+
+### STEP 6: Verify table access
+
+Before implementing queries, verify each table exists and has the expected columns:
+
+```bash
+# Check all tables we need to query
+for tbl in training_assignments training_completions user_training_progress user_quiz_attempts quiz_results quiz_questions module_quizzes user_career_progress exam_requests employee_onboarding_progress issued_certificates; do
+  echo "=== $tbl ==="
+  echo "SELECT column_name FROM information_schema.columns WHERE table_name='$tbl' LIMIT 5;" | psql 2>/dev/null
+done
+
+# If table names are different (camelCase in Drizzle → snake_case in DB), check:
+grep -n "trainingAssignments\|trainingCompletions\|userTrainingProgress\|userQuizAttempts" shared/schema.ts | grep "pgTable" | head -10
+```
+
+Adapt table/column names based on actual schema. Drizzle uses camelCase in code but snake_case in DB.
+
+### STEP 7: Add SKILL_TO_MODULE_MAP entry
+
+In `server/agent/skill-notifications.ts`, verify training_optimizer is already mapped:
+
+```bash
+grep "training_optimizer" server/agent/skill-notifications.ts
+```
+
+It should map to "akademi". If not, add it.
+
+### STEP 8: Test the enhanced skill
+
+After implementation, trigger the skill manually to verify:
+
+```bash
+# Login as admin
+# Check if there's a manual skill trigger endpoint
+grep -n "run.*skill\|trigger.*skill\|execute.*skill\|test.*skill" server/routes/agent.ts 2>/dev/null | head -10
+
+# Or call the analyze function directly via a test endpoint
+# If no test endpoint exists, add a temporary one:
+# GET /api/agent/test-skill/training_optimizer → runs analyze + generateActions and returns results
+```
+
+Create a temporary test endpoint if needed:
+```typescript
+router.get("/api/agent/test-skill/:skillId", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  if (user.role !== "admin") return res.status(403).json({ error: "Admin only" });
+  
+  const skillId = req.params.skillId;
+  const skill = getSkillById(skillId); // from skill-registry
+  if (!skill) return res.status(404).json({ error: "Skill bulunamadı" });
+  
+  const context = { currentDate: new Date(), timezone: "Europe/Istanbul" };
+  const insights = await skill.analyze(context);
+  const actions = await skill.generateActions(insights);
+  
+  res.json({ skillId, insightCount: insights.length, actionCount: actions.length, insights, actions });
+});
+```
+
+### DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Other agent skills (only modify training-optimizer)
+- skill-registry.ts (unless adding test endpoint)
+- Frontend (this is backend-only)
+- Existing notification delivery system
+
+### Testing Checklist:
+1. App starts without errors
+2. Skill registry still has training_optimizer registered
+3. GET /api/agent/test-skill/training_optimizer → returns insights array
+4. Insights include: overall_completion_rate, hardest_quiz_questions, branch_training_comparison, usage_report, certification_pipeline (at minimum)
+5. Actions have correct targetRoleScope (coach/trainer for operational, CEO/CGO for summary)
+6. Actions have Turkish text
+7. Module flag check still works (akademi disabled → notifications skipped)
+8. No errors in server logs during skill execution
+
+### After implementation:
+1. Run quality gate
+2. Update .agents/skills/dospresso-architecture/SKILL.md — expand training_optimizer description
+3. Update replit.md — add enhanced academy skill section
+4. Remove the temporary test endpoint (or keep it behind admin auth for debugging)
+```
+
+---
+
+Direkt build başlatın! Bu skill haftalık çalışıp coach/trainer'a kapsamlı akademi raporu gönderecek.

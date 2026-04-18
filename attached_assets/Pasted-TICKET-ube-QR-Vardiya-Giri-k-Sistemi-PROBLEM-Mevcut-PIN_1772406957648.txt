@@ -1,0 +1,59 @@
+TICKET: Şube QR Vardiya Giriş/Çıkış Sistemi
+
+PROBLEM: Mevcut PIN sistemi şubelerde suistimale açık — personel fiziksel olarak şubede olmadan başka birinin PIN'iyle veya kendi PIN'iyle uzaktan vardiya başlatabilir. Fabrikada telefon yasağı olduğu için PIN sistemi yeterli, ama şubelerde değil.
+
+ÇÖZÜM: Şubelerde dinamik QR kod tabanlı vardiya sistemi. Fabrikada mevcut PIN sistemi aynen kalır.
+
+1. DİNAMİK QR OLUŞTURMA (Personel Telefonu)
+   - Personel webapp'te "Vardiyam" sekmesine gider
+   - Ekranda 30 saniyelik dinamik QR kod görünür
+   - QR içeriği: { userId, timestamp, nonce, hmacSignature }
+   - Her 30 saniyede otomatik yenilenir (TOTP benzeri)
+   - QR süresi dolduğunda kırmızıya döner ve yenisi oluşur
+   - Offline durumda QR üretilmez — internet zorunlu
+
+2. KIOSK QR OKUMA (Şubede Sabit Tablet)
+   - Her şubede sabit bir tablet kiosk modunda çalışır
+   - Kamera sürekli aktif, QR tarama modunda bekler
+   - Personel QR'ını kiosk kamerasına gösterir
+   - Kiosk QR'ı okur → backend'e POST /api/kiosk/qr-checkin gönderir
+   - Payload: { qrData, kioskBranchId, kioskDeviceId }
+
+3. BACKEND DOĞRULAMA
+   - QR imzasını doğrula (HMAC-SHA256) — sahte QR engellensin
+   - QR timestamp kontrolü: 30 saniyeden eski QR geçersiz
+   - Şube kontrolü: personelin şubesi ile kiosk'un şubesi eşleşmeli
+   - Aynı QR tekrar kullanılamaz (nonce ile replay attack engeli)
+   - Doğrulama başarılıysa: vardiya başlat / mola ver / vardiya bitir
+
+4. VARDİYA AKIŞI (QR ile)
+   - Vardiya Başlat: Personel QR okutur → "Vardiya başlatılsın mı?" onay → Başlar
+   - Mola Ver: Personel QR okuttur → "Mola başlasın mı?" onay → Mola başlar
+   - Moladan Dön: Personel QR okuttur → Mola biter, vardiya devam
+   - Vardiya Bitir: Personel QR okuttur → "Vardiya kapatılsın mı?" onay → Biter
+
+5. KIOSK AYARLARI (Admin)
+   - Her şube için kiosk device kaydı (branchId + deviceId + secretKey)
+   - Admin panelinde: Şube Kiosk Yönetimi sayfası
+   - Kiosk cihaz ekleme/silme/yeniden eşleme
+   - Kiosk modu: PIN (fabrika) veya QR (şube) seçilebilir
+
+6. GÜVENLİK KATMANLARI
+   - 30 saniyelik QR expire (screenshot paylaşma engeli)
+   - HMAC imza doğrulama (sahte QR engeli)
+   - Nonce/replay koruması (aynı QR tekrar kullanım engeli)
+   - Şube eşleşme kontrolü (başka şubeden giriş engeli)
+   - Opsiyonel: kiosk cihazının IP/WiFi kontrolü (şube ağı zorunluluğu)
+
+7. FABRİKA İÇİN DEĞİŞİKLİK YOK
+   - Fabrika PIN sistemi aynen kalır
+   - Fabrikada telefon yasağı = fiziksel güvenlik yeterli
+   - Kiosk ayarlarında mod: "pin" veya "qr" seçimi
+
+8. UI GÖSTERİMLERİ
+   - Personel webapp: "Vardiyam" sayfasında büyük QR kod + geri sayım timer
+   - Kiosk: Tam ekran kamera + "QR Kodunuzu Gösterin" mesajı + başarılı/başarısız animasyon
+   - Admin: Vardiya raporlarında giriş yöntemi kolonu (PIN/QR)
+
+ÖNCELİK: Yüksek — launch öncesi şube vardiya güvenliği için kritik
+TAHMİNİ EFOR: 3-5 gün

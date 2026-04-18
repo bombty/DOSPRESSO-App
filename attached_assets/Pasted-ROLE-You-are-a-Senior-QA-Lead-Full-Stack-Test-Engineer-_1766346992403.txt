@@ -1,0 +1,75 @@
+ROLE: You are a Senior QA Lead + Full-Stack Test Engineer. Your task is to perform an end-to-end quality audit of a Replit-hosted franchise management web application and produce an actionable defect report.
+
+CONTEXT
+- App name: [DOSPRESO Franchise WebApp]
+- Tech stack: [Next.js/React + Node/Express + PostgreSQL/Prisma] (adjust if different)
+- Environment: Replit staging URL: [https://...]
+- Repo access: [Replit workspace + all source code]
+- Test accounts (email / password):
+  - HQ_ADMIN: [...]
+  - COACH: [...]
+  - TECH: [...]
+  - FACTORY: [...]
+  - FRANCHISEE_OWNER: [...]
+  - BRANCH_MANAGER: [...]
+  - BARISTA: [...]
+- Seed data: [describe briefly: 2 franchisees, 5 branches, etc.]
+
+OBJECTIVES (must cover all)
+1) Verify all pages and flows work end-to-end with no broken links, routing issues, or UI dead-ends.
+2) Detect conflicts and inconsistencies across pages (state mismatch, data not refreshing, stale caches, contradictory validations).
+3) Verify role-based access control (RBAC): no unauthorized access, proper route guards, proper API authorization.
+4) Validate data integrity across CRUD operations: create/update/delete must reflect consistently in lists, detail pages, dashboards, exports.
+5) Identify backend/API issues: incorrect status codes, missing validation, race conditions, idempotency problems, pagination/filter bugs.
+6) Identify performance bottlenecks: slow endpoints, N+1 queries, excessive re-renders, large bundle issues.
+7) Identify security issues (practical, non-theoretical): auth/session problems, insecure direct object reference, input sanitation, file upload risks, secrets exposure.
+
+SCOPE (core flows to test)
+A) Authentication & session
+- login, logout, password reset (if exists), session timeout, remember-me behavior.
+B) Franchisee lifecycle
+- create franchisee → assign contracts/fees → create branch → configure menu/pricing → activate.
+C) Branch operations
+- staffing, shift/attendance (if exists), inventory movements, purchase orders, production requests, store checklist.
+D) Audits/Inspections module
+- create inspection → scoring → findings → corrective actions → follow-up → branch score history.
+E) Reporting
+- dashboards, KPI pages, exports (CSV/PDF), date filters, multi-branch aggregation.
+F) Admin configuration
+- roles/permissions, master data, product catalog, pricing rules, tax settings (if exists).
+
+TEST METHODS (required)
+1) Manual exploratory testing for UX, navigation, and edge cases.
+2) Code-assisted review: inspect routing, auth middleware, API handlers, database schema/migrations.
+3) Concurrency checks:
+   - Simulate two users editing the same record (e.g., branch settings, product price, inspection score).
+   - Verify last-write-wins behavior OR optimistic locking; report data loss risks.
+4) Negative testing:
+   - invalid inputs, missing required fields, boundary values, very long strings, special chars, Turkish locale chars.
+5) Observability:
+   - capture console errors, network errors, server logs; include timestamps and request IDs.
+
+DELIVERABLES (format strictly)
+Produce a single report with:
+1) Executive summary (top 5 risks)
+2) Environment & assumptions
+3) Test matrix:
+   - Page/Module | Role | Scenario | Expected | Actual | Status (PASS/FAIL) | Evidence
+4) Defect list (prioritized):
+   For each defect include:
+   - ID
+   - Title
+   - Severity (Blocker/Critical/Major/Minor)
+   - Repro steps (numbered)
+   - Expected vs Actual
+   - Evidence (screenshot path or console/network snippet)
+   - Suspected root cause (code pointer: file + line if possible)
+   - Fix recommendation
+5) Regression checklist for retest
+
+STOP CONDITIONS
+- Do not stop at the first bug. Continue until you cover all scope items.
+- If access is missing (credentials/URL), report it as a blocker and continue code review as far as possible.
+
+IMPORTANT
+- Be exact. No vague statements. Every claim must have evidence (a log, a screenshot reference, or a code pointer).

@@ -1,0 +1,87 @@
+# DOSPRESSO — REPLİT TEST KONTROL LİSTESİ
+## Push edilen 45+ fix'in doğrulaması
+
+Replit'te `git pull origin main` yap, uygulama yeniden başlasın.
+Her testi yap, sonucu yanına yaz (✅ veya ❌ + screenshot).
+
+---
+
+## TEST 1: Supervisor Basri ile Login
+
+1. Basri (Supervisor, Işıklar) ile login ol
+2. HomeScreen'de 6 kart görüyor mu?
+   - Control, Operasyon, Personel, Ekipman & Arıza, Stok, Eğitim
+3. **Control kartına tıkla** → Şube Özet (MissionControlSupervisor) görmeli
+   - ESKİ: HQ KPI dashboard (tüm şubeler)
+   - YENİ: Şube bazlı supervisor dashboard
+4. **Mr. Dobody kartı** → expand et
+   - ESKİ: "Aktif uyarı veya bildirim yok"
+   - YENİ: "3 açık ekipman arızası var" gibi operasyonel uyarılar
+5. **Personel Yoklama widget** → DEVAMSIZ sayısı
+   - ESKİ: 190
+   - YENİ: Çok daha düşük bir sayı (gerçek devamsızlık)
+
+→ Screenshot al: HomeScreen + Control dashboard + Mr. Dobody expanded
+
+---
+
+## TEST 2: Admin ile Login
+
+1. Admin ile login ol  
+2. HomeScreen'de 12 kart görüyor mu?
+3. **Control kartına tıkla** → HQ KPI dashboard görmeli (tüm şubeler)
+4. Yönetim kartı → Admin paneli açılıyor mu?
+5. Yetkilendirme tab'ı çalışıyor mu?
+
+→ Screenshot al: HomeScreen + Control dashboard
+
+---
+
+## TEST 3: Barista ile Login
+
+1. Herhangi bir barista ile login ol
+2. HomeScreen'de 4 kart: Benim Günüm, Akademi, Vardiyam, Profil
+3. **Benim Günüm** tıkla → MissionControlStajyer görmeli
+4. Vardiyam → vardiya listesi çalışıyor mu?
+
+→ Screenshot al: HomeScreen
+
+---
+
+## TEST 4: Muhasebe ile Login (varsa)
+
+1. Muhasebe veya muhasebe_ik ile login ol
+2. HomeScreen'de 5 kart: Control, İK, Bordro & PDKS, Raporlar, Finans
+3. **Control** → MissionControlMuhasebe görmeli
+4. **Bordro & PDKS** → bordro hesaplama sayfası
+
+→ Screenshot al: Control dashboard
+
+---
+
+## TEST 5: Türkçe Karakter Kontrolü
+
+Herhangi bir rol ile:
+1. CRM → "Açık" (Acik değil) yazıyor mu?
+2. Görevler → "Görevlerim" (Gorevlerim değil)
+3. İletişim Merkezi → "Şube Talepleri" (Sube Talepleri değil)
+
+---
+
+## TEST 6: Vardiya Sistemi
+
+Supervisor ile:
+1. Vardiya Planlama sayfasına git
+2. Yeni vardiya oluştur → bildirim atanmış çalışana gidiyor mu?
+3. PDKS sayfası → kiosk ayarları görünüyor mu? (supervisor artık görebilmeli)
+
+---
+
+## SONUÇ RAPORU
+
+Her test için:
+- ✅ Çalışıyor
+- ❌ Kırık (+ screenshot + hata mesajı)
+- ⚠️ Kısmen çalışıyor (açıklama)
+
+Bu raporu bana gönder — kırık olanları hemen düzeltirim.

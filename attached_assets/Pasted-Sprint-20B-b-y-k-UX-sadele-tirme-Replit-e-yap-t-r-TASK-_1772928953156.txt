@@ -1,0 +1,399 @@
+Sprint 20B — büyük UX sadeleştirme. Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 20B — UX Simplification (Sidebar + Tabs + Dobody Expansion)
+
+This is the most impactful UX sprint yet. Goal: reduce cognitive load across all 26 roles. No new features — only restructuring existing content.
+
+### T001 — Sidebar Hub-Spoke for Müdür (20→6 items) (~3 hours)
+
+**Problem:** Müdür sees 20 sidebar items: branch-dashboard, tasks-list, checklists, shifts, equipment, faults, hr, branch-shift-tracking, attendance, reports, lost-found, training-academy, notifications, usage-guide, hq-support, branch-health, customer-satisfaction, ai-assistant, agent-center, branch-stock-orders
+
+**Solution:** Replace 20 flat items with 6 grouped items. When müdür clicks a group, it opens the existing page (not a new hub page — keep it simple).
+
+Update SIDEBAR_ALLOWED_ITEMS for `mudur` in server/menu-service.ts:
+
+```
+mudur: ['branch-dashboard', 'tasks-list', 'reports', 'notifications', 'ai-assistant', 'branch-stock-orders']
+```
+
+**Rationale:** 
+- `branch-dashboard` = their /sube-ozet landing (has KPI, team, Dobody)
+- `tasks-list` = daily tasks + checklists (merge point)
+- `reports` = performance, attendance, health all accessible from reports
+- `notifications` = communication hub
+- `ai-assistant` = Mr. Dobody chat + agent center
+- `branch-stock-orders` = stock management
+
+**Removed items still accessible via:** dashboard widgets, komut paleti (Ctrl+K), or navigating directly. NOT deleted — just removed from sidebar.
+
+**Also update sidebar for these similar roles:**
+
+**supervisor (16→5):**
+```
+supervisor: ['branch-dashboard', 'tasks-list', 'notifications', 'ai-assistant', 'branch-stock-orders']
+```
+
+**supervisor_buddy (13→5):**
+```
+supervisor_buddy: ['branch-dashboard', 'tasks-list', 'notifications', 'ai-assistant', 'hq-support']
+```
+
+---
+
+### T002 — Sidebar Simplification for HQ Roles (~2 hours)
+
+**CEO (14→5):**
+```
+ceo: ['dashboard', 'reports', 'ai-assistant', 'notifications', 'crm-main']
+```
+
+**CGO (15→6):**
+```
+cgo: ['dashboard', 'branches-list', 'reports', 'customer-satisfaction', 'ai-assistant', 'notifications']
+```
+
+**Coach (14→6):**
+```
+coach: ['dashboard', 'branches-list', 'branch-inspection', 'training-academy', 'ai-assistant', 'notifications']
+```
+
+**Kalite Kontrol (12→5):**
+```
+kalite_kontrol: ['dashboard', 'quality-control', 'food-safety', 'factory-quality', 'notifications']
+```
+
+**Gida Muhendisi (13→6):**
+```
+gida_muhendisi: ['dashboard', 'food-safety', 'factory-quality', 'factory-dashboard', 'reports', 'notifications']
+```
+
+**Marketing (10→5):**
+```
+marketing: ['dashboard', 'campaign-management', 'customer-satisfaction', 'reports', 'notifications']
+```
+
+**Muhasebe_IK (13→6):**
+```
+muhasebe_ik: ['dashboard', 'hr', 'pdks', 'maas', 'reports', 'notifications']
+```
+
+**Destek (10→5):**
+```
+destek: ['dashboard', 'branches-list', 'faults', 'hq-support', 'notifications']
+```
+
+**Trainer (10→5):**
+```
+trainer: ['dashboard', 'training-academy', 'branch-inspection', 'knowledge-base', 'notifications']
+```
+
+**Satinalma (11→5):**
+```
+satinalma: ['dashboard', 'procurement-dashboard', 'stock-management', 'reports', 'notifications']
+```
+
+**Stajyer (7→4):**
+```
+stajyer: ['branch-dashboard', 'training-academy', 'notifications', 'hq-support']
+```
+
+**Barista (8→4):**
+```
+barista: ['branch-dashboard', 'tasks-list', 'training-academy', 'notifications']
+```
+
+**Bar Buddy (8→4):**
+```
+bar_buddy: ['branch-dashboard', 'tasks-list', 'training-academy', 'notifications']
+```
+
+**Yatirimci_branch (9→3):**
+```
+yatirimci_branch: ['branch-dashboard', 'reports', 'notifications']
+```
+
+**Yatirimci_HQ (7→3):**
+```
+yatirimci_hq: ['dashboard', 'reports', 'notifications']
+```
+
+**Muhasebe (8→5):**
+```
+muhasebe: ['dashboard', 'accounting-main', 'pdks', 'maas', 'notifications']
+```
+
+**Fabrika Mudur (11→6):**
+```
+fabrika_mudur: ['factory-dashboard', 'factory-kiosk', 'factory-quality', 'factory-stations', 'factory-analytics', 'notifications']
+```
+
+**Fabrika Operator (7→4):**
+```
+fabrika_operator: ['factory-dashboard', 'factory-kiosk', 'notifications', 'usage-guide']
+```
+
+**IMPORTANT:** Do NOT delete any pages, routes, or menu blueprint items. Only change SIDEBAR_ALLOWED_ITEMS arrays. All pages remain accessible via direct URL, komut paleti, and bottom nav.
+
+---
+
+### T003 — Remove usage-guide and hq-support from Most Roles (~30 min)
+
+**Problem:** Almost every role has `usage-guide` and `hq-support` in sidebar, wasting 2 slots. These should be accessible but not in the main sidebar.
+
+**Solution:** These are already removed in T001/T002 arrays above. But ensure they remain accessible:
+
+1. Add "Yardım" button to the header/top bar (small ? icon) that links to usage-guide
+2. Add "Destek" link inside the user profile dropdown menu
+
+```bash
+# Find header component
+grep -rn "header\|Header" client/src/components/layout/ --include="*.tsx" -l | head -5
+
+# Find profile dropdown
+grep -rn "profile.*dropdown\|user.*menu\|ProfileMenu\|UserMenu" client/src/components/ --include="*.tsx" -l | head -5
+```
+
+Add to header: small CircleHelp icon → navigates to /kullanim-rehberi
+Add to profile dropdown: "Destek" menu item → navigates to /hq-destek
+
+---
+
+### T004 — IK Page Tab Grouping (29→5 groups) (~3 hours)
+
+**Problem:** ik.tsx has 29 TabsTrigger items — unusable. No role filtering.
+
+**Solution:** Group tabs into 5 categories with sub-navigation.
+
+Find IK page:
+```bash
+grep -rn "TabsTrigger" client/src/pages/ik.tsx | head -35
+```
+
+Replace 29 flat tabs with 5 GROUP tabs. Each group tab shows a sub-tab row:
+
+**Group 1: Personel (7 sub-tabs)**
+- personel, active, terminated, positions, applications, interviews, documents
+
+**Group 2: İzin & Mesai (4 sub-tabs)**
+- izinler, mesai, attendance (devam), branch-shift-tracking
+
+**Group 3: Maaş & Bordro (3 sub-tabs)**
+- maas, pdks, onboarding
+
+**Group 4: Disiplin & İşlemler (3 sub-tabs)**
+- disiplin, ise-alim, istten-cikis
+
+**Group 5: Vardiya (2 sub-tabs)**
+- shifts, shift-planning
+
+**Implementation approach:**
+1. Add a state variable `activeGroup` (default: 'personel')
+2. First tab row: 5 group buttons (Personel, İzin & Mesai, Maaş & Bordro, Disiplin, Vardiya)
+3. Second tab row: sub-tabs of the active group
+4. Content area: existing tab content (don't change content components)
+
+**Role filtering:**
+- Branch roles (supervisor, mudur): Show only Group 1 (Personel) + Group 2 (İzin)
+- Muhasebe: Show Group 1 + Group 3 (Maaş & Bordro)
+- Muhasebe_IK: Show ALL groups
+- Admin: Show ALL groups
+- Other HQ roles: Show only Group 1 (Personel basics)
+
+Add role check at top of component:
+```bash
+grep -rn "role\|isAdmin\|hasPermission" client/src/pages/ik.tsx | head -10
+```
+
+---
+
+### T005 — Role-Based Tab Filtering for Mega Modules (~2 hours)
+
+**Problem:** 13 pages have 8+ tabs with NO role filtering. Everyone sees every tab.
+
+**Fix the top 5 worst offenders:**
+
+**A) module-detail.tsx (23 tabs):**
+```bash
+grep -rn "TabsTrigger" client/src/pages/module-detail.tsx | head -25
+```
+- Barista/stajyer: Show only content + quiz tabs (max 4)
+- Trainer: Show all content + quiz + stats tabs
+- Admin: Show all tabs
+
+**B) personel-detay.tsx (19 tabs):**
+- Supervisor: profil, performans, egitim, vardiya (4 tabs)
+- Muhasebe: profil, maas, izin (3 tabs)
+- Admin/HR: all tabs
+
+**C) receteler.tsx (19 tabs):**
+- Barista: sadece reçete görüntüleme (1-2 tab)
+- Trainer/Chef: edit + manage tabs
+- Admin: all tabs
+
+**D) yeni-sube-detay.tsx (19 tabs):**
+- Only admin/ceo/cgo should see this page at all
+- Other roles: redirect away or show limited view
+
+**E) muhasebe.tsx (13 tabs):**
+- Muhasebe: all tabs
+- CEO/CGO: only summary/overview tab
+- Others: no access
+
+**Implementation pattern for each page:**
+
+```typescript
+const userRole = useAuth().user?.role;
+const visibleTabs = ALL_TABS.filter(tab => {
+  if (userRole === 'admin') return true;
+  if (tab.roles && !tab.roles.includes(userRole)) return false;
+  return true;
+});
+```
+
+Add a `roles?: string[]` property to each tab definition. If roles is undefined, tab is visible to all. If roles is defined, only those roles see it.
+
+---
+
+### T006 — Expand Dobody Suggestions to All Roles (~3 hours)
+
+**Problem:** Only 5 roles get Mr. Dobody suggestions: barista (benim-gunum), supervisor (sube-ozet), HQ (hq-ozet), coach (kocluk-paneli), yatirimci (franchise-ozet — just added in 20A). The other 21 roles get nothing.
+
+**Fix:** Add role-appropriate Dobody suggestions to every landing page.
+
+**In server/lib/dobody-suggestions.ts, add new functions:**
+
+**A) getTrainerSuggestions(userId):**
+- "X modül onay bekliyor" (pending module approvals)
+- "Y personelin eğitimi Z gün gecikmiş" (overdue training)
+- "Quiz geçme oranı düşük: [modül adı]" (low quiz pass rate)
+
+**B) getMuhasebeSuggestions(userId):**
+- "X personelin bordrosu henüz hesaplanmamış" (pending payroll)
+- "Y şubede PDKS eksik gün var" (missing PDKS entries)
+- "Bu ay maaş hesaplama tarihi yaklaşıyor" (payroll deadline)
+
+**C) getKaliteKontrolSuggestions(userId):**
+- "X bekleyen kalite kontrol var" (pending QC)
+- "Y üründe HACCP uyarısı" (HACCP warnings)
+- "Z şubeden ürün şikayeti geldi" (product complaints)
+
+**D) getGidaMuhendisiSuggestions(userId):**
+- "X mühendis onayı bekliyor" (pending engineer approvals)
+- "Y LOT'un SKT'si yaklaşıyor" (expiring LOTs)
+- "Z HACCP kontrol noktası bugün yapılmalı" (due HACCP checks)
+
+**E) getFabrikaMudurSuggestions(userId):**
+- "Bugünkü üretim hedefi: X" (daily production target)
+- "Y istasyonda fire oranı yüksek" (high waste station)
+- "Z personel bugün gelmedi" (absent staff)
+
+**F) getSatinalmaSuggestions(userId):**
+- "X ürün kritik stok seviyesinde" (critical stock)
+- "Y sipariş teslim tarihi yaklaşıyor" (approaching delivery)
+- "Z tedarikçiden fiyat artışı bildirimi" (price increase)
+
+**G) getMarketingSuggestions(userId):**
+- "X aktif kampanya var" (active campaigns)
+- "Müşteri memnuniyet ortalaması: Y" (satisfaction avg)
+- "Z şubede müşteri puanı düştü" (declining scores)
+
+**For roles that already have dedicated landing pages (hq-dashboard/trainer, hq-dashboard/teknik, etc.):**
+Add DobodySuggestionList component to their dashboard sections.
+
+**For roles sharing generic pages:**
+Check if the page already renders suggestions. If not, add the component.
+
+**Each suggestion function should:**
+1. Query relevant tables for actionable insights
+2. Return max 5 suggestions (most important first)
+3. Include actionType for quick-action buttons where applicable
+4. Gracefully return empty array if no issues found
+5. Use the existing DobodySuggestionList component pattern
+
+---
+
+### T007 — Hide Sidebar on Mobile for Barista/Stajyer (~1 hour)
+
+**Problem:** Barista and stajyer use phones (375px). Sidebar hamburger menu wastes space — they have bottom nav with everything they need.
+
+**Fix:**
+
+1. Find sidebar toggle/hamburger:
+```bash
+grep -rn "hamburger\|sidebar.*toggle\|menu.*toggle\|drawer" client/src/components/ --include="*.tsx" | head -10
+```
+
+2. For roles with 4 or fewer sidebar items (stajyer, barista, bar_buddy, yatirimci_branch, yatirimci_hq, fabrika_operator, fabrika_personel):
+- Hide the hamburger icon on mobile (below 768px)
+- Sidebar still accessible on tablet/desktop
+
+```typescript
+const shouldShowHamburger = !(
+  isMobile && 
+  ['stajyer', 'bar_buddy', 'barista', 'yatirimci_branch', 'yatirimci_hq', 'fabrika_operator', 'fabrika_personel'].includes(userRole)
+);
+```
+
+Where `isMobile` = `window.innerWidth < 768` or use existing responsive hook.
+
+---
+
+### VERIFICATION
+
+After all changes:
+
+```bash
+# 1. Count sidebar items per role — all should be ≤6
+grep -A 20 "SIDEBAR_ALLOWED_ITEMS" server/menu-service.ts | grep -c "'" 
+# Manual check: no role should have more than 6 items
+
+# 2. IK page should show group tabs
+grep -rn "activeGroup\|groupTabs\|tabGroup" client/src/pages/ik.tsx | head -5
+
+# 3. Dobody suggestion functions exist
+grep -rn "getTrainerSuggestions\|getMuhasebeSuggestions\|getKaliteKontrolSuggestions\|getGidaMuhendisiSuggestions\|getFabrikaMudurSuggestions\|getSatinalmaSuggestions\|getMarketingSuggestions" server/lib/dobody-suggestions.ts | head -10
+
+# 4. No console errors
+# Test login as: admin, barista, supervisor, mudur, ceo, coach, muhasebe, fabrika_mudur
+
+# 5. Mobile hamburger hidden for barista
+# Check responsive logic in sidebar component
+```
+
+### PRIORITY ORDER: T001 → T002 → T003 → T004 → T005 → T006 → T007
+
+### DO NOT BREAK:
+- All existing page content and functionality
+- Login redirects (Sprint 20A role-routes.ts)
+- Bottom nav configuration
+- Mr. Dobody suggestions on existing pages
+- Admin mega module (31 tabs)
+- Factory kiosk system
+- Any Sprint 1-20A features
+- Direct URL access to ANY page (only sidebar visibility changes, pages still work)
+
+### CRITICAL RULE:
+**No pages are deleted. No routes are removed. Only SIDEBAR_ALLOWED_ITEMS arrays are changed.** Users can still access any page via direct URL, komut paleti (Ctrl+K), bottom nav, or dashboard links. Sidebar is just the "quick access" list — not the only way to navigate.
+
+### ACCEPTANCE CRITERIA:
+- [ ] Müdür sidebar: 6 items (was 20)
+- [ ] Supervisor sidebar: 5 items (was 16)
+- [ ] CEO sidebar: 5 items (was 14)
+- [ ] CGO sidebar: 6 items (was 15)
+- [ ] Coach sidebar: 6 items (was 14)
+- [ ] No role has more than 6 sidebar items
+- [ ] IK page shows 5 tab groups (was 29 flat tabs)
+- [ ] module-detail, personel-detay, receteler have role-based tab filtering
+- [ ] All 26 roles have Mr. Dobody suggestions on their landing page
+- [ ] Barista/stajyer: no hamburger menu on mobile
+- [ ] usage-guide accessible via header help icon
+- [ ] hq-support accessible via profile dropdown
+- [ ] All existing pages still accessible via direct URL
+- [ ] 0 console errors
+- [ ] All 26 roles can login and see appropriate content
+
+---
+
+Replit'e yapıştır. Bu en büyük UX sprint'i — 7 task, tahmini ~15 saat. Sonucu getirince kalite kontrol yaparız.

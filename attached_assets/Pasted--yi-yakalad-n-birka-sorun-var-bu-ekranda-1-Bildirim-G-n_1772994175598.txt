@@ -1,0 +1,158 @@
+İyi yakaladın — birkaç sorun var bu ekranda:
+
+## 1. "Bildirim Gönder" ne yapıyor?
+
+Bu Sprint 17A'daki **quick-action** sistemi. "Bildirim Gönder" tıklandığında:
+- Sistem o şubenin supervisor'ına bir in-app bildirim gönderiyor
+- Mesaj muhtemelen: "Checklist aktiviteniz 2 gündür yapılmadı"
+- Ama kullanıcıya **öncesi veya sonrası hiçbir detay gösterilmiyor** — sadece "İşlem tamamlandı"
+
+**Sorun:** Admin bilmiyor kime gitti, ne gitti, okundu mu. Kör bildirim.
+
+## 2. ASCII Türkçe hâlâ var
+
+Mr. Dobody mesajlarında:
+- "Iletisime gecin" → "İletişime geçin"
+- "Bildirim Gonder" → "Bildirim Gönder"  
+- "gundur" → "gündür"
+- "checklist aktivitesi" → sorun yok ama üsttekiler ASCII
+
+Bu mesajlar `dobody-suggestions.ts`'den geliyor — Sprint 20A'da landing page'ler düzeltildi ama suggestion text'leri atlanmış.
+
+## 3. Flow Mode kartı görünmüyor
+
+Admin dashboard'da Mr. Dobody Flow Mode kartı ("Bugün X işin var") görünmüyor. Ya admin için görev üretilmedi ya da component render edilmedi.
+
+---
+
+Bu 3 sorunu tek fix'te çözelim. Replit'e yapıştır:
+
+---
+
+## TASK: Fix 3 Issues on Admin/HQ Dashboard
+
+### T001 — Quick Action "Bildirim Gönder" Should Show Details (~1 hour)
+
+**Problem:** When admin clicks "Bildirim Gönder" on a Mr. Dobody suggestion, it just says "İşlem tamamlandı" with no details. Admin doesn't know: who received it, what message was sent, whether it was read.
+
+**Fix:**
+
+Find the quick-action handler:
+```bash
+grep -rn "quick-action\|quickAction\|Bildirim Gonder\|bildirimGonder\|send_notification" client/src/ server/ --include="*.tsx" --include="*.ts" | head -20
+```
+
+**Before sending:** Show a confirmation dialog:
+```
+┌─────────────────────────────────────────┐
+│ 📨 Bildirim Gönder                      │
+│                                          │
+│ Alıcı: Batman Şubesi Supervisor         │
+│ Mesaj: "Şubenizde 2 gündür checklist    │
+│         aktivitesi yok. Lütfen kontrol  │
+│         ediniz."                         │
+│                                          │
+│ [ İptal ]          [ Gönder ✓ ]         │
+└─────────────────────────────────────────┘
+```
+
+**After sending:** Show success with details:
+```
+┌─────────────────────────────────────────┐
+│ ✅ Bildirim Gönderildi                   │
+│                                          │
+│ Alıcı: Ahmet Yılmaz (Supervisor)       │
+│ Şube: Batman                             │
+│ Gönderim: 20:19                          │
+└─────────────────────────────────────────┘
+```
+
+Auto-dismiss after 3 seconds. Replace current simple toast with this detailed feedback.
+
+**Implementation:**
+1. Find the DobodySuggestionList component or quick-action button handler
+2. Before calling the API: show a Dialog/AlertDialog with recipient + message preview
+3. After success: show detailed toast or inline success message with recipient name + branch + time
+
+The backend quick-action endpoint should return:
+```json
+{
+  "success": true,
+  "details": {
+    "recipientName": "Ahmet Yılmaz",
+    "recipientRole": "supervisor", 
+    "branch": "Batman",
+    "notificationType": "checklist_reminder",
+    "sentAt": "2026-03-08T20:19:00"
+  }
+}
+```
+
+If the backend doesn't return these details, update it to include them.
+
+### T002 — Fix ASCII Turkish in Dobody Suggestion Messages (~30 min)
+
+**Problem:** Mr. Dobody suggestions text contains ASCII Turkish:
+- "Iletisime gecin" → "İletişime geçin"
+- "gundur" → "gündür"
+- "Bildirim Gonder" → "Bildirim Gönder"
+
+These come from backend suggestion generators.
+
+```bash
+grep -rn "Iletisime\|iletisime\|gundur\|gündür\|Gonder\|gonder" server/lib/dobody-suggestions.ts server/routes/ --include="*.ts" | head -20
+```
+
+Fix ALL ASCII Turkish in:
+- dobody-suggestions.ts (suggestion message templates)
+- Any quick-action button labels
+- Any notification message templates
+
+Also do a broader scan:
+```bash
+grep -rn '"[^"]*[Ii]letisim[^"]*"\|"[^"]*gundur[^"]*"\|"[^"]*[Gg]onder[^"]*"\|"[^"]*gecin[^"]*"' server/ --include="*.ts" | grep -v "node_modules\|import\|className" | head -20
+```
+
+### T003 — Verify Flow Mode Card on Admin Dashboard (~30 min)
+
+**Problem:** The Mr. Dobody Flow Mode card ("Bugün X işin var") does not appear on the admin HQ dashboard. It should appear above the existing content.
+
+Check:
+```bash
+# Is DobodyFlowMode integrated into hq-ozet.tsx?
+grep -rn "DobodyFlowMode\|dobody-flow-mode" client/src/pages/hq-ozet.tsx | head -5
+
+# What does the flow-tasks API return for admin role?
+# Add temporary debug log:
+grep -rn "admin\|flow-tasks" server/routes/dobody-flow.ts | head -20
+```
+
+Possible causes:
+1. DobodyFlowMode not imported in hq-ozet.tsx → add it
+2. Admin role not generating any auto tasks → add admin-specific tasks
+3. The component renders but flow card is hidden because tasks array is empty
+
+**Admin should get these flow tasks:**
+- Branch alerts (any branch with critical/warning status)
+- Pending support tickets
+- System health check reminder
+- If no actionable items: "Sistem normal durumda. Bekleyen acil işlem yok."
+
+### VERIFICATION
+
+After fixes:
+1. Login as admin → click "Bildirim Gönder" → confirmation dialog appears with recipient details
+2. After sending → detailed success message shows who received it
+3. Mr. Dobody messages show correct Turkish: "İletişime geçin", "gündür", "Bildirim Gönder"
+4. Flow Mode card appears on admin dashboard (or shows "Bekleyen işlem yok" if no tasks)
+
+### DO NOT BREAK:
+- Existing quick-action functionality
+- Mr. Dobody suggestions on other pages
+- Flow Mode on other landing pages
+- Notification system
+- Any Sprint 1-21A features
+
+---
+
+Replit'e yapıştır. Kalite kontrol prompt'unu da bundan sonra gönder — ikisi paralel gidebilir veya sırayla.

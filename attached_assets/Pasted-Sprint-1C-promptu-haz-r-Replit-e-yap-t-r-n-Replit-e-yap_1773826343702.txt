@@ -1,0 +1,202 @@
+Sprint 1C promptu hazır. Replit'e yapıştırın:
+
+---
+
+**Replit'e yapıştırılacak prompt:**
+
+```
+## Module Feature Flag System — Sprint 1C: Dobody Sub-modules + Role-based Flags
+
+### Context
+Sprint 1B added flagLevel, flagBehavior, parentKey to module_flags (28 flags working). Now we add:
+1. targetRole column — allows disabling modules per role (e.g. dobody.chat off for barista)
+2. 3 Dobody sub-modules — chat, bildirim, flow
+3. 4-level lookup priority in isModuleEnabled
+
+Read these skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### Task 1: Add targetRole column to module_flags
+
+In shared/schema.ts, add to the existing moduleFlags table:
+```typescript
+targetRole: varchar("target_role", { length: 50 }),
+// NULL = applies to all roles, "barista" = only that role
+```
+
+Run ALTER TABLE (add to seed-module-flags.ts migration section):
+```sql
+ALTER TABLE module_flags ADD COLUMN IF NOT EXISTS target_role VARCHAR(50);
+```
+
+IMPORTANT: The existing unique constraint is on (module_key, scope, branch_id). We need to DROP it and recreate with target_role included:
+```sql
+DROP INDEX IF EXISTS uq_module_flags_key_scope_branch;
+CREATE UNIQUE INDEX uq_module_flags_key_scope_branch_role ON module_flags (module_key, scope, COALESCE(branch_id, 0), COALESCE(target_role, ''));
+```
+
+Also update the uniqueIndex in schema.ts to match.
+
+### Task 2: Add 3 Dobody sub-modules to seed
+
+Add to MODULE_DEFINITIONS in server/seed-module-flags.ts:
+```typescript
+// === DOBODY SUB-MODULES (parent = dobody) ===
+{ key: "dobody.chat", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
+{ key: "dobody.bildirim", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
+{ key: "dobody.flow", level: "submodule", behavior: "fully_hidden", parent: "dobody" },
+```
+
+Note: dobody parent is already "always_on" — these sub-modules can be toggled independently.
+After seed: should be 31 total flags (28 existing + 3 new).
+
+### Task 3: Update isModuleEnabled with 4-level lookup
+
+Replace the lookup logic in server/services/module-flag-service.ts. The new priority order (most specific wins):
+
+```
+Level 1: branch + role override  (branchId=5, targetRole="barista")
+Level 2: branch override          (branchId=5, targetRole=NULL)
+Level 3: global + role override   (scope="global", targetRole="barista")
+Level 4: global default           (scope="global", targetRole=NULL)
+```
+
+Updated function signature:
+```typescript
+export async function isModuleEnabled(
+  moduleKey: string,
+  branchId?: number | null,
+  context?: "ui" | "api" | "data",
+  userRole?: string | null  // NEW parameter
+): Promise<boolean> {
+  // 1. Check parent first (existing logic — keep it)
+  
+  // 2. Lookup with 4-level priority:
+  //    Get ALL flags for this moduleKey that are not deleted
+  //    Find the most specific match:
+  //    a) branchId match + targetRole match → use this (Level 1)
+  //    b) branchId match + targetRole NULL → use this (Level 2)
+  //    c) global scope + targetRole match → use this (Level 3)
+  //    d) global scope + targetRole NULL → use this (Level 4)
+  //    If nothing found → default true
+  
+  // 3. Apply behavior rules (existing logic — keep it)
+}
+```
+
+IMPORTANT: Update the cache key to include role:
+```typescript
+function getCacheKey(moduleKey: string, branchId?: number | null, userRole?: string | null): string {
+  const parts = [moduleKey];
+  if (branchId) parts.push(`branch:${branchId}`);
+  if (userRole) parts.push(`role:${userRole}`);
+  return parts.join(":");
+}
+```
+
+### Task 4: Update requireModuleEnabled middleware
+
+Pass userRole from req.user to isModuleEnabled:
+```typescript
+export function requireModuleEnabled(moduleKey: string): RequestHandler {
+  return async (req, res, next) => {
+    try {
+      const user = req.user as Express.User;
+      const branchId = (user as any)?.branchId ?? null;
+      const userRole = (user as any)?.role ?? null;
+      const enabled = await isModuleEnabled(moduleKey, branchId, "api", userRole);
+      if (!enabled) {
+        return res.status(403).json({ error: "Bu modül şubeniz için aktif değildir." });
+      }
+      next();
+    } catch (error) {
+      console.error("[ModuleFlags] requireModuleEnabled error:", error);
+      return res.status(503).json({ error: "Modül durumu kontrol edilemedi." });
+    }
+  };
+}
+```
+
+### Task 5: Update menu-service.ts
+
+Pass userRole when checking flags:
+```typescript
+const userRole = user.role;
+// In the flag check loop:
+moduleFlagChecks.set(flagKey, await isModuleEnabled(flagKey, branchId, "ui", userRole));
+```
+
+### Task 6: Update /api/module-flags/check endpoint
+
+Accept role parameter:
+```typescript
+router.get("/api/module-flags/check", isAuthenticated, async (req: Request, res: Response) => {
+  const { moduleKey, context } = req.query;
+  const user = req.user as any;
+  const branchId = user?.branchId ?? null;
+  const userRole = user?.role ?? null;
+  const enabled = await isModuleEnabled(moduleKey as string, branchId, context as any, userRole);
+  res.json({ enabled });
+});
+```
+
+### Task 7: Update frontend hook
+
+No change needed — the /check endpoint now automatically uses the logged-in user's role from session.
+
+### Task 8: Update POST /api/module-flags for role-based overrides
+
+The create endpoint should accept targetRole:
+```typescript
+router.post("/api/module-flags", isAuthenticated, async (req: Request, res: Response) => {
+  const { moduleKey, branchId, isEnabled, targetRole } = req.body;
+  // targetRole is optional — NULL means all roles
+  // Validate targetRole is a valid role if provided
+  // Include targetRole in the insert and conflict check
+});
+```
+
+Also update the GET /api/module-flags/branch/:branchId to include targetRole in response.
+
+### Task 9: Integrate with Dobody components
+
+Find the Dobody components and add flag checks. Search for them:
+```bash
+grep -rn "DobodyMiniBar\|DobodyFlow\|dobody-flow\|GlobalAIAssistant" client/src/ --include="*.tsx" -l | head -10
+grep -rn "agent-scheduler\|skill-notifications" server/services/ --include="*.ts" -l | head -5
+```
+
+For each Dobody UI component found:
+a) DobodyMiniBar (chat): Wrap with useModuleEnabled("dobody.chat") — if disabled, don't render
+b) Flow Mode component: Wrap with useModuleEnabled("dobody.flow") — if disabled, don't render
+c) Notification/task creation in agent system: Check isModuleEnabled("dobody.bildirim", branchId, "api", null) before creating notifications — if disabled for the target user's branch, skip silently
+
+IMPORTANT: Do NOT modify agent-scheduler.ts or agent skill execution. Skills always run. Only the NOTIFICATION DELIVERY to users should be blocked when dobody.bildirim is disabled.
+
+### DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Any kiosk-related files
+- agent-scheduler.ts (skills always run)
+- Existing page components (except Dobody wrappers)
+
+### Testing checklist:
+1. App starts without errors
+2. SELECT count(*) FROM module_flags WHERE deleted_at IS NULL; → should be 31
+3. SELECT module_key, flag_level, parent_key FROM module_flags WHERE parent_key = 'dobody'; → should return 3 rows
+4. GET /api/module-flags/check?moduleKey=dobody.chat → { enabled: true }
+5. Test 4-level priority:
+   a) Create global role override: POST /api/module-flags { moduleKey: "dobody.chat", branchId: null, isEnabled: false, targetRole: "barista" } — wait, branchId is required for branch scope. For global+role: scope should be "global". Update the POST endpoint to accept scope parameter too, or auto-detect: if branchId is null → scope is "global", if branchId is set → scope is "branch".
+   b) After creating: GET /api/module-flags/check?moduleKey=dobody.chat (as barista) → should return { enabled: false }
+   c) GET /api/module-flags/check?moduleKey=dobody.chat (as admin) → should return { enabled: true }
+6. Verify DobodyMiniBar respects the flag (if dobody.chat is disabled, minibar should not render)
+
+### After implementation:
+1. Run quality gate
+2. Update .agents/skills/dospresso-architecture/SKILL.md — add targetRole to Module Flag System section, add Dobody sub-modules
+3. Update .agents/skills/dospresso-debug-guide/SKILL.md — update §13 with role-based lookup info
+```
+
+---
+
+Direkt build başlatın! Bitince sonucu paylaşın.

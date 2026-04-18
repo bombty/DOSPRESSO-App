@@ -1,0 +1,49 @@
+Önce tam olarak ne var ne yok görelim, sonra sprint yazalım.
+
+```
+Please audit the current ticket/CRM system in detail and report:
+
+## 1. DATABASE SCHEMA
+Find the support tickets table(s) in shared/schema.ts:
+- List ALL columns in the tickets table with their types
+- Is there a ticket_messages / ticket_comments table? List its columns
+- Is there a ticket_attachments table?
+- Is there an audit_log or ticket_history table?
+- Is there an sla_rules or sla_config table?
+- Is there a ticket_assignments table or assignedTo column?
+
+## 2. BACKEND ENDPOINTS
+List ALL endpoints in server/routes/iletisim-routes.ts (or similar):
+- Method + path + brief description
+- Does any endpoint handle: file upload, assignment, status change, SLA calculation?
+
+## 3. SLA LOGIC
+- Where is slaBreached set? (search: grep -rn "slaBreached" server/)
+- Is there any automatic SLA timer/calculator running?
+- Is there an SLA rules table or is the limit hardcoded?
+- What is the current SLA limit value?
+
+## 4. NOTIFICATION TRIGGERS
+- When a ticket is created, does a notification go out? To whom?
+- When a ticket is assigned, does a notification go out?
+- When SLA is breached, does a notification go out?
+- Search: grep -rn "createNotification\|sendNotification" server/routes/iletisim-routes.ts
+
+## 5. FILE ATTACHMENTS
+- Is there a file upload endpoint for tickets?
+- Is there a ticket_attachments table?
+- Can users currently attach files to tickets?
+
+## 6. FRONTEND GAPS
+Check client/src/pages/iletisim-merkezi/:
+- Does the chat panel actually SEND messages to the backend? (check the send button handler)
+- Does the "Çöz & Kapat" button call an API endpoint?
+- Does the "Ata" button have any backend connection?
+- Does the file attach button work end-to-end?
+- Are messages loaded from real API or mocked?
+
+Report everything with file:line references.
+Output as a structured markdown report.
+```
+
+Bunu Replit'e gönderin. Rapor gelince neyin sıfırdan yazılması, neyin extend edilmesi gerektiğini göreceğiz ve ona göre sprint planlayacağız.

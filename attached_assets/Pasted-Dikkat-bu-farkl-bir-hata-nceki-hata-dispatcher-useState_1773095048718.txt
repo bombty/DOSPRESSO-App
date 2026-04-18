@@ -1,0 +1,92 @@
+Dikkat — bu **farklı bir hata.** Önceki hata `dispatcher.useState` idi, bu hata `Importing a module script failed`. Stack trace'e bak — WebSocket, TCP stream hataları var. Bu Radix sorunu değil.
+
+Bu **Vite dev server + Replit + iPad bağlantı sorunu** olabilir. Replit'e yapıştır:
+
+---
+
+## TASK: Fix "Importing a module script failed" Error
+
+This is NOT the Radix dispatcher.useState issue. This is a Vite module loading failure. The stack trace shows WebSocket/TCP stream errors — the browser cannot load the JavaScript modules from Vite dev server.
+
+### STEP 1: Diagnose — is this a Vite HMR issue?
+
+```bash
+# Disable Vite HMR error overlay (so users see the app, not the error)
+grep -rn "hmr\|overlay" vite.config.ts | head -5
+```
+
+Add to vite.config.ts:
+```typescript
+server: {
+  hmr: {
+    overlay: false  // Don't show red error screen to users
+  }
+}
+```
+
+### STEP 2: Check if the app actually works underneath
+
+The Vite error overlay might be showing a NON-FATAL HMR connection error while the app itself works fine underneath. After disabling the overlay, check if the app loads.
+
+### STEP 3: Build for production mode instead of dev
+
+Vite dev server uses ES modules + HMR which can fail on some browsers/networks. Build and serve static files instead:
+
+```bash
+# Build production bundle
+npx vite build 2>&1 | tail -10
+
+# Check if build succeeded
+ls -la client/dist/index.html 2>/dev/null
+```
+
+If build succeeds, configure the server to serve the built files:
+
+```bash
+# Check current server setup
+grep -rn "vite\|createServer\|setupVite\|express.static" server/index.ts server/vite.ts 2>/dev/null | head -10
+```
+
+Add a production static file serving mode:
+```typescript
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static('client/dist'));
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api/')) {
+      res.sendFile(path.resolve('client/dist/index.html'));
+    }
+  });
+}
+```
+
+### STEP 4: If it's a WebSocket issue, configure Vite for Replit
+
+```bash
+grep -rn "allowedHosts\|host:\|ws:\|wss:" vite.config.ts | head -5
+```
+
+Update vite.config.ts for Replit compatibility:
+```typescript
+server: {
+  host: '0.0.0.0',
+  hmr: {
+    overlay: false,
+    clientPort: 443,
+    protocol: 'wss'
+  },
+  allowedHosts: ['all']
+}
+```
+
+### STEP 5: Verify
+
+After fix:
+1. Open the app in browser — should load WITHOUT red error overlay
+2. Login should work
+3. Dashboard should render
+
+### DO NOT change any application code. Only Vite configuration.
+
+---
+
+Bu hata uygulamanın kendisinde değil, Vite dev server'ın modül serve etme şeklinde. En hızlı çözüm `overlay: false` — bu kırmızı hata ekranını kapatır. Asıl uygulama muhtemelen altta düzgün çalışıyor.

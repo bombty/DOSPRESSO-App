@@ -1,0 +1,142 @@
+DOSPRESSO-specific quality control checks after every sprint build. Covers auth middleware, Turkish UI, Drizzle ORM patterns, dark mode, role-based access, factory chain integrity, and agent system health. Use after completing any code changes or sprint tasks.DOSPRESSO Quality Gate
+Run these checks after EVERY sprint build or significant code change.
+1. Authentication & Authorization
+DOSPRESSO uses these specific middleware patterns:
+
+isAuthenticated — basic login check
+isHQOrAdmin — HQ roles only
+isAdmin — admin role only
+isSupervisorPlus — supervisor, mudur, or higher
+canAccess(permissionModule, action) — granular permission check
+isKioskAuthenticated — factory kiosk PIN-based auth
+
+Check ALL new/modified endpoints have appropriate auth:
+bashgrep -rn "router\.\(get\|post\|put\|patch\|delete\)" server/routes/ --include="*.ts" | grep -v "isAuthenticated\|isHQOrAdmin\|isAdmin\|isSupervisorPlus\|isKioskAuthenticated\|canAccess" | grep -v "login\|register\|health\|setup\|public\|vapid" | tail -20
+2. Turkish UI Standards
+NEVER use ASCII approximations in user-visible strings:
+
+ş not s, ç not c, ğ not g, ı not i, ö not o, ü not u
+İ not I (capital İ), Ş not S, Ç not C, Ğ not G, Ö not O, Ü not U
+
+Common violations to scan:
+bashgrep -rn '"[^"]*"' client/src/ server/lib/ --include="*.tsx" --include="*.ts" | grep -v "className\|import\|require\|node_modules\|route\|path\|key\|type\|status" | grep -i "Sube\b\|Musteri\|Gorev\b\|Ozet\b\|Orani\|Muduru\|Basarili\|Tamamlandi\|Guncelle\|Olustur\|Degerlendir\|Iletisim\|uyarisi\|Gonder\b\|Sagligi\|cozum\|Egitim\b\|Kiosk Ac\b" | head -20
+Also check for English text that should be Turkish:
+bashgrep -rn '"Save"\|"Cancel"\|"Delete"\|"Submit"\|"Loading\.\.\."\|"Error"\|"Success"\|"Close"' client/src/pages/ client/src/components/ --include="*.tsx" | grep -v "import\|className\|console\|aria-" | head -10
+3. Null Safety (Crash Prevention)
+DOSPRESSO's #1 crash cause: calling methods on undefined API responses.
+3a. toFixed/toLocaleString — ALWAYS wrap with Number()
+bashgrep -rn "\.toFixed\|\.toLocaleString" client/src/ --include="*.tsx" | grep -v "Number(\|?? 0\||| 0\|node_modules" | head -20
+typescript// WRONG: stats.avgRating.toFixed(1)
+// WRONG: stats?.avgRating?.toFixed(1)  ← still crashes if avgRating is string
+// CORRECT: Number(stats?.avgRating ?? 0).toFixed(1)
+
+// WRONG: salary.toLocaleString()
+// CORRECT: Number(salary ?? 0).toLocaleString('tr-TR')
+3b. Array methods — API may return object instead of array
+bashgrep -rn "\.map(\|\.filter(\|\.length\|\.reduce(" client/src/ --include="*.tsx" | grep "data\.\|result\.\|faults\.\|items\.\|records\." | grep -v "|| \[\]\|??\|Array.isArray\|node_modules" | head -20
+typescript// WRONG: data.map(...)
+// WRONG: faults.filter(...)
+
+// CORRECT — handle both array and {data:[]} format:
+const items = Array.isArray(data) ? data : (data?.data || data?.items || []);
+items.map(...)
+3c. API Response Format Verification (Runtime Check)
+Some DOSPRESSO APIs return {data: [...]} not [...]. Known cases:
+
+/api/faults → returns {data: [...]}
+/api/agent/actions → returns {actions: [...]}
+/api/notifications → may return {notifications: [...]}
+
+ALWAYS normalize in useQuery or useMemo:
+typescriptconst { data: rawFaults } = useQuery({ queryKey: ['/api/faults'] });
+const faults = useMemo(() => 
+  Array.isArray(rawFaults) ? rawFaults : (rawFaults?.data || []),
+  [rawFaults]
+);
+3d. PostgreSQL COUNT() returns string — wrap with Number()
+bashgrep -rn "reduce\|\.total\|\.count" client/src/ --include="*.tsx" | grep -v "Number(\|parseInt\|node_modules" | grep "total\|count" | head -10
+typescript// WRONG: data.reduce((s, o) => s + o.total, 0)  → "035" string concat
+// CORRECT: data.reduce((s, o) => s + Number(o.total), 0)  → 8
+4. Drizzle ORM Patterns
+
+ALL write operations on critical tables MUST use transactions:
+
+factory_shipments status changes
+payroll calculations
+branch_inventory updates
+change request approvals
+
+
+Use eq(), and(), or() — never raw SQL for WHERE clauses
+Always check .returning() is used when you need the inserted/updated record
+Use sql\...`` template literals for complex queries (parameterized, safe from injection)
+
+5. Data Lock Compliance
+These tables have time-based locks (data_lock_rules):
+
+purchase_orders: 7 days
+factory_production_outputs: 3 days
+branch_stock_movements: 7 days
+pdks_records: 3 days
+monthly_payroll: immediate
+factory_quality_checks: on approval
+factory_shipments: on delivery
+customer_feedback: immediate
+
+Any PATCH/PUT/DELETE on these tables MUST call checkDataLock() first.
+6. Soft Delete Rule
+NEVER use hard DELETE on business data. Always:
+typescriptawait db.update(table).set({ isActive: false, deletedAt: new Date(), deletedBy: userId });
+Exceptions: sessions, tokens, cache, old notifications.
+7. Dark Mode Compatibility
+No hardcoded colors without dark variant:
+bashgrep -rn "bg-white\|text-black\|border-gray-200" client/src/ --include="*.tsx" | grep -v "dark:\|print:\|QR\|certificate" | tail -10
+8. Error & Loading States
+Every page with useQuery MUST have:
+typescriptif (isLoading) return <LoadingState />;
+if (isError) return <ErrorState onRetry={() => refetch()} />;
+9. React Hooks Safety
+9a. useEffect must NOT contain JSX returns
+bashgrep -rn "useEffect" client/src/ --include="*.tsx" -A 30 | grep -B 3 "return.*<\|return.*Loading\|return.*Error\|return.*null" | grep -v "cleanup\|clearInterval\|clearTimeout\|removeEventListener" | head -10
+typescript// WRONG — JSX inside useEffect:
+useEffect(() => {
+  if (isLoading) return <LoadingState />;  // CRASH: "destroy is not a function"
+}, []);
+
+// CORRECT — early returns BEFORE hooks, or AFTER all hooks:
+if (isLoading) return <LoadingState />;
+useEffect(() => { ... }, []);
+9b. Hooks must come BEFORE early returns
+bash# Find files where isLoading/isError return appears BEFORE a useQuery/useEffect
+for f in $(find client/src/pages -name "*.tsx"); do
+  EARLY=$(grep -n "return.*Loading\|return.*Error\|return.*null" "$f" | head -1 | cut -d: -f1)
+  HOOK=$(grep -n "useQuery\|useEffect\|useMemo\|useState" "$f" | tail -1 | cut -d: -f1)
+  if [ -n "$EARLY" ] && [ -n "$HOOK" ] && [ "$EARLY" -lt "$HOOK" ]; then
+    echo "⚠️ $f: early return at line $EARLY, hook at line $HOOK"
+  fi
+done 2>/dev/null | head -10
+10. Runtime API Format Testing
+CRITICAL: After every sprint, verify API response formats match frontend expectations.
+bash# Login and test actual API responses
+COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"adminhq","password":"TestPass123!"}' | grep connect.sid | awk '{print $NF}')
+
+for EP in "/api/faults" "/api/equipment" "/api/notifications" "/api/agent/actions?status=pending" "/api/feedback?branchId=5"; do
+  RESP=$(curl -s -b "connect.sid=$COOKIE" "http://localhost:5000$EP" | head -c 50)
+  if echo "$RESP" | grep -q '^\['; then echo "$EP → array (OK)";
+  elif echo "$RESP" | grep -q '^{'; then echo "$EP → OBJECT (check frontend handles this!)";
+  fi
+done
+11. Radix UI Package Safety
+NEVER install Radix packages with ^ caret. Pin exact versions.
+After ANY npm install, check:
+bashfind node_modules/@radix-ui -mindepth 2 -name "node_modules" -type d 2>/dev/null
+Must return empty. If nested packages found → downgrade the new package.
+12. Service Worker
+After any frontend changes, bump the cache version in client/public/service-worker.js.
+13. Agent System Health
+Verify background jobs still running:
+bashgrep -i "scheduler\|agent\|skill\|escalation\|outcome" /tmp/server.log 2>/dev/null | tail -10
+Verify agent routing rules exist:
+bashecho "SELECT COUNT(*) FROM agent_routing_rules;" | psql
