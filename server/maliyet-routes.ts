@@ -32,12 +32,58 @@ import {
   insertProductPackagingItemSchema,
   insertFactoryMachineSchema,
   factoryProductionBatches,
-  factoryWasteReasons
+  factoryWasteReasons,
+  factoryProductPriceHistory
 } from "@shared/schema";
 import { eq, desc, and, gte, lte, sql, or, like, asc, isNotNull, inArray } from "drizzle-orm";
 
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
+
+// Fabrika ürün fiyat değişiklik geçmişine kayıt ekler.
+// Eski/yeni basePrice veya suggestedPrice değişmişse history tablosuna yazar.
+async function logFactoryProductPriceChange(params: {
+  productId: number;
+  oldBasePrice: string | number | null | undefined;
+  newBasePrice: string | number | null | undefined;
+  oldSuggestedPrice: string | number | null | undefined;
+  newSuggestedPrice: string | number | null | undefined;
+  source: string;
+  sourceReferenceId?: number | null;
+  changedById?: string | null;
+  notes?: string | null;
+}) {
+  const oldBase = params.oldBasePrice == null ? null : Number(params.oldBasePrice);
+  const newBase = params.newBasePrice == null ? null : Number(params.newBasePrice);
+  const oldSug = params.oldSuggestedPrice == null ? null : Number(params.oldSuggestedPrice);
+  const newSug = params.newSuggestedPrice == null ? null : Number(params.newSuggestedPrice);
+
+  const baseChanged = (oldBase ?? 0) !== (newBase ?? 0);
+  const sugChanged = (oldSug ?? 0) !== (newSug ?? 0);
+  if (!baseChanged && !sugChanged) return;
+
+  let changePercent: string | null = null;
+  if (oldBase != null && oldBase > 0 && newBase != null) {
+    changePercent = (((newBase - oldBase) / oldBase) * 100).toFixed(2);
+  } else if (oldSug != null && oldSug > 0 && newSug != null) {
+    changePercent = (((newSug - oldSug) / oldSug) * 100).toFixed(2);
+  }
+
+  // Audit-critical: bir hata olursa propagate edilir, sessizce yutulmaz.
+  // Çağıran route hatayı logger ile yakalayıp uygun HTTP yanıtına çevirir.
+  await db.insert(factoryProductPriceHistory).values({
+    productId: params.productId,
+    oldBasePrice: oldBase != null ? oldBase.toFixed(2) : null,
+    newBasePrice: newBase != null ? newBase.toFixed(2) : null,
+    oldSuggestedPrice: oldSug != null ? oldSug.toFixed(2) : null,
+    newSuggestedPrice: newSug != null ? newSug.toFixed(2) : null,
+    changePercent,
+    source: params.source,
+    sourceReferenceId: params.sourceReferenceId ?? null,
+    notes: params.notes ?? null,
+    changedById: params.changedById ?? null,
+  });
+}
 
 // Faaliyet Tabanlı Maliyet Hesaplama Yardımcı Fonksiyonları
 async function getCostSettings(): Promise<Record<string, number>> {
@@ -975,15 +1021,29 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
         })
         .where(eq(productRecipes.id, recipe.id));
 
+      const newBasePrice = costs.totalUnitCost.toFixed(2);
+      const newSuggestedPrice = costs.suggestedPrice.toFixed(2);
+
       await db.update(factoryProducts)
         .set({
-          basePrice: costs.totalUnitCost.toFixed(2),
-          suggestedPrice: costs.suggestedPrice.toFixed(2),
+          basePrice: newBasePrice,
+          suggestedPrice: newSuggestedPrice,
           profitMargin: costs.appliedMargin.toFixed(2),
           updatedAt: new Date()
         })
         .where(eq(factoryProducts.id, productId));
-      
+
+      await logFactoryProductPriceChange({
+        productId,
+        oldBasePrice: product.basePrice,
+        newBasePrice,
+        oldSuggestedPrice: product.suggestedPrice,
+        newSuggestedPrice,
+        source: "cost_calc",
+        sourceReferenceId: calculation?.id ?? null,
+        changedById: user?.id,
+      });
+
       res.json(calculation);
     } catch (error) {
       console.error("Error calculating cost:", error);
@@ -1050,15 +1110,28 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
             })
             .where(eq(productRecipes.id, recipe.id));
           
+          const newBasePrice = costs.totalUnitCost.toFixed(2);
+          const newSuggestedPrice = costs.suggestedPrice.toFixed(2);
+
           await db.update(factoryProducts)
             .set({
-              basePrice: costs.totalUnitCost.toFixed(2),
-              suggestedPrice: costs.suggestedPrice.toFixed(2),
+              basePrice: newBasePrice,
+              suggestedPrice: newSuggestedPrice,
               profitMargin: costs.appliedMargin.toFixed(2),
               updatedAt: new Date()
             })
             .where(eq(factoryProducts.id, product.id));
-          
+
+          await logFactoryProductPriceChange({
+            productId: product.id,
+            oldBasePrice: product.basePrice,
+            newBasePrice,
+            oldSuggestedPrice: product.suggestedPrice,
+            newSuggestedPrice,
+            source: "cost_calc_all",
+            changedById: user?.id,
+          });
+
           calculated++;
         } catch (e) {
           errors++;
@@ -1671,14 +1744,28 @@ export function registerMaliyetRoutes(app: Express, isAuthenticated: AuthMiddlew
       const costs = await calculateActivityBasedCost(recipe, product);
       
       // Ürünü güncelle
+      const newBasePrice = costs.totalUnitCost.toFixed(2);
+      const newSuggestedPrice = costs.suggestedPrice.toFixed(2);
+
       await db.update(factoryProducts)
         .set({
-          basePrice: costs.totalUnitCost.toFixed(2),
-          suggestedPrice: costs.suggestedPrice.toFixed(2),
+          basePrice: newBasePrice,
+          suggestedPrice: newSuggestedPrice,
           profitMargin: costs.appliedMargin.toFixed(2),
           updatedAt: new Date()
         })
         .where(eq(factoryProducts.id, productId));
+
+      await logFactoryProductPriceChange({
+        productId,
+        oldBasePrice: product.basePrice,
+        newBasePrice,
+        oldSuggestedPrice: product.suggestedPrice,
+        newSuggestedPrice,
+        source: "recipe_recalc",
+        sourceReferenceId: recipe.id,
+        changedById: user?.id,
+      });
 
       await db.update(productRecipes)
         .set({

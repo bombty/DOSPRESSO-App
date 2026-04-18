@@ -13,12 +13,15 @@
  *   4. Coverage'a göre status atanır (applied / applied_partial / skipped_empty);
  *      her durumda kalıcı audit kaydı yazılır.
  *   5. JSON özet raporu `server/data/price-recalc-report-<runId>.json`
+ *   6. Task #99: Ürün fiyatı her değiştiğinde `factory_product_price_history`
+ *      tablosuna kalıcı denetim kaydı yazılır (source = "script").
  *
  * Çalıştırma:
  *   npx tsx server/scripts/recalculate-recipe-prices.ts
  *   COVERAGE_THRESHOLD=0.8 npx tsx server/scripts/recalculate-recipe-prices.ts
  *
  * Migration: migrations/task-97-recipe-price-history.sql
+ *            migrations/task-99-factory-product-price-history.sql
  */
 
 import { db } from "../db";
@@ -28,7 +31,11 @@ import {
   factoryRecipeIngredients,
   type FactoryRecipe,
 } from "@shared/schema/schema-22-factory-recipes";
-import { factoryProducts, type FactoryProduct } from "@shared/schema/schema-08";
+import {
+  factoryProducts,
+  factoryProductPriceHistory,
+  type FactoryProduct,
+} from "@shared/schema/schema-08";
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
@@ -312,6 +319,46 @@ async function computeIngredientsCost(recipeId: number): Promise<CostResult> {
 }
 
 // ────────────────────────────────────────
+// Task #99 — factory_product_price_history yazımı
+// ────────────────────────────────────────
+async function recordProductPriceHistory(params: {
+  productId: number;
+  oldBasePrice: number | null;
+  newBasePrice: number;
+  oldSuggestedPrice: number | null;
+  newSuggestedPrice: number;
+  notes: string;
+}): Promise<boolean> {
+  const oldBase = params.oldBasePrice;
+  const newBase = params.newBasePrice;
+  const oldSug = params.oldSuggestedPrice;
+  const newSug = params.newSuggestedPrice;
+
+  if ((oldBase ?? 0) === newBase && (oldSug ?? 0) === newSug) {
+    return false;
+  }
+
+  let changePercent: string | null = null;
+  if (oldBase != null && oldBase > 0) {
+    changePercent = (((newBase - oldBase) / oldBase) * 100).toFixed(2);
+  } else if (oldSug != null && oldSug > 0) {
+    changePercent = (((newSug - oldSug) / oldSug) * 100).toFixed(2);
+  }
+
+  await db.insert(factoryProductPriceHistory).values({
+    productId: params.productId,
+    oldBasePrice: oldBase != null ? oldBase.toFixed(2) : null,
+    newBasePrice: newBase.toFixed(2),
+    oldSuggestedPrice: oldSug != null ? oldSug.toFixed(2) : null,
+    newSuggestedPrice: newSug.toFixed(2),
+    changePercent,
+    source: "script",
+    notes: params.notes,
+  });
+  return true;
+}
+
+// ────────────────────────────────────────
 // Ana akış
 // ────────────────────────────────────────
 
@@ -334,6 +381,7 @@ async function run(): Promise<void> {
   let appliedPartial = 0;
   let skippedEmpty = 0;
   let updatedProducts = 0;
+  let priceHistoryLogged = 0;
 
   for (const recipe of recipes) {
     const { cost: rawCost, total, resolved, missing } = await computeIngredientsCost(recipe.id);
@@ -435,6 +483,24 @@ async function run(): Promise<void> {
           })
           .where(eq(factoryProducts.id, product.id));
         updatedProducts++;
+
+        // Task #99: Product fiyat değişikliği denetim kaydı
+        try {
+          const wrote = await recordProductPriceHistory({
+            productId: product.id,
+            oldBasePrice,
+            newBasePrice: writtenBasePrice,
+            oldSuggestedPrice: oldSuggested,
+            newSuggestedPrice: writtenSuggested,
+            notes: `recalc-script run=${RUN_ID} status=${status}`,
+          });
+          if (wrote) priceHistoryLogged++;
+        } catch (err) {
+          console.error(
+            `  [price-history] FAIL product=${product.id} (${product.sku}):`,
+            err
+          );
+        }
       }
     }
 
@@ -443,7 +509,9 @@ async function run(): Promise<void> {
         ? ((writtenUnitCost - oldUnitCost) / oldUnitCost) * 100
         : null;
 
-    // Audit kaydı devre dışı (factory_recipe_price_history şeması task-97'den sonra kaldırıldı)
+    // Recipe seviyesinde audit kaydı devre dışı
+    // (factory_recipe_price_history şeması task-97'den sonra kaldırıldı — follow-up #106).
+    // Product seviyesi denetim Task #99 ile factory_product_price_history tablosuna yazılır (yukarıda).
     const _auditPayload = ({
       recipeId: recipe.id,
       productId: recipe.productId ?? null,
@@ -548,6 +616,7 @@ async function run(): Promise<void> {
     appliedPartial,
     skippedEmpty,
     updatedProducts,
+    priceHistoryLogged,
     // basePrice (= ürün fiyatı) bazlı sayaçlar
     bigIncreases: written.filter((r) => {
       const d = basePriceDeltaPct(r);
@@ -578,12 +647,14 @@ async function run(): Promise<void> {
   console.log(`  Best-effort (applied_partial):    ${appliedPartial}`);
   console.log(`  Atlanan — boş:                    ${skippedEmpty}`);
   console.log(`  Güncellenen ürün:                 ${updatedProducts}`);
+  console.log(`  Fiyat geçmişi kayıtları (Task#99):${priceHistoryLogged}`);
   console.log(`  Yeni fiyatlanan ürün (eski 0):    ${newPriced}`);
   console.log(`  basePrice büyük artış (>%10):     ${summary.bigIncreases}`);
   console.log(`  basePrice büyük düşüş (<-%10):    ${summary.bigDecreases}`);
   console.log(`  unitCost büyük artış (>%10):      ${summary.unitCostBigIncreases}`);
   console.log(`  unitCost büyük düşüş (<-%10):     ${summary.unitCostBigDecreases}`);
-  console.log(`\n  Audit DB yazımı:     devre dışı (factory_recipe_price_history şeması kaldırıldı — follow-up #106)`);
+  console.log(`\n  Recipe-level audit:  devre dışı (factory_recipe_price_history kaldırıldı — follow-up #106)`);
+  console.log(`  Product-level audit: factory_product_price_history (Task #99)`);
   console.log(`  Run ID:              ${RUN_ID}`);
   console.log(`  JSON raporu:         ${reportPath}`);
 }

@@ -148,6 +148,40 @@ export const insertFactoryProductSchema = createInsertSchema(factoryProducts).om
 export type InsertFactoryProduct = z.infer<typeof insertFactoryProductSchema>;
 export type FactoryProduct = typeof factoryProducts.$inferSelect;
 
+// Fabrika Ürünleri Fiyat Geçmişi
+// basePrice / suggestedPrice değişikliklerinin denetim ve trend analizi için saklandığı tablo.
+export const factoryProductPriceHistory = pgTable("factory_product_price_history", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+
+  oldBasePrice: numeric("old_base_price", { precision: 12, scale: 2 }),
+  newBasePrice: numeric("new_base_price", { precision: 12, scale: 2 }),
+  oldSuggestedPrice: numeric("old_suggested_price", { precision: 12, scale: 2 }),
+  newSuggestedPrice: numeric("new_suggested_price", { precision: 12, scale: 2 }),
+  changePercent: numeric("change_percent", { precision: 8, scale: 2 }),
+
+  // Kaynak: "recipe_recalc" | "manual" | "import" | "script" | "cost_calc" vb.
+  source: varchar("source", { length: 30 }).notNull(),
+  sourceReferenceId: integer("source_reference_id"),
+  notes: text("notes"),
+
+  changedById: varchar("changed_by_id").references(() => users.id, { onDelete: "set null" }),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+}, (table) => [
+  index("fpph_product_idx").on(table.productId),
+  index("fpph_source_idx").on(table.source),
+  index("fpph_date_idx").on(table.changedAt),
+  index("fpph_product_date_idx").on(table.productId, table.changedAt),
+]);
+
+export const insertFactoryProductPriceHistorySchema = createInsertSchema(factoryProductPriceHistory).omit({
+  id: true,
+  changedAt: true,
+});
+
+export type InsertFactoryProductPriceHistory = z.infer<typeof insertFactoryProductPriceHistorySchema>;
+export type FactoryProductPriceHistory = typeof factoryProductPriceHistory.$inferSelect;
+
 // Üretim Partileri
 export const productionBatches = pgTable("production_batches", {
   id: serial("id").primaryKey(),
