@@ -8,8 +8,10 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - Fast implementation in Build mode, continues with "devam"
 - DB schema changes via raw psql (drizzle-kit push times out)
 
-## Session State (17.04.2026)
-- Son başarılı commit: `ce3635317` (hotfix: seed-donut-recipe-v2 ref_id + expected_unit_weight_unit kaldırıldı)
+## Session State (18.04.2026)
+- Son başarılı commit: `18896c813` (Sprint A5: 14 kullanılmayan stub endpoint silindi)
+- **Sprint A5 ✅ doğrulandı**: stub-endpoints.ts 52→38 router, 14 SILINDI yorumu. Build OK (vite 41s + esbuild 318ms). Silinenler SPA fallback (200+HTML) — frontend'de 0 referans, regresyon yok. Hala kullanılan stub'lar 401 (auth aktif).
+- Önceki commit: `ce3635317` (hotfix: seed-donut-recipe-v2 ref_id + expected_unit_weight_unit kaldırıldı)
 - Task #91 Fabrika Stok Merkezi: ✅ tamamlandı, `/fabrika/stok-merkezi` (790 satır, 4 tab)
 - Task #117 Donut Seed + Senaryo API: ✅ tamamlandı (29 malzeme, 4 senaryo — Sade ₺7.13 / Kaplamalı ₺9.62 / Klasik ₺12.65 / Gourmet ₺14.65)
 - Bekleyen follow-up: #92 fabrika_depo leftovers HR_ACCESS_DENIED, #93 düşük stok→otomatik satınalma, #94 LOT/SKT girişi
