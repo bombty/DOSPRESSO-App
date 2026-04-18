@@ -1,6 +1,6 @@
 # 📊 DOSPRESSO — 00-DASHBOARD.md
 
-**Son Güncelleme:** 18 Nis 2026 Cumartesi gece (Aslan oturumu sonu)
+**Son Güncelleme:** 19 Nis 2026 Cumartesi gece (Task #113 tamam + token yenilendi)
 **Amaç:** Her Claude oturumu başında 5 dakikada sisteme hizalan
 **Güncelleme Kuralı:** Her oturum sonu `session-protocol` skill'i Adım 1 gereği güncellenir ve commit'lenir
 
@@ -12,20 +12,45 @@
 
 | Metrik | Değer |
 |---|---|
-| **Pilot Hazırlık Skoru** | **6.0-6.5/10 (%80)** — bu gece 3 P0 bloker çözüldü |
+| **Pilot Hazırlık Skoru** | **~7.5/10 (%85)** — Task #113 10 madde tamam, yük testi yeşil |
 | **Aktif Sprint** | A ✅ tamam → **B başlıyor** (Pazartesi 20 Nis) |
 | **🚨 PILOT BAŞLANGIÇ** | **28 Nisan 2026 Salı sabah 09:00** (FAZAL) |
 | **Pilot tipi** | **CANLI OPERASYONEL** (beta değil — operasyonel aciliyet) |
 | **Pilot Lokasyon** | HQ + Fabrika + Işıklar + Lara |
 | **Rollout sırası** | Işıklar + HQ → 24 saat izle → Lara + Fabrika |
-| **Pilot süre** | 10 gün hazırlık (18 Nis gece → 28 Nis sabah) |
 | **23 Nisan Perşembe** | 🎉 Ulusal Egemenlik ve Çocuk Bayramı — minimal çalışma |
 
-**Pilot kullanıcı profilleri (kısmi):**
-- **Işıklar:** müdür + barista + supervisor (3 kişi tam ekip) ✅
-- Lara, HQ, Fabrika: Aslan Pazartesi önce bildirecek
+**Pilot kullanıcı profilleri (yük testinden doğrulandı):**
+- **Işıklar:** abdullah, ahmethamit, cihan, kemal, atesguney, süleyman (6 barista DB'de ✅)
+- **Lara:** larabarista1, larabarista2 (DB'de ✅), mudur+supervisor parolaları bekleniyor
+- **Fabrika + HQ:** Pazartesi Aslan detay paylaşacak
 
-**Rollback politikası:** **Esnek** — kural yok. Aslan + Claude + Replit günlük WhatsApp'ta durum paylaşır, kırmızı çizgi somut sorun geldiğinde birlikte karar verilir.
+**Rollback politikası:** **Esnek** — Aslan + Claude + Replit WhatsApp günlük, kriz anında IT rollback yetkili.
+
+---
+
+## 🆕 Task #113 TAMAMLANDI (19 Nis 2026 — Replit)
+
+Hafta sonu 10 maddelik "Pilot Hardening" paralel bitirildi. Origin HEAD: `57066a7`.
+
+**Üretilen dosyalar:**
+- ✅ `docs/pilot/success-criteria.md` — 4 sayısal eşik (Aslan onaylı)
+- ✅ `docs/pilot/yuk-testi-raporu.md` + script — adminhq 710ms full flow, 5 user paralel OK
+- ✅ `docs/pilot/mobil-test-raporu.md` + `screenshots/`
+- ✅ `docs/pilot/cheat-sheets/01-05` — admin, mudur, supervisor, kurye, fabrika
+- ✅ `docs/pilot/destek-hatti-prosedur.md` + `internet-kesintisi-prosedur.md`
+- ✅ `docs/pilot/db-izolasyon-raporu.md` + `scripts/pilot/00-db-isolation.sql`
+- ✅ `docs/AGENT-OWNERSHIP.md` — Claude vs Replit path sahipliği
+- ✅ `docs/pilot/sprint-1-f02-fix-plan.md` — pilot sonrası F02 useModuleFlag fix
+
+**🟢 Yük Testi Sonucu:**
+- adminhq akış: 710ms total / avg 178ms / max 463ms (hedef < 500ms ✅)
+- DB connection pool: 5 eşzamanlı user OK, çakışma yok
+- **Pazar 27 Nis 22:30:** Gerçek pilot parolaları ile re-test zorunlu (4 user henüz parolasız)
+
+**⚠️ Küçük bulgular (pilot bloker değil):**
+- `/api/login` (flat) kullanılıyor, `/api/auth/login` (REST) değil — UI doğru çağırıyor, pilot sonrası refactor
+- 4 test user DB'de yok — parolalar Pazartesi sabah SMS ile dağıtılacak
 
 ---
 
