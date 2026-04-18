@@ -12,11 +12,18 @@
 
 | Metrik | Değer |
 |---|---|
-| **Pilot Hazırlık Skoru** | **5.4/10 (%75)** — Replit v3 audit (18 Nis) |
-| **Aktif Sprint** | A ✅ tamam → **B başlıyor** (Pazartesi 21 Nis) |
-| **Feature Freeze** | 18 Nis → 15 Haz (yeni özellik YOK) |
-| **Pilot Başlangıç** | ~15 Haziran 2026 |
+| **Pilot Hazırlık Skoru** | **6.0-6.5/10 (%80)** — bu gece 3 P0 bloker çözüldü |
+| **Aktif Sprint** | A ✅ tamam → **B başlıyor** (Pazartesi 20 Nis) |
+| **🚨 PILOT BAŞLANGIÇ** | **28 Nisan 2026 Salı sabah 09:00** (FAZAL) |
+| **Pilot tipi** | **CANLI OPERASYONEL** (beta değil — operasyonel aciliyet) |
 | **Pilot Lokasyon** | HQ + Fabrika + Işıklar + Lara |
+| **Rollout sırası** | Işıklar + HQ → 24 saat izle → Lara + Fabrika |
+| **Pilot süre** | 10 gün hazırlık (18 Nis gece → 28 Nis sabah) |
+| **23 Nisan Perşembe** | 🎉 Ulusal Egemenlik ve Çocuk Bayramı — minimal çalışma |
+
+**Pilot kullanıcı profilleri (kısmi):**
+- **Işıklar:** müdür + barista + supervisor (3 kişi tam ekip) ✅
+- Lara, HQ, Fabrika: Aslan Pazartesi önce bildirecek
 
 ---
 
