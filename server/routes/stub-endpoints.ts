@@ -10,51 +10,9 @@ import { eq, and, desc, sql, ilike, or, count, avg } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/api/knowledge-base/articles", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const { category, search, published } = req.query;
-    let query = db.select().from(knowledgeBaseArticles);
-    
-    const conditions: any[] = [];
-    if (category) conditions.push(eq(knowledgeBaseArticles.category, category as string));
-    if (published === 'true') conditions.push(eq(knowledgeBaseArticles.isPublished, true));
-    if (search) {
-      conditions.push(
-        or(
-          ilike(knowledgeBaseArticles.title, `%${search}%`),
-          ilike(knowledgeBaseArticles.content, `%${search}%`)
-        )
-      );
-    }
-    
-    const articles = await db.select().from(knowledgeBaseArticles)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(knowledgeBaseArticles.createdAt))
-      .limit(100);
-    
-    res.json(articles);
-  } catch (error: unknown) {
-    console.error("[knowledge-base/articles] Error:", error instanceof Error ? error.message : error);
-    res.json([]);
-  }
-});
+// [SILINDI 19 Nis 2026] /api/knowledge-base/articles — kullanılmıyor (stub)
 
-router.get("/api/knowledge-base/categories", isAuthenticated, async (_req: any, res: Response) => {
-  try {
-    const categories = await db
-      .select({ 
-        category: knowledgeBaseArticles.category, 
-        count: count() 
-      })
-      .from(knowledgeBaseArticles)
-      .groupBy(knowledgeBaseArticles.category)
-      .orderBy(desc(count()));
-    res.json(categories);
-  } catch (error: unknown) {
-    console.error("[knowledge-base/categories] Error:", error instanceof Error ? error.message : error);
-    res.json([]);
-  }
-});
+// [SILINDI 19 Nis 2026] /api/knowledge-base/categories — kullanılmıyor (stub)
 
 router.get("/api/academy/streak-tracker", isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -202,62 +160,19 @@ router.get("/api/academy/career-progress", isAuthenticated, async (req: any, res
   }
 });
 
-router.get("/api/franchise/performance", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const user = req.user;
-    if (!isHQRole(user.role) && user.role !== 'yatirimci_branch') {
-      return res.json({ branches: [], overallScore: 0 });
-    }
+// [SILINDI 19 Nis 2026] /api/franchise/performance — kullanılmıyor (stub)
 
-    const branchList = await db.select({
-      id: branches.id,
-      name: branches.name,
-      city: branches.city,
-    }).from(branches)
-      .where(eq(branches.isActive, true));
-
-    const perfScores = await db.select({
-      branchId: employeePerformanceScores.branchId,
-      avgScore: avg(employeePerformanceScores.dailyTotalScore),
-      employeeCount: count(),
-    }).from(employeePerformanceScores)
-      .groupBy(employeePerformanceScores.branchId);
-
-    const scoreMap = new Map(perfScores.map(p => [p.branchId, p]));
-
-    const branchPerformance = branchList.map(b => {
-      const perf = scoreMap.get(b.id);
-      return {
-        branchId: b.id,
-        branchName: b.name,
-        city: b.city,
-        averageScore: perf ? Math.round(Number(perf.avgScore)) : 0,
-        employeeCount: perf ? Number(perf.employeeCount) : 0,
-      };
-    }).sort((a, b) => b.averageScore - a.averageScore);
-
-    const overallScore = branchPerformance.length > 0
-      ? Math.round(branchPerformance.reduce((sum, b) => sum + b.averageScore, 0) / branchPerformance.length)
-      : 0;
-
-    res.json({ branches: branchPerformance, overallScore });
-  } catch (error: unknown) {
-    console.error("[franchise/performance] Error:", error instanceof Error ? error.message : error);
-    res.json({ branches: [], overallScore: 0 });
-  }
-});
-
-router.get("/api/coaching/sessions", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/salary/records", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/crm/customers", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/shift-rules", isAuthenticated, (_req, res) => res.json([]));
+// [SILINDI 19 Nis 2026] /api/coaching/sessions — kullanılmıyor (stub)
+// [SILINDI 19 Nis 2026] /api/salary/records — kullanılmıyor (stub)
+// [SILINDI 19 Nis 2026] /api/crm/customers — kullanılmıyor (stub)
+// [SILINDI 19 Nis 2026] /api/shift-rules — kullanılmıyor (stub)
 
 router.get("/api/academy/adaptive-recommendations", isAuthenticated, (_req, res) => res.json({ recommendations: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
 router.get("/api/academy/advanced-analytics", isAuthenticated, (_req, res) => res.json({ moduleStats: [], branchStats: [], trends: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
-router.get("/api/academy/ai-assistant", isAuthenticated, (_req, res) => res.json({ suggestions: [], _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+// [SILINDI 19 Nis 2026] /api/academy/ai-assistant — kullanılmıyor (stub)
 router.get("/api/academy/exam-requests-approved", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/exam-requests-pending", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/academy/exam-requests-team", isAuthenticated, (_req, res) => res.json([]));
+// [SILINDI 19 Nis 2026] /api/academy/exam-requests-team — kullanılmıyor (stub)
 router.get("/api/academy/quiz-results", isAuthenticated, (_req, res) => res.json([]));
 router.get("/api/academy/study-groups", isAuthenticated, (_req, res) => res.json([]));
 router.post("/api/academy/ai-generate-onboarding", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
@@ -299,44 +214,14 @@ router.post("/api/admin/service-email-settings/test", isAuthenticated, (_req, re
 router.post("/api/admin/users/bulk-import", isAuthenticated, (_req, res) => res.status(202).json({ imported: 0, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 router.post("/api/admin/ai/re-embed", isAuthenticated, (_req, res) => res.status(202).json({ success: false, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 
-router.get("/api/admin/pending-approvals", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const user = req.user;
-    if (!isHQRole(user.role)) return res.json([]);
+// [SILINDI 19 Nis 2026] /api/admin/pending-approvals — kullanılmıyor (stub)
 
-    const pendingLeaves = await db.select({ id: leaveRequests.id, type: sql<string>`'leave'` })
-      .from(leaveRequests)
-      .where(eq(leaveRequests.status, "pending"))
-      .limit(50);
-
-    const items = pendingLeaves.map(l => ({
-      id: l.id,
-      type: "leave_request",
-      title: "İzin talebi",
-      status: "pending",
-    }));
-
-    res.json(items);
-  } catch (error: unknown) {
-    console.error("[pending-approvals] Error:", error instanceof Error ? error.message : error);
-    res.json([]);
-  }
-});
-
-router.get("/api/backups", isAuthenticated, async (_req, res) => {
-  try {
-    const { backupRecords } = await import("@shared/schema");
-    const records = await db.select().from(backupRecords).orderBy(desc(backupRecords.createdAt)).limit(20);
-    res.json(records);
-  } catch {
-    res.json([]);
-  }
-});
+// [SILINDI 19 Nis 2026] /api/backups — kullanılmıyor (stub)
 router.post("/api/action-cards/generate", isAuthenticated, (_req, res) => res.status(202).json({ generated: 0, _stub: true, _message: "Bu özellik henüz aktif değil" }));
 
-router.get("/api/factory/raw-materials", isAuthenticated, (_req, res) => res.json([]));
+// [SILINDI 19 Nis 2026] /api/factory/raw-materials — kullanılmıyor (stub)
 router.get("/api/factory/recipes", isAuthenticated, (_req, res) => res.json([]));
-router.get("/api/factory/kavurma", isAuthenticated, (_req, res) => res.json({ batches: [], stats: { totalToday: 0, completed: 0 }, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
-router.get("/api/factory/sayim", isAuthenticated, (_req, res) => res.json({ counts: [], lastCount: null, _stub: true, _message: "Bu özellik yakında aktif olacak" }));
+// [SILINDI 19 Nis 2026] /api/factory/kavurma — kullanılmıyor (stub)
+// [SILINDI 19 Nis 2026] /api/factory/sayim — kullanılmıyor (stub)
 
 export default router;
