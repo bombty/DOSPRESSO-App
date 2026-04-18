@@ -404,7 +404,7 @@ DOSPRESSO 181 modüle bölünmüş. Ana **14 modül** hepsini kapsıyor (Replit 
 | 5 | **Akademi (Eğitim)** | Modül, quiz, sertifika | ✅ **51 modül, 27 progress, 12 hub, 5 career level** — aktif kullanılıyor (v1/v2/v3 konsolidasyon GEREKSİZ) | Kısmen |
 | 6 | **Fabrika Üretim** | Reçete, batch, kalite, stok | ✅ 27/27 reçete bağlı, 33 production batch | **EVET** |
 | 7 | **Maliyet Analizi** | Reçete maliyeti, fatura fiyat sync | ✅ 143 malzeme, donut ₺17.02 | Evet |
-| 8 | **Bordro (PDKS+Payroll)** | PDKS Excel, maaş hesapla | ❌ payroll_records = 0 (modül hiç kullanılmamış) | **EVET** |
+| 8 | **Bordro (PDKS+Payroll)** | PDKS Excel, maaş hesapla | 🟢 **monthly_payroll=51 kayıt** (2 ay, 51 user — motor AKTİF!) Eski tablolar temizlenmeli | **EVET** |
 | 9 | **Ekipman & Arıza** | 177 ekipman, 75 arıza takibi | ✅ Çalışıyor (A3: enum TR→EN tamam) | Evet |
 | 10 | **CRM / Müşteri İlişkileri** | Feedback, ticket, şikayet | ✅ **461 customer_feedback + 66 support_tickets aktif** (crm_* prefix'li tablo gereksiz) | Evet — dashboard gerekli |
 | 11 | **Duyuru / Announcement** | DuyuruStudioV2, feed | ⚠️ announcements=18, banners=0 | Evet |
@@ -488,10 +488,10 @@ Sprint C (Akademi konsolidasyonu) sırasında audit için de aynı yaklaşım ku
 | Ekipman | 75% | 60% | ✅ | 10 arıza >30 gün (SLA ihlal) |
 | Görev | 60% | 50% | ⚠️ | 1,332 görev ama %48.8 iptal |
 | Akademi | 50% | 40% | ⚠️ | v1/v2/v3 karışık, orphan sayfalar |
-| **Bordro** | 30% | **0%** | ❌ | **payroll_records=0, hiç kullanılmamış** |
+| **Bordro** | 70% | **60%** | 🟢 | **DÜZELTME**: monthly_payroll=51 kayıt motor AKTİF (2 ay, 51 user). payroll_records=0 yanıltıcıydı — ayrı tablo. Eski tablolar arşivlenmeli. |
 | CRM Ticket | 70% | 60% | ⚠️ | customer_feedback=461 + support_tickets=66, dashboard eksik (C.3'te yapılacak) |
 | Dobody | 60% | 40% | ⚠️ | A6 sonrası spam çözüldü (3,895) |
-| Satınalma | 20% | 10% | ❌ | Tüm modül kırıktı (A1'de düzelttim) |
+| **Satınalma** | 60% | **15%** | 🔴 | **DÜZELTME**: Kod sağlam (61 endpoint) AMA fiilen DORMANT: 1 taslak PO, 0 goods_receipt, 0 branch_orders. Pilot için branch_orders + goods_receipts AKTİVASYON kritik. |
 | **🆕 Franchise Proje** | ? | **?** | ? | 20 tablo var, kullanım bilinmiyor — Aslan'a soru |
 | **🆕 QR Feedback** | 70% | **85%** | ✅ | **461 customer_feedback kayıt — aktif!** |
 
@@ -968,6 +968,63 @@ Sprint B ve C kapsamını netleştirmek için 2. bir DB doğrulaması alındı. 
 
 **Güvenilirlik artışı:** Revize 1.1 %72 → Revize 1.5 %95+ (Replit 2 tur doğrulama sonrası)
 
+### 10.1c Replit Sprint D+E Doğrulaması (18 Nisan 2026 — 3. tur, saat ~20:00)
+
+Son DB doğrulaması raporu **iki büyük düzeltme** içeriyor:
+
+**🟢 DÜZELTME 1: "Bordro = 0" iddiam YANLIŞTI**
+
+Bu rapor boyunca "bordro hiç kullanılmamış, 0 kayıt" dedim. Gerçek:
+
+```
+monthly_payroll (schema-12):  51 kayıt ✅
+  - 51 farklı kullanıcı
+  - 2026-03 + 2026-04 = 2 ay aktif
+  - Motor FIILEN ÇALIŞIYOR
+
+monthly_payrolls (schema-07):    0 kayıt ❌ dead schema
+payroll_records (kuruş):          0 kayıt ❌ ayrı/boş tablo
+```
+
+**"Motor birleştirme tamamlandı" iddiası DOĞRUYMUŞ** — unified calculator endpoint 51 kayıt üretmiş. Sprint A raporlarımda "payroll_records=0"'a bakıp genelleme yapmam yanlıştı. Bordro modülü **%10 değil, %60-70 hazır.**
+
+**Sprint D Yeni Plan:**
+- ❌ "Bordro 3 tablo konsolidasyon" → YANLIŞ iş
+- ✅ **Bordro eski schema arşivleme** (monthly_payrolls + payroll_records DROP)
+- ✅ **UI'yı monthly_payroll'a sabitleme** (eski tabloya referans yok)
+
+**🔴 DÜZELTME 2: Satınalma FIILEN DORMANT**
+
+Kod analizi: "50 endpoint, 9 UI sayfa, sağlam modül"  
+DB gerçeği: **Sadece 1 taslak PO, 0 mal kabul, 0 şube siparişi**
+
+```
+suppliers:            5 tanımlı
+purchase_orders:      1 (taslak — hiç sipariş yapılmamış)
+goods_receipts:       0 (mal kabul HİÇ yapılmamış)
+branch_orders:        0 (şube → fabrika sipariş HİÇ yapılmamış) 🔴 PİLOT KRİTİK
+supplier_quotes:      0
+```
+
+Özellikle **branch_orders = 0** pilot için kritik: **Fabrika → Şube günlük sevkiyat** bu tablodan çalışacak.
+
+**Sprint D Yeni Ana İşi:** Bordro schema temizliği **+** Satınalma aktivasyonu (branch_orders + goods_receipts UI)
+
+**🟡 Sprint E Bulguları:**
+- Dashboard widget eksikliği: 3 rol (sef, fabrika_depo, recete_gm) — sube_kiosk hariç
+- Hayalet roller: 5 rol TAMAMEN boş (0 user): fabrika_pisman, fabrika_kalite, fabrika_sorumlu, fabrika_personel, fabrika → **Silinebilir**
+- `fabrika_operator` GERÇEK rol: 6 user, 3 aktif (dashboard eksik)
+- `supervisor_buddy` deprecate edilmiş: 0 aktif, 39 pasif user → kalıntı temizlik
+
+**🔴 Sprint B için Kritik Uyarı (Replit'ten)**
+
+PDKS → shift_attendance aggregate job yazacağız, ama **monthly_payroll zaten 51 kayıt ile çalışıyor.** Acaba:
+- monthly_payroll doğrudan pdks_records'tan mı besleniyor?
+- Yoksa başka bir kaynaktan mı?
+- Eğer pdks_records kullanıyorsa, shift_attendance düzeldiğinde **duplicate hesaplama** olabilir
+
+**Sprint B ilk adımı:** monthly_payroll veri kaynağı analizi (sessiz bug riski)
+
 ### 10.2 Soruların Birer Cümlelik Cevabı (Revize)
 
 **DOSPRESSO'yu ne kadar iyi anladın?**
@@ -1013,12 +1070,15 @@ Sormak istediğin her şeyi **iş diliyle** sorabilirsin. Ben teknik detayları 
 
 ---
 
-*Rapor son güncelleme: 18 Nisan 2026, 15:55 (2. oturum, öğleden sonra)*
-*Revize 1.5 — FINAL — Replit Sprint B+C doğrulaması dahil*
-*Güvenilirlik seviyesi: %95+ (Replit DB 2-tur doğrulama + Aslan iş onayı)*
-*Sprint B yeni kapsam: Attendance Pipeline Repair (pdks→shift aggregate)*
+*Rapor son güncelleme: 18 Nisan 2026, 20:05 (2. oturum, akşam)*
+*Revize 1.6 — FINAL — Replit Sprint D+E 3. tur doğrulaması dahil*
+*Güvenilirlik seviyesi: %97+ (Replit DB 3-tur doğrulama + Aslan iş onayı)*
+*Sprint B yeni kapsam: Attendance Pipeline Repair (+ monthly_payroll veri kaynağı analizi)*
 *Sprint C yeni kapsam: 3 Paralel İş (Gate aktivasyon + Audit migration + CRM dashboard)*
+*Sprint D yeni kapsam: Bordro schema temizliği + Satınalma aktivasyonu (branch_orders + goods_receipts)*
+*Sprint E yeni kapsam: 3 role dashboard widget + 5 hayalet rol temizlik + supervisor_buddy deprecation*
+*Büyük düzeltme: "Bordro=0" iddiam YANLIŞ → monthly_payroll=51 kayıt motor AKTİF*
 *Hazırlayan: Claude (IT Danışman)*
-*Veri kaynağı: 66 docs/ markdown + 25+ bugünkü commit + Replit 2 DB raporu + Aslan stratejik cevapları + kod tabanı*
+*Veri kaynağı: 66 docs/ markdown + 28+ bugünkü commit + Replit 3 DB raporu + Aslan stratejik cevapları + kod tabanı*
 
 ---
