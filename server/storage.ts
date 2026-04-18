@@ -7233,10 +7233,12 @@ export class DatabaseStorage implements IStorage {
     const practicalScore = (checklistRate * 0.4 + taskRate * 0.3 + Math.max(0, Math.min(100, 50 + feedbackImpact * 5)) * 0.3);
     
     // 3. Devam Skoru (%25) - Vardiya check-in zamanında mı
+    // Bug fix (18 Nisan 2026): shifts tablosunda userId kolonu yok, assignedToId var.
+    // Bu Drizzle sorgu hatasının PostgreSQL'de "syntax error at or near =" olarak loglanmasına sebep oluyordu.
     const userShifts = await db.select()
       .from(shifts)
       .where(and(
-        eq(shifts.userId, userId),
+        eq(shifts.assignedToId, userId),
         gte(shifts.shiftDate, startOfMonth.toISOString().split('T')[0])
       ));
     const onTimeShifts = userShifts.filter((s: any) => {
