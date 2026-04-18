@@ -42,7 +42,7 @@ type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
 // Fabrika ürün fiyat değişiklik geçmişine kayıt ekler.
 // Eski/yeni basePrice veya suggestedPrice değişmişse history tablosuna yazar.
-async function logFactoryProductPriceChange(params: {
+export async function logFactoryProductPriceChange(params: {
   productId: number;
   oldBasePrice: string | number | null | undefined;
   newBasePrice: string | number | null | undefined;

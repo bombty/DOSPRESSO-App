@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated, isKioskAuthenticated, createKioskSession } from "../localAuth";
+import { logFactoryProductPriceChange } from "../maliyet-routes";
 import { requireManifestAccess } from "../services/manifest-auth";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { checkDataLock } from "../services/data-lock";
@@ -184,7 +185,28 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       }
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "Geçersiz ID" });
+
+      // Task #104: manuel basePrice/suggestedPrice değişikliklerini geçmişe yaz
+      const previous = await storage.getFactoryProduct(id);
       const product = await storage.updateFactoryProduct(id, req.body);
+
+      if (previous && product) {
+        const baseTouched = Object.prototype.hasOwnProperty.call(req.body, 'basePrice');
+        const sugTouched = Object.prototype.hasOwnProperty.call(req.body, 'suggestedPrice');
+        if (baseTouched || sugTouched) {
+          await logFactoryProductPriceChange({
+            productId: id,
+            oldBasePrice: previous.basePrice,
+            newBasePrice: baseTouched ? product.basePrice : previous.basePrice,
+            oldSuggestedPrice: previous.suggestedPrice,
+            newSuggestedPrice: sugTouched ? product.suggestedPrice : previous.suggestedPrice,
+            source: "manual",
+            changedById: req.user?.id ?? null,
+            notes: typeof req.body?.priceChangeNote === 'string' ? req.body.priceChangeNote : null,
+          });
+        }
+      }
+
       res.json(product);
     } catch (error: unknown) {
       console.error("Update factory product error:", error);
