@@ -65,6 +65,30 @@
 
 ---
 
+## 🆕 Task #112 Sonrası — 5 KRİTİK Bulgu Pazartesi Gün 1'e Eklendi
+
+Referans: `docs/role-flows/99-FINDINGS.md` (Replit push sonrası)
+
+### Replit ek iş (Pazartesi ~1.5 saat):
+
+- [ ] **F01** — 13 disabled modül listesi çıkar + pilot için gerekli olanları aç
+  (delegasyon, dobody.flow, iletisim_merkezi, fabrika.hammadde/kalite/kavurma/sayim/sevkiyat/siparis/stok, stok, dobody.chat, checklist branch — Pazartesi liste gelince Aslan+Claude hangileri açılacak karar verir)
+
+- [ ] **F02** — `fabrika.stok` (disabled) vs `fabrika.production` (enabled) naming çakışması — hangisi kalacak karar + toggle (30 dk)
+
+- [ ] **F03** — adminhq parola rotate (zaten planda ✅, F03 ile örtüşüyor)
+
+- [ ] **F04** — 3 SPOF role backup user (30 dk):
+  - `recete_gm` ↔ `kalite_kontrol` (backup her iki yönde)
+  - `kalite_kontrol` ↔ `gida_muhendisi` (backup her iki yönde)
+  - Konfig: manuel user role ekleme (is_backup=true flag)
+
+- [ ] **F05** — Yatirimci_HQ dashboard: pilot'ta bu rol kullanılıyor mu? (Aslan sorulacak; yoksa Sprint I)
+
+### 🕑 Kalan 37 bulgu (12 YÜKSEK + 15 ORTA + 10 DÜŞÜK) Sprint I (28 Nis+) backlog
+
+---
+
 ## 🔴 AÇIK P0 BLOKERLER (4)
 
 | # | Sorun | Kanıt | Süre | Zaman |
