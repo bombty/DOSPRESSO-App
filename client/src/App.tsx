@@ -178,6 +178,21 @@ const SubeBordroOzet = lazyWithRetry(() => import("@/pages/sube-bordro-ozet"));
 const SubeUyumMerkezi = lazyWithRetry(() => import("@/pages/sube-uyum-merkezi"));
 const CoachUyumPaneli = lazyWithRetry(() => import("@/pages/coach-uyum-paneli"));
 const RolYetkileri = lazyWithRetry(() => import("@/pages/admin/rol-yetkileri"));
+// Sprint A1 (21 Nisan 2026) — 14 kırık admin sidebar linkine karşılık gelen sayfa import'ları
+const AdminAktiviteLoglari = lazyWithRetry(() => import("@/pages/admin/aktivite-loglari"));
+const AdminBannerlar = lazyWithRetry(() => import("@/pages/admin/bannerlar"));
+const AdminDuyurular = lazyWithRetry(() => import("@/pages/admin/duyurular"));
+const AdminEmailAyarlari = lazyWithRetry(() => import("@/pages/admin/email-ayarlari"));
+const AdminFabrikaFireSebepleri = lazyWithRetry(() => import("@/pages/admin/fabrika-fire-sebepleri"));
+const AdminFabrikaIstasyonlar = lazyWithRetry(() => import("@/pages/admin/fabrika-istasyonlar"));
+const AdminFabrikaKaliteKriterleri = lazyWithRetry(() => import("@/pages/admin/fabrika-kalite-kriterleri"));
+const AdminFabrikaPinYonetimi = lazyWithRetry(() => import("@/pages/admin/fabrika-pin-yonetimi"));
+const AdminServisMailAyarlari = lazyWithRetry(() => import("@/pages/admin/servis-mail-ayarlari"));
+const AdminTopluVeriYonetimi = lazyWithRetry(() => import("@/pages/admin/toplu-veri-yonetimi"));
+const AdminYapayZekaAyarlari = lazyWithRetry(() => import("@/pages/admin/yapay-zeka-ayarlari"));
+const AdminYedekleme = lazyWithRetry(() => import("@/pages/admin/yedekleme"));
+const AdminYetkilendirme = lazyWithRetry(() => import("@/pages/admin/yetkilendirme"));
+const YonetimMenu = lazyWithRetry(() => import("@/pages/yonetim/menu"));
 const TaskAtama = lazyWithRetry(() => import("@/pages/task-atama"));
 const TaskTakip = lazyWithRetry(() => import("@/pages/task-takip"));
 const CgoTeknikKomuta = lazyWithRetry(() => import("@/pages/cgo-teknik-komuta"));
@@ -204,6 +219,9 @@ const AkademiMegaModule = lazyWithRetry(() => import("@/pages/akademi-mega"));
 const AkademiV3 = lazyWithRetry(() => import("@/pages/akademi-v3/index"));
 const CRMMegaModule = lazyWithRetry(() => import("@/pages/crm-mega"));
 const IletisimMerkeziRedirect = () => { const [, nav] = useLocation(); useEffect(() => { nav("/crm"); }, []); return null; };
+// Sprint A1 (21 Nisan 2026) — 2 kırık link redirect (Karar 4 + Karar 5)
+const MusteriGeribildirimiRedirect = () => { const [, nav] = useLocation(); useEffect(() => { nav("/crm"); }, []); return null; };
+const TrainingRedirect = () => { const [, nav] = useLocation(); useEffect(() => { nav("/akademi"); }, []); return null; };
 const AjandaPage = lazyWithRetry(() => import("@/pages/ajanda"));
 const CEOCommandCenter = lazyWithRetry(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"));
@@ -515,6 +533,21 @@ function Router() {
           <Route path="/sube-uyum-merkezi">{() => <ExecutiveOnly><SubeUyumMerkezi /></ExecutiveOnly>}</Route>
           <Route path="/coach-uyum-paneli">{() => <ExecutiveOnly><CoachUyumPaneli /></ExecutiveOnly>}</Route>
           <Route path="/admin/rol-yetkileri">{() => <AdminOnly><RolYetkileri /></AdminOnly>}</Route>
+          {/* Sprint A1 (21 Nisan 2026) — 14 kırık admin/yonetim linki düzeltmesi (wildcard /admin/*?'dan ÖNCE olmalı) */}
+          <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglari /></AdminOnly>}</Route>
+          <Route path="/admin/bannerlar">{() => <AdminOnly><AdminBannerlar /></AdminOnly>}</Route>
+          <Route path="/admin/duyurular">{() => <AdminOnly><AdminDuyurular /></AdminOnly>}</Route>
+          <Route path="/admin/email-ayarlari">{() => <AdminOnly><AdminEmailAyarlari /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-fire-sebepleri">{() => <AdminOnly><AdminFabrikaFireSebepleri /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-istasyonlar">{() => <AdminOnly><AdminFabrikaIstasyonlar /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-kalite-kriterleri">{() => <AdminOnly><AdminFabrikaKaliteKriterleri /></AdminOnly>}</Route>
+          <Route path="/admin/fabrika-pin-yonetimi">{() => <AdminOnly><AdminFabrikaPinYonetimi /></AdminOnly>}</Route>
+          <Route path="/admin/servis-mail-ayarlari">{() => <AdminOnly><AdminServisMailAyarlari /></AdminOnly>}</Route>
+          <Route path="/admin/toplu-veri-yonetimi">{() => <AdminOnly><AdminTopluVeriYonetimi /></AdminOnly>}</Route>
+          <Route path="/admin/yapay-zeka-ayarlari">{() => <AdminOnly><AdminYapayZekaAyarlari /></AdminOnly>}</Route>
+          <Route path="/admin/yedekleme">{() => <AdminOnly><AdminYedekleme /></AdminOnly>}</Route>
+          <Route path="/admin/yetkilendirme">{() => <AdminOnly><AdminYetkilendirme /></AdminOnly>}</Route>
+          <Route path="/yonetim/menu">{() => <AdminOnly><YonetimMenu /></AdminOnly>}</Route>
           <Route path="/task-atama">{() => <ExecutiveOnly><TaskAtama /></ExecutiveOnly>}</Route>
           <Route path="/task-takip">{() => <ExecutiveOnly><TaskTakip /></ExecutiveOnly>}</Route>
           <Route path="/cgo-teknik-komuta">{() => <ProtectedRoute allowedRoles={["cgo","admin","ceo"]}><CgoTeknikKomuta /></ProtectedRoute>}</Route>
@@ -624,6 +657,9 @@ function Router() {
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
           <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />
+          {/* Sprint A1 (21 Nisan 2026) — 2 kırık link redirect (Karar 4 + Karar 5) */}
+          <Route path="/musteri-geribildirimi" component={MusteriGeribildirimiRedirect} />
+          <Route path="/training" component={TrainingRedirect} />
         </>
       )}
       
