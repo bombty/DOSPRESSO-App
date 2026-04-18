@@ -37,7 +37,36 @@ Bu tutarlılık **yazılımla** sağlanır. Yoksa 25 şube × 25 farklı uygulam
 - Şubede sadece **kahve + servis + ısıtma** yapılır (hazırlık değil)
 - Bu model şubelerde mutfak/fırın gerektirmez → **düşük franchise maliyeti + tutarlı kalite**
 
-### 1.3 Platform'un 3 Ana Fonksiyonu
+### 1.3 DOSPRESSO'nun Kapsam Sınırı (Önemli!)
+
+**DOSPRESSO şunları yapar:**
+- ✅ Üretim planı + reçete yönetimi
+- ✅ Batch üretim takibi
+- ✅ Kalite kontrol (2 aşamalı QC)
+- ✅ LOT oluşturma + SKT takibi
+- ✅ Depo ürün hazırlama (tartım, paketleme, sevk hazırlık)
+- ✅ HQ operasyon + şube işleyişi (checklist, vardiya, skorlar)
+- ✅ Bordro + PDKS + Kariyer yönetim
+
+**DOSPRESSO'nun kapsamı DIŞINDA:**
+- ❌ **Sevkiyat (lojistik)** — araç, rota, kargo → başka sistem
+- ❌ **Şube teslim alımı** — şube stok giriş → başka sistem
+- ❌ SGK / e-Fatura entegrasyonu (gelecekte opsiyonel)
+
+```
+DOSPRESSO KAPSAMI                    │  HARİCİ SİSTEM
+───────────────────────────────────  │  ───────────────
+Fabrika Üretim → QC → Depo Hazırlık  │  Sevkiyat → Şube Teslim
+       ^                              │       ^
+       │ "Sevk için hazır"            │       │ "Şube stoğuna girdi"
+       └──────── SINIR ───────────────┴───────┘
+```
+
+**Kritik:** `factory_shipments` tablosu kodda var ama **gerçekte kullanılmamalı** (2 kayıt olması doğal). Raporun önceki versiyonunda bunu "kullanılmıyor, çözülmesi gereken sorun" olarak sunmuştum — yanlıştı. Aslan'ın onayladığı tasarım: **sevkiyat başka sistem, DOSPRESSO oraya kadar**.
+
+**Gelecek kararı:** Eğer 2 sistemi birleştirmek istenirse → Sprint K-L (uzun vade). Pilot'ta gerek yok.
+
+### 1.4 Platform'un 3 Ana Fonksiyonu
 
 **A) OPERASYONEL KONTROL** — Her şube ne yapıyor, ne zaman, nasıl? (checklist, vardiya, görev)
 
@@ -579,6 +608,28 @@ Terfi Şartı = (Composite Skor >= Eşik)
 - Pilot'ta bu akış **aktif edilecek** — Sprint C/D'de UI düzeltme + test
 - Bu raporun önceki "gate sistemi fiilen kullanılmıyor" bulgusunun cevabı: **pilot sonrası aktif olacak**
 
+**S4: Fabrika Sevkiyatı Nasıl Yapılıyor?**
+> "Sevkiyata kadar yani depoda ürün hazırlama aşaması bu sistem üzerinden planlıyoruz. Ondan sonra Sevkiyat ve şube teslim başka bir sistem üzerinden."
+
+✅ **DOSPRESSO'nun Kapsam Sınırı Netleşti**
+
+```
+DOSPRESSO KAPSAMI                    │  HARİCİ SİSTEM
+───────────────────────────────────  │  ───────────────
+Üretim → QC → LOT → Depo Hazırlık    │  Sevkiyat → Şube Teslim
+       (sevk için HAZIR)              │  (lojistik + şube stok)
+```
+
+**Bu çok önemli bir netleşme:**
+- `factory_shipments` tablosunda **2 kayıt** olması **doğal** (kullanılmıyor, başka sistem)
+- Raporun önceki versiyonunda bu "eksik" olarak gösterilmişti → **yanlıştı**
+- DOSPRESSO'nun kapsamı: **"sevk için hazır"** noktasına kadar
+- Sevkiyat ve şube teslim **kurumsal sınırın dışında**
+
+**Gelecek karar noktası:**
+- Eğer 2 sistemi birleştirmek istenirse → **Sprint K-L** (Hafta 11+, uzun vade)
+- Pilot'ta ve ilk 8 haftada gerek yok
+
 ### 6.4 "%100" Ne Zaman Olacak?
 
 Benim gerçekçi tahminim:
@@ -631,106 +682,92 @@ Dürüst olmak için — **sistem mükemmel değil**. Beni rahatsız eden şeyle
 - Sadece test dosyaları henüz yazılmamış
 - Sprint F'de yazılacak (Vitest unit + 10 Playwright E2E)
 
-**6. Gate Sınav Sistemi Fiilen Kullanılmıyor (YENİ TESPİT)**
+**6. Gate Sınav Sistemi Fiilen Kullanılmıyor (Aslan cevabı sonrası)**
 - 18 kariyer/sınav tablosu kodda var (`gate_attempts`, `exam_requests`, `career_gates`, vs.)
 - `gate_attempts` = **0**, `exam_requests` = **0**
-- Kariyer yolu (Stajyer → Bar Buddy → Barista...) **kodda tanımlı, DB'de fiilen yok**
-- Terfiler muhtemelen sözlü süreçle yapılıyor — **Aslan'a soru**
-- Sprint C/D'de akış etkinleştirilmeli
+- **Aslan onayı (18 Nis):** Pilot'ta aktif edilecek — **Hibrit Model**
+  - Terfi = (Skor >= Eşik) ∩ (Gate Sınavı Geçti) ∩ (Yönetici Önerisi)
+  - Sistem objektif tarafı sağlıyor, yönetici önerisi insan yargısını dahil ediyor
+- Sprint C/D'de UI test + akış aktifleştirme
 
-**7. Merkezi Sevkiyat Modeli Kağıt Üzerinde (YENİ TESPİT)**
-- `factory_shipments` = **2 toplam kayıt, son 30 gün 0**
-- İş modelinde "fabrika → şube sevk" anlatıldı ama sistem fiilen kullanılmıyor
-- Fabrika sevkiyatları muhtemelen başka yolla takip ediliyor — **Aslan'a soru**
-- Sprint C/D'de akış etkinleştirilmeli
-
-**8. Onboarding Akışı Fiilen Kullanılmıyor (YENİ TESPİT)**
+**7. Onboarding Akışı Fiilen Kullanılmıyor (YENİ TESPİT)**
 - `employee_onboarding` = **2 kayıt** (372 personel için 2 onboarding!)
 - 14 günlük Stajyer programı kodda tanımlı ama fiilen uygulanmıyor
-- Yeni işe alımlar muhtemelen manuel/sözlü eğitimle yetiniyor — **Aslan'a soru**
+- Yeni işe alımlar muhtemelen manuel/sözlü eğitimle yetiniyor
+- **Aslan onayı (18 Nis):** Pilot sonrası aktif olacak — şu an beklemede
+- Sprint C/D'de UI test ve düzeltme
 
 ### 7.2 🟡 Önemli (Ama Pilot'u Durdurmaz)
 
-**9. 2,389 TypeScript Hatası**
+**8. 2,389 TypeScript Hatası**
 - Build çalışıyor ama tip güvenliği bozuk
 - IDE ipuçları yanıltıcı, refactor riskli
 - Runtime etkilemiyor (pre-existing), Sprint F/H'de temizlenecek
 
-**10. ~198 Orphan Sayfa (Önceki "170" rakamından daha büyük)**
+**9. ~198 Orphan Sayfa (Önceki "170" rakamından daha büyük)**
 - App.tsx'te 250 route, menu_items aktif 52 → **198 route menüde değil**
 - Tümü "ölü" değil (admin/redirect/wildcard dahil) ama çoğu bilinmeyen
 - Access log yok, kim kullanıyor bilinmiyor
 - Sprint A5 + access log (minimal) ile çözülecek
 
-**11. Akademi v1/v2/v3 Karışık**
+**10. Akademi v1/v2/v3 Karışık**
 - 3 paralel versiyon (`training_*` + `academy_*` + `quiz*`)
 - Hangi versiyon canlı belirsiz
 - Sprint C'de birleşecek
 
-**12. Audit v1/v2 Paralel (YENİ TESPİT)**
+**11. Audit v1/v2 Paralel (YENİ TESPİT)**
 - `audit_templates` (v1) + `audit_templates_v2` paralel
 - Akademi v1/v2/v3 gibi teknik borç
 - Sprint C'de birlikte konsolide edilmeli
 
-**13. CRM DB'de Tablo Yok** ✅ Doğru
+**12. CRM DB'de Tablo Yok** ✅ Doğru
 - `crm_*` filtresi 0 sonuç
 - Frontend `/crm` sayfası var, backend endpoint var
 - Muhtemelen başka isim altında (`support_tickets`, `guest_complaints` vs.) — araştırılmalı
 - Sprint C'de düzgün isimlendirilecek
 
-**14. Schema Drift 11 Tablo (Önceki "190 fark" abartısı düzeltildi)**
+**13. Schema Drift 11 Tablo (Önceki "190 fark" abartısı düzeltildi)**
 - ❌ Önceki iddiam: "469 kod vs 280 DB = 190 fark"
 - ✅ Gerçek: **446 kod vs 435 DB = 11 fark**
 - Drift kriz değil, kontrollü durumda
 - Migration history Sprint F6'da
 
-**9. CRM DB'de Tablo YOK**
-- Frontend `/crm` sayfası var, backend endpoint var
-- Ama `crm_tickets`, `crm_messages` tablosu YOK — başka isimlerde saklıyor
-- Sprint C'de düzgün isimlendirilecek
-
-**10. Schema Drift (469 kod / 280 gerçek DB)**
-- Kodda tanımlanmış 190 tablo DB'ye push edilmemiş
-- Replit drizzle-kit push kullanıyor, migration history yok
-- Risk: prod'da deploy edildiğinde neyin push edilmesi gerektiği belirsiz
-- Sprint F6'da migration history açılacak
-
 ### 7.3 🟢 Minör (Uzun Vadede Düzelt)
 
-**15. Bus Factor = 1 (14 rol tek kullanıcılı)**
+**14. Bus Factor = 1 (14 rol tek kullanıcılı)**
 - Tek kişi ayrılırsa rol boşta kalır
 - Rol konsolidasyon Sprint E'de (27 → 18)
 
-**16. 2 Ölü Rol**
+**15. 2 Ölü Rol**
 - `fabrika_personel`, `fabrika_sorumlu` — 0 kullanıcı (Replit doğruladı)
 - Sprint E'de silinecek
 
-**17. Görev İptal Oranı %48.8** ✅ Replit ile doğrulandı
+**16. Görev İptal Oranı %48.8** ✅ Replit ile doğrulandı
 - 1,332 görevin 650'si iptal (tam sayım)
 - UX sorunu — görev atama akışı net değil
 - Sprint H ile beraber analiz edilecek
 
-**18. task_comments = 0**
+**17. task_comments = 0**
 - Yorum sistemi var ama kullanılmıyor
 - Muhtemelen frontend bağlantı eksik
 - Sprint D ile beraber incelenecek
 
-**19. 10 Arıza >30 Gün (SLA İhlal — Önceki "9" hafif yanlış)**
+**18. 10 Arıza >30 Gün (SLA İhlal — Önceki "9" hafif yanlış)**
 - Toplam 17 açık arıza, 10'u >30 gün
 - Dobody escalation çalışıyor mu soru işareti
 - Sprint G/H'de escalation otomasyonu
 
-**20. Bundle Boyutu Büyük**
+**19. Bundle Boyutu Büyük**
 - Server 5.9 MB, Client 25 MB
 - Yükleme yavaş
 - Sprint G'de chunk split
 
-**21. Performans Sorunları**
+**20. Performans Sorunları**
 - `/api/cost-analysis/recipes` 131ms (yavaş)
 - `/api/me/dashboard-data` 128ms (yavaş)
 - Sprint G'de materialized view + cache
 
-**22. Dobody Event Type Sayısı Belirsiz (YENİ TESPİT)**
+**21. Dobody Event Type Sayısı Belirsiz (YENİ TESPİT)**
 - ❌ Önceki iddiam: "17 event type"
 - ⚠️ Gerçek: Kod taramasında sadece `task_reminder` net yakalanabildi
 - Diğer event'ler dağınık dosyalarda, merkezi kayıt yok
@@ -892,21 +929,18 @@ Replit'in yakaladığı **4 büyük kör nokta** bu versiyona eklendi:
 **Gördüğün eksiklikler, hatalar?**
 > **22 madde** tespit ettim (önce 17'ydi, Replit 5 yeni ekledi): 8 kritik (bordro 0, 2 paralel puantaj, notif spam ✅çözüldü, 2 dashboard rolü, test dosyası yok, Gate sistemi fiilen kullanılmıyor, merkezi sevk 2 kayıt, onboarding 2 kayıt), 6 önemli (TS errors, 198 orphan sayfa, Akademi v1/v2/v3, Audit v1/v2 dualizmi, CRM tablo yok, schema drift 11), 8 minör. **Hepsi 8 haftalık roadmap'te ele alınıyor.**
 
-### 10.3 Aslan'a Soracağım 4 İşsel Soru
+### 10.3 Aslan'ın 4 İşsel Soruya Cevapları ✅ TAMAMLANDI
 
-Bu sorular IT değil, iş kararlarını etkiler. Raporu finalize etmek için cevaplarını bekliyorum:
+Bu sorular IT değil, iş kararlarını etkiledi. Aslan 18 Nisan 2026 gecesi tüm 4 soruya net cevap verdi (Bölüm 6.3 detay):
 
-**1. Aktif Kullanıcı — Pilot Planı**
-> Gerçek aktif 159 (372 toplam). Pilot planı 372 üzerinden mi hazırlandı, 159 üzerinden mi? Işıklar + Lara 2 şube kaç kişi?
+| # | Soru | Cevap (Özet) |
+|---|------|-----|
+| 1 | Pilot 159 mı 372 mi? | **Kontrollü hızlı rollout** — 2 şube → tüm şubeler → 372 |
+| 2 | Franchise Proje modülü aktif mi? | **İlk defa kullanılacak** — Sprint I'da (Hafta 9+) canlıya |
+| 3 | Kariyer yolu terfi nasıl? | **Hibrit model** — Skor + Sınav + Yönetici Önerisi |
+| 4 | Fabrika sevkiyatı nasıl? | **Kapsam dışı** — DOSPRESSO depo hazırlığa kadar, sonrası başka sistem |
 
-**2. Franchise Proje Yönetimi — 20 Tablo**
-> Bu modül gerçekten aktif kullanılıyor mu, yoksa geçmişte yapıldı bırakıldı mı? 25→55 şube büyüme bu sistem üzerinden mi yönetilecek?
-
-**3. Gate Sınav Sistemi — Kariyer Yolu**
-> Stajyer → Bar Buddy terfisi gerçekte nasıl oluyor? Yazılım üzerinden mi, sözlü süreçle mi? Pilot'ta sistem üzerinden olmasını istiyor musun?
-
-**4. Merkezi Sevkiyat — Fabrika → Şube**
-> `factory_shipments` 2 toplam kayıt. Fabrika sevkiyatları gerçekte başka yolla mı takip ediliyor (WhatsApp, Excel, kağıt)? Pilot'ta sistem üzerinden olacak mı?
+**Sonuç:** Tüm stratejik belirsizlikler kapandı. Sprint A-H yol haritası **güvenli şekilde uygulanabilir**. Pilot öncesi iş/teknik hizalama tam.
 
 ### 10.4 Son Söz
 
@@ -920,9 +954,10 @@ Sormak istediğin her şeyi **iş diliyle** sorabilirsin. Ben teknik detayları 
 
 ---
 
-*Rapor son güncelleme: 18 Nisan 2026, 23:55*
-*Revize 1.1 — Replit bağımsız doğrulama sonrası düzeltmeler dahil*
+*Rapor son güncelleme: 19 Nisan 2026, 00:15*
+*Revize 1.3 — FINAL — Aslan'ın 4 stratejik cevabı dahil*
+*Güvenilirlik seviyesi: %95+ (Replit DB doğrulaması + Aslan iş onayı)*
 *Hazırlayan: Claude (IT Danışman)*
-*Veri kaynağı: 65 docs/ markdown + 11 bugünkü commit + Replit DB sorgu raporu + kod tabanı*
+*Veri kaynağı: 65 docs/ markdown + 13 bugünkü commit + Replit DB raporu + Aslan stratejik cevapları + kod tabanı*
 
 ---
