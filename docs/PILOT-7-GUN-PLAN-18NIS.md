@@ -1,5 +1,28 @@
 # 🚨 PİLOT 7 GÜN PLAN — 18 Nis 2026 → 25 Nis 2026
 
+> **⚠️ UYARI — BU DOKÜMAN ESKİ TARİHLİDİR (25 Nis varsayımı)**  
+> **Güncel pilot tarihi: 28 Nisan 2026 Salı sabah 09:00**  
+> **Güncel kararlar için:** `docs/00-DASHBOARD.md` (8/8 karar tamam)  
+>   
+> Bu doküman 25 Nis Cumartesi pilot varsayımıyla yazıldı. Sonradan Aslan + Replit + Claude üçlüsü 28 Nis Salı kararı aldı. Gün isimleri bu dokümanda YANLIŞ olabilir (örn: "21 Nis Pazartesi" aslında Salı'dır).  
+>   
+> **Tam revizyon:** Pazartesi 20 Nis sabah Claude tarafından yeniden yazılacak.  
+> **Referans tarih tablosu:**  
+> ```
+> 18 Nis = Cumartesi  (bu belge yazıldı)
+> 20 Nis = Pazartesi  ← G1 kick-off
+> 21 Nis = Salı       ← G2
+> 22 Nis = Çarşamba   ← G3 smoke test 1
+> 23 Nis = Perşembe   ← 🎉 Ulusal Egemenlik ve Çocuk Bayramı
+> 24 Nis = Cuma       ← G5 smoke test 2
+> 25 Nis = Cumartesi  ← G6 KULLANICI EĞİTİMİ
+> 26 Nis = Pazar      ← G7 buffer
+> 27 Nis = Pazartesi  ← G8 dry run + deploy
+> 28 Nis = Salı       ← 🚀 GO LIVE 09:00
+> ```
+
+---
+
 **Durum değişikliği:** Aslan'ın kararı ile pilot başlangıcı **58 gün → 7 gün** sonrasına kaydı. Bu doküman, kalan zamanda yapılması zorunlu işleri 12 perspektiften çıkarır.
 
 **Pilot başlangıç (tahmini):** 25 Nisan 2026 Cumartesi  

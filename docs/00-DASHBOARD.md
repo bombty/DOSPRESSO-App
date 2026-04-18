@@ -90,8 +90,8 @@ GROUP BY type;
 
 **Karar kuralı:**
 - Toplam < **2,000**/hafta → Plan B başarılı, Plan A.2 gereksiz
-- Toplam > **3,000**/hafta → Plan A.2 (task_escalation_log) Sprint I (16 Haz+) başına ekle
-- Arası (2,000-3,000) → monitörde tut, pilot başlangıcında (15 Haz) tekrar ölç
+- Toplam > **3,000**/hafta → Plan A.2 (task_escalation_log) Sprint I (28 Nis+) başına ekle
+- Arası (2,000-3,000) → monitörde tut, pilot başlangıcında (28 Nis) tekrar ölç
 
 **Baseline (18 Nis):** 6,305/hafta (3 type toplamı)
 **Plan B tahmini:** ~1,890/hafta (-70%)

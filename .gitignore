@@ -1,10 +1,46 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+dist/
+.cache/
+
+# OS
 .DS_Store
-server/public
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build & temp
 vite.config.ts.*
 *.tar.gz
+*.tmp
+*.log
 .local/state/
 .local/state/**
-.cache/
-attached_assets/Pasted-Replit-do-rulad-3-3-sidebar-fix-al-yor-S-radaki-Sidebar_1776113783273.txt
+
+# Server (not committed)
+server/public/
+
+# Runtime generated reports (debug/test artifacts)
+server/data/*recalc*.json
+server/data/*-report-*.json
+server/data/report-*.json
+
+# Attached assets (Replit paste content — not code)
+attached_assets/*
+!attached_assets/.gitkeep
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python (if any tooling)
+__pycache__/
+*.pyc
+
+# Testing
+coverage/
+.nyc_output/
