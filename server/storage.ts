@@ -3661,6 +3661,23 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (!THROTTLE_EXEMPT_TYPES.includes(notification.type)) {
+      // Plan B fix (Apr 2026): per-(user,type,title) 24h dedup BEFORE total count check
+      // Spam analizi: franchise_escalation/escalation_info aynı title 24h içinde 80-180x tekrar ediyordu
+      const PER_ENTITY_THROTTLE_TYPES = ['franchise_escalation', 'escalation_info',
+        'agent_escalation', 'agent_escalation_info', 'task_overdue', 'task_overdue_assigner'];
+      if (PER_ENTITY_THROTTLE_TYPES.includes(notification.type)) {
+        const [dup] = await db.select({ id: notifications.id }).from(notifications)
+          .where(and(
+            eq(notifications.userId, notification.userId),
+            eq(notifications.type, notification.type),
+            eq(notifications.title, notification.title),
+            gt(notifications.createdAt, sql`NOW() - INTERVAL '24 hours'`)
+          )).limit(1);
+        if (dup) {
+          return { id: -1, ...notification, isRead: false, isArchived: false, branchId: notification.branchId ?? null, link: notification.link ?? null, createdAt: new Date() } as Notification;
+        }
+      }
+
       const [countResult] = await db.select({ count: sql<number>`count(*)::int` })
         .from(notifications)
         .where(and(

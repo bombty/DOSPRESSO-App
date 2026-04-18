@@ -20,7 +20,7 @@ import {
   agentPendingActions, agentEscalationHistory, tasks, branchTaskInstances,
   users, branches, escalationConfig, UserRole,
 } from "@shared/schema";
-import { eq, and, lt, lte, isNull, notInArray, or, inArray, sql } from "drizzle-orm";
+import { eq, and, lt, lte, isNull, notInArray, or, inArray, sql, desc } from "drizzle-orm";
 
 // ─── Tipler ────────────────────────────────────────────────────────────────
 interface EscalationLevel {
@@ -166,9 +166,10 @@ async function runFranchiseEscalation(): Promise<{ processed: number; escalated:
         eq(agentEscalationHistory.sourceActionId, action.id),
         isNull(agentEscalationHistory.resolvedAt),
       ))
-      .orderBy(agentEscalationHistory.escalationLevel).limit(1);
+      .orderBy(desc(agentEscalationHistory.escalationLevel)).limit(1);
 
-    const currentLevel = history.length > 0 ? history[history.length - 1].level : 0;
+    // Plan B fix (Apr 2026): desc sort + history[0] = en YÜKSEK seviye (önceki kod ASC + history[length-1] = en düşük → her tick re-escalate spam)
+    const currentLevel = history.length > 0 ? history[0].level : 0;
 
     // Kümülatif SLA hesapla (level N = sum of sla_days for levels 1..N)
     let cumulativeDays = 0;
