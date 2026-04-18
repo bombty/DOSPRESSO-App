@@ -25,6 +25,44 @@
 - **Işıklar:** müdür + barista + supervisor (3 kişi tam ekip) ✅
 - Lara, HQ, Fabrika: Aslan Pazartesi önce bildirecek
 
+**Rollback politikası:** **Esnek** — kural yok. Aslan + Claude + Replit günlük WhatsApp'ta durum paylaşır, kırmızı çizgi somut sorun geldiğinde birlikte karar verilir.
+
+---
+
+## 🎯 8/8 Pilot Kararı (18 Nis Cumartesi gece finalize)
+
+| # | Konu | Karar |
+|---|---|---|
+| 1 | Pilot tarihi | **28 Nisan 2026 Salı 09:00** |
+| 2 | Satınalma kapsamı | **Seçenek C** (branch_orders UI, 1.5 gün) |
+| 3 | Rollout sıralaması | **FAZAL**: Işıklar+HQ → 24 saat → Lara+Fabrika |
+| 4 | Pilot tipi | **CANLI OPERASYONEL** (beta değil) |
+| 5 | Rollback | **Esnek** — WhatsApp günlük, kural yok |
+| 6 | Kullanıcı profil | Işıklar tam ✅, diğerleri Pazartesi |
+| 7 | Notification | **Plan A.2 Feature Freeze istisna** |
+| 8 | Test süresi | **2 gün** (G3 + G5) + G6 eğitim |
+
+---
+
+## 🚀 Pazartesi 20 Nis Gün 1 — Sabah 09:00 Kick-off
+
+### 🤖 Replit bağımsız yapacak (5 iş, ~50 dk):
+- [ ] adminhq parola rotate (scripts/reset-admin-password.ts)
+- [ ] Test Branch 1 + Örnek şube soft-delete
+- [ ] seed_test 704 PDKS kaydı temizlik
+- [ ] Nisan bordro backfill (B.5 catch-up tetik, 31 user)
+- [ ] Duplicate scheduler log final verify
+
+### 🧑‍💻 Claude paralel yapacak (3 iş, ~4 saat):
+- [ ] Sprint B.1 yeni kapsam: shift_attendance ↔ pdks_records tutarlılık
+- [ ] Sprint B.3: monthly_attendance_summaries scheduler
+- [ ] Sprint A.2: notification task_escalation_log (Feature Freeze istisna)
+
+### 🧑‍💼 Aslan paralel yapacak:
+- [ ] 4 lokasyondan cihaz envanteri (tablet markası, internet, NFC)
+- [ ] Lara + HQ + Fabrika pilot kullanıcı profilleri
+- [ ] Cumartesi eğitim takvimi (4 lokasyon × 45-60 dk)
+
 ---
 
 ## 🔴 AÇIK P0 BLOKERLER (4)
