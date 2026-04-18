@@ -271,3 +271,40 @@ cat docs/SPRINT-B-FINAL-KAPSAM.md
 
 *Son oturum: 18 Nis 2026 Cumartesi gece. Bir sonraki: Pazartesi 21 Nis sabah.*
 *Bu dosya her oturum sonu güncellenir. Değişirse commit.*
+
+---
+
+## 🗑️ Repo Cleanup Kararı (18 Nis gece finalize)
+
+**Karar:** Option 1.5 — Selective Aggressive + PİLOT SONRASI
+
+**Ne silinecek (Cat C, 1693 dosya, ~895 MB):**
+- Replit Agent ekran görüntüleri (IMG_0XXX.png)
+- Replit paste metinleri (Pasted-*.txt)
+- Yalnızca attached_assets/ klasörü içinde
+- Frontend/backend/DB'de **sıfır referans** (Replit tarama doğruladı)
+
+**Ne KORUNACAK:**
+- ✅ Reçeteler (DB — factory_recipes tablosu)
+- ✅ Roller (shared/schema/schema-02.ts + module-manifest.ts)
+- ✅ Görevler (DB — tasks tablosu)
+- ✅ Kullanıcılar (DB — users tablosu)
+- ✅ Bordro (DB — monthly_payroll)
+- ✅ Aktif @assets import'ları (17 dosya: logo, academy, stock_images)
+- ✅ Operasyonel doc (PDF, DOCX, MD — 32 dosya)
+- ✅ Tüm kod (client/, server/, shared/, docs/)
+
+**Ne zaman:** 28 Nis pilot GO LIVE SONRASI. Pilot öncesi HİÇ dokunulmayacak.
+
+**Cat D (19 dosya) tek tek karar:**
+- 7 reçete PDF duplicate → md5 karşılaştır aynıysa 6 sil
+- 10 Excel/zip seed dump → KolayIK DB'ye seed olduysa sil
+- 3 .skill dosyası → .agents/skills/ ile aynıysa sil
+- 1 akademi-v3-mockup.jsx → frontend kullanım yok, muhtemelen sil
+
+**Git history rewrite:** HAYIR (pilot öncesi risk, pilot sonrası ayrı task).
+
+Referans: `docs/ATTACHED-ASSETS-CLEANUP-PROPOSAL.md` (Replit commit 9a5532587)
+
+---
+
