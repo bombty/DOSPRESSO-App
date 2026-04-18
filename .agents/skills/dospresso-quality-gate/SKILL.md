@@ -740,3 +740,40 @@ Bu doldurulmadan kod yazma yasak.
 18 Nis 2026: 300 satır iskelet gereksiz yere yazıldı. Replit DB raporu 5 dk daha beklense idi, iskelet hiç yazılmayacaktı. **Disiplin > hız.** Bu altı kural o disiplini somutlaştırıyor.
 
 **Referans:** DEVIR-TESLIM-18-NISAN-2026-GECE.md + memory #21
+
+---
+
+## Madde 39 — Archive Before Delete
+
+**Kural:** Silinecek her büyük dosya grubundan (10+ dosya) önce ders çıkarılmadan silme yapılamaz.
+
+**Protokol:**
+1. **Kategorize et** — Dosyaları tema/sprint/konu'ya göre grupla
+2. **Pattern çıkar** — Her grupta tekrarlayan bulgu, karar, hata, çözüm
+3. **Skill'e aktar** — İlgili pattern'leri skill dosyalarına yaz (referans + özet + lesson)
+4. **Archive özet yaz** — "Bu gruptan şu dersler çıktı" dokümanı
+5. **SONRA sil** (Madde 38 üçlü onay ile)
+
+**Neden:** Silme = institutional memory loss. 6 aylık düşünce geçmişi "çöp" diye atılırsa 6 ay sonra aynı problemleri yeniden çözeriz.
+
+**Örnek uygulama:**
+`attached_assets/` klasörü 1693 dosya silinmeden önce:
+- `docs/REPLIT-LESSONS-EXTRACTION-PROMPT.md` → Replit'e görev
+- `docs/ATTACHED-ASSETS-CATEGORIZATION.md` → Replit kategorize eder
+- `docs/ATTACHED-ASSETS-LESSONS-ARCHIVE.md` → Özet + top 20 ders
+- Mevcut skill dosyalarına pattern eklemeleri
+- **Ondan sonra** Cat C silme
+
+**Kural ihlali emsali:** 18 Nis 2026 gece — Claude "gereksiz dosya" deyip direkt silme önerdi. Aslan "ders çıkardın mı?" diye sordu. Madde 39 doğdu.
+
+**Triggers:**
+- ✓ 10+ dosya toplu silme
+- ✓ Klasör silme (contains history)
+- ✓ Legacy kod/doküman toplu arşiv
+- ✓ Sprint/modül "emekli" etme
+
+**Exempt:**
+- Debug artifacts (log, cache, build output) — bunlardan ders yok
+- Otomatik üretilen dosyalar (runtime reports) — Replit'in `server/data/*recalc*.json` gibi
+- Binary cache dosyaları
+
