@@ -234,15 +234,18 @@ Production → QC (2-stage) → LOT → Shipment → Branch Inventory
 - ALL status changes use transactions + FOR UPDATE
 - FIFO LOT assignment by expiry date
 
-### Shift → PDKS → Payroll (Unified Engine):
-Shift planning → Kiosk check-in/out → PDKS records → Payroll calculation
-- Motor 1 (pdks-engine): PDKS → gün sınıflandırma → PdksMonthSummary
+### Shift → PDKS → Payroll (Unified Engine — 18 Nis 2026 doğrulandı):
+Shift planning → Kiosk check-in/out → pdks_records (raw) → Payroll calculation
+- Motor 1 (pdks-engine.ts:119 getMonthClassification): pdks_records → gün sınıflandırma → PdksMonthSummary
 - Motor 2 (payroll-calculation-service): SGK/vergi/AGI hesaplama
-- Bridge (payroll-bridge): Motor1 + Motor2 birleşik, Excel adapter, kiosk/excel dual source
-- monthly_payroll tablosu: SGK, vergi, AGI, kümülatif vergi matrahı, dataSource (kiosk/excel), calculationMode (unified/simple)
+- Bridge (payroll-bridge.ts:322 calculateUnifiedPayroll): Motor1 + Motor2 birleşik, Excel adapter, kiosk/excel dual source
+- **monthly_payroll (schema-12) AKTİF: 51 kayıt, 2026-03 + 2026-04, 51 kullanıcı**
 - API: POST /api/payroll/calculate-unified (branchId, year, month, dataSource, importId)
-- PDF generator: `server/utils/pdf-generator.ts` (pdf-lib)
-- PDF export: `GET /api/payroll/export/pdf/:year/:month`
+- PDF: `GET /api/payroll/export/pdf/:year/:month` (pdf-lib, `server/utils/pdf-generator.ts`)
+- **pdks_records.recordType Türkçe enum:** 'giris' | 'gec_giris' | 'cikis'
+  (Not: 'late' de bazı yerlerde paralel — tutarsızlık, Sprint D/E aday)
+- **DEAD schema:** monthly_payrolls (schema-07, 0 kayıt) + payroll_records (0 kayıt) — Sprint D'de arşivlenecek
+- **shift_attendance** PARALLEL aggregate (Sprint B.1 scheduler), bordro KULLANMAZ — duplicate risk YOK
 
 ### Recipe System (Factory):
 - 9 tables in schema-22: factory_recipes, ingredients, steps, keyblends, keyblend_ingredients, production_logs, recipe_versions, category_access, ingredient_nutrition

@@ -654,3 +654,89 @@ Her sprint sonunda Replit'ten **bağımsız DB doğrulaması** iste:
 - Build warning'leri ignored (bazen error'a dönüşebilir)
 
 **Sprint A Verification Örneği:** A1-A6 her biri için Replit raporu alındı, sayısal acceptance doğrulandı.
+
+## Madde 37 — Pre-Code Table Write-Path Inventory (18.04.2026 — Sprint B.1 Dersi)
+
+**Bağlam:** 18 Nisan 2026 gece, pdks_records → shift_attendance aggregate job iskeleti yazıldı (300 satır). Ertesi gün Replit DB raporu geldi: `shift_attendance` zaten 175 kayıt, **6 farklı yerden** INSERT alıyor (kiosk real-time dahil). İskelet gereksiz, duplicate risk. Silmek gerekti.
+
+**Kök neden:** Kod yazılmadan önce "hedef tabloya kim yazıyor?" sorusu sorulmamıştı. Kickstart dokümanındaki "tablo boş → aggregate gerekli" anlatısı kuşkusuz kabul edildi.
+
+**6 Kural — Her Yeni Job/Service/Scheduler Öncesi:**
+
+### 1. Tablo Yazıcı Envanteri ZORUNLU
+
+Yeni bir job/service/scheduler bir tabloya yazacaksa, önce tüm yazıcıları listele:
+
+```bash
+grep -rn "insert.*TABLO_NAME\|update.*TABLO_NAME\|INSERT INTO TABLO_NAME" server/ --include="*.ts"
+```
+
+**Sonuç 2+ yer ise → DUR.** Mimari analiz yap, çakışmayı haritala, sonra kod yaz.
+
+### 2. Replit DB Teyidi ÖNCE, Kod Yazımı SONRA
+
+"Paralel çalışma" (Replit cevabı beklerken kod yazmak) **yasak**. Gerekçe:
+- Replit cevabı ~5 dk
+- Kod yazımı 1-2 saat
+- Hatalı kod düzeltme maliyeti: saatlerce
+
+5 dk bekleme vs saatlerce düzeltme — trade-off net.
+
+### 3. Sprint Başı "Kuşku Listesi" — 5 Zorunlu Soru
+
+Her yeni Sprint iş'ine başlamadan önce cevapla:
+
+| # | Soru | Cevap kaynağı |
+|---|---|---|
+| 1 | Hedef tablo şu an kaç kayıt? | Replit SQL |
+| 2 | Hedef tabloya kim yazıyor? | `grep -rn "insert.*TABLO" server/` |
+| 3 | Hedef tablodan kim okuyor? | `grep -rn "from(TABLO\|SELECT.*TABLO" server/` |
+| 4 | Değişikliğim hangi yazıcılarla çakışır? | Mimari diyagram |
+| 5 | Varsayımım yanlışsa ilk ipucu ne? | Risk anti-plan |
+
+**5 soruya cevap yoksa → kod yazma.**
+
+### 4. Dokümantasyondaki Anlatıyı Sorgula
+
+Kendi eski dokümanların (kickstart kit, devir-teslim, rapor) **dokunulmaz değil**. Önceki Claude oturumu hata yapabilir.
+
+Her anlatı → canlı DB'den teyit (Replit). "Geçen hafta bu böyleydi" garanti değil — DB değişir, kod değişir.
+
+### 5. Risk Classifier — Her Öneri Etiketlensin
+
+| Risk | Tanım | Zorunlu Prosedür |
+|:--:|---|---|
+| 🟢 Low | Tek-dosya fix, mevcut pattern kopyası | Direkt yaz + Quality Gate |
+| 🟡 Medium | Yeni dosya, mevcut tablo etkiler | Grep + Replit count + Quality Gate |
+| 🔴 High | Yeni job/scheduler/servis, çoklu tablo | Tam envanter + Replit DB teyidi + 5 Kuşku Sorusu + contract doc |
+
+**Risk etiketi verilmeden kod yazma.** Sprint B.1 🔴 High'tı, 🟡 Medium gibi işlendi → hata.
+
+### 6. Sprint Başı "Contract Document" Template
+
+Her 🟡/🔴 iş için Sprint başında şu doldur (Claude yazar, Replit doğrular):
+
+```markdown
+## [Sprint adı] Contract
+
+**Hedef:** [ne yapılacak, tek cümle]
+**Risk:** 🟢 / 🟡 / 🔴
+**Etkilenen tablolar:** [liste]
+**Her tablonun yazıcıları (grep sonucu):** 
+  - tablo_x: server/routes/a.ts:L1, server/routes/b.ts:L2
+**Her tablonun okuyucuları (grep sonucu):**
+  - tablo_x: server/services/c.ts:L3
+**Çakışma haritası:** [benim yazdığım path diğerleriyle çatışıyor mu?]
+**Idempotency planı:** [aynı iş iki kez çalışsa ne olur]
+**Test stratejisi:** [nasıl doğrulanacak]
+**Hipotez yanlış çıkarsa plan B:** [geri çekilme stratejisi]
+```
+
+Bu doldurulmadan kod yazma yasak.
+
+---
+
+**Öz özet — bu madde neden var?**
+18 Nis 2026: 300 satır iskelet gereksiz yere yazıldı. Replit DB raporu 5 dk daha beklense idi, iskelet hiç yazılmayacaktı. **Disiplin > hız.** Bu altı kural o disiplini somutlaştırıyor.
+
+**Referans:** DEVIR-TESLIM-18-NISAN-2026-GECE.md + memory #21

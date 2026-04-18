@@ -855,3 +855,178 @@ Yani `payroll_records` tablosu aslında **farklı amaçlı/boş**, asıl bordro 
 - ✅ Aynı domain'de N farklı tablo var mı?
 
 **Referans:** Sprint D raporu (18 Nis 2026, commit `fd37f0f1`) — "monthly_payroll=51 keşfi"
+
+---
+
+## §17 — Silent Timing Failure (Scheduler)
+
+### Semptom
+Tablo 0 kayıt ama:
+- Scheduler kodu sağlam, master-tick'e register edilmiş
+- `log("scheduler started")` çıktısı server log'unda var
+- `INSERT` query'si kodda var, `onConflictDoNothing()` ile idempotent
+- Hiç hata yok, hiç exception yok — sadece boş tablo
+
+### Root Cause
+Scheduler tetik penceresi dar (örn. sadece Pazar 23:00-23:10 veya ayın 1'i 01:00). Server restart/deploy o pencereyi kaçırdıysa, bir sonraki pencereye kadar tablo BOŞ kalır. **Silent failure** — ne log, ne notification.
+
+### Tanı
+```bash
+# Scheduler'ın register edildiği saati bul
+grep -B 2 -A 5 "registerInterval\|setInterval" server/index.ts | grep -B 5 "TABLO_ADI"
+
+# Pencere dar mı? (spesifik gün + saat + dakika koşulu)
+# ÖRN: if (now.getDay() === 0 && now.getHours() === 23 && now.getMinutes() < 10)
+```
+
+### Fix Pattern
+Startup catch-up: scheduler register'dan sonra non-blocking bir retro hesap çağır.
+
+```typescript
+async function catchUpSummaries(periods: number = 4): Promise<void> {
+  for (let i = 0; i < periods; i++) {
+    const targetEnd = new Date();
+    targetEnd.setDate(targetEnd.getDate() - 1 - (i * PERIOD_DAYS));
+    try {
+      await calculateSummary(targetEnd); // idempotent olmalı
+    } catch (e) {
+      console.error(`Catch-up period -${i} error:`, e);
+    }
+  }
+}
+
+function startScheduler() {
+  schedulerManager.registerInterval(...);
+
+  // Non-blocking startup catch-up
+  catchUpSummaries(4).catch(e => console.error("Startup catch-up error:", e));
+}
+```
+
+**Gereksinim:** Hedef fonksiyon parametreli olmalı (weekEndDate / monthEndDate) + `onConflictDoNothing()` idempotent.
+
+**Referans:** Sprint B.2 fix (18 Nis 2026) — `server/index.ts` catchUpWeeklySummaries
+
+---
+
+## §18 — PG Transaction Partial Success Impossible (25P02)
+
+### Semptom
+Batch INSERT içinde bir query fail oldu, sonrakiler de fail ediyor:
+```
+error: current transaction is aborted, commands ignored until end of transaction block
+code: 25P02
+```
+
+### Root Cause
+Postgres'te transaction içinde herhangi bir query fail olursa, transaction ABORT durumuna geçer. Sonraki tüm query'ler **savepoint yoksa** 25P02 hatası verir. Try/catch bu durumu çözmez — transaction aborted flag tx seviyesinde tutulur.
+
+### Anti-pattern (YAPMA)
+```typescript
+await db.transaction(async (tx) => {
+  for (const item of items) {
+    try {
+      await tx.insert(table).values(item);  // ❌ 1. item fail ederse
+    } catch (e) {
+      log(e);                                // ❌ ... 2. item de fail eder (25P02)
+    }
+  }
+});
+```
+
+### Fix Pattern A: Her item bağımsız (önerilen)
+```typescript
+// Transaction YOK — her item kendi bağımsız INSERT'i
+for (const item of items) {
+  try {
+    await db.insert(table).values(item);
+  } catch (e) {
+    log(e); // diğer item'ler etkilenmez
+  }
+}
+```
+
+### Fix Pattern B: Savepoint (karmaşık batch için)
+```typescript
+await db.transaction(async (tx) => {
+  for (const item of items) {
+    await tx.transaction(async (sp) => {  // nested = savepoint
+      await sp.insert(table).values(item);
+    }).catch(e => log(e)); // savepoint'e rollback
+  }
+});
+```
+
+### Karar
+Aggregate/batch işler için **Pattern A** (bağımsız INSERT) yeterli ve basit. Ancak referential integrity critical (örn. order + order_items) ise Pattern B gerekli.
+
+**Referans:** Sprint B.1 (18 Nis 2026) — `server/services/pdks-to-shift-aggregate.ts`
+
+---
+
+## §19 — Aggregate Job Duplicate Risk (Unknown Write-Path)
+
+### Semptom
+Yeni bir aggregate/scheduler/job yazıyorsun, iskeleti hazırladın. Sonra fark ediyorsun:
+- Hedef tablo **zaten dolu** (beklediğinden çok fazla kayıt)
+- Başka bir kod path'i **zaten** o tabloya yazıyor
+- Senin job'ın yazınca **duplicate/çakışma** oluşacak
+
+### Root Cause
+Kod yazmadan önce **hedef tablonun mevcut yazıcıları** taranmamış. Yalnızca okuma zincirini analiz etmek (bordro nereden besleniyor) yeterli değil — **yazma zincirini** de bilmek zorunlu. Büyük sistemlerde bir tablo 5-10 farklı yerden yazılabilir (kiosk real-time, backfill endpoint, manuel UI, migration script, başka servis, vs).
+
+### Tanı
+Şu grep'i yeni kod yazmadan önce ZORUNLU çalıştır:
+
+```bash
+# Drizzle style
+grep -rn "insert\.\{0,20\}TABLO\|update\.\{0,20\}TABLO" server/ --include="*.ts" | head
+
+# Raw SQL style
+grep -rn "INSERT INTO TABLO\|UPDATE TABLO SET" server/ --include="*.ts" | head
+
+# Direkt referans (sadece import edilen yerler)
+grep -rln "import.*TABLO\|from.*TABLO" server/ --include="*.ts"
+```
+
+Örnek (18 Nis 2026 — shift_attendance):
+```bash
+$ grep -rn "shiftAttendance\|shift_attendance" server/ --include="*.ts" | \
+    grep -iE "insert|update|upsert|values\(|\.set\("
+server/routes/branches.ts:2977         # kiosk shift-start real-time
+server/routes/branches.ts:4174
+server/routes/factory.ts:1146          # factory kiosk
+server/routes/guest-complaints-routes.ts:133
+server/routes/pdks.ts:774              # backfill endpoint
+server/storage.ts:4214                 # genel
+server/tracking.ts:40                  # tracking
+```
+→ 7 farklı yazıcı. Yeni aggregate yazmak = duplicate katastrofu.
+
+### Fix Pattern
+
+**Eğer envanter sonucu çakışma varsa:**
+
+1. **İş kapsamını değiştir** — belki aggregate yazmak yerine, mevcut yazıcıları konsolide etmek gerekiyor
+2. **Farklı tabloya yaz** — shift_attendance yerine shift_attendance_aggregate gibi ayrı tablo
+3. **İptal et** — iş zaten yapılıyor, yeni bir job gereksiz
+
+**Eğer envanter sonucu tek yazıcı varsa:**
+1. Normal devam, ama idempotency stratejisini dokümante et
+2. UNIQUE constraint eklemeyi düşün (race condition koruması)
+
+### Quality Gate §37 Bağlantısı
+
+Bu pattern oluşmadan önce §37 "Pre-Code Table Write-Path Inventory" kuralları uygulanmalı:
+- Kural 1: Yazıcı envanteri ZORUNLU
+- Kural 3: Sprint başı 5 Kuşku Sorusu
+- Kural 5: Risk classifier (🔴 High = yeni job/scheduler)
+
+**Referans:** Sprint B.1 dersi (18 Nis 2026 gece) — 300 satır pdks-to-shift-aggregate.ts yazıldı, ertesi gün iptal edildi çünkü kiosk zaten shift_attendance'a real-time yazıyordu.
+
+### Önleme — Self-Check Soru
+Yeni bir job/service yazmaya başlamadan önce kendine sor:
+
+> "Bu tabloya şu an başka kim yazıyor?"
+
+Cevabı bilmiyorsan, grep'i çalıştırana kadar kod yazma.
