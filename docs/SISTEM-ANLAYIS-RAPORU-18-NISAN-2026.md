@@ -48,23 +48,39 @@ Bu tutarlılık **yazılımla** sağlanır. Yoksa 25 şube × 25 farklı uygulam
 - ✅ HQ operasyon + şube işleyişi (checklist, vardiya, skorlar)
 - ✅ Bordro + PDKS + Kariyer yönetim
 
-**DOSPRESSO'nun kapsamı DIŞINDA:**
-- ❌ **Sevkiyat (lojistik)** — araç, rota, kargo → başka sistem
-- ❌ **Şube teslim alımı** — şube stok giriş → başka sistem
+**DOSPRESSO'nun şu anki kapsamı DIŞINDA (ama altyapısı HAZIR):**
+- ⏸️ **Sevkiyat (lojistik)** — araç, rota, kargo → şu an başka sistem, **DOSPRESSO altyapısı hazır** (opsiyonel kullanım)
+- ⏸️ **Şube teslim alımı** — şube stok giriş → şu an başka sistem, **DOSPRESSO altyapısı hazır**
 - ❌ SGK / e-Fatura entegrasyonu (gelecekte opsiyonel)
 
 ```
-DOSPRESSO KAPSAMI                    │  HARİCİ SİSTEM
-───────────────────────────────────  │  ───────────────
+DOSPRESSO ŞU AN KULLANILAN           │  DIŞ SİSTEM (şu an)
+───────────────────────────────────  │  ─────────────────────
 Fabrika Üretim → QC → Depo Hazırlık  │  Sevkiyat → Şube Teslim
        ^                              │       ^
        │ "Sevk için hazır"            │       │ "Şube stoğuna girdi"
        └──────── SINIR ───────────────┴───────┘
+
+┌─────────────────────────────────────────────┐
+│ ESNEKLIK: DOSPRESSO'nun sevkiyat altyapısı  │
+│ kodda mevcut. Aslan ilerde karar verirse    │
+│ (1-2 yıl içinde), sevkiyat da DOSPRESSO     │
+│ üzerinden yapılabilir — ekstra geliştirme   │
+│ gerekmez, sadece operasyonel geçiş.         │
+└─────────────────────────────────────────────┘
 ```
 
-**Kritik:** `factory_shipments` tablosu kodda var ama **gerçekte kullanılmamalı** (2 kayıt olması doğal). Raporun önceki versiyonunda bunu "kullanılmıyor, çözülmesi gereken sorun" olarak sunmuştum — yanlıştı. Aslan'ın onayladığı tasarım: **sevkiyat başka sistem, DOSPRESSO oraya kadar**.
+**Kritik:** `factory_shipments` tablosu kodda tanımlı ama şu an 2 kayıt — **başka sistem kullanıldığı için doğal**. Raporun önceki versiyonunda bunu "kullanılmıyor, çözülmesi gereken sorun" olarak sunmuştum — yanlıştı.
 
-**Gelecek kararı:** Eğer 2 sistemi birleştirmek istenirse → Sprint K-L (uzun vade). Pilot'ta gerek yok.
+**Aslan'ın stratejisi (18 Nis):**
+- Şu an: Sevkiyat → dış sistem (çalışan süreç bozulmasın)
+- İlerde (opsiyonel): DOSPRESSO'ya taşınabilir — karar Aslan'a ait
+- Avantaj: **iki yol da açık**, ek geliştirme gerekmeden karar değişebilir
+
+**Gelecek karar noktası:**
+- Eğer 2 sistemi birleştirmek istenirse → **Sprint K-L** (Hafta 11+, uzun vade)
+- Operasyonel geçiş ~2-4 hafta (kod değişimi değil, kullanıcı alışkanlığı)
+- Pilot'ta ve ilk 8 haftada gerek yok
 
 ### 1.4 Platform'un 3 Ana Fonksiyonu
 
