@@ -76,6 +76,7 @@ import {
 const router = Router();
 
 import { like } from "drizzle-orm";
+import { trDateString, trTimeString } from "../lib/datetime";
 
 async function createAutoLot(params: {
   productId: number | null;
@@ -1123,17 +1124,18 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
       if (factoryBranchId) {
         try {
+          // Sprint D fix: TR timezone
           await db.insert(pdksRecords).values({
             userId,
             branchId: factoryBranchId,
-            recordDate: now.toISOString().split('T')[0],
-            recordTime: now.toTimeString().split(' ')[0],
+            recordDate: trDateString(now),
+            recordTime: trTimeString(now),
             recordType: 'giris',
             source: 'kiosk',
             deviceInfo: 'factory-kiosk',
           });
         } catch (pdksErr: unknown) {
-          console.warn("[FAB-KIOSK] PDKS clock-in write failed (non-blocking):", pdksErr instanceof Error ? pdksErr.message : String(pdksErr));
+          console.error("[CRITICAL][PDKS-SYNC][FAB-KIOSK] PDKS giris yazılamadı (factory_session yazıldı, tutarsızlık riski):", { userId, branchId: factoryBranchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
         }
       }
 
@@ -1752,22 +1754,22 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         })
         .where(eq(factoryShiftSessions.id, sessionId));
 
-      // PDKS cikis kaydı yaz (non-blocking)
+      // PDKS cikis kaydı yaz (non-blocking) — Sprint D: TR timezone + CRITICAL log
       try {
         const [worker] = await db.select({ branchId: users.branchId }).from(users).where(eq(users.id, session.userId)).limit(1);
         if (worker?.branchId) {
           await db.insert(pdksRecords).values({
             userId: session.userId,
             branchId: worker.branchId,
-            recordDate: now.toISOString().split('T')[0],
-            recordTime: now.toTimeString().split(' ')[0],
+            recordDate: trDateString(now),
+            recordTime: trTimeString(now),
             recordType: 'cikis',
             source: 'kiosk',
             deviceInfo: 'factory-kiosk',
           });
         }
       } catch (pdksErr: unknown) {
-        console.warn("[FAB-KIOSK] PDKS clock-out write failed (non-blocking):", pdksErr instanceof Error ? pdksErr.message : String(pdksErr));
+        console.error("[CRITICAL][PDKS-SYNC][FAB-KIOSK] PDKS cikis yazılamadı (factory_session.completed yazıldı, tutarsızlık riski):", { userId: session.userId, sessionId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
       }
 
       // Get all production runs for this session

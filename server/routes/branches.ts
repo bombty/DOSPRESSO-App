@@ -73,6 +73,7 @@ import {
   overtimeRequests,
 } from "@shared/schema";
 import crypto from "crypto";
+import { trDateString, trTimeString, trTimeStringShort } from "../lib/datetime";
 
 const router = Router();
 
@@ -2908,18 +2909,18 @@ router.post("/api/branches/:branchId/kiosk/shift-start", isKioskOrAuthenticated,
     });
 
     try {
-      const dateStr = now.toISOString().split('T')[0];
-      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      // Sprint D fix: TR timezone (UTC sınır geçişi sorunu — bkz. server/lib/datetime.ts)
       await db.insert(pdksRecords).values({
         userId,
         branchId,
-        recordDate: dateStr,
-        recordTime: timeStr,
+        recordDate: trDateString(now),
+        recordTime: trTimeStringShort(now),
         recordType: 'giris',
         source: 'kiosk',
       });
     } catch (pdksErr) {
-      console.error("PDKS giris hook error (non-blocking):", pdksErr);
+      // Sprint D: silent swallow yerine CRITICAL tag ile yüksek görünürlük (monitör için)
+      console.error("[CRITICAL][PDKS-SYNC] Branch kiosk giris pdks_records yazılamadı (shift_attendance yazıldı, tutarsızlık riski):", { userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
     }
 
     // ═══ HER CHECK-IN'DE shift_attendance OLUŞTUR (geç kalma fark etmez) ═══
@@ -3361,18 +3362,17 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
     }
 
     try {
-      const dateStr = now.toISOString().split('T')[0];
-      const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+      // Sprint D fix: TR timezone
       await db.insert(pdksRecords).values({
         userId: session.userId,
         branchId,
-        recordDate: dateStr,
-        recordTime: timeStr,
+        recordDate: trDateString(now),
+        recordTime: trTimeStringShort(now),
         recordType: 'cikis',
         source: 'kiosk',
       });
     } catch (pdksErr) {
-      console.error("PDKS cikis hook error (non-blocking):", pdksErr);
+      console.error("[CRITICAL][PDKS-SYNC] Branch kiosk cikis pdks_records yazılamadı (session.completed yazıldı, tutarsızlık riski):", { userId: session.userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
     }
 
     // P1.2+P1.3: Fazla mesai / erken çıkış → supervisor bildirim
@@ -4122,19 +4122,19 @@ router.post('/api/hq/kiosk/shift-start', isKioskAuthenticated, async (req, res) 
       longitude: longitude ? String(longitude) : null,
     });
 
-    // PDKS giris kaydı yaz (non-blocking)
+    // PDKS giris kaydı yaz (non-blocking) — Sprint D: TR timezone + CRITICAL log
     try {
       await db.insert(pdksRecords).values({
         userId,
         branchId: HQ_BRANCH_ID,
-        recordDate: now.toISOString().split('T')[0],
-        recordTime: now.toTimeString().split(' ')[0],
+        recordDate: trDateString(now),
+        recordTime: trTimeString(now),
         recordType: 'giris',
         source: 'kiosk',
         deviceInfo: 'hq-kiosk',
       });
     } catch (pdksErr: unknown) {
-      console.warn("[HQ-KIOSK] PDKS clock-in write failed (non-blocking):", pdksErr instanceof Error ? pdksErr.message : String(pdksErr));
+      console.error("[CRITICAL][PDKS-SYNC][HQ-KIOSK] PDKS giris yazılamadı (hq_session yazıldı, tutarsızlık riski):", { userId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
     }
 
     // ═══ HER HQ CHECK-IN'DE shift_attendance OLUŞTUR ═══
@@ -4246,20 +4246,20 @@ router.post('/api/hq/kiosk/exit', isKioskAuthenticated, async (req, res) => {
         longitude: longitude ? String(longitude) : null,
       });
 
-      // PDKS cikis kaydı yaz (non-blocking)
+      // PDKS cikis kaydı yaz (non-blocking) — Sprint D: TR timezone + CRITICAL log
       try {
         const HQ_BRANCH_ID = 23;
         await db.insert(pdksRecords).values({
           userId: session.userId,
           branchId: HQ_BRANCH_ID,
-          recordDate: checkOutNow.toISOString().split('T')[0],
-          recordTime: checkOutNow.toTimeString().split(' ')[0],
+          recordDate: trDateString(checkOutNow),
+          recordTime: trTimeString(checkOutNow),
           recordType: 'cikis',
           source: 'kiosk',
           deviceInfo: 'hq-kiosk',
         });
       } catch (pdksErr: unknown) {
-        console.warn("[HQ-KIOSK] PDKS clock-out write failed (non-blocking):", pdksErr instanceof Error ? pdksErr.message : String(pdksErr));
+        console.error("[CRITICAL][PDKS-SYNC][HQ-KIOSK] PDKS cikis yazılamadı (hq_session.completed yazıldı, tutarsızlık riski):", { userId: session.userId, sessionId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
       }
       
       const [updated] = await db.select().from(hqShiftSessions)
