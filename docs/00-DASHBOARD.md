@@ -12,8 +12,8 @@
 
 | Metrik | Değer |
 |---|---|
-| **Pilot Hazırlık Skoru** | **~7.5/10 (%85)** — Task #113 10 madde tamam, yük testi yeşil |
-| **Aktif Sprint** | A ✅ tamam → **B başlıyor** (Pazartesi 20 Nis) |
+| **Pilot Hazırlık Skoru** | **~9.0/10 (%92)** — Sprint B+D kapandı, pilot PDKS senkron ✅ |
+| **Aktif Sprint** | A+B+D ✅ tamam → pilot 28 Nis GO hazır |
 | **🚨 PILOT BAŞLANGIÇ** | **28 Nisan 2026 Salı sabah 09:00** (FAZAL) |
 | **Pilot tipi** | **CANLI OPERASYONEL** (beta değil — operasyonel aciliyet) |
 | **Pilot Lokasyon** | HQ + Fabrika + Işıklar + Lara |
