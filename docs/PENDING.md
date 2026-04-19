@@ -8,33 +8,28 @@
 
 ## 📨 REPLİT'E BEKLEYEN
 
-### 🔴 TASK-001: Sprint D ↔ E Entegrasyon (15 dk, P0)
+### 🔴 TASK-PUSH-001: Replit'in 2 Commit'ini Push Et (5 dk, P0)
 
-**Bağlam:** Sprint E backend (commit `b918fe8`) tabloyu + helper'ı + endpoint'leri kurdu. Ama Sprint D'deki 6 P0 yer hâlâ ham `console.error` çağırıyor. Yani `/admin/critical-logs` paneli production'da BOŞ kalacak.
+**Acil!** Replit Pazar gece 2 task bitirdi ama push edemedi (GitHub auth Replit Agent'ta yok):
+- `e4cfce7c1` — Task #117: silent try/catch 5 yer migrate (shifts.ts × 2 + index.ts × 3) + quality-gate Madde 30-32
+- `9a8a9e632` — Task #118: derin öz-analiz raporu (5 şapka × 5 soru = 25 + 3 meta)
 
-**Yapılacak:** 
-- `server/routes/branches.ts` 4 yer (satır 2924, 3376, 4138, 4263)
-- `server/routes/factory.ts` 2 yer (satır 1139, 1773)
-
-**Pattern:**
-```typescript
-// ÖNCESİ:
-console.error("[CRITICAL][PDKS-SYNC] ...", { userId, branchId, error });
-
-// SONRASI:
-import { critLog } from "../lib/crit-log";
-critLog("PDKS-SYNC", "Branch kiosk giris: pdks yazılamadı", {
-  userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr),
-}, "branches.ts:2924").catch(() => {});
+**Yapılacak yöntem A (önerilen):**
+```bash
+# Replit'in local'inde:
+git format-patch -2 HEAD --stdout > /tmp/replit-pazar-2-commit.patch
+cat /tmp/replit-pazar-2-commit.patch
+# Çıktıyı Aslan'a yapıştır, Aslan Claude'a iletir, Claude apply edip push eder
 ```
 
-**Acceptance:**
-- [x] 6 yer migrate edildi
-- [x] `npx vite build` clean
-- [x] Manuel test: 1 yere fail tetikle, `/admin/critical-logs` kayıt görünüyor mu?
-- [x] Commit + push
+**Yapılacak yöntem B (Aslan riski göze alıyorsa):**
+```bash
+# Replit'in local'inde:
+git push https://[TOKEN]@github.com/bombty/DOSPRESSO-App.git main
+# Token Aslan paylaşır, Replit komut satırında kullanır, dosyaya YAZMAZ
+```
 
-**Rapor:** 5 satırlık ✅/❌ tablo
+**Acceptance:** `git fetch && git log origin/main -3` çıktısında 2 commit görünür
 
 ---
 

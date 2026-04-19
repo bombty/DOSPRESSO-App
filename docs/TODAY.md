@@ -2,23 +2,37 @@
 
 **Tarih:** 20 Nis 2026 Pazartesi  
 **Pilot:** 28 Nis (8 gün kaldı)  
-**Hazırlık skoru:** 9.3/10 (%93)  
-**Son güncelleme:** Pazar 19 Nis 23:55 (Claude — pazar gece marathon kapanışı)
+**Hazırlık skoru:** 9.4/10 (%94) — Replit Pazar gece 2 task daha bitirdi (push bekliyor)  
+**Son güncelleme:** Pazartesi 03:30 (Claude — Replit raporu sonrası ayar)
+
+---
+
+## 🚨 ŞU AN BİR SORUN VAR — DİKKAT
+
+**Replit Pazar gece 2 task bitirdi:**
+- `e4cfce7c1` (Task #117 — silent try/catch 5 yer migrate)
+- `9a8a9e632` (Task #118 — derin öz-analiz raporu)
+
+**AMA:** Bu commit'ler **Replit'in local'inde** kaldı. Origin'de YOK!  
+**Sebep:** GitHub auth Replit Agent'ta yok (AGENT-OWNERSHIP gereği push Claude'un).
+
+**ÇÖZÜM:** PENDING.md TASK-PUSH-001 — Aslan Replit'e mesaj atacak, patch al / push et.
 
 ---
 
 ## 🎯 ŞU AN TABLO — 30 SANİYEDE OKU
 
 ```
-ÜCGEN DURUMU      Aslan: uyuyor (gece 02:55)
-                  Claude: pazar marathon bitti, skill update yapıldı
-                  Replit: Sprint E UI bitirdi (1bd4156), şimdi öz-analiz bekliyor
+ÜCGEN DURUMU      Aslan: uyuyor (gece 03:30)
+                  Claude: PENDING.md güncellendi, commit'ler senkron bekliyor
+                  Replit: 2 task bitirdi local'de, push gerekli
 
-PILOT BLOKER      🚨 Parola reset bug (her restart 158 user "0000")
-SECONDARY BLOKER  🟡 Sprint D-E entegre değil (admin paneli boş kalır)
-TERTIARY BLOKER   🟢 7 silent try/catch (kuryeler + auto_close)
+PILOT BLOKER      🚨 Replit'in 2 commit'i hayalet (5 dk push çözer)
+                  🚨 Parola reset bug (Aslan kararı bekleniyor)
+SECONDARY BLOKER  🟢 Sprint D-E ZATEN entegre (Sprint E backend'de yapılmıştı)
+TERTIARY BLOKER   🟢 7 try/catch'ten 5'i Replit yaptı (push bekliyor), 2 yer kaldı
 
-PENDING DECISION  Aslan: Parola fix nasıl? (PILOT_MODE / kaldır / başka)
+PENDING DECISION  Aslan: Parola fix nasıl? (PENDING.md DECISION-001)
 ```
 
 ---
