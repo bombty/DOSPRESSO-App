@@ -1229,3 +1229,52 @@ export const insertExamRequestSchema = createInsertSchema(examRequests).omit({
 
 export type InsertExamRequest = z.infer<typeof insertExamRequestSchema>;
 export type ExamRequest = typeof examRequests.$inferSelect;
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint E — System Critical Logs (19 Nis 2026)
+//
+// Bağlam: Sprint D'de 6 P0 yerine [CRITICAL][PDKS-SYNC] prefix'li
+// console.error eklendi. Ama bu log'lar sadece stdout'a gidiyor;
+// admin panelinde görünmüyor. Pilot sırasında PDKS sync fail
+// olsa kimse fark etmez.
+//
+// Bu tablo `critLog()` helper tarafından yazılır:
+//   - `console.error` yanında DB'ye de persist edilir
+//   - Admin `/admin/critical-logs` sayfasında son 24 saat görünür
+//   - 7 günden eski loglar nightly cleanup ile silinir (Sprint F)
+//
+// Pilot 28 Nis — Aslan sabah 09:00 dashboard'a bakarak pilot
+// öncesi gece hiçbir CRITICAL log olmadığını görmeli.
+// ═══════════════════════════════════════════════════════════════════
+
+export const systemCriticalLogs = pgTable("system_critical_logs", {
+  id: serial("id").primaryKey(),
+  // Sprint D pattern: "PDKS-SYNC", "HQ-KIOSK", "FAB-KIOSK" vb.
+  tag: varchar("tag", { length: 50 }).notNull(),
+  // Kısa insanca mesaj (ilk 200 char)
+  message: text("message").notNull(),
+  // Structured context: userId, branchId, error stack, vs.
+  context: jsonb("context"),
+  // Kaynak dosya:satır (opsiyonel)
+  sourceLocation: varchar("source_location", { length: 200 }),
+  // "new" (görülmemiş), "acknowledged" (Aslan gördü), "resolved" (fix edildi)
+  status: varchar("status", { length: 20 }).notNull().default("new"),
+  acknowledgedById: varchar("acknowledged_by_id").references(() => users.id, { onDelete: "set null" }),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  // Son 24 saat sorgusu için (admin dashboard)
+  index("system_critical_logs_created_idx").on(table.createdAt),
+  index("system_critical_logs_status_idx").on(table.status),
+  index("system_critical_logs_tag_idx").on(table.tag),
+]);
+
+export const insertSystemCriticalLogSchema = createInsertSchema(systemCriticalLogs).omit({
+  id: true,
+  createdAt: true,
+  acknowledgedById: true,
+  acknowledgedAt: true,
+});
+
+export type InsertSystemCriticalLog = z.infer<typeof insertSystemCriticalLogSchema>;
+export type SystemCriticalLog = typeof systemCriticalLogs.$inferSelect;

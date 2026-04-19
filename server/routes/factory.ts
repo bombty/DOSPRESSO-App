@@ -77,6 +77,7 @@ const router = Router();
 
 import { like } from "drizzle-orm";
 import { trDateString, trTimeString } from "../lib/datetime";
+import { critLog } from "../lib/crit-log";
 
 async function createAutoLot(params: {
   productId: number | null;
@@ -1135,7 +1136,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
             deviceInfo: 'factory-kiosk',
           });
         } catch (pdksErr: unknown) {
-          console.error("[CRITICAL][PDKS-SYNC][FAB-KIOSK] PDKS giris yazılamadı (factory_session yazıldı, tutarsızlık riski):", { userId, branchId: factoryBranchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
+          // Sprint E: critLog() içinde console.error + DB persist birlikte
+          critLog("FAB-KIOSK", "Factory kiosk giris: pdks_records yazılamadı (factory_session yazıldı, tutarsızlık riski)", { userId, branchId: factoryBranchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "factory.ts:1139").catch(() => {});
         }
       }
 
@@ -1769,7 +1771,8 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
           });
         }
       } catch (pdksErr: unknown) {
-        console.error("[CRITICAL][PDKS-SYNC][FAB-KIOSK] PDKS cikis yazılamadı (factory_session.completed yazıldı, tutarsızlık riski):", { userId: session.userId, sessionId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
+        // Sprint E: critLog() içinde console.error + DB persist birlikte
+        critLog("FAB-KIOSK", "Factory kiosk cikis: pdks_records yazılamadı (factory_session.completed yazıldı, tutarsızlık riski)", { userId: session.userId, sessionId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "factory.ts:1773").catch(() => {});
       }
 
       // Get all production runs for this session

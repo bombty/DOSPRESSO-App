@@ -74,6 +74,7 @@ import {
 } from "@shared/schema";
 import crypto from "crypto";
 import { trDateString, trTimeString, trTimeStringShort } from "../lib/datetime";
+import { critLog } from "../lib/crit-log";
 
 const router = Router();
 
@@ -2920,7 +2921,8 @@ router.post("/api/branches/:branchId/kiosk/shift-start", isKioskOrAuthenticated,
       });
     } catch (pdksErr) {
       // Sprint D: silent swallow yerine CRITICAL tag ile yüksek görünürlük (monitör için)
-      console.error("[CRITICAL][PDKS-SYNC] Branch kiosk giris pdks_records yazılamadı (shift_attendance yazıldı, tutarsızlık riski):", { userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
+      // Sprint E: critLog() içinde console.error + DB persist birlikte
+      critLog("PDKS-SYNC", "Branch kiosk giris: pdks_records yazılamadı (shift_attendance yazıldı, tutarsızlık riski)", { userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "branches.ts:2924").catch(() => {});
     }
 
     // ═══ HER CHECK-IN'DE shift_attendance OLUŞTUR (geç kalma fark etmez) ═══
@@ -3372,7 +3374,8 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
         source: 'kiosk',
       });
     } catch (pdksErr) {
-      console.error("[CRITICAL][PDKS-SYNC] Branch kiosk cikis pdks_records yazılamadı (session.completed yazıldı, tutarsızlık riski):", { userId: session.userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
+      // Sprint E: critLog() içinde console.error + DB persist birlikte
+      critLog("PDKS-SYNC", "Branch kiosk cikis: pdks_records yazılamadı (session.completed yazıldı, tutarsızlık riski)", { userId: session.userId, branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "branches.ts:3376").catch(() => {});
     }
 
     // P1.2+P1.3: Fazla mesai / erken çıkış → supervisor bildirim
@@ -4134,7 +4137,8 @@ router.post('/api/hq/kiosk/shift-start', isKioskAuthenticated, async (req, res) 
         deviceInfo: 'hq-kiosk',
       });
     } catch (pdksErr: unknown) {
-      console.error("[CRITICAL][PDKS-SYNC][HQ-KIOSK] PDKS giris yazılamadı (hq_session yazıldı, tutarsızlık riski):", { userId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
+      // Sprint E: critLog() içinde console.error + DB persist birlikte
+      critLog("HQ-KIOSK", "HQ kiosk giris: pdks_records yazılamadı (hq_session yazıldı, tutarsızlık riski)", { userId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "branches.ts:4138").catch(() => {});
     }
 
     // ═══ HER HQ CHECK-IN'DE shift_attendance OLUŞTUR ═══
@@ -4259,7 +4263,8 @@ router.post('/api/hq/kiosk/exit', isKioskAuthenticated, async (req, res) => {
           deviceInfo: 'hq-kiosk',
         });
       } catch (pdksErr: unknown) {
-        console.error("[CRITICAL][PDKS-SYNC][HQ-KIOSK] PDKS cikis yazılamadı (hq_session.completed yazıldı, tutarsızlık riski):", { userId: session.userId, sessionId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) });
+        // Sprint E: critLog() içinde console.error + DB persist birlikte
+        critLog("HQ-KIOSK", "HQ kiosk cikis: pdks_records yazılamadı (hq_session.completed yazıldı, tutarsızlık riski)", { userId: session.userId, sessionId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "branches.ts:4263").catch(() => {});
       }
       
       const [updated] = await db.select().from(hqShiftSessions)
