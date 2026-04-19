@@ -777,3 +777,59 @@ Bu doldurulmadan kod yazma yasak.
 - Otomatik üretilen dosyalar (runtime reports) — Replit'in `server/data/*recalc*.json` gibi
 - Binary cache dosyaları
 
+
+---
+
+## Madde 30 — Pilot Kritik Log Görünürlüğü (stub, Task #117)
+
+**Bağlam:** 28.04.2026 pilot sırasında karar rolleri (admin/ceo/cgo/adminhq) `/admin/critical-logs` panelini her 30 sn'de bir refresh eder. Yeni eklenen `try { db.insert(pdksRecords)... } catch` blokları MUTLAKA `critLog()` ile sarılı olmalı; çıplak `console.error` pilot karar dashboard'una düşmez.
+
+~~~bash
+# Her catch (pdksErr|e) bloğunda critLog kullanımı zorunlu
+grep -rn "catch (pdksErr\|catch (e:" server/routes/*.ts server/index.ts | wc -l
+grep -rn "critLog(" server/routes/*.ts server/index.ts | wc -l
+# critLog satır sayısı ≥ kiosk/pdks try/catch sayısı olmalı
+~~~
+
+**Gerekçe:** B.1 missing_pdks_record bulgusu (19.04.2026) — silent swallow Sprint D ↔ E bridge'i kırmıştı. Aslan kararı: artık her PDKS hook çağrısı görünür.
+
+**PASS:** Tüm pdks/kiosk catch blokları critLog ile, tag taksonomisi `PDKS-SYNC|HQ-KIOSK|FAB-KIOSK|MOBILE-QR|AUTO-CLOSE` içinde.
+**FAIL:** `console.error` ile sessizce yutan herhangi bir kiosk/PDKS handler.
+
+> **NOT (Aslan):** Bu maddenin içeriği pilot Day-1 raporundan sonra kalıcı kabule bağlanacak (eşik: 5 gün × 0 silent swallow regresyonu).
+
+---
+
+## Madde 31 — Sprint Cross-Wire Audit (stub, Task #117)
+
+**Bağlam:** Sprint D (silent failure pattern) ↔ Sprint E (`system_critical_logs` + UI) arasında bridge bütünlüğü. Tek başına Sprint D iyi, tek başına Sprint E iyi — ama D'nin çıktıları E'nin tablo şemasıyla uyuşmazsa pilot dashboard boş kalır.
+
+~~~bash
+# system_critical_logs şeması mevcut + indeksleri kullanılıyor mu?
+psql "$DATABASE_URL" -c "\d system_critical_logs" | grep -E "tag|status|created_at"
+# critLog tag'leri admin filter SelectItem ile uyumlu mu?
+grep -E "PDKS-SYNC|HQ-KIOSK|FAB-KIOSK|MOBILE-QR|AUTO-CLOSE" client/src/pages/admin/critical-logs.tsx
+~~~
+
+**PASS:** D'nin ürettiği her tag, E'nin tagColor() fonksiyonunda renk hint'ine sahip; summary endpoint last_7d_by_tag içinde gözlemlenebiliyor.
+**FAIL:** Yeni tag eklendi ama UI tagColor()'da varsayılan kırmızıya düşüyor (görsel tutarlılık kaybı).
+
+> **NOT (Aslan):** Pilot Day-1 sonunda `last_24h.unread_24h` 0'dan büyük olduğu durum sayısı kabule bağlı kriter olacak.
+
+---
+
+## Madde 32 — Silent Failure Coverage (stub, Task #117)
+
+**Bağlam:** sprint-d-fix-plan STEP 3 audit (19.04.2026) toplam 13 silent yer tespit etti — 11'i kapatıldı (6 P0 Sprint D, 5 P1/P2 Task #117). Pilot sonrası yeni handler eklenirken regresyon olmaması için coverage takip eder.
+
+~~~bash
+# 'PDKS hook error' veya 'auto-checkout error' gibi çıplak console.error sayısı 0 olmalı
+grep -rn "console.error.*PDKS\|console.error.*pdks\|console.error.*auto.checkout" server/ | grep -v "node_modules" | wc -l
+# Beklenen: 0
+~~~
+
+**PASS:** Çıplak console.error ile yutulan PDKS/auto-checkout hata sayısı = 0.
+**FAIL:** Geri dönüş varsa (yeni route eklendi, eski pattern sızdı) — Task #117 commit'inden önceki baseline'a düşmüş demektir.
+
+> **NOT (Aslan):** Madde 30-32 birlikte "Pilot Görünürlük Üçlüsü" sayılır. Tek başlarına pass etmeleri yetmez; Day-1 raporunda üçü birden ✓ olmalı.
+

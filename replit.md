@@ -18,7 +18,7 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - **Pilot lokasyonları**: branch_id 5 (Işıklar), 8 (Lara), 23 (HQ), 24 (Fabrika)
 - **Yük testi gerçek bulgu**: `/api/login` (`/api/auth/login` değil), test usernames pilot öncesi parolalarla doğrulanmalı
 - **Aslan kararları**: 4 sayısal eşik (login >%95, task >10/lokasyon, error <%5, smoke ≥7/8); pilot 28 Nis kesin
-- Önceki commit: `18896c813` (Sprint A5)
+- Önceki commit: `18896c813` (Sprint A5) → `3f2350515` (sistem değerlendirme) → `e4cfce7c1` (Task #117: silent try/catch migrate 5 yer + quality-gate Madde 30-32 stub + sourceLocation drift fix, push GitHub auth bekliyor — Claude path)
 - Bekleyen: #92 fabrika_depo leftovers, #93 düşük stok→satınalma, #94 LOT/SKT
 - adminhq parola: `0000` (Pazartesi 28 Nis 08:00 rotasyon → 1Password)
 

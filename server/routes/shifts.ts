@@ -17,6 +17,8 @@ import { analyzeDressCodePhoto } from "../ai";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { requireManifestAccess, getScopeFilter } from '../services/manifest-auth';
 import { evaluateShiftBlockRules } from "../services/rules-engine";
+import { critLog } from "../lib/crit-log";
+import { trDateString, trTimeStringShort } from "../lib/datetime";
 
 const router = Router();
 
@@ -783,18 +785,20 @@ router.post('/api/shift-attendance/check-in', isAuthenticated, async (req, res) 
     }
     
     // P0.1 FIX: Write to pdksRecords so payroll engine counts this day as worked
+    // Sprint D fix: TR timezone (UTC sınır geçişi sorunu — bkz. server/lib/datetime.ts)
+    // Sprint E migrate (Task #117): silent console.error → critLog (admin paneli görünürlüğü)
     try {
       const now2 = new Date();
       await db.insert(pdksRecords).values({
         userId: user.id,
         branchId: shift.branchId,
-        recordDate: now2.toISOString().split('T')[0],
-        recordTime: now2.toTimeString().split(' ')[0].substring(0, 5),
+        recordDate: trDateString(now2),
+        recordTime: trTimeStringShort(now2),
         recordType: 'giris',
         source: 'mobile_qr',
       });
     } catch (pdksErr) {
-      console.error("[shifts] PDKS giris hook error (non-blocking):", pdksErr);
+      critLog("MOBILE-QR", "Mobile QR giris: pdks_records yazılamadı (shift_attendance yazıldı, tutarsızlık riski)", { userId: user.id, branchId: shift.branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "shifts.ts:799").catch(() => {});
     }
     
     res.status(201).json(attendance);
@@ -897,17 +901,18 @@ router.post('/api/shift-attendance/check-out', isAuthenticated, async (req, res)
     });
     
     // P0.1 FIX: Write to pdksRecords so payroll engine counts check-out
+    // Sprint D fix: TR timezone + Sprint E migrate (Task #117): critLog
     try {
       await db.insert(pdksRecords).values({
         userId: user.id,
         branchId: shift.branchId,
-        recordDate: now.toISOString().split('T')[0],
-        recordTime: now.toTimeString().split(' ')[0].substring(0, 5),
+        recordDate: trDateString(now),
+        recordTime: trTimeStringShort(now),
         recordType: 'cikis',
         source: 'mobile_qr',
       });
     } catch (pdksErr) {
-      console.error("[shifts] PDKS cikis hook error (non-blocking):", pdksErr);
+      critLog("MOBILE-QR", "Mobile QR cikis: pdks_records yazılamadı (shift_attendance.completed yazıldı, tutarsızlık riski)", { userId: user.id, branchId: shift.branchId, error: pdksErr instanceof Error ? pdksErr.message : String(pdksErr) }, "shifts.ts:912").catch(() => {});
     }
     
     // Return response with overtime info

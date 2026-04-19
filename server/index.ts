@@ -17,7 +17,8 @@ import { generateDailyTaskInstances, markOverdueInstances } from "./services/bra
 import coworkRoutes from "./routes/cowork-routes";
 import { migrateCrmTaskTables } from "./services/crm-task-migration";
 import { migrateEscalationTables, startFranchiseEscalationScheduler } from "./services/franchise-escalation";
-import { migrateCriticalLogsTable } from "./lib/crit-log";
+import { migrateCriticalLogsTable, critLog } from "./lib/crit-log";
+import { trDateString, trTimeString } from "./lib/datetime";
 import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
@@ -667,15 +668,16 @@ async function forceCloseAllFactoryShifts() {
           await db.insert(pdksRecords).values({
             userId: shift.userId,
             branchId: worker.branchId,
-            recordDate: now.toISOString().split('T')[0],
-            recordTime: now.toTimeString().split(' ')[0],
+            recordDate: trDateString(now),
+            recordTime: trTimeString(now),
             recordType: 'cikis',
             source: 'kiosk',
             deviceInfo: 'auto_checkout_2030',
           });
         }
       } catch (e) {
-        console.error('[Factory] PDKS auto-checkout error:', e);
+        // Sprint E migrate (Task #117): silent console.error → critLog
+        critLog("AUTO-CLOSE", "Factory auto-checkout 20:30: pdks_records yazılamadı (factory_session.completed yazıldı)", { userId: shift.userId, sessionId: shift.id, error: e instanceof Error ? e.message : String(e) }, "index.ts:680").catch(() => {});
       }
 
       try {
@@ -769,14 +771,15 @@ async function forceCloseAllBranchShifts() {
         await db.insert(pdksRecords).values({
           userId: session.userId,
           branchId: session.branchId,
-          recordDate: now.toISOString().split('T')[0],
-          recordTime: now.toTimeString().split(' ')[0],
+          recordDate: trDateString(now),
+          recordTime: trTimeString(now),
           recordType: 'cikis',
           source: 'auto_close',
           deviceInfo: `auto_checkout_${branchCloseTime.replace(':', '')}`,
         });
       } catch (e) {
-        console.error('[Branch] PDKS auto-checkout error:', e);
+        // Sprint E migrate (Task #117): silent console.error → critLog
+        critLog("AUTO-CLOSE", `Branch auto-checkout ${branchCloseTime}: pdks_records yazılamadı (branch_session.completed yazıldı)`, { userId: session.userId, branchId: session.branchId, sessionId: session.id, error: e instanceof Error ? e.message : String(e) }, "index.ts:781").catch(() => {});
       }
       closedCount++;
     }
@@ -851,14 +854,15 @@ async function forceCloseAllHQShifts() {
         await db.insert(pdksRecords).values({
           userId: session.userId,
           branchId: HQ_BRANCH_ID,
-          recordDate: now.toISOString().split('T')[0],
-          recordTime: now.toTimeString().split(' ')[0],
+          recordDate: trDateString(now),
+          recordTime: trTimeString(now),
           recordType: 'cikis',
           source: 'auto_close',
           deviceInfo: `auto_checkout_${hqCloseTime.replace(':', '')}`,
         });
       } catch (e) {
-        console.error('[HQ] PDKS auto-checkout error:', e);
+        // Sprint E migrate (Task #117): silent console.error → critLog
+        critLog("AUTO-CLOSE", `HQ auto-checkout ${hqCloseTime}: pdks_records yazılamadı (hq_session.completed yazıldı)`, { userId: session.userId, sessionId: session.id, error: e instanceof Error ? e.message : String(e) }, "index.ts:863").catch(() => {});
       }
     }
 
