@@ -1,8 +1,8 @@
 # 📊 DOSPRESSO — 00-DASHBOARD.md
 
-**Son Güncelleme:** 19 Nis 2026 Cumartesi gece (Task #113 tamam + token yenilendi)
+**Son Güncelleme:** 19 Nis 2026 Pazar gece (Sprint A.2+B+D+G+E_backend tamam, skill files güncellendi)
 **Amaç:** Her Claude oturumu başında 5 dakikada sisteme hizalan
-**Güncelleme Kuralı:** Her oturum sonu `session-protocol` skill'i Adım 1 gereği güncellenir ve commit'lenir
+**Güncelleme Kuralı:** Her oturum sonu `dospresso-session-protocol` skill'i Adım 3 gereği güncellenir ve commit'lenir
 
 > Bu dosya statik değil, **yaşayan durum özeti**. Değişirse → commit. 100 doküman yerine bu 1 dosya.
 
@@ -12,8 +12,8 @@
 
 | Metrik | Değer |
 |---|---|
-| **Pilot Hazırlık Skoru** | **~9.0/10 (%92)** — Sprint B+D kapandı, pilot PDKS senkron ✅ |
-| **Aktif Sprint** | A+B+D ✅ tamam → pilot 28 Nis GO hazır |
+| **Pilot Hazırlık Skoru** | **~9.3/10 (%93)** — Sprint A.2+B+D+G+E_backend kapandı |
+| **Aktif Sprint** | Tüm planlı sprint'ler ✅ tamam → Sprint E UI Replit'te (Pazartesi) |
 | **🚨 PILOT BAŞLANGIÇ** | **28 Nisan 2026 Salı sabah 09:00** (FAZAL) |
 | **Pilot tipi** | **CANLI OPERASYONEL** (beta değil — operasyonel aciliyet) |
 | **Pilot Lokasyon** | HQ + Fabrika + Işıklar + Lara |
@@ -26,6 +26,33 @@
 - **Fabrika + HQ:** Pazartesi Aslan detay paylaşacak
 
 **Rollback politikası:** **Esnek** — Aslan + Claude + Replit WhatsApp günlük, kriz anında IT rollback yetkili.
+
+---
+
+## 🆕 Pazar 19 Nis Gece Marathon — Tamamlananlar
+
+### ✅ Backend Sprint'leri (commit'ler)
+| Sprint | Commit | Açıklama |
+|---|---|---|
+| A.2 | `137c6f6` | task_escalation_log + 7-gün dedup (notification spam Plan A.2 tamamlama) |
+| B.1 | `137c6f6` + `6283e96` (fix) | PDKS consistency-check endpoint (salt-okunur analiz) |
+| B.3 | `137c6f6` | Monthly attendance summary scheduler + 3 ay catch-up |
+| D STEP 1 | `7828aca` | Backfill 3 eksik pdks_records (Basri 29.03 + 02.04, Büşra 21.03) |
+| D STEP 2 | `538a641` | TR datetime helper + 6 P0 silent failure → CRITICAL log |
+| G | `ae21c58` | Pilot Day-1 Dashboard (4 eşik 3/4 kuralı, /admin/pilot-dashboard) |
+| E backend | `b918fe8` | system_critical_logs tablo + critLog() helper + 3 endpoint |
+
+### ⏳ Pazartesi Sabah Bekleyen
+- **Replit**: Sprint D kiosk regresyon simülasyonu (10 dk)
+- **Replit**: Sprint E UI sayfası `/admin/critical-logs` (~1 saat)
+- **Aslan**: Cihaz envanteri + kullanıcı profilleri + WhatsApp grupları
+
+### 📚 Yeni Skill Updates (`docs/skills-archive/`)
+4 dosya — Aslan Replit'e/manuel olarak `/mnt/skills/user/`'a koyacak:
+- `dospresso-quality-gate.md` (218 → 364 satır) — Madde 37 §17-25 + critLog + TR datetime
+- `dospresso-debug-guide.md` (159 → 232 satır) — yeni bug pattern'ler + Madde 38
+- `dospresso-architecture.md` (127 → 231 satır) — yeni helper'lar + tablolar + endpoint'ler
+- `dospresso-session-protocol.md` (138 satır YENİ) — oturum başı/sonu disiplin
 
 ---
 
