@@ -880,7 +880,7 @@ router.get('/api/pdks/consistency-check', isAuthenticated, async (req: any, res:
         pc.user_id,
         pc.branch_id,
         pc.record_date,
-        u.name AS user_name,
+        COALESCE(u.first_name || ' ' || u.last_name, u.username, 'Bilinmiyor') AS user_name,
         u.role,
         b.name AS branch_name
       FROM pdks_checkins pc
@@ -901,7 +901,7 @@ router.get('/api/pdks/consistency-check', isAuthenticated, async (req: any, res:
         sa.shift_id,
         s.shift_date,
         s.branch_id,
-        u.name AS user_name,
+        COALESCE(u.first_name || ' ' || u.last_name, u.username, 'Bilinmiyor') AS user_name,
         u.role,
         b.name AS branch_name,
         sa.check_in_time,
