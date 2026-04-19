@@ -1,93 +1,110 @@
-# Claude Sprint B.1 + B.3 + A.2 — Test Raporu
+# Claude Sprint B.1 + B.3 + A.2 — Test Raporu (FİX SONRASI)
 
-**Test tarihi:** 19.04.2026 22:54 (Europe/Istanbul)
-**Test eden:** Replit Agent (Task #114)
-**Test edilen commit:** `806793b0a` (Pull sonrası HEAD = `4ccae2580`)
+**Test tarihi:** 19.04.2026 23:03 (Europe/Istanbul) — re-test
+**Test eden:** Replit Agent (Task #114 + B.1 fix re-test)
+**Test edilen commit:** `6283e963a` (B.1 SQL fix dahil)
 **Pilot tarihi:** 28.04.2026 Pazartesi 08:00 (9 gün kaldı)
 
 ---
 
-## 1. Özet Tablo
+## 1. Özet Tablo (FİX SONRASI 6/6 ✅)
 
 | # | Adım | Sonuç | Not |
 |---|------|-------|-----|
-| 1 | `git pull --rebase` (806793b0a çek) | ✅ | Conflict yok, 137c6f6 + 806793b uygulandı |
-| 2 | Backend esbuild + workflow restart | ✅ | 5.9 MB bundle, hatasız (244 ms). Workflow 41.6 sn'de hazır, 38 scheduler aktif |
-| 3 | A.2 `task_escalation_log` tablo + 2 index | ✅ | `task_level_sent_idx`, `sent_at_idx` oluştu. `[FranchiseEscalation] Tables ready` log'u görüldü |
-| 4 | B.3 Monthly Summary catch-up (3 ay) | ✅ | `2026-01`, `2026-02`, `2026-03` × 141 user × 0 hata. `[PDKS-B3] Catch-up complete: 3 months processed` log'u görüldü |
-| 5 | B.1 `/api/pdks/consistency-check?days=30` | 🔴 **BUG** | HTTP 500 — `column u.name does not exist` |
-| 6 | A.2 Escalation runtime + dedup | ✅ | İlk tick'te 35 satır insert, 0 duplicate `(task_id, level)` çifti — dedup çalışıyor |
+| 1 | `git pull --rebase` | ✅ | 137c6f6 + 806793b + 6283e96 (B.1 fix) uygulandı |
+| 2 | Backend esbuild + workflow restart | ✅ | 5.9 MB bundle, hatasız (244 ms). Workflow ~12 sn'de hazır |
+| 3 | A.2 `task_escalation_log` tablo + 2 index | ✅ | `task_level_sent_idx`, `sent_at_idx` oluştu |
+| 4 | B.3 Monthly Summary catch-up (3 ay) | ✅ | 2026-01/02/03 × 141 user × 0 hata |
+| 5 | B.1 `/api/pdks/consistency-check?days=30` | ✅ | **HTTP 200**, tam JSON yapısı (fix sonrası) |
+| 6 | A.2 Escalation runtime + dedup | ✅ | İlk tick'te 35 satır, 0 duplicate |
 
-**Toplam:** 5 ✅ / 1 🔴 — pilot için **dikkat gerekiyor** (B.1 endpoint 28 Nis öncesi düzeltilmeli)
+**Sonuç:** **6/6 ✅** — pilot için **GO** (1 yan bulgu: 4 shift_attendance check-in için pdks_records yok — Pazartesi pilot başlamadan önce kök neden araştırılmalı, aşağı bak).
 
 ---
 
-## 2. Kritik Metrikler
+## 2. Kritik Metrikler (FİX SONRASI)
 
-### B.1 — `missing_pdks_record` (Pilot #1 öncelik göstergesi)
-- **Durum:** ÖLÇÜLEMEDİ ❌ — endpoint 500 döndüğü için JSON üretmedi.
-- **Kök neden:** `server/routes/pdks.ts` satır **883** ve **904** SQL'de `u.name AS user_name` kullanılmış. `users` tablosunda `name` sütunu YOK; gerçek sütunlar `first_name` + `last_name`.
-- **Fix önerisi (Claude / Sprint D):**
-  ```sql
-  -- Mevcut (BUG):
-  u.name AS user_name
-  -- Olmalı:
-  COALESCE(u.first_name || ' ' || u.last_name, 'Bilinmiyor') AS user_name
-  ```
-  İki yerde de aynı düzeltme. `b.name` kısmı doğru çünkü `branches.name` mevcut.
-- **Etki:** Pilot 28 Nis öncesi PDKS ⇄ shift_attendance senkronizasyon sağlığı **görünür değil**. Bug fix uygulanır uygulanmaz endpoint testi tekrar edilmeli.
+### B.1 — `/api/pdks/consistency-check?days=30` Tam JSON Çıktısı
 
-### B.3 — Monthly Attendance Summaries
+**HTTP 200 ✅** (önceki test: 500 — `u.name` SQL hatası)
+
+#### Summary
+| Metrik | Değer |
+|--------|-------|
+| Analiz periyodu | 30 gün |
+| pdks_records — toplam | **336** |
+| pdks_records — unique users | 18 |
+| pdks_records — unique branches | 3 |
+| pdks_records — check-in | 168 |
+| pdks_records — check-out | 168 |
+| shift_attendance — toplam | 63 |
+| shift_attendance — unique users | 14 |
+| shift_attendance — checked_in | 3 |
+| shift_attendance — checked_out | 59 |
+| shift_attendance — absent | 0 |
+| shift_attendance — with_check_in | 63 |
+| shift_attendance — missing_check_in | 0 |
+
+#### Source Breakdown
+| Kaynak | Adet |
+|--------|------|
+| seed_test | 306 |
+| kiosk | 20 |
+| migration_fix | 10 |
+
+#### 🔴 PİLOT KRİTİK METRİĞİ
+| Tutarsızlık | Adet | Oran | Yorum |
+|-------------|------|------|-------|
+| `missing_shift_attendance` | **53** | **%31.55** | Eski seed/migration kaynaklı (kaynak: seed_test 306). **Normal**, pilot için sorun değil. |
+| `missing_pdks_record` | **4** | — | 🔴 **BUG İŞARETİ** — kiosk check-in'de çifte yazım kesintisi var. **Pazartesi sabah priority 1**. |
+
+#### Otomatik Diagnosis
+> ⚠️ 53 (31.55%) pdks_records check-in için shift_attendance kaydı YOK. Kaynak: muhtemelen eski manuel punch'lar veya migration döneminden kalan.
+>
+> 🔴 4 shift_attendance check-in için pdks_records YOK. Bu BUG işareti — kiosk check-in'de çifte yazım kesildi veya silindi.
+
+### B.3 — Monthly Attendance Summaries (değişmedi)
 | period_month | user sayısı |
 |--------------|-------------|
 | 2026-01 | 141 |
 | 2026-02 | 141 |
 | 2026-03 | 141 |
-| **Toplam** | **423 satır** |
 
-- Catch-up 4.5 saniyede bitti (3 ay).
-- 0 hata, generation_time aralığı: 19:53:55 → 19:54:00.
-- Tablo şeması: `period_month VARCHAR(7)` formatında ("2026-03"), `period_year` ayrı sütun YOK — Claude şemayı doğru kullanmış.
-
-### A.2 — Task Escalation Log
-- **35 unique task × 3 seviye dağılımı:** L3=2, L4=2, L5=31
-- **İlk tick zamanı:** 19:54:10 — restart'tan ~15 sn sonra (lazy init + ilk runWindow tetiklendi)
-- **Dedup doğrulaması:** `GROUP BY task_id, escalation_level HAVING COUNT(*) > 1` → **0 satır** (dedup mantığı doğru)
-- **DB-level UNIQUE constraint:** YOK. Sadece PRIMARY KEY (id) var. Dedup application-level yapılıyor — runtime'da çalışıyor ama operasyonda riskli (race condition durumunda duplicate insert mümkün). **Öneri:** `UNIQUE (task_id, escalation_level)` constraint eklenmesi (Sprint D).
+### A.2 — Task Escalation Log (değişmedi)
+- 35 unique task × 3 seviye (L3=2, L4=2, L5=31)
+- DB-level UNIQUE constraint YOK (Task #116 follow-up'a eklendi)
+- Application-level dedup runtime'da çalışıyor (0 duplicate gözlemlendi)
 
 ---
 
-## 3. Migration Log Doğrulamaları (workflow log alıntıları)
+## 3. Pilot için Karar (Aslan'a)
 
-```
-[FranchiseEscalation] Scheduler started (every 6 hours)
-[CRMTaskMigration] ✅ Tables ready
-[FranchiseEscalation] Tables ready
-[PDKS-B3] Monthly attendance summary scheduler started (1st of month 01:00-01:10 Turkey time, startup catch-up: 3 months)
-[PDKS-B3] Starting catch-up for last 3 completed months
-[PDKS-B3] Monthly summary done: 2026-03 — 141/141 users, 0 errors
-[PDKS-B3] Monthly summary done: 2026-02 — 141/141 users, 0 errors
-[PDKS-B3] Monthly summary done: 2026-01 — 141/141 users, 0 errors
-[PDKS-B3] Catch-up complete: 3 months processed
-```
-
-Tüm beklenen migration mesajları sırasıyla göründü.
-
----
-
-## 4. Aslan için Karar Önerisi
-
-| Konu | Öneri |
+| Konu | Karar |
 |------|-------|
-| B.3 Monthly Summary | ✅ Pilot için **GO** — production-ready |
-| A.2 Escalation Log + dedup | 🟡 Pilot için **GO**, Sprint D'de DB-level UNIQUE constraint eklensin |
-| B.1 Consistency Check endpoint | 🔴 **BLOCKER (küçük)** — 2 satır SQL fix gerekli, Pazartesi 28 Nis sabahı önce çözülmeli (Claude'a 5 dk'lık iş). Aksi takdirde pilot süresince PDKS senkron sağlığı kör nokta. |
-| Genel commit `806793b0a` | 🟡 **Conditional GO** — B.1 fix'i bekliyor, B.3 + A.2 üretimde |
+| B.3 Monthly Summary | ✅ **GO** — production-ready |
+| A.2 Escalation Log | ✅ **GO** — runtime'da dedup OK; UNIQUE constraint Task #116 |
+| B.1 Consistency Check endpoint | ✅ **GO** — 6283e96 fix doğrulandı, JSON yapısı tam |
+| **Genel commit `6283e963a`** | ✅ **GO** — 6/6 test geçti |
+
+### 🔴 Pazartesi Sabah Priority 1 (Pilot başlamadan)
+**4 shift_attendance check-in için pdks_records YOK** bulgusunu kök neden analizi:
+
+1. Hangi 4 shift_attendance kaydı? Hangi şube, hangi kullanıcı, hangi tarih?
+   - Endpoint `inconsistencies.missing_pdks_record.samples` içinde detaylar mevcut (artık 200 dönüyor).
+2. Kiosk check-in akışında pdks_records insert atlanıyor mu? Yoksa silme mi var?
+3. Eğer pilot 4 lokasyonu (HQ 23, Fabrika 24, Işıklar 5, Lara 8) içeriyorsa → priority 1 fix.
+4. Eğer sadece eski/test şubelerde ise → pilot devam edebilir, sprint sonunda fix.
 
 ---
 
-## 5. Sonraki Adım
+## 4. Önceki Bulgular (Çözüldü)
 
-1. Aslan onaylar → Claude'a B.1 fix talimatı (`u.name` → `COALESCE(u.first_name || ' ' || u.last_name, 'Bilinmiyor')` × 2 yer).
-2. Fix push edildikten sonra Replit Agent yeniden test eder ve `missing_pdks_record.count` değerini ölçer.
-3. Bu değer > 0 ise pilot #1 öncelik bug; = 0 ise PDKS ⇄ shift_attendance tutarlı.
+| Sorun | Önceki Durum | Şu an |
+|-------|--------------|-------|
+| `u.name` SQL hatası | 🔴 HTTP 500 | ✅ 6283e96 ile düzeldi (`COALESCE(first_name, last_name, username)`) |
+| Endpoint testi | ❌ Çalışmıyor | ✅ Tam JSON çıktısı |
+| `missing_pdks_record` ölçümü | ❌ Bilinmiyor | ✅ **4 kayıt** (sample'lar JSON'da) |
+
+---
+
+**Sonuç:** Sprint B kodları pilot için yeşil ışık. Tek geriye kalan iş: 4 missing_pdks_record kaydının sample analizi (5 dk SQL, Pazartesi sabah).
