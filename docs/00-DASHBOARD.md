@@ -79,9 +79,11 @@ Hafta sonu 10 maddelik "Pilot Hardening" paralel bitirildi. Origin HEAD: `57066a
 - [ ] Duplicate scheduler log final verify
 
 ### 🧑‍💻 Claude paralel yapacak (3 iş, ~4 saat):
-- [ ] Sprint B.1 yeni kapsam: shift_attendance ↔ pdks_records tutarlılık
-- [ ] Sprint B.3: monthly_attendance_summaries scheduler
-- [ ] Sprint A.2: notification task_escalation_log (Feature Freeze istisna)
+- [x] ✅ Sprint B.1: shift_attendance ↔ pdks_records tutarlılık (analiz endpoint yazıldı — `/api/pdks/consistency-check`)
+- [x] ✅ Sprint B.3: monthly_attendance_summaries scheduler (startup catch-up 3 ay + ayın 1'i 01:00)
+- [x] ✅ Sprint A.2: notification task_escalation_log (Feature Freeze istisnası onaylı, Plan A.2 tamam)
+
+**Commit:** `137c6f6` (19 Nis Pazar gece, 4 dosya / 380 satır, build temiz)
 
 ### 🧑‍💼 Aslan paralel yapacak:
 - [ ] 4 lokasyondan cihaz envanteri (tablet markası, internet, NFC)
