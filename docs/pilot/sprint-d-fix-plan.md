@@ -160,3 +160,31 @@ curl -sS -b /tmp/admin-cookie.txt \
 **Hazırlayan:** Replit Agent + Claude (IT danışman) ortak analizi
 **Tarih:** 19.04.2026 23:35 (Europe/Istanbul)
 **Pilot başlangıç:** 28.04.2026 saat 08:00 (fix sonrası 10:00 GO)
+
+---
+
+## ✅ STEP 1 — TAMAMLANDI (19.04.2026 23:21, planlanandan 9 gün ÖNCE)
+
+**Çalıştırma:** `psql "$DATABASE_URL" -f scripts/pilot/08-pdks-backfill-3-kayit.sql`
+
+**Sonuç:**
+- ✅ `INSERT 0 3` (Basri 29.03 + 02.04, Büşra 21.03)
+- ✅ Pilot şubelerde kalan eksik = **0**
+- ✅ Audit izi: 3 satır `source='kiosk_backfill_d1'`, `device_info='pilot_backfill_28042026'`
+
+**B.1 canlı re-test (`/api/pdks/consistency-check?days=30`):**
+```json
+{
+  "total_missing_pdks": 1,
+  "pilot_branches_missing": 0,
+  "remaining": "Test Branch 1 / Admin DOSPRESSO 03.04 (yoksay)",
+  "source_breakdown": [
+    { "source": "seed_test", "count": 306 },
+    { "source": "kiosk", "count": 20 },
+    { "source": "migration_fix", "count": 10 },
+    { "source": "kiosk_backfill_d1", "count": 3 }
+  ]
+}
+```
+
+**Sonuç:** Pilot şubelerde PDKS↔shift_attendance senkron ✅. Pazartesi sabah Claude'un kod fix (transaction guard + TR timezone helper) görevi devam — silent failure pattern'i kapatmak için. Backfill yalnız semptomu çözdü; **kök neden hala kodda**.
