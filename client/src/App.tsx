@@ -181,6 +181,7 @@ const RolYetkileri = lazyWithRetry(() => import("@/pages/admin/rol-yetkileri"));
 // Sprint A1 (21 Nisan 2026) — 14 kırık admin sidebar linkine karşılık gelen sayfa import'ları
 const AdminAktiviteLoglari = lazyWithRetry(() => import("@/pages/admin/aktivite-loglari"));
 const AdminPilotDashboard = lazyWithRetry(() => import("@/pages/admin/pilot-dashboard"));
+const AdminCriticalLogs = lazyWithRetry(() => import("@/pages/admin/critical-logs"));
 const AdminBannerlar = lazyWithRetry(() => import("@/pages/admin/bannerlar"));
 const AdminDuyurular = lazyWithRetry(() => import("@/pages/admin/duyurular"));
 const AdminEmailAyarlari = lazyWithRetry(() => import("@/pages/admin/email-ayarlari"));
@@ -537,6 +538,7 @@ function Router() {
           {/* Sprint A1 (21 Nisan 2026) — 14 kırık admin/yonetim linki düzeltmesi (wildcard /admin/*?'dan ÖNCE olmalı) */}
           <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglari /></AdminOnly>}</Route>
           <Route path="/admin/pilot-dashboard">{() => <ProtectedRoute allowedRoles={["admin", "ceo", "cgo"]}><AdminPilotDashboard /></ProtectedRoute>}</Route>
+          <Route path="/admin/critical-logs">{() => <ProtectedRoute allowedRoles={["admin", "ceo", "cgo"]}><AdminCriticalLogs /></ProtectedRoute>}</Route>
           <Route path="/admin/bannerlar">{() => <AdminOnly><AdminBannerlar /></AdminOnly>}</Route>
           <Route path="/admin/duyurular">{() => <AdminOnly><AdminDuyurular /></AdminOnly>}</Route>
           <Route path="/admin/email-ayarlari">{() => <AdminOnly><AdminEmailAyarlari /></AdminOnly>}</Route>
