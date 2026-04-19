@@ -1,0 +1,110 @@
+🎯 SPRINT E UI — Frontend Bitirme + Test (~1 saat)
+
+Claude pazar gece backend'i tamamladı (b918fe8). Senin işin:
+1. UI sayfası yaz (~45 dk)
+2. Test + rapor (~15 dk)
+
+═══════════════════════════════════════
+1. PULL + MIGRATION CHECK (5 dk)
+═══════════════════════════════════════
+
+git pull --rebase origin main
+# Beklenen: b918fe8 + ae21c58 + b5ba72d gelmiş olmalı
+
+# Workflow restart sonrası log'ta bu görünmeli:
+# [Sprint E] system_critical_logs table + indexes ready
+
+# DB'de tablo + 3 index var mı?
+SELECT tablename FROM pg_tables WHERE tablename = 'system_critical_logs';
+SELECT indexname FROM pg_indexes WHERE tablename = 'system_critical_logs';
+# Beklenen: 1 tablo + 3 index (created_idx, status_idx, tag_idx)
+
+═══════════════════════════════════════
+2. BACKEND ENDPOINT TEST (5 dk)
+═══════════════════════════════════════
+
+# adminhq session ile:
+curl -sS -b /tmp/admin-cookie.txt \
+  "http://localhost:5000/api/admin/critical-logs/summary" | jq .
+
+# Beklenen: { last_24h: { total_24h, unread_24h, ... }, last_7d_by_tag: [], recent_unread: [] }
+# Tablo boş başlangıçta = OK
+
+# Manuel insert test:
+INSERT INTO system_critical_logs (tag, message, context)
+VALUES ('TEST', 'Sprint E UI test için manuel kayıt', '{"by":"test"}'::jsonb);
+
+# Sonra liste endpoint:
+curl -sS -b /tmp/admin-cookie.txt \
+  "http://localhost:5000/api/admin/critical-logs?days=1" | jq .
+# Beklenen: 1 log (TEST tag)
+
+# Ack test:
+curl -sS -b /tmp/admin-cookie.txt -X POST \
+  "http://localhost:5000/api/admin/critical-logs/1/ack" | jq .
+# Beklenen: { success: true, log: { status: 'acknowledged', ... } }
+
+═══════════════════════════════════════
+3. UI SAYFA YAZ (~45 dk)
+═══════════════════════════════════════
+
+DOSYA: client/src/pages/admin/critical-logs.tsx
+
+PATTERN: pilot-dashboard.tsx'i (commit ae21c58'te) BENZER yapıda yaz.
+Kullanılan UI bileşenler aynı: Card, Badge, Button, Input.
+
+3 BÖLÜM:
+
+A) ÜST ÖZET KART (summary endpoint'inden):
+- 24h Toplam: N
+- 24h Okunmamış: N (kırmızı vurgu)
+- 24h Onaylandı: N (yeşil)
+- 7g tag dağılımı (basit liste: PDKS-SYNC=3, HQ-KIOSK=1, ...)
+
+B) FİLTRE BARI:
+- Tag select (unique tag listesi summary'den gelir)
+- Status select (new / acknowledged / resolved)
+- Days input (default 7)
+
+C) LOG TABLOSU (list endpoint'inden):
+- Sütunlar: Zaman | Tag (badge) | Mesaj | Kaynak | Status | Aksiyon
+- 50 satır pagination (offset+limit)
+- Status='new' satırlar SARI arka plan
+- "Gördüm" butonu (POST /:id/ack), tıklayınca query invalidate
+
+YETKİ: admin, ceo, cgo, adminhq (pilot-dashboard.tsx'teki PILOT_ROLES pattern)
+
+ROUTE: client/src/App.tsx
+- Import: const AdminCriticalLogs = lazyWithRetry(...)
+- Route: <Route path="/admin/critical-logs">{() =>
+    <ProtectedRoute allowedRoles={["admin","ceo","cgo"]}>
+      <AdminCriticalLogs />
+    </ProtectedRoute>}
+  </Route>
+
+OPSİYONEL: admin sidebar'a link (server/menu-service.ts'te admin altına
+"Kritik Loglar" → /admin/critical-logs). Yapamazsan UI direkt URL ile
+açılır, sorun değil.
+
+═══════════════════════════════════════
+4. BUILD + COMMIT + PUSH
+═══════════════════════════════════════
+
+npx vite build  # Sadece frontend
+# Beklenen: errors=0
+
+git add client/src/pages/admin/critical-logs.tsx client/src/App.tsx
+git commit -m "feat(pilot): Sprint E UI — /admin/critical-logs sayfası"
+git push origin main
+
+═══════════════════════════════════════
+5. RAPOR (Aslan'a 5 satır)
+═══════════════════════════════════════
+
+✅ / ❌ Migration: tablo + 3 index oluştu
+✅ / ❌ Endpoint test (summary, list, ack) hepsi 200
+✅ / ❌ UI sayfası açılıyor
+✅ / ❌ Manuel test: tag filtre + ack çalışıyor
+✅ / ❌ Frontend build clean
+
+Sorular varsa Claude'a sor (Aslan WhatsApp). 1 saat hedef.
