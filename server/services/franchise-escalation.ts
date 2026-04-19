@@ -18,9 +18,9 @@ import { db } from "../db";
 import { storage } from "../storage";
 import {
   agentPendingActions, agentEscalationHistory, tasks, branchTaskInstances,
-  users, branches, escalationConfig, UserRole,
+  users, branches, escalationConfig, taskEscalationLog, UserRole,
 } from "@shared/schema";
-import { eq, and, lt, lte, isNull, notInArray, or, inArray, sql, desc } from "drizzle-orm";
+import { eq, and, lt, lte, isNull, notInArray, or, inArray, sql, desc, gt } from "drizzle-orm";
 
 // ─── Tipler ────────────────────────────────────────────────────────────────
 interface EscalationLevel {
@@ -233,6 +233,22 @@ async function runFranchiseEscalation(): Promise<{ processed: number; escalated:
     const escalationLevel = Math.min(5, Math.floor(ageDays / 7) + 1);
     if (escalationLevel < 2) continue; // İlk 7 gün normal
 
+    // ─── Sprint A.2 dedup: bu task + bu seviye için son 7 günde gönderildi mi? ───
+    // Plan B sonrası kalan %30 spam'i (task loop ~900/gün) burada tamamen kesiyor.
+    const alreadySent = await db.select({ id: taskEscalationLog.id })
+      .from(taskEscalationLog)
+      .where(and(
+        eq(taskEscalationLog.taskId, task.id),
+        eq(taskEscalationLog.escalationLevel, escalationLevel),
+        gt(taskEscalationLog.sentAt, sql`NOW() - INTERVAL '7 days'`),
+      ))
+      .limit(1);
+
+    if (alreadySent.length > 0) {
+      // Bu task için bu seviye son 7 günde zaten eskalasyon gönderildi, atla
+      continue;
+    }
+
     const lvl = levels.find(l => l.level === escalationLevel);
     if (!lvl || !lvl.isActive) continue;
 
@@ -248,6 +264,18 @@ async function runFranchiseEscalation(): Promise<{ processed: number; escalated:
       task.branchId,
       Math.round(ageDays),
     );
+
+    // Gönderildi → log'a yaz (sonraki tick için dedup sağlar)
+    await db.insert(taskEscalationLog).values({
+      taskId: task.id,
+      escalationLevel,
+      targetUserId: target.userId,
+      branchId: task.branchId,
+    }).catch(e => {
+      // Log insertion fail → kritik değil, sadece warning
+      console.error(`[FranchiseEscalation] taskEscalationLog insert fail for task=${task.id}:`, e);
+    });
+
     escalated++;
   }
 
@@ -300,6 +328,27 @@ export async function migrateEscalationTables(): Promise<void> {
         (5,'CEO','ceo',21,'CEO — CGO 14 gün içinde çözmezse')
       ON CONFLICT (level) DO NOTHING
     `);
+
+    // Sprint A.2 — task_escalation_log (notification spam Plan A.2 tamamlama)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS task_escalation_log (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        escalation_level INTEGER NOT NULL,
+        sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        target_user_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+        branch_id INTEGER REFERENCES branches(id) ON DELETE SET NULL
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS task_escalation_log_task_level_sent_idx
+        ON task_escalation_log (task_id, escalation_level, sent_at)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS task_escalation_log_sent_at_idx
+        ON task_escalation_log (sent_at)
+    `);
+
     console.log("[FranchiseEscalation] Tables ready");
   } catch (e: any) {
     console.error("[FranchiseEscalation] Migration error:", e.message);

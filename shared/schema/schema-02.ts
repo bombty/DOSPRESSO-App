@@ -3552,3 +3552,39 @@ export const insertEquipmentTroubleshootingCompletionSchema = createInsertSchema
 
 export type InsertEquipmentTroubleshootingCompletion = z.infer<typeof insertEquipmentTroubleshootingCompletionSchema>;
 export type EquipmentTroubleshootingCompletion = typeof equipmentTroubleshootingCompletion.$inferSelect;
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint A.2 — Task Escalation Log (Notification Spam Plan A.2)
+//
+// Bağlam: Plan B (storage per-entity throttle) -91% spam azalttı, ama
+// franchise-escalation.ts:218-251 tasks loop her tick aynı overdue
+// task için yeniden eskalasyon yapıyordu (storage dedup üstünde iş yükü).
+// Bu tablo scheduler-level dedup sağlar: 7 gün içinde aynı task + aynı
+// seviye için tekrar eskalasyon YAPILMAZ.
+//
+// Plan A.2 — Aslan onaylı 19 Nis 2026 (Feature Freeze istisnası:
+// "bug fix için gerekli altyapı, yeni özellik değil").
+//
+// Hedef azalma: ~900/gün → ~0 (task loop spam kaynağı tamamen kapanır)
+// ═══════════════════════════════════════════════════════════════════
+
+export const taskEscalationLog = pgTable("task_escalation_log", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  escalationLevel: integer("escalation_level").notNull(), // 2-5
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  targetUserId: varchar("target_user_id").references(() => users.id, { onDelete: "set null" }),
+  branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
+}, (table) => [
+  // Dedup index — "son 7 gün içinde bu task için bu seviye gönderildi mi?" sorgusu hızlı
+  index("task_escalation_log_task_level_sent_idx").on(table.taskId, table.escalationLevel, table.sentAt),
+  index("task_escalation_log_sent_at_idx").on(table.sentAt),
+]);
+
+export const insertTaskEscalationLogSchema = createInsertSchema(taskEscalationLog).omit({
+  id: true,
+  sentAt: true,
+});
+
+export type InsertTaskEscalationLog = z.infer<typeof insertTaskEscalationLogSchema>;
+export type TaskEscalationLog = typeof taskEscalationLog.$inferSelect;

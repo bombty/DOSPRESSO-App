@@ -422,6 +422,7 @@ app.use((req, res, next) => {
       startPdksWeeklySummaryScheduler();
       startPdksDailyAbsenceScheduler();
       startPdksMonthlyPayrollScheduler();
+      startPdksMonthlyAttendanceSummaryScheduler();
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);
@@ -1594,6 +1595,116 @@ function startPdksMonthlyPayrollScheduler() {
   }, 10 * 60 * 1000);
 
   log("[PDKS-B4] Monthly payroll auto-calculate scheduler started (1st of month at 04:00)");
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint B.3 — Monthly Attendance Summaries Scheduler
+//
+// Bağlam: storage.generateMonthlyAttendanceSummary(userId, periodMonth)
+// fonksiyonu hazır, UPSERT mantığı içeriyor (if existing → update, else insert).
+// Ama hiçbir scheduler çağırmıyordu → monthly_attendance_summaries tablosu 0 kayıt.
+// Sonuç: KPI dashboard'ları, mission control, compliance skorları BOŞ.
+//
+// Tetik: Ayın 1'i Türkiye saati 01:00-01:10 (02:00 branch snapshot öncesi)
+// Kapsam: ÖNCEKİ AY (bitmiş ayı özetle — cari ay yarım veri)
+// Strateji: Tüm aktif şubelerin tüm aktif user'ları için UPSERT
+// Startup catch-up: Son 3 tamamlanmış ay (idempotent UPSERT, manuel trigger
+//                   ile çakışma riski yok)
+//
+// Madde 37 envanter (19 Nis 2026):
+//   - monthly_attendance_summaries yazıcı: storage.ts:5331 (tek fonksiyon)
+//   - UNIQUE: (user_id, period_month) — idempotent
+//   - Başka yerden INSERT yok → duplicate yazım riski SIFIR
+//   - Scheduler runtime: tek yazıcıyı paralel değil sıralı çağırıyoruz
+// ═══════════════════════════════════════════════════════════════════
+
+async function generateMonthlyAttendanceSummariesForAll(
+  periodMonth: string  // YYYY-MM format
+): Promise<{ processed: number; errors: number }> {
+  log(`[PDKS-B3] Monthly attendance summary generation start: ${periodMonth}`);
+
+  // Tüm aktif şubelerin tüm aktif kullanıcılarını al
+  const activeUsers = await db
+    .select({ id: users.id, branchId: users.branchId })
+    .from(users)
+    .where(and(
+      eq(users.isActive, true),
+      ne(users.role, "sube_kiosk"),  // kiosk user'ları için attendance summary anlamsız
+    ));
+
+  let processed = 0;
+  let errors = 0;
+
+  for (const user of activeUsers) {
+    try {
+      await storage.generateMonthlyAttendanceSummary(user.id, periodMonth);
+      processed++;
+    } catch (e) {
+      errors++;
+      console.error(`[PDKS-B3] Summary error for user ${user.id} (${periodMonth}):`, e);
+      // Diğer user'lar devam etsin
+    }
+  }
+
+  log(
+    `[PDKS-B3] Monthly summary done: ${periodMonth} — ` +
+    `${processed}/${activeUsers.length} users, ${errors} errors`
+  );
+  return { processed, errors };
+}
+
+/**
+ * Sprint B.3 catch-up: son N tamamlanmış ayı hesapla.
+ * UPSERT idempotent olduğu için var olanları günceller, eksikleri ekler.
+ * Cari ay DAHIL EDILMEZ (yarım veri riski).
+ */
+async function catchUpMonthlyAttendanceSummaries(months: number = 3): Promise<void> {
+  log(`[PDKS-B3] Starting catch-up for last ${months} completed months`);
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+
+  for (let i = 1; i <= months; i++) {
+    // i=1: önceki ay, i=2: iki ay önce, ...
+    const target = new Date(now);
+    target.setDate(1); // ay taşma koruması
+    target.setMonth(target.getMonth() - i);
+
+    const year = target.getFullYear();
+    const month = target.getMonth() + 1;
+    const periodMonth = `${year}-${String(month).padStart(2, "0")}`;
+
+    try {
+      await generateMonthlyAttendanceSummariesForAll(periodMonth);
+    } catch (e) {
+      console.error(`[PDKS-B3] Catch-up month ${periodMonth} error:`, e);
+    }
+  }
+  log(`[PDKS-B3] Catch-up complete: ${months} months processed`);
+}
+
+function startPdksMonthlyAttendanceSummaryScheduler() {
+  schedulerManager.registerInterval("pdks-monthly-attendance-summary", async () => {
+    const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    // Ayın 1'i 01:00-01:10 Türkiye saati (monthly payroll 04:00'ten önce hazır olsun)
+    if (now.getDate() === 1 && now.getHours() === 1 && now.getMinutes() < 10) {
+      // Önceki ay
+      const prev = new Date(now);
+      prev.setDate(1);
+      prev.setMonth(prev.getMonth() - 1);
+      const periodMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+      try {
+        await generateMonthlyAttendanceSummariesForAll(periodMonth);
+      } catch (e) {
+        console.error("[PDKS-B3] Monthly summary scheduler error:", e);
+      }
+    }
+  }, 10 * 60 * 1000);
+
+  // Startup catch-up: son 3 tamamlanmış ay (idempotent UPSERT)
+  catchUpMonthlyAttendanceSummaries(3).catch(e =>
+    console.error("[PDKS-B3] Startup catch-up error:", e)
+  );
+
+  log("[PDKS-B3] Monthly attendance summary scheduler started (1st of month 01:00-01:10 Turkey time, startup catch-up: 3 months)");
 }
 
 function forceShutdown(signal: string) {

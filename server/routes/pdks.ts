@@ -802,4 +802,186 @@ router.post('/api/admin/pdks/backfill-attendance', isAuthenticated, async (req: 
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint B.1 — shift_attendance ↔ pdks_records Tutarlılık Analizi
+//
+// Bağlam (18 Nis 2026 gece keşfi, memory #21):
+//   - shift_attendance'a 6 yerden INSERT yapılıyor (kiosk real-time, factory,
+//     pdks manual, guest-complaints, tracking, vs.)
+//   - Bu iki tablonun SENKRON olması BEKLENİYOR ama hiç doğrulanmadı.
+//   - Pilot öncesi (28 Nis) pipeline güvenilirliği için bu analiz ŞART.
+//
+// NE YAPIYOR (salt-okunur):
+//   1. Son N gün içinde pdks_records'ta check-in yapan user'ları bul
+//   2. Aynı user+tarih için shift_attendance'ta kayıt VAR mı?
+//   3. Eksik kayıtları listele (hangi user, hangi tarih, hangi branch)
+//   4. Ters yönde de bak: shift_attendance'ta "checked_in" status var ama
+//      pdks_records'ta karşılığı yok mu?
+//
+// FİX YAPMAZ: Bu ENDPOINT sadece rapor verir. Fix Sprint D/E'ye bırakılır.
+// Madde 37: Kod yazmadan önce "gerçekten tutarsızlık VAR mı?" öğreniyoruz.
+//
+// YETKİ: admin, ceo, cgo, muhasebe_ik (PDKS yönetim rolleri)
+// ═══════════════════════════════════════════════════════════════════
+
+router.get('/api/pdks/consistency-check', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const reqUser = req.user;
+    if (!canManagePdks(reqUser.role)) {
+      return res.status(403).json({ error: 'Bu analizi sadece PDKS yönetim rolleri görebilir' });
+    }
+
+    const days = Math.min(Math.max(parseInt(String(req.query.days || '30'), 10) || 30, 1), 90);
+    const branchIdFilter = req.query.branchId ? Number(req.query.branchId) : null;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // ─── 1. pdks_records özet (baz referans) ────────────────────────
+    const pdksSummary = await db.execute(sql`
+      SELECT
+        COUNT(*)::int AS total_pdks_records,
+        COUNT(DISTINCT user_id)::int AS unique_users,
+        COUNT(DISTINCT branch_id)::int AS unique_branches,
+        COUNT(*) FILTER (WHERE record_type = 'giris')::int AS check_ins,
+        COUNT(*) FILTER (WHERE record_type = 'cikis')::int AS check_outs
+      FROM pdks_records
+      WHERE record_date >= ${startDateStr}::date
+      ${branchIdFilter ? sql`AND branch_id = ${branchIdFilter}` : sql``}
+    `);
+
+    // ─── 2. shift_attendance özet ────────────────────────────────────
+    const shiftSummary = await db.execute(sql`
+      SELECT
+        COUNT(*)::int AS total_shift_attendance,
+        COUNT(DISTINCT sa.user_id)::int AS unique_users,
+        COUNT(*) FILTER (WHERE sa.status = 'checked_in')::int AS checked_in_count,
+        COUNT(*) FILTER (WHERE sa.status = 'checked_out')::int AS checked_out_count,
+        COUNT(*) FILTER (WHERE sa.status = 'absent')::int AS absent_count,
+        COUNT(*) FILTER (WHERE sa.check_in_time IS NOT NULL)::int AS with_check_in,
+        COUNT(*) FILTER (WHERE sa.check_in_time IS NULL AND sa.status != 'absent')::int AS missing_check_in
+      FROM shift_attendance sa
+      INNER JOIN shifts s ON sa.shift_id = s.id
+      WHERE s.shift_date >= ${startDateStr}::date
+    `);
+
+    // ─── 3. TUTARSIZLIK A: pdks_records'ta giriş var, shift_attendance'ta yok ────
+    // (User check-in yapmış ama shift_attendance kaydı oluşmamış)
+    const missingShiftAttendance = await db.execute(sql`
+      WITH pdks_checkins AS (
+        SELECT DISTINCT user_id, branch_id, record_date
+        FROM pdks_records
+        WHERE record_type = 'giris'
+          AND record_date >= ${startDateStr}::date
+          ${branchIdFilter ? sql`AND branch_id = ${branchIdFilter}` : sql``}
+      )
+      SELECT
+        pc.user_id,
+        pc.branch_id,
+        pc.record_date,
+        u.name AS user_name,
+        u.role,
+        b.name AS branch_name
+      FROM pdks_checkins pc
+      LEFT JOIN users u ON pc.user_id = u.id
+      LEFT JOIN branches b ON pc.branch_id = b.id
+      LEFT JOIN shift_attendance sa ON sa.user_id = pc.user_id
+      LEFT JOIN shifts s ON sa.shift_id = s.id AND s.shift_date = pc.record_date
+      WHERE sa.id IS NULL
+      ORDER BY pc.record_date DESC, pc.branch_id
+      LIMIT 200
+    `);
+
+    // ─── 4. TUTARSIZLIK B: shift_attendance'ta "checked_in" var, pdks_records'ta giriş yok ─
+    // (Kiosk check-in işleme sıkıntısı — shift_attendance yazılmış ama pdks_records yazılmamış)
+    const missingPdksRecord = await db.execute(sql`
+      SELECT
+        sa.user_id,
+        sa.shift_id,
+        s.shift_date,
+        s.branch_id,
+        u.name AS user_name,
+        u.role,
+        b.name AS branch_name,
+        sa.check_in_time,
+        sa.check_in_method
+      FROM shift_attendance sa
+      INNER JOIN shifts s ON sa.shift_id = s.id
+      LEFT JOIN users u ON sa.user_id = u.id
+      LEFT JOIN branches b ON s.branch_id = b.id
+      LEFT JOIN pdks_records pr ON pr.user_id = sa.user_id
+        AND pr.record_date = s.shift_date
+        AND pr.record_type = 'giris'
+      WHERE sa.check_in_time IS NOT NULL
+        AND s.shift_date >= ${startDateStr}::date
+        AND pr.id IS NULL
+        ${branchIdFilter ? sql`AND s.branch_id = ${branchIdFilter}` : sql``}
+      ORDER BY s.shift_date DESC, sa.check_in_time DESC
+      LIMIT 200
+    `);
+
+    // ─── 5. Kaynak dağılımı (kiosk/manual/migration) ────────────────
+    const sourceBreakdown = await db.execute(sql`
+      SELECT source, COUNT(*)::int AS count
+      FROM pdks_records
+      WHERE record_date >= ${startDateStr}::date
+      GROUP BY source
+      ORDER BY count DESC
+    `);
+
+    const pdksRow = (pdksSummary.rows?.[0] as any) || {};
+    const shiftRow = (shiftSummary.rows?.[0] as any) || {};
+    const missingSA = (missingShiftAttendance.rows as any[]) || [];
+    const missingPR = (missingPdksRecord.rows as any[]) || [];
+
+    // ─── 6. Değerlendirme (otomatik) ───────────────────────────────
+    const totalPdksCheckins = pdksRow.check_ins || 0;
+    const missingSARatio = totalPdksCheckins > 0
+      ? (missingSA.length / totalPdksCheckins * 100).toFixed(2)
+      : '0.00';
+
+    const diagnosis: string[] = [];
+    if (missingSA.length === 0 && missingPR.length === 0) {
+      diagnosis.push('✅ Son ' + days + ' gün: SENKRON — pdks_records ile shift_attendance tam eşleşiyor.');
+    } else {
+      if (missingSA.length > 0) {
+        diagnosis.push(`⚠️ ${missingSA.length} (${missingSARatio}%) pdks_records check-in için shift_attendance kaydı YOK. Kaynak: muhtemelen eski manuel punch'lar veya migration döneminden kalan.`);
+      }
+      if (missingPR.length > 0) {
+        diagnosis.push(`🔴 ${missingPR.length} shift_attendance check-in için pdks_records YOK. Bu BUG işareti — kiosk check-in'de çifte yazım kesildi veya silindi.`);
+      }
+    }
+
+    res.json({
+      analysis_period_days: days,
+      branch_filter: branchIdFilter,
+      summary: {
+        pdks_records: pdksRow,
+        shift_attendance: shiftRow,
+        source_breakdown: sourceBreakdown.rows,
+      },
+      inconsistencies: {
+        missing_shift_attendance: {
+          count: missingSA.length,
+          ratio_pct: missingSARatio,
+          samples: missingSA.slice(0, 50),  // İlk 50 kayıt
+          truncated: missingSA.length >= 200,
+        },
+        missing_pdks_record: {
+          count: missingPR.length,
+          samples: missingPR.slice(0, 50),
+          truncated: missingPR.length >= 200,
+        },
+      },
+      diagnosis,
+      generated_at: new Date().toISOString(),
+    });
+
+  } catch (error: any) {
+    console.error('[PDKS-B1] Consistency check error:', error);
+    res.status(500).json({ error: error?.message || 'Tutarlılık analizi başarısız' });
+  }
+});
+
 export default router;
