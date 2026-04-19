@@ -407,6 +407,7 @@ import pushRouter from "./routes/push";
 import dataManagementRouter from "./routes/data-management";
 import setupRouter from "./routes/setup";
 import pdksRouter from "./routes/pdks";
+import pilotDashboardRouter from "./routes/pilot-dashboard";
 import payrollRouter from "./routes/payroll";
 import payrollConfigRouter from "./routes/payroll-config";
 import factoryRecipesRouter from "./routes/factory-recipes";
@@ -875,6 +876,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(dataManagementRouter);
   app.use(setupRouter);
   app.use(pdksRouter);
+  app.use(pilotDashboardRouter);
   app.use(payrollRouter);
   app.use(payrollConfigRouter);
   app.use(factoryRecipesRouter);
