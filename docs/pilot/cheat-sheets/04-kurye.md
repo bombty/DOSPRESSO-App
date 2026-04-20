@@ -81,8 +81,9 @@ Aşağıda:
 🚨 **ACİL DURUM**
 - Yangın: **110**
 - Sağlık: **112** (kaza yaşarsan kendin / başkası için)
-- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
-  Mr. Dobody seni doğru kişiye otomatik yönlendirir (mudur / supervisor / HQ destek)
+- **Sistem sorunu:** Cowork (mesaj) → Müdür veya Supervisor'a DM
+- **Pilot süresince:** WhatsApp "DOSPRESSO Pilot" grubu **birincil kanal**
+- **Not:** Mr. Dobody otomatik uyarı sistemi (karşılıklı sohbet değil)
 
 📱 **Pilot İletişim**
 - WhatsApp Pilot Grubu: "DOSPRESSO Pilot — [Şube]"
