@@ -1,127 +1,66 @@
 # 📋 DOSPRESSO — PENDING.md
 
-**Son güncelleme:** 20 Nis 2026 Pazartesi 02:55 (Claude)  
+**Son güncelleme:** 20 Nis 2026 Pazartesi 22:00 (Claude — biten task'lar silindi)  
 **Format:** TASK-XXX (iş) / DECISION-XXX (Aslan kararı)  
 **Kural:** Her bitendekn sonra üst tablodaki ilgili satırı **DELETE**, TODAY.md "BİTENLER" bölümüne ekle.
 
 ---
 
-## 📨 REPLİT'E BEKLEYEN
+## ✅ BİTEN TASK'LAR (20 Nis Pazartesi)
 
-### 🔴 TASK-PUSH-001: Replit'in 2 Commit'ini Push Et (5 dk, P0)
-
-**Acil!** Replit Pazar gece 2 task bitirdi ama push edemedi (GitHub auth Replit Agent'ta yok):
-- `e4cfce7c1` — Task #117: silent try/catch 5 yer migrate (shifts.ts × 2 + index.ts × 3) + quality-gate Madde 30-32
-- `9a8a9e632` — Task #118: derin öz-analiz raporu (5 şapka × 5 soru = 25 + 3 meta)
-
-**Yapılacak yöntem A (önerilen):**
-```bash
-# Replit'in local'inde:
-git format-patch -2 HEAD --stdout > /tmp/replit-pazar-2-commit.patch
-cat /tmp/replit-pazar-2-commit.patch
-# Çıktıyı Aslan'a yapıştır, Aslan Claude'a iletir, Claude apply edip push eder
-```
-
-**Yapılacak yöntem B (Aslan riski göze alıyorsa):**
-```bash
-# Replit'in local'inde:
-git push https://[TOKEN]@github.com/bombty/DOSPRESSO-App.git main
-# Token Aslan paylaşır, Replit komut satırında kullanır, dosyaya YAZMAZ
-```
-
-**Acceptance:** `git fetch && git log origin/main -3` çıktısında 2 commit görünür
-
----
-
-### 🟡 TASK-002: Derin Öz-Analiz Raporu (60-90 dk, P1)
-
-**Dosya:** `docs/replit-deep-self-analysis-PROMPT.md` (commit `b9adf2b`)  
-**Çıktı:** `docs/replit-deep-self-analysis.md` (~120 satır)  
-**Format:** 5 şapka × 25 soru + 3 meta soru, her cevap MAX 3 cümle  
-**Deadline:** Pazartesi sabah 09:00 öncesi  
-**Acceptance:** Push edilmiş + Aslan'a "tamamlandı" mesajı
-
----
-
-### 🟡 TASK-003: docs/skills-archive/ Sil (5 dk, P1)
-
-**Bağlam:** Pazar gece Claude bu klasörü yarattı, Replit "illüzyon" diye tespit etti (3f23505). Skill'lerin gerçek yeri `.agents/skills/`.
-
-**Yapılacak:**
-```bash
-git rm -r docs/skills-archive/
-git commit -m "chore: docs/skills-archive sil — illüzyon yedek (Madde 39 öncesi karar)"
-git push origin main
-```
-
-**Acceptance:** Klasör yok + commit + push
-
----
-
-### 🟢 TASK-004: 7 Açık Silent try/catch — critLog Migrate (30 dk, P2)
-
-**Bağlam:** Sprint D audit'inde 13 silent try/catch tespit edildi. Sadece 6'sı fix edildi. Geri kalan 7 yer hâlâ `console.warn` ile yutuyor.
-
-**Yapılacak yerler:**
-- `server/routes/shifts.ts` mobile_qr (2 yer) — kuryeler pilot dışı ama Sprint I için önemli
-- `server/index.ts` auto_close (3 yer) — pilot sırasında ÇALIŞACAK ⚠️
-- 2 başka yer (Replit kendisi audit'te bulmuştu, yer numaraları varsa rapor et)
-
-**Pattern:** TASK-001 gibi `critLog()` ile DB'ye yaz.
-
-**Acceptance:** 7 yer migrate edildi + commit + push + rapor
-
----
-
-### 🟢 TASK-005: Skill Update — Madde 37 §23-25 (10 dk, P2)
-
-**Bağlam:** Pazar gece Claude memory'e ekledi (#23, #24, #25). Live skill'lere (`. agents/skills/dospresso-quality-gate/SKILL.md`) eklenmedi. Claude `.agents/skills/` ile çalışmıyor — bu Replit'in işi.
-
-**Yapılacak:**
-- `.agents/skills/dospresso-quality-gate/SKILL.md`'ye 3 alt kural ekle:
-  - **§23** Flag/Config Runtime Etki Kontrolü
-  - **§24** SQL Yazmadan Önce Schema Kolon Doğrulama
-  - **§25** Replit İnisiyatif Kod Review
-
-**Detaylar:** `docs/skills-archive/dospresso-quality-gate.md` Madde 14 §23-25 kısmından (silinmeden önce kopyala). Veya Aslan'a sor, memory'den paylaşır.
-
-**Acceptance:** Skill güncellendi + commit + push
+| Task | Durum | Commit |
+|---|---|---|
+| TASK-PUSH-001 | ✅ Tamamlandı | `2769164` |
+| TASK-002 (Derin öz-analiz) | ✅ Tamamlandı | `2769164` |
+| TASK-003 (skills-archive sil) | ✅ Tamamlandı | `22f69a6` |
+| TASK-004 (silent try/catch 5/7) | ✅ Kısmen (5/7) | `2769164` |
+| TASK-005 (Madde 30-32) | ✅ Tamamlandı | `2769164` |
 
 ---
 
 ## 📨 ASLAN'A BEKLEYEN
 
-### 🔴 DECISION-001: Parola Reset Bug — Çözüm Yöntemi (10 dk konuşma, P0)
+### 🔴 DECISION-001: Parola Reset Bug — Çözüm Yöntemi (P0)
 
-**Sorun:** `server/index.ts` startup'ta 158 user parolası `0000`'a sıfırlanıyor. Her server restart sıfırlanır. Pilot sırasında **felaket riski** — bir hotfix push parolaları "0000"a düşürür, 50+ kullanıcı login olamaz, KVKK ihlali.
+**KEŞIF:** Kod zaten doğru — `server/index.ts:506-524` `pilot_launched` flag guard'ı VAR.
 
-**Replit'in tespiti (3f23505 #2.2):** "Pazartesi sabah parola rotasyonu (1Password'e geçiş) bunu görmedi; bir sonraki deploy parolaları geri '0000' yapacak."
-
-**Seçenekler:**
-
-#### A) PILOT_MODE Guard (10 dk, en güvenli)
 ```typescript
-// server/index.ts startup
-if (process.env.PILOT_MODE !== 'true') {
-  await migrateKioskPasswords(); // sadece dev ortamında
+const [pilotFlag] = await db.select().from(siteSettings)
+  .where(eq(siteSettings.key, "pilot_launched"));
+if (pilotFlag && pilotFlag.value === "true") {
+  log(`🔑 Pilot launched — skipping non-admin password reset`);
+  return;
 }
 ```
-- ✅ Production'da kapalı
-- ✅ Dev'de hâlâ çalışıyor
-- ⚠️ Replit'te env var kurulumu gerekiyor
 
-#### B) Tamamen Kaldır (5 dk, agresif)
-- migrateKioskPasswords() fonksiyonunu sil
-- ✅ Bug bir daha asla olmaz
-- ⚠️ Dev ortamında manuel kullanıcı oluşturmak gerekir
+**Çözüm:** Tek SQL ile flag'i set et:
+```sql
+INSERT INTO site_settings (key, value, type, category, updated_at) 
+VALUES ('pilot_launched', 'true', 'boolean', 'general', NOW())
+ON CONFLICT (key) DO UPDATE SET value='true', updated_at=NOW();
+```
 
-#### C) Conditional — Sadece İlk Çalıştırmada (15 dk, dengeli)
-- "users tablosu boşsa çalıştır, doluysa ATLA" kontrolü
-- ✅ Hem dev hem prod güvenli
-- ⚠️ Edge case riski (boşken yarım dolu olursa?)
+**ASLAN'IN KARARI BEKLENİYOR — NE ZAMAN ÇALIŞTIRACAĞIZ?**
 
-**Beklenen karar:** A, B, veya C (Aslan + Claude tartışma)  
-**Sonra:** Replit'e TASK-006 olarak ekle
+- **A) Şimdi (önerilen):** Parolalar her deploy'da sabit kalır. 1Password rotasyonu güvenli olur.
+- **B) Pilot 28 Nis 08:00'de:** Aslan o sabah parola rotate eder, sonra flag'i set eder. Dezavantaj: arada hot fix push olursa felaket.
+- **C) Kademeli:** Test kullanıcıları için şimdi (A), gerçek pilot kullanıcılar 08:00'de (B).
+
+**Risk düşüncesi:** Şu an `pilot_launched` flag'i set edilmemiş. Server restart olursa **TÜM 158 user parolası `0000`'a düşer**. Bu hâlâ aktif risk.
+
+---
+
+## 📨 REPLİT'E BEKLEYEN
+
+### 🟡 TASK-004 KALAN: 2 Silent try/catch (15 dk, P2)
+
+Replit Task #117'de 7 audit bulgusunun 5'ini migrate etti (shifts × 2 + index × 3). Geri kalan **2 yer:**
+- Replit'in raporunda (`docs/sistem-degerlendirmesi-replit.md` #2.3) bahsedilen "2 başka yer"
+- Replit kendisi nerede olduklarını bilir
+
+**Aksiyon:** Aslan Replit'e mesaj atınca, Replit kendi audit kayıtlarına bakıp 2 yeri bulup `critLog()` ile migrate eder.
+
+**Acceptance:** 7/7 silent try/catch kapatıldı + commit + Aslan'a "tamamlandı" mesajı
 
 ---
 
@@ -131,40 +70,35 @@ if (process.env.PILOT_MODE !== 'true') {
 
 **Bağlam:** Pazar gece "WhatsApp" yanılması ortaya çıktı.  
 **Kural:** Memory'deki bir kelimeyi/ilişkiyi otomatik **iletişim mekanizması** olarak varsayma. Önce mimari soruyu sor: "Bu kanal gerçekten var mı?"  
-**Eklenecek:** `.agents/skills/dospresso-quality-gate/SKILL.md` (Replit ile birlikte) + memory'e
+**Eklenecek:** `.agents/skills/dospresso-quality-gate/SKILL.md` (Replit ile birlikte)
 
 ---
 
-## ✅ KARARLAR (DECIDED.md'ye geçecek - ayrı dosya)
+## 📥 PILOT ÖNCESİ ASLAN İŞLERİ
 
-Pazar 19 Nis kararları:
-- ✅ Pilot tarihi sabit: 28 Nis 09:00
-- ✅ FAZAL rollout (Işıklar+HQ → 24h → Lara+Fabrika)
-- ✅ docs/skills-archive silinecek (TASK-003)
-- ✅ Replit derin öz-analiz yapacak (TASK-002)
-- ✅ Sprint G + Sprint E backend production'a girdi
-- ✅ Skill files güncellendi (15cabee)
+### 🟡 Bu hafta:
+- [ ] **4 lokasyon cihaz envanteri** (Işıklar/Lara/HQ/Fabrika kioskları, Wi-Fi adres)
+- [ ] **Kullanıcı profilleri** (4 lokasyon × ortalama 6-8 kullanıcı = ~25 hesap)
+- [ ] **Pilot parola SMS dağıtımı**
+
+### 🟢 Cumartesi/Pazar:
+- [ ] **Cumartesi eğitim takvimi** (4 lokasyon × 2 saat eğitim)
+- [ ] **WhatsApp pilot grupları** (4 grup — bir per lokasyon, müdür + supervisor + Aslan)
+- [ ] **Pazar 27 Nis 22:30:** Gerçek parolalarla yük testi RE-RUN
+
+### 🚀 28 Nis Salı 09:00:
+- [ ] **PILOT KICKOFF** — Işıklar + HQ açar, 24 saat izlenir, ertesi gün Lara + Fabrika eklenir
 
 ---
 
 ## 🔄 İŞ AKIŞI KURALI
 
 ```
-Yeni iş ortaya çıktı
-  ↓
-PENDING.md'ye TASK-XXX olarak ekle
-  ↓
-Sahibinin (Claude/Replit/Aslan) "BEKLEYEN" bölümüne yaz
-  ↓
-Acceptance kriteri ne, süre tahmini, öncelik (P0/P1/P2)
-  ↓
-İş yapılır → ilgili sahibi bitirir
-  ↓
-PENDING.md'den DELETE
-  ↓
-TODAY.md "BİTENLER" bölümüne ekle (commit'e referans)
-  ↓
-Eğer karar verildiyse: DECIDED.md'ye yaz
+Yeni iş ortaya çıktı → PENDING.md'ye TASK-XXX ekle
+  → Sahibinin BEKLEYEN bölümüne yaz (acceptance + süre + P0/P1/P2)
+  → İş yapılır → PENDING'den DELETE (BİTEN tablosuna ekle)
+  → TODAY.md "BİTENLER" bölümüne ekle (commit referansıyla)
+  → Karar verildiyse: DECIDED.md'ye yaz
 ```
 
 **Skill kuralı:** Her oturum sonu **3 dosya zorunlu update**: TODAY.md + PENDING.md + (varsa) DECIDED.md
