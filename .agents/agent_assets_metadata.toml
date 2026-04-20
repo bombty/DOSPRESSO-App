@@ -306,3 +306,9 @@ id = "4YcPnJug2WPjGnF6LeQq3"
 uri = "file://.local/audit-report-detailed.md"
 type = "text"
 title = "DOSPRESSO Kapsamlı Teknik Audit Raporu"
+
+[[outputs]]
+id = "anxhukfhA-IUz7SPhvPJy"
+uri = "file://docs/pilot/patches/UYGULAMA-KILAVUZU.md"
+type = "text"
+title = "Aslan için Patch Uygulama Kılavuzu"
