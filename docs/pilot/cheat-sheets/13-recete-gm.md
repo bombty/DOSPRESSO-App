@@ -127,14 +127,15 @@ Sorumlulukların:
 
 ## 7. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — Reçete"
-- **Şef (sef)**: [telefon] — üretim onayları
-- **Fabrika Mudur (Eren)**: [telefon]
-- **CEO Aslan**: [telefon] — stratejik reçete kararları
-- **Satınalma**: [telefon] — hammadde alternatifleri
-- **CRM/Müşteri**: [telefon] — alerjik reaksiyon raporları
-- **IT/Destek**: [IT telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/13-recete-gm.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (şef / fabrika mudur / CEO Aslan / satınalma / CRM)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — Reçete"
+- Cheat sheet: `docs/pilot/cheat-sheets/13-recete-gm.md`
 
 ---
 

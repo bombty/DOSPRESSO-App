@@ -107,12 +107,15 @@ Görevin: Sistemi öğren, ekibi izle, basit destek görevleri yap, 7 zorunlu mo
 
 ## 7. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — [Şube]"
-- **Mentor Barista**: [yardım ettiğin barista telefon]
-- **Supervisor**: [vardiya supervisor telefon]
-- **Mudur**: [mudur telefon]
-- **IT/Destek**: [IT telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/09-stajyer.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (mentor barista / supervisor / mudur)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — [Şube]"
+- Cheat sheet: `docs/pilot/cheat-sheets/09-stajyer.md`
 
 ---
 

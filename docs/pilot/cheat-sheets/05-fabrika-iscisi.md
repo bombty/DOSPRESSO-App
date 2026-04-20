@@ -87,11 +87,15 @@
 
 ## 6. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — Fabrika"
-- **Vardiya Supervisor**: [telefon]
-- **Fabrika Mudur (Eren)**: [telefon]
-- **IT**: [IT telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/05-fabrika-iscisi.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112** (sakatlanma, yanık, vb.)
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (vardiya supervisor / fabrika mudur / kalite kontrol)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — Fabrika"
+- Cheat sheet: `docs/pilot/cheat-sheets/05-fabrika-iscisi.md`
 
 ---
 

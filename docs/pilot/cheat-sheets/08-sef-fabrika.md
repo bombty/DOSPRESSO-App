@@ -117,13 +117,15 @@
 
 ## 7. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — Fabrika"
-- **Üretim Şefi**: [telefon]
-- **Fabrika Mudur (Eren)**: [telefon]
-- **Recete GM**: [telefon] — reçete onay
-- **Kalite Kontrol**: [telefon]
-- **IT/Destek**: [IT telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/08-sef-fabrika.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (üretim şefi / fabrika mudur / reçete GM / kalite kontrol)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — Fabrika"
+- Cheat sheet: `docs/pilot/cheat-sheets/08-sef-fabrika.md`
 
 ---
 

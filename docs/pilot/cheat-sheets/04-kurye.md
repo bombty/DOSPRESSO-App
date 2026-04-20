@@ -78,9 +78,15 @@ Aşağıda:
 
 ## 6. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — [Şube]"
-- **Mudur direkt**: [mudur telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/04-kurye.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112** (kaza yaşarsan kendin / başkası için)
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (mudur / supervisor / HQ destek)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — [Şube]"
+- Cheat sheet: `docs/pilot/cheat-sheets/04-kurye.md`
 
 ---
 

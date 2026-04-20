@@ -58,10 +58,15 @@
 
 ## 5. Yardım
 
-- **WhatsApp Pilot Grubu**: "DOSPRESSO Pilot — HQ"
-- **IT Direkt**: [IT_telefon]
-- **Replit Agent**: Aslan üzerinden async
-- **Bu cheat sheet'in son güncel hali**: `docs/pilot/cheat-sheets/01-admin.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (müdür / coach / HQ destek)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — HQ"
+- Cheat sheet: `docs/pilot/cheat-sheets/01-admin.md`
 
 ---
 

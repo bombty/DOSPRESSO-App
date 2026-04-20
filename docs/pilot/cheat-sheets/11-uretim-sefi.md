@@ -113,14 +113,15 @@ Sen üretimin "trafiğini" yönetirsin. Şef ise üretimin "kalite kapısı."
 
 ## 7. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — Fabrika"
-- **Şef (sef)**: [telefon] — kalite + reçete
-- **Fabrika Mudur (Eren)**: [telefon]
-- **Recete GM**: [telefon] — reçete onay
-- **Satınalma**: [telefon]
-- **Teknik/Bakım**: [telefon]
-- **IT/Destek**: [IT telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/11-uretim-sefi.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (şef / fabrika mudur / reçete GM / satınalma / teknik bakım)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — Fabrika"
+- Cheat sheet: `docs/pilot/cheat-sheets/11-uretim-sefi.md`
 
 ---
 

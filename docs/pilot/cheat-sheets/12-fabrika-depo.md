@@ -125,14 +125,15 @@ Hatalı stok kaydı = üretim duruyor + şubeler malsız kalıyor. Disiplin öne
 
 ## 7. Yardım
 
-- **WhatsApp**: "DOSPRESSO Pilot — Fabrika"
-- **Şef (sef)**: [telefon] — üretim talepleri
-- **Üretim Şefi**: [telefon] — vardiya koordinasyonu
-- **Fabrika Mudur (Eren)**: [telefon]
-- **Satınalma**: [telefon] — hammadde sipariş
-- **Kurye**: [kurye telefon] — sevkiyat
-- **IT/Destek**: [IT telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/12-fabrika-depo.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (şef / üretim şefi / fabrika mudur / satınalma / kurye)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — Fabrika"
+- Cheat sheet: `docs/pilot/cheat-sheets/12-fabrika-depo.md`
 
 ---
 

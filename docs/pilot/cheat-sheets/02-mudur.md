@@ -73,10 +73,15 @@
 
 ## 6. Yardım
 
-- **WhatsApp Pilot Grubu**: "DOSPRESSO Pilot — [Şube Adı]"
-- **IT Direkt**: [IT_telefon]
-- **Acil**: Aslan Bey [telefon]
-- **Cheat sheet**: `docs/pilot/cheat-sheets/02-mudur.md`
+🚨 **ACİL DURUM**
+- Yangın: **110**
+- Sağlık: **112**
+- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
+  Mr. Dobody seni doğru kişiye otomatik yönlendirir (HQ Coach / Admin / Aslan)
+
+📱 **Pilot İletişim**
+- WhatsApp Pilot Grubu: "DOSPRESSO Pilot — [Şube Adı]"
+- Cheat sheet: `docs/pilot/cheat-sheets/02-mudur.md`
 
 ---
 
