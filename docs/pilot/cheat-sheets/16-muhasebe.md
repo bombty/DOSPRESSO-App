@@ -22,6 +22,24 @@ Sen DOSPRESSO'nun **mali kayıt + uyum** sorumlususun. Tüm fatura, gider, ciro 
 
 ---
 
+### ⚠️ PİLOT BORDRO KRİTİK NOTLARI (Mayıs 2026)
+
+**Pilot ilk ay (Nisan-Mayıs 2026) bordrosu çalıştırırken:**
+
+1. **DataSource KILITLI:** Sadece "kiosk" seçeneği aktif (Excel devre dışı pilot süresince)
+2. **DRY_RUN Modu ZORUNLU:** Checkbox kilitli ON, gerçek SGK bildirimi YAPILMAZ
+3. **Hesaplama öncesi mutlaka:**
+   - Vardiya planı doluluğu kontrol (`SELECT COUNT(*) FROM shifts WHERE shift_date BETWEEN ...`)
+   - Eksik vardiya varsa Coach (yavuz) ile koordineli düzelt, sonra hesapla
+   - Vardiya planı yoksa sistem 480 dk (8 saat) varsayar — yanlış hesaplar
+4. **Hesap sonrası kontrol:**
+   - `monthly_payroll` tablosunda `is_dry_run=true` flag mevcut mu (DB query)
+   - 5+ rastgele personel için manuel doğrulama (saatlik × çalışılan saat = brüt)
+   - Overtime hesabı (planlı 8 saat, gerçek 9 saat → 1 saat × 1.5 çarpan)
+5. **Pilot başarılıysa Haziran:** Aslan onayı ile DRY_RUN kapatılır, gerçek SGK bildirimi başlar
+
+---
+
 ## 3. Ana Ekran (Muhasebe Paneli)
 
 | Widget | İçerik |

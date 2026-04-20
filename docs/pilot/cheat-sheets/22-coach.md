@@ -150,3 +150,17 @@ Ek olarak HQ tarafında **vardiya planlamada tüm şubelere yetkili**sin (mudur 
 ⏰ **DEADLINE: 27 Nisan Pazar 18:00** — pilot başlangıcından önce 4 lokasyonun tüm haftalık vardiya planı sistemde olmalı. 18:00'a kadar tamamlanmadıysa Aslan'a brifing.
 
 🔧 **API Doğrulandı (21 Nis):** `POST /api/shifts/bulk-create` → 201 OK + `DELETE /api/shifts/:id` → 200 OK. Coach (HQ rolü) tüm şubelere `isHQRole` bypass ile yetkili.
+
+---
+
+### ⚠️ KRİTİK BORDRO BAĞLANTISI
+
+Vardiya planı eksik = Mahmut'un bordro hesabı yanlış olur. Sistem boş vardiya için **480 dk (8 saat) varsayar**:
+- Aslında 6 saat çalışan personel → fazla hesaplanır
+- Aslında 10 saat çalışan personel → fazla mesai (1.5x) eksik hesaplanır
+
+**Coach pilot sorumluluğu:**
+1. 27 Nis Pazar 18:00'a kadar 4 lokasyon × 7 gün vardiya planı SİSTEMDE
+2. Pilot ilk hafta her gün sabah 08:00 vardiya doluluğu kontrol
+3. Eksik vardiya = Mr. Dobody bildirim → düzelt → Aslan brifing
+4. Tabletlerde GPS izni 26 Nis Cumartesi öncesi her şubede teyit (sube-tablet-hazirlik.md)
