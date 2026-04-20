@@ -8,6 +8,16 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - Fast implementation in Build mode, continues with "devam"
 - DB schema changes via raw psql (drizzle-kit push times out)
 
+## Session State (21.04.2026)
+- **Optimizasyon paketi tamamlandı** (Aslan onayı): 10 düzeltme, 5 yeni dosya
+  - `00-pilot-hesap-referansi.md`: 27 rol × gerçek username master tablo + dashboard rotaları
+  - `25-fabrika-mudur.md` (eren), `26-gida-muhendisi.md` (sema), `27-yatirimci-branch.md` (4 user) — eksik rol cheat-sheet'leri
+  - `mr-dobody-yonlendirme-matrisi.md`: AI agent eskalasyon (4 seviye) + role routing kontrol listesi (kod referanslarıyla)
+- **Düzeltmeler**: 16-muhasebe → `muhasebe_ik` rol + `mahmut` username; 22-coach → 27 Nis Pazar 18:00 deadline + API doğrulama; 01-admin → parola rotasyon notu; 04-kurye → DB'de yok uyarısı; vardiya-ui-test-raporu → API smoke test sonuçları (201/200 OK)
+- **DB doğrulama (21 Nis)**: 27 rol mevcut, 11 HQ rolünün hepsi DB'de, gerçek username'ler tespit (aslan/utku/mahmut/samet/umran/diana/murat.demir/ece/yavuz/ayse.kaya/mehmet.ozkan/eren/sema)
+- **Vardiya API smoke test**: bulk-create 201 + delete 200 → ÇALIŞIYOR (önceki "Mart'tan beri çökmüş" iddiası YANLIŞ)
+- **Mr. Dobody doğrulama**: `/api/ai/chat`, `agent-escalation.ts`, `agent/routing.ts`, `dobody-flow.ts` aktif — cheat-sheet'lerdeki "Mr. Dobody seni doğru kişiye yönlendirir" iddiası dayanaklı
+
 ## Session State (19.04.2026)
 - **Task #113 Pilot Hardening tamamlandı** (10 adım, ~14 dosya): 
   - `docs/pilot/`: success-criteria, README, github-push-runbook, destek-hatti-prosedur, internet-kesintisi-prosedur, db-izolasyon-raporu, sprint-1-f02-fix-plan, yuk-testi-raporu, mobil-test-raporu, day-1-report (template)

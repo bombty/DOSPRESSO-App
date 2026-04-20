@@ -82,9 +82,23 @@ Coach + supervisor + admin + HQ explicit beyaz listede.
 
 ---
 
-## 5. UI Smoke Test (Coach + Mudur)
+## 5. API Smoke Test Sonuçları (21 Nis 2026 — Yapıldı ✅)
 
-**Manuel test henüz yapılmadı** (kod yetki garantili). Pilot öncesi aşağıdaki smoke test kontrol listesi:
+**adminhq ile gerçek API testi** (Coach yetki seviyesi simülasyonu, isHQRole=true):
+
+```
+POST /api/login (adminhq / 0000) → 200 OK
+POST /api/shifts/bulk-create (branchId=5, shiftDate=2099-01-01) → 201 OK
+  Response: {"message":"1 vardiya oluşturuldu","shifts":[{"id":55891, ...}]}
+DELETE /api/shifts/55891 → 200 OK (test verisi temizlendi)
+GET /api/shifts?branchId=5&startDate=2026-04-28&endDate=2026-05-04 → 200 OK
+```
+
+**Sonuç:** Vardiya planlama API ÇALIŞIYOR. "Mart'tan beri çökmüş" iddiası **doğrulanmadı** — API tarafı sağlam. UI tarafında bir bug varsa pilot öncesi browser smoke test ile yakalanır.
+
+### Kalan Smoke Test (Browser - Coach + Mudur)
+
+Aşağıdaki test 26 Nis Cumartesi adminhq + yavuz (coach) hesaplarıyla browser'dan yapılmalı:
 
 ### Coach Smoke Test (HQ rolü)
 - [ ] `/vardiya-planlama` aç → şube seçici görünür

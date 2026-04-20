@@ -1,8 +1,9 @@
 # DOSPRESSO Cheat Sheet — Muhasebe
 
-**Hedef Kullanıcı**: Muhasebe sorumlusu — mali kayıt, fatura, vergi, bordro, raporlama
+**Hedef Kullanıcı**: Muhasebe & İK sorumlusu (Mahmut) — mali kayıt, fatura, vergi, bordro, raporlama, İK
 **Cihaz**: Bilgisayar (asıl)
-**Erişim**: Mali modül, fatura, ciro raporları, bordro, gider takibi
+**Erişim**: Mali modül, fatura, ciro raporları, bordro, gider takibi, İK temel
+**Sistem rolü:** `muhasebe_ik` (DB'de tek rol — muhasebe + İK birlikte)
 
 ---
 
@@ -15,9 +16,9 @@ Sen DOSPRESSO'nun **mali kayıt + uyum** sorumlususun. Tüm fatura, gider, ciro 
 ## 2. Login Adımları
 
 1. Tarayıcı → sistem aç
-2. Kullanıcı adı: [örn `muhasebe`]
-3. Parola: SMS/WhatsApp
-4. "Giriş Yap" → Muhasebe Paneli
+2. Kullanıcı adı: `mahmut`
+3. Parola: 1Password (pilot ilk gün adminhq verir)
+4. "Giriş Yap" → MC Muhasebe → `/muhasebe-centrum`
 
 ---
 

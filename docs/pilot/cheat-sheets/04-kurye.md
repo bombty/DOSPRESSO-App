@@ -1,4 +1,9 @@
-# DOSPRESSO Cheat Sheet — Kurye (delivery rolleri)
+# DOSPRESSO Cheat Sheet — Kurye
+
+> ⚠️ **PİLOT NOTU (21 Nis 2026):** `kurye` rolü DB'de henüz tanımlı değil (0 kullanıcı). Pilot süresince kurye işlevini barista/bar_buddy çift görev olarak yapacak. Bu cheat-sheet rol açıldığında devreye girecek arşiv referansıdır. Pilot süresince **02-mudur.md** + **06-barista.md** geçerlidir.
+
+---
+ (delivery rolleri)
 
 **Hedef Kullanıcı**: Sipariş teslim eden kurye/ekip elemanı  
 **Cihaz**: Genellikle telefon (mobil görünüm)  

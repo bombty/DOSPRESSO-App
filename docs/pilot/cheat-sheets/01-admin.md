@@ -56,6 +56,15 @@
 
 ---
 
+### Pilot Parola Rotasyon (KRİTİK)
+
+- **27 Nis Pazar 22:30:** Tüm pilot kullanıcı parolaları sıfırlanır → `mustChangePassword=true`
+- **28 Nis Pazartesi 08:00:** adminhq parolası `0000` rotasyonu → 1Password'a (yeni güçlü parola)
+- **Sonra:** 1Password tüm pilot ekibe paylaşılır
+- **Komut:** `scripts/pilot/00-db-isolation.sql` Pazar 22:30 çalıştır
+
+---
+
 ## 5. Yardım
 
 🚨 **ACİL DURUM**

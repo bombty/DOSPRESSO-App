@@ -145,4 +145,8 @@ Ek olarak HQ tarafında **vardiya planlamada tüm şubelere yetkili**sin (mudur 
 | HQ | 23 | 1 (09-18) | 1 admin, 3 stratejik |
 | Fabrika | 24 | 3 (06-14, 14-22, 22-06) | 1 mudur, 1 üretim_sefi, 1 sef, 4 operatör, 1 depo |
 
-**Pilot 28 Nis - 4 May haftası vardiya planları**: Senin tarafından girilmeli (mevcut UI üzerinden), pilot başlangıcından önce tamamlanmış olmalı.
+**Pilot 28 Nis - 4 May haftası vardiya planları**: Senin tarafından girilmeli (mevcut UI üzerinden, `/vardiya-planlama`).
+
+⏰ **DEADLINE: 27 Nisan Pazar 18:00** — pilot başlangıcından önce 4 lokasyonun tüm haftalık vardiya planı sistemde olmalı. 18:00'a kadar tamamlanmadıysa Aslan'a brifing.
+
+🔧 **API Doğrulandı (21 Nis):** `POST /api/shifts/bulk-create` → 201 OK + `DELETE /api/shifts/:id` → 200 OK. Coach (HQ rolü) tüm şubelere `isHQRole` bypass ile yetkili.
