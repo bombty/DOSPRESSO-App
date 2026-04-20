@@ -1,0 +1,24 @@
+=== Schema dosyaları ===
+schema-01.ts
+schema-02.ts
+schema-03.ts
+schema-04.ts
+schema-05.ts
+schema-06.ts
+schema-07.ts
+schema-08.ts
+schema-09.ts
+schema-10.ts
+schema-11.ts
+schema-12.ts
+schema-13.ts
+schema-14-relations.ts
+schema-15-ajanda.ts
+schema-16-financial.ts
+schema-17-snapshots.ts
+schema-18-production-planning.ts
+schema-19-workshop.ts
+schema-20-audit-v2.ts
+schema-21-dobody-proposals.ts
+schema-22-factory-recipes.ts
+schema-23-mrp-light.ts
