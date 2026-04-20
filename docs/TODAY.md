@@ -1,117 +1,120 @@
 # 📅 DOSPRESSO — TODAY.md
 
-**Tarih:** 20 Nis 2026 Pazartesi 18:55  
+**Tarih:** 20 Nis 2026 Pazartesi  
 **Pilot:** 28 Nis (8 gün kaldı)  
-**Hazırlık skoru:** 9.5/10 (%95) — Task #117 + #118 + #003 bitti, sadece DECISION-001 + TASK-005 kaldı  
-**Son güncelleme:** Pazartesi 18:55 (Claude — Replit'in 3 task'ı + skills-archive sil)
+**Hazırlık skoru:** 9.4/10 (%94) — Replit Pazar gece 2 task daha bitirdi (push bekliyor)  
+**Son güncelleme:** Pazartesi 03:30 (Claude — Replit raporu sonrası ayar)
+
+---
+
+## 🚨 ŞU AN BİR SORUN VAR — DİKKAT
+
+**Replit Pazar gece 2 task bitirdi:**
+- `e4cfce7c1` (Task #117 — silent try/catch 5 yer migrate)
+- `9a8a9e632` (Task #118 — derin öz-analiz raporu)
+
+**AMA:** Bu commit'ler **Replit'in local'inde** kaldı. Origin'de YOK!  
+**Sebep:** GitHub auth Replit Agent'ta yok (AGENT-OWNERSHIP gereği push Claude'un).
+
+**ÇÖZÜM:** PENDING.md TASK-PUSH-001 — Aslan Replit'e mesaj atacak, patch al / push et.
 
 ---
 
 ## 🎯 ŞU AN TABLO — 30 SANİYEDE OKU
 
 ```
-ÜCGEN DURUMU      Aslan: bağlantı bekliyor (DECISION-001 cevabı)
-                  Claude: TASK-003 commit + push, TODAY/PENDING güncel
-                  Replit: Task #117 + #118 push edildi (2769164), TASK-003 lokalde
+ÜCGEN DURUMU      Aslan: uyuyor (gece 03:30)
+                  Claude: PENDING.md güncellendi, commit'ler senkron bekliyor
+                  Replit: 2 task bitirdi local'de, push gerekli
 
-PILOT BLOKER      🚨 DECISION-001 (parola fix - Aslan kararı bekleniyor)
-                  ÖNEMLİ KEŞİF: Aslında kodda flag GUARD VAR! Sadece
-                  DB'de site_settings.pilot_launched=true yapılınca sorun çözülür
+PILOT BLOKER      🚨 Replit'in 2 commit'i hayalet (5 dk push çözer)
+                  🚨 Parola reset bug (Aslan kararı bekleniyor)
+SECONDARY BLOKER  🟢 Sprint D-E ZATEN entegre (Sprint E backend'de yapılmıştı)
+TERTIARY BLOKER   🟢 7 try/catch'ten 5'i Replit yaptı (push bekliyor), 2 yer kaldı
 
-✅ ÇÖZÜLEN        Sprint D ↔ E entegre (Replit teyit etti)
-                  Silent try/catch 5 yer (mobile_qr + auto_close)
-                  Quality-gate Madde 30-32 stub
-                  Derin öz-analiz raporu (96 satır, 25 soru)
-                  Replit'in 2 commit hayalet sorunu
-                  docs/skills-archive sil (illüzyon yedek kaldırıldı)
+PENDING DECISION  Aslan: Parola fix nasıl? (PENDING.md DECISION-001)
 ```
 
 ---
 
-## ⏳ ŞU AN AKTİF
+## ⏳ ŞU AN AKTİF (Ne yapılıyor şu an)
 
-- [ ] Aslan: DECISION-001 cevabı bekleniyor (parola fix - A/B/C)
+- [ ] Hiçbir şey aktif değil — Aslan uyuyor
 
 ---
 
 ## 📥 BU GÜN BEKLENEN İŞLER (Pazartesi 20 Nis)
 
 ### 🔴 P0 — Bugün mutlaka
-- [ ] **DECISION-001**: Parola fix yöntemi (Aslan kararı)
-  - **YENİ KEŞİF:** Kodda `pilot_launched` flag GUARD ZATEN VAR (server/index.ts:510-513)
-  - Sadece DB'de SQL çalıştırınca sorun çözülür, kod değişikliği yok
+- [ ] **Aslan kararı:** Parola reset bug için yöntem seçimi (PENDING.md DECISION-001)
+- [x] **Replit:** Sprint D-E entegrasyon — 5 yer console.error → critLog (Task #117, patch Aslan'da → Claude push)
 
-### ✅ BİTEN BUGÜN
-- [x] **TASK-001 + TASK-PUSH-001**: Replit'in 2 commit push (commit 2769164)
-- [x] **TASK-002**: Derin öz-analiz raporu (docs/replit-deep-self-analysis.md)
-- [x] **TASK-003**: docs/skills-archive sil (Claude bu commit'te)
-- [x] **TASK-117**: Silent try/catch 5 yer migrate (mobile_qr + auto_close)
-- [x] **Quality-gate Madde 30-32 stub** eklendi
+### 🟡 P1 — Bugün/Yarın
+- [x] **Replit:** Derin öz-analiz raporu (Task #118, patch Aslan'da → Claude push)
+- [x] **Replit:** docs/skills-archive/ silinmesi (TASK-003 — bu commit'te, push Claude'a)
+- [ ] **Aslan:** Cihaz envanteri + kullanıcı profilleri başlangıç
 
 ### 🟢 P2 — Bu hafta
-- [ ] **TASK-004**: Kalan 2 silent try/catch (Replit kendi audit'inden bulduğu)
-- [ ] **TASK-005**: Madde 37 §23-25 skill update (Claude memory'de var)
-- [ ] **Aslan**: WhatsApp pilot grupları (4 grup)
-- [ ] **Aslan**: Cumartesi eğitim takvimi
-- [ ] **Aslan**: Cihaz envanteri + kullanıcı profilleri
+- [ ] **Replit:** 7 açık silent try/catch — critLog migrate
+- [ ] **Replit:** .agents/skills'a Madde 37 §23-25 ekle
+- [ ] **Aslan:** WhatsApp pilot grupları (4 grup)
+- [ ] **Aslan:** Cumartesi eğitim takvimi
 
 ---
 
-## 🔑 PAROLA FİX — ASLAN İÇİN ÖZET
+## ✅ DÜN BİTENLER (19 Nis Pazar gece marathon — 9 commit)
 
-**Sorun:** Replit "her restart 158 user parolası 0000'a düşüyor" demiş
+| Commit | Sahibi | İş |
+|---|---|---|
+| `b9adf2b` | Claude | Replit derin öz-analiz prompt |
+| `3f23505` | Replit | Sistem değerlendirmesi (4 kritik bulgu) |
+| `15cabee` | Claude | Skill files güncelleme (4 dosya) |
+| `1bd4156` | Replit | Sprint E UI |
+| `b918fe8` | Claude | Sprint E backend |
+| `ae21c58` | Claude | Sprint G — Pilot Day-1 Dashboard |
+| `b5ba72d` | Claude | Sprint D kapanış doc |
+| `538a641` | Claude | Sprint D STEP 2 (TR datetime + 6 P0) |
+| `7828aca` | Claude | Sprint D STEP 1 (backfill) |
+| `137c6f6` | Claude | Sprint A.2 + B.1 + B.3 |
 
-**Gerçek (kodda):** `server/index.ts:506-524` `resetNonAdminPasswords()` fonksiyonu:
-```typescript
-const [pilotFlag] = await db.select().from(siteSettings)
-  .where(eq(siteSettings.key, "pilot_launched"));
-if (pilotFlag && pilotFlag.value === "true") {
-  log(`🔑 Pilot launched — skipping non-admin password reset`);
-  return;  // BURADA RETURN, reset YAPILMIYOR
-}
-```
-
-**Sebep:** `site_settings.pilot_launched` kaydı muhtemelen YOK ya da false. Bu yüzden flag tetiklenmiyor.
-
-**Çözüm (3 seçenek):**
-
-### A) Pilot başlangıcında SQL çalıştır (önerilen, 1 dk)
-```sql
-INSERT INTO site_settings (key, value, type, category)
-VALUES ('pilot_launched', 'true', 'boolean', 'pilot')
-ON CONFLICT (key) DO UPDATE SET value='true';
-```
-Çalıştırılma zamanı: 28 Nis 09:00 öncesi (örn 08:30)
-
-### B) Pilot ŞIMDI başlat (test için)
-Aynı SQL ama bugün (20 Nis). Test ortamında parolalar artık reset olmayacak.
-
-### C) Kodu kaldır (en agresif, gereksiz)
-`migrateKioskPasswords()` çağrısını sil. Önerilmez - guard zaten var.
-
-**Aslan kararı:** A / B / C?
+**Toplam:** 1500+ satır kod + 461 satır skill bilgisi + 1 derin sistem analizi
 
 ---
 
-## 📊 PİLOT HAZIRLIK SKORU EVRİMİ
+## 🔥 KRİTİK NOT — Pazartesi Sabah Aslan
+
+İlk yapacağın 3 şey:
+
+1. **TODAY.md aç** (bu dosya) — 30 saniye okuyup durumu öğren
+2. **Replit ekranını aç** — yapıştır:
+   ```
+   docs/replit-deep-self-analysis-PROMPT.md ve PENDING.md oku.
+   PENDING.md "Replit'e Bekleyen" tasklara P0'dan başla.
+   ```
+3. **Parola reset bug için kararını ver** — PENDING.md DECISION-001 oku, A/B/C seç
+
+---
+
+## 📊 PILOT HAZIRLIK SKORU EVRİMİ
 
 | Tarih | Skor | Olay |
 |---|---|---|
-| 18 Nis Cum | 5.4/10 | Marathon başlangıç |
+| 18 Nis Cumartesi | 5.4/10 | Marathon başlangıç |
 | 19 Nis sabah | 6.5/10 | Sprint A.2 + B planlama |
+| 19 Nis akşam | 7.5/10 | Sprint B testleri ✅ |
 | 19 Nis gece | 9.0/10 | Sprint D + G commit |
-| 20 Nis 02:00 | 9.3/10 | Sprint E backend + skill güncel |
-| 20 Nis 18:55 | **9.5/10** | **Task #117 + #118 + TASK-003 bitti** |
-| Hedef 28 Nis | 9.7/10 | DECISION-001 + cheat sheet KK + acil protokol |
+| **20 Nis 02:00** | **9.3/10** | **Sprint E backend + skill güncel** |
+| Hedef 28 Nis | 9.5/10 | Replit testleri + parola fix + cheat sheets |
 
 ---
 
-## 📌 BAĞLAM REFERANSLAR
+## 📌 BAĞLAM REFERANSLAR (Açık tutmaya gerek yok, lazım olunca aç)
 
-- `docs/00-DASHBOARD.md` — Detaylı uzun-vadeli bağlam
+- `docs/00-DASHBOARD.md` — Detaylı uzun-vadeli bağlam (376 satır)
 - `docs/PENDING.md` — Tüm bekleyen iş listesi + kararlar
-- `docs/replit-deep-self-analysis.md` — Replit'in 96 satır 25 soru öz-analiz
-- `docs/sistem-degerlendirmesi-replit.md` — Replit'in ilk 78 satır kritik bulgu
+- `docs/DECIDED.md` — Geçmiş kararlar arşivi (oluşturulacak)
+- `docs/sistem-degerlendirmesi-replit.md` — Replit'in 78 satır kritik bulgu
+- `docs/replit-deep-self-analysis-PROMPT.md` — Replit'e öz-analiz görevi
 - `docs/pilot/` — 20 dosya pilot dokümantasyonu
 
 ---
