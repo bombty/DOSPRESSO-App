@@ -122,6 +122,7 @@ export default function BranchKiosk() {
   const [kioskAnnouncements, setKioskAnnouncements] = useState<any[]>([]);
   const [pdksAnomalyUsers, setPdksAnomalyUsers] = useState<any[]>([]);
   const [kioskBranchTasks, setKioskBranchTasks] = useState<any[]>([]);
+  const [userScore, setUserScore] = useState<{ score: number; details: { total: number; completed: number; overdue: number; rate: number } } | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [exitPasswordInput, setExitPasswordInput] = useState('');
   const [lobbyData, setLobbyData] = useState<any>(null);
@@ -234,7 +235,26 @@ export default function BranchKiosk() {
             // İlk yüklemede null gelirse de loading'i kapat (vardiya yok durumu)
             if (data.tasks) setUserTasks(data.tasks);
             if (data.checklists) setUserChecklists(data.checklists);
-            if (data.branchTasks) setKioskBranchTasks(data.branchTasks);
+            if (data.branchTasks) {
+              setKioskBranchTasks(data.branchTasks);
+              // Kullanıcı skorunu havuzdaki görevlerden dinamik hesapla
+              // (kiosk-auth /api/branch-tasks/score erişemiyor - public endpoint değil)
+              const myCompleted = data.branchTasks.filter((t: any) =>
+                t.completedByUserId === userId || t.completedBy === userId
+              ).length;
+              const myClaimed = data.branchTasks.filter((t: any) =>
+                (t.claimedByUserId === userId || t.assignedToUserId === userId) && !t.completedByUserId
+              ).length;
+              const myOverdue = data.branchTasks.filter((t: any) =>
+                (t.claimedByUserId === userId || t.assignedToUserId === userId) && t.isOverdue && !t.completedByUserId
+              ).length;
+              const total = myCompleted + myClaimed;
+              const score = total > 0 ? Math.round((myCompleted / Math.max(total, 1)) * 100) : 0;
+              setUserScore({
+                score,
+                details: { total, completed: myCompleted, overdue: myOverdue, rate: score / 100 }
+              });
+            }
           }
         }
       } catch {}
@@ -1534,28 +1554,132 @@ export default function BranchKiosk() {
             </button>
           </div>
 
-          {/* Şube Görevleri */}
-          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📌 Şube Görevleri</p>
+          {/* Şube Görev Havuzu — isteyen üstlenir, skor kazanır */}
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto', gridColumn: 'span 2' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                📌 Şube Görev Havuzu
+                {kioskBranchTasks.length > 0 && (
+                  <span style={{ marginLeft: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
+                    {kioskBranchTasks.filter((t: any) => !t.assignedTo && !t.claimedBy).length} açık
+                  </span>
+                )}
+              </p>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+                💡 Sahiplenen kişiye puan eklenir
+              </span>
+            </div>
             {kioskBranchTasks.length === 0 ? (
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>Açık görev yok</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
+                Açık görev yok — Tüm işler tamamlanmış 👍
+              </p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {kioskBranchTasks.slice(0, 3).map((task: any) => (
-                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7 }}>
-                    <div>
-                      <p style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)', fontSize: 13, margin: 0 }}>{task.title}</p>
-                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>{task.category}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                {kioskBranchTasks.slice(0, 12).map((task: any) => {
+                  const isClaimed = !!(task.assignedTo || task.claimedBy);
+                  const isMine = task.claimedByUserId === selectedUser?.id || task.assignedToUserId === selectedUser?.id;
+                  return (
+                    <div key={task.id} style={{
+                      padding: '10px 12px',
+                      background: isMine ? 'rgba(34,197,94,0.08)' : isClaimed ? 'rgba(255,255,255,0.02)' : 'rgba(239,68,68,0.06)',
+                      borderRadius: 8,
+                      border: isMine ? '1px solid rgba(34,197,94,0.3)' : isClaimed ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(239,68,68,0.2)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                    }}>
+                      <div>
+                        <p style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)', fontSize: 13, margin: 0, lineHeight: 1.3 }}>{task.title}</p>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>
+                            {task.category}
+                          </span>
+                          {task.photoRequired && (
+                            <span style={{ color: '#fbbf24', fontSize: 10, background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                              📷 Foto
+                            </span>
+                          )}
+                          {isMine && (
+                            <span style={{ color: '#22c55e', fontSize: 10, background: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                              ✓ Sende
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {!isClaimed ? (
+                        <button
+                          onClick={() => handleClaimBranchTask(task.id)}
+                          style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 13, cursor: 'pointer', fontWeight: 700 }}
+                          data-testid={`btn-claim-task-${task.id}`}
+                        >
+                          🙋 Üstlen
+                        </button>
+                      ) : isMine ? (
+                        <button
+                          onClick={() => handleClaimBranchTask(task.id)}
+                          style={{ background: '#22c55e', color: '#fff', border: 'none', borderRadius: 7, padding: '8px 12px', fontSize: 13, cursor: 'pointer', fontWeight: 700 }}
+                          data-testid={`btn-complete-task-${task.id}`}
+                        >
+                          ✅ Tamamla
+                        </button>
+                      ) : (
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0, textAlign: 'center', fontStyle: 'italic' }}>
+                          {task.claimedByName || task.assignedToName || 'Birisi'} üstlendi
+                        </p>
+                      )}
                     </div>
-                    {!task.assignedTo && (
-                      <button onClick={() => handleClaimBranchTask(task.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                        Sahiplen
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
+          </div>
+
+          {/* Bugünkü Skorum — kullanıcı motivasyonu için */}
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              ⭐ Bugünkü Skorum
+            </p>
+            {userScore ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 32, fontWeight: 700, color: userScore.score >= 80 ? '#22c55e' : userScore.score >= 50 ? '#fbbf24' : '#ef4444' }}>
+                    {Math.round(userScore.score)}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>/ 100</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                  <div style={{ padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: 6 }}>
+                    <p style={{ color: '#22c55e', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.completed || 0}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: 0 }}>Tamamlanan</p>
+                  </div>
+                  <div style={{ padding: '8px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6 }}>
+                    <p style={{ color: '#ef4444', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.overdue || 0}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: 0 }}>Gecikmiş</p>
+                  </div>
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, marginTop: 8, textAlign: 'center' }}>
+                  Son 30 gün
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
+                Henüz görev üstlenmediniz<br/>
+                <span style={{ fontSize: 11 }}>Üstte "Üstlen" butonu ile başlayın</span>
+              </p>
+            )}
+          </div>
+
+          {/* Telefonundan Aç bilgi kutusu */}
+          <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, padding: 14 }}>
+            <p style={{ color: '#3b82f6', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              📱 Telefonundan Aç
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: '0 0 8px', lineHeight: 1.4 }}>
+              Quiz, eğitim ve detaylı görevlerin için <strong style={{ color: '#fff' }}>Benim Günüm</strong> sayfasını kullan.
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, margin: 0 }}>
+              Mola sırasında veya vardiya bitiminde aç.
+            </p>
           </div>
 
           {/* Ekip Durumu */}
@@ -1883,11 +2007,20 @@ export default function BranchKiosk() {
       return res.json();
     },
     onSuccess: (_, announcementId) => {
+      // PILOT: Quiz akışı kiosktan kaldırıldı (Aslan kararı 21 Nis 2026)
+      // Kiosk paylaşımlı cihaz - quiz kişisel deneyim. Kullanıcı kendi cep
+      // dashboard'undan (benim-gunum.tsx) quiz'i tamamlar.
+      // Onay alındı, duyuru listeden kaldır - quiz akışına girme.
+      setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+
+      // Quiz'li duyuru ise toast ile telefonda tamamlanması gerektiğini bildir
       const current = pendingAnnouncements.find(a => a.id === announcementId);
       if (current?.quizRequired && !current?.quizPassed) {
-        fetchQuizQuestions(announcementId);
-      } else {
-        setPendingAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+        toast({
+          title: "📱 Quiz telefonunuzdan tamamlanmalı",
+          description: "Vardiya bitimine kadar Benim Günüm sayfasından quiz'i çözmeyi unutmayın.",
+          duration: 5000,
+        });
       }
     },
   });
