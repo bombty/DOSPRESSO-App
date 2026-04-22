@@ -1639,6 +1639,32 @@ export default function BranchKiosk() {
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               ⭐ Bugünkü Skorum
             </p>
+            {/* S-UX Pilot Day-1 Banner (21 Nis 2026) - demotivasyon önleme */}
+            {(() => {
+              const pilotStart = new Date('2026-04-28T00:00:00');
+              const now = new Date();
+              const daysSincePilot = Math.floor((now.getTime() - pilotStart.getTime()) / (1000 * 60 * 60 * 24));
+              // Pilot ilk 7 gün: skor toplama dönemi banner'ı göster
+              if (daysSincePilot >= 0 && daysSincePilot < 7) {
+                return (
+                  <div style={{
+                    background: 'rgba(251,191,36,0.1)',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                    borderRadius: 8,
+                    padding: '8px 10px',
+                    marginBottom: 12
+                  }}>
+                    <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 600, margin: 0 }}>
+                      🎯 Pilot İlk Hafta
+                    </p>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, margin: '2px 0 0', lineHeight: 1.4 }}>
+                      Skor toplama dönemi. Değerler stabil değil, 7 gün sonra normalleşir.
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             {userScore ? (
               <div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>

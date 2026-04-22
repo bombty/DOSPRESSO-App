@@ -3793,7 +3793,10 @@ router.get('/api/branches/:branchId/kiosk/team-status', isKioskOrAuthenticated, 
 
     const [kioskCfg] = await db.select({ maxBreak: branchKioskSettings.maxBreakMinutes })
       .from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId)).limit(1);
-    const maxBreakMinutes = kioskCfg?.maxBreak || 90;
+    // S-UX (21 Nis 2026): Pilot süresince env ile geçici eşik override
+    // PILOT_BREAK_MINUTES_OVERRIDE=120 → 90→120 yumuşatma (bildirim spam önleme)
+    const envOverride = Number(process.env.PILOT_BREAK_MINUTES_OVERRIDE) || 0;
+    const maxBreakMinutes = envOverride > 0 ? envOverride : (kioskCfg?.maxBreak || 90);
 
     const activeSessions = await db.select({
       sessionId: branchShiftSessions.id,
