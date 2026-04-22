@@ -24,6 +24,45 @@ import { users, monthlyPayroll, pdksDailySummary, pdksExcelImports, publicHolida
 
 export type DataSource = "kiosk" | "excel" | "manual";
 
+// ─── S-Bordro (21 Nis 2026): Pilot Güvenlik Katmanı ─────────────
+//
+// Env değişkenleri:
+//   PAYROLL_LOCKED_DATASOURCE  → 'kiosk' | 'excel' | 'manual' | '' (boş = kilitsiz)
+//   PAYROLL_DRY_RUN            → 'true' | 'false' (default: false)
+//
+// Pilot süresince:
+//   PAYROLL_LOCKED_DATASOURCE=kiosk → Mahmut excel seçse bile kiosk kullanılır
+//   PAYROLL_DRY_RUN=true           → Bordro kaydedilir AMA SGK bildirimi YAPILMAZ
+//
+// Production'da her ikisi de false/empty olur.
+
+export function getLockedDataSource(): DataSource | null {
+  const v = (process.env.PAYROLL_LOCKED_DATASOURCE || "").trim().toLowerCase();
+  if (v === "kiosk" || v === "excel" || v === "manual") {
+    return v as DataSource;
+  }
+  return null; // kilitsiz
+}
+
+export function isPayrollDryRun(): boolean {
+  return (process.env.PAYROLL_DRY_RUN || "").trim().toLowerCase() === "true";
+}
+
+/**
+ * Etkin dataSource'u döndür — eğer lock varsa istek yoksayılır.
+ * Usage: const effectiveSource = resolveDataSource(requestedSource);
+ */
+export function resolveDataSource(requested: DataSource = "kiosk"): DataSource {
+  const locked = getLockedDataSource();
+  if (locked && locked !== requested) {
+    console.warn(
+      `[payroll-bridge] DataSource LOCK: requested='${requested}' but locked to '${locked}'. Using '${locked}'.`
+    );
+    return locked;
+  }
+  return requested;
+}
+
 // ─── Birleşik Sonuç Tipi ─────────────────────────────────────────
 
 export interface UnifiedPayrollResult {
@@ -327,6 +366,8 @@ export async function calculateUnifiedPayroll(
   dataSource: DataSource = "kiosk",
   importId?: number
 ): Promise<UnifiedPayrollResult | null> {
+  // S-Bordro: DataSource kilidi - pilot süresince istenen kaynağı override eder
+  const effectiveSource = resolveDataSource(dataSource);
   const userResult = await db.select({
     id: users.id,
     firstName: users.firstName,
@@ -352,7 +393,7 @@ export async function calculateUnifiedPayroll(
   let pdks: PdksMonthSummary;
   let resolvedImportId: number | null = null;
 
-  if (dataSource === "excel") {
+  if (effectiveSource === "excel") {
     const excelResult = await getExcelMonthSummary(userId, u.branchId, year, month, importId);
     pdks = excelResult.summary;
     resolvedImportId = excelResult.importId;
@@ -405,7 +446,7 @@ export async function calculateUnifiedPayroll(
     netSalary: adjustedNet,
     sgkEmployer: detailed.sgkEmployer, unemploymentEmployer: detailed.unemploymentEmployer,
     totalEmployerCost: detailed.totalEmployerCost,
-    isTerminated, calculationMode: "unified", dataSource,
+    isTerminated, calculationMode: "unified", dataSource: effectiveSource,
     sourceImportId: resolvedImportId, cumulativeTaxBase,
   };
 }
@@ -447,6 +488,14 @@ export async function saveUnifiedResults(
   results: UnifiedPayrollResult[],
   dbClient: typeof db = db
 ): Promise<number> {
+  // S-Bordro: DRY_RUN flag env'den alınır, her kayda yazılır
+  const dryRun = isPayrollDryRun();
+  if (dryRun) {
+    console.warn(
+      `[payroll-bridge] 🧪 DRY_RUN MODE ACTIVE — ${results.length} bordro kaydı yazılacak ama SGK bildirimi YAPILMAYACAK`
+    );
+  }
+
   let saved = 0;
   for (const r of results) {
     const values = {
@@ -489,6 +538,7 @@ export async function saveUnifiedResults(
       calculationMode: r.calculationMode,
       dataSource: r.dataSource,
       sourceImportId: r.sourceImportId,
+      isDryRun: dryRun, // S-Bordro: Pilot güvenlik flag
       status: "calculated" as const,
       calculatedAt: new Date(),
     };
