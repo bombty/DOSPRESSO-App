@@ -15,7 +15,7 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
-import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
+import { canonicalIngredientName, INGREDIENT_ALIASES } from "@shared/lib/ingredient-canonical";
 
 const router = Router();
 
@@ -428,13 +428,52 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
 });
 
 // POST /api/factory/recipes/:id/ingredients/bulk — Toplu malzeme kaydet
+// Task #153: Kanonik-dışı (sözlükte ve nutrition tablosunda olmayan) isimler
+// için server tarafında uyarı. `?force=true` veya body'de `allowUnknown: true`
+// olmadan kanonik-dışı isim varsa 400 + `unknownIngredients: string[]` döner.
 router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async (req: any, res: Response) => {
   try {
     if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
     const recipeId = Number(req.params.id);
-    const { ingredients } = req.body;
+    const { ingredients, allowUnknown } = req.body;
     if (!Array.isArray(ingredients)) return res.status(400).json({ error: "ingredients array gerekli" });
+
+    const force = req.query.force === "true" || allowUnknown === true;
+
+    // Bilinen isimler kümesi: kanonik sözlük (INGREDIENT_ALIASES anahtarları) +
+    // factory_ingredient_nutrition tablosundaki kanonikleştirilmiş isimler.
+    // Mevcut reçete malzemeleri kasten hariç — tarihi typo'lar bypass aracı
+    // olmasın (Task #153).
+    const nutritionRows = await db.select({ name: factoryIngredientNutrition.ingredientName })
+      .from(factoryIngredientNutrition);
+
+    const knownSet = new Set<string>();
+    for (const canonical of Object.keys(INGREDIENT_ALIASES)) {
+      knownSet.add(canonical);
+    }
+    for (const r of nutritionRows) {
+      const n = canonicalIngredientName(r.name || "");
+      if (n) knownSet.add(n);
+    }
+
+    const unknownIngredients: string[] = [];
+    for (const ing of ingredients) {
+      const raw = typeof ing?.name === "string" ? ing.name.trim() : "";
+      if (!raw) continue;
+      const canonical = canonicalIngredientName(raw);
+      if (!knownSet.has(canonical) && !unknownIngredients.includes(raw)) {
+        unknownIngredients.push(raw);
+      }
+    }
+
+    if (unknownIngredients.length > 0 && !force) {
+      return res.status(400).json({
+        error: "Kanonik olmayan malzeme isimleri",
+        message: "Bazı malzemeler kanonik isim listesinde değil. Devam etmek için onay gerekli.",
+        unknownIngredients,
+      });
+    }
 
     // Mevcut malzemeleri sil, yenilerini ekle (replace stratejisi)
     await db.delete(factoryRecipeIngredients).where(eq(factoryRecipeIngredients.recipeId, recipeId));
@@ -447,7 +486,7 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
       created.push(row);
     }
 
-    res.json(created);
+    res.json({ ingredients: created, unknownIngredients });
   } catch (error) {
     console.error("Bulk ingredients error:", error);
     res.status(500).json({ error: "Malzemeler kaydedilemedi" });
