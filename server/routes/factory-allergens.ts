@@ -138,6 +138,7 @@ interface RecipeComputation {
   verificationReason: string | null;
   lowConfidenceCount: number;
   minConfidence: number | null;
+  approvedCount: number;
 }
 
 async function computeRecipeNutrition(
@@ -240,6 +241,12 @@ async function computeRecipeNutrition(
     }
   }
 
+  const approvedCount = breakdown.filter(b =>
+    b.matched &&
+    b.confidence === 100 &&
+    (b.source ?? "").toLowerCase().includes("manual_verified")
+  ).length;
+
   return {
     recipeId,
     totalGrams,
@@ -253,6 +260,7 @@ async function computeRecipeNutrition(
     verificationReason,
     lowConfidenceCount,
     minConfidence,
+    approvedCount,
   };
 }
 
@@ -352,6 +360,7 @@ router.get("/api/quality/allergens/recipes", isAuthenticated, requireAllergenVie
         allergens: comp.allergens,
         ingredientCount: comp.totalCount,
         matchedCount: comp.matchedCount,
+        approvedCount: comp.approvedCount,
         unmatchedNames: comp.unmatched,
         isVerified: comp.isVerified,
         verificationReason: comp.verificationReason,
@@ -447,6 +456,7 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       allergens: comp.allergens,
       ingredientCount: comp.totalCount,
       matchedCount: comp.matchedCount,
+      approvedCount: comp.approvedCount,
       unmatchedNames: comp.unmatched,
       isVerified: comp.isVerified,
       verificationReason: comp.verificationReason,

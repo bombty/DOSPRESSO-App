@@ -36,6 +36,7 @@ interface RecipeSummary {
   allergens: string[];
   ingredientCount: number;
   matchedCount: number;
+  approvedCount: number;
   unmatchedNames: string[];
   isVerified: boolean;
   verificationReason: string | null;
@@ -209,6 +210,27 @@ function RecipeCard({ recipe, onOpen }: { recipe: RecipeSummary; onOpen: (id: nu
             <span>{recipe.verificationReason}</span>
           </div>
         )}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Malzeme onayı</span>
+          {recipe.ingredientCount > 0 && recipe.approvedCount === recipe.ingredientCount ? (
+            <Badge
+              className="gap-1 shrink-0 bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600"
+              data-testid={`badge-fully-approved-${recipe.id}`}
+            >
+              <BadgeCheck className="w-3 h-3" />
+              Tam onaylı ({recipe.approvedCount}/{recipe.ingredientCount})
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="gap-1 shrink-0 tabular-nums"
+              data-testid={`badge-approval-count-${recipe.id}`}
+            >
+              <BadgeCheck className="w-3 h-3" />
+              {recipe.approvedCount}/{recipe.ingredientCount} onaylı
+            </Badge>
+          )}
+        </div>
         <div>
           <div className="text-xs text-muted-foreground mb-1.5">Alerjenler</div>
           {recipe.allergens.length > 0 ? (
