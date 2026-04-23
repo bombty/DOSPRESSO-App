@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,8 +49,18 @@ interface PrintLogEntry {
 
 interface PrintLogResponse {
   logs: PrintLogEntry[];
-  stats: { total: number; draftCount: number; approvedCount: number };
+  stats: {
+    total: number;
+    draftCount: number;
+    approvedCount: number;
+    returned?: number;
+    offset?: number;
+    limit?: number;
+    hasMore?: boolean;
+  };
 }
+
+const PRINT_LOG_PAGE_SIZE = 200;
 
 const PRINT_LOG_FILTERS_KEY = "kalite-alerjen:printlog-filters";
 
@@ -106,17 +116,36 @@ function PrintLogPanel() {
     return params;
   }, [filters]);
 
-  const queryUrl = useMemo(() => {
-    const qs = filterParams.toString();
-    return `/api/quality/allergens/print-log${qs ? `?${qs}` : ""}`;
-  }, [filterParams]);
+  const buildQueryUrl = (offset: number) => {
+    const params = new URLSearchParams(filterParams);
+    params.set("limit", String(PRINT_LOG_PAGE_SIZE));
+    params.set("offset", String(offset));
+    return `/api/quality/allergens/print-log?${params.toString()}`;
+  };
 
-  const { data, isLoading, error } = useQuery<PrintLogResponse>({
+  const {
+    data: infiniteData,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<PrintLogResponse>({
     queryKey: ["/api/quality/allergens/print-log", filters],
-    queryFn: async ({ signal }) => {
-      const res = await fetch(queryUrl, { credentials: "include", signal });
+    initialPageParam: 0,
+    queryFn: async ({ pageParam, signal }) => {
+      const res = await fetch(buildQueryUrl(Number(pageParam) || 0), {
+        credentials: "include",
+        signal,
+      });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       return res.json();
+    },
+    getNextPageParam: (lastPage) => {
+      const stats = lastPage.stats;
+      if (!stats?.hasMore) return undefined;
+      const nextOffset = (stats.offset ?? 0) + (stats.returned ?? lastPage.logs.length);
+      return nextOffset;
     },
   });
   const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
@@ -160,6 +189,22 @@ function PrintLogPanel() {
     }
   };
 
+  const data = useMemo<PrintLogResponse | undefined>(() => {
+    if (!infiniteData) return undefined;
+    const allLogs = infiniteData.pages.flatMap((p) => p.logs);
+    const lastStats = infiniteData.pages[infiniteData.pages.length - 1]?.stats;
+    return {
+      logs: allLogs,
+      stats: {
+        total: lastStats?.total ?? allLogs.length,
+        draftCount: lastStats?.draftCount ?? 0,
+        approvedCount: lastStats?.approvedCount ?? 0,
+        returned: allLogs.length,
+        hasMore: lastStats?.hasMore,
+      },
+    };
+  }, [infiniteData]);
+
   const recipesQuery = useQuery<ListResponse>({
     queryKey: ["/api/quality/allergens/recipes"],
   });
@@ -196,6 +241,15 @@ function PrintLogPanel() {
                 <Badge variant="outline" data-testid="badge-printlog-total">
                   Toplam: {data.stats.total}
                 </Badge>
+                {data.stats.total > data.logs.length && (
+                  <Badge
+                    variant="outline"
+                    className="border-muted-foreground/40 text-muted-foreground"
+                    data-testid="badge-printlog-loaded"
+                  >
+                    Yüklenen: {data.logs.length}
+                  </Badge>
+                )}
                 <Badge
                   variant="default"
                   className="bg-emerald-600 text-white border-emerald-700"
@@ -385,6 +439,21 @@ function PrintLogPanel() {
               ))}
             </div>
           </ScrollArea>
+        )}
+        {data && data.logs.length > 0 && hasNextPage && (
+          <div className="flex justify-center pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              data-testid="button-printlog-load-more"
+            >
+              {isFetchingNextPage
+                ? "Yükleniyor..."
+                : `Daha Fazla Yükle (${data.stats.total - data.logs.length} kalan)`}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>

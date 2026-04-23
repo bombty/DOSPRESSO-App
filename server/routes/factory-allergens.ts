@@ -601,6 +601,7 @@ router.get(
   async (req: any, res: Response) => {
     try {
       const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+      const offset = Math.max(Number(req.query.offset) || 0, 0);
       const recipeId = req.query.recipeId ? Number(req.query.recipeId) : null;
       const from = req.query.from ? new Date(String(req.query.from)) : null;
       const to = req.query.to ? new Date(String(req.query.to)) : null;
@@ -615,6 +616,8 @@ router.get(
       if (to && !isNaN(to.getTime())) {
         conds.push(lte(factoryRecipeLabelPrintLogs.printedAt, to));
       }
+
+      const whereExpr = conds.length > 0 ? and(...conds) : undefined;
 
       const baseQuery = db
         .select({
@@ -635,11 +638,28 @@ router.get(
         .from(factoryRecipeLabelPrintLogs)
         .leftJoin(users, eq(users.id, factoryRecipeLabelPrintLogs.printedBy));
 
-      const rows = await (conds.length > 0
-        ? baseQuery.where(and(...conds))
-        : baseQuery)
+      const rows = await (whereExpr ? baseQuery.where(whereExpr) : baseQuery)
         .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
-        .limit(limit);
+        .limit(limit)
+        .offset(offset);
+
+      const countQuery = db
+        .select({ value: sql<number>`count(*)::int` })
+        .from(factoryRecipeLabelPrintLogs);
+      const countRows = await (whereExpr ? countQuery.where(whereExpr) : countQuery);
+      const totalCount = Number(countRows[0]?.value ?? 0);
+
+      const draftCountQuery = db
+        .select({ value: sql<number>`count(*)::int` })
+        .from(factoryRecipeLabelPrintLogs)
+        .where(
+          whereExpr
+            ? and(whereExpr, eq(factoryRecipeLabelPrintLogs.isDraft, true))
+            : eq(factoryRecipeLabelPrintLogs.isDraft, true),
+        );
+      const draftCountRows = await draftCountQuery;
+      const draftCount = Number(draftCountRows[0]?.value ?? 0);
+      const approvedCount = totalCount - draftCount;
 
       const logs = rows.map((r) => ({
         id: r.id,
@@ -660,9 +680,13 @@ router.get(
       }));
 
       const stats = {
-        total: logs.length,
-        draftCount: logs.filter((l) => l.isDraft).length,
-        approvedCount: logs.filter((l) => !l.isDraft).length,
+        total: totalCount,
+        draftCount,
+        approvedCount,
+        returned: logs.length,
+        offset,
+        limit,
+        hasMore: offset + logs.length < totalCount,
       };
 
       res.json({ logs, stats });
