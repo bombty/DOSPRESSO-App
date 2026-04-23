@@ -8,6 +8,17 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - Fast implementation in Build mode, continues with "devam"
 - DB schema changes via raw psql (drizzle-kit push times out)
 
+## Session State (23.04.2026 - Task #123)
+- **Rebase recovery + PIN reseed + routing seed** tamamlandı:
+  - Yarım kalan interaktif rebase (Replit checkpoint kaynaklı) abort edildi → `git pull --no-rebase` ile Claude'un 3 dosyası local'e geldi (commit aralığı `e80c5d296..66b8512e1`, merge commit `fd446608e`)
+  - `scripts/pilot/17-pin-reseed.ts`: 27 user CSV (`/tmp/new-pins-23nis.csv`) — sadece `users.branchId` bazında; HQ/cross-branch user'ların `branch_staff_pins` kayıtlarını kapsamadı
+  - **17b-pin-reseed-by-pin-table.ts** (yeni patch): `branch_staff_pins` + `factory_staff_pins` tablosundaki TÜM aktif user'lara benzersiz bcrypt hash → 41 branch + 14 factory = 55 PIN reseed (`/tmp/new-pins-23nis-full.csv`)
+  - `scripts/pilot/18-mr-dobody-routing-rules-seed.sql`: 15 yeni routing kuralı (toplam 16 aktif, 9 rol kapsamı: cgo×2, coach×2, fabrika_mudur×2, gida_muhendisi×1, kalite_kontrol×2, mudur×2, muhasebe_ik×1, supervisor×2, trainer×2)
+  - `scripts/pilot/15-alerjen-temel-seed.sql`: 3. denemede `factory_ingredient_nutrition.ingredient_name` kolonunda DB'de UNIQUE constraint eksikti (Drizzle schema-22'de `.unique()` tanımlı ama DB drift) → manuel `ALTER TABLE ADD CONSTRAINT factory_ingredient_nutrition_name_unique UNIQUE (ingredient_name)` sonrası 111 template kayıt oluştu (15/27 reçete coverage; Sema kalan 12 reçetenin malzemelerini eklemeli)
+- **E1 PIN duplicate doğrulaması**: pilot 4 lokasyon (5,8,23,24) `branch_staff_pins` + `factory_staff_pins` her ikisi de **0 duplicate satır**
+- **Server restart**: 0 ERROR, 145 reçete + 79 module flag + 17 role template + 2431 role permission seedleri temiz
+- adminhq parolası 0000 (28 Nis 08:00 rotasyon)
+
 ## Session State (21.04.2026)
 - **Optimizasyon paketi tamamlandı** (Aslan onayı): 10 düzeltme, 5 yeni dosya
   - `00-pilot-hesap-referansi.md`: 27 rol × gerçek username master tablo + dashboard rotaları
