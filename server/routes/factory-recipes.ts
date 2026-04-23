@@ -180,15 +180,20 @@ router.get("/api/factory/recipes", isAuthenticated, async (req: any, res: Respon
     const conditions: any[] = [eq(factoryRecipes.isActive, true)];
 
     // Task #164: Onaylı/Onaysız filtresi (gramaj scope üzerinden)
+    // Task #180: invalidated_at IS NULL → onay hâlâ geçerli sayılır
     if (approvalStatus === "unapproved") {
       conditions.push(sql`NOT EXISTS (
         SELECT 1 FROM factory_recipe_approvals fra
-        WHERE fra.recipe_id = ${factoryRecipes.id} AND fra.scope = 'gramaj'
+        WHERE fra.recipe_id = ${factoryRecipes.id}
+          AND fra.scope = 'gramaj'
+          AND fra.invalidated_at IS NULL
       )`);
     } else if (approvalStatus === "approved") {
       conditions.push(sql`EXISTS (
         SELECT 1 FROM factory_recipe_approvals fra
-        WHERE fra.recipe_id = ${factoryRecipes.id} AND fra.scope = 'gramaj'
+        WHERE fra.recipe_id = ${factoryRecipes.id}
+          AND fra.scope = 'gramaj'
+          AND fra.invalidated_at IS NULL
       )`);
     }
 
@@ -226,6 +231,8 @@ router.get("/api/factory/recipes", isAuthenticated, async (req: any, res: Respon
         .where(and(
           inArray(factoryRecipeApprovals.recipeId, ids),
           eq(factoryRecipeApprovals.scope, "gramaj"),
+          // Task #180: invalidatedAt set olan onaylar artık geçerli sayılmaz
+          isNull(factoryRecipeApprovals.invalidatedAt),
         ));
       approvedIds = new Set(approvals.map(a => a.recipeId));
     }
@@ -812,6 +819,26 @@ router.get("/api/factory/ingredient-nutrition/:name/history", isAuthenticated, a
 // MALZEMELER — CRUD
 // ═══════════════════════════════════════
 
+// Task #180: Reçete malzemesi/gramajı değiştiğinde gramaj onaylarını geçersiz say.
+// Halihazırda invalidated_at NULL olan satırları toplu işaretler. Tarihsel kayıt
+// için satırlar silinmez; yalnızca invalidated_at + invalidated_reason atanır.
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function invalidateGrammageApprovals(
+  recipeId: number,
+  reason: string,
+  tx?: DbOrTx,
+): Promise<void> {
+  const exec = tx ?? db;
+  await exec.update(factoryRecipeApprovals)
+    .set({ invalidatedAt: new Date(), invalidatedReason: reason })
+    .where(and(
+      eq(factoryRecipeApprovals.recipeId, recipeId),
+      eq(factoryRecipeApprovals.scope, "gramaj"),
+      isNull(factoryRecipeApprovals.invalidatedAt),
+    ));
+}
+
 // PATCH /api/factory/recipes/:recipeId/ingredients/:id — Malzeme düzenle
 router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -819,6 +846,10 @@ router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, 
     if (!INGREDIENT_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
     const ingredientId = Number(req.params.id);
+    const recipeId = Number(req.params.recipeId);
+    if (!Number.isFinite(ingredientId) || !Number.isFinite(recipeId)) {
+      return res.status(400).json({ error: "Geçersiz id" });
+    }
     const { name, amount, unit, rawMaterialId } = req.body;
 
     const updateData: any = {};
@@ -827,11 +858,32 @@ router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, 
     if (unit !== undefined) updateData.unit = unit;
     if (rawMaterialId !== undefined) updateData.rawMaterialId = rawMaterialId;
 
-    const [updated] = await db.update(factoryRecipeIngredients)
-      .set(updateData)
-      .where(eq(factoryRecipeIngredients.id, ingredientId))
-      .returning();
+    // Task #180: gramaj/malzeme değişikliği → mevcut gramaj onayları geçersiz
+    const grammageAffected =
+      amount !== undefined ||
+      unit !== undefined ||
+      name !== undefined ||
+      rawMaterialId !== undefined;
 
+    const updated = await db.transaction(async (tx) => {
+      // PATCH yalnızca path'teki recipeId'ye ait satırı günceller — başka
+      // bir reçetenin malzemesi yanlışlıkla burada düzenlenip onayı
+      // geçersizleştirilemesin.
+      const [row] = await tx.update(factoryRecipeIngredients)
+        .set(updateData)
+        .where(and(
+          eq(factoryRecipeIngredients.id, ingredientId),
+          eq(factoryRecipeIngredients.recipeId, recipeId),
+        ))
+        .returning();
+      if (!row) return null;
+      if (grammageAffected) {
+        await invalidateGrammageApprovals(row.recipeId, "ingredient_patch", tx);
+      }
+      return row;
+    });
+
+    if (!updated) return res.status(404).json({ error: "Malzeme bulunamadı" });
     res.json(updated);
   } catch (error) {
     console.error("Update ingredient error:", error);
@@ -867,6 +919,10 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
       const [row] = await tx.insert(factoryRecipeIngredients)
         .values({ ...normalized, recipeId })
         .returning();
+
+      // Task #180: yeni malzeme eklenmesi gramaj formülünü değiştirir →
+      // mevcut gramaj onayları geçersiz sayılır.
+      await invalidateGrammageApprovals(recipeId, "ingredient_post", tx);
 
       // Opsiyonel besin değer + alerjen kaydı (yeni kanonik dışı malzemeler için)
       // Task #184: Sadece NUTRITION_EDIT_ROLES (admin/gida_muhendisi/recete_gm)
@@ -1113,6 +1169,10 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
           writtenNutrition.add(ingredientName);
         }
       }
+
+      // Task #180: toplu malzeme yenileme gramaj formülünü değiştirir →
+      // mevcut gramaj onayları geçersiz sayılır.
+      await invalidateGrammageApprovals(recipeId, "ingredient_bulk", tx);
 
       return { created, writtenNutrition, snapshotTaken: existing.length };
     });

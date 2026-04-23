@@ -585,12 +585,17 @@ export const factoryRecipeApprovals = pgTable("factory_recipe_approvals", {
   // Backfill / kaynak referansı (örn: "Task #159", "Task #139", "manual")
   sourceRef: varchar("source_ref", { length: 50 }),
 
+  // Task #180: Reçete malzemesi/gramajı değiştiğinde otomatik geçersizleştirme
+  invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+  invalidatedReason: varchar("invalidated_reason", { length: 100 }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("fra_recipe_idx").on(table.recipeId),
   index("fra_recipe_scope_idx").on(table.recipeId, table.scope),
   index("fra_scope_idx").on(table.scope),
   index("fra_approved_at_idx").on(table.approvedAt),
+  index("fra_invalidated_at_idx").on(table.invalidatedAt),
 ]);
 
 export const insertFactoryRecipeApprovalSchema = createInsertSchema(factoryRecipeApprovals).omit({
