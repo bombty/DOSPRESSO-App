@@ -23,6 +23,32 @@
 
 BEGIN;
 
+-- ═══════════════════════════════════════════════════════════════════
+-- DRIFT FIX (idempotent): factory_ingredient_nutrition.ingredient_name
+-- UNIQUE constraint Drizzle schema-22'de tanımlı (.unique()) ama bazı
+-- DB'lerde yok. ON CONFLICT için zorunlu — yoksa script patlar.
+-- ═══════════════════════════════════════════════════════════════════
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'factory_ingredient_nutrition_name_unique'
+       OR (conrelid = 'factory_ingredient_nutrition'::regclass
+           AND contype = 'u'
+           AND array_to_string(conkey, ',') = (
+             SELECT attnum::text FROM pg_attribute
+             WHERE attrelid = 'factory_ingredient_nutrition'::regclass
+               AND attname = 'ingredient_name'
+           ))
+  ) THEN
+    ALTER TABLE factory_ingredient_nutrition
+      ADD CONSTRAINT factory_ingredient_nutrition_name_unique UNIQUE (ingredient_name);
+    RAISE NOTICE 'DRIFT FIX: ingredient_name UNIQUE constraint eklendi';
+  ELSE
+    RAISE NOTICE 'DRIFT OK: ingredient_name UNIQUE constraint mevcut';
+  END IF;
+END $$;
+
 -- Mevcut durum
 DO $$
 DECLARE

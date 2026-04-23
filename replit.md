@@ -17,7 +17,7 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
   - `scripts/pilot/15-alerjen-temel-seed.sql`: 3. denemede `factory_ingredient_nutrition.ingredient_name` kolonunda DB'de UNIQUE constraint eksikti (Drizzle schema-22'de `.unique()` tanımlı ama DB drift) → manuel `ALTER TABLE ADD CONSTRAINT factory_ingredient_nutrition_name_unique UNIQUE (ingredient_name)` sonrası 111 template kayıt oluştu (15/27 reçete coverage; Sema kalan 12 reçetenin malzemelerini eklemeli)
 - **E1 PIN duplicate doğrulaması**: pilot 4 lokasyon (5,8,23,24) `branch_staff_pins` + `factory_staff_pins` her ikisi de **0 duplicate satır**
 - **Server restart**: 0 ERROR, 145 reçete + 79 module flag + 17 role template + 2431 role permission seedleri temiz
-- adminhq parolası 0000 (28 Nis 08:00 rotasyon)
+- Adminhq operasyonel parolası 1Password'da; pre-pilot rotasyon 28 Nis 08:00 (parolalar repo'da saklanmaz)
 
 ## Session State (21.04.2026)
 - **Optimizasyon paketi tamamlandı** (Aslan onayı): 10 düzeltme, 5 yeni dosya
@@ -41,7 +41,7 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - **Aslan kararları**: 4 sayısal eşik (login >%95, task >10/lokasyon, error <%5, smoke ≥7/8); pilot 28 Nis kesin
 - Önceki commit: `18896c813` (Sprint A5) → `3f2350515` (sistem değerlendirme) → `e4cfce7c1` (Task #117: silent try/catch migrate 5 yer + quality-gate Madde 30-32 stub + sourceLocation drift fix, push GitHub auth bekliyor — Claude path)
 - Bekleyen: #92 fabrika_depo leftovers, #93 düşük stok→satınalma, #94 LOT/SKT
-- adminhq parola: `0000` (Pazartesi 28 Nis 08:00 rotasyon → 1Password)
+- Adminhq operasyonel parolası 1Password'da; pre-pilot rotasyon 28 Nis 08:00 (parolalar repo'da saklanmaz)
 
 ## System Architecture
 

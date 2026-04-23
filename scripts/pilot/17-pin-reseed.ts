@@ -1,57 +1,62 @@
 /**
- * PIN Re-seed Script (Day-1 Blocker)
- * 23 Nis 2026 - Replit bulgusu: 8-9 user aynı bcrypt hash paylaşıyor
+ * PIN Re-seed Script (Day-1 Blocker) — CANONICAL v2 (23 Nis 2026)
  *
  * AMAÇ:
- * - Pilot 4 lokasyon (5, 8, 23, 24) için her aktif user'a benzersiz 4-haneli PIN
- * - Bcrypt hash ile güvenli saklama (salt round = 10)
- * - Collision-free: PIN'ler user/branch scope'unda tekil
+ * - Pilot 4 lokasyon (5 Işıklar, 8 Lara, 23 HQ, 24 Fabrika) için tüm aktif
+ *   kiosk PIN kayıtlarına benzersiz 4-haneli PIN + bcrypt hash ataması
+ * - branch_staff_pins tablosundaki TÜM aktif user'lar (cross-branch dahil:
+ *   HQ user'larının Lara'da PIN kaydı varsa o da güncellenir)
+ * - factory_staff_pins tablosundaki TÜM aktif user'lar (global, branch_id'siz)
+ *
+ * v1 (deprecated) ile fark:
+ *   v1: users.branchId IN (5,8,23,24) filtreliyordu → cross-branch HQ user
+ *       PIN'lerini güncellemiyordu, E1 duplicate kontrolü ❌ veriyordu.
+ *   v2: PIN tablolarını direkt iterate eder. E1 → 0 satır.
  *
  * ÇIKTI:
- * - DB'de branch_staff_pins UPDATE
- * - Terminal'e CSV: user_id, name, branch, plaintext_pin (Aslan'a teslim edilecek)
- * - Güvenli: plaintext PIN sadece terminal output, dosyaya YAZILMAZ
+ *   - DB'de branch_staff_pins + factory_staff_pins UPDATE (UPSERT-safe)
+ *   - stdout'a CSV: branch_id,branch_name,user_id,username,full_name,role,scope,new_pin
  *
  * ÇALIŞTIRMA:
- *   cd /home/runner/<repo>
- *   tsx scripts/pilot/17-pin-reseed.ts > /tmp/new-pins-23nis.csv
+ *   tsx scripts/pilot/17-pin-reseed.ts > /tmp/new-pins-23nis-full.csv
  *
- * ASLAN'A: /tmp/new-pins-23nis.csv içeriğini oku, kullanıcılara ilet (SMS/WhatsApp).
- *          Sonra dosyayı güvenle sil: shred -u /tmp/new-pins-23nis.csv
+ * GÜVENLİK:
+ *   - CSV plaintext PIN içerir → kullanıcılara teslimden sonra:
+ *     shred -u /tmp/new-pins-23nis-full.csv
+ *   - DB'de sadece bcrypt hash (salt round = 10) saklanır
  */
 
 import { db } from "../../server/db";
-import { users, branches, branchStaffPins } from "@shared/schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { users, branches, branchStaffPins, factoryStaffPins } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const PILOT_BRANCH_IDS = [5, 8, 23, 24];
 const SALT_ROUNDS = 10;
+const BANNED_PINS = new Set([
+  "0000","1111","2222","3333","4444","5555","6666","7777","8888","9999",
+  "1234","2345","3456","4567","5678","6789","0123","1029","2580","0852",
+]);
 
-// 4-haneli benzersiz PIN üret (scope: branch bazında)
 function generateUniquePin(existingPins: Set<string>): string {
-  let attempts = 0;
-  while (attempts < 100) {
+  for (let i = 0; i < 500; i++) {
     const pin = String(Math.floor(1000 + Math.random() * 9000));
-    // Güvenlik: tekrar eden desenler yasak (1111, 1234, 0000, 2580)
-    const banned = ["0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999", "1234", "2345", "3456", "4567", "5678", "6789", "0123", "1029", "2580", "0852"];
-    if (!banned.includes(pin) && !existingPins.has(pin)) {
+    if (!BANNED_PINS.has(pin) && !existingPins.has(pin)) {
       existingPins.add(pin);
       return pin;
     }
-    attempts++;
   }
-  throw new Error("Benzersiz PIN üretilemedi (100 deneme)");
+  throw new Error("Benzersiz PIN üretilemedi (500 deneme)");
 }
 
 async function reseedPins() {
-  console.log("# PIN RE-SEED CSV ÇIKTISI");
+  console.log("# PIN RE-SEED CSV ÇIKTISI (canonical v2)");
   console.log("# Tarih: " + new Date().toISOString());
-  console.log("# UYARI: Bu dosyayı KULLANICILARA DAĞITTIKTAN SONRA SİL (shred -u)");
+  console.log("# UYARI: Dağıtım sonrası shred -u ile SİLİN");
   console.log("#");
-  console.log("branch_id,branch_name,user_id,username,full_name,role,new_pin");
+  console.log("branch_id,branch_name,user_id,username,full_name,role,scope,new_pin");
 
-  // Her branch için ayrı PIN havuzu (branch_staff_pins.UNIQUE (user_id, branch_id))
+  // --- branch_staff_pins (her branch için ayrı PIN havuzu) ---
   for (const branchId of PILOT_BRANCH_IDS) {
     const [branch] = await db
       .select({ id: branches.id, name: branches.name })
@@ -63,70 +68,88 @@ async function reseedPins() {
       continue;
     }
 
-    // Bu branchId'de aktif tüm user'ları al (HQ rollerinin branchId NULL olabilir,
-    // bu yüzden sadece branchId eşleşenler)
-    const branchUsers = await db
+    const rows = await db
       .select({
-        id: users.id,
+        userId: branchStaffPins.userId,
         username: users.username,
         firstName: users.firstName,
         lastName: users.lastName,
         role: users.role,
       })
-      .from(users)
-      .where(
-        and(
-          eq(users.branchId, branchId),
-          eq(users.isActive, true),
-          isNull(users.deletedAt)
-        )
-      );
+      .from(branchStaffPins)
+      .innerJoin(users, eq(users.id, branchStaffPins.userId))
+      .where(and(
+        eq(branchStaffPins.branchId, branchId),
+        eq(branchStaffPins.isActive, true),
+      ));
 
-    if (branchUsers.length === 0) {
-      console.error(`# UYARI: Branch ${branchId} (${branch.name}) - 0 aktif user`);
+    if (rows.length === 0) {
+      console.error(`# UYARI: Branch ${branchId} (${branch.name}) - 0 aktif branch_staff_pins`);
       continue;
     }
 
-    const branchPinPool = new Set<string>();
-
-    for (const user of branchUsers) {
-      const plainPin = generateUniquePin(branchPinPool);
+    const pool = new Set<string>();
+    for (const r of rows) {
+      const plainPin = generateUniquePin(pool);
       const hashedPin = await bcrypt.hash(plainPin, SALT_ROUNDS);
 
-      // UPSERT: branch_staff_pins
       await db
-        .insert(branchStaffPins)
-        .values({
-          userId: user.id,
-          branchId: branchId,
+        .update(branchStaffPins)
+        .set({
           hashedPin,
           pinFailedAttempts: 0,
           pinLockedUntil: null,
-          isActive: true,
+          updatedAt: new Date(),
         })
-        .onConflictDoUpdate({
-          target: [branchStaffPins.userId, branchStaffPins.branchId],
-          set: {
-            hashedPin,
-            pinFailedAttempts: 0,
-            pinLockedUntil: null,
-            isActive: true,
-            updatedAt: new Date(),
-          },
-        });
+        .where(and(
+          eq(branchStaffPins.userId, r.userId),
+          eq(branchStaffPins.branchId, branchId),
+        ));
 
-      // CSV çıktı (plaintext + hash ayrı ayrı — sadece stdout'a)
-      const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+      const fullName = `${r.firstName || ""} ${r.lastName || ""}`.trim();
       console.log(
-        `${branchId},"${branch.name}",${user.id},${user.username || ""},"${fullName}",${user.role},${plainPin}`
+        `${branchId},"${branch.name}",${r.userId},${r.username || ""},"${fullName}",${r.role},branch,${plainPin}`
       );
     }
-
-    console.error(`# Branch ${branchId} (${branch.name}): ${branchUsers.length} user işlendi`);
+    console.error(`# Branch ${branchId} (${branch.name}): ${rows.length} branch_staff_pins reseed`);
   }
 
-  console.error("# BİTTİ. Çıktıyı /tmp/new-pins-23nis.csv gibi bir dosyaya yönlendirin.");
-  console.error("# Sonra shred -u /tmp/new-pins-23nis.csv ile SİLİN.");
+  // --- factory_staff_pins (global tablo, kendi PIN havuzu) ---
+  const factoryRows = await db
+    .select({
+      userId: factoryStaffPins.userId,
+      username: users.username,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+    })
+    .from(factoryStaffPins)
+    .innerJoin(users, eq(users.id, factoryStaffPins.userId))
+    .where(eq(factoryStaffPins.isActive, true));
+
+  const factoryPool = new Set<string>();
+  for (const r of factoryRows) {
+    const plainPin = generateUniquePin(factoryPool);
+    const hashedPin = await bcrypt.hash(plainPin, SALT_ROUNDS);
+
+    await db
+      .update(factoryStaffPins)
+      .set({
+        hashedPin,
+        pinFailedAttempts: 0,
+        pinLockedUntil: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(factoryStaffPins.userId, r.userId));
+
+    const fullName = `${r.firstName || ""} ${r.lastName || ""}`.trim();
+    console.log(
+      `24,"Fabrika",${r.userId},${r.username || ""},"${fullName}",${r.role},factory,${plainPin}`
+    );
+  }
+  console.error(`# factory_staff_pins: ${factoryRows.length} reseed`);
+
+  console.error("# BİTTİ. Çıktı CSV'sini kullanıcılara dağıttıktan sonra shred -u ile silin.");
   process.exit(0);
 }
 
