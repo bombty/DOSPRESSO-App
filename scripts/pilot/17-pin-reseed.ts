@@ -28,7 +28,7 @@
 
 import { db } from "../../server/db";
 import { users, branches, branchStaffPins, factoryStaffPins } from "@shared/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const PILOT_BRANCH_IDS = [5, 8, 23, 24];
@@ -81,6 +81,8 @@ async function reseedPins() {
       .where(and(
         eq(branchStaffPins.branchId, branchId),
         eq(branchStaffPins.isActive, true),
+        eq(users.isActive, true),
+        isNull(users.deletedAt),
       ));
 
     if (rows.length === 0) {
@@ -125,7 +127,11 @@ async function reseedPins() {
     })
     .from(factoryStaffPins)
     .innerJoin(users, eq(users.id, factoryStaffPins.userId))
-    .where(eq(factoryStaffPins.isActive, true));
+    .where(and(
+      eq(factoryStaffPins.isActive, true),
+      eq(users.isActive, true),
+      isNull(users.deletedAt),
+    ));
 
   const factoryPool = new Set<string>();
   for (const r of factoryRows) {
