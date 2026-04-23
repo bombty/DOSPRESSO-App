@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -431,8 +431,37 @@ export default function KaliteAlerjenPage() {
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [tab, setTab] = useState("verified");
-  const [sortBy, setSortBy] = useState<"default" | "approval-desc" | "approval-asc">("default");
-  const [onlyFullyApproved, setOnlyFullyApproved] = useState(false);
+  const [sortBy, setSortBy] = useState<"default" | "approval-desc" | "approval-asc">(() => {
+    try {
+      if (typeof window === "undefined") return "default";
+      const stored = window.localStorage.getItem("kalite-alerjen:sortBy");
+      return stored === "approval-desc" || stored === "approval-asc" || stored === "default"
+        ? stored
+        : "default";
+    } catch {
+      return "default";
+    }
+  });
+  const [onlyFullyApproved, setOnlyFullyApproved] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return false;
+      return window.localStorage.getItem("kalite-alerjen:onlyFullyApproved") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("kalite-alerjen:sortBy", sortBy);
+    } catch {}
+  }, [sortBy]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("kalite-alerjen:onlyFullyApproved", String(onlyFullyApproved));
+    } catch {}
+  }, [onlyFullyApproved]);
 
   const { data, isLoading, error } = useQuery<ListResponse>({
     queryKey: ["/api/quality/allergens/recipes"],
