@@ -127,6 +127,19 @@ export function canonicalIngredientName(raw: string | null | undefined): string 
   return ALIAS_TO_CANONICAL.get(normalizeKey(trimmed)) ?? trimmed;
 }
 
+/**
+ * Verilen ham malzeme adının kanonik sözlükte (alias veya canonical olarak)
+ * tanımlı olup olmadığını döner. `false` ise script "kanonik-dışı malzeme"
+ * uyarısı basmalı ve `--force` / `ALLOW_UNKNOWN_INGREDIENTS=1` olmadan
+ * kayıt yazmamalı.
+ */
+export function isKnownIngredient(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  return ALIAS_TO_CANONICAL.has(normalizeKey(trimmed));
+}
+
 export function getAllAliases(): Array<{ canonical: string; alias: string }> {
   const out: Array<{ canonical: string; alias: string }> = [];
   for (const [canonical, aliases] of Object.entries(INGREDIENT_ALIASES)) {

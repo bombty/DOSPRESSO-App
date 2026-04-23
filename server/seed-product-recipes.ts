@@ -7,7 +7,7 @@
 
 import { db } from "./db";
 import { factoryRecipes, factoryRecipeIngredients, factoryRecipeSteps, inventory } from "@shared/schema";
-import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
+import { canonicalIngredientName, isKnownIngredient } from "@shared/lib/ingredient-canonical";
 import { eq, sql, ilike } from "drizzle-orm";
 
 // ── Birim normalizasyonu ──
@@ -466,8 +466,45 @@ async function findInventoryId(ingredientName: string): Promise<number | null> {
   return null;
 }
 
+function checkCanonicalIngredients(): { unknown: Array<{ name: string; recipes: string[] }> } {
+  const unknownMap = new Map<string, Set<string>>();
+  for (const recipe of RECIPES) {
+    for (const ing of recipe.ingredients) {
+      if (!isKnownIngredient(ing.name)) {
+        if (!unknownMap.has(ing.name)) unknownMap.set(ing.name, new Set());
+        unknownMap.get(ing.name)!.add(recipe.code);
+      }
+    }
+  }
+  const unknown = Array.from(unknownMap.entries())
+    .map(([name, recipes]) => ({ name, recipes: Array.from(recipes).sort() }))
+    .sort((a, b) => a.name.localeCompare(b.name, "tr-TR"));
+  return { unknown };
+}
+
 async function seedRecipes() {
   console.log("[SEED] 13 ürün reçetesi ekleniyor...\n");
+
+  // ── Pre-flight: kanonik-dışı malzeme denetimi ──
+  const force = process.argv.includes("--force") || process.env.ALLOW_UNKNOWN_INGREDIENTS === "1";
+  const { unknown } = checkCanonicalIngredients();
+  if (unknown.length > 0) {
+    console.log(`[SEED] ⚠️  KANONİK-DIŞI MALZEME RAPORU — ${unknown.length} ad`);
+    console.log(`[SEED] ─────────────────────────────────────────`);
+    for (const u of unknown) {
+      console.log(`  • "${u.name}"  →  reçeteler: ${u.recipes.join(", ")}`);
+    }
+    console.log(`[SEED] ─────────────────────────────────────────`);
+    if (!force) {
+      console.error(`[SEED] ❌ Yukarıdaki ${unknown.length} malzeme shared/lib/ingredient-canonical.ts içinde tanımlı değil.`);
+      console.error(`[SEED]    Önce sözlüğü güncelleyin (typo ise alias olarak ekleyin, yeni kalemse canonical ekleyin).`);
+      console.error(`[SEED]    Yine de devam etmek için: --force veya ALLOW_UNKNOWN_INGREDIENTS=1`);
+      process.exit(2);
+    }
+    console.log(`[SEED] ⚠️  --force / ALLOW_UNKNOWN_INGREDIENTS=1 aktif, devam ediliyor...\n`);
+  } else {
+    console.log(`[SEED] ✓ Tüm malzemeler kanonik sözlükte tanımlı.\n`);
+  }
 
   let created = 0, skipped = 0, totalIngredients = 0, linked = 0, unlinked = 0;
 

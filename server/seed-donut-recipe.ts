@@ -8,7 +8,7 @@
 
 import { db } from "./db";
 import { factoryRecipes, factoryRecipeIngredients, factoryKeyblends, factoryKeyblendIngredients, inventory } from "@shared/schema";
-import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
+import { canonicalIngredientName, isKnownIngredient } from "@shared/lib/ingredient-canonical";
 import { eq, sql, ilike } from "drizzle-orm";
 
 // Inventory eşleştirme
@@ -23,8 +23,77 @@ async function findInv(searchTerms: string[]): Promise<number | null> {
   return null;
 }
 
+// ── Keyblend malzemeleri (modül scope: pre-flight için) ──
+const KB_INGREDIENTS = [
+  { name: "CMC (E466)", amount: 40, unit: "g", category: "emulgatör", searchTerms: ["CMC"] },
+  { name: "Xanthan (E415)", amount: 1, unit: "g", category: "emulgatör", searchTerms: ["Xanthan", "KSANTAN"] },
+  { name: "Maltogenik amilaz", amount: 3, unit: "g", category: "enzim", searchTerms: ["Maltogenik", "MALTOGENİK"] },
+  { name: "L-sistein (E920)", amount: 1, unit: "g", category: "enzim", searchTerms: ["Sistein", "L-SİSTEİN"] },
+  { name: "Vitamin C (E300)", amount: 2, unit: "g", category: "antioksidan", searchTerms: ["VİTAMİN C", "Askorbik"] },
+  { name: "Kalsiyum propiyonat (E282)", amount: 40, unit: "g", category: "koruyucu", searchTerms: ["Kalsiyum", "KALSİYUM PROPİYONAT"] },
+  { name: "DATEM (E472e)", amount: 60, unit: "g", category: "emulgatör", searchTerms: ["DATEM"] },
+  { name: "SSL (E481)", amount: 85, unit: "g", category: "emulgatör", searchTerms: ["SSL"] },
+  { name: "E471", amount: 85, unit: "g", category: "emulgatör", searchTerms: ["E471"] },
+  { name: "Şeker kamışı aroması", amount: 12, unit: "g", category: "aroma", searchTerms: ["ŞEKER KAMIŞI", "Şeker Kamışı"] },
+  { name: "Acı badem aroması", amount: 3, unit: "g", category: "aroma", searchTerms: ["ACI BADEM", "Acı Badem"] },
+  { name: "Muskat", amount: 3, unit: "g", category: "aroma", searchTerms: ["MUSKAT", "Muskat"] },
+];
+
+// ── Ana hamur malzemeleri (modül scope: pre-flight için) ──
+const MAIN_INGREDIENTS = [
+  { name: "Buğday unu", amount: 30000, unit: "g", searchTerms: ["Un", "un"] },
+  { name: "Vital gluten", amount: 130, unit: "g", searchTerms: ["Gluten", "Vital Wheat Gluten"] },
+  { name: "Toz yumurta", amount: 150, unit: "g", searchTerms: ["Yumurta Tozu", "TOZ YUMURTA"] },
+  { name: "Su", amount: 17000, unit: "g", searchTerms: ["Su"] },
+  { name: "Şeker", amount: 3300, unit: "g", searchTerms: ["TOZ ŞEKER", "Toz Şeker"] },
+  { name: "Dekstroz", amount: 500, unit: "g", searchTerms: ["DEKSTROZ", "Dekstroz"] },
+  { name: "İnvert şeker şurubu", amount: 250, unit: "g", searchTerms: ["Creamice Base", "İnvert"] },
+  { name: "Gliserin", amount: 110, unit: "g", searchTerms: ["Gliserin", "GLİSERİN"] },
+  { name: "Yağ (margarin)", amount: 2900, unit: "g", searchTerms: ["Margarin", "AAK ALBA", "TURYAĞ"] },
+  { name: "Sıvı yağ", amount: 1300, unit: "g", searchTerms: ["SIVI YAĞ", "Sıvı Yağ", "Ayçiçek"] },
+  { name: "Yağsız süt tozu", amount: 500, unit: "g", searchTerms: ["Yağsız Süt Tozu", "SÜT TOZU"] },
+  { name: "Soya unu", amount: 120, unit: "g", searchTerms: ["SOYA UNU", "Soya"] },
+  { name: "PST", amount: 30, unit: "g", searchTerms: ["PST"] },
+  { name: "Tuz", amount: 400, unit: "g", searchTerms: ["TUZ", "Tuz"] },
+  { name: "Pregel modifiye mısır nişastası", amount: 110, unit: "g", searchTerms: ["Modifiye Nişasta", "NİŞASTA"] },
+  { name: "Vanilya", amount: 35, unit: "g", searchTerms: ["VANİLİN", "Vanilya", "VANILYA"] },
+  { name: "Yaş maya", amount: 1000, unit: "g", searchTerms: ["Yaş Maya", "YAŞ MAYA"] },
+];
+
+function checkCanonicalIngredients(): Array<{ name: string; source: string }> {
+  const unknown: Array<{ name: string; source: string }> = [];
+  for (const ing of MAIN_INGREDIENTS) {
+    if (!isKnownIngredient(ing.name)) unknown.push({ name: ing.name, source: "DON-001 ana hamur" });
+  }
+  for (const ing of KB_INGREDIENTS) {
+    if (!isKnownIngredient(ing.name)) unknown.push({ name: ing.name, source: "DON-KB-001 keyblend" });
+  }
+  return unknown;
+}
+
 async function seedDonutRecipe() {
   console.log("[SEED] Donut reçetesi + Keyblend ekleniyor...\n");
+
+  // ── Pre-flight: kanonik-dışı malzeme denetimi ──
+  const force = process.argv.includes("--force") || process.env.ALLOW_UNKNOWN_INGREDIENTS === "1";
+  const unknown = checkCanonicalIngredients();
+  if (unknown.length > 0) {
+    console.log(`[SEED] ⚠️  KANONİK-DIŞI MALZEME RAPORU — ${unknown.length} kayıt`);
+    console.log(`[SEED] ─────────────────────────────────────────`);
+    for (const u of unknown) {
+      console.log(`  • "${u.name}"  →  ${u.source}`);
+    }
+    console.log(`[SEED] ─────────────────────────────────────────`);
+    if (!force) {
+      console.error(`[SEED] ❌ Yukarıdaki ${unknown.length} malzeme shared/lib/ingredient-canonical.ts içinde tanımlı değil.`);
+      console.error(`[SEED]    Önce sözlüğü güncelleyin (typo ise alias olarak ekleyin, yeni kalemse canonical ekleyin).`);
+      console.error(`[SEED]    Yine de devam etmek için: --force veya ALLOW_UNKNOWN_INGREDIENTS=1`);
+      process.exit(2);
+    }
+    console.log(`[SEED] ⚠️  --force / ALLOW_UNKNOWN_INGREDIENTS=1 aktif, devam ediliyor...\n`);
+  } else {
+    console.log(`[SEED] ✓ Tüm malzemeler kanonik sözlükte tanımlı.\n`);
+  }
 
   // ── 1. Keyblend oluştur ──
   const KB_CODE = "DON-KB-001";
@@ -49,22 +118,6 @@ async function seedDonutRecipe() {
     }).returning();
     keyblendId = kb.id;
     console.log(`  ✅ Keyblend ${KB_CODE} oluşturuldu (id: ${keyblendId})`);
-
-    // Keyblend malzemeleri
-    const KB_INGREDIENTS = [
-      { name: "CMC (E466)", amount: 40, unit: "g", category: "emulgatör", searchTerms: ["CMC"] },
-      { name: "Xanthan (E415)", amount: 1, unit: "g", category: "emulgatör", searchTerms: ["Xanthan", "KSANTAN"] },
-      { name: "Maltogenik amilaz", amount: 3, unit: "g", category: "enzim", searchTerms: ["Maltogenik", "MALTOGENİK"] },
-      { name: "L-sistein (E920)", amount: 1, unit: "g", category: "enzim", searchTerms: ["Sistein", "L-SİSTEİN"] },
-      { name: "Vitamin C (E300)", amount: 2, unit: "g", category: "antioksidan", searchTerms: ["VİTAMİN C", "Askorbik"] },
-      { name: "Kalsiyum propiyonat (E282)", amount: 40, unit: "g", category: "koruyucu", searchTerms: ["Kalsiyum", "KALSİYUM PROPİYONAT"] },
-      { name: "DATEM (E472e)", amount: 60, unit: "g", category: "emulgatör", searchTerms: ["DATEM"] },
-      { name: "SSL (E481)", amount: 85, unit: "g", category: "emulgatör", searchTerms: ["SSL"] },
-      { name: "E471", amount: 85, unit: "g", category: "emulgatör", searchTerms: ["E471"] },
-      { name: "Şeker kamışı aroması", amount: 12, unit: "g", category: "aroma", searchTerms: ["ŞEKER KAMIŞI", "Şeker Kamışı"] },
-      { name: "Acı badem aroması", amount: 3, unit: "g", category: "aroma", searchTerms: ["ACI BADEM", "Acı Badem"] },
-      { name: "Muskat", amount: 3, unit: "g", category: "aroma", searchTerms: ["MUSKAT", "Muskat"] },
-    ];
 
     for (let i = 0; i < KB_INGREDIENTS.length; i++) {
       const ing = KB_INGREDIENTS[i];
@@ -112,27 +165,7 @@ async function seedDonutRecipe() {
 
   console.log(`\n  ✅ Reçete ${RECIPE_CODE} "${recipe.name}" (id: ${recipe.id})`);
 
-  // ── 3. Ana hamur malzemeleri ──
-  const MAIN_INGREDIENTS = [
-    { name: "Buğday unu", amount: 30000, unit: "g", searchTerms: ["Un", "un"] },
-    { name: "Vital gluten", amount: 130, unit: "g", searchTerms: ["Gluten", "Vital Wheat Gluten"] },
-    { name: "Toz yumurta", amount: 150, unit: "g", searchTerms: ["Yumurta Tozu", "TOZ YUMURTA"] },
-    { name: "Su", amount: 17000, unit: "g", searchTerms: ["Su"] },
-    { name: "Şeker", amount: 3300, unit: "g", searchTerms: ["TOZ ŞEKER", "Toz Şeker"] },
-    { name: "Dekstroz", amount: 500, unit: "g", searchTerms: ["DEKSTROZ", "Dekstroz"] },
-    { name: "İnvert şeker şurubu", amount: 250, unit: "g", searchTerms: ["Creamice Base", "İnvert"] },
-    { name: "Gliserin", amount: 110, unit: "g", searchTerms: ["Gliserin", "GLİSERİN"] },
-    { name: "Yağ (margarin)", amount: 2900, unit: "g", searchTerms: ["Margarin", "AAK ALBA", "TURYAĞ"] },
-    { name: "Sıvı yağ", amount: 1300, unit: "g", searchTerms: ["SIVI YAĞ", "Sıvı Yağ", "Ayçiçek"] },
-    { name: "Yağsız süt tozu", amount: 500, unit: "g", searchTerms: ["Yağsız Süt Tozu", "SÜT TOZU"] },
-    { name: "Soya unu", amount: 120, unit: "g", searchTerms: ["SOYA UNU", "Soya"] },
-    { name: "PST", amount: 30, unit: "g", searchTerms: ["PST"] },
-    { name: "Tuz", amount: 400, unit: "g", searchTerms: ["TUZ", "Tuz"] },
-    { name: "Pregel modifiye mısır nişastası", amount: 110, unit: "g", searchTerms: ["Modifiye Nişasta", "NİŞASTA"] },
-    { name: "Vanilya", amount: 35, unit: "g", searchTerms: ["VANİLİN", "Vanilya", "VANILYA"] },
-    { name: "Yaş maya", amount: 1000, unit: "g", searchTerms: ["Yaş Maya", "YAŞ MAYA"] },
-  ];
-
+  // ── 3. Ana hamur malzemeleri (modül scope'tan kullanılır) ──
   let linked = 0, unlinked = 0;
 
   for (let i = 0; i < MAIN_INGREDIENTS.length; i++) {
