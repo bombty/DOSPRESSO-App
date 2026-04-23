@@ -619,6 +619,18 @@ router.get(
 
       const whereExpr = conds.length > 0 ? and(...conds) : undefined;
 
+      // Tek sorguda toplam + taslak + onaylı sayıları (Task #208)
+      const statsRow = await db
+        .select({
+          total: sql<number>`count(*)::int`,
+          draftCount: sql<number>`coalesce(sum(case when ${factoryRecipeLabelPrintLogs.isDraft} then 1 else 0 end), 0)::int`,
+          approvedCount: sql<number>`coalesce(sum(case when ${factoryRecipeLabelPrintLogs.isDraft} then 0 else 1 end), 0)::int`,
+        })
+        .from(factoryRecipeLabelPrintLogs)
+        .where(whereExpr);
+
+      const totals = statsRow[0] ?? { total: 0, draftCount: 0, approvedCount: 0 };
+
       const baseQuery = db
         .select({
           id: factoryRecipeLabelPrintLogs.id,
@@ -643,24 +655,6 @@ router.get(
         .limit(limit)
         .offset(offset);
 
-      const countQuery = db
-        .select({ value: sql<number>`count(*)::int` })
-        .from(factoryRecipeLabelPrintLogs);
-      const countRows = await (whereExpr ? countQuery.where(whereExpr) : countQuery);
-      const totalCount = Number(countRows[0]?.value ?? 0);
-
-      const draftCountQuery = db
-        .select({ value: sql<number>`count(*)::int` })
-        .from(factoryRecipeLabelPrintLogs)
-        .where(
-          whereExpr
-            ? and(whereExpr, eq(factoryRecipeLabelPrintLogs.isDraft, true))
-            : eq(factoryRecipeLabelPrintLogs.isDraft, true),
-        );
-      const draftCountRows = await draftCountQuery;
-      const draftCount = Number(draftCountRows[0]?.value ?? 0);
-      const approvedCount = totalCount - draftCount;
-
       const logs = rows.map((r) => ({
         id: r.id,
         recipeId: r.recipeId,
@@ -680,13 +674,13 @@ router.get(
       }));
 
       const stats = {
-        total: totalCount,
-        draftCount,
-        approvedCount,
+        total: totals.total,
+        draftCount: totals.draftCount,
+        approvedCount: totals.approvedCount,
         returned: logs.length,
         offset,
         limit,
-        hasMore: offset + logs.length < totalCount,
+        hasMore: offset + logs.length < totals.total,
       };
 
       res.json({ logs, stats });
@@ -720,7 +714,9 @@ router.get(
       const recipeId = req.query.recipeId ? Number(req.query.recipeId) : null;
       const from = req.query.from ? new Date(String(req.query.from)) : null;
       const to = req.query.to ? new Date(String(req.query.to)) : null;
-      const limit = Math.min(Math.max(Number(req.query.limit) || 5000, 1), 20000);
+      // Hard upper safety cap (200k) — pratikte tüm yıllık denetim kayıtları için yeterli.
+      const maxRows = Math.min(Math.max(Number(req.query.limit) || 200000, 1), 200000);
+      const BATCH_SIZE = 2000;
 
       const conds: any[] = [];
       if (recipeId && Number.isFinite(recipeId)) {
@@ -732,33 +728,33 @@ router.get(
       if (to && !isNaN(to.getTime())) {
         conds.push(lte(factoryRecipeLabelPrintLogs.printedAt, to));
       }
+      const whereClause = conds.length > 0 ? and(...conds) : undefined;
 
-      const baseQuery = db
-        .select({
-          id: factoryRecipeLabelPrintLogs.id,
-          recipeId: factoryRecipeLabelPrintLogs.recipeId,
-          recipeCode: factoryRecipeLabelPrintLogs.recipeCode,
-          recipeName: factoryRecipeLabelPrintLogs.recipeName,
-          printedBy: factoryRecipeLabelPrintLogs.printedBy,
-          isDraft: factoryRecipeLabelPrintLogs.isDraft,
-          grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
-          draftReason: factoryRecipeLabelPrintLogs.draftReason,
-          printedAt: factoryRecipeLabelPrintLogs.printedAt,
-          printedByFirstName: users.firstName,
-          printedByLastName: users.lastName,
-          printedByUsername: users.username,
-          printedByRole: users.role,
-        })
-        .from(factoryRecipeLabelPrintLogs)
-        .leftJoin(users, eq(users.id, factoryRecipeLabelPrintLogs.printedBy));
+      const fetchBatch = async (offset: number, batchLimit: number) => {
+        const q = db
+          .select({
+            id: factoryRecipeLabelPrintLogs.id,
+            recipeCode: factoryRecipeLabelPrintLogs.recipeCode,
+            recipeName: factoryRecipeLabelPrintLogs.recipeName,
+            printedBy: factoryRecipeLabelPrintLogs.printedBy,
+            isDraft: factoryRecipeLabelPrintLogs.isDraft,
+            grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
+            draftReason: factoryRecipeLabelPrintLogs.draftReason,
+            printedAt: factoryRecipeLabelPrintLogs.printedAt,
+            printedByFirstName: users.firstName,
+            printedByLastName: users.lastName,
+            printedByUsername: users.username,
+            printedByRole: users.role,
+          })
+          .from(factoryRecipeLabelPrintLogs)
+          .leftJoin(users, eq(users.id, factoryRecipeLabelPrintLogs.printedBy));
+        return await (whereClause ? q.where(whereClause) : q)
+          .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt), desc(factoryRecipeLabelPrintLogs.id))
+          .limit(batchLimit)
+          .offset(offset);
+      };
 
-      const rows = await (conds.length > 0
-        ? baseQuery.where(and(...conds))
-        : baseQuery)
-        .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
-        .limit(limit);
-
-      const records = rows.map((r) => {
+      const toRecord = (r: any) => {
         const printedByName =
           [r.printedByFirstName, r.printedByLastName].filter(Boolean).join(" ").trim() ||
           r.printedByUsername ||
@@ -778,20 +774,27 @@ router.get(
           gramajOnayli: r.grammageApproved ? "Evet" : "Hayır",
           sebep: r.draftReason ?? "",
         };
-      });
+      };
 
       const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
       const baseName = `etiket_basim_gecmisi_${stamp}`;
 
       if (format === "xlsx") {
         const ExcelJS = (await import("exceljs")).default;
-        const wb = new ExcelJS.Workbook();
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader("Content-Disposition", `attachment; filename="${baseName}.xlsx"`);
+        const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res, useStyles: true });
         wb.creator = "DOSPRESSO";
         wb.created = new Date();
         const sheet = wb.addWorksheet("Etiket Basım Geçmişi", {
           views: [{ state: "frozen", ySplit: 1 }],
         });
-        const columnDefs: { header: string; key: keyof (typeof records)[number]; min: number; max: number }[] = [
+        // Streaming modunda tüm veriyi belleğe almadan yazıyoruz (Task #208),
+        // bu yüzden dinamik genişlik yerine HEAD'in tanımladığı min genişlikleri kullanıyoruz.
+        const columnDefs: { header: string; key: string; min: number; max: number }[] = [
           { header: "Tarih (TR)", key: "tarih", min: 18, max: 26 },
           { header: "Tarih (ISO)", key: "tarihIso", min: 22, max: 28 },
           { header: "Kullanıcı", key: "kullanici", min: 16, max: 36 },
@@ -802,15 +805,11 @@ router.get(
           { header: "Gramaj Onaylı", key: "gramajOnayli", min: 14, max: 16 },
           { header: "Sebep / Not", key: "sebep", min: 24, max: 60 },
         ];
-        sheet.columns = columnDefs.map((c) => {
-          let maxLen = c.header.length;
-          for (const rec of records) {
-            const len = String(rec[c.key] ?? "").length;
-            if (len > maxLen) maxLen = len;
-          }
-          const width = Math.max(c.min, Math.min(c.max, maxLen + 2));
-          return { header: c.header, key: c.key as string, width };
-        });
+        sheet.columns = columnDefs.map((c) => ({
+          header: c.header,
+          key: c.key,
+          width: c.min,
+        }));
 
         const headerRow = sheet.getRow(1);
         headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -821,37 +820,44 @@ router.get(
         };
         headerRow.alignment = { vertical: "middle", horizontal: "left" };
         headerRow.height = 22;
-
         sheet.autoFilter = {
           from: { row: 1, column: 1 },
           to: { row: 1, column: columnDefs.length },
         };
+        headerRow.commit();
 
-        for (const rec of records) {
-          const row = sheet.addRow(rec);
-          if (rec.durum === "Taslak") {
-            row.eachCell({ includeEmpty: true }, (cell) => {
-              cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: "FFFFF4CE" },
-              };
-              cell.font = { color: { argb: "FF8A6D00" } };
-            });
+        let offset = 0;
+        let written = 0;
+        while (written < maxRows) {
+          const remaining = maxRows - written;
+          const take = Math.min(BATCH_SIZE, remaining);
+          const batch = await fetchBatch(offset, take);
+          if (batch.length === 0) break;
+          for (const r of batch) {
+            const rec = toRecord(r);
+            const row = sheet.addRow(rec);
+            if (rec.durum === "Taslak") {
+              row.eachCell({ includeEmpty: true }, (cell) => {
+                cell.fill = {
+                  type: "pattern",
+                  pattern: "solid",
+                  fgColor: { argb: "FFFFF4CE" },
+                };
+                cell.font = { color: { argb: "FF8A6D00" } };
+              });
+            }
+            row.commit();
           }
+          written += batch.length;
+          offset += batch.length;
+          if (batch.length < take) break;
         }
-
-        res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        );
-        res.setHeader("Content-Disposition", `attachment; filename="${baseName}.xlsx"`);
-        await wb.xlsx.write(res);
-        res.end();
+        sheet.commit();
+        await wb.commit();
         return;
       }
 
-      // CSV — UTF-8 BOM ile Excel uyumlu
+      // CSV — UTF-8 BOM ile Excel uyumlu, batch streaming
       const headers = [
         "Tarih (TR)",
         "Tarih (ISO)",
@@ -863,20 +869,39 @@ router.get(
         "Gramaj Onaylı",
         "Sebep / Not",
       ];
-      const lines: string[] = [headers.join(",")];
-      for (const r of records) {
-        lines.push([
-          r.tarih, r.tarihIso, r.kullanici, r.rol,
-          r.receteKodu, r.receteAdi, r.durum, r.gramajOnayli, r.sebep,
-        ].map(csvEscape).join(","));
-      }
-      const body = "\uFEFF" + lines.join("\r\n") + "\r\n";
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${baseName}.csv"`);
-      res.send(body);
+      res.write("\uFEFF" + headers.join(",") + "\r\n");
+
+      let offset = 0;
+      let written = 0;
+      while (written < maxRows) {
+        const remaining = maxRows - written;
+        const take = Math.min(BATCH_SIZE, remaining);
+        const batch = await fetchBatch(offset, take);
+        if (batch.length === 0) break;
+        const chunk = batch
+          .map(toRecord)
+          .map((r) =>
+            [
+              r.tarih, r.tarihIso, r.kullanici, r.rol,
+              r.receteKodu, r.receteAdi, r.durum, r.gramajOnayli, r.sebep,
+            ].map(csvEscape).join(","),
+          )
+          .join("\r\n");
+        res.write(chunk + "\r\n");
+        written += batch.length;
+        offset += batch.length;
+        if (batch.length < take) break;
+      }
+      res.end();
     } catch (error) {
       console.error("Etiket basım geçmişi dışa aktarımı başarısız:", error);
-      res.status(500).json({ error: "Etiket basım geçmişi dışa aktarılamadı" });
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Etiket basım geçmişi dışa aktarılamadı" });
+      } else {
+        try { res.end(); } catch {}
+      }
     }
   },
 );

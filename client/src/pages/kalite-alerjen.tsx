@@ -269,7 +269,7 @@ function PrintLogPanel() {
             <Button
               size="sm"
               variant="outline"
-              disabled={exporting !== null || !data || data.logs.length === 0}
+              disabled={exporting !== null || !data || data.stats.total === 0}
               onClick={() => handleExport("csv")}
               data-testid="button-printlog-export-csv"
             >
@@ -279,7 +279,7 @@ function PrintLogPanel() {
             <Button
               size="sm"
               variant="outline"
-              disabled={exporting !== null || !data || data.logs.length === 0}
+              disabled={exporting !== null || !data || data.stats.total === 0}
               onClick={() => handleExport("xlsx")}
               data-testid="button-printlog-export-xlsx"
             >
@@ -391,6 +391,7 @@ function PrintLogPanel() {
           />
         )}
         {data && data.logs.length > 0 && (
+          <>
           <ScrollArea className="max-h-96">
             <div className="divide-y divide-border/50">
               {data.logs.map((log) => (
@@ -439,6 +440,7 @@ function PrintLogPanel() {
               ))}
             </div>
           </ScrollArea>
+          </>
         )}
         {data && data.logs.length > 0 && hasNextPage && (
           <div className="flex justify-center pt-3">
