@@ -411,14 +411,68 @@ router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, 
 });
 
 // POST /api/factory/recipes/:id/ingredients — Malzeme ekle
+// Task #152: Body'de opsiyonel `nutrition` alanı varsa, aynı transaksiyon
+// içinde factory_ingredient_nutrition tablosuna da kayıt eklenir
+// (ingredient_name unique olduğu için onConflictDoNothing — mevcut veriyi ezmeyiz).
 router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req: any, res: Response) => {
   try {
     if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
+    type NutritionPayload = {
+      energyKcal?: string | number | null;
+      fatG?: string | number | null;
+      saturatedFatG?: string | number | null;
+      carbohydrateG?: string | number | null;
+      sugarG?: string | number | null;
+      proteinG?: string | number | null;
+      saltG?: string | number | null;
+      allergens?: string[];
+    };
+
     const recipeId = Number(req.params.id);
-    const [created] = await db.insert(factoryRecipeIngredients)
-      .values({ ...normalizeIngredientPayload(req.body), recipeId })
-      .returning();
+    const body = (req.body || {}) as { nutrition?: NutritionPayload } & Record<string, unknown> & { name?: string | null };
+    const { nutrition, ...ingredientPayload } = body;
+    const normalized = normalizeIngredientPayload(ingredientPayload);
+
+    const created = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(factoryRecipeIngredients)
+        .values({ ...normalized, recipeId })
+        .returning();
+
+      // Opsiyonel besin değer + alerjen kaydı (yeni kanonik dışı malzemeler için)
+      if (nutrition && typeof nutrition === "object") {
+        const ingredientName = normalized.name?.trim();
+        const hasAnyValue =
+          nutrition.energyKcal != null ||
+          nutrition.fatG != null ||
+          nutrition.saturatedFatG != null ||
+          nutrition.carbohydrateG != null ||
+          nutrition.sugarG != null ||
+          nutrition.proteinG != null ||
+          nutrition.saltG != null ||
+          (Array.isArray(nutrition.allergens) && nutrition.allergens.length > 0);
+
+        if (ingredientName && hasAnyValue) {
+          const toNum = (v: string | number | null | undefined): string | null =>
+            v === "" || v == null || isNaN(Number(v)) ? null : String(Number(v));
+          await tx.insert(factoryIngredientNutrition).values({
+            ingredientName,
+            energyKcal: toNum(nutrition.energyKcal),
+            fatG: toNum(nutrition.fatG),
+            saturatedFatG: toNum(nutrition.saturatedFatG),
+            carbohydrateG: toNum(nutrition.carbohydrateG),
+            sugarG: toNum(nutrition.sugarG),
+            proteinG: toNum(nutrition.proteinG),
+            saltG: toNum(nutrition.saltG),
+            allergens: Array.isArray(nutrition.allergens) ? nutrition.allergens : [],
+            source: "manual",
+            verifiedBy: req.user.id,
+          }).onConflictDoNothing({ target: factoryIngredientNutrition.ingredientName });
+        }
+      }
+
+      return row;
+    });
 
     res.json(created);
   } catch (error) {

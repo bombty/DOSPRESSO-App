@@ -79,6 +79,21 @@ export default function FabrikaReceteDuzenle() {
   const [nameComboOpen, setNameComboOpen] = useState(false);
   const [confirmNewName, setConfirmNewName] = useState<string | null>(null);
 
+  // Task #152: Onay diyalogunda isteğe bağlı besin değer + alerjen formu
+  const EMPTY_NUTRITION = {
+    energyKcal: "", fatG: "", saturatedFatG: "",
+    carbohydrateG: "", sugarG: "", proteinG: "", saltG: "",
+  };
+  const ALLERGEN_OPTIONS = [
+    "gluten", "süt", "yumurta", "soya", "fındık", "yer fıstığı",
+    "susam", "kereviz", "hardal", "sülfitler", "yumuşakçalar",
+    "kabuklular", "lupin", "balık",
+  ];
+  const [newNutrition, setNewNutrition] = useState({ ...EMPTY_NUTRITION });
+  const [newAllergens, setNewAllergens] = useState<string[]>([]);
+  const toggleAllergen = (a: string) =>
+    setNewAllergens(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
+
   // Kanonik malzeme isim listesi (auto-complete için)
   const { data: ingredientNames = [] } = useQuery<IngredientNameOption[]>({
     queryKey: ["/api/factory/ingredient-names"],
@@ -158,20 +173,51 @@ export default function FabrikaReceteDuzenle() {
     onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
   });
 
-  const commitAddIngredient = async () => {
+  const commitAddIngredient = async (withNutrition = false) => {
     if (!id || isNew) return;
     try {
-      await apiRequest("POST", `/api/factory/recipes/${id}/ingredients`, {
+      type NutritionFields = {
+        energyKcal: number | null; fatG: number | null; saturatedFatG: number | null;
+        carbohydrateG: number | null; sugarG: number | null;
+        proteinG: number | null; saltG: number | null;
+        allergens: string[];
+      };
+      type IngredientPayload = {
+        refId: string; name: string; amount: number; unit: string;
+        ingredientCategory: string; ingredientType: string;
+        nutrition?: NutritionFields;
+      };
+      const payload: IngredientPayload = {
         refId: newIngredient.refId,
         name: newIngredient.name,
         amount: parseFloat(newIngredient.amount),
         unit: newIngredient.unit,
         ingredientCategory: newIngredient.category,
         ingredientType: newIngredient.type,
-      });
+      };
+      if (withNutrition) {
+        const numOrNull = (v: string) => v.trim() === "" ? null : Number(v);
+        const nutrition = {
+          energyKcal: numOrNull(newNutrition.energyKcal),
+          fatG: numOrNull(newNutrition.fatG),
+          saturatedFatG: numOrNull(newNutrition.saturatedFatG),
+          carbohydrateG: numOrNull(newNutrition.carbohydrateG),
+          sugarG: numOrNull(newNutrition.sugarG),
+          proteinG: numOrNull(newNutrition.proteinG),
+          saltG: numOrNull(newNutrition.saltG),
+          allergens: newAllergens,
+        };
+        const hasAny = Object.entries(nutrition).some(([k, v]) =>
+          k === "allergens" ? (v as string[]).length > 0 : v != null
+        );
+        if (hasAny) payload.nutrition = nutrition;
+      }
+      await apiRequest("POST", `/api/factory/recipes/${id}/ingredients`, payload);
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
       qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
       setNewIngredient({ refId: "", name: "", amount: "", unit: "gr", category: "ana", type: "normal" });
+      setNewNutrition({ ...EMPTY_NUTRITION });
+      setNewAllergens([]);
       toast({ title: "Malzeme eklendi" });
     } catch { toast({ title: "Hata", variant: "destructive" }); }
   };
@@ -428,9 +474,18 @@ export default function FabrikaReceteDuzenle() {
         </CardContent>
       </Card>
 
-      {/* YENİ MALZEME İSMİ ONAY DİYALOĞU */}
-      <AlertDialog open={!!confirmNewName} onOpenChange={(open) => !open && setConfirmNewName(null)}>
-        <AlertDialogContent data-testid="dialog-confirm-new-ingredient">
+      {/* YENİ MALZEME İSMİ ONAY DİYALOĞU + opsiyonel besin/alerjen formu (Task #152) */}
+      <AlertDialog
+        open={!!confirmNewName}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmNewName(null);
+            setNewNutrition({ ...EMPTY_NUTRITION });
+            setNewAllergens([]);
+          }
+        }}
+      >
+        <AlertDialogContent data-testid="dialog-confirm-new-ingredient" className="max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -442,21 +497,113 @@ export default function FabrikaReceteDuzenle() {
                   <span className="font-mono font-semibold">"{confirmNewName}"</span> kanonik malzeme listesinde bulunmuyor.
                 </div>
                 <div>
-                  Bu yeni bir malzemedir. Kaydederseniz besin değer tablosuna (factory_ingredient_nutrition) ayrıca bir kayıt eklemeniz gerekir; aksi halde bu malzemenin besin/alerjen verisi olmayacaktır.
-                </div>
-                <div className="text-muted-foreground text-xs">
-                  Yazım hatası mı? "Vazgeç" deyip listeden seçim yapabilirsiniz.
+                  İsterseniz besin değer ve alerjen bilgilerini hemen şimdi girebilirsiniz; bu sayede ayrıca gıda mühendisi ekranına gerek kalmaz. Boş bırakırsanız sadece reçete malzemesi eklenir.
                 </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          <div className="space-y-3 border rounded-md p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              Besin Değerleri (100 gr başına — opsiyonel)
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Enerji (kcal)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.energyKcal}
+                  onChange={e => setNewNutrition(p => ({ ...p, energyKcal: e.target.value }))}
+                  data-testid="input-nutrition-kcal"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Yağ (g)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.fatG}
+                  onChange={e => setNewNutrition(p => ({ ...p, fatG: e.target.value }))}
+                  data-testid="input-nutrition-fat"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Doymuş Yağ (g)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.saturatedFatG}
+                  onChange={e => setNewNutrition(p => ({ ...p, saturatedFatG: e.target.value }))}
+                  data-testid="input-nutrition-sfat"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Karbonhidrat (g)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.carbohydrateG}
+                  onChange={e => setNewNutrition(p => ({ ...p, carbohydrateG: e.target.value }))}
+                  data-testid="input-nutrition-carb"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Şeker (g)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.sugarG}
+                  onChange={e => setNewNutrition(p => ({ ...p, sugarG: e.target.value }))}
+                  data-testid="input-nutrition-sugar"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Protein (g)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.proteinG}
+                  onChange={e => setNewNutrition(p => ({ ...p, proteinG: e.target.value }))}
+                  data-testid="input-nutrition-protein"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Tuz (g)</Label>
+                <Input
+                  type="number" step="0.1" inputMode="decimal"
+                  value={newNutrition.saltG}
+                  onChange={e => setNewNutrition(p => ({ ...p, saltG: e.target.value }))}
+                  data-testid="input-nutrition-salt"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1.5">
+                Alerjenler (AB/TR 14)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ALLERGEN_OPTIONS.map(a => {
+                  const selected = newAllergens.includes(a);
+                  return (
+                    <Badge
+                      key={a}
+                      variant={selected ? "default" : "outline"}
+                      className="cursor-pointer toggle-elevate"
+                      onClick={() => toggleAllergen(a)}
+                      data-testid={`badge-allergen-${a}`}
+                    >
+                      {selected && <Check className="w-3 h-3 mr-1" />}
+                      {a}
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-cancel-new-ingredient">Vazgeç</AlertDialogCancel>
             <AlertDialogAction
               data-testid="button-confirm-new-ingredient"
               onClick={async () => {
                 setConfirmNewName(null);
-                await commitAddIngredient();
+                await commitAddIngredient(true);
               }}
             >
               Yine de ekle
