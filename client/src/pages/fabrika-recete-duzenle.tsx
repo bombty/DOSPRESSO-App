@@ -188,6 +188,38 @@ export default function FabrikaReceteDuzenle() {
     },
   });
 
+  // Task #193: Adımlar için son içe aktarma snapshot bilgisi (geri al butonu)
+  const { data: latestStepSnapshot } = useQuery<{
+    id: number; stepCount: number; reason: string | null;
+    createdBy: string | null; createdAt: string; restoredAt: string | null;
+  } | null>({
+    queryKey: ["/api/factory/recipes", id, "steps/snapshots/latest"],
+    enabled: !isNew && !!id,
+  });
+  const [confirmStepUndo, setConfirmStepUndo] = useState(false);
+  const undoStepsMutation = useMutation({
+    mutationFn: async () => {
+      if (!latestStepSnapshot) throw new Error("Snapshot yok");
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/steps/snapshots/${latestStepSnapshot.id}/restore`,
+      );
+      return res.json();
+    },
+    onSuccess: (data: { restoredCount?: number } | undefined) => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "steps/snapshots/latest"] });
+      toast({
+        title: "Geri alındı",
+        description: `${data?.restoredCount ?? 0} adım önceki haline döndürüldü`,
+      });
+      setConfirmStepUndo(false);
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err?.message || "Geri alma başarısız", variant: "destructive" });
+    },
+  });
+
   // Task #177: Toplu kayıt sonrası eksik besin değerlerini anında doldurma
   type BulkIngredientPayload = {
     refId: string; name: string; amount: number; unit: string;
@@ -668,6 +700,7 @@ export default function FabrikaReceteDuzenle() {
         }],
       });
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "steps/snapshots/latest"] });
       setNewStep({ title: "", content: "", timerSeconds: "", tips: "" });
       toast({ title: "Adım eklendi" });
     } catch { toast({ title: "Hata", variant: "destructive" }); }
@@ -936,7 +969,21 @@ export default function FabrikaReceteDuzenle() {
       {!isNew && (
         <Card className="mb-4">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Üretim Adımları ({steps.length})</CardTitle>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base">Üretim Adımları ({steps.length})</CardTitle>
+              {latestStepSnapshot && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmStepUndo(true)}
+                  disabled={undoStepsMutation.isPending}
+                  title={`${latestStepSnapshot.stepCount} adımlı son yedeğe dön (${new Date(latestStepSnapshot.createdAt).toLocaleString("tr-TR")})`}
+                  data-testid="button-undo-steps-bulk-import"
+                >
+                  <Undo2 className="w-3.5 h-3.5 mr-1" /> Son İçe Aktarmayı Geri Al
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {steps.map((s: any, idx: number) => (
@@ -1354,6 +1401,30 @@ export default function FabrikaReceteDuzenle() {
               data-testid="button-undo-confirm"
             >
               {undoMutation.isPending ? "Geri alınıyor..." : "Evet, geri al"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Task #193: Adımlar için geri al onay diyaloğu */}
+      <AlertDialog open={confirmStepUndo} onOpenChange={(o) => { if (!undoStepsMutation.isPending) setConfirmStepUndo(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Son adım içe aktarmasını geri al?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {latestStepSnapshot
+                ? `Mevcut adımlar silinecek ve ${latestStepSnapshot.stepCount} adımlı yedek (${new Date(latestStepSnapshot.createdAt).toLocaleString("tr-TR")}) geri yüklenecek. Şu anki hali de yedeklenecek, böylece geri alma da geri alınabilir.`
+                : "Yedek bulunamadı."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={undoStepsMutation.isPending} data-testid="button-undo-steps-cancel">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); undoStepsMutation.mutate(); }}
+              disabled={undoStepsMutation.isPending || !latestStepSnapshot}
+              data-testid="button-undo-steps-confirm"
+            >
+              {undoStepsMutation.isPending ? "Geri alınıyor..." : "Evet, geri al"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

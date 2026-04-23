@@ -7,7 +7,8 @@
 import { Router, Response } from "express";
 import { db } from "../db";
 import {
-  factoryRecipes, factoryRecipeIngredients, factoryRecipeIngredientSnapshots, factoryRecipeSteps,
+  factoryRecipes, factoryRecipeIngredients, factoryRecipeIngredientSnapshots,
+  factoryRecipeSteps, factoryRecipeStepSnapshots,
   factoryKeyblends, factoryKeyblendIngredients,
   factoryProductionLogs, factoryRecipeVersions,
   factoryRecipeCategoryAccess, factoryIngredientNutrition,
@@ -1212,27 +1213,150 @@ router.get("/api/factory/recipes/:id/steps", isAuthenticated, async (req: any, r
 });
 
 // POST /api/factory/recipes/:id/steps/bulk — Toplu adım kaydet
+// Task #193: Mevcut adımlar replace edilmeden önce JSON snapshot'a alınır
+// (geri al desteği). Snapshot + delete + insert tek transaksiyondadır.
 router.post("/api/factory/recipes/:id/steps/bulk", isAuthenticated, async (req: any, res: Response) => {
   try {
     if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
     const recipeId = Number(req.params.id);
     const { steps } = req.body;
-
-    await db.delete(factoryRecipeSteps).where(eq(factoryRecipeSteps.recipeId, recipeId));
-
-    const created = [];
-    for (const step of steps) {
-      const [row] = await db.insert(factoryRecipeSteps)
-        .values({ ...step, recipeId })
-        .returning();
-      created.push(row);
+    if (!Array.isArray(steps)) {
+      return res.status(400).json({ error: "steps dizisi gerekli" });
     }
 
-    res.json(created);
+    type StepRow = typeof factoryRecipeSteps.$inferSelect;
+    type StepInsert = typeof factoryRecipeSteps.$inferInsert;
+
+    const result = await db.transaction(async (tx) => {
+      const existing: StepRow[] = await tx.select().from(factoryRecipeSteps)
+        .where(eq(factoryRecipeSteps.recipeId, recipeId));
+
+      // Boş state'i de snapshot'lıyoruz — geri al'ı geri al boş duruma
+      // dönüş için de çalışsın.
+      await tx.insert(factoryRecipeStepSnapshots).values({
+        recipeId,
+        snapshot: existing as unknown as Array<Record<string, unknown>>,
+        stepCount: existing.length,
+        reason: "bulk_import",
+        createdBy: req.user.id,
+      });
+
+      await tx.delete(factoryRecipeSteps).where(eq(factoryRecipeSteps.recipeId, recipeId));
+
+      const created: StepRow[] = [];
+      for (const step of steps as StepInsert[]) {
+        const [row] = await tx.insert(factoryRecipeSteps)
+          .values({ ...step, recipeId })
+          .returning();
+        created.push(row);
+      }
+
+      return { created, snapshotTaken: existing.length };
+    });
+
+    res.json({ steps: result.created, snapshotTaken: result.snapshotTaken });
   } catch (error) {
     console.error("Bulk steps error:", error);
     res.status(500).json({ error: "Adımlar kaydedilemedi" });
+  }
+});
+
+// GET /api/factory/recipes/:id/steps/snapshots/latest — Son adım snapshot bilgisi
+// Task #193: Frontend "Geri Al" butonunun görünürlüğü için kullanılır.
+router.get("/api/factory/recipes/:id/steps/snapshots/latest", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+
+    const [latest] = await db.select({
+      id: factoryRecipeStepSnapshots.id,
+      stepCount: factoryRecipeStepSnapshots.stepCount,
+      reason: factoryRecipeStepSnapshots.reason,
+      createdBy: factoryRecipeStepSnapshots.createdBy,
+      createdAt: factoryRecipeStepSnapshots.createdAt,
+      restoredAt: factoryRecipeStepSnapshots.restoredAt,
+    })
+      .from(factoryRecipeStepSnapshots)
+      .where(and(
+        eq(factoryRecipeStepSnapshots.recipeId, recipeId),
+        isNull(factoryRecipeStepSnapshots.restoredAt),
+      ))
+      .orderBy(desc(factoryRecipeStepSnapshots.createdAt))
+      .limit(1);
+
+    res.json(latest || null);
+  } catch (error) {
+    console.error("Get latest step snapshot error:", error);
+    res.status(500).json({ error: "Snapshot bilgisi yüklenemedi" });
+  }
+});
+
+// POST /api/factory/recipes/:id/steps/snapshots/:snapshotId/restore — Geri al
+// Task #193: Belirtilen snapshot'ı geri yükler. Restore öncesi mevcut hal de
+// snapshot'lanır (geri al'ı geri alabilmek için).
+router.post("/api/factory/recipes/:id/steps/snapshots/:snapshotId/restore", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+    const snapshotId = Number(req.params.snapshotId);
+
+    type StepRow = typeof factoryRecipeSteps.$inferSelect;
+    type StepInsert = typeof factoryRecipeSteps.$inferInsert;
+    type StepSnapshotItem = Partial<StepRow> & Record<string, unknown>;
+
+    const result = await db.transaction(async (tx) => {
+      const [snap] = await tx.select().from(factoryRecipeStepSnapshots)
+        .where(and(
+          eq(factoryRecipeStepSnapshots.id, snapshotId),
+          eq(factoryRecipeStepSnapshots.recipeId, recipeId),
+        ))
+        .limit(1);
+      if (!snap) return { error: "notfound" as const };
+      if (snap.restoredAt) return { error: "already" as const };
+
+      const items: StepSnapshotItem[] = Array.isArray(snap.snapshot)
+        ? (snap.snapshot as StepSnapshotItem[])
+        : [];
+
+      const current: StepRow[] = await tx.select().from(factoryRecipeSteps)
+        .where(eq(factoryRecipeSteps.recipeId, recipeId));
+      // Boş state'i de snapshot'lıyoruz — restore'dan sonra "geri al'ı
+      // geri al" boş duruma dönüş için de çalışsın.
+      await tx.insert(factoryRecipeStepSnapshots).values({
+        recipeId,
+        snapshot: current as unknown as Array<Record<string, unknown>>,
+        stepCount: current.length,
+        reason: "pre_restore",
+        createdBy: req.user.id,
+      });
+
+      await tx.delete(factoryRecipeSteps).where(eq(factoryRecipeSteps.recipeId, recipeId));
+
+      const restored: StepRow[] = [];
+      for (const step of items) {
+        const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = step;
+        const payload: StepInsert = { ...(rest as StepInsert), recipeId };
+        const [row] = await tx.insert(factoryRecipeSteps).values(payload).returning();
+        restored.push(row);
+      }
+
+      await tx.update(factoryRecipeStepSnapshots)
+        .set({ restoredAt: new Date() })
+        .where(eq(factoryRecipeStepSnapshots.id, snapshotId));
+
+      return { restored };
+    });
+
+    if ("error" in result) {
+      if (result.error === "notfound") return res.status(404).json({ error: "Snapshot bulunamadı" });
+      if (result.error === "already") return res.status(400).json({ error: "Bu snapshot zaten geri yüklenmiş" });
+    }
+
+    res.json({ steps: result.restored, restoredCount: result.restored!.length });
+  } catch (error) {
+    console.error("Restore step snapshot error:", error);
+    res.status(500).json({ error: "Snapshot geri yüklenemedi" });
   }
 });
 

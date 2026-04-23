@@ -290,6 +290,28 @@ export const insertFactoryRecipeStepSchema = createInsertSchema(factoryRecipeSte
 export type FactoryRecipeStep = typeof factoryRecipeSteps.$inferSelect;
 
 // ────────────────────────────────────────
+// 5b. REÇETE ADIM SNAPSHOT (Task #193)
+//     /steps/bulk replace çağrısı öncesi mevcut adımlar JSON olarak
+//     yedeklenir. Yanlış paylaşım/yapıştırma sonrası "Geri Al" ile son
+//     snapshot geri yüklenir; restore öncesi mevcut hal de yedeklenir.
+// ────────────────────────────────────────
+
+export const factoryRecipeStepSnapshots = pgTable("factory_recipe_step_snapshots", {
+  id: serial("id").primaryKey(),
+  recipeId: integer("recipe_id").notNull().references(() => factoryRecipes.id, { onDelete: "cascade" }),
+  snapshot: jsonb("snapshot").$type<Array<Record<string, unknown>>>().notNull(),
+  stepCount: integer("step_count").notNull().default(0),
+  reason: varchar("reason", { length: 50 }).default("bulk_import"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  restoredAt: timestamp("restored_at", { withTimezone: true }),
+}, (table) => [
+  index("frss_recipe_idx").on(table.recipeId, table.createdAt),
+]);
+
+export type FactoryRecipeStepSnapshot = typeof factoryRecipeStepSnapshots.$inferSelect;
+
+// ────────────────────────────────────────
 // 6. ÜRETİM KAYIT LOGU
 // ────────────────────────────────────────
 
