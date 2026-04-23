@@ -78,12 +78,33 @@ UPDATE branch_staff_pins SET is_active = false WHERE id = <pin_id>;
 
 ## 4. İstisna Prosedürü
 
+Sunucu tarafında **soft-guard** mevcuttur (Sprint #128, 23 Nis 2026):
+`POST /api/branches/:branchId/kiosk/set-pin` endpoint'i HQ rolündeki bir
+kullanıcıya `branchId != 23` ile PIN açılmasını **400 hata** ile engeller.
+Yanıt kodu: `HQ_USER_BRANCH_PIN_BLOCKED`.
+
 Pilot süresince HQ user'a Lara/Işıklar/Fabrika için PIN gerekirse:
 1. Aslan'dan WhatsApp "DOSPRESSO Pilot — HQ" üzerinden onay alınır
-2. adminhq, `/admin/branches/:branchId/staff` üzerinden manuel PIN açar
+2. adminhq, `/admin/branches/:branchId/staff` üzerinden manuel PIN açar.
+   İstek body'sine **mutlaka** override flag'i eklenir:
+   ```json
+   { "userId": "<id>", "pin": "1234", "force": true,
+     "reason": "Aslan onayı 23 Nis 14:30 — Lara'da geçici barista vardiyası" }
+   ```
+   `force: true` gönderildiğinde sunucu `audit_logs` tablosuna
+   `eventType: 'kiosk.hq_pin_exception'` ve
+   `details.type: 'HQ_KIOSK_PIN_EXCEPTION'` kaydı düşer (gerekçe + onay
+   veren admin id dahil).
 3. Bu istisna `docs/pilot/day-1-report.md` (veya ilgili gün raporu) altına
    tarih + gerekçe ile eklenir
-4. Pilot bitiminde (5 Mayıs sonrası) istisna PIN'leri toplu deaktive edilir
+4. Pilot bitiminde (5 Mayıs sonrası) istisna PIN'leri toplu deaktive edilir.
+   İstisna kayıtları için sorgu:
+   ```sql
+   SELECT created_at, user_id AS approver, details
+   FROM audit_logs
+   WHERE event_type = 'kiosk.hq_pin_exception'
+   ORDER BY created_at DESC;
+   ```
 
 ---
 

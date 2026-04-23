@@ -71,6 +71,7 @@ import {
   shiftAttendance,
   attendancePenalties,
   overtimeRequests,
+  auditLogs,
 } from "@shared/schema";
 import crypto from "crypto";
 import { trDateString, trTimeString, trTimeStringShort } from "../lib/datetime";
@@ -3553,10 +3554,67 @@ router.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req
       return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
     }
     const branchId = parseInt(req.params.branchId);
-    const { userId, pin } = req.body;
+    const { userId, pin, force, reason } = req.body;
     
     if (!userId || !pin || pin.length !== 4) {
       return res.status(400).json({ message: "4 haneli PIN gerekli" });
+    }
+
+    // HQ kiosk PIN politikası — docs/pilot/hq-kiosk-pin-politikasi.md
+    // HQ rolündeki kullanıcılara sadece Branch 23 (HQ) için PIN açılabilir.
+    // İstisna gerekiyorsa { force: true, reason: "..." } gönderilmeli; audit'lenir.
+    const HQ_BRANCH_ID = 23;
+    const [targetUser] = await db.select({ id: users.id, role: users.role, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    }
+
+    const targetRole = (targetUser.role ?? '') as UserRoleType;
+    const targetIsHQ = !!targetUser.role && isHQRole(targetRole);
+    if (targetIsHQ && branchId !== HQ_BRANCH_ID) {
+      if (!force) {
+        return res.status(400).json({
+          message: "HQ rolündeki kullanıcılar için sadece Branch 23 (HQ) PIN açılabilir. İstisnai durumda { force: true, reason: '...' } gönderin.",
+          code: "HQ_USER_BRANCH_PIN_BLOCKED",
+          targetRole: targetUser.role,
+        });
+      }
+      // Override için gerekçe zorunlu
+      const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
+      if (!trimmedReason) {
+        return res.status(400).json({
+          message: "HQ kullanıcısı için şube PIN'i açılırken { force: true } ile birlikte 'reason' alanı zorunludur (audit gerekçesi).",
+          code: "HQ_USER_BRANCH_PIN_REASON_REQUIRED",
+        });
+      }
+      // Force override → audit log (zorunlu, başarısız olursa PIN yazılmaz)
+      await db.insert(auditLogs).values({
+        eventType: 'kiosk.hq_pin_exception',
+        userId: user.id,
+        actorRole: user.role,
+        scopeBranchId: branchId,
+        action: 'kiosk.set_pin_force',
+        resource: 'branch_staff_pins',
+        resourceId: String(userId),
+        targetResource: 'users',
+        targetResourceId: String(userId),
+        details: {
+          type: 'HQ_KIOSK_PIN_EXCEPTION',
+          targetUserId: userId,
+          targetUserName: `${targetUser.firstName ?? ''} ${targetUser.lastName ?? ''}`.trim(),
+          targetRole: targetUser.role,
+          branchId,
+          reason: trimmedReason,
+          approvedBy: user.id,
+          approvedByRole: user.role,
+        },
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+      });
     }
 
     const hashedPin = await bcrypt.hash(pin, 10);
