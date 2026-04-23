@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
@@ -20,7 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { downloadEtiketPDF } from "@/lib/etiketPDF";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning, History } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning, History, Check, ChevronsUpDown, X } from "lucide-react";
 
 const FIX_ROLES = ["admin", "kalite_yoneticisi", "gida_muhendisi", "recete_gm", "sef", "ust_yonetim"];
 
@@ -50,10 +52,85 @@ interface PrintLogResponse {
   stats: { total: number; draftCount: number; approvedCount: number };
 }
 
+const PRINT_LOG_FILTERS_KEY = "kalite-alerjen:printlog-filters";
+
+interface PrintLogFilters {
+  recipeId: number | null;
+  from: string;
+  to: string;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE_RE.test(value)) return false;
+  const d = new Date(value + "T00:00:00");
+  return !isNaN(d.getTime());
+}
+
+function loadPrintLogFilters(): PrintLogFilters {
+  if (typeof window === "undefined") return { recipeId: null, from: "", to: "" };
+  try {
+    const raw = window.localStorage.getItem(PRINT_LOG_FILTERS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        recipeId: typeof parsed.recipeId === "number" && Number.isFinite(parsed.recipeId) ? parsed.recipeId : null,
+        from: isValidIsoDate(parsed.from) ? parsed.from : "",
+        to: isValidIsoDate(parsed.to) ? parsed.to : "",
+      };
+    }
+  } catch {}
+  return { recipeId: null, from: "", to: "" };
+}
+
 function PrintLogPanel() {
+  const [filters, setFilters] = useState<PrintLogFilters>(() => loadPrintLogFilters());
+  const [recipePopoverOpen, setRecipePopoverOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PRINT_LOG_FILTERS_KEY, JSON.stringify(filters));
+    } catch {}
+  }, [filters]);
+
+  const queryUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (filters.recipeId) params.set("recipeId", String(filters.recipeId));
+    if (filters.from) params.set("from", new Date(filters.from + "T00:00:00").toISOString());
+    if (filters.to) {
+      const toEnd = new Date(filters.to + "T23:59:59.999");
+      params.set("to", toEnd.toISOString());
+    }
+    const qs = params.toString();
+    return `/api/quality/allergens/print-log${qs ? `?${qs}` : ""}`;
+  }, [filters]);
+
   const { data, isLoading, error } = useQuery<PrintLogResponse>({
-    queryKey: ["/api/quality/allergens/print-log"],
+    queryKey: ["/api/quality/allergens/print-log", filters],
+    queryFn: async ({ signal }) => {
+      const res = await fetch(queryUrl, { credentials: "include", signal });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
   });
+
+  const recipesQuery = useQuery<ListResponse>({
+    queryKey: ["/api/quality/allergens/recipes"],
+  });
+
+  const allRecipes = useMemo(() => {
+    if (!recipesQuery.data) return [] as RecipeSummary[];
+    return [...recipesQuery.data.verified, ...recipesQuery.data.unverified]
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  }, [recipesQuery.data]);
+
+  const selectedRecipe = useMemo(
+    () => allRecipes.find(r => r.id === filters.recipeId) ?? null,
+    [allRecipes, filters.recipeId],
+  );
+
+  const hasActiveFilters = filters.recipeId !== null || !!filters.from || !!filters.to;
 
   return (
     <Card data-testid="card-print-log">
@@ -88,6 +165,98 @@ function PrintLogPanel() {
                 Taslak: {data.stats.draftCount}
               </Badge>
             </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-end gap-2 pt-3">
+          <div className="flex flex-col gap-1 min-w-[220px] flex-1">
+            <Label className="text-xs text-muted-foreground">Reçete</Label>
+            <Popover open={recipePopoverOpen} onOpenChange={setRecipePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={recipePopoverOpen}
+                  className="justify-between font-normal"
+                  data-testid="button-printlog-recipe"
+                >
+                  <span className="truncate">
+                    {selectedRecipe
+                      ? `${selectedRecipe.name}${selectedRecipe.code ? ` (${selectedRecipe.code})` : ""}`
+                      : "Tüm reçeteler"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Reçete ara..." data-testid="input-printlog-recipe-search" />
+                  <CommandList>
+                    <CommandEmpty>Reçete bulunamadı.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="__all__"
+                        onSelect={() => {
+                          setFilters((f) => ({ ...f, recipeId: null }));
+                          setRecipePopoverOpen(false);
+                        }}
+                        data-testid="item-printlog-recipe-all"
+                      >
+                        <Check className={`mr-2 h-4 w-4 ${filters.recipeId === null ? "opacity-100" : "opacity-0"}`} />
+                        Tüm reçeteler
+                      </CommandItem>
+                      {allRecipes.map((r) => (
+                        <CommandItem
+                          key={r.id}
+                          value={`${r.name} ${r.code}`}
+                          onSelect={() => {
+                            setFilters((f) => ({ ...f, recipeId: r.id }));
+                            setRecipePopoverOpen(false);
+                          }}
+                          data-testid={`item-printlog-recipe-${r.id}`}
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${filters.recipeId === r.id ? "opacity-100" : "opacity-0"}`} />
+                          <span className="truncate">{r.name}</span>
+                          {r.code && <span className="ml-2 text-xs text-muted-foreground">{r.code}</span>}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">Başlangıç</Label>
+            <Input
+              type="date"
+              value={filters.from}
+              max={filters.to || undefined}
+              onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
+              className="w-[160px]"
+              data-testid="input-printlog-from"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">Bitiş</Label>
+            <Input
+              type="date"
+              value={filters.to}
+              min={filters.from || undefined}
+              onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
+              className="w-[160px]"
+              data-testid="input-printlog-to"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilters({ recipeId: null, from: "", to: "" })}
+              data-testid="button-printlog-clear-filters"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Temizle
+            </Button>
           )}
         </div>
       </CardHeader>
