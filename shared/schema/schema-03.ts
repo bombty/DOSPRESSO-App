@@ -49,6 +49,7 @@ import {
   tasks,
   users
 } from './schema-02';
+import { quizzes } from './schema-06';
 
 // Fault Stage Transitions table (audit log for stage changes)
 export const faultStageTransitions = pgTable("fault_stage_transitions", {

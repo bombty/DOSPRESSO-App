@@ -22,6 +22,8 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+import { shifts } from "./schema-03";
+import { equipmentTroubleshootingSteps } from "./schema-05";
 
 // Custom type for pgvector
 const vector = customType<{ data: number[]; driverData: string }>({

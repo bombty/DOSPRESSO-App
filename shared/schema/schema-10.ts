@@ -42,7 +42,7 @@ import { branches, users } from './schema-02';
 import { Shift } from './schema-03';
 import { roles } from './schema-04';
 import { Recipe, recipes } from './schema-06';
-import { factoryProducts, factoryWasteReasons } from './schema-08';
+import { factoryProducts, factoryStations, factoryWasteReasons } from './schema-08';
 import { goodsReceipts, inventory, purchaseOrderItems, purchaseOrders, suppliers } from './schema-09';
 
 // Mal Kabul Kalemleri
