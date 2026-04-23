@@ -130,6 +130,7 @@ const EquipmentManagement = lazyWithRetry(() => import("@/pages/yonetim/ekipman-
 const AdminAcademy = lazyWithRetry(() => import("@/pages/yonetim/akademi"));
 const KaliteDenetimi = lazyWithRetry(() => import("@/pages/kalite-denetimi"));
 const KaliteAlerjen = lazyWithRetry(() => import("@/pages/kalite-alerjen"));
+const KaliteBesinOnay = lazyWithRetry(() => import("@/pages/kalite/besin-onay"));
 const CoachSubeDenetim = lazyWithRetry(() => import("@/pages/coach-sube-denetim"));
 
 const PublicStaffRating = lazyWithRetry(() => import("@/pages/public-staff-rating"));
@@ -580,6 +581,7 @@ function Router() {
           <Route path="/muhasebe-raporlama">{() => <ExecutiveOnly><MuhasebeRaporlama /></ExecutiveOnly>}</Route>
           <Route path="/kalite-denetimi">{() => <ModuleGuard moduleKey="denetim"><KaliteDenetimi /></ModuleGuard>}</Route>
           <Route path="/kalite/alerjen">{() => <ProtectedRoute><KaliteAlerjen /></ProtectedRoute>}</Route>
+          <Route path="/kalite/besin-onay">{() => <ProtectedRoute allowedRoles={["admin","gida_muhendisi","kalite_yoneticisi","ust_yonetim"]}><KaliteBesinOnay /></ProtectedRoute>}</Route>
           <Route path="/coach-sube-denetim">{() => <ModuleGuard moduleKey="denetim"><CoachSubeDenetim /></ModuleGuard>}</Route>
           <Route path="/denetim-sablonlari">{() => <ModuleGuard moduleKey="denetim"><DenetimSablonlari /></ModuleGuard>}</Route>
           <Route path="/denetimler">{() => <ModuleGuard moduleKey="denetim"><Denetimler /></ModuleGuard>}</Route>

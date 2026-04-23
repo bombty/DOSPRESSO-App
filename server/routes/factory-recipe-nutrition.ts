@@ -9,9 +9,11 @@ import {
   factoryRecipes, factoryRecipeIngredients, factoryRecipeSteps,
   factoryKeyblends, factoryKeyblendIngredients,
   factoryIngredientNutrition,
+  auditLogs,
 } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, lt, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
+import { z } from "zod";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 
 const router = Router();
@@ -326,6 +328,172 @@ router.post("/api/factory/seed-cinnabon", isAuthenticated, async (req: any, res:
   } catch (error) {
     console.error("Cinnabon seed error:", error);
     res.status(500).json({ error: "Seed başarısız" });
+  }
+});
+
+// ═══════════════════════════════════════
+// MÜHENDİS BESİN DEĞER ONAY PANELİ
+// (Task #146)
+// ═══════════════════════════════════════
+
+const APPROVAL_ROLES = ["admin", "gida_muhendisi", "kalite_yoneticisi", "ust_yonetim"];
+
+function canApproveNutrition(role?: string | null): boolean {
+  return !!role && APPROVAL_ROLES.includes(role);
+}
+
+// GET /api/factory/ingredient-nutrition/pending
+// Confidence < 100 olan tüm hammadde besin değer kayıtları
+router.get("/api/factory/ingredient-nutrition/pending", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canApproveNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Besin onay paneline erişim yetkiniz yok" });
+    }
+
+    const rows = await db.select().from(factoryIngredientNutrition)
+      .where(lt(factoryIngredientNutrition.confidence, 100))
+      .orderBy(asc(factoryIngredientNutrition.ingredientName));
+
+    res.json({ items: rows, total: rows.length });
+  } catch (error) {
+    console.error("Pending nutrition list error:", error);
+    res.status(500).json({ error: "Bekleyen kayıtlar getirilemedi" });
+  }
+});
+
+const numericLike = z.union([z.number(), z.string()])
+  .nullable()
+  .optional()
+  .transform((v, ctx) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "string" ? Number(v.replace(",", ".")) : v;
+    if (!Number.isFinite(n)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Geçersiz sayısal değer" });
+      return z.NEVER;
+    }
+    if (n < 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Negatif değer kabul edilmez" });
+      return z.NEVER;
+    }
+    return String(n);
+  });
+
+const approveSchema = z.object({
+  energyKcal: numericLike,
+  fatG: numericLike,
+  saturatedFatG: numericLike,
+  transFatG: numericLike,
+  carbohydrateG: numericLike,
+  sugarG: numericLike,
+  fiberG: numericLike,
+  proteinG: numericLike,
+  saltG: numericLike,
+  sodiumMg: numericLike,
+  allergens: z.array(z.string()).optional(),
+  note: z.string().max(500).optional(),
+});
+
+// PATCH /api/factory/ingredient-nutrition/:id/onay
+// Tek tıkla onay: confidence=100, source='manual_verified', verified_by=oturum
+router.patch("/api/factory/ingredient-nutrition/:id/onay", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canApproveNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Onay yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Geçersiz id" });
+    }
+
+    const parsed = approveSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Geçersiz veri", details: parsed.error.flatten() });
+    }
+
+    const [existing] = await db.select().from(factoryIngredientNutrition)
+      .where(eq(factoryIngredientNutrition.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: "Kayıt bulunamadı" });
+
+    const body = parsed.data;
+    const next = {
+      energyKcal: body.energyKcal ?? existing.energyKcal,
+      fatG: body.fatG ?? existing.fatG,
+      saturatedFatG: body.saturatedFatG ?? existing.saturatedFatG,
+      transFatG: body.transFatG ?? existing.transFatG,
+      carbohydrateG: body.carbohydrateG ?? existing.carbohydrateG,
+      sugarG: body.sugarG ?? existing.sugarG,
+      fiberG: body.fiberG ?? existing.fiberG,
+      proteinG: body.proteinG ?? existing.proteinG,
+      saltG: body.saltG ?? existing.saltG,
+      sodiumMg: body.sodiumMg ?? existing.sodiumMg,
+      allergens: body.allergens ?? existing.allergens ?? [],
+      source: "manual_verified" as const,
+      confidence: 100,
+      verifiedBy: req.user.id as string,
+      updatedAt: new Date(),
+    };
+
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx.update(factoryIngredientNutrition)
+        .set(next)
+        .where(eq(factoryIngredientNutrition.id, id))
+        .returning();
+
+      await tx.insert(auditLogs).values({
+        eventType: "factory.ingredient_nutrition.approved",
+        userId: req.user.id,
+        actorRole: req.user.role,
+        action: "approve",
+        resource: "factory_ingredient_nutrition",
+        resourceId: String(id),
+        before: {
+          energyKcal: existing.energyKcal,
+          fatG: existing.fatG,
+          saturatedFatG: existing.saturatedFatG,
+          transFatG: existing.transFatG,
+          carbohydrateG: existing.carbohydrateG,
+          sugarG: existing.sugarG,
+          fiberG: existing.fiberG,
+          proteinG: existing.proteinG,
+          saltG: existing.saltG,
+          sodiumMg: existing.sodiumMg,
+          allergens: existing.allergens,
+          source: existing.source,
+          confidence: existing.confidence,
+          verifiedBy: existing.verifiedBy,
+        },
+        after: {
+          energyKcal: next.energyKcal,
+          fatG: next.fatG,
+          saturatedFatG: next.saturatedFatG,
+          transFatG: next.transFatG,
+          carbohydrateG: next.carbohydrateG,
+          sugarG: next.sugarG,
+          fiberG: next.fiberG,
+          proteinG: next.proteinG,
+          saltG: next.saltG,
+          sodiumMg: next.sodiumMg,
+          allergens: next.allergens,
+          source: next.source,
+          confidence: next.confidence,
+          verifiedBy: next.verifiedBy,
+        },
+        details: {
+          ingredientName: existing.ingredientName,
+          note: body.note ?? null,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") ?? null,
+      });
+
+      return row;
+    });
+
+    res.json({ ok: true, item: updated });
+  } catch (error) {
+    console.error("Nutrition approve error:", error);
+    res.status(500).json({ error: "Onay başarısız" });
   }
 });
 
