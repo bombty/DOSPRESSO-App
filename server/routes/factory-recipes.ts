@@ -670,12 +670,32 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
 // Task #153: Kanonik-dışı (sözlükte ve nutrition tablosunda olmayan) isimler
 // için server tarafında uyarı. `?force=true` veya body'de `allowUnknown: true`
 // olmadan kanonik-dışı isim varsa 400 + `unknownIngredients: string[]` döner.
+// Task #166: Her bir malzeme için opsiyonel `nutrition` payload'ı kabul edilir
+// (energyKcal, fatG, saturatedFatG, carbohydrateG, sugarG, proteinG, saltG,
+// allergens[]). Tüm insert'ler tek transaksiyon içinde yapılır; nutrition
+// tablosuna `onConflictDoNothing` ile yazılır (mevcut veriyi ezmez).
+// Cevapta ayrıca `missingNutrition: string[]` döner — kanonikleştirilmiş
+// isimleri olan ama nutrition tablosunda hâlâ kayıt olmayan malzemeler.
 router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async (req: any, res: Response) => {
   try {
     if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
+    type NutritionPayload = {
+      energyKcal?: string | number | null;
+      fatG?: string | number | null;
+      saturatedFatG?: string | number | null;
+      carbohydrateG?: string | number | null;
+      sugarG?: string | number | null;
+      proteinG?: string | number | null;
+      saltG?: string | number | null;
+      allergens?: string[];
+    };
+
     const recipeId = Number(req.params.id);
-    const { ingredients, allowUnknown } = req.body;
+    const { ingredients, allowUnknown } = req.body as {
+      ingredients: Array<Record<string, unknown> & { name?: string; nutrition?: NutritionPayload }>;
+      allowUnknown?: boolean;
+    };
     if (!Array.isArray(ingredients)) return res.status(400).json({ error: "ingredients array gerekli" });
 
     const force = req.query.force === "true" || allowUnknown === true;
@@ -688,12 +708,16 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
       .from(factoryIngredientNutrition);
 
     const knownSet = new Set<string>();
+    const nutritionSet = new Set<string>();
     for (const canonical of Object.keys(INGREDIENT_ALIASES)) {
       knownSet.add(canonical);
     }
     for (const r of nutritionRows) {
       const n = canonicalIngredientName(r.name || "");
-      if (n) knownSet.add(n);
+      if (n) {
+        knownSet.add(n);
+        nutritionSet.add(n);
+      }
     }
 
     const unknownIngredients: string[] = [];
@@ -714,18 +738,89 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
       });
     }
 
-    // Mevcut malzemeleri sil, yenilerini ekle (replace stratejisi)
-    await db.delete(factoryRecipeIngredients).where(eq(factoryRecipeIngredients.recipeId, recipeId));
+    const toNum = (v: string | number | null | undefined): string | null =>
+      v === "" || v == null || isNaN(Number(v)) ? null : String(Number(v));
 
-    const created = [];
+    const hasNumericValue = (v: string | number | null | undefined): boolean => {
+      if (v == null) return false;
+      if (typeof v === "string" && v.trim() === "") return false;
+      return !isNaN(Number(v));
+    };
+    const hasAnyNutritionValue = (n: NutritionPayload): boolean =>
+      hasNumericValue(n.energyKcal) ||
+      hasNumericValue(n.fatG) ||
+      hasNumericValue(n.saturatedFatG) ||
+      hasNumericValue(n.carbohydrateG) ||
+      hasNumericValue(n.sugarG) ||
+      hasNumericValue(n.proteinG) ||
+      hasNumericValue(n.saltG) ||
+      (Array.isArray(n.allergens) && n.allergens.length > 0);
+
+    type IngredientInsert = typeof factoryRecipeIngredients.$inferInsert;
+    type IngredientRow = typeof factoryRecipeIngredients.$inferSelect;
+
+    // Tek transaksiyon içinde: mevcut malzemeleri sil, yenilerini ekle ve
+    // (varsa) opsiyonel nutrition kayıtlarını yaz. Hata olursa hepsi geri alınır.
+    const result = await db.transaction(async (tx) => {
+      await tx.delete(factoryRecipeIngredients).where(eq(factoryRecipeIngredients.recipeId, recipeId));
+
+      const created: IngredientRow[] = [];
+      const writtenNutrition = new Set<string>();
+      for (const ing of ingredients) {
+        const { nutrition, ...ingredientPayload } = ing;
+        const normalized = normalizeIngredientPayload(ingredientPayload as { name?: string | null });
+        const insertValues: IngredientInsert = {
+          ...(normalized as unknown as IngredientInsert),
+          recipeId,
+        };
+        const [row] = await tx.insert(factoryRecipeIngredients)
+          .values(insertValues)
+          .returning();
+        created.push(row);
+
+        const rawName = typeof (normalized as { name?: unknown }).name === "string"
+          ? ((normalized as { name: string }).name).trim()
+          : "";
+        const ingredientName = rawName ? canonicalIngredientName(rawName) : "";
+        if (
+          ingredientName &&
+          nutrition &&
+          typeof nutrition === "object" &&
+          hasAnyNutritionValue(nutrition)
+        ) {
+          await tx.insert(factoryIngredientNutrition).values({
+            ingredientName,
+            energyKcal: toNum(nutrition.energyKcal),
+            fatG: toNum(nutrition.fatG),
+            saturatedFatG: toNum(nutrition.saturatedFatG),
+            carbohydrateG: toNum(nutrition.carbohydrateG),
+            sugarG: toNum(nutrition.sugarG),
+            proteinG: toNum(nutrition.proteinG),
+            saltG: toNum(nutrition.saltG),
+            allergens: Array.isArray(nutrition.allergens) ? nutrition.allergens : [],
+            source: "manual",
+            verifiedBy: req.user.id,
+          }).onConflictDoNothing({ target: factoryIngredientNutrition.ingredientName });
+          writtenNutrition.add(ingredientName);
+        }
+      }
+
+      return { created, writtenNutrition };
+    });
+
+    // Eksik nutrition raporu: kanonikleştirilmiş isim, nutrition tablosunda
+    // hâlâ yoksa (ve bu istekte de yazılmadıysa) listeye ekle.
+    const missingNutrition: string[] = [];
     for (const ing of ingredients) {
-      const [row] = await db.insert(factoryRecipeIngredients)
-        .values({ ...normalizeIngredientPayload(ing), recipeId })
-        .returning();
-      created.push(row);
+      const raw = typeof ing?.name === "string" ? ing.name.trim() : "";
+      if (!raw) continue;
+      const canonical = canonicalIngredientName(raw);
+      if (!nutritionSet.has(canonical) && !result.writtenNutrition.has(canonical) && !missingNutrition.includes(canonical)) {
+        missingNutrition.push(canonical);
+      }
     }
 
-    res.json({ ingredients: created, unknownIngredients });
+    res.json({ ingredients: result.created, unknownIngredients, missingNutrition });
   } catch (error) {
     console.error("Bulk ingredients error:", error);
     res.status(500).json({ error: "Malzemeler kaydedilemedi" });

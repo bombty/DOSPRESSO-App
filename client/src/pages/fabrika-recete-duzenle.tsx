@@ -521,6 +521,53 @@ export default function FabrikaReceteDuzenle() {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Task #166: Reçetedeki malzemelerden besin değer kaydı olmayanları göster */}
+            {(() => {
+              const nutritionMap = new Map<string, boolean>();
+              for (const opt of ingredientNames) {
+                nutritionMap.set(opt.name.toLocaleLowerCase("tr"), opt.hasNutrition);
+              }
+              const missing: string[] = [];
+              for (const ing of ingredients) {
+                const nm = String(ing?.name || "").trim();
+                if (!nm) continue;
+                const key = nm.toLocaleLowerCase("tr");
+                const has = nutritionMap.get(key);
+                // hasNutrition === true ise kayıt var; aksi halde (false veya
+                // undefined / yani lookup'ta yok) eksik kabul ediyoruz —
+                // sessizce gözden kaçmamasın.
+                if (has !== true && !missing.includes(nm)) missing.push(nm);
+              }
+              if (missing.length === 0) return null;
+              return (
+                <div
+                  className="mb-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs"
+                  data-testid="warning-missing-nutrition"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-destructive" />
+                  <div className="flex-1">
+                    <div className="font-medium text-destructive">
+                      {missing.length} malzemenin besin değer kaydı eksik
+                    </div>
+                    <div className="text-muted-foreground mb-1">
+                      Aşağıdaki malzemeler için <span className="font-mono">factory_ingredient_nutrition</span> tablosunda hâlâ kayıt yok. Gıda mühendisi ekranından veya tek tek ekleme akışında "şimdi gir" diyaloğundan tamamlayın.
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {missing.map(m => (
+                        <Badge
+                          key={m}
+                          variant="outline"
+                          className="text-[10px]"
+                          data-testid={`badge-missing-nutrition-${m}`}
+                        >
+                          {m}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             {ingredients.map((ing: any, idx: number) => (
               <div key={ing.id || idx} className="flex items-center gap-2 py-1.5 border-b last:border-0">
                 <Badge variant="outline" className="font-mono text-xs">{ing.refId || ing.ref_id}</Badge>
