@@ -906,4 +906,95 @@ router.get(
   },
 );
 
+// ═══════════════════════════════════════
+// GET /api/public/urun/:code
+// Task #200 — Müşteriye dönük halka açık ürün sayfası verisi.
+// QR kod taramasında auth gerektirmeden alerjen + besin tablosu gösterir.
+// Yalnızca isActive + isVisible reçeteleri yayınlar; iç bilgileri (malzeme
+// detayları, onay verileri vb.) bu uçtan dönmez.
+// ═══════════════════════════════════════
+router.get("/api/public/urun/:code", async (req: any, res: Response) => {
+  try {
+    const code = String(req.params.code || "").trim();
+    if (!code) return res.status(400).json({ error: "Geçersiz ürün kodu" });
+
+    const [recipe] = await db.select().from(factoryRecipes)
+      .where(and(
+        eq(factoryRecipes.code, code),
+        eq(factoryRecipes.isActive, true),
+        eq(factoryRecipes.isVisible, true),
+      ))
+      .limit(1);
+    if (!recipe) return res.status(404).json({ error: "Ürün bulunamadı" });
+
+    const grammage = parseGrammageApproval(recipe.changeLog);
+    // Public endpoint — `updated_at` kolonu bazı ortamlarda drift sebebiyle
+    // henüz mevcut olmayabildiği için (bkz. drift fix task'ları) loadNutritionMap
+    // yerine yalnızca ihtiyaç duyduğumuz kolonları çekiyoruz. Bu sayede public
+    // sayfa, drift düzeltmesinden bağımsız olarak çalışır.
+    const nutritionRows = await db.select({
+      ingredientName: factoryIngredientNutrition.ingredientName,
+      energyKcal: factoryIngredientNutrition.energyKcal,
+      fatG: factoryIngredientNutrition.fatG,
+      saturatedFatG: factoryIngredientNutrition.saturatedFatG,
+      carbohydrateG: factoryIngredientNutrition.carbohydrateG,
+      sugarG: factoryIngredientNutrition.sugarG,
+      fiberG: factoryIngredientNutrition.fiberG,
+      proteinG: factoryIngredientNutrition.proteinG,
+      saltG: factoryIngredientNutrition.saltG,
+      allergens: factoryIngredientNutrition.allergens,
+      confidence: factoryIngredientNutrition.confidence,
+      source: factoryIngredientNutrition.source,
+      verifiedBy: factoryIngredientNutrition.verifiedBy,
+    }).from(factoryIngredientNutrition);
+    const nutritionMap = new Map<string, NutritionRow>();
+    for (const r of nutritionRows) {
+      nutritionMap.set(r.ingredientName.toLowerCase().trim(), { ...r, updatedAt: null } as NutritionRow);
+    }
+    const keyblendAllergens = await loadKeyblendAllergens(nutritionMap);
+    const ings = await db.select().from(factoryRecipeIngredients)
+      .where(eq(factoryRecipeIngredients.recipeId, recipe.id))
+      .orderBy(asc(factoryRecipeIngredients.sortOrder));
+
+    const comp = await computeRecipeNutrition(recipe.id, ings, nutritionMap, keyblendAllergens);
+
+    const portionGrams = recipe.expectedUnitWeight ? Number(recipe.expectedUnitWeight) : null;
+    const perPortion = portionGrams ? roundNutrition({
+      energy_kcal: comp.per100g.energy_kcal * portionGrams / 100,
+      fat_g: comp.per100g.fat_g * portionGrams / 100,
+      saturated_fat_g: comp.per100g.saturated_fat_g * portionGrams / 100,
+      carbohydrate_g: comp.per100g.carbohydrate_g * portionGrams / 100,
+      sugar_g: comp.per100g.sugar_g * portionGrams / 100,
+      fiber_g: comp.per100g.fiber_g * portionGrams / 100,
+      protein_g: comp.per100g.protein_g * portionGrams / 100,
+      salt_g: comp.per100g.salt_g * portionGrams / 100,
+    }) : null;
+
+    const lastUpdated = recipe.updatedAt
+      ? (recipe.updatedAt instanceof Date
+          ? recipe.updatedAt.toISOString()
+          : new Date(String(recipe.updatedAt)).toISOString())
+      : null;
+
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json({
+      name: recipe.name,
+      code: recipe.code,
+      category: recipe.category,
+      description: recipe.description,
+      coverPhotoUrl: recipe.coverPhotoUrl,
+      expectedUnitWeight: portionGrams,
+      per100g: comp.per100g,
+      perPortion,
+      allergens: comp.allergens,
+      grammageApproved: grammage.approved,
+      grammageApprovalDate: grammage.date,
+      lastUpdated,
+    });
+  } catch (error) {
+    console.error("Public ürün sayfası verisi alınamadı:", error);
+    res.status(500).json({ error: "Ürün bilgileri yüklenemedi" });
+  }
+});
+
 export default router;

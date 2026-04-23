@@ -796,7 +796,8 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
     }
     setPrinting(true);
     try {
-      const productUrl = `${window.location.origin}/kalite/alerjen?recipe=${data.id}`;
+      // Task #200 — QR public müşteri sayfasına yönlendirir (auth gerektirmez)
+      const productUrl = `${window.location.origin}/p/urun/${encodeURIComponent(data.code)}`;
       const isDraftPrint = asDraft || !data.grammageApproved;
       const draftReason = !data.grammageApproved ? "Gramaj onayi bekliyor" : (asDraft ? "Manuel taslak" : undefined);
       await downloadEtiketPDF({

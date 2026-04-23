@@ -134,6 +134,7 @@ const KaliteBesinOnay = lazyWithRetry(() => import("@/pages/kalite/besin-onay"))
 const CoachSubeDenetim = lazyWithRetry(() => import("@/pages/coach-sube-denetim"));
 
 const PublicStaffRating = lazyWithRetry(() => import("@/pages/public-staff-rating"));
+const PublicUrun = lazyWithRetry(() => import("@/pages/public-urun"));
 const StaffQrTokensPage = lazyWithRetry(() => import("@/pages/staff-qr-tokens"));
 const EmployeeOfMonthPage = lazyWithRetry(() => import("@/pages/employee-of-month"));
 const AdvancedReportsPage = lazyWithRetry(() => import("@/pages/advanced-reports"));
@@ -306,7 +307,8 @@ const PUBLIC_PATH_PREFIXES = [
   "/sube/dashboard",
   "/fabrika/kiosk",
   "/hq/kiosk",
-  "/sube/kiosk"
+  "/sube/kiosk",
+  "/p/urun"
 ];
 
 function isPublicPath(path: string) {
@@ -410,6 +412,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
+      <Route path="/p/urun/:code" component={PublicUrun} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
       <Route path="/fabrika/dashboard">{() => <FabrikaOnly><FabrikaDashboardRedirect /></FabrikaOnly>}</Route>
       <Route path="/fabrika/kiosk">{() => <FabrikaKiosk />}</Route>
