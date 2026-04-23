@@ -337,27 +337,65 @@ router.post("/api/factory/recipes/:id/lock", isAuthenticated, async (req: any, r
 // PATCH /api/factory/recipes/:recipeId/ingredients/:id — Malzeme düzenle
 router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, async (req: any, res: Response) => {
   try {
-    const INGREDIENT_EDIT_ROLES = ["admin", "ceo", "gida_muhendisi"];
-    if (!INGREDIENT_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    // R-5A FIX: recete_gm + sef eklendi (önceden ceo + gida_muhendisi yanlıştı)
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
     const ingredientId = Number(req.params.id);
-    const { name, amount, unit, rawMaterialId } = req.body;
+    const { name, amount, unit, rawMaterialId, ingredientCategory, ingredientType, notes } = req.body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = canonicalIngredientName(name);
     if (amount !== undefined) updateData.amount = String(amount);
     if (unit !== undefined) updateData.unit = unit;
     if (rawMaterialId !== undefined) updateData.rawMaterialId = rawMaterialId;
+    if (ingredientCategory !== undefined) updateData.ingredientCategory = ingredientCategory;
+    if (ingredientType !== undefined) updateData.ingredientType = ingredientType;
+    if (notes !== undefined) updateData.notes = notes;
 
     const [updated] = await db.update(factoryRecipeIngredients)
       .set(updateData)
       .where(eq(factoryRecipeIngredients.id, ingredientId))
       .returning();
 
+    if (!updated) return res.status(404).json({ error: "Malzeme bulunamadı" });
+
     res.json(updated);
   } catch (error) {
     console.error("Update ingredient error:", error);
     res.status(500).json({ error: "Malzeme güncellenemedi" });
+  }
+});
+
+// R-5A: DELETE /api/factory/recipes/:recipeId/ingredients/:id — Malzeme sil
+router.delete("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const ingredientId = Number(req.params.id);
+    const recipeId = Number(req.params.recipeId);
+
+    // Reçete kilitli mi kontrol
+    const [recipe] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes)
+      .where(eq(factoryRecipes.id, recipeId));
+
+    if (recipe?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
+
+    const [deleted] = await db.delete(factoryRecipeIngredients)
+      .where(and(
+        eq(factoryRecipeIngredients.id, ingredientId),
+        eq(factoryRecipeIngredients.recipeId, recipeId)
+      ))
+      .returning();
+
+    if (!deleted) return res.status(404).json({ error: "Malzeme bulunamadı" });
+
+    res.json({ success: true, deletedId: ingredientId });
+  } catch (error) {
+    console.error("Delete ingredient error:", error);
+    res.status(500).json({ error: "Malzeme silinemedi" });
   }
 });
 
@@ -446,6 +484,128 @@ router.post("/api/factory/recipes/:id/steps/bulk", isAuthenticated, async (req: 
   } catch (error) {
     console.error("Bulk steps error:", error);
     res.status(500).json({ error: "Adımlar kaydedilemedi" });
+  }
+});
+
+// R-5A: POST /api/factory/recipes/:id/steps — Tekil adım ekle
+router.post("/api/factory/recipes/:id/steps", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const recipeId = Number(req.params.id);
+    const { stepNumber, title, content, timerSeconds, tips } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ error: "title ve content zorunlu" });
+    }
+
+    // Reçete kilit kontrolü
+    const [recipe] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes)
+      .where(eq(factoryRecipes.id, recipeId));
+
+    if (recipe?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli" });
+    }
+
+    // Otomatik step number (son + 1)
+    let finalStepNumber = stepNumber;
+    if (!finalStepNumber) {
+      const [last] = await db.select({ max: factoryRecipeSteps.stepNumber })
+        .from(factoryRecipeSteps)
+        .where(eq(factoryRecipeSteps.recipeId, recipeId))
+        .orderBy(desc(factoryRecipeSteps.stepNumber))
+        .limit(1);
+      finalStepNumber = (last?.max || 0) + 1;
+    }
+
+    const [created] = await db.insert(factoryRecipeSteps).values({
+      recipeId,
+      stepNumber: finalStepNumber,
+      title,
+      content,
+      timerSeconds: timerSeconds ? Number(timerSeconds) : null,
+      tips: tips || null,
+    }).returning();
+
+    res.json(created);
+  } catch (error) {
+    console.error("Create step error:", error);
+    res.status(500).json({ error: "Adım eklenemedi" });
+  }
+});
+
+// R-5A: PATCH /api/factory/recipes/:recipeId/steps/:id — Adım düzenle
+router.patch("/api/factory/recipes/:recipeId/steps/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const stepId = Number(req.params.id);
+    const recipeId = Number(req.params.recipeId);
+    const { title, content, timerSeconds, tips, stepNumber } = req.body;
+
+    // Reçete kilit kontrolü
+    const [recipe] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes)
+      .where(eq(factoryRecipes.id, recipeId));
+
+    if (recipe?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli" });
+    }
+
+    const updateData: any = {};
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
+    if (timerSeconds !== undefined) updateData.timerSeconds = timerSeconds ? Number(timerSeconds) : null;
+    if (tips !== undefined) updateData.tips = tips;
+    if (stepNumber !== undefined) updateData.stepNumber = Number(stepNumber);
+
+    const [updated] = await db.update(factoryRecipeSteps)
+      .set(updateData)
+      .where(and(
+        eq(factoryRecipeSteps.id, stepId),
+        eq(factoryRecipeSteps.recipeId, recipeId)
+      ))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Adım bulunamadı" });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update step error:", error);
+    res.status(500).json({ error: "Adım güncellenemedi" });
+  }
+});
+
+// R-5A: DELETE /api/factory/recipes/:recipeId/steps/:id — Adım sil
+router.delete("/api/factory/recipes/:recipeId/steps/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+
+    const stepId = Number(req.params.id);
+    const recipeId = Number(req.params.recipeId);
+
+    const [recipe] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes)
+      .where(eq(factoryRecipes.id, recipeId));
+
+    if (recipe?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli" });
+    }
+
+    const [deleted] = await db.delete(factoryRecipeSteps)
+      .where(and(
+        eq(factoryRecipeSteps.id, stepId),
+        eq(factoryRecipeSteps.recipeId, recipeId)
+      ))
+      .returning();
+
+    if (!deleted) return res.status(404).json({ error: "Adım bulunamadı" });
+
+    res.json({ success: true, deletedId: stepId });
+  } catch (error) {
+    console.error("Delete step error:", error);
+    res.status(500).json({ error: "Adım silinemedi" });
   }
 });
 
