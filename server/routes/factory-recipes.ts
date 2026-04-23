@@ -11,7 +11,7 @@ import {
   factoryKeyblends, factoryKeyblendIngredients,
   factoryProductionLogs, factoryRecipeVersions,
   factoryRecipeCategoryAccess, factoryIngredientNutrition,
-  inventory,
+  inventory, users,
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
@@ -34,9 +34,23 @@ const RECIPE_EDIT_ROLES = ["admin", "recete_gm", "sef"];
 const RECIPE_VIEW_ROLES = ["admin", "recete_gm", "gida_muhendisi", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "fabrika_personel", "uretim_sefi"];
 const KEYBLEND_ROLES = ["admin", "recete_gm"]; // Keyblend içerik = en gizli
 const PRODUCTION_ROLES = ["admin", "recete_gm", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "uretim_sefi"];
+const GRAMMAGE_APPROVE_ROLES = ["admin", "recete_gm", "gida_muhendisi"];
 
 function isFactoryRole(role: string): boolean {
   return RECIPE_VIEW_ROLES.includes(role);
+}
+
+// Task #163: change_log'tan Sema gramaj onayını parse et
+// Pattern: "[YYYY-MM-DD ... Sema/{userId}] Üretim formülü ile karşılaştırma: ONAYLANDI"
+export function parseGrammageApproval(changeLog: string | null | undefined):
+  { approved: boolean; date: string | null; userId: string | null; note: string | null } {
+  if (!changeLog) return { approved: false, date: null, userId: null, note: null };
+  const re = /\[(\d{4}-\d{2}-\d{2})[^\]]*?Sema\/([^\]\s]+)\][^\n]*?Üretim formülü ile karşılaştırma:\s*ONAYLANDI\.?\s*([^\n]*)/g;
+  let last: RegExpExecArray | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(changeLog)) !== null) last = m;
+  if (!last) return { approved: false, date: null, userId: null, note: null };
+  return { approved: true, date: last[1], userId: last[2], note: (last[3] || "").trim() || null };
 }
 
 // ═══════════════════════════════════════
@@ -162,6 +176,16 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
     const INGREDIENT_EDIT_ROLES = ["admin", "ceo", "gida_muhendisi"];
     const PRICE_EDIT_ROLES = ["admin", "ceo", "satinalma"];
 
+    // Task #163: Sema gramaj onay durumu
+    const approval = parseGrammageApproval(recipe.changeLog);
+    let approvedByName: string | null = null;
+    if (approval.userId) {
+      const [u] = await db.select({
+        firstName: users.firstName, lastName: users.lastName, username: users.username, id: users.id,
+      }).from(users).where(eq(users.id, approval.userId)).limit(1);
+      if (u) approvedByName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username || u.id;
+    }
+
     res.json({
       ...recipe,
       ingredients: safeIngredients,
@@ -170,6 +194,14 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
       canViewCost,
       canEditIngredients: INGREDIENT_EDIT_ROLES.includes(req.user.role),
       canEditPrices: PRICE_EDIT_ROLES.includes(req.user.role),
+      grammageApproval: {
+        approved: approval.approved,
+        date: approval.date,
+        userId: approval.userId,
+        userName: approvedByName,
+        note: approval.note,
+        canApprove: GRAMMAGE_APPROVE_ROLES.includes(req.user.role),
+      },
     });
   } catch (error) {
     console.error("Factory recipe detail error:", error);
@@ -298,6 +330,48 @@ router.patch("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: 
   } catch (error) {
     console.error("Update factory recipe error:", error);
     res.status(500).json({ error: "Reçete güncellenemedi" });
+  }
+});
+
+// POST /api/factory/recipes/:id/approve-grammage — Sema gramaj onayı (Task #163)
+// Tek tıkla change_log'a "[YYYY-MM-DD - Sema/{userId}] ... ONAYLANDI" satırı ekler.
+// İdempotent — aynı kullanıcı aynı gün tekrar onaylasa da yeni satır eklenmez.
+router.post("/api/factory/recipes/:id/approve-grammage", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!GRAMMAGE_APPROVE_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Gramaj onay yetkisi sadece Gıda Mühendisi, Reçete GM ve Admin için" });
+    }
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Geçersiz reçete id" });
+
+    const [recipe] = await db.select().from(factoryRecipes).where(eq(factoryRecipes.id, id));
+    if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
+
+    const note: string = (req.body?.note || "").toString().trim().slice(0, 500);
+    const today = new Date().toISOString().slice(0, 10);
+    const userId = req.user.id;
+    const newLine = `[${today} - Sema/${userId}] Üretim formülü ile karşılaştırma: ONAYLANDI.${note ? " " + note : ""}`;
+
+    // İdempotency: aynı tarih + aynı user için onay satırı varsa tekrar ekleme
+    const existing = recipe.changeLog || "";
+    const dupRe = new RegExp(`\\[${today}[^\\]]*?Sema\\/${userId.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\][^\\n]*?ONAYLANDI`);
+    if (dupRe.test(existing)) {
+      const approval = parseGrammageApproval(existing);
+      return res.json({ ok: true, alreadyApproved: true, grammageApproval: approval });
+    }
+
+    const newLog = existing ? `${existing}\n${newLine}` : newLine;
+
+    const [updated] = await db.update(factoryRecipes)
+      .set({ changeLog: newLog, updatedBy: userId, updatedAt: new Date() })
+      .where(eq(factoryRecipes.id, id))
+      .returning();
+
+    const approval = parseGrammageApproval(updated.changeLog);
+    res.json({ ok: true, grammageApproval: approval });
+  } catch (error) {
+    console.error("Grammage approve error:", error);
+    res.status(500).json({ error: "Gramaj onayı kaydedilemedi" });
   }
 });
 

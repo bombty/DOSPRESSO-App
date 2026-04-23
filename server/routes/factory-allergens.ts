@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { and, asc, eq, sql, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
+import { parseGrammageApproval } from "./factory-recipes";
 
 const router = Router();
 
@@ -324,6 +325,7 @@ router.get("/api/quality/allergens/recipes", isAuthenticated, requireAllergenVie
       coverPhotoUrl: factoryRecipes.coverPhotoUrl,
       expectedUnitWeight: factoryRecipes.expectedUnitWeight,
       baseBatchOutput: factoryRecipes.baseBatchOutput,
+      changeLog: factoryRecipes.changeLog,
     })
     .from(factoryRecipes)
     .where(and(eq(factoryRecipes.isActive, true), eq(factoryRecipes.isVisible, true)))
@@ -348,6 +350,7 @@ router.get("/api/quality/allergens/recipes", isAuthenticated, requireAllergenVie
     for (const r of recipes) {
       const ings = ingByRecipe.get(r.id) || [];
       const comp = await computeRecipeNutrition(r.id, ings, nutritionMap, keyblendAllergens);
+      const grammage = parseGrammageApproval(r.changeLog);
       const summary = {
         id: r.id,
         name: r.name,
@@ -366,6 +369,8 @@ router.get("/api/quality/allergens/recipes", isAuthenticated, requireAllergenVie
         verificationReason: comp.verificationReason,
         lowConfidenceCount: comp.lowConfidenceCount,
         minConfidence: comp.minConfidence,
+        grammageApproved: grammage.approved,
+        grammageApprovalDate: grammage.date,
       };
       if (comp.isVerified) verified.push(summary);
       else unverified.push(summary);
@@ -398,6 +403,8 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       .where(and(eq(factoryRecipes.id, recipeId), eq(factoryRecipes.isActive, true), eq(factoryRecipes.isVisible, true)))
       .limit(1);
     if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
+
+    const grammage = parseGrammageApproval(recipe.changeLog);
 
     const nutritionMap = await loadNutritionMap();
     const keyblendAllergens = await loadKeyblendAllergens(nutritionMap);
@@ -463,6 +470,9 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       lowConfidenceCount: comp.lowConfidenceCount,
       minConfidence: comp.minConfidence,
       ingredients: ingredientsWithVerifier,
+      grammageApproved: grammage.approved,
+      grammageApprovalDate: grammage.date,
+      grammageApprovalUserId: grammage.userId,
     });
   } catch (error) {
     console.error("Allergen recipe detail error:", error);

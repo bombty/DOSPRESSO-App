@@ -45,6 +45,8 @@ interface RecipeSummary {
   verificationReason: string | null;
   lowConfidenceCount: number;
   minConfidence: number | null;
+  grammageApproved?: boolean;
+  grammageApprovalDate?: string | null;
 }
 
 interface RecipeDetail extends RecipeSummary {
@@ -192,15 +194,33 @@ function RecipeCard({ recipe, onOpen }: { recipe: RecipeSummary; onOpen: (id: nu
               {recipe.code}{recipe.category ? ` · ${recipe.category}` : ""}
             </CardDescription>
           </div>
-          {recipe.isVerified ? (
-            <Badge variant="default" className="gap-1 shrink-0">
-              <ShieldCheck className="w-3 h-3" /> Doğrulandı
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1 shrink-0">
-              <AlertTriangle className="w-3 h-3" /> Eksik
-            </Badge>
-          )}
+          <div className="flex flex-col gap-1 shrink-0 items-end">
+            {recipe.isVerified ? (
+              <Badge variant="default" className="gap-1">
+                <ShieldCheck className="w-3 h-3" /> Doğrulandı
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1">
+                <AlertTriangle className="w-3 h-3" /> Eksik
+              </Badge>
+            )}
+            {recipe.grammageApproved ? (
+              <Badge
+                className="gap-1 bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600"
+                data-testid={`badge-grammage-${recipe.id}`}
+              >
+                <BadgeCheck className="w-3 h-3" /> Gramaj Onaylı
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-1 border-amber-600/40 text-amber-500"
+                data-testid={`badge-grammage-pending-${recipe.id}`}
+              >
+                <AlertTriangle className="w-3 h-3" /> Gramaj Onaysız
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

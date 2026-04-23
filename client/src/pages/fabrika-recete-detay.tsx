@@ -18,7 +18,7 @@ import {
   ArrowLeft, ChefHat, Clock, Users, Package, Zap, Droplets,
   Lock, Unlock, FlaskConical, AlertTriangle, Scale,
   Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
-  Link2, Unlink, DollarSign, Pencil, Search,
+  Link2, Unlink, DollarSign, Pencil, Search, BadgeCheck, ShieldAlert,
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -81,6 +81,23 @@ export default function FabrikaReceteDetay() {
     enabled: !!editingIngredient && inventorySearch.length >= 2,
   });
 
+  const approveGrammageMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/factory/recipes/${recipeId}/approve-grammage`, {});
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/recipes", recipeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/recipes"] });
+      toast({
+        title: data?.alreadyApproved ? "Bugün zaten onayladınız" : "Gramaj onayı kaydedildi",
+        description: "Onay change_log'a yazıldı.",
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: "Onaylanamadı", description: err?.message || "Sunucu hatası", variant: "destructive" });
+    },
+  });
+
   const updateIngredientMutation = useMutation({
     mutationFn: async (data: { ingredientId: number; name?: string; amount?: string; unit?: string; rawMaterialId?: number | null }) => {
       return apiRequest("PATCH", `/api/factory/recipes/${recipeId}/ingredients/${data.ingredientId}`, data);
@@ -140,16 +157,55 @@ export default function FabrikaReceteDetay() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold flex items-center gap-2">
+            <h1 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
               {recipe.name}
               {recipe.editLocked && <Lock className="h-4 w-4 text-amber-500" />}
+              {recipe.grammageApproval?.approved ? (
+                <Badge
+                  className="gap-1 bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600"
+                  data-testid="badge-grammage-approved"
+                >
+                  <BadgeCheck className="h-3 w-3" />
+                  Gramaj Onaylı
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-1 border-amber-600/40 text-amber-500"
+                  data-testid="badge-grammage-pending"
+                >
+                  <ShieldAlert className="h-3 w-3" />
+                  Onaysız
+                </Badge>
+              )}
             </h1>
             <p className="text-xs text-muted-foreground">
               {recipe.code} · {CATEGORY_LABELS[recipe.category] || recipe.category} · v{recipe.version}
               {recipe.outputType === "yari_mamul" && " · Yarı Mamül"}
+              {recipe.grammageApproval?.approved && (
+                <>
+                  {" · "}
+                  <span className="text-emerald-500" data-testid="text-grammage-approver">
+                    {recipe.grammageApproval.userName || recipe.grammageApproval.userId} · {recipe.grammageApproval.date}
+                  </span>
+                </>
+              )}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {recipe.grammageApproval?.canApprove && !recipe.grammageApproval?.approved && (
+              <Button
+                size="sm"
+                variant="default"
+                className="bg-emerald-600 hover:bg-emerald-700 border-emerald-700"
+                onClick={() => approveGrammageMutation.mutate()}
+                disabled={approveGrammageMutation.isPending}
+                data-testid="button-approve-grammage"
+              >
+                <BadgeCheck className="h-3.5 w-3.5 mr-1" />
+                {approveGrammageMutation.isPending ? "Kaydediliyor..." : "Üretim formülüyle onayla"}
+              </Button>
+            )}
             {canEdit && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/fabrika/receteler/${recipeId}/duzenle`)}>
                 <Edit className="h-3.5 w-3.5 mr-1" /> Düzenle
