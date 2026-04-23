@@ -19,6 +19,7 @@ import {
   Lock, Unlock, FlaskConical, AlertTriangle, Scale,
   Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
   Link2, Unlink, DollarSign, Pencil, Search, BadgeCheck, ShieldAlert,
+  ArrowRight, Plus, Minus, History, ChevronRight,
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -160,7 +161,15 @@ export default function FabrikaReceteDetay() {
             <h1 className="text-lg font-semibold flex items-center gap-2 flex-wrap">
               {recipe.name}
               {recipe.editLocked && <Lock className="h-4 w-4 text-amber-500" />}
-              {recipe.grammageApproval?.approved ? (
+              {recipe.ingredientChangesSinceApproval?.hasChangesAfterApproval ? (
+                <Badge
+                  className="gap-1 bg-amber-600 text-white border-amber-700 dark:bg-amber-700 dark:border-amber-600"
+                  data-testid="badge-grammage-changed-after-approval"
+                >
+                  <History className="h-3 w-3" />
+                  Onay sonrası değişiklik var
+                </Badge>
+              ) : recipe.grammageApproval?.approved ? (
                 <Badge
                   className="gap-1 bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600"
                   data-testid="badge-grammage-approved"
@@ -193,17 +202,27 @@ export default function FabrikaReceteDetay() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {recipe.grammageApproval?.canApprove && !recipe.grammageApproval?.approved && (
+            {recipe.grammageApproval?.canApprove && (!recipe.grammageApproval?.approved || recipe.ingredientChangesSinceApproval?.hasChangesAfterApproval) && (
               <Button
                 size="sm"
                 variant="default"
-                className="bg-emerald-600 hover:bg-emerald-700 border-emerald-700"
+                className={cn(
+                  recipe.ingredientChangesSinceApproval?.hasChangesAfterApproval
+                    ? "bg-amber-600 hover:bg-amber-700 border-amber-700"
+                    : "bg-emerald-600 hover:bg-emerald-700 border-emerald-700"
+                )}
                 onClick={() => approveGrammageMutation.mutate()}
                 disabled={approveGrammageMutation.isPending}
                 data-testid="button-approve-grammage"
               >
                 <BadgeCheck className="h-3.5 w-3.5 mr-1" />
-                {approveGrammageMutation.isPending ? "Kaydediliyor..." : "Üretim formülüyle onayla"}
+                {approveGrammageMutation.isPending
+                  ? "Kaydediliyor..."
+                  : recipe.ingredientChangesSinceApproval?.hasChangesAfterApproval
+                    ? recipe.ingredientChangesSinceApproval.totalChanges > 0
+                      ? `Değişiklikleri onayla (${recipe.ingredientChangesSinceApproval.totalChanges})`
+                      : "Adım değişikliklerini onayla"
+                    : "Üretim formülüyle onayla"}
               </Button>
             )}
             {canEdit && (
@@ -277,6 +296,110 @@ export default function FabrikaReceteDetay() {
           <span className="flex items-center gap-1">Fire: {recipe.expectedWasteKg}kg</span>
         )}
       </div>
+
+      {/* Task #173: Son onaydan beri değişen malzemeler */}
+      {recipe.ingredientChangesSinceApproval?.hasBaseline && recipe.ingredientChangesSinceApproval?.totalChanges > 0 && (
+        <div className="px-6 pt-4">
+          <Card
+            className={cn(
+              "border-amber-600/40",
+              "bg-amber-50/30 dark:bg-amber-950/10"
+            )}
+            data-testid="card-changes-since-approval"
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <History className="h-4 w-4" />
+                Son onaydan beri değişen malzemeler ({recipe.ingredientChangesSinceApproval.totalChanges})
+                {recipe.ingredientChangesSinceApproval.baselineDate && (
+                  <span className="ml-auto text-[10px] text-muted-foreground font-normal">
+                    Baz: v{recipe.ingredientChangesSinceApproval.baselineVersionNumber} ·{" "}
+                    {new Date(recipe.ingredientChangesSinceApproval.baselineDate).toLocaleDateString("tr-TR")}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 text-xs px-3 py-2 font-semibold text-muted-foreground border-b border-border">
+                <span>Malzeme</span>
+                <span className="text-right">Eski</span>
+                <span className="text-center w-4"></span>
+                <span className="text-right">Yeni</span>
+                <span className="text-right w-16">Δ %</span>
+              </div>
+              {recipe.ingredientChangesSinceApproval.changed.map((c: any) => (
+                <div
+                  key={`chg-${c.refId || c.name}`}
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 text-xs px-3 py-1.5 border-b border-border/30"
+                  data-testid={`diff-changed-${c.refId || c.name}`}
+                >
+                  <span className="truncate">
+                    {c.name}
+                    {c.oldName && c.oldName !== c.name && (
+                      <span className="text-muted-foreground"> (eski: {c.oldName})</span>
+                    )}
+                  </span>
+                  <span className="text-right font-mono tabular-nums text-muted-foreground">
+                    {c.oldAmount != null ? `${formatAmt(c.oldAmount)} ${c.oldUnit || ""}` : "—"}
+                  </span>
+                  <ArrowRight className="h-3 w-3 self-center text-muted-foreground" />
+                  <span className="text-right font-mono tabular-nums">
+                    {c.newAmount != null ? `${formatAmt(c.newAmount)} ${c.newUnit || ""}` : "—"}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-right font-mono tabular-nums w-16",
+                      c.deltaPct != null && c.deltaPct > 0 && "text-emerald-600 dark:text-emerald-400",
+                      c.deltaPct != null && c.deltaPct < 0 && "text-red-600 dark:text-red-400",
+                    )}
+                  >
+                    {c.deltaPct != null ? `${c.deltaPct > 0 ? "+" : ""}${c.deltaPct.toFixed(1)}%` : "—"}
+                  </span>
+                </div>
+              ))}
+              {recipe.ingredientChangesSinceApproval.added.map((a: any) => (
+                <div
+                  key={`add-${a.refId || a.name}`}
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 text-xs px-3 py-1.5 border-b border-border/30 text-emerald-700 dark:text-emerald-400"
+                  data-testid={`diff-added-${a.refId || a.name}`}
+                >
+                  <span className="flex items-center gap-1 truncate">
+                    <Plus className="h-3 w-3 shrink-0" /> {a.name}
+                  </span>
+                  <span className="text-right text-muted-foreground">—</span>
+                  <ArrowRight className="h-3 w-3 self-center text-muted-foreground" />
+                  <span className="text-right font-mono tabular-nums">
+                    {a.newAmount != null ? `${formatAmt(a.newAmount)} ${a.newUnit || ""}` : "—"}
+                  </span>
+                  <span className="text-right text-[10px] w-16">YENİ</span>
+                </div>
+              ))}
+              {recipe.ingredientChangesSinceApproval.removed.map((r: any) => (
+                <div
+                  key={`rem-${r.refId || r.name}`}
+                  className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-3 text-xs px-3 py-1.5 border-b border-border/30 text-red-700 dark:text-red-400 line-through"
+                  data-testid={`diff-removed-${r.refId || r.name}`}
+                >
+                  <span className="flex items-center gap-1 truncate">
+                    <Minus className="h-3 w-3 shrink-0" /> {r.name}
+                  </span>
+                  <span className="text-right font-mono tabular-nums">
+                    {r.oldAmount != null ? `${formatAmt(r.oldAmount)} ${r.oldUnit || ""}` : "—"}
+                  </span>
+                  <ArrowRight className="h-3 w-3 self-center text-muted-foreground" />
+                  <span className="text-right text-muted-foreground">—</span>
+                  <span className="text-right text-[10px] w-16">SİLİNDİ</span>
+                </div>
+              ))}
+              {recipe.ingredientChangesSinceApproval.stepsChanged && (
+                <div className="px-3 py-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-100/30 dark:bg-amber-900/10">
+                  ⚠ Üretim adımlarında da değişiklik yapıldı.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Tab'lar */}
       <div className="px-6 pt-4">
@@ -756,5 +879,8 @@ function parseIngredientRefs(content: string, ingredients: any[], multiplier: nu
   });
 }
 
-// Missing import for ChevronRight
-import { ChevronRight } from "lucide-react";
+function formatAmt(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(n < 1 ? 3 : 2);
+}

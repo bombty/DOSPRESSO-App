@@ -58,6 +58,114 @@ export function parseGrammageApproval(changeLog: string | null | undefined):
   return { approved: true, date: last[1], userId: last[2], note: (last[3] || "").trim() || null };
 }
 
+// Task #173: Reçete onayında değişiklik öncesi/sonrası gramaj farkı
+// Son grammage_approval snapshot'ını bul (factory_recipe_versions üzerinden)
+const GRAMMAGE_APPROVAL_PREFIX = "[grammage_approval]";
+
+async function getLastApprovalSnapshot(recipeId: number) {
+  const [row] = await db.select()
+    .from(factoryRecipeVersions)
+    .where(and(
+      eq(factoryRecipeVersions.recipeId, recipeId),
+      sql`${factoryRecipeVersions.changeDescription} LIKE ${GRAMMAGE_APPROVAL_PREFIX + "%"}`,
+    ))
+    .orderBy(desc(factoryRecipeVersions.versionNumber))
+    .limit(1);
+  return row || null;
+}
+
+type IngredientSnapshotRow = {
+  refId?: string | null;
+  name?: string | null;
+  amount?: string | number | null;
+  unit?: string | null;
+};
+type StepSnapshotRow = {
+  stepNumber?: number | null;
+  title?: string | null;
+  content?: string | null;
+};
+
+function parseSnapshotArray<T>(value: unknown): T[] | null {
+  return Array.isArray(value) ? (value as T[]) : null;
+}
+
+type DiffIngredient = {
+  refId: string | null;
+  name: string;
+  oldName?: string | null;
+  oldAmount: number | null;
+  newAmount: number | null;
+  oldUnit: string | null;
+  newUnit: string | null;
+  deltaPct: number | null;
+  kind: "changed" | "added" | "removed";
+};
+
+export function computeIngredientDiff(
+  baseline: any[] | null | undefined,
+  current: any[] | null | undefined,
+): { changed: DiffIngredient[]; added: DiffIngredient[]; removed: DiffIngredient[] } {
+  const keyOf = (x: any) => String(x?.refId ?? x?.name ?? "");
+  const baseMap = new Map<string, any>();
+  for (const b of baseline || []) baseMap.set(keyOf(b), b);
+  const curMap = new Map<string, any>();
+  for (const c of current || []) curMap.set(keyOf(c), c);
+
+  const changed: DiffIngredient[] = [];
+  const added: DiffIngredient[] = [];
+  const removed: DiffIngredient[] = [];
+
+  for (const [k, c] of curMap) {
+    const b = baseMap.get(k);
+    const newAmt = Number(c.amount);
+    if (!b) {
+      added.push({
+        refId: c.refId ?? null, name: c.name,
+        oldAmount: null, newAmount: Number.isFinite(newAmt) ? newAmt : null,
+        oldUnit: null, newUnit: c.unit ?? null,
+        deltaPct: null, kind: "added",
+      });
+    } else {
+      const oldAmt = Number(b.amount);
+      const unitChanged = (b.unit ?? null) !== (c.unit ?? null);
+      const nameChanged = (b.name ?? "") !== (c.name ?? "");
+      const amountChanged = Number.isFinite(oldAmt) && Number.isFinite(newAmt) && oldAmt !== newAmt;
+      if (amountChanged || unitChanged || nameChanged) {
+        const deltaPct = oldAmt > 0 && Number.isFinite(newAmt)
+          ? Math.round(((newAmt - oldAmt) / oldAmt) * 1000) / 10
+          : null;
+        changed.push({
+          refId: c.refId ?? null, name: c.name, oldName: nameChanged ? b.name : null,
+          oldAmount: Number.isFinite(oldAmt) ? oldAmt : null,
+          newAmount: Number.isFinite(newAmt) ? newAmt : null,
+          oldUnit: b.unit ?? null, newUnit: c.unit ?? null,
+          deltaPct, kind: "changed",
+        });
+      }
+    }
+  }
+  for (const [k, b] of baseMap) {
+    if (!curMap.has(k)) {
+      const oldAmt = Number(b.amount);
+      removed.push({
+        refId: b.refId ?? null, name: b.name,
+        oldAmount: Number.isFinite(oldAmt) ? oldAmt : null, newAmount: null,
+        oldUnit: b.unit ?? null, newUnit: null,
+        deltaPct: null, kind: "removed",
+      });
+    }
+  }
+  return { changed, added, removed };
+}
+
+function stepsAreEqual(baseline: any[] | null | undefined, current: any[] | null | undefined): boolean {
+  const norm = (arr: any[] | null | undefined) => (arr || []).map(s => ({
+    n: s.stepNumber, t: s.title || "", c: s.content || "",
+  })).sort((a, b) => a.n - b.n);
+  return JSON.stringify(norm(baseline)) === JSON.stringify(norm(current));
+}
+
 // ═══════════════════════════════════════
 // REÇETELER — CRUD
 // ═══════════════════════════════════════
@@ -217,6 +325,15 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
       if (u) approvedByName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username || u.id;
     }
 
+    // Task #173: Son onaydan beri değişen malzemeler
+    const lastApprovalSnap = await getLastApprovalSnapshot(id);
+    const baselineIngredients = parseSnapshotArray<IngredientSnapshotRow>(lastApprovalSnap?.ingredientsSnapshot);
+    const baselineSteps = parseSnapshotArray<StepSnapshotRow>(lastApprovalSnap?.stepsSnapshot);
+    const diff = computeIngredientDiff(baselineIngredients, ingredientRows.map(r => r.ing));
+    const totalChanges = diff.changed.length + diff.added.length + diff.removed.length;
+    const stepsChanged = lastApprovalSnap ? !stepsAreEqual(baselineSteps, steps) : false;
+    const hasChangesAfterApproval = !!lastApprovalSnap && (totalChanges > 0 || stepsChanged);
+
     res.json({
       ...recipe,
       ingredients: safeIngredients,
@@ -232,6 +349,17 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
         userName: approvedByName,
         note: approval.note,
         canApprove: GRAMMAGE_APPROVE_ROLES.includes(req.user.role),
+      },
+      ingredientChangesSinceApproval: {
+        hasBaseline: !!lastApprovalSnap,
+        baselineDate: lastApprovalSnap?.createdAt ?? null,
+        baselineVersionNumber: lastApprovalSnap?.versionNumber ?? null,
+        changed: diff.changed,
+        added: diff.added,
+        removed: diff.removed,
+        totalChanges,
+        stepsChanged,
+        hasChangesAfterApproval,
       },
     });
   } catch (error) {
@@ -381,25 +509,77 @@ router.post("/api/factory/recipes/:id/approve-grammage", isAuthenticated, async 
     const note: string = (req.body?.note || "").toString().trim().slice(0, 500);
     const today = new Date().toISOString().slice(0, 10);
     const userId = req.user.id;
-    const newLine = `[${today} - Sema/${userId}] Üretim formülü ile karşılaştırma: ONAYLANDI.${note ? " " + note : ""}`;
 
-    // İdempotency: aynı tarih + aynı user için onay satırı varsa tekrar ekleme
+    // Task #173: Onay anında "son onaydan beri" diff sayısını hesapla
+    const currentIngredients = await db.select().from(factoryRecipeIngredients)
+      .where(eq(factoryRecipeIngredients.recipeId, id))
+      .orderBy(asc(factoryRecipeIngredients.sortOrder));
+    const currentSteps = await db.select().from(factoryRecipeSteps)
+      .where(eq(factoryRecipeSteps.recipeId, id))
+      .orderBy(asc(factoryRecipeSteps.stepNumber));
+    const lastSnap = await getLastApprovalSnapshot(id);
+    const baselineIngs = parseSnapshotArray<IngredientSnapshotRow>(lastSnap?.ingredientsSnapshot);
+    const baselineStepsSnap = parseSnapshotArray<StepSnapshotRow>(lastSnap?.stepsSnapshot);
+    // İlk onayda baseline yoktur → değişiklik sayısı 0 (ilk onay olarak işaretlenir)
+    const diff = lastSnap
+      ? computeIngredientDiff(baselineIngs, currentIngredients)
+      : { changed: [], added: [], removed: [] };
+    const reviewedCount = diff.changed.length + diff.added.length + diff.removed.length;
+    const stepsChangedSinceApproval = lastSnap ? !stepsAreEqual(baselineStepsSnap, currentSteps) : false;
+    const reviewedSuffix = lastSnap
+      ? ` ${reviewedCount} malzeme değişikliği gözden geçirildi.` +
+        (stepsChangedSinceApproval ? " Üretim adımları güncellendi." : "")
+      : " İlk onay (baseline oluşturuldu).";
+
+    const newLine = `[${today} - Sema/${userId}] Üretim formülü ile karşılaştırma: ONAYLANDI.${reviewedSuffix}${note ? " " + note : ""}`;
+
+    // İdempotency: aynı gün/aynı user için onay satırı varsa VE son onaydan
+    // beri ne malzeme ne de adım değişikliği yoksa tekrar ekleme. Aksi halde
+    // Sema bilinçli olarak tekrar onaylıyor → yeni onay satırı + snapshot.
     const existing = recipe.changeLog || "";
     const dupRe = new RegExp(`\\[${today}[^\\]]*?Sema\\/${userId.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\][^\\n]*?ONAYLANDI`);
-    if (dupRe.test(existing)) {
+    if (dupRe.test(existing) && reviewedCount === 0 && !stepsChangedSinceApproval) {
       const approval = parseGrammageApproval(existing);
-      return res.json({ ok: true, alreadyApproved: true, grammageApproval: approval });
+      return res.json({ ok: true, alreadyApproved: true, grammageApproval: approval, reviewedCount: 0 });
     }
 
     const newLog = existing ? `${existing}\n${newLine}` : newLine;
 
+    // Task #173: Onaylanan durumu factory_recipe_versions'a snapshot olarak yaz
+    const [lastVersion] = await db.select({ vn: factoryRecipeVersions.versionNumber })
+      .from(factoryRecipeVersions)
+      .where(eq(factoryRecipeVersions.recipeId, id))
+      .orderBy(desc(factoryRecipeVersions.versionNumber))
+      .limit(1);
+    const newVersionNumber = (lastVersion?.vn || recipe.version || 0) + 1;
+    const costSnapshot = {
+      rawMaterialCost: Number(recipe.rawMaterialCost || 0),
+      laborCost: Number(recipe.laborCost || 0),
+      energyCost: Number(recipe.energyCost || 0),
+      totalBatchCost: Number(recipe.totalBatchCost || 0),
+      unitCost: Number(recipe.unitCost || 0),
+    };
+    await db.insert(factoryRecipeVersions).values({
+      recipeId: id,
+      versionNumber: newVersionNumber,
+      ingredientsSnapshot: currentIngredients,
+      stepsSnapshot: currentSteps,
+      costSnapshot,
+      changedBy: userId,
+      changeDescription: `${GRAMMAGE_APPROVAL_PREFIX} ${reviewedCount} malzeme değişikliği gözden geçirildi (Sema onayı)`,
+      changeDiff: { changed: diff.changed, added: diff.added, removed: diff.removed },
+      status: "approved",
+      approvedBy: userId,
+      approvedAt: new Date(),
+    });
+
     const [updated] = await db.update(factoryRecipes)
-      .set({ changeLog: newLog, updatedBy: userId, updatedAt: new Date() })
+      .set({ changeLog: newLog, version: newVersionNumber, updatedBy: userId, updatedAt: new Date() })
       .where(eq(factoryRecipes.id, id))
       .returning();
 
     const approval = parseGrammageApproval(updated.changeLog);
-    res.json({ ok: true, grammageApproval: approval });
+    res.json({ ok: true, grammageApproval: approval, reviewedCount, baselineExisted: !!lastSnap });
   } catch (error) {
     console.error("Grammage approve error:", error);
     res.status(500).json({ error: "Gramaj onayı kaydedilemedi" });
