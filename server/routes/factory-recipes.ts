@@ -331,6 +331,55 @@ router.post("/api/factory/recipes/:id/lock", isAuthenticated, async (req: any, r
 });
 
 // ═══════════════════════════════════════
+// KANONİK MALZEME İSİM LİSTESİ (auto-complete)
+// ═══════════════════════════════════════
+
+// GET /api/factory/ingredient-names — Sıralı kanonik malzeme isim listesi
+// Frontend reçete editöründeki Combobox'ı besler. Kullanıcı yeni isim
+// girerse uyarı gösterilebilir; nutrition tablosunda karşılığı yok demektir.
+router.get("/api/factory/ingredient-names", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!isFactoryRole(req.user.role)) return res.status(403).json({ error: "Fabrika erişimi gerekli" });
+
+    // 1) Kanonik kaynak: factory_ingredient_nutrition.ingredient_name
+    const nutritionRows = await db.select({ name: factoryIngredientNutrition.ingredientName })
+      .from(factoryIngredientNutrition)
+      .orderBy(asc(factoryIngredientNutrition.ingredientName));
+
+    // 2) Reçetelerde kullanılmış ama nutrition'da olmayan isimler de listeye
+    //    eklensin (yine de seçilebilsin), ama "hasNutrition: false" işaretiyle.
+    const ingredientRows = await db.selectDistinct({ name: factoryRecipeIngredients.name })
+      .from(factoryRecipeIngredients);
+
+    const nutritionSet = new Set(
+      nutritionRows.map(r => canonicalIngredientName(r.name || "")).filter(Boolean)
+    );
+
+    const merged = new Map<string, { name: string; hasNutrition: boolean }>();
+    for (const r of nutritionRows) {
+      const n = canonicalIngredientName(r.name || "");
+      if (!n) continue;
+      merged.set(n, { name: n, hasNutrition: true });
+    }
+    for (const r of ingredientRows) {
+      const n = canonicalIngredientName(r.name || "");
+      if (!n) continue;
+      if (!merged.has(n)) {
+        merged.set(n, { name: n, hasNutrition: nutritionSet.has(n) });
+      }
+    }
+
+    const list = Array.from(merged.values())
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+
+    res.json(list);
+  } catch (error) {
+    console.error("Ingredient names list error:", error);
+    res.status(500).json({ error: "Malzeme isim listesi yüklenemedi" });
+  }
+});
+
+// ═══════════════════════════════════════
 // MALZEMELER — CRUD
 // ═══════════════════════════════════════
 

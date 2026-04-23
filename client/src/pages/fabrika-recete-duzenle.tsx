@@ -14,9 +14,21 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
+  ChevronsUpDown, Check, AlertTriangle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type IngredientNameOption = { name: string; hasNutrition: boolean };
 
 const CATEGORIES = [
   { value: "cookie", label: "Kurabiye" },
@@ -64,6 +76,18 @@ export default function FabrikaReceteDuzenle() {
   const [steps, setSteps] = useState<any[]>([]);
   const [newIngredient, setNewIngredient] = useState({ refId: "", name: "", amount: "", unit: "gr", category: "ana", type: "normal" });
   const [newStep, setNewStep] = useState({ title: "", content: "", timerSeconds: "", tips: "" });
+  const [nameComboOpen, setNameComboOpen] = useState(false);
+  const [confirmNewName, setConfirmNewName] = useState<string | null>(null);
+
+  // Kanonik malzeme isim listesi (auto-complete için)
+  const { data: ingredientNames = [] } = useQuery<IngredientNameOption[]>({
+    queryKey: ["/api/factory/ingredient-names"],
+  });
+
+  const isCanonicalName = (raw: string) => {
+    const norm = raw.trim().toLocaleLowerCase("tr");
+    return ingredientNames.some(o => o.name.toLocaleLowerCase("tr") === norm);
+  };
 
   // Load existing recipe
   const { data: recipe } = useQuery<any>({
@@ -134,7 +158,7 @@ export default function FabrikaReceteDuzenle() {
     onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
   });
 
-  const addIngredient = async () => {
+  const commitAddIngredient = async () => {
     if (!id || isNew) return;
     try {
       await apiRequest("POST", `/api/factory/recipes/${id}/ingredients`, {
@@ -146,9 +170,21 @@ export default function FabrikaReceteDuzenle() {
         ingredientType: newIngredient.type,
       });
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
       setNewIngredient({ refId: "", name: "", amount: "", unit: "gr", category: "ana", type: "normal" });
       toast({ title: "Malzeme eklendi" });
     } catch { toast({ title: "Hata", variant: "destructive" }); }
+  };
+
+  const addIngredient = async () => {
+    if (!id || isNew) return;
+    if (!newIngredient.name.trim()) return;
+    if (!isCanonicalName(newIngredient.name)) {
+      // Yeni isim — onay diyalogunda kullanıcıyı uyar
+      setConfirmNewName(newIngredient.name.trim());
+      return;
+    }
+    await commitAddIngredient();
   };
 
   const addStep = async () => {
@@ -256,14 +292,93 @@ export default function FabrikaReceteDuzenle() {
               </div>
             ))}
             <div className="grid grid-cols-6 gap-2 mt-3 pt-3 border-t">
-              <Input placeholder="0001" value={newIngredient.refId} onChange={e => setNewIngredient(p => ({ ...p, refId: e.target.value }))} />
-              <Input placeholder="Un (W250)" className="col-span-2" value={newIngredient.name} onChange={e => setNewIngredient(p => ({ ...p, name: e.target.value }))} />
-              <Input type="number" placeholder="5000" value={newIngredient.amount} onChange={e => setNewIngredient(p => ({ ...p, amount: e.target.value }))} />
-              <Input placeholder="gr" value={newIngredient.unit} onChange={e => setNewIngredient(p => ({ ...p, unit: e.target.value }))} />
-              <Button size="sm" onClick={addIngredient} disabled={!newIngredient.refId || !newIngredient.name || !newIngredient.amount}>
+              <Input placeholder="0001" value={newIngredient.refId} onChange={e => setNewIngredient(p => ({ ...p, refId: e.target.value }))} data-testid="input-ingredient-refid" />
+              <div className="col-span-2">
+                <Popover open={nameComboOpen} onOpenChange={setNameComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={nameComboOpen}
+                      className="w-full justify-between font-normal"
+                      data-testid="combobox-ingredient-name"
+                    >
+                      <span className={cn("truncate", !newIngredient.name && "text-muted-foreground")}>
+                        {newIngredient.name || "Malzeme seç veya yaz..."}
+                      </span>
+                      {newIngredient.name && !isCanonicalName(newIngredient.name) ? (
+                        <AlertTriangle className="ml-2 h-3.5 w-3.5 shrink-0 text-destructive" />
+                      ) : (
+                        <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[320px] p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Ara veya yeni isim yaz..."
+                        value={newIngredient.name}
+                        onValueChange={(v) => setNewIngredient(p => ({ ...p, name: v }))}
+                        data-testid="input-ingredient-name-search"
+                      />
+                      <CommandList>
+                        <CommandEmpty>
+                          <div className="p-2 text-xs">
+                            <div className="text-destructive font-medium flex items-center gap-1 mb-1">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Listede yok — yeni malzeme!
+                            </div>
+                            <div className="text-muted-foreground">
+                              Eklenirse besin değer tablosuna ayrıca kayıt yapılmalıdır.
+                            </div>
+                          </div>
+                        </CommandEmpty>
+                        <CommandGroup heading={`Kanonik liste (${ingredientNames.length})`}>
+                          {ingredientNames.map(opt => (
+                            <CommandItem
+                              key={opt.name}
+                              value={opt.name}
+                              onSelect={(val) => {
+                                setNewIngredient(p => ({ ...p, name: val }));
+                                setNameComboOpen(false);
+                              }}
+                              data-testid={`option-ingredient-${opt.name}`}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-3.5 w-3.5",
+                                  newIngredient.name === opt.name ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <span className="flex-1 truncate">{opt.name}</span>
+                              {!opt.hasNutrition && (
+                                <Badge variant="outline" className="ml-2 text-[10px]">besin yok</Badge>
+                              )}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Input type="number" placeholder="5000" value={newIngredient.amount} onChange={e => setNewIngredient(p => ({ ...p, amount: e.target.value }))} data-testid="input-ingredient-amount" />
+              <Input placeholder="gr" value={newIngredient.unit} onChange={e => setNewIngredient(p => ({ ...p, unit: e.target.value }))} data-testid="input-ingredient-unit" />
+              <Button size="sm" onClick={addIngredient} disabled={!newIngredient.refId || !newIngredient.name || !newIngredient.amount} data-testid="button-add-ingredient">
                 <Plus className="w-3.5 h-3.5" />
               </Button>
             </div>
+            {newIngredient.name && !isCanonicalName(newIngredient.name) && (
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs" data-testid="warning-new-ingredient-name">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-destructive" />
+                <div>
+                  <div className="font-medium text-destructive">Yeni malzeme: "{newIngredient.name}"</div>
+                  <div className="text-muted-foreground">
+                    Bu isim kanonik listede yok. Eklerseniz besin değer tablosuna (factory_ingredient_nutrition) ayrıca bir kayıt eklemeniz gerekir.
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -312,6 +427,43 @@ export default function FabrikaReceteDuzenle() {
           </div>
         </CardContent>
       </Card>
+
+      {/* YENİ MALZEME İSMİ ONAY DİYALOĞU */}
+      <AlertDialog open={!!confirmNewName} onOpenChange={(open) => !open && setConfirmNewName(null)}>
+        <AlertDialogContent data-testid="dialog-confirm-new-ingredient">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Yeni Malzeme Tespit Edildi
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <div>
+                  <span className="font-mono font-semibold">"{confirmNewName}"</span> kanonik malzeme listesinde bulunmuyor.
+                </div>
+                <div>
+                  Bu yeni bir malzemedir. Kaydederseniz besin değer tablosuna (factory_ingredient_nutrition) ayrıca bir kayıt eklemeniz gerekir; aksi halde bu malzemenin besin/alerjen verisi olmayacaktır.
+                </div>
+                <div className="text-muted-foreground text-xs">
+                  Yazım hatası mı? "Vazgeç" deyip listeden seçim yapabilirsiniz.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-new-ingredient">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-new-ingredient"
+              onClick={async () => {
+                setConfirmNewName(null);
+                await commitAddIngredient();
+              }}
+            >
+              Yine de ekle
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
