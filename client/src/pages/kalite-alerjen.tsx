@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -408,24 +411,43 @@ export default function KaliteAlerjenPage() {
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [tab, setTab] = useState("verified");
+  const [sortBy, setSortBy] = useState<"default" | "approval-desc" | "approval-asc">("default");
+  const [onlyFullyApproved, setOnlyFullyApproved] = useState(false);
 
   const { data, isLoading, error } = useQuery<ListResponse>({
     queryKey: ["/api/quality/allergens/recipes"],
   });
 
-  const filterRecipes = (list: RecipeSummary[]) => {
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.code.toLowerCase().includes(q) ||
-      (r.category || "").toLowerCase().includes(q) ||
-      r.allergens.some(a => a.toLowerCase().includes(q))
-    );
+  const approvalRatio = (r: RecipeSummary) =>
+    r.ingredientCount > 0 ? r.approvedCount / r.ingredientCount : 0;
+
+  const processRecipes = (list: RecipeSummary[]) => {
+    const q = search.trim().toLowerCase();
+    let out = list;
+    if (q) {
+      out = out.filter(r =>
+        r.name.toLowerCase().includes(q) ||
+        r.code.toLowerCase().includes(q) ||
+        (r.category || "").toLowerCase().includes(q) ||
+        r.allergens.some(a => a.toLowerCase().includes(q))
+      );
+    }
+    if (onlyFullyApproved) {
+      out = out.filter(r => r.ingredientCount > 0 && r.approvedCount === r.ingredientCount);
+    }
+    if (sortBy !== "default") {
+      out = [...out].sort((a, b) => {
+        const ra = approvalRatio(a);
+        const rb = approvalRatio(b);
+        if (ra === rb) return a.name.localeCompare(b.name, "tr");
+        return sortBy === "approval-desc" ? rb - ra : ra - rb;
+      });
+    }
+    return out;
   };
 
-  const verified = useMemo(() => filterRecipes(data?.verified ?? []), [data, search]);
-  const unverified = useMemo(() => filterRecipes(data?.unverified ?? []), [data, search]);
+  const verified = useMemo(() => processRecipes(data?.verified ?? []), [data, search, sortBy, onlyFullyApproved]);
+  const unverified = useMemo(() => processRecipes(data?.unverified ?? []), [data, search, sortBy, onlyFullyApproved]);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-6xl">
@@ -451,15 +473,38 @@ export default function KaliteAlerjenPage() {
         )}
       </div>
 
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Ürün, kod, alerjen ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-          data-testid="input-search-allergen"
-        />
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Ürün, kod, alerjen ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-allergen"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+          <SelectTrigger className="sm:w-56" data-testid="select-sort-approval">
+            <SelectValue placeholder="Sıralama" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default" data-testid="option-sort-default">Varsayılan sıralama</SelectItem>
+            <SelectItem value="approval-desc" data-testid="option-sort-desc">Onay oranı: yüksekten düşüğe</SelectItem>
+            <SelectItem value="approval-asc" data-testid="option-sort-asc">Onay oranı: düşükten yükseğe</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 px-3 rounded-md border border-border h-9 sm:h-auto">
+          <Switch
+            id="toggle-only-fully-approved"
+            checked={onlyFullyApproved}
+            onCheckedChange={setOnlyFullyApproved}
+            data-testid="switch-only-fully-approved"
+          />
+          <Label htmlFor="toggle-only-fully-approved" className="text-sm whitespace-nowrap cursor-pointer">
+            Yalnızca tam onaylı
+          </Label>
+        </div>
       </div>
 
       {isLoading && <ListSkeleton count={6} />}
