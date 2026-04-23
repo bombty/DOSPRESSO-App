@@ -44,6 +44,23 @@ interface PrintLogEntry {
   isDraft: boolean;
   grammageApproved: boolean;
   draftReason: string | null;
+  lotNumber: string | null;
+  productionDate: string | null;
+  expiryDate: string | null;
+  printedAt: string;
+}
+
+interface RecipePrintLogEntry {
+  id: number;
+  printedById: string | null;
+  printedByName: string;
+  printedByRole: string | null;
+  isDraft: boolean;
+  grammageApproved: boolean;
+  draftReason: string | null;
+  lotNumber: string | null;
+  productionDate: string | null;
+  expiryDate: string | null;
   printedAt: string;
 }
 
@@ -780,11 +797,24 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
   const [productionDate, setProductionDate] = useState(today);
   const [expiryDate, setExpiryDate] = useState("");
   const [lotNumber, setLotNumber] = useState("");
+  const [duplicateLotInfo, setDuplicateLotInfo] = useState<null | {
+    lot: string;
+    printedAt: string;
+    productionDate: string | null;
+    expiryDate: string | null;
+    asDraft: boolean;
+  }>(null);
+  const [detailTab, setDetailTab] = useState("info");
+
+  const recipePrintHistory = useQuery<{ logs: RecipePrintLogEntry[] }>({
+    queryKey: ["/api/quality/allergens/recipes", id, "print-log"],
+    enabled: id !== null && PRINT_LOG_ROLES.has(userRole),
+  });
 
   const productionInfoValid =
     productionDate.trim() !== "" && expiryDate.trim() !== "" && lotNumber.trim() !== "";
 
-  const buildAndPrint = async (asDraft: boolean) => {
+  const buildAndPrint = async (asDraft: boolean, allowDuplicateLot = false) => {
     if (!data) return;
     if (!productionInfoValid) {
       toast({
@@ -796,6 +826,35 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
     }
     setPrinting(true);
     try {
+      // Task #199 — PDF basmadan önce duplicate lot kontrolü
+      if (!allowDuplicateLot) {
+        try {
+          const lotRes = await fetch(
+            `/api/quality/allergens/recipes/${data.id}/print-log`,
+            { credentials: "include" },
+          );
+          if (lotRes.ok) {
+            const lotBody = (await lotRes.json()) as { logs: RecipePrintLogEntry[] };
+            const trimmedLot = lotNumber.trim().toLowerCase();
+            const dupe = (lotBody.logs ?? []).find(
+              (l) => (l.lotNumber ?? "").trim().toLowerCase() === trimmedLot,
+            );
+            if (dupe) {
+              setPrinting(false);
+              setDuplicateLotInfo({
+                lot: lotNumber.trim(),
+                printedAt: dupe.printedAt,
+                productionDate: dupe.productionDate,
+                expiryDate: dupe.expiryDate,
+                asDraft,
+              });
+              return;
+            }
+          }
+        } catch (checkErr) {
+          console.warn("Lot duplicate check failed:", checkErr);
+        }
+      }
       // Task #200 — QR public müşteri sayfasına yönlendirir (auth gerektirmez)
       const productUrl = `${window.location.origin}/p/urun/${encodeURIComponent(data.code)}`;
       const isDraftPrint = asDraft || !data.grammageApproved;
@@ -819,14 +878,19 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
         lotNumber: lotNumber.trim(),
         productUrl,
       });
-      // Task #187 — denetim logu (best-effort, başarısızlığı kullanıcıya yansıtma)
+      // Task #187 + #199 — denetim logu (lot/üretim/SKT dahil)
       try {
         await apiRequest("POST", `/api/quality/allergens/recipes/${data.id}/print-log`, {
           isDraft: isDraftPrint,
           grammageApproved: !!data.grammageApproved,
           draftReason: draftReason ?? null,
+          lotNumber: lotNumber.trim(),
+          productionDate,
+          expiryDate,
+          allowDuplicateLot,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/print-log"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/recipes", data.id, "print-log"] });
       } catch (logErr) {
         console.warn("Etiket basım logu kaydedilemedi:", logErr);
       }
@@ -903,7 +967,22 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
         {error && <ErrorState message={`Detay yüklenemedi: ${String(error)}`} />}
 
         {data && (
-          <ScrollArea className="flex-1 pr-3 -mr-3">
+          <Tabs value={detailTab} onValueChange={setDetailTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="self-start">
+              <TabsTrigger value="info" data-testid="tab-detail-info">Reçete & Alerjen</TabsTrigger>
+              {PRINT_LOG_ROLES.has(userRole) && (
+                <TabsTrigger value="history" data-testid="tab-detail-history">
+                  <History className="w-3.5 h-3.5 mr-1" />
+                  Geçmiş Etiket Basımları
+                  {recipePrintHistory.data && recipePrintHistory.data.logs.length > 0 && (
+                    <Badge variant="outline" className="ml-2">{recipePrintHistory.data.logs.length}</Badge>
+                  )}
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="info" className="flex-1 mt-3 min-h-0">
+          <ScrollArea className="h-full pr-3 -mr-3">
             <div className="space-y-4 pb-2">
               {/* Verify status banner */}
               {!data.isVerified && (() => {
@@ -1038,6 +1117,84 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
               </div>
             </div>
           </ScrollArea>
+            </TabsContent>
+
+            {PRINT_LOG_ROLES.has(userRole) && (
+              <TabsContent value="history" className="flex-1 mt-3 min-h-0" data-testid="tab-content-history">
+                <ScrollArea className="h-full pr-3 -mr-3">
+                  <div className="space-y-2 pb-2">
+                    {recipePrintHistory.isLoading && <ListSkeleton count={3} />}
+                    {recipePrintHistory.error && (
+                      <ErrorState message={`Geçmiş yüklenemedi: ${String(recipePrintHistory.error)}`} />
+                    )}
+                    {recipePrintHistory.data && recipePrintHistory.data.logs.length === 0 && (
+                      <EmptyState
+                        title="Henüz basım kaydı yok"
+                        description="Bu reçete için ilk etiket basıldığında burada listelenecek."
+                      />
+                    )}
+                    {recipePrintHistory.data && recipePrintHistory.data.logs.length > 0 && (
+                      <div className="divide-y divide-border/50 rounded-md border">
+                        {recipePrintHistory.data.logs.map((log) => (
+                          <div
+                            key={log.id}
+                            className="p-3 flex items-start justify-between gap-3"
+                            data-testid={`row-recipe-printlog-${log.id}`}
+                          >
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {log.lotNumber ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="font-mono"
+                                    data-testid={`badge-recipe-printlog-lot-${log.id}`}
+                                  >
+                                    Lot: {log.lotNumber}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs opacity-70">Lot kaydı yok</Badge>
+                                )}
+                                {log.isDraft ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="gap-1 border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                  >
+                                    <FileWarning className="w-3 h-3" /> Taslak
+                                  </Badge>
+                                ) : (
+                                  <Badge className="gap-1 bg-emerald-600 text-white border-emerald-700">
+                                    <BadgeCheck className="w-3 h-3" /> Onaylı
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {log.productionDate && (
+                                  <span>Üretim: <span className="font-medium">{log.productionDate}</span></span>
+                                )}
+                                {log.expiryDate && (
+                                  <> · SKT: <span className="font-medium">{log.expiryDate}</span></>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {log.printedByName}
+                                {log.printedByRole && <span className="opacity-70"> · {log.printedByRole}</span>}
+                                <span className="opacity-70"> · {new Date(log.printedAt).toLocaleString("tr-TR")}</span>
+                              </div>
+                              {log.draftReason && (
+                                <div className="text-xs text-amber-700 dark:text-amber-400">
+                                  {log.draftReason}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            )}
+          </Tabs>
         )}
       </DialogContent>
 
@@ -1107,6 +1264,52 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!duplicateLotInfo}
+        onOpenChange={(open) => !open && setDuplicateLotInfo(null)}
+      >
+        <AlertDialogContent data-testid="dialog-duplicate-lot">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Aynı lot numarası daha önce kullanıldı
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                <strong>"{duplicateLotInfo?.lot}"</strong> lot numarası bu reçete için daha önce
+                basılmış. Aynı parti için tekrar etiket basmak izlenebilirliği bozabilir.
+              </span>
+              {duplicateLotInfo && (
+                <span className="block text-xs">
+                  Önceki basım:{" "}
+                  <strong>{new Date(duplicateLotInfo.printedAt).toLocaleString("tr-TR")}</strong>
+                  {duplicateLotInfo.productionDate && <> · Üretim: {duplicateLotInfo.productionDate}</>}
+                  {duplicateLotInfo.expiryDate && <> · SKT: {duplicateLotInfo.expiryDate}</>}
+                </span>
+              )}
+              <span className="block">
+                Yine de devam etmek istiyor musunuz?
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-duplicate-lot">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                const info = duplicateLotInfo;
+                setDuplicateLotInfo(null);
+                if (info) buildAndPrint(info.asDraft, true);
+              }}
+              data-testid="button-confirm-duplicate-lot"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Yine de bas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
         <AlertDialogContent data-testid="dialog-grammage-warning">

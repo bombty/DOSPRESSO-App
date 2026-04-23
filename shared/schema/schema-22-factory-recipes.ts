@@ -627,11 +627,17 @@ export const factoryRecipeLabelPrintLogs = pgTable("factory_recipe_label_print_l
   // istemci tarafından yazılan kısa neden (ör. "Gramaj onayi bekliyor")
   draftReason: varchar("draft_reason", { length: 255 }),
 
+  // Task #199 — Üretim partisi izlenebilirliği (HACCP / geri çağırma)
+  lotNumber: varchar("lot_number", { length: 60 }),
+  productionDate: varchar("production_date", { length: 10 }), // YYYY-MM-DD
+  expiryDate: varchar("expiry_date", { length: 10 }),         // YYYY-MM-DD
+
   printedAt: timestamp("printed_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("frlpl_recipe_idx").on(table.recipeId),
   index("frlpl_printed_at_idx").on(table.printedAt),
   index("frlpl_printed_by_idx").on(table.printedBy),
+  index("frlpl_lot_idx").on(table.recipeId, table.lotNumber),
 ]);
 
 export const insertFactoryRecipeLabelPrintLogSchema = createInsertSchema(factoryRecipeLabelPrintLogs).omit({

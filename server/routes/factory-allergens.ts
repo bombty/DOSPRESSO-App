@@ -521,10 +521,17 @@ router.post("/api/quality/allergens/weekly-summary/run", isAuthenticated, async 
 // POST /api/quality/allergens/recipes/:id/print-log
 // Frontend her PDF indirme sonrası çağırır.
 // ═══════════════════════════════════════
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const printLogBodySchema = z.object({
   isDraft: z.boolean().optional().default(false),
   grammageApproved: z.boolean().optional().default(false),
   draftReason: z.string().max(255).optional().nullable(),
+  // Task #199 — üretim partisi
+  lotNumber: z.string().trim().min(1).max(60).optional().nullable(),
+  productionDate: z.string().regex(ISO_DATE_RE).optional().nullable(),
+  expiryDate: z.string().regex(ISO_DATE_RE).optional().nullable(),
+  // Aynı lot tekrar girildiğinde kullanıcı uyarıyı onayladıysa true gönderilir
+  allowDuplicateLot: z.boolean().optional().default(false),
 });
 
 router.post(
@@ -549,6 +556,39 @@ router.post(
         .limit(1);
       if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
 
+      const lotNumber = parsed.data.lotNumber?.trim() || null;
+
+      // Duplicate lot check — aynı reçete + aynı lot daha önce basıldıysa uyar
+      if (lotNumber && !parsed.data.allowDuplicateLot) {
+        const [dupe] = await db
+          .select({
+            id: factoryRecipeLabelPrintLogs.id,
+            printedAt: factoryRecipeLabelPrintLogs.printedAt,
+            productionDate: factoryRecipeLabelPrintLogs.productionDate,
+            expiryDate: factoryRecipeLabelPrintLogs.expiryDate,
+          })
+          .from(factoryRecipeLabelPrintLogs)
+          .where(and(
+            eq(factoryRecipeLabelPrintLogs.recipeId, recipeId),
+            eq(factoryRecipeLabelPrintLogs.lotNumber, lotNumber),
+          ))
+          .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
+          .limit(1);
+
+        if (dupe) {
+          return res.status(409).json({
+            error: "duplicate_lot",
+            message: `"${lotNumber}" lot numarası bu reçete için daha önce kullanıldı. Devam etmek istiyor musunuz?`,
+            duplicate: {
+              id: dupe.id,
+              printedAt: dupe.printedAt,
+              productionDate: dupe.productionDate,
+              expiryDate: dupe.expiryDate,
+            },
+          });
+        }
+      }
+
       const [inserted] = await db
         .insert(factoryRecipeLabelPrintLogs)
         .values({
@@ -559,6 +599,9 @@ router.post(
           isDraft: !!parsed.data.isDraft,
           grammageApproved: !!parsed.data.grammageApproved,
           draftReason: parsed.data.draftReason ?? null,
+          lotNumber,
+          productionDate: parsed.data.productionDate ?? null,
+          expiryDate: parsed.data.expiryDate ?? null,
         })
         .returning();
 
@@ -566,6 +609,70 @@ router.post(
     } catch (error) {
       console.error("Etiket basım logu kaydedilemedi:", error);
       res.status(500).json({ error: "Etiket basım logu kaydedilemedi" });
+    }
+  },
+);
+
+// ═══════════════════════════════════════
+// GET /api/quality/allergens/recipes/:id/print-log
+// Reçete detayında "Geçmiş Etiket Basımları" sekmesi için
+// ═══════════════════════════════════════
+router.get(
+  "/api/quality/allergens/recipes/:id/print-log",
+  isAuthenticated,
+  requireAllergenViewRole,
+  async (req: any, res: Response) => {
+    try {
+      const recipeId = Number(req.params.id);
+      if (!Number.isFinite(recipeId)) {
+        return res.status(400).json({ error: "Geçersiz reçete id" });
+      }
+
+      const rows = await db
+        .select({
+          id: factoryRecipeLabelPrintLogs.id,
+          recipeId: factoryRecipeLabelPrintLogs.recipeId,
+          isDraft: factoryRecipeLabelPrintLogs.isDraft,
+          grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
+          draftReason: factoryRecipeLabelPrintLogs.draftReason,
+          lotNumber: factoryRecipeLabelPrintLogs.lotNumber,
+          productionDate: factoryRecipeLabelPrintLogs.productionDate,
+          expiryDate: factoryRecipeLabelPrintLogs.expiryDate,
+          printedAt: factoryRecipeLabelPrintLogs.printedAt,
+          printedBy: factoryRecipeLabelPrintLogs.printedBy,
+          printedByFirstName: users.firstName,
+          printedByLastName: users.lastName,
+          printedByUsername: users.username,
+          printedByRole: users.role,
+        })
+        .from(factoryRecipeLabelPrintLogs)
+        .leftJoin(users, eq(users.id, factoryRecipeLabelPrintLogs.printedBy))
+        .where(eq(factoryRecipeLabelPrintLogs.recipeId, recipeId))
+        .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
+        .limit(200);
+
+      const logs = rows.map((r) => ({
+        id: r.id,
+        printedById: r.printedBy,
+        printedByName:
+          [r.printedByFirstName, r.printedByLastName].filter(Boolean).join(" ").trim() ||
+          r.printedByUsername ||
+          r.printedBy ||
+          "—",
+        printedByRole: r.printedByRole ?? null,
+        isDraft: r.isDraft,
+        grammageApproved: r.grammageApproved,
+        draftReason: r.draftReason,
+        lotNumber: r.lotNumber,
+        productionDate: r.productionDate,
+        expiryDate: r.expiryDate,
+        printedAt: r.printedAt,
+      }));
+
+      res.json({ logs });
+    } catch (error) {
+      console.error("Reçete basım geçmişi yüklenemedi:", error);
+      res.status(500).json({ error: "Reçete basım geçmişi yüklenemedi" });
     }
   },
 );
@@ -641,6 +748,9 @@ router.get(
           isDraft: factoryRecipeLabelPrintLogs.isDraft,
           grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
           draftReason: factoryRecipeLabelPrintLogs.draftReason,
+          lotNumber: factoryRecipeLabelPrintLogs.lotNumber,
+          productionDate: factoryRecipeLabelPrintLogs.productionDate,
+          expiryDate: factoryRecipeLabelPrintLogs.expiryDate,
           printedAt: factoryRecipeLabelPrintLogs.printedAt,
           printedByFirstName: users.firstName,
           printedByLastName: users.lastName,
@@ -670,6 +780,9 @@ router.get(
         isDraft: r.isDraft,
         grammageApproved: r.grammageApproved,
         draftReason: r.draftReason,
+        lotNumber: r.lotNumber,
+        productionDate: r.productionDate,
+        expiryDate: r.expiryDate,
         printedAt: r.printedAt,
       }));
 
@@ -740,6 +853,9 @@ router.get(
             isDraft: factoryRecipeLabelPrintLogs.isDraft,
             grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
             draftReason: factoryRecipeLabelPrintLogs.draftReason,
+            lotNumber: factoryRecipeLabelPrintLogs.lotNumber,
+            productionDate: factoryRecipeLabelPrintLogs.productionDate,
+            expiryDate: factoryRecipeLabelPrintLogs.expiryDate,
             printedAt: factoryRecipeLabelPrintLogs.printedAt,
             printedByFirstName: users.firstName,
             printedByLastName: users.lastName,
@@ -772,6 +888,9 @@ router.get(
           receteAdi: r.recipeName ?? "",
           durum: r.isDraft ? "Taslak" : "Onaylı",
           gramajOnayli: r.grammageApproved ? "Evet" : "Hayır",
+          lot: r.lotNumber ?? "",
+          uretimTarihi: r.productionDate ?? "",
+          skt: r.expiryDate ?? "",
           sebep: r.draftReason ?? "",
         };
       };
@@ -803,6 +922,9 @@ router.get(
           { header: "Reçete Adı", key: "receteAdi", min: 24, max: 50 },
           { header: "Durum", key: "durum", min: 10, max: 14 },
           { header: "Gramaj Onaylı", key: "gramajOnayli", min: 14, max: 16 },
+          { header: "Lot / Parti", key: "lot", min: 14, max: 24 },
+          { header: "Üretim Tarihi", key: "uretimTarihi", min: 12, max: 16 },
+          { header: "SKT", key: "skt", min: 12, max: 16 },
           { header: "Sebep / Not", key: "sebep", min: 24, max: 60 },
         ];
         sheet.columns = columnDefs.map((c) => ({
@@ -867,6 +989,9 @@ router.get(
         "Reçete Adı",
         "Durum",
         "Gramaj Onaylı",
+        "Lot / Parti",
+        "Üretim Tarihi",
+        "SKT",
         "Sebep / Not",
       ];
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -885,7 +1010,8 @@ router.get(
           .map((r) =>
             [
               r.tarih, r.tarihIso, r.kullanici, r.rol,
-              r.receteKodu, r.receteAdi, r.durum, r.gramajOnayli, r.sebep,
+              r.receteKodu, r.receteAdi, r.durum, r.gramajOnayli,
+              r.lot, r.uretimTarihi, r.skt, r.sebep,
             ].map(csvEscape).join(","),
           )
           .join("\r\n");
