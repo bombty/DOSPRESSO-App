@@ -387,4 +387,159 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
   }
 });
 
+// ═══════════════════════════════════════
+// PUBLIC MÜŞTERİ ENDPOINT (R-5D)
+// Auth YOK - QR kod ile erişim için
+// Rate-limit: 30 istek/dakika per IP
+// Sadece alerjen + 100g besin değeri döner
+// (malzeme detayı, maliyet, adım YOK)
+// ═══════════════════════════════════════
+
+const publicAllergenRateLimit = new Map<string, { count: number; resetAt: number }>();
+const PUBLIC_RATE_WINDOW = 60 * 1000; // 1 dk
+const PUBLIC_MAX_REQUESTS = 30;
+
+function checkPublicRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const record = publicAllergenRateLimit.get(ip);
+
+  if (!record || now > record.resetAt) {
+    publicAllergenRateLimit.set(ip, { count: 1, resetAt: now + PUBLIC_RATE_WINDOW });
+    return { allowed: true };
+  }
+
+  if (record.count >= PUBLIC_MAX_REQUESTS) {
+    return { allowed: false, retryAfter: Math.ceil((record.resetAt - now) / 1000) };
+  }
+
+  record.count++;
+  return { allowed: true };
+}
+
+// GET /api/public/allergens/recipes/:id — Auth YOK (müşteri QR)
+router.get("/api/public/allergens/recipes/:id", async (req: any, res: Response) => {
+  try {
+    // Rate limit (DoS koruma)
+    const clientIp = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const rl = checkPublicRateLimit(String(clientIp));
+    if (!rl.allowed) {
+      res.set("Retry-After", String(rl.retryAfter));
+      return res.status(429).json({ error: "Çok fazla istek. Lütfen biraz sonra tekrar deneyin.", retryAfter: rl.retryAfter });
+    }
+
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) return res.status(400).json({ error: "Geçersiz reçete id" });
+
+    // Reçete meta (sadece müşteri görmesi gerekenler)
+    const [recipe] = await db.select({
+      id: factoryRecipes.id,
+      name: factoryRecipes.name,
+      code: factoryRecipes.code,
+      category: factoryRecipes.category,
+      coverPhotoUrl: factoryRecipes.coverPhotoUrl,
+      expectedUnitWeight: factoryRecipes.expectedUnitWeight,
+      baseBatchOutput: factoryRecipes.baseBatchOutput,
+      isVisible: factoryRecipes.isVisible,
+      isActive: factoryRecipes.isActive,
+    })
+    .from(factoryRecipes)
+    .where(eq(factoryRecipes.id, recipeId));
+
+    if (!recipe) return res.status(404).json({ error: "Ürün bulunamadı" });
+    if (!recipe.isActive || !recipe.isVisible) {
+      return res.status(404).json({ error: "Bu ürün şu an gösterilmiyor" });
+    }
+
+    // Besin + alerjen hesapla (mevcut helper fonksiyonları kullan)
+    const nutritionMap = await loadNutritionMap();
+    const keyblendAllergens = await loadKeyblendAllergens(nutritionMap);
+    const ings = await db.select().from(factoryRecipeIngredients)
+      .where(eq(factoryRecipeIngredients.recipeId, recipeId));
+
+    if (ings.length === 0) {
+      return res.json({
+        id: recipe.id,
+        name: recipe.name,
+        category: recipe.category,
+        coverPhotoUrl: recipe.coverPhotoUrl,
+        per100g: null,
+        perPortion: null,
+        portionWeight: recipe.expectedUnitWeight ? Number(recipe.expectedUnitWeight) : null,
+        allergens: [],
+        isVerified: false,
+        message: "Bu ürün için besin bilgisi henüz hazırlanmamış.",
+      });
+    }
+
+    const comp = await computeRecipeNutrition(recipeId, ings, nutritionMap, keyblendAllergens);
+
+    // SADECE müşteri verileri döner (malzeme/maliyet/adım YOK)
+    res.json({
+      id: recipe.id,
+      name: recipe.name,
+      category: recipe.category,
+      coverPhotoUrl: recipe.coverPhotoUrl,
+      per100g: comp.per100g,
+      perPortion: comp.per100g && recipe.expectedUnitWeight
+        ? {
+            energy_kcal: Math.round((comp.per100g.energy_kcal * Number(recipe.expectedUnitWeight)) / 100),
+            fat_g: Number(((comp.per100g.fat_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)),
+            saturated_fat_g: Number(((comp.per100g.saturated_fat_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)),
+            carbohydrate_g: Number(((comp.per100g.carbohydrate_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)),
+            sugar_g: Number(((comp.per100g.sugar_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)),
+            fiber_g: Number(((comp.per100g.fiber_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)),
+            protein_g: Number(((comp.per100g.protein_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)),
+            salt_g: Number(((comp.per100g.salt_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(2)),
+          }
+        : null,
+      portionWeight: recipe.expectedUnitWeight ? Number(recipe.expectedUnitWeight) : null,
+      allergens: comp.allergens,
+      isVerified: comp.isVerified,
+    });
+  } catch (error) {
+    console.error("Public allergen error:", error);
+    res.status(500).json({ error: "Bilgi yüklenemedi" });
+  }
+});
+
+// GET /api/public/allergens/recipes — Tüm görünür ürünler (auth YOK, müşteri liste sayfası)
+router.get("/api/public/allergens/recipes", async (req: any, res: Response) => {
+  try {
+    const clientIp = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const rl = checkPublicRateLimit(String(clientIp));
+    if (!rl.allowed) {
+      res.set("Retry-After", String(rl.retryAfter));
+      return res.status(429).json({ error: "Çok fazla istek.", retryAfter: rl.retryAfter });
+    }
+
+    // Sadece görünür + aktif + mamul (yarı mamul müşteri için gizli)
+    const recipes = await db.select({
+      id: factoryRecipes.id,
+      name: factoryRecipes.name,
+      category: factoryRecipes.category,
+      coverPhotoUrl: factoryRecipes.coverPhotoUrl,
+      allergens: factoryRecipes.allergens,
+    })
+    .from(factoryRecipes)
+    .where(and(
+      eq(factoryRecipes.isActive, true),
+      eq(factoryRecipes.isVisible, true),
+      eq(factoryRecipes.outputType, "mamul"), // yarı mamul gizli
+    ))
+    .orderBy(asc(factoryRecipes.category), asc(factoryRecipes.name));
+
+    // Public response - sadece liste
+    res.json(recipes.map(r => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      coverPhotoUrl: r.coverPhotoUrl,
+      allergens: r.allergens || [],
+    })));
+  } catch (error) {
+    console.error("Public allergen list error:", error);
+    res.status(500).json({ error: "Liste yüklenemedi" });
+  }
+});
+
 export default router;
