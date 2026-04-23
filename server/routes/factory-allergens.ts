@@ -15,9 +15,11 @@ import {
   factoryRecipeIngredients,
   factoryIngredientNutrition,
   factoryKeyblendIngredients,
+  factoryRecipeLabelPrintLogs,
   users,
 } from "@shared/schema";
-import { and, asc, eq, sql, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, sql, inArray, gte, lte } from "drizzle-orm";
+import { z } from "zod";
 import { isAuthenticated } from "../localAuth";
 import { parseGrammageApproval } from "./factory-recipes";
 
@@ -514,5 +516,161 @@ router.post("/api/quality/allergens/weekly-summary/run", isAuthenticated, async 
     res.status(500).json({ error: "Haftalık özet gönderilemedi" });
   }
 });
+
+// Task #187 — Etiket basım logu
+// POST /api/quality/allergens/recipes/:id/print-log
+// Frontend her PDF indirme sonrası çağırır.
+// ═══════════════════════════════════════
+const printLogBodySchema = z.object({
+  isDraft: z.boolean().optional().default(false),
+  grammageApproved: z.boolean().optional().default(false),
+  draftReason: z.string().max(255).optional().nullable(),
+});
+
+router.post(
+  "/api/quality/allergens/recipes/:id/print-log",
+  isAuthenticated,
+  requireAllergenViewRole,
+  async (req: any, res: Response) => {
+    try {
+      const recipeId = Number(req.params.id);
+      if (!Number.isFinite(recipeId)) {
+        return res.status(400).json({ error: "Geçersiz reçete id" });
+      }
+      const parsed = printLogBodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Geçersiz istek", details: parsed.error.format() });
+      }
+
+      const [recipe] = await db
+        .select({ id: factoryRecipes.id, code: factoryRecipes.code, name: factoryRecipes.name })
+        .from(factoryRecipes)
+        .where(eq(factoryRecipes.id, recipeId))
+        .limit(1);
+      if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
+
+      const [inserted] = await db
+        .insert(factoryRecipeLabelPrintLogs)
+        .values({
+          recipeId,
+          recipeCode: recipe.code,
+          recipeName: recipe.name,
+          printedBy: req.user?.id ?? null,
+          isDraft: !!parsed.data.isDraft,
+          grammageApproved: !!parsed.data.grammageApproved,
+          draftReason: parsed.data.draftReason ?? null,
+        })
+        .returning();
+
+      res.json({ ok: true, id: inserted.id, printedAt: inserted.printedAt });
+    } catch (error) {
+      console.error("Etiket basım logu kaydedilemedi:", error);
+      res.status(500).json({ error: "Etiket basım logu kaydedilemedi" });
+    }
+  },
+);
+
+// ═══════════════════════════════════════
+// GET /api/quality/allergens/print-log — Admin/Kalite raporu
+// Query: ?recipeId=&from=ISO&to=ISO&limit=200
+// ═══════════════════════════════════════
+const PRINT_LOG_VIEW_ROLES = new Set([
+  "admin",
+  "ceo",
+  "ust_yonetim",
+  "fabrika_muduru",
+  "fabrika_mudur",
+  "kalite_yoneticisi",
+  "kalite_kontrol",
+  "gida_muhendisi",
+  "recete_gm",
+]);
+
+function requirePrintLogViewRole(req: any, res: Response, next: any) {
+  const role = req.user?.role || "";
+  if (!PRINT_LOG_VIEW_ROLES.has(role)) {
+    return res.status(403).json({ error: "Etiket basım geçmişine erişim yetkiniz yok" });
+  }
+  next();
+}
+
+router.get(
+  "/api/quality/allergens/print-log",
+  isAuthenticated,
+  requirePrintLogViewRole,
+  async (req: any, res: Response) => {
+    try {
+      const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+      const recipeId = req.query.recipeId ? Number(req.query.recipeId) : null;
+      const from = req.query.from ? new Date(String(req.query.from)) : null;
+      const to = req.query.to ? new Date(String(req.query.to)) : null;
+
+      const conds: any[] = [];
+      if (recipeId && Number.isFinite(recipeId)) {
+        conds.push(eq(factoryRecipeLabelPrintLogs.recipeId, recipeId));
+      }
+      if (from && !isNaN(from.getTime())) {
+        conds.push(gte(factoryRecipeLabelPrintLogs.printedAt, from));
+      }
+      if (to && !isNaN(to.getTime())) {
+        conds.push(lte(factoryRecipeLabelPrintLogs.printedAt, to));
+      }
+
+      const baseQuery = db
+        .select({
+          id: factoryRecipeLabelPrintLogs.id,
+          recipeId: factoryRecipeLabelPrintLogs.recipeId,
+          recipeCode: factoryRecipeLabelPrintLogs.recipeCode,
+          recipeName: factoryRecipeLabelPrintLogs.recipeName,
+          printedBy: factoryRecipeLabelPrintLogs.printedBy,
+          isDraft: factoryRecipeLabelPrintLogs.isDraft,
+          grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
+          draftReason: factoryRecipeLabelPrintLogs.draftReason,
+          printedAt: factoryRecipeLabelPrintLogs.printedAt,
+          printedByFirstName: users.firstName,
+          printedByLastName: users.lastName,
+          printedByUsername: users.username,
+          printedByRole: users.role,
+        })
+        .from(factoryRecipeLabelPrintLogs)
+        .leftJoin(users, eq(users.id, factoryRecipeLabelPrintLogs.printedBy));
+
+      const rows = await (conds.length > 0
+        ? baseQuery.where(and(...conds))
+        : baseQuery)
+        .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
+        .limit(limit);
+
+      const logs = rows.map((r) => ({
+        id: r.id,
+        recipeId: r.recipeId,
+        recipeCode: r.recipeCode,
+        recipeName: r.recipeName,
+        printedById: r.printedBy,
+        printedByName:
+          [r.printedByFirstName, r.printedByLastName].filter(Boolean).join(" ").trim() ||
+          r.printedByUsername ||
+          r.printedBy ||
+          "—",
+        printedByRole: r.printedByRole ?? null,
+        isDraft: r.isDraft,
+        grammageApproved: r.grammageApproved,
+        draftReason: r.draftReason,
+        printedAt: r.printedAt,
+      }));
+
+      const stats = {
+        total: logs.length,
+        draftCount: logs.filter((l) => l.isDraft).length,
+        approvedCount: logs.filter((l) => !l.isDraft).length,
+      };
+
+      res.json({ logs, stats });
+    } catch (error) {
+      console.error("Etiket basım geçmişi yüklenemedi:", error);
+      res.status(500).json({ error: "Etiket basım geçmişi yüklenemedi" });
+    }
+  },
+);
 
 export default router;

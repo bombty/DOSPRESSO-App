@@ -581,3 +581,40 @@ export const insertFactoryRecipeApprovalSchema = createInsertSchema(factoryRecip
 });
 export type FactoryRecipeApproval = typeof factoryRecipeApprovals.$inferSelect;
 export type InsertFactoryRecipeApproval = z.infer<typeof insertFactoryRecipeApprovalSchema>;
+
+// ────────────────────────────────────────
+// 11. ETIKET BASIM LOGU — Task #187
+//     Müşteri etiketi PDF basım denetim izi
+//     (Gıda güvenliği denetimleri için kayıt)
+// ────────────────────────────────────────
+
+export const factoryRecipeLabelPrintLogs = pgTable("factory_recipe_label_print_logs", {
+  id: serial("id").primaryKey(),
+
+  recipeId: integer("recipe_id").notNull().references(() => factoryRecipes.id, { onDelete: "cascade" }),
+  recipeCode: varchar("recipe_code", { length: 50 }),
+  recipeName: varchar("recipe_name", { length: 255 }),
+
+  printedBy: varchar("printed_by").references(() => users.id, { onDelete: "set null" }),
+
+  // taslak / onaylı ayrımı
+  isDraft: boolean("is_draft").notNull().default(false),
+  // basım anında reçete gıda mühendisi tarafından onaylı mıydı?
+  grammageApproved: boolean("grammage_approved").notNull().default(false),
+
+  // istemci tarafından yazılan kısa neden (ör. "Gramaj onayi bekliyor")
+  draftReason: varchar("draft_reason", { length: 255 }),
+
+  printedAt: timestamp("printed_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("frlpl_recipe_idx").on(table.recipeId),
+  index("frlpl_printed_at_idx").on(table.printedAt),
+  index("frlpl_printed_by_idx").on(table.printedBy),
+]);
+
+export const insertFactoryRecipeLabelPrintLogSchema = createInsertSchema(factoryRecipeLabelPrintLogs).omit({
+  id: true,
+  printedAt: true,
+});
+export type FactoryRecipeLabelPrintLog = typeof factoryRecipeLabelPrintLogs.$inferSelect;
+export type InsertFactoryRecipeLabelPrintLog = z.infer<typeof insertFactoryRecipeLabelPrintLogSchema>;

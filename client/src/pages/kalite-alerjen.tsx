@@ -19,9 +19,141 @@ import { ErrorState } from "@/components/error-state";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { downloadEtiketPDF } from "@/lib/etiketPDF";
-import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning, History } from "lucide-react";
 
 const FIX_ROLES = ["admin", "kalite_yoneticisi", "gida_muhendisi", "recete_gm", "sef", "ust_yonetim"];
+
+const PRINT_LOG_ROLES = new Set([
+  "admin", "ceo", "ust_yonetim",
+  "fabrika_muduru", "fabrika_mudur",
+  "kalite_yoneticisi", "kalite_kontrol",
+  "gida_muhendisi", "recete_gm",
+]);
+
+interface PrintLogEntry {
+  id: number;
+  recipeId: number;
+  recipeCode: string | null;
+  recipeName: string | null;
+  printedById: string | null;
+  printedByName: string;
+  printedByRole: string | null;
+  isDraft: boolean;
+  grammageApproved: boolean;
+  draftReason: string | null;
+  printedAt: string;
+}
+
+interface PrintLogResponse {
+  logs: PrintLogEntry[];
+  stats: { total: number; draftCount: number; approvedCount: number };
+}
+
+function PrintLogPanel() {
+  const { data, isLoading, error } = useQuery<PrintLogResponse>({
+    queryKey: ["/api/quality/allergens/print-log"],
+  });
+
+  return (
+    <Card data-testid="card-print-log">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Etiket Basım Geçmişi
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Gıda güvenliği denetim izi — her PDF basımı kim, ne zaman, taslak mı / onaylı mı.
+            </CardDescription>
+          </div>
+          {data && (
+            <div className="flex gap-2">
+              <Badge variant="outline" data-testid="badge-printlog-total">
+                Toplam: {data.stats.total}
+              </Badge>
+              <Badge
+                variant="default"
+                className="bg-emerald-600 text-white border-emerald-700"
+                data-testid="badge-printlog-approved"
+              >
+                Onaylı: {data.stats.approvedCount}
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                data-testid="badge-printlog-draft"
+              >
+                Taslak: {data.stats.draftCount}
+              </Badge>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {isLoading && <ListSkeleton count={3} />}
+        {error && <ErrorState message={`Geçmiş yüklenemedi: ${String(error)}`} />}
+        {data && data.logs.length === 0 && (
+          <EmptyState
+            title="Henüz basım kaydı yok"
+            description="İlk etiket basıldığında burada listelenecek."
+          />
+        )}
+        {data && data.logs.length > 0 && (
+          <ScrollArea className="max-h-96">
+            <div className="divide-y divide-border/50">
+              {data.logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="py-2 flex items-start justify-between gap-3"
+                  data-testid={`row-printlog-${log.id}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate" data-testid={`text-printlog-recipe-${log.id}`}>
+                      {log.recipeName ?? "—"}
+                      {log.recipeCode && (
+                        <span className="text-xs text-muted-foreground ml-2">{log.recipeCode}</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {log.printedByName}
+                      {log.printedByRole && <span className="opacity-70"> · {log.printedByRole}</span>}
+                      <span className="opacity-70"> · {new Date(log.printedAt).toLocaleString("tr-TR")}</span>
+                    </div>
+                    {log.draftReason && (
+                      <div className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                        {log.draftReason}
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    {log.isDraft ? (
+                      <Badge
+                        variant="outline"
+                        className="gap-1 border-amber-600/40 text-amber-600 dark:text-amber-400"
+                        data-testid={`badge-printlog-status-${log.id}`}
+                      >
+                        <FileWarning className="w-3 h-3" /> Taslak
+                      </Badge>
+                    ) : (
+                      <Badge
+                        className="gap-1 bg-emerald-600 text-white border-emerald-700"
+                        data-testid={`badge-printlog-status-${log.id}`}
+                      >
+                        <BadgeCheck className="w-3 h-3" /> Onaylı
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function getFixTarget(
   recipeId: number,
@@ -358,6 +490,8 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
     setPrinting(true);
     try {
       const productUrl = `${window.location.origin}/kalite/alerjen?recipe=${data.id}`;
+      const isDraftPrint = asDraft || !data.grammageApproved;
+      const draftReason = !data.grammageApproved ? "Gramaj onayi bekliyor" : (asDraft ? "Manuel taslak" : undefined);
       await downloadEtiketPDF({
         name: data.name,
         code: data.code,
@@ -370,13 +504,24 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
         grammageApproved: !!data.grammageApproved,
         grammageApprovalUserName: data.grammageApprovalUserName ?? null,
         grammageApprovalDate: data.grammageApprovalDate ?? null,
-        isDraft: asDraft || !data.grammageApproved,
-        draftReason: !data.grammageApproved ? "Gramaj onayi bekliyor" : undefined,
+        isDraft: isDraftPrint,
+        draftReason,
         productionDate,
         expiryDate,
         lotNumber: lotNumber.trim(),
         productUrl,
       });
+      // Task #187 — denetim logu (best-effort, başarısızlığı kullanıcıya yansıtma)
+      try {
+        await apiRequest("POST", `/api/quality/allergens/recipes/${data.id}/print-log`, {
+          isDraft: isDraftPrint,
+          grammageApproved: !!data.grammageApproved,
+          draftReason: draftReason ?? null,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/print-log"] });
+      } catch (logErr) {
+        console.warn("Etiket basım logu kaydedilemedi:", logErr);
+      }
       toast({
         title: asDraft || !data.grammageApproved ? "Taslak etiket indirildi" : "Etiket PDF'i indirildi",
         description: asDraft || !data.grammageApproved
@@ -727,6 +872,7 @@ export default function KaliteAlerjenPage() {
   });
   const { user } = useAuth();
   const canFix = !!user?.role && FIX_ROLES.includes(user.role);
+  const canViewPrintLog = !!user?.role && PRINT_LOG_ROLES.has(user.role);
 
   useEffect(() => {
     try {
@@ -881,6 +1027,8 @@ export default function KaliteAlerjenPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      {canViewPrintLog && <PrintLogPanel />}
 
       <RecipeDetailDialog id={openId} onClose={() => setOpenId(null)} canFix={canFix} />
     </div>
