@@ -49,7 +49,10 @@ import {
   tasks,
   users
 } from './schema-02';
-import { quizzes } from './schema-06';
+// NOTE: `quizzes` (schema-06) intentionally NOT imported here to honour the
+// one-way schema import rule (see shared/schema/README.md). The
+// `careerQuizId` column below is a plain integer; the relation is declared
+// in schema-14-relations.ts and the FK constraint is managed by migrations.
 
 // Fault Stage Transitions table (audit log for stage changes)
 export const faultStageTransitions = pgTable("fault_stage_transitions", {
@@ -330,7 +333,7 @@ export const moduleQuizzes = pgTable("module_quizzes", {
 export const quizQuestions = pgTable("quiz_questions", {
   id: serial("id").primaryKey(),
   quizId: integer("quiz_id").references(() => moduleQuizzes.id, { onDelete: "cascade" }),
-  careerQuizId: integer("career_quiz_id").references(() => quizzes.id, { onDelete: "cascade" }),
+  careerQuizId: integer("career_quiz_id"), // FK to quizzes.id (schema-06); declared in schema-14-relations to keep one-way import order
   question: text("question").notNull(),
   questionType: varchar("question_type", { length: 50 }).default("multiple_choice"), // multiple_choice, true_false, short_answer
   options: text("options").array(), // JSON array for multiple choice

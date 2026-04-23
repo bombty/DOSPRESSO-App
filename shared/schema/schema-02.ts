@@ -22,8 +22,12 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
-import { shifts } from "./schema-03";
-import { equipmentTroubleshootingSteps } from "./schema-05";
+// NOTE: Per the schema import direction rule (see shared/schema/README.md),
+// schema-02 must NOT import from higher-numbered files. FK references to
+// `shifts` (schema-03) and `equipmentTroubleshootingSteps` (schema-05) are
+// expressed as plain integer columns here; the relations are declared in
+// schema-14-relations.ts and the DB-level FK constraints are managed by the
+// migration drift scripts (see related tasks).
 
 // Custom type for pgvector
 const vector = customType<{ data: number[]; driverData: string }>({
@@ -2896,7 +2900,7 @@ export const checklistAssignments = pgTable("checklist_assignments", {
   assignedUserId: varchar("assigned_user_id").references(() => users.id, { onDelete: "cascade" }), // For scope='user'
   branchId: integer("branch_id").references(() => branches.id, { onDelete: "cascade" }), // For scope='branch' or 'role'
   role: varchar("role", { length: 50 }), // For scope='role' - specific role in branch
-  shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "set null" }), // Optional: link to specific shift
+  shiftId: integer("shift_id"), // Optional: link to specific shift (FK to shifts.id, defined in schema-14-relations / DB migration to avoid reverse import)
   effectiveFrom: date("effective_from"), // Optional: when assignment starts
   effectiveTo: date("effective_to"), // Optional: when assignment ends (null = permanent)
   isActive: boolean("is_active").default(true),
@@ -2934,7 +2938,7 @@ export const checklistCompletions = pgTable("checklist_completions", {
   checklistId: integer("checklist_id").notNull().references(() => checklists.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
-  shiftId: integer("shift_id").references(() => shifts.id, { onDelete: "set null" }),
+  shiftId: integer("shift_id"), // FK to shifts.id (schema-03); declared in schema-14-relations to keep one-way import order
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, in_progress, completed, incomplete, late
   scheduledDate: date("scheduled_date").notNull(), // The date this completion is for
   timeWindowStart: time("time_window_start", { precision: 0 }), // Copied from checklist template
@@ -3534,7 +3538,7 @@ export type EquipmentFault = typeof equipmentFaults.$inferSelect;
 export const equipmentTroubleshootingCompletion = pgTable("equipment_troubleshooting_completion", {
   id: serial("id").primaryKey(),
   faultId: integer("fault_id").notNull().references(() => equipmentFaults.id, { onDelete: "cascade" }),
-  stepId: integer("step_id").notNull().references(() => equipmentTroubleshootingSteps.id, { onDelete: "cascade" }),
+  stepId: integer("step_id").notNull(), // FK to equipmentTroubleshootingSteps.id (schema-05); declared in schema-14-relations to keep one-way import order
   completedById: varchar("completed_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   photoUrl: text("photo_url"), // If step required photo
   notes: text("notes"),
