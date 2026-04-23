@@ -24,8 +24,8 @@ _(Şu an boş — son 30+ Replit task'ı 23 Nis sabah merge oldu, push edildi: c
   - ✅ **R-5D Müşteri QR**: PUSH EDİLDİ (Claude commit `3abb342`) — `musteri-alerjen-public.tsx`, public endpoint, rate limit 30/dk
   - ✅ **R-5A Backend**: PUSH EDİLDİ (Claude commit `d631ed2`) — #131 canonical layer korundu, PATCH yetki fix, 4 yeni endpoint (DELETE ingredient + steps CRUD)
   - 🟢 **R-5A Frontend**: BAŞLAYABİLİR — `fabrika-recete-duzenle.tsx` Replit task'larıyla stabil, çakışma yok
-  - ⚪ **R-5B Maliyet UI**: BEKLİYOR
-  - ⚪ **R-5C Alerjen UI**: BEKLİYOR
+  - ✅ **R-5B Maliyet Backend**: PUSH EDİLDİ (Claude commit `4716ebb`) — `factory-recipe-cost-service.ts` yeni servis (670 satır), 2 endpoint (`recalc-cost` + `bulk-recalc`), price_history audit fix. **Smoke test bekliyor (Aslan Build mode onayı).**
+  - ⚪ **R-5A/B/C Frontend**: smoke test sonrası başlar (~4.5 gün toplam)
 
 ### Kurallar
 1. **Her Claude oturumu başında:** bu bölümü oku, IN_PROGRESS task'ların dosyalarına dokunmadan önce Replit'e sor.
