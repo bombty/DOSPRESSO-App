@@ -65,6 +65,13 @@
 | `kurye` | DB'de yok | `04-kurye.md` mevcut ama hiç kullanıcı yok. Pilot süresince barista/bar_buddy çift görev. Dosya gelecekte rol açılırsa kullanılacak. |
 | `sube_kiosk` | 18 user | Şube içi kiosk hesabı, PIN tabanlı. Cheat sheet ayrı yok (kiosk akış cheat-sheet'lerde) |
 
+> **HQ user kiosk PIN notu:** HQ rolleri (admin, ceo, cgo, muhasebe_ik, satinalma,
+> kalite_kontrol, marketing, teknik, trainer, coach, destek, yatirimci_hq) **birincil
+> olarak web `/login`** kullanır. Kiosk PIN sadece istisnai durumda ve **yalnızca
+> Branch 23 (HQ)** için açılır — Lara/Işıklar/Fabrika için açılmaz. Detay:
+> `docs/pilot/hq-kiosk-pin-politikasi.md`. Mevcut HQ PIN sahipleri: `adminhq`,
+> `ece` (trainer), `test-employee` (test).
+
 ---
 
 ## 6. Parola Politikası (Pilot)

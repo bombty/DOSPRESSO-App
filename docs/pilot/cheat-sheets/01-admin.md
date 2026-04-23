@@ -56,6 +56,18 @@
 
 ---
 
+### HQ Kiosk PIN Politikası (KRİTİK — 28 Nis)
+
+- HQ rolleri (admin, ceo, cgo, muhasebe_ik, satinalma, kalite_kontrol, marketing,
+  teknik, trainer, coach, destek, yatirimci_hq) **birincil olarak web login** kullanır
+  (`/login` + kullanıcı adı + parola). Kiosk PIN gerekmez.
+- HQ user'a kiosk PIN gerekirse **YALNIZCA Branch 23 (HQ)** için açılır.
+  Lara/Işıklar/Fabrika kiosk PIN'i HQ user'a verilmez.
+- Mevcut HQ kiosk PIN sahipleri: `adminhq` (IT), `ece` (trainer demo),
+  `test-employee` (test, pilot sonrası kaldırılacak).
+- Detaylı politika ve doğrulama sorgusu: `docs/pilot/hq-kiosk-pin-politikasi.md`
+- İstisna gerekirse Aslan onayı + WhatsApp "DOSPRESSO Pilot — HQ" üzerinden talep.
+
 ### Pilot Parola Rotasyon (KRİTİK)
 
 - **27 Nis Pazar 22:30:** Tüm pilot kullanıcı parolaları sıfırlanır → `mustChangePassword=true`
