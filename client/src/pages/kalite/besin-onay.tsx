@@ -23,8 +23,11 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
   ShieldCheck, AlertTriangle, Search, CheckCircle2, Beaker, Info, X,
-  ChevronDown, ChevronRight, History, UserCheck,
+  ChevronDown, ChevronRight, History, UserCheck, Download,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PendingRow {
   id: number;
@@ -761,6 +764,20 @@ export default function KaliteBesinOnayPage() {
 
   const selectionCount = selectedIds.size;
 
+  const triggerExport = (format: "csv" | "xlsx") => {
+    const params = new URLSearchParams();
+    if (approvedSearch.trim()) params.set("search", approvedSearch.trim());
+    if (sourceFilter && sourceFilter !== "all") params.set("source", sourceFilter);
+    params.set("format", format);
+    const url = `/api/factory/ingredient-nutrition/approved/export?${params.toString()}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-7xl">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -936,6 +953,33 @@ export default function KaliteBesinOnayPage() {
                 <SelectItem value="manual">Manuel</SelectItem>
               </SelectContent>
             </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="sm:w-auto"
+                  disabled={!approvedQuery.data || approvedQuery.data.items.length === 0}
+                  data-testid="button-export-approved"
+                >
+                  <Download className="w-4 h-4" />
+                  Dışa aktar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => triggerExport("csv")}
+                  data-testid="menu-export-csv"
+                >
+                  CSV (.csv)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => triggerExport("xlsx")}
+                  data-testid="menu-export-xlsx"
+                >
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {approvedQuery.isLoading && <ListSkeleton count={4} />}

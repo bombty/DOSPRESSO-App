@@ -749,6 +749,177 @@ router.get("/api/factory/ingredient-nutrition/approved", isAuthenticated, async 
   }
 });
 
+// ═══════════════════════════════════════
+// GET /api/factory/ingredient-nutrition/approved/export?search=&source=&format=csv|xlsx
+// Task #172 — Onaylanmış besin kayıtlarını CSV/Excel olarak dışa aktar
+// ═══════════════════════════════════════
+
+function nutritionCsvEscape(v: any): string {
+  if (v === null || v === undefined) return "";
+  let s = String(v);
+  // Defense-in-depth: spreadsheet formula injection (Excel/LibreOffice) — yalnızca
+  // metin alanlarında risk; sayısal değerlerin başında bu karakterler oluşmaz.
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = "'" + s;
+  }
+  if (/[",\n;]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+router.get("/api/factory/ingredient-nutrition/approved/export", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canApproveNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Dışa aktarma yetkiniz yok" });
+    }
+
+    const format = String(req.query.format || "csv").toLowerCase() === "xlsx" ? "xlsx" : "csv";
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const sourceFilter = typeof req.query.source === "string" ? req.query.source.trim() : "";
+
+    const filters = [eq(factoryIngredientNutrition.confidence, 100)];
+    if (search) {
+      filters.push(ilike(factoryIngredientNutrition.ingredientName, `%${search}%`));
+    }
+    if (sourceFilter && sourceFilter !== "all") {
+      filters.push(eq(factoryIngredientNutrition.source, sourceFilter));
+    }
+
+    const rows = await db
+      .select({
+        id: factoryIngredientNutrition.id,
+        ingredientName: factoryIngredientNutrition.ingredientName,
+        energyKcal: factoryIngredientNutrition.energyKcal,
+        fatG: factoryIngredientNutrition.fatG,
+        saturatedFatG: factoryIngredientNutrition.saturatedFatG,
+        carbohydrateG: factoryIngredientNutrition.carbohydrateG,
+        sugarG: factoryIngredientNutrition.sugarG,
+        fiberG: factoryIngredientNutrition.fiberG,
+        proteinG: factoryIngredientNutrition.proteinG,
+        saltG: factoryIngredientNutrition.saltG,
+        allergens: factoryIngredientNutrition.allergens,
+        source: factoryIngredientNutrition.source,
+        updatedAt: factoryIngredientNutrition.updatedAt,
+        verifierFirstName: users.firstName,
+        verifierLastName: users.lastName,
+        verifierEmail: users.email,
+      })
+      .from(factoryIngredientNutrition)
+      .leftJoin(users, eq(users.id, factoryIngredientNutrition.verifiedBy))
+      .where(and(...filters))
+      .orderBy(desc(factoryIngredientNutrition.updatedAt))
+      .limit(5000);
+
+    const SOURCE_LABELS: Record<string, string> = {
+      manual: "Manuel",
+      manual_verified: "Manuel Onay",
+      ai: "AI",
+      usda: "USDA",
+      turkomp: "TÜRKOMP",
+    };
+
+    const records = rows.map((r) => {
+      const verifierName =
+        [r.verifierFirstName, r.verifierLastName].filter(Boolean).join(" ").trim() ||
+        r.verifierEmail ||
+        "—";
+      const updatedAt = r.updatedAt
+        ? (r.updatedAt instanceof Date ? r.updatedAt : new Date(r.updatedAt))
+        : null;
+      return {
+        hammadde: r.ingredientName,
+        enerji: r.energyKcal ?? "",
+        yag: r.fatG ?? "",
+        doymusYag: r.saturatedFatG ?? "",
+        karbonhidrat: r.carbohydrateG ?? "",
+        seker: r.sugarG ?? "",
+        lif: r.fiberG ?? "",
+        protein: r.proteinG ?? "",
+        tuz: r.saltG ?? "",
+        alerjenler: Array.isArray(r.allergens) ? r.allergens.join(", ") : "",
+        kaynak: SOURCE_LABELS[r.source ?? ""] ?? r.source ?? "",
+        onaylayan: verifierName,
+        onayTarihi: updatedAt
+          ? updatedAt.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })
+          : "",
+      };
+    });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const baseName = `besin_onayli_${stamp}`;
+
+    if (format === "xlsx") {
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "DOSPRESSO";
+      wb.created = new Date();
+      const sheet = wb.addWorksheet("Onaylanmış Besin Değerleri");
+      sheet.columns = [
+        { header: "Hammadde", key: "hammadde", width: 36 },
+        { header: "Enerji (kcal)", key: "enerji", width: 14 },
+        { header: "Yağ (g)", key: "yag", width: 12 },
+        { header: "Doymuş Yağ (g)", key: "doymusYag", width: 16 },
+        { header: "Karbonhidrat (g)", key: "karbonhidrat", width: 18 },
+        { header: "Şeker (g)", key: "seker", width: 12 },
+        { header: "Lif (g)", key: "lif", width: 12 },
+        { header: "Protein (g)", key: "protein", width: 12 },
+        { header: "Tuz (g)", key: "tuz", width: 12 },
+        { header: "Alerjenler", key: "alerjenler", width: 28 },
+        { header: "Kaynak", key: "kaynak", width: 16 },
+        { header: "Onaylayan", key: "onaylayan", width: 28 },
+        { header: "Onay Tarihi", key: "onayTarihi", width: 22 },
+      ];
+      sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      sheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF4472C4" },
+      };
+      for (const rec of records) sheet.addRow(rec);
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename="${baseName}.xlsx"`);
+      await wb.xlsx.write(res);
+      res.end();
+      return;
+    }
+
+    const headers = [
+      "Hammadde",
+      "Enerji (kcal)",
+      "Yağ (g)",
+      "Doymuş Yağ (g)",
+      "Karbonhidrat (g)",
+      "Şeker (g)",
+      "Lif (g)",
+      "Protein (g)",
+      "Tuz (g)",
+      "Alerjenler",
+      "Kaynak",
+      "Onaylayan",
+      "Onay Tarihi",
+    ];
+    const lines: string[] = [headers.join(",")];
+    for (const r of records) {
+      lines.push([
+        r.hammadde, r.enerji, r.yag, r.doymusYag, r.karbonhidrat, r.seker,
+        r.lif, r.protein, r.tuz, r.alerjenler, r.kaynak, r.onaylayan, r.onayTarihi,
+      ].map(nutritionCsvEscape).join(","));
+    }
+    const body = "\uFEFF" + lines.join("\r\n") + "\r\n";
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${baseName}.csv"`);
+    res.send(body);
+  } catch (error) {
+    console.error("Approved nutrition export error:", error);
+    res.status(500).json({ error: "Dışa aktarma başarısız" });
+  }
+});
+
 // GET /api/factory/ingredient-nutrition/:id/audit
 // Bu kayda ait son N onay/audit kaydını döner (önceki/sonraki değer ile)
 router.get("/api/factory/ingredient-nutrition/:id/audit", isAuthenticated, async (req: any, res: Response) => {
