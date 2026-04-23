@@ -1042,6 +1042,133 @@ router.get("/api/factory/ingredient-nutrition/:id/audit", isAuthenticated, async
 });
 
 // ═══════════════════════════════════════
+// Task #170 — Yanlış onaylanan kaydı bekleyene döndürme (revert)
+// ═══════════════════════════════════════
+
+const REVERT_ROLES = ["admin", "kalite_yoneticisi", "ust_yonetim"];
+
+function canRevertNutrition(role?: string | null): boolean {
+  return !!role && REVERT_ROLES.includes(role);
+}
+
+const revertSchema = z.object({
+  note: z.string().min(3, "Geri çevirme nedeni gerekli").max(500),
+  confidence: z.number().int().min(0).max(99).optional(),
+});
+
+// POST /api/factory/ingredient-nutrition/:id/revert
+// Onaylanan bir kaydı tekrar bekleyen statüye çevirir (yetki kontrollü).
+router.post("/api/factory/ingredient-nutrition/:id/revert", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canRevertNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Geri çevirme yetkiniz yok (admin / kalite_yoneticisi / ust_yonetim)" });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Geçersiz id" });
+    }
+
+    const parsed = revertSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Geçersiz veri", details: parsed.error.flatten() });
+    }
+
+    const [existing] = await db.select().from(factoryIngredientNutrition)
+      .where(eq(factoryIngredientNutrition.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: "Kayıt bulunamadı" });
+
+    if ((existing.confidence ?? 0) < 100) {
+      return res.status(409).json({ error: "Bu kayıt zaten bekleyen statüsünde" });
+    }
+
+    // Önceki onay öncesi snapshot'ı bulmaya çalış (history.before)
+    const [lastApprove] = await db.select({
+      before: factoryIngredientNutritionHistory.before,
+    })
+      .from(factoryIngredientNutritionHistory)
+      .where(and(
+        eq(factoryIngredientNutritionHistory.nutritionId, id),
+        or(
+          eq(factoryIngredientNutritionHistory.action, "approve"),
+          eq(factoryIngredientNutritionHistory.action, "bulk_approve"),
+        ),
+      ))
+      .orderBy(desc(factoryIngredientNutritionHistory.changedAt))
+      .limit(1);
+
+    const beforeSnap = (lastApprove?.before ?? null) as Partial<NutritionSnapshot> | null;
+    const fallbackConfidence = parsed.data.confidence ?? 80;
+    const previousConfidence = beforeSnap?.confidence;
+    const nextConfidence = (typeof previousConfidence === "number" && previousConfidence < 100)
+      ? previousConfidence
+      : fallbackConfidence;
+    const previousSource = beforeSnap?.source;
+    const nextSource = (typeof previousSource === "string" && previousSource && previousSource !== "manual_verified")
+      ? previousSource
+      : "manual";
+
+    const next = {
+      source: nextSource,
+      confidence: nextConfidence,
+      verifiedBy: null as string | null,
+      updatedAt: new Date(),
+    };
+
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx.update(factoryIngredientNutrition)
+        .set(next)
+        .where(eq(factoryIngredientNutrition.id, id))
+        .returning();
+
+      await tx.insert(factoryIngredientNutritionHistory).values({
+        nutritionId: id,
+        ingredientName: existing.ingredientName,
+        action: "revert",
+        source: "revert",
+        before: snapshotOf(existing),
+        after: snapshotOf({ ...existing, ...next }),
+        changedBy: req.user.id,
+        changedByRole: req.user.role ?? null,
+        note: parsed.data.note,
+      });
+
+      await tx.insert(auditLogs).values({
+        eventType: "factory.ingredient_nutrition.reverted",
+        userId: req.user.id,
+        actorRole: req.user.role,
+        action: "revert",
+        resource: "factory_ingredient_nutrition",
+        resourceId: String(id),
+        before: {
+          source: existing.source,
+          confidence: existing.confidence,
+          verifiedBy: existing.verifiedBy,
+        },
+        after: {
+          source: next.source,
+          confidence: next.confidence,
+          verifiedBy: next.verifiedBy,
+        },
+        details: {
+          ingredientName: existing.ingredientName,
+          note: parsed.data.note,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") ?? null,
+      });
+
+      return row;
+    });
+
+    res.json({ ok: true, item: updated });
+  } catch (error) {
+    console.error("Nutrition revert error:", error);
+    res.status(500).json({ error: "Geri çevirme başarısız" });
+  }
+});
+
+// ═══════════════════════════════════════
 // Task #183 — Geçmiş listeleme (gıda mühendisi paneli)
 // ═══════════════════════════════════════
 

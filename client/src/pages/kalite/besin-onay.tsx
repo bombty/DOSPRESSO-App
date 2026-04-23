@@ -23,11 +23,12 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import {
   ShieldCheck, AlertTriangle, Search, CheckCircle2, Beaker, Info, X,
-  ChevronDown, ChevronRight, History, UserCheck, Download,
+  ChevronDown, ChevronRight, History, UserCheck, Download, Undo2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PendingRow {
   id: number;
@@ -192,6 +193,7 @@ const ACTION_LABEL: Record<string, string> = {
   update: "Güncelleme",
   approve: "Onay",
   bulk_approve: "Toplu Onay",
+  revert: "Geri Çevirme",
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -200,6 +202,7 @@ const SOURCE_LABEL: Record<string, string> = {
   approve: "Tek tıkla onay",
   bulk_approve: "Toplu onay",
   seed: "Seed/import",
+  revert: "Bekleyene geri çevirme",
 };
 
 function formatActor(e: HistoryEntry): string {
@@ -511,7 +514,15 @@ function formatDelta(before: Record<string, unknown> | null, after: Record<strin
   return out;
 }
 
-function ApprovedTableRow({ row }: { row: ApprovedRow }) {
+function ApprovedTableRow({
+  row,
+  canRevert,
+  onRevert,
+}: {
+  row: ApprovedRow;
+  canRevert: boolean;
+  onRevert: (row: ApprovedRow) => void;
+}) {
   const [open, setOpen] = useState(false);
   const audit = useQuery<AuditResponse>({
     queryKey: ["/api/factory/ingredient-nutrition", row.id, "audit"],
@@ -572,10 +583,26 @@ function ApprovedTableRow({ row }: { row: ApprovedRow }) {
         <TableCell className="align-top whitespace-nowrap text-sm text-muted-foreground" data-testid={`text-approved-date-${row.id}`}>
           {formatDateTime(row.updatedAt)}
         </TableCell>
+        <TableCell className="text-right align-top whitespace-nowrap">
+          {canRevert ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRevert(row)}
+              data-testid={`button-revert-${row.id}`}
+              title="Bu kaydı tekrar bekleyene döndür"
+            >
+              <Undo2 className="w-3 h-3" />
+              Geri çevir
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </TableCell>
       </TableRow>
       {open && (
         <TableRow data-testid={`row-audit-${row.id}`}>
-          <TableCell colSpan={NUTRITION_FIELDS.length + 6} className="bg-muted/30">
+          <TableCell colSpan={NUTRITION_FIELDS.length + 7} className="bg-muted/30">
             <div className="p-3 space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <History className="w-4 h-4" />
@@ -655,8 +682,12 @@ function ApprovedTableRow({ row }: { row: ApprovedRow }) {
   );
 }
 
+const REVERT_ALLOWED_ROLES = new Set(["admin", "kalite_yoneticisi", "ust_yonetim"]);
+
 export default function KaliteBesinOnayPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canRevert = !!user?.role && REVERT_ALLOWED_ROLES.has(user.role);
   const [tab, setTab] = useState<"pending" | "approved">("pending");
   const [search, setSearch] = useState("");
   const [approvedSearch, setApprovedSearch] = useState("");
@@ -669,6 +700,40 @@ export default function KaliteBesinOnayPage() {
   const handleEditChange = (id: number, edit: EditState) => {
     editsRef.current.set(id, { ...edit });
   };
+  const [revertTarget, setRevertTarget] = useState<ApprovedRow | null>(null);
+  const [revertNote, setRevertNote] = useState("");
+
+  const revertMutation = useMutation({
+    mutationFn: async () => {
+      if (!revertTarget) throw new Error("Hedef kayıt yok");
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/ingredient-nutrition/${revertTarget.id}/revert`,
+        { note: revertNote.trim() },
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Bekleyene döndürüldü",
+        description: revertTarget
+          ? `${revertTarget.ingredientName} tekrar onay bekliyor.`
+          : "Kayıt bekleyene alındı.",
+      });
+      setRevertTarget(null);
+      setRevertNote("");
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/approved"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/recipes"] });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Geri çevirme başarısız",
+        description: errorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
 
   const pendingQuery = useQuery<PendingResponse>({
     queryKey: ["/api/factory/ingredient-nutrition/pending"],
@@ -1054,11 +1119,17 @@ export default function KaliteBesinOnayPage() {
                         <TableHead>Kaynak</TableHead>
                         <TableHead>Onaylayan</TableHead>
                         <TableHead>Tarih</TableHead>
+                        <TableHead className="text-right">Aksiyon</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {approvedQuery.data.items.map(row => (
-                        <ApprovedTableRow key={row.id} row={row} />
+                        <ApprovedTableRow
+                          key={row.id}
+                          row={row}
+                          canRevert={canRevert}
+                          onRevert={(r) => setRevertTarget(r)}
+                        />
                       ))}
                     </TableBody>
                   </Table>
@@ -1083,6 +1154,64 @@ export default function KaliteBesinOnayPage() {
         ingredientName={historyTarget?.name ?? ""}
         nutritionId={historyTarget?.id ?? null}
       />
+
+      <Dialog
+        open={revertTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !revertMutation.isPending) {
+            setRevertTarget(null);
+            setRevertNote("");
+          }
+        }}
+      >
+        <DialogContent data-testid="dialog-revert-approved">
+          <DialogHeader>
+            <DialogTitle>Onayı geri çevir</DialogTitle>
+            <DialogDescription>
+              {revertTarget?.ingredientName ?? ""} kaydı tekrar bekleyen statüsüne alınacak.
+              Onayı veren bilgisi temizlenir; güven değeri onay öncesindeki seviyeye
+              (yoksa %80'e) düşürülür ve geri çevirme nedeni audit defterine yazılır.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="revert-note">
+              Geri çevirme nedeni <span className="text-destructive">*</span>
+            </label>
+            <Textarea
+              id="revert-note"
+              value={revertNote}
+              onChange={(e) => setRevertNote(e.target.value)}
+              placeholder="Örn. Yanlış kaynak referansı, AI değerleri laboratuvar sonucuyla uyuşmuyor..."
+              rows={3}
+              minLength={3}
+              maxLength={500}
+              data-testid="input-revert-note"
+            />
+            <p className="text-xs text-muted-foreground">
+              En az 3 karakter zorunlu. Bu not geçmiş kayıtlarında görünecek.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setRevertTarget(null); setRevertNote(""); }}
+              disabled={revertMutation.isPending}
+              data-testid="button-cancel-revert"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => revertMutation.mutate()}
+              disabled={revertMutation.isPending || revertNote.trim().length < 3}
+              data-testid="button-confirm-revert"
+            >
+              <Undo2 className="w-3 h-3" />
+              {revertMutation.isPending ? "Çevriliyor..." : "Bekleyene döndür"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={bulkDialogOpen} onOpenChange={(open) => {
         if (!bulkMutation.isPending) setBulkDialogOpen(open);
