@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
-  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet,
+  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -947,6 +947,34 @@ export default function FabrikaReceteDuzenle() {
                 }}
                 data-testid="input-bulk-file"
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const headers = ["refId", "ad", "miktar", "birim", "kategori", "tip"];
+                  const rows = [
+                    ["0001", "Un", "5000", "gr", "ana", "normal"],
+                    ["0002", "Şeker", "800", "gr", "ana", "normal"],
+                    ["0003", "Tuz", "20", "gr", "ana", "normal"],
+                    ["0004", "Su", "2500", "ml", "ana", "normal"],
+                  ];
+                  const escape = (v: string) => /[",;\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+                  const csv = [headers, ...rows].map(r => r.map(escape).join(";")).join("\r\n");
+                  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "recete-malzeme-sablonu.csv";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                data-testid="button-bulk-download-template"
+              >
+                <Download className="w-3.5 h-3.5 mr-1" /> Şablon indir
+              </Button>
               <span className="text-xs text-muted-foreground">veya aşağıya yapıştırın (Excel'den TAB, CSV'de virgül/noktalı virgül)</span>
             </div>
 
