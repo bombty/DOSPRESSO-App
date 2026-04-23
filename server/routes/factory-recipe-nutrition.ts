@@ -9,15 +9,91 @@ import {
   factoryRecipes, factoryRecipeIngredients, factoryRecipeSteps,
   factoryKeyblends, factoryKeyblendIngredients,
   factoryIngredientNutrition,
+  factoryIngredientNutritionHistory,
   auditLogs,
   users,
 } from "@shared/schema";
-import { eq, sql, lt, asc, desc, and, ilike } from "drizzle-orm";
+import { eq, sql, lt, asc, desc, and, ilike, or } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { z } from "zod";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 
 const router = Router();
+
+// ═══════════════════════════════════════
+// Task #183 — Besin değer geçmişi (audit / version history)
+// ═══════════════════════════════════════
+
+type NutritionSnapshot = {
+  energyKcal: string | number | null;
+  fatG: string | number | null;
+  saturatedFatG: string | number | null;
+  transFatG: string | number | null;
+  carbohydrateG: string | number | null;
+  sugarG: string | number | null;
+  fiberG: string | number | null;
+  proteinG: string | number | null;
+  saltG: string | number | null;
+  sodiumMg: string | number | null;
+  allergens: string[] | null;
+  source: string | null;
+  confidence: number | null;
+  verifiedBy: string | null;
+};
+
+function snapshotOf(row: Partial<NutritionSnapshot> | null | undefined): NutritionSnapshot | null {
+  if (!row) return null;
+  return {
+    energyKcal: row.energyKcal ?? null,
+    fatG: row.fatG ?? null,
+    saturatedFatG: row.saturatedFatG ?? null,
+    transFatG: row.transFatG ?? null,
+    carbohydrateG: row.carbohydrateG ?? null,
+    sugarG: row.sugarG ?? null,
+    fiberG: row.fiberG ?? null,
+    proteinG: row.proteinG ?? null,
+    saltG: row.saltG ?? null,
+    sodiumMg: row.sodiumMg ?? null,
+    allergens: row.allergens ?? null,
+    source: row.source ?? null,
+    confidence: row.confidence ?? null,
+    verifiedBy: row.verifiedBy ?? null,
+  };
+}
+
+async function recordNutritionHistory(
+  tx: any,
+  args: {
+    nutritionId: number | null;
+    ingredientName: string;
+    action: "create" | "update" | "approve" | "bulk_approve";
+    source: "ingredient_post" | "nutrition_put" | "approve" | "bulk_approve" | "seed";
+    before: Partial<NutritionSnapshot> | null;
+    after: Partial<NutritionSnapshot>;
+    changedBy: string | null;
+    changedByRole: string | null;
+    note?: string | null;
+  },
+): Promise<void> {
+  const beforeSnap = snapshotOf(args.before);
+  const afterSnap = snapshotOf(args.after);
+  // Update'lerde değer değişmediyse history yazma — gürültüyü önle
+  if (args.action === "update" && beforeSnap && afterSnap) {
+    const same = JSON.stringify(beforeSnap) === JSON.stringify(afterSnap);
+    if (same) return;
+  }
+  await tx.insert(factoryIngredientNutritionHistory).values({
+    nutritionId: args.nutritionId,
+    ingredientName: args.ingredientName,
+    action: args.action,
+    source: args.source,
+    before: beforeSnap,
+    after: afterSnap,
+    changedBy: args.changedBy,
+    changedByRole: args.changedByRole,
+    note: args.note ?? null,
+  });
+}
 
 // ═══════════════════════════════════════
 // ALERJEN TESPİTİ (14 AB/TR alerjen)
@@ -441,6 +517,19 @@ router.patch("/api/factory/ingredient-nutrition/:id/onay", isAuthenticated, asyn
         .where(eq(factoryIngredientNutrition.id, id))
         .returning();
 
+      // Task #183 — denetim defterine kayıt (versiyon geçmişi)
+      await recordNutritionHistory(tx, {
+        nutritionId: id,
+        ingredientName: existing.ingredientName,
+        action: "approve",
+        source: "approve",
+        before: existing,
+        after: { ...existing, ...next },
+        changedBy: req.user.id,
+        changedByRole: req.user.role ?? null,
+        note: body.note ?? null,
+      });
+
       await tx.insert(auditLogs).values({
         eventType: "factory.ingredient_nutrition.approved",
         userId: req.user.id,
@@ -544,6 +633,19 @@ router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, asy
           .set(next)
           .where(eq(factoryIngredientNutrition.id, id))
           .returning();
+
+        // Task #183 — denetim defterine kayıt (versiyon geçmişi)
+        await recordNutritionHistory(tx, {
+          nutritionId: id,
+          ingredientName: existing.ingredientName,
+          action: "bulk_approve",
+          source: "bulk_approve",
+          before: existing,
+          after: { ...existing, ...next },
+          changedBy: req.user.id,
+          changedByRole: req.user.role ?? null,
+          note: note ?? null,
+        });
 
         await tx.insert(auditLogs).values({
           eventType: "factory.ingredient_nutrition.approved",
@@ -691,6 +793,84 @@ router.get("/api/factory/ingredient-nutrition/:id/audit", isAuthenticated, async
   } catch (error) {
     console.error("Nutrition audit fetch error:", error);
     res.status(500).json({ error: "Audit kayıtları getirilemedi" });
+  }
+});
+
+// ═══════════════════════════════════════
+// Task #183 — Geçmiş listeleme (gıda mühendisi paneli)
+// ═══════════════════════════════════════
+
+const HISTORY_VIEW_ROLES = ["admin", "gida_muhendisi", "kalite_yoneticisi", "ust_yonetim", "recete_gm", "ceo"];
+
+function canViewHistory(role?: string | null): boolean {
+  return !!role && HISTORY_VIEW_ROLES.includes(role);
+}
+
+// GET /api/factory/ingredient-nutrition/:id/history
+//   id sayısalsa nutritionId üzerinden, değilse ingredientName (kanonik) üzerinden listeler.
+router.get("/api/factory/ingredient-nutrition/:idOrName/history", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canViewHistory(req.user?.role)) {
+      return res.status(403).json({ error: "Geçmiş görüntüleme yetkiniz yok" });
+    }
+
+    const raw = String(req.params.idOrName ?? "");
+    const asInt = Number(raw);
+    const isId = Number.isInteger(asInt) && asInt > 0 && /^\d+$/.test(raw);
+
+    let nutritionId: number | null = null;
+    let ingredientName: string | null = null;
+
+    if (isId) {
+      nutritionId = asInt;
+      const [row] = await db.select().from(factoryIngredientNutrition)
+        .where(eq(factoryIngredientNutrition.id, asInt)).limit(1);
+      if (row) ingredientName = row.ingredientName;
+    } else {
+      ingredientName = canonicalIngredientName(raw);
+      if (!ingredientName) return res.json({ items: [], total: 0 });
+      const [row] = await db.select().from(factoryIngredientNutrition)
+        .where(eq(factoryIngredientNutrition.ingredientName, ingredientName)).limit(1);
+      if (row) nutritionId = row.id;
+    }
+
+    // Hem nutritionId hem ingredientName ile eşleşenleri al (rename / silinmiş kayıtlar için)
+    const conditions = [];
+    if (nutritionId !== null) conditions.push(eq(factoryIngredientNutritionHistory.nutritionId, nutritionId));
+    if (ingredientName) conditions.push(eq(factoryIngredientNutritionHistory.ingredientName, ingredientName));
+    if (conditions.length === 0) return res.json({ items: [], total: 0 });
+
+    const rows = await db.select({
+      id: factoryIngredientNutritionHistory.id,
+      nutritionId: factoryIngredientNutritionHistory.nutritionId,
+      ingredientName: factoryIngredientNutritionHistory.ingredientName,
+      action: factoryIngredientNutritionHistory.action,
+      source: factoryIngredientNutritionHistory.source,
+      before: factoryIngredientNutritionHistory.before,
+      after: factoryIngredientNutritionHistory.after,
+      changedBy: factoryIngredientNutritionHistory.changedBy,
+      changedByRole: factoryIngredientNutritionHistory.changedByRole,
+      changedAt: factoryIngredientNutritionHistory.changedAt,
+      note: factoryIngredientNutritionHistory.note,
+      changedByName: users.firstName,
+      changedByLastName: users.lastName,
+      changedByEmail: users.email,
+    })
+      .from(factoryIngredientNutritionHistory)
+      .leftJoin(users, eq(users.id, factoryIngredientNutritionHistory.changedBy))
+      .where(conditions.length === 1 ? conditions[0] : or(...conditions))
+      .orderBy(desc(factoryIngredientNutritionHistory.changedAt))
+      .limit(200);
+
+    res.json({
+      items: rows,
+      total: rows.length,
+      ingredientName,
+      nutritionId,
+    });
+  } catch (error) {
+    console.error("Nutrition history list error:", error);
+    res.status(500).json({ error: "Geçmiş yüklenemedi" });
   }
 });
 

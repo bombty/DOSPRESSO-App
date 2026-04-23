@@ -444,6 +444,45 @@ export const insertFactoryIngredientNutritionSchema = createInsertSchema(factory
 export type FactoryIngredientNutrition = typeof factoryIngredientNutrition.$inferSelect;
 
 // ────────────────────────────────────────
+// +1b. HAMMADDE BESİN DEĞER GEÇMİŞİ (Audit / version history)
+//      Task #183 — Her insert/update sonrası eski + yeni değerler,
+//      kullanıcı, zaman ve değişiklik kaynağı kaydedilir. ISO/HACCP
+//      açısından "kim, ne zaman, neyi değiştirdi" sorusunu cevaplar.
+// ────────────────────────────────────────
+
+export const factoryIngredientNutritionHistory = pgTable("factory_ingredient_nutrition_history", {
+  id: serial("id").primaryKey(),
+
+  // Kaynak satırı (silinirse cascade) + isim (rename/sil sonrası raporlama için)
+  nutritionId: integer("nutrition_id").references(() => factoryIngredientNutrition.id, { onDelete: "cascade" }),
+  ingredientName: varchar("ingredient_name", { length: 255 }).notNull(),
+
+  // Eylem türü: create | update | approve | bulk_approve
+  action: varchar("action", { length: 20 }).notNull(),
+
+  // Çağrı kaynağı: ingredient_post | nutrition_put | approve | bulk_approve | seed
+  source: varchar("source", { length: 30 }).notNull(),
+
+  // Eski / yeni değerlerin tam fotoğrafı (besin + alerjen + meta)
+  before: jsonb("before"),
+  after: jsonb("after").notNull(),
+
+  // Kim, ne zaman
+  changedBy: varchar("changed_by").references(() => users.id, { onDelete: "set null" }),
+  changedByRole: varchar("changed_by_role", { length: 30 }),
+  changedAt: timestamp("changed_at", { withTimezone: true }).defaultNow().notNull(),
+
+  // Opsiyonel açıklama / not
+  note: text("note"),
+}, (table) => [
+  index("finh_nutrition_idx").on(table.nutritionId),
+  index("finh_name_idx").on(table.ingredientName),
+  index("finh_changed_at_idx").on(table.changedAt),
+]);
+
+export type FactoryIngredientNutritionHistory = typeof factoryIngredientNutritionHistory.$inferSelect;
+
+// ────────────────────────────────────────
 // 9. REÇETE FİYAT DEĞİŞİKLİK GEÇMİŞİ (Audit)
 //    Recalc script ve manuel fiyat güncellemeleri için kalıcı denetim kaydı.
 //    Task #98'de geçici olarak kaldırılmıştı, Task #106 ile yeniden açıldı.

@@ -147,13 +147,206 @@ function verifierLabel(row: ApprovedRow | AuditEntry): string {
   return name || email || "—";
 }
 
+interface HistoryEntry {
+  id: number;
+  nutritionId: number | null;
+  ingredientName: string;
+  action: string;
+  source: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  changedBy: string | null;
+  changedByRole: string | null;
+  changedAt: string;
+  note: string | null;
+  changedByName: string | null;
+  changedByLastName: string | null;
+  changedByEmail: string | null;
+}
+
+interface HistoryResponse {
+  items: HistoryEntry[];
+  total: number;
+  ingredientName: string | null;
+  nutritionId: number | null;
+}
+
+const HISTORY_FIELDS: Array<{ key: string; label: string; unit: string }> = [
+  { key: "energyKcal", label: "Enerji", unit: "kcal" },
+  { key: "fatG", label: "Yağ", unit: "g" },
+  { key: "saturatedFatG", label: "D.Yağ", unit: "g" },
+  { key: "transFatG", label: "T.Yağ", unit: "g" },
+  { key: "carbohydrateG", label: "Karb.", unit: "g" },
+  { key: "sugarG", label: "Şeker", unit: "g" },
+  { key: "fiberG", label: "Lif", unit: "g" },
+  { key: "proteinG", label: "Prot.", unit: "g" },
+  { key: "saltG", label: "Tuz", unit: "g" },
+  { key: "sodiumMg", label: "Sodyum", unit: "mg" },
+];
+
+const ACTION_LABEL: Record<string, string> = {
+  create: "Oluşturma",
+  update: "Güncelleme",
+  approve: "Onay",
+  bulk_approve: "Toplu Onay",
+};
+
+const SOURCE_LABEL: Record<string, string> = {
+  ingredient_post: "Reçete malzemesi",
+  nutrition_put: "Onay paneli düzenleme",
+  approve: "Tek tıkla onay",
+  bulk_approve: "Toplu onay",
+  seed: "Seed/import",
+};
+
+function formatActor(e: HistoryEntry): string {
+  const name = [e.changedByName, e.changedByLastName].filter(Boolean).join(" ").trim();
+  if (name) return name;
+  if (e.changedByEmail) return e.changedByEmail;
+  if (e.changedBy) return e.changedBy;
+  return "Sistem";
+}
+
+function diffPairs(before: Record<string, unknown> | null, after: Record<string, unknown> | null) {
+  const pairs: Array<{ key: string; label: string; unit: string; before: string; after: string; changed: boolean }> = [];
+  for (const f of HISTORY_FIELDS) {
+    const b = before ? before[f.key] : null;
+    const a = after ? after[f.key] : null;
+    const bs = b == null || b === "" ? "—" : String(b);
+    const as = a == null || a === "" ? "—" : String(a);
+    if (bs === "—" && as === "—") continue;
+    pairs.push({ key: f.key, label: f.label, unit: f.unit, before: bs, after: as, changed: bs !== as });
+  }
+  // Allergens
+  const ba = before ? (before as any).allergens : null;
+  const aa = after ? (after as any).allergens : null;
+  const bsA = Array.isArray(ba) ? (ba.join(", ") || "—") : "—";
+  const asA = Array.isArray(aa) ? (aa.join(", ") || "—") : "—";
+  if (bsA !== "—" || asA !== "—") {
+    pairs.push({ key: "allergens", label: "Alerjenler", unit: "", before: bsA, after: asA, changed: bsA !== asA });
+  }
+  return pairs;
+}
+
+function HistoryDialog({ open, onOpenChange, ingredientName, nutritionId }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  ingredientName: string;
+  nutritionId: number | null;
+}) {
+  const queryKey = ["/api/factory/ingredient-nutrition", nutritionId, "history"] as const;
+  const { data, isLoading, error } = useQuery<HistoryResponse>({
+    queryKey,
+    enabled: open && nutritionId != null,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/factory/ingredient-nutrition/${nutritionId}/history`);
+      return res.json();
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto" data-testid="dialog-nutrition-history">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="w-4 h-4" /> Besin değer geçmişi — {ingredientName}
+          </DialogTitle>
+          <DialogDescription>
+            Bu hammaddenin besin değerlerinde yapılmış tüm insert/update kayıtları.
+            Kim, ne zaman, hangi ekranda değiştirdi — eski / yeni değerler ile birlikte.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading && <ListSkeleton count={2} />}
+        {error && <ErrorState message={`Geçmiş yüklenemedi: ${errorMessage(error)}`} />}
+        {data && data.items.length === 0 && (
+          <EmptyState
+            title="Henüz değişiklik kaydı yok"
+            description="Bu hammadde için audit defterinde kayıt bulunmuyor."
+            icon={History}
+          />
+        )}
+
+        <div className="space-y-3">
+          {data?.items.map((entry) => {
+            const pairs = diffPairs(entry.before, entry.after);
+            return (
+              <Card key={entry.id} data-testid={`card-history-entry-${entry.id}`}>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="default" data-testid={`badge-action-${entry.id}`}>
+                        {ACTION_LABEL[entry.action] ?? entry.action}
+                      </Badge>
+                      <Badge variant="outline">
+                        {SOURCE_LABEL[entry.source] ?? entry.source}
+                      </Badge>
+                      {entry.changedByRole && (
+                        <Badge variant="secondary">{entry.changedByRole}</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      {new Date(entry.changedAt).toLocaleString("tr-TR")}
+                    </div>
+                  </div>
+                  <CardDescription className="text-xs pt-1">
+                    <span className="font-medium">{formatActor(entry)}</span>
+                    {entry.note && <span className="ml-2">— {entry.note}</span>}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  {pairs.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">Sayısal değer değişikliği yok (sadece meta).</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[120px]">Alan</TableHead>
+                            <TableHead className="text-right">Eski</TableHead>
+                            <TableHead className="text-right">Yeni</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pairs.map(p => (
+                            <TableRow key={p.key} className={p.changed ? "bg-muted/40" : undefined}>
+                              <TableCell className="text-xs">
+                                {p.label} {p.unit && <span className="text-muted-foreground">({p.unit})</span>}
+                              </TableCell>
+                              <TableCell className="text-right text-xs tabular-nums">{p.before}</TableCell>
+                              <TableCell className={`text-right text-xs tabular-nums ${p.changed ? "font-semibold" : ""}`}>
+                                {p.after}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-close-history">
+            Kapat
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface PendingTableRowProps {
   row: PendingRow;
   selected: boolean;
   onToggleSelect: (id: number, checked: boolean) => void;
+  onShowHistory: (row: PendingRow) => void;
 }
 
-function PendingTableRow({ row, selected, onToggleSelect }: PendingTableRowProps) {
+function PendingTableRow({ row, selected, onToggleSelect, onShowHistory }: PendingTableRowProps) {
   const { toast } = useToast();
   const [edit, setEdit] = useState<EditState>(() => buildInitialEdit(row));
 
@@ -243,15 +436,27 @@ function PendingTableRow({ row, selected, onToggleSelect }: PendingTableRowProps
         </Badge>
       </TableCell>
       <TableCell className="text-right align-top">
-        <Button
-          size="sm"
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-          data-testid={`button-approve-${row.id}`}
-        >
-          <CheckCircle2 className="w-3 h-3" />
-          {mutation.isPending ? "..." : "Onayla"}
-        </Button>
+        <div className="flex items-center justify-end gap-1 flex-wrap">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onShowHistory(row)}
+            data-testid={`button-history-${row.id}`}
+            title="Değişiklik geçmişi"
+          >
+            <History className="w-3 h-3" />
+            Geçmiş
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+            data-testid={`button-approve-${row.id}`}
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            {mutation.isPending ? "..." : "Onayla"}
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -448,6 +653,7 @@ export default function KaliteBesinOnayPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkNote, setBulkNote] = useState("");
+  const [historyTarget, setHistoryTarget] = useState<{ id: number; name: string } | null>(null);
 
   const pendingQuery = useQuery<PendingResponse>({
     queryKey: ["/api/factory/ingredient-nutrition/pending"],
@@ -694,6 +900,7 @@ export default function KaliteBesinOnayPage() {
                           row={row}
                           selected={selectedIds.has(row.id)}
                           onToggleSelect={toggleSelect}
+                          onShowHistory={(r) => setHistoryTarget({ id: r.id, name: r.ingredientName })}
                         />
                       ))}
                     </TableBody>
@@ -792,6 +999,13 @@ export default function KaliteBesinOnayPage() {
           Tüm onaylar audit log&apos;a önceki/sonraki değerleriyle yazılır.
         </span>
       </div>
+
+      <HistoryDialog
+        open={historyTarget !== null}
+        onOpenChange={(open) => { if (!open) setHistoryTarget(null); }}
+        ingredientName={historyTarget?.name ?? ""}
+        nutritionId={historyTarget?.id ?? null}
+      />
 
       <Dialog open={bulkDialogOpen} onOpenChange={(open) => {
         if (!bulkMutation.isPending) setBulkDialogOpen(open);

@@ -716,20 +716,54 @@ router.put("/api/factory/ingredient-nutrition/:name", isAuthenticated, async (re
       saltG: toNum(body.saltG),
       allergens: Array.isArray(body.allergens) ? body.allergens : [],
     };
-    const [row] = await db.insert(factoryIngredientNutrition).values({
-      ingredientName: canonical,
-      ...nutValues,
-      source: "manual",
-      verifiedBy: req.user.id,
-    }).onConflictDoUpdate({
-      target: factoryIngredientNutrition.ingredientName,
-      set: {
+    const row = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(factoryIngredientNutrition)
+        .where(eq(factoryIngredientNutrition.ingredientName, canonical)).limit(1);
+      const [upserted] = await tx.insert(factoryIngredientNutrition).values({
+        ingredientName: canonical,
         ...nutValues,
         source: "manual",
         verifiedBy: req.user.id,
-        updatedAt: new Date(),
-      },
-    }).returning();
+      }).onConflictDoUpdate({
+        target: factoryIngredientNutrition.ingredientName,
+        set: {
+          ...nutValues,
+          source: "manual",
+          verifiedBy: req.user.id,
+          updatedAt: new Date(),
+        },
+      }).returning();
+
+      // Task #183 — denetim defterine kayıt
+      await tx.insert(factoryIngredientNutritionHistory).values({
+        nutritionId: upserted.id,
+        ingredientName: canonical,
+        action: existing ? "update" : "create",
+        source: "nutrition_put",
+        before: existing ? {
+          energyKcal: existing.energyKcal, fatG: existing.fatG,
+          saturatedFatG: existing.saturatedFatG, transFatG: existing.transFatG,
+          carbohydrateG: existing.carbohydrateG, sugarG: existing.sugarG,
+          fiberG: existing.fiberG, proteinG: existing.proteinG,
+          saltG: existing.saltG, sodiumMg: existing.sodiumMg,
+          allergens: existing.allergens, source: existing.source,
+          confidence: existing.confidence, verifiedBy: existing.verifiedBy,
+        } : null,
+        after: {
+          energyKcal: upserted.energyKcal, fatG: upserted.fatG,
+          saturatedFatG: upserted.saturatedFatG, transFatG: upserted.transFatG,
+          carbohydrateG: upserted.carbohydrateG, sugarG: upserted.sugarG,
+          fiberG: upserted.fiberG, proteinG: upserted.proteinG,
+          saltG: upserted.saltG, sodiumMg: upserted.sodiumMg,
+          allergens: upserted.allergens, source: upserted.source,
+          confidence: upserted.confidence, verifiedBy: upserted.verifiedBy,
+        },
+        changedBy: req.user.id,
+        changedByRole: req.user.role ?? null,
+      });
+
+      return upserted;
+    });
     res.json(row);
   } catch (error) {
     console.error("Upsert ingredient nutrition error:", error);
@@ -832,8 +866,11 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
             saltG: toNum(nutrition.saltG),
             allergens: allergensArr,
           };
-          await tx.insert(factoryIngredientNutrition).values({
-            ingredientName: canonicalIngredientName(ingredientName),
+          const canonicalName = canonicalIngredientName(ingredientName);
+          const [existingNut] = await tx.select().from(factoryIngredientNutrition)
+            .where(eq(factoryIngredientNutrition.ingredientName, canonicalName)).limit(1);
+          const [upsertedNut] = await tx.insert(factoryIngredientNutrition).values({
+            ingredientName: canonicalName,
             ...nutValues,
             source: "manual",
             verifiedBy: req.user.id,
@@ -845,6 +882,35 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
               verifiedBy: req.user.id,
               updatedAt: new Date(),
             },
+          }).returning();
+
+          // Task #183 — denetim defterine kayıt
+          await tx.insert(factoryIngredientNutritionHistory).values({
+            nutritionId: upsertedNut.id,
+            ingredientName: canonicalName,
+            action: existingNut ? "update" : "create",
+            source: "ingredient_post",
+            before: existingNut ? {
+              energyKcal: existingNut.energyKcal, fatG: existingNut.fatG,
+              saturatedFatG: existingNut.saturatedFatG, transFatG: existingNut.transFatG,
+              carbohydrateG: existingNut.carbohydrateG, sugarG: existingNut.sugarG,
+              fiberG: existingNut.fiberG, proteinG: existingNut.proteinG,
+              saltG: existingNut.saltG, sodiumMg: existingNut.sodiumMg,
+              allergens: existingNut.allergens, source: existingNut.source,
+              confidence: existingNut.confidence, verifiedBy: existingNut.verifiedBy,
+            } : null,
+            after: {
+              energyKcal: upsertedNut.energyKcal, fatG: upsertedNut.fatG,
+              saturatedFatG: upsertedNut.saturatedFatG, transFatG: upsertedNut.transFatG,
+              carbohydrateG: upsertedNut.carbohydrateG, sugarG: upsertedNut.sugarG,
+              fiberG: upsertedNut.fiberG, proteinG: upsertedNut.proteinG,
+              saltG: upsertedNut.saltG, sodiumMg: upsertedNut.sodiumMg,
+              allergens: upsertedNut.allergens, source: upsertedNut.source,
+              confidence: upsertedNut.confidence, verifiedBy: upsertedNut.verifiedBy,
+            },
+            changedBy: req.user.id,
+            changedByRole: req.user.role ?? null,
+            note: `Reçete malzemesi eklenirken (recipe ${recipeId})`,
           });
         }
       }
