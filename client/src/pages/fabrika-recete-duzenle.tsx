@@ -444,6 +444,34 @@ export default function FabrikaReceteDuzenle() {
         }
         throw new Error(data?.error || data?.message || "Toplu içe aktarma başarısız");
       }
+      // Task #195: Eksik besin değer rozetinin sayısı, sunucu cevabıyla
+      // eşzamanlı olarak hemen güncellensin diye `ingredients` state'ini ve
+      // `/api/factory/ingredient-names` cache'ini optimistik güncelliyoruz.
+      // İnvalide etmeden önce uygulamak şart: refetch tamamlanana kadar
+      // ekrandaki rozet bir an önceki duruma karşılık gelmesin.
+      const missing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
+      const missingSet = new Set(missing.map(m => String(m).toLocaleLowerCase("tr")));
+      const serverIngredients: any[] = Array.isArray(data?.ingredients) ? data.ingredients : [];
+      if (serverIngredients.length > 0) {
+        setIngredients(serverIngredients);
+      }
+      qc.setQueryData<IngredientNameOption[]>(["/api/factory/ingredient-names"], (prev) => {
+        const merged = new Map<string, IngredientNameOption>();
+        for (const item of prev || []) {
+          merged.set(item.name.toLocaleLowerCase("tr"), { name: item.name, hasNutrition: item.hasNutrition });
+        }
+        for (const ing of serverIngredients) {
+          const nm = String(ing?.name || "").trim();
+          if (!nm) continue;
+          const key = nm.toLocaleLowerCase("tr");
+          const existing = merged.get(key);
+          // Sunucu missingNutrition listesinde yoksa nutrition kaydı vardır.
+          const hasNutrition = !missingSet.has(key);
+          merged.set(key, { name: existing?.name || nm, hasNutrition });
+        }
+        return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, "tr"));
+      });
+
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
       qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"] });
@@ -457,7 +485,6 @@ export default function FabrikaReceteDuzenle() {
       setBulkParseError(null);
 
       // Task #177: Eksik besin değer kayıtları varsa anında doldurma diyaloğu aç
-      const missing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
       if (missing.length > 0) {
         const initial: Record<string, RowNutrition> = {};
         for (const n of missing) initial[n] = emptyRowNutrition();
@@ -553,14 +580,30 @@ export default function FabrikaReceteDuzenle() {
       if (!res.ok) {
         throw new Error(data?.error || data?.message || "Besin değerleri kaydedilemedi");
       }
+      // Task #195: Sunucu cevabını beklemeden eksik nutrition rozeti
+      // güncellensin diye ingredient-names cache'ini optimistik olarak
+      // güncelle: filledCanonicals içinde olup hâlâ-missing dönmeyen
+      // isimleri hasNutrition: true yap.
+      const stillMissing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
+      const stillMissingCanonicals = new Set(stillMissing.map(m => canonicalIngredientName(m)));
+      qc.setQueryData<IngredientNameOption[]>(["/api/factory/ingredient-names"], (prev) => {
+        if (!prev) return prev;
+        return prev.map(item => {
+          const canonical = canonicalIngredientName(item.name);
+          if (filledCanonicals.has(canonical) && !stillMissingCanonicals.has(canonical)) {
+            return { ...item, hasNutrition: true };
+          }
+          return item;
+        });
+      });
+
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
       qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
 
       // Sunucu hâlâ missingNutrition döndürdüyse bizim doldurduklarımızdan
       // hangileri yazılamamış? Yetki/sessiz-yoksay durumlarında olabilir.
-      const stillMissing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
       const filledButStillMissing = Array.from(filledCanonicals).filter(c =>
-        stillMissing.some(m => canonicalIngredientName(m) === c),
+        stillMissingCanonicals.has(c),
       );
       if (filledButStillMissing.length > 0) {
         setBulkNutritionError(
