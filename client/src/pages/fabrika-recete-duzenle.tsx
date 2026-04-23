@@ -23,8 +23,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
-  ChevronsUpDown, Check, AlertTriangle, Pencil,
+  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +143,13 @@ export default function FabrikaReceteDuzenle() {
     })();
     return () => { cancelled = true; };
   }, [dialogIngredientName]);
+
+  // Task #160: Bulk import state
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkParseError, setBulkParseError] = useState<string | null>(null);
+  const [bulkUnknown, setBulkUnknown] = useState<string[]>([]);
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
   // Kanonik malzeme isim listesi (auto-complete için)
   const { data: ingredientNames = [] } = useQuery<IngredientNameOption[]>({
@@ -269,6 +279,132 @@ export default function FabrikaReceteDuzenle() {
     } catch { toast({ title: "Hata", variant: "destructive" }); }
   };
 
+  // ── BULK IMPORT (Excel/CSV) ──────────────────────────────────────────────
+  // Beklenen sütunlar (TSV/CSV): refId, name, amount, unit, category?, type?
+  // Excel'den yapıştırma genelde TAB ile gelir; CSV virgül/noktalı virgül olabilir.
+  type BulkRow = {
+    refId: string;
+    name: string;
+    amount: string;
+    unit: string;
+    category: string;
+    type: string;
+    isCanonical: boolean;
+    error?: string;
+  };
+
+  const detectDelimiter = (sample: string): string => {
+    if (sample.includes("\t")) return "\t";
+    const semi = (sample.match(/;/g) || []).length;
+    const com = (sample.match(/,/g) || []).length;
+    return semi > com ? ";" : ",";
+  };
+
+  const HEADER_KEYS = ["refid", "ref", "kod", "name", "isim", "malzeme", "ad", "amount", "miktar", "unit", "birim", "category", "kategori", "type", "tip"];
+  const looksLikeHeader = (cells: string[]): boolean => {
+    return cells.some(c => HEADER_KEYS.includes(c.trim().toLocaleLowerCase("tr")));
+  };
+
+  const parseBulk = (text: string): { rows: BulkRow[]; error: string | null } => {
+    const trimmed = text.trim();
+    if (!trimmed) return { rows: [], error: "Veri boş" };
+    const lines = trimmed.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length === 0) return { rows: [], error: "Veri boş" };
+
+    const delim = detectDelimiter(lines[0]);
+    const split = (line: string) => line.split(delim).map(c => c.trim().replace(/^"(.*)"$/, "$1"));
+
+    let startIdx = 0;
+    const firstCells = split(lines[0]);
+    if (looksLikeHeader(firstCells)) startIdx = 1;
+
+    const rows: BulkRow[] = [];
+    for (let i = startIdx; i < lines.length; i++) {
+      const cells = split(lines[i]);
+      const refId = cells[0] || "";
+      const name = cells[1] || "";
+      const amount = cells[2] || "";
+      const unit = cells[3] || "gr";
+      const category = cells[4] || "ana";
+      const type = cells[5] || "normal";
+
+      let error: string | undefined;
+      if (!refId) error = "refId eksik";
+      else if (!name) error = "isim eksik";
+      else if (!amount || isNaN(parseFloat(amount))) error = "miktar geçersiz";
+
+      rows.push({
+        refId, name, amount, unit, category, type,
+        isCanonical: name ? isCanonicalName(name) : true,
+        error,
+      });
+    }
+    return { rows, error: rows.length === 0 ? "Geçerli satır bulunamadı" : null };
+  };
+
+  const parsedBulk = parseBulk(bulkText);
+  const bulkRows = parsedBulk.rows;
+  const bulkRowErrors = bulkRows.filter(r => r.error);
+  const bulkUnknownPreview = Array.from(new Set(bulkRows.filter(r => !r.error && !r.isCanonical).map(r => r.name)));
+
+  const handleBulkFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBulkText(String(reader.result || ""));
+      setBulkParseError(null);
+      setBulkUnknown([]);
+    };
+    reader.readAsText(file);
+  };
+
+  const submitBulk = async (force: boolean) => {
+    if (!id || isNew) return;
+    if (bulkRowErrors.length > 0) {
+      toast({ title: "Hatalı satırlar var", description: `${bulkRowErrors.length} satırda hata var`, variant: "destructive" });
+      return;
+    }
+    const payload = {
+      ingredients: bulkRows.map(r => ({
+        refId: r.refId,
+        name: r.name,
+        amount: parseFloat(r.amount),
+        unit: r.unit,
+        ingredientCategory: r.category,
+        ingredientType: r.type,
+      })),
+      allowUnknown: force,
+    };
+
+    setBulkSubmitting(true);
+    try {
+      const url = `/api/factory/recipes/${id}/ingredients/bulk${force ? "?force=true" : ""}`;
+      const res = await apiRequest("POST", url, payload);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 400 && Array.isArray(data?.unknownIngredients) && data.unknownIngredients.length > 0) {
+          setBulkUnknown(data.unknownIngredients);
+          setBulkParseError(null);
+          return;
+        }
+        throw new Error(data?.error || data?.message || "Toplu içe aktarma başarısız");
+      }
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
+      toast({
+        title: "Malzemeler içe aktarıldı",
+        description: `${payload.ingredients.length} malzeme kaydedildi${data?.unknownIngredients?.length ? ` (${data.unknownIngredients.length} yeni isim)` : ""}`,
+      });
+      setBulkOpen(false);
+      setBulkText("");
+      setBulkUnknown([]);
+      setBulkParseError(null);
+    } catch (e: any) {
+      setBulkParseError(e?.message || "Hata");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
   const addIngredient = async () => {
     if (!id || isNew) return;
     if (!newIngredient.name.trim()) return;
@@ -372,8 +508,16 @@ export default function FabrikaReceteDuzenle() {
       {!isNew && (
         <Card className="mb-4">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <CardTitle className="text-base">Malzemeler ({ingredients.length})</CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setBulkOpen(true); setBulkUnknown([]); setBulkParseError(null); }}
+                data-testid="button-open-bulk-import"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Toplu İçe Aktar
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -714,6 +858,149 @@ export default function FabrikaReceteDuzenle() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* TOPLU İÇE AKTARMA DİYALOĞU */}
+      <Dialog open={bulkOpen} onOpenChange={(open) => { if (!bulkSubmitting) setBulkOpen(open); }}>
+        <DialogContent className="max-w-3xl" data-testid="dialog-bulk-import">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" /> Malzemeleri Toplu İçe Aktar
+            </DialogTitle>
+            <DialogDescription>
+              Excel'den yapıştırın veya CSV dosyası yükleyin. Sütunlar:
+              <span className="font-mono"> refId, ad, miktar, birim, kategori, tip</span>.
+              Mevcut tüm malzemeler silinip yenileri ile değiştirilir.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="bulk-file" className="cursor-pointer inline-flex items-center gap-1.5 text-sm border rounded-md px-3 py-1.5 hover-elevate">
+                <Upload className="w-3.5 h-3.5" /> CSV Dosyası Seç
+              </Label>
+              <input
+                id="bulk-file"
+                type="file"
+                accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleBulkFile(file);
+                  e.target.value = "";
+                }}
+                data-testid="input-bulk-file"
+              />
+              <span className="text-xs text-muted-foreground">veya aşağıya yapıştırın (Excel'den TAB, CSV'de virgül/noktalı virgül)</span>
+            </div>
+
+            <Textarea
+              rows={8}
+              value={bulkText}
+              onChange={(e) => { setBulkText(e.target.value); setBulkUnknown([]); setBulkParseError(null); }}
+              placeholder={"refId\tad\tmiktar\tbirim\tkategori\ttip\n0001\tUn\t5000\tgr\tana\tnormal\n0002\tŞeker\t800\tgr\tana\tnormal"}
+              className="font-mono text-xs"
+              data-testid="textarea-bulk-paste"
+            />
+
+            {bulkText.trim() && (
+              <div className="border rounded-md max-h-64 overflow-auto" data-testid="preview-bulk-rows">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left px-2 py-1">#</th>
+                      <th className="text-left px-2 py-1">refId</th>
+                      <th className="text-left px-2 py-1">Ad</th>
+                      <th className="text-right px-2 py-1">Miktar</th>
+                      <th className="text-left px-2 py-1">Birim</th>
+                      <th className="text-left px-2 py-1">Kat.</th>
+                      <th className="text-left px-2 py-1">Tip</th>
+                      <th className="text-left px-2 py-1">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkRows.map((r, i) => (
+                      <tr key={i} className={cn("border-t", r.error && "bg-destructive/5")}>
+                        <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                        <td className="px-2 py-1 font-mono">{r.refId}</td>
+                        <td className={cn("px-2 py-1", !r.error && !r.isCanonical && "text-destructive font-medium")}>
+                          {r.name}
+                          {!r.error && !r.isCanonical && (
+                            <AlertTriangle className="inline-block ml-1 h-3 w-3" />
+                          )}
+                        </td>
+                        <td className="px-2 py-1 text-right font-mono">{r.amount}</td>
+                        <td className="px-2 py-1">{r.unit}</td>
+                        <td className="px-2 py-1">{r.category}</td>
+                        <td className="px-2 py-1">{r.type}</td>
+                        <td className="px-2 py-1">
+                          {r.error ? (
+                            <Badge variant="destructive" className="text-[10px]">{r.error}</Badge>
+                          ) : !r.isCanonical ? (
+                            <Badge variant="outline" className="text-[10px] border-destructive/50 text-destructive">yeni isim</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px]">OK</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span data-testid="text-bulk-total">Toplam: <strong>{bulkRows.length}</strong></span>
+              <span className="text-destructive" data-testid="text-bulk-errors">Hatalı: <strong>{bulkRowErrors.length}</strong></span>
+              <span className="text-destructive" data-testid="text-bulk-unknown">Kanonik-dışı: <strong>{bulkUnknownPreview.length}</strong></span>
+            </div>
+
+            {bulkUnknown.length > 0 && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs space-y-2" data-testid="block-server-unknown">
+                <div className="font-medium text-destructive flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Sunucu uyarısı: {bulkUnknown.length} kanonik-dışı malzeme tespit edildi
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {bulkUnknown.map(n => (
+                    <Badge key={n} variant="outline" className="text-[10px] border-destructive/50 text-destructive">{n}</Badge>
+                  ))}
+                </div>
+                <div className="text-muted-foreground">
+                  "Yine de devam et" derseniz bu isimler kaydedilir; besin değer tablosuna ayrıca eklenmesi gerekir.
+                </div>
+              </div>
+            )}
+
+            {bulkParseError && (
+              <div className="text-xs text-destructive" data-testid="text-bulk-error">{bulkParseError}</div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBulkOpen(false)} disabled={bulkSubmitting} data-testid="button-bulk-cancel">
+              Vazgeç
+            </Button>
+            {bulkUnknown.length > 0 ? (
+              <Button
+                variant="destructive"
+                onClick={() => submitBulk(true)}
+                disabled={bulkSubmitting || bulkRows.length === 0 || bulkRowErrors.length > 0}
+                data-testid="button-bulk-force"
+              >
+                Yine de devam et ({bulkRows.length})
+              </Button>
+            ) : (
+              <Button
+                onClick={() => submitBulk(false)}
+                disabled={bulkSubmitting || bulkRows.length === 0 || bulkRowErrors.length > 0}
+                data-testid="button-bulk-submit"
+              >
+                <Save className="w-3.5 h-3.5 mr-1" /> İçe Aktar ({bulkRows.length})
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
