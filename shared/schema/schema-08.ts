@@ -1228,6 +1228,10 @@ export const branchShiftSessions = pgTable("branch_shift_sessions", {
   checkOutLongitude: numeric("check_out_longitude", { precision: 10, scale: 7 }),
   isLocationVerified: boolean("is_location_verified").default(false),
   locationDistance: integer("location_distance"), // metre cinsinden mesafe
+  // S-GPS (23 Nis 2026): GPS fallback izleme
+  // true = GPS vermedi ama supervisor PIN ile onayladı (manuel override)
+  gpsFallbackUsed: boolean("gps_fallback_used").default(false),
+  gpsFallbackApprovedBy: varchar("gps_fallback_approved_by").references(() => users.id, { onDelete: "set null" }),
   
   // Planlanan vardiya karsilastirmasi
   plannedShiftId: integer("planned_shift_id"),
