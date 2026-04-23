@@ -15,24 +15,17 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 ### IN_PROGRESS Tasks (Replit, henüz commit edilmemiş olabilir)
 <!-- Replit günceller: task başlatınca ekle, bitince sil -->
 
-| Task | Sorumlu | Dosya | R-5 Çakışma |
-|---|---|---|---|
-| #140 Reçete malzeme kanonik auto-complete | Replit | `client/src/pages/fabrika-recete-duzenle.tsx` | 🔴 R-5A frontend |
-| #141 Gerçek besin/alerjen müşteri sayfasında | Replit | `client/src/pages/kalite-alerjen.tsx` | 🟠 R-5D |
-| #144 Yanlış kategori hammadde envanter taşı | Replit | DB only | — |
-| #145 "Onaylı/Tahmini" rozeti | Replit | `client/src/pages/kalite-alerjen.tsx` | 🟠 R-5D |
-| #146 Tek-tık besin onay paneli | Replit | yeni sayfa | — |
-| #147 checklistAssignments şema fix | Replit | `shared/schema/schema-02.ts` | — |
+_(Şu an boş — son 30+ Replit task'ı 23 Nis sabah merge oldu, push edildi: commit `1a8b9d4bc`)_
 
 ### Sprint R-5 (Claude, aktif planlama)
 - **Plan:** `docs/pilot/sprint-r5-uygulama-raporu.md`
-- **Onay:** Replit `docs/pilot/replit-sprint-r5-cevap.md` (push bekliyor)
-- **Durum:**
-  - R-5A Backend: YAZILDI, LOCAL, push bekliyor (Replit onayı + #140 merge sonrası)
-  - R-5A Frontend: BEKLİYOR (#140 merge sonrası başlar)
-  - R-5B Maliyet UI: BEKLİYOR
-  - R-5C Alerjen UI: BEKLİYOR (#141+#145 sonrası)
-  - R-5D Müşteri QR: BEKLİYOR
+- **Replit cevap:** `docs/pilot/replit-sprint-r5-cevap.md`
+- **Durum (23.04.2026 öğleden sonra):**
+  - ✅ **R-5D Müşteri QR**: PUSH EDİLDİ (Claude commit `3abb342`) — `musteri-alerjen-public.tsx`, public endpoint, rate limit 30/dk
+  - ✅ **R-5A Backend**: PUSH EDİLDİ (Claude commit `d631ed2`) — #131 canonical layer korundu, PATCH yetki fix, 4 yeni endpoint (DELETE ingredient + steps CRUD)
+  - 🟢 **R-5A Frontend**: BAŞLAYABİLİR — `fabrika-recete-duzenle.tsx` Replit task'larıyla stabil, çakışma yok
+  - ⚪ **R-5B Maliyet UI**: BEKLİYOR
+  - ⚪ **R-5C Alerjen UI**: BEKLİYOR
 
 ### Kurallar
 1. **Her Claude oturumu başında:** bu bölümü oku, IN_PROGRESS task'ların dosyalarına dokunmadan önce Replit'e sor.
