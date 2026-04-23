@@ -414,6 +414,7 @@ import payrollRouter from "./routes/payroll";
 import payrollConfigRouter from "./routes/payroll-config";
 import factoryRecipesRouter from "./routes/factory-recipes";
 import factoryRecipeNutritionRouter from "./routes/factory-recipe-nutrition";
+import factoryAllergensRouter from "./routes/factory-allergens";
 import pdksExcelImportRouter from "./routes/pdks-excel-import";
 import factoryF2Router from "./routes/factory-f2";
 import changeRequestsRouter from "./routes/change-requests";
@@ -885,6 +886,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(payrollConfigRouter);
   app.use(factoryRecipesRouter);
   app.use(factoryRecipeNutritionRouter);
+  app.use(factoryAllergensRouter);
   app.use(pdksExcelImportRouter);
   app.use(factoryF2Router);
   app.use(changeRequestsRouter);

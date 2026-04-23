@@ -129,6 +129,7 @@ const ChecklistTrackingPage = lazyWithRetry(() => import("@/pages/yonetim/checkl
 const EquipmentManagement = lazyWithRetry(() => import("@/pages/yonetim/ekipman-yonetimi"));
 const AdminAcademy = lazyWithRetry(() => import("@/pages/yonetim/akademi"));
 const KaliteDenetimi = lazyWithRetry(() => import("@/pages/kalite-denetimi"));
+const KaliteAlerjen = lazyWithRetry(() => import("@/pages/kalite-alerjen"));
 const CoachSubeDenetim = lazyWithRetry(() => import("@/pages/coach-sube-denetim"));
 
 const PublicStaffRating = lazyWithRetry(() => import("@/pages/public-staff-rating"));
@@ -578,6 +579,7 @@ function Router() {
           <Route path="/hq-personel-istatistikleri">{() => <ExecutiveOnly><HQPersonelIstatistikleri /></ExecutiveOnly>}</Route>
           <Route path="/muhasebe-raporlama">{() => <ExecutiveOnly><MuhasebeRaporlama /></ExecutiveOnly>}</Route>
           <Route path="/kalite-denetimi">{() => <ModuleGuard moduleKey="denetim"><KaliteDenetimi /></ModuleGuard>}</Route>
+          <Route path="/kalite/alerjen">{() => <ProtectedRoute><KaliteAlerjen /></ProtectedRoute>}</Route>
           <Route path="/coach-sube-denetim">{() => <ModuleGuard moduleKey="denetim"><CoachSubeDenetim /></ModuleGuard>}</Route>
           <Route path="/denetim-sablonlari">{() => <ModuleGuard moduleKey="denetim"><DenetimSablonlari /></ModuleGuard>}</Route>
           <Route path="/denetimler">{() => <ModuleGuard moduleKey="denetim"><Denetimler /></ModuleGuard>}</Route>
