@@ -118,6 +118,14 @@ ORDER BY b.id;
 
 ---
 
+## D′. Otomatik Denetim Çıktıları
+
+- HQ Kiosk PIN audit (cron 02:00 Europe/Istanbul, Task #212):
+  [`docs/pilot/audit/hq-kiosk-pins-2026-04-28.md`](./audit/hq-kiosk-pins-2026-04-28.md)
+  (FAIL durumunda `audit_logs.event_type = 'kiosk.hq_pin_audit_alert'` kaydı düşer)
+
+---
+
 ## D. Bulgular & Sprint A Patch Listesi
 
 | # | Bulgu | Aciliyet | Önerilen Aksiyon | Sahip |

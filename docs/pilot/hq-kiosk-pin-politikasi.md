@@ -93,6 +93,22 @@ Exit kodu: `0 = PASS` (0 ihlal), `1 = FAIL` (deaktive iş listesi MD içinde),
 `2 = beklenmedik hata`. Pilot kick-off (28 Nis) öncesi manuel veya cron ile
 çalıştırılır.
 
+**Otomatik scheduler (Task #212, 23 Nis 2026):** `server/scheduler/hq-kiosk-pin-audit.ts`
+modülü `startHqKioskPinAuditScheduler()` ile sunucu açılışında devreye girer
+ve her gece **02:00 (Europe/Istanbul)** audit'i tetikler. Aynı çekirdek
+fonksiyon (`runHqKioskPinAudit`) hem CLI script hem scheduler tarafından
+kullanılır; pilot süresince (28 Nis – 5 May) günlük denetim insansız çalışır.
+
+- **PASS**: stdout'a tek satır log (`[HQ Kiosk PIN Audit] PASS — ihlal yok…`),
+  `docs/pilot/audit/hq-kiosk-pins-<YYYY-MM-DD>.{json,md}` üretilir.
+- **FAIL**: aynı raporlara ek olarak `audit_logs` tablosuna kayıt düşer
+  (`event_type = 'kiosk.hq_pin_audit_alert'`, `action = 'ALERT'`,
+  `details` içinde ihlal listesi + rapor yolları). Bu kayıt pilot kanalına
+  alarm akıtmak için tüketilir; manuel deaktive akışı §3 ve §4'te.
+- Üretilen `docs/pilot/audit/*.{json,md}` dosyaları repo'ya otomatik
+  commitlenmez; günlük raporlarda (`docs/pilot/day-X-report.md`) ilgili
+  tarihin md dosyasına link verilir.
+
 ---
 
 ## 4. İstisna Prosedürü

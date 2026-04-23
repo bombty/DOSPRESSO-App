@@ -1,6 +1,6 @@
-# HQ Kiosk PIN Audit — 2026-04-23
+# HQ Kiosk PIN Audit — 2026-04-24
 
-- **Çalıştırma:** 2026-04-23T22:41:40.067Z
+- **Çalıştırma:** 2026-04-23T22:45:33.236Z
 - **Politika:** `docs/pilot/hq-kiosk-pin-politikasi.md` §3
 - **Kapsam:** `branch_staff_pins.is_active = true` AND `branch_id != 23` AND HQ rolü
 - **HQ rolleri:** `admin`, `ceo`, `cgo`, `ceo_observer`, `muhasebe_ik`, `satinalma`, `kalite_kontrol`, `marketing`, `teknik`, `trainer`, `coach`, `destek`, `yatirimci_hq`

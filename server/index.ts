@@ -31,6 +31,7 @@ import { calculateAndSaveDailyScores, calculateAndSaveWeeklyScores, backfillNull
 import { calculateMonthlySnapshots, calculateFactorySnapshot } from "./services/monthly-snapshot-service";
 import { cache, aiRateLimiter } from "./cache";
 import { schedulerManager } from "./scheduler-manager";
+import { startHqKioskPinAuditScheduler } from "./scheduler/hq-kiosk-pin-audit";
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { users, productionLots, tasks, notifications as notificationsTable, branches, branchKioskSettings, factoryKioskConfig, factoryShiftSessions, factoryBreakLogs, kioskSessions, pdksRecords, branchShiftSessions, hqShiftSessions, scheduledOffs, branchWeeklyAttendanceSummary, shifts } from "@shared/schema";
@@ -397,6 +398,7 @@ app.use((req, res, next) => {
       startTrackingCleanup();
       startNotificationCleanupJob();
       startFactoryScoringScheduler();
+      startHqKioskPinAuditScheduler();
 
       // Franchise eskalasyon tablolarını oluştur ve 5-kademe sistemi başlat
       migrateEscalationTables().catch(e => console.error("[Escalation] Migration error:", e));
