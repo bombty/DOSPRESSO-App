@@ -636,9 +636,11 @@ export default function FabrikaReceteDuzenle() {
     }
   };
 
-  // Task #177: Eksik besin değerleriyle tekrar bulk endpoint'e gönder
+  // Task #177 + #196: Eksik besin değerlerini ayrı nutrition-bulk endpoint'ine
+  // gönder. Reçete malzemelerini sil/yeniden ekleme yapmaz; sadece eksik
+  // nutrition kayıtlarını `onConflictDoNothing` ile yazar.
   const submitBulkNutrition = async () => {
-    if (!id || isNew || !lastBulkPayload) return;
+    if (!id || isNew) return;
     if (!canEditNutrition) {
       setBulkNutritionError("Besin değer kaydetme yetkiniz yok (sadece admin / gıda mühendisi / recete_gm).");
       return;
@@ -649,58 +651,32 @@ export default function FabrikaReceteDuzenle() {
       n.carbohydrateG.trim() !== "" || n.sugarG.trim() !== "" || n.proteinG.trim() !== "" ||
       n.saltG.trim() !== "" || n.allergens.length > 0;
 
-    // Sunucu missingNutrition listesini kanonikleştirilmiş isimlerle döndürür;
-    // lastBulkPayload ise ham/alias isimleri tutar. Eşleştirme için iki tarafı
-    // da `canonicalIngredientName` ile aynı uzaya getirip karşılaştırıyoruz.
+    // missingNutritionList sunucudan gelen kanonikleştirilmiş isimleri tutar.
+    // Kullanıcının doldurduğu satırları nutrition-bulk payload'ına çeviriyoruz.
+    const items: Array<Record<string, unknown>> = [];
     const filledCanonicals = new Set<string>();
     for (const name of missingNutritionList) {
       const row = bulkNutritionRows[name];
-      if (row && hasAny(row)) filledCanonicals.add(canonicalIngredientName(name));
+      if (!row || !hasAny(row)) continue;
+      const canonical = canonicalIngredientName(name);
+      if (!canonical || filledCanonicals.has(canonical)) continue;
+      filledCanonicals.add(canonical);
+      items.push({
+        ingredientName: canonical,
+        energyKcal: numOrNull(row.energyKcal),
+        fatG: numOrNull(row.fatG),
+        saturatedFatG: numOrNull(row.saturatedFatG),
+        carbohydrateG: numOrNull(row.carbohydrateG),
+        sugarG: numOrNull(row.sugarG),
+        proteinG: numOrNull(row.proteinG),
+        saltG: numOrNull(row.saltG),
+        allergens: row.allergens,
+      });
     }
-    if (filledCanonicals.size === 0) {
+    if (items.length === 0) {
       setMissingNutritionList([]);
       setLastBulkPayload(null);
       setBulkNutritionRows({});
-      return;
-    }
-
-    // Aynı malzeme listesini, eşleşen ilk satıra nutrition ekleyerek tekrar gönder
-    const usedCanonicals = new Set<string>();
-    const enriched = lastBulkPayload.map(ing => {
-      const canonical = canonicalIngredientName(ing.name || "");
-      if (canonical && filledCanonicals.has(canonical) && !usedCanonicals.has(canonical)) {
-        const sourceKey = missingNutritionList.find(
-          n => canonicalIngredientName(n) === canonical,
-        );
-        const row = sourceKey ? bulkNutritionRows[sourceKey] : null;
-        if (row && hasAny(row)) {
-          usedCanonicals.add(canonical);
-          return {
-            ...ing,
-            nutrition: {
-              energyKcal: numOrNull(row.energyKcal),
-              fatG: numOrNull(row.fatG),
-              saturatedFatG: numOrNull(row.saturatedFatG),
-              carbohydrateG: numOrNull(row.carbohydrateG),
-              sugarG: numOrNull(row.sugarG),
-              proteinG: numOrNull(row.proteinG),
-              saltG: numOrNull(row.saltG),
-              allergens: row.allergens,
-            },
-          };
-        }
-      }
-      return ing;
-    });
-
-    // Eğer doldurulan kanonik bir isim aynı kanonikleşen alias olarak
-    // payload'da değilse (teorik olarak olmamalı ama güvenli ol), kullanıcıyı
-    // uyar.
-    const unmatched = Array.from(filledCanonicals).filter(c => !usedCanonicals.has(c));
-    if (unmatched.length > 0) {
-      setBulkNutritionError(
-        `Şu malzeme(ler) toplu listede eşleşmedi: ${unmatched.join(", ")}. Sayfayı yenileyip tekrar deneyin.`,
-      );
       return;
     }
 
@@ -709,19 +685,29 @@ export default function FabrikaReceteDuzenle() {
     try {
       const res = await apiRequest(
         "POST",
-        `/api/factory/recipes/${id}/ingredients/bulk?force=true`,
-        { ingredients: enriched, allowUnknown: true },
+        `/api/factory/ingredient-nutrition/bulk`,
+        { items },
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data?.error || data?.message || "Besin değerleri kaydedilemedi");
       }
-      // Task #195: Sunucu cevabını beklemeden eksik nutrition rozeti
-      // güncellensin diye ingredient-names cache'ini optimistik olarak
-      // güncelle: filledCanonicals içinde olup hâlâ-missing dönmeyen
-      // isimleri hasNutrition: true yap.
-      const stillMissing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
-      const stillMissingCanonicals = new Set(stillMissing.map(m => canonicalIngredientName(m)));
+      // Task #196: Yeni endpoint cevabı { written, skipped } döndürür.
+      //   - written = bu istekte yeni eklenen kanonik isimler
+      //   - skipped = mevcut kayıt nedeniyle (onConflictDoNothing) atlananlar
+      // Her iki durumda da nutrition kaydı artık var; rozeti hasNutrition:true yap.
+      const written: string[] = Array.isArray(data?.written) ? data.written : [];
+      const skipped: string[] = Array.isArray(data?.skipped) ? data.skipped : [];
+      const persistedCanonicals = new Set(
+        [...written, ...skipped].map(m => canonicalIngredientName(m)),
+      );
+      // Sunucunun ne yazdığı ne de mevcut bulduğu (yani sessizce reddettiği)
+      // doldurulmuş kanonikler — yetki/validation hatası göstergesi.
+      const stillMissingCanonicals = new Set(
+        Array.from(filledCanonicals).filter(c => !persistedCanonicals.has(c)),
+      );
+
+      // Task #195: Optimistik olarak ingredient-names cache'inde rozeti güncelle.
       qc.setQueryData<IngredientNameOption[]>(["/api/factory/ingredient-names"], (prev) => {
         if (!prev) return prev;
         return prev.map(item => {
@@ -736,14 +722,9 @@ export default function FabrikaReceteDuzenle() {
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
       qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
 
-      // Sunucu hâlâ missingNutrition döndürdüyse bizim doldurduklarımızdan
-      // hangileri yazılamamış? Yetki/sessiz-yoksay durumlarında olabilir.
-      const filledButStillMissing = Array.from(filledCanonicals).filter(c =>
-        stillMissingCanonicals.has(c),
-      );
-      if (filledButStillMissing.length > 0) {
+      if (stillMissingCanonicals.size > 0) {
         setBulkNutritionError(
-          `Sunucu ${filledButStillMissing.length} malzemenin besin değerini yazmadı (muhtemelen yetki). Listeyi kontrol edin.`,
+          `Sunucu ${stillMissingCanonicals.size} malzemenin besin değerini yazmadı (muhtemelen yetki). Listeyi kontrol edin.`,
         );
         // Diyaloğu açık bırak; kullanıcı görsün
         return;
@@ -751,7 +732,9 @@ export default function FabrikaReceteDuzenle() {
 
       toast({
         title: "Besin değerleri kaydedildi",
-        description: `${filledCanonicals.size} malzeme için kayıt eklendi`,
+        description: skipped.length > 0
+          ? `${written.length} yeni kayıt eklendi, ${skipped.length} mevcut kayıt korundu`
+          : `${written.length} malzeme için kayıt eklendi`,
       });
       setMissingNutritionList([]);
       setLastBulkPayload(null);

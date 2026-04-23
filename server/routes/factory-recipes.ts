@@ -815,6 +815,112 @@ router.get("/api/factory/ingredient-nutrition/:name/history", isAuthenticated, a
   }
 });
 
+// POST /api/factory/ingredient-nutrition/bulk — Toplu eksik nutrition ekle
+// Task #196: Bulk malzeme endpoint'ini tekrar çağırmak yerine sadece nutrition
+// payload'ı alır. Her item için kanonikleştirilmiş isimle tek transaksiyonda
+// `onConflictDoNothing` insert yapılır — mevcut kayıtlar korunur, yeni
+// kayıtlar oluşturulur. Reçete malzemelerine dokunulmaz (sil/yeniden ekle yok).
+router.post("/api/factory/ingredient-nutrition/bulk", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!NUTRITION_EDIT_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Besin değer düzenleme yetkiniz yok (gıda mühendisi gerekli)" });
+    }
+
+    type NutritionItem = {
+      ingredientName?: string;
+      energyKcal?: string | number | null;
+      fatG?: string | number | null;
+      saturatedFatG?: string | number | null;
+      carbohydrateG?: string | number | null;
+      sugarG?: string | number | null;
+      proteinG?: string | number | null;
+      saltG?: string | number | null;
+      allergens?: string[];
+    };
+
+    const { items } = (req.body || {}) as { items?: NutritionItem[] };
+    if (!Array.isArray(items)) return res.status(400).json({ error: "items array gerekli" });
+
+    const toNum = (v: string | number | null | undefined): string | null =>
+      v === "" || v == null || isNaN(Number(v)) ? null : String(Number(v));
+    const hasAnyValue = (n: NutritionItem): boolean =>
+      n.energyKcal != null && n.energyKcal !== "" ||
+      n.fatG != null && n.fatG !== "" ||
+      n.saturatedFatG != null && n.saturatedFatG !== "" ||
+      n.carbohydrateG != null && n.carbohydrateG !== "" ||
+      n.sugarG != null && n.sugarG !== "" ||
+      n.proteinG != null && n.proteinG !== "" ||
+      n.saltG != null && n.saltG !== "" ||
+      (Array.isArray(n.allergens) && n.allergens.length > 0);
+
+    const result = await db.transaction(async (tx) => {
+      const written: string[] = [];
+      const skipped: string[] = [];
+      const seen = new Set<string>();
+
+      for (const item of items) {
+        const raw = typeof item?.ingredientName === "string" ? item.ingredientName.trim() : "";
+        if (!raw) continue;
+        const canonical = canonicalIngredientName(raw);
+        if (!canonical || seen.has(canonical)) continue;
+        seen.add(canonical);
+        if (!hasAnyValue(item)) continue;
+
+        const nutValues = {
+          energyKcal: toNum(item.energyKcal),
+          fatG: toNum(item.fatG),
+          saturatedFatG: toNum(item.saturatedFatG),
+          carbohydrateG: toNum(item.carbohydrateG),
+          sugarG: toNum(item.sugarG),
+          proteinG: toNum(item.proteinG),
+          saltG: toNum(item.saltG),
+          allergens: Array.isArray(item.allergens) ? item.allergens : [],
+        };
+
+        const inserted = await tx.insert(factoryIngredientNutrition).values({
+          ingredientName: canonical,
+          ...nutValues,
+          source: "manual",
+          verifiedBy: req.user.id,
+        }).onConflictDoNothing({ target: factoryIngredientNutrition.ingredientName }).returning();
+
+        if (inserted.length > 0) {
+          const row = inserted[0];
+          written.push(canonical);
+          // Task #183 — denetim defterine kayıt
+          await tx.insert(factoryIngredientNutritionHistory).values({
+            nutritionId: row.id,
+            ingredientName: canonical,
+            action: "create",
+            source: "nutrition_bulk",
+            before: null,
+            after: {
+              energyKcal: row.energyKcal, fatG: row.fatG,
+              saturatedFatG: row.saturatedFatG, transFatG: row.transFatG,
+              carbohydrateG: row.carbohydrateG, sugarG: row.sugarG,
+              fiberG: row.fiberG, proteinG: row.proteinG,
+              saltG: row.saltG, sodiumMg: row.sodiumMg,
+              allergens: row.allergens, source: row.source,
+              confidence: row.confidence, verifiedBy: row.verifiedBy,
+            },
+            changedBy: req.user.id,
+            changedByRole: req.user.role ?? null,
+          });
+        } else {
+          skipped.push(canonical);
+        }
+      }
+
+      return { written, skipped };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Bulk ingredient nutrition error:", error);
+    res.status(500).json({ error: "Besin değerleri kaydedilemedi" });
+  }
+});
+
 // ═══════════════════════════════════════
 // MALZEMELER — CRUD
 // ═══════════════════════════════════════
