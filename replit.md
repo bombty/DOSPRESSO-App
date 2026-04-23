@@ -8,6 +8,15 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - Fast implementation in Build mode, continues with "devam"
 - DB schema changes via raw psql (drizzle-kit push times out)
 
+## Session State (23.04.2026 - Task #126)
+- **DB drift kontrolü** eklendi (`scripts/db-drift-check.ts`):
+  - Drizzle schema (`shared/schema/*`) UNIQUE constraint, index ve FK tanımlarını gerçek PostgreSQL ile karşılaştırır
+  - `tsx scripts/db-drift-check.ts` → konsol raporu + `scripts/db-drift-fix.sql` (eksik UNIQUE/index için ALTER/CREATE INDEX)
+  - `tsx scripts/db-drift-check.ts --check` → CI modu (drift varsa exit 1)
+  - `scripts/check-build-safety.sh` 4. adım olarak entegre (DATABASE_URL set ise)
+  - İlk tespit: 13 eksik tablo, 6 UNIQUE, 83 index, 47 FK drift'i. Fix script DB'de olmayan tablolar için ALTER üretmez.
+  - Bilinen kısıt: cross-file circular import içeren tabloların FK'leri sessizce atlanır (UNIQUE/index etkilenmez)
+
 ## Session State (23.04.2026 - Task #123)
 - **Rebase recovery + PIN reseed + routing seed** tamamlandı:
   - Yarım kalan interaktif rebase (Replit checkpoint kaynaklı) abort edildi → `git pull --no-rebase` ile Claude'un 3 dosyası local'e geldi (commit aralığı `e80c5d296..66b8512e1`, merge commit `fd446608e`)

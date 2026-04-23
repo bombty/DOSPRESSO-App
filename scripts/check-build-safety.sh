@@ -38,6 +38,24 @@ else
 fi
 
 echo ""
+echo "4. DB schema drift check (Drizzle ↔ PostgreSQL)..."
+if [ -z "$DATABASE_URL" ]; then
+  echo "  DATABASE_URL set değil — drift kontrolü atlandı."
+else
+  DRIFT_OUTPUT=$(npx tsx scripts/db-drift-check.ts --check 2>&1)
+  DRIFT_EXIT=$?
+  if [ "$DRIFT_EXIT" -ne "0" ]; then
+    echo "  DB drift tespit edildi:"
+    echo "$DRIFT_OUTPUT" | grep -E "Eksik|DB'de bulunmayan|⚠️" | head -20
+    echo "  Detay için: npx tsx scripts/db-drift-check.ts"
+    echo "  Düzeltme: scripts/db-drift-fix.sql gözden geçirip uygula"
+    ERRORS=$((ERRORS+1))
+  else
+    echo "  DB schema drift yok"
+  fi
+fi
+
+echo ""
 if [ "$ERRORS" -gt "0" ]; then
   echo "FAILED: $ERRORS issue(s) found. Fix before deploying."
   exit 1
