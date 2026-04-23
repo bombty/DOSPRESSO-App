@@ -11,9 +11,10 @@ import {
   factoryKeyblends, factoryKeyblendIngredients,
   factoryProductionLogs, factoryRecipeVersions,
   factoryRecipeCategoryAccess, factoryIngredientNutrition,
+  factoryRecipeApprovals, insertFactoryRecipeApprovalSchema,
   inventory, users,
 } from "@shared/schema";
-import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, asc, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { canonicalIngredientName, INGREDIENT_ALIASES } from "@shared/lib/ingredient-canonical";
 
@@ -62,8 +63,21 @@ router.get("/api/factory/recipes", isAuthenticated, async (req: any, res: Respon
   try {
     if (!isFactoryRole(req.user.role)) return res.status(403).json({ error: "Fabrika erişimi gerekli" });
 
-    const { category, outputType } = req.query;
+    const { category, outputType, approvalStatus } = req.query;
     const conditions: any[] = [eq(factoryRecipes.isActive, true)];
+
+    // Task #164: Onaylı/Onaysız filtresi (gramaj scope üzerinden)
+    if (approvalStatus === "unapproved") {
+      conditions.push(sql`NOT EXISTS (
+        SELECT 1 FROM factory_recipe_approvals fra
+        WHERE fra.recipe_id = ${factoryRecipes.id} AND fra.scope = 'gramaj'
+      )`);
+    } else if (approvalStatus === "approved") {
+      conditions.push(sql`EXISTS (
+        SELECT 1 FROM factory_recipe_approvals fra
+        WHERE fra.recipe_id = ${factoryRecipes.id} AND fra.scope = 'gramaj'
+      )`);
+    }
 
     // Şef kategori kısıtlaması
     if (req.user.role === "sef") {
@@ -90,7 +104,20 @@ router.get("/api/factory/recipes", isAuthenticated, async (req: any, res: Respon
       .where(and(...conditions))
       .orderBy(asc(factoryRecipes.category), asc(factoryRecipes.name));
 
-    res.json(recipes);
+    // Task #164: gramaj onay durumunu liste yanıtına ekle
+    let approvedIds = new Set<number>();
+    if (recipes.length > 0) {
+      const ids = recipes.map(r => r.id);
+      const approvals = await db.select({ recipeId: factoryRecipeApprovals.recipeId })
+        .from(factoryRecipeApprovals)
+        .where(and(
+          inArray(factoryRecipeApprovals.recipeId, ids),
+          eq(factoryRecipeApprovals.scope, "gramaj"),
+        ));
+      approvedIds = new Set(approvals.map(a => a.recipeId));
+    }
+
+    res.json(recipes.map(r => ({ ...r, gramajApproved: approvedIds.has(r.id) })));
   } catch (error) {
     console.error("Factory recipes list error:", error);
     res.status(500).json({ error: "Reçeteler yüklenemedi" });
@@ -1039,6 +1066,75 @@ router.post("/api/factory/recipe-access", isAuthenticated, async (req: any, res:
   } catch (error) {
     console.error("Recipe access error:", error);
     res.status(500).json({ error: "Erişim kuralı kaydedilemedi" });
+  }
+});
+
+// ═══════════════════════════════════════
+// REÇETE ONAYLARI (Task #164)
+// ═══════════════════════════════════════
+
+const APPROVAL_ROLES = ["admin", "recete_gm", "gida_muhendisi"];
+
+// GET /api/factory/recipes/:id/approvals — Reçete onay listesi
+router.get("/api/factory/recipes/:id/approvals", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!isFactoryRole(req.user.role)) return res.status(403).json({ error: "Fabrika erişimi gerekli" });
+
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) return res.status(400).json({ error: "Geçersiz reçete id" });
+
+    const rows = await db.select({
+      approval: factoryRecipeApprovals,
+      approvedByName: users.firstName,
+      approvedByLastName: users.lastName,
+      approvedByEmail: users.email,
+    })
+      .from(factoryRecipeApprovals)
+      .leftJoin(users, eq(factoryRecipeApprovals.approvedBy, users.id))
+      .where(eq(factoryRecipeApprovals.recipeId, recipeId))
+      .orderBy(desc(factoryRecipeApprovals.approvedAt));
+
+    res.json(rows.map(r => ({
+      ...r.approval,
+      approvedByName: [r.approvedByName, r.approvedByLastName].filter(Boolean).join(" ") || r.approvedByEmail || r.approval.approvedBy,
+    })));
+  } catch (error) {
+    console.error("List recipe approvals error:", error);
+    res.status(500).json({ error: "Onay listesi yüklenemedi" });
+  }
+});
+
+// POST /api/factory/recipes/:id/approvals — Yeni onay ekle
+router.post("/api/factory/recipes/:id/approvals", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!APPROVAL_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Onay verme yetkiniz yok" });
+    }
+
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) return res.status(400).json({ error: "Geçersiz reçete id" });
+
+    const [recipe] = await db.select().from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
+
+    const parsed = insertFactoryRecipeApprovalSchema.safeParse({
+      recipeId,
+      scope: req.body?.scope,
+      approvedBy: req.user.id,
+      note: req.body?.note ?? null,
+      recipeVersionId: req.body?.recipeVersionId ?? null,
+      recipeVersionNumber: req.body?.recipeVersionNumber ?? recipe.version ?? null,
+      sourceRef: req.body?.sourceRef ?? "manual",
+    });
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Geçersiz onay verisi", details: parsed.error.flatten() });
+    }
+
+    const [created] = await db.insert(factoryRecipeApprovals).values(parsed.data).returning();
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Create recipe approval error:", error);
+    res.status(500).json({ error: "Onay kaydedilemedi" });
   }
 });
 

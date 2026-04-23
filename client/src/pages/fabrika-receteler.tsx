@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   ChefHat, Clock, Users, Package, FlaskConical, Lock,
-  EyeOff, ChevronRight, Plus, Layers, Zap,
+  EyeOff, ChevronRight, Plus, Layers, Zap, CheckCircle2, AlertCircle,
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -37,16 +37,22 @@ export default function FabrikaReceteler() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterApproval, setFilterApproval] = useState<"all" | "approved" | "unapproved">("all");
 
   const { data: recipes = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/factory/recipes", filterCategory],
+    queryKey: ["/api/factory/recipes", filterCategory, filterApproval],
     queryFn: async () => {
-      const params = filterCategory !== "all" ? `?category=${filterCategory}` : "";
-      const res = await fetch(`/api/factory/recipes${params}`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (filterCategory !== "all") params.set("category", filterCategory);
+      if (filterApproval !== "all") params.set("approvalStatus", filterApproval);
+      const qs = params.toString();
+      const res = await fetch(`/api/factory/recipes${qs ? `?${qs}` : ""}`, { credentials: "include" });
       if (!res.ok) throw new Error("Yüklenemedi");
       return res.json();
     },
   });
+
+  const unapprovedCount = recipes.filter((r: any) => !r.gramajApproved).length;
 
   const canCreate = ["admin", "recete_gm", "sef"].includes(user?.role || "");
 
@@ -72,6 +78,45 @@ export default function FabrikaReceteler() {
             Yeni Reçete
           </Button>
         )}
+      </div>
+
+      {/* Onay Filtresi (Task #164) */}
+      <div className="px-6 py-2 flex items-center gap-1.5 flex-wrap border-b border-border/50">
+        <span className="text-xs text-muted-foreground mr-1">Onay:</span>
+        <Button
+          size="sm"
+          variant={filterApproval === "all" ? "default" : "ghost"}
+          onClick={() => setFilterApproval("all")}
+          className="text-xs h-7"
+          data-testid="filter-approval-all"
+        >
+          Tümü
+        </Button>
+        <Button
+          size="sm"
+          variant={filterApproval === "unapproved" ? "default" : "ghost"}
+          onClick={() => setFilterApproval("unapproved")}
+          className="text-xs h-7"
+          data-testid="filter-approval-unapproved"
+        >
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Onaysız
+          {filterApproval === "all" && unapprovedCount > 0 && (
+            <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1">
+              {unapprovedCount}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          size="sm"
+          variant={filterApproval === "approved" ? "default" : "ghost"}
+          onClick={() => setFilterApproval("approved")}
+          className="text-xs h-7"
+          data-testid="filter-approval-approved"
+        >
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Onaylı
+        </Button>
       </div>
 
       {/* Kategori Filtresi */}
@@ -152,6 +197,16 @@ export default function FabrikaReceteler() {
                     {recipe.recipeType === "KEYBLEND" && (
                       <Badge variant="outline" className="text-[10px] bg-purple-950/50 text-purple-300 border-purple-700">
                         Keyblend
+                      </Badge>
+                    )}
+                    {!recipe.gramajApproved && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-amber-950/50 text-amber-300 border-amber-700"
+                        data-testid={`badge-unapproved-${recipe.id}`}
+                      >
+                        <AlertCircle className="h-2.5 w-2.5 mr-0.5" />
+                        Onaysız
                       </Badge>
                     )}
                   </div>

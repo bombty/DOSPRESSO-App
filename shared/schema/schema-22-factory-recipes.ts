@@ -475,3 +475,49 @@ export const factoryRecipePriceHistory = pgTable("factory_recipe_price_history",
 export const insertFactoryRecipePriceHistorySchema = createInsertSchema(factoryRecipePriceHistory).omit({ id: true, createdAt: true });
 export type FactoryRecipePriceHistory = typeof factoryRecipePriceHistory.$inferSelect;
 export type InsertFactoryRecipePriceHistory = z.infer<typeof insertFactoryRecipePriceHistorySchema>;
+
+// ────────────────────────────────────────
+// 10. REÇETE ONAYLARI (Task #164)
+//    change_log text yerine yapılandırılmış onay kaydı.
+//    scope: 'gramaj' | 'besin' | 'alerjen'
+//    Bir reçetenin "onaylı" sayılması için scope='gramaj' satırı bulunmalı.
+// ────────────────────────────────────────
+
+export const factoryRecipeApprovals = pgTable("factory_recipe_approvals", {
+  id: serial("id").primaryKey(),
+
+  recipeId: integer("recipe_id").notNull().references(() => factoryRecipes.id, { onDelete: "cascade" }),
+
+  // Onay kapsamı: gramaj (üretim formülü), besin (nutrition), alerjen (allergen)
+  scope: varchar("scope", { length: 20 }).notNull(),
+
+  approvedBy: varchar("approved_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }).defaultNow().notNull(),
+
+  note: text("note"),
+
+  // Hangi reçete versiyonunda onaylandı (varsa)
+  recipeVersionId: integer("recipe_version_id").references(() => factoryRecipeVersions.id, { onDelete: "set null" }),
+  recipeVersionNumber: integer("recipe_version_number"),
+
+  // Backfill / kaynak referansı (örn: "Task #159", "Task #139", "manual")
+  sourceRef: varchar("source_ref", { length: 50 }),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("fra_recipe_idx").on(table.recipeId),
+  index("fra_recipe_scope_idx").on(table.recipeId, table.scope),
+  index("fra_scope_idx").on(table.scope),
+  index("fra_approved_at_idx").on(table.approvedAt),
+]);
+
+export const insertFactoryRecipeApprovalSchema = createInsertSchema(factoryRecipeApprovals).omit({
+  id: true,
+  approvedAt: true,
+  createdAt: true,
+}).extend({
+  scope: z.enum(["gramaj", "besin", "alerjen"]),
+  note: z.string().min(3).max(2000).optional().nullable(),
+});
+export type FactoryRecipeApproval = typeof factoryRecipeApprovals.$inferSelect;
+export type InsertFactoryRecipeApproval = z.infer<typeof insertFactoryRecipeApprovalSchema>;
