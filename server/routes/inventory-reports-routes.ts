@@ -7,9 +7,140 @@ import {
   notifications,
   inventory,
   inventoryCounts,
+  inventoryCategoryEnum,
 } from "@shared/schema";
 
 const router = Router();
+
+// ========================================
+// CATEGORY AUDIT - Recipe ingredients with wrong inventory category
+// ========================================
+
+const RECIPE_VALID_CATEGORIES = ["hammadde", "yarimamul", "konsantre", "ambalaj"];
+const CATEGORY_AUDIT_ROLES = [
+  "admin",
+  "genel_mudur",
+  "ceo",
+  "cgo",
+  "fabrika_mudur",
+  "satinalma",
+];
+
+router.get('/api/inventory/category-audit', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user;
+    const role = user?.role as string;
+    if (!CATEGORY_AUDIT_ROLES.includes(role)) {
+      return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+
+    const result = await db.execute(sql`
+      WITH usage AS (
+        SELECT
+          fri.raw_material_id AS inventory_id,
+          'factory_recipe'::text AS source,
+          fri.recipe_id AS recipe_id
+        FROM factory_recipe_ingredients fri
+        WHERE fri.raw_material_id IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+          rm.inventory_id AS inventory_id,
+          'product_recipe'::text AS source,
+          pri.recipe_id AS recipe_id
+        FROM product_recipe_ingredients pri
+        JOIN raw_materials rm ON rm.id = pri.raw_material_id
+        WHERE rm.inventory_id IS NOT NULL
+      )
+      SELECT
+        inv.id,
+        inv.code,
+        inv.name,
+        inv.category,
+        inv.sub_category,
+        inv.unit,
+        inv.is_active,
+        COUNT(DISTINCT u.recipe_id) FILTER (WHERE u.source = 'factory_recipe') AS factory_recipe_count,
+        COUNT(DISTINCT u.recipe_id) FILTER (WHERE u.source = 'product_recipe') AS product_recipe_count,
+        COUNT(DISTINCT u.recipe_id) AS total_recipe_count
+      FROM usage u
+      JOIN inventory inv ON inv.id = u.inventory_id
+      WHERE inv.category NOT IN ('hammadde', 'yarimamul', 'konsantre', 'ambalaj')
+      GROUP BY inv.id, inv.code, inv.name, inv.category, inv.sub_category, inv.unit, inv.is_active
+      ORDER BY total_recipe_count DESC, inv.name ASC
+    `);
+
+    const rows = Array.isArray(result) ? result : ((result as any)?.rows ?? []);
+    res.json({
+      validCategories: RECIPE_VALID_CATEGORIES,
+      items: rows.map((r: any) => ({
+        id: Number(r.id),
+        code: r.code,
+        name: r.name,
+        category: r.category,
+        subCategory: r.sub_category,
+        unit: r.unit,
+        isActive: r.is_active,
+        factoryRecipeCount: Number(r.factory_recipe_count || 0),
+        productRecipeCount: Number(r.product_recipe_count || 0),
+        totalRecipeCount: Number(r.total_recipe_count || 0),
+      })),
+    });
+  } catch (error: unknown) {
+    console.error("Error running inventory category audit:", error);
+    res.status(500).json({ message: "Kategori denetimi calistirilamadi" });
+  }
+});
+
+router.patch('/api/inventory/:id/category', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user;
+    const role = user?.role as string;
+    if (!CATEGORY_AUDIT_ROLES.includes(role)) {
+      return res.status(403).json({ message: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "Gecersiz envanter id" });
+    }
+
+    const newCategory = String(req.body?.category || "");
+    if (!RECIPE_VALID_CATEGORIES.includes(newCategory)) {
+      return res.status(400).json({
+        message: "Gecersiz kategori. Sadece sunlardan biri olabilir: " + RECIPE_VALID_CATEGORIES.join(", "),
+      });
+    }
+    if (!(inventoryCategoryEnum as readonly string[]).includes(newCategory)) {
+      return res.status(400).json({ message: "Kategori envanter enum'unda yok" });
+    }
+
+    const [existing] = await db
+      .select({ id: inventory.id, category: inventory.category, name: inventory.name })
+      .from(inventory)
+      .where(eq(inventory.id, id))
+      .limit(1);
+    if (!existing) {
+      return res.status(404).json({ message: "Envanter kaydi bulunamadi" });
+    }
+
+    await db
+      .update(inventory)
+      .set({ category: newCategory, updatedAt: new Date() })
+      .where(eq(inventory.id, id));
+
+    res.json({
+      message: `${existing.name}: ${existing.category} -> ${newCategory}`,
+      id,
+      previousCategory: existing.category,
+      newCategory,
+    });
+  } catch (error: unknown) {
+    console.error("Error updating inventory category:", error);
+    res.status(500).json({ message: "Kategori guncellenemedi" });
+  }
+});
 
   // ========================================
   // FACTORY MANAGEMENT SCORE ROUTES

@@ -84,6 +84,7 @@ const AdminDelegasyon = lazy(() => import("./admin/delegasyon"));
 const AdminModuleFlags = lazy(() => import("./admin/module-flags"));
 const AdminDashboardAyarlari = lazy(() => import("./admin/dashboard-ayarlari"));
 const PilotLaunch = lazy(() => import("./pilot-launch"));
+const AdminEnvanterKategoriDenetimi = lazy(() => import("./admin/envanter-kategori-denetimi"));
 
 interface TabConfig {
   id: string;
@@ -460,6 +461,15 @@ const ADMIN_TABS: TabConfig[] = [
     permissionModule: "admin_panel",
     group: "sistem",
     component: PilotLaunch
+  },
+  {
+    id: "envanter-kategori-denetimi",
+    label: "Inventory Category Audit",
+    labelTr: "Envanter Kategori Denetimi",
+    icon: <AlertTriangle className="h-4 w-4" />,
+    permissionModule: "admin_panel",
+    group: "fabrika",
+    component: AdminEnvanterKategoriDenetimi
   }
 ];
 
@@ -515,7 +525,8 @@ const TAB_URL_MAP: Record<string, string> = {
   "delegasyon": "/admin/delegasyon",
   "modul-bayraklari": "/admin/modul-bayraklari",
   "dashboard-ayarlari": "/admin/dashboard-ayarlari",
-  "pilot-baslat": "/admin/pilot-baslat"
+  "pilot-baslat": "/admin/pilot-baslat",
+  "envanter-kategori-denetimi": "/admin/envanter-kategori-denetimi"
 };
 
 function getTabFromUrl(pathname: string): string | null {
