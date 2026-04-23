@@ -673,4 +673,155 @@ router.get(
   },
 );
 
+// ═══════════════════════════════════════
+// GET /api/quality/allergens/print-log/export?format=csv|xlsx
+// ISO/HACCP denetimleri için dışa aktarım — task #201
+// ═══════════════════════════════════════
+function csvEscape(v: any): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  if (/[",\n;]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+router.get(
+  "/api/quality/allergens/print-log/export",
+  isAuthenticated,
+  requirePrintLogViewRole,
+  async (req: any, res: Response) => {
+    try {
+      const format = String(req.query.format || "csv").toLowerCase() === "xlsx" ? "xlsx" : "csv";
+      const recipeId = req.query.recipeId ? Number(req.query.recipeId) : null;
+      const from = req.query.from ? new Date(String(req.query.from)) : null;
+      const to = req.query.to ? new Date(String(req.query.to)) : null;
+      const limit = Math.min(Math.max(Number(req.query.limit) || 5000, 1), 20000);
+
+      const conds: any[] = [];
+      if (recipeId && Number.isFinite(recipeId)) {
+        conds.push(eq(factoryRecipeLabelPrintLogs.recipeId, recipeId));
+      }
+      if (from && !isNaN(from.getTime())) {
+        conds.push(gte(factoryRecipeLabelPrintLogs.printedAt, from));
+      }
+      if (to && !isNaN(to.getTime())) {
+        conds.push(lte(factoryRecipeLabelPrintLogs.printedAt, to));
+      }
+
+      const baseQuery = db
+        .select({
+          id: factoryRecipeLabelPrintLogs.id,
+          recipeId: factoryRecipeLabelPrintLogs.recipeId,
+          recipeCode: factoryRecipeLabelPrintLogs.recipeCode,
+          recipeName: factoryRecipeLabelPrintLogs.recipeName,
+          printedBy: factoryRecipeLabelPrintLogs.printedBy,
+          isDraft: factoryRecipeLabelPrintLogs.isDraft,
+          grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
+          draftReason: factoryRecipeLabelPrintLogs.draftReason,
+          printedAt: factoryRecipeLabelPrintLogs.printedAt,
+          printedByFirstName: users.firstName,
+          printedByLastName: users.lastName,
+          printedByUsername: users.username,
+          printedByRole: users.role,
+        })
+        .from(factoryRecipeLabelPrintLogs)
+        .leftJoin(users, eq(users.id, factoryRecipeLabelPrintLogs.printedBy));
+
+      const rows = await (conds.length > 0
+        ? baseQuery.where(and(...conds))
+        : baseQuery)
+        .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
+        .limit(limit);
+
+      const records = rows.map((r) => {
+        const printedByName =
+          [r.printedByFirstName, r.printedByLastName].filter(Boolean).join(" ").trim() ||
+          r.printedByUsername ||
+          r.printedBy ||
+          "—";
+        const printedAt = r.printedAt
+          ? (r.printedAt instanceof Date ? r.printedAt : new Date(r.printedAt))
+          : null;
+        return {
+          tarih: printedAt ? printedAt.toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" }) : "",
+          tarihIso: printedAt ? printedAt.toISOString() : "",
+          kullanici: printedByName,
+          rol: r.printedByRole ?? "",
+          receteKodu: r.recipeCode ?? "",
+          receteAdi: r.recipeName ?? "",
+          durum: r.isDraft ? "Taslak" : "Onaylı",
+          gramajOnayli: r.grammageApproved ? "Evet" : "Hayır",
+          sebep: r.draftReason ?? "",
+        };
+      });
+
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const baseName = `etiket_basim_gecmisi_${stamp}`;
+
+      if (format === "xlsx") {
+        const ExcelJS = (await import("exceljs")).default;
+        const wb = new ExcelJS.Workbook();
+        wb.creator = "DOSPRESSO";
+        wb.created = new Date();
+        const sheet = wb.addWorksheet("Etiket Basım Geçmişi");
+        sheet.columns = [
+          { header: "Tarih (TR)", key: "tarih", width: 22 },
+          { header: "Tarih (ISO)", key: "tarihIso", width: 26 },
+          { header: "Kullanıcı", key: "kullanici", width: 28 },
+          { header: "Rol", key: "rol", width: 22 },
+          { header: "Reçete Kodu", key: "receteKodu", width: 18 },
+          { header: "Reçete Adı", key: "receteAdi", width: 36 },
+          { header: "Durum", key: "durum", width: 12 },
+          { header: "Gramaj Onaylı", key: "gramajOnayli", width: 14 },
+          { header: "Sebep / Not", key: "sebep", width: 40 },
+        ];
+        sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+        sheet.getRow(1).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF4472C4" },
+        };
+        for (const rec of records) sheet.addRow(rec);
+
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader("Content-Disposition", `attachment; filename="${baseName}.xlsx"`);
+        await wb.xlsx.write(res);
+        res.end();
+        return;
+      }
+
+      // CSV — UTF-8 BOM ile Excel uyumlu
+      const headers = [
+        "Tarih (TR)",
+        "Tarih (ISO)",
+        "Kullanıcı",
+        "Rol",
+        "Reçete Kodu",
+        "Reçete Adı",
+        "Durum",
+        "Gramaj Onaylı",
+        "Sebep / Not",
+      ];
+      const lines: string[] = [headers.join(",")];
+      for (const r of records) {
+        lines.push([
+          r.tarih, r.tarihIso, r.kullanici, r.rol,
+          r.receteKodu, r.receteAdi, r.durum, r.gramajOnayli, r.sebep,
+        ].map(csvEscape).join(","));
+      }
+      const body = "\uFEFF" + lines.join("\r\n") + "\r\n";
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${baseName}.csv"`);
+      res.send(body);
+    } catch (error) {
+      console.error("Etiket basım geçmişi dışa aktarımı başarısız:", error);
+      res.status(500).json({ error: "Etiket basım geçmişi dışa aktarılamadı" });
+    }
+  },
+);
+
 export default router;

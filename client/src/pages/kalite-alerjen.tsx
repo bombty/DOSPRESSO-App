@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { downloadEtiketPDF } from "@/lib/etiketPDF";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning, History, Check, ChevronsUpDown, X } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning, History, Check, ChevronsUpDown, X, Download, FileSpreadsheet } from "lucide-react";
 
 const FIX_ROLES = ["admin", "kalite_yoneticisi", "gida_muhendisi", "recete_gm", "sef", "ust_yonetim"];
 
@@ -85,6 +85,7 @@ function loadPrintLogFilters(): PrintLogFilters {
 }
 
 function PrintLogPanel() {
+  const { toast } = useToast();
   const [filters, setFilters] = useState<PrintLogFilters>(() => loadPrintLogFilters());
   const [recipePopoverOpen, setRecipePopoverOpen] = useState(false);
 
@@ -94,7 +95,7 @@ function PrintLogPanel() {
     } catch {}
   }, [filters]);
 
-  const queryUrl = useMemo(() => {
+  const filterParams = useMemo(() => {
     const params = new URLSearchParams();
     if (filters.recipeId) params.set("recipeId", String(filters.recipeId));
     if (filters.from) params.set("from", new Date(filters.from + "T00:00:00").toISOString());
@@ -102,9 +103,13 @@ function PrintLogPanel() {
       const toEnd = new Date(filters.to + "T23:59:59.999");
       params.set("to", toEnd.toISOString());
     }
-    const qs = params.toString();
-    return `/api/quality/allergens/print-log${qs ? `?${qs}` : ""}`;
+    return params;
   }, [filters]);
+
+  const queryUrl = useMemo(() => {
+    const qs = filterParams.toString();
+    return `/api/quality/allergens/print-log${qs ? `?${qs}` : ""}`;
+  }, [filterParams]);
 
   const { data, isLoading, error } = useQuery<PrintLogResponse>({
     queryKey: ["/api/quality/allergens/print-log", filters],
@@ -114,6 +119,46 @@ function PrintLogPanel() {
       return res.json();
     },
   });
+  const [exporting, setExporting] = useState<"csv" | "xlsx" | null>(null);
+
+  const handleExport = async (format: "csv" | "xlsx") => {
+    try {
+      setExporting(format);
+      const exportParams = new URLSearchParams(filterParams);
+      exportParams.set("format", format);
+      const res = await fetch(
+        `/api/quality/allergens/print-log/export?${exportParams.toString()}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "");
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") || "";
+      const match = cd.match(/filename="?([^";]+)"?/i);
+      const filename =
+        match?.[1] ||
+        `etiket_basim_gecmisi_${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.${format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "Dışa aktarım hazır", description: filename });
+    } catch (err) {
+      toast({
+        title: "Dışa aktarım başarısız",
+        description: String((err as Error).message || err),
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const recipesQuery = useQuery<ListResponse>({
     queryKey: ["/api/quality/allergens/recipes"],
@@ -145,27 +190,49 @@ function PrintLogPanel() {
               Gıda güvenliği denetim izi — her PDF basımı kim, ne zaman, taslak mı / onaylı mı.
             </CardDescription>
           </div>
-          {data && (
-            <div className="flex gap-2">
-              <Badge variant="outline" data-testid="badge-printlog-total">
-                Toplam: {data.stats.total}
-              </Badge>
-              <Badge
-                variant="default"
-                className="bg-emerald-600 text-white border-emerald-700"
-                data-testid="badge-printlog-approved"
-              >
-                Onaylı: {data.stats.approvedCount}
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-amber-600/40 text-amber-600 dark:text-amber-400"
-                data-testid="badge-printlog-draft"
-              >
-                Taslak: {data.stats.draftCount}
-              </Badge>
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {data && (
+              <>
+                <Badge variant="outline" data-testid="badge-printlog-total">
+                  Toplam: {data.stats.total}
+                </Badge>
+                <Badge
+                  variant="default"
+                  className="bg-emerald-600 text-white border-emerald-700"
+                  data-testid="badge-printlog-approved"
+                >
+                  Onaylı: {data.stats.approvedCount}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                  data-testid="badge-printlog-draft"
+                >
+                  Taslak: {data.stats.draftCount}
+                </Badge>
+              </>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={exporting !== null || !data || data.logs.length === 0}
+              onClick={() => handleExport("csv")}
+              data-testid="button-printlog-export-csv"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {exporting === "csv" ? "Hazırlanıyor…" : "CSV indir"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={exporting !== null || !data || data.logs.length === 0}
+              onClick={() => handleExport("xlsx")}
+              data-testid="button-printlog-export-xlsx"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              {exporting === "xlsx" ? "Hazırlanıyor…" : "Excel indir"}
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap items-end gap-2 pt-3">
           <div className="flex flex-col gap-1 min-w-[220px] flex-1">
