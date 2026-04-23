@@ -15,8 +15,9 @@ import {
   factoryRecipeIngredients,
   factoryIngredientNutrition,
   factoryKeyblendIngredients,
+  users,
 } from "@shared/schema";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 
 const router = Router();
@@ -56,6 +57,9 @@ interface NutritionRow {
   saltG: any;
   allergens: string[] | null;
   confidence: number | null;
+  source: string | null;
+  verifiedBy: string | null;
+  updatedAt: Date | string | null;
 }
 
 interface PerHundredGrams {
@@ -126,6 +130,9 @@ interface RecipeComputation {
     matchedName?: string;
     allergens: string[];
     confidence?: number | null;
+    source?: string | null;
+    verifiedBy?: string | null;
+    updatedAt?: string | null;
   }>;
   isVerified: boolean;
 }
@@ -195,6 +202,13 @@ async function computeRecipeNutrition(
       matchedName: match?.ingredientName,
       allergens: ingAllergens,
       confidence: match?.confidence ?? null,
+      source: match?.source ?? null,
+      verifiedBy: match?.verifiedBy ?? null,
+      updatedAt: match?.updatedAt
+        ? (match.updatedAt instanceof Date
+            ? match.updatedAt.toISOString()
+            : new Date(match.updatedAt).toISOString())
+        : null,
     });
   }
 
@@ -229,6 +243,11 @@ async function loadNutritionMap(): Promise<Map<string, NutritionRow>> {
     saltG: factoryIngredientNutrition.saltG,
     allergens: factoryIngredientNutrition.allergens,
     confidence: factoryIngredientNutrition.confidence,
+    source: factoryIngredientNutrition.source,
+    verifiedBy: factoryIngredientNutrition.verifiedBy,
+    // factory_ingredient_nutrition.updated_at kolonu üretim DB'sinde henüz mevcut değil
+    // (schema drift). Onay tarihi göstergesi için created_at kullan.
+    updatedAt: factoryIngredientNutrition.createdAt,
   }).from(factoryIngredientNutrition);
   const map = new Map<string, NutritionRow>();
   for (const r of rows) {
@@ -350,6 +369,28 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
 
     const comp = await computeRecipeNutrition(recipeId, ings, nutritionMap, keyblendAllergens);
 
+    // verifier kullanıcı adlarını çöz
+    const verifierIds = Array.from(new Set(
+      comp.ingredientBreakdown.map(b => b.verifiedBy).filter((v): v is string => !!v)
+    ));
+    const verifierMap = new Map<string, string>();
+    if (verifierIds.length > 0) {
+      const verifiers = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        username: users.username,
+      }).from(users).where(inArray(users.id, verifierIds));
+      for (const v of verifiers) {
+        const name = [v.firstName, v.lastName].filter(Boolean).join(" ").trim() || v.username || v.id;
+        verifierMap.set(v.id, name);
+      }
+    }
+    const ingredientsWithVerifier = comp.ingredientBreakdown.map(b => ({
+      ...b,
+      verifiedByName: b.verifiedBy ? (verifierMap.get(b.verifiedBy) ?? null) : null,
+    }));
+
     const portionGrams = recipe.expectedUnitWeight ? Number(recipe.expectedUnitWeight) : null;
     const perPortion = portionGrams ? roundNutrition({
       energy_kcal: comp.per100g.energy_kcal * portionGrams / 100,
@@ -379,7 +420,7 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       matchedCount: comp.matchedCount,
       unmatchedNames: comp.unmatched,
       isVerified: comp.isVerified,
-      ingredients: comp.ingredientBreakdown,
+      ingredients: ingredientsWithVerifier,
     });
   } catch (error) {
     console.error("Allergen recipe detail error:", error);

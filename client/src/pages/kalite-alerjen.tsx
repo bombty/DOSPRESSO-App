@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle } from "lucide-react";
 
 interface Per100g {
   energy_kcal: number;
@@ -51,6 +52,10 @@ interface RecipeDetail extends RecipeSummary {
     matchedName?: string;
     allergens: string[];
     confidence?: number | null;
+    source?: string | null;
+    verifiedBy?: string | null;
+    verifiedByName?: string | null;
+    updatedAt?: string | null;
   }>;
 }
 
@@ -77,6 +82,80 @@ function AllergenBadge({ name }: { name: string }) {
       <Icon className="w-3 h-3" />
       <span className="capitalize">{name}</span>
     </Badge>
+  );
+}
+
+function VerificationBadge({
+  confidence,
+  source,
+  verifiedByName,
+  updatedAt,
+  matched,
+}: {
+  confidence?: number | null;
+  source?: string | null;
+  verifiedByName?: string | null;
+  updatedAt?: string | null;
+  matched: boolean;
+}) {
+  if (!matched) return null;
+
+  const isApproved = confidence === 100 && (source ?? "").toLowerCase().includes("manual_verified");
+  const formattedDate = updatedAt
+    ? new Date(updatedAt).toLocaleDateString("tr-TR", { year: "numeric", month: "short", day: "numeric" })
+    : null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {isApproved ? (
+          <Badge
+            className="gap-1 shrink-0 bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600"
+            data-testid="badge-ingredient-approved"
+          >
+            <BadgeCheck className="w-3 h-3" />
+            Onaylı
+          </Badge>
+        ) : (
+          <Badge
+            className="gap-1 shrink-0 bg-amber-500 text-white border-amber-600 dark:bg-amber-600 dark:border-amber-500"
+            data-testid="badge-ingredient-estimated"
+          >
+            <HelpCircle className="w-3 h-3" />
+            Tahmini
+          </Badge>
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <div className="space-y-1 text-xs">
+          <div className="font-semibold">
+            {isApproved ? "Gıda mühendisi onaylı" : "Tahmini değer"}
+          </div>
+          {isApproved ? (
+            <>
+              {verifiedByName ? (
+                <div>Onaylayan: <span className="font-medium">{verifiedByName}</span></div>
+              ) : (
+                <div className="opacity-80">Onaylayan kullanıcı kaydedilmemiş</div>
+              )}
+              {formattedDate && <div>Son güncelleme: <span className="font-medium">{formattedDate}</span></div>}
+              <div className="text-[11px] opacity-80">
+                Bu malzemenin besin değerleri gıda mühendisi tarafından doğrulanmıştır.
+              </div>
+            </>
+          ) : (
+            <>
+              <div>Kaynak: <span className="font-medium">{source || "manual"}</span></div>
+              {confidence != null && <div>Güven: <span className="font-medium">%{confidence}</span></div>}
+              {formattedDate && <div>Son güncelleme: <span className="font-medium">{formattedDate}</span></div>}
+              <div className="text-[11px] opacity-80">
+                Henüz gıda mühendisi onayından geçmedi. Etiket basımı öncesi onaylanması önerilir.
+              </div>
+            </>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -256,6 +335,13 @@ function RecipeDetailDialog({ id, onClose }: { id: number | null; onClose: () =>
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center justify-end gap-1 shrink-0 max-w-[55%]">
+                          <VerificationBadge
+                            matched={ing.matched}
+                            confidence={ing.confidence}
+                            source={ing.source}
+                            verifiedByName={ing.verifiedByName}
+                            updatedAt={ing.updatedAt}
+                          />
                           {ing.allergens.map(a => <AllergenBadge key={a} name={a} />)}
                           {!ing.matched && (
                             <Badge variant="outline" className="text-xs">eşleşmedi</Badge>
