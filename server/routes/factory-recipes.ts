@@ -1201,6 +1201,85 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
   }
 });
 
+// GET /api/factory/recipes/:id/ingredients/snapshots — Tüm snapshot geçmişi
+// Task #194: Yedek geçmişi diyalogu için. Yeni → eski sıralı (en yeni üstte).
+router.get("/api/factory/recipes/:id/ingredients/snapshots", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) return res.status(400).json({ error: "Geçersiz reçete" });
+
+    const rows = await db.select({
+      id: factoryRecipeIngredientSnapshots.id,
+      ingredientCount: factoryRecipeIngredientSnapshots.ingredientCount,
+      reason: factoryRecipeIngredientSnapshots.reason,
+      createdBy: factoryRecipeIngredientSnapshots.createdBy,
+      createdAt: factoryRecipeIngredientSnapshots.createdAt,
+      restoredAt: factoryRecipeIngredientSnapshots.restoredAt,
+      createdByFirstName: users.firstName,
+      createdByLastName: users.lastName,
+      createdByEmail: users.email,
+    })
+      .from(factoryRecipeIngredientSnapshots)
+      .leftJoin(users, eq(users.id, factoryRecipeIngredientSnapshots.createdBy))
+      .where(eq(factoryRecipeIngredientSnapshots.recipeId, recipeId))
+      .orderBy(desc(factoryRecipeIngredientSnapshots.createdAt));
+
+    res.json(rows);
+  } catch (error) {
+    console.error("List snapshots error:", error);
+    res.status(500).json({ error: "Yedek geçmişi yüklenemedi" });
+  }
+});
+
+// DELETE /api/factory/recipes/:id/ingredients/snapshots/:snapshotId — Tek yedeği sil
+// Task #194: Yalnızca admin / recete_gm temizleyebilir.
+router.delete("/api/factory/recipes/:id/ingredients/snapshots/:snapshotId", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_ADMIN_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+    const snapshotId = Number(req.params.snapshotId);
+    if (!Number.isFinite(recipeId) || !Number.isFinite(snapshotId)) {
+      return res.status(400).json({ error: "Geçersiz parametre" });
+    }
+    const result = await db.delete(factoryRecipeIngredientSnapshots)
+      .where(and(
+        eq(factoryRecipeIngredientSnapshots.id, snapshotId),
+        eq(factoryRecipeIngredientSnapshots.recipeId, recipeId),
+      ))
+      .returning({ id: factoryRecipeIngredientSnapshots.id });
+    if (result.length === 0) return res.status(404).json({ error: "Snapshot bulunamadı" });
+    res.json({ deleted: result.length });
+  } catch (error) {
+    console.error("Delete snapshot error:", error);
+    res.status(500).json({ error: "Yedek silinemedi" });
+  }
+});
+
+// POST /api/factory/recipes/:id/ingredients/snapshots/cleanup — Eski yedekleri toplu sil
+// Task #194: olderThanDays (varsayılan 30). Yalnızca admin / recete_gm.
+router.post("/api/factory/recipes/:id/ingredients/snapshots/cleanup", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_ADMIN_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) return res.status(400).json({ error: "Geçersiz reçete" });
+    const days = Math.max(1, Math.min(3650, Number(req.body?.olderThanDays ?? 30)));
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const result = await db.delete(factoryRecipeIngredientSnapshots)
+      .where(and(
+        eq(factoryRecipeIngredientSnapshots.recipeId, recipeId),
+        sql`${factoryRecipeIngredientSnapshots.createdAt} < ${cutoff}`,
+      ))
+      .returning({ id: factoryRecipeIngredientSnapshots.id });
+
+    res.json({ deleted: result.length, olderThanDays: days });
+  } catch (error) {
+    console.error("Cleanup snapshots error:", error);
+    res.status(500).json({ error: "Yedekler temizlenemedi" });
+  }
+});
+
 // GET /api/factory/recipes/:id/ingredients/snapshots/latest — Son içe aktarma snapshot bilgisi
 // Task #182: Frontend "Geri Al" butonunun görünürlüğü için kullanılır.
 router.get("/api/factory/recipes/:id/ingredients/snapshots/latest", isAuthenticated, async (req: any, res: Response) => {

@@ -191,6 +191,84 @@ export default function FabrikaReceteDuzenle() {
     enabled: !isNew && !!id,
   });
   const [confirmUndo, setConfirmUndo] = useState(false);
+
+  // Task #194: Yedek geçmişi diyalogu
+  type SnapshotRow = {
+    id: number; ingredientCount: number; reason: string | null;
+    createdBy: string | null; createdAt: string; restoredAt: string | null;
+    createdByFirstName: string | null; createdByLastName: string | null;
+    createdByEmail: string | null;
+  };
+  const canManageSnapshots = ["admin", "recete_gm"].includes(user?.role || "");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const { data: snapshotHistory = [], isLoading: historyLoading } = useQuery<SnapshotRow[]>({
+    queryKey: ["/api/factory/recipes", id, "ingredients/snapshots"],
+    enabled: !isNew && !!id && historyOpen,
+  });
+  const [restoreTarget, setRestoreTarget] = useState<SnapshotRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SnapshotRow | null>(null);
+  const [confirmCleanup, setConfirmCleanup] = useState(false);
+  const [cleanupDays, setCleanupDays] = useState(30);
+
+  const restoreSpecificMutation = useMutation({
+    mutationFn: async (snap: SnapshotRow) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/ingredients/snapshots/${snap.id}/restore`,
+      );
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots"] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"] });
+      toast({ title: "Geri yüklendi", description: `${data?.restoredCount ?? 0} malzeme önceki haline döndürüldü` });
+      setRestoreTarget(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Geri yükleme başarısız", variant: "destructive" });
+    },
+  });
+
+  const deleteSnapshotMutation = useMutation({
+    mutationFn: async (snap: SnapshotRow) => {
+      const res = await apiRequest(
+        "DELETE",
+        `/api/factory/recipes/${id}/ingredients/snapshots/${snap.id}`,
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots"] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"] });
+      toast({ title: "Yedek silindi" });
+      setDeleteTarget(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Silme başarısız", variant: "destructive" });
+    },
+  });
+
+  const cleanupMutation = useMutation({
+    mutationFn: async (days: number) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/ingredients/snapshots/cleanup`,
+        { olderThanDays: days },
+      );
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots"] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"] });
+      toast({ title: "Temizlendi", description: `${data?.deleted ?? 0} eski yedek silindi` });
+      setConfirmCleanup(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Temizlik başarısız", variant: "destructive" });
+    },
+  });
+
   const undoMutation = useMutation({
     mutationFn: async () => {
       if (!latestSnapshot) throw new Error("Snapshot yok");
@@ -820,6 +898,15 @@ export default function FabrikaReceteDuzenle() {
                     <Undo2 className="w-3.5 h-3.5 mr-1" /> Son İçe Aktarmayı Geri Al
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHistoryOpen(true)}
+                  data-testid="button-open-snapshot-history"
+                  title="Tüm yedek geçmişini görüntüle"
+                >
+                  <History className="w-3.5 h-3.5 mr-1" /> Yedek Geçmişi
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -1460,6 +1547,188 @@ export default function FabrikaReceteDuzenle() {
               data-testid="button-undo-steps-confirm"
             >
               {undoStepsMutation.isPending ? "Geri alınıyor..." : "Evet, geri al"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+      {/* Task #194: Yedek geçmişi diyalogu */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-3xl" data-testid="dialog-snapshot-history">
+          <DialogHeader>
+            <DialogTitle>Malzeme Yedek Geçmişi</DialogTitle>
+            <DialogDescription>
+              Bu reçete için alınmış tüm JSON yedekler. Herhangi birini geri yükleyebilir
+              {canManageSnapshots ? ", eski kayıtları silebilirsiniz." : "siniz."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-auto">
+            {historyLoading ? (
+              <div className="text-sm text-muted-foreground p-4 text-center" data-testid="text-history-loading">Yükleniyor...</div>
+            ) : snapshotHistory.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-4 text-center" data-testid="text-history-empty">Henüz yedek alınmamış</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-background border-b">
+                  <tr className="text-left text-muted-foreground">
+                    <th className="py-2 pr-2 font-medium">Tarih</th>
+                    <th className="py-2 pr-2 font-medium">Kullanıcı</th>
+                    <th className="py-2 pr-2 font-medium text-right">Malzeme</th>
+                    <th className="py-2 pr-2 font-medium">Neden</th>
+                    <th className="py-2 pr-2 font-medium">Durum</th>
+                    <th className="py-2 pr-2 font-medium text-right">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshotHistory.map((s) => {
+                    const userName = [s.createdByFirstName, s.createdByLastName].filter(Boolean).join(" ").trim()
+                      || s.createdByEmail || s.createdBy || "—";
+                    const reasonLabel = s.reason === "pre_restore" ? "Geri yükleme öncesi"
+                      : s.reason === "bulk_import" ? "Toplu içe aktarma"
+                      : (s.reason || "—");
+                    return (
+                      <tr key={s.id} className="border-b" data-testid={`row-snapshot-${s.id}`}>
+                        <td className="py-2 pr-2 whitespace-nowrap" data-testid={`text-snapshot-date-${s.id}`}>
+                          {new Date(s.createdAt).toLocaleString("tr-TR")}
+                        </td>
+                        <td className="py-2 pr-2" data-testid={`text-snapshot-user-${s.id}`}>{userName}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums" data-testid={`text-snapshot-count-${s.id}`}>{s.ingredientCount}</td>
+                        <td className="py-2 pr-2" data-testid={`text-snapshot-reason-${s.id}`}>{reasonLabel}</td>
+                        <td className="py-2 pr-2">
+                          {s.restoredAt ? (
+                            <Badge variant="secondary" className="text-[10px]" data-testid={`badge-snapshot-restored-${s.id}`}>Geri yüklendi</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px]" data-testid={`badge-snapshot-active-${s.id}`}>Aktif</Badge>
+                          )}
+                        </td>
+                        <td className="py-2 pr-2">
+                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setRestoreTarget(s)}
+                              disabled={!!s.restoredAt || restoreSpecificMutation.isPending}
+                              data-testid={`button-restore-snapshot-${s.id}`}
+                            >
+                              <Undo2 className="w-3 h-3 mr-1" /> Geri Yükle
+                            </Button>
+                            {canManageSnapshots && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDeleteTarget(s)}
+                                disabled={deleteSnapshotMutation.isPending}
+                                data-testid={`button-delete-snapshot-${s.id}`}
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
+            {canManageSnapshots ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label htmlFor="cleanup-days" className="text-xs whitespace-nowrap">Eski yedekleri temizle:</Label>
+                <Input
+                  id="cleanup-days"
+                  type="number"
+                  min={1}
+                  max={3650}
+                  className="w-20 h-9"
+                  value={cleanupDays}
+                  onChange={(e) => setCleanupDays(Math.max(1, Number(e.target.value) || 30))}
+                  data-testid="input-cleanup-days"
+                />
+                <span className="text-xs text-muted-foreground">günden eski</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmCleanup(true)}
+                  disabled={cleanupMutation.isPending || snapshotHistory.length === 0}
+                  data-testid="button-cleanup-snapshots"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Temizle
+                </Button>
+              </div>
+            ) : <div />}
+            <Button variant="outline" onClick={() => setHistoryOpen(false)} data-testid="button-close-snapshot-history">Kapat</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task #194: Belirli yedeği geri yükleme onayı */}
+      <AlertDialog open={!!restoreTarget} onOpenChange={(o) => { if (!o && !restoreSpecificMutation.isPending) setRestoreTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bu yedeği geri yükle?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {restoreTarget
+                ? `Mevcut malzemeler silinecek ve ${restoreTarget.ingredientCount} malzemeli yedek (${new Date(restoreTarget.createdAt).toLocaleString("tr-TR")}) geri yüklenecek. Mevcut hâl de yeni bir yedek olarak saklanır.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={restoreSpecificMutation.isPending} data-testid="button-restore-snapshot-cancel">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); if (restoreTarget) restoreSpecificMutation.mutate(restoreTarget); }}
+              disabled={restoreSpecificMutation.isPending || !restoreTarget}
+              data-testid="button-restore-snapshot-confirm"
+            >
+              {restoreSpecificMutation.isPending ? "Geri yükleniyor..." : "Evet, geri yükle"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Task #194: Tek yedek silme onayı */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleteSnapshotMutation.isPending) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bu yedeği sil?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? `${new Date(deleteTarget.createdAt).toLocaleString("tr-TR")} tarihli, ${deleteTarget.ingredientCount} malzemeli yedek kalıcı olarak silinecek. Bu işlem geri alınamaz.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteSnapshotMutation.isPending} data-testid="button-delete-snapshot-cancel">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); if (deleteTarget) deleteSnapshotMutation.mutate(deleteTarget); }}
+              disabled={deleteSnapshotMutation.isPending || !deleteTarget}
+              data-testid="button-delete-snapshot-confirm"
+            >
+              {deleteSnapshotMutation.isPending ? "Siliniyor..." : "Evet, sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Task #194: Toplu temizleme onayı */}
+      <AlertDialog open={confirmCleanup} onOpenChange={(o) => { if (!cleanupMutation.isPending) setConfirmCleanup(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eski yedekleri temizle?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cleanupDays} günden eski tüm malzeme yedekleri kalıcı olarak silinecek. Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cleanupMutation.isPending} data-testid="button-cleanup-cancel">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); cleanupMutation.mutate(cleanupDays); }}
+              disabled={cleanupMutation.isPending}
+              data-testid="button-cleanup-confirm"
+            >
+              {cleanupMutation.isPending ? "Temizleniyor..." : "Evet, temizle"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
