@@ -47,25 +47,12 @@ BEGIN
   RAISE NOTICE '';
 END $$;
 
--- INSERT: Her DISTINCT malzeme adı için template kayıt
--- ON CONFLICT: ingredient_name UNIQUE olduğu için zaten varsa atlama
-INSERT INTO factory_ingredient_nutrition (
-  ingredient_name,
-  allergens,
-  source,
-  confidence,
-  verified_by,
-  created_at,
-  updated_at
-)
+-- INSERT: Sadece zorunlu kolonlar (şema drift riski minimal)
+-- ingredient_name (NOT NULL UNIQUE) - Sema diğer kolonları sonra dolduracak
+INSERT INTO factory_ingredient_nutrition (ingredient_name, allergens)
 SELECT DISTINCT
   fri.name,
-  ARRAY[]::text[],           -- Boş alerjen array (Sema dolduracak)
-  'manual'::varchar,
-  0,                          -- confidence=0: template (Sema 100'e çıkaracak)
-  NULL,                       -- verified_by: Sema onaylayınca güncellenir
-  NOW(),
-  NOW()
+  ARRAY[]::text[]
 FROM factory_recipe_ingredients fri
 ON CONFLICT (ingredient_name) DO NOTHING;
 
@@ -79,8 +66,8 @@ DECLARE
   total_recipes INT;
 BEGIN
   SELECT COUNT(*) INTO total_nutrition_count FROM factory_ingredient_nutrition;
-  SELECT COUNT(*) INTO verified_count FROM factory_ingredient_nutrition WHERE verified_by IS NOT NULL;
-  SELECT COUNT(*) INTO template_count FROM factory_ingredient_nutrition WHERE verified_by IS NULL AND confidence = 0;
+  SELECT COUNT(*) INTO verified_count FROM factory_ingredient_nutrition WHERE allergens IS NOT NULL AND array_length(allergens, 1) > 0;
+  SELECT COUNT(*) INTO template_count FROM factory_ingredient_nutrition WHERE allergens = ARRAY[]::text[];
 
   SELECT COUNT(DISTINCT fri.recipe_id) INTO recipes_with_any_ingredient_nutrition
   FROM factory_recipe_ingredients fri
@@ -91,25 +78,22 @@ BEGIN
   RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
   RAISE NOTICE 'Alerjen Seed Tamamlandı';
   RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
-  RAISE NOTICE 'Toplam nutrition kayıt:  % (template + doğrulanmış)', total_nutrition_count;
-  RAISE NOTICE 'Sema doğrulamış:          % (verified_by NOT NULL)', verified_count;
-  RAISE NOTICE 'Template bekleyen:        % (Sema dolduracak)', template_count;
+  RAISE NOTICE 'Toplam nutrition kayıt:    %', total_nutrition_count;
+  RAISE NOTICE 'Alerjen dolu (verify):     % kayıt', verified_count;
+  RAISE NOTICE 'Template (Sema bekliyor):  % kayıt', template_count;
   RAISE NOTICE '';
   RAISE NOTICE 'Coverage: % / % reçete nutrition kaydına sahip',
     recipes_with_any_ingredient_nutrition, total_recipes;
   RAISE NOTICE '';
   RAISE NOTICE '📋 SEMA NIN IŞI (26 Nis öncesi):';
-  RAISE NOTICE '1. Her template kayıt için gerçek alerjen + besin değeri girer';
+  RAISE NOTICE '1. Her template kayıt için gerçek alerjen girer';
   RAISE NOTICE '   ÖRNEK:';
   RAISE NOTICE '   UPDATE factory_ingredient_nutrition';
-  RAISE NOTICE '   SET allergens = ARRAY[''gluten'',''soya''],';
-  RAISE NOTICE '       energy_kcal = 364, fat_g = 1.2, carbohydrate_g = 76,';
-  RAISE NOTICE '       verified_by = ''hq-sema-gida'',';
-  RAISE NOTICE '       confidence = 100';
+  RAISE NOTICE '   SET allergens = ARRAY[''gluten'',''soya'']';
   RAISE NOTICE '   WHERE ingredient_name = ''Un'';';
   RAISE NOTICE '';
-  RAISE NOTICE '2. Admin panelden: /kalite/alerjen sayfası';
-  RAISE NOTICE '3. Pilot 28 Nis öncesi en az 27 reçetenin tüm malzemeleri verify';
+  RAISE NOTICE '2. Admin panelden: /kalite/alerjen sayfasi';
+  RAISE NOTICE '3. Pilot 28 Nis oncesi en az 27 recetenin tum malzemeleri verify';
   RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 END $$;
 
