@@ -38,6 +38,9 @@ interface RecipeSummary {
   matchedCount: number;
   unmatchedNames: string[];
   isVerified: boolean;
+  verificationReason: string | null;
+  lowConfidenceCount: number;
+  minConfidence: number | null;
 }
 
 interface RecipeDetail extends RecipeSummary {
@@ -197,6 +200,15 @@ function RecipeCard({ recipe, onOpen }: { recipe: RecipeSummary; onOpen: (id: nu
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {!recipe.isVerified && recipe.verificationReason && (
+          <div
+            className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-900 dark:text-amber-200"
+            data-testid={`text-unverified-reason-${recipe.id}`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <span>{recipe.verificationReason}</span>
+          </div>
+        )}
         <div>
           <div className="text-xs text-muted-foreground mb-1.5">Alerjenler</div>
           {recipe.allergens.length > 0 ? (
@@ -248,7 +260,9 @@ function RecipeDetailDialog({ id, onClose }: { id: number | null; onClose: () =>
                 <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
                   <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                   <div>
-                    <div className="font-medium text-amber-900 dark:text-amber-200">Henüz tam doğrulanmadı</div>
+                    <div className="font-medium text-amber-900 dark:text-amber-200" data-testid="text-detail-unverified-reason">
+                      {data.verificationReason ?? "Henüz tam doğrulanmadı"}
+                    </div>
                     <div className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-0.5">
                       {data.matchedCount}/{data.ingredientCount} malzemenin besin değeri doğrulandı.
                       {data.unmatchedNames.length > 0 && (

@@ -135,6 +135,9 @@ interface RecipeComputation {
     updatedAt?: string | null;
   }>;
   isVerified: boolean;
+  verificationReason: string | null;
+  lowConfidenceCount: number;
+  minConfidence: number | null;
 }
 
 async function computeRecipeNutrition(
@@ -217,6 +220,26 @@ async function computeRecipeNutrition(
     matchedCount === ingredients.length &&
     breakdown.every(b => !b.matched || (b.confidence ?? 0) >= VERIFIED_CONFIDENCE_MIN);
 
+  const matchedConfidences = breakdown
+    .filter(b => b.matched && b.confidence != null)
+    .map(b => b.confidence as number);
+  const lowConfidenceCount = matchedConfidences.filter(c => c < VERIFIED_CONFIDENCE_MIN).length;
+  const minConfidence = matchedConfidences.length > 0 ? Math.min(...matchedConfidences) : null;
+
+  let verificationReason: string | null = null;
+  if (!isVerified) {
+    if (ingredients.length === 0) {
+      verificationReason = "Malzeme listesi henüz girilmedi";
+    } else if (matchedCount < ingredients.length) {
+      const missing = ingredients.length - matchedCount;
+      verificationReason = `Sema Gıda onayı bekleniyor — ${missing} malzemenin besin değeri henüz eşleşmedi`;
+    } else if (lowConfidenceCount > 0) {
+      verificationReason = `Düşük güven skoru — ${lowConfidenceCount} malzeme ${VERIFIED_CONFIDENCE_MIN} eşiğinin altında`;
+    } else {
+      verificationReason = "Henüz tam doğrulanmadı";
+    }
+  }
+
   return {
     recipeId,
     totalGrams,
@@ -227,6 +250,9 @@ async function computeRecipeNutrition(
     unmatched,
     ingredientBreakdown: breakdown,
     isVerified,
+    verificationReason,
+    lowConfidenceCount,
+    minConfidence,
   };
 }
 
@@ -328,6 +354,9 @@ router.get("/api/quality/allergens/recipes", isAuthenticated, requireAllergenVie
         matchedCount: comp.matchedCount,
         unmatchedNames: comp.unmatched,
         isVerified: comp.isVerified,
+        verificationReason: comp.verificationReason,
+        lowConfidenceCount: comp.lowConfidenceCount,
+        minConfidence: comp.minConfidence,
       };
       if (comp.isVerified) verified.push(summary);
       else unverified.push(summary);
@@ -420,6 +449,9 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       matchedCount: comp.matchedCount,
       unmatchedNames: comp.unmatched,
       isVerified: comp.isVerified,
+      verificationReason: comp.verificationReason,
+      lowConfidenceCount: comp.lowConfidenceCount,
+      minConfidence: comp.minConfidence,
       ingredients: ingredientsWithVerifier,
     });
   } catch (error) {
