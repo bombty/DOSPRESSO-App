@@ -279,9 +279,9 @@ async function loadNutritionMap(): Promise<Map<string, NutritionRow>> {
     confidence: factoryIngredientNutrition.confidence,
     source: factoryIngredientNutrition.source,
     verifiedBy: factoryIngredientNutrition.verifiedBy,
-    // factory_ingredient_nutrition.updated_at kolonu üretim DB'sinde henüz mevcut değil
-    // (schema drift). Onay tarihi göstergesi için created_at kullan.
-    updatedAt: factoryIngredientNutrition.createdAt,
+    // Onay tarihi göstergesi: kayıt güncellendiğinde DB trigger'ı updated_at'i
+    // otomatik tazeler (task #156).
+    updatedAt: factoryIngredientNutrition.updatedAt,
   }).from(factoryIngredientNutrition);
   const map = new Map<string, NutritionRow>();
   for (const r of rows) {
