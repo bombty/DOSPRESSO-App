@@ -8,6 +8,7 @@
 
 import { db } from "./db";
 import { factoryRecipes, factoryRecipeIngredients, factoryKeyblends, factoryKeyblendIngredients, inventory } from "@shared/schema";
+import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 import { eq, sql, ilike } from "drizzle-orm";
 
 // Inventory eşleştirme
@@ -142,7 +143,7 @@ async function seedDonutRecipe() {
     await db.insert(factoryRecipeIngredients).values({
       recipeId: recipe.id,
       refId,
-      name: ing.name,
+      name: canonicalIngredientName(ing.name),
       amount: String(ing.amount),
       unit: ing.unit,
       ingredientType: "normal",

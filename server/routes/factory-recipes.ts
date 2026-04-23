@@ -15,8 +15,18 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
+import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 
 const router = Router();
+
+// Task #131: Reçete malzeme insert/update'lerinde isim alanını
+// kanonik forma normalize et (yazım/kasa duplicate'ları engellenir)
+function normalizeIngredientPayload<T extends { name?: string | null }>(payload: T): T {
+  if (payload && typeof payload.name === "string") {
+    return { ...payload, name: canonicalIngredientName(payload.name) };
+  }
+  return payload;
+}
 
 // ── Role Guards ──
 const RECIPE_ADMIN_ROLES = ["admin", "recete_gm"];
@@ -334,7 +344,7 @@ router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, 
     const { name, amount, unit, rawMaterialId } = req.body;
 
     const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
+    if (name !== undefined) updateData.name = canonicalIngredientName(name);
     if (amount !== undefined) updateData.amount = String(amount);
     if (unit !== undefined) updateData.unit = unit;
     if (rawMaterialId !== undefined) updateData.rawMaterialId = rawMaterialId;
@@ -358,7 +368,7 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
 
     const recipeId = Number(req.params.id);
     const [created] = await db.insert(factoryRecipeIngredients)
-      .values({ ...req.body, recipeId })
+      .values({ ...normalizeIngredientPayload(req.body), recipeId })
       .returning();
 
     res.json(created);
@@ -383,7 +393,7 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
     const created = [];
     for (const ing of ingredients) {
       const [row] = await db.insert(factoryRecipeIngredients)
-        .values({ ...ing, recipeId })
+        .values({ ...normalizeIngredientPayload(ing), recipeId })
         .returning();
       created.push(row);
     }

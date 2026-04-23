@@ -12,6 +12,7 @@ import {
 } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
+import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 
 const router = Router();
 
@@ -273,7 +274,7 @@ router.post("/api/factory/seed-cinnabon", isAuthenticated, async (req: any, res:
 
     for (const [idx, ing] of ingredients.entries()) {
       await db.insert(factoryRecipeIngredients).values({
-        recipeId: recipe.id, refId: ing.refId, name: ing.name,
+        recipeId: recipe.id, refId: ing.refId, name: canonicalIngredientName(ing.name),
         amount: ing.amount, unit: ing.unit,
         ingredientCategory: ing.category, ingredientType: "normal",
         sortOrder: idx,

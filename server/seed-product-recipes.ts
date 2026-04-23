@@ -7,6 +7,7 @@
 
 import { db } from "./db";
 import { factoryRecipes, factoryRecipeIngredients, factoryRecipeSteps, inventory } from "@shared/schema";
+import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 import { eq, sql, ilike } from "drizzle-orm";
 
 // ── Birim normalizasyonu ──
@@ -511,7 +512,7 @@ async function seedRecipes() {
       await db.insert(factoryRecipeIngredients).values({
         recipeId: newRecipe.id,
         refId,
-        name: ing.name,
+        name: canonicalIngredientName(ing.name),
         amount: String(amount),
         unit,
         ingredientType: "normal",
