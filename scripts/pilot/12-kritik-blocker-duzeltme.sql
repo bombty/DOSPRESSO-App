@@ -33,6 +33,12 @@ WHERE id = 23; -- Merkez Ofis HQ (eski kayıt: "Yönetim")
 UPDATE branches SET manager_name = 'Eren Fabrika (fabrika_mudur)'
 WHERE id = 24; -- Fabrika (eski kayıt: "Fabrika Müdürü")
 
+-- ─── EKLE: Sema + Eren Email (Replit IT raporu önerisi) ────────
+-- NOT: Gerçek email adresleri Aslan'dan gelince bu bloğu çalıştır
+--
+-- UPDATE users SET email = 'sema@dospresso.com.tr' WHERE id = 'hq-sema-gida';
+-- UPDATE users SET email = 'eren@dospresso.com.tr' WHERE id = 'hq-eren-fabrika';
+
 -- ─── Blocker 1: GPS Koordinatları PLACEHOLDER ──────────────────
 -- NOT: Gerçek koordinatlar Aslan'dan gelince bu bloğu çalıştır.
 -- Google Maps'ten alınabilir (sağ tık → "Buraya yönlen" → koordinatı kopyala)
