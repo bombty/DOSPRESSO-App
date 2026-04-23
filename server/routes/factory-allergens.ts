@@ -788,25 +788,58 @@ router.get(
         const wb = new ExcelJS.Workbook();
         wb.creator = "DOSPRESSO";
         wb.created = new Date();
-        const sheet = wb.addWorksheet("Etiket Basım Geçmişi");
-        sheet.columns = [
-          { header: "Tarih (TR)", key: "tarih", width: 22 },
-          { header: "Tarih (ISO)", key: "tarihIso", width: 26 },
-          { header: "Kullanıcı", key: "kullanici", width: 28 },
-          { header: "Rol", key: "rol", width: 22 },
-          { header: "Reçete Kodu", key: "receteKodu", width: 18 },
-          { header: "Reçete Adı", key: "receteAdi", width: 36 },
-          { header: "Durum", key: "durum", width: 12 },
-          { header: "Gramaj Onaylı", key: "gramajOnayli", width: 14 },
-          { header: "Sebep / Not", key: "sebep", width: 40 },
+        const sheet = wb.addWorksheet("Etiket Basım Geçmişi", {
+          views: [{ state: "frozen", ySplit: 1 }],
+        });
+        const columnDefs: { header: string; key: keyof (typeof records)[number]; min: number; max: number }[] = [
+          { header: "Tarih (TR)", key: "tarih", min: 18, max: 26 },
+          { header: "Tarih (ISO)", key: "tarihIso", min: 22, max: 28 },
+          { header: "Kullanıcı", key: "kullanici", min: 16, max: 36 },
+          { header: "Rol", key: "rol", min: 12, max: 24 },
+          { header: "Reçete Kodu", key: "receteKodu", min: 14, max: 22 },
+          { header: "Reçete Adı", key: "receteAdi", min: 24, max: 50 },
+          { header: "Durum", key: "durum", min: 10, max: 14 },
+          { header: "Gramaj Onaylı", key: "gramajOnayli", min: 14, max: 16 },
+          { header: "Sebep / Not", key: "sebep", min: 24, max: 60 },
         ];
-        sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-        sheet.getRow(1).fill = {
+        sheet.columns = columnDefs.map((c) => {
+          let maxLen = c.header.length;
+          for (const rec of records) {
+            const len = String(rec[c.key] ?? "").length;
+            if (len > maxLen) maxLen = len;
+          }
+          const width = Math.max(c.min, Math.min(c.max, maxLen + 2));
+          return { header: c.header, key: c.key as string, width };
+        });
+
+        const headerRow = sheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        headerRow.fill = {
           type: "pattern",
           pattern: "solid",
           fgColor: { argb: "FF4472C4" },
         };
-        for (const rec of records) sheet.addRow(rec);
+        headerRow.alignment = { vertical: "middle", horizontal: "left" };
+        headerRow.height = 22;
+
+        sheet.autoFilter = {
+          from: { row: 1, column: 1 },
+          to: { row: 1, column: columnDefs.length },
+        };
+
+        for (const rec of records) {
+          const row = sheet.addRow(rec);
+          if (rec.durum === "Taslak") {
+            row.eachCell({ includeEmpty: true }, (cell) => {
+              cell.fill = {
+                type: "pattern",
+                pattern: "solid",
+                fgColor: { argb: "FFFFF4CE" },
+              };
+              cell.font = { color: { argb: "FF8A6D00" } };
+            });
+          }
+        }
 
         res.setHeader(
           "Content-Type",
