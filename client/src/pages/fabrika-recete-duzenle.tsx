@@ -60,6 +60,10 @@ export default function FabrikaReceteDuzenle() {
   const isNew = !id || id === "yeni";
 
   const canEdit = ["admin", "recete_gm", "sef"].includes(user?.role || "");
+  // Task #184: Besin değer / alerjen düzenleme yalnızca gıda mühendisi + admin
+  // + recete_gm yetkisindedir. Şef reçete malzemesi ekleyebilir ama besin değer
+  // tablosunu güncelleyemez (form salt-okunur, kaydet butonu disable).
+  const canEditNutrition = ["admin", "gida_muhendisi", "recete_gm"].includes(user?.role || "");
   if (!canEdit) {
     return <div className="p-8 text-center"><p>Düzenleme yetkiniz yok</p></div>;
   }
@@ -581,10 +585,10 @@ export default function FabrikaReceteDuzenle() {
                     resetNutritionForm();
                     setEditNutritionName(ing.name);
                   }}
-                  title="Besin değerlerini düzenle"
+                  title={canEditNutrition ? "Besin değerlerini düzenle" : "Besin değerlerini görüntüle (salt-okunur)"}
                   data-testid={`button-edit-nutrition-${ing.id || idx}`}
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  {canEditNutrition ? <Pencil className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                 </Button>
               </div>
             ))}
@@ -773,8 +777,13 @@ export default function FabrikaReceteDuzenle() {
           </AlertDialogHeader>
 
           <div className="space-y-3 border rounded-md p-3">
-            <div className="text-xs font-medium text-muted-foreground">
-              Besin Değerleri (100 gr başına — opsiyonel)
+            <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <span>Besin Değerleri (100 gr başına — opsiyonel)</span>
+              {!canEditNutrition && (
+                <Badge variant="outline" className="text-[10px]" data-testid="badge-nutrition-readonly">
+                  <Lock className="w-3 h-3 mr-1" /> salt-okunur (gıda mühendisi gerekli)
+                </Badge>
+              )}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <div>
@@ -783,7 +792,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.energyKcal}
                   onChange={e => setNewNutrition(p => ({ ...p, energyKcal: e.target.value }))}
-                  data-testid="input-nutrition-kcal"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-kcal"
                 />
               </div>
               <div>
@@ -792,7 +801,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.fatG}
                   onChange={e => setNewNutrition(p => ({ ...p, fatG: e.target.value }))}
-                  data-testid="input-nutrition-fat"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-fat"
                 />
               </div>
               <div>
@@ -801,7 +810,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.saturatedFatG}
                   onChange={e => setNewNutrition(p => ({ ...p, saturatedFatG: e.target.value }))}
-                  data-testid="input-nutrition-sfat"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-sfat"
                 />
               </div>
               <div>
@@ -810,7 +819,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.carbohydrateG}
                   onChange={e => setNewNutrition(p => ({ ...p, carbohydrateG: e.target.value }))}
-                  data-testid="input-nutrition-carb"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-carb"
                 />
               </div>
               <div>
@@ -819,7 +828,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.sugarG}
                   onChange={e => setNewNutrition(p => ({ ...p, sugarG: e.target.value }))}
-                  data-testid="input-nutrition-sugar"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-sugar"
                 />
               </div>
               <div>
@@ -828,7 +837,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.proteinG}
                   onChange={e => setNewNutrition(p => ({ ...p, proteinG: e.target.value }))}
-                  data-testid="input-nutrition-protein"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-protein"
                 />
               </div>
               <div>
@@ -837,7 +846,7 @@ export default function FabrikaReceteDuzenle() {
                   type="number" step="0.1" inputMode="decimal"
                   value={newNutrition.saltG}
                   onChange={e => setNewNutrition(p => ({ ...p, saltG: e.target.value }))}
-                  data-testid="input-nutrition-salt"
+                  disabled={!canEditNutrition} readOnly={!canEditNutrition} data-testid="input-nutrition-salt"
                 />
               </div>
             </div>
@@ -853,8 +862,8 @@ export default function FabrikaReceteDuzenle() {
                     <Badge
                       key={a}
                       variant={selected ? "default" : "outline"}
-                      className="cursor-pointer toggle-elevate"
-                      onClick={() => toggleAllergen(a)}
+                      className={cn("toggle-elevate", canEditNutrition ? "cursor-pointer" : "cursor-not-allowed opacity-60")}
+                      onClick={() => { if (canEditNutrition) toggleAllergen(a); }}
                       data-testid={`badge-allergen-${a}`}
                     >
                       {selected && <Check className="w-3 h-3 mr-1" />}
@@ -870,6 +879,7 @@ export default function FabrikaReceteDuzenle() {
             <AlertDialogCancel data-testid="button-cancel-new-ingredient">Vazgeç</AlertDialogCancel>
             <AlertDialogAction
               data-testid="button-confirm-new-ingredient"
+              disabled={!!editNutritionName && !canEditNutrition}
               onClick={async () => {
                 if (editNutritionName) {
                   // Sadece besin değer güncelleme akışı (Task #165)

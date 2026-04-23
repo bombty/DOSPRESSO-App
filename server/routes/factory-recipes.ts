@@ -32,6 +32,10 @@ function normalizeIngredientPayload<T extends { name?: string | null }>(payload:
 // ── Role Guards ──
 const RECIPE_ADMIN_ROLES = ["admin", "recete_gm"];
 const RECIPE_EDIT_ROLES = ["admin", "recete_gm", "sef"];
+// Task #184: Besin değer / alerjen düzenleme yalnızca gıda mühendisi + reçete
+// yönetimi (recete_gm) + admin yetkisindedir. Şef reçete değiştirebilir ama
+// besin değer tablosunu (factory_ingredient_nutrition) güncelleyemez.
+const NUTRITION_EDIT_ROLES = ["admin", "gida_muhendisi", "recete_gm"];
 const RECIPE_VIEW_ROLES = ["admin", "recete_gm", "gida_muhendisi", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "fabrika_personel", "uretim_sefi"];
 const KEYBLEND_ROLES = ["admin", "recete_gm"]; // Keyblend içerik = en gizli
 const PRODUCTION_ROLES = ["admin", "recete_gm", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "uretim_sefi"];
@@ -508,7 +512,9 @@ router.get("/api/factory/ingredient-nutrition/:name", isAuthenticated, async (re
 // vb. düzeltmeler). Upsert davranışı: kayıt yoksa oluşturur.
 router.put("/api/factory/ingredient-nutrition/:name", isAuthenticated, async (req: any, res: Response) => {
   try {
-    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    if (!NUTRITION_EDIT_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Besin değer düzenleme yetkiniz yok (gıda mühendisi gerekli)" });
+    }
     const canonical = canonicalIngredientName(req.params.name || "");
     if (!canonical) return res.status(400).json({ error: "Geçersiz isim" });
 
@@ -612,7 +618,14 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
         .returning();
 
       // Opsiyonel besin değer + alerjen kaydı (yeni kanonik dışı malzemeler için)
-      if (nutrition && typeof nutrition === "object") {
+      // Task #184: Sadece NUTRITION_EDIT_ROLES (admin/gida_muhendisi/recete_gm)
+      // bu bloğu çalıştırabilir; sef rolü malzemeyi ekler ama nutrition payload'u
+      // sessizce yok sayılır (mevcut besin değer kaydı korunur).
+      if (
+        nutrition &&
+        typeof nutrition === "object" &&
+        NUTRITION_EDIT_ROLES.includes(req.user.role)
+      ) {
         const ingredientName = normalized.name?.trim();
         const hasAnyValue =
           nutrition.energyKcal != null ||
