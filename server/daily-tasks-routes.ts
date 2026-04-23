@@ -350,7 +350,7 @@ export function registerDailyTaskRoutes(app: Express) {
   });
 
   const RAW_MATERIAL_CATEGORIES = ["hammadde", "ambalaj", "konsantre", "cay_grubu", "kahve", "toz_topping", "sarf_malzeme", "temizlik", "arge"];
-  const FINISHED_PRODUCT_CATEGORIES = ["mamul", "donut", "tatli", "tuzlu", "yarimamul"];
+  const FINISHED_PRODUCT_CATEGORIES = ["bitimis_urun", "donut", "tatli", "tuzlu", "yari_mamul", "ticari_mal"];
 
   async function autoPopulateItems(countId: number, countType: string, scope: string, requestedCategory: string | null) {
     let categoryFilter: string[] | null = null;

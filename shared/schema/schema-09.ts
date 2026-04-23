@@ -898,7 +898,9 @@ export type InventoryUnit = typeof inventoryUnitEnum[number];
 export const inventoryCategoryEnum = [
   "hammadde", "ambalaj", "ekipman", "sube_ekipman",
   "sube_malzeme", "konsantre", "donut", "tatli", "tuzlu",
-  "cay_grubu", "kahve", "toz_topping", "yarimamul", "mamul", "sarf_malzeme", "temizlik", "diger", "arge"
+  "cay_grubu", "kahve", "toz_topping",
+  "yari_mamul", "bitimis_urun", "ticari_mal",
+  "sarf_malzeme", "temizlik", "diger", "arge"
 ] as const;
 export type InventoryCategory = typeof inventoryCategoryEnum[number];
 

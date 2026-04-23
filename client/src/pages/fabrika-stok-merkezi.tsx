@@ -555,8 +555,8 @@ function StockTab() {
   if (isLoading) return <Skeleton className="h-40 w-full" />;
 
   const lowStockItems = stockItems.filter((i: any) => parseFloat(i.currentStock) <= parseFloat(i.minimumStock) && parseFloat(i.minimumStock) > 0);
-  const categories = ["all", "hammadde", "ambalaj", "yarimamul", "temizlik", "diger"];
-  const categoryLabels: Record<string, string> = { all: "Tümü", hammadde: "Hammadde", ambalaj: "Ambalaj", yarimamul: "Yarı Mamül", temizlik: "Temizlik", diger: "Diğer" };
+  const categories = ["all", "hammadde", "ambalaj", "yari_mamul", "bitimis_urun", "ticari_mal", "temizlik", "diger"];
+  const categoryLabels: Record<string, string> = { all: "Tümü", hammadde: "Hammadde", ambalaj: "Ambalaj", yari_mamul: "Yarı Mamül", bitimis_urun: "Bitmiş Ürün", ticari_mal: "Ticari Mal", temizlik: "Temizlik", diger: "Diğer" };
 
   return (
     <div className="space-y-3">

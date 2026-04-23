@@ -74,8 +74,9 @@ export const CAPA_TYPE_LABELS: Record<string, string> = {
 
 export const STOCK_CATEGORY_LABELS: Record<string, string> = {
   hammadde: "Hammadde",
-  yarimamul: "Yarı Mamul",
-  mamul: "Mamul Ürün",
+  yari_mamul: "Yarı Mamul",
+  bitimis_urun: "Bitmiş Ürün",
+  ticari_mal: "Ticari Mal",
   ambalaj: "Ambalaj",
   ekipman: "Ekipman",
   sube_ekipman: "Şube Ekipman",
@@ -89,11 +90,13 @@ export const STOCK_CATEGORY_LABELS: Record<string, string> = {
   toz_topping: "Toz/Topping",
   sarf_malzeme: "Sarf Malzeme",
   temizlik: "Temizlik",
+  arge: "Ar-Ge",
   diger: "Diğer",
   kahve_cekirdegi: "Kahve Çekirdeği",
   sirop: "Sirop",
   sut_urunleri: "Süt Ürünleri",
-  bitimis_urun: "Bitmiş Ürün",
+  yarimamul: "Yarı Mamul",
+  mamul: "Bitmiş Ürün",
 };
 
 export const MOVEMENT_TYPE_LABELS: Record<string, string> = {

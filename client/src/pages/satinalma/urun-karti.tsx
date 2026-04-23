@@ -148,6 +148,9 @@ interface SupplierOption {
 const categories: Record<string, string> = {
   hammadde: "Hammadde",
   yarimamul: "Yarı Mamul",
+  yari_mamul: "Yarı Mamul",
+  bitimis_urun: "Bitmiş Ürün",
+  ticari_mal: "Ticari Mal",
   mamul: "Mamul",
   ambalaj: "Ambalaj",
   ekipman: "Ekipman",

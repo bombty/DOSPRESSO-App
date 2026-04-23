@@ -260,8 +260,9 @@ function StokTab() {
   const stokCategories = [
     { value: "all", label: "Tümü" },
     { value: "hammadde", label: "Hammadde" },
-    { value: "yarimamul", label: "Yarı Mamul" },
-    { value: "mamul", label: "Mamül Ürün" },
+    { value: "yari_mamul", label: "Yarı Mamul" },
+    { value: "bitimis_urun", label: "Bitmiş Ürün" },
+    { value: "ticari_mal", label: "Ticari Mal" },
     { value: "ambalaj", label: "Ambalaj" },
     { value: "ekipman", label: "Ekipman" },
     { value: "sube_ekipman", label: "Şube Ekipman" },
