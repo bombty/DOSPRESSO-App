@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
-  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download,
+  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download, Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -154,6 +154,38 @@ export default function FabrikaReceteDuzenle() {
   const [bulkParseError, setBulkParseError] = useState<string | null>(null);
   const [bulkUnknown, setBulkUnknown] = useState<string[]>([]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+
+  // Task #182: Son içe aktarma snapshot bilgisi (geri al butonu)
+  const { data: latestSnapshot } = useQuery<{
+    id: number; ingredientCount: number; reason: string | null;
+    createdBy: string | null; createdAt: string; restoredAt: string | null;
+  } | null>({
+    queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"],
+    enabled: !isNew && !!id,
+  });
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const undoMutation = useMutation({
+    mutationFn: async () => {
+      if (!latestSnapshot) throw new Error("Snapshot yok");
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/ingredients/snapshots/${latestSnapshot.id}/restore`,
+      );
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"] });
+      toast({
+        title: "Geri alındı",
+        description: `${data?.restoredCount ?? 0} malzeme önceki haline döndürüldü`,
+      });
+      setConfirmUndo(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Geri alma başarısız", variant: "destructive" });
+    },
+  });
 
   // Kanonik malzeme isim listesi (auto-complete için)
   const { data: ingredientNames = [] } = useQuery<IngredientNameOption[]>({
@@ -394,6 +426,7 @@ export default function FabrikaReceteDuzenle() {
       }
       qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
       qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id, "ingredients/snapshots/latest"] });
       toast({
         title: "Malzemeler içe aktarıldı",
         description: `${payload.ingredients.length} malzeme kaydedildi${data?.unknownIngredients?.length ? ` (${data.unknownIngredients.length} yeni isim)` : ""}`,
@@ -514,14 +547,28 @@ export default function FabrikaReceteDuzenle() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <CardTitle className="text-base">Malzemeler ({ingredients.length})</CardTitle>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => { setBulkOpen(true); setBulkUnknown([]); setBulkParseError(null); }}
-                data-testid="button-open-bulk-import"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Toplu İçe Aktar
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {latestSnapshot && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setConfirmUndo(true)}
+                    disabled={undoMutation.isPending}
+                    title={`${latestSnapshot.ingredientCount} malzemeli son yedeğe dön (${new Date(latestSnapshot.createdAt).toLocaleString("tr-TR")})`}
+                    data-testid="button-undo-bulk-import"
+                  >
+                    <Undo2 className="w-3.5 h-3.5 mr-1" /> Son İçe Aktarmayı Geri Al
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setBulkOpen(true); setBulkUnknown([]); setBulkParseError(null); }}
+                  data-testid="button-open-bulk-import"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> Toplu İçe Aktar
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -1086,6 +1133,30 @@ export default function FabrikaReceteDuzenle() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task #182: Geri al onay diyalogu */}
+      <AlertDialog open={confirmUndo} onOpenChange={(o) => { if (!undoMutation.isPending) setConfirmUndo(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Son içe aktarmayı geri al?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {latestSnapshot
+                ? `Mevcut malzemeler silinecek ve ${latestSnapshot.ingredientCount} malzemeli yedek (${new Date(latestSnapshot.createdAt).toLocaleString("tr-TR")}) geri yüklenecek. Şu anki hali de yedeklenecek, böylece geri alma da geri alınabilir.`
+                : "Yedek bulunamadı."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={undoMutation.isPending} data-testid="button-undo-cancel">Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); undoMutation.mutate(); }}
+              disabled={undoMutation.isPending || !latestSnapshot}
+              data-testid="button-undo-confirm"
+            >
+              {undoMutation.isPending ? "Geri alınıyor..." : "Evet, geri al"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

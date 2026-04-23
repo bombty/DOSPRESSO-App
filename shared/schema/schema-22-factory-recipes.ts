@@ -226,6 +226,27 @@ export const insertFactoryRecipeIngredientSchema = createInsertSchema(factoryRec
 export type FactoryRecipeIngredient = typeof factoryRecipeIngredients.$inferSelect;
 
 // ────────────────────────────────────────
+// 4b. REÇETE MALZEME SNAPSHOT (Task #182)
+//     Toplu içe aktarım öncesi mevcut malzemeler JSON olarak yedeklenir.
+//     Yanlış yapıştırma sonrası "Geri Al" ile son snapshot geri yüklenir.
+// ────────────────────────────────────────
+
+export const factoryRecipeIngredientSnapshots = pgTable("factory_recipe_ingredient_snapshots", {
+  id: serial("id").primaryKey(),
+  recipeId: integer("recipe_id").notNull().references(() => factoryRecipes.id, { onDelete: "cascade" }),
+  snapshot: jsonb("snapshot").$type<Array<Record<string, any>>>().notNull(),
+  ingredientCount: integer("ingredient_count").notNull().default(0),
+  reason: varchar("reason", { length: 50 }).default("bulk_import"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  restoredAt: timestamp("restored_at", { withTimezone: true }),
+}, (table) => [
+  index("fris_recipe_idx").on(table.recipeId, table.createdAt),
+]);
+
+export type FactoryRecipeIngredientSnapshot = typeof factoryRecipeIngredientSnapshots.$inferSelect;
+
+// ────────────────────────────────────────
 // 5. REÇETE ADIMLARI (fotoğraf JSONB içinde)
 // ────────────────────────────────────────
 

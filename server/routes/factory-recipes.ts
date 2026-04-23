@@ -7,7 +7,7 @@
 import { Router, Response } from "express";
 import { db } from "../db";
 import {
-  factoryRecipes, factoryRecipeIngredients, factoryRecipeSteps,
+  factoryRecipes, factoryRecipeIngredients, factoryRecipeIngredientSnapshots, factoryRecipeSteps,
   factoryKeyblends, factoryKeyblendIngredients,
   factoryProductionLogs, factoryRecipeVersions,
   factoryRecipeCategoryAccess, factoryIngredientNutrition,
@@ -775,6 +775,19 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
     // Tek transaksiyon içinde: mevcut malzemeleri sil, yenilerini ekle ve
     // (varsa) opsiyonel nutrition kayıtlarını yaz. Hata olursa hepsi geri alınır.
     const result = await db.transaction(async (tx) => {
+      // Task #182: Mevcut malzemeleri JSON snapshot'a al (geri al desteği)
+      const existing = await tx.select().from(factoryRecipeIngredients)
+        .where(eq(factoryRecipeIngredients.recipeId, recipeId));
+      if (existing.length > 0) {
+        await tx.insert(factoryRecipeIngredientSnapshots).values({
+          recipeId,
+          snapshot: existing as any,
+          ingredientCount: existing.length,
+          reason: "bulk_import",
+          createdBy: req.user.id,
+        });
+      }
+
       await tx.delete(factoryRecipeIngredients).where(eq(factoryRecipeIngredients.recipeId, recipeId));
 
       const created: IngredientRow[] = [];
@@ -818,7 +831,7 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
         }
       }
 
-      return { created, writtenNutrition };
+      return { created, writtenNutrition, snapshotTaken: existing.length };
     });
 
     // Eksik nutrition raporu: kanonikleştirilmiş isim, nutrition tablosunda
@@ -833,10 +846,103 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
       }
     }
 
-    res.json({ ingredients: result.created, unknownIngredients, missingNutrition });
+    res.json({
+      ingredients: result.created,
+      unknownIngredients,
+      missingNutrition,
+      snapshotTaken: result.snapshotTaken,
+    });
   } catch (error) {
     console.error("Bulk ingredients error:", error);
     res.status(500).json({ error: "Malzemeler kaydedilemedi" });
+  }
+});
+
+// GET /api/factory/recipes/:id/ingredients/snapshots/latest — Son içe aktarma snapshot bilgisi
+// Task #182: Frontend "Geri Al" butonunun görünürlüğü için kullanılır.
+router.get("/api/factory/recipes/:id/ingredients/snapshots/latest", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+
+    const [latest] = await db.select({
+      id: factoryRecipeIngredientSnapshots.id,
+      ingredientCount: factoryRecipeIngredientSnapshots.ingredientCount,
+      reason: factoryRecipeIngredientSnapshots.reason,
+      createdBy: factoryRecipeIngredientSnapshots.createdBy,
+      createdAt: factoryRecipeIngredientSnapshots.createdAt,
+      restoredAt: factoryRecipeIngredientSnapshots.restoredAt,
+    })
+      .from(factoryRecipeIngredientSnapshots)
+      .where(and(
+        eq(factoryRecipeIngredientSnapshots.recipeId, recipeId),
+        isNull(factoryRecipeIngredientSnapshots.restoredAt),
+      ))
+      .orderBy(desc(factoryRecipeIngredientSnapshots.createdAt))
+      .limit(1);
+
+    res.json(latest || null);
+  } catch (error) {
+    console.error("Get latest snapshot error:", error);
+    res.status(500).json({ error: "Snapshot bilgisi yüklenemedi" });
+  }
+});
+
+// POST /api/factory/recipes/:id/ingredients/snapshots/:snapshotId/restore — Geri al
+// Task #182: Belirtilen snapshot'ı geri yükler. Restore öncesi mevcut hali
+// yine snapshot'lanır (geri al'ı geri alabilmek için).
+router.post("/api/factory/recipes/:id/ingredients/snapshots/:snapshotId/restore", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const recipeId = Number(req.params.id);
+    const snapshotId = Number(req.params.snapshotId);
+
+    const [snap] = await db.select().from(factoryRecipeIngredientSnapshots)
+      .where(and(
+        eq(factoryRecipeIngredientSnapshots.id, snapshotId),
+        eq(factoryRecipeIngredientSnapshots.recipeId, recipeId),
+      ))
+      .limit(1);
+    if (!snap) return res.status(404).json({ error: "Snapshot bulunamadı" });
+    if (snap.restoredAt) return res.status(400).json({ error: "Bu snapshot zaten geri yüklenmiş" });
+
+    const items = Array.isArray(snap.snapshot) ? snap.snapshot : [];
+
+    // Restore öncesi mevcut hali de snapshot'la (geri al'ı geri al)
+    const current = await db.select().from(factoryRecipeIngredients)
+      .where(eq(factoryRecipeIngredients.recipeId, recipeId));
+    if (current.length > 0) {
+      await db.insert(factoryRecipeIngredientSnapshots).values({
+        recipeId,
+        snapshot: current as any,
+        ingredientCount: current.length,
+        reason: "pre_restore",
+        createdBy: req.user.id,
+      });
+    }
+
+    await db.delete(factoryRecipeIngredients).where(eq(factoryRecipeIngredients.recipeId, recipeId));
+
+    const restored = [];
+    for (const ing of items) {
+      const payload: any = { ...ing };
+      delete payload.id;
+      delete payload.createdAt;
+      payload.recipeId = recipeId;
+      const [row] = await db.insert(factoryRecipeIngredients)
+        .values(normalizeIngredientPayload(payload))
+        .returning();
+      restored.push(row);
+    }
+
+    await db.update(factoryRecipeIngredientSnapshots)
+      .set({ restoredAt: new Date() })
+      .where(eq(factoryRecipeIngredientSnapshots.id, snapshotId));
+
+    res.json({ ingredients: restored, restoredCount: restored.length });
+  } catch (error) {
+    console.error("Restore snapshot error:", error);
+    res.status(500).json({ error: "Snapshot geri yüklenemedi" });
   }
 });
 
