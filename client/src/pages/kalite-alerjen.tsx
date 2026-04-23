@@ -9,14 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { useAuth } from "@/hooks/useAuth";
-import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { downloadEtiketPDF } from "@/lib/etiketPDF";
+import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench, Printer, FileWarning } from "lucide-react";
 
 const FIX_ROLES = ["admin", "kalite_yoneticisi", "gida_muhendisi", "recete_gm", "sef", "ust_yonetim"];
 
@@ -66,6 +69,8 @@ interface RecipeSummary {
 }
 
 interface RecipeDetail extends RecipeSummary {
+  grammageApprovalUserName?: string | null;
+  grammageApprovalNote?: string | null;
   description: string | null;
   baseBatchOutput: number | null;
   perPortion: Per100g | null;
@@ -311,21 +316,101 @@ function RecipeCard({ recipe, onOpen, canFix }: { recipe: RecipeSummary; onOpen:
   );
 }
 
+const PRINT_OVERRIDE_ROLES = new Set(["admin", "ceo", "fabrika_muduru", "fabrika_mudur", "kalite_yoneticisi", "gida_muhendisi", "recete_gm"]);
+
 function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClose: () => void; canFix: boolean }) {
   const { data, isLoading, error } = useQuery<RecipeDetail>({
     queryKey: ["/api/quality/allergens/recipes", id],
     enabled: id !== null,
   });
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [showWarning, setShowWarning] = useState(false);
+  const [printing, setPrinting] = useState(false);
+
+  const userRole = (user as any)?.role ?? "";
+  const canOverride = PRINT_OVERRIDE_ROLES.has(userRole);
+
+  const buildAndPrint = async (asDraft: boolean) => {
+    if (!data) return;
+    setPrinting(true);
+    try {
+      await downloadEtiketPDF({
+        name: data.name,
+        code: data.code,
+        category: data.category,
+        expectedUnitWeight: data.expectedUnitWeight,
+        per100g: data.per100g,
+        perPortion: data.perPortion,
+        allergens: data.allergens,
+        ingredients: data.ingredients.map(i => ({ name: i.name, matched: i.matched, allergens: i.allergens })),
+        grammageApproved: !!data.grammageApproved,
+        grammageApprovalUserName: data.grammageApprovalUserName ?? null,
+        grammageApprovalDate: data.grammageApprovalDate ?? null,
+        isDraft: asDraft || !data.grammageApproved,
+        draftReason: !data.grammageApproved ? "Gramaj onayi bekliyor" : undefined,
+      });
+      toast({
+        title: asDraft || !data.grammageApproved ? "Taslak etiket indirildi" : "Etiket PDF'i indirildi",
+        description: asDraft || !data.grammageApproved
+          ? "Reçete henüz gıda mühendisi tarafından onaylanmadığı için TASLAK filigranı eklendi."
+          : `${data.grammageApprovalUserName ?? "Gıda Mühendisi"} onaylı etiket başarıyla oluşturuldu.`,
+      });
+    } catch (e: any) {
+      toast({ title: "Etiket oluşturulamadı", description: String(e?.message ?? e), variant: "destructive" });
+    } finally {
+      setPrinting(false);
+      setShowWarning(false);
+    }
+  };
+
+  const handlePrintClick = () => {
+    if (!data) return;
+    if (!data.grammageApproved) {
+      setShowWarning(true);
+      return;
+    }
+    buildAndPrint(false);
+  };
 
   return (
     <Dialog open={id !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="dialog-recipe-detail">
         <DialogHeader>
-          <DialogTitle data-testid="text-detail-name">{data?.name ?? "Yükleniyor..."}</DialogTitle>
-          <DialogDescription>
-            {data?.code}{data?.category ? ` · ${data.category}` : ""}
-            {data?.expectedUnitWeight ? ` · ${data.expectedUnitWeight} gr/porsiyon` : ""}
-          </DialogDescription>
+          <div className="flex flex-row items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <DialogTitle data-testid="text-detail-name">{data?.name ?? "Yükleniyor..."}</DialogTitle>
+              <DialogDescription>
+                {data?.code}{data?.category ? ` · ${data.category}` : ""}
+                {data?.expectedUnitWeight ? ` · ${data.expectedUnitWeight} gr/porsiyon` : ""}
+              </DialogDescription>
+            </div>
+            {data && (
+              <div className="flex items-center gap-2 shrink-0">
+                {data.grammageApproved ? (
+                  <Badge
+                    className="gap-1 bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600"
+                    data-testid="badge-detail-grammage-approved"
+                  >
+                    <BadgeCheck className="w-3 h-3" /> Gıda Müh. Onaylı
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="gap-1 border-amber-600/40 text-amber-600 dark:text-amber-400" data-testid="badge-detail-grammage-pending">
+                    <AlertTriangle className="w-3 h-3" /> Onay Bekliyor
+                  </Badge>
+                )}
+                <Button
+                  size="sm"
+                  onClick={handlePrintClick}
+                  disabled={printing || !data}
+                  data-testid="button-print-etiket"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  {printing ? "Hazırlanıyor..." : "Etiket Yazdır"}
+                </Button>
+              </div>
+            )}
+          </div>
         </DialogHeader>
 
         {isLoading && <ListSkeleton count={4} />}
@@ -469,6 +554,44 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
           </ScrollArea>
         )}
       </DialogContent>
+
+      <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
+        <AlertDialogContent data-testid="dialog-grammage-warning">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FileWarning className="w-5 h-5 text-amber-500" />
+              Bu reçete henüz onaylanmadı
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                <strong>{data?.name}</strong> reçetesinin gramajı henüz gıda mühendisi tarafından onaylanmamıştır.
+                Müşteriye sunulacak etiketin basılması <strong>varsayılan olarak engellenmiştir</strong>.
+              </span>
+              <span className="block">
+                {canOverride
+                  ? "Yönetici yetkiniz var. Yine de yazdırmak isterseniz çıkacak PDF üzerinde \"TASLAK — Gıda Müh. onayı bekliyor\" filigranı bulunacaktır."
+                  : "Etiket basımı için önce reçetenin Fabrika Reçete Detay sayfasından gıda mühendisi onayı alınması gerekir."}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-print">Vazgeç</AlertDialogCancel>
+            {canOverride && (
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  buildAndPrint(true);
+                }}
+                disabled={printing}
+                data-testid="button-force-print-draft"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                Taslak olarak yazdır
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

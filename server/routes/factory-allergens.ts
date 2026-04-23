@@ -436,6 +436,20 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       verifiedByName: b.verifiedBy ? (verifierMap.get(b.verifiedBy) ?? null) : null,
     }));
 
+    // Task #174: gıda mühendisi onaylayan kullanıcı adı (etiket damgası için)
+    let grammageApprovalUserName: string | null = null;
+    if (grammage.userId) {
+      const [u] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        username: users.username,
+      }).from(users).where(eq(users.id, grammage.userId)).limit(1);
+      if (u) {
+        grammageApprovalUserName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username || u.id;
+      }
+    }
+
     const portionGrams = recipe.expectedUnitWeight ? Number(recipe.expectedUnitWeight) : null;
     const perPortion = portionGrams ? roundNutrition({
       energy_kcal: comp.per100g.energy_kcal * portionGrams / 100,
@@ -473,6 +487,8 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
       grammageApproved: grammage.approved,
       grammageApprovalDate: grammage.date,
       grammageApprovalUserId: grammage.userId,
+      grammageApprovalUserName,
+      grammageApprovalNote: grammage.note ?? null,
     });
   } catch (error) {
     console.error("Allergen recipe detail error:", error);
