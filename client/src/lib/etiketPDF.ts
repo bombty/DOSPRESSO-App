@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
 import { sanitizeText, loadLogo } from "./pdfHelper";
 
 export interface EtiketNutrition {
@@ -26,6 +27,10 @@ export interface EtiketPDFOptions {
   grammageApprovalDate?: string | null;
   isDraft?: boolean;
   draftReason?: string;
+  productionDate: string;
+  expiryDate: string;
+  lotNumber: string;
+  productUrl: string;
 }
 
 const COLORS = {
@@ -123,7 +128,28 @@ function drawDraftWatermark(doc: jsPDF) {
   }
 }
 
+function assertProductionInfo(opts: EtiketPDFOptions) {
+  const missing: string[] = [];
+  if (!opts.productionDate || !opts.productionDate.trim()) missing.push("üretim tarihi");
+  if (!opts.expiryDate || !opts.expiryDate.trim()) missing.push("son kullanma tarihi (SKT)");
+  if (!opts.lotNumber || !opts.lotNumber.trim()) missing.push("lot/parti numarası");
+  if (!opts.productUrl || !opts.productUrl.trim()) missing.push("ürün QR adresi");
+  if (missing.length > 0) {
+    throw new Error(
+      `Etiket basımı için ${missing.join(", ")} alanları zorunludur. Lütfen tüm üretim bilgilerini girin.`,
+    );
+  }
+}
+
+function formatDateTR(value: string): string {
+  if (!value) return "";
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  return value;
+}
+
 export async function generateEtiketPDF(opts: EtiketPDFOptions): Promise<jsPDF> {
+  assertProductionInfo(opts);
   const doc = new jsPDF({ orientation: "portrait", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
@@ -263,6 +289,56 @@ export async function generateEtiketPDF(opts: EtiketPDFOptions): Promise<jsPDF> 
   const ingLines = doc.splitTextToSize(sanitizeText(ingText || "Tanimsiz"), pageWidth - margin * 2);
   doc.text(ingLines, margin, yPos);
   yPos += ingLines.length * 4.5 + 6;
+
+  // ── Üretim Bilgileri (Production Info) + QR
+  const qrDataUrl = await QRCode.toDataURL(opts.productUrl, {
+    margin: 2,
+    width: 256,
+    errorCorrectionLevel: "M",
+  });
+  const qrSize = 32;
+  const blockH = 36;
+  const blockY = yPos;
+  const qrX = pageWidth - margin - qrSize;
+
+  doc.setDrawColor(COLORS.lightGray.r, COLORS.lightGray.g, COLORS.lightGray.b);
+  doc.setLineWidth(0.3);
+  doc.rect(margin, blockY, pageWidth - margin * 2, blockH, "S");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(COLORS.brown.r, COLORS.brown.g, COLORS.brown.b);
+  doc.text(sanitizeText("Uretim Bilgileri"), margin + 3, blockY + 6);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(COLORS.darkGray.r, COLORS.darkGray.g, COLORS.darkGray.b);
+  const infoLineY = blockY + 13;
+  const labelX = margin + 3;
+  const valueX = margin + 38;
+
+  doc.setFont("helvetica", "bold");
+  doc.text(sanitizeText("Uretim Tarihi:"), labelX, infoLineY);
+  doc.setFont("helvetica", "normal");
+  doc.text(sanitizeText(formatDateTR(opts.productionDate)), valueX, infoLineY);
+
+  doc.setFont("helvetica", "bold");
+  doc.text(sanitizeText("Son Kul. Tar. (SKT):"), labelX, infoLineY + 6);
+  doc.setFont("helvetica", "normal");
+  doc.text(sanitizeText(formatDateTR(opts.expiryDate)), valueX, infoLineY + 6);
+
+  doc.setFont("helvetica", "bold");
+  doc.text(sanitizeText("Lot / Parti No:"), labelX, infoLineY + 12);
+  doc.setFont("helvetica", "normal");
+  doc.text(sanitizeText(opts.lotNumber), valueX, infoLineY + 12);
+
+  doc.addImage(qrDataUrl, "PNG", qrX - 1, blockY + 2, qrSize, qrSize);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(COLORS.gray.r, COLORS.gray.g, COLORS.gray.b);
+  doc.text(sanitizeText("Urun detayi icin tarayin"), qrX + qrSize / 2, blockY + qrSize + 4, { align: "center" });
+
+  yPos += blockH + 4;
 
   // ── Footer
   const pageHeight = doc.internal.pageSize.getHeight();

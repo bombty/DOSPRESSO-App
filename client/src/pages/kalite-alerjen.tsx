@@ -330,11 +330,34 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
 
   const userRole = (user as any)?.role ?? "";
   const canOverride = PRINT_OVERRIDE_ROLES.has(userRole);
+  const today = (() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  })();
+  const [productionInfoOpen, setProductionInfoOpen] = useState(false);
+  const [productionDate, setProductionDate] = useState(today);
+  const [expiryDate, setExpiryDate] = useState("");
+  const [lotNumber, setLotNumber] = useState("");
+
+  const productionInfoValid =
+    productionDate.trim() !== "" && expiryDate.trim() !== "" && lotNumber.trim() !== "";
 
   const buildAndPrint = async (asDraft: boolean) => {
     if (!data) return;
+    if (!productionInfoValid) {
+      toast({
+        title: "Üretim bilgileri eksik",
+        description: "Etiket basımı için üretim tarihi, SKT ve lot numarası zorunludur.",
+        variant: "destructive",
+      });
+      return;
+    }
     setPrinting(true);
     try {
+      const productUrl = `${window.location.origin}/kalite/alerjen?recipe=${data.id}`;
       await downloadEtiketPDF({
         name: data.name,
         code: data.code,
@@ -349,6 +372,10 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
         grammageApprovalDate: data.grammageApprovalDate ?? null,
         isDraft: asDraft || !data.grammageApproved,
         draftReason: !data.grammageApproved ? "Gramaj onayi bekliyor" : undefined,
+        productionDate,
+        expiryDate,
+        lotNumber: lotNumber.trim(),
+        productUrl,
       });
       toast({
         title: asDraft || !data.grammageApproved ? "Taslak etiket indirildi" : "Etiket PDF'i indirildi",
@@ -366,6 +393,12 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
 
   const handlePrintClick = () => {
     if (!data) return;
+    setProductionInfoOpen(true);
+  };
+
+  const handleProductionInfoConfirm = () => {
+    if (!productionInfoValid || !data) return;
+    setProductionInfoOpen(false);
     if (!data.grammageApproved) {
       setShowWarning(true);
       return;
@@ -555,6 +588,73 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
         )}
       </DialogContent>
 
+      <Dialog open={productionInfoOpen} onOpenChange={setProductionInfoOpen}>
+        <DialogContent data-testid="dialog-production-info">
+          <DialogHeader>
+            <DialogTitle>Üretim Bilgileri</DialogTitle>
+            <DialogDescription>
+              Etiket basımı için üretim tarihi, son kullanma tarihi (SKT) ve lot/parti numarası
+              <strong> zorunludur</strong>. Bu alanlar boş bırakılırsa basım yapılamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="input-production-date">Üretim Tarihi</Label>
+              <Input
+                id="input-production-date"
+                type="date"
+                value={productionDate}
+                onChange={(e) => setProductionDate(e.target.value)}
+                data-testid="input-production-date"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="input-expiry-date">Son Kullanma Tarihi (SKT)</Label>
+              <Input
+                id="input-expiry-date"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                data-testid="input-expiry-date"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="input-lot-number">Lot / Parti Numarası</Label>
+              <Input
+                id="input-lot-number"
+                placeholder="Örn: L240423-01"
+                value={lotNumber}
+                onChange={(e) => setLotNumber(e.target.value)}
+                data-testid="input-lot-number"
+              />
+            </div>
+            {!productionInfoValid && (
+              <div className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>Tüm alanlar doldurulmadan etiket basılamaz.</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setProductionInfoOpen(false)}
+              data-testid="button-cancel-production-info"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              onClick={handleProductionInfoConfirm}
+              disabled={!productionInfoValid}
+              data-testid="button-confirm-production-info"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Devam Et
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={showWarning} onOpenChange={setShowWarning}>
         <AlertDialogContent data-testid="dialog-grammage-warning">
           <AlertDialogHeader>
@@ -598,7 +698,13 @@ function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClos
 
 export default function KaliteAlerjenPage() {
   const [search, setSearch] = useState("");
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get("recipe");
+    const n = r ? Number(r) : NaN;
+    return Number.isFinite(n) ? n : null;
+  });
   const [tab, setTab] = useState("verified");
   const [sortBy, setSortBy] = useState<"default" | "approval-desc" | "approval-asc">(() => {
     try {
