@@ -36,13 +36,16 @@ _(Şu an boş — son 30+ Replit task'ı 23 Nis sabah merge oldu, push edildi: c
 ---
 
 
-## Session State (23.04.2026 - Task #126)
-- **DB drift kontrolü** eklendi (`scripts/db-drift-check.ts`):
-  - Drizzle schema (`shared/schema/*`) UNIQUE constraint, index ve FK tanımlarını gerçek PostgreSQL ile karşılaştırır
-  - `tsx scripts/db-drift-check.ts` → konsol raporu + `scripts/db-drift-fix.sql` (eksik UNIQUE/index için ALTER/CREATE INDEX)
-  - `tsx scripts/db-drift-check.ts --check` → CI modu (drift varsa exit 1)
+## Session State (23.04.2026 - Task #126 / #176)
+- **DB drift kontrolü** (`scripts/db-drift-check.ts`) — tüm drift türleri tek script altında:
+  - Eksik tablo, eksik kolon, kolon tipi/nullability uyuşmazlığı, UNIQUE, index, FK
+  - `tsx scripts/db-drift-check.ts` → rapor + `scripts/db-drift-fix.sql`
+  - `--check` → CI modu (gerçek drift varsa exit 1)
+  - `--strict` → resolve edilemeyen FK'leri de fail say (cross-file circular import temizlendiğinde)
+  - Eksik `updated_at` kolonları için task #156/#168 pattern'i (ADD + backfill + DEFAULT NOW + NOT NULL + BEFORE UPDATE trigger) otomatik üretilir
+  - Tip/nullability mismatch'leri auto-fix DEĞİL (veri kaybı riski) — sadece raporlanır
   - `scripts/check-build-safety.sh` 4. adım olarak entegre (DATABASE_URL set ise)
-  - İlk tespit: 13 eksik tablo, 6 UNIQUE, 83 index, 47 FK drift'i. Fix script DB'de olmayan tablolar için ALTER üretmez.
+  - Task #176'da `task-168-scan-updated-at-drift.ts` ve `task-168-updated-at-drift-fix.sql` kaldırıldı.
   - Bilinen kısıt: cross-file circular import içeren tabloların FK'leri sessizce atlanır (UNIQUE/index etkilenmez)
 
 ## Session State (23.04.2026 - Task #123)

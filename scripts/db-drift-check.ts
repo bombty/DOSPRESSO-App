@@ -1,11 +1,21 @@
 /**
- * DB Drift Kontrolü
+ * DB Drift Kontrolü (genel sağlık taraması)
  *
- * Drizzle schema (shared/schema/*) içindeki UNIQUE constraint, unique/normal
- * index ve foreign key tanımlarını gerçek PostgreSQL veritabanı ile
- * karşılaştırır. Drift varsa konsola raporlar ve scripts/db-drift-fix.sql
- * dosyasına eksik constraint/index'leri eklemek için ALTER/CREATE INDEX
- * komutları üretir.
+ * Drizzle schema (shared/schema/*) ile gerçek PostgreSQL veritabanı arasındaki
+ * tüm drift türlerini tek noktada tarar:
+ *   - Eksik tablo
+ *   - Eksik kolon
+ *   - Kolon tipi / nullability uyuşmazlığı
+ *   - UNIQUE constraint
+ *   - Index (unique veya değil) — eksik veya tanım uyuşmazlığı
+ *   - Foreign key
+ *
+ * Drift varsa konsola raporlar ve otomatik uygulanabilir bölümler için
+ * `scripts/db-drift-fix.sql` dosyasına ALTER / CREATE komutları üretir.
+ *
+ * `updated_at` kolonu eksikse task #156 / #168 ile aynı pattern uygulanır:
+ *   1) Kolonu NULLABLE ekle  2) created_at ile backfill
+ *   3) DEFAULT NOW() + NOT NULL  4) BEFORE UPDATE trigger
  *
  * Kullanım:
  *   tsx scripts/db-drift-check.ts            # rapor + scripts/db-drift-fix.sql üret
@@ -42,6 +52,14 @@ function hasName(value: unknown): value is IndexColumnLike & { name: string } {
   );
 }
 
+type ExpectedColumn = {
+  table: string;
+  name: string;
+  sqlType: string;
+  notNull: boolean;
+  hasCreatedAtSibling: boolean;
+};
+
 type ExpectedUnique = {
   table: string;
   name: string | undefined;
@@ -64,6 +82,25 @@ type ExpectedFk = {
   refColumns: string[];
 };
 
+type ActualColumn = {
+  table_name: string;
+  column_name: string;
+  data_type: string;
+  udt_name: string;
+  is_nullable: "YES" | "NO";
+};
+
+type ColumnMismatch = {
+  table: string;
+  column: string;
+  expectedType: string;
+  actualType: string;
+  expectedNotNull: boolean;
+  actualNotNull: boolean;
+  typeDiffers: boolean;
+  nullabilityDiffers: boolean;
+};
+
 const FIX_FILE = "scripts/db-drift-fix.sql";
 const CHECK_MODE = process.argv.includes("--check");
 const STRICT_MODE = process.argv.includes("--strict");
@@ -77,13 +114,53 @@ function deriveUniqueName(table: string, columns: string[]): string {
   return `${table}_${columns.join("_")}_unique`;
 }
 
+/**
+ * Drizzle tarafından üretilen SQL tip ifadesini information_schema'nın
+ * raporladığı kanonik forma yaklaştırır. Tam normalize değil; yaygın
+ * eşdeğerleri tek isme indirgemek için. Sadece "tip aynı mı?" karşılaştırmasında
+ * kullanılır.
+ */
+function normalizeSqlType(raw: string): string {
+  let s = raw.trim().toLowerCase();
+  // "varchar(255)" → "varchar"
+  s = s.replace(/\(.*\)/g, "");
+  // Drizzle "timestamp with time zone" gibi yazabilir — bazen "timestamptz"
+  s = s.replace(/\s+with\s+time\s+zone/g, "tz");
+  s = s.replace(/\s+without\s+time\s+zone/g, "");
+  s = s.replace(/\s+/g, " ").trim();
+  // En yaygın synonym'ler
+  const syn: Record<string, string> = {
+    "int4": "integer",
+    "int": "integer",
+    "int8": "bigint",
+    "int2": "smallint",
+    "bool": "boolean",
+    "float8": "double precision",
+    "float4": "real",
+    "varchar": "character varying",
+    "char": "character",
+    "timestamptz": "timestamp tz",
+    "timetz": "time tz",
+    "numeric": "numeric",
+    "decimal": "numeric",
+    // Drizzle 'serial'/'bigserial' tipleri PostgreSQL'de integer/bigint olarak
+    // raporlanır (default nextval ile). Tip karşılaştırmasında eşdeğer say.
+    "serial": "integer",
+    "bigserial": "bigint",
+    "smallserial": "smallint",
+  };
+  return syn[s] ?? s;
+}
+
 async function collectExpected() {
   const tables = new Set<string>();
+  const expectedColumns: ExpectedColumn[] = [];
   const expectedUniques: ExpectedUnique[] = [];
   const expectedIndexes: ExpectedIndex[] = [];
   const expectedFks: ExpectedFk[] = [];
 
   const skippedFks: Array<{ table: string; reason: string }> = [];
+  const skippedTypeColumns: Array<{ table: string; column: string; reason: string }> = [];
 
   for (const exported of Object.values(schema)) {
     if (!is(exported, PgTable)) continue;
@@ -91,8 +168,27 @@ async function collectExpected() {
     if (cfg.schema && cfg.schema !== "public") continue;
     tables.add(cfg.name);
 
-    // Column-level .unique()
+    const colNames = cfg.columns.map((c) => c.name);
+    const hasCreatedAt = colNames.includes("created_at");
+
+    // Columns
     for (const col of cfg.columns) {
+      let sqlType = "";
+      try {
+        sqlType = (col as PgColumn).getSQLType();
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        skippedTypeColumns.push({ table: cfg.name, column: col.name, reason });
+      }
+      expectedColumns.push({
+        table: cfg.name,
+        name: col.name,
+        sqlType,
+        notNull: !!col.notNull,
+        hasCreatedAtSibling: hasCreatedAt,
+      });
+
+      // Column-level .unique()
       if (col.isUnique) {
         expectedUniques.push({
           table: cfg.name,
@@ -151,11 +247,35 @@ async function collectExpected() {
     }
   }
 
-  return { tables, expectedUniques, expectedIndexes, expectedFks, skippedFks };
+  return {
+    tables,
+    expectedColumns,
+    expectedUniques,
+    expectedIndexes,
+    expectedFks,
+    skippedFks,
+    skippedTypeColumns,
+  };
 }
 
 async function collectActual(tables: Set<string>) {
   const tableList = Array.from(tables);
+
+  // Actual columns
+  const colsRes = await pool.query<ActualColumn>(
+    `
+    SELECT
+      table_name,
+      column_name,
+      data_type,
+      udt_name,
+      is_nullable
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = ANY($1)
+    `,
+    [tableList],
+  );
 
   // Actual unique constraints (UNIQUE only, not PRIMARY KEY)
   const uniqueRes = await pool.query<{
@@ -252,6 +372,7 @@ async function collectActual(tables: Set<string>) {
 
   return {
     actualTables,
+    actualColumns: colsRes.rows,
     actualUniqueConstraints: uniqueRes.rows,
     actualIndexes: indexRes.rows,
     actualFks: fkRes.rows,
@@ -272,13 +393,27 @@ type IndexMismatch = {
 async function main() {
   console.log("Drizzle schema → PostgreSQL drift kontrolü başlıyor...\n");
 
-  const { tables, expectedUniques, expectedIndexes, expectedFks, skippedFks } =
-    await collectExpected();
-  const { actualTables, actualUniqueConstraints, actualIndexes, actualFks } =
-    await collectActual(tables);
+  const {
+    tables,
+    expectedColumns,
+    expectedUniques,
+    expectedIndexes,
+    expectedFks,
+    skippedFks,
+    skippedTypeColumns,
+  } = await collectExpected();
+  const {
+    actualTables,
+    actualColumns,
+    actualUniqueConstraints,
+    actualIndexes,
+    actualFks,
+  } = await collectActual(tables);
 
   const fixSql: string[] = [];
   const missingTables: string[] = [];
+  const missingColumns: ExpectedColumn[] = [];
+  const columnMismatches: ColumnMismatch[] = [];
   const missingUniques: ExpectedUnique[] = [];
   const missingIndexes: ExpectedIndex[] = [];
   const mismatchedIndexes: IndexMismatch[] = [];
@@ -288,9 +423,66 @@ async function main() {
     if (!actualTables.has(t)) missingTables.push(t);
   }
 
-  // DB'de olmayan tablolardaki constraint/index/FK'leri ayrı raporlayacağız;
+  // DB'de olmayan tablolardaki constraint/index/FK/kolon'ları ayrı raporlayacağız;
   // fix.sql'e eklenmemeli (tablo yoksa ALTER fail eder).
   const tableExists = (t: string) => actualTables.has(t);
+
+  // Index actual columns by (table → column → row) for O(1) lookup.
+  const actualColIndex = new Map<string, Map<string, ActualColumn>>();
+  for (const r of actualColumns) {
+    let m = actualColIndex.get(r.table_name);
+    if (!m) {
+      m = new Map();
+      actualColIndex.set(r.table_name, m);
+    }
+    m.set(r.column_name, r);
+  }
+
+  // Columns: missing & type/nullability mismatch
+  for (const exp of expectedColumns) {
+    if (!tableExists(exp.table)) continue; // missing table covers it
+    const actual = actualColIndex.get(exp.table)?.get(exp.name);
+    if (!actual) {
+      missingColumns.push(exp);
+      continue;
+    }
+    const expectedType = normalizeSqlType(exp.sqlType);
+    const actualType = normalizeSqlType(actual.data_type);
+    const actualUdt = normalizeSqlType(actual.udt_name);
+    // information_schema.data_type yaygın isimleri verir; udt_name ise pg
+    // intern adıdır (int4, timestamptz vs.). İkisinden biri eşleşirse kabul.
+    // Array kolonları için data_type='ARRAY', udt_name='_<element>' gelir;
+    // Drizzle ise 'text[]' / 'integer[]' der. Element tipini eşleştir.
+    let arrayMatches = false;
+    if (expectedType.endsWith("[]") && actual.data_type === "ARRAY") {
+      const expectedElement = normalizeSqlType(
+        expectedType.slice(0, -2),
+      );
+      const actualElement = normalizeSqlType(
+        actual.udt_name.replace(/^_/, ""),
+      );
+      arrayMatches = expectedElement === actualElement;
+    }
+    const typeDiffers =
+      !!exp.sqlType &&
+      !arrayMatches &&
+      expectedType !== actualType &&
+      expectedType !== actualUdt;
+    const actualNotNull = actual.is_nullable === "NO";
+    const nullabilityDiffers = exp.notNull !== actualNotNull;
+    if (typeDiffers || nullabilityDiffers) {
+      columnMismatches.push({
+        table: exp.table,
+        column: exp.name,
+        expectedType: exp.sqlType || "(unknown)",
+        actualType: actual.data_type,
+        expectedNotNull: exp.notNull,
+        actualNotNull,
+        typeDiffers,
+        nullabilityDiffers,
+      });
+    }
+  }
 
   // Unique constraints: match by column-set on the same table
   for (const exp of expectedUniques) {
@@ -350,11 +542,27 @@ async function main() {
   // ───────────────── Report ─────────────────
   console.log(`Schema'da tanımlı tablo sayısı : ${tables.size}`);
   console.log(`DB'de bulunmayan tablo         : ${missingTables.length}`);
+  console.log(`Eksik kolon                    : ${missingColumns.length}`);
+  console.log(`Kolon tipi/nullability drift   : ${columnMismatches.length}`);
   console.log(`Eksik UNIQUE constraint        : ${missingUniques.length}`);
   console.log(`Eksik index                    : ${missingIndexes.length}`);
   console.log(`Tanım uyuşmazlığı (index)      : ${mismatchedIndexes.length}`);
   console.log(`Eksik foreign key              : ${missingFks.length}`);
   console.log(`Atlanan FK (resolve edilemedi) : ${skippedFks.length}\n`);
+
+  if (skippedTypeColumns.length) {
+    console.warn(
+      `ℹ️  ${skippedTypeColumns.length} kolon için tip çıkarımı (getSQLType) hata verdi — bu kolonlarda tip drift'i raporlanmaz.`,
+    );
+    const sample = skippedTypeColumns.slice(0, 5);
+    for (const s of sample) {
+      console.warn(`  - ${s.table}.${s.column}: ${s.reason}`);
+    }
+    if (skippedTypeColumns.length > sample.length) {
+      console.warn(`  ...ve ${skippedTypeColumns.length - sample.length} tane daha.`);
+    }
+    console.log("");
+  }
 
   if (skippedFks.length) {
     console.log("ℹ️  FK çıkarımı sırasında atlanan tablolar:");
@@ -372,6 +580,33 @@ async function main() {
   if (missingTables.length) {
     console.log("⚠️  DB'de olmayan tablolar (şemada var):");
     for (const t of missingTables) console.log(`  - ${t}`);
+    console.log("");
+  }
+
+  if (missingColumns.length) {
+    console.log("⚠️  Eksik kolonlar:");
+    for (const c of missingColumns) {
+      console.log(
+        `  - ${c.table}.${c.name}  [${c.sqlType || "?"}${c.notNull ? " NOT NULL" : ""}]`,
+      );
+    }
+    console.log("");
+  }
+
+  if (columnMismatches.length) {
+    console.log("⚠️  Kolon tipi / nullability drift'i:");
+    for (const m of columnMismatches) {
+      const parts: string[] = [];
+      if (m.typeDiffers) {
+        parts.push(`tip: bekleniyor ${m.expectedType} | gerçek ${m.actualType}`);
+      }
+      if (m.nullabilityDiffers) {
+        parts.push(
+          `nullability: bekleniyor ${m.expectedNotNull ? "NOT NULL" : "NULL"} | gerçek ${m.actualNotNull ? "NOT NULL" : "NULL"}`,
+        );
+      }
+      console.log(`  - ${m.table}.${m.column}  (${parts.join("; ")})`);
+    }
     console.log("");
   }
 
@@ -420,8 +655,18 @@ async function main() {
   const fixableFks = missingFks.filter(
     (f) => tableExists(f.table) && tableExists(f.refTable),
   );
+  const fixableColumns = missingColumns; // tableExists zaten yukarıda filtrelendi
+  const updatedAtColumns = fixableColumns.filter((c) => c.name === "updated_at");
+  const otherMissingColumns = fixableColumns.filter(
+    (c) => c.name !== "updated_at",
+  );
 
-  if (missingUniques.length || missingIndexes.length || fixableFks.length) {
+  if (
+    fixableColumns.length ||
+    missingUniques.length ||
+    missingIndexes.length ||
+    fixableFks.length
+  ) {
     fixSql.push("-- DB DRIFT FIX SCRIPT");
     fixSql.push(`-- Üretildi: ${new Date().toISOString()}`);
     fixSql.push(
@@ -436,6 +681,65 @@ async function main() {
     const applicableIndexes = missingIndexes.filter((i) => tableExists(i.table));
     const skippedUniques = missingUniques.length - applicableUniques.length;
     const skippedIndexes = missingIndexes.length - applicableIndexes.length;
+
+    if (updatedAtColumns.length) {
+      fixSql.push("-- Eksik updated_at kolonları");
+      fixSql.push(
+        "-- Pattern: task #156 / #168 — ADD COLUMN, backfill, DEFAULT NOW(), NOT NULL, BEFORE UPDATE trigger.",
+      );
+      fixSql.push(
+        "-- Tek paylaşılan trigger fonksiyonu (idempotent CREATE OR REPLACE).",
+      );
+      fixSql.push("CREATE OR REPLACE FUNCTION set_updated_at_timestamp()");
+      fixSql.push("RETURNS TRIGGER AS $$");
+      fixSql.push("BEGIN");
+      fixSql.push("  NEW.updated_at = NOW();");
+      fixSql.push("  RETURN NEW;");
+      fixSql.push("END;");
+      fixSql.push("$$ LANGUAGE plpgsql;");
+      fixSql.push("");
+      for (const c of updatedAtColumns) {
+        const t = quoteIdent(c.table);
+        const trgName = quoteIdent(`trg_${c.table}_updated_at`);
+        const backfill = c.hasCreatedAtSibling
+          ? "SET updated_at = COALESCE(created_at, NOW())"
+          : "SET updated_at = NOW()";
+        fixSql.push(`-- ${c.table}.updated_at`);
+        fixSql.push(
+          `ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS updated_at timestamptz;`,
+        );
+        fixSql.push(`UPDATE ${t} ${backfill} WHERE updated_at IS NULL;`);
+        fixSql.push(`ALTER TABLE ${t}`);
+        fixSql.push(`  ALTER COLUMN updated_at SET DEFAULT NOW(),`);
+        fixSql.push(`  ALTER COLUMN updated_at SET NOT NULL;`);
+        fixSql.push(`DROP TRIGGER IF EXISTS ${trgName} ON ${t};`);
+        fixSql.push(
+          `CREATE TRIGGER ${trgName} BEFORE UPDATE ON ${t} FOR EACH ROW EXECUTE FUNCTION set_updated_at_timestamp();`,
+        );
+        fixSql.push("");
+      }
+    }
+
+    if (otherMissingColumns.length) {
+      fixSql.push("-- Eksik kolonlar");
+      fixSql.push(
+        "-- NOT: NOT NULL kolonlar nullable olarak ekleniyor — backfill sonrası SET NOT NULL'u manuel uygulayın.",
+      );
+      for (const c of otherMissingColumns) {
+        const t = quoteIdent(c.table);
+        const colName = quoteIdent(c.name);
+        const type = c.sqlType || "text";
+        fixSql.push(
+          `ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS ${colName} ${type};`,
+        );
+        if (c.notNull) {
+          fixSql.push(
+            `-- TODO: ${c.table}.${c.name} NOT NULL beklenmektedir; backfill sonrası: ALTER TABLE ${t} ALTER COLUMN ${colName} SET NOT NULL;`,
+          );
+        }
+      }
+      fixSql.push("");
+    }
 
     if (applicableUniques.length) {
       fixSql.push("-- Eksik UNIQUE constraint'ler");
@@ -503,13 +807,23 @@ async function main() {
       fixSql.push("");
     }
 
+    if (columnMismatches.length > 0) {
+      fixSql.push(
+        `-- ${columnMismatches.length} kolon için tip/nullability uyuşmazlığı var;`,
+      );
+      fixSql.push(
+        "-- otomatik üretilmedi (veri kaybı/dönüşüm riski). Konsol raporundan manuel uygulayın.",
+      );
+      fixSql.push("");
+    }
+
     fixSql.push("COMMIT;");
     fixSql.push("");
 
     writeFileSync(FIX_FILE, fixSql.join("\n"));
     console.log(`✏️  Fix SQL yazıldı: ${FIX_FILE}`);
   } else {
-    console.log("✅ Drift yok — fix script üretilmedi.");
+    console.log("✅ Otomatik düzeltilebilir drift yok — fix script üretilmedi.");
   }
 
   await pool.end();
@@ -520,6 +834,8 @@ async function main() {
   // --strict ile birlikte ise CI fail olur (kod tabanı temizlendiğinde aktif edilebilir).
   const driftCount =
     missingTables.length +
+    missingColumns.length +
+    columnMismatches.length +
     missingUniques.length +
     mismatchedIndexes.length +
     missingIndexes.length +
