@@ -8,6 +8,41 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 - Fast implementation in Build mode, continues with "devam"
 - DB schema changes via raw psql (drizzle-kit push times out)
 
+## 🔥 Aktif Paralel İşler (IT danışmanları dikkat!)
+
+**Her oturum başında kontrol et — çakışma riskini önle.**
+
+### IN_PROGRESS Tasks (Replit, henüz commit edilmemiş olabilir)
+<!-- Replit günceller: task başlatınca ekle, bitince sil -->
+
+| Task | Sorumlu | Dosya | R-5 Çakışma |
+|---|---|---|---|
+| #140 Reçete malzeme kanonik auto-complete | Replit | `client/src/pages/fabrika-recete-duzenle.tsx` | 🔴 R-5A frontend |
+| #141 Gerçek besin/alerjen müşteri sayfasında | Replit | `client/src/pages/kalite-alerjen.tsx` | 🟠 R-5D |
+| #144 Yanlış kategori hammadde envanter taşı | Replit | DB only | — |
+| #145 "Onaylı/Tahmini" rozeti | Replit | `client/src/pages/kalite-alerjen.tsx` | 🟠 R-5D |
+| #146 Tek-tık besin onay paneli | Replit | yeni sayfa | — |
+| #147 checklistAssignments şema fix | Replit | `shared/schema/schema-02.ts` | — |
+
+### Sprint R-5 (Claude, aktif planlama)
+- **Plan:** `docs/pilot/sprint-r5-uygulama-raporu.md`
+- **Onay:** Replit `docs/pilot/replit-sprint-r5-cevap.md` (push bekliyor)
+- **Durum:**
+  - R-5A Backend: YAZILDI, LOCAL, push bekliyor (Replit onayı + #140 merge sonrası)
+  - R-5A Frontend: BEKLİYOR (#140 merge sonrası başlar)
+  - R-5B Maliyet UI: BEKLİYOR
+  - R-5C Alerjen UI: BEKLİYOR (#141+#145 sonrası)
+  - R-5D Müşteri QR: BEKLİYOR
+
+### Kurallar
+1. **Her Claude oturumu başında:** bu bölümü oku, IN_PROGRESS task'ların dosyalarına dokunmadan önce Replit'e sor.
+2. **Her Replit task başlangıcı:** bu tabloya ekle (dosya path ile).
+3. **Her task commit sonrası:** bu tablodan sil.
+4. **Çakışma varsa:** sıralı çalış, paralel değil.
+
+---
+
+
 ## Session State (23.04.2026 - Task #126)
 - **DB drift kontrolü** eklendi (`scripts/db-drift-check.ts`):
   - Drizzle schema (`shared/schema/*`) UNIQUE constraint, index ve FK tanımlarını gerçek PostgreSQL ile karşılaştırır
