@@ -16,6 +16,10 @@ import {
 import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
+import {
+  recalculateRecipeCost,
+  recalculateAllRecipeCosts,
+} from "../services/factory-recipe-cost-service";
 
 const router = Router();
 
@@ -849,6 +853,100 @@ router.get("/api/factory/recipes/:id/calculate", isAuthenticated, async (req: an
     res.json({ multiplier, ingredients: scaled });
   } catch (error) {
     res.status(500).json({ error: "Hesaplama başarısız" });
+  }
+});
+
+// ═══════════════════════════════════════
+// R-5B: MALIYET RECALCULATION
+// ═══════════════════════════════════════
+
+// POST /api/factory/recipes/:id/recalc-cost — Tekil reçete maliyet yeniden hesapla
+router.post("/api/factory/recipes/:id/recalc-cost", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    // Yetki: admin + recete_gm + sef + gida_muhendisi (geniş yetki, hesaplama tehlikesiz)
+    const RECALC_ROLES = ["admin", "recete_gm", "sef", "gida_muhendisi", "ceo"];
+    if (!RECALC_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Maliyet hesaplama yetkiniz yok" });
+    }
+
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) {
+      return res.status(400).json({ error: "Geçersiz reçete id" });
+    }
+
+    const result = await recalculateRecipeCost(recipeId, {
+      triggerSource: "manual",
+      triggeredBy: req.user.id,
+    });
+
+    res.json({
+      success: true,
+      recipeId: result.recipeId,
+      costs: {
+        rawMaterialCost: result.rawMaterialCost.toFixed(4),
+        laborCost: result.laborCost.toFixed(4),
+        energyCost: result.energyCost.toFixed(4),
+        totalBatchCost: result.totalBatchCost.toFixed(4),
+        unitCost: result.unitCost.toFixed(4),
+      },
+      previousCosts: {
+        rawMaterialCost: result.previousCosts.rawMaterialCost.toFixed(4),
+        totalBatchCost: result.previousCosts.totalBatchCost.toFixed(4),
+        unitCost: result.previousCosts.unitCost.toFixed(4),
+      },
+      coverage: {
+        percent: Math.round(result.coveragePercent),
+        total: result.totalIngredients,
+        resolved: result.resolvedIngredients,
+        missingCount: result.missing.length,
+      },
+      missing: result.missing.slice(0, 10), // ilk 10 eksik
+    });
+  } catch (error) {
+    console.error("Recalc cost error:", error);
+    res.status(500).json({
+      error: "Maliyet hesaplama başarısız",
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// POST /api/factory/recipes/bulk-recalc — Toplu maliyet hesaplama (admin only)
+router.post("/api/factory/recipes/bulk-recalc", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    // Bulk işlem sadece admin
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Toplu hesaplama sadece admin yetkisiyle" });
+    }
+
+    const { onlyUnpriced = false } = req.body;
+
+    const result = await recalculateAllRecipeCosts({
+      triggerSource: "bulk",
+      triggeredBy: req.user.id,
+      onlyUnpriced: Boolean(onlyUnpriced),
+    });
+
+    res.json({
+      success: true,
+      total: result.total,
+      succeeded: result.succeeded,
+      failed: result.failed,
+      // Detay kısaltılmış
+      summary: result.results.map(r => ({
+        recipeId: r.recipeId,
+        unitCost: r.unitCost.toFixed(4),
+        coverage: Math.round(r.coveragePercent),
+        missingCount: r.missing.length,
+      })),
+      errors: result.errors,
+    });
+  } catch (error) {
+    console.error("Bulk recalc error:", error);
+    res.status(500).json({
+      error: "Toplu hesaplama başarısız",
+      detail: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
