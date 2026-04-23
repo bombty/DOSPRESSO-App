@@ -6,13 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ShieldCheck, AlertTriangle, Search, CheckCircle2, Beaker, Info } from "lucide-react";
+import { ShieldCheck, AlertTriangle, Search, CheckCircle2, Beaker, Info, X } from "lucide-react";
 
 interface PendingRow {
   id: number;
@@ -67,11 +72,16 @@ function errorMessage(err: unknown): string {
   return "Bilinmeyen hata";
 }
 
-function PendingTableRow({ row }: { row: PendingRow }) {
+interface PendingTableRowProps {
+  row: PendingRow;
+  selected: boolean;
+  onToggleSelect: (id: number, checked: boolean) => void;
+}
+
+function PendingTableRow({ row, selected, onToggleSelect }: PendingTableRowProps) {
   const { toast } = useToast();
   const [edit, setEdit] = useState<EditState>(() => buildInitialEdit(row));
 
-  // Reset local edit state when the underlying row identity/data changes
   useEffect(() => {
     setEdit(buildInitialEdit(row));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +122,15 @@ function PendingTableRow({ row }: { row: PendingRow }) {
   });
 
   return (
-    <TableRow data-testid={`row-pending-${row.id}`}>
+    <TableRow data-testid={`row-pending-${row.id}`} data-state={selected ? "selected" : undefined}>
+      <TableCell className="align-top w-[40px]">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(v) => onToggleSelect(row.id, v === true)}
+          aria-label={`${row.ingredientName} seç`}
+          data-testid={`checkbox-row-${row.id}`}
+        />
+      </TableCell>
       <TableCell className="font-medium align-top" data-testid={`text-ingredient-${row.id}`}>
         <div>{row.ingredientName}</div>
         {row.source && (
@@ -168,6 +186,10 @@ function PendingTableRow({ row }: { row: PendingRow }) {
 
 export default function KaliteBesinOnayPage() {
   const [search, setSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkNote, setBulkNote] = useState("");
+  const { toast } = useToast();
 
   const { data, isLoading, error } = useQuery<PendingResponse>({
     queryKey: ["/api/factory/ingredient-nutrition/pending"],
@@ -179,6 +201,83 @@ export default function KaliteBesinOnayPage() {
     const q = search.toLowerCase();
     return items.filter(r => r.ingredientName.toLowerCase().includes(q));
   }, [data, search]);
+
+  // Drop selections that no longer exist in the current list (after refetch)
+  useEffect(() => {
+    if (!data) return;
+    const existing = new Set(data.items.map(i => i.id));
+    setSelectedIds(prev => {
+      const next = new Set<number>();
+      prev.forEach(id => { if (existing.has(id)) next.add(id); });
+      return next.size === prev.size ? prev : next;
+    });
+  }, [data]);
+
+  const filteredIds = useMemo(() => filtered.map(r => r.id), [filtered]);
+  const selectedInFiltered = useMemo(
+    () => filteredIds.filter(id => selectedIds.has(id)),
+    [filteredIds, selectedIds],
+  );
+  const allFilteredSelected = filteredIds.length > 0 && selectedInFiltered.length === filteredIds.length;
+  const someFilteredSelected = selectedInFiltered.length > 0 && !allFilteredSelected;
+
+  const toggleSelect = (id: number, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllFiltered = (checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) filteredIds.forEach(id => next.add(id));
+      else filteredIds.forEach(id => next.delete(id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkMutation = useMutation({
+    mutationFn: async () => {
+      const ids = Array.from(selectedIds);
+      const res = await apiRequest("POST", "/api/factory/ingredient-nutrition/onay-toplu", {
+        ids,
+        note: bulkNote.trim() || undefined,
+      });
+      return res.json() as Promise<{
+        ok: boolean;
+        approvedCount: number;
+        skippedCount: number;
+      }>;
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Toplu onay tamamlandı",
+        description:
+          result.skippedCount > 0
+            ? `${result.approvedCount} kayıt onaylandı, ${result.skippedCount} kayıt atlandı.`
+            : `${result.approvedCount} kayıt manual_verified olarak işaretlendi.`,
+      });
+      setBulkDialogOpen(false);
+      setBulkNote("");
+      clearSelection();
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/recipes"] });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Toplu onay başarısız",
+        description: errorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+
+  const selectionCount = selectedIds.size;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 max-w-7xl">
@@ -213,6 +312,41 @@ export default function KaliteBesinOnayPage() {
         />
       </div>
 
+      {selectionCount > 0 && (
+        <div
+          className="sticky top-2 z-50 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-background p-3 shadow-md"
+          data-testid="bar-bulk-actions"
+        >
+          <div className="flex items-center gap-2 text-sm">
+            <Badge variant="default" data-testid="badge-selection-count">
+              {selectionCount} seçildi
+            </Badge>
+            <span className="text-muted-foreground">
+              Seçilenleri tek tıkla manual_verified olarak işaretleyin.
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSelection}
+              data-testid="button-clear-selection"
+            >
+              <X className="w-3 h-3" />
+              Seçimi temizle
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setBulkDialogOpen(true)}
+              data-testid="button-open-bulk-approve"
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Seçilenleri Onayla
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading && <ListSkeleton count={4} />}
       {error && <ErrorState message={`Liste yüklenemedi: ${errorMessage(error)}`} />}
 
@@ -241,6 +375,20 @@ export default function KaliteBesinOnayPage() {
               <Table data-testid="table-pending">
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={
+                          allFilteredSelected
+                            ? true
+                            : someFilteredSelected
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={(v) => toggleSelectAllFiltered(v === true)}
+                        aria-label="Görünen tüm kayıtları seç"
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
                     <TableHead className="min-w-[200px]">Hammadde</TableHead>
                     {NUTRITION_FIELDS.map(f => (
                       <TableHead key={f.key as string} className="text-right whitespace-nowrap">
@@ -254,7 +402,12 @@ export default function KaliteBesinOnayPage() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map(row => (
-                    <PendingTableRow key={row.id} row={row} />
+                    <PendingTableRow
+                      key={row.id}
+                      row={row}
+                      selected={selectedIds.has(row.id)}
+                      onToggleSelect={toggleSelect}
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -270,6 +423,52 @@ export default function KaliteBesinOnayPage() {
           Tüm onaylar audit log&apos;a önceki/sonraki değerleriyle yazılır.
         </span>
       </div>
+
+      <Dialog open={bulkDialogOpen} onOpenChange={(open) => {
+        if (!bulkMutation.isPending) setBulkDialogOpen(open);
+      }}>
+        <DialogContent data-testid="dialog-bulk-approve">
+          <DialogHeader>
+            <DialogTitle>Seçilen kayıtları onayla</DialogTitle>
+            <DialogDescription>
+              {selectionCount} kayıt aynı kaynak referansıyla manual_verified olarak işaretlenecek
+              ve her biri için audit log oluşturulacak.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="bulk-note">
+              Not (isteğe bağlı)
+            </label>
+            <Textarea
+              id="bulk-note"
+              value={bulkNote}
+              onChange={(e) => setBulkNote(e.target.value)}
+              placeholder="Örn. TÜRKOMP referansı ile doğrulandı"
+              rows={3}
+              maxLength={500}
+              data-testid="input-bulk-note"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDialogOpen(false)}
+              disabled={bulkMutation.isPending}
+              data-testid="button-cancel-bulk"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              onClick={() => bulkMutation.mutate()}
+              disabled={bulkMutation.isPending || selectionCount === 0}
+              data-testid="button-confirm-bulk-approve"
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              {bulkMutation.isPending ? "Onaylanıyor..." : `${selectionCount} kaydı onayla`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

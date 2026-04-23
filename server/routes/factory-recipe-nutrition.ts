@@ -497,4 +497,97 @@ router.patch("/api/factory/ingredient-nutrition/:id/onay", isAuthenticated, asyn
   }
 });
 
+// POST /api/factory/ingredient-nutrition/onay-toplu
+// Toplu onay: ids[] kayıtlarını tek tıkla manual_verified/confidence=100 yapar
+const bulkApproveSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(200),
+  note: z.string().max(500).optional(),
+});
+
+router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canApproveNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Onay yetkiniz yok" });
+    }
+
+    const parsed = bulkApproveSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Geçersiz veri", details: parsed.error.flatten() });
+    }
+
+    const { ids, note } = parsed.data;
+    const uniqueIds = Array.from(new Set(ids));
+
+    const result = await db.transaction(async (tx) => {
+      const approved: number[] = [];
+      const skipped: number[] = [];
+      const now = new Date();
+
+      for (const id of uniqueIds) {
+        const [existing] = await tx.select().from(factoryIngredientNutrition)
+          .where(eq(factoryIngredientNutrition.id, id)).limit(1);
+
+        if (!existing) {
+          skipped.push(id);
+          continue;
+        }
+
+        const next = {
+          source: "manual_verified" as const,
+          confidence: 100,
+          verifiedBy: req.user.id as string,
+          updatedAt: now,
+        };
+
+        const [row] = await tx.update(factoryIngredientNutrition)
+          .set(next)
+          .where(eq(factoryIngredientNutrition.id, id))
+          .returning();
+
+        await tx.insert(auditLogs).values({
+          eventType: "factory.ingredient_nutrition.approved",
+          userId: req.user.id,
+          actorRole: req.user.role,
+          action: "approve_bulk",
+          resource: "factory_ingredient_nutrition",
+          resourceId: String(id),
+          before: {
+            source: existing.source,
+            confidence: existing.confidence,
+            verifiedBy: existing.verifiedBy,
+          },
+          after: {
+            source: next.source,
+            confidence: next.confidence,
+            verifiedBy: next.verifiedBy,
+          },
+          details: {
+            ingredientName: existing.ingredientName,
+            note: note ?? null,
+            bulk: true,
+            batchSize: uniqueIds.length,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent") ?? null,
+        });
+
+        if (row) approved.push(id);
+      }
+
+      return { approved, skipped };
+    });
+
+    res.json({
+      ok: true,
+      approvedCount: result.approved.length,
+      skippedCount: result.skipped.length,
+      approved: result.approved,
+      skipped: result.skipped,
+    });
+  } catch (error) {
+    console.error("Bulk nutrition approve error:", error);
+    res.status(500).json({ error: "Toplu onay başarısız" });
+  }
+});
+
 export default router;
