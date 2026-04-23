@@ -76,6 +76,23 @@ Bu sorgu **boş dönmelidir**. Bir satır gelirse ilgili kayıt deaktive edilir:
 UPDATE branch_staff_pins SET is_active = false WHERE id = <pin_id>;
 ```
 
+### 3.1 Otomatik Audit (Task #136)
+
+Yukarıdaki sorgu `scripts/pilot/audit-hq-kiosk-pins.ts` içinde otomatize
+edildi. Çalıştırma:
+
+```bash
+tsx scripts/pilot/audit-hq-kiosk-pins.ts
+```
+
+Çıktılar (`docs/pilot/audit/` altına tarih damgalı):
+- `hq-kiosk-pins-<YYYY-MM-DD>.json` — yapısal kayıt (CI/cron için)
+- `hq-kiosk-pins-<YYYY-MM-DD>.md` — pilot raporuna eklenebilir özet
+
+Exit kodu: `0 = PASS` (0 ihlal), `1 = FAIL` (deaktive iş listesi MD içinde),
+`2 = beklenmedik hata`. Pilot kick-off (28 Nis) öncesi manuel veya cron ile
+çalıştırılır.
+
 ---
 
 ## 4. İstisna Prosedürü
