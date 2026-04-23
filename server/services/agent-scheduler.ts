@@ -7,6 +7,7 @@ import { checkDailyActionLimit } from "./agent-safety";
 import { runEscalationCheck, checkRoutingEscalations, checkActionOutcomes } from "./agent-escalation";
 import { getSkillsBySchedule, runSkillsForUser, ensureSkillsLoaded } from "../agent/skills/skill-registry";
 import { sendQueuedNotifications } from "../agent/skills/skill-notifications";
+import { sendAllergenWeeklySummary } from "./allergen-weekly-summary";
 import { auditLogSystem } from "../audit";
 import { storage } from "../storage";
 import { schedulerManager } from "../scheduler-manager";
@@ -582,6 +583,15 @@ export function startAgentScheduler(): void {
     runDailySkills();
     schedulerManager.registerInterval('skill-daily', runDailySkills, 24 * 60 * 60 * 1000);
   }, dailySkillDelayMs);
+
+  const allergenSummaryDelayMs = getMillisUntilNextMonday(9, 30);
+  console.log(`[AllergenWeeklySummary] Haftalık alerjen özeti ${Math.round(allergenSummaryDelayMs / 60000)} dakika sonra calisacak (Pazartesi 09:30 TR)`);
+  schedulerManager.registerTimeout('allergen-weekly-delay', () => {
+    sendAllergenWeeklySummary().catch(err => console.error("[AllergenWeeklySummary] İlk çalışma hatası:", err));
+    schedulerManager.registerInterval('allergen-weekly', () => {
+      sendAllergenWeeklySummary().catch(err => console.error("[AllergenWeeklySummary] Hata:", err));
+    }, 7 * 24 * 60 * 60 * 1000);
+  }, allergenSummaryDelayMs);
 
   const weeklySkillDelayMs = getMillisUntilNextMonday(9, 0);
   console.log(`[SkillScheduler] Haftalik skill'ler ${Math.round(weeklySkillDelayMs / 60000)} dakika sonra calisacak (Pazartesi 09:00 TR)`);

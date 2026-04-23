@@ -142,7 +142,7 @@ interface RecipeComputation {
   approvedCount: number;
 }
 
-async function computeRecipeNutrition(
+export async function computeRecipeNutrition(
   recipeId: number,
   ingredients: IngredientRow[],
   nutritionMap: Map<string, NutritionRow>,
@@ -265,7 +265,7 @@ async function computeRecipeNutrition(
   };
 }
 
-async function loadNutritionMap(): Promise<Map<string, NutritionRow>> {
+export async function loadNutritionMap(): Promise<Map<string, NutritionRow>> {
   const rows = await db.select({
     ingredientName: factoryIngredientNutrition.ingredientName,
     energyKcal: factoryIngredientNutrition.energyKcal,
@@ -291,7 +291,7 @@ async function loadNutritionMap(): Promise<Map<string, NutritionRow>> {
   return map;
 }
 
-async function loadKeyblendAllergens(
+export async function loadKeyblendAllergens(
   nutritionMap: Map<string, NutritionRow>,
 ): Promise<Map<number, Set<string>>> {
   const rows = await db.select().from(factoryKeyblendIngredients);
@@ -493,6 +493,25 @@ router.get("/api/quality/allergens/recipes/:id", isAuthenticated, requireAllerge
   } catch (error) {
     console.error("Allergen recipe detail error:", error);
     res.status(500).json({ error: "Reçete alerjen detayı yüklenemedi" });
+  }
+});
+
+// ═══════════════════════════════════════
+// POST /api/quality/allergens/weekly-summary/run
+// Yöneticilerin manuel olarak haftalık özeti tetiklemesini sağlar.
+// ═══════════════════════════════════════
+router.post("/api/quality/allergens/weekly-summary/run", isAuthenticated, async (req: any, res: Response) => {
+  const role = req.user?.role || "";
+  if (!["admin", "kalite_yoneticisi", "gida_muhendisi"].includes(role)) {
+    return res.status(403).json({ error: "Bu işlemi yapma yetkiniz yok" });
+  }
+  try {
+    const { sendAllergenWeeklySummary } = await import("../services/allergen-weekly-summary");
+    const result = await sendAllergenWeeklySummary();
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error("Allergen weekly summary trigger error:", error);
+    res.status(500).json({ error: "Haftalık özet gönderilemedi" });
   }
 });
 
