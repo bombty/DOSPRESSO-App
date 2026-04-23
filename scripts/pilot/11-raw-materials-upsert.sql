@@ -1064,7 +1064,7 @@ ON CONFLICT (code) DO UPDATE SET
   is_active = true,
   updated_at = NOW();
 INSERT INTO raw_materials (code, name, category, unit, current_unit_price, last_purchase_price, price_last_updated, is_active, updated_at)
-VALUES ('M-1130', 'Dekstroz', 'mamul', 'ADET', 120, 119.59, NOW(), true, NOW())
+VALUES ('M-1130', 'Dekstroz', 'hammadde', 'ADET', 120, 119.59, NOW(), true, NOW())
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   category = EXCLUDED.category,
@@ -1097,7 +1097,7 @@ ON CONFLICT (code) DO UPDATE SET
   is_active = true,
   updated_at = NOW();
 INSERT INTO raw_materials (code, name, category, unit, current_unit_price, last_purchase_price, price_last_updated, is_active, updated_at)
-VALUES ('M-1194', 'Sızma Zeytinyağ 5 Lt', 'mamul', 'ADET', 1524, 1524, NOW(), true, NOW())
+VALUES ('M-1194', 'Sızma Zeytinyağ 5 Lt', 'hammadde', 'ADET', 1524, 1524, NOW(), true, NOW())
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   category = EXCLUDED.category,
