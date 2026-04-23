@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -19,8 +20,16 @@ import {
   Lock, Unlock, FlaskConical, AlertTriangle, Scale,
   Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
   Link2, Unlink, DollarSign, Pencil, Search, BadgeCheck, ShieldAlert,
-  ArrowRight, Plus, Minus, History, ChevronRight,
+  ArrowRight, Plus, Minus, History, ChevronRight, ClipboardCheck, User,
 } from "lucide-react";
+
+const APPROVAL_SCOPE_LABELS: Record<string, string> = {
+  gramaj: "Gramaj (Üretim Formülü)",
+  besin: "Besin Değerleri",
+  alerjen: "Alerjenler",
+};
+
+const APPROVAL_ROLES = ["admin", "recete_gm", "gida_muhendisi"];
 
 const CATEGORY_LABELS: Record<string, string> = {
   cookie: "Kurabiye", cinnamon_roll: "Cinnamon Roll", donut: "Donut",
@@ -56,6 +65,9 @@ export default function FabrikaReceteDetay() {
   const [editingIngredient, setEditingIngredient] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: "", amount: "", unit: "", rawMaterialId: "" });
   const [inventorySearch, setInventorySearch] = useState("");
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
+  const [approvalScope, setApprovalScope] = useState<"gramaj" | "besin" | "alerjen">("gramaj");
+  const [approvalNote, setApprovalNote] = useState("");
 
   const { data: recipe, isLoading } = useQuery<any>({
     queryKey: ["/api/factory/recipes", recipeId],
@@ -71,6 +83,43 @@ export default function FabrikaReceteDetay() {
   const isAdmin = ["admin", "recete_gm"].includes(user?.role || "");
   const canEditIngredients = recipe?.canEditIngredients;
   const canViewCost = recipe?.canViewCost;
+  const canApprove = APPROVAL_ROLES.includes(user?.role || "");
+
+  const { data: approvals, isLoading: approvalsLoading, isError: approvalsError } = useQuery<any[]>({
+    queryKey: ["/api/factory/recipes", recipeId, "approvals"],
+    queryFn: async () => {
+      const res = await fetch(`/api/factory/recipes/${recipeId}/approvals`, { credentials: "include" });
+      if (!res.ok) throw new Error("Onaylar yüklenemedi");
+      return res.json();
+    },
+    enabled: !!recipeId,
+  });
+
+  const addApprovalMutation = useMutation({
+    mutationFn: async (data: { scope: string; note: string | null }) => {
+      return apiRequest("POST", `/api/factory/recipes/${recipeId}/approvals`, {
+        scope: data.scope,
+        note: data.note,
+        recipeVersionNumber: recipe?.version ?? null,
+        sourceRef: "manual",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/recipes", recipeId, "approvals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/recipes", recipeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/recipes"] });
+      setApprovalDialogOpen(false);
+      setApprovalNote("");
+      toast({ title: "Onay kaydedildi" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Onay kaydedilemedi",
+        description: err?.message || "Sunucu hatası",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: inventoryItems } = useQuery<any[]>({
     queryKey: ["/api/inventory", inventorySearch],
@@ -417,6 +466,10 @@ export default function FabrikaReceteDetay() {
             <TabsTrigger value="notlar" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
               Teknik Notlar
             </TabsTrigger>
+            <TabsTrigger value="onaylar" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm" data-testid="tab-onaylar">
+              <ClipboardCheck className="h-3.5 w-3.5 mr-1" />
+              Onaylar {approvals?.length ? `(${approvals.length})` : ""}
+            </TabsTrigger>
             {canViewCost && (
               <TabsTrigger value="maliyet" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
                 <DollarSign className="h-3.5 w-3.5 mr-1" /> Maliyet
@@ -641,6 +694,101 @@ export default function FabrikaReceteDetay() {
             </div>
           </TabsContent>
 
+          {/* ONAYLAR TAB */}
+          <TabsContent value="onaylar" className="space-y-3 pb-8" data-testid="tab-content-onaylar">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4" /> Onay Geçmişi
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Gramaj, besin değeri ve alerjen onayları kayıt altına alınır.
+                </p>
+              </div>
+              {canApprove && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setApprovalScope("gramaj");
+                    setApprovalNote("");
+                    setApprovalDialogOpen(true);
+                  }}
+                  data-testid="button-add-approval"
+                >
+                  <BadgeCheck className="h-3.5 w-3.5 mr-1" /> Onay Ver
+                </Button>
+              )}
+            </div>
+
+            {approvalsLoading ? (
+              <Skeleton className="h-24" />
+            ) : approvalsError ? (
+              <Card className="border-red-800/30 bg-red-950/10">
+                <CardContent className="p-3">
+                  <p className="text-sm text-red-400 flex items-center gap-2" data-testid="approvals-error">
+                    <AlertTriangle className="h-4 w-4" />
+                    Onay geçmişi yüklenemedi. Lütfen sayfayı yenileyin.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : !approvals || approvals.length === 0 ? (
+              <div className="text-center py-8">
+                <ClipboardCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                <p className="text-sm text-muted-foreground">Henüz onay kaydı yok</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {approvals.map((a: any) => (
+                  <Card key={a.id} data-testid={`approval-row-${a.id}`}>
+                    <CardContent className="p-3">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge
+                              className={cn(
+                                "gap-1",
+                                a.scope === "gramaj" && "bg-emerald-600 text-white border-emerald-700",
+                                a.scope === "besin" && "bg-sky-600 text-white border-sky-700",
+                                a.scope === "alerjen" && "bg-amber-600 text-white border-amber-700",
+                              )}
+                              data-testid={`approval-scope-${a.id}`}
+                            >
+                              <BadgeCheck className="h-3 w-3" />
+                              {APPROVAL_SCOPE_LABELS[a.scope] || a.scope}
+                            </Badge>
+                            {a.recipeVersionNumber != null && (
+                              <Badge variant="outline" className="text-[10px]">
+                                v{a.recipeVersionNumber}
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="text-[10px]" data-testid={`approval-source-${a.id}`}>
+                              {a.sourceRef === "manual" || !a.sourceRef ? "Manuel" : a.sourceRef}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1.5 flex items-center gap-3 flex-wrap">
+                            <span className="flex items-center gap-1" data-testid={`approval-user-${a.id}`}>
+                              <User className="h-3 w-3" />
+                              {a.approvedByName}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {a.approvedAt ? new Date(a.approvedAt).toLocaleString("tr-TR") : "—"}
+                            </span>
+                          </div>
+                          {a.note && (
+                            <p className="text-xs text-muted-foreground mt-2 whitespace-pre-wrap" data-testid={`approval-note-${a.id}`}>
+                              {a.note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           {/* MALİYET TAB */}
           {canViewCost && (
             <TabsContent value="maliyet" className="space-y-4 pb-8">
@@ -816,6 +964,76 @@ export default function FabrikaReceteDetay() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Onay Verme Dialog */}
+      <Dialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
+        <DialogContent className="max-w-md" data-testid="dialog-approval">
+          <DialogHeader>
+            <DialogTitle>Onay Ver</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Onay Kapsamı</Label>
+              <Select value={approvalScope} onValueChange={(v: "gramaj" | "besin" | "alerjen") => setApprovalScope(v)}>
+                <SelectTrigger className="mt-1" data-testid="select-approval-scope">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gramaj" data-testid="option-scope-gramaj">
+                    {APPROVAL_SCOPE_LABELS.gramaj}
+                  </SelectItem>
+                  <SelectItem value="besin" data-testid="option-scope-besin">
+                    {APPROVAL_SCOPE_LABELS.besin}
+                  </SelectItem>
+                  <SelectItem value="alerjen" data-testid="option-scope-alerjen">
+                    {APPROVAL_SCOPE_LABELS.alerjen}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Not (opsiyonel, en az 3 karakter)</Label>
+              <Textarea
+                value={approvalNote}
+                onChange={(e) => setApprovalNote(e.target.value)}
+                placeholder="Onayla ilgili not ekleyin..."
+                className="mt-1 min-h-24"
+                data-testid="input-approval-note"
+              />
+            </div>
+            {recipe?.version != null && (
+              <p className="text-xs text-muted-foreground">
+                Bu onay reçete v{recipe.version} için kaydedilecek.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApprovalDialogOpen(false)}>
+              Vazgeç
+            </Button>
+            <Button
+              onClick={() => {
+                const note = approvalNote.trim();
+                if (note && note.length < 3) {
+                  toast({
+                    title: "Not en az 3 karakter olmalı",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                addApprovalMutation.mutate({
+                  scope: approvalScope,
+                  note: note || null,
+                });
+              }}
+              disabled={addApprovalMutation.isPending}
+              data-testid="button-confirm-approval"
+            >
+              {addApprovalMutation.isPending ? "Kaydediliyor..." : "Onayı Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Türev Reçeteler (Yarı Mamül ise) */}
       {recipe.childRecipes?.length > 0 && (
