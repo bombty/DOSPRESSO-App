@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
-  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download, Undo2,
+  ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download, Undo2, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
@@ -103,6 +103,32 @@ export default function FabrikaReceteDuzenle() {
   // Task #165: Mevcut bir malzemenin besin değerlerini düzenleme modu (yeni
   // malzeme eklemeden sadece besin/alerjen güncellemek için).
   const [editNutritionName, setEditNutritionName] = useState<string | null>(null);
+  // Task #185: Besin değer değişim geçmişi diyaloğu
+  const [historyName, setHistoryName] = useState<string | null>(null);
+  const [historyRows, setHistoryRows] = useState<any[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  useEffect(() => {
+    if (!historyName) { setHistoryRows(null); return; }
+    let cancelled = false;
+    setHistoryLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/factory/ingredient-nutrition/${encodeURIComponent(historyName)}/history`,
+          { credentials: "include" }
+        );
+        if (!res.ok) {
+          if (!cancelled) setHistoryRows([]);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setHistoryRows(Array.isArray(data) ? data : []);
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [historyName]);
   const toggleAllergen = (a: string) =>
     setNewAllergens(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
   const resetNutritionForm = () => {
@@ -871,6 +897,15 @@ export default function FabrikaReceteDuzenle() {
                 >
                   {canEditNutrition ? <Pencil className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                 </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setHistoryName(ing.name)}
+                  title="Besin değer değişiklik geçmişini göster"
+                  data-testid={`button-nutrition-history-${ing.id || idx}`}
+                >
+                  <History className="w-3.5 h-3.5" />
+                </Button>
               </div>
             ))}
             <div className="grid grid-cols-6 gap-2 mt-3 pt-3 border-t">
@@ -1594,6 +1629,125 @@ export default function FabrikaReceteDuzenle() {
             >
               <Save className="w-3.5 h-3.5 mr-1" />
               {bulkNutritionSubmitting ? "Kaydediliyor..." : "Kaydet ve gönder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Task #185 — Besin değer geçmişi diyaloğu */}
+      <Dialog open={!!historyName} onOpenChange={(o) => { if (!o) setHistoryName(null); }}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" data-testid="dialog-nutrition-history">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Besin Değer Geçmişi — <span className="font-mono">{historyName}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Bu malzemenin besin değer / alerjen kayıtlarında yapılan tüm değişiklikler.
+              Kim, ne zaman, neyi değiştirdi.
+            </DialogDescription>
+          </DialogHeader>
+
+          {historyLoading && (
+            <div className="text-sm text-muted-foreground text-center py-8" data-testid="text-history-loading">
+              Yükleniyor...
+            </div>
+          )}
+
+          {!historyLoading && historyRows && historyRows.length === 0 && (
+            <div className="text-sm text-muted-foreground text-center py-8" data-testid="text-history-empty">
+              Bu malzeme için henüz bir değişiklik kaydı yok.
+            </div>
+          )}
+
+          {!historyLoading && historyRows && historyRows.length > 0 && (
+            <div className="space-y-3">
+              {historyRows.map((row: any) => {
+                const before = row.before || {};
+                const after = row.after || {};
+                const FIELDS: Array<[string, string]> = [
+                  ["energyKcal", "Kcal"], ["fatG", "Yağ"], ["saturatedFatG", "Doymuş Yağ"],
+                  ["carbohydrateG", "Karb"], ["sugarG", "Şeker"], ["proteinG", "Protein"],
+                  ["saltG", "Tuz"],
+                ];
+                const changes: Array<{ label: string; old: any; nw: any }> = [];
+                for (const [k, lbl] of FIELDS) {
+                  const o = before?.[k] ?? null;
+                  const n = after?.[k] ?? null;
+                  if (String(o ?? "") !== String(n ?? "")) {
+                    changes.push({ label: lbl, old: o, nw: n });
+                  }
+                }
+                const oldAll = Array.isArray(before?.allergens) ? before.allergens.join(",") : "";
+                const newAll = Array.isArray(after?.allergens) ? after.allergens.join(",") : "";
+                if (oldAll !== newAll) {
+                  changes.push({ label: "Alerjenler", old: oldAll || "—", nw: newAll || "—" });
+                }
+                const date = row.changedAt ? new Date(row.changedAt) : null;
+                return (
+                  <div
+                    key={row.id}
+                    className="border rounded-md p-3 space-y-2"
+                    data-testid={`row-history-${row.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant={row.action === "create" ? "default" : "secondary"}>
+                          {row.action}
+                        </Badge>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          {row.source}
+                        </Badge>
+                        {row.changedByRole && (
+                          <Badge variant="outline" className="text-[10px]">{row.changedByRole}</Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {date ? date.toLocaleString("tr-TR") : "—"}
+                      </div>
+                    </div>
+                    <div className="text-xs">
+                      <span className="text-muted-foreground">Değiştiren: </span>
+                      <span className="font-medium" data-testid={`text-history-user-${row.id}`}>
+                        {row.changedByName?.trim() || row.changedBy || "—"}
+                      </span>
+                    </div>
+                    {row.note && (
+                      <div className="text-xs text-muted-foreground italic">{row.note}</div>
+                    )}
+                    {changes.length === 0 ? (
+                      <div className="text-xs text-muted-foreground">
+                        {row.action === "create" ? "İlk kayıt oluşturuldu." : "Görünür alanlarda değişiklik yok."}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {changes.map((c, i) => (
+                          <div
+                            key={i}
+                            className="text-xs flex items-center gap-2 border rounded-sm px-2 py-1"
+                            data-testid={`change-${row.id}-${c.label}`}
+                          >
+                            <span className="font-medium">{c.label}:</span>
+                            <span className="font-mono text-muted-foreground line-through">
+                              {c.old == null || c.old === "" ? "—" : String(c.old)}
+                            </span>
+                            <span>→</span>
+                            <span className="font-mono">
+                              {c.nw == null || c.nw === "" ? "—" : String(c.nw)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setHistoryName(null)} data-testid="button-close-history">
+              Kapat
             </Button>
           </DialogFooter>
         </DialogContent>

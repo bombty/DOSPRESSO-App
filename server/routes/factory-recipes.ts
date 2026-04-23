@@ -11,7 +11,7 @@ import {
   factoryRecipeSteps, factoryRecipeStepSnapshots,
   factoryKeyblends, factoryKeyblendIngredients,
   factoryProductionLogs, factoryRecipeVersions,
-  factoryRecipeCategoryAccess, factoryIngredientNutrition,
+  factoryRecipeCategoryAccess, factoryIngredientNutrition, factoryIngredientNutritionHistory,
   factoryRecipeApprovals, insertFactoryRecipeApprovalSchema,
   inventory, users,
 } from "@shared/schema";
@@ -769,6 +769,42 @@ router.put("/api/factory/ingredient-nutrition/:name", isAuthenticated, async (re
   } catch (error) {
     console.error("Upsert ingredient nutrition error:", error);
     res.status(500).json({ error: "Besin değer kaydı güncellenemedi" });
+  }
+});
+
+// GET /api/factory/ingredient-nutrition/:name/history — Besin değer değişim geçmişi
+// Task #185: Audit log — kim, ne zaman, neyi değiştirdi izlenebilsin.
+router.get("/api/factory/ingredient-nutrition/:name/history", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const VIEW_HISTORY_ROLES = [...NUTRITION_EDIT_ROLES, ...RECIPE_VIEW_ROLES];
+    if (!VIEW_HISTORY_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Yetkisiz" });
+    }
+    const canonical = canonicalIngredientName(req.params.name || "");
+    if (!canonical) return res.status(400).json({ error: "Geçersiz isim" });
+
+    const rows = await db.select({
+      id: factoryIngredientNutritionHistory.id,
+      action: factoryIngredientNutritionHistory.action,
+      source: factoryIngredientNutritionHistory.source,
+      before: factoryIngredientNutritionHistory.before,
+      after: factoryIngredientNutritionHistory.after,
+      changedBy: factoryIngredientNutritionHistory.changedBy,
+      changedByRole: factoryIngredientNutritionHistory.changedByRole,
+      changedAt: factoryIngredientNutritionHistory.changedAt,
+      note: factoryIngredientNutritionHistory.note,
+      changedByName: sql<string | null>`${users.firstName} || ' ' || ${users.lastName}`,
+    })
+      .from(factoryIngredientNutritionHistory)
+      .leftJoin(users, eq(users.id, factoryIngredientNutritionHistory.changedBy))
+      .where(eq(factoryIngredientNutritionHistory.ingredientName, canonical))
+      .orderBy(desc(factoryIngredientNutritionHistory.changedAt))
+      .limit(100);
+
+    res.json(rows);
+  } catch (error) {
+    console.error("Get nutrition history error:", error);
+    res.status(500).json({ error: "Geçmiş kayıtları yüklenemedi" });
   }
 });
 
