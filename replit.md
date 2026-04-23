@@ -11,34 +11,55 @@ DOSPRESSO is a comprehensive franchise management platform designed for a coffee
 ## 🔥 Aktif Paralel İşler (IT danışmanları dikkat!)
 
 **Her oturum başında kontrol et — çakışma riskini önle.**
+**Son güncelleme: 24 Nis 2026 01:00 — 5 backend commit sonrası**
 
-### IN_PROGRESS Tasks (Replit, henüz commit edilmemiş olabilir)
+### IN_PROGRESS Tasks (Replit, aktif çalışıyor)
 <!-- Replit günceller: task başlatınca ekle, bitince sil -->
 
-| Task | Sorumlu | Dosya | R-5 Çakışma |
+| Task | Sorumlu | Dosya | Claude Çakışma |
 |---|---|---|---|
-| #140 Reçete malzeme kanonik auto-complete | Replit | `client/src/pages/fabrika-recete-duzenle.tsx` | 🔴 R-5A frontend |
-| #141 Gerçek besin/alerjen müşteri sayfasında | Replit | `client/src/pages/kalite-alerjen.tsx` | 🟠 R-5D |
-| #144 Yanlış kategori hammadde envanter taşı | Replit | DB only | — |
-| #145 "Onaylı/Tahmini" rozeti | Replit | `client/src/pages/kalite-alerjen.tsx` | 🟠 R-5D |
-| #146 Tek-tık besin onay paneli | Replit | yeni sayfa | — |
-| #147 checklistAssignments şema fix | Replit | `shared/schema/schema-02.ts` | — |
+| #177 Toplu malzeme akışı eksik besin diyaloğu | Replit | `fabrika-recete-duzenle.tsx` (QUEUED) | 🔴 R-5A frontend |
+| #186 Etiket PDF'ine QR + üretim bilgisi | Replit | Etiket sistem (IN_PROGRESS) | — |
+| #187 Etiket basımlarını denetim raporu | Replit | Denetim (IN_PROGRESS) | — |
 
-### Sprint R-5 (Claude, aktif planlama)
-- **Plan:** `docs/pilot/sprint-r5-uygulama-raporu.md`
-- **Onay:** Replit `docs/pilot/replit-sprint-r5-cevap.md` (push bekliyor)
-- **Durum:**
-  - R-5A Backend: YAZILDI, LOCAL, push bekliyor (Replit onayı + #140 merge sonrası)
-  - R-5A Frontend: BEKLİYOR (#140 merge sonrası başlar)
-  - R-5B Maliyet UI: BEKLİYOR
-  - R-5C Alerjen UI: BEKLİYOR (#141+#145 sonrası)
-  - R-5D Müşteri QR: BEKLİYOR
+### PROPOSED Tasks (Aslan onayı bekliyor)
+
+| Task | Replit Önerisi |
+|---|---|
+| #193 Reçete adımları toplu içe aktarma yedeği | ✅ KABUL |
+| #194 Reçete malzeme yedekleri temizleme | ⏳ ERTELE (pilot sonrası) |
+| #195 Toplu içe aktarma eksik uyarı | ✅ KABUL (#166 ile) |
+| #196 Eksik nutrition ayrı endpoint | ❌ RED (duplicate) |
+| #197 Besin değer geçmişi editörde | ✅ KABUL |
+| #198 Nutrition ilk versiyon snapshot | ✅ KABUL |
+| #199 Üretim partileri kayıt | ⏳ ERTELE (R-6) |
+| #200 QR public ürün sayfası | ❌ İPTAL (Task #157 var) |
+
+### Sprint R-5 Durum (Claude - Backend %100 BİTTİ)
+
+**Backend MERGED:**
+- ✅ **R-5A Backend** (`d631ed2`): ingredient PATCH yetki fix + DELETE, steps CRUD (POST/PATCH/DELETE)
+- ✅ **R-5B Backend** (`4716ebb`): recalc-cost service + 2 endpoint + audit history fix
+- ✅ **R-5D Müşteri QR** (`3abb342`): `/m/alerjen` public route + endpoint
+
+**R-5B SMOKE TEST BEKLİYOR (Replit Build mode):**
+- POST `/api/factory/recipes/:id/recalc-cost` - tekil test
+- POST `/api/factory/recipes/bulk-recalc` - bulk test (onlyUnpriced)
+- Yetki matrisi testi (admin/sef/barista)
+- `factory_recipe_price_history` audit doğrulama
+
+**Frontend BEKLİYOR (Claude, ~4.5 saat):**
+- ⏳ R-5A Frontend: `fabrika-recete-duzenle.tsx` edit/delete UI (2s)
+  - **DİKKAT:** Replit #177 aynı dosyada QUEUED → sıralı çalış
+- ⏳ R-5B Frontend: Maliyet kartı + fiyat kolonları (1.5s)
+- ⏳ R-5C Frontend: Alerjen inline badge (1s)
 
 ### Kurallar
 1. **Her Claude oturumu başında:** bu bölümü oku, IN_PROGRESS task'ların dosyalarına dokunmadan önce Replit'e sor.
 2. **Her Replit task başlangıcı:** bu tabloya ekle (dosya path ile).
 3. **Her task commit sonrası:** bu tablodan sil.
 4. **Çakışma varsa:** sıralı çalış, paralel değil.
+5. **Backend tamamlandığında:** Sprint R-5 durumunu "MERGED" olarak güncelle.
 
 ---
 
