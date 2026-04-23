@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -347,16 +347,24 @@ interface PendingTableRowProps {
   selected: boolean;
   onToggleSelect: (id: number, checked: boolean) => void;
   onShowHistory: (row: PendingRow) => void;
+  onEditChange: (id: number, edit: EditState) => void;
 }
 
-function PendingTableRow({ row, selected, onToggleSelect, onShowHistory }: PendingTableRowProps) {
+function PendingTableRow({ row, selected, onToggleSelect, onShowHistory, onEditChange }: PendingTableRowProps) {
   const { toast } = useToast();
   const [edit, setEdit] = useState<EditState>(() => buildInitialEdit(row));
 
   useEffect(() => {
-    setEdit(buildInitialEdit(row));
+    const init = buildInitialEdit(row);
+    setEdit(init);
+    onEditChange(row.id, init);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id]);
+
+  useEffect(() => {
+    onEditChange(row.id, edit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edit]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -657,6 +665,10 @@ export default function KaliteBesinOnayPage() {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkNote, setBulkNote] = useState("");
   const [historyTarget, setHistoryTarget] = useState<{ id: number; name: string } | null>(null);
+  const editsRef = useRef<Map<number, EditState>>(new Map());
+  const handleEditChange = (id: number, edit: EditState) => {
+    editsRef.current.set(id, { ...edit });
+  };
 
   const pendingQuery = useQuery<PendingResponse>({
     queryKey: ["/api/factory/ingredient-nutrition/pending"],
@@ -728,8 +740,28 @@ export default function KaliteBesinOnayPage() {
   const bulkMutation = useMutation({
     mutationFn: async () => {
       const ids = Array.from(selectedIds);
+      // Her seçili satırın güncel edit state'ini items[] içine koy.
+      // Boş string -> null, sayısallar string olarak gönderilir (backend numericLike çözer).
+      const items = ids
+        .map((id) => {
+          const edit = editsRef.current.get(id);
+          if (!edit) return null;
+          const payload: Record<string, unknown> = { id };
+          NUTRITION_FIELDS.forEach((f) => {
+            const key = f.key as string;
+            const v = edit[key];
+            payload[key] = v === undefined || v === "" ? null : v;
+          });
+          payload.allergens = edit.allergens
+            ? edit.allergens.split(",").map((s) => s.trim()).filter(Boolean)
+            : [];
+          return payload;
+        })
+        .filter((it): it is Record<string, unknown> => it != null);
+
       const res = await apiRequest("POST", "/api/factory/ingredient-nutrition/onay-toplu", {
         ids,
+        ...(items.length > 0 ? { items } : {}),
         note: bulkNote.trim() || undefined,
       });
       return res.json() as Promise<{
@@ -918,6 +950,7 @@ export default function KaliteBesinOnayPage() {
                           selected={selectedIds.has(row.id)}
                           onToggleSelect={toggleSelect}
                           onShowHistory={(r) => setHistoryTarget({ id: r.id, name: r.ingredientName })}
+                          onEditChange={handleEditChange}
                         />
                       ))}
                     </TableBody>

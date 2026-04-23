@@ -589,10 +589,48 @@ router.patch("/api/factory/ingredient-nutrition/:id/onay", isAuthenticated, asyn
 
 // POST /api/factory/ingredient-nutrition/onay-toplu
 // Toplu onay: ids[] kayıtlarını tek tıkla manual_verified/confidence=100 yapar
-const bulkApproveSchema = z.object({
-  ids: z.array(z.number().int().positive()).min(1).max(200),
-  note: z.string().max(500).optional(),
+// + items[] ile satır içi düzenlenmiş besin değer override'ları kabul edilir
+const bulkOverrideSchema = z.object({
+  id: z.number().int().positive(),
+  energyKcal: numericLike,
+  fatG: numericLike,
+  saturatedFatG: numericLike,
+  transFatG: numericLike,
+  carbohydrateG: numericLike,
+  sugarG: numericLike,
+  fiberG: numericLike,
+  proteinG: numericLike,
+  saltG: numericLike,
+  sodiumMg: numericLike,
+  allergens: z.array(z.string()).optional(),
 });
+
+const bulkApproveSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(200).optional(),
+  items: z.array(bulkOverrideSchema).min(1).max(200).optional(),
+  note: z.string().max(500).optional(),
+}).refine((d) => (d.ids && d.ids.length > 0) || (d.items && d.items.length > 0), {
+  message: "ids veya items zorunlu",
+  path: ["ids"],
+});
+
+const NUTRITION_OVERRIDE_KEYS = [
+  "energyKcal", "fatG", "saturatedFatG", "transFatG",
+  "carbohydrateG", "sugarG", "fiberG", "proteinG",
+  "saltG", "sodiumMg",
+] as const;
+type NutritionOverrideKey = typeof NUTRITION_OVERRIDE_KEYS[number];
+
+type NutritionValue = string | number | null | undefined;
+function readNutritionField(
+  source: Record<string, unknown> | null | undefined,
+  key: NutritionOverrideKey,
+): NutritionValue {
+  if (!source) return null;
+  const v = source[key];
+  if (v === undefined) return null;
+  return v as NutritionValue;
+}
 
 router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -605,8 +643,17 @@ router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, asy
       return res.status(400).json({ error: "Geçersiz veri", details: parsed.error.flatten() });
     }
 
-    const { ids, note } = parsed.data;
-    const uniqueIds = Array.from(new Set(ids));
+    const { ids, items, note } = parsed.data;
+
+    // overrides: id -> partial nutrition payload
+    const overrides = new Map<number, z.infer<typeof bulkOverrideSchema>>();
+    (items ?? []).forEach((it) => overrides.set(it.id, it));
+
+    // Birleşik benzersiz id listesi
+    const allIds: number[] = [];
+    (ids ?? []).forEach((id) => allIds.push(id));
+    (items ?? []).forEach((it) => allIds.push(it.id));
+    const uniqueIds = Array.from(new Set(allIds));
 
     const result = await db.transaction(async (tx) => {
       const approved: number[] = [];
@@ -622,12 +669,28 @@ router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, asy
           continue;
         }
 
+        const ov = overrides.get(id);
+        const existingRecord = existing as unknown as Record<string, unknown>;
+        const overrideRecord = ov as unknown as Record<string, unknown> | undefined;
+
+        // Override varsa onları, yoksa mevcut değerleri koru
+        const merged: Record<NutritionOverrideKey, NutritionValue> = {} as Record<NutritionOverrideKey, NutritionValue>;
+        for (const k of NUTRITION_OVERRIDE_KEYS) {
+          merged[k] = overrideRecord && k in overrideRecord
+            ? readNutritionField(overrideRecord, k)
+            : readNutritionField(existingRecord, k);
+        }
+        const allergens = ov?.allergens ?? existing.allergens ?? [];
+
         const next = {
+          ...merged,
+          allergens,
           source: "manual_verified" as const,
           confidence: 100,
           verifiedBy: req.user.id as string,
           updatedAt: now,
         };
+        const nextRecord = next as unknown as Record<string, unknown>;
 
         const [row] = await tx.update(factoryIngredientNutrition)
           .set(next)
@@ -647,6 +710,24 @@ router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, asy
           note: note ?? null,
         });
 
+        // Audit defterine besin değer before/after her zaman yazılır
+        const beforeAudit: Record<string, unknown> = {
+          source: existing.source,
+          confidence: existing.confidence,
+          verifiedBy: existing.verifiedBy,
+          allergens: existing.allergens,
+        };
+        const afterAudit: Record<string, unknown> = {
+          source: next.source,
+          confidence: next.confidence,
+          verifiedBy: next.verifiedBy,
+          allergens: next.allergens,
+        };
+        for (const k of NUTRITION_OVERRIDE_KEYS) {
+          beforeAudit[k] = readNutritionField(existingRecord, k);
+          afterAudit[k] = readNutritionField(nextRecord, k);
+        }
+
         await tx.insert(auditLogs).values({
           eventType: "factory.ingredient_nutrition.approved",
           userId: req.user.id,
@@ -654,21 +735,14 @@ router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, asy
           action: "approve_bulk",
           resource: "factory_ingredient_nutrition",
           resourceId: String(id),
-          before: {
-            source: existing.source,
-            confidence: existing.confidence,
-            verifiedBy: existing.verifiedBy,
-          },
-          after: {
-            source: next.source,
-            confidence: next.confidence,
-            verifiedBy: next.verifiedBy,
-          },
+          before: beforeAudit,
+          after: afterAudit,
           details: {
             ingredientName: existing.ingredientName,
             note: note ?? null,
             bulk: true,
             batchSize: uniqueIds.length,
+            hasOverride: !!ov,
           },
           ipAddress: req.ip,
           userAgent: req.get("user-agent") ?? null,
