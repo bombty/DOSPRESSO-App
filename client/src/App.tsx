@@ -131,6 +131,7 @@ const AdminAcademy = lazyWithRetry(() => import("@/pages/yonetim/akademi"));
 const KaliteDenetimi = lazyWithRetry(() => import("@/pages/kalite-denetimi"));
 const KaliteAlerjen = lazyWithRetry(() => import("@/pages/kalite-alerjen"));
 const KaliteBesinOnay = lazyWithRetry(() => import("@/pages/kalite/besin-onay"));
+const MusteriAlerjenPublic = lazyWithRetry(() => import("@/pages/musteri-alerjen-public"));
 const CoachSubeDenetim = lazyWithRetry(() => import("@/pages/coach-sube-denetim"));
 
 const PublicStaffRating = lazyWithRetry(() => import("@/pages/public-staff-rating"));
@@ -414,6 +415,8 @@ function Router() {
       <Route path="/personel-degerlendirme/:token" component={PublicStaffRating} />
       <Route path="/p/urun/:code" component={PublicUrun} />
       <Route path="/misafir-geri-bildirim/:token" component={MisafirGeriBildirimPublic} />
+      <Route path="/m/alerjen/:id" component={MusteriAlerjenPublic} />
+      <Route path="/m/alerjen" component={MusteriAlerjenPublic} />
       <Route path="/fabrika/dashboard">{() => <FabrikaOnly><FabrikaDashboardRedirect /></FabrikaOnly>}</Route>
       <Route path="/fabrika/kiosk">{() => <FabrikaKiosk />}</Route>
       <Route path="/hq/kiosk">{() => <HqKiosk />}</Route>
