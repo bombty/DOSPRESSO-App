@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { AlertTriangle, ShieldCheck, Search, Info, Flame, Wheat, Egg, Milk, Nut, Fish, Leaf, BadgeCheck, HelpCircle, Wrench } from "lucide-react";
+
+const FIX_ROLES = ["admin", "kalite_yoneticisi", "gida_muhendisi", "recete_gm", "sef", "ust_yonetim"];
+
+function getFixTarget(
+  recipeId: number,
+  reason: string | null,
+  ingredientCount: number,
+): { href: string; label: string; hint: string } {
+  const needsRecipeEdit = ingredientCount === 0 || (reason && reason.toLowerCase().includes("malzeme listesi"));
+  if (needsRecipeEdit) {
+    return { href: `/fabrika/receteler/${recipeId}/duzenle`, label: "Düzelt", hint: "Reçete editörü" };
+  }
+  return { href: "/kalite/besin-onay", label: "Düzelt", hint: "Besin onayı paneli" };
+}
 
 interface Per100g {
   energy_kcal: number;
@@ -177,7 +193,8 @@ function NutritionRow({ label, value, unit }: { label: string; value: number; un
   );
 }
 
-function RecipeCard({ recipe, onOpen }: { recipe: RecipeSummary; onOpen: (id: number) => void }) {
+function RecipeCard({ recipe, onOpen, canFix }: { recipe: RecipeSummary; onOpen: (id: number) => void; canFix: boolean }) {
+  const fixTarget = !recipe.isVerified ? getFixTarget(recipe.id, recipe.verificationReason, recipe.ingredientCount) : null;
   return (
     <Card
       className="hover-elevate cursor-pointer overflow-hidden"
@@ -230,7 +247,24 @@ function RecipeCard({ recipe, onOpen }: { recipe: RecipeSummary; onOpen: (id: nu
             data-testid={`text-unverified-reason-${recipe.id}`}
           >
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-            <span>{recipe.verificationReason}</span>
+            <div className="flex-1 space-y-1.5">
+              <div>{recipe.verificationReason}</div>
+              {canFix && fixTarget && (
+                <Link href={fixTarget.href}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                    data-testid={`button-fix-card-${recipe.id}`}
+                  >
+                    <Wrench className="w-3 h-3" />
+                    {fixTarget.label}
+                    <span className="opacity-70">· {fixTarget.hint}</span>
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         )}
         <div className="flex items-center justify-between gap-2">
@@ -277,7 +311,7 @@ function RecipeCard({ recipe, onOpen }: { recipe: RecipeSummary; onOpen: (id: nu
   );
 }
 
-function RecipeDetailDialog({ id, onClose }: { id: number | null; onClose: () => void }) {
+function RecipeDetailDialog({ id, onClose, canFix }: { id: number | null; onClose: () => void; canFix: boolean }) {
   const { data, isLoading, error } = useQuery<RecipeDetail>({
     queryKey: ["/api/quality/allergens/recipes", id],
     enabled: id !== null,
@@ -301,22 +335,34 @@ function RecipeDetailDialog({ id, onClose }: { id: number | null; onClose: () =>
           <ScrollArea className="flex-1 pr-3 -mr-3">
             <div className="space-y-4 pb-2">
               {/* Verify status banner */}
-              {!data.isVerified && (
-                <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                  <div>
-                    <div className="font-medium text-amber-900 dark:text-amber-200" data-testid="text-detail-unverified-reason">
-                      {data.verificationReason ?? "Henüz tam doğrulanmadı"}
-                    </div>
-                    <div className="text-xs text-amber-800/80 dark:text-amber-200/80 mt-0.5">
-                      {data.matchedCount}/{data.ingredientCount} malzemenin besin değeri doğrulandı.
-                      {data.unmatchedNames.length > 0 && (
-                        <> Eksik: {data.unmatchedNames.slice(0, 3).join(", ")}{data.unmatchedNames.length > 3 ? "..." : ""}</>
+              {!data.isVerified && (() => {
+                const fixTarget = getFixTarget(data.id, data.verificationReason, data.ingredientCount);
+                return (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="font-medium text-amber-900 dark:text-amber-200" data-testid="text-detail-unverified-reason">
+                        {data.verificationReason ?? "Henüz tam doğrulanmadı"}
+                      </div>
+                      <div className="text-xs text-amber-800/80 dark:text-amber-200/80">
+                        {data.matchedCount}/{data.ingredientCount} malzemenin besin değeri doğrulandı.
+                        {data.unmatchedNames.length > 0 && (
+                          <> Eksik: {data.unmatchedNames.slice(0, 3).join(", ")}{data.unmatchedNames.length > 3 ? "..." : ""}</>
+                        )}
+                      </div>
+                      {canFix && fixTarget && (
+                        <Link href={fixTarget.href}>
+                          <Button size="sm" variant="outline" className="gap-1" data-testid="button-fix-detail">
+                            <Wrench className="w-3 h-3" />
+                            {fixTarget.label}
+                            <span className="opacity-70">· {fixTarget.hint}</span>
+                          </Button>
+                        </Link>
                       )}
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Allergens */}
               <Card>
@@ -450,6 +496,8 @@ export default function KaliteAlerjenPage() {
       return false;
     }
   });
+  const { user } = useAuth();
+  const canFix = !!user?.role && FIX_ROLES.includes(user.role);
 
   useEffect(() => {
     try {
@@ -578,7 +626,7 @@ export default function KaliteAlerjenPage() {
               />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {verified.map(r => <RecipeCard key={r.id} recipe={r} onOpen={setOpenId} />)}
+                {verified.map(r => <RecipeCard key={r.id} recipe={r} onOpen={setOpenId} canFix={canFix} />)}
               </div>
             )}
           </TabsContent>
@@ -598,14 +646,14 @@ export default function KaliteAlerjenPage() {
               />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {unverified.map(r => <RecipeCard key={r.id} recipe={r} onOpen={setOpenId} />)}
+                {unverified.map(r => <RecipeCard key={r.id} recipe={r} onOpen={setOpenId} canFix={canFix} />)}
               </div>
             )}
           </TabsContent>
         </Tabs>
       )}
 
-      <RecipeDetailDialog id={openId} onClose={() => setOpenId(null)} />
+      <RecipeDetailDialog id={openId} onClose={() => setOpenId(null)} canFix={canFix} />
     </div>
   );
 }
