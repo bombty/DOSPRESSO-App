@@ -454,6 +454,77 @@ router.get("/api/factory/ingredient-names", isAuthenticated, async (req: any, re
 });
 
 // ═══════════════════════════════════════
+// MALZEME BESİN DEĞERLERİ (Task #165)
+// ═══════════════════════════════════════
+
+// GET /api/factory/ingredient-nutrition/:name — İsim bazlı besin/alerjen kaydı
+// Reçete editöründe onay diyalogu açıldığında mevcut kaydı önyüklemek için.
+router.get("/api/factory/ingredient-nutrition/:name", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!isFactoryRole(req.user.role)) return res.status(403).json({ error: "Fabrika erişimi gerekli" });
+    // Express params zaten URL-decode edilmiş halde gelir; ekstra decode
+    // "%" içeren isimlerde URIError'a yol açabilir.
+    const canonical = canonicalIngredientName(req.params.name || "");
+    if (!canonical) return res.json(null);
+    const [row] = await db.select().from(factoryIngredientNutrition)
+      .where(eq(factoryIngredientNutrition.ingredientName, canonical))
+      .limit(1);
+    res.json(row || null);
+  } catch (error) {
+    console.error("Get ingredient nutrition error:", error);
+    res.status(500).json({ error: "Besin değer kaydı yüklenemedi" });
+  }
+});
+
+// PUT /api/factory/ingredient-nutrition/:name — Sadece besin/alerjen güncelle
+// Recete malzemesi eklemeden mevcut bir kaydı düzenlemek için (yazım hatası
+// vb. düzeltmeler). Upsert davranışı: kayıt yoksa oluşturur.
+router.put("/api/factory/ingredient-nutrition/:name", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
+    const canonical = canonicalIngredientName(req.params.name || "");
+    if (!canonical) return res.status(400).json({ error: "Geçersiz isim" });
+
+    const body = (req.body || {}) as {
+      energyKcal?: string | number | null; fatG?: string | number | null;
+      saturatedFatG?: string | number | null; carbohydrateG?: string | number | null;
+      sugarG?: string | number | null; proteinG?: string | number | null;
+      saltG?: string | number | null; allergens?: string[];
+    };
+    const toNum = (v: string | number | null | undefined): string | null =>
+      v === "" || v == null || isNaN(Number(v)) ? null : String(Number(v));
+    const nutValues = {
+      energyKcal: toNum(body.energyKcal),
+      fatG: toNum(body.fatG),
+      saturatedFatG: toNum(body.saturatedFatG),
+      carbohydrateG: toNum(body.carbohydrateG),
+      sugarG: toNum(body.sugarG),
+      proteinG: toNum(body.proteinG),
+      saltG: toNum(body.saltG),
+      allergens: Array.isArray(body.allergens) ? body.allergens : [],
+    };
+    const [row] = await db.insert(factoryIngredientNutrition).values({
+      ingredientName: canonical,
+      ...nutValues,
+      source: "manual",
+      verifiedBy: req.user.id,
+    }).onConflictDoUpdate({
+      target: factoryIngredientNutrition.ingredientName,
+      set: {
+        ...nutValues,
+        source: "manual",
+        verifiedBy: req.user.id,
+        updatedAt: new Date(),
+      },
+    }).returning();
+    res.json(row);
+  } catch (error) {
+    console.error("Upsert ingredient nutrition error:", error);
+    res.status(500).json({ error: "Besin değer kaydı güncellenemedi" });
+  }
+});
+
+// ═══════════════════════════════════════
 // MALZEMELER — CRUD
 // ═══════════════════════════════════════
 
@@ -529,8 +600,9 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
         if (ingredientName && hasAnyValue) {
           const toNum = (v: string | number | null | undefined): string | null =>
             v === "" || v == null || isNaN(Number(v)) ? null : String(Number(v));
-          await tx.insert(factoryIngredientNutrition).values({
-            ingredientName,
+          // Task #165: mevcut kayıt varsa üstüne yaz (audit alanları güncellenir)
+          const allergensArr = Array.isArray(nutrition.allergens) ? nutrition.allergens : [];
+          const nutValues = {
             energyKcal: toNum(nutrition.energyKcal),
             fatG: toNum(nutrition.fatG),
             saturatedFatG: toNum(nutrition.saturatedFatG),
@@ -538,10 +610,22 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
             sugarG: toNum(nutrition.sugarG),
             proteinG: toNum(nutrition.proteinG),
             saltG: toNum(nutrition.saltG),
-            allergens: Array.isArray(nutrition.allergens) ? nutrition.allergens : [],
+            allergens: allergensArr,
+          };
+          await tx.insert(factoryIngredientNutrition).values({
+            ingredientName: canonicalIngredientName(ingredientName),
+            ...nutValues,
             source: "manual",
             verifiedBy: req.user.id,
-          }).onConflictDoNothing({ target: factoryIngredientNutrition.ingredientName });
+          }).onConflictDoUpdate({
+            target: factoryIngredientNutrition.ingredientName,
+            set: {
+              ...nutValues,
+              source: "manual",
+              verifiedBy: req.user.id,
+              updatedAt: new Date(),
+            },
+          });
         }
       }
 

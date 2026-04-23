@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
-  ChevronsUpDown, Check, AlertTriangle,
+  ChevronsUpDown, Check, AlertTriangle, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -91,8 +91,55 @@ export default function FabrikaReceteDuzenle() {
   ];
   const [newNutrition, setNewNutrition] = useState({ ...EMPTY_NUTRITION });
   const [newAllergens, setNewAllergens] = useState<string[]>([]);
+  const [existingNutritionLoaded, setExistingNutritionLoaded] = useState(false);
+  // Task #165: Mevcut bir malzemenin besin değerlerini düzenleme modu (yeni
+  // malzeme eklemeden sadece besin/alerjen güncellemek için).
+  const [editNutritionName, setEditNutritionName] = useState<string | null>(null);
   const toggleAllergen = (a: string) =>
     setNewAllergens(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]);
+  const resetNutritionForm = () => {
+    setNewNutrition({ ...EMPTY_NUTRITION });
+    setNewAllergens([]);
+    setExistingNutritionLoaded(false);
+  };
+
+  // Task #165: Onay diyalogu açıldığında mevcut besin değer kaydı varsa
+  // input'lara önyükle ki kullanıcı yazım hatasını / değerleri düzeltebilsin.
+  const dialogIngredientName = confirmNewName ?? editNutritionName ?? null;
+  useEffect(() => {
+    if (!dialogIngredientName) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/factory/ingredient-nutrition/${encodeURIComponent(dialogIngredientName)}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data) {
+          const s = (v: unknown) => v == null ? "" : String(v);
+          setNewNutrition({
+            energyKcal: s(data.energyKcal),
+            fatG: s(data.fatG),
+            saturatedFatG: s(data.saturatedFatG),
+            carbohydrateG: s(data.carbohydrateG),
+            sugarG: s(data.sugarG),
+            proteinG: s(data.proteinG),
+            saltG: s(data.saltG),
+          });
+          setNewAllergens(Array.isArray(data.allergens) ? data.allergens : []);
+          setExistingNutritionLoaded(true);
+        } else {
+          setExistingNutritionLoaded(false);
+        }
+      } catch {
+        // sessizce yoksay — yine de boş formla devam edilebilir
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [dialogIngredientName]);
 
   // Kanonik malzeme isim listesi (auto-complete için)
   const { data: ingredientNames = [] } = useQuery<IngredientNameOption[]>({
@@ -227,6 +274,7 @@ export default function FabrikaReceteDuzenle() {
     if (!newIngredient.name.trim()) return;
     if (!isCanonicalName(newIngredient.name)) {
       // Yeni isim — onay diyalogunda kullanıcıyı uyar
+      resetNutritionForm();
       setConfirmNewName(newIngredient.name.trim());
       return;
     }
@@ -335,6 +383,18 @@ export default function FabrikaReceteDuzenle() {
                 <span className="flex-1 text-sm">{ing.name}</span>
                 <span className="text-sm font-mono font-bold">{ing.amount} {ing.unit}</span>
                 <Badge variant="secondary" className="text-[10px]">{ing.ingredientCategory || ing.ingredient_category}</Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    resetNutritionForm();
+                    setEditNutritionName(ing.name);
+                  }}
+                  title="Besin değerlerini düzenle"
+                  data-testid={`button-edit-nutrition-${ing.id || idx}`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
               </div>
             ))}
             <div className="grid grid-cols-6 gap-2 mt-3 pt-3 border-t">
@@ -474,30 +534,48 @@ export default function FabrikaReceteDuzenle() {
         </CardContent>
       </Card>
 
-      {/* YENİ MALZEME İSMİ ONAY DİYALOĞU + opsiyonel besin/alerjen formu (Task #152) */}
+      {/* YENİ MALZEME İSMİ ONAY / BESİN DEĞER DÜZENLEME DİYALOĞU
+          - confirmNewName: yeni malzeme ekleme akışı (Task #152)
+          - editNutritionName: mevcut bir malzemenin besin değerini güncelleme (Task #165) */}
       <AlertDialog
-        open={!!confirmNewName}
+        open={!!dialogIngredientName}
         onOpenChange={(open) => {
           if (!open) {
             setConfirmNewName(null);
-            setNewNutrition({ ...EMPTY_NUTRITION });
-            setNewAllergens([]);
+            setEditNutritionName(null);
+            resetNutritionForm();
           }
         }}
       >
         <AlertDialogContent data-testid="dialog-confirm-new-ingredient" className="max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              Yeni Malzeme Tespit Edildi
+              {editNutritionName ? (
+                <>
+                  <Pencil className="h-4 w-4" />
+                  Besin Değerlerini Düzenle
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  Yeni Malzeme Tespit Edildi
+                </>
+              )}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <div>
-                  <span className="font-mono font-semibold">"{confirmNewName}"</span> kanonik malzeme listesinde bulunmuyor.
+                  <span className="font-mono font-semibold">"{dialogIngredientName}"</span>
+                  {editNutritionName
+                    ? " için kayıtlı besin/alerjen bilgilerini güncelliyorsunuz."
+                    : " kanonik malzeme listesinde bulunmuyor."}
                 </div>
                 <div>
-                  İsterseniz besin değer ve alerjen bilgilerini hemen şimdi girebilirsiniz; bu sayede ayrıca gıda mühendisi ekranına gerek kalmaz. Boş bırakırsanız sadece reçete malzemesi eklenir.
+                  {existingNutritionLoaded
+                    ? "Mevcut kayıt önyüklendi. Düzeltmek istediğiniz değerleri değiştirip kaydedin."
+                    : (editNutritionName
+                        ? "Bu malzeme için henüz bir besin değer kaydı yok — yeni kayıt oluşturulacak."
+                        : "İsterseniz besin değer ve alerjen bilgilerini hemen şimdi girebilirsiniz; bu sayede ayrıca gıda mühendisi ekranına gerek kalmaz. Boş bırakırsanız sadece reçete malzemesi eklenir.")}
                 </div>
               </div>
             </AlertDialogDescription>
@@ -602,11 +680,36 @@ export default function FabrikaReceteDuzenle() {
             <AlertDialogAction
               data-testid="button-confirm-new-ingredient"
               onClick={async () => {
-                setConfirmNewName(null);
-                await commitAddIngredient(true);
+                if (editNutritionName) {
+                  // Sadece besin değer güncelleme akışı (Task #165)
+                  const numOrNull = (v: string) => v.trim() === "" ? null : Number(v);
+                  try {
+                    await apiRequest("PUT", `/api/factory/ingredient-nutrition/${encodeURIComponent(editNutritionName)}`, {
+                      energyKcal: numOrNull(newNutrition.energyKcal),
+                      fatG: numOrNull(newNutrition.fatG),
+                      saturatedFatG: numOrNull(newNutrition.saturatedFatG),
+                      carbohydrateG: numOrNull(newNutrition.carbohydrateG),
+                      sugarG: numOrNull(newNutrition.sugarG),
+                      proteinG: numOrNull(newNutrition.proteinG),
+                      saltG: numOrNull(newNutrition.saltG),
+                      allergens: newAllergens,
+                    });
+                    qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
+                    toast({ title: "Besin değerleri güncellendi" });
+                  } catch (e: any) {
+                    toast({ title: "Hata", description: e?.message, variant: "destructive" });
+                  }
+                  setEditNutritionName(null);
+                  resetNutritionForm();
+                } else {
+                  setConfirmNewName(null);
+                  await commitAddIngredient(true);
+                }
               }}
             >
-              Yine de ekle
+              {editNutritionName
+                ? (existingNutritionLoaded ? "Güncelle" : "Kaydet")
+                : (existingNutritionLoaded ? "Güncelle ve ekle" : "Yine de ekle")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
