@@ -2445,6 +2445,17 @@ JSON formatında yanıt ver:
                   ne(users.id, targetUserId)
                 )
               );
+              // Fabrika (branch 24) için fabrika_mudur rolü (HQ rolü, branchId NULL olabilir)
+              if (targetBranchId === 24) {
+                const factoryManagers = await db.select({ id: users.id }).from(users).where(
+                  and(
+                    eq(users.role, 'fabrika_mudur'),
+                    eq(users.isActive, true),
+                    ne(users.id, targetUserId)
+                  )
+                );
+                branchManagers.push(...factoryManagers);
+              }
               for (const mgr of branchManagers) {
                 await storage.createNotification({
                   userId: mgr.id,

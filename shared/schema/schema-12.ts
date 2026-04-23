@@ -686,6 +686,10 @@ export const monthlyPayroll = pgTable("monthly_payroll", {
   calculationMode: varchar("calculation_mode", { length: 20 }).default("simple"),
   dataSource: varchar("data_source", { length: 20 }).default("kiosk"),
   sourceImportId: integer("source_import_id"),
+  // ── S-Bordro (21 Nis 2026): Pilot güvenlik bayrakları ──
+  // isDryRun: true = Bordro hesaplanır ve kaydedilir ama SGK external bildirim YAPILMAZ
+  // Pilot ilk ay (Mayıs sonu) DRY_RUN modda test için
+  isDryRun: boolean("is_dry_run").notNull().default(false),
   // ── Durum ──
   status: varchar("status", { length: 20 }).default("draft"),
   calculatedAt: timestamp("calculated_at"),

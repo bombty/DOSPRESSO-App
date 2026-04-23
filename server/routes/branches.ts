@@ -2820,12 +2820,45 @@ router.post("/api/branches/:branchId/kiosk/shift-start", isKioskOrAuthenticated,
     }
 
     const now = new Date();
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, gpsFallback, supervisorApprovalPin } = req.body;
 
     let checkInLatitude: string | null = null;
     let checkInLongitude: string | null = null;
     let isLocationVerified = false;
     let locationDistance: number | null = null;
+    let gpsFallbackUsed = false;
+    let gpsFallbackApprovedBy: string | null = null;
+
+    // S-GPS (23 Nis 2026): Manuel GPS fallback akışı
+    // Tablet GPS izin vermezse supervisor/mudur PIN ile manuel onay verir
+    if (gpsFallback === true && supervisorApprovalPin) {
+      const [approver] = await db.select({
+        id: users.id,
+        role: users.role,
+      })
+        .from(users)
+        .innerJoin(branchStaffPins, eq(branchStaffPins.userId, users.id))
+        .where(and(
+          eq(branchStaffPins.branchId, branchId),
+          eq(branchStaffPins.pin, supervisorApprovalPin),
+          eq(users.isActive, true),
+          or(eq(users.role, 'supervisor'), eq(users.role, 'mudur'), eq(users.role, 'supervisor_buddy'))
+        ))
+        .limit(1);
+
+      if (approver) {
+        gpsFallbackUsed = true;
+        gpsFallbackApprovedBy = approver.id;
+        isLocationVerified = false; // GPS doğrulanmadı ama supervisor onayı var
+        console.warn(
+          `[S-GPS] Fallback override: branch=${branchId} user=${userId} approvedBy=${approver.id} role=${approver.role}`
+        );
+      } else {
+        return res.status(403).json({
+          message: "Supervisor/Müdür onay PIN'i geçersiz"
+        });
+      }
+    }
 
     if (latitude && longitude) {
       checkInLatitude = String(latitude);
@@ -2899,6 +2932,8 @@ router.post("/api/branches/:branchId/kiosk/shift-start", isKioskOrAuthenticated,
       locationDistance,
       plannedShiftId,
       lateMinutes,
+      gpsFallbackUsed,
+      gpsFallbackApprovedBy,
     }).returning();
 
     await db.insert(branchShiftEvents).values({
@@ -3793,7 +3828,10 @@ router.get('/api/branches/:branchId/kiosk/team-status', isKioskOrAuthenticated, 
 
     const [kioskCfg] = await db.select({ maxBreak: branchKioskSettings.maxBreakMinutes })
       .from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId)).limit(1);
-    const maxBreakMinutes = kioskCfg?.maxBreak || 90;
+    // S-UX (21 Nis 2026): Pilot süresince env ile geçici eşik override
+    // PILOT_BREAK_MINUTES_OVERRIDE=120 → 90→120 yumuşatma (bildirim spam önleme)
+    const envOverride = Number(process.env.PILOT_BREAK_MINUTES_OVERRIDE) || 0;
+    const maxBreakMinutes = envOverride > 0 ? envOverride : (kioskCfg?.maxBreak || 90);
 
     const activeSessions = await db.select({
       sessionId: branchShiftSessions.id,

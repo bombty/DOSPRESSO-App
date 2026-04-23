@@ -20,6 +20,36 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 
 const IMPORT_ROLES = ["admin", "muhasebe", "muhasebe_ik"];
 
+// ═══ S-Flag (23 Nis 2026): Pilot Süresince PDKS Excel Import Devre Dışı ═══
+//
+// Pilot (28 Nis - 4 May 2026) boyunca kiosk-only dataSource.
+// Excel import edilirse çift kayıt riski var (kiosk ile çakışma).
+//
+// Env: PDKS_EXCEL_IMPORT_ENABLED
+//   'false' veya boş (default) → Upload + calculate endpoint'leri bloke
+//   'true'                    → Normal çalışma (pilot sonrası)
+//
+// Sadece WRITE endpoint'ler bloke: upload, calculate-daily, calculate-monthly
+// READ endpoint'ler (list, mappings) her zaman açık (geçmiş veri görüntüleme)
+const isExcelImportEnabled = (): boolean => {
+  return (process.env.PDKS_EXCEL_IMPORT_ENABLED || "false").trim().toLowerCase() === "true";
+};
+
+const pdksWriteGuard = (req: any, res: Response, next: any) => {
+  if (!isExcelImportEnabled()) {
+    console.warn(
+      `[S-Flag] PDKS Excel write engellendi: ${req.method} ${req.path} user=${req.user?.id || "anonim"}`
+    );
+    return res.status(503).json({
+      error: "PDKS Excel import pilot süresince devre dışı",
+      message: "Pilot dönemi bittikten sonra PDKS_EXCEL_IMPORT_ENABLED=true ile açılabilir",
+      pilotPeriod: "28 Nis - 4 May 2026",
+    });
+  }
+  next();
+};
+// ═══════════════════════════════════════
+
 // ═══════════════════════════════════════
 // EŞLEŞTIRME TABLOSU
 // ═══════════════════════════════════════
@@ -76,7 +106,7 @@ router.post("/api/pdks-import/mappings", isAuthenticated, async (req: any, res: 
 // ═══════════════════════════════════════
 
 // POST /api/pdks-import/upload — Excel yükle ve parse et
-router.post("/api/pdks-import/upload", isAuthenticated, upload.single("file"), async (req: any, res: Response) => {
+router.post("/api/pdks-import/upload", isAuthenticated, pdksWriteGuard, upload.single("file"), async (req: any, res: Response) => {
   try {
     if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
     if (!req.file) return res.status(400).json({ error: "Dosya gerekli" });
@@ -271,7 +301,7 @@ router.get("/api/pdks-import/:id/records", isAuthenticated, async (req: any, res
 });
 
 // POST /api/pdks-import/:id/calculate-daily — Günlük özet hesapla
-router.post("/api/pdks-import/:id/calculate-daily", isAuthenticated, async (req: any, res: Response) => {
+router.post("/api/pdks-import/:id/calculate-daily", isAuthenticated, pdksWriteGuard, async (req: any, res: Response) => {
   try {
     if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
@@ -349,7 +379,7 @@ router.post("/api/pdks-import/:id/calculate-daily", isAuthenticated, async (req:
 // ═══════════════════════════════════════
 
 // POST /api/pdks-import/:id/calculate-monthly — Aylık özet hesapla
-router.post("/api/pdks-import/:id/calculate-monthly", isAuthenticated, async (req: any, res: Response) => {
+router.post("/api/pdks-import/:id/calculate-monthly", isAuthenticated, pdksWriteGuard, async (req: any, res: Response) => {
   try {
     if (!IMPORT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 

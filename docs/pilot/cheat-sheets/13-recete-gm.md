@@ -1,20 +1,27 @@
-# DOSPRESSO Cheat Sheet — Reçete GM
+# DOSPRESSO Cheat Sheet — Reçete Gıda Mühendisi (RGM)
 
-**Hedef Kullanıcı**: Reçete Genel Müdürü (recete_gm) — tüm ürün reçetelerinin onay sahibi, sürüm yönetimi
+**Hedef Kullanıcı**: Reçete Gıda Mühendisi (recete_gm) — reçete içerik + sürüm kararı, üretime gönderme yetkisi
 **Cihaz**: Ofis bilgisayarı (asıl) + telefon (acil onaylar için)
 **Erişim**: Reçete oluşturma, sürüm onaylama, yayınlama, fabrika + tüm şubelere etki
+**Pilot:** Aslan (CEO + RGM çifte rol — pilot süresince)
 
 ---
 
-## 1. Reçete GM Nedir?
+## 1. RGM Nedir?
 
-Sen DOSPRESSO ürün gamının "tek doğruluk kaynağı"sın. Şef bir reçete değişikliği önerse bile, **senin onayın olmadan üretime giremez**.
+Sen DOSPRESSO ürün gamının **reçete içerik sahibi**sin. Şef bir değişiklik önerse bile, **senin onayın olmadan üretime giremez**.
+
+**Rol Dağılımı (Net):**
+- **RGM (sen)** → Reçete içerik kararı (hangi hammadde, kaç gram, hangi adım)
+- **GM (Sema)** → Gıda güvenliği onayı (alerjen + HACCP + beslenme değerleri)
+- **Fabrika Müdürü (Eren)** → Üretim operasyonel kararı
+- **Şef** → Günlük pratik uygulayıcı (fabrika mutfak sorumlusu)
 
 Sorumlulukların:
 1. Reçete sürüm yönetimi (her değişiklik = yeni sürüm)
-2. Hammadde + miktar + adım onayı
+2. Hammadde + miktar + adım kararı
 3. Mali etki (maliyet hesabı)
-4. Yasal/sağlık etki (alerjen, hijyen)
+4. GM (Sema) ile koordinasyon — o onayladıktan sonra yayınla
 5. Tutarlılık (22 şube + Fabrika aynı reçeteyi uygulasın)
 
 ---
@@ -130,8 +137,9 @@ Sorumlulukların:
 🚨 **ACİL DURUM**
 - Yangın: **110**
 - Sağlık: **112**
-- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
-  Mr. Dobody seni doğru kişiye otomatik yönlendirir (şef / fabrika mudur / CEO Aslan / satınalma / CRM)
+- **Sistem sorunu:** Cowork (mesaj) → Müdür veya Supervisor'a DM
+- **Pilot süresince:** WhatsApp "DOSPRESSO Pilot" grubu **birincil kanal**
+- **Not:** Mr. Dobody otomatik uyarı sistemi (karşılıklı sohbet değil)
 
 📱 **Pilot İletişim**
 - WhatsApp Pilot Grubu: "DOSPRESSO Pilot — Reçete"

@@ -96,8 +96,9 @@ Sen DOSPRESSO'da **finansal/stratejik paydaş**sın. Sisteme **read-only erişim
 🚨 **ACİL DURUM**
 - Yangın: **110**
 - Sağlık: **112**
-- Sistem içi: **Mr. Dobody'e yaz** (chat ikonundan)
-  Mr. Dobody seni doğru kişiye otomatik yönlendirir (CEO / CGO / muhasebe)
+- **Sistem sorunu:** Cowork (mesaj) → Müdür veya Supervisor'a DM
+- **Pilot süresince:** WhatsApp "DOSPRESSO Pilot" grubu **birincil kanal**
+- **Not:** Mr. Dobody otomatik uyarı sistemi (karşılıklı sohbet değil)
 
 📱 **Pilot İletişim**
 - Direkt iletişim: CEO Aslan
