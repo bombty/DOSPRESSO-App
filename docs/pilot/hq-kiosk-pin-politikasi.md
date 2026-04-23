@@ -47,7 +47,9 @@ sadece fabrika rolleri içindir (`fabrika_mudur`, `gida_muhendisi`, `uretim_sefi
 |-----------|-----|--------|---------|
 | `adminhq` | admin | 23 (HQ) | Acil bakım/IT erişimi |
 | `ece` (trainer) | trainer | 23 (HQ) | HQ kiosk demo + akademi modülü |
-| `test-employee` (coach) | coach | 23 (HQ) | Test hesabı (pilot sonrası kaldırılacak) |
+
+> Not: `test-employee` (coach) hesabı pilot demo amaçlıydı; 23 Nis 2026
+> itibariyle kiosk PIN deaktive edildi ve hesap soft-delete yapıldı (Task #127).
 
 Diğer 12 HQ rolündeki kullanıcı (Aslan, Ali, Utku, Mahmut, Samet, Ümran, Diana,
 Murat, Yavuz, Ayşe, Mehmet, vb.) kiosk PIN'i **YOK** ve gerekmiyor.
