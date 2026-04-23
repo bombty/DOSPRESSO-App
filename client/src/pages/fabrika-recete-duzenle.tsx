@@ -30,6 +30,7 @@ import {
   ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download, Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
 
 type IngredientNameOption = { name: string; hasNutrition: boolean };
 
@@ -186,6 +187,27 @@ export default function FabrikaReceteDuzenle() {
       toast({ title: "Hata", description: err?.message || "Geri alma başarısız", variant: "destructive" });
     },
   });
+
+  // Task #177: Toplu kayıt sonrası eksik besin değerlerini anında doldurma
+  type BulkIngredientPayload = {
+    refId: string; name: string; amount: number; unit: string;
+    ingredientCategory: string; ingredientType: string;
+  };
+  type RowNutrition = {
+    energyKcal: string; fatG: string; saturatedFatG: string;
+    carbohydrateG: string; sugarG: string; proteinG: string; saltG: string;
+    allergens: string[];
+  };
+  const emptyRowNutrition = (): RowNutrition => ({
+    energyKcal: "", fatG: "", saturatedFatG: "",
+    carbohydrateG: "", sugarG: "", proteinG: "", saltG: "",
+    allergens: [],
+  });
+  const [missingNutritionList, setMissingNutritionList] = useState<string[]>([]);
+  const [lastBulkPayload, setLastBulkPayload] = useState<BulkIngredientPayload[] | null>(null);
+  const [bulkNutritionRows, setBulkNutritionRows] = useState<Record<string, RowNutrition>>({});
+  const [bulkNutritionSubmitting, setBulkNutritionSubmitting] = useState(false);
+  const [bulkNutritionError, setBulkNutritionError] = useState<string | null>(null);
 
   // Kanonik malzeme isim listesi (auto-complete için)
   const { data: ingredientNames = [] } = useQuery<IngredientNameOption[]>({
@@ -399,17 +421,15 @@ export default function FabrikaReceteDuzenle() {
       toast({ title: "Hatalı satırlar var", description: `${bulkRowErrors.length} satırda hata var`, variant: "destructive" });
       return;
     }
-    const payload = {
-      ingredients: bulkRows.map(r => ({
-        refId: r.refId,
-        name: r.name,
-        amount: parseFloat(r.amount),
-        unit: r.unit,
-        ingredientCategory: r.category,
-        ingredientType: r.type,
-      })),
-      allowUnknown: force,
-    };
+    const ingredientsPayload: BulkIngredientPayload[] = bulkRows.map(r => ({
+      refId: r.refId,
+      name: r.name,
+      amount: parseFloat(r.amount),
+      unit: r.unit,
+      ingredientCategory: r.category,
+      ingredientType: r.type,
+    }));
+    const payload = { ingredients: ingredientsPayload, allowUnknown: force };
 
     setBulkSubmitting(true);
     try {
@@ -435,11 +455,149 @@ export default function FabrikaReceteDuzenle() {
       setBulkText("");
       setBulkUnknown([]);
       setBulkParseError(null);
+
+      // Task #177: Eksik besin değer kayıtları varsa anında doldurma diyaloğu aç
+      const missing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
+      if (missing.length > 0) {
+        const initial: Record<string, RowNutrition> = {};
+        for (const n of missing) initial[n] = emptyRowNutrition();
+        setBulkNutritionRows(initial);
+        setMissingNutritionList(missing);
+        setLastBulkPayload(ingredientsPayload);
+        setBulkNutritionError(null);
+      }
     } catch (e: any) {
       setBulkParseError(e?.message || "Hata");
     } finally {
       setBulkSubmitting(false);
     }
+  };
+
+  // Task #177: Eksik besin değerleriyle tekrar bulk endpoint'e gönder
+  const submitBulkNutrition = async () => {
+    if (!id || isNew || !lastBulkPayload) return;
+    if (!canEditNutrition) {
+      setBulkNutritionError("Besin değer kaydetme yetkiniz yok (sadece admin / gıda mühendisi / recete_gm).");
+      return;
+    }
+    const numOrNull = (v: string) => v.trim() === "" ? null : Number(v);
+    const hasAny = (n: RowNutrition) =>
+      n.energyKcal.trim() !== "" || n.fatG.trim() !== "" || n.saturatedFatG.trim() !== "" ||
+      n.carbohydrateG.trim() !== "" || n.sugarG.trim() !== "" || n.proteinG.trim() !== "" ||
+      n.saltG.trim() !== "" || n.allergens.length > 0;
+
+    // Sunucu missingNutrition listesini kanonikleştirilmiş isimlerle döndürür;
+    // lastBulkPayload ise ham/alias isimleri tutar. Eşleştirme için iki tarafı
+    // da `canonicalIngredientName` ile aynı uzaya getirip karşılaştırıyoruz.
+    const filledCanonicals = new Set<string>();
+    for (const name of missingNutritionList) {
+      const row = bulkNutritionRows[name];
+      if (row && hasAny(row)) filledCanonicals.add(canonicalIngredientName(name));
+    }
+    if (filledCanonicals.size === 0) {
+      setMissingNutritionList([]);
+      setLastBulkPayload(null);
+      setBulkNutritionRows({});
+      return;
+    }
+
+    // Aynı malzeme listesini, eşleşen ilk satıra nutrition ekleyerek tekrar gönder
+    const usedCanonicals = new Set<string>();
+    const enriched = lastBulkPayload.map(ing => {
+      const canonical = canonicalIngredientName(ing.name || "");
+      if (canonical && filledCanonicals.has(canonical) && !usedCanonicals.has(canonical)) {
+        const sourceKey = missingNutritionList.find(
+          n => canonicalIngredientName(n) === canonical,
+        );
+        const row = sourceKey ? bulkNutritionRows[sourceKey] : null;
+        if (row && hasAny(row)) {
+          usedCanonicals.add(canonical);
+          return {
+            ...ing,
+            nutrition: {
+              energyKcal: numOrNull(row.energyKcal),
+              fatG: numOrNull(row.fatG),
+              saturatedFatG: numOrNull(row.saturatedFatG),
+              carbohydrateG: numOrNull(row.carbohydrateG),
+              sugarG: numOrNull(row.sugarG),
+              proteinG: numOrNull(row.proteinG),
+              saltG: numOrNull(row.saltG),
+              allergens: row.allergens,
+            },
+          };
+        }
+      }
+      return ing;
+    });
+
+    // Eğer doldurulan kanonik bir isim aynı kanonikleşen alias olarak
+    // payload'da değilse (teorik olarak olmamalı ama güvenli ol), kullanıcıyı
+    // uyar.
+    const unmatched = Array.from(filledCanonicals).filter(c => !usedCanonicals.has(c));
+    if (unmatched.length > 0) {
+      setBulkNutritionError(
+        `Şu malzeme(ler) toplu listede eşleşmedi: ${unmatched.join(", ")}. Sayfayı yenileyip tekrar deneyin.`,
+      );
+      return;
+    }
+
+    setBulkNutritionSubmitting(true);
+    setBulkNutritionError(null);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/ingredients/bulk?force=true`,
+        { ingredients: enriched, allowUnknown: true },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Besin değerleri kaydedilemedi");
+      }
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      qc.invalidateQueries({ queryKey: ["/api/factory/ingredient-names"] });
+
+      // Sunucu hâlâ missingNutrition döndürdüyse bizim doldurduklarımızdan
+      // hangileri yazılamamış? Yetki/sessiz-yoksay durumlarında olabilir.
+      const stillMissing: string[] = Array.isArray(data?.missingNutrition) ? data.missingNutrition : [];
+      const filledButStillMissing = Array.from(filledCanonicals).filter(c =>
+        stillMissing.some(m => canonicalIngredientName(m) === c),
+      );
+      if (filledButStillMissing.length > 0) {
+        setBulkNutritionError(
+          `Sunucu ${filledButStillMissing.length} malzemenin besin değerini yazmadı (muhtemelen yetki). Listeyi kontrol edin.`,
+        );
+        // Diyaloğu açık bırak; kullanıcı görsün
+        return;
+      }
+
+      toast({
+        title: "Besin değerleri kaydedildi",
+        description: `${filledCanonicals.size} malzeme için kayıt eklendi`,
+      });
+      setMissingNutritionList([]);
+      setLastBulkPayload(null);
+      setBulkNutritionRows({});
+    } catch (e: any) {
+      setBulkNutritionError(e?.message || "Hata");
+    } finally {
+      setBulkNutritionSubmitting(false);
+    }
+  };
+
+  const updateBulkNutritionRow = (name: string, patch: Partial<RowNutrition>) => {
+    setBulkNutritionRows(prev => ({
+      ...prev,
+      [name]: { ...(prev[name] || emptyRowNutrition()), ...patch },
+    }));
+  };
+  const toggleBulkRowAllergen = (name: string, a: string) => {
+    setBulkNutritionRows(prev => {
+      const row = prev[name] || emptyRowNutrition();
+      const allergens = row.allergens.includes(a)
+        ? row.allergens.filter(x => x !== a)
+        : [...row.allergens, a];
+      return { ...prev, [name]: { ...row, allergens } };
+    });
   };
 
   const addIngredient = async () => {
@@ -1157,6 +1315,175 @@ export default function FabrikaReceteDuzenle() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task #177: Toplu kayıt sonrası eksik besin değer doldurma diyaloğu */}
+      <Dialog
+        open={missingNutritionList.length > 0}
+        onOpenChange={(open) => {
+          if (!open && !bulkNutritionSubmitting) {
+            setMissingNutritionList([]);
+            setLastBulkPayload(null);
+            setBulkNutritionRows({});
+            setBulkNutritionError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl" data-testid="dialog-bulk-missing-nutrition">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Eksik Besin Değerlerini Doldur ({missingNutritionList.length})
+            </DialogTitle>
+            <DialogDescription>
+              {canEditNutrition
+                ? "Aşağıdaki malzemeler için besin değer kaydı yok. Şimdi doldurursanız ekran arkası temizliğine gerek kalmaz. Boş bırakılan satırlar atlanır."
+                : "Aşağıdaki malzemelerin besin değer kaydı eksik. Yazma yetkiniz olmadığı için form salt-okunurdur — gıda mühendisinden tamamlamasını isteyin."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[60vh] overflow-auto">
+            {missingNutritionList.map((name) => {
+              const row = bulkNutritionRows[name] || emptyRowNutrition();
+              return (
+                <div
+                  key={name}
+                  className="border rounded-md p-3 space-y-2"
+                  data-testid={`row-missing-nutrition-${name}`}
+                >
+                  <div className="font-medium text-sm flex items-center gap-2">
+                    <span className="font-mono">{name}</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div>
+                      <Label className="text-xs">Enerji (kcal)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.energyKcal}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { energyKcal: e.target.value })}
+                        data-testid={`input-bulk-nutrition-kcal-${name}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Yağ (g)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.fatG}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { fatG: e.target.value })}
+                        data-testid={`input-bulk-nutrition-fat-${name}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Doymuş Yağ (g)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.saturatedFatG}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { saturatedFatG: e.target.value })}
+                        data-testid={`input-bulk-nutrition-sfat-${name}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Karbonhidrat (g)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.carbohydrateG}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { carbohydrateG: e.target.value })}
+                        data-testid={`input-bulk-nutrition-carb-${name}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Şeker (g)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.sugarG}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { sugarG: e.target.value })}
+                        data-testid={`input-bulk-nutrition-sugar-${name}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Protein (g)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.proteinG}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { proteinG: e.target.value })}
+                        data-testid={`input-bulk-nutrition-protein-${name}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Tuz (g)</Label>
+                      <Input
+                        type="number" step="0.1" inputMode="decimal"
+                        value={row.saltG}
+                        readOnly={!canEditNutrition}
+                        onChange={e => updateBulkNutritionRow(name, { saltG: e.target.value })}
+                        data-testid={`input-bulk-nutrition-salt-${name}`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1.5">
+                      Alerjenler
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALLERGEN_OPTIONS.map(a => {
+                        const selected = row.allergens.includes(a);
+                        return (
+                          <Badge
+                            key={a}
+                            variant={selected ? "default" : "outline"}
+                            className={cn("toggle-elevate", canEditNutrition ? "cursor-pointer" : "cursor-not-allowed opacity-70")}
+                            onClick={() => { if (canEditNutrition) toggleBulkRowAllergen(name, a); }}
+                            data-testid={`badge-bulk-allergen-${name}-${a}`}
+                          >
+                            {selected && <Check className="w-3 h-3 mr-1" />}
+                            {a}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {bulkNutritionError && (
+            <div className="text-xs text-destructive" data-testid="text-bulk-nutrition-error">
+              {bulkNutritionError}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setMissingNutritionList([]);
+                setLastBulkPayload(null);
+                setBulkNutritionRows({});
+                setBulkNutritionError(null);
+              }}
+              disabled={bulkNutritionSubmitting}
+              data-testid="button-bulk-nutrition-skip"
+            >
+              Atla ve kapat
+            </Button>
+            <Button
+              onClick={() => submitBulkNutrition()}
+              disabled={bulkNutritionSubmitting || !canEditNutrition}
+              title={canEditNutrition ? undefined : "Besin değer yazma yetkiniz yok"}
+              data-testid="button-bulk-nutrition-save"
+            >
+              <Save className="w-3.5 h-3.5 mr-1" />
+              {bulkNutritionSubmitting ? "Kaydediliyor..." : "Kaydet ve gönder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
