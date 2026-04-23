@@ -10,8 +10,9 @@ import {
   factoryKeyblends, factoryKeyblendIngredients,
   factoryIngredientNutrition,
   auditLogs,
+  users,
 } from "@shared/schema";
-import { eq, sql, lt, asc } from "drizzle-orm";
+import { eq, sql, lt, asc, desc, and, ilike } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import { z } from "zod";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
@@ -587,6 +588,109 @@ router.post("/api/factory/ingredient-nutrition/onay-toplu", isAuthenticated, asy
   } catch (error) {
     console.error("Bulk nutrition approve error:", error);
     res.status(500).json({ error: "Toplu onay başarısız" });
+  }
+});
+
+// GET /api/factory/ingredient-nutrition/approved
+// Confidence = 100 (onaylanmış) kayıtların listesi + verifier bilgisi
+router.get("/api/factory/ingredient-nutrition/approved", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canApproveNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Besin onay paneline erişim yetkiniz yok" });
+    }
+
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const sourceFilter = typeof req.query.source === "string" ? req.query.source.trim() : "";
+    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
+
+    const filters = [eq(factoryIngredientNutrition.confidence, 100)];
+    if (search) {
+      filters.push(ilike(factoryIngredientNutrition.ingredientName, `%${search}%`));
+    }
+    if (sourceFilter && sourceFilter !== "all") {
+      filters.push(eq(factoryIngredientNutrition.source, sourceFilter));
+    }
+
+    const rows = await db
+      .select({
+        id: factoryIngredientNutrition.id,
+        ingredientName: factoryIngredientNutrition.ingredientName,
+        energyKcal: factoryIngredientNutrition.energyKcal,
+        fatG: factoryIngredientNutrition.fatG,
+        saturatedFatG: factoryIngredientNutrition.saturatedFatG,
+        transFatG: factoryIngredientNutrition.transFatG,
+        carbohydrateG: factoryIngredientNutrition.carbohydrateG,
+        sugarG: factoryIngredientNutrition.sugarG,
+        fiberG: factoryIngredientNutrition.fiberG,
+        proteinG: factoryIngredientNutrition.proteinG,
+        saltG: factoryIngredientNutrition.saltG,
+        sodiumMg: factoryIngredientNutrition.sodiumMg,
+        allergens: factoryIngredientNutrition.allergens,
+        source: factoryIngredientNutrition.source,
+        confidence: factoryIngredientNutrition.confidence,
+        verifiedBy: factoryIngredientNutrition.verifiedBy,
+        updatedAt: factoryIngredientNutrition.updatedAt,
+        verifierFirstName: users.firstName,
+        verifierLastName: users.lastName,
+        verifierEmail: users.email,
+      })
+      .from(factoryIngredientNutrition)
+      .leftJoin(users, eq(users.id, factoryIngredientNutrition.verifiedBy))
+      .where(and(...filters))
+      .orderBy(desc(factoryIngredientNutrition.updatedAt))
+      .limit(limit);
+
+    res.json({ items: rows, total: rows.length });
+  } catch (error) {
+    console.error("Approved nutrition list error:", error);
+    res.status(500).json({ error: "Onaylanmış kayıtlar getirilemedi" });
+  }
+});
+
+// GET /api/factory/ingredient-nutrition/:id/audit
+// Bu kayda ait son N onay/audit kaydını döner (önceki/sonraki değer ile)
+router.get("/api/factory/ingredient-nutrition/:id/audit", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canApproveNutrition(req.user?.role)) {
+      return res.status(403).json({ error: "Audit görüntüleme yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Geçersiz id" });
+    }
+
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+
+    const rows = await db
+      .select({
+        id: auditLogs.id,
+        eventType: auditLogs.eventType,
+        action: auditLogs.action,
+        actorRole: auditLogs.actorRole,
+        userId: auditLogs.userId,
+        before: auditLogs.before,
+        after: auditLogs.after,
+        details: auditLogs.details,
+        createdAt: auditLogs.createdAt,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+      })
+      .from(auditLogs)
+      .leftJoin(users, eq(users.id, auditLogs.userId))
+      .where(and(
+        eq(auditLogs.eventType, "factory.ingredient_nutrition.approved"),
+        eq(auditLogs.resource, "factory_ingredient_nutrition"),
+        eq(auditLogs.resourceId, String(id)),
+      ))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
+
+    res.json({ items: rows, total: rows.length });
+  } catch (error) {
+    console.error("Nutrition audit fetch error:", error);
+    res.status(500).json({ error: "Audit kayıtları getirilemedi" });
   }
 });
 

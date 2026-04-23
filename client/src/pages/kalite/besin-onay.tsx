@@ -14,10 +14,17 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { ShieldCheck, AlertTriangle, Search, CheckCircle2, Beaker, Info, X } from "lucide-react";
+import {
+  ShieldCheck, AlertTriangle, Search, CheckCircle2, Beaker, Info, X,
+  ChevronDown, ChevronRight, History, UserCheck,
+} from "lucide-react";
 
 interface PendingRow {
   id: number;
@@ -43,6 +50,38 @@ interface PendingResponse {
   total: number;
 }
 
+interface ApprovedRow extends PendingRow {
+  updatedAt: string | null;
+  verifierFirstName: string | null;
+  verifierLastName: string | null;
+  verifierEmail: string | null;
+}
+
+interface ApprovedResponse {
+  items: ApprovedRow[];
+  total: number;
+}
+
+interface AuditEntry {
+  id: number;
+  eventType: string;
+  action: string;
+  actorRole: string | null;
+  userId: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  details: Record<string, unknown> | null;
+  createdAt: string | null;
+  userFirstName: string | null;
+  userLastName: string | null;
+  userEmail: string | null;
+}
+
+interface AuditResponse {
+  items: AuditEntry[];
+  total: number;
+}
+
 const NUTRITION_FIELDS: Array<{ key: keyof PendingRow; short: string; unit: string }> = [
   { key: "energyKcal", short: "Enerji", unit: "kcal" },
   { key: "fatG", short: "Yağ", unit: "g" },
@@ -53,6 +92,22 @@ const NUTRITION_FIELDS: Array<{ key: keyof PendingRow; short: string; unit: stri
   { key: "proteinG", short: "Prot.", unit: "g" },
   { key: "saltG", short: "Tuz", unit: "g" },
 ];
+
+const SOURCE_LABELS: Record<string, string> = {
+  manual: "Manuel",
+  manual_verified: "Manuel Onay",
+  ai: "AI",
+  usda: "USDA",
+  turkomp: "TÜRKOMP",
+};
+
+const SOURCE_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
+  manual_verified: "default",
+  ai: "secondary",
+  turkomp: "secondary",
+  usda: "secondary",
+  manual: "outline",
+};
 
 type EditState = Record<string, string>;
 
@@ -70,6 +125,26 @@ function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
   return "Bilinmeyen hata";
+}
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("tr-TR", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function verifierLabel(row: ApprovedRow | AuditEntry): string {
+  const first = "verifierFirstName" in row ? row.verifierFirstName : row.userFirstName;
+  const last = "verifierFirstName" in row ? row.verifierLastName : row.userLastName;
+  const email = "verifierFirstName" in row ? row.verifierEmail : row.userEmail;
+  const name = [first, last].filter(Boolean).join(" ").trim();
+  return name || email || "—";
 }
 
 interface PendingTableRowProps {
@@ -110,6 +185,7 @@ function PendingTableRow({ row, selected, onToggleSelect }: PendingTableRowProps
         description: `${row.ingredientName} besin değerleri doğrulandı.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/approved"] });
       queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/recipes"] });
     },
     onError: (err: unknown) => {
@@ -134,14 +210,11 @@ function PendingTableRow({ row, selected, onToggleSelect }: PendingTableRowProps
       <TableCell className="font-medium align-top" data-testid={`text-ingredient-${row.id}`}>
         <div>{row.ingredientName}</div>
         {row.source && (
-          <div className="text-xs text-muted-foreground">{row.source}</div>
+          <div className="text-xs text-muted-foreground">{SOURCE_LABELS[row.source] ?? row.source}</div>
         )}
       </TableCell>
       {NUTRITION_FIELDS.map(f => (
-        <TableCell
-          key={f.key as string}
-          className="align-top w-[88px]"
-        >
+        <TableCell key={f.key as string} className="align-top w-[88px]">
           <Input
             inputMode="decimal"
             value={edit[f.key as string] ?? ""}
@@ -184,36 +257,238 @@ function PendingTableRow({ row, selected, onToggleSelect }: PendingTableRowProps
   );
 }
 
+function formatDelta(before: Record<string, unknown> | null, after: Record<string, unknown> | null): Array<{ key: string; from: string; to: string }> {
+  const out: Array<{ key: string; from: string; to: string }> = [];
+  if (!before && !after) return out;
+  const keys = Array.from(new Set<string>([
+    ...Object.keys(before ?? {}),
+    ...Object.keys(after ?? {}),
+  ]));
+  const niceLabel: Record<string, string> = {
+    energyKcal: "Enerji (kcal)",
+    fatG: "Yağ (g)",
+    saturatedFatG: "Doymuş Yağ (g)",
+    transFatG: "Trans Yağ (g)",
+    carbohydrateG: "Karbonhidrat (g)",
+    sugarG: "Şeker (g)",
+    fiberG: "Lif (g)",
+    proteinG: "Protein (g)",
+    saltG: "Tuz (g)",
+    sodiumMg: "Sodyum (mg)",
+    allergens: "Alerjenler",
+    source: "Kaynak",
+    confidence: "Güven",
+    verifiedBy: "Onaylayan",
+  };
+  const stringify = (v: unknown): string => {
+    if (v == null) return "—";
+    if (Array.isArray(v)) return v.length ? v.join(", ") : "—";
+    return String(v);
+  };
+  for (const k of keys) {
+    const a = stringify((before ?? {})[k]);
+    const b = stringify((after ?? {})[k]);
+    if (a !== b) {
+      out.push({ key: niceLabel[k] ?? k, from: a, to: b });
+    }
+  }
+  return out;
+}
+
+function ApprovedTableRow({ row }: { row: ApprovedRow }) {
+  const [open, setOpen] = useState(false);
+  const audit = useQuery<AuditResponse>({
+    queryKey: ["/api/factory/ingredient-nutrition", row.id, "audit"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/factory/ingredient-nutrition/${row.id}/audit?limit=10`);
+      return res.json();
+    },
+    enabled: open,
+  });
+
+  const sourceKey = row.source ?? "manual";
+  const sourceVariant = SOURCE_VARIANTS[sourceKey] ?? "outline";
+
+  return (
+    <>
+      <TableRow data-testid={`row-approved-${row.id}`}>
+        <TableCell className="align-top">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setOpen(o => !o)}
+            aria-label={open ? "Detayı kapat" : "Detayı aç"}
+            data-testid={`button-toggle-audit-${row.id}`}
+          >
+            {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </Button>
+        </TableCell>
+        <TableCell className="font-medium align-top" data-testid={`text-approved-name-${row.id}`}>
+          {row.ingredientName}
+        </TableCell>
+        {NUTRITION_FIELDS.map(f => (
+          <TableCell key={f.key as string} className="text-right align-top tabular-nums whitespace-nowrap">
+            {row[f.key] == null ? "—" : String(row[f.key])}
+          </TableCell>
+        ))}
+        <TableCell className="align-top">
+          <div className="flex flex-wrap gap-1">
+            {(row.allergens ?? []).length === 0 ? (
+              <span className="text-xs text-muted-foreground">—</span>
+            ) : (
+              (row.allergens ?? []).map((a, i) => (
+                <Badge key={`${a}-${i}`} variant="secondary" className="text-xs">{a}</Badge>
+              ))
+            )}
+          </div>
+        </TableCell>
+        <TableCell className="align-top">
+          <Badge variant={sourceVariant} data-testid={`badge-source-${row.id}`}>
+            {SOURCE_LABELS[sourceKey] ?? sourceKey}
+          </Badge>
+        </TableCell>
+        <TableCell className="align-top whitespace-nowrap" data-testid={`text-verifier-${row.id}`}>
+          <div className="flex items-center gap-1.5 text-sm">
+            <UserCheck className="w-3 h-3 text-muted-foreground" />
+            {verifierLabel(row)}
+          </div>
+        </TableCell>
+        <TableCell className="align-top whitespace-nowrap text-sm text-muted-foreground" data-testid={`text-approved-date-${row.id}`}>
+          {formatDateTime(row.updatedAt)}
+        </TableCell>
+      </TableRow>
+      {open && (
+        <TableRow data-testid={`row-audit-${row.id}`}>
+          <TableCell colSpan={NUTRITION_FIELDS.length + 6} className="bg-muted/30">
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <History className="w-4 h-4" />
+                Onay geçmişi
+              </div>
+              {audit.isLoading && <ListSkeleton count={2} />}
+              {audit.error && (
+                <div className="text-sm text-destructive">
+                  Audit kayıtları yüklenemedi: {errorMessage(audit.error)}
+                </div>
+              )}
+              {audit.data && audit.data.items.length === 0 && (
+                <div className="text-sm text-muted-foreground">
+                  Bu kayıt için audit girişi bulunamadı.
+                </div>
+              )}
+              {audit.data && audit.data.items.length > 0 && (
+                <div className="space-y-3">
+                  {audit.data.items.map(entry => {
+                    const deltas = formatDelta(entry.before, entry.after);
+                    return (
+                      <div key={entry.id} className="rounded-md border p-3 space-y-2 bg-card" data-testid={`audit-entry-${entry.id}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="w-3 h-3 text-muted-foreground" />
+                            <span className="font-medium">{verifierLabel(entry)}</span>
+                            {entry.actorRole && (
+                              <Badge variant="outline" className="text-xs">{entry.actorRole}</Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(entry.createdAt)}
+                          </span>
+                        </div>
+                        {deltas.length === 0 ? (
+                          <div className="text-xs text-muted-foreground">Değer değişikliği yok.</div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-muted-foreground">
+                                  <th className="text-left font-normal py-1 pr-3">Alan</th>
+                                  <th className="text-left font-normal py-1 pr-3">Önceki</th>
+                                  <th className="text-left font-normal py-1">Sonraki</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {deltas.map((d, i) => (
+                                  <tr key={i} className="border-t">
+                                    <td className="py-1 pr-3 font-medium">{d.key}</td>
+                                    <td className="py-1 pr-3 text-muted-foreground line-through">{d.from}</td>
+                                    <td className="py-1 tabular-nums">{d.to}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {(() => {
+                          const note = entry.details?.note;
+                          return typeof note === "string" && note ? (
+                            <div className="text-xs text-muted-foreground italic">
+                              Not: {note}
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
 export default function KaliteBesinOnayPage() {
+  const { toast } = useToast();
+  const [tab, setTab] = useState<"pending" | "approved">("pending");
   const [search, setSearch] = useState("");
+  const [approvedSearch, setApprovedSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkNote, setBulkNote] = useState("");
-  const { toast } = useToast();
 
-  const { data, isLoading, error } = useQuery<PendingResponse>({
+  const pendingQuery = useQuery<PendingResponse>({
     queryKey: ["/api/factory/ingredient-nutrition/pending"],
   });
 
-  const filtered = useMemo(() => {
-    const items = data?.items ?? [];
+  const approvedQuery = useQuery<ApprovedResponse>({
+    queryKey: ["/api/factory/ingredient-nutrition/approved", { search: approvedSearch, source: sourceFilter }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (approvedSearch.trim()) params.set("search", approvedSearch.trim());
+      if (sourceFilter && sourceFilter !== "all") params.set("source", sourceFilter);
+      const qs = params.toString();
+      const res = await apiRequest(
+        "GET",
+        `/api/factory/ingredient-nutrition/approved${qs ? `?${qs}` : ""}`,
+      );
+      return res.json();
+    },
+    enabled: tab === "approved",
+  });
+
+  const filteredPending = useMemo(() => {
+    const items = pendingQuery.data?.items ?? [];
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter(r => r.ingredientName.toLowerCase().includes(q));
-  }, [data, search]);
+  }, [pendingQuery.data, search]);
 
   // Drop selections that no longer exist in the current list (after refetch)
   useEffect(() => {
-    if (!data) return;
-    const existing = new Set(data.items.map(i => i.id));
+    const items = pendingQuery.data?.items;
+    if (!items) return;
+    const existing = new Set(items.map(i => i.id));
     setSelectedIds(prev => {
       const next = new Set<number>();
       prev.forEach(id => { if (existing.has(id)) next.add(id); });
       return next.size === prev.size ? prev : next;
     });
-  }, [data]);
+  }, [pendingQuery.data]);
 
-  const filteredIds = useMemo(() => filtered.map(r => r.id), [filtered]);
+  const filteredIds = useMemo(() => filteredPending.map(r => r.id), [filteredPending]);
   const selectedInFiltered = useMemo(
     () => filteredIds.filter(id => selectedIds.has(id)),
     [filteredIds, selectedIds],
@@ -266,6 +541,7 @@ export default function KaliteBesinOnayPage() {
       setBulkNote("");
       clearSelection();
       queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/ingredient-nutrition/approved"] });
       queryClient.invalidateQueries({ queryKey: ["/api/quality/allergens/recipes"] });
     },
     onError: (err: unknown) => {
@@ -288,133 +564,226 @@ export default function KaliteBesinOnayPage() {
             Besin Değer Onay Paneli
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Güven skoru %100 altında olan hammaddeleri tabloda satır içi düzenleyip
-            tek tıkla onaylayın. Onay sonrası kayıt
-            <span className="font-medium"> manual_verified </span>
-            olarak işaretlenir ve denetim izine eklenir.
+            Bekleyen kayıtları satır içi düzenleyip onaylayın; geçmiş onayları
+            <span className="font-medium"> Onaylanmış </span>
+            sekmesinden inceleyin. Her onay denetim izine yazılır.
           </p>
         </div>
-        {data && (
+        {pendingQuery.data && (
           <Badge variant="outline" className="gap-1" data-testid="badge-pending-total">
-            <AlertTriangle className="w-3 h-3" /> {data.total} bekleyen kayıt
+            <AlertTriangle className="w-3 h-3" /> {pendingQuery.data.total} bekleyen kayıt
           </Badge>
         )}
       </div>
 
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Hammadde adı ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-          data-testid="input-search-pending"
-        />
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "pending" | "approved")}>
+        <TabsList data-testid="tabs-besin-onay">
+          <TabsTrigger value="pending" data-testid="tab-pending">
+            Bekleyen
+            {pendingQuery.data ? ` (${pendingQuery.data.total})` : ""}
+          </TabsTrigger>
+          <TabsTrigger value="approved" data-testid="tab-approved">
+            Onaylanmış
+          </TabsTrigger>
+        </TabsList>
 
-      {selectionCount > 0 && (
-        <div
-          className="sticky top-2 z-50 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-background p-3 shadow-md"
-          data-testid="bar-bulk-actions"
-        >
-          <div className="flex items-center gap-2 text-sm">
-            <Badge variant="default" data-testid="badge-selection-count">
-              {selectionCount} seçildi
-            </Badge>
-            <span className="text-muted-foreground">
-              Seçilenleri tek tıkla manual_verified olarak işaretleyin.
-            </span>
+        <TabsContent value="pending" className="space-y-4 mt-4">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Hammadde adı ara..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              data-testid="input-search-pending"
+            />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearSelection}
-              data-testid="button-clear-selection"
+
+          {selectionCount > 0 && (
+            <div
+              className="sticky top-2 z-50 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-background p-3 shadow-md"
+              data-testid="bar-bulk-actions"
             >
-              <X className="w-3 h-3" />
-              Seçimi temizle
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setBulkDialogOpen(true)}
-              data-testid="button-open-bulk-approve"
-            >
-              <CheckCircle2 className="w-3 h-3" />
-              Seçilenleri Onayla
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {isLoading && <ListSkeleton count={4} />}
-      {error && <ErrorState message={`Liste yüklenemedi: ${errorMessage(error)}`} />}
-
-      {data && filtered.length === 0 && !isLoading && (
-        <EmptyState
-          title={data.total === 0 ? "Onay bekleyen kayıt yok" : "Sonuç bulunamadı"}
-          description={
-            data.total === 0
-              ? "Tüm hammaddeler doğrulanmış görünüyor."
-              : "Aramanıza uygun bekleyen kayıt yok."
-          }
-          icon={ShieldCheck}
-        />
-      )}
-
-      {data && filtered.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Bekleyen hammaddeler</CardTitle>
-            <CardDescription className="text-xs">
-              {filtered.length} kayıt · 100 g başına değerler · değerleri düzenleyip Onayla'ya tıklayın
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table data-testid="table-pending">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]">
-                      <Checkbox
-                        checked={
-                          allFilteredSelected
-                            ? true
-                            : someFilteredSelected
-                              ? "indeterminate"
-                              : false
-                        }
-                        onCheckedChange={(v) => toggleSelectAllFiltered(v === true)}
-                        aria-label="Görünen tüm kayıtları seç"
-                        data-testid="checkbox-select-all"
-                      />
-                    </TableHead>
-                    <TableHead className="min-w-[200px]">Hammadde</TableHead>
-                    {NUTRITION_FIELDS.map(f => (
-                      <TableHead key={f.key as string} className="text-right whitespace-nowrap">
-                        {f.short} <span className="text-muted-foreground">({f.unit})</span>
-                      </TableHead>
-                    ))}
-                    <TableHead>Alerjenler</TableHead>
-                    <TableHead className="text-center">Güven</TableHead>
-                    <TableHead className="text-right">Aksiyon</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(row => (
-                    <PendingTableRow
-                      key={row.id}
-                      row={row}
-                      selected={selectedIds.has(row.id)}
-                      onToggleSelect={toggleSelect}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant="default" data-testid="badge-selection-count">
+                  {selectionCount} seçildi
+                </Badge>
+                <span className="text-muted-foreground">
+                  Seçilenleri tek tıkla manual_verified olarak işaretleyin.
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  data-testid="button-clear-selection"
+                >
+                  <X className="w-3 h-3" />
+                  Seçimi temizle
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setBulkDialogOpen(true)}
+                  data-testid="button-open-bulk-approve"
+                >
+                  <CheckCircle2 className="w-3 h-3" />
+                  Seçilenleri Onayla
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {pendingQuery.isLoading && <ListSkeleton count={4} />}
+          {pendingQuery.error && <ErrorState message={`Liste yüklenemedi: ${errorMessage(pendingQuery.error)}`} />}
+
+          {pendingQuery.data && filteredPending.length === 0 && !pendingQuery.isLoading && (
+            <EmptyState
+              title={pendingQuery.data.total === 0 ? "Onay bekleyen kayıt yok" : "Sonuç bulunamadı"}
+              description={
+                pendingQuery.data.total === 0
+                  ? "Tüm hammaddeler doğrulanmış görünüyor."
+                  : "Aramanıza uygun bekleyen kayıt yok."
+              }
+              icon={ShieldCheck}
+            />
+          )}
+
+          {pendingQuery.data && filteredPending.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Bekleyen hammaddeler</CardTitle>
+                <CardDescription className="text-xs">
+                  {filteredPending.length} kayıt · 100 g başına değerler · değerleri düzenleyip Onayla'ya tıklayın
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table data-testid="table-pending">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={
+                              allFilteredSelected
+                                ? true
+                                : someFilteredSelected
+                                  ? "indeterminate"
+                                  : false
+                            }
+                            onCheckedChange={(v) => toggleSelectAllFiltered(v === true)}
+                            aria-label="Görünen tüm kayıtları seç"
+                            data-testid="checkbox-select-all"
+                          />
+                        </TableHead>
+                        <TableHead className="min-w-[200px]">Hammadde</TableHead>
+                        {NUTRITION_FIELDS.map(f => (
+                          <TableHead key={f.key as string} className="text-right whitespace-nowrap">
+                            {f.short} <span className="text-muted-foreground">({f.unit})</span>
+                          </TableHead>
+                        ))}
+                        <TableHead>Alerjenler</TableHead>
+                        <TableHead className="text-center">Güven</TableHead>
+                        <TableHead className="text-right">Aksiyon</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPending.map(row => (
+                        <PendingTableRow
+                          key={row.id}
+                          row={row}
+                          selected={selectedIds.has(row.id)}
+                          onToggleSelect={toggleSelect}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="approved" className="space-y-4 mt-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Hammadde adı ara..."
+                value={approvedSearch}
+                onChange={(e) => setApprovedSearch(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-approved"
+              />
+            </div>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="sm:w-[200px]" data-testid="select-source-filter">
+                <SelectValue placeholder="Kaynak" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm kaynaklar</SelectItem>
+                <SelectItem value="manual_verified">Manuel Onay</SelectItem>
+                <SelectItem value="ai">AI</SelectItem>
+                <SelectItem value="turkomp">TÜRKOMP</SelectItem>
+                <SelectItem value="usda">USDA</SelectItem>
+                <SelectItem value="manual">Manuel</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {approvedQuery.isLoading && <ListSkeleton count={4} />}
+          {approvedQuery.error && <ErrorState message={`Liste yüklenemedi: ${errorMessage(approvedQuery.error)}`} />}
+
+          {approvedQuery.data && approvedQuery.data.items.length === 0 && !approvedQuery.isLoading && (
+            <EmptyState
+              title="Onaylanmış kayıt bulunamadı"
+              description={
+                approvedSearch || sourceFilter !== "all"
+                  ? "Filtreye uygun kayıt yok. Filtreyi temizleyip tekrar deneyin."
+                  : "Henüz hiçbir hammadde için onay yapılmamış."
+              }
+              icon={ShieldCheck}
+            />
+          )}
+
+          {approvedQuery.data && approvedQuery.data.items.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Onaylanmış hammaddeler</CardTitle>
+                <CardDescription className="text-xs">
+                  {approvedQuery.data.total} kayıt · son onaya göre sıralı · satırı genişleterek önceki/sonraki değer karşılaştırmasını görüntüleyin
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table data-testid="table-approved">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]"></TableHead>
+                        <TableHead className="min-w-[200px]">Hammadde</TableHead>
+                        {NUTRITION_FIELDS.map(f => (
+                          <TableHead key={f.key as string} className="text-right whitespace-nowrap">
+                            {f.short} <span className="text-muted-foreground">({f.unit})</span>
+                          </TableHead>
+                        ))}
+                        <TableHead>Alerjenler</TableHead>
+                        <TableHead>Kaynak</TableHead>
+                        <TableHead>Onaylayan</TableHead>
+                        <TableHead>Tarih</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {approvedQuery.data.items.map(row => (
+                        <ApprovedTableRow key={row.id} row={row} />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <div className="text-xs text-muted-foreground flex items-start gap-1.5 px-1 pt-2">
         <Info className="w-3 h-3 mt-0.5 shrink-0" />
