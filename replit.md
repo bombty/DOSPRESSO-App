@@ -49,3 +49,12 @@ The platform uses React 18, TypeScript, and Vite for the frontend, with Shadcn/u
 - **AWS S3 / Replit Object Storage**: Cloud-based file storage.
 - **Neon Database**: Serverless PostgreSQL database services.
 - **IONOS SMTP**: Email notifications.
+
+## Sprint R-5 Status (24 Apr 2026)
+- **Merge:** Replit local 67 commit + Claude origin 5 commit (R-5A/B/D) successfully merged with additive conflict resolution. Merge commit `f17f3b08c` pushed to `origin/main`.
+- **R-5B SMOKE TEST PASSED (24 Apr 2026 23:00):**
+  - TEST 1 — Admin login: HTTP 200 ✅
+  - TEST 2 — Tekil recalc `POST /api/factory/recipes/16/recalc-cost`: HTTP 200, unit_cost 0 → 8.05 TL, coverage 22% (2/9 ingredient resolved), missing list correct ✅
+  - TEST 3 — Bulk recalc `POST /api/factory/recipes/bulk-recalc` (note: endpoint is `bulk-recalc` NOT `bulk-recalc-cost`): HTTP 200, 14/14 succeeded, 0 failed ✅
+  - TEST 4 — Yetki matrisi: barista tekil recalc → 403 "Maliyet hesaplama yetkiniz yok" ✅, barista bulk recalc → 403 "Toplu hesaplama sadece admin yetkisiyle" ✅
+  - PSQL audit: `factory_recipe_price_history` 0 → 15 records (all `status=applied_partial`, `source=api`, coverage 20-50%) — R-5B audit fix confirmed working ✅
