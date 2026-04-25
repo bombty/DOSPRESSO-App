@@ -960,6 +960,16 @@ router.patch("/api/factory/recipes/:recipeId/ingredients/:id", isAuthenticated, 
     if (!Number.isFinite(ingredientId) || !Number.isFinite(recipeId)) {
       return res.status(400).json({ error: "Geçersiz id" });
     }
+
+    // R-5A BUGFIX: editLocked kontrolü (Replit smoke test bulgusu)
+    // DELETE ingredient + step CRUD endpoint'lerinde vardı, PATCH ingredient'da unutulmuştu.
+    // Kilitli reçetede sef/recete_gm malzeme düzenleyemez, sadece admin bypass eder.
+    const [recipeLockCheck] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (recipeLockCheck?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
+
     const { name, amount, unit, rawMaterialId, ingredientCategory, ingredientType, notes } = req.body;
 
     const updateData: any = {};
