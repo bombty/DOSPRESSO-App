@@ -43,10 +43,19 @@ description: DOSPRESSO pilot personnel roster, role-to-user mapping, pilot branc
 | 23 | Merkez Ofis (HQ) | `franchise` ⚠️ | — | — |
 | 24 | Fabrika | `franchise` ⚠️ | Eren | — |
 
-### Pilot Dışı (DB'de aktif AMA pilot scope'unda yok!)
-**18 şube aktif ve `setup_complete=true`:** Antalya Mallof, Markantalya, Beachpark, Gaziantep İbrahimli/İbnisina/Üniversite, Konya Meram/Bosna, Samsun Marina/Atakum, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip — her biri 6-8 personelle.
+### Hazırlık Modu — 16 Şube (`setup_complete=false`, 25 Apr 2026 ayarlandı)
 
-⚠️ **Önemli:** Bu şubeler dashboard'larda, coach view'unda, CRM'de, raporlarda **görünür**. Pilot 5 May'da Yavuz Yavuz Işıklar+Lara ile sınırlanacaksa, sistem-seviyesi izolasyon (ör. `pilot_branches` flag) yapılmamış.
+**Karar:** Pilot Day-1'de bu 16 şube `setup_complete=false` durumunda. Veriler korunmuş, müdür/supervisor login ettiğinde **Onboarding Wizard** otomatik açılır (3 adım: personel yükle, gap analiz, setup tamamla). Tamamlandığında bu şube canlıya geçer.
+
+**Şubeler:** Antalya Mallof/Markantalya/Beachpark, Gaziantep İbrahimli/İbnisina/Üniversite, Konya Meram/Bosna, Samsun Marina/Atakum, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip.
+
+**Aktivite Tabanı (gerekçe — son 30 gün):**
+- Pilot 2 şube: 363 PDKS + 36 feedback + 30 görev + 289 vardiya (gerçek kullanım)
+- 16 hazırlık şubesi: 0 PDKS + 0 feedback + 4 görev + 0 vardiya (atıl/seed)
+
+→ Hibrit C kararı: 16 şubeyi açmak Yavuz dashboard'unu yanıltıyordu (sahte rakamlar). Hazırlık moduna alınca pilot 4 şube net görünür, kademeli açılış kapısı açık.
+
+**Geri dönüş:** Tek SQL — `UPDATE branches SET setup_complete=true WHERE id IN (...)`
 
 ## Yetki Matrisi (Rol → Modül → Erişim)
 

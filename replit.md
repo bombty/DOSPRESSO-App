@@ -50,6 +50,24 @@ The platform uses React 18, TypeScript, and Vite for the frontend, with Shadcn/u
 - **Neon Database**: Serverless PostgreSQL database services.
 - **IONOS SMTP**: Email notifications.
 
+## Pilot Scope Karar — Hibrit C (25 Apr 2026)
+
+**Karar:** Pilot 5 May'da yalnız 4 şube canlı (Işıklar #5, Antalya Lara #8, HQ #23, Fabrika #24). 16 pilot-dışı aktif şube `setup_complete=false` durumuna alındı (Mallof, Markantalya, Beachpark, İbrahimli, İbnisina, Üniversite, Meram, Bosna, Marina, Atakum, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip).
+
+**Gerekçe:** Son 30 gün aktivite — Pilot 2 şube: 363 PDKS + 36 feedback + 30 görev + 289 vardiya. Pilot-dışı 16 şube: 0 PDKS + 0 feedback + 4 görev + 0 vardiya (atıl/seed). 16 şube açıkken Yavuz dashboard'unda sahte rakam oluşuyordu.
+
+**Davranış:** `setup_complete=false` şubelerin müdür/supervisor login'inde Onboarding Wizard tetiklenir (3 adım: personel Excel + gap analiz + setup tamamla). Tamamlanınca şube canlıya geçer. Veriler korunmuş, kademeli açılış kapısı açık. Geri dönüş tek SQL: `UPDATE branches SET setup_complete=true WHERE id IN (...)`.
+
+**Personel düzeltmeleri (aynı seans):**
+- Ece (`ece`) trainer→coach (Yavuz ile aynı rol)
+- Eren (`eren`) branch_id=null→24 (Fabrika)
+- Ümran (`umran`) is_active=false + deleted_at (kalite kontrol görev Utku'ya devir)
+- CGO (`utku`) rolüne kalite yetkileri eklendi: complaints CRUD, quality_audit CRUD+approve
+
+**Pilot ekip:** Aslan (CEO), Ali (CEO/ortak), Utku (CGO+Kalite), Yavuz/Ece (Coach), Mahmut (muhasebe_ik), Samet (satinalma), Sema (gida_muhendisi+recete_gm 2 hesap), Diana (marketing+grafik), Ayşe (destek), Murat (teknik), Mehmet (yatirimci_hq). Fabrika: Eren (fabrika_mudur), Sema/RGM, Ümit (sef + uretim_sefi 2 hesap, doğrulama bekliyor).
+
+**Skill referans:** `.agents/skills/dospresso-roles-and-people/SKILL.md` (147 satır — HQ ekibi, Fabrika ekibi, pilot şubeler, yetki matrisi, bilinen sorunlar, güncelleme talimatı).
+
 ## Sprint R-5 Status — TAMAM (25 Apr 2026)
 - **Final commit:** `62b68e0f5` — "docs(pilot): Devir teslim 24 Nisan sabah - Sprint R-5 100% TAM"
 - **8/8 alt sprint COMPLETE:** R-5A backend + R-5A frontend + R-5B backend + R-5B frontend + R-5C backend + R-5C frontend + R-5D backend + R-5D frontend
