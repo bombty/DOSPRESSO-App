@@ -10,7 +10,7 @@ description: DOSPRESSO pilot personnel roster, role-to-user mapping, pilot branc
 | İsim | Username | Rol | Sorumluluk | Notu |
 |---|---|---|---|---|
 | Aslan Fahrettin | `aslan` | `ceo` | Owner / Product Lead | Tüm yetkiler |
-| Ali CEO | `Ali` | `ceo` | ⚠️ ? (Aslan'a sorulacak) | Duplicate veya partner? |
+| Ali | `Ali` | `ceo` | Ortak — şirket özetleri, görev atama, istatistik | Salt-yönetim odaklı, operasyon Aslan'da |
 | Utku | `utku` | `cgo` | Chief Growth Officer + Kalite Kontrol | ⚠️ Ümran'ın yerine kalite görevi de aldı (25 Apr 2026). CGO rolünde checklist/complaints/product_complaints CRUD eksik — pilot öncesi yetki ekleme veya delege gerek |
 | Yavuz | `yavuz` | `coach` | Franchise Koçu | branchId=null, tüm şubeler |
 | Ece | `ece` | `coach` | Franchise Koçu (eski trainer) | 25 Apr 2026: trainer→coach geçti |
