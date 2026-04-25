@@ -11,15 +11,15 @@ description: DOSPRESSO pilot personnel roster, role-to-user mapping, pilot branc
 |---|---|---|---|---|
 | Aslan Fahrettin | `aslan` | `ceo` | Owner / Product Lead | Tüm yetkiler |
 | Ali CEO | `Ali` | `ceo` | ⚠️ ? (Aslan'a sorulacak) | Duplicate veya partner? |
-| Utku | `utku` | `cgo` | Chief Growth Officer | Executive — tüm şubeler otomatik |
+| Utku | `utku` | `cgo` | Chief Growth Officer + Kalite Kontrol | ⚠️ Ümran'ın yerine kalite görevi de aldı (25 Apr 2026). CGO rolünde checklist/complaints/product_complaints CRUD eksik — pilot öncesi yetki ekleme veya delege gerek |
 | Yavuz | `yavuz` | `coach` | Franchise Koçu | branchId=null, tüm şubeler |
 | Ece | `ece` | `coach` | Franchise Koçu (eski trainer) | 25 Apr 2026: trainer→coach geçti |
 | Mahmut İK | `mahmut` | `muhasebe_ik` | Muhasebe + İK + payroll | PDKS Excel sahibi |
 | Samet | `samet` | `satinalma` | Satınalma | Hammadde fiyat sorumlusu |
 | Sema | `sema` | `gida_muhendisi` | Gıda Mühendisi | Alerjen+besin onayı |
 | Sema | `RGM` | `recete_gm` | Reçete GM | ⚠️ Aynı kişi, 2. hesap |
-| Diana Marketing | `diana` | `marketing` | Pazarlama+grafik tasarım | HQ dashboard: /hq-dashboard/marketing |
-| Ümran Kalite | `umran` | `kalite_kontrol` | Kalite Kontrol | Şube denetim, food safety |
+| Diana | `diana` | `marketing` | Marketing + Grafik Tasarım | HQ dashboard: /hq-dashboard/marketing — pazarlama kampanyası, sosyal medya, görsel tasarım |
+| ~~Ümran Kalite~~ | ~~`umran`~~ | ~~`kalite_kontrol`~~ | **AYRILDI 25 Apr 2026** — is_active=false, deleted_at set | Görev Utku'ya devredildi |
 | Ayşe Kaya | `ayse` | `destek` | Destek/Teknik servis | Ticket çözüm |
 | Murat Demir | `murat` | `teknik` | IT/Teknik altyapı | Sistem bakım |
 | Mehmet Özkan | `mehmet` | `yatirimci_hq` | Yatırımcı (HQ) | Salt-okur dashboard |
