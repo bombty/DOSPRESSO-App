@@ -87,6 +87,12 @@ export default function FabrikaReceteDuzenle() {
   const [nameComboOpen, setNameComboOpen] = useState(false);
   const [confirmNewName, setConfirmNewName] = useState<string | null>(null);
 
+  // R-5A: Malzeme/Adım düzenle-sil dialog state'leri
+  const [editIngredient, setEditIngredient] = useState<any | null>(null);
+  const [deleteIngredient, setDeleteIngredient] = useState<any | null>(null);
+  const [editStep, setEditStep] = useState<any | null>(null);
+  const [deleteStep, setDeleteStep] = useState<any | null>(null);
+
   // Task #152: Onay diyalogunda isteğe bağlı besin değer + alerjen formu
   const EMPTY_NUTRITION = {
     energyKcal: "", fatG: "", saturatedFatG: "",
@@ -266,6 +272,88 @@ export default function FabrikaReceteDuzenle() {
     },
     onError: (err: any) => {
       toast({ title: "Hata", description: err?.message || "Temizlik başarısız", variant: "destructive" });
+    },
+  });
+
+  // ─────────────────────────────────────────────────────────
+  // R-5A: Malzeme + Adım Düzenle/Sil Mutations
+  // Backend: server/routes/factory-recipes.ts (commit d631ed2)
+  // - PATCH /api/factory/recipes/:recipeId/ingredients/:id
+  // - DELETE /api/factory/recipes/:recipeId/ingredients/:id
+  // - PATCH /api/factory/recipes/:recipeId/steps/:id
+  // - DELETE /api/factory/recipes/:recipeId/steps/:id
+  // ─────────────────────────────────────────────────────────
+  const editIngredientMutation = useMutation({
+    mutationFn: async (payload: { ingredientId: number; data: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/factory/recipes/${id}/ingredients/${payload.ingredientId}`,
+        payload.data,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      toast({ title: "Güncellendi", description: "Malzeme düzenlendi" });
+      setEditIngredient(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Düzenleme başarısız", variant: "destructive" });
+    },
+  });
+
+  const deleteIngredientMutation = useMutation({
+    mutationFn: async (ingredientId: number) => {
+      const res = await apiRequest(
+        "DELETE",
+        `/api/factory/recipes/${id}/ingredients/${ingredientId}`,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      toast({ title: "Silindi", description: "Malzeme silindi" });
+      setDeleteIngredient(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Silme başarısız", variant: "destructive" });
+    },
+  });
+
+  const editStepMutation = useMutation({
+    mutationFn: async (payload: { stepId: number; data: any }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/factory/recipes/${id}/steps/${payload.stepId}`,
+        payload.data,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      toast({ title: "Güncellendi", description: "Adım düzenlendi" });
+      setEditStep(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Düzenleme başarısız", variant: "destructive" });
+    },
+  });
+
+  const deleteStepMutation = useMutation({
+    mutationFn: async (stepId: number) => {
+      const res = await apiRequest(
+        "DELETE",
+        `/api/factory/recipes/${id}/steps/${stepId}`,
+      );
+      return await res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      toast({ title: "Silindi", description: "Adım silindi" });
+      setDeleteStep(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Silme başarısız", variant: "destructive" });
     },
   });
 
@@ -976,6 +1064,30 @@ export default function FabrikaReceteDuzenle() {
                 >
                   <History className="w-3.5 h-3.5" />
                 </Button>
+                {/* R-5A: Malzeme düzenle (amount, unit, kategori) */}
+                {ing.id && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setEditIngredient(ing)}
+                    title="Malzemeyi düzenle (miktar, birim, kategori)"
+                    data-testid={`button-edit-ingredient-${ing.id}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                  </Button>
+                )}
+                {/* R-5A: Malzeme sil */}
+                {ing.id && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setDeleteIngredient(ing)}
+                    title="Malzemeyi sil"
+                    data-testid={`button-delete-ingredient-${ing.id}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                  </Button>
+                )}
               </div>
             ))}
             <div className="grid grid-cols-6 gap-2 mt-3 pt-3 border-t">
@@ -1100,6 +1212,30 @@ export default function FabrikaReceteDuzenle() {
                 </div>
                 {(s.timerSeconds || s.timer_seconds) && (
                   <Badge variant="outline" className="text-xs shrink-0">⏱ {Math.round((s.timerSeconds || s.timer_seconds) / 60)}dk</Badge>
+                )}
+                {/* R-5A: Adım düzenle */}
+                {s.id && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setEditStep(s)}
+                    title="Adımı düzenle"
+                    data-testid={`button-edit-step-${s.id}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-blue-600" />
+                  </Button>
+                )}
+                {/* R-5A: Adım sil */}
+                {s.id && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setDeleteStep(s)}
+                    title="Adımı sil"
+                    data-testid={`button-delete-step-${s.id}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                  </Button>
                 )}
               </div>
             ))}
@@ -2004,6 +2140,221 @@ export default function FabrikaReceteDuzenle() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* R-5A: Malzeme Düzenle Dialog */}
+      <Dialog open={!!editIngredient} onOpenChange={(open) => !open && setEditIngredient(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Malzeme Düzenle</DialogTitle>
+            <DialogDescription>
+              {editIngredient?.name} ({editIngredient?.refId || editIngredient?.ref_id})
+            </DialogDescription>
+          </DialogHeader>
+          {editIngredient && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Miktar</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editIngredient.amount || ""}
+                    onChange={(e) => setEditIngredient({ ...editIngredient, amount: e.target.value })}
+                    data-testid="input-edit-ingredient-amount"
+                  />
+                </div>
+                <div>
+                  <Label>Birim</Label>
+                  <Select
+                    value={editIngredient.unit || "gr"}
+                    onValueChange={(v) => setEditIngredient({ ...editIngredient, unit: v })}
+                  >
+                    <SelectTrigger data-testid="select-edit-ingredient-unit"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gr">gr</SelectItem>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="ml">ml</SelectItem>
+                      <SelectItem value="lt">lt</SelectItem>
+                      <SelectItem value="adet">adet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Kategori</Label>
+                <Select
+                  value={editIngredient.ingredientCategory || editIngredient.ingredient_category || "ana"}
+                  onValueChange={(v) => setEditIngredient({ ...editIngredient, ingredientCategory: v })}
+                >
+                  <SelectTrigger data-testid="select-edit-ingredient-category"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ana">Ana Malzeme</SelectItem>
+                    <SelectItem value="katki">Katkı / Improver</SelectItem>
+                    <SelectItem value="lezzet">Lezzet / Aroma</SelectItem>
+                    <SelectItem value="kaplama">Kaplama</SelectItem>
+                    <SelectItem value="dolgu">Dolgu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Notlar (opsiyonel)</Label>
+                <Textarea
+                  rows={2}
+                  value={editIngredient.notes || ""}
+                  onChange={(e) => setEditIngredient({ ...editIngredient, notes: e.target.value })}
+                  data-testid="input-edit-ingredient-notes"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditIngredient(null)}>İptal</Button>
+            <Button
+              onClick={() => {
+                if (!editIngredient?.id) return;
+                editIngredientMutation.mutate({
+                  ingredientId: editIngredient.id,
+                  data: {
+                    amount: editIngredient.amount,
+                    unit: editIngredient.unit,
+                    ingredientCategory: editIngredient.ingredientCategory || editIngredient.ingredient_category,
+                    notes: editIngredient.notes,
+                  },
+                });
+              }}
+              disabled={editIngredientMutation.isPending}
+              data-testid="button-save-edit-ingredient"
+            >
+              <Save className="w-3.5 h-3.5 mr-1" />
+              {editIngredientMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* R-5A: Malzeme Sil Onay Dialog */}
+      <AlertDialog open={!!deleteIngredient} onOpenChange={(open) => !open && setDeleteIngredient(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Malzemeyi sil?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteIngredient?.name}</strong> ({deleteIngredient?.amount} {deleteIngredient?.unit}) silinecek.
+              Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteIngredient?.id) deleteIngredientMutation.mutate(deleteIngredient.id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-ingredient"
+            >
+              {deleteIngredientMutation.isPending ? "Siliniyor..." : "Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* R-5A: Adım Düzenle Dialog */}
+      <Dialog open={!!editStep} onOpenChange={(open) => !open && setEditStep(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adım Düzenle</DialogTitle>
+            <DialogDescription>
+              Adım #{editStep?.stepNumber || editStep?.step_number}
+            </DialogDescription>
+          </DialogHeader>
+          {editStep && (
+            <div className="space-y-3">
+              <div>
+                <Label>Başlık</Label>
+                <Input
+                  value={editStep.title || ""}
+                  onChange={(e) => setEditStep({ ...editStep, title: e.target.value })}
+                  data-testid="input-edit-step-title"
+                />
+              </div>
+              <div>
+                <Label>Açıklama</Label>
+                <Textarea
+                  rows={4}
+                  value={editStep.content || ""}
+                  onChange={(e) => setEditStep({ ...editStep, content: e.target.value })}
+                  data-testid="input-edit-step-content"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Timer (saniye)</Label>
+                  <Input
+                    type="number"
+                    value={editStep.timerSeconds || editStep.timer_seconds || ""}
+                    onChange={(e) => setEditStep({ ...editStep, timerSeconds: e.target.value })}
+                    data-testid="input-edit-step-timer"
+                  />
+                </div>
+                <div>
+                  <Label>İpucu</Label>
+                  <Input
+                    value={editStep.tips || ""}
+                    onChange={(e) => setEditStep({ ...editStep, tips: e.target.value })}
+                    data-testid="input-edit-step-tips"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditStep(null)}>İptal</Button>
+            <Button
+              onClick={() => {
+                if (!editStep?.id) return;
+                editStepMutation.mutate({
+                  stepId: editStep.id,
+                  data: {
+                    title: editStep.title,
+                    content: editStep.content,
+                    timerSeconds: editStep.timerSeconds || editStep.timer_seconds || null,
+                    tips: editStep.tips,
+                  },
+                });
+              }}
+              disabled={editStepMutation.isPending}
+              data-testid="button-save-edit-step"
+            >
+              <Save className="w-3.5 h-3.5 mr-1" />
+              {editStepMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* R-5A: Adım Sil Onay Dialog */}
+      <AlertDialog open={!!deleteStep} onOpenChange={(open) => !open && setDeleteStep(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Adımı sil?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>Adım #{deleteStep?.stepNumber || deleteStep?.step_number}: {deleteStep?.title}</strong> silinecek.
+              Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteStep?.id) deleteStepMutation.mutate(deleteStep.id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-step"
+            >
+              {deleteStepMutation.isPending ? "Siliniyor..." : "Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
