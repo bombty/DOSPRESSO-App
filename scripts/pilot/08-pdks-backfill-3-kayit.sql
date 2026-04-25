@@ -16,6 +16,18 @@
 
 BEGIN;
 
+-- ─── PRECONDITION: pilot kullanıcılar mevcut mu? ───────────────────
+-- Sabit UUID kullanımı yerine username lookup (Task #214)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'basri' AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'Pilot kullanıcısı "basri" (supervisor, Işıklar) bulunamadı — yanlış DB?';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM users WHERE username = 'busradogmus20' AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'Pilot kullanıcısı "busradogmus20" (fabrika_operator, Fabrika) bulunamadı — yanlış DB?';
+  END IF;
+END $$;
+
 -- Kanıt: hangi 3 kayıt geri dolduruluyor?
 \echo '──── BACKFILL ÖNCESİ DURUM ────'
 SELECT
@@ -35,8 +47,8 @@ INNER JOIN shifts s ON sa.shift_id = s.id
 LEFT JOIN branches b ON s.branch_id = b.id
 LEFT JOIN users u ON sa.user_id = u.id
 WHERE sa.user_id IN (
-  'f8319722-c617-4694-aeae-98b5789b0b97',  -- Basri Şen (supervisor, Işıklar)
-  '41d2a9f0-f3be-45d0-90cc-e2aa585cfcc9'   -- Büşra Doğmuş (fabrika_operator, Fabrika)
+  (SELECT id FROM users WHERE username = 'basri'),          -- Basri Şen (supervisor, Işıklar)
+  (SELECT id FROM users WHERE username = 'busradogmus20')   -- Büşra Doğmuş (fabrika_operator, Fabrika)
 )
 AND s.shift_date IN ('2026-03-21'::date, '2026-03-29'::date, '2026-04-02'::date)
 AND sa.check_in_time IS NOT NULL

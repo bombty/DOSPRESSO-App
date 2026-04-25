@@ -10,15 +10,20 @@
 
 BEGIN;
 
--- Önce admin user_id'sini bul (createdByUserId için gerekli)
+-- Önce admin user_id'sini ve Fabrika branch_id'sini bul (Task #214 lookup)
 DO $$
 DECLARE
-  admin_id varchar;
+  admin_id          varchar;
+  fabrika_branch_id integer;
 BEGIN
   SELECT id INTO admin_id FROM users WHERE username = 'admin' LIMIT 1;
-  
   IF admin_id IS NULL THEN
     RAISE EXCEPTION 'Admin kullanıcısı bulunamadı. Seed durduruldu.';
+  END IF;
+
+  SELECT id INTO fabrika_branch_id FROM branches WHERE name = 'Fabrika' LIMIT 1;
+  IF fabrika_branch_id IS NULL THEN
+    RAISE EXCEPTION 'Fabrika şubesi bulunamadı. Seed durduruldu.';
   END IF;
 
   -- ═══════════════════════════════════════════════════════════════
@@ -116,17 +121,17 @@ BEGIN
     ('Personel uniforma kontrol', 'Eksik veya yıpranmış uniforma envanteri', 'genel', NULL, 'monthly', 28, admin_id, 'admin', false, true);
 
   -- ═══════════════════════════════════════════════════════════════
-  -- 🍩 FABRIKA ÖZEL (6 görev) — Sadece Fabrika (branch_id=24)
+  -- 🍩 FABRIKA ÖZEL (6 görev) — Sadece Fabrika (dinamik branch_id)
   -- ═══════════════════════════════════════════════════════════════
   INSERT INTO branch_recurring_tasks 
     (title, description, category, branch_id, recurrence_type, created_by_user_id, created_by_role, photo_required, is_active)
   VALUES
-    ('Üretim hattı pre-shift temizlik', 'Hat çalıştırılmadan önce sterilizasyon', 'temizlik', 24, 'daily', admin_id, 'admin', true, true),
-    ('Hammadde sıcaklık kontrol', 'Un, süt, krema sıcaklık ölçümü', 'bakim', 24, 'daily', admin_id, 'admin', true, true),
-    ('Üretim raporu yazma', 'Vardiya sonu üretim miktarı + fire kaydı', 'genel', 24, 'daily', admin_id, 'admin', false, true),
-    ('Atık ayrıştırma', 'Organik / geri dönüşüm / tehlikeli atık', 'temizlik', 24, 'daily', admin_id, 'admin', false, true),
-    ('Soğuk hava deposu sıcaklık log', 'Saatlik sıcaklık kaydı (HACCP)', 'bakim', 24, 'daily', admin_id, 'admin', true, true),
-    ('Ürün dağıtım hazırlık', 'Şubelere göre paketleme + etiketleme', 'genel', 24, 'daily', admin_id, 'admin', true, true);
+    ('Üretim hattı pre-shift temizlik', 'Hat çalıştırılmadan önce sterilizasyon', 'temizlik', fabrika_branch_id, 'daily', admin_id, 'admin', true, true),
+    ('Hammadde sıcaklık kontrol', 'Un, süt, krema sıcaklık ölçümü', 'bakim', fabrika_branch_id, 'daily', admin_id, 'admin', true, true),
+    ('Üretim raporu yazma', 'Vardiya sonu üretim miktarı + fire kaydı', 'genel', fabrika_branch_id, 'daily', admin_id, 'admin', false, true),
+    ('Atık ayrıştırma', 'Organik / geri dönüşüm / tehlikeli atık', 'temizlik', fabrika_branch_id, 'daily', admin_id, 'admin', false, true),
+    ('Soğuk hava deposu sıcaklık log', 'Saatlik sıcaklık kaydı (HACCP)', 'bakim', fabrika_branch_id, 'daily', admin_id, 'admin', true, true),
+    ('Ürün dağıtım hazırlık', 'Şubelere göre paketleme + etiketleme', 'genel', fabrika_branch_id, 'daily', admin_id, 'admin', true, true);
 
   RAISE NOTICE 'Görev şablonları başarıyla yüklendi (63 şablon)';
 END $$;
@@ -156,8 +161,9 @@ WHERE is_active = true
 GROUP BY category
 ORDER BY adet DESC;
 
--- Fabrika özel
+-- Fabrika özel (dinamik branch lookup)
 SELECT title, recurrence_type 
 FROM branch_recurring_tasks 
-WHERE branch_id = 24 AND is_active = true 
+WHERE branch_id = (SELECT id FROM branches WHERE name = 'Fabrika' LIMIT 1)
+  AND is_active = true 
 ORDER BY id;

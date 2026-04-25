@@ -19,19 +19,30 @@
 
 BEGIN;
 
--- ─── Blocker 3: manager_name düzeltme ───────────────────────────
+-- ─── PRECONDITION + manager_name düzeltme (Task #214 lookup) ────
+-- Sabit branch ID'leri yerine name lookup
+DO $$
+DECLARE
+  isiklar_id  INTEGER;
+  lara_id     INTEGER;
+  hq_id       INTEGER;
+  fabrika_id  INTEGER;
+BEGIN
+  SELECT id INTO isiklar_id  FROM branches WHERE name = 'Işıklar'          LIMIT 1;
+  SELECT id INTO lara_id     FROM branches WHERE name = 'Antalya Lara'     LIMIT 1;
+  SELECT id INTO hq_id       FROM branches WHERE name = 'Merkez Ofis (HQ)' LIMIT 1;
+  SELECT id INTO fabrika_id  FROM branches WHERE name = 'Fabrika'          LIMIT 1;
 
-UPDATE branches SET manager_name = 'Erdem Yıldız'
-WHERE id = 5;  -- Işıklar (eski kayıt: "Ahmet Yılmaz")
+  IF isiklar_id IS NULL OR lara_id IS NULL OR hq_id IS NULL OR fabrika_id IS NULL THEN
+    RAISE EXCEPTION 'Pilot şubelerinden biri (Işıklar/Antalya Lara/Merkez Ofis (HQ)/Fabrika) bulunamadı';
+  END IF;
 
-UPDATE branches SET manager_name = 'Lara Müdür'
-WHERE id = 8;  -- Antalya Lara (eski kayıt: "Zeynep Şahin")
-
-UPDATE branches SET manager_name = 'Aslan (adminhq)'
-WHERE id = 23; -- Merkez Ofis HQ (eski kayıt: "Yönetim")
-
-UPDATE branches SET manager_name = 'Eren Fabrika (fabrika_mudur)'
-WHERE id = 24; -- Fabrika (eski kayıt: "Fabrika Müdürü")
+  -- Blocker 3: manager_name güncelle (idempotent)
+  UPDATE branches SET manager_name = 'Erdem Yıldız'                  WHERE id = isiklar_id;
+  UPDATE branches SET manager_name = 'Lara Müdür'                    WHERE id = lara_id;
+  UPDATE branches SET manager_name = 'Aslan (adminhq)'               WHERE id = hq_id;
+  UPDATE branches SET manager_name = 'Eren Fabrika (fabrika_mudur)'  WHERE id = fabrika_id;
+END $$;
 
 -- ─── EKLE: Sema + Eren Email (Replit IT raporu önerisi) ────────
 -- NOT: Gerçek email adresleri Aslan'dan gelince bu bloğu çalıştır
@@ -55,10 +66,11 @@ DECLARE
   r RECORD;
   gps_missing INT;
   total_pilot INT;
+  pilot_names CONSTANT text[] := ARRAY['Işıklar','Antalya Lara','Merkez Ofis (HQ)','Fabrika'];
 BEGIN
-  SELECT COUNT(*) INTO total_pilot FROM branches WHERE id IN (5, 8, 23, 24);
+  SELECT COUNT(*) INTO total_pilot FROM branches WHERE name = ANY(pilot_names);
   SELECT COUNT(*) INTO gps_missing FROM branches
-  WHERE id IN (5, 8, 23, 24)
+  WHERE name = ANY(pilot_names)
     AND (shift_corner_latitude IS NULL OR shift_corner_longitude IS NULL);
 
   RAISE NOTICE '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
@@ -73,7 +85,7 @@ BEGIN
            shift_corner_latitude, shift_corner_longitude,
            geo_radius
     FROM branches
-    WHERE id IN (5, 8, 23, 24)
+    WHERE name = ANY(pilot_names)
     ORDER BY id
   LOOP
     RAISE NOTICE 'Branch %: "%" | Müdür: "%" | GPS: (%, %) | radius: %m',

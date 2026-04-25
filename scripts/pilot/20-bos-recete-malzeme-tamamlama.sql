@@ -57,15 +57,44 @@ BEGIN
 END $$;
 
 -- ────────────────────────────────────────────────────────────────────
--- 0b. DUPLICATE DONUT (id=13) SOFT-DELETE
+-- 0b. DUPLICATE DONUT SOFT-DELETE (Task #214 lookup ile precondition)
+-- Sabit id=13 yerine "name='Donut' AND id != 27 (DON-001 canonical)" lookup
 -- ────────────────────────────────────────────────────────────────────
-UPDATE factory_recipes
-SET is_active = false,
-    deleted_at = NOW(),
-    updated_at = NOW(),
-    change_log = COALESCE(change_log, '') ||
-      E'\n[2026-04-23 Task #129] Duplicate of recipe id=27 (DON-001), soft-deleted.'
-WHERE id = 13 AND is_active = true;
+DO $$
+DECLARE
+  duplicate_donut_id INTEGER;
+  canonical_donut_id INTEGER;
+BEGIN
+  -- DON-001 canonical donut id'sini bul (change_log'da DON-001 referansı var)
+  SELECT id INTO canonical_donut_id FROM factory_recipes 
+  WHERE name = 'Donut' AND change_log LIKE '%DON-001%' LIMIT 1;
+  
+  -- Eğer canonical bulunamazsa, id=27 fallback (pilot DB'de bilinen değer)
+  IF canonical_donut_id IS NULL THEN
+    canonical_donut_id := 27;
+  END IF;
+  
+  -- Duplicate Donut: name='Donut', canonical değil, hala aktif
+  SELECT id INTO duplicate_donut_id FROM factory_recipes 
+  WHERE name = 'Donut' 
+    AND id != canonical_donut_id 
+    AND is_active = true 
+    AND deleted_at IS NULL
+  LIMIT 1;
+  
+  IF duplicate_donut_id IS NOT NULL THEN
+    UPDATE factory_recipes
+    SET is_active = false,
+        deleted_at = NOW(),
+        updated_at = NOW(),
+        change_log = COALESCE(change_log, '') ||
+          E'\n[2026-04-23 Task #129] Duplicate of recipe id=' || canonical_donut_id || ' (DON-001), soft-deleted.'
+    WHERE id = duplicate_donut_id;
+    RAISE NOTICE 'Duplicate Donut (id=%) soft-deleted (canonical=%)', duplicate_donut_id, canonical_donut_id;
+  ELSE
+    RAISE NOTICE 'Duplicate Donut bulunamadı (zaten silinmiş veya hiç olmamış) — no-op';
+  END IF;
+END $$;
 
 -- ────────────────────────────────────────────────────────────────────
 -- Yardımcı: bir reçeteye satır eklemeden önce o reçetenin malzemesi
@@ -350,7 +379,8 @@ WHERE NOT EXISTS (
 DO $$
 DECLARE
   empty_count INTEGER;
-  duplicate_active BOOLEAN;
+  active_donut_count INTEGER;
+  canonical_donut_id INTEGER;
 BEGIN
   -- Aktif reçeteler arasında ingredient'ı 0 olan kalmamalı
   SELECT COUNT(*) INTO empty_count
@@ -365,10 +395,23 @@ BEGIN
     RAISE EXCEPTION 'Hala % adet aktif reçetede malzeme yok', empty_count;
   END IF;
 
-  -- Duplicate Donut (id=13) inaktif olmalı
-  SELECT is_active INTO duplicate_active FROM factory_recipes WHERE id = 13;
-  IF duplicate_active THEN
-    RAISE EXCEPTION 'Duplicate Donut reçetesi (id=13) hala aktif';
+  -- Duplicate Donut inaktif olmalı (Task #214 lookup): name='Donut' arasında 
+  -- canonical (DON-001) dışında aktif kayıt kalmamalı
+  SELECT id INTO canonical_donut_id FROM factory_recipes 
+  WHERE name = 'Donut' AND change_log LIKE '%DON-001%' LIMIT 1;
+  IF canonical_donut_id IS NULL THEN
+    canonical_donut_id := 27;
+  END IF;
+  
+  SELECT COUNT(*) INTO active_donut_count FROM factory_recipes 
+  WHERE name = 'Donut' 
+    AND id != canonical_donut_id 
+    AND is_active = true 
+    AND deleted_at IS NULL;
+  
+  IF active_donut_count > 0 THEN
+    RAISE EXCEPTION 'Duplicate Donut reçetesi (canonical id=% dışında % aktif kayıt) hala aktif',
+      canonical_donut_id, active_donut_count;
   END IF;
 
   RAISE NOTICE '✓ Task #129 tamamlandı: 11 reçete dolduruldu, 1 duplicate soft-delete edildi.';

@@ -16,23 +16,39 @@
 
 BEGIN;
 
--- 1) HQ (branch 23) PIN'ini deaktive et (idempotent: zaten false ise no-op)
---    Kapsam: sadece HQ branch'i; başka şubelerde aktif PIN varsa ayrı bir
---    karar konusu olur (politika gereği HQ user'ın diğer şubelerde PIN'i
---    olmamalıdır; varsa ilgili task ile temizlenir).
-UPDATE branch_staff_pins
-SET is_active = false
-WHERE user_id = '1e189abc-37b2-46f5-90ce-413163a662ea'
-  AND branch_id = 23
-  AND is_active = true;
+-- ─── PRECONDITION: test-employee + HQ branch lookup (Task #214) ────
+-- Sabit UUID/branch_id yerine username + branch name lookup
+DO $$
+DECLARE
+  test_user_id   varchar;
+  hq_branch_id   integer;
+BEGIN
+  SELECT id INTO test_user_id FROM users WHERE username = 'test-employee' LIMIT 1;
+  IF test_user_id IS NULL THEN
+    RAISE NOTICE 'test-employee kullanıcısı bulunamadı (zaten silinmiş olabilir) — script no-op';
+    RETURN;
+  END IF;
 
--- 2) Soft delete (idempotent: zaten silinmişse dokunma)
-UPDATE users
-SET deleted_at = NOW()
-WHERE id = '1e189abc-37b2-46f5-90ce-413163a662ea'
-  AND deleted_at IS NULL;
+  SELECT id INTO hq_branch_id FROM branches WHERE name = 'Merkez Ofis (HQ)' LIMIT 1;
+  IF hq_branch_id IS NULL THEN
+    RAISE EXCEPTION 'HQ branch (Merkez Ofis) bulunamadı — script güvenli çalışamaz';
+  END IF;
 
--- 3) Sonuç durumu
+  -- 1) HQ kiosk PIN'ini deaktive et (idempotent)
+  UPDATE branch_staff_pins
+  SET is_active = false
+  WHERE user_id = test_user_id
+    AND branch_id = hq_branch_id
+    AND is_active = true;
+
+  -- 2) Soft delete (idempotent)
+  UPDATE users
+  SET deleted_at = NOW()
+  WHERE id = test_user_id
+    AND deleted_at IS NULL;
+END $$;
+
+-- 3) Sonuç durumu (test-employee artık deleted)
 SELECT
   u.id,
   u.username,
@@ -43,7 +59,7 @@ SELECT
   bsp.is_active AS pin_active
 FROM users u
 LEFT JOIN branch_staff_pins bsp ON bsp.user_id = u.id
-WHERE u.id = '1e189abc-37b2-46f5-90ce-413163a662ea';
+WHERE u.username = 'test-employee';
 
 -- 4) Politika doğrulama sorgusu — beklenen: 0 satır
 SELECT bsp.branch_id, b.name AS branch_name, u.username, u.role
