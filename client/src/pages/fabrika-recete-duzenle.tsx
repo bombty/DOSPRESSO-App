@@ -28,6 +28,7 @@ import {
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
   ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download, Undo2, History,
+  Calculator, RefreshCw, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
@@ -92,6 +93,10 @@ export default function FabrikaReceteDuzenle() {
   const [deleteIngredient, setDeleteIngredient] = useState<any | null>(null);
   const [editStep, setEditStep] = useState<any | null>(null);
   const [deleteStep, setDeleteStep] = useState<any | null>(null);
+
+  // R-5B: Maliyet hesaplama state'leri
+  const [costResult, setCostResult] = useState<any | null>(null);
+  const [missingExpanded, setMissingExpanded] = useState(false);
 
   // Task #152: Onay diyalogunda isteğe bağlı besin değer + alerjen formu
   const EMPTY_NUTRITION = {
@@ -354,6 +359,31 @@ export default function FabrikaReceteDuzenle() {
     },
     onError: (err: any) => {
       toast({ title: "Hata", description: err?.message || "Silme başarısız", variant: "destructive" });
+    },
+  });
+
+  // R-5B: Maliyet hesaplama (recalc-cost)
+  // Backend: POST /api/factory/recipes/:id/recalc-cost (commit 4716ebb)
+  // Yetki: admin, recete_gm, sef, gida_muhendisi, ceo
+  const recalcCostMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/recalc-cost`,
+      );
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      setCostResult(data);
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      const cov = data?.coverage?.percent ?? 0;
+      const desc = cov < 100
+        ? `Birim maliyet: ${data?.costs?.unitCost} TL (kapsam %${Math.round(cov)})`
+        : `Birim maliyet: ${data?.costs?.unitCost} TL (tam kapsam)`;
+      toast({ title: "Maliyet hesaplandı", description: desc });
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Maliyet hesaplanamadı", variant: "destructive" });
     },
   });
 
@@ -949,6 +979,153 @@ export default function FabrikaReceteDuzenle() {
           <div className="mt-3"><Label>Ekipman Açıklaması</Label><Input value={form.equipmentDescription} onChange={e => f("equipmentDescription", e.target.value)} placeholder="Spiral mikser + şoklama dolabı" /></div>
         </CardContent>
       </Card>
+
+      {/* R-5B: MALİYET KARTI (sadece kayıtlı reçete) */}
+      {!isNew && (
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calculator className="w-4 h-4" />
+                Maliyet Hesaplama
+              </CardTitle>
+              <Button
+                size="sm"
+                onClick={() => recalcCostMutation.mutate()}
+                disabled={recalcCostMutation.isPending}
+                data-testid="button-recalc-cost"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5 mr-1", recalcCostMutation.isPending && "animate-spin")} />
+                {recalcCostMutation.isPending ? "Hesaplanıyor..." : "Maliyeti Yeniden Hesapla"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!costResult && (
+              <p className="text-sm text-muted-foreground">
+                "Maliyeti Yeniden Hesapla" butonuna basarak güncel hammadde fiyatlarına göre maliyet hesaplaması yapılır.
+                Sonuç burada görünür ve <strong>factory_recipes</strong> tablosuna kaydedilir + audit log yazılır.
+              </p>
+            )}
+            {costResult && (
+              <div className="space-y-3">
+                {/* Maliyet Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="border rounded-md p-2.5">
+                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Hammadde</div>
+                    <div className="text-base font-bold mt-0.5" data-testid="cost-raw-material">
+                      {costResult.costs?.rawMaterialCost} <span className="text-xs font-normal">TL</span>
+                    </div>
+                  </div>
+                  <div className="border rounded-md p-2.5">
+                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">İşçilik</div>
+                    <div className="text-base font-bold mt-0.5" data-testid="cost-labor">
+                      {costResult.costs?.laborCost} <span className="text-xs font-normal">TL</span>
+                    </div>
+                  </div>
+                  <div className="border rounded-md p-2.5">
+                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Enerji</div>
+                    <div className="text-base font-bold mt-0.5" data-testid="cost-energy">
+                      {costResult.costs?.energyCost} <span className="text-xs font-normal">TL</span>
+                    </div>
+                  </div>
+                  <div className="border rounded-md p-2.5 bg-muted/50">
+                    <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Batch Toplamı</div>
+                    <div className="text-base font-bold mt-0.5" data-testid="cost-batch">
+                      {costResult.costs?.totalBatchCost} <span className="text-xs font-normal">TL</span>
+                    </div>
+                  </div>
+                  <div className="border-2 border-primary rounded-md p-2.5 bg-primary/5">
+                    <div className="text-[10px] uppercase text-primary tracking-wide font-semibold">Birim Maliyet</div>
+                    <div className="text-lg font-bold mt-0.5 text-primary" data-testid="cost-unit">
+                      {costResult.costs?.unitCost} <span className="text-xs font-normal">TL</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Önceki değerlerle karşılaştırma */}
+                {costResult.previousCosts && Number(costResult.previousCosts.unitCost) > 0 && (
+                  <div className="text-xs text-muted-foreground border-t pt-2">
+                    <span className="font-medium">Önceki birim maliyet:</span> {costResult.previousCosts.unitCost} TL →{" "}
+                    <span className="font-medium">Yeni:</span> {costResult.costs?.unitCost} TL
+                    {(() => {
+                      const oldUC = Number(costResult.previousCosts.unitCost);
+                      const newUC = Number(costResult.costs?.unitCost);
+                      if (oldUC > 0) {
+                        const delta = ((newUC - oldUC) / oldUC) * 100;
+                        const sign = delta > 0 ? "+" : "";
+                        const color = delta > 0 ? "text-orange-600" : "text-green-600";
+                        return <span className={cn("ml-2 font-semibold", color)}>({sign}{delta.toFixed(1)}%)</span>;
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+
+                {/* Coverage uyarısı */}
+                {costResult.coverage && costResult.coverage.percent < 100 && (
+                  <div className="border border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-900 rounded-md p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                      <span className="font-medium">Eksik hammadde fiyatı tespit edildi</span>
+                      <Badge variant="outline" className="ml-auto" data-testid="coverage-badge">
+                        Kapsam %{Math.round(costResult.coverage.percent)}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {costResult.coverage.resolved} / {costResult.coverage.total} malzemenin fiyatı bulundu.
+                      {" "}
+                      <strong>{costResult.coverage.missingCount}</strong> malzemenin fiyatı eksik veya birimi uyumsuz.
+                      Maliyet hesabı kısmi olarak yapıldı, gerçek maliyet daha yüksek olabilir.
+                    </div>
+                    {costResult.missing && costResult.missing.length > 0 && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setMissingExpanded((p) => !p)}
+                          className="h-7 px-2"
+                          data-testid="button-toggle-missing"
+                        >
+                          {missingExpanded ? <ChevronDown className="w-3.5 h-3.5 mr-1" /> : <ChevronRight className="w-3.5 h-3.5 mr-1" />}
+                          Eksik malzemeleri {missingExpanded ? "gizle" : "göster"} ({costResult.missing.length})
+                        </Button>
+                        {missingExpanded && (
+                          <div className="space-y-1 mt-1">
+                            {costResult.missing.map((m: any, idx: number) => (
+                              <div key={idx} className="text-xs flex items-center gap-2 py-1 border-b border-orange-200/50 last:border-0">
+                                {m.code && <Badge variant="outline" className="font-mono text-[10px]">{m.code}</Badge>}
+                                <span className="flex-1">{m.name}</span>
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {m.reason === "no_price" && "Fiyat yok"}
+                                  {m.reason === "no_inventory" && "Envanter yok"}
+                                  {m.reason === "unit_mismatch" && "Birim uyumsuz"}
+                                </Badge>
+                                {m.detail && <span className="text-muted-foreground text-[10px]">{m.detail}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <div className="text-[11px] text-muted-foreground pt-1 border-t border-orange-200/50">
+                      💡 Eksik hammadde fiyatları için satınalma sorumlusuyla iletişime geçin (Samet).
+                    </div>
+                  </div>
+                )}
+
+                {/* Tam kapsam ✅ */}
+                {costResult.coverage && costResult.coverage.percent >= 100 && (
+                  <div className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1.5 border-t pt-2">
+                    <Check className="w-3.5 h-3.5" />
+                    Tüm {costResult.coverage.total} malzemenin fiyatı bulundu — maliyet hesabı tam kapsamlı.
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* MALZEMELER (sadece kayıtlı reçete) */}
       {!isNew && (
