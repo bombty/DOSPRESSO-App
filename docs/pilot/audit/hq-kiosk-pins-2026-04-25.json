@@ -1,0 +1,23 @@
+{
+  "runAt": "2026-04-24T23:07:23.238Z",
+  "policy": "docs/pilot/hq-kiosk-pin-politikasi.md#3",
+  "hqBranchId": 23,
+  "hqRoles": [
+    "admin",
+    "ceo",
+    "cgo",
+    "ceo_observer",
+    "muhasebe_ik",
+    "satinalma",
+    "kalite_kontrol",
+    "marketing",
+    "teknik",
+    "trainer",
+    "coach",
+    "destek",
+    "yatirimci_hq"
+  ],
+  "violationCount": 0,
+  "status": "PASS",
+  "violations": []
+}
