@@ -100,6 +100,28 @@ Tüm SQL idempotent (`IF NOT EXISTS`), additive (ADD COLUMN/CREATE TABLE only), 
 
 Canlı doğrulama: kilitli Recipe 16 + sef rolü → 5/5 endpoint 403 ("Reçete kilitli - sadece admin düzenleyebilir"). Admin → 200 (bypass çalışıyor).
 
+## Schema Drift Sweep #234 — P0 TAMAM (25 Apr 2026)
+Forensic audit ikinci dalga: `scripts/db-drift-check.ts` ile tüm DB sağlık taraması yapıldı (kolon + tip + nullability + UNIQUE + FK + index).
+
+**Pilot kritik P0 (uygulandı):**
+- **11 eksik kolon eklendi** — additive, idempotent, mevcut data etkilenmedi:
+  - `audit_personnel_feedback.responded_at` (timestamp)
+  - `employee_onboarding_progress.mentor_id/started_at/updated_at` (3 kolon, updated_at trigger ile)
+  - `employee_terminations.notes` (text)
+  - `quiz_questions.deleted_at` (soft delete pattern)
+  - `onboarding_template_steps.end_day/mentor_role_type/training_module_id/required_completion/updated_at` (5 kolon, 0 satır olduğu için NOT NULL direkt)
+- **2 UNIQUE constraint eklendi:** `factory_recipe_versions(recipe_id, version_number)`, `payroll_parameters(year, effective_from)` — duplicate yok.
+- **2 trigger:** `set_updated_at_timestamp()` fonksiyonu + 2 tablo trigger'ı.
+
+**P1/P2 ertelendi (R-6 sprint):**
+- 40 tip/nullability drift — kozmetik (timestamptz vs timestamp, varchar vs text) veya endpoint çalışıyor.
+- 40+ eksik FK — orphan koruma, pilot'ta kimse silinmeyecek.
+- Eksik perf index'ler — düşük yük dolayısıyla pilot sonrası.
+- `module_flags` UNIQUE constraint — `COALESCE(branch_id,0), COALESCE(target_role,'')` lı UNIQUE INDEX zaten var ve şema constraint'inden daha iyi NULL handling yapıyor (false positive).
+- Ölü tablo UNIQUE'leri (`dobody_action_templates`, `hq_support_category_assignments`, `mega_module_mappings`) — schema cleanup ile birlikte.
+
+Sonuç: drift-check raporu "Eksik kolon: 0" — hedef karşılandı.
+
 ## Sessiz Drift'ler (pilot sonrası temizlik — 12 ölü tablo)
 Drizzle schema'da tanımlı ama hiçbir backend route kullanmıyor (pilot'u etkilemez):
 `ai_report_summaries`, `branch_comparisons`, `branch_feedbacks`, `dobody_action_templates`, `hq_support_category_assignments`, `mega_module_mappings`, `notification_digest_queue`, `notification_policies`, `product_suppliers`, `recipe_ingredients` (eski tablo, yenisi `factory_recipe_ingredients`), `ticket_activity_logs`, `trend_metrics`. Pilot sonrası schema cleanup sprint planlanmalı.
