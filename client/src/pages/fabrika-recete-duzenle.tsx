@@ -203,6 +203,33 @@ export default function FabrikaReceteDuzenle() {
   });
   const [confirmUndo, setConfirmUndo] = useState(false);
 
+  // R-5C: Reçete alerjen + ingredient bazlı alerjen verisi
+  // Backend: GET /api/quality/allergens/recipes/:id (mevcut, factory-allergens.ts)
+  const { data: allergenData } = useQuery<{
+    allergens: string[];
+    isVerified: boolean;
+    verificationReason: string | null;
+    matchedCount: number;
+    ingredientCount: number;
+    ingredients: Array<{ name: string; allergens: string[]; matched: boolean }>;
+  }>({
+    queryKey: ["/api/quality/allergens/recipes", id],
+    enabled: !isNew && !!id,
+  });
+
+  // İsim → alerjen[] map (ingredient satırında hızlı erişim)
+  const ingredientAllergenMap = (() => {
+    const m = new Map<string, string[]>();
+    if (allergenData?.ingredients) {
+      for (const ing of allergenData.ingredients) {
+        if (ing.matched && ing.allergens?.length) {
+          m.set(ing.name.toLowerCase().trim(), ing.allergens);
+        }
+      }
+    }
+    return m;
+  })();
+
   // Task #194: Yedek geçmişi diyalogu
   type SnapshotRow = {
     id: number; ingredientCount: number; reason: string | null;
@@ -980,6 +1007,60 @@ export default function FabrikaReceteDuzenle() {
         </CardContent>
       </Card>
 
+      {/* R-5C: ALERJEN ÖZET KARTI (sadece kayıtlı reçete) */}
+      {!isNew && allergenData && (
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Alerjenler
+                {allergenData.allergens.length > 0 && (
+                  <Badge variant="outline" className="ml-1">{allergenData.allergens.length}</Badge>
+                )}
+              </CardTitle>
+              {allergenData.isVerified ? (
+                <Badge className="bg-emerald-600 text-white border-emerald-700 dark:bg-emerald-700 dark:border-emerald-600 gap-1">
+                  <Check className="w-3 h-3" />
+                  Doğrulandı
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="gap-1 border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400">
+                  <AlertTriangle className="w-3 h-3" />
+                  Tahmini
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {allergenData.allergens.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Bu reçete alerjen içermiyor.</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {allergenData.allergens.map((a) => (
+                    <Badge
+                      key={a}
+                      variant="secondary"
+                      className="capitalize"
+                      data-testid={`recipe-allergen-${a}`}
+                    >
+                      {a}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Toplam {allergenData.matchedCount} / {allergenData.ingredientCount} malzemenin alerjen verisi eşleşti.
+                  {!allergenData.isVerified && allergenData.verificationReason && (
+                    <span className="block mt-1">⚠️ {allergenData.verificationReason}</span>
+                  )}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* R-5B: MALİYET KARTI (sadece kayıtlı reçete) */}
       {!isNew && (
         <Card className="mb-4">
@@ -1217,7 +1298,26 @@ export default function FabrikaReceteDuzenle() {
             {ingredients.map((ing: any, idx: number) => (
               <div key={ing.id || idx} className="flex items-center gap-2 py-1.5 border-b last:border-0">
                 <Badge variant="outline" className="font-mono text-xs">{ing.refId || ing.ref_id}</Badge>
-                <span className="flex-1 text-sm">{ing.name}</span>
+                <span className="flex-1 text-sm">
+                  {ing.name}
+                  {/* R-5C: Inline alerjen rozetleri */}
+                  {(() => {
+                    const algs = ingredientAllergenMap.get(ing.name?.toLowerCase().trim());
+                    if (!algs || algs.length === 0) return null;
+                    return (
+                      <span className="inline-flex flex-wrap gap-1 ml-2 align-middle" data-testid={`ing-allergens-${ing.id || idx}`}>
+                        {algs.slice(0, 4).map((a) => (
+                          <Badge key={a} variant="outline" className="text-[9px] px-1 py-0 h-4 capitalize border-orange-300 text-orange-700 dark:border-orange-700 dark:text-orange-400">
+                            {a}
+                          </Badge>
+                        ))}
+                        {algs.length > 4 && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">+{algs.length - 4}</Badge>
+                        )}
+                      </span>
+                    );
+                  })()}
+                </span>
                 <span className="text-sm font-mono font-bold">{ing.amount} {ing.unit}</span>
                 <Badge variant="secondary" className="text-[10px]">{ing.ingredientCategory || ing.ingredient_category}</Badge>
                 <Button
