@@ -57,12 +57,34 @@ The platform uses React 18, TypeScript, and Vite for the frontend, with Shadcn/u
 - **R-5B Frontend doğrulama:** Maliyet kartı 5'li grid (Hammadde/İşçilik/Enerji/Batch/Birim), recalc butonu, coverage <100 turuncu uyarı + missing accordion. Backend shape match. Recipe 16 coverage %22 (2/9), unit_cost 8.05 TL.
 - **R-5C Frontend doğrulama:** Alerjen kartı + ingredient inline rozetleri. Recipe 16 (Cheesecake Frambuaz): isVerified=true (9/9 matched), 3 alerjen (gluten/sut/yumurta).
 
-## Bekleyen Drift'ler (pilot sonrası, sıraya alındı)
-**Drift #1 — FIX EDİLDİ (25 Apr 2026):** `factory_ingredient_nutrition.updated_at` kolonu DB'de yoktu (Drizzle schema'da vardı). `ALTER TABLE ... ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()` uygulandı. R-5C alerjen endpoint'i ve nutrition history sorgularını etkiliyordu.
+## Schema-DB Drift'ler — TÜMü FIX EDİLDİ (25 Apr 2026 forensic audit)
+Forensic audit (tüm tablo+kolon karşılaştırma + canlı endpoint testi) → 5 P0 endpoint canlı 500 dönüyordu, hepsi düzeltildi.
 
-**Drift #2 — BEKLİYOR:** `factory_ingredient_nutrition.trans_fat_g` kolonu DB'de yok (Drizzle line 446). Etki: `GET /api/factory/ingredient-nutrition/approved` 500. Fix: `ALTER TABLE factory_ingredient_nutrition ADD COLUMN trans_fat_g NUMERIC(8,2);`
+**Drift #1 — FIX (önceki seans):** `factory_ingredient_nutrition.updated_at` kolonu eklendi.
 
-**Drift #3 — BEKLİYOR:** `factory_ingredient_nutrition_history` tablosu DB'de hiç oluşturulmamış (Drizzle schema line 475). Etki: `GET /api/factory/ingredient-nutrition/:idOrName/history` 500. Fix: Tam CREATE TABLE statement (~30 satır).
+**Drift #2 — FIX (bu seans):** `factory_ingredient_nutrition` tablosuna `trans_fat_g NUMERIC(8,2)` ve `sodium_mg NUMERIC(8,2)` kolonları eklendi. Etkilediği endpoint: `GET /api/factory/ingredient-nutrition/approved`, `pending`, `GET /api/factory/nutrition/ingredients` (sessiz hata yutuyordu).
+
+**Drift #3 — FIX (bu seans):** 5 eksik tablo CREATE edildi (Drizzle schema'dan birebir türetildi):
+- `factory_ingredient_nutrition_history` (history endpoint) — schema line 475
+- `factory_recipe_approvals` (recipe approval audit) — schema line 568
+- `factory_recipe_label_print_logs` (etiket basım logu) — schema line 618
+- `factory_recipe_step_snapshots` (adım geri al) — schema line 299
+- `factory_recipe_ingredient_snapshots` (malzeme geri al, BONUS bulgu) — schema line 234
+
+Tüm SQL idempotent (`IF NOT EXISTS`), additive (ADD COLUMN/CREATE TABLE only), tek `BEGIN..COMMIT` transaction. Mevcut data etkilenmedi.
+
+**P2 Follow-up — FIX (bu seans):** R-5A bug fix'i sadece PATCH ingredient'ı kapatmıştı. Forensic audit 5 ek endpoint'te aynı `editLocked` check eksikliğini buldu. Hepsine R-5A pattern (lines 956-960) birebir kopyalandı:
+- `POST /api/factory/recipes/:id/ingredients` (line 1058)
+- `POST /api/factory/recipes/:id/ingredients/bulk` (line 1199)
+- `POST /api/factory/recipes/:id/ingredients/snapshots/:snapshotId/restore` (line 1492)
+- `POST /api/factory/recipes/:id/steps/bulk` (line 1576)
+- `POST /api/factory/recipes/:id/steps/snapshots/:snapshotId/restore` (line 1664)
+
+Canlı doğrulama: kilitli Recipe 16 + sef rolü → 5/5 endpoint 403 ("Reçete kilitli - sadece admin düzenleyebilir"). Admin → 200 (bypass çalışıyor).
+
+## Sessiz Drift'ler (pilot sonrası temizlik — 12 ölü tablo)
+Drizzle schema'da tanımlı ama hiçbir backend route kullanmıyor (pilot'u etkilemez):
+`ai_report_summaries`, `branch_comparisons`, `branch_feedbacks`, `dobody_action_templates`, `hq_support_category_assignments`, `mega_module_mappings`, `notification_digest_queue`, `notification_policies`, `product_suppliers`, `recipe_ingredients` (eski tablo, yenisi `factory_recipe_ingredients`), `ticket_activity_logs`, `trend_metrics`. Pilot sonrası schema cleanup sprint planlanmalı.
 
 ## Test Hesapları (pilot mod, 0000 şifre)
 - **admin** — `ADMIN_BOOTSTRAP_PASSWORD` (UUID `0ccb206f-2c38-431f-8520-291fe9788f50`)

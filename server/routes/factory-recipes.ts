@@ -1068,6 +1068,14 @@ router.post("/api/factory/recipes/:id/ingredients", isAuthenticated, async (req:
     };
 
     const recipeId = Number(req.params.id);
+
+    // P2-FOLLOWUP (R-5A pattern): editLocked check
+    const [recipeLockCheck] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (recipeLockCheck?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
+
     const body = (req.body || {}) as { nutrition?: NutritionPayload } & Record<string, unknown> & { name?: string | null };
     const { nutrition, ...ingredientPayload } = body;
     const normalized = normalizeIngredientPayload(ingredientPayload);
@@ -1201,6 +1209,14 @@ router.post("/api/factory/recipes/:id/ingredients/bulk", isAuthenticated, async 
     };
 
     const recipeId = Number(req.params.id);
+
+    // P2-FOLLOWUP (R-5A pattern): editLocked check
+    const [recipeLockCheck] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (recipeLockCheck?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
+
     const { ingredients, allowUnknown } = req.body as {
       ingredients: Array<Record<string, unknown> & { name?: string; nutrition?: NutritionPayload }>;
       allowUnknown?: boolean;
@@ -1476,6 +1492,13 @@ router.post("/api/factory/recipes/:id/ingredients/snapshots/:snapshotId/restore"
     const recipeId = Number(req.params.id);
     const snapshotId = Number(req.params.snapshotId);
 
+    // P2-FOLLOWUP (R-5A pattern): editLocked check — restore destructive
+    const [recipeLockCheck] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (recipeLockCheck?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
+
     const [snap] = await db.select().from(factoryRecipeIngredientSnapshots)
       .where(and(
         eq(factoryRecipeIngredientSnapshots.id, snapshotId),
@@ -1552,6 +1575,14 @@ router.post("/api/factory/recipes/:id/steps/bulk", isAuthenticated, async (req: 
     if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
 
     const recipeId = Number(req.params.id);
+
+    // P2-FOLLOWUP (R-5A pattern): editLocked check
+    const [recipeLockCheck] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (recipeLockCheck?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
+
     const { steps } = req.body;
     if (!Array.isArray(steps)) {
       return res.status(400).json({ error: "steps dizisi gerekli" });
@@ -1632,6 +1663,13 @@ router.post("/api/factory/recipes/:id/steps/snapshots/:snapshotId/restore", isAu
     if (!RECIPE_EDIT_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Yetkisiz" });
     const recipeId = Number(req.params.id);
     const snapshotId = Number(req.params.snapshotId);
+
+    // P2-FOLLOWUP (R-5A pattern): editLocked check — restore destructive
+    const [recipeLockCheck] = await db.select({ editLocked: factoryRecipes.editLocked })
+      .from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (recipeLockCheck?.editLocked && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Reçete kilitli - sadece admin düzenleyebilir" });
+    }
 
     type StepRow = typeof factoryRecipeSteps.$inferSelect;
     type StepInsert = typeof factoryRecipeSteps.$inferInsert;

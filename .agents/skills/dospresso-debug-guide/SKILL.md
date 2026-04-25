@@ -1049,13 +1049,28 @@ relation "factory_ingredient_nutrition_history" does not exist → 42P01 missing
 
 Hata akışı: Frontend query → API endpoint → Drizzle query → PG raises → 500 → Frontend allergenData/etc null → kart hiç render olmaz (sessiz UX).
 
-### Sprint R-5'te Yakalanan 3 Drift
+### Sprint R-5'te Yakalanan 8 Drift (forensic audit 25.04.2026 — TÜMü FIX)
 
 | # | Tablo / Kolon | Etkilenen Endpoint | Çözüm | Durum |
 |---|---|---|---|---|
-| 1 | `factory_ingredient_nutrition.updated_at` | `/api/quality/allergens/recipes/:id` (R-5C), nutrition history orderBy'ları | `ALTER TABLE ... ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()` | ✅ FIX (25 Apr) |
-| 2 | `factory_ingredient_nutrition.trans_fat_g` | `GET /api/factory/ingredient-nutrition/approved` | `ALTER TABLE factory_ingredient_nutrition ADD COLUMN trans_fat_g NUMERIC(8,2);` | 🟡 BEKLİYOR |
-| 3 | `factory_ingredient_nutrition_history` (tablo) | `GET /api/factory/ingredient-nutrition/:idOrName/history` | Drizzle schema'dan tam CREATE TABLE çıkar (~30 satır) | 🟡 BEKLİYOR |
+| 1 | `factory_ingredient_nutrition.updated_at` | R-5C alerjen, nutrition history orderBy | `ALTER TABLE ADD COLUMN updated_at` | ✅ FIX |
+| 2a | `factory_ingredient_nutrition.trans_fat_g` | `GET ingredient-nutrition/{approved,pending}` + `nutrition/ingredients` (sessiz hata) | `ALTER TABLE ADD COLUMN trans_fat_g NUMERIC(8,2)` | ✅ FIX |
+| 2b | `factory_ingredient_nutrition.sodium_mg` | future-breaking (henüz query yok) | `ALTER TABLE ADD COLUMN sodium_mg NUMERIC(8,2)` | ✅ FIX |
+| 3 | `factory_ingredient_nutrition_history` (tablo) | `GET ingredient-nutrition/:name/history` | CREATE TABLE schema line 475'ten | ✅ FIX |
+| 4 | `factory_recipe_approvals` (tablo) | `GET recipes/:id/approvals` | CREATE TABLE schema line 568'den | ✅ FIX |
+| 5 | `factory_recipe_label_print_logs` (tablo) | `GET allergens/recipes/:id/print-log` | CREATE TABLE schema line 618'den | ✅ FIX |
+| 6 | `factory_recipe_step_snapshots` (tablo) | step bulk + restore endpoint'leri | CREATE TABLE schema line 299'dan | ✅ FIX |
+| 7 | `factory_recipe_ingredient_snapshots` (tablo) | ingredient bulk + restore endpoint'leri | CREATE TABLE schema line 234'ten | ✅ FIX |
+
+**Forensic audit yöntemi:**
+```bash
+# Tüm tablo drift taraması
+LC_ALL=C comm -23 \
+  <(grep -rh 'pgTable("' shared/schema/*.ts | grep -oP '"[a-z_0-9]+"' | tr -d '"' | LC_ALL=C sort -u) \
+  <(psql ... -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema='public'" | tr -d ' ' | grep -v '^$' | LC_ALL=C sort -u)
+```
+
+**Sessiz drift (silent error swallow) tespiti:** Endpoint 200 dönüyor ama log'da `does not exist` hatası varsa, server try/catch hata yutuyor demek. Frontend'e empty/eksik data geliyor. `tail logs | rg "does not exist"` çalıştır.
 
 ### Tespit Komutu (yeni endpoint canlıya çıkmadan önce çalıştır)
 
@@ -1087,6 +1102,15 @@ Bu pattern oluşmadan önce **Madde 40 "Schema-DB Pre-Endpoint Sync Check"** uyg
 **Pattern:** Bir kaynak (ör. recipe) için 5 CRUD endpoint var, 4'ünde `editLocked` check yapılıyor ama 1 tanesinde unutulmuş. Saldırgan/yetkili kullanıcı kilitli kaynağı yine de değiştirebilir.
 
 **R-5A vakası:** `factory-recipes.ts:953` — `PATCH /api/factory/recipes/:id/ingredients/:ingId` lock check'i atlıyordu. Aynı dosyadaki POST/DELETE/PUT endpoint'lerinde vardı.
+
+**P2-follow-up (forensic audit 25.04.2026):** R-5A bug fix'i sadece tek endpoint'i kapatmıştı. Forensic tarama 5 ek endpoint'te aynı eksikliği buldu. Hepsine birebir R-5A pattern eklendi:
+- `POST /api/factory/recipes/:id/ingredients` (line 1058)
+- `POST /api/factory/recipes/:id/ingredients/bulk` (line 1199)
+- `POST /api/factory/recipes/:id/ingredients/snapshots/:snapshotId/restore` (line 1492)
+- `POST /api/factory/recipes/:id/steps/bulk` (line 1576)
+- `POST /api/factory/recipes/:id/steps/snapshots/:snapshotId/restore` (line 1664)
+
+Canlı doğrulama: kilitli reçete + sef → 5/5 endpoint 403, admin → 200 (bypass).
 
 ### Lock Pattern (RECIPE_EDIT_ROLES için standart)
 
