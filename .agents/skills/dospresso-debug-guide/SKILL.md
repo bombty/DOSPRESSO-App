@@ -1030,3 +1030,86 @@ Yeni bir job/service yazmaya başlamadan önce kendine sor:
 > "Bu tabloya şu an başka kim yazıyor?"
 
 Cevabı bilmiyorsan, grep'i çalıştırana kadar kod yazma.
+
+---
+
+## §29 — Schema-DB Drift (Drizzle ORM ↔ Postgres) — Sprint R-5 Dersi (25.04.2026)
+
+**Sınıf:** Silent runtime drift — kod compile olur, sadece query çalışınca patlar.
+
+**Pattern:** Drizzle schema'da kolon/tablo tanımlı ama gerçek DB'de yok (veya tersi). Migration unutulmuş, drizzle-kit timeout yapmış, ya da manuel `ALTER TABLE` yazılmamış.
+
+### Tipik Hata Mesajları (PostgreSQL kod 42703 / 42P01)
+
+```
+column "updated_at" does not exist                        → 42703 missing column
+column "trans_fat_g" does not exist                       → 42703 missing column
+relation "factory_ingredient_nutrition_history" does not exist → 42P01 missing table
+```
+
+Hata akışı: Frontend query → API endpoint → Drizzle query → PG raises → 500 → Frontend allergenData/etc null → kart hiç render olmaz (sessiz UX).
+
+### Sprint R-5'te Yakalanan 3 Drift
+
+| # | Tablo / Kolon | Etkilenen Endpoint | Çözüm | Durum |
+|---|---|---|---|---|
+| 1 | `factory_ingredient_nutrition.updated_at` | `/api/quality/allergens/recipes/:id` (R-5C), nutrition history orderBy'ları | `ALTER TABLE ... ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()` | ✅ FIX (25 Apr) |
+| 2 | `factory_ingredient_nutrition.trans_fat_g` | `GET /api/factory/ingredient-nutrition/approved` | `ALTER TABLE factory_ingredient_nutrition ADD COLUMN trans_fat_g NUMERIC(8,2);` | 🟡 BEKLİYOR |
+| 3 | `factory_ingredient_nutrition_history` (tablo) | `GET /api/factory/ingredient-nutrition/:idOrName/history` | Drizzle schema'dan tam CREATE TABLE çıkar (~30 satır) | 🟡 BEKLİYOR |
+
+### Tespit Komutu (yeni endpoint canlıya çıkmadan önce çalıştır)
+
+```bash
+# Tablodaki gerçek kolonlar
+PGPASSWORD=$PGPASSWORD psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE \
+  -c "\d <tablo_adı>"
+
+# Drizzle schema'daki tanımlı kolonlar
+rg -n "pgTable.*\"<tablo_adı>\"" shared/schema/
+
+# İkisini gözle karşılaştır → drift varsa ALTER TABLE yaz
+```
+
+### Önleme
+
+- **Yeni endpoint'i prod'a pushlamadan önce gerçekten çağır** (curl ile, sadece TypeScript compile olması yetmez)
+- **Drizzle schema değiştiğinde** (yeni kolon/tablo eklendiğinde) `npm run db:push --force` çalıştır — timeout olursa **psql ile manuel ALTER yap**
+- **Pull sonrası testte** önce 1-2 endpoint canlı test et, 500 görürsen schema-DB drift'i ilk şüpheli
+- Kullanıcı tercihi: **"DB schema changes via raw psql (drizzle-kit push times out)"** — replit.md'de yazılı
+
+### Quality Gate Bağlantısı
+Bu pattern oluşmadan önce **Madde 40 "Schema-DB Pre-Endpoint Sync Check"** uygulanmalı.
+
+---
+
+## §30 — Lock Bypass (Edit-Locked Bir Endpoint'e Lock Check Eklemeyi Unutmak) — R-5A Dersi
+
+**Pattern:** Bir kaynak (ör. recipe) için 5 CRUD endpoint var, 4'ünde `editLocked` check yapılıyor ama 1 tanesinde unutulmuş. Saldırgan/yetkili kullanıcı kilitli kaynağı yine de değiştirebilir.
+
+**R-5A vakası:** `factory-recipes.ts:953` — `PATCH /api/factory/recipes/:id/ingredients/:ingId` lock check'i atlıyordu. Aynı dosyadaki POST/DELETE/PUT endpoint'lerinde vardı.
+
+### Lock Pattern (RECIPE_EDIT_ROLES için standart)
+
+```typescript
+if (recipe.editLocked && req.user.role !== "admin") {
+  return res.status(403).json({ 
+    error: "Reçete kilitli - sadece admin düzenleyebilir" 
+  });
+}
+```
+
+### Test Matrisi (yetki + lock kombinasyonu)
+
+| Senaryo | sef | recete_gm | admin | barista |
+|---|---|---|---|---|
+| Reçete açık | 200 | 200 | 200 | 403 (RECIPE_EDIT_ROLES yok) |
+| Reçete **kilitli** | **403** | **403** | **200** (bypass) | 403 |
+
+### Tespit Komutu (yeni CRUD endpoint eklendiğinde)
+
+```bash
+# Kilit check eksik endpoint var mı?
+rg -B 2 -A 30 "router\.(post|patch|put|delete)\(" server/routes/factory-recipes.ts \
+  | rg -B 30 "RECIPE_EDIT_ROLES" \
+  | rg -L "editLocked"
+```

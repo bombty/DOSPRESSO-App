@@ -50,11 +50,28 @@ The platform uses React 18, TypeScript, and Vite for the frontend, with Shadcn/u
 - **Neon Database**: Serverless PostgreSQL database services.
 - **IONOS SMTP**: Email notifications.
 
-## Sprint R-5 Status (24 Apr 2026)
-- **Merge:** Replit local 67 commit + Claude origin 5 commit (R-5A/B/D) successfully merged with additive conflict resolution. Merge commit `f17f3b08c` pushed to `origin/main`.
-- **R-5B SMOKE TEST PASSED (24 Apr 2026 23:00):**
-  - TEST 1 — Admin login: HTTP 200 ✅
-  - TEST 2 — Tekil recalc `POST /api/factory/recipes/16/recalc-cost`: HTTP 200, unit_cost 0 → 8.05 TL, coverage 22% (2/9 ingredient resolved), missing list correct ✅
-  - TEST 3 — Bulk recalc `POST /api/factory/recipes/bulk-recalc` (note: endpoint is `bulk-recalc` NOT `bulk-recalc-cost`): HTTP 200, 14/14 succeeded, 0 failed ✅
-  - TEST 4 — Yetki matrisi: barista tekil recalc → 403 "Maliyet hesaplama yetkiniz yok" ✅, barista bulk recalc → 403 "Toplu hesaplama sadece admin yetkisiyle" ✅
-  - PSQL audit: `factory_recipe_price_history` 0 → 15 records (all `status=applied_partial`, `source=api`, coverage 20-50%) — R-5B audit fix confirmed working ✅
+## Sprint R-5 Status — TAMAM (25 Apr 2026)
+- **Final commit:** `62b68e0f5` — "docs(pilot): Devir teslim 24 Nisan sabah - Sprint R-5 100% TAM"
+- **8/8 alt sprint COMPLETE:** R-5A backend + R-5A frontend + R-5B backend + R-5B frontend + R-5C backend + R-5C frontend + R-5D backend + R-5D frontend
+- **R-5A bug fix (this session, c96f3f4d1):** PATCH `/api/factory/recipes/:id/ingredients/:ingId` `editLocked` check eksikti (line 953), 5 CRUD endpoint'inden 1 tanesi lock bypass yapıyordu. Fix sonrası: sef→403, recete_gm→403, admin→200 (bypass) ✅
+- **R-5B Frontend doğrulama:** Maliyet kartı 5'li grid (Hammadde/İşçilik/Enerji/Batch/Birim), recalc butonu, coverage <100 turuncu uyarı + missing accordion. Backend shape match. Recipe 16 coverage %22 (2/9), unit_cost 8.05 TL.
+- **R-5C Frontend doğrulama:** Alerjen kartı + ingredient inline rozetleri. Recipe 16 (Cheesecake Frambuaz): isVerified=true (9/9 matched), 3 alerjen (gluten/sut/yumurta).
+
+## Bekleyen Drift'ler (pilot sonrası, sıraya alındı)
+**Drift #1 — FIX EDİLDİ (25 Apr 2026):** `factory_ingredient_nutrition.updated_at` kolonu DB'de yoktu (Drizzle schema'da vardı). `ALTER TABLE ... ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()` uygulandı. R-5C alerjen endpoint'i ve nutrition history sorgularını etkiliyordu.
+
+**Drift #2 — BEKLİYOR:** `factory_ingredient_nutrition.trans_fat_g` kolonu DB'de yok (Drizzle line 446). Etki: `GET /api/factory/ingredient-nutrition/approved` 500. Fix: `ALTER TABLE factory_ingredient_nutrition ADD COLUMN trans_fat_g NUMERIC(8,2);`
+
+**Drift #3 — BEKLİYOR:** `factory_ingredient_nutrition_history` tablosu DB'de hiç oluşturulmamış (Drizzle schema line 475). Etki: `GET /api/factory/ingredient-nutrition/:idOrName/history` 500. Fix: Tam CREATE TABLE statement (~30 satır).
+
+## Test Hesapları (pilot mod, 0000 şifre)
+- **admin** — `ADMIN_BOOTSTRAP_PASSWORD` (UUID `0ccb206f-2c38-431f-8520-291fe9788f50`)
+- **Umit/sef** — RECIPE_EDIT_ROLES yetki testi
+- **RGM/recete_gm** — RECIPE_EDIT_ROLES yetki testi
+- **barista.k2** — yetki olmayan rol testi
+- Cookies: `/tmp/{admin,sef,rgm,barista}.txt`
+
+## R-5 Test Reçeteleri
+- **Recipe 16 — Cheesecake Frambuaz:** 9 ingredient, ŞEKER id=30, 3 alerjen (gluten/sut/yumurta), unit_cost 8.05 TL, coverage 22% (2/9 fiyat resolved)
+- **Endpoint farkı:** `POST /api/factory/recipes/bulk-recalc` (NOT `bulk-recalc-cost` — eski talimatta typo vardı)
+- **Lock pattern:** `recipe.editLocked && req.user.role !== "admin"` → 403 "Reçete kilitli - sadece admin düzenleyebilir"

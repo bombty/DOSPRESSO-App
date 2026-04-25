@@ -833,3 +833,39 @@ grep -rn "console.error.*PDKS\|console.error.*pdks\|console.error.*auto.checkout
 
 > **NOT (Aslan):** Madde 30-32 birlikte "Pilot Görünürlük Üçlüsü" sayılır. Tek başlarına pass etmeleri yetmez; Day-1 raporunda üçü birden ✓ olmalı.
 
+
+---
+
+## Madde 40 — Schema-DB Pre-Endpoint Sync Check (25.04.2026 — Sprint R-5 Dersi)
+
+**Bağlam:** Sprint R-5 sırasında 3 schema-DB drift tespit edildi (debug-guide §29). Drizzle schema'da kolon/tablo tanımlı ama gerçek DB'de yok → endpoint compile olur, sadece runtime'da PG `42703`/`42P01` hatası verir, frontend boş veri ile sessiz başarısız olur.
+
+### Kontrol
+
+Yeni endpoint pull edildikten sonra (Replit Agent ya da Claude push'undan önce/sonra):
+
+```bash
+# 1. Endpoint'in dokunduğu Drizzle tablosunu bul
+ENDPOINT_FILE="server/routes/<endpoint>.ts"
+rg -n "pgTable\.|factory[A-Z]|hr[A-Z]" "$ENDPOINT_FILE" | head -10
+
+# 2. Her tablo için DB ile karşılaştır
+for TABLE in factory_ingredient_nutrition factory_recipes; do
+  echo "=== $TABLE ==="
+  PGPASSWORD=$PGPASSWORD psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE \
+    -c "\d $TABLE" | rg "^ [a-z_]+"
+done
+
+# 3. Endpoint'i gerçekten çağır (TypeScript compile yeterli değil)
+curl -s -b /tmp/admin.txt -w "\nHTTP: %{http_code}\n" \
+  "http://localhost:5000/api/<endpoint>"
+```
+
+**PASS:** HTTP 200, expected shape geliyor.
+**FAIL:** HTTP 500 + workflow log'unda `column "X" does not exist` veya `relation "Y" does not exist` → ALTER TABLE / CREATE TABLE gerek (debug-guide §29).
+
+### Pilot Pre-Launch Zorunlu
+
+Pilot 5 May'a kadar tüm recipe/nutrition/factory endpoint'leri bu kontrolü geçmiş olmalı. Aksi halde Day-1'de manager/baş şef boş veriyle karşılaşır, "platform çalışmıyor" diye geri dönüş olur.
+
+> **NOT (Aslan):** Drift #2 (`trans_fat_g`) ve #3 (`history table`) sıraya alındı, pilot zamanı geldiğinde fix edilecek.
