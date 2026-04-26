@@ -239,7 +239,7 @@ export default function FabrikaReceteDuzenle() {
   };
   const canManageSnapshots = ["admin", "recete_gm"].includes(user?.role || "");
   const [historyOpen, setHistoryOpen] = useState(false);
-  const { data: snapshotHistory = [], isLoading: historyLoading } = useQuery<SnapshotRow[]>({
+  const { data: snapshotHistory = [], isLoading: snapshotHistoryLoading } = useQuery<SnapshotRow[]>({
     queryKey: ["/api/factory/recipes", id, "ingredients/snapshots"],
     enabled: !isNew && !!id && historyOpen,
   });
@@ -1960,8 +1960,8 @@ export default function FabrikaReceteDuzenle() {
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-auto">
-            {historyLoading ? (
-              <div className="text-sm text-muted-foreground p-4 text-center" data-testid="text-history-loading">Yükleniyor...</div>
+            {snapshotHistoryLoading ? (
+              <div className="text-sm text-muted-foreground p-4 text-center" data-testid="text-snapshot-history-loading">Yükleniyor...</div>
             ) : snapshotHistory.length === 0 ? (
               <div className="text-sm text-muted-foreground p-4 text-center" data-testid="text-history-empty">Henüz yedek alınmamış</div>
             ) : (
