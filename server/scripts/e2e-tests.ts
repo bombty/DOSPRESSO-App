@@ -74,6 +74,38 @@ async function run() {
     assert(r.status === 401 || r.status === 302, `Expected 401/302, got ${r.status}`);
   });
 
+  await test("Auth", "Auth'suz tüm /api/export/* uçları → 401 (KVKK)", async () => {
+    const exportPaths = [
+      "/api/export/branches",
+      "/api/export/users",
+      "/api/export/tasks",
+      "/api/export/equipment",
+      "/api/export/faults",
+      "/api/export/checklists",
+      "/api/export/checklist-assignments",
+      "/api/export/announcements",
+      "/api/export/shifts",
+      "/api/export/leave-requests",
+      "/api/export/inventory",
+      "/api/export/suppliers",
+      "/api/export/purchase-orders",
+      "/api/export/training-modules",
+      "/api/export/training-progress",
+      "/api/export/notifications",
+      "/api/export/maintenance-logs",
+      "/api/export/performance-metrics",
+      "/api/export/all",
+    ];
+    const failures: string[] = [];
+    for (const path of exportPaths) {
+      const r = await fetch(`${BASE}${path}`, { redirect: "manual" });
+      if (r.status !== 401) {
+        failures.push(`${path} → ${r.status}`);
+      }
+    }
+    assert(failures.length === 0, `Auth'suz erişime açık endpoint(ler): ${failures.join(", ")}`);
+  });
+
   await test("Auth", "/api/auth/user session ile 200", async () => {
     const r = await req("GET", "/api/auth/user");
     assert(r.status === 200, `Status ${r.status}`);

@@ -1,4 +1,4 @@
-import { Express, Response } from "express";
+import { Express, Response, RequestHandler } from "express";
 import { db } from "./db";
 import { 
   branches, users, tasks, equipment, equipmentFaults, 
@@ -7,8 +7,19 @@ import {
   trainingModules, userTrainingProgress, notifications,
   equipmentMaintenanceLogs, performanceMetrics
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import archiver from "archiver";
+import { isAuthenticated } from "./localAuth";
+
+const EXPORT_ROLES = ["admin", "ceo", "cgo"];
+
+const requireExportRole: RequestHandler = (req: any, res, next) => {
+  const role = req.user?.role;
+  if (!role || !EXPORT_ROLES.includes(role)) {
+    return res.status(403).json({ message: "Yetkisiz erişim" });
+  }
+  next();
+};
 
 function convertToCSV(data: any[], tableName: string): string {
   if (!data || data.length === 0) {
@@ -47,12 +58,9 @@ function sendCSV(res: Response, data: any[], filename: string) {
 }
 
 export function registerExportRoutes(app: Express) {
-  
-  app.get("/api/export/branches", async (req: any, res) => {
+
+  app.get("/api/export/branches", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(branches);
       sendCSV(res, data, "subeler");
     } catch (error) {
@@ -61,11 +69,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/users", async (req: any, res) => {
+  app.get("/api/export/users", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select({
         id: users.id,
         email: users.email,
@@ -86,11 +91,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/tasks", async (req: any, res) => {
+  app.get("/api/export/tasks", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(tasks).orderBy(desc(tasks.createdAt));
       sendCSV(res, data, "gorevler");
     } catch (error) {
@@ -99,11 +101,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/equipment", async (req: any, res) => {
+  app.get("/api/export/equipment", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(equipment);
       sendCSV(res, data, "ekipmanlar");
     } catch (error) {
@@ -112,11 +111,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/faults", async (req: any, res) => {
+  app.get("/api/export/faults", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(equipmentFaults).orderBy(desc(equipmentFaults.createdAt));
       sendCSV(res, data, "arizalar");
     } catch (error) {
@@ -125,11 +121,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/checklists", async (req: any, res) => {
+  app.get("/api/export/checklists", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(checklists);
       sendCSV(res, data, "checklistler");
     } catch (error) {
@@ -138,11 +131,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/checklist-assignments", async (req: any, res) => {
+  app.get("/api/export/checklist-assignments", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(checklistAssignments).orderBy(desc(checklistAssignments.createdAt));
       sendCSV(res, data, "checklist_atamalari");
     } catch (error) {
@@ -151,11 +141,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/announcements", async (req: any, res) => {
+  app.get("/api/export/announcements", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(announcements).orderBy(desc(announcements.createdAt));
       sendCSV(res, data, "duyurular");
     } catch (error) {
@@ -164,11 +151,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/shifts", async (req: any, res) => {
+  app.get("/api/export/shifts", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(shifts).orderBy(desc(shifts.shiftDate));
       sendCSV(res, data, "vardiyalar");
     } catch (error) {
@@ -177,11 +161,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/leave-requests", async (req: any, res) => {
+  app.get("/api/export/leave-requests", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(leaveRequests).orderBy(desc(leaveRequests.createdAt));
       sendCSV(res, data, "izin_talepleri");
     } catch (error) {
@@ -190,11 +171,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/inventory", async (req: any, res) => {
+  app.get("/api/export/inventory", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(inventory);
       sendCSV(res, data, "stok");
     } catch (error) {
@@ -203,11 +181,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/suppliers", async (req: any, res) => {
+  app.get("/api/export/suppliers", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(suppliers);
       sendCSV(res, data, "tedarikciler");
     } catch (error) {
@@ -216,11 +191,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/purchase-orders", async (req: any, res) => {
+  app.get("/api/export/purchase-orders", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(purchaseOrders).orderBy(desc(purchaseOrders.createdAt));
       sendCSV(res, data, "siparisler");
     } catch (error) {
@@ -229,11 +201,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/training-modules", async (req: any, res) => {
+  app.get("/api/export/training-modules", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(trainingModules);
       sendCSV(res, data, "egitim_modulleri");
     } catch (error) {
@@ -242,11 +211,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/training-progress", async (req: any, res) => {
+  app.get("/api/export/training-progress", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(userTrainingProgress);
       sendCSV(res, data, "egitim_ilerlemesi");
     } catch (error) {
@@ -255,11 +221,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/notifications", async (req: any, res) => {
+  app.get("/api/export/notifications", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(notifications).orderBy(desc(notifications.createdAt));
       sendCSV(res, data, "bildirimler");
     } catch (error) {
@@ -268,11 +231,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/maintenance-logs", async (req: any, res) => {
+  app.get("/api/export/maintenance-logs", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(equipmentMaintenanceLogs).orderBy(desc(equipmentMaintenanceLogs.createdAt));
       sendCSV(res, data, "bakim_kayitlari");
     } catch (error) {
@@ -281,11 +241,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/performance-metrics", async (req: any, res) => {
+  app.get("/api/export/performance-metrics", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
       const data = await db.select().from(performanceMetrics).orderBy(desc(performanceMetrics.date));
       sendCSV(res, data, "performans_metrikleri");
     } catch (error) {
@@ -294,12 +251,8 @@ export function registerExportRoutes(app: Express) {
     }
   });
 
-  app.get("/api/export/all", async (req: any, res) => {
+  app.get("/api/export/all", isAuthenticated, requireExportRole, async (_req, res) => {
     try {
-      if (!req.isAuthenticated() || !["admin", "ceo", "cgo"].includes(req.user?.role)) {
-        return res.status(403).json({ message: "Yetkisiz erişim" });
-      }
-
       res.setHeader("Content-Type", "application/zip");
       res.setHeader("Content-Disposition", 'attachment; filename="dospresso_veriler.zip"');
 
