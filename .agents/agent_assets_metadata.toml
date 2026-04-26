@@ -312,3 +312,15 @@ id = "anxhukfhA-IUz7SPhvPJy"
 uri = "file://docs/pilot/patches/UYGULAMA-KILAVUZU.md"
 type = "text"
 title = "Aslan için Patch Uygulama Kılavuzu"
+
+[[outputs]]
+id = "S1IxdfIbYI4jHp0KAg_d0"
+uri = "file://docs/reports/dospresso-rol-raporu-2026-04-26.pdf"
+type = "pdf"
+title = "DOSPRESSO Rol Detaylı Raporu (Master, 87 sayfa)"
+
+[[outputs]]
+id = "ZRiUDKza8b_CHT3ronHQm"
+uri = "file://docs/reports/dospresso-rol-raporu-per-role.zip"
+type = "unspecified"
+title = "Her rol için ayrı PDF (26 dosya, ZIP)"
