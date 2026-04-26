@@ -1,7 +1,13 @@
 #!/usr/bin/env node
-// DOSPRESSO 26 Rol Detaylı Rapor PDF Üretici
-// Kullanım: node scripts/reports/generate-role-report-pdf.mjs
-// Çıktı: docs/reports/dospresso-rol-raporu-2026-04-26.pdf
+// DOSPRESSO Rol Detaylı Rapor PDF Üretici (canlı DB üzerinden)
+//
+// Kullanım: DATABASE_URL=... node scripts/reports/generate-role-report-pdf.mjs
+//
+// Sıfır manuel hazırlık — script DATABASE_URL'e bağlanır, kullanıcı / rol /
+// yetki / widget / şube sayılarını canlı çeker ve raporu üretir. /tmp altındaki
+// dump dosyalarına bağımlılık yoktur.
+//
+// Çıktı: docs/reports/dospresso-rol-raporu-<YYYY-MM-DD>.pdf
 //        docs/reports/per-role/<rol>.pdf  (her rol ayrı)
 //        docs/reports/dospresso-rol-raporu-per-role.zip
 
@@ -11,7 +17,11 @@ import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";
 import path from "path";
 import archiver from "archiver";
+import ws from "ws";
+import { Pool, neonConfig } from "@neondatabase/serverless";
 import { ROLES_CONTENT, ROLE_ORDER, CATEGORIES } from "./role-content.mjs";
+
+neonConfig.webSocketConstructor = ws;
 
 // ----------------------------------------------------------------
 // Konfigürasyon
@@ -22,81 +32,192 @@ const FONT_PATH_REGULAR = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
 const FONT_PATH_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
 const OUTPUT_DIR = "docs/reports";
 const PER_ROLE_DIR = path.join(OUTPUT_DIR, "per-role");
-const REPORT_DATE = "26 Nisan 2026";
+
+// Pilot kapsamı - operasyonel planlama parametresi (DB'den değil sabit)
 const PILOT_DATE = "5 Mayıs 2026";
+const PILOT_BRANCH_COUNT = 4; // Işıklar, Antalya Lara, HQ #23, Fabrika #24
+
+// Üretim tarihi her çalıştırmada bugünün tarihine göre dinamik üretilir.
+const TR_MONTHS = [
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+];
+function formatTurkishDate(d) {
+  return `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+function formatIsoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+const REPORT_DATE_OBJ = new Date();
+const REPORT_DATE = formatTurkishDate(REPORT_DATE_OBJ);
+const REPORT_DATE_ISO = formatIsoDate(REPORT_DATE_OBJ);
 
 // ----------------------------------------------------------------
-// DB veri okuma (önceden /tmp dosyalarına dump edilmiş)
+// DB veri okuma (DATABASE_URL üzerinden canlı okunur)
 // ----------------------------------------------------------------
 async function loadDbData() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL ortam değişkeni tanımlı değil. Raporu üretmeden önce env'i ayarlayın."
+    );
+  }
+
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 4,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+  });
+
   const data = {
     rolesUsers: new Map(),     // role -> { aktif, toplam, ornekIsimler[] }
     roleWidgets: new Map(),    // role -> [{key, order, defaultOpen, title, category}]
     rolePerms: new Map(),      // role -> [{module, actions[]}]
     rolesMeta: new Map(),      // role -> { displayName, description, isSystemRole }
+    summary: {
+      totalUsersAll: 0,         // tüm users (deleted dahil)
+      totalUsersAktif: 0,       // is_active AND deleted_at IS NULL
+      totalRolesDb: 0,          // roles tablosundaki kayıt sayısı
+      totalRolesWithUsers: 0,   // en az 1 kullanıcısı olan rol sayısı
+      totalRolePerms: 0,        // role_module_permissions kayıt sayısı
+      totalRoleWidgets: 0,      // dashboard_role_widgets kayıt sayısı
+      totalModuleFlags: 0,      // module_flags satır sayısı
+      totalBranches: 0,         // branches (deleted_at IS NULL)
+      branchesHazirlik: 0,      // setup_complete=false branches
+    },
   };
 
-  // 1. roles_users.txt: role|aktif|toplam|isimler
-  const rolesUsersTxt = await fs.readFile("/tmp/roles_users.txt", "utf-8");
-  for (const line of rolesUsersTxt.split("\n")) {
-    if (!line.trim()) continue;
-    const parts = line.split("|");
-    if (parts.length < 4) continue;
-    const [role, aktif, toplam, isimler] = parts;
-    data.rolesUsers.set(role, {
-      aktif: parseInt(aktif) || 0,
-      toplam: parseInt(toplam) || 0,
-      ornekIsimler: isimler ? isimler.split(", ").filter(Boolean) : [],
-    });
-  }
+  try {
+    // 1. Rol başına kullanıcı sayıları + örnek isimler
+    //    Aktif: is_active AND deleted_at IS NULL
+    //    Toplam: tüm satırlar (deleted dahil)
+    const rolesUsersRes = await pool.query(`
+      SELECT
+        u.role AS role,
+        COUNT(*) FILTER (WHERE u.is_active = true AND u.deleted_at IS NULL)::int AS aktif,
+        COUNT(*)::int AS toplam,
+        COALESCE(
+          STRING_AGG(
+            CASE
+              WHEN u.deleted_at IS NULL THEN
+                COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''), u.username, u.id)
+            END,
+            ', '
+            ORDER BY u.is_active DESC, u.created_at ASC
+          ),
+          ''
+        ) AS isimler
+      FROM users u
+      WHERE u.role IS NOT NULL
+      GROUP BY u.role
+      ORDER BY u.role
+    `);
+    for (const row of rolesUsersRes.rows) {
+      // Sadece ilk 6 ismi tut (aşırı uzun listeleri kes)
+      const namesArr = (row.isimler || "")
+        .split(", ")
+        .map(s => s.trim())
+        .filter(Boolean);
+      data.rolesUsers.set(row.role, {
+        aktif: row.aktif || 0,
+        toplam: row.toplam || 0,
+        ornekIsimler: namesArr.slice(0, 6),
+      });
+    }
 
-  // 2. role_widgets.txt: role|widget_key|order|default_open|title|category
-  const widgetsTxt = await fs.readFile("/tmp/role_widgets.txt", "utf-8");
-  for (const line of widgetsTxt.split("\n")) {
-    if (!line.trim()) continue;
-    const parts = line.split("|");
-    if (parts.length < 6) continue;
-    const [role, widgetKey, order, defaultOpen, title, category] = parts;
-    if (!data.roleWidgets.has(role)) data.roleWidgets.set(role, []);
-    data.roleWidgets.get(role).push({
-      key: widgetKey,
-      order: parseInt(order) || 99,
-      defaultOpen: defaultOpen === "t",
-      title: title || widgetKey,
-      category: category || "diger",
-    });
-  }
-  // Order each role's widgets
-  for (const arr of data.roleWidgets.values()) {
-    arr.sort((a, b) => a.order - b.order);
-  }
+    // 2. Rol başına widget atamaları + widget meta (title, category)
+    const widgetsRes = await pool.query(`
+      SELECT
+        rw.role,
+        rw.widget_key,
+        rw.display_order::int AS display_order,
+        rw.default_open,
+        COALESCE(w.title, rw.widget_key) AS title,
+        COALESCE(w.category, 'diger') AS category
+      FROM dashboard_role_widgets rw
+      LEFT JOIN dashboard_widgets w ON w.widget_key = rw.widget_key
+      WHERE rw.is_enabled = true
+      ORDER BY rw.role, rw.display_order ASC
+    `);
+    for (const row of widgetsRes.rows) {
+      if (!data.roleWidgets.has(row.role)) data.roleWidgets.set(row.role, []);
+      data.roleWidgets.get(row.role).push({
+        key: row.widget_key,
+        order: row.display_order || 99,
+        defaultOpen: row.default_open === true,
+        title: row.title || row.widget_key,
+        category: row.category || "diger",
+      });
+    }
+    for (const arr of data.roleWidgets.values()) {
+      arr.sort((a, b) => a.order - b.order);
+    }
+    data.summary.totalRoleWidgets = widgetsRes.rowCount || 0;
 
-  // 3. role_perms.txt: role|module|actions(comma-sep)
-  const permsTxt = await fs.readFile("/tmp/role_perms.txt", "utf-8");
-  for (const line of permsTxt.split("\n")) {
-    if (!line.trim()) continue;
-    const parts = line.split("|");
-    if (parts.length < 3) continue;
-    const [role, module, actions] = parts;
-    if (!data.rolePerms.has(role)) data.rolePerms.set(role, []);
-    data.rolePerms.get(role).push({
-      module,
-      actions: actions ? actions.split(",").filter(Boolean) : [],
-    });
-  }
+    // 3. Rol başına modül yetkileri
+    const permsRes = await pool.query(`
+      SELECT role, module, actions
+      FROM role_module_permissions
+      ORDER BY role, module
+    `);
+    for (const row of permsRes.rows) {
+      if (!data.rolePerms.has(row.role)) data.rolePerms.set(row.role, []);
+      data.rolePerms.get(row.role).push({
+        module: row.module,
+        actions: Array.isArray(row.actions) ? row.actions.filter(Boolean) : [],
+      });
+    }
+    data.summary.totalRolePerms = permsRes.rowCount || 0;
 
-  // 4. roles_meta.txt: name|display_name|description|is_system_role
-  const metaTxt = await fs.readFile("/tmp/roles_meta.txt", "utf-8");
-  for (const line of metaTxt.split("\n")) {
-    if (!line.trim()) continue;
-    const parts = line.split("|");
-    if (parts.length < 4) continue;
-    const [name, displayName, description, isSystemRole] = parts;
-    data.rolesMeta.set(name, {
-      displayName,
-      description,
-      isSystemRole: isSystemRole === "t",
-    });
+    // 4. Roles tablosu meta
+    const metaRes = await pool.query(`
+      SELECT name, display_name, description, is_system_role
+      FROM roles
+      ORDER BY name
+    `);
+    for (const row of metaRes.rows) {
+      data.rolesMeta.set(row.name, {
+        displayName: row.display_name || row.name,
+        description: row.description || "",
+        isSystemRole: row.is_system_role === true,
+      });
+    }
+    data.summary.totalRolesDb = metaRes.rowCount || 0;
+
+    // 5. Genel sayımlar
+    const userCountsRes = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total_all,
+        COUNT(*) FILTER (WHERE is_active = true AND deleted_at IS NULL)::int AS total_aktif
+      FROM users
+    `);
+    data.summary.totalUsersAll = userCountsRes.rows[0]?.total_all || 0;
+    data.summary.totalUsersAktif = userCountsRes.rows[0]?.total_aktif || 0;
+    // Aktif rol = en az bir is_active=true ve deleted_at IS NULL kullanıcısı olan rol
+    let aktifRolSayisi = 0;
+    for (const u of data.rolesUsers.values()) {
+      if ((u.aktif || 0) > 0) aktifRolSayisi += 1;
+    }
+    data.summary.totalRolesWithUsers = aktifRolSayisi;
+    // Tüm satırlar (deleted dahil) baz alındığında rol çeşitliliği — referans için
+    data.summary.totalRolesWithAnyUsers = data.rolesUsers.size;
+
+    const moduleFlagsRes = await pool.query(`SELECT COUNT(*)::int AS c FROM module_flags`);
+    data.summary.totalModuleFlags = moduleFlagsRes.rows[0]?.c || 0;
+
+    const branchesRes = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE deleted_at IS NULL)::int AS total_active,
+        COUNT(*) FILTER (WHERE deleted_at IS NULL AND COALESCE(setup_complete, false) = false)::int AS hazirlik
+      FROM branches
+    `);
+    data.summary.totalBranches = branchesRes.rows[0]?.total_active || 0;
+    data.summary.branchesHazirlik = branchesRes.rows[0]?.hazirlik || 0;
+  } finally {
+    await pool.end().catch(() => {});
   }
 
   return data;
@@ -127,7 +248,7 @@ class PdfBuilder {
     this.fontBold = await this.doc.embedFont(boldBytes, { subset: true });
     this.doc.setTitle("DOSPRESSO Rol Detaylı Raporu");
     this.doc.setAuthor("DOSPRESSO HQ + Replit Asistan");
-    this.doc.setSubject("26 aktif rolün detaylı analizi, perspektifler ve öneriler");
+    this.doc.setSubject(`${ROLE_ORDER.length} aktif rolün detaylı analizi, perspektifler ve öneriler`);
     this.doc.setKeywords(["DOSPRESSO", "rol", "yetki", "pilot", "5 May 2026"]);
     this.doc.setProducer("pdf-lib + DejaVu Sans");
     this.doc.setCreationDate(new Date());
@@ -555,13 +676,17 @@ function drawCoverPage(b, opts) {
     font: b.fontRegular,
     color: rgb(0.85, 0.90, 0.98),
   });
-  b.currentPage.drawText("26 Aktif Rol • Çoklu Perspektif • Öneriler", {
-    x: MARGIN.left,
-    y: A4.height - 170,
-    size: 12,
-    font: b.fontRegular,
-    color: rgb(0.78, 0.82, 0.92),
-  });
+  const coverSummary = opts.summary || {};
+  b.currentPage.drawText(
+    `${coverSummary.totalRolesWithUsers ?? "—"} Aktif Rol • Çoklu Perspektif • Öneriler`,
+    {
+      x: MARGIN.left,
+      y: A4.height - 170,
+      size: 12,
+      font: b.fontRegular,
+      color: rgb(0.78, 0.82, 0.92),
+    }
+  );
   b.currentPage.drawText(`Pilot Day-1: ${PILOT_DATE}`, {
     x: MARGIN.left,
     y: A4.height - 200,
@@ -572,12 +697,13 @@ function drawCoverPage(b, opts) {
 
   // Body
   let y = A4.height - 290;
+  const summary = opts.summary || {};
   const lines = [
-    `Üretim tarihi: ${REPORT_DATE}`,
-    `Kapsam: DB'de aktif 26 rol`,
-    `Toplam kullanıcı: 373 (aktif: ${opts.toplamAktif || "—"})`,
-    `Pilot şube: 4 (Işıklar, Antalya Lara, HQ, Fabrika)`,
-    `Hazırlık şubesi: 16 (onboarding wizard ile aktivasyon)`,
+    `Son güncelleme: ${REPORT_DATE}`,
+    `Kapsam: DB'de aktif ${summary.totalRolesWithUsers ?? "—"} rol (tanımlı ${summary.totalRolesDb ?? "—"} rolden)`,
+    `Toplam kullanıcı: ${summary.totalUsersAll ?? "—"} (aktif: ${summary.totalUsersAktif ?? "—"})`,
+    `Pilot şube: ${PILOT_BRANCH_COUNT} (Işıklar, Antalya Lara, HQ, Fabrika)`,
+    `Hazırlık şubesi: ${summary.branchesHazirlik ?? "—"} (onboarding wizard ile aktivasyon)`,
   ];
   for (const line of lines) {
     b.currentPage.drawText(line, {
@@ -601,7 +727,7 @@ function drawCoverPage(b, opts) {
   y -= 22;
   const tocBrief = [
     "1. Yönetici Özeti",
-    "2. 26 Rolün Kategori Bazlı Listesi",
+    `2. ${ROLE_ORDER.length} Rolün Kategori Bazlı Listesi`,
     "3. Her Rol için Detaylı Bölüm:",
     "    – Tanım, Güncel Durum, Sorumluluklar",
     "    – Günlük İş Akışı",
@@ -648,9 +774,10 @@ function drawExecutiveSummary(b, opts) {
   b.drawSectionTitle("1. Yönetici Özeti", [0.08, 0.16, 0.32], 20);
   b.drawSpacer(4);
 
+  const summary = opts.summary || {};
   b.drawParagraph(
-    "Bu rapor, DOSPRESSO franchise yönetim platformundaki 26 aktif rolün kapsamlı bir analizidir. " +
-    `Pilot Day-1 (${PILOT_DATE}) öncesi 9 günlük bir aralıkta hazırlanmış olup şu üç katmanı içerir:`,
+    `Bu rapor, DOSPRESSO franchise yönetim platformundaki ${summary.totalRolesWithUsers ?? "—"} aktif rolün kapsamlı bir analizidir. ` +
+    `Pilot Day-1 (${PILOT_DATE}) öncesi hazırlanmış olup şu üç katmanı içerir:`,
     { size: 10 }
   );
   b.drawSpacer(2);
@@ -661,16 +788,20 @@ function drawExecutiveSummary(b, opts) {
   ]);
   b.drawSpacer(6);
 
-  b.drawSubheading("Hızlı Resim — DB Snapshot'ı");
+  b.drawSubheading(`Hızlı Resim — DB Snapshot'ı (${REPORT_DATE})`);
   b.drawTable([
     ["Metrik", "Değer", "Yorum"],
-    ["DB'de tanımlı toplam rol", "25", "kalite_kontrol legacy (Ümran ayrıldı)"],
-    ["Aktif kullanıcısı olan rol", "26", "test/legacy hesaplar dahil"],
-    ["Toplam aktif kullanıcı (deleted_at IS NULL)", String(opts.toplamAktif || "—"), "26 rol arasında dağılım"],
-    ["Pilot kapsamı (Day-1)", "4 şube + Fabrika", "Işıklar, Antalya Lara, HQ #23, Fabrika #24"],
-    ["Hazırlık modu şubesi", "16", "Onboarding wizard ile aktivasyon"],
-    ["DB rol→modül yetki kaydı", "1727", "role_module_permissions tablosu"],
-    ["DB dashboard widget ataması", "184", "dashboard_role_widgets"],
+    ["DB'de tanımlı toplam rol", String(summary.totalRolesDb ?? "—"), "roles tablosu kayıt sayısı"],
+    ["Aktif kullanıcısı olan rol", String(summary.totalRolesWithUsers ?? "—"), "≥1 is_active=true ve deleted_at IS NULL kullanıcı"],
+    ["Geçmişte kullanıcısı olan rol", String(summary.totalRolesWithAnyUsers ?? "—"), "users.role distinct (silinmiş dahil)"],
+    ["Toplam aktif kullanıcı", String(summary.totalUsersAktif ?? "—"), "is_active=true ve deleted_at IS NULL"],
+    ["Toplam kullanıcı (deleted dahil)", String(summary.totalUsersAll ?? "—"), "tüm users satırları"],
+    ["Pilot kapsamı (Day-1)", `${PILOT_BRANCH_COUNT} şube + Fabrika`, "Işıklar, Antalya Lara, HQ #23, Fabrika #24"],
+    ["Hazırlık modu şubesi", String(summary.branchesHazirlik ?? "—"), "branches.setup_complete=false"],
+    ["Toplam aktif şube (silinmemiş)", String(summary.totalBranches ?? "—"), "branches.deleted_at IS NULL"],
+    ["DB rol→modül yetki kaydı", String(summary.totalRolePerms ?? "—"), "role_module_permissions tablosu"],
+    ["DB dashboard widget ataması", String(summary.totalRoleWidgets ?? "—"), "dashboard_role_widgets (is_enabled=true)"],
+    ["Tanımlı modül flag sayısı", String(summary.totalModuleFlags ?? "—"), "module_flags tablosu"],
   ], { headerRow: true, colWidths: [200, 90, 205] });
   b.drawSpacer(8);
 
@@ -789,7 +920,7 @@ function drawRoleSection(b, roleKey, dbData) {
   b.drawSpacer(2);
 
   // Current Status
-  b.drawCallout("Güncel Durum (26 Apr 2026)", content.currentStatus, [0.30, 0.50, 0.30]);
+  b.drawCallout(`Güncel Durum (${REPORT_DATE})`, content.currentStatus, [0.30, 0.50, 0.30]);
   b.drawSpacer(4);
 
   // Responsibilities
@@ -1064,13 +1195,17 @@ function drawRiskMatrix(b) {
 // Main
 // ----------------------------------------------------------------
 async function main() {
-  console.log("=> DB verilerini yüklüyorum...");
+  console.log(`=> DB verilerini yüklüyorum (DATABASE_URL canlı bağlantı)...`);
   const dbData = await loadDbData();
 
-  // toplam aktif user
-  let toplamAktif = 0;
-  for (const u of dbData.rolesUsers.values()) toplamAktif += u.aktif;
-  console.log(`   ${dbData.rolesUsers.size} rol, ${toplamAktif} aktif kullanıcı.`);
+  const summary = dbData.summary;
+  console.log(
+    `   ${summary.totalRolesWithUsers} aktif rol / ${summary.totalRolesDb} tanımlı rol, ` +
+    `${summary.totalUsersAktif} aktif kullanıcı (${summary.totalUsersAll} toplam), ` +
+    `${summary.totalRolePerms} rol-modül izni, ${summary.totalRoleWidgets} widget ataması, ` +
+    `${summary.totalBranches} aktif şube (${summary.branchesHazirlik} hazırlık modunda).`
+  );
+  console.log(`   Rapor üretim tarihi: ${REPORT_DATE}`);
 
   // ============================================================
   // 1. MASTER PDF
@@ -1078,8 +1213,8 @@ async function main() {
   console.log("\n=> Master PDF üretiliyor...");
   const master = new PdfBuilder();
   await master.init();
-  drawCoverPage(master, { toplamAktif });
-  drawExecutiveSummary(master, { toplamAktif });
+  drawCoverPage(master, { summary });
+  drawExecutiveSummary(master, { summary });
 
   // Roles by category, with category divider page
   const categoriesUsed = [];
@@ -1104,7 +1239,7 @@ async function main() {
   drawSystemicRecommendations(master);
   drawRiskMatrix(master);
 
-  const masterPath = path.join(OUTPUT_DIR, "dospresso-rol-raporu-2026-04-26.pdf");
+  const masterPath = path.join(OUTPUT_DIR, `dospresso-rol-raporu-${REPORT_DATE_ISO}.pdf`);
   await master.save(masterPath);
   console.log(`   ✓ ${masterPath} (${master.pageNumber} sayfa)`);
 
