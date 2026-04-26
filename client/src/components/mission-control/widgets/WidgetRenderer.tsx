@@ -18,6 +18,15 @@ import { QuickActionsWidget } from "./QuickActionsWidget";
 import { CustomerFeedbackWidget } from "./CustomerFeedbackWidget";
 import { AIBriefingWidget } from "./AIBriefingWidget";
 import { GenericStatWidget } from "./GenericStatWidget";
+import { PdksYoklamaWidget, PdksDevamsizlikWidget } from "../shared/PdksWidget";
+import { useAuth } from "@/hooks/useAuth";
+
+function PdksAttendanceAdapter() {
+  const { user } = useAuth();
+  const branchId = (user as any)?.branchId;
+  if (!branchId) return <PdksDevamsizlikWidget scope="all" />;
+  return <PdksYoklamaWidget branchId={Number(branchId)} />;
+}
 
 interface WidgetData {
   key: string;
@@ -55,6 +64,8 @@ const widgetMap: Record<string, (props: { data: any }) => JSX.Element | null> = 
   equipment_maintenance: ({ data }) => <EquipmentMaintenanceWidget data={data} />,
   quick_actions: ({ data }) => <QuickActionsWidget data={data} />,
   ai_briefing: ({ data }) => <AIBriefingWidget data={data} />,
+  pdks_attendance: () => <PdksAttendanceAdapter />,
+  pdks_absence: () => <PdksDevamsizlikWidget scope="all" />,
 };
 
 export function WidgetRenderer({ widget }: Props) {

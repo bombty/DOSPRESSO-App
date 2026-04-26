@@ -1,0 +1,166 @@
+Aslan onayladı. KABUL listesine 2 yeni acil pilot blocker eklendi:
+
+═══════════════════════════════════════════════
+#240 — Şube müdür/supervisor dashboard widget seed
+═══════════════════════════════════════════════
+
+DURUM: Pilot Day-1 BLOCKER
+Erdem (Işıklar müdür) ve Andre (Lara franchise sahibi/müdür) 5 May sabahı 
+DOSPRESSO'ya login olduklarında BOŞ DASHBOARD görüyor — dashboard_role_widgets 
+tablosunda sube_mudur ve sube_supervisor için 0 kayıt var.
+
+YAPILACAK:
+1. dashboard_role_widgets tablosuna sube_mudur için widget atama (DB INSERT)
+2. Aynısını sube_supervisor için
+3. Önerilen widget seti (admin/coach'tan subset, 6-7 widget):
+   - today_attendance        → Bugün giren/giremeyen personel listesi
+   - late_arrivals           → Geç giriş alarmı (15dk+)
+   - pending_tasks           → Şube için bekleyen görevler
+   - branch_score            → Şube sağlık skoru (PDKS+feedback+görev kombine)
+   - quick_actions           → Hızlı eylemler (vardiya gör, izin onayla, vb.)
+   - shift_summary           → Bugünün vardiya özeti (mola dönüşleri, fazla mesai)
+   - feedback_summary        → Son 7 gün müşteri feedback ortalaması
+4. Position/order alanlarını da set et (üstten alta logical akış)
+5. is_visible=true, is_required=true (müdür kapatamasın)
+
+TEST:
+- Erdem'in hesabıyla (Işıklar müdür) login → /dashboard veya /sube/5 
+  → 7 widget render olmalı, veriler dolu görünmeli
+- "Lara Müdür" hesabıyla (Andre) → aynı şey, branch_id=8 verisiyle
+- Supervisor (Basri Şen) hesabıyla → benzer ama daha kısıtlı set olmalı 
+  (branch_score yok, sadece kendi vardiyası)
+
+ROLLBACK:
+- DB INSERT olduğu için DELETE FROM ... WHERE role IN ('sube_mudur','sube_supervisor') 
+  geri alır
+- Hiçbir frontend kod değişikliği YOK (Komuta Merkezi 2.0 dynamic, widget tablosundan okur)
+
+TAHMİNİ SÜRE: 1-2 saat
+- 30 dk widget seed scripti yaz
+- 30 dk DB seed çalıştır + smoke test
+- 30-60 dk müdür hesabıyla canlı dashboard test et, görsel doğrula
+
+═══════════════════════════════════════════════
+#241 — Late vs Severe Late eşik doğrulama
+═══════════════════════════════════════════════
+
+DURUM: Pilot brief tutarlılığı (Yavuz brief'inde "60dk Severe" yazılı, 
+sistemde yoksa yanlış brief vermiş olurum)
+
+İLK ADIM: server/services/pdks-engine.ts:classifyDay fonksiyonunu oku.
+İki sorudan birinin cevabını bul:
+
+A) Severe Late eşiği KODDA VAR
+   - Hangi değer? (60dk varsayılan mı?)
+   - Hangi kolondan okuyor? (branch_kiosk_settings'te bir kolon mu, hard-code mu?)
+   - Pilot 4 şube için aktif mi?
+   - VARSA: bana doğrulama raporu ver, ben Yavuz brief'ini güncelleyim. Bu task kapanır.
+
+B) Severe Late eşiği KODDA YOK
+   - classifyDay sadece "late vs ontime" iki seviyeli sınıflandırıyor demek
+   - O zaman:
+     1. branch_kiosk_settings tablosuna severe_late_minutes NUMERIC NOT NULL DEFAULT 60 ekle (ALTER TABLE)
+     2. Pilot 4 şubeye SET et: 
+        UPDATE branch_kiosk_settings SET severe_late_minutes = 60 
+        WHERE branch_id IN (5, 8, 23, 24);
+     3. classifyDay fonksiyonunu güncelle:
+        - if (lateMinutes >= severe_late_minutes) return 'severe_late'
+        - else if (lateMinutes >= late_tolerance_minutes) return 'late'
+        - else return 'ontime'
+     4. PDKS dashboard'unda severe_late durumu için ayrı renk/badge göster
+     5. Mr. Dobody bildirim eşiklerini de severe_late için güncelle 
+        (4+ severe_late = coach'a otomatik mesaj)
+
+TEST:
+- Bir personel test: 70dk geç giriş yap → kayıt 'severe_late' olarak sınıflandırılmalı
+- 30dk geç → 'late'
+- 5dk geç → 'ontime' (15dk tolerans içinde)
+- Mr. Dobody kontrol: severe_late 4+ olan personel için coach'a alarm mesajı
+
+ROLLBACK:
+- ALTER TABLE DROP COLUMN severe_late_minutes
+- classifyDay'i eski haline döndür
+
+TAHMİNİ SÜRE: 1-2 saat
+- 15 dk: classifyDay oku + karar
+- 30 dk: ALTER + SET + classifyDay güncelle
+- 30 dk: Test (PDKS test kayıtları, dashboard, Mr. Dobody)
+- 15 dk: replit.md güncelleme
+
+═══════════════════════════════════════════════
+KABUL LİSTESİ REVİZE SIRASI
+═══════════════════════════════════════════════
+
+Faz 0 — Pilot Blocker (BUGÜN/YARIN bitir):
+  #240 → #241
+
+Faz 1 — Schema/data hijyen (önceki sırada):
+  #215 → #231 → #232 → #214 (zaten bitti, atlanır) → #234 (zaten bitti, atlanır)
+
+Faz 2 — Onay bug-fix:
+  #219 → #220
+
+Faz 3 — Sema iş akışı paketi (Sema brief'i 2 May Cuma deadline):
+  #227 + #228 birlikte (auto-pattern + boş hammadde manuel)
+  #217 + #236 birlikte (CSV export pakti)
+
+Faz 4 — Pilot Day-1 risk kapatma:
+  #237 (admin için kiosk PIN sıfırlama)
+
+═══════════════════════════════════════════════
+ÇAKIŞMA YOK — PARALEL ÇALIŞIYORUZ
+═══════════════════════════════════════════════
+
+Sen #240 + #241 yaparken ben paralel olarak:
+1. Pilot dry-run senaryosu yazıyorum (yarın 28 Nis Pazar deadline)
+2. Brief iskeletlerini hazırlıyorum (Eren, Erdem, Andre, Mahmut, Samet)
+
+#240 + #241 bittiğinde bana haber ver, 3 brief'i (Eren, Erdem, Andre) 
+gerçek widget verisi + doğrulanmış eşiklerle tek seferde yazacağım.
+
+═══════════════════════════════════════════════
+ÖNCEKİ PERSONEL HİJYEN BİLGİSİ (DB UPDATE)
+═══════════════════════════════════════════════
+
+Aslan'dan saha bilgisi:
+
+1. LARA MÜDÜRÜ → Andre (franchise sahibi VE müdür, tek kişi çift rol)
+   - "Lara Müdür" generic kullanıcısının first_name='Andre'
+   - Soyadı henüz bilinmiyor, sonra eklenecek
+   - "Lara Supervisor" → Andre supervisor da atayacak, Aslan'a soracağız
+
+2. ÜMİT (FABRİKA) → duplicate sorunu DEĞİL, gerçek 2 rol:
+   - Umit (sef) = Şef
+   - umit (uretim_sefi) = Pasta Ustası
+   - İkisi de aktif kalacak, biri pasif edilmeyecek
+   - Ancak case-sensitive duplicate (Umit vs umit) hâlâ kafa karıştırıcı
+   - Soru: usernames okunabilir yapsak mı? "umit_sef" + "umit_pasta"?
+   - Aslan'a sorulacak, şimdilik dokunma
+
+3. SEMA → pilot başında 2 hesap kalsın (önceki karar geçerli):
+   - sema (gida_muhendisi) ve RGM (recete_gm)
+   - Tek somut fark: RGM keyblend gizli reçete erişimi
+   - Diğer her şey ortak (alerjen, besin, kalite kontrol)
+
+ŞİMDİ YAP (1 numara):
+UPDATE users SET first_name='Andre' WHERE username='Lara Müdür' OR id=<lara_mudur_uuid>;
+(generic ismin gerçek user kaydını DB'den lookup et, username veya display name 
+ile eşleştir)
+
+═══════════════════════════════════════════════
+RAPORLAMA
+═══════════════════════════════════════════════
+
+Her task bittiğinde şu formatla bana ilet:
+
+✅ #XXX TAMAM
+- Kod değişiklikleri: <dosya listesi>
+- DB değişiklikleri: <ALTER/INSERT listesi>
+- Test sonucu: <kaç test PASS, kaç FAIL>
+- Bilinen sorunlar: <varsa>
+- Sıradaki: #YYY
+- Commit: <hash>
+
+#240 + #241 birlikte bittiğinde bana toplu rapor ver, brief yazımına geçeyim.
+
+İyi sprint, başla. ☕
