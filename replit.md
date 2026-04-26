@@ -6,7 +6,22 @@ DOSPRESSO is a comprehensive franchise management platform designed to centraliz
 ## User Preferences
 - Preferred communication: Simple, everyday language, Turkish preferred
 - Fast implementation in Build mode, continues with "devam"
-- DB schema changes via raw psql (drizzle-kit push times out)
+- DB schema changes via versioned migrations under `migrations/` (drizzle-kit push times out on this DB)
+
+## Migration Süreci (Task #255 — 26 Nis 2026)
+Schema/DB drift'i kapatıldı (13 eksik tablo, 4 UNIQUE, 83 index, 47 FK) ve drizzle-kit baseline'ı oluşturuldu. Bundan sonra şema değişiklikleri:
+
+1. **Schema dosyasını düzenle** → `shared/schema/schema-*.ts`.
+2. **Migration üret** → `npx drizzle-kit generate --name=<aciklayici-isim>`. Çıktı `migrations/00NN_<isim>.sql` ve `meta/_journal.json` güncellenir.
+3. **DB'ye uygula** → `psql "$DATABASE_URL" -f migrations/00NN_<isim>.sql` (veya destructive değilse `drizzle-orm/migrator`'ı tetikleyen bir script).
+4. **Sunucu boot'unda raw DDL kullanma.** Tablo yarat / kolon ekle gibi her şey versiyonlu bir migration dosyasına gitmeli. `server/index.ts` içindeki ham DDL'ler kaldırıldı.
+5. **Drift kontrolü** → `tsx scripts/db-drift-check.ts` herhangi bir zamanda çalıştırılabilir; `Eksik tablo / index / FK / UNIQUE = 0` döndürmesi beklenir.
+
+Yardımcı dosyalar:
+- `migrations/0000_baseline.sql` — drizzle-kit'in canlı şemadan çıkardığı baseline (yeniden çalıştırılmaz; `tsx scripts/db-mark-baseline-applied.ts` ile "uygulandı" işaretlendi).
+- `migrations/task-255-close-drift.sql` — eksik 13 tablo + UNIQUE + index + FK (FK'ler `NOT VALID` ile eklendi).
+- `migrations/task-255-startup-ddl.sql` — eski boot-time DDL'in versiyonlanmış hali (kiosk_sessions, branch_kiosk_settings kolonları, branches.setup_complete, users.onboarding_complete).
+- `docs/audit/db-drift-report-2026-04-26.md` — tam drift raporu, kapsam dışı 42 kolon-tipi/null mismatch listesi dahil.
 
 ## System Architecture
 

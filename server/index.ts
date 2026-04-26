@@ -186,35 +186,10 @@ app.use((req, res, next) => {
     });
   }
 
-  async function ensureKioskSessionsTable() {
-    try {
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS kiosk_sessions (
-          id SERIAL PRIMARY KEY,
-          token VARCHAR(64) NOT NULL UNIQUE,
-          user_id VARCHAR NOT NULL REFERENCES users(id),
-          station_id INTEGER,
-          expires_at TIMESTAMPTZ NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `);
-      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_token ON kiosk_sessions(token)`);
-      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_user ON kiosk_sessions(user_id)`);
-      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_kiosk_sessions_expires ON kiosk_sessions(expires_at)`);
-    } catch (error) {
-      console.error("[KioskSessions] Table bootstrap error:", error);
-    }
-  }
-
+  // NOT: kiosk_sessions tablosu ve şema değişiklikleri artık
+  // migrations/task-255-startup-ddl.sql üzerinden versiyonlanır.
+  // Burada sadece run-time veri migration'ı (parola hashleme) yapılır.
   async function migrateKioskPasswords() {
-    try {
-      await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password TYPE varchar(255)`);
-      await db.execute(sql`ALTER TABLE branch_kiosk_settings ALTER COLUMN kiosk_password DROP DEFAULT`);
-      await db.execute(sql`ALTER TABLE branch_kiosk_settings ADD COLUMN IF NOT EXISTS auto_close_time VARCHAR(5) DEFAULT '22:00'`);
-    } catch (error) {
-      console.error("[KioskMigration] Schema migration error:", error);
-    }
-
     let branchCount = 0;
     try {
       const allBranches = await db.select({
@@ -286,23 +261,16 @@ app.use((req, res, next) => {
 
   async function onServerReady() {
     const startupTime = Date.now();
-    
-    try {
-      await db.execute(sql`ALTER TABLE branches ADD COLUMN IF NOT EXISTS setup_complete BOOLEAN DEFAULT false`);
-      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT false`);
-    } catch (e) { console.error("Error adding new columns:", e); }
 
+    // NOT: branches.setup_complete, users.onboarding_complete,
+    // branch_kiosk_settings.allow_pin/allow_qr, kiosk_sessions tablosu vb.
+    // şema değişiklikleri artık migrations/task-255-startup-ddl.sql
+    // üzerinden uygulanır (Task #255).
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await resetNonAdminPasswords();
     await ensureAdminUserApproved();
-    await ensureKioskSessionsTable();
     await migrateKioskPasswords();
-    // Kiosk giriş yöntemi toggle sütunları
-    try {
-      await db.execute(sql`ALTER TABLE branch_kiosk_settings ADD COLUMN IF NOT EXISTS allow_pin BOOLEAN NOT NULL DEFAULT true`);
-      await db.execute(sql`ALTER TABLE branch_kiosk_settings ADD COLUMN IF NOT EXISTS allow_qr BOOLEAN NOT NULL DEFAULT true`);
-    } catch (e) { console.error("[Migration] allow_pin/allow_qr:", e); }
     await seedKioskAccounts();
 
     const roleChain = async () => {
