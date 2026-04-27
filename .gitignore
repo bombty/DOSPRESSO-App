@@ -41,3 +41,22 @@ __pycache__/
 # Testing
 coverage/
 .nyc_output/
+
+# Sensitive attached assets (KVKK / commercial secrets) - Task #257
+# Block all attached_assets binaries by default; whitelist safe text content
+attached_assets/**
+!attached_assets/.gitkeep
+!attached_assets/Pasted-*.txt
+!attached_assets/SKILL_*.md
+!attached_assets/stock_images/
+!attached_assets/stock_images/**
+
+# Defense in depth: hassas binary uzantıları her yerde engelle
+*.xlsx
+*.xls
+*.csv
+*.zip
+*.docx
+*.doc
+*.pages
+attached_assets/*.pdf
