@@ -28,7 +28,7 @@ import {
 import {
   ChevronLeft, Save, Plus, Trash2, Lock, Unlock, GripVertical,
   ChevronsUpDown, Check, AlertTriangle, Pencil, Upload, FileSpreadsheet, Download, Undo2, History,
-  Calculator, RefreshCw, ChevronDown, ChevronRight,
+  Calculator, RefreshCw, ChevronDown, ChevronRight, Link2, Unlink, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { canonicalIngredientName } from "@shared/lib/ingredient-canonical";
@@ -93,6 +93,18 @@ export default function FabrikaReceteDuzenle() {
   const [deleteIngredient, setDeleteIngredient] = useState<any | null>(null);
   const [editStep, setEditStep] = useState<any | null>(null);
   const [deleteStep, setDeleteStep] = useState<any | null>(null);
+
+  // Hammadde değiştirme: arama metni + lokal seçim id'si.
+  // editIngredient.rawMaterialId zaten ing'den geldiği için onu doğrudan kullanıyoruz,
+  // ama tip uniformluğu için string'e çeviriyoruz.
+  const [inventorySearch, setInventorySearch] = useState("");
+
+  // Modal her açıldığında arama kutusunu sıfırla
+  useEffect(() => {
+    if (editIngredient) {
+      setInventorySearch("");
+    }
+  }, [editIngredient?.id]);
 
   // R-5B: Maliyet hesaplama state'leri
   const [costResult, setCostResult] = useState<any | null>(null);
@@ -305,6 +317,23 @@ export default function FabrikaReceteDuzenle() {
     onError: (err: any) => {
       toast({ title: "Hata", description: err?.message || "Temizlik başarısız", variant: "destructive" });
     },
+  });
+
+  // ─────────────────────────────────────────────────────────
+  // Hammadde (envanter) listesi — Malzeme Düzenle modalı için.
+  // Detay ekranındakiyle aynı endpoint: GET /api/inventory?search=&limit=20
+  // ─────────────────────────────────────────────────────────
+  const { data: inventoryItems = [], isFetching: inventoryFetching } = useQuery<any[]>({
+    queryKey: ["/api/inventory", inventorySearch],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/inventory?search=${encodeURIComponent(inventorySearch)}&limit=20`,
+        { credentials: "include" },
+      );
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!editIngredient && inventorySearch.trim().length >= 2,
   });
 
   // ─────────────────────────────────────────────────────────
@@ -2473,6 +2502,116 @@ export default function FabrikaReceteDuzenle() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Hammadde (envanter) eşleştirme — "BEYAZ ÇİKOLATA"yı başka ürünle değiştirme */}
+              <div>
+                <Label>Hammadde Eşleştirme</Label>
+                <div className="mt-1 space-y-2">
+                  {(editIngredient.inventoryCode || editIngredient.inventoryName) ? (
+                    <div
+                      className="flex items-center gap-2 text-xs p-2 bg-muted/50 rounded"
+                      data-testid="text-edit-ingredient-current-inventory"
+                    >
+                      <Link2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                      <span className="truncate">
+                        Mevcut: {editIngredient.inventoryCode && (
+                          <strong className="font-mono text-emerald-600 dark:text-emerald-400">
+                            {editIngredient.inventoryCode}
+                          </strong>
+                        )}
+                        {editIngredient.inventoryName && (
+                          <> — {editIngredient.inventoryName}</>
+                        )}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded flex items-center gap-2">
+                      <Unlink className="h-3 w-3 shrink-0" />
+                      <span>Henüz envanter ürünü ile eşleşmemiş</span>
+                    </div>
+                  )}
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      className="pl-7"
+                      placeholder="Hammadde ara (en az 2 karakter, kod veya isim)..."
+                      value={inventorySearch}
+                      onChange={(e) => setInventorySearch(e.target.value)}
+                      data-testid="input-edit-ingredient-inventory-search"
+                    />
+                  </div>
+                  {inventorySearch.trim().length >= 2 && (
+                    <div
+                      className="max-h-40 overflow-y-auto border rounded space-y-0.5 p-1"
+                      data-testid="list-edit-ingredient-inventory-results"
+                    >
+                      {inventoryFetching && inventoryItems.length === 0 ? (
+                        <div className="text-xs text-muted-foreground p-2 text-center">
+                          Yükleniyor...
+                        </div>
+                      ) : inventoryItems.length === 0 ? (
+                        <div className="text-xs text-muted-foreground p-2 text-center">
+                          Sonuç bulunamadı
+                        </div>
+                      ) : (
+                        inventoryItems.map((item: any) => {
+                          const isSelected = Number(editIngredient.rawMaterialId) === Number(item.id);
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className={cn(
+                                "w-full text-left text-xs px-2 py-1.5 rounded hover-elevate",
+                                isSelected && "bg-primary/10",
+                              )}
+                              onClick={() =>
+                                setEditIngredient({
+                                  ...editIngredient,
+                                  rawMaterialId: item.id,
+                                  inventoryCode: item.code,
+                                  inventoryName: item.name,
+                                  // Birim boşsa envanterden gelen birimi al, gr fallback en son
+                                  unit: editIngredient.unit || item.unit || "gr",
+                                })
+                              }
+                              data-testid={`button-select-inventory-${item.id}`}
+                            >
+                              <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                                {item.code}
+                              </span>
+                              {" — "}
+                              <span>{item.name}</span>
+                              {item.unit && (
+                                <span className="text-muted-foreground ml-1">({item.unit})</span>
+                              )}
+                              {isSelected && (
+                                <Check className="inline-block h-3 w-3 ml-1 text-emerald-500" />
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                  {editIngredient.rawMaterialId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-amber-600 dark:text-amber-400 h-7"
+                      onClick={() =>
+                        setEditIngredient({
+                          ...editIngredient,
+                          rawMaterialId: null,
+                          inventoryCode: null,
+                          inventoryName: null,
+                        })
+                      }
+                      data-testid="button-clear-ingredient-inventory"
+                    >
+                      <Unlink className="h-3 w-3 mr-1" /> Eşleşmeyi Kaldır
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div>
                 <Label>Notlar (opsiyonel)</Label>
                 <Textarea
@@ -2489,13 +2628,43 @@ export default function FabrikaReceteDuzenle() {
             <Button
               onClick={() => {
                 if (!editIngredient?.id) return;
+                // Miktar boş veya geçersizse mutation'ı engelle
+                const amountStr = String(editIngredient.amount ?? "").trim();
+                const amountNum = Number(amountStr);
+                if (!amountStr || !Number.isFinite(amountNum) || amountNum <= 0) {
+                  toast({
+                    title: "Geçersiz miktar",
+                    description: "Miktar 0'dan büyük bir sayı olmalı",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                // Birim boşsa güvenli fallback
+                const safeUnit = (editIngredient.unit || "").trim() || "gr";
+                // rawMaterialId: undefined gönderirsek backend dokunmaz; null ise eşleşmeyi kaldırır.
+                // NaN ihtimaline karşı Number.isFinite guard ile koruyoruz; geçersiz değer
+                // yanlışlıkla envanter eşleşmesini bozmasın diye undefined'a düşüyor.
+                const rawMaterialIdRaw = editIngredient.rawMaterialId;
+                let rawMaterialIdPayload: number | null | undefined;
+                if (rawMaterialIdRaw === null || rawMaterialIdRaw === "") {
+                  rawMaterialIdPayload = null;
+                } else if (rawMaterialIdRaw === undefined) {
+                  rawMaterialIdPayload = undefined;
+                } else {
+                  const n = Number(rawMaterialIdRaw);
+                  rawMaterialIdPayload = Number.isFinite(n) ? n : undefined;
+                }
                 editIngredientMutation.mutate({
                   ingredientId: editIngredient.id,
                   data: {
-                    amount: editIngredient.amount,
-                    unit: editIngredient.unit,
-                    ingredientCategory: editIngredient.ingredientCategory || editIngredient.ingredient_category,
+                    amount: amountStr,
+                    unit: safeUnit,
+                    ingredientCategory:
+                      editIngredient.ingredientCategory || editIngredient.ingredient_category,
                     notes: editIngredient.notes,
+                    ...(rawMaterialIdPayload !== undefined
+                      ? { rawMaterialId: rawMaterialIdPayload }
+                      : {}),
                   },
                 });
               }}
