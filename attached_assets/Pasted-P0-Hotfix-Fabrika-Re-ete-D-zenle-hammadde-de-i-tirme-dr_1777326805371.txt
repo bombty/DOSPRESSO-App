@@ -1,0 +1,62 @@
+P0 Hotfix — Fabrika Reçete Düzenle hammadde değiştirme dropdown'u çalışmıyor
+
+Kapsam:
+- Sadece şu bug'ı düzelt: /fabrika/receteler/:id/duzenle sayfasında "Malzeme Düzenle" modalındaki "Hammadde Eşleştirme" arama/dropdown alanı sonuç göstermiyor.
+- Önceki smoke testte /fabrika/receteler/20/duzenle sayfasında modal açıldı, mevcut hammadde "BEYAZ ÇİKOLATA (0001)" göründü, miktar/birim editable idi; fakat ACI, BADEM, FİLE BADEM aramalarında "Sonuç bulunamadı" çıktı.
+- Backend GET /api/factory/ingredient-names 200 dönüyor ama modal bu listeyi doğru filtrelemiyor veya yanlış endpoint/response shape kullanıyor olabilir.
+
+Kesin kurallar:
+- Backend, DB, schema, migration, env, package.json, permission, onboarding dosyalarına dokunma.
+- Onboarding RBAC 403 bug'ına bu task'ta dokunma.
+- Yeni paket kurma.
+- Gerçek üretim reçetesinde kalıcı değişiklik yapma. Save testi ancak güvenli test reçetesi varsa yapılır; yoksa seçimi UI'da test edip modalı iptal et.
+- Force push, history rewrite, reset hard yok.
+
+Yapılacak analiz:
+1. client/src/pages/fabrika-recete-duzenle.tsx içindeki "Malzeme Düzenle" modalını incele.
+2. client/src/pages/fabrika-recete-detay.tsx içinde çalışan hammadde değiştirme/eşleştirme pattern'i varsa onunla karşılaştır.
+3. Modal şu an /api/factory/ingredient-names kullanıyorsa response shape'i doğrula. Eğer bu endpoint sadece string/name listesi dönüyor veya rawMaterialId/id vermiyorsa, rawMaterialId seçimi için doğru endpoint değildir.
+4. Hammadde seçimi için rawMaterialId/id, code/itemCode/inventoryCode, name/inventoryName, unit alanlarını dönen doğru inventory/hammadde listesini kullan.
+5. Search filtresi şu alanlarda çalışmalı:
+   - code / itemCode / inventoryCode
+   - name / itemName / inventoryName
+   - kategori varsa category
+   Arama trim() ile boşluklardan temizlensin. Büyük/küçük harf ve Türkçe karakter sorunu yaratmasın.
+6. Response array değilse güvenli fallback [] kullan.
+7. Seçilen hammadde modal state'ine yazılmalı:
+   - rawMaterialId finite number ise payload'a gitmeli
+   - null ise eşleşme kaldırmalı
+   - undefined ise backend alanı değiştirmemeli
+8. Mevcut hammadde modal açıldığında önceden seçili görünmeli.
+9. Birim boşsa güvenli fallback "gr" olsun; ama kullanıcı birimi değiştirebilsin.
+10. Miktar > 0 validasyonu kalsın.
+
+Beklenen sonuç:
+- "Malzeme Düzenle" modalında mevcut hammadde görünür.
+- Arama alanına ACI, BADEM, ÇİKOLATA, UN yazıldığında ilgili hammadde sonuçları çıkar.
+- Kullanıcı listeden başka hammadde seçebilir.
+- Seçim sonrası modalda seçili ürün görsel olarak belli olur.
+- "Eşleşmeyi Kaldır" varsa rawMaterialId=null davranışı korunur.
+- Kaydetmeden iptal edildiğinde üretim verisi değişmez.
+- Güvenli test reçetesi varsa save + revert testi yapılabilir; yoksa save yapma.
+
+Smoke test:
+- recete_gm veya RGM test kullanıcısıyla login ol, şifre olarak 0000 dene.
+- /fabrika/receteler/20/duzenle aç.
+- İlk malzemede "Malzeme Düzenle" modalını aç.
+- ACI, BADEM, ÇİKOLATA, UN aramalarını dene.
+- En az bir sonuç seç.
+- Kaydetmeden iptal et.
+- Console runtime error var mı kontrol et.
+- Eğer güvenli test reçetesi varsa kayıt testini yapıp eski haline geri al; yoksa açıkça "save test edilmedi — güvenli test reçetesi yoktu" yaz.
+
+Rapor formatı:
+1. Kök neden neydi?
+2. Hangi endpoint/response shape kullanılıyordu, neye çevrildi?
+3. Değişen dosyalar
+4. Kod/DB/schema/migration/env/package değişti mi? Evet/Hayır
+5. Typecheck veya LSP sonucu
+6. Smoke test sonucu
+7. Veri değişikliği yapıldı mı? Evet/Hayır
+8. git diff --stat
+9. Commit hash ve push durumu

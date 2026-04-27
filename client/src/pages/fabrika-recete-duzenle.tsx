@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -321,20 +321,44 @@ export default function FabrikaReceteDuzenle() {
 
   // ─────────────────────────────────────────────────────────
   // Hammadde (envanter) listesi — Malzeme Düzenle modalı için.
-  // Detay ekranındakiyle aynı endpoint: GET /api/inventory?search=&limit=20
+  //
+  // Backend `/api/inventory` route'u Drizzle `like()` (case-sensitive) ile arama
+  // yapıyor — yani büyük harf "ACI" ile ararsan "Acı badem" eşleşmiyordu.
+  // Backend'e dokunma yasağı olduğu için modal açıldığında tüm aktif inventory
+  // listesini bir kez çekip (940 kayıt ≈ ~150KB), client tarafında TR locale +
+  // diakritik kaldırarak filtreliyoruz. Detay ekranıyla davranışsal olarak
+  // tutarlı, ama "Sonuç bulunamadı" yanlış pozitifini önlüyor.
   // ─────────────────────────────────────────────────────────
   const { data: inventoryItems = [], isFetching: inventoryFetching } = useQuery<any[]>({
-    queryKey: ["/api/inventory", inventorySearch],
+    queryKey: ["/api/inventory", "all-active"],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/inventory?search=${encodeURIComponent(inventorySearch)}&limit=20`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`/api/inventory`, { credentials: "include" });
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
     },
-    enabled: !!editIngredient && inventorySearch.trim().length >= 2,
+    enabled: !!editIngredient,
+    staleTime: 5 * 60 * 1000,
   });
+
+  const filteredInventoryItems = useMemo(() => {
+    const q = (inventorySearch || "").trim();
+    if (q.length < 2) return [];
+    const norm = (s: string) =>
+      (s || "")
+        .toLocaleLowerCase("tr")
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "");
+    const nq = norm(q);
+    const list = Array.isArray(inventoryItems) ? inventoryItems : [];
+    return list
+      .filter((it: any) => {
+        const name = norm(it?.name || "");
+        const code = norm(it?.code || "");
+        return name.includes(nq) || code.includes(nq);
+      })
+      .slice(0, 30);
+  }, [inventoryItems, inventorySearch]);
 
   // ─────────────────────────────────────────────────────────
   // R-5A: Malzeme + Adım Düzenle/Sil Mutations
@@ -2548,12 +2572,12 @@ export default function FabrikaReceteDuzenle() {
                         <div className="text-xs text-muted-foreground p-2 text-center">
                           Yükleniyor...
                         </div>
-                      ) : inventoryItems.length === 0 ? (
+                      ) : filteredInventoryItems.length === 0 ? (
                         <div className="text-xs text-muted-foreground p-2 text-center">
                           Sonuç bulunamadı
                         </div>
                       ) : (
-                        inventoryItems.map((item: any) => {
+                        filteredInventoryItems.map((item: any) => {
                           const isSelected = Number(editIngredient.rawMaterialId) === Number(item.id);
                           return (
                             <button
