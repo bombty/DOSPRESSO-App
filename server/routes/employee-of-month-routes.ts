@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
-import { eq, desc, and, sql, count, sum } from "drizzle-orm";
+import { eq, desc, and, sql, count, sum, notInArray } from "drizzle-orm";
 import {
   branches,
   users,
@@ -68,8 +68,11 @@ const router = Router();
         customerRatingWeight: 15, managerRatingWeight: 20, leaveDeductionWeight: 10
       };
       
-      // Get employees
-      let userConditions: any[] = [eq(users.isActive, true)];
+      // Get employees — kiosk cihaz hesapları ayın elemanı seçilemez
+      let userConditions: any[] = [
+        eq(users.isActive, true),
+        notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk']),
+      ];
       if (branchId) {
         userConditions.push(eq(users.branchId, branchId));
       }

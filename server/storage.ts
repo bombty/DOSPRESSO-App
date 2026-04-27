@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, asc, and, or, sql, inArray, gt, gte, lte, isNotNull, isNull, type SQL } from "drizzle-orm";
+import { eq, desc, asc, and, or, sql, inArray, notInArray, gt, gte, lte, isNotNull, isNull, type SQL } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import type {
   User,
@@ -1074,10 +1074,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllEmployees(branchId?: number): Promise<User[]> {
+    // Insan personel listesi — sistem/cihaz hesapları (sube_kiosk, fabrika_kiosk) hariç tutulur.
+    // Admin teknik cihaz yönetimi kiosk hesaplarına getAllUsersWithFilters({ role: 'sube_kiosk' }) ile erişebilir.
+    const excludeKioskRoles = notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk']);
     if (branchId !== undefined) {
-      return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true), isNull(users.deletedAt))) as Promise<User[]>;
+      return db.select().from(users).where(and(eq(users.branchId, branchId), eq(users.isActive, true), isNull(users.deletedAt), excludeKioskRoles)) as Promise<User[]>;
     }
-    return db.select().from(users).where(and(eq(users.isActive, true), isNull(users.deletedAt))) as Promise<User[]>;
+    return db.select().from(users).where(and(eq(users.isActive, true), isNull(users.deletedAt), excludeKioskRoles)) as Promise<User[]>;
   }
 
   async getTerminatedEmployees(branchId?: number): Promise<User[]> {

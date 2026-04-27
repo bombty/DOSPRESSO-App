@@ -5,7 +5,7 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { type UserRoleType } from "../permission-service";
 import { AuthorizationError, ensurePermission } from "./helpers";
-import { and, or, sum, max } from "drizzle-orm";
+import { and, or, sum, max, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   insertEmployeeDocumentSchema,
@@ -43,8 +43,9 @@ const router = Router();
       const startDate = new Date(targetYear, targetMonth - 1, 1);
       const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
       
-      // Get employees based on filters
-      let employees = await db.select().from(users);
+      // Get employees based on filters — kiosk cihaz hesapları puantajda görünmemeli
+      let employees = await db.select().from(users)
+        .where(notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk']));
       
       // Branch restriction for supervisors (they can only see their own branch)
       if (role === 'supervisor' || role === 'supervisor_buddy') {
@@ -170,8 +171,9 @@ const router = Router();
         return res.status(403).json({ message: scopeResult.error });
       }
       
-      // Get employees based on scope
-      const allEmployees = await db.select().from(users);
+      // Get employees based on scope — kiosk cihaz hesapları özlük dosyasında görünmemeli
+      const allEmployees = await db.select().from(users)
+        .where(notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk']));
       let documentsToReturn: any[] = [];
       
       for (const employee of allEmployees) {

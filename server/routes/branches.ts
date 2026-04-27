@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { isAuthenticated, isKioskAuthenticated, createKioskSession, validateKioskSession } from "../localAuth";
 import { requireManifestAccess } from "../services/manifest-auth";
 import { isHQRole, isBranchRole, hasPermission, type UserRoleType } from "@shared/schema";
-import { eq, desc, asc, and, or, gte, lte, sql, inArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
+import { eq, desc, asc, and, or, gte, lte, sql, inArray, notInArray, isNull, isNotNull, ne, not, count, sum, avg, max, min } from "drizzle-orm";
 import { sanitizeUsersForRole } from "../security";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { handleApiError } from "./helpers";
@@ -4636,7 +4636,8 @@ router.post('/api/branches/:branchId/attendance/calculate-weekly', isAuthenticat
     const branchStaff = await db.select().from(users)
       .where(and(
         eq(users.branchId, branchId),
-        eq(users.isActive, true)
+        eq(users.isActive, true),
+        notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk'])
       ));
 
     const results: any[] = [];
@@ -4742,7 +4743,8 @@ router.post('/api/branches/:branchId/attendance/calculate-monthly', isAuthentica
     const branchStaff = await db.select().from(users)
       .where(and(
         eq(users.branchId, branchId),
-        eq(users.isActive, true)
+        eq(users.isActive, true),
+        notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk'])
       ));
 
     const results: any[] = [];

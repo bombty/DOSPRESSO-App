@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { users, userTrainingProgress, quizResults, branchTaskInstances, pdksRecords, tasks, factoryShiftSessions, factoryProductionOutputs, factoryBreakLogs } from "@shared/schema";
-import { eq, and, gte, isNull, sql, desc, or, count } from "drizzle-orm";
+import { eq, and, gte, isNull, sql, desc, or, count, notInArray } from "drizzle-orm";
 import { getWorkerScoreSummary } from "./factory-scoring-service";
 
 export interface TrainingMetrics {
@@ -348,13 +348,15 @@ export async function getEmployeeSummary(userId: string, days: number = 30): Pro
 }
 
 export async function getBranchEmployeeSummaries(branchId: number, days: number = 30): Promise<EmployeeSummary[]> {
+  // Şube personel özet listesi — kiosk cihaz hesapları (sube_kiosk, fabrika_kiosk) hariç
   const branchUsers = await db.select({
     id: users.id,
   }).from(users)
     .where(and(
       eq(users.branchId, branchId),
       eq(users.isActive, true),
-      isNull(users.deletedAt)
+      isNull(users.deletedAt),
+      notInArray(users.role, ['sube_kiosk', 'fabrika_kiosk'])
     ));
 
   const summaries = await Promise.all(
