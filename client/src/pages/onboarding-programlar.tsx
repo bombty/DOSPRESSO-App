@@ -104,7 +104,9 @@ export default function OnboardingProgramlar() {
   const [checkinStrengths, setCheckinStrengths] = useState("");
   const [checkinAreas, setCheckinAreas] = useState("");
 
-  const isManager = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'supervisor', 'muhasebe_ik', 'fabrika_mudur'].includes(user?.role || '');
+  const userRole = user?.role || '';
+  const canCheckin = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'supervisor', 'fabrika_mudur'].includes(userRole);
+  const canComplete = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'mudur', 'fabrika_mudur'].includes(userRole);
 
   const { data: programs = [], isLoading: isProgramsLoading, isError, refetch } = useQuery<OnboardingProgram[]>({
     queryKey: ["/api/onboarding-programs"],
@@ -163,16 +165,17 @@ export default function OnboardingProgramlar() {
     },
   });
 
+  if (isProgramsLoading && isInstancesLoading) return <LoadingState />;
+  if (isError) return <ErrorState onRetry={refetch} />;
+
+  if (selectedInstance && isDetailLoading) return <LoadingState />;
+
   if (selectedInstance && instanceDetail) {
     const totalWeeks = instanceDetail.weeks?.length || instanceDetail.program?.durationWeeks || 4;
     const completedCheckins = instanceDetail.checkins?.length || 0;
     const progressPercent = Math.min(100, Math.round((completedCheckins / totalWeeks) * 100));
 
-    
-  if (isProgramsLoading) return <LoadingState />;
-  if (isError) return <ErrorState onRetry={refetch} />;
-
-  return (
+    return (
       <div className="min-h-screen bg-background">
         <div className="max-w-6xl mx-auto p-4 pb-24 space-y-4">
           <Button variant="ghost" size="sm" onClick={() => setSelectedInstance(null)} data-testid="button-back">
@@ -217,26 +220,30 @@ export default function OnboardingProgramlar() {
                 <Calendar className="h-5 w-5" />
                 Haftalık Plan
               </h2>
-              {isManager && instanceDetail.status === 'active' && (
+              {(canCheckin || canComplete) && instanceDetail.status === 'active' && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    size="sm"
-                    onClick={() => setShowCheckinDialog(true)}
-                    data-testid="button-new-checkin"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Check-in Ekle
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => completeInstance.mutate(instanceDetail.id)}
-                    disabled={completeInstance.isPending}
-                    data-testid="button-complete"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Tamamla
-                  </Button>
+                  {canCheckin && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowCheckinDialog(true)}
+                      data-testid="button-new-checkin"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Check-in Ekle
+                    </Button>
+                  )}
+                  {canComplete && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => completeInstance.mutate(instanceDetail.id)}
+                      disabled={completeInstance.isPending}
+                      data-testid="button-complete"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Tamamla
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

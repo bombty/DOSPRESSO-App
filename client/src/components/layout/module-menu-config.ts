@@ -36,7 +36,7 @@ const IK_MENU: ModuleMenuConfig = {
     { id: "bordro", label: "Bordro", path: "/bordrom", icon: CreditCard },
     { id: "izinler", label: "İzin Yönetimi", path: "/izin-talepleri", icon: Calendar },
     { id: "mesai", label: "Mesai Talepleri", path: "/mesai-talepleri", icon: Clock },
-    { id: "onboarding", label: "Onboarding", path: "/personel-onboarding", icon: UserPlus },
+    { id: "onboarding", label: "Onboarding", path: "/personel-onboarding-akisi", icon: UserPlus, allowedRoles: ["admin","ceo","cgo","muhasebe_ik","mudur","supervisor","coach","trainer","fabrika_mudur"] },
     { id: "performans", label: "Performans", path: "/performansim", icon: TrendingUp },
     { id: "ik-raporlar", label: "İK Raporları", path: "/ik-raporlari", icon: BarChart2 },
     { id: "sube-bordro", label: "Bordro Özeti", path: "/sube-bordro-ozet", icon: CreditCard },

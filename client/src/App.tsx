@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, Suspense, type ReactNode } from "react";
 import { ErrorBoundary, LazyErrorBoundary } from "@/components/error-boundary";
 import { lazyWithRetry } from "@/lib/lazy-with-retry";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient, onLockError, type LockInfo, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
 import { LockedRecordDialog } from "@/components/locked-record-dialog";
@@ -288,6 +288,7 @@ const AdminEmployeeTypes = lazyWithRetry(() => import("@/pages/admin-employee-ty
 const GuestFormSettings = lazyWithRetry(() => import("@/pages/guest-form-settings"));
 const KampanyaYonetimi = lazyWithRetry(() => import("@/pages/kampanya-yonetimi"));
 const CoachOnboardingStudio = lazyWithRetry(() => import("@/pages/coach-onboarding-studio"));
+const OnboardingProgramlar = lazyWithRetry(() => import("@/pages/onboarding-programlar"));
 const AksiyonTakip = lazyWithRetry(() => import("@/pages/aksiyon-takip"));
 const AcademyLanding = lazyWithRetry(() => import("@/pages/academy-landing"));
 const AcademyMyPath = lazyWithRetry(() => import("@/pages/academy-my-path"));
@@ -454,8 +455,10 @@ function Router() {
           <Route path="/gelismis-raporlar">{() => <ExecutiveOnly><AdvancedReportsPage /></ExecutiveOnly>}</Route>
           <Route path="/performansim" component={MyPerformancePage} />
           <Route path="/personel-duzenle/:id">{() => <ExecutiveOnly><PersonelDuzenle /></ExecutiveOnly>}</Route>
-          <Route path="/personel-onboarding">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/personel-onboarding'; return null; }}</Route>
-          <Route path="/onboarding-programlar">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi/onboarding-programlar'; return null; }}</Route>
+          <Route path="/personel-onboarding"><Redirect to="/personel-onboarding-akisi" /></Route>
+          <Route path="/akademi/personel-onboarding"><Redirect to="/personel-onboarding-akisi" /></Route>
+          <Route path="/akademi/onboarding-programlar"><Redirect to="/onboarding-programlar" /></Route>
+          <Route path="/onboarding-programlar">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","mudur","supervisor","supervisor_buddy","muhasebe_ik","fabrika_mudur"]}><OnboardingProgramlar /></ProtectedRoute>}</Route>
           <Route path="/vardiyalar">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalar /></ModuleGuard>}</Route>
           <Route path="/vardiya-planlama">{() => <ModuleGuard moduleKey="vardiya"><VardiyaPlanlama /></ModuleGuard>}</Route>
           <Route path="/vardiyalarim">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalarim /></ModuleGuard>}</Route>
@@ -629,7 +632,7 @@ function Router() {
           <Route path="/duyuru-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach"]}><Announcements /></ProtectedRoute>}</Route>
           <Route path="/duyuru/:id">{() => <DuyuruDetay />}</Route>
           <Route path="/mesajlarim" component={Mesajlar} />
-          <Route path="/personel-onboarding-akisi">{() => <ProtectedRoute allowedRoles={["muhasebe_ik","admin","mudur","coach","trainer"]}><PersonelOnboarding /></ProtectedRoute>}</Route>
+          <Route path="/personel-onboarding-akisi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","mudur","supervisor","coach","trainer","fabrika_mudur"]}><PersonelOnboarding /></ProtectedRoute>}</Route>
           <Route path="/ekipman-katalog">{() => <ProtectedRoute allowedRoles={["cgo","admin","teknik"]}><EkipmanKatalog /></ProtectedRoute>}</Route>
           <Route path="/akademi-webinars">{() => <ProtectedRoute allowedRoles={["trainer","admin","coach"]}><AcademyWebinars /></ProtectedRoute>}</Route>
           <Route path="/akademi-icerik-yonetimi">{() => <ProtectedRoute allowedRoles={["trainer","admin"]}><AcademyContentMgmt /></ProtectedRoute>}</Route>
