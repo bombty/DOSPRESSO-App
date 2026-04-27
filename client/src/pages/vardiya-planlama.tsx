@@ -168,30 +168,47 @@ export default function VardiyaPlanlama() {
   const canEditShifts = user?.role && editableRoles.includes(user.role);
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'supervisor_buddy' || ['admin', 'hq_admin', 'hq_staff', 'destek'].includes(user?.role || '');
 
-  const { data: shifts, isLoading: shiftsLoading, isError, refetch } = useQuery({
+  const { data: shiftsRaw, isLoading: shiftsLoading, isError, refetch } = useQuery({
     queryKey: ['/api/shifts'],
   });
+  const shifts = useMemo<any[]>(() => Array.isArray(shiftsRaw) ? shiftsRaw : [], [shiftsRaw]);
 
   // Fetch pending swap requests for current user (as target)
-  const { data: pendingSwapRequestsForMe } = useQuery({
+  const { data: pendingSwapRequestsForMeRaw } = useQuery({
     queryKey: ['/api/shift-swap-requests/pending-for-me'],
   });
+  const pendingSwapRequestsForMe = useMemo<any[]>(
+    () => Array.isArray(pendingSwapRequestsForMeRaw) ? pendingSwapRequestsForMeRaw : [],
+    [pendingSwapRequestsForMeRaw]
+  );
 
   // Fetch all swap requests for the branch
-  const { data: allSwapRequests, refetch: refetchSwapRequests } = useQuery({
+  const { data: allSwapRequestsRaw, refetch: refetchSwapRequests } = useQuery({
     queryKey: ['/api/shift-swap-requests'],
   });
+  const allSwapRequests = useMemo<any[]>(
+    () => Array.isArray(allSwapRequestsRaw) ? allSwapRequestsRaw : [],
+    [allSwapRequestsRaw]
+  );
 
   // Fetch pending supervisor approval requests
-  const { data: pendingSuperviorRequests } = useQuery({
+  const { data: pendingSuperviorRequestsRaw } = useQuery({
     queryKey: ['/api/shift-swap-requests/pending-supervisor'],
     enabled: isSupervisor,
   });
+  const pendingSuperviorRequests = useMemo<any[]>(
+    () => Array.isArray(pendingSuperviorRequestsRaw) ? pendingSuperviorRequestsRaw : [],
+    [pendingSuperviorRequestsRaw]
+  );
 
-  const { data: allEmployees } = useQuery({
+  const { data: allEmployeesRaw } = useQuery({
     queryKey: ['/api/employees'],
     staleTime: 600000,
   });
+  const allEmployees = useMemo<any[]>(
+    () => Array.isArray(allEmployeesRaw) ? allEmployeesRaw : [],
+    [allEmployeesRaw]
+  );
 
   // Fetch branch details for opening/closing hours
   const { data: branchData } = useQuery({
@@ -209,19 +226,26 @@ export default function VardiyaPlanlama() {
   }, [branchData]);
 
   const branchEmployees = useMemo(() => {
-    if (!allEmployees || !Array.isArray(allEmployees)) return [];
     return allEmployees.filter((emp: any) => emp.branchId === user?.branchId);
   }, [allEmployees, user?.branchId]);
 
-  const { data: checklists } = useQuery({
+  const { data: checklistsRaw } = useQuery({
     queryKey: ['/api/checklists'],
     staleTime: 1800000,
   });
+  const checklists = useMemo<any[]>(
+    () => Array.isArray(checklistsRaw) ? checklistsRaw : [],
+    [checklistsRaw]
+  );
 
-  const { data: tasks } = useQuery({
+  const { data: tasksRaw } = useQuery({
     queryKey: ['/api/tasks'],
     staleTime: 60000,
   });
+  const tasks = useMemo<any[]>(
+    () => Array.isArray(tasksRaw) ? tasksRaw : [],
+    [tasksRaw]
+  );
 
   // Calculate weekly hours for each employee from existing shifts (excluding 1-hour breaks)
   const getEmployeeWeeklyHours = useCallback((employeeId: string) => {
@@ -1988,6 +2012,15 @@ function AIPlanModal({ open, onClose, weekStart, employees, branchId, existingSh
   const [aiSummary, setAiSummary] = useState<string>('');
   const [isCached, setIsCached] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const { data: checklistsRaw } = useQuery({
+    queryKey: ['/api/checklists'],
+    staleTime: 1800000,
+  });
+  const checklists = useMemo<any[]>(
+    () => Array.isArray(checklistsRaw) ? checklistsRaw : [],
+    [checklistsRaw]
+  );
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => {
