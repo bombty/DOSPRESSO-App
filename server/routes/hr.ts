@@ -3061,12 +3061,28 @@ JSON formatında yanıt ver:
   // ONBOARDING TEMPLATES API
   // ========================================
 
-  // GET /api/onboarding-templates - Get all active templates (coach/HQ only)
+  // Onboarding template RBAC:
+  //  VIEW  (read-only listeleme/detay) → HQ çekirdek + şube yöneticileri (mudur/supervisor) + fabrika_mudur
+  //  MANAGE (create/update/delete + adım yönetimi) → eğitim/IK çekirdek ekibi
+  // sube_kiosk, barista, bar_buddy, stajyer, supervisor_buddy, yatirimci_* hiçbir set'te değildir.
+  const ONBOARDING_TEMPLATE_VIEW_ROLES = new Set<string>([
+    'admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe_ik',
+    'mudur', 'supervisor', 'fabrika_mudur',
+  ]);
+  const ONBOARDING_TEMPLATE_MANAGE_ROLES = new Set<string>([
+    'admin', 'coach', 'trainer', 'muhasebe_ik',
+  ]);
+  const canViewOnboardingTemplates = (role: string | null | undefined) =>
+    !!role && ONBOARDING_TEMPLATE_VIEW_ROLES.has(role);
+  const canManageOnboardingTemplates = (role: string | null | undefined) =>
+    !!role && ONBOARDING_TEMPLATE_MANAGE_ROLES.has(role);
+
+  // GET /api/onboarding-templates - Get all active templates (HQ + branch managers can view)
   router.get('/api/onboarding-templates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canViewOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding programlarını görüntüleme yetkiniz yok" });
       }
 
       const templates = await db.select()
@@ -3081,12 +3097,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // POST /api/onboarding-templates - Create a new template (coach/HQ only)
+  // POST /api/onboarding-templates - Create a new template (eğitim/IK çekirdek)
   router.post('/api/onboarding-templates', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Sadece HQ kullanıcıları şablon oluşturabilir" });
+      if (!canManageOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding şablonu oluşturma yetkiniz yok" });
       }
 
       const parsed = insertOnboardingTemplateSchema.safeParse({
@@ -3106,12 +3122,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // GET /api/onboarding-templates/:id - Get template with steps
+  // GET /api/onboarding-templates/:id - Get template with steps (HQ + branch managers can view)
   router.get('/api/onboarding-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canViewOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding programlarını görüntüleme yetkiniz yok" });
       }
       const templateId = parseInt(req.params.id);
 
@@ -3142,12 +3158,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // PUT /api/onboarding-templates/:id - Update template
+  // PUT /api/onboarding-templates/:id - Update template (eğitim/IK çekirdek)
   router.put('/api/onboarding-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canManageOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding şablonu düzenleme yetkiniz yok" });
       }
 
       const templateId = parseInt(req.params.id);
@@ -3180,12 +3196,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // DELETE /api/onboarding-templates/:id - Soft delete (set isActive=false)
+  // DELETE /api/onboarding-templates/:id - Soft delete (eğitim/IK çekirdek)
   router.delete('/api/onboarding-templates/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canManageOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding şablonu silme yetkiniz yok" });
       }
 
       const templateId = parseInt(req.params.id);
@@ -3213,12 +3229,12 @@ JSON formatında yanıt ver:
   // ONBOARDING TEMPLATE STEPS API
   // ========================================
 
-  // GET /api/onboarding-templates/:id/steps - Get template steps
+  // GET /api/onboarding-templates/:id/steps - Get template steps (HQ + branch managers can view)
   router.get('/api/onboarding-templates/:id/steps', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canViewOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding programlarını görüntüleme yetkiniz yok" });
       }
       const templateId = parseInt(req.params.id);
       if (isNaN(templateId)) {
@@ -3240,12 +3256,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // POST /api/onboarding-templates/:id/steps - Add step to template
+  // POST /api/onboarding-templates/:id/steps - Add step to template (eğitim/IK çekirdek)
   router.post('/api/onboarding-templates/:id/steps', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canManageOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding adım yönetimi yetkiniz yok" });
       }
 
       const templateId = parseInt(req.params.id);
@@ -3270,12 +3286,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // PUT /api/onboarding-template-steps/:id - Update step
+  // PUT /api/onboarding-template-steps/:id - Update step (eğitim/IK çekirdek)
   router.put('/api/onboarding-template-steps/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canManageOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding adım yönetimi yetkiniz yok" });
       }
 
       const stepId = parseInt(req.params.id);
@@ -3311,12 +3327,12 @@ JSON formatında yanıt ver:
     }
   });
 
-  // DELETE /api/onboarding-template-steps/:id - Delete step
+  // DELETE /api/onboarding-template-steps/:id - Delete step (eğitim/IK çekirdek)
   router.delete('/api/onboarding-template-steps/:id', isAuthenticated, async (req, res) => {
     try {
       const user = req.user!;
-      if (!isHQRole(user.role)) {
-        return res.status(403).json({ message: "Yetkiniz yok" });
+      if (!canManageOnboardingTemplates(user.role)) {
+        return res.status(403).json({ message: "Onboarding adım yönetimi yetkiniz yok" });
       }
 
       const stepId = parseInt(req.params.id);

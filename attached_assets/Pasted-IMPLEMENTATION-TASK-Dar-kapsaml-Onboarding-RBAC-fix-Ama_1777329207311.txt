@@ -1,0 +1,91 @@
+IMPLEMENTATION TASK — Dar kapsamlı Onboarding RBAC fix
+
+Amaç:
+Onboarding sayfalarında frontend yetki veriyor ama backend /api/onboarding-templates endpoint’i bazı yetkili rollere 403 dönüyor.
+Smoke testte supervisor kullanıcısı /onboarding-programlar sayfasını açtı ama /api/onboarding-templates 403 "Yetkiniz yok" verdi.
+
+KAPSAM:
+Sadece onboarding backend RBAC uyumsuzluğunu düzelt.
+Öncelikli dosya:
+- server/routes/hr.ts
+
+Gerekirse sadece doğrulama için oku:
+- client/src/App.tsx
+- client/src/pages/onboarding-programlar.tsx
+- client/src/pages/personel-onboarding.tsx
+- client/src/pages/supervisor-onboarding.tsx
+
+KESİN KURALLAR:
+- DB değiştirme.
+- schema/migration/env/package değiştirme.
+- Frontend’i değiştirme, unless absolutely necessary.
+- Permission sistemini komple refactor etme.
+- Yeni delegation sistemi kurma.
+- Kiosk, reçete, PDKS, payroll, alerjen dosyalarına dokunma.
+- Force push / history rewrite yok.
+- Büyük refactor yok.
+
+İŞ KURALLARI:
+1. Onboarding template/list/view endpoint’leri şu rollerde 403 vermemeli:
+   - admin
+   - ceo
+   - cgo
+   - coach
+   - trainer
+   - muhasebe_ik
+   - mudur
+   - supervisor
+   - fabrika_mudur
+
+2. Write / create / edit / delete gibi template yönetim işlemleri daha dar kalmalı:
+   - admin
+   - coach
+   - trainer
+   - muhasebe_ik
+   - cgo gerekiyorsa sadece onay/izleme
+   Eğer mevcut kodda zaten farklı bir ayrım varsa koru, ama view endpoint’ini supervisor/mudur için aç.
+
+3. sube_kiosk onboarding template veya program yönetimi görmemeli.
+
+4. barista, bar_buddy, stajyer sadece kendi onboarding/eğitim sürecini görebilmeli; template yönetimi görmemeli.
+
+5. yatirimci_branch onboarding yönetimi yapmamalı.
+
+6. supervisor_buddy’ye global supervisor yetkisi verme. Eğer mevcut sistemde branch-level delegation varsa ona saygı göster; yoksa bu taskta supervisor_buddy kapsam dışı kalsın.
+
+YAPILACAK ANALİZ:
+1. server/routes/hr.ts içinde /api/onboarding-templates ve ilgili onboarding template endpointlerini bul.
+2. Hangi endpoint GET/list/view, hangisi create/edit/delete ayrıştır.
+3. Şu an neden supervisor/mudur 403 alıyor tespit et.
+4. Sadece gerekli role guard değişikliğini yap.
+5. Branch scope gerekiyorsa mudur/supervisor kendi şubesi dışındaki onboarding/personel datasını görmemeli.
+
+BEKLENEN SONUÇ:
+- supervisor / mudur / coach / cgo / admin / muhasebe_ik onboarding-programlar sayfasını açınca /api/onboarding-templates 403 vermemeli.
+- Yetkisiz roller menüde görünmüyorsa backend de kapalı kalmalı.
+- sube_kiosk erişmemeli.
+- Backend write endpointleri gereksiz yere genişlememeli.
+
+SMOKE TEST:
+Doğru rollerle test et:
+1. supervisor kullanıcı ile /onboarding-programlar aç.
+   - /api/onboarding-templates 403 vermemeli.
+2. mudur kullanıcı ile /onboarding-programlar aç.
+   - 403 vermemeli.
+3. coach veya cgo ile aç.
+   - 403 vermemeli.
+4. sube_kiosk veya barista ile erişim dene.
+   - template yönetimi erişimi olmamalı.
+5. Console/runtime error kontrol et.
+
+RAPOR:
+1. Kök neden neydi?
+2. Hangi endpointlerde role guard değişti?
+3. GET/list ve write işlemlerinin yetki farkı nasıl kaldı?
+4. Değişen dosyalar
+5. Kod/DB/schema/migration/env/package değişti mi?
+6. Typecheck/LSP sonucu
+7. Smoke test sonucu
+8. git diff --stat
+9. Commit hash
+10. Push durumu
