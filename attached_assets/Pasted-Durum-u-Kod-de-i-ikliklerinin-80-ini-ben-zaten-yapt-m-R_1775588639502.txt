@@ -1,0 +1,58 @@
+Durum şu: Kod değişikliklerinin %80'ini ben zaten yaptım, Replit'e sadece DB temizliği kalıyor. Hemen bitirip push ediyorum:Build kontrolü:Her iki build ✅. Commit ve push:## Durum: Tüm Kod Değişiklikleri Bitti — Push Edildi
+
+**Bu oturumda toplam 10 commit:**
+
+| # | Commit | İçerik | Kim |
+|---|--------|--------|-----|
+| 1 | `db59bf0d` | DuyuruStudioV2 D-R1 | Claude |
+| 2 | `35e7bc37` | PDKS Excel Import plan | Claude |
+| 3 | `31fc17fd` | Puantaj kuralları analiz | Claude |
+| 4 | `226109eb` | İkili motor bulgusu | Claude |
+| 5 | `2e47102d` | Payroll motor fix (FM, tatil, yemek, +1) | Claude |
+| 6 | `0465448f` | Payroll Bridge (Motor birleştirme) | Claude |
+| 7 | `727ddfa1` | Kesinti konfigürasyon sistemi | Claude |
+| 8 | `a17825e8` | Dobody branchPerf fix | Claude |
+| 9 | `37733428` | CRM/Görev analiz dokümanı | Claude |
+| 10 | `59343d85` | **Faz 1+2: CRM Task kaldırma, scheduler limit, legacy guard** | Claude |
+
+---
+
+## Replit'e Yapıştır (Minimal — 5 dk agent kullanımı)
+
+```
+git pull --rebase origin main
+npm run build
+
+Sonra şu SQL'leri çalıştır:
+
+-- 1. monthly_payroll 3 kolon (eğer henüz yapılmadıysa)
+ALTER TABLE monthly_payroll ADD COLUMN IF NOT EXISTS holiday_worked_days INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE monthly_payroll ADD COLUMN IF NOT EXISTS holiday_pay INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE monthly_payroll ADD COLUMN IF NOT EXISTS meal_allowance INTEGER NOT NULL DEFAULT 0;
+
+-- 2. Pilot öncesi veri temizliği
+UPDATE tasks SET status = 'iptal_edildi' WHERE source_type = 'seed_test' AND status IN ('beklemede', 'devam_ediyor');
+UPDATE branch_task_instances SET status = 'cancelled' WHERE status IN ('pending', 'claimed') AND is_overdue = true;
+UPDATE tasks SET status = 'iptal_edildi' WHERE status = 'beklemede' AND description IN (
+  SELECT description FROM tasks WHERE status = 'beklemede' GROUP BY description HAVING COUNT(*) > 5
+);
+
+-- 3. 2026 tatil seed
+Endpoint çağır: POST /api/admin/seed-holidays-2026
+
+-- 4. Doğrulama
+SELECT COUNT(*) FROM tasks WHERE source_type = 'seed_test' AND status = 'beklemede';  -- 0 olmalı
+SELECT COUNT(*) FROM branch_task_instances WHERE status = 'pending' AND is_overdue = true;  -- 0 olmalı  
+SELECT COUNT(*) FROM public_holidays WHERE year = 2026;  -- 16 olmalı
+SELECT COUNT(*) FROM payroll_deduction_config;  -- tablo var mı kontrol
+
+RAPOR:
+BUILD: ✅/❌
+MIGRATION: ✅/❌ (3 kolon)
+TEMİZLİK: ✅/❌ (seed_test + overdue + duplikat)
+TATİL SEED: ✅/❌ (16 kayıt)
+CRM SAYFASI: ✅/❌ (Görevler tab'ı artık görünmemeli)
+PUSH: hayır
+```
+
+Bu kadar — Replit sadece pull, SQL, seed, ve kısa test yapacak. Tüm kod zaten GitHub'da.

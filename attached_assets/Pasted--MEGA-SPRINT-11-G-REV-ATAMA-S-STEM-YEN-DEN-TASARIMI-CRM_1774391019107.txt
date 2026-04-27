@@ -1,0 +1,693 @@
+# MEGA SPRINT 11: GÖREV ATAMA SİSTEMİ YENİDEN TASARIMI
+# CRM entegrasyon + grup çalışma + kabul/red + departman/şube seçimi + hiyerarşik atama
+# Tahmini: 10-12 saat
+# Bağımlılık: Sprint 1-10 tamamlandı, CRM 3 kanal aktif, tasks tablosu 1.201 kayıt
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- Do NOT delete existing tasks data (1.201 kayıt) — migration ile uyumlu genişlet
+- Do NOT break mevcut CRM Franchise/Misafir kanalları — Task kanalını GENİŞLET
+- Mevcut task_assignees tablosu korunmalı — yeni kolonlar EKLE
+- AuthUser type, Turkish UI, users.id VARCHAR
+
+**DANIŞMA MEKANİZMASI:**
+1. Mevcut tasks tablosuna kolon eklemek → SQL göster, onay al
+2. Mevcut görev sayfası mantığını değiştirmek → eski/yeni karşılaştır
+3. CRM Task kanalını değiştirmek → mevcut davranışı göster, onay al
+4. Header profil menüsünü değiştirmek → mevcut/yeni göster
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+---
+
+## STEP 0: ÖN ARAŞTIRMA
+
+```bash
+echo "═══ SPRINT 11: GÖREV ATAMA YENİDEN TASARIM ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "████ 1. MEVCUT TASK YAPISI TAM ANALİZ ████"
+
+echo "=== tasks tablosu tüm kolonlar ==="
+echo "SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name='tasks' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+echo ""
+echo "=== task_assignees tüm kolonlar ==="
+echo "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name='task_assignees' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+echo ""
+echo "=== task_status_history ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='task_status_history' ORDER BY ordinal_position;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== task_steps ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='task_steps' ORDER BY ordinal_position;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== task_evidence ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='task_evidence' ORDER BY ordinal_position;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== task_ratings ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='task_ratings' ORDER BY ordinal_position;" | psql -t 2>/dev/null
+
+echo ""
+echo "=== Mevcut task status dağılımı ==="
+echo "SELECT status, count(*) FROM tasks GROUP BY status ORDER BY count DESC;" | psql 2>/dev/null
+
+echo ""
+echo "=== Mevcut task'ların atama durumu ==="
+echo "SELECT 
+  count(*) as total_tasks,
+  count(assigned_to) as has_assigned_to,
+  (SELECT count(DISTINCT task_id) FROM task_assignees) as has_task_assignees
+FROM tasks;" | psql 2>/dev/null
+
+echo ""
+echo "=== Mevcut task branch/department dağılımı ==="
+echo "SELECT branch_id, count(*) FROM tasks WHERE branch_id IS NOT NULL GROUP BY branch_id ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+echo ""
+echo "SELECT department, count(*) FROM tasks WHERE department IS NOT NULL GROUP BY department ORDER BY count DESC;" | psql 2>/dev/null
+
+echo ""
+echo "████ 2. MEVCUT TASK FRONTEND DETAY ████"
+
+echo "=== tasks.tsx (görev listesi sayfası) ==="
+wc -l client/src/pages/tasks.tsx 2>/dev/null
+grep -n "import\|useQuery\|useMutation\|queryKey\|function \|const.*=" client/src/pages/tasks.tsx | head -30
+
+echo ""
+echo "=== gorev-detay.tsx (görev detay sayfası) ==="
+wc -l client/src/pages/gorev-detay.tsx 2>/dev/null
+grep -n "import\|useQuery\|useMutation\|function \|const.*=" client/src/pages/gorev-detay.tsx | head -30
+
+echo ""
+echo "=== Görev oluşturma dialog/form ==="
+grep -rn "Dialog\|Form\|NewTask\|CreateTask\|GorevOlustur" client/src/pages/tasks.tsx | head -15
+
+echo ""
+echo "████ 3. CRM TASK KANALI DETAY ████"
+
+echo "=== crm-mega.tsx Task kanalı ==="
+grep -n "task\|Task\|gorev\|Görev" client/src/pages/crm-mega.tsx | head -20
+echo ""
+echo "--- TaskChannelContent bileşeni ---"
+grep -A50 "TaskChannelContent\|function.*Task.*Channel" client/src/pages/crm-mega.tsx | head -60
+
+echo ""
+echo "████ 4. HEADER PROFİL MENÜSÜ ████"
+
+echo "=== app-header / profil dropdown ==="
+find client/src/components -name "*header*" -o -name "*profile*" -o -name "*avatar*" | sort
+for f in $(find client/src/components -name "*header*" -name "*.tsx" 2>/dev/null); do
+  echo "--- $(basename $f) ---"
+  grep -n "Dropdown\|Menu\|Destek\|Görev\|Task\|Profil\|support\|assign" "$f" | head -10
+done
+
+echo ""
+echo "████ 5. TASK API ENDPOINTLERİ TAM LİSTE ████"
+
+wc -l server/routes/tasks.ts 2>/dev/null
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/tasks.ts 2>/dev/null
+
+echo ""
+echo "████ 6. QUICK ACTION SİSTEMİ ████"
+
+wc -l server/routes/quick-action.ts 2>/dev/null
+grep -n "router\.\(get\|post\)" server/routes/quick-action.ts 2>/dev/null
+echo ""
+echo "--- Quick action frontend ---"
+find client/src/components -name "*quick*" -o -name "*Quick*" | sort
+grep -rn "QuickAction\|DobodyAction" client/src/components/ --include="*.tsx" | head -10
+
+echo ""
+echo "████ 7. SUPPORT_TICKETS vs TASKS KARŞILAŞTIRMA ████"
+
+echo "=== support_tickets kolonları (CRM ticket) ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='support_tickets' ORDER BY ordinal_position;" | psql -t 2>/dev/null | head -20
+
+echo ""
+echo "=== tasks kolonları ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='tasks' ORDER BY ordinal_position;" | psql -t 2>/dev/null | head -25
+
+echo ""
+echo "--- Ortak alanlar ---"
+echo "(Her ikisinde de: title, description, status, priority, assigned_to, branch_id, created_by, created_at)"
+echo "(Sadece ticket'ta: channel, ticket_type, sla_deadline, rating, source, department)"
+echo "(Sadece task'ta: due_date, category, task_steps, evidence, completion_rate)"
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# VİZYON: GÖREV SİSTEMİ NASIL OLMALI?
+# ██████████████████████████████████████████████████████████████
+
+## Temel prensip: Görev = CRM'in iş takip motoru
+
+```
+MEVCUT (karmaşık):
+  - tasks tablosu → kendi sayfası (/gorevler)
+  - task_assignees → çoklu atama ama kullanılmıyor
+  - CRM Task kanalı → sadece listeliyor, görev yönetimi yok
+  - Header "Görev Ata" → basit quick action, departman/şube seçimi yok
+  - HQ Destek → ayrı bir ticket sistemi gibi çalışıyor
+
+OLMASI GEREKEN (birleşik):
+  - CRM Task kanalı = TAM görev yönetim sistemi
+  - Görev oluştur → departman/şube/fabrika seç → kişi/grup seç → detaylar gir
+  - Atanan kişiler: kabul et / reddet / süre talep et / soru sor
+  - Grup görevi: sohbet paneli (CRM ticket sohbeti gibi)
+  - Durum akışı: Oluşturuldu → Atandı → Kabul Edildi → Devam Ediyor → Tamamlandı
+  - Header "Görev Ata" → zengin form (departman/şube/kişi seçimi)
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# BÖLÜM A: DATABASE GENİŞLETME (1 saat)
+# ██████████████████████████████████████████████████████████████
+
+## A1: tasks tablosuna yeni kolonlar (⚠ DANIŞMA)
+
+```sql
+-- Görev atama akışı için yeni kolonlar
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_scope VARCHAR(20) DEFAULT 'branch';
+  -- branch: şube görevi, factory: fabrika görevi, hq: merkez ofis görevi, global: tüm lokasyonlar
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_department VARCHAR(50);
+  -- Teknik, Muhasebe, Operasyon, Eğitim, İK, Kalite, Fabrika, Genel
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_branch_ids INTEGER[];
+  -- Birden fazla şubeye atanabilir: {5, 6, 7}
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_group_task BOOLEAN DEFAULT false;
+  -- Grup görevi mi? Sohbet paneli açılır
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS acceptance_required BOOLEAN DEFAULT false;
+  -- Atanan kişinin kabul etmesi gerekiyor mu?
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS allow_extension BOOLEAN DEFAULT true;
+  -- Süre uzatma talebi yapılabilir mi?
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_task_id INTEGER REFERENCES tasks(id);
+  -- Alt görev (sub-task) ilişkisi
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source VARCHAR(30) DEFAULT 'manual';
+  -- manual, crm_ticket, system, dobody, quick_action, kiosk
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source_id VARCHAR(50);
+  -- İlgili ticket/arıza/plan ID'si (kaynak takibi)
+```
+
+## A2: task_assignees tablosuna yeni kolonlar
+
+```sql
+-- Atanan kişinin yanıt durumu
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS acceptance_status VARCHAR(20) DEFAULT 'pending';
+  -- pending, accepted, rejected, extension_requested
+
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP;
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP;
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS extension_requested_at TIMESTAMP;
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS extension_reason TEXT;
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS extension_days INTEGER;
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS extension_approved BOOLEAN;
+
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS completion_rate INTEGER DEFAULT 0;
+  -- Kişi bazlı tamamlama yüzdesi (0-100)
+
+ALTER TABLE task_assignees ADD COLUMN IF NOT EXISTS notes TEXT;
+  -- Kişinin göreve eklediği not/detay talebi
+```
+
+## A3: Görev sohbet/yorum tablosu (varsa genişlet, yoksa oluştur)
+
+```sql
+-- Görev üzerinde sohbet (CRM ticket_comments benzeri)
+CREATE TABLE IF NOT EXISTS task_comments (
+  id SERIAL PRIMARY KEY,
+  task_id INTEGER NOT NULL REFERENCES tasks(id),
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  message TEXT NOT NULL,
+  comment_type VARCHAR(20) DEFAULT 'message',
+    -- message: normal yorum
+    -- status_change: durum değişikliği notu
+    -- extension_request: süre uzatma talebi
+    -- question: soru/detay talebi
+    -- system: sistem mesajı (otomatik)
+  attachment_url TEXT,
+  is_internal BOOLEAN DEFAULT false,  -- sadece yöneticiler görür
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_comments ON task_comments(task_id, created_at);
+```
+
+## A4: Schema dosyası güncelle
+
+Drizzle schema'ya yeni kolonları + task_comments tablosunu ekle.
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# BÖLÜM B: GÖREV OLUŞTURMA FORMU YENİDEN TASARIM (2-3 saat)
+# ██████████████████████████████████████████████████████████████
+
+## B1: Yeni görev oluşturma dialog'u
+
+`client/src/components/tasks/NewTaskDialog.tsx` oluştur (veya mevcut formu yeniden yaz):
+
+### Adım 1: Kapsam seçimi (büyük butonlar)
+```
+Görev Kapsamı:
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│  🏢 HQ   │ │ 🏪 Şube  │ │ 🏭 Fabrika│ │ 🌐 Genel │
+│  Merkez   │ │  Seçim   │ │           │ │  Tüm     │
+└──────────┘ └──────────┘ └──────────┘ └──────────┘
+```
+
+### Adım 2: Hedef seçimi (kapsama göre değişir)
+
+**Şube seçilirse:**
+```
+Şube(ler) seçin: (çoklu seçim)
+☑ Işıklar    ☐ Mallof     ☑ Markantalya
+☐ Lara       ☐ Beachpark  ☐ G.İbrahimli
+...
+[Tümünü seç] [Bölge: Antalya] [Bölge: Gaziantep]
+
+Departman: [Tümü ▾] [Operasyon ▾] [Teknik ▾] [Eğitim ▾]
+
+Kişi seçimi: (kapsama göre filtrelenir)
+☑ Tüm personel (seçili şube)
+○ Belirli kişiler:
+  ☑ Ayşe Demir (Supervisor - Işıklar)
+  ☑ Ali Kaya (Barista - Işıklar)
+  ☐ Mehmet Öz (Stajyer - Markantalya)
+  
+Rol filtresi: [Tümü ▾] [Supervisor ▾] [Barista ▾] [Stajyer ▾]
+```
+
+**Fabrika seçilirse:**
+```
+Kişi seçimi:
+☑ Tüm fabrika personeli
+○ Belirli kişiler:
+  ☑ Ümit Usta (Üretim Şefi)
+  ☐ Eren Bey (Fabrika Müdürü)
+  ☐ Operator 1
+```
+
+**HQ seçilirse:**
+```
+Departman: [Muhasebe ▾] [Satınalma ▾] [Pazarlama ▾] [Eğitim ▾]
+Kişi: (departman personeli listelenir)
+```
+
+### Adım 3: Görev detayları
+```
+Görev Başlığı: [________________________________]
+
+Açıklama:
+[________________________________________]
+[________________________________________]
+[________________________________________]
+
+Öncelik: ○ Düşük  ○ Normal  ● Yüksek  ○ Acil
+
+Bitiş tarihi: [📅 30/03/2026]  Saat: [17:00]
+
+Kategori: [Operasyon ▾] [Temizlik ▾] [Stok ▾] [Eğitim ▾] [Teknik ▾] [Diğer ▾]
+
+☑ Kabul gerekli (atanan kişi önce kabul etmeli)
+☑ Süre uzatma talep edilebilir
+☐ Grup görevi (sohbet paneli aktif)
+☐ Kanıt gerekli (fotoğraf/dosya yükleme zorunlu)
+
+Alt görevler (opsiyonel):
+  + [Alt görev ekle]
+  1. [Stok sayımı yap          ] [Sil]
+  2. [Rapor hazırla              ] [Sil]
+
+Ekler:
+  📎 Dosya/fotoğraf ekle (opsiyonel)
+```
+
+### Adım 4: Özet + Gönder
+```
+Görev Özeti:
+  Kapsam: Şube (Işıklar, Markantalya)
+  Atanan: 5 kişi (2 supervisor, 3 barista)
+  Bitiş: 30 Mart 2026 17:00
+  Öncelik: Yüksek
+  Kabul gerekli: Evet
+
+  [Taslak Kaydet]  [Gönder ve Ata]
+```
+
+## B2: Header "Görev Ata" quick action iyileştirme
+
+Mevcut header profil dropdown'daki "Görev Ata" butonu:
+- Tıklanınca → NewTaskDialog açılır (yukarıdaki tam form)
+- VEYA kısayol: "Hızlı görev" → basit form (başlık + kişi + tarih, tek adım)
+- "Destek" butonu → CRM Franchise kanalına yönlendir (HQ Destek artık CRM'de)
+
+## B3: Toplu görev atama
+
+Şube/rol bazlı toplu atama:
+```
+"Tüm şubelerin supervisor'larına haftalık stok sayımı ata"
+→ 20 şube × 1 supervisor = 20 görev (otomatik oluşturulur)
+→ Her görev ilgili şubenin supervisor'ına atanır
+→ İlerleme: 20 görevden 15 tamamlandı (%75)
+```
+
+Backend:
+```
+POST /api/tasks/bulk
+{
+  title: "Haftalık stok sayımı",
+  targetScope: "branch",
+  targetBranchIds: [5,6,7,8,9,...], // veya "all"
+  targetRole: "supervisor",  // bu roldeki kişilere ata
+  dueDate: "2026-03-30",
+  isGroupTask: false,
+  acceptanceRequired: true
+}
+→ Her şubedeki supervisor için ayrı task oluşturur
+→ Toplu ilerleme takibi: /api/tasks/bulk/:bulkId/progress
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# BÖLÜM C: GÖREV DETAY SAYFASI GENİŞLETME (2 saat)
+# ██████████████████████████████████████████████████████████████
+
+## C1: Görev detay sayfası layout
+
+Mevcut `gorev-detay.tsx` (2030 satır) genişletilir:
+
+```
+Görev Detay — [Haftalık stok sayımı]
+├── Header: Başlık + Durum badge + Öncelik badge + Süre sayacı
+│
+├── Sol panel (detay bilgiler)
+│   ├── Açıklama
+│   ├── Oluşturan: Utku (CGO) — 25 Mart 2026
+│   ├── Bitiş: 30 Mart 2026 17:00 (5 gün kaldı)
+│   ├── Kapsam: Şube (Işıklar, Markantalya)
+│   ├── Kategori: Operasyon > Stok
+│   ├── Alt görevler:
+│   │   ☑ Stok sayımı yap
+│   │   ☐ Rapor hazırla
+│   ├── Ekler: 📎 stok-formu.pdf
+│   └── Kaynak: Manuel (veya CRM Ticket #TKT-B040)
+│
+├── Sağ panel (atama + durum)
+│   ├── Atanan kişiler:
+│   │   ├── Ayşe Demir (Supervisor)
+│   │   │   ✅ Kabul etti — 25 Mar 10:30
+│   │   │   İlerleme: %60
+│   │   │   Not: "Raf düzenlemesi de yapılacak mı?"
+│   │   │
+│   │   ├── Ali Kaya (Barista)
+│   │   │   ⏳ Bekliyor (kabul etmedi)
+│   │   │
+│   │   ├── Fatma Yıldız (Barista)
+│   │   │   ❌ Reddetti — "İzinliyim o gün"
+│   │   │
+│   │   └── Mehmet Öz (Stajyer)
+│   │       🔄 Süre uzatma talep etti — "2 gün daha lazım"
+│   │       [Onayla] [Reddet]
+│   │
+│   └── Toplu ilerleme: 1/4 kabul, %60 ort. tamamlama
+│
+└── Alt panel: Sohbet (grup görevi ise)
+    ├── [Utku]: Stok sayımı bu hafta bitirilmeli
+    ├── [Ayşe]: Raf düzenlemesi de dahil mi?
+    ├── [Utku]: Evet, lütfen fotoğraf da çekin
+    ├── [Ali]: Kabul ettim, yarın başlıyorum
+    ├── [SİSTEM]: Fatma görevi reddetti — "İzinliyim o gün"
+    └── [Mesaj yaz...] [Gönder]
+```
+
+## C2: Atanan kişi aksiyonları
+
+Görev atanan kişi kendi dashboard'unda veya bildirimlerinde:
+
+```
+📋 Yeni görev atandı: "Haftalık stok sayımı"
+   Oluşturan: Utku (CGO) | Bitiş: 30 Mart | Öncelik: Yüksek
+
+   [✅ Kabul Et]  [❌ Reddet]  [🔄 Süre Talep Et]  [❓ Soru Sor]
+```
+
+### Kabul Et:
+- acceptance_status = 'accepted'
+- Bildirim: oluşturana "Ayşe görevi kabul etti"
+
+### Reddet:
+- Modal: neden gir (zorunlu textarea)
+- acceptance_status = 'rejected'
+- Bildirim: oluşturana "Fatma görevi reddetti: İzinliyim o gün"
+- Oluşturan: başka birine atayabilir veya görevi iptal edebilir
+
+### Süre Talep Et:
+- Modal: kaç gün + neden gir
+- extension_requested_at = now()
+- Bildirim: oluşturana "Mehmet 2 gün uzatma talep etti"
+- Oluşturan: [Onayla] [Reddet]
+
+### Soru Sor:
+- Sohbet paneli açılır (task_comments'e mesaj eklenir)
+- Bildirim: oluşturana "Ayşe göreve soru sordu"
+
+## C3: Durum akışı
+
+```
+Oluşturuldu → Atandı → [Kabul bekleniyor] → Kabul Edildi → Devam Ediyor → Tamamlandı
+                                            ↘ Reddedildi (yeniden atama gerekli)
+                                            ↘ Süre uzatma talep edildi → Onaylandı/Reddedildi
+```
+
+Kabul gerekli değilse: Oluşturuldu → Atandı → Devam Ediyor → Tamamlandı
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# BÖLÜM D: CRM TASK KANALI GENİŞLETME (1.5 saat)
+# ██████████████████████████████████████████████████████████████
+
+## D1: CRM Task kanalı = tam görev yönetim arayüzü
+
+Mevcut TaskChannelContent'i genişlet:
+
+```
+CRM > Task Kanalı
+├── KPI Pills
+│   [Toplam: 1201] [Bekleyen Kabul: 12] [Devam Eden: 84] [Gecikmiş: 5] [Tamamlanan: 1100]
+│   (tıklanabilir — filtreler)
+│
+├── Filtreler
+│   Durum: [Tümü ▾] Kapsam: [Tümü ▾] Şube: [Tümü ▾] Öncelik: [Tümü ▾]
+│   Atanan: [Tümü ▾] Tarih: [Bu hafta ▾]
+│
+├── Görev listesi (tablo/kart görünüm)
+│   ├── Her kart: başlık + durum badge + öncelik + atanan kişiler (avatar) + bitiş tarihi
+│   ├── Grup görevi ikonu 👥
+│   ├── Bekleyen kabul sayısı badge (3/5 kabul etti)
+│   ├── İlerleme bar (%60)
+│   └── Tıklanınca → görev detay sayfası
+│
+├── [+ Yeni Görev] butonu → NewTaskDialog açılır
+│
+└── Sağ panel (görev seçilince)
+    ├── Hızlı detay (başlık, durum, atananlar)
+    ├── Sohbet (son 5 mesaj)
+    └── [Detaya Git] butonu → /gorev-detay/:id
+```
+
+## D2: CRM Task kanalı API
+
+Mevcut task API'lerini CRM formatında kullan:
+
+```
+GET /api/tasks?status=X&scope=X&branchId=X&assignee=X&priority=X&period=this_week
+  → Filtreli görev listesi (CRM Task kanalı için)
+
+GET /api/tasks/:id
+  → Görev detayı + assignees + comments
+
+POST /api/tasks/:id/accept     — kabul et
+POST /api/tasks/:id/reject     — reddet { reason }
+POST /api/tasks/:id/extension  — süre talep { days, reason }
+PATCH /api/tasks/:id/extension/:assigneeId/approve  — uzatma onayla
+POST /api/tasks/:id/comments   — yorum/sohbet ekle
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# BÖLÜM E: HEADER + BİLDİRİM + DASHBOARD ENTEGRASYON (1 saat)
+# ██████████████████████████████████████████████████████████████
+
+## E1: Header profil menüsü iyileştirme
+
+Mevcut "Görev Ata" butonu → NewTaskDialog açar (zengin form)
+Mevcut "Destek" butonu → /crm?channel=franchise navigate eder (HQ Destek artık CRM'de)
+
+```
+Profil dropdown:
+  👤 Profilim → /profil
+  📋 Görev Ata → NewTaskDialog açılır
+  💬 Destek → /crm?channel=franchise
+  🔔 Bildirimler → /bildirimler
+  🚪 Çıkış
+```
+
+## E2: Bildirim entegrasyonu
+
+Görev ile ilgili tüm bildirimler:
+- Görev atandığında → atanan kişiye bildirim
+- Kabul/red → oluşturana bildirim
+- Süre uzatma talebi → oluşturana bildirim
+- Sohbet mesajı → görevdeki herkese bildirim (kendisi hariç)
+- Görev tamamlandığında → oluşturana bildirim
+- Bitiş tarihi yaklaştığında (1 gün kala) → atanan kişiye hatırlatma
+- Geciken görev → oluşturana + atanana uyarı
+
+**Bildirim seviye filtresi (Sprint 9'dan):**
+- Bireysel görev bildirimi → operational (supervisor seviyesinde kalır)
+- Toplu görev gecikme özeti → tactical (müdür + coach görür)
+- Genel görev KPI uyarısı → strategic (CEO/CGO görür)
+
+## E3: Dashboard widget
+
+Her rol dashboard'unda "Görevlerim" widget'ı:
+- Bana atanan aktif görevler (en acil 5)
+- Kabul bekleyen görevler (badge ile)
+- "Tümünü gör" → /crm?channel=task
+
+CEO/CGO dashboard'unda:
+- Toplam görev KPI (açık/devam/gecikmiş/tamamlanan)
+- Şube bazlı görev tamamlama oranı (karşılaştırma)
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# BÖLÜM F: MR. DOBODY + AJANDA ENTEGRASYON (30dk)
+# ██████████████████████████████████████████████████████████████
+
+## F1: Görev → otomatik todo
+
+Görev atanınca → ajanda'ya otomatik todo oluşur (Sprint 4'te auto-todo-from-ticket var, aynı pattern):
+```
+source: 'task'
+sourceId: taskId
+sourceUrl: '/gorev-detay/{taskId}'
+dueDate: task.dueDate
+```
+
+## F2: Mr. Dobody skill güncelle
+
+Mevcut daily-briefing skill'e görev özetini ekle:
+"Bugün 3 görevin var, 1'i kabul bekliyor, 1'inin bitiş tarihi yarın"
+
+---
+
+# ██████████████████████████████████████████████████████████████
+# DOĞRULAMA
+# ██████████████████████████████████████████████████████████████
+
+```bash
+echo "═══ SPRINT 11 DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+
+echo ""
+echo "=== DB değişiklikleri ==="
+echo "--- tasks yeni kolonlar ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='tasks' AND column_name IN ('task_scope','target_department','target_branch_ids','is_group_task','acceptance_required','allow_extension','parent_task_id','source','source_id');" | psql 2>/dev/null
+echo ""
+echo "--- task_assignees yeni kolonlar ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='task_assignees' AND column_name IN ('acceptance_status','accepted_at','rejected_at','rejection_reason','extension_requested_at','extension_reason','extension_days','extension_approved','completion_rate','notes');" | psql 2>/dev/null
+echo ""
+echo "--- task_comments tablosu ---"
+echo "SELECT count(*) FROM information_schema.tables WHERE table_name='task_comments';" | psql -t 2>/dev/null
+
+echo ""
+echo "=== API endpoint'leri ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/s11.txt > /dev/null 2>&1
+
+echo "--- Görev oluşturma (yeni alanlarla) ---"
+curl -s -X POST http://localhost:5000/api/tasks \
+  -H "Content-Type: application/json" -b /tmp/s11.txt \
+  -d '{
+    "title":"SYSCHECK görev testi",
+    "description":"Sprint 11 test görevi",
+    "priority":"high",
+    "dueDate":"2026-04-01",
+    "taskScope":"branch",
+    "targetBranchIds":[5],
+    "isGroupTask":true,
+    "acceptanceRequired":true
+  }' | head -5
+
+echo ""
+echo "--- Kabul/red endpoint ---"
+curl -s -o /dev/null -w "POST accept: %{http_code}\n" -X POST -b /tmp/s11.txt "http://localhost:5000/api/tasks/1/accept"
+echo ""
+echo "--- Yorum ekleme ---"
+curl -s -o /dev/null -w "POST comment: %{http_code}\n" -X POST -H "Content-Type: application/json" -b /tmp/s11.txt -d '{"message":"Test yorum"}' "http://localhost:5000/api/tasks/1/comments"
+
+echo ""
+echo "--- Toplu atama ---"
+curl -s -o /dev/null -w "POST bulk: %{http_code}\n" -X POST -H "Content-Type: application/json" -b /tmp/s11.txt -d '{"title":"Test toplu","targetScope":"branch","targetBranchIds":[5,6],"targetRole":"supervisor","dueDate":"2026-04-01"}' "http://localhost:5000/api/tasks/bulk"
+
+echo ""
+echo "=== Frontend ==="
+echo "--- NewTaskDialog ---"
+find client/src/components -name "*NewTask*" -o -name "*new-task*" | head -3
+echo ""
+echo "--- CRM Task kanalı genişletildi mi? ---"
+grep -n "accept\|reject\|extension\|comment\|sohbet\|kabul\|reddet" client/src/pages/crm-mega.tsx | head -10
+echo ""
+echo "--- Görev detay sohbet paneli ---"
+grep -n "TaskComment\|task_comment\|sohbet\|chat.*panel" client/src/pages/gorev-detay.tsx | head -5
+
+echo ""
+echo "=== Mevcut veri bozulmadı mı? ==="
+echo "SELECT count(*) FROM tasks;" | psql -t 2>/dev/null
+echo "(1201+ olmalı — mevcut veriler korunmuş)"
+
+echo ""
+echo "═══ SONUÇ ═══"
+echo "DB genişletme: ✅/❌"
+echo "task_comments tablosu: ✅/❌"
+echo "Görev oluşturma formu (departman/şube/kişi): ✅/❌"
+echo "Toplu atama: ✅/❌"
+echo "Kabul/red/süre talep: ✅/❌"
+echo "Sohbet paneli: ✅/❌"
+echo "CRM Task kanalı genişletme: ✅/❌"
+echo "Header Görev Ata iyileştirme: ✅/❌"
+echo "Bildirim entegrasyonu: ✅/❌"
+echo "Mevcut veri korundu: ✅/❌"
+echo "Server hatasız: ✅/❌"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- ❌ Mevcut 1.201 task kaydını SİLME veya BOZMA
+- ❌ Mevcut CRM Franchise/Misafir kanallarını değiştirme
+- ❌ Mevcut task_assignees verilerini kaybetme
+- ❌ Görev detay sayfasının mevcut özelliklerini kaldırma — genişlet
+- ❌ Acceptance_required=false olan eski görevlerde kabul akışını zorla tetikleme

@@ -1,0 +1,84 @@
+🎯 ASLAN KARARLARI — 3/3 Net + Pazartesi Genişletilmiş Plan
+
+1) ZORUNLU İLK İŞ — Push Task #112 role-flows
+
+cd /home/runner/workspace
+git fetch origin
+git log --oneline origin/main..HEAD  
+# Beklenen: 16e8b3a10 + f0630d859 + 2bec3aece (Task #112, 35 dosya, 308 KB)
+
+git push origin main
+
+Claude'un en son commit'leri: dcad707 (27 rol analiz) + efe3d57 (dashboard güncel)
+Conflict beklenmiyor — farklı dosyalar:
+- Sen: docs/role-flows/ (35 dosya, ayrı klasör)
+- Claude: docs/ROL-AKIS-SIMULASYONU-CLAUDE-18NIS.md + docs/00-DASHBOARD.md
+
+Push sonrası rapor: HEAD hash + "role-flows/ 35 dosya origin'de ✅"
+
+2) ASLAN KARARLARI (dashboard efe3d57'de yazılı)
+
+F01 — 13 disabled modül:
+→ KARAR: Liste al, hangileri pilot öncesi açılacak toplantıda karar
+→ Pazartesi 09:15'te Replit bu SQL sonucunu hazırlar:
+  SELECT module_key, is_enabled, description 
+  FROM module_flags 
+  WHERE is_enabled=false 
+  ORDER BY module_key;
+→ Claude + Aslan liste gelince 15 dk karar: "Pilot için hangisi açık olmalı"
+
+F04 — 3 SPOF role backup user:
+→ KARAR: Karşılıklı backup
+  - recete_gm ↔ kalite_kontrol (her biri diğerinin yerine bakar)
+  - kalite_kontrol ↔ gida_muhendisi (her biri diğerinin yerine bakar)
+→ Pazartesi 09:15: Replit bu 3 user'a ikincil rol atar (is_backup=true flag 
+  veya users tablosunda backup_roles array)
+→ Tahmini süre: 30 dk (schema + konfig + test)
+
+Task #112 bulguları:
+→ KARAR: Sadece F01-F05 Pazartesi, kalan 37 bulgu Sprint I backlog
+→ F03 (adminhq parola) zaten planda ✅
+→ F05 (Yatirimci_HQ dashboard): Aslan cevap bekleniyor, pilot'ta bu rol 
+  kullanılmıyorsa Sprint I
+
+3) PAZARTESİ 20 NİS — REPLIT TAM LİSTE (~2.5 saat)
+
+Orijinal 5 iş:
+[ ] adminhq parola rotate (F03 ile birleşik)
+[ ] Test Branch + Örnek şube soft-delete
+[ ] seed_test 704 PDKS kaydı temizlik
+[ ] Nisan bordro backfill (B.5 catch-up, 31 user)
+[ ] Duplicate scheduler log verify
+
+Ek 4 iş (Task #112'den):
+[ ] F01 — module_flags disabled liste (SQL + Aslan/Claude ile karar toplantısı)
+[ ] F02 — fabrika.stok vs fabrika.production naming kararı + toggle
+[ ] F04 — 3 SPOF role backup user atama
+[ ] F05 — Yatirimci_HQ dashboard pilot kullanım sorgusu
+
+Toplam tahmini süre: 2.5 saat. Claude paralel Sprint B.1+B.3+A.2 (~4 saat) yapar.
+
+4) F02 NAMING ÇAKIŞMASI — TEKNİK KARAR
+
+fabrika.stok (disabled) vs fabrika.production (enabled) — aynı konsepti 
+iki isimle temsil ediyor muhtemelen. Benim önerim:
+- fabrika.production kalsın (zaten aktif, daha anlamlı)
+- fabrika.stok module_flags'ten sil veya description'ı "DEPRECATED use fabrika.production" 
+  olarak güncelle
+- Schema temizliği Sprint D (satınalma + bordro sprint'i)
+
+Senin kod incelemen ne diyor? İki flag gerçekten aynı işi mi yapıyor yoksa 
+farklı modüller mi? Pazartesi sabah kararlaştıralım.
+
+5) FUTURE — 25 NİS ÖLÇÜM HATIRLATICI
+
+7 gün sonra (Cuma 25 Nis) notification spam Plan B ölçümü:
+  SELECT type, COUNT(*) FROM notifications
+  WHERE created_at >= NOW() - INTERVAL '7 days'
+    AND type IN ('escalation_info','franchise_escalation','agent_escalation_info')
+  GROUP BY type;
+
+- Toplam <2000 → Plan B başarılı, A.2 gereksiz
+- Toplam >3000 → Plan A.2 (task_escalation_log) Sprint I başına ekle
+
+İyi hafta sonları, Pazartesi sabah 09:00 kickoff!

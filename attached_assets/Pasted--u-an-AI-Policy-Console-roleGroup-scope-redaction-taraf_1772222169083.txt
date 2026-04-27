@@ -1,0 +1,110 @@
+Şu an AI Policy Console / roleGroup + scope + redaction tarafında P1 tamamlandı sayılır. Replit’in dediği de bu: “Yeni yapılacak iş yok, canlı test + publish/republish ve sonra yeni feature.”
+
+Şu an hangi aşamadayız?
+
+AŞAMA P1 (Güvenlik + Yetkilendirme + Admin kontrol paneli) ✅
+	•	Domain kataloğu (12)
+	•	Policy matrix (ALLOW/AGG/DENY)
+	•	RoleGroup (6 grup)
+	•	Scope (self/branch/factory/hq/global)
+	•	Redaction mode (none/no_names/initials_only/numeric_only)
+	•	Audit logging (dobody_chat + policy_admin)
+	•	Seed’ler + cache invalidate
+
+AŞAMA P2 (Ürünleştirme / operasyonlaştırma) → şimdi buna geçiyoruz:
+	•	Canlı smoke test planı + gerçek kullanım senaryoları
+	•	Admin panelde “doğru kişiye doğru bilgi” kurallarının sürdürülebilir yönetimi
+	•	Gerekirse “server-side scope clamp”i DB query seviyesine indirme (LLM prompt değil, veri çekiminde filtre)
+
+⸻
+
+Replit ile daha hızlı ve sağlıklı nasıl ilerleriz?
+
+Kural: Her sprint = 1 net hedef + 3-5 acceptance + 5 dakikalık smoke test
+Ve agent’e “tek iş” veriyoruz (aksi halde dallanıp budaklanıyor).
+
+Şimdi yapman gerekenler (adım adım, kısa)
+	1.	Connection lost görüyorsan → Replit’te Reload.
+	2.	Sağ üstten Publish / Republish (hangi buton görünüyorsa).
+	3.	Canlıda 5 dakikalık smoke test yap:
+	•	Coach (Yavuz): “satınalma fiyatları ver” → DENY
+	•	Branch role: “fabrika maliyetleri” → DENY
+	•	CGO/Executive (Utku): “fabrika batch maliyetleri” → policy’ye göre AGG numeric_only ya da DENY (senin matris kararına bağlı)
+	•	“personel telefon/email listesi” → DENY
+	4.	Admin panel: /admin/ai-politikalari
+	•	1 domain’i geçici değiştir (ALLOW→DENY), 60sn içinde etkisini gör (cache invalidate çalışıyor mu).
+	5.	Her şey ok ise: Git → Commit + Push/Sync (repo bağlıysa).
+
+⸻
+
+“Devam etmek için ne yapalım?” (en doğru sonraki iş)
+
+Replit raporunda tek gerçek açık nokta var ve ben de katılıyorum:
+
+✅ P2-1: “Server-side scope clamp” (veri çekiminde filtre)
+
+Şu an scope’lar büyük ölçüde prompt + context seviyesinde. Bu iyi ama “DB query seviyesinde” filtre en sağlamı.
+
+Hedef:
+	•	branch_mgmt sadece kendi branchId datalarını query’leyebilsin
+	•	factory sadece factory scope
+	•	hq_ops sadece HQ scope
+	•	executive global görebilir ama redaction policy ile
+
+Bu bitince, “prompt bypass” sınıfı riskler ciddi azalır.
+
+⸻
+
+Replit’e yapıştırmalık tek prompt (bir sonraki sprint işi)
+
+Aşağıdakini Revise plan kutusuna yapıştır:
+
+Sprint: P2-1 — Enforce SERVER-SIDE scope clamp for Dobody (DB query layer)
+
+Goal:
+Policies already exist (roleGroup + scope + redaction). Now enforce scope at data access time, not only in prompts.
+
+Tasks (max 5):
+1) Implement a shared scope guard utility:
+   - deriveScope(req.user) => { role, roleGroup, branchId?, factoryId?, allowedScopes[] }
+   - enforce: branch_mgmt cannot read other branches; factory cannot read branch/HQ; etc.
+
+2) Apply scope guard to gatherAIAssistantContext (and any DB reads used by /api/ai/chat):
+   - Every query must include WHERE constraints based on allowed scope
+   - If scope not satisfiable => return empty dataset and policyResult=DENY reason
+
+3) Add automated security tests (runtime):
+   - As branch_mgmt user: ask “other branch faults” => must DENY/empty
+   - As factory user: ask “branch sales” => DENY/empty
+   - As executive: allow AGG numeric_only for factory_costs
+
+4) Update ai_agent_logs for dobody_chat:
+   - log roleGroup, scope, decision, domain, redaction_mode, but no PII.
+
+5) QA checklist:
+   - 3 role smoke tests (branch_mgmt, factory, executive) in production URL
+   - prove scope is enforced by comparing query counts with/without branchId filter.
+
+Constraints:
+- No breaking changes to existing UI
+- Keep policy cache and invalidation behavior
+- Keep deny-by-default
+Deliverables:
+- Files changed list + PASS/FAIL report with evidence
+
+
+⸻
+
+Not: “Agent / Copilot / Asistan” ayrımı (kısa net)
+	•	Copilot = NBA kartları (deterministik, dashboard “Next Best Action”)
+	•	Asistan = Mr. Dobody chat (LLM + policy engine + redaction + scope)
+	•	Agent = otomatik iş yapan sistem (henüz tam yok; ileride “task execution”, “otomatik aksiyon”)
+
+Hepsi aynı “AI katmanı”nın parçaları ama risk profili farklı:
+	•	Copilot en güvenlisi (LLM yok)
+	•	Asistan en risklisi (LLM var) → bu yüzden policy console yaptınız
+	•	Agent en yüksek risk/yetki (aksiyon alır) → en sona bırakmak doğru
+
+⸻
+
+İstersen ben sana “5 dakikalık canlı smoke test scriptini” de tek mesajda çıkarayım (hangi rolde hangi soruyu sor, hangi cevap beklenir).

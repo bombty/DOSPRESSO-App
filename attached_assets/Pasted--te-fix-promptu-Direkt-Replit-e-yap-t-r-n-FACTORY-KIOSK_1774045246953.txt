@@ -1,0 +1,704 @@
+İşte fix promptu. Direkt Replit'e yapıştırın:
+
+---
+
+```
+## FACTORY KIOSK — Complete Flow Fix
+
+### Context
+Factory kiosk has multiple UX issues reported by the business owner. The kiosk is used on a TABLET in the factory — it must be simple, fast, touch-friendly.
+
+CURRENT PROBLEMS:
+1. Standard login with "fabrika" account → kiosk page asks for login AGAIN (double login)
+2. No personnel dashboard — forces station selection immediately after login
+3. Shift cannot start without selecting a station (should be optional)
+4. Break (mola) flow is unreliable
+5. Phase transitions (hazırlık→üretim→temizlik) are confusing
+6. No auto-return to personnel screen after inactivity
+7. Layout should be 2-column on tablet (left: personnel/shift, right: production info)
+
+IMPORTANT ARCHITECTURE NOTES:
+- kiosk_sessions table is SHARED with branch kiosk (sube/kiosk.tsx) — do NOT break branch kiosk
+- factory_shift_sessions is DIFFERENT from shifts table (branch shifts)
+- factory_scoring_service.ts reads factory_shift_sessions — do NOT change column names
+- employee-summary-service.ts reads factory scores — do NOT break the integration
+- isAuthenticated middleware already has kiosk token fallback — do NOT modify localAuth.ts
+- kioskFetch() helper already exists and works — USE it for all API calls
+- Table name is factory_session_events (NOT factory_kiosk_session_events)
+- Table name is factory_quality_checks (NOT factory_quality_records)
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+### CRITICAL RULES
+- Turkish UI
+- users.id is VARCHAR (UUID)
+- Do NOT touch: server/vite.ts, vite.config.ts, package.json, drizzle.config.ts, localAuth.ts
+- Do NOT touch: sube/kiosk.tsx (branch kiosk — separate system)
+- Do NOT touch: factory-scoring-service.ts (already working)
+- Do NOT touch: employee-summary-service.ts (already working)
+- Do NOT rename any database columns
+- USE kioskFetch() for ALL kiosk API calls (already implemented)
+- KEEP all existing backend endpoints working — only ADD new ones or fix frontend flow
+
+---
+
+## STEP 0: READ CURRENT STATE FIRST
+
+Before making ANY changes, read and understand the current code:
+
+```bash
+# Current kiosk file
+wc -l client/src/pages/fabrika/kiosk.tsx
+grep -n "step === " client/src/pages/fabrika/kiosk.tsx | head -20
+grep -n "setStep(" client/src/pages/fabrika/kiosk.tsx | head -40
+grep -n "useState" client/src/pages/fabrika/kiosk.tsx | head -30
+
+# How does standard login redirect?
+grep -n "fabrika\|kiosk\|factory" client/src/App.tsx | head -15
+grep -n "fabrika\|kiosk\|redirect" client/src/hooks/useAuth.tsx client/src/pages/login.tsx 2>/dev/null | head -15
+
+# Current steps in kiosk
+grep -n "KioskStep" client/src/pages/fabrika/kiosk.tsx | head -5
+
+# How login onSuccess works now
+grep -B5 -A25 "loginByUsername.*onSuccess\|loginMutation.*onSuccess" client/src/pages/fabrika/kiosk.tsx | head -40
+
+# How start-shift works now
+grep -B3 -A25 "start-shift" server/routes/factory.ts | head -35
+
+# What worker-home shows now
+grep -B3 -A50 "step === 'worker-home'" client/src/pages/fabrika/kiosk.tsx | head -60
+
+# How branch kiosk stores token (reference — do NOT modify)
+grep -n "kiosk-token\|localStorage" client/src/pages/sube/kiosk.tsx | head -10
+```
+
+---
+
+## FIX 1: Standard Login → Skip Double Login
+
+When "fabrika" user logs in via standard /login page, they already have a web session. The kiosk page must detect this and skip device-password step.
+
+```bash
+# Check if there's already skip logic
+grep -n "isStandardLogin\|webSession\|skipDevice\|user.*role.*fabrika" client/src/pages/fabrika/kiosk.tsx | head -10
+```
+
+Add/fix useEffect at the TOP of the kiosk component:
+
+```typescript
+// Detect if user came from standard login (has web session)
+useEffect(() => {
+  // If user has an active web session (logged in via /login page)
+  // Skip device-password and enter-credentials, go to select-user
+  async function checkWebSession() {
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      if (res.ok) {
+        const userData = await res.json();
+        const factoryRoles = ['fabrika_operator', 'fabrika_personel', 'fabrika_sorumlu', 'fabrika_mudur', 'admin', 'supervisor', 'supervisor_buddy'];
+        if (userData && factoryRoles.includes(userData.role)) {
+          // Web session exists — skip to personnel screen
+          setStep('select-user');
+        }
+      }
+    } catch (e) {
+      // No web session — stay on device-password (normal kiosk flow)
+    }
+  }
+  
+  if (step === 'device-password') {
+    checkWebSession();
+  }
+}, []);
+```
+
+IMPORTANT: This only runs on mount. It does NOT affect the normal kiosk flow (device-password → enter-credentials → select-user).
+
+---
+
+## FIX 2: Personnel Dashboard (select-user) — 2-Column Layout
+
+The select-user step should show ALL factory workers as clickable name cards. When a worker taps their name → PIN entry → worker-home.
+
+```bash
+# Check current select-user implementation
+grep -B5 -A80 "step === 'select-user'" client/src/pages/fabrika/kiosk.tsx | head -100
+```
+
+Redesign the select-user step as 2-column layout:
+
+```typescript
+{step === 'select-user' && (
+  <div className="flex h-[calc(100vh-60px)]">
+    
+    {/* LEFT COLUMN — Personnel Grid (60%) */}
+    <div className="w-3/5 p-4 overflow-y-auto">
+      <div className="text-center mb-4">
+        <h2 className="text-lg font-bold">DOSPRESSO Fabrika</h2>
+        <p className="text-sm text-muted-foreground">Vardiya başlatmak için isminize dokunun</p>
+      </div>
+      
+      {/* Workers currently on shift — green section */}
+      {activeWorkers.length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-xs font-medium text-green-500 mb-2 uppercase tracking-wider">
+            Vardiyada ({activeWorkers.length})
+          </h3>
+          <div className="grid grid-cols-3 gap-2">
+            {activeWorkers.map(worker => (
+              <button key={worker.id}
+                className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center hover:bg-green-500/20 active:scale-95 transition-all"
+                onClick={() => { setSelectedWorker(worker); setStep('enter-pin'); }}>
+                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-1">
+                  <span className="text-sm font-bold text-green-500">{worker.firstName?.[0]}</span>
+                </div>
+                <p className="font-medium text-xs truncate">{worker.firstName}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{worker.lastName}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Available workers — not on shift */}
+      <div>
+        <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
+          Personel ({availableWorkers.length})
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {availableWorkers.map(worker => (
+            <button key={worker.id}
+              className="p-3 rounded-lg bg-card border border-border text-center hover:bg-muted active:scale-95 transition-all"
+              onClick={() => { setSelectedWorker(worker); setStep('enter-pin'); }}>
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-1">
+                <span className="text-sm font-bold">{worker.firstName?.[0]}</span>
+              </div>
+              <p className="font-medium text-xs truncate">{worker.firstName}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{worker.lastName}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+    
+    {/* RIGHT COLUMN — Factory Info (40%) */}
+    <div className="w-2/5 p-4 border-l border-border overflow-y-auto bg-muted/20">
+      {/* Clock */}
+      <div className="text-center mb-4 p-3 bg-card rounded-lg">
+        <p className="text-3xl font-mono font-bold"><LiveClock /></p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {new Date().toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long'})}
+        </p>
+      </div>
+      
+      {/* Today production summary */}
+      <div className="mb-3 p-3 bg-card rounded-lg">
+        <h3 className="text-xs font-medium mb-2">Bugünün Üretimi</h3>
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div className="p-2 bg-muted rounded">
+            <p className="text-lg font-bold">{todayFactoryStats?.totalProduced || 0}</p>
+            <p className="text-[10px] text-muted-foreground">Toplam Üretim</p>
+          </div>
+          <div className="p-2 bg-muted rounded">
+            <p className="text-lg font-bold">{todayFactoryStats?.activeWorkers || 0}</p>
+            <p className="text-[10px] text-muted-foreground">Aktif Personel</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Active stations */}
+      <div className="p-3 bg-card rounded-lg">
+        <h3 className="text-xs font-medium mb-2">İstasyonlar</h3>
+        {stations?.map(station => (
+          <div key={station.id} className="flex justify-between items-center py-1 text-xs border-b border-border last:border-0">
+            <span>{station.name}</span>
+            <span className={station.activeWorkerCount > 0 ? "text-green-500" : "text-muted-foreground"}>
+              {station.activeWorkerCount > 0 ? `${station.activeWorkerCount} kişi` : 'Boş'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+```
+
+### LiveClock component (simple):
+```typescript
+function LiveClock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <>{time.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</>;
+}
+```
+
+### Data queries for select-user:
+```typescript
+// Staff list
+const staffQuery = useQuery({
+  queryKey: ['/api/factory/staff'],
+  queryFn: () => kioskFetch('/api/factory/staff').then(r => r.json()),
+  enabled: step === 'select-user',
+  refetchInterval: 30000,
+});
+
+// Active workers (on shift)
+const activeWorkersQuery = useQuery({
+  queryKey: ['/api/factory/kiosk/active-workers'],
+  queryFn: () => kioskFetch('/api/factory/kiosk/active-workers').then(r => r.json()),
+  enabled: step === 'select-user',
+  refetchInterval: 15000,
+});
+
+// Factory dashboard stats for right column
+const factoryStatsQuery = useQuery({
+  queryKey: ['/api/factory/dashboard/stats'],
+  queryFn: () => kioskFetch('/api/factory/dashboard/stats').then(r => r.json()),
+  enabled: step === 'select-user',
+  refetchInterval: 60000,
+});
+
+// Separate active vs available
+const allStaff = staffQuery.data || [];
+const activeWorkerIds = new Set((activeWorkersQuery.data || []).map((w: any) => w.userId));
+const activeWorkers = allStaff.filter((w: any) => activeWorkerIds.has(w.id));
+const availableWorkers = allStaff.filter((w: any) => !activeWorkerIds.has(w.id));
+const todayFactoryStats = factoryStatsQuery.data;
+```
+
+---
+
+## FIX 3: PIN Entry — Fast Numpad
+
+After tapping a worker name, show PIN entry with numpad:
+
+```typescript
+{step === 'enter-pin' && selectedWorker && (
+  <div className="flex flex-col items-center justify-center min-h-[80vh] p-6">
+    <button className="absolute top-4 left-4 text-sm text-muted-foreground hover:text-foreground"
+      onClick={() => { setSelectedWorker(null); setPin(''); setPinError(''); setStep('select-user'); }}>
+      ← Geri
+    </button>
+    
+    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+      <span className="text-xl font-bold">{selectedWorker.firstName?.[0]}</span>
+    </div>
+    <h2 className="text-lg font-bold">{selectedWorker.firstName} {selectedWorker.lastName}</h2>
+    <p className="text-sm text-muted-foreground mb-6">PIN kodunuzu girin</p>
+    
+    {/* PIN dots */}
+    <div className="flex gap-3 mb-6">
+      {[0,1,2,3].map(i => (
+        <div key={i} className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center text-xl font-bold ${
+          pin.length > i ? 'border-primary bg-primary/10' : 'border-border'
+        }`}>
+          {pin.length > i ? '●' : ''}
+        </div>
+      ))}
+    </div>
+    
+    {/* Numpad */}
+    <div className="grid grid-cols-3 gap-2 w-56">
+      {[1,2,3,4,5,6,7,8,9].map(n => (
+        <button key={n} className="h-12 text-lg font-bold rounded-lg border border-border hover:bg-muted active:scale-95"
+          onClick={() => handlePinDigit(String(n))}>{n}</button>
+      ))}
+      <button className="h-12 text-xs rounded-lg border border-border hover:bg-muted"
+        onClick={() => setPin('')}>Temizle</button>
+      <button className="h-12 text-lg font-bold rounded-lg border border-border hover:bg-muted active:scale-95"
+        onClick={() => handlePinDigit('0')}>0</button>
+      <button className="h-12 text-xs rounded-lg border border-border hover:bg-muted"
+        onClick={() => setPin(p => p.slice(0, -1))}>← Sil</button>
+    </div>
+    
+    {pinError && <p className="text-sm text-destructive mt-4">{pinError}</p>}
+  </div>
+)}
+```
+
+### PIN handler — auto-submit at 4 digits:
+```typescript
+const [pin, setPin] = useState('');
+const [pinError, setPinError] = useState('');
+
+function handlePinDigit(digit: string) {
+  if (pin.length >= 4) return;
+  const newPin = pin + digit;
+  setPin(newPin);
+  if (newPin.length === 4) {
+    handlePinSubmit(newPin);
+  }
+}
+
+async function handlePinSubmit(pinCode: string) {
+  try {
+    setPinError('');
+    const res = await kioskFetch('/api/factory/kiosk/login-by-username', {
+      method: 'POST',
+      body: JSON.stringify({ username: selectedWorker.username, pin: pinCode }),
+    });
+    const data = await res.json();
+    
+    if (!res.ok) {
+      setPinError(data.error || 'PIN hatalı');
+      setPin('');
+      return;
+    }
+    
+    // Store token
+    if (data.kioskToken) {
+      localStorage.setItem("factory-kiosk-token", data.kioskToken);
+    }
+    
+    // Auto-start shift (no station required)
+    try {
+      const shiftRes = await kioskFetch('/api/factory/kiosk/start-shift', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      const shiftData = await shiftRes.json();
+      if (shiftData.sessionId) {
+        setActiveSessionId(shiftData.sessionId);
+      }
+      if (shiftData.existingSession || shiftData.resumed) {
+        // Resuming existing shift
+        setActiveSessionId(shiftData.sessionId || shiftData.existingSession?.id);
+        if (shiftData.existingSession?.stationId) {
+          const st = (stations || []).find((s: any) => s.id === shiftData.existingSession.stationId);
+          if (st) setCurrentStation(st);
+        }
+      }
+    } catch (e) {
+      console.error('[Kiosk] Auto shift start:', e);
+    }
+    
+    setShiftStartTime(new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}));
+    setPin('');
+    setPinError('');
+    setStep('worker-home');
+  } catch (err) {
+    setPinError('Bağlantı hatası');
+    setPin('');
+  }
+}
+```
+
+---
+
+## FIX 4: Worker Home — Central Hub
+
+After PIN login, worker sees their personal dashboard with ALL options:
+
+```typescript
+{step === 'worker-home' && selectedWorker && (
+  <div className="flex flex-col items-center p-6 max-w-md mx-auto">
+    {/* Worker header */}
+    <div className="text-center mb-6">
+      <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
+        <span className="text-lg font-bold">{selectedWorker.firstName?.[0]}{selectedWorker.lastName?.[0]}</span>
+      </div>
+      <h2 className="text-base font-bold">{selectedWorker.firstName} {selectedWorker.lastName}</h2>
+      <p className="text-xs text-muted-foreground">Vardiya: {shiftStartTime || '--:--'}</p>
+      {currentStation && <p className="text-xs text-primary mt-0.5">İstasyon: {currentStation.name}</p>}
+    </div>
+    
+    {/* Action buttons — large, touch-friendly */}
+    <div className="w-full space-y-3">
+      {/* Primary: production */}
+      <Button size="lg" className="w-full h-16 text-base bg-green-600 hover:bg-green-700 text-white"
+        onClick={() => currentStation ? setStep('working') : setStep('select-station')}>
+        {currentStation ? `Üretime Devam — ${currentStation.name}` : 'İstasyon Seç ve Başla'}
+      </Button>
+      
+      {currentStation && (
+        <Button variant="outline" size="lg" className="w-full h-12 text-sm"
+          onClick={() => setStep('select-station')}>
+          İstasyon Değiştir
+        </Button>
+      )}
+      
+      <Button variant="outline" size="lg" className="w-full h-12 text-sm"
+        onClick={() => startBreak('mola')}>
+        Molaya Çık
+      </Button>
+      
+      <Button variant="outline" size="lg" className="w-full h-12 text-sm"
+        onClick={() => setStep('fault-report')}>
+        Arıza Bildir
+      </Button>
+      
+      <Button variant="ghost" size="lg" className="w-full h-12 text-sm text-destructive"
+        onClick={handleEndShift}>
+        Vardiya Bitir
+      </Button>
+    </div>
+    
+    {/* Today stats */}
+    <div className="mt-6 w-full grid grid-cols-3 gap-2 text-center">
+      <div className="p-2 bg-muted rounded-lg">
+        <p className="text-lg font-bold">{workerTodayStats?.produced || 0}</p>
+        <p className="text-[10px] text-muted-foreground">Üretim</p>
+      </div>
+      <div className="p-2 bg-muted rounded-lg">
+        <p className="text-lg font-bold">{workerTodayStats?.breakMinutes || 0}dk</p>
+        <p className="text-[10px] text-muted-foreground">Mola</p>
+      </div>
+      <div className="p-2 bg-muted rounded-lg">
+        <p className="text-lg font-bold">{workerTodayStats?.shiftHours || '0:00'}</p>
+        <p className="text-[10px] text-muted-foreground">Vardiya</p>
+      </div>
+    </div>
+  </div>
+)}
+```
+
+### Worker today stats query:
+```typescript
+const workerTodayStatsQuery = useQuery({
+  queryKey: ['/api/factory/kiosk/worker-today-stats', selectedWorker?.id],
+  queryFn: () => kioskFetch(`/api/factory/kiosk/worker-today-stats?userId=${selectedWorker?.id}`).then(r => r.json()),
+  enabled: step === 'worker-home' && !!selectedWorker?.id,
+  refetchInterval: 30000,
+});
+const workerTodayStats = workerTodayStatsQuery.data;
+```
+
+---
+
+## FIX 5: Inactivity Auto-Return (5 seconds)
+
+On worker-home and end-shift-summary, if no touch for 5 seconds, return to select-user:
+
+```typescript
+const inactivityRef = useRef<NodeJS.Timeout | null>(null);
+const INACTIVITY_MS = 5000; // 5 seconds
+const AUTO_RETURN_STEPS: KioskStep[] = ['worker-home', 'end-shift-summary'];
+
+useEffect(() => {
+  function resetTimer() {
+    if (inactivityRef.current) clearTimeout(inactivityRef.current);
+    if (AUTO_RETURN_STEPS.includes(step) && selectedWorker) {
+      inactivityRef.current = setTimeout(() => resetWorker(), INACTIVITY_MS);
+    }
+  }
+  
+  const events = ['touchstart', 'mousedown', 'keydown'];
+  events.forEach(e => document.addEventListener(e, resetTimer));
+  resetTimer();
+  
+  return () => {
+    if (inactivityRef.current) clearTimeout(inactivityRef.current);
+    events.forEach(e => document.removeEventListener(e, resetTimer));
+  };
+}, [step, selectedWorker]);
+```
+
+IMPORTANT: Do NOT auto-return during working, on-break, select-station, production-entry, log-production, fault-report, stop-options, enter-pin.
+
+---
+
+## FIX 6: Break Flow — Simple and Reliable
+
+```typescript
+async function startBreak(reason: string) {
+  try {
+    const res = await kioskFetch('/api/factory/kiosk/log-break', {
+      method: 'POST',
+      body: JSON.stringify({
+        eventType: reason,
+        stationId: currentStation?.id || null,
+        sessionId: activeSessionId,
+      }),
+    });
+    const data = await res.json();
+    if (data.breakLogId) {
+      setCurrentBreakLogId(data.breakLogId);
+    }
+    setBreakReason(reason);
+    setStep('on-break');
+  } catch (err) {
+    console.error('[Kiosk] Start break error:', err);
+    // Go to break screen anyway
+    setBreakReason(reason);
+    setStep('on-break');
+  }
+}
+
+function returnFromBreak() {
+  // End break (fire-and-forget — don't block UI)
+  if (currentBreakLogId) {
+    kioskFetch('/api/factory/kiosk/end-break', {
+      method: 'POST',
+      body: JSON.stringify({ breakLogId: currentBreakLogId }),
+    }).catch(err => console.error('[Kiosk] End break:', err));
+  }
+  setCurrentBreakLogId(null);
+  setBreakReason(null);
+  setStep('worker-home'); // Always return to worker-home
+}
+```
+
+on-break screen:
+```typescript
+{step === 'on-break' && (
+  <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
+    <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+      <Coffee className="h-8 w-8 text-amber-500" />
+    </div>
+    <h2 className="text-xl font-bold">{breakReason === 'ozel_ihtiyac' ? 'Özel İhtiyaç' : 'Mola'}</h2>
+    <p className="text-sm text-muted-foreground">{selectedWorker?.firstName} {selectedWorker?.lastName}</p>
+    <BreakTimer />
+    <Button size="lg" className="w-56 h-14 text-base bg-green-600 hover:bg-green-700 text-white"
+      onClick={returnFromBreak}>
+      Ana Sayfaya Dön
+    </Button>
+  </div>
+)}
+```
+
+---
+
+## FIX 7: All Flows Return to worker-home
+
+Make sure every sub-flow returns to worker-home (NOT select-user, NOT auto-logout):
+
+- Break → on-break → "Ana Sayfaya Dön" → **worker-home**
+- Fault report → submit → **worker-home**
+- Production entry (mid-shift) → save → **worker-home**
+- Station select → select → **worker-home** (with station set)
+- Working → stop-options → "Üretimi Bitir" → log-production → **worker-home**
+
+ONLY "Vardiya Bitir" exits to end-shift-summary → (6s countdown) → **select-user**
+
+---
+
+## FIX 8: resetWorker — Return to Personnel Screen
+
+```typescript
+function resetWorker() {
+  setSelectedWorker(null);
+  setCurrentStation(null);
+  setActiveSessionId(null);
+  setCurrentPhase('hazirlik');
+  setShiftStartTime(null);
+  setBreakReason(null);
+  setCurrentBreakLogId(null);
+  setPin('');
+  setPinError('');
+  // Do NOT clear factory-kiosk-token — device stays authenticated
+  // Do NOT clear kiosk device auth
+  setStep('select-user'); // Back to personnel grid
+}
+```
+
+---
+
+## FIX 9: End Shift Flow
+
+```typescript
+async function handleEndShift() {
+  try {
+    if (activeSessionId) {
+      await kioskFetch('/api/factory/kiosk/end-shift', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId: activeSessionId }),
+      });
+    }
+    setStep('end-shift-summary');
+  } catch (err) {
+    console.error('[Kiosk] End shift:', err);
+    setStep('end-shift-summary');
+  }
+}
+```
+
+end-shift-summary with 6s countdown:
+```typescript
+{step === 'end-shift-summary' && (
+  <div className="flex flex-col items-center justify-center min-h-[80vh] gap-4">
+    <h2 className="text-xl font-bold">Vardiya Tamamlandı</h2>
+    <p className="text-sm text-muted-foreground">{selectedWorker?.firstName} {selectedWorker?.lastName}</p>
+    
+    <div className="grid grid-cols-2 gap-3 w-56 my-4">
+      <div className="p-3 bg-muted rounded-lg text-center">
+        <p className="text-xl font-bold">{workerTodayStats?.produced || 0}</p>
+        <p className="text-[10px] text-muted-foreground">Üretim</p>
+      </div>
+      <div className="p-3 bg-muted rounded-lg text-center">
+        <p className="text-xl font-bold">{workerTodayStats?.breakMinutes || 0}dk</p>
+        <p className="text-[10px] text-muted-foreground">Mola</p>
+      </div>
+    </div>
+    
+    <p className="text-xs text-muted-foreground">{autoLogoutCountdown}sn sonra çıkış yapılacak</p>
+    <Button variant="outline" size="sm" onClick={resetWorker}>Şimdi Çık</Button>
+  </div>
+)}
+```
+
+Auto-logout countdown (6 seconds):
+```typescript
+useEffect(() => {
+  if (step === 'end-shift-summary') {
+    setAutoLogoutCountdown(6);
+    const interval = setInterval(() => {
+      setAutoLogoutCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          resetWorker();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }
+}, [step]);
+```
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- server/localAuth.ts (auth middleware — already has kiosk fallback)
+- client/src/pages/sube/kiosk.tsx (branch kiosk — separate)
+- server/services/factory-scoring-service.ts (scoring — working)
+- server/services/employee-summary-service.ts (summary — working)
+- Database column names (scoring service depends on them)
+- Any backend endpoint that currently returns 200
+
+## Testing:
+1. App starts without errors
+2. Standard login as "fabrika" → goes to select-user (NO double login)
+3. select-user: 2-column layout, personnel cards on left, factory info on right
+4. Tap worker name → PIN numpad appears
+5. Enter correct PIN → worker-home (shift auto-started)
+6. Enter wrong PIN → error, can retry
+7. worker-home: name, station status, 5 buttons, today stats
+8. "İstasyon Seç" → station grid → select → worker-home (station set)
+9. "Üretime Devam" → working screen with phases
+10. Phase transitions: hazırlık → üretim → temizlik → production entry → worker-home
+11. "Molaya Çık" → on-break with timer → "Ana Sayfaya Dön" → worker-home
+12. "Arıza Bildir" → form → submit → worker-home
+13. "Vardiya Bitir" → end-shift-summary → 6s → select-user
+14. 5s inactivity on worker-home → auto-return to select-user
+15. All API calls use kioskFetch (x-kiosk-token header)
+16. Branch kiosk still works (NOT broken)
+17. Factory scoring still works (check /api/factory/analytics/workers)
+
+## After:
+1. Report lines changed
+2. E2E flow test: device-auth → select-user → PIN → worker-home → station → working → break → back → end shift
+3. Verify branch kiosk unaffected: test sube/kiosk.tsx login flow
+4. Verify scoring unaffected: check factory_worker_scores table
+```
+
+---
+
+Bu promptu Replit'e yapıştırın. Sonucu bekliyorum!

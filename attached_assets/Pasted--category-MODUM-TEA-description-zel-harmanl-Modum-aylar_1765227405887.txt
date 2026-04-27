@@ -1,0 +1,77 @@
+{
+  "category": "MODUM_TEA",
+  "description": "Özel harmanlı Modum çayları; demleme ve infüzyon esaslıdır. Freshess gibi pompalı konsantre değil.",
+  "cup_sizes_ml": {
+    "massivo_hot": 300,
+    "long_diva_hot": 550,
+    "massivo_cold": 400,
+    "long_diva_cold": 650
+  },
+
+  "products": [
+    {
+      "code": "MDM_GREEN",
+      "name_tr": "Modum Yeşil Çay",
+      "name_en": "Modum Green Tea",
+      "serve_types": [
+        {
+          "style": "HOT",
+          "water_temp": "80-85°C",
+          "brew_time_min": 2-3,
+          "sizes": [
+            {
+              "size": "MASSIVO",
+              "cup_ml": 300,
+              "steps": [
+                "Yeşil çay infüzyon tabanını bardakta poşet/idol haline hazırla.",
+                "Bardağa 80-85°C sıcak suyu sunum çizgisine yaklaşacak kadar doldur.",
+                "2-3 dakika demlenmesini misafire belirt.",
+                "Çay poşetini sunumda bardağa bırak veya tabağa al.",
+                "Sıcak servis edilir."
+              ]
+            },
+            {
+              "size": "LONG_DIVA",
+              "cup_ml": 550,
+              "steps": [
+                "Long Diva bardağa infüzyon tabanını yerleştir.",
+                "Sıcak suyu sunum çizgisine kadar ekle.",
+                "3-4 dakika demleyip servis et."
+              ]
+            }
+          ]
+        },
+        {
+          "style": "ICED",
+          "brew_base_note": "Soğutulmuş demleme baz alınır.",
+          "sizes": [
+            {
+              "size": "MASSIVO",
+              "cup_ml": 400,
+              "tea_base_ml": 220,
+              "sweetness": "Opsiyonel şeker",
+              "steps": [
+                "Massivo PET bardağa 1/4 oranında buz ekle.",
+                "220 ml soğutulmuş yeşil çay dök.",
+                "Gerekirse 1 pump nane su veya limon su ile aroma kat.",
+                "Sunum çizgisine kadar buz ile tamamla.",
+                "Karıştır ve servis et."
+              ]
+            },
+            {
+              "size": "LONG_DIVA",
+              "cup_ml": 650,
+              "tea_base_ml": 320,
+              "steps": [
+                "Long Diva bardağı 1/3 oranında buz ile doldur.",
+                "320 ml soğutulmuş yeşil çay ekle.",
+                "Buz ile sunum çizgisine kadar tamamla.",
+                "Servise hazır."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

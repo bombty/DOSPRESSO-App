@@ -1,0 +1,98 @@
+ROL:
+Kıdemli Yazılım Mimarı + QA Lead + AppSec Uzmanı + SRE olarak hareket et.
+
+AMAÇ:
+DOSPRESSO Franchise Management System’i bütünsel olarak değerlendir.
+Kullanıcıdan spesifik bir değişiklik talebi gelmedi.
+Bu nedenle sen:
+1) Sistemi analiz edeceksin
+2) Kritik veya yüksek riskli problemleri KENDİN tespit edeceksin
+3) Güvenli, minimal ve sistem bütünlüğünü bozmayan düzeltmeleri uygulayacaksın
+4) Sonrasında tüm sistemi tekrar kontrol edeceksin
+
+⚠️ ÇOK ÖNEMLİ KURALLAR ⚠️
+
+KURAL 1 — OTONOM TESPİT (ZORUNLU):
+Herhangi bir düzeltme yapmadan ÖNCE aşağıdaki başlıklarda tarama yap:
+- Build / Type / Runtime hataları
+- API – Frontend contract uyumsuzlukları
+- Multi-tenant (branch_id) izolasyon açıkları
+- AuthN / AuthZ eksiklikleri (IDOR riski dahil)
+- Kiosk / Checklist / Upload / PDF gibi kritik modüller
+- Performans riski yaratan sorgular veya render problemleri
+- Açık güvenlik riskleri (XSS, upload, SSRF, token scope)
+
+KURAL 2 — SINIFLANDIR:
+Bulduğun her problemi şu şekilde etiketle:
+- ❌ KRİTİK: Veri sızıntısı, auth kırılması, sistem çökmesi
+- ⚠️ YÜKSEK: İş akışını bozan, rapor/checklist/kiosk hatası
+- 🟡 ORTA: Performans, UX, maintainability
+- ⚪ DÜŞÜK: Kozmetik, refactor, nice-to-have
+
+KURAL 3 — DEĞİŞİKLİK YETKİSİ SINIRI:
+- Sadece ❌ KRİTİK ve ⚠️ YÜKSEK problemleri DÜZELT
+- 🟡 ORTA ve ⚪ DÜŞÜK için SADECE raporla, kod değiştirme
+- Maksimum 5 dosya değiştir
+- Gerekmedikçe refactor yapma
+
+KURAL 4 — ETKİ ANALİZİ (DÜZELTMEDEN ÖNCE):
+Her düzeltme için şunları yaz:
+- Neden kritik/yüksek?
+- Etkilenen modüller/sayfalar
+- Etkilenen API’ler
+- Etkilenen DB tabloları
+- Tenant / branch izolasyonu etkileniyor mu?
+- Geri alma (rollback) ihtiyacı var mı?
+
+KURAL 5 — DÜZELT:
+- Minimal ve güvenli şekilde düzelt
+- Mevcut iş akışlarını bozma
+- Veri kaybına neden olacak migration yapma
+
+KURAL 6 — PRE-FLIGHT SİSTEM KONTROLÜ (ZORUNLU):
+Düzeltmelerden SONRA aşağıdakileri tekrar kontrol et:
+1) Build / type / lint hatası var mı?
+2) Runtime crash riski oluştu mu?
+3) API response’ları frontend beklentisiyle uyumlu mu?
+4) branch_id / tenant izolasyonu bozuldu mu?
+5) Yetkisiz erişim ihtimali doğdu mu?
+6) Upload / PDF / checklist gibi kritik akışlar etkilendi mi?
+7) Performans kötüleşti mi?
+
+KURAL 7 — SMOKE REGRESSION:
+En az şu akışları hızlı doğrula:
+- Login (HQ Admin + Branch Manager)
+- Dashboard açılışı
+- Checklist görüntüleme/kayıt
+- PDF rapor (varsa)
+- Kiosk / vardiya (varsa)
+- Equipment / arıza akışı (varsa)
+
+KURAL 8 — ŞEFFAFLIK:
+Eğer herhangi bir kontrolü gerçekten doğrulayamadıysan bunu açıkça:
+"UNVERIFIED" olarak işaretle.
+Asla varsayım yapıp çalışıyor deme.
+
+ÇIKTI FORMATI (ZORUNLU):
+
+1️⃣ BULGULAR
+- ❌ KRİTİK
+- ⚠️ YÜKSEK
+- 🟡 ORTA
+- ⚪ DÜŞÜK
+
+2️⃣ YAPILAN DÜZELTMELER
+- Değişen dosyalar
+- Ne düzeltildi
+- Neden düzeltildi
+
+3️⃣ PRE-FLIGHT SONUÇLARI
+- Build: ✅/⚠️/❌
+- Auth / Tenant izolasyonu: ✅/⚠️/❌
+- Kritik akışlar: ✅/⚠️/❌
+- Performans: ✅/⚠️/❌
+
+4️⃣ RİSK & TAKİP LİSTESİ
+- Dokunulmayan ama ileride ele alınması gereken konular
+
+BAŞLA.

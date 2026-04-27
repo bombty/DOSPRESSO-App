@@ -1,0 +1,354 @@
+# ARAŞTIRMA: Agent Sistemi + Bilgi Akış Hiyerarşisi — Değişiklik YAPMA
+
+Bu tamamen araştırma — hiçbir dosyayı değiştirme, sadece raporla.
+
+## BÖLÜM 1: MR. DOBODY AGENT SİSTEMİ
+
+```bash
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM 1: AGENT SİSTEMİ TAM HARİTA"
+echo "════════════════════════════════════════════════"
+
+echo "=== 1A: Agent skill dosyaları ==="
+ls -la server/agent/skills/*.ts 2>/dev/null
+echo "--- Her skill'in adı ve satır sayısı ---"
+for f in server/agent/skills/*.ts; do
+  name=$(basename "$f" .ts)
+  lines=$(wc -l < "$f")
+  # İlk yorum satırını al (skill açıklaması)
+  desc=$(head -5 "$f" | grep -i "//\|description\|skill\|name" | head -1)
+  echo "  $name ($lines satır) — $desc"
+done
+
+echo ""
+echo "=== 1B: Her skill hangi rollere hitap ediyor? ==="
+for f in server/agent/skills/*.ts; do
+  name=$(basename "$f" .ts)
+  roles=$(grep -i "role\|target.*role\|applicable\|hedef" "$f" | head -3)
+  echo "  [$name] $roles"
+done
+
+echo ""
+echo "=== 1C: Agent engine — skill nasıl çalıştırılıyor? ==="
+wc -l server/services/agent-engine.ts 2>/dev/null
+grep -n "function\|export\|class\|skill\|execute\|run\|trigger" server/services/agent-engine.ts 2>/dev/null | head -20
+
+echo ""
+echo "=== 1D: Agent scheduler — ne zaman çalışıyor? ==="
+grep -n "agent\|scheduler\|cron\|interval\|daily\|weekly\|hourly" server/services/agent-scheduler.ts 2>/dev/null | head -20
+
+echo ""
+echo "=== 1E: Agent escalation sistemi ==="
+wc -l server/services/agent-escalation.ts 2>/dev/null
+grep -n "escalat\|level\|severity\|critical\|urgent\|remind\|alert" server/services/agent-escalation.ts 2>/dev/null | head -15
+
+echo ""
+echo "=== 1F: System completeness service (gap detection) ==="
+wc -l server/services/system-completeness-service.ts 2>/dev/null
+grep -n "gap\|check\|missing\|incomplete\|severity\|deepLink" server/services/system-completeness-service.ts 2>/dev/null | head -20
+
+echo ""
+echo "=== 1G: Guidance widget — Mr. Dobody frontend ==="
+wc -l client/src/components/widgets/guidance-widget.tsx 2>/dev/null
+grep -n "queryKey\|useQuery\|severity\|priority\|role" client/src/components/widgets/guidance-widget.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== 1H: Agent action center ==="
+wc -l client/src/pages/agent-action-center.tsx 2>/dev/null
+grep -n "action\|approve\|reject\|pending\|status" client/src/pages/agent-action-center.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== 1I: Agent aksiyonları — DB'de ne var? ==="
+echo "SELECT action_type, status, COUNT(*) FROM agent_actions GROUP BY action_type, status ORDER BY count DESC LIMIT 20;" | psql 2>/dev/null
+echo ""
+echo "SELECT severity, COUNT(*) FROM agent_actions GROUP BY severity ORDER BY count DESC;" | psql 2>/dev/null
+
+echo ""
+echo "=== 1J: Agent skill loader — nasıl register ediliyor? ==="
+grep -rn "registerSkill\|loadSkill\|skillRegistry\|SKILLS\|skillList" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "=== 1K: .agents dizini (Replit agent skills) ==="
+ls -la .agents/skills/ 2>/dev/null
+for d in .agents/skills/*/; do
+  name=$(basename "$d")
+  lines=$(wc -l < "$d/SKILL.md" 2>/dev/null || echo "?")
+  echo "  $name: $lines satır"
+done
+```
+
+## BÖLÜM 2: BİLGİ AKIŞ HİYERARŞİSİ — MEVCUT DURUM
+
+```bash
+echo ""
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM 2: BİLDİRİM + RAPORLAMA ZİNCİRLERİ"
+echo "════════════════════════════════════════════════"
+
+echo "=== 2A: Kim kime bildirim gönderiyor? ==="
+echo "--- createNotification çağrıları ve hedef roller ---"
+grep -rn "createNotification" server/ --include="*.ts" | grep -v node_modules | while read line; do
+  file=$(echo "$line" | cut -d: -f1 | xargs basename)
+  linenum=$(echo "$line" | cut -d: -f2)
+  # Hedef kullanıcı/rol bilgisini bul
+  context=$(echo "$line" | grep -oP "userId|recipientId|targetUser|role|supervisor|admin|coach|mudur|ceo|cgo" | head -1)
+  echo "  $file:$linenum → hedef: $context"
+done | head -30
+
+echo ""
+echo "=== 2B: Bildirim tipleri ve sayıları ==="
+echo "SELECT type, COUNT(*) as count FROM notifications GROUP BY type ORDER BY count DESC LIMIT 25;" | psql
+
+echo ""
+echo "=== 2C: Hangi roller bildirim ALIYOR? ==="
+echo "SELECT u.role, COUNT(n.id) as notification_count FROM notifications n JOIN users u ON n.user_id = u.id WHERE u.is_active = true GROUP BY u.role ORDER BY notification_count DESC;" | psql
+
+echo ""
+echo "=== 2D: Onay akışları — kim kimi onaylıyor? ==="
+grep -rn "approve\|reject\|onay\|red" server/routes/ --include="*.ts" | grep "router\.\(post\|patch\)" | head -20
+
+echo ""
+echo "=== 2E: Rapor endpoint'leri — kim hangi raporu görüyor? ==="
+grep -rn "report\|rapor\|summary\|ozet\|stats\|dashboard" server/routes/ --include="*.ts" | grep "router\.get" | head -20
+
+echo ""
+echo "=== 2F: Branch health / skor servisleri ==="
+ls server/services/*score* server/services/*health* server/services/*summary* server/services/*performance* 2>/dev/null
+for f in server/services/*score* server/services/*health* server/services/*summary*; do
+  echo "  $(basename $f): $(wc -l < "$f" 2>/dev/null) satır"
+done 2>/dev/null
+
+echo ""
+echo "=== 2G: Mevcut dashboard'lar ve data kaynakları ==="
+echo "--- HQ Dashboard ne yüklüyor? ---"
+grep -n "queryKey\|useQuery" client/src/pages/hq-dashboard.tsx 2>/dev/null | head -10
+echo ""
+echo "--- Sube Dashboard ne yüklüyor? ---"
+grep -n "queryKey\|useQuery" client/src/pages/sube-ozet.tsx 2>/dev/null | head -10
+echo ""
+echo "--- CEO Command Center ne yüklüyor? ---"
+grep -n "queryKey\|useQuery" client/src/pages/ceo-command-center.tsx 2>/dev/null | head -10
+```
+
+## BÖLÜM 3: ROL HİYERARŞİSİ — KİM KİME RAPOR EDİYOR
+
+```bash
+echo ""
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM 3: ROL İLİŞKİLERİ VE DENETLEME"
+echo "════════════════════════════════════════════════"
+
+echo "=== 3A: Rol hiyerarşisi kodda nasıl tanımlı? ==="
+grep -rn "hierarchy\|parent.*role\|manager.*role\|supervisor.*of\|reports.*to" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== 3B: Branch → kullanıcı ilişkisi ==="
+echo "SELECT b.name as branch, u.role, u.first_name, u.last_name FROM users u LEFT JOIN branches b ON u.branch_id = b.id WHERE u.is_active = true ORDER BY b.name, u.role;" | psql
+
+echo ""
+echo "=== 3C: HQ rolleri — şube bağlantısı var mı? ==="
+echo "SELECT role, first_name, last_name, branch_id FROM users WHERE is_active = true AND branch_id IS NULL ORDER BY role;" | psql
+
+echo ""
+echo "=== 3D: Employee summary / performance servislerinde rol bazlı filtre ==="
+grep -n "role\|branchId\|scope\|global\|branch\|self" server/services/employee-summary*.ts 2>/dev/null | head -15
+grep -n "role\|branchId\|scope" server/services/factory-scoring*.ts 2>/dev/null | head -10
+
+echo ""
+echo "=== 3E: Agent skill'lerde hedef rol mantığı ==="
+for f in server/agent/skills/*.ts; do
+  name=$(basename "$f" .ts)
+  target=$(grep -i "targetRole\|target_role\|recipients\|notify\|role\|isHQ\|isBranch" "$f" | head -3)
+  echo "  [$name]"
+  echo "    $target"
+done
+
+echo ""
+echo "=== 3F: Mevcut performans değerlendirme zinciri ==="
+grep -rn "evaluation\|degerlendirme\|assessment\|review\|score.*submit\|rating" server/routes/ --include="*.ts" | head -15
+echo ""
+echo "--- Kim kimi değerlendiriyor? ---"
+grep -n "evaluator\|reviewer\|rated_by\|evaluated_by\|assessor" server/routes/staff-evaluations*.ts 2>/dev/null | head -10
+```
+
+## BÖLÜM 4: OTONOM AGENT KARAR MEKANİZMASI
+
+```bash
+echo ""
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM 4: MR. DOBODY OTONOM KARARLAR"
+echo "════════════════════════════════════════════════"
+
+echo "=== 4A: Agent otomatik aksiyon oluşturuyor mu? ==="
+grep -rn "createAction\|insertAction\|agent_action\|auto.*action\|generate.*action" server/services/agent*.ts server/agent/ --include="*.ts" 2>/dev/null | head -15
+
+echo ""
+echo "=== 4B: Agent'ın kendi başına aldığı kararlar ==="
+grep -rn "autoApprove\|autoReject\|autoAssign\|autoEscalat\|autoGenerat" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "=== 4C: Agent → kullanıcı aksiyonu önerme sistemi ==="
+grep -rn "recommend\|suggest\|propose\|öner\|tavsiye" server/agent/ server/services/agent*.ts --include="*.ts" 2>/dev/null | head -10
+
+echo ""
+echo "=== 4D: Agent rapor oluşturma ==="
+grep -rn "generateReport\|createReport\|weeklyReport\|dailyReport\|summary.*generate" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== 4E: AI entegrasyonu (GPT/LLM çağrıları) ==="
+grep -rn "openai\|gpt\|chat.*completion\|generateText\|aiAnalysis\|anthropic" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "=== 4F: Agent skill çıktı formatı — ilk skill örneği ==="
+head -80 server/agent/skills/$(ls server/agent/skills/ | head -1) 2>/dev/null
+```
+
+## BÖLÜM 5: FABRİKA BİLGİ AKIŞI (Audit'ten bilinen: 128 endpoint, 0 bildirim)
+
+```bash
+echo ""
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM 5: FABRİKA — KİM KİME NE BİLDİRİYOR?"
+echo "════════════════════════════════════════════════"
+
+echo "=== 5A: factory.ts'de bildirim gönderme noktaları ==="
+grep -n "createNotification\|sendNotification\|insert.*notification" server/routes/factory.ts 2>/dev/null | head -10
+echo "--- Sonuç: Yukarıdaki boşsa, fabrikada HİÇ bildirim yok demektir ---"
+
+echo ""
+echo "=== 5B: Fabrika skorları kime görünüyor? ==="
+grep -n "getWorkerScore\|factory.*score\|scoring.*worker" server/routes/factory.ts | head -10
+echo "--- Bu endpoint'lerde rol kontrolü var mı? ---"
+grep -A5 "scoring\|performance" server/routes/factory.ts | grep "role\|admin\|mudur\|operator" | head -10
+
+echo ""
+echo "=== 5C: Fabrika üretim verileri kime görünüyor? ==="
+grep -n "production.*output\|daily.*target\|production.*plan" server/routes/factory.ts | grep "router\.get" | head -10
+echo "--- Rol bazlı filtre var mı? ---"
+grep -A3 "production.*output\|production.*summary" server/routes/factory.ts | grep "role\|branchId\|scope" | head -5
+
+echo ""
+echo "=== 5D: QC sonuçları kime görünüyor? ==="
+grep -n "quality.*check\|qc.*stats\|inspection" server/routes/factory.ts | grep "router\.get" | head -10
+
+echo ""
+echo "=== 5E: factory-scoring-service scheduler çıktısı nereye gidiyor? ==="
+grep -n "calculateAndSave\|daily.*score\|weekly.*score" server/services/factory-scoring-service.ts | head -10
+echo "--- Skor hesaplandıktan sonra bildirim var mı? ---"
+grep -A10 "calculateAndSave" server/services/factory-scoring-service.ts | grep "notification\|alert\|email\|bildirim" | head -5
+
+echo ""
+echo "=== 5F: Fabrika agent skill'leri ==="
+for f in server/agent/skills/*.ts; do
+  if grep -qi "factory\|fabrika\|üretim\|uretim\|production\|qc\|quality\|fire\|waste" "$f" 2>/dev/null; then
+    echo "  $(basename $f): FABRİKA İLİŞKİLİ"
+    grep -i "severity\|target.*role\|notify\|bildirim" "$f" | head -3
+  fi
+done
+```
+
+## BÖLÜM 6: ŞUBE BİLGİ AKIŞI (Alt → Üst)
+
+```bash
+echo ""
+echo "════════════════════════════════════════════════"
+echo "BÖLÜM 6: ŞUBE → HQ BİLGİ AKIŞI"
+echo "════════════════════════════════════════════════"
+
+echo "=== 6A: Branch health / skor nasıl hesaplanıyor? ==="
+ls server/services/*branch*health* server/services/*branch*score* 2>/dev/null
+grep -n "function\|export" server/services/branch-health*.ts 2>/dev/null | head -15
+
+echo ""
+echo "=== 6B: Employee summary skor nasıl hesaplanıyor? ==="
+ls server/services/*employee*summary* 2>/dev/null
+grep -n "function\|export" server/services/employee-summary*.ts 2>/dev/null | head -15
+
+echo ""
+echo "=== 6C: Şube bazlı veri HQ'ya nasıl toplanıyor? ==="
+echo "--- Branch health toplama ---"
+grep -n "allBranches\|aggregate\|summary.*all\|dashboard.*hq" server/routes/*.ts | head -10
+
+echo ""
+echo "=== 6D: Hangi veriler şube seviyesinde kalıyor, hangisi HQ'ya çıkıyor? ==="
+echo "--- Şube-only endpoint'ler (branchId zorunlu) ---"
+grep -n "branchId\|branch_id" server/routes/branch-tasks.ts server/routes/branches.ts 2>/dev/null | grep "router\.\(get\|post\)" | head -10
+echo ""
+echo "--- HQ endpoint'ler (tüm şubeler) ---"
+grep -n "router\.get" server/routes/*.ts | grep -i "all.*branch\|hq.*dashboard\|summary\|overview\|comparison" | head -10
+
+echo ""
+echo "=== 6E: CGO/CEO hangi hazır raporları görüyor? ==="
+grep -n "ceo\|cgo\|command.*center\|executive" server/routes/*.ts | grep "router\.get" | head -10
+grep -n "queryKey\|useQuery" client/src/pages/ceo-command-center.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== 6F: Coach hangi şube verilerini görüyor? ==="
+grep -n "coach\|kocluk\|coaching" server/routes/*.ts | grep "router\.get" | head -10
+grep -n "queryKey\|useQuery" client/src/pages/kocluk-paneli.tsx 2>/dev/null | head -10
+```
+
+## RAPORLAMA
+
+**Her bölüm için şu bilgileri düzenli tablo formatında sun:**
+
+### Bölüm 1 Raporu — Agent Sistemi:
+- Toplam skill sayısı ve isimleri
+- Her skill'in hedef rolleri
+- Scheduler çalışma zamanları (günlük/haftalık/saatlik)
+- Escalation seviyeleri ve kuralları
+
+### Bölüm 2 Raporu — Bildirim Zincirleri:
+- Bildirim gönderen modüller ve hedef roller (tablo)
+- En çok bildirim alan roller
+- Çalışan onay akışları (kim → kimi → ne için)
+- Kopuk bildirim zincirleri
+
+### Bölüm 3 Raporu — Rol Hiyerarşisi:
+- Tam rol hiyerarşisi ağacı (tree format)
+- Her rolün kimi denetlediği
+- Her rolün kime rapor verdiği
+- Şube bazlı personel dağılımı
+
+### Bölüm 4 Raporu — Agent Otonomisi:
+- Mr. Dobody'nin otonom kararları listesi
+- AI/GPT entegrasyon noktaları
+- Otomatik rapor oluşturma durumu
+- Agent'ın kullanıcıya önerme mekanizması
+
+### Bölüm 5 Raporu — Fabrika Bilgi Akışı:
+- Fabrikada bildirim gönderen/almayan noktalar (tablo)
+- Skor verileri kime görünüyor, kime görünmüyor
+- QC sonuçları kime ulaşıyor
+- Üretim verileri hangi rollere açık
+
+### Bölüm 6 Raporu — Şube→HQ Bilgi Akışı:
+- Şube seviyesinde kalan veriler vs HQ'ya çıkan veriler (tablo)
+- CEO/CGO'nun gördüğü hazır raporlar
+- Coach'un gördüğü şube verileri
+- Eksik raporlar (olması gereken ama olmayan)
+
+### BONUS — Genel Bilgi Akış Haritası:
+Tüm bulgulardan şu soruları cevapla:
+
+1. **Alt → Üst bilgi akışı tam mı?**
+   - Operatör üretim yapar → bu veri müdüre gidiyor mu?
+   - Barista görev tamamlar → bu veri coach'a gidiyor mu?
+   - Şube performansı → CEO/CGO dashboard'unda mı?
+
+2. **Mr. Dobody ne kadar otonom?**
+   - Kendi başına bildirim gönderiyor mu?
+   - Kendi başına rapor oluşturuyor mu?
+   - Kendi başına escalation yapıyor mu?
+   - Yoksa sadece guidance widget'ta pasif öneriler mi sunuyor?
+
+3. **Hangi raporlar otomatik, hangisi manuel?**
+   - Günlük/haftalık/aylık otomatik rapor var mı?
+   - Yoksa tüm raporlar kullanıcının sayfayı açmasına mı bağlı?
+
+4. **Kopuk hiyerarşi noktaları:**
+   - Veri üretilen ama kimsenin görmediği noktalar
+   - Rapor olması gereken ama olmayan noktalar
+   - Bildirim gitmesi gereken ama gitmeyen noktalar
+
+**Değişiklik YAPMA. Sadece raporla.**

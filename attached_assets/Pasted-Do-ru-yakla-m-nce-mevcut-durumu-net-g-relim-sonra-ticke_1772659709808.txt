@@ -1,0 +1,176 @@
+Doğru yaklaşım — önce mevcut durumu net görelim, sonra ticket yazalım. Sprint 2 odağı: Akademi HQ içerik, kariyer yolları, profil metrikleri, yarışma sistemi.
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 2 Hazırlık — Akademi, Kariyer Yolu, Profil & Yarışma Audit
+
+Kod değişikliği YAPMA. Sadece analiz et ve rapor ver.
+
+---
+
+### BÖLÜM A: Akademi Sistemi Güncel Durum
+
+Sprint 1'de Ticket 11 ile HQ rol uyumlaması yapıldı. Şu anki durumu doğrula:
+
+```bash
+# 1. Academy ana dosyası
+cat client/src/pages/academy.tsx | head -100
+
+# 2. HQ role kontrolü nasıl yapılıyor?
+grep -n "HQ\|hq\|isHQ\|isHqRole\|HQ_ROLES\|roleGroup" client/src/pages/academy.tsx | head -30
+
+# 3. Eğitim modülleri tablosu
+# SQL: SELECT COUNT(*) FROM training_modules;
+# SQL: SELECT id, title, target_roles, category, difficulty, estimated_minutes FROM training_modules LIMIT 20;
+
+# 4. HQ rollerine atanmış modül var mı?
+# SQL: SELECT id, title, target_roles FROM training_modules WHERE target_roles IS NOT NULL AND (target_roles ILIKE '%ceo%' OR target_roles ILIKE '%cgo%' OR target_roles ILIKE '%marketing%' OR target_roles ILIKE '%muhasebe%' OR target_roles ILIKE '%admin%') LIMIT 20;
+
+# 5. Eğitim tamamlama kayıtları
+# SQL: SELECT COUNT(*) FROM training_progress;
+# SQL: SELECT tp.user_id, u.username, u.role, tp.module_id, tp.status, tp.completed_at FROM training_progress tp JOIN users u ON tp.user_id = u.id LIMIT 10;
+
+# 6. Quiz sistemi
+# SQL: SELECT COUNT(*) FROM quiz_results;
+# SQL: SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%quiz%' OR table_name ILIKE '%question%' OR table_name ILIKE '%exam%';
+```
+
+Raporla:
+- Toplam kaç eğitim modülü var?
+- Kaç tanesi HQ rollerine hedefli?
+- Quiz/sınav sistemi çalışıyor mu?
+- Training_progress'te kaç kayıt var, hangi roller tamamlamış?
+- AI ile içerik üretimi için mevcut altyapı var mı? (GPT endpoint, embedding sistemi)
+
+---
+
+### BÖLÜM B: Kariyer Yolu Sistemi
+
+```bash
+# 1. Kariyer yolu tabloları
+# SQL: SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%career%' OR table_name ILIKE '%level%' OR table_name ILIKE '%path%' OR table_name ILIKE '%progression%';
+
+# 2. Mevcut kariyer yolu tanımları
+# SQL: SELECT * FROM career_paths LIMIT 20;  -- veya benzer tablo adı
+# SQL: SELECT * FROM career_levels LIMIT 20;  -- veya benzer tablo adı
+
+# 3. Frontend'de kariyer yolu nasıl gösteriliyor?
+grep -rn "career\|kariyer\|CareerPath\|KariyerYol\|level.*path\|progression" client/src/pages/academy.tsx | head -20
+
+# 4. Kullanıcı seviye bilgisi nerede tutuluyor?
+grep -rn "level\|seviye\|rank\|rütbe" client/src/pages/academy.tsx | head -20
+# SQL: SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND (column_name ILIKE '%level%' OR column_name ILIKE '%rank%' OR column_name ILIKE '%career%');
+```
+
+Raporla:
+- Kariyer yolu DB'de tanımlı mı? Kaç seviye var?
+- Şube personeli için yol var mı? (Stajyer→Barista→Supervisor)
+- HQ rolleri için kariyer yolu tanımlı mı?
+- Academy sayfasında kariyer yolu bölümü ne gösteriyor? (HQ vs Şube farkı)
+- "Tebrikler! Tamamladınız" mesajı hâlâ çıkıyor mu HQ için?
+
+---
+
+### BÖLÜM C: Profil Sayfası & Performans Metrikleri
+
+```bash
+# 1. Profil sayfası dosyası
+grep -rn "profile\|profil\|Profilim" client/src/pages/ --include="*.tsx" -l
+
+# 2. Profil sayfasında gösterilen metrikler
+grep -n "metric\|metrik\|score\|skor\|performance\|performans\|progress\|ilerleme" client/src/pages/profil*.tsx client/src/pages/profile*.tsx 2>/dev/null | head -30
+
+# 3. HQ için metrik gizleme (Ticket 10'da yapıldı)
+grep -n "HQ\|hq\|isHQ\|hideFor\|showFor\|roleGroup" client/src/pages/profil*.tsx client/src/pages/profile*.tsx 2>/dev/null | head -20
+
+# 4. AI Performans Koçu
+grep -rn "coach\|koç\|aiCoach\|performanceCoach\|ai.*advice\|ai.*öneri" client/src/pages/profil*.tsx client/src/pages/profile*.tsx client/src/components/ --include="*.tsx" 2>/dev/null | head -15
+
+# 5. Eğitim ilerleme metriği gerçek veriye bağlı mı?
+grep -n "training.*progress\|egitim.*ilerleme\|75\|80\|default.*percent\|hardcoded" client/src/pages/profil*.tsx client/src/pages/profile*.tsx 2>/dev/null | head -15
+```
+
+Raporla:
+- Profil sayfasında hangi metrikler gösteriliyor?
+- HQ rolleri için hangi metrikler gizlendi/değiştirildi? (Ticket 10 sonrası)
+- Eğitim İlerlemesi metriği gerçek training_progress verisine bağlı mı yoksa hardcoded mı?
+- AI Performans Koçu mevcut mu? Çalışıyor mu?
+- 360 derece değerlendirme sistemi var mı?
+
+---
+
+### BÖLÜM D: Yarışma Sistemi
+
+```bash
+# 1. Yarışma tabloları
+# SQL: SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%competition%' OR table_name ILIKE '%contest%' OR table_name ILIKE '%yarışma%' OR table_name ILIKE '%leaderboard%' OR table_name ILIKE '%challenge%';
+
+# 2. Aktif yarışmalar
+# SQL: SELECT * FROM competitions WHERE status = 'active' OR end_date > NOW();  -- veya benzer
+# SQL: SELECT COUNT(*), status FROM competitions GROUP BY status;  -- veya benzer tablo
+
+# 3. Kasım 2025 yarışma verisi (Ticket 9'da date-aware yapıldı)
+# SQL: SELECT id, title, start_date, end_date, status FROM competitions ORDER BY created_at DESC LIMIT 10;
+
+# 4. Leaderboard sistemi
+# SQL: SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%leaderboard%' OR table_name ILIKE '%ranking%' OR table_name ILIKE '%score%';
+
+# 5. Frontend yarışma sayfası
+grep -rn "competition\|yarışma\|leaderboard\|challenge\|contest" client/src/pages/ --include="*.tsx" -l
+grep -n "stale\|expired\|dateAware\|date_aware\|isExpired" client/src/pages/ --include="*.tsx" | head -10
+```
+
+Raporla:
+- Kaç yarışma var? Hangisi aktif?
+- Kasım 2025 stale verisi temizlendi mi? (Ticket 9 date-aware fix)
+- Leaderboard hesaplama mantığı nasıl? (puan sistemi)
+- HQ rolleri yarışma sayfasında ne görüyor?
+- "Yakında yeni yarışma" gibi bir empty state var mı?
+
+---
+
+### BÖLÜM E: AI İçerik Üretim Altyapısı
+
+```bash
+# 1. OpenAI/GPT entegrasyonu
+grep -rn "openai\|gpt\|GPT\|OPENAI\|ai.*generate\|generate.*content\|embedding" server/ --include="*.ts" | head -20
+
+# 2. AI bilgi bankası
+grep -rn "knowledge\|bilgi.*bankası\|embedding\|vector\|rag\|RAG" server/ --include="*.ts" | head -15
+# SQL: SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%knowledge%' OR table_name ILIKE '%embedding%' OR table_name ILIKE '%vector%' OR table_name ILIKE '%ai_content%';
+
+# 3. AI modül üretimi için mevcut bir endpoint var mı?
+grep -rn "generate.*module\|create.*training\|ai.*training\|generate.*quiz" server/ --include="*.ts" | head -10
+
+# 4. Mevcut AI asistan endpoint'leri
+grep -rn "ai-asistan\|ai.*chat\|chat.*completion" server/routes/ --include="*.ts" | head -10
+```
+
+Raporla:
+- OpenAI API entegrasyonu var mı? Hangi model kullanılıyor?
+- Embedding/RAG sistemi aktif mi?
+- AI ile eğitim modülü üretme endpoint'i var mı yoksa sıfırdan mı yazılacak?
+- AI bilgi bankasında kaç kayıt var?
+- Token/maliyet limitleri tanımlı mı?
+
+---
+
+### FORMAT:
+
+Her bölümü (A, B, C, D, E) ayrı başlık altında raporla. Her bölüm için:
+1. **Mevcut durum** (ne var, ne çalışıyor)
+2. **Eksikler** (ne yok, ne kırık)
+3. **Veri durumu** (kaç kayıt, test mi gerçek mi)
+4. **Sprint 2 için hazırlık notu** (ne kadar iş var: küçük/orta/büyük)
+
+### DO NOT:
+- Kod değişikliği yapma
+- Yeni dosya oluşturma
+- DB'de INSERT/UPDATE/DELETE çalıştırma
+- Mevcut sistemi bozma
+
+---
+
+Bu audit sonucunu bana getir, Sprint 2 ticket'larını buna göre yazacağım.

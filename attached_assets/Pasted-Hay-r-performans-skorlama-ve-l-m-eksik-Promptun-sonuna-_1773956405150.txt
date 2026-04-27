@@ -1,0 +1,262 @@
+Hayır — performans skorlama ve ölçüm eksik. Promptun sonuna şu bölümleri ekleyin:
+
+---
+
+**Promptun `STEP 14: DB Integrity` bölümünden SONRA, OUTPUT FORMAT'tan ÖNCE şu bölümleri ekleyin:**
+
+```
+### STEP 15: FACTORY WORKER PERFORMANCE SCORING
+```bash
+echo "═══ STEP 15: Performance Scoring ═══"
+
+# Is there a factory-specific scoring system?
+grep -rn "factory.*score\|factory.*performance\|operator.*score\|üretim.*skor\|production.*score" server/services/ --include="*.ts" | head -10
+grep -rn "factory.*score\|performance" server/routes/factory.ts | head -15
+
+# Is factory included in the composite/health scoring?
+grep -n "factory\|fabrika" server/services/branch-health-scoring.ts | head -10
+
+# How is employee-summary calculated for factory workers?
+grep -n "factory\|fabrika" server/services/employee-summary-service.ts 2>/dev/null | head -10
+
+# What metrics SHOULD be tracked per factory worker?
+# 1. Production output (quantity per day/shift)
+echo "--- Production per worker (last 30 days) ---"
+echo "SELECT u.first_name, u.last_name, count(pr.id) as run_count, sum(pr.quantity) as total_qty, avg(pr.quantity) as avg_qty
+FROM factory_production_runs pr
+JOIN users u ON pr.operator_id = u.id OR pr.created_by = u.id
+WHERE pr.started_at > NOW() - INTERVAL '30 days'
+GROUP BY u.first_name, u.last_name
+ORDER BY total_qty DESC;" | psql 2>/dev/null
+
+# If operator_id doesn't exist, check what column links runs to users
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_production_runs' AND column_name LIKE '%user%' OR column_name LIKE '%operator%' OR column_name LIKE '%created%';" | psql
+
+# 2. Quality metrics (reject rate, quality scores)
+echo "--- Quality per worker ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_quality_records';" | psql 2>/dev/null
+echo "SELECT count(*) FROM factory_quality_records;" | psql -t 2>/dev/null
+
+# 3. Break frequency and duration
+echo "--- Break stats per worker (last 30 days) ---"
+echo "SELECT u.first_name, u.last_name, count(bl.id) as break_count
+FROM factory_break_logs bl
+JOIN users u ON bl.user_id = u.id
+WHERE bl.started_at > NOW() - INTERVAL '30 days'
+GROUP BY u.first_name, u.last_name
+ORDER BY break_count DESC;" | psql 2>/dev/null
+
+# 4. Attendance/punctuality
+echo "--- PDKS for factory workers ---"
+echo "SELECT u.first_name, u.last_name, count(p.id) as pdks_count
+FROM pdks_records p
+JOIN users u ON p.user_id = u.id
+WHERE u.branch_id = (SELECT id FROM branches WHERE name LIKE '%Fabrika%' LIMIT 1)
+AND p.created_at > NOW() - INTERVAL '30 days'
+GROUP BY u.first_name, u.last_name
+ORDER BY pdks_count DESC;" | psql 2>/dev/null
+
+# 5. Shift duration (average hours worked)
+echo "--- Session durations per worker ---"
+echo "SELECT u.first_name, u.last_name, count(s.id) as sessions,
+  avg(EXTRACT(EPOCH FROM (s.ended_at - s.started_at))/3600) as avg_hours
+FROM factory_kiosk_sessions s
+JOIN users u ON s.user_id = u.id
+WHERE s.ended_at IS NOT NULL AND s.started_at > NOW() - INTERVAL '30 days'
+GROUP BY u.first_name, u.last_name
+ORDER BY sessions DESC;" | psql 2>/dev/null
+
+# 6. Fault reports (who reports most issues — could be good or bad)
+echo "--- Fault reports per worker ---"
+echo "SELECT u.first_name, u.last_name, count(f.id) as faults
+FROM equipment_faults f
+JOIN users u ON f.reported_by = u.id OR f.created_by = u.id
+WHERE f.created_at > NOW() - INTERVAL '30 days'
+AND u.branch_id = (SELECT id FROM branches WHERE name LIKE '%Fabrika%' LIMIT 1)
+GROUP BY u.first_name, u.last_name;" | psql 2>/dev/null
+```
+
+**Report:**
+- Is there a dedicated factory performance scoring system?
+- What metrics are currently tracked per worker?
+- What metrics are MISSING?
+- Can the employee-summary service calculate factory worker scores?
+- What data exists in DB to build scores from?
+
+---
+
+### STEP 16: PRODUCTION EFFICIENCY METRICS
+```bash
+echo "═══ STEP 16: Production Efficiency ═══"
+
+# Station-level efficiency
+echo "--- Production per station (last 30 days) ---"
+echo "SELECT fs.name as station, count(pr.id) as runs, sum(pr.quantity) as total_qty, 
+  avg(EXTRACT(EPOCH FROM (pr.ended_at - pr.started_at))/60) as avg_minutes
+FROM factory_production_runs pr
+JOIN factory_stations fs ON pr.station_id = fs.id
+WHERE pr.started_at > NOW() - INTERVAL '30 days'
+GROUP BY fs.name
+ORDER BY total_qty DESC;" | psql 2>/dev/null
+
+# Daily production trends
+echo "--- Daily production (last 7 days) ---"
+echo "SELECT DATE(started_at) as day, count(*) as runs, sum(quantity) as total_qty
+FROM factory_production_runs
+WHERE started_at > NOW() - INTERVAL '7 days'
+GROUP BY DATE(started_at)
+ORDER BY day DESC;" | psql 2>/dev/null
+
+# Product-level stats
+echo "--- Production by product (last 30 days) ---"
+echo "SELECT fp.name as product, count(pr.id) as runs, sum(pr.quantity) as total_qty
+FROM factory_production_runs pr
+JOIN factory_products fp ON pr.product_id = fp.id
+WHERE pr.started_at > NOW() - INTERVAL '30 days'
+GROUP BY fp.name
+ORDER BY total_qty DESC
+LIMIT 10;" | psql 2>/dev/null
+
+# Is there a daily target tracking system?
+echo "--- Daily targets ---"
+echo "SELECT * FROM factory_daily_targets WHERE target_date >= CURRENT_DATE - INTERVAL '7 days' ORDER BY target_date DESC LIMIT 5;" | psql 2>/dev/null || echo "No daily targets table"
+
+# Production vs target comparison
+grep -rn "target\|hedef\|goal\|daily.*target" server/routes/factory.ts | head -10
+
+# Is there a production dashboard endpoint?
+grep -n "dashboard\|stats\|summary\|overview\|performans\|performance" server/routes/factory.ts | head -15
+
+# Test factory dashboard stats
+curl -s -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/dashboard/stats | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+print(json.dumps(d, indent=2, ensure_ascii=False))
+" 2>/dev/null | head -40
+```
+
+**Report:**
+- Station utilization rates?
+- Daily production trends visible?
+- Target vs actual tracking exists?
+- Factory dashboard shows what data?
+- What efficiency metrics are MISSING?
+
+---
+
+### STEP 17: FACTORY MANAGER REPORTING
+```bash
+echo "═══ STEP 17: Manager Reports ═══"
+
+# What reports can Fabrika Müdür (Eren) see?
+grep -n "report\|rapor\|analiz\|analytics" server/routes/factory.ts | head -15
+
+# Factory performance endpoints
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/dashboard/stats
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/production
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/quality
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/performance
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/analytics
+
+# Worker performance ranking
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/worker-performance
+curl -s -o /dev/null -w "%{http_code}" -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/employee-summary/branch/2
+
+# Is employee-summary working for factory branch?
+# Find factory branch ID first
+FACTORY_BRANCH=$(echo "SELECT id FROM branches WHERE name LIKE '%Fabrika%' LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+echo "Factory branch ID: $FACTORY_BRANCH"
+curl -s -b "connect.sid=$ADMIN_COOKIE" "http://localhost:5000/api/employee-summary/branch/$FACTORY_BRANCH" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+if isinstance(d, list):
+  print(f'{len(d)} workers')
+  for w in d[:3]:
+    print(f'  {w.get(\"fullName\",\"?\")} — score:{w.get(\"overallScore\",\"?\")} training:{w.get(\"scoreBreakdown\",{}).get(\"training\",\"?\")} tasks:{w.get(\"scoreBreakdown\",{}).get(\"tasks\",\"?\")}')
+" 2>/dev/null
+
+# What factory-specific reports are available in the frontend?
+grep -rn "performance\|performans\|rapor\|report\|analytics" client/src/pages/fabrika/ --include="*.tsx" -l | head -10
+find client/src/pages/fabrika -name "*.tsx" | head -20
+```
+
+**Report:**
+- What reports/dashboards exist for factory manager?
+- Employee summary works for factory workers?
+- Worker ranking/comparison available?
+- What reports are MISSING that factory manager needs?
+- Production efficiency dashboard exists?
+
+---
+
+### STEP 18: FACTORY SCORING MODEL ASSESSMENT
+```bash
+echo "═══ STEP 18: Scoring Model ═══"
+
+# What SHOULD a factory worker's score be based on?
+# Expected metrics with weights:
+#
+# 1. Üretim Verimi (Production Efficiency) — weight: 0.35
+#    - Günlük üretim adedi vs hedef
+#    - Saatlik ortalama üretim
+#    - Fire/hurda oranı
+#
+# 2. Kalite Skoru (Quality Score) — weight: 0.25
+#    - Kalite kontrol geçme oranı
+#    - Müşteri iade/şikayet sayısı
+#    - Hata tekrar oranı
+#
+# 3. Devam Düzeni (Attendance) — weight: 0.20
+#    - Devamsızlık oranı
+#    - Geç kalma sıklığı
+#    - Mola süresi uyumu
+#
+# 4. İş Disiplini (Work Discipline) — weight: 0.20
+#    - Vardiya başlangıç/bitiş uyumu
+#    - Temizlik fazı tamamlama
+#    - Arıza bildirimi zamanında yapılması
+
+# Check if any of these metrics are already calculated
+grep -rn "score\|weight\|metric\|performance.*calc\|calculate.*score" server/services/ --include="*.ts" | grep -i "factory\|fabrika\|production\|operator" | head -15
+
+# Check if production_director AI skill measures these
+cat server/agent/skills/production-director.ts 2>/dev/null | head -80
+
+# What data sources are available for building this scoring?
+echo "--- Available data for scoring ---"
+echo "production_runs:" && echo "SELECT count(*) FROM factory_production_runs;" | psql -t
+echo "quality_records:" && echo "SELECT count(*) FROM factory_quality_records;" | psql -t 2>/dev/null || echo "0 or missing"
+echo "break_logs:" && echo "SELECT count(*) FROM factory_break_logs;" | psql -t 2>/dev/null || echo "0 or missing"
+echo "session_events:" && echo "SELECT count(*) FROM factory_kiosk_session_events;" | psql -t 2>/dev/null || echo "0 or missing"
+echo "kiosk_sessions:" && echo "SELECT count(*) FROM factory_kiosk_sessions;" | psql -t 2>/dev/null || echo "0 or missing"
+echo "pdks_records (factory):" && echo "SELECT count(*) FROM pdks_records WHERE user_id IN (SELECT id FROM users WHERE branch_id = (SELECT id FROM branches WHERE name LIKE '%Fabrika%'));" | psql -t 2>/dev/null
+echo "equipment_faults (factory):" && echo "SELECT count(*) FROM equipment_faults WHERE branch_id = (SELECT id FROM branches WHERE name LIKE '%Fabrika%');" | psql -t 2>/dev/null
+```
+
+**Report:**
+- Is there a factory-specific scoring model? Or only the generic employee-summary?
+- What data exists to build production-based scores?
+- Does the production_director AI skill provide useful insights?
+- What's MISSING for a proper factory worker evaluation?
+- Recommendation: should we build a dedicated factory scoring service?
+```
+
+---
+
+**Ve OUTPUT FORMAT'a şu satırları ekleyin:**
+
+```
+PERFORMANCE & SCORING:
+  Factory scoring system exists: YES/NO
+  Metrics currently tracked: [list]
+  Metrics MISSING: [list]
+  Employee summary works for factory: YES/NO
+  Production efficiency dashboard: YES/NO
+  Worker ranking available: YES/NO
+  Daily target tracking: YES/NO
+  Recommendation: [what needs to be built]
+```
+
+---
+
+Bu 4 ek bölüm (Step 15-18) fabrika performans skorlama, üretim verimliliği, yönetici raporları ve skor modelini tam olarak analiz edecek. Promptun tamamını (Step 0-18 + güncellenmiş OUTPUT FORMAT) Replit'e yapıştırın!

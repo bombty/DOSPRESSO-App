@@ -1,0 +1,495 @@
+Replit çok kritik bir hata yakaladı — **users.id VARCHAR (string), integer değil!** Benim prompt'um hatalıydı. Ayrıca 5 açık soru var. Hepsini cevaplayalım:
+
+## Replit'in Bulduğu Kritik Hatalar
+
+| Bulgu | Etki | Çözüm |
+|-------|------|-------|
+| **users.id VARCHAR, integer değil** | 🔴 Tüm FK referansları bozulurdu | Prompt güncellenmeli |
+| **Dead table silme 90+ referans** | 🔴 Sprint 30A'yı riske atar | Ayrı micro-sprint'e al |
+| **crm-routes.ts silinmemeli** | 🟡 Mevcut complaint endpoint'leri bozulur | Yeni dosya: crm-tickets.ts |
+
+## 5 Açık Soruya Cevaplar
+
+Replit şu kararları bizden bekliyor:
+
+| # | Soru | Benim Önerim |
+|---|------|-------------|
+| 1 | guest/product_complaints silme | **ŞİMDİ SİLME** — 90+ referans var, ayrı sprint'e bırak. Şimdilik olduğu gibi kalsın. |
+| 2 | hq_support_tickets dashboard'a dahil mi? | **Evet** — birleşik timeline'da "hq_support" tipi olarak görünsün |
+| 3 | Soft delete mi hard delete mi? | **Soft delete** — DOSPRESSO'nun genel kuralı bu |
+| 4 | SLA ihlalinde e-posta mı? | **Sadece uygulama içi bildirim** — pilot için yeterli, e-posta sonra |
+| 5 | Agent ticket'lar kime atanır? | **Routing kuralına göre** — kalite→kalite_kontrol, operasyon→supervisor, vb. |
+
+Sprint 30A prompt'unu bu düzeltmelerle güncelleyip Replit'e göndermeni öneriyorum:
+
+---
+
+## TASK: Sprint 30A — CRM Backend (UPDATED — Fixes Applied)
+
+**CRITICAL FIXES from architecture review:**
+1. `users.id` is VARCHAR (string), NOT integer — all FK references must use `varchar`
+2. Do NOT delete guest_complaints, product_complaints tables — too many code references (90+). Leave them as-is.
+3. Create new ticket routes in `server/routes/crm-tickets.ts` — do NOT modify existing `crm-routes.ts`
+4. Soft delete for tickets (isActive + deletedAt pattern)
+5. In-app notifications only for SLA breach (no email)
+
+### T001 — Create crm_tickets + Related Tables (~30 min)
+
+**IMPORTANT: All user references must be VARCHAR, not INTEGER.**
+
+Add to schema.ts:
+```typescript
+export const crmTickets = pgTable("crm_tickets", {
+  id: serial("id").primaryKey(),
+  ticketNumber: varchar("ticket_number", { length: 20 }).notNull().unique(),
+  
+  source: varchar("source", { length: 30 }).notNull().default("manual"),
+  sourceId: integer("source_id"),
+  
+  category: varchar("category", { length: 30 }).notNull(),
+  subcategory: varchar("subcategory", { length: 50 }),
+  
+  subject: varchar("subject", { length: 300 }).notNull(),
+  description: text("description"),
+  
+  branchId: integer("branch_id").references(() => branches.id),
+  
+  // CRITICAL: varchar not integer — users.id is string
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  assignedRole: varchar("assigned_role", { length: 50 }),
+  assignedAt: timestamp("assigned_at"),
+  
+  status: varchar("status", { length: 20 }).notNull().default("acik"),
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"),
+  
+  slaDeadline: timestamp("sla_deadline"),
+  slaBreached: boolean("sla_breached").default(false),
+  slaResponseAt: timestamp("sla_response_at"),
+  
+  // CRITICAL: varchar not integer
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  
+  // CRITICAL: varchar not integer
+  resolvedBy: varchar("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"),
+  
+  attachments: text("attachments"),
+  isFromAgent: boolean("is_from_agent").default(false),
+  agentActionId: integer("agent_action_id"),
+  
+  // Soft delete
+  isActive: boolean("is_active").default(true),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: varchar("deleted_by"),
+  
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const crmTicketComments = pgTable("crm_ticket_comments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").references(() => crmTickets.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(), // varchar!
+  content: text("content").notNull(),
+  isInternalNote: boolean("is_internal_note").default(false),
+  attachments: text("attachments"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const crmTicketHistory = pgTable("crm_ticket_history", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").references(() => crmTickets.id).notNull(),
+  action: varchar("action", { length: 50 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  changedBy: varchar("changed_by").references(() => users.id), // varchar!
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const crmSlaRules = pgTable("crm_sla_rules", {
+  id: serial("id").primaryKey(),
+  category: varchar("category", { length: 30 }).notNull(),
+  subcategory: varchar("subcategory", { length: 50 }),
+  responseHours: integer("response_hours").notNull(),
+  resolutionHours: integer("resolution_hours").notNull(),
+  escalationRole: varchar("escalation_role", { length: 50 }),
+  escalationHours: integer("escalation_hours"),
+  isActive: boolean("is_active").default(true),
+});
+```
+
+Push to DB. Add indexes on: ticket_number, category, status, branch_id, assigned_to, created_at, sla_deadline.
+
+### T002 — Seed SLA Rules + Agent Routing Rules (~15 min)
+
+**SLA Rules:**
+```sql
+INSERT INTO crm_sla_rules (category, subcategory, response_hours, resolution_hours, escalation_role, escalation_hours) VALUES
+  ('teknik', 'ekipman_ariza', 2, 4, 'cgo', 8),
+  ('teknik', 'kiosk_sorun', 1, 2, 'cgo', 4),
+  ('teknik', 'bakim_talep', 12, 24, 'cgo', 48),
+  ('muhasebe', 'fatura', 12, 24, 'cgo', 48),
+  ('muhasebe', 'odeme', 6, 12, 'cgo', 24),
+  ('lojistik', 'eksik_teslimat', 2, 4, 'cgo', 8),
+  ('lojistik', 'geciken_siparis', 4, 8, 'cgo', 24),
+  ('ik', 'personel_talep', 24, 48, 'cgo', 72),
+  ('kalite', 'misafir_sikayet', 1, 2, 'cgo', 4),
+  ('kalite', 'hijyen', 1, 1, 'ceo', 2),
+  ('operasyon', 'checklist', 2, 4, 'cgo', 8),
+  ('operasyon', 'stok', 4, 8, 'cgo', 24),
+  ('franchise', 'sozlesme', 168, 720, 'ceo', 1440),
+  ('genel', NULL, 12, 24, 'cgo', 48);
+```
+
+**Agent Routing Rules (check current count first):**
+```bash
+psql -c "SELECT COUNT(*) FROM agent_routing_rules;" 2>/dev/null
+```
+
+If less than 15, seed missing rules:
+```sql
+INSERT INTO agent_routing_rules (category, subcategory, description, primary_role, secondary_role, escalation_role, escalation_days, is_active)
+VALUES
+  ('performance', 'low_score', 'Düşük performans skoru', 'coach', 'supervisor', 'cgo', 3, true),
+  ('performance', 'absence', 'Devamsızlık', 'supervisor', 'coach', 'cgo', 3, true),
+  ('performance', 'burnout_risk', 'Tükenmişlik riski', 'coach', 'supervisor', 'cgo', 3, true),
+  ('training', 'overdue', 'Geciken eğitim', 'trainer', 'supervisor', 'cgo', 5, true),
+  ('operations', 'checklist_missed', 'Checklist yapılmadı', 'supervisor', 'mudur', 'cgo', 2, true),
+  ('operations', 'stock_low', 'Düşük stok', 'supervisor', 'satinalma', 'cgo', 1, true),
+  ('quality', 'customer_complaint', 'Misafir şikayeti', 'kalite_kontrol', 'supervisor', 'cgo', 1, true),
+  ('factory', 'production_miss', 'Üretim hedefi tutmadı', 'fabrika_mudur', NULL, 'cgo', 2, true),
+  ('factory', 'haccp_fail', 'HACCP uyumsuzluk', 'gida_muhendisi', 'fabrika_mudur', 'ceo', 1, true),
+  ('strategic', 'branch_risk', 'Şube kapanma riski', 'cgo', 'ceo', NULL, NULL, true),
+  ('strategic', 'trend_analysis', 'Genel trend analizi', 'cgo', NULL, NULL, NULL, true),
+  ('strategic', 'cost_trend', 'Maliyet trend analizi', 'cgo', 'muhasebe', NULL, NULL, true),
+  ('security', 'suspicious_activity', 'Şüpheli aktivite', 'admin', NULL, 'ceo', 1, true)
+ON CONFLICT DO NOTHING;
+```
+
+### T003 — Categorize NULL Agent Actions (~10 min)
+
+```sql
+UPDATE agent_pending_actions SET category='performance', subcategory='low_score'
+WHERE category IS NULL AND (title ILIKE '%performans%' OR title ILIKE '%skor%' OR title ILIKE '%puan%');
+
+UPDATE agent_pending_actions SET category='training', subcategory='overdue'
+WHERE category IS NULL AND (title ILIKE '%eğitim%' OR title ILIKE '%training%' OR title ILIKE '%quiz%');
+
+UPDATE agent_pending_actions SET category='operations', subcategory='checklist_missed'
+WHERE category IS NULL AND (title ILIKE '%checklist%' OR title ILIKE '%kontrol%');
+
+UPDATE agent_pending_actions SET category='quality', subcategory='customer_complaint'
+WHERE category IS NULL AND (title ILIKE '%müşteri%' OR title ILIKE '%misafir%' OR title ILIKE '%şikayet%');
+
+UPDATE agent_pending_actions SET category='factory', subcategory='production_miss'
+WHERE category IS NULL AND (title ILIKE '%üretim%' OR title ILIKE '%fabrika%' OR title ILIKE '%fire%');
+
+UPDATE agent_pending_actions SET category='strategic', subcategory='trend_analysis'
+WHERE category IS NULL;
+```
+
+### T004 — CRM Ticket CRUD API (~1.5 hours)
+
+**Create NEW file: `server/routes/crm-tickets.ts`**
+
+Do NOT modify existing `crm-routes.ts`.
+
+**Ticket number generator:**
+```typescript
+function generateTicketNumber(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `TKT-${year}-${random}`;
+}
+```
+
+**Endpoints (all require isAuthenticated):**
+
+```
+POST   /api/crm/tickets              — Create ticket
+GET    /api/crm/tickets              — List (role-filtered)
+GET    /api/crm/tickets/:id          — Detail + comments + history
+PATCH  /api/crm/tickets/:id          — Update status/assignee/priority
+POST   /api/crm/tickets/:id/comments — Add comment/internal note
+POST   /api/crm/tickets/:id/assign   — Assign to user/role
+POST   /api/crm/tickets/:id/resolve  — Resolve with resolution text
+DELETE /api/crm/tickets/:id          — Soft delete (isActive=false)
+```
+
+**Auto-SLA on creation:**
+```typescript
+const slaRule = await db.select().from(crmSlaRules)
+  .where(and(
+    eq(crmSlaRules.category, body.category),
+    body.subcategory ? eq(crmSlaRules.subcategory, body.subcategory) : isNull(crmSlaRules.subcategory),
+    eq(crmSlaRules.isActive, true)
+  )).limit(1);
+
+const slaDeadline = slaRule.length 
+  ? new Date(Date.now() + slaRule[0].resolutionHours * 3600000)
+  : new Date(Date.now() + 24 * 3600000);
+```
+
+**Auto-assign by category:**
+```typescript
+const categoryRoleMap: Record<string, string> = {
+  'teknik': 'teknik',
+  'muhasebe': 'muhasebe_ik', 
+  'lojistik': 'satinalma',
+  'ik': 'muhasebe_ik',
+  'kalite': 'kalite_kontrol',
+  'operasyon': 'destek',
+  'franchise': 'cgo',
+  'genel': 'destek'
+};
+```
+
+**Role-based filtering on GET /api/crm/tickets:**
+```typescript
+// CGO/CEO/Admin: see all tickets
+// teknik role: category='teknik' only
+// muhasebe_ik: category='muhasebe' or 'ik'
+// satinalma: category='lojistik'
+// kalite_kontrol: category='kalite'
+// supervisor/mudur: own branch only
+// barista: own tickets only (created_by = userId)
+```
+
+**Track ALL changes in crm_ticket_history.**
+
+### T005 — Unified Dashboard API (~1.5 hours)
+
+**Create endpoint: `GET /api/crm/dashboard-unified`**
+
+Reads from 5 sources (NOT equipment_faults write — only READ):
+
+```typescript
+// Source 1: CRM Tickets (new system)
+const tickets = await db.select({...}).from(crmTickets)...;
+
+// Source 2: Equipment Faults (READ-ONLY, DO NOT MODIFY)
+const faults = await db.select({
+  id: equipmentFaults.id,
+  type: sql`'equipment_fault'`,
+  title: equipmentFaults.description,
+  category: sql`'teknik'`,
+  status: equipmentFaults.status,
+  priority: equipmentFaults.priority,
+  branchId: equipmentFaults.branchId,
+  createdAt: equipmentFaults.createdAt,
+}).from(equipmentFaults)
+  .where(inArray(equipmentFaults.status, ['open', 'in_progress']))
+  .orderBy(desc(equipmentFaults.createdAt))
+  .limit(10);
+
+// Source 3: Customer Feedback — low ratings only (READ-ONLY)
+const feedbackAlerts = await db.select({
+  id: customerFeedback.id,
+  type: sql`'guest_feedback'`,
+  title: sql`COALESCE(customer_feedback.comment, 'Düşük puan')`,
+  category: sql`'kalite'`,
+  status: customerFeedback.status,
+  priority: sql`CASE WHEN overall_rating <= 2 THEN 'high' ELSE 'normal' END`,
+  branchId: customerFeedback.branchId,
+  createdAt: customerFeedback.createdAt,
+}).from(customerFeedback)
+  .where(lte(customerFeedback.overallRating, 3))
+  .orderBy(desc(customerFeedback.createdAt))
+  .limit(10);
+
+// Source 4: Agent Actions — pending only (READ-ONLY)
+const agentActions = await db.select({...}).from(agentPendingActions)
+  .where(eq(agentPendingActions.status, 'pending'))...;
+
+// Source 5: HQ Support Tickets (READ-ONLY)
+const supportTickets = await db.select({...}).from(hqSupportTickets)...;
+
+// Merge all, sort by date, apply role filter
+const unified = [...tickets, ...faults, ...feedbackAlerts, ...agentActions, ...supportTickets]
+  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  .slice(offset, offset + limit);
+
+// KPI stats
+const stats = {
+  openTickets: /* count open from crm_tickets */,
+  slaBreached: /* count breached */,
+  resolvedToday: /* count resolved today */,
+  totalThisWeek: /* count this week across all sources */,
+  byCategory: /* group by category */,
+};
+
+res.json({ stats, timeline: unified });
+```
+
+**Apply role-based filtering to each source.**
+**Use Number() for any counts from PostgreSQL.**
+**Use Array.isArray() for any array normalization.**
+
+### T006 — SLA Background Job (~30 min)
+
+Add 15-minute interval job to scheduler:
+
+```typescript
+async function checkCrmTicketSla() {
+  const overdue = await db.select().from(crmTickets)
+    .where(and(
+      inArray(crmTickets.status, ['acik', 'atandi', 'isleniyor']),
+      lte(crmTickets.slaDeadline, new Date()),
+      eq(crmTickets.slaBreached, false),
+      eq(crmTickets.isActive, true)
+    ));
+
+  for (const ticket of overdue) {
+    await db.update(crmTickets)
+      .set({ slaBreached: true })
+      .where(eq(crmTickets.id, ticket.id));
+
+    // Find escalation role from SLA rules
+    const rule = await db.select().from(crmSlaRules)
+      .where(eq(crmSlaRules.category, ticket.category)).limit(1);
+    
+    const escalationRole = rule[0]?.escalationRole || 'cgo';
+    const escalationUser = await db.select().from(users)
+      .where(and(eq(users.role, escalationRole), eq(users.isActive, true))).limit(1);
+
+    if (escalationUser[0]) {
+      await createNotification({
+        userId: escalationUser[0].id,
+        title: `⚠️ SLA İhlali: ${ticket.subject}`,
+        message: `Ticket #${ticket.ticketNumber} — ${ticket.category} kategorisinde SLA süresi aşıldı.`,
+        type: 'sla_breach',
+        priority: 'high'
+      });
+    }
+
+    await db.insert(crmTicketHistory).values({
+      ticketId: ticket.id,
+      action: 'sla_breached',
+      newValue: `SLA aşıldı. Escalation: ${escalationRole}`,
+    });
+  }
+}
+```
+
+### T007 — Auto-Ticket from Low Rating + Agent Approval (~30 min)
+
+**A) After customer_feedback insert with rating <= 2:**
+
+```bash
+grep -rn "insert.*customer_feedback\|customerFeedback" server/routes/ --include="*.ts" | grep -i "insert\|create" | head -5
+```
+
+Add after feedback creation:
+```typescript
+if (feedback.overallRating <= 2) {
+  const ticketNum = generateTicketNumber();
+  await db.insert(crmTickets).values({
+    ticketNumber: ticketNum,
+    source: 'guest_feedback',
+    sourceId: feedback.id,
+    category: 'kalite',
+    subcategory: 'misafir_sikayet',
+    subject: `Düşük puan (${feedback.overallRating}/5)`,
+    description: feedback.comment || 'Yorum yok',
+    branchId: feedback.branchId,
+    priority: feedback.overallRating <= 1 ? 'critical' : 'high',
+    assignedRole: 'kalite_kontrol',
+    slaDeadline: new Date(Date.now() + 2 * 3600000),
+  });
+}
+```
+
+**B) After agent action approval (in existing approve endpoint):**
+
+```bash
+grep -rn "approve\|status.*approved" server/routes/agent*.ts | head -5
+```
+
+After setting status to approved, add:
+```typescript
+if (action.category) {
+  await db.insert(crmTickets).values({
+    ticketNumber: generateTicketNumber(),
+    source: 'agent_suggestion',
+    sourceId: action.id,
+    category: action.category || 'genel',
+    subcategory: action.subcategory,
+    subject: `Mr. Dobody: ${action.title}`,
+    description: action.description,
+    branchId: action.branchId,
+    priority: 'normal',
+    status: 'atandi',
+    assignedRole: action.targetRole,
+    isFromAgent: true,
+    agentActionId: action.id,
+    slaDeadline: new Date(Date.now() + 24 * 3600000),
+  });
+}
+```
+
+### T008 — Seed Test Data + SW Bump (~15 min)
+
+```sql
+INSERT INTO crm_tickets (ticket_number, source, category, subcategory, subject, description, branch_id, priority, status, assigned_role, sla_deadline, created_by, created_at) VALUES
+  ('TKT-2026-A1B2', 'manual', 'teknik', 'ekipman_ariza', 'Espresso makinesi basınç sorunu', 'Sabah basınç düşüyor.', 5, 'high', 'acik', 'teknik', NOW() + INTERVAL '4 hours', (SELECT id FROM users WHERE role='supervisor' AND branch_id=5 LIMIT 1), NOW() - INTERVAL '1 hour'),
+  ('TKT-2026-C3D4', 'manual', 'muhasebe', 'fatura', 'Mart faturası gecikti', 'Tedarikçi faturası gelmedi.', 5, 'normal', 'acik', 'muhasebe_ik', NOW() + INTERVAL '24 hours', (SELECT id FROM users WHERE role='mudur' AND branch_id=5 LIMIT 1), NOW() - INTERVAL '2 hours'),
+  ('TKT-2026-E5F6', 'manual', 'lojistik', 'eksik_teslimat', 'Süt teslimatı eksik', 'Sipariş 50lt, gelen 30lt.', 17, 'high', 'isleniyor', 'satinalma', NOW() + INTERVAL '4 hours', (SELECT id FROM users WHERE role='supervisor' AND branch_id=17 LIMIT 1), NOW() - INTERVAL '3 hours'),
+  ('TKT-2026-G7H8', 'manual', 'ik', 'personel_talep', 'Yeni barista başvurusu', '2 aday mülakat için hazır.', 5, 'low', 'cozuldu', 'muhasebe_ik', NOW() - INTERVAL '12 hours', (SELECT id FROM users WHERE role='mudur' AND branch_id=5 LIMIT 1), NOW() - INTERVAL '48 hours'),
+  ('TKT-2026-I9J0', 'guest_feedback', 'kalite', 'misafir_sikayet', 'Düşük puan (2/5): Kahve soğuktu', 'Misafir 2/5 puan verdi.', 5, 'high', 'acik', 'kalite_kontrol', NOW() + INTERVAL '2 hours', NULL, NOW() - INTERVAL '30 minutes'),
+  ('TKT-2026-K1L2', 'agent_suggestion', 'operasyon', 'stok', 'Mr. Dobody: Batman süt stoku 3 günde bitecek', 'Haftalık tüketim analizi.', 17, 'normal', 'atandi', 'satinalma', NOW() + INTERVAL '8 hours', NULL, NOW() - INTERVAL '1 hour');
+```
+
+Seed campaigns if empty:
+```sql
+INSERT INTO campaigns (name, description, type, status, start_date, end_date, created_by)
+SELECT 'Happy Hour', 'Hafta içi 16-18 %20 indirim', 'discount', 'active', '2026-03-01', '2026-03-31', id
+FROM users WHERE role='admin' LIMIT 1
+WHERE NOT EXISTS (SELECT 1 FROM campaigns LIMIT 1);
+```
+
+Bump service worker to next version.
+
+### VERIFICATION
+
+```sql
+SELECT COUNT(*) FROM crm_tickets; -- 6+
+SELECT COUNT(*) FROM crm_sla_rules; -- 14
+SELECT COUNT(*) FROM agent_routing_rules; -- 15+
+SELECT COUNT(*) FROM agent_pending_actions WHERE category IS NULL; -- 0
+```
+
+```bash
+# Test unified dashboard API
+curl -s -b /tmp/admin.cookie http://localhost:5000/api/crm/dashboard-unified | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(f'Stats: {d.get(\"stats\")}')
+print(f'Timeline: {len(d.get(\"timeline\",[]))} items')
+"
+
+# Test ticket CRUD
+curl -s -b /tmp/admin.cookie -X POST http://localhost:5000/api/crm/tickets \
+  -H 'Content-Type: application/json' \
+  -d '{"category":"genel","subject":"Test ticket","description":"Test","branchId":5,"priority":"normal"}'
+```
+
+### DO NOT BREAK:
+- equipment_faults system (READ ONLY from dashboard — no modifications)
+- customer_feedback system (READ ONLY from dashboard)
+- Existing crm-routes.ts complaint endpoints
+- Misafir Memnuniyeti module
+- Agent routing + approval chain
+- Task system
+- Any Sprint 1-29 features
+
+### DO NOT:
+- Delete any existing tables (guest_complaints, product_complaints stay)
+- Modify crm-routes.ts
+- Change equipment_faults write logic
+- Use integer for user ID references (must be varchar)
+
+---
+
+Replit'e yapıştır. Bu güncelllenmiş Sprint 30A — tip hataları düzeltildi, dead table silme kaldırıldı, risk azaltıldı. Sonucu getir.

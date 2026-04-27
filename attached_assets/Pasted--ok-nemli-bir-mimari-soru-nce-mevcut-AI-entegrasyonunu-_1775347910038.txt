@@ -1,0 +1,67 @@
+Çok önemli bir mimari soru. Önce mevcut AI entegrasyonunu kontrol ediyorum:Harika haber — **sistem zaten multi-provider destekliyor!** `ai-client.ts` dosyası OpenAI, Gemini ve Claude API'lerini destekleyen bir soyutlama katmanı:Sistem zaten 3 AI provider destekliyor! Bunu dokümante edip devam ediyorum:AI provider sorusunun cevabı: **Sistem zaten hazır!** Provider değiştirmek için kod değişikliği gerekmez — admin panelinden API key + provider seçimi yeterli. Bu bilgiyi `docs/INTEGRATION-MAP.md`'ye ekledim.
+
+```
+Mevcut: OpenAI GPT-4o (aktif)
+Hazır:  Claude API (kod var, API key gerekli)
+Hazır:  Gemini API (kod var, API key gerekli)
+Geçiş:  Admin paneli → AI Ayarları → Provider seç → Kaydet
+```
+
+Şimdi Dobody-7'ye devam ediyorum — gruplu aksiyon (toplu mesaj):Dobody-7 push edildi (`02d804a1`). Şimdi STATUS ve CHANGELOG güncelleyip devir teslim yapıyorum — bu oturum çok uzun ve verimli oldu:**Replit'e kopyala-yapıştır:**
+
+```
+Dobody-7 + AI Provider doc push edildi. Yapman gerekenler:
+
+1. git pull --rebase origin main
+2. Server restart
+
+3. TEST — Gruplu öneriler:
+   curl -b cookie.txt http://localhost:5000/api/dobody/proposals/grouped
+   # Aynı tipteki öneriler gruplanmış olmalı
+
+4. TEST — Toplu onay:
+   curl -b cookie.txt -X POST http://localhost:5000/api/dobody/proposals/bulk-approve \
+     -H "Content-Type: application/json" \
+     -d '{"proposalIds":[1,2],"message":"Toplu hatırlatma","recipient":"supervisor"}'
+   # {approved:N, total:2}
+
+5. HATA BULURSAN: küçük fix → push, büyük → raporla
+```
+
+---
+
+## Bu Oturumun TAM Özeti
+
+### Kod Değişiklikleri (~20 commit):
+```
+✅ Proje v2 Sprint 1 (6 tab)
+✅ Denetim v2 Sprint A-D (şablon, form, aksiyon, SLA, trend)
+✅ Dobody Sprint 1-7:
+   1. DB (5 tablo) + API (9 endpoint)
+   2. Workflow Engine (WF-1,2,6,7)
+   3. Haftalık Brief + Cleanup
+   4. Güvenlik Test
+   5. Aksiyon Yürütme Motoru + 27 Rol Scope
+   6. 6 Modül Bağlantısı + Sistem Sağlık İzleme
+   7. Gruplu Aksiyon + Toplu Onay
+✅ DobodyProposalWidget v2 (draft mesaj + düzenle + gönder)
+✅ Sistem Atölyesi v4 (20 akış + diagnostic)
+✅ 4 Dashboard entegrasyonu (CEO, CGO, Coach, Supervisor)
+```
+
+### Dokümantasyon (19+ dosya):
+```
+AGENTS.md, STATUS.md, CHANGELOG.md
+docs/: BUSINESS-RULES, ROLES-AND-PERMISSIONS (27 rol),
+FACTORY, PDKS-PAYROLL, EQUIPMENT, STOCK, EDUCATION,
+CRM, CHECKLIST, NOTIFICATION, KPI-SCORING, DATA-PRIVACY-KVKK,
+INTEGRATION-MAP (AI provider dahil), API-CATALOG,
+DOBODY-AGENT-PLAN (final), DENETIM-PLAN, PROJE-PLAN,
+SISTEM-ATOLYESI-PLAN, DEVIR-TESLIM
+```
+
+### Sonraki Oturum Öncelikleri:
+1. **Bug fix**: Barista hooks crash, İzin crash, Ekipman listesi
+2. **Dobody-8**: CRM + Fabrika event bağlantıları
+3. **Dobody-9**: GPT-4o/Claude bağlama özel mesaj üretimi
+4. **Sistem Atölyesi**: Frontend crash tespiti + sayfa sağlık matrisi

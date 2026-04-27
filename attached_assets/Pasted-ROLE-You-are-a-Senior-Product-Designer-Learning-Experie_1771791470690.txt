@@ -1,0 +1,61 @@
+ROLE: You are a Senior Product Designer + Learning Experience Architect + Ops Training Lead for a QSR coffee brand (DOSPRESSO). 
+TASK: Redesign our onboarding + role training + academy + gamification system into a simple self-guiding learning product.
+
+CONTEXT:
+- We run a DOSPRESSO Academy inside our webapp. Current sections include: Eğitim (General Trainings), Oyunlaştırma (Badges/Certificates/Ranking/Streak), Analitik, Gelişmiş.
+- We also have “Öğrenme Yolları” and “Uyarlanabilir Motor” that recommend paths like Barista Yolu / Hizmet Yolu and show progress/time estimates.
+- We have career levels: Stajyer → Bar Buddy → Barista → Supervisor Buddy → Supervisor (locked/unlocked levels shown).
+- We want a strict 14-day “critical onboarding” managed by an authorized person, then ongoing role training.
+- We want Coach/Trainer to edit content and rules per role; staff should not get lost in catalogs.
+- We want onboarding to end at “can work supervised on shift” and training to begin as role-based competency development.
+- We want knowledge quiz + practical evaluation + KPI-based signals (e.g., waste/fire reasons, cold chain, demand-based waste) to auto-recommend modules and alert Coach/Trainer/QGX.
+
+INPUTS (Screenshots):
+- Academy tabs show: Eğitim / Oyunlaştırma / Analitik / Gelişmiş.
+- Eğitim > Genel Eğitimler shows a large catalog of modules (e.g., HACCP, Opening & Closing, POS, workflow, latte art, etc.)
+- Oyunlaştırma shows badges locked/unlocked and certificates screen.
+- Gelişmiş shows Social Groups + Mentorship + Adaptable Learning.
+- Öğrenme Yolları shows path cards with duration, number of exams, progress bar.
+- Progress/Analytics shows completed exams, average score, goals progress, recommendations.
+
+GOALS:
+1) Create a clear definition of where onboarding starts/ends and where training starts for a barista candidate.
+2) Build a simple information architecture and navigation: the user should always see “My Path / Next Steps” first.
+3) Design a rule-based “Next Best Action” engine (no complex AI needed initially) using content metadata.
+4) Create role-based permissions for Staff vs Supervisor vs Coach vs Trainer vs HQ.
+5) Define assessment structure: micro quizzes, practical checks, gates between career levels, certificate issuance.
+6) Preserve gamification but keep it secondary: badges/certificates should support behavior, not distract.
+7) Provide an MVP plan: what to build first (2–4 weeks), and what can wait.
+
+DELIVERABLES (Be specific and structured):
+A) Definitions: Onboarding vs Training, and exit criteria for onboarding (Gate-0) + level gates.
+B) Proposed IA: top-level tabs + what is shown for Staff vs Coach/Trainer.
+C) User flows (step-by-step):
+   - New hire (Stajyer) day 1–14 onboarding
+   - Transition to Bar Buddy
+   - Transition to Barista
+D) Data model (tables/entities) with required fields:
+   - Content item (module/quiz/checklist/practical/exam)
+   - Learning path
+   - Role level
+   - Prerequisites
+   - Attempts, pass rules, validity (expiry)
+   - KPI signal → recommended content mapping
+E) Permission matrix (who can view/edit/assign/approve).
+F) UI simplification recommendations for the current screens:
+   - What to merge, what to hide under “Library”, what becomes “My Path”.
+G) Example content packaging:
+   - Onboarding 14-day mandatory pack
+   - Stajyer pack
+   - Bar Buddy pack
+   - Barista pack
+H) MVP backlog with priorities + acceptance criteria.
+
+CONSTRAINTS:
+- Keep it simple. Minimize new screens. Prefer reusing existing sections with better hierarchy.
+- The system must be self-guiding: user should not ask “what next?”.
+- Coach/Trainer must manage content and assignments by role without engineering changes where possible.
+
+OUTPUT FORMAT:
+- Use clear headings, bullet points, and short paragraphs.
+- Include a concise final “Recommended MVP structure” summary.

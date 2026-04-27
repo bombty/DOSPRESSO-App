@@ -1,0 +1,473 @@
+# CRM-Sprint-4A — Dosya Ekleme + Manuel Atama + Bildirim Zili
+
+## Context
+DOSPRESSO franchise platform. Stack: React 18 + TypeScript, Shadcn/ui, TanStack Query v5, 
+Drizzle ORM, PostgreSQL, Express, Wouter routing.
+
+Target table: `support_tickets` + `support_ticket_comments` (İletişim Merkezi modülü)
+Do NOT touch: hq_support_tickets, hq-support.tsx, destek.tsx, auth system, other modules.
+
+---
+
+## TASK 1 — Dosya Ekleme (File Attachments)
+
+### 1A: Schema
+Add to `shared/schema.ts`:
+
+```typescript
+export const ticketAttachments = pgTable('ticket_attachments', {
+  id: serial('id').primaryKey(),
+  ticketId: integer('ticket_id')
+    .notNull()
+    .references(() => supportTickets.id, { onDelete: 'cascade' }),
+  commentId: integer('comment_id')
+    .references(() => supportTicketComments.id, { onDelete: 'set null' }),
+  uploadedByUserId: varchar('uploaded_by_user_id')
+    .notNull()
+    .references(() => users.id),
+  fileName: varchar('file_name', { length: 255 }).notNull(),
+  fileSize: integer('file_size').notNull(), // bytes
+  mimeType: varchar('mime_type', { length: 100 }).notNull(),
+  storageKey: varchar('storage_key', { length: 500 }).notNull(), // file path/key
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type TicketAttachment = typeof ticketAttachments.$inferSelect;
+export type InsertTicketAttachment = typeof ticketAttachments.$inferInsert;
+```
+
+Run `npm run db:push` after adding.
+
+### 1B: Backend — File Upload Endpoint
+
+Add to `server/routes/crm-iletisim.ts`:
+
+```typescript
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Check if multer is already installed: grep -r "multer" package.json
+// If not installed: this will need: npm install multer @types/multer
+
+// Storage config — save to uploads/tickets/ directory
+const uploadDir = path.join(process.cwd(), 'uploads', 'tickets');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: uploadDir,
+  filename: (req, file, cb) => {
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const ext = path.extname(file.originalname);
+    cb(null, `${unique}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg','image/png','image/gif','image/webp',
+                     'application/pdf','video/mp4','video/quicktime',
+                     'application/msword',
+                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Desteklenmeyen dosya türü'));
+  },
+});
+
+// POST /api/iletisim/tickets/:id/attachments
+router.post('/tickets/:id/attachments', requireAuth, upload.single('file'), async (req, res) => {
+  try {
+    const ticketId = parseInt(req.params.id);
+    const file = req.file;
+    const userId = (req as any).user?.id;
+    const { commentId } = req.body;
+
+    if (!file) return res.status(400).json({ error: 'Dosya gerekli' });
+
+    const [attachment] = await db.insert(ticketAttachments).values({
+      ticketId,
+      commentId: commentId ? parseInt(commentId) : null,
+      uploadedByUserId: userId,
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      storageKey: file.filename, // relative path in uploads/tickets/
+    }).returning();
+
+    res.status(201).json(attachment);
+  } catch (err) {
+    res.status(500).json({ error: 'Dosya yüklenemedi' });
+  }
+});
+
+// GET /api/iletisim/tickets/:id/attachments
+router.get('/tickets/:id/attachments', requireAuth, async (req, res) => {
+  try {
+    const ticketId = parseInt(req.params.id);
+    const attachments = await db
+      .select()
+      .from(ticketAttachments)
+      .where(eq(ticketAttachments.ticketId, ticketId))
+      .orderBy(asc(ticketAttachments.createdAt));
+    res.json(attachments);
+  } catch (err) {
+    res.status(500).json({ error: 'Ekler alınamadı' });
+  }
+});
+
+// GET /api/iletisim/attachments/:filename — serve file
+router.get('/attachments/:filename', requireAuth, (req, res) => {
+  const filePath = path.join(uploadDir, req.params.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Dosya bulunamadı' });
+  res.sendFile(filePath);
+});
+```
+
+**Note:** Check if `multer` is already in package.json before adding it.
+If not: `npm install multer @types/multer`
+
+Also add the ticket detail endpoint to include attachments:
+When fetching `GET /tickets/:id`, also query and include attachments in the response.
+
+### 1C: Frontend — Wire File Upload Button
+
+**File:** `client/src/pages/iletisim-merkezi/ticket-chat-panel.tsx`
+
+Find the "Dosya Ekle" button (around line 330) and wire it up:
+
+```tsx
+// Add ref for file input:
+const fileInputRef = useRef<HTMLInputElement>(null);
+
+// Add upload mutation:
+const uploadMutation = useMutation({
+  mutationFn: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`/api/iletisim/tickets/${ticket.id}/attachments`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Yükleme başarısız');
+    return res.json();
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket.id] });
+  },
+});
+
+// Update the button:
+<button
+  onClick={() => fileInputRef.current?.click()}
+  className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors"
+>
+  <Paperclip className="w-3 h-3" /> Dosya Ekle
+</button>
+<input
+  ref={fileInputRef}
+  type="file"
+  className="hidden"
+  accept="image/*,.pdf,.mp4,.mov,.doc,.docx"
+  onChange={(e) => {
+    const file = e.target.files?.[0];
+    if (file) uploadMutation.mutate(file);
+    e.target.value = ''; // reset
+  }}
+/>
+```
+
+Also display attachments in the chat:
+When the ticket detail includes attachments, show them as a list above the messages or in a tab.
+
+---
+
+## TASK 2 — Manuel Atama (Manual Assignment)
+
+### 2A: Backend — Assignment Endpoint
+
+Add to `server/routes/crm-iletisim.ts`:
+
+```typescript
+// PATCH /api/iletisim/tickets/:id/assign
+router.patch('/tickets/:id/assign', requireAuth, requireRole(['admin','ceo','cgo','coach','trainer','muhasebe','ik','satinalma']), async (req, res) => {
+  try {
+    const ticketId = parseInt(req.params.id);
+    const { assignedToUserId } = req.body;
+    const assignedBy = (req as any).user?.id;
+
+    if (!assignedToUserId) return res.status(400).json({ error: 'assignedToUserId required' });
+
+    // Update ticket
+    const [updated] = await db
+      .update(supportTickets)
+      .set({
+        assignedToUserId,
+        assignedAt: new Date(),
+        status: 'islemde',
+        updatedAt: new Date(),
+      })
+      .where(eq(supportTickets.id, ticketId))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: 'Ticket bulunamadı' });
+
+    // Add system comment for audit trail
+    await db.insert(supportTicketComments).values({
+      ticketId,
+      authorId: assignedBy,
+      content: `Ticket atandı: ${assignedToUserId}`,
+      isInternal: true,
+    });
+
+    // Send notification to assigned user
+    // Use existing notification pattern from the codebase
+    // Search: grep -n "createNotification\|insertNotification" server/storage.ts | head -5
+    // Then call it here for the assignedToUserId
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Atama başarısız' });
+  }
+});
+```
+
+### 2B: Backend — Get Assignable Users
+
+```typescript
+// GET /api/iletisim/assignable-users?department=teknik
+// Returns HQ users who can handle tickets for a given department
+router.get('/assignable-users', requireAuth, async (req, res) => {
+  try {
+    const { department } = req.query;
+
+    // Map department to roles that handle it
+    const DEPT_ROLES: Record<string, string[]> = {
+      teknik:    ['admin', 'ceo', 'cgo'],
+      lojistik:  ['admin', 'ceo', 'cgo', 'satinalma'],
+      muhasebe:  ['admin', 'ceo', 'muhasebe'],
+      marketing: ['admin', 'ceo', 'cgo'],
+      trainer:   ['admin', 'coach', 'trainer'],
+      hr:        ['admin', 'ik'],
+    };
+
+    const allowedRoles = department 
+      ? (DEPT_ROLES[department as string] ?? ['admin','ceo','cgo'])
+      : ['admin','ceo','cgo'];
+
+    const assignableUsers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        role: users.role,
+      })
+      .from(users)
+      .where(
+        and(
+          isNull(users.deletedAt),
+          inArray(users.role, allowedRoles)
+        )
+      );
+
+    res.json(assignableUsers);
+  } catch (err) {
+    res.status(500).json({ error: 'Kullanıcılar alınamadı' });
+  }
+});
+```
+
+### 2C: Frontend — Wire Assignment Button
+
+**File:** `client/src/pages/iletisim-merkezi/ticket-chat-panel.tsx`
+
+Find the "👤 Ata" button and wire it up with a simple dropdown:
+
+```tsx
+// Add state:
+const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+
+// Fetch assignable users:
+const { data: assignableUsers = [] } = useQuery({
+  queryKey: ['/api/iletisim/assignable-users', ticket?.department],
+  queryFn: () => fetch(`/api/iletisim/assignable-users?department=${ticket?.department}`)
+    .then(r => r.json()),
+  enabled: !!ticket,
+});
+
+// Assignment mutation:
+const assignMutation = useMutation({
+  mutationFn: (assignedToUserId: string) =>
+    fetch(`/api/iletisim/tickets/${ticket.id}/assign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignedToUserId }),
+    }).then(r => r.json()),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket.id] });
+    setShowAssignDropdown(false);
+  },
+});
+
+// Replace the "Ata" button with a dropdown trigger:
+<div className="relative">
+  <button
+    onClick={() => setShowAssignDropdown(!showAssignDropdown)}
+    className="text-[8.5px] font-medium px-2 py-1.5 rounded-lg border border-border bg-background hover:bg-accent transition-colors"
+  >
+    👤 Ata
+  </button>
+  {showAssignDropdown && (
+    <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[160px] py-1">
+      {assignableUsers.map((u: any) => (
+        <button
+          key={u.id}
+          onClick={() => assignMutation.mutate(u.id)}
+          className="w-full text-left px-3 py-2 text-[10px] hover:bg-accent transition-colors"
+        >
+          {u.name} <span className="text-muted-foreground">({u.role})</span>
+        </button>
+      ))}
+    </div>
+  )}
+</div>
+```
+
+---
+
+## TASK 3 — Bildirim Zili (SLA Reminder Button)
+
+**File:** `client/src/pages/iletisim-merkezi/ticket-chat-panel.tsx`
+
+Find the "🔔 SLA Hatırlat" button and wire it:
+
+### 3A: Backend — SLA Reminder Endpoint
+
+```typescript
+// POST /api/iletisim/tickets/:id/sla-remind
+// Sends a reminder notification to CGO/CEO about approaching SLA
+router.post('/tickets/:id/sla-remind', requireAuth, requireRole(['admin','ceo','cgo','coach','trainer','muhasebe','ik','satinalma']), async (req, res) => {
+  try {
+    const ticketId = parseInt(req.params.id);
+    const sentBy = (req as any).user?.id;
+
+    const [ticket] = await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.id, ticketId));
+
+    if (!ticket) return res.status(404).json({ error: 'Ticket bulunamadı' });
+
+    // Add internal comment as audit trail
+    await db.insert(supportTicketComments).values({
+      ticketId,
+      authorId: sentBy,
+      content: 'SLA hatırlatması gönderildi',
+      isInternal: true,
+    });
+
+    // Send notification to CGO/CEO roles
+    // Use existing notification pattern from codebase
+
+    res.json({ success: true, message: 'SLA hatırlatması gönderildi' });
+  } catch (err) {
+    res.status(500).json({ error: 'Hatırlatma gönderilemedi' });
+  }
+});
+```
+
+### 3B: Frontend — Wire Bell Button
+
+```tsx
+// SLA remind mutation:
+const slaRemindMutation = useMutation({
+  mutationFn: () =>
+    fetch(`/api/iletisim/tickets/${ticket.id}/sla-remind`, { method: 'POST' })
+      .then(r => r.json()),
+  onSuccess: () => {
+    // Show toast: "SLA hatırlatması gönderildi"
+    queryClient.invalidateQueries({ queryKey: ['/api/iletisim/tickets', ticket.id] });
+  },
+});
+
+// Update bell button:
+<button
+  onClick={() => slaRemindMutation.mutate()}
+  disabled={slaRemindMutation.isPending}
+  className="flex items-center gap-1 text-[8px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:bg-accent transition-colors disabled:opacity-50"
+>
+  <Bell className="w-3 h-3" />
+  {slaRemindMutation.isPending ? 'Gönderiliyor...' : 'SLA Hatırlat'}
+</button>
+```
+
+---
+
+## TASK 4 — Ticket Audit Trail (System Comments)
+
+The assignment and SLA remind endpoints already add internal comments.
+This task ensures the ticket detail view SHOWS these system comments correctly.
+
+**File:** `client/src/pages/iletisim-merkezi/ticket-chat-panel.tsx`
+
+In the messages render, add a case for system/internal comments that have 
+no real author (auto-generated):
+
+```tsx
+// In the messages map, identify system comments:
+// A comment is a "system event" if content starts with known patterns:
+const isSystemEvent = msg.isInternal && (
+  msg.content.startsWith('Ticket atandı:') ||
+  msg.content.startsWith('SLA hatırlatması') ||
+  msg.content.startsWith('Durum değiştirildi:')
+);
+
+if (isSystemEvent) {
+  return (
+    <div key={msg.id} className="flex justify-center my-2">
+      <span className="text-[8.5px] px-3 py-1 rounded-full bg-muted text-muted-foreground">
+        {msg.content} · {formatTime(msg.createdAt)}
+      </span>
+    </div>
+  );
+}
+```
+
+---
+
+## Verification Checklist
+
+**File Attachments:**
+- [ ] ticket_attachments table created in DB
+- [ ] POST /api/iletisim/tickets/:id/attachments accepts file upload
+- [ ] GET /api/iletisim/tickets/:id/attachments returns list
+- [ ] GET /api/iletisim/attachments/:filename serves file
+- [ ] Frontend "Dosya Ekle" button opens file picker
+- [ ] Uploaded file appears in ticket after upload
+- [ ] 10MB limit enforced
+- [ ] Only allowed mime types accepted
+
+**Manual Assignment:**
+- [ ] PATCH /api/iletisim/tickets/:id/assign updates assignedToUserId
+- [ ] GET /api/iletisim/assignable-users returns correct users by department
+- [ ] Frontend "Ata" button shows user dropdown
+- [ ] Selecting user assigns ticket and refreshes view
+- [ ] System comment added to audit trail after assignment
+- [ ] Assigned user receives notification
+
+**SLA Reminder:**
+- [ ] POST /api/iletisim/tickets/:id/sla-remind works
+- [ ] Bell button sends reminder
+- [ ] System comment added to ticket
+- [ ] Button shows loading state while sending
+
+**Audit Trail:**
+- [ ] System events show as centered pills in chat (not as chat bubbles)
+- [ ] Assignment events visible
+- [ ] SLA reminder events visible
+
+**General:**
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors
+- [ ] hq_support_tickets untouched
+- [ ] Mobile layout unchanged

@@ -1,0 +1,220 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 5 Hazırlık — Dil & Lokalizasyon Tam Audit
+
+Kod değişikliği YAPMA. Sadece analiz et ve rapor ver.
+
+Tüm sistemde İngilizce kalan metinler, ASCII Türkçe hataları, tutarsız terminoloji ve tarih/sayı format sorunlarını tespit et.
+
+---
+
+### BÖLÜM A: İngilizce Kalan UI Metinleri
+
+```bash
+# 1. İngilizce buton/label metinleri
+grep -rn '"Save"\|"Cancel"\|"Delete"\|"Submit"\|"Loading"\|"Error"\|"Success"\|"Warning"\|"Close"\|"Back"\|"Next"\|"Previous"\|"Search"\|"Filter"\|"Sort"\|"Edit"\|"Add"\|"Remove"\|"Update"\|"Create"\|"Confirm"\|"Reset"\|"Apply"\|"Clear"' client/src/ --include="*.tsx" | grep -v "node_modules\|import\|//\|console\|className" | head -40
+
+# 2. İngilizce placeholder ve label
+grep -rn 'placeholder="\|label="\|title="' client/src/ --include="*.tsx" | grep -viE "[ğüşıöçİ]" | grep -iE "[a-z]{5,}" | head -40
+
+# 3. Toast/alert mesajları
+grep -rn "toast(\|toast\.\|addToast\|showToast" client/src/ --include="*.tsx" | head -30
+
+# 4. Empty state mesajları
+grep -rn "No data\|No results\|Nothing\|Empty\|not found\|no items\|No records" client/src/ --include="*.tsx" | head -20
+
+# 5. Modal/dialog başlıkları
+grep -rn "DialogTitle\|DialogDescription\|AlertTitle" client/src/ --include="*.tsx" | head -20
+
+# 6. Tablo header'ları
+grep -rn "header:\|Header:\|column.*label\|accessorKey" client/src/ --include="*.tsx" | grep -iE "[A-Z][a-z]+" | grep -viE "[ğüşıöçİ]" | head -20
+```
+
+Raporla:
+- İngilizce kalan tüm UI metinleri listesi (dosya:satır:metin)
+- Toplam kaç adet?
+- En çok İngilizce içeren 5 dosya
+
+---
+
+### BÖLÜM B: Backend API Mesajları
+
+```bash
+# 1. API response mesajları
+grep -rn 'message:' server/routes/ server/ --include="*.ts" | grep -iE '"[A-Z][a-z]+ [a-z]' | grep -v "node_modules\|//" | head -40
+
+# 2. Validation mesajları
+grep -rn "required\|invalid\|must be\|should be\|cannot\|too short\|too long\|already exists\|not found" server/ --include="*.ts" | grep -v "node_modules\|import\|//" | head -30
+
+# 3. Hata sayfaları (401, 403, 404, 500)
+grep -rn "Unauthorized\|Forbidden\|Not Found\|Internal Server\|Access Denied" client/src/ server/ --include="*.tsx" --include="*.ts" | grep -v "node_modules" | head -15
+```
+
+Raporla:
+- İngilizce API mesajları tam listesi
+- Validation mesajları hangi dilde?
+- Hata sayfaları Türkçe mi?
+
+---
+
+### BÖLÜM C: ASCII Türkçe Hataları
+
+```bash
+# 1. Olması gereken Türkçe karakterler eksik
+grep -rn '"[^"]*ozel[^"]*"\|"[^"]*gorev[^"]*"\|"[^"]*sube[^"]*"\|"[^"]*musteri[^"]*"\|"[^"]*gonder[^"]*"\|"[^"]*duzelt[^"]*"\|"[^"]*guncelle[^"]*"\|"[^"]*basarili[^"]*"\|"[^"]*degerlendirme[^"]*"\|"[^"]*bildirim[^"]*"' client/src/ server/ --include="*.tsx" --include="*.ts" | grep -v "node_modules\|className\|import\|url\|path\|route\|slug" | head -30
+
+# 2. toLowerCase/toUpperCase (Türkçe uyumsuz)
+grep -rn "\.toLowerCase()\|\.toUpperCase()" client/src/ server/ --include="*.tsx" --include="*.ts" | grep -v "node_modules" | head -20
+# (toLocaleLowerCase('tr-TR') / toLocaleUpperCase('tr-TR') kullanılmalı)
+
+# 3. Büyük harf İ/I sorunu
+grep -rn "ISLEM\|OZEL\|GOREV\|SUBE\|MUSTERI" client/src/ server/ --include="*.tsx" --include="*.ts" | head -10
+```
+
+Raporla:
+- ASCII Türkçe hataları listesi
+- toLowerCase/toUpperCase kullanım sayısı (toLocaleLowerCase olmalı)
+- Toplam kaç dosyada sorun var?
+
+---
+
+### BÖLÜM D: Tutarsız Terminoloji
+
+```bash
+# Her terim için kullanılan varyantları say
+echo "=== Checklist vs Kontrol Listesi ==="
+grep -rn "Checklist\|checklist" client/src/ --include="*.tsx" | grep -v "import\|className\|node_modules" | wc -l
+grep -rn "Kontrol Listesi\|kontrol listesi" client/src/ --include="*.tsx" | wc -l
+
+echo "=== Dashboard vs Gösterge Paneli vs Kontrol Paneli ==="
+grep -rn '"Dashboard"\|"dashboard"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn "Gösterge Paneli\|Kontrol Paneli\|Ana Sayfa" client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+
+echo "=== Coach vs Koç ==="
+grep -rn '"Coach"\|"coach"' client/src/ --include="*.tsx" | grep -v "import\|role\|className" | wc -l
+grep -rn '"Koç"\|"koç"' client/src/ --include="*.tsx" | wc -l
+
+echo "=== Supervisor vs Süpervizör ==="
+grep -rn '"Supervisor"\|"supervisor"' client/src/ --include="*.tsx" | grep -v "import\|role\|className" | wc -l
+grep -rn "Süpervizör\|süpervizör" client/src/ --include="*.tsx" | wc -l
+
+echo "=== Task vs Görev ==="
+grep -rn '"Task"\|"task"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn '"Görev"\|"görev"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+
+echo "=== Shift vs Vardiya ==="
+grep -rn '"Shift"\|"shift"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn '"Vardiya"\|"vardiya"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+
+echo "=== Branch vs Şube ==="
+grep -rn '"Branch"\|"branch"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn '"Şube"\|"şube"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+
+echo "=== Equipment vs Ekipman ==="
+grep -rn '"Equipment"\|"equipment"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn '"Ekipman"\|"ekipman"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+
+echo "=== Notification vs Bildirim ==="
+grep -rn '"Notification"\|"notification"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn '"Bildirim"\|"bildirim"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+
+echo "=== Report vs Rapor ==="
+grep -rn '"Report"\|"report"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+grep -rn '"Rapor"\|"rapor"' client/src/ --include="*.tsx" | grep -v "import\|className" | wc -l
+```
+
+Raporla:
+- Her terim için İngilizce vs Türkçe kullanım sayısı
+- En tutarsız 5 terim
+- Önerilen standart terminoloji tablosu
+
+---
+
+### BÖLÜM E: Tarih & Sayı Formatları
+
+```bash
+# 1. Tarih formatlama yöntemleri
+grep -rn "toLocaleDateString\|toLocaleString\|Intl.DateTimeFormat\|format.*date\|formatDate\|dayjs\|moment" client/src/ --include="*.tsx" | head -20
+
+# 2. Farklı tarih format pattern'leri
+grep -rn "DD/MM\|MM/DD\|YYYY-MM\|dd\.MM\|d MMMM\|MMM d\|toISOString" client/src/ server/ --include="*.tsx" --include="*.ts" | head -20
+
+# 3. Sayı ve para formatı
+grep -rn "toLocaleString\|Intl.NumberFormat\|formatNumber\|formatCurrency\|toFixed\|₺\|TRY\|TL" client/src/ --include="*.tsx" | head -15
+
+# 4. Saat formatı
+grep -rn "HH:mm\|hh:mm\|h:mm\|AM\|PM" client/src/ --include="*.tsx" | head -10
+```
+
+Raporla:
+- Kaç farklı tarih formatı kullanılıyor?
+- Sayı/para formatı tutarlı mı?
+- Saat formatı: 24 saat mi 12 saat mi?
+
+---
+
+### BÖLÜM F: Mevcut Lokalizasyon Altyapısı
+
+```bash
+# 1. i18n kütüphanesi
+grep -rn "i18n\|react-intl\|react-i18next\|useTranslation\|useIntl" client/src/ --include="*.tsx" --include="*.ts" | head -10
+
+# 2. Mevcut Türkçe label dosyaları
+find client/src/ server/ -name "*label*" -o -name "*turkish*" -o -name "*locale*" -o -name "*i18n*" -o -name "*translation*" -o -name "*terminology*" 2>/dev/null
+grep -rn "ROLE_LABELS\|ALERT_TYPE_LABELS\|BADGE_LABELS\|STATUS_LABELS" client/src/ server/ --include="*.tsx" --include="*.ts" | head -15
+
+# 3. Hardcoded string'ler mi, çeviri sistemi mi?
+# Örnek bir sayfada string'ler nasıl kullanılıyor?
+head -50 client/src/pages/dashboard.tsx
+```
+
+Raporla:
+- i18n kütüphanesi var mı?
+- String'ler hardcoded mı yoksa çeviri dosyasından mı?
+- Mevcut label/çeviri dosyaları listesi
+- Çoklu dil desteği eklemek ne kadar kolay/zor?
+
+---
+
+### BÖLÜM G: Bilinen Spesifik Sorunlar
+
+```bash
+# 1. Breadcrumb'larda ASCII slug
+grep -rn "PATH_LABELS\|pathLabel\|breadcrumbLabel" client/src/ --include="*.tsx" --include="*.ts" | head -10
+
+# 2. Sidebar label'ları
+grep -rn "label:" server/menu-service.ts | head -50
+
+# 3. Rol görünen isimleri
+grep -rn "ROLE_LABELS\|roleLabel\|displayRole" client/src/ server/ --include="*.tsx" --include="*.ts" | head -10
+
+# 4. Badge/rozet isimleri
+grep -rn "badge.*name\|badge.*title\|BADGE" client/src/ server/ --include="*.tsx" --include="*.ts" | head -10
+```
+
+Raporla:
+- Breadcrumb'lar düzgün Türkçe mi?
+- Sidebar label'ları tam Türkçe mi?
+- Rol isimleri düzgün gösteriliyor mu?
+- Badge isimleri Türkçe mi?
+
+---
+
+### FORMAT:
+
+Her bölümü (A-G) ayrı raporla:
+1. **Sorun sayısı** — kaç yerde
+2. **Sorun listesi** — en az ilk 20 tanesi (dosya:satır:metin)
+3. **Öncelik** — kritik (kullanıcı görüyor) / düşük (geliştirici görüyor)
+4. **Sprint 5 iş tahmini** — küçük/orta/büyük
+
+### DO NOT:
+- Kod değişikliği yapma
+- Yeni dosya oluşturma
+- DB'de INSERT/UPDATE/DELETE çalıştırma
+
+---
+
+Bunu Replit'e yapıştır, sonucu getir.

@@ -1,0 +1,41 @@
+STOP. Do NOT refactor anything else.
+
+Goal: Fix "Notifications page shows empty" issue safely.
+
+1) First, reproduce and collect evidence (NO code changes):
+   - Open frontend notifications page and capture the exact request made to GET /api/notifications.
+   - In server logs, print a single line when /api/notifications is hit:
+     { userId, branchId, queryParams, returnedCount, responseShape }
+     responseShape must be either "array" or "wrapped" (data+pagination).
+
+2) Determine which case it is:
+   Case A) Backend returns ARRAY but UI still shows empty:
+      - Then frontend filtering/rendering is wrong. Find where notifications are read and filtered.
+      - Log the length at each step: fetchedCount -> filteredCount -> renderedCount.
+   Case B) Backend returns WRAPPED object ({data, pagination}) but frontend expects array:
+      - Fix frontend to accept both shapes WITHOUT changing UX:
+        const items = Array.isArray(res) ? res : (res?.data ?? []);
+      - Ensure existing filters work on `items`.
+   Case C) Backend returns empty because of auth/userId mismatch:
+      - Verify req.user and userId used in query.
+      - Confirm query where clause uses the correct user id and branch scoping.
+
+3) Add a safe compatibility layer:
+   - Keep backend backward compatible exactly as designed:
+     if pagination=1 => wrapped object, else => raw array.
+   - Frontend must also be backward compatible:
+     handle array or wrapped object.
+
+4) Verification checklist (must pass):
+   - Logged-in user sees notifications in "Tümü".
+   - Category tabs (Görevler/Arızalar/Checklistler/Duyurular/İK/Stok) show correct counts.
+   - No console errors.
+   - /api/notifications WITHOUT pagination returns array.
+   - /api/notifications?pagination=1 returns wrapped object with pagination fields.
+
+Output:
+- Provide a short root-cause statement (A/B/C).
+- Show the exact file(s) changed and the minimal diff.
+- Show a quick proof: before/after counts and one sample response.
+
+Only after you have evidence and a minimal fix, ask me to click Build.

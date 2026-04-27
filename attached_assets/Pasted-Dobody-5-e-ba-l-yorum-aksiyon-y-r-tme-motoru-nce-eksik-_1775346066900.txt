@@ -1,0 +1,50 @@
+Dobody-5'e başlıyorum — aksiyon yürütme motoru. Önce eksik 6 rolü scope seed'e ekleyip, sonra onay sonrası gerçek DB işlemi yapan motoru kodluyorum:Şimdi aksiyon yürütme motoru — onay sonrası gerçek DB işlemi:Şimdi approve endpoint'ini aksiyon yürütme motoruna bağlıyorum:Dobody-5 push edildi (`505a59a1`). Artık "Düzenle ve Gönder" tıklayınca Dobody gerçekten bildirim gönderiyor.
+
+**Replit'e kopyala-yapıştır:**
+
+```
+Sprint Dobody-5 push edildi. Yapman gerekenler:
+
+1. ÖNCE AGENTS.md oku.
+2. git pull --rebase origin main
+3. Server restart
+
+4. SCOPE SEED güncelle (6 yeni rol):
+   # Önce mevcut scope'ları sil (yeniden oluşturacak):
+   psql ile: DELETE FROM dobody_scopes;
+   # Sonra yeniden seed:
+   curl -b cookie.txt -X POST http://localhost:5000/api/dobody/seed-scopes
+   # Beklenen: {success:true, count:27}
+
+5. TEST — Aksiyon Yürütme:
+   A) Yeni öneri oluştur:
+      curl -b cookie.txt -X POST http://localhost:5000/api/dobody/proposals \
+        -H "Content-Type: application/json" \
+        -d '{"workflowType":"WF-1","roleTarget":"coach","title":"Test aksiyon","branchId":5,"suggestedActionType":"send_message"}'
+
+   B) Mesajla onayla:
+      curl -b cookie.txt -X PATCH http://localhost:5000/api/dobody/proposals/ID/approve \
+        -H "Content-Type: application/json" \
+        -d '{"message":"Test bildirim mesajı","recipient":"supervisor"}'
+      # Beklenen: actionResult.success=true, "X kişiye bildirim gönderildi"
+
+   C) Bildirim oluştu mu kontrol:
+      SELECT * FROM notifications WHERE category='dobody' ORDER BY id DESC LIMIT 5;
+
+6. HATA BULURSAN: küçük fix → push, büyük → raporla
+```
+
+---
+
+**Oturum durumu — Dobody Sprint'leri:**
+
+| Sprint | İçerik | Durum |
+|--------|--------|-------|
+| Dobody-1 | DB + API | ✅ |
+| Dobody-2 | Workflow Engine | ✅ |
+| Dobody-3 | Brief + Cleanup | ✅ |
+| Dobody-4 | Güvenlik Test | ✅ |
+| **Dobody-5** | **Aksiyon Yürütme + 27 Rol Scope** | ✅ Push edildi |
+| Dobody-6 | Eksik modül bağlantıları (vardiya, stok, ekipman, checklist) | 🔜 Sırada |
+
+Dobody-6'ya devam edeyim mi yoksa başka öncelik var mı?

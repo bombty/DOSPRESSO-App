@@ -1,0 +1,186 @@
+İşte temiz prompt, Replit'e yapıştırın:
+
+---
+
+```
+## Mobile Compactness Sprint — KPI Cards, Filters & Chip Optimization
+
+### Context
+DOSPRESSO is used heavily on mobile (phones + tablets). Currently KPI summary cards on most pages are too large on mobile — each card is ~80px tall, 5 cards = entire screen just for summary stats. Users must scroll far to reach actual content. This sprint makes ALL pages mobile-compact while keeping desktop layout unchanged.
+
+Read these skills first:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Desktop (md: and above) layout stays EXACTLY as is — no visual changes on desktop
+- Only mobile (<md) gets compacted
+- Dark mode must still work
+- No emoji, use Lucide icons
+- Turkish UI text
+- Do NOT touch server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Do NOT change any backend logic or API responses
+
+---
+
+### PART 1: Create Reusable CompactKPIStrip Component
+
+Create `client/src/components/compact-kpi-strip.tsx`:
+
+This component replaces large KPI card grids on mobile with a horizontal scrollable strip:
+
+```typescript
+interface KPIItem {
+  label: string;
+  value: number | string;
+  icon?: React.ReactNode;
+  color?: "default" | "danger" | "warning" | "success" | "info";
+  onClick?: () => void;
+}
+
+interface CompactKPIStripProps {
+  items: KPIItem[];
+  desktopColumns?: 2 | 3 | 4 | 5;
+  className?: string;
+}
+```
+
+**Mobile layout (< md):**
+- Horizontal scrollable strip (overflow-x-auto, flex, gap-2, snap-x)
+- Each item: min-w-[100px], h-12, rounded-lg, flex items-center gap-2, px-3
+- Label: text-xs text-muted-foreground
+- Value: text-sm font-semibold
+- Color dot/border-left for status (danger=red, warning=amber, success=green)
+- Scrollbar hidden (scrollbar-hide)
+- If item has onClick, show subtle tap indicator
+
+**Desktop layout (>= md):**
+- Standard grid (grid-cols-{desktopColumns}) with the existing card style
+- Each item: Card with icon, label, value — same as current design
+- Heights stay as they are on desktop
+
+---
+
+### PART 2: Find and Fix ALL Pages with Large KPI Cards
+
+Run this search to find all pages with KPI card patterns:
+```bash
+grep -rn "grid.*col.*[2-5]\|stat.*card\|kpi.*card\|summary.*card" client/src/pages/ --include="*.tsx" | grep -v node_modules | head -40
+
+grep -rn "text-2xl\|text-3xl\|text-4xl" client/src/pages/ --include="*.tsx" | grep -v "className.*title\|heading\|page-title" | head -40
+
+grep -rn "Gecikmiş\|Bekleyen\|Devam Eden\|Tamamlan\|Toplam\|Kritik\|Yüksek\|Çözüldü\|Açık" client/src/pages/ --include="*.tsx" | head -40
+```
+
+Expected pages to fix (verify with grep):
+
+**Barista/Employee pages:**
+- Tasks page (Görevler) — 5 KPI cards (Gecikmiş, Bekleyen, Devam Eden, Tamamlanmayan, Tamamlanan)
+- Arıza Yönetimi — Genel Bakış tab (Kritik, Yüksek, Çözüldü, Açık) + Benim Arızalarım tab (Toplam, Kritik, Devam Ediyor)
+- Vardiyalarım — 3 info cards (Toplam Vardiya, Yaklaşan, Bu Ay)
+
+**Supervisor/Manager pages:**
+- Şube Özet — KPI strip
+- Supervisor dashboard — if it has KPI cards
+
+**HQ pages:**
+- Coach dashboard, Trainer dashboard, Satınalma dashboard, etc.
+- CEO/CGO command centers
+- Any HQ dashboard with stat cards
+
+For EACH page found:
+1. Import CompactKPIStrip
+2. Replace the mobile-visible KPI card grid with CompactKPIStrip
+3. Keep the desktop grid as the desktopColumns render
+4. Verify dark mode works
+
+---
+
+### PART 3: Fix Filter Sections on Mobile
+
+Find all filter sections:
+```bash
+grep -rn "Filtreler\|filter.*section\|filter.*panel" client/src/pages/ --include="*.tsx" | head -20
+```
+
+For each filter section on mobile:
+- Filters should be COLLAPSED by default on mobile (use Collapsible or Accordion)
+- Show a compact "Filtreler (N aktif)" button to expand
+- When expanded, stack filters vertically with minimal spacing
+- On desktop: keep current behavior (expanded by default)
+
+Pattern:
+```typescript
+<div className="md:hidden">
+  <Collapsible defaultOpen={false}>
+    <CollapsibleTrigger className="flex items-center gap-2 text-sm">
+      <Filter className="h-4 w-4" /> Filtreler {activeFilterCount > 0 && <Badge variant="secondary">{activeFilterCount}</Badge>}
+    </CollapsibleTrigger>
+    <CollapsibleContent>{/* filter inputs */}</CollapsibleContent>
+  </Collapsible>
+</div>
+<div className="hidden md:block">{/* existing filter layout */}</div>
+```
+
+---
+
+### PART 4: Compact Status Badges on Mobile
+
+Find pages where status badges are too large on mobile:
+```bash
+grep -rn "Badge\|badge" client/src/pages/ --include="*.tsx" | grep -i "bekle\|orta\|yuksek\|dusuk\|kritik\|tamamlan\|devam\|acil" | head -20
+```
+
+On mobile, badges should be:
+- text-[10px] instead of text-xs
+- px-1.5 py-0.5 instead of px-2 py-1
+- Abbreviated text on mobile only: "Beklemede" → "Bekl.", "Tamamlandı" → "Tamam."
+
+```typescript
+<Badge className="text-[10px] px-1.5 py-0.5 md:text-xs md:px-2 md:py-1">
+  <span className="md:hidden">Bekl.</span>
+  <span className="hidden md:inline">Beklemede</span>
+</Badge>
+```
+
+---
+
+### PART 5: Task List Items Compactness
+
+The task list items in Görevler page show title, assignee, branch, date, status badge, priority badge — all spread out. On mobile, compact to:
+- Title: 1 line, truncate with ellipsis
+- Assignee + date: same line, text-xs, muted
+- Badges: inline, smaller
+
+---
+
+### PART 6: Supervisor Dashboard Check
+
+The supervisor dashboard "Bugünün Görevleri" daily checklist looks good but check:
+- Module cards at the top — make scrollable horizontal strip on mobile if there are many
+- Ensure no excessive padding/margin on mobile
+
+---
+
+### Testing Checklist
+1. App starts without errors
+2. Open EACH fixed page on mobile viewport (375px width in browser DevTools):
+   - Görevler → KPI strip scrollable, list items visible without excessive scrolling
+   - Arıza Yönetimi → both tabs compact
+   - Vardiyalarım → info cards compact
+   - All HQ dashboards → stats compact
+3. Open same pages on desktop (1200px+) → layout UNCHANGED from before
+4. Dark mode → all compact elements readable
+5. Filters → collapsed on mobile by default, expandable
+6. Badges → smaller on mobile, full text on desktop
+7. No horizontal overflow on any mobile page
+
+### After implementation:
+1. Run quality gate
+2. Report how many pages were fixed
+3. Update replit.md if a new shared component was created
+```
+
+---
+
+Direkt build başlatın!

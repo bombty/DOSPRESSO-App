@@ -1,0 +1,81 @@
+Ticket 14A sonuçları güçlü — 18,216 duplicate arşivlendi, Cihan 254→47. Hedef <30'du, 47 biraz yüksek ama "Tümünü Okundu İşaretle" butonu ile kullanıcı bunu tek tıkla temizleyebilir artık. Gruplandırma da ileriye dönük spam'i önleyecek.
+
+Şimdi iki şey hazırlıyorum: misafir geri bildirim sistemi audit prompt'u ve Ticket 14B (görev butonları).
+
+Önce misafir sistemi audit'i için Replit prompt'unu vereyim:
+
+---
+
+**Replit'e yapıştır:**
+
+---
+
+## TASK: Misafir Geri Bildirim Sistemi — Tam Audit Raporu
+
+Mevcut misafir geri bildirim/memnuniyet sistemini baştan sona incele ve aşağıdaki bilgileri raporla. KOD DEĞİŞİKLİĞİ YAPMA, sadece analiz et ve rapor ver.
+
+### İncelenecek Dosyalar:
+
+**Frontend:**
+- `client/src/pages/misafir-memnuniyeti.tsx` (1467 satır — ana sayfa)
+- Sidebar/menüde "misafir-memnuniyeti" veya "Misafir Geri Bildirim" olarak görünen tüm route'lar
+- Supervisor dashboard'ında misafir geri bildirim quick action'ı
+
+**Backend:**
+- `guest_complaints` tablosu yapısı (kolonlar, indexler, foreign key'ler)
+- `misafir_iliskileri` tablosu yapısı
+- Misafir memnuniyeti ile ilgili tüm API endpoint'leri (GET, POST, PUT)
+- Background job'larda misafir/guest ile ilgili herhangi bir şey var mı?
+
+**Database:**
+- `SELECT COUNT(*) FROM guest_complaints;`
+- `SELECT * FROM guest_complaints LIMIT 5;`
+- Misafir memnuniyeti ile ilgili diğer tablolar (survey, feedback, rating, nps gibi isimlerle)
+- `SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%guest%' OR table_name ILIKE '%misafir%' OR table_name ILIKE '%feedback%' OR table_name ILIKE '%survey%' OR table_name ILIKE '%rating%' OR table_name ILIKE '%nps%' OR table_name ILIKE '%complaint%' OR table_name ILIKE '%review%';`
+
+### Raporla:
+
+**A) Mevcut Durum:**
+1. misafir-memnuniyeti.tsx ne yapıyor? Hangi veriler gösteriliyor? (screenshot açıklaması yeterli)
+2. Müşteri tarafından erişilebilen public bir form/sayfa var mı? (QR ile açılan dış link gibi)
+3. Hangi roller bu sayfayı görebiliyor?
+4. API endpoint listesi — her biri ne yapıyor?
+5. DB'de kaç tablo, kaç kayıt var?
+
+**B) Müşteri Geri Bildirim Toplama:**
+1. Müşterinin puan/yorum girebileceği bir public sayfa/form var mı?
+2. QR kod ile açılan bir değerlendirme akışı var mı?
+3. Varsa URL yapısı nasıl? Şubeye özel mi?
+4. Yoksa sadece HQ/supervisor'ın manuel girdiği veriler mi var?
+
+**C) Şikayet Yönetimi:**
+1. guest_complaints tablosu: status lifecycle var mı? (yeni → inceleniyor → kapatıldı)
+2. Şikayet geldiğinde bildirim gidiyor mu? Kime?
+3. SLA takibi var mı? (kaç saatte yanıtlanmalı?)
+4. Müşteriye geri dönüş mekanizması var mı? (email/SMS)
+
+**D) Puanlama ve Raporlama:**
+1. Şube bazlı memnuniyet skoru hesaplanıyor mu?
+2. Hesaplanıyorsa formül ne? (basit ortalama mı, ağırlıklı mı?)
+3. Bu skor şube sağlık skoruna (branch health score) dahil mi?
+4. Personel bazlı puanlama var mı?
+5. Trend/grafik gösterimi var mı? (günlük, haftalık, aylık)
+
+**E) Eksik/Kırık Noktalar:**
+1. totalCount===0 fix'i (Ticket T005) doğru çalışıyor mu?
+2. Sidebar'da "misafir-memnuniyeti" slug olarak mı görünüyor yoksa düzgün Türkçe label mi?
+3. Sayfa boş veri ile nasıl görünüyor? Empty state mesajı var mı?
+4. Mobilde (tablet) düzgün çalışıyor mu?
+
+### Format:
+Her bölümü (A, B, C, D, E) sırayla yanıtla. Kod snippet'ları yerine özet bilgi ver. Varsa/yoksa net söyle. "Mevcut ama kırık" veya "hiç yok" gibi net durum belirt.
+
+### DO NOT:
+- Kod değişikliği yapma
+- Yeni dosya oluşturma
+- Veritabanında INSERT/UPDATE/DELETE çalıştırma
+- Mevcut sistemi bozma
+
+---
+
+Bu prompt'u Replit'e yapıştır, sonucu bana getir. O arada Ticket 14B'yi de hazırlayayım, iki sonucu birleştirip devam ederiz.

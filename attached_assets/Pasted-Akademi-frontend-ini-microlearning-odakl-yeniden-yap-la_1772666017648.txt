@@ -1,0 +1,282 @@
+Akademi frontend'ini microlearning odaklı yeniden yapılandırıyoruz. Backend Sprint 2A'da hazır — şimdi kullanıcı deneyimini düzeltme zamanı.
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 2B — Akademi Frontend Yeniden Yapılandırma (Microlearning)
+
+### ÖZET
+
+Mevcut academy.tsx tek bir dev sayfa — içinde birbiriyle gevşek bağlı 5 bölüm var (Nereden Başlamalıyım, Kariyer Yolu, Öğrenme Yolları, Adaptif Öğrenme, Rozetler). Bu ticket sayfayı microlearning odaklı, temiz 3 ekranlı yapıya dönüştürüyor.
+
+**Felsefe:** Kullanıcı her gün tek bir soruya cevap almalı: "Bugün ne öğrenmeliyim?" — gerisini AI ve sistem otomatik yönetsin.
+
+**ÖNEMLİ:** Mevcut academy.tsx'i silme. Yeni yapıyı mevcut dosyanın üzerine refactor ederek veya yeni component'ler ekleyerek yap. Mevcut backend endpoint'leri ve Sprint 2A'da eklenen zincir (quiz → completion → score) korunmalı.
+
+---
+
+### T001 — Akademi Ana Sayfa Yeniden Tasarım (~4-5 saat)
+
+**Mevcut:** 5 bölüm alt alta sıralanmış, kullanıcı ne yapacağını bilmiyor.
+
+**Hedef:** Tek ekranda 4 temiz bölüm — hepsi "şimdi ne yapmalıyım" sorusuna cevap veriyor.
+
+**Yeni Layout (yukarıdan aşağı):**
+
+**Bölüm 1 — "Bugünün Eğitimi" Hero Kartı (en üst, en büyük)**
+
+- Tam genişlik kart, dikkat çekici
+- AI'ın kullanıcı için seçtiği 1 modül gösterilir
+- Gösterilecek bilgiler: modül başlığı, kategori ikonu, tahmini süre (ör: "5 dk"), zorluk rozeti
+- Büyük "Başla" butonu (primary, kırmızı/marka rengi)
+- Eğer bugün zaten tamamladıysa: "Bugünkü eğitimini tamamladın! ✓" mesajı + "Daha fazla öğren →" linki
+- Modül seçim mantığı (backend API):
+  - Kullanıcının rolüne uygun modüller (target_roles kontrolü)
+  - Henüz tamamlamadığı modüller (training_completions'ta olmayan)
+  - Kariyer yolundaki sıradaki modül öncelikli (required_module_ids sırasına göre)
+  - Eğer kariyer yolu modülleri bittiyse, genel gelişim modüllerinden öner
+- **Endpoint:** `GET /api/academy/daily-recommendation` (oluştur)
+  - Response: `{ module: { id, title, category, duration, difficulty }, alreadyCompletedToday: boolean }`
+
+**Bölüm 2 — Haftalık İlerleme Özeti**
+
+- Kompakt yatay kart
+- Sol taraf: "Bu hafta: 3/5 eğitim tamamlandı" + mini progress bar
+- Sağ taraf: Streak sayacı — "🔥 4 gün üst üste" (son kaç gün arka arkaya eğitim yaptı)
+- Streak hesaplama: training_completions tablosundan son ardışık günler
+- Haftalık hedef: rol bazlı (stajyer: 4, barista: 2, supervisor: 2, HQ: 1)
+- **Endpoint:** `GET /api/academy/weekly-progress` (oluştur)
+  - Response: `{ completedThisWeek: number, weeklyTarget: number, streakDays: number, lastCompletedDate: string }`
+
+**Bölüm 3 — Kariyer Yolu Progress Bar**
+
+- Kompakt yatay kart, tıklanabilir (detay sayfasına gider)
+- Gösterilecek: mevcut seviye adı + ikonu, progress bar (tamamlanan/toplam modül), sonraki seviye adı
+- Örnek: "📊 Barista — %60 (6/10 modül) → Kıdemli Barista"
+- Composite Score rozeti: küçük daire içinde skor (ör: "72")
+- Eğer statü atlama uygunsa: yeşil "Terfi İçin Başvur →" linki
+- HQ rolleri için: 4 paralel yol kartları yerine, tek satırda en aktif yol gösterilir
+- Tıklayınca: kariyer yolu detay sayfasına git (mevcut kariyer yolu bölümü)
+
+**Bölüm 4 — Rozetler & Başarılar (küçük, en altta)**
+
+- Yatay scroll edilebilir rozet satırı (sadece son kazanılan 5 rozet)
+- "Tüm Rozetler →" linki
+- Mevcut rozet bileşenini küçültülmüş halde kullan
+- Yeni rozet kazanıldığında mini animasyon (confetti değil, subtle glow/pulse)
+
+**Kaldırılan Bölümler:**
+- "Nereden Başlamalıyım" → kaldır, artık AI otomatik seçiyor (Bölüm 1)
+- "Öğrenme Yolları" detay listesi → "Keşfet" ekranına taşı (T002)
+- "Adaptif Öğrenme" → arka planda AI ile çalışıyor, ayrı bölüm gereksiz
+- Eski tab navigasyonu (eğer var) → kaldır, tek sayfa akışı
+
+---
+
+### T002 — "Keşfet" (Tüm Modüller) Ekranı (~2-3 saat)
+
+**Amaç:** Kullanıcı AI önerisi dışında kendi başına modül keşfetmek istediğinde.
+
+**Erişim:** Ana sayfada "Daha fazla öğren →" veya "Tüm Eğitimler" linki ile.
+
+**Layout:**
+
+**Üst kısım — Filtreler:**
+- Kategori chip'leri (yatay scroll): Tümü, Kahve Bilgisi, Hijyen, Müşteri Deneyimi, Yönetim, Teknik...
+- Durum filtresi: Tümü / Başlanmamış / Devam Eden / Tamamlanan
+- Kategori listesi training_modules tablosundaki benzersiz category değerlerinden çekilsin
+
+**Ana kısım — Modül Grid:**
+- 2 sütunlu kart grid (mobile'da 1 sütun)
+- Her modül kartı:
+  - Modül başlığı (max 2 satır, truncate)
+  - Kategori etiketi (küçük renkli chip)
+  - Süre: "5 dk" / "15 dk"
+  - Zorluk: kolay (yeşil) / orta (sarı) / zor (kırmızı) dot
+  - Durum göstergesi: ✓ Tamamlandı (yeşil) / ○ Başlanmamış (gri) / ◐ Devam ediyor (sarı)
+  - Quiz skoru (tamamlandıysa): "%85"
+- Tıklayınca modül detay ekranına git (T003)
+- Sadece kullanıcının rolüne uygun modüller gösterilsin (target_roles filtresi)
+
+**Endpoint:** Mevcut training_modules listesi endpoint'ini kullan, frontend'de filtreleme yap. Yoksa: `GET /api/academy/modules?role=barista&category=&status=`
+
+---
+
+### T003 — Modül Detay & Quiz Ekranı İyileştirme (~3-4 saat)
+
+**Amaç:** Modül içeriği okuma + quiz deneyimini microlearning'e uygun hale getirmek.
+
+**Modül İçerik Ekranı:**
+
+- Üst bar: "← Geri" butonu + modül başlığı + tahmini süre
+- İçerik alanı: modül metni (scrollable)
+- İçerik bittikten sonra: "Quiz'e Geç →" butonu (büyük, primary)
+- Eğer modül zaten tamamlanmışsa: "Tekrar Çalış" butonu (secondary) + önceki quiz skoru gösterilir
+- İçerik gösterimi clean ve readable olsun — geniş satır aralığı, rahat font boyutu (mobil öncelikli)
+
+**Quiz Ekranı (Sprint 2A T005 anti-cheat üzerine inşa et):**
+
+- Giriş ekranı: "Sınava Hazır mısın?" + kurallar özeti (süre, soru sayısı, geri dönüş yok) + "Başla" butonu
+- Quiz başladığında:
+  - Üst bar: Progress (Soru 3/10) + Kalan süre (geri sayım)
+  - Orta: Soru metni + 4 şık (büyük tıklanabilir kartlar, radio button değil)
+  - Alt: "Sonraki →" butonu (şık seçilmeden disabled)
+  - Şık seçildiğinde: seçilen şık highlight olur, "Sonraki →" aktif olur
+  - Geri gitme yok (Sprint 2A T005'te implementasyonu yapıldı)
+- Son soru sonrası: otomatik submit
+
+**Sonuç Ekranı:**
+- Başarılı (%70+): 
+  - Yeşil başarı ikonu + "Tebrikler!" başlığı
+  - Skor: "%85 — 10 sorudan 8 doğru"
+  - Yanlış cevaplanan konuların kısa listesi (öğrenme fırsatı)
+  - "Sonraki Modül →" butonu (AI'ın önerdiği sıradaki)
+  - Kariyer yolu progress güncelleme animasyonu (bar dolması)
+- Başarısız (%70 altı):
+  - Sarı uyarı ikonu + "Bu sefer olmadı, tekrar dene" başlığı
+  - Skor ve yanlış konular listesi
+  - "Modülü Tekrar Çalış" butonu
+  - "24 saat sonra tekrar sınava girebilirsin" bilgisi
+  - Motivasyonel: "Şimdiye kadar X modül tamamladın, devam et!"
+
+---
+
+### T004 — HQ Rol Farklılaştırması (~1-2 saat)
+
+**Problem:** HQ ve şube personeli aynı akademi görünümünü görüyor. Microlearning yaklaşımı farklı olmalı.
+
+**HQ Kullanıcıları İçin Farklar:**
+
+**Ana sayfa "Bugünün Eğitimi" kartı:**
+- HQ modülleri daha uzun olabilir (15-20 dk) — süre gösterimi buna uygun
+- Haftalık hedef: 1 modül (şube personelinin 2-4 yerine)
+- "Bu Haftanın Eğitimi" olarak label değiştirilsin (günlük yerine haftalık)
+
+**Kariyer Yolu bölümü:**
+- HQ için: 4 paralel gelişim alanı kartı (Liderlik, Operasyon, Dijital, Departman)
+- Her alan kartında: tamamlanan/toplam modül, progress bar
+- Statü atlama butonu YOK (HQ'da statü atlama yok)
+- Bunun yerine: "Gelişim Alanlarım" başlığı
+
+**Keşfet ekranı:**
+- Sadece HQ'ya uygun modüller (target_roles filtresi zaten var)
+- Kategoriler HQ'ya uygun: Liderlik, Strateji, Operasyon, Dijital Dönüşüm, Departman Uzmanlığı
+
+**Rol kontrolü:** Mevcut `isHqRole` veya `HQ_ROLES` kontrolünü kullan (Sprint 1'de eklendi)
+
+---
+
+### T005 — Streak & Motivasyon Sistemi (~1-2 saat)
+
+**Amaç:** Kullanıcının düzenli eğitim yapmasını teşvik eden görsel motivasyon araçları.
+
+**Streak Sistemi:**
+
+- training_completions tablosundan hesapla: son kaç ardışık gün en az 1 modül tamamlanmış
+- Ana sayfada göster: "🔥 4 gün üst üste" (veya ateş emojisi yerine güzel bir ikon)
+- Streak kırıldığında: sıfırlanır ama toplam tamamlanan modül sayısı kaybolmaz
+- Milestone'lar: 7 gün = "Haftalık Yıldız" rozeti, 30 gün = "Ay'ın Öğrencisi" rozeti
+
+**Haftalık Hedef Sistemi:**
+
+- Rol bazlı haftalık modül hedefi:
+  - Stajyer (ilk 2 ay): 4 modül/hafta
+  - Bar Buddy / Barista: 2 modül/hafta
+  - Supervisor: 2 modül/hafta
+  - HQ: 1 modül/hafta
+- Ana sayfada mini progress: "Bu hafta: 2/4" + progress bar
+- Hedefi tamamlayınca: "Bu haftanın hedefini tamamladın! 🎯" mesajı
+
+**Tamamlama Animasyonları:**
+
+- Modül tamamlama: kartın üzerinde kısa pulse/glow animasyonu
+- Haftalık hedef tamamlama: konfeti veya yıldız animasyonu (subtle, 2 saniye)
+- Streak milestone: rozet kazanma animasyonu
+
+---
+
+### T006 — Supervisor/Yönetici Eğitim Takip Kartı (~1-2 saat)
+
+**Amaç:** Supervisor ve müdürler ekiplerinin eğitim durumunu görsün.
+
+**Dashboard'da "Ekip Eğitim Durumu" widget'ı:**
+
+- Supervisor/Müdür dashboard'ına ekleme (mevcut widget sistemiyle)
+- Gösterilecek:
+  - "Ekip Eğitim Katılımı: %75" (bu hafta aktif olan / toplam ekip)
+  - Durum rengi: yeşil (%80+), sarı (%50-80), kırmızı (%50 altı)
+  - "3 kişinin eğitimi bekliyor" uyarısı (zorunlu modüllerden)
+  - Mini liste: "Cihan — 2 modül geride, Ayşe — Güncel ✓, Mehmet — 5 gündür girmedi"
+- "Detay Gör →" linki → ekip eğitim detay sayfası (gelecekte)
+
+**HQ Dashboard'da:**
+- "Şube Eğitim Karşılaştırması" kartı
+- 22 şubenin eğitim tamamlama oranları (mini bar chart veya sıralama)
+- En düşük/en yüksek 3 şube vurgulanmış
+
+**Endpoint:** `GET /api/academy/team-progress` (oluştur)
+- Supervisor için: kendi şubesindeki ekip üyelerinin eğitim durumu
+- HQ için: şube bazlı toplam eğitim istatistikleri
+
+---
+
+### T007 — E2E Test & Doğrulama (~1 saat)
+
+**Barista (cihan) ile test:**
+1. Akademi sayfasını aç → "Bugünün Eğitimi" kartı görünüyor mu?
+2. Kart bir modül öneriyor mu? (title, süre, zorluk)
+3. "Başla" bas → modül içeriği açılıyor mu?
+4. Quiz'e geç → multi-step sorular, geri sayım çalışıyor mu?
+5. Quiz'i geç → tebrik ekranı + "Sonraki Modül" butonu
+6. Ana sayfaya dön → "Bugünkü eğitimini tamamladın ✓" mesajı
+7. Haftalık ilerleme güncellendi mi? Streak arttı mı?
+8. Kariyer yolu progress bar'ı güncellendi mi?
+9. Keşfet sayfası → filtreler çalışıyor mu? Tamamlanan modülde ✓ var mı?
+
+**Admin (HQ) ile test:**
+1. Akademi → "Bu Haftanın Eğitimi" kartı (günlük değil haftalık)
+2. Kariyer yolu: 4 gelişim alanı kartı (statü atlama butonu YOK)
+3. Keşfet: sadece HQ modülleri görünüyor
+
+**Supervisor ile test:**
+1. Dashboard → "Ekip Eğitim Durumu" widget'ı görünüyor mu?
+2. Ekip üyelerinin durumu doğru mu?
+
+**Mobil (tablet) test:**
+1. Ana sayfa kartları düzgün stack'leniyor mu?
+2. Quiz soruları mobilde rahat okunuyor ve tıklanıyor mu?
+3. Keşfet grid'i mobilde 1 sütuna düşüyor mu?
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T004 → T005 → T006 → T007
+
+### DO NOT BREAK:
+- Sprint 2A'da eklenen quiz → completion → score zinciri
+- Anti-cheat sistemi (T005 Sprint 2A)
+- Gate/statü atlama sistemi (T006 Sprint 2A)
+- AI soru üretimi endpoint'leri
+- Mevcut rozet sistemi (küçültülmüş halde kullanılacak)
+- Sidebar filtreleme (Sprint 1 T013)
+- Dashboard widget'ları (Sprint 1.5 T014B)
+- Bildirim sistemi (Sprint 1.5 T014A)
+- Composite Score background job
+
+### KABUL KRİTERLERİ:
+- [ ] "Bugünün Eğitimi" kartı her kullanıcıya rol-uygun modül öneriyor
+- [ ] Bugün tamamladıysa "Tamamladın ✓" mesajı gösteriyor
+- [ ] Haftalık ilerleme doğru hesaplanıyor (tamamlanan/hedef)
+- [ ] Streak gün sayısı doğru (ardışık günler)
+- [ ] Kariyer yolu progress bar doğru (tamamlanan/gerekli modül)
+- [ ] Keşfet ekranında kategori ve durum filtreleri çalışıyor
+- [ ] Modül detay → Quiz → Sonuç akışı temiz
+- [ ] HQ kullanıcıları farklı deneyim görüyor (haftalık, statü atlama yok)
+- [ ] Supervisor dashboard'da "Ekip Eğitim Durumu" widget'ı var
+- [ ] Mobilde (tablet) tüm ekranlar düzgün görünüyor
+- [ ] Eski 5 bölümlü layout kaldırılmış, yeni 3 ekran aktif
+- [ ] 0 console error
+
+---
+
+Replit'e yapıştır ve çalıştır. Sonucu getirince doğrularız.

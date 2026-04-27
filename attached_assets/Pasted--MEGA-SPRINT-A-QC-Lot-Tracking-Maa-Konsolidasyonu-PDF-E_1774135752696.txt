@@ -1,0 +1,585 @@
+## MEGA SPRINT A — QC + Lot Tracking + Maaş Konsolidasyonu + PDF Export
+
+### Context
+DOSPRESSO pre-launch sprint combining 3 systems into one implementation:
+1. QC (Quality Control) + Lot Traceability for factory
+2. Payroll engine consolidation (2 engines → 1) + PDKS integration
+3. PDF export for PDKS and payroll reports
+
+Design documents exist — READ THEM FIRST:
+- .local/reports/QC-LOT-TRACKING-PLAN.md
+- .local/reports/VARDIYA-MAAS-SYSTEM-DESIGN.md
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+### CRITICAL RULES
+- users.id is VARCHAR (UUID), Turkish UI
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Do NOT break existing factory kiosk or production flow
+- Do NOT delete existing payroll engines — consolidate into one, keep old as wrappers
+- Do NOT change existing API response formats (backward compatible)
+- Use existing auth middleware (isAuthenticated)
+- Follow existing Drizzle ORM patterns
+- Turkish labor law (4857) compliance for payroll
+- All money amounts in TL, 2 decimal precision
+
+---
+
+## STEP 0: DEEP INVESTIGATION (ALL 3 SYSTEMS)
+
+```bash
+echo "══════════════════════════════════════════════"
+echo "STEP 0: DEEP INVESTIGATION — QC + PAYROLL + PDF"
+echo "══════════════════════════════════════════════"
+
+# === 0A: FACTORY SYSTEM (for QC) ===
+echo "--- Factory tables ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'factory%' ORDER BY table_name;" | psql
+
+echo "--- factory_production_outputs columns ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='factory_production_outputs' ORDER BY ordinal_position;" | psql
+
+echo "--- Existing quality/QC/lot tables ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%quality%' OR table_name LIKE '%qc%' OR table_name LIKE '%inspection%' OR table_name LIKE '%lot%';" | psql
+
+echo "--- Factory products ---"
+echo "SELECT id, name, category FROM factory_products WHERE is_active = true LIMIT 10;" | psql
+
+echo "--- Factory stations ---"
+echo "SELECT id, name, code, product_type_id FROM factory_stations WHERE is_active = true;" | psql
+
+echo "--- Factory routes ---"
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/factory.ts | head -30
+
+echo "--- Production recording endpoint ---"
+grep -n "production.*output\|record.*production\|POST.*production" server/routes/factory.ts | head -10
+
+echo "--- Shipment tables ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%shipment%' OR table_name LIKE '%sevkiyat%';" | psql
+
+# === 0B: PAYROLL SYSTEM ===
+echo "--- payroll-engine.ts ---"
+wc -l server/services/payroll-engine.ts 2>/dev/null
+head -80 server/services/payroll-engine.ts 2>/dev/null
+
+echo "--- hr.ts payroll functions ---"
+grep -n "function\|export" server/routes/hr.ts | grep -i "calc\|salary\|payroll\|sgk\|tax\|vergi" | head -20
+
+echo "--- Active 2026 parameters ---"
+echo "SELECT * FROM payroll_parameters WHERE is_active = true;" | psql
+
+echo "--- Salary scales ---"
+echo "SELECT position_name, base_salary, cash_register_bonus, performance_bonus, total_salary FROM salary_scales;" | psql
+
+echo "--- monthly_payrolls columns ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='monthly_payrolls' ORDER BY ordinal_position;" | psql
+
+echo "--- Payroll routes ---"
+grep -n "router\.\(get\|post\)" server/routes/payroll.ts | head -20
+
+echo "--- PDKS engine ---"
+wc -l server/pdks-engine.ts 2>/dev/null
+grep -n "function\|export" server/pdks-engine.ts 2>/dev/null | head -15
+
+echo "--- PDKS → Payroll connection ---"
+grep -n "payroll\|salary\|maas" server/pdks-engine.ts 2>/dev/null | head -10
+grep -n "pdks\|attendance\|devam" server/services/payroll-engine.ts 2>/dev/null | head -10
+
+# === 0C: PDF/EXPORT ===
+echo "--- PDF libraries available ---"
+grep "pdfkit\|pdf-lib\|pdfmake\|jspdf\|puppeteer" package.json 2>/dev/null
+npm list pdfkit pdf-lib pdfmake 2>/dev/null | head -5
+
+echo "--- Existing Excel export ---"
+grep -rn "exceljs\|ExcelJS\|xlsx" server/ --include="*.ts" | grep -v node_modules | head -10
+
+# === 0D: SCHEMA PATTERN ===
+echo "--- How tables are defined ---"
+grep -n "export const factory" shared/schema.ts | head -5
+echo "--- How routes are registered ---"
+grep -n "import\|app.use\|require.*routes" server/index.ts | head -20
+
+# === 0E: EXISTING AGENT SKILLS ===
+echo "--- Agent skills ---"
+ls server/agent/skills/ | head -15
+
+echo "══════════════════════════════════════════════"
+echo "REPORT ALL FINDINGS BEFORE IMPLEMENTING"
+echo "══════════════════════════════════════════════"
+```
+
+---
+
+## ═══════════════════════════════════
+## SECTION 1: QC + LOT TRACKING SYSTEM
+## ═══════════════════════════════════
+
+### 1A: Database tables — add to shared/schema.ts
+
+**qc_assignments** (weekly QC person assignment):
+```typescript
+export const qcAssignments = pgTable("qc_assignments", {
+  id: serial("id").primaryKey(),
+  assignedUserId: varchar("assigned_user_id", { length: 36 }).notNull().references(() => users.id),
+  assignedByUserId: varchar("assigned_by_user_id", { length: 36 }).notNull().references(() => users.id),
+  weekStart: date("week_start").notNull(),
+  weekEnd: date("week_end").notNull(),
+  status: varchar("status", { length: 20 }).default("active"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+```
+
+**production_lots** (lot traceability):
+```typescript
+export const productionLots = pgTable("production_lots", {
+  id: serial("id").primaryKey(),
+  lotNumber: varchar("lot_number", { length: 50 }).notNull().unique(),
+  productionDate: date("production_date").notNull(),
+  productId: integer("product_id").references(() => factoryProducts.id),
+  stationId: integer("station_id").references(() => factoryStations.id),
+  producerUserId: varchar("producer_user_id", { length: 36 }).references(() => users.id),
+  quantity: integer("quantity").default(0),
+  unit: varchar("unit", { length: 20 }).default("adet"),
+  batchSize: integer("batch_size"),
+  productionOutputId: integer("production_output_id"),
+  qcStatus: varchar("qc_status", { length: 20 }).default("pending"),
+  qcInspectionId: integer("qc_inspection_id"),
+  shipmentId: integer("shipment_id"),
+  destinationBranchId: integer("destination_branch_id").references(() => branches.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+```
+
+**qc_inspections** (quality control records):
+```typescript
+export const qcInspections = pgTable("qc_inspections", {
+  id: serial("id").primaryKey(),
+  assignmentId: integer("assignment_id").references(() => qcAssignments.id),
+  inspectorUserId: varchar("inspector_user_id", { length: 36 }).notNull().references(() => users.id),
+  lotId: integer("lot_id").references(() => productionLots.id),
+  lotNumber: varchar("lot_number", { length: 50 }),
+  productId: integer("product_id").references(() => factoryProducts.id),
+  stationId: integer("station_id").references(() => factoryStations.id),
+  producerUserId: varchar("producer_user_id", { length: 36 }).references(() => users.id),
+  visualCheck: varchar("visual_check", { length: 20 }).default("na"),
+  weightCheck: varchar("weight_check", { length: 20 }).default("na"),
+  packagingCheck: varchar("packaging_check", { length: 20 }).default("na"),
+  temperatureCheck: varchar("temperature_check", { length: 20 }).default("na"),
+  temperatureValue: real("temperature_value"),
+  allergenCheck: boolean("allergen_check").default(false),
+  haccpCompliant: boolean("haccp_compliant").default(false),
+  overallResult: varchar("overall_result", { length: 20 }).default("pending"),
+  inspectorNotes: text("inspector_notes"),
+  rejectionReason: text("rejection_reason"),
+  inspectedAt: timestamp("inspected_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+```
+
+Run migration after adding tables:
+```bash
+grep -n "drizzle-kit\|migrate\|push" package.json | head -5
+# Use whatever migration command the project uses
+npx drizzle-kit push 2>/dev/null || echo "Check migration command"
+```
+
+### 1B: Lot number generator utility
+
+Create `server/utils/lot-number.ts`:
+```typescript
+// Format: LOT-YYYYMMDD-XXX (sequential per day)
+// Example: LOT-20260326-001
+
+export async function generateLotNumber(db: any, date: Date): Promise<string> {
+  const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
+  const prefix = `LOT-${dateStr}-`;
+  
+  const existing = await db.select({ lotNumber: productionLots.lotNumber })
+    .from(productionLots)
+    .where(like(productionLots.lotNumber, `${prefix}%`))
+    .orderBy(desc(productionLots.lotNumber))
+    .limit(1);
+  
+  let nextNum = 1;
+  if (existing.length > 0) {
+    const lastNum = parseInt(existing[0].lotNumber.split('-').pop() || '0');
+    nextNum = lastNum + 1;
+  }
+  
+  return `${prefix}${nextNum.toString().padStart(3, '0')}`;
+}
+```
+
+### 1C: QC API routes
+
+Create `server/routes/qc.ts`:
+
+```typescript
+// QC ASSIGNMENTS
+// GET  /api/factory/qc/current-assignment — this week's QC person
+// GET  /api/factory/qc/assignments — all assignments (paginated)
+// POST /api/factory/qc/assignments — create (HQ/admin only)
+// PATCH /api/factory/qc/assignments/:id — update
+
+// LOT MANAGEMENT
+// GET  /api/factory/lots — list lots (filter: date, product, qcStatus, branch)
+// GET  /api/factory/lots/:lotNumber — detail + full trace chain
+// GET  /api/factory/lots/:lotNumber/trace — reverse trace: branch → shipment → QC → production → person
+
+// QC INSPECTIONS
+// GET  /api/factory/qc/pending — lots awaiting QC (qcStatus='pending')
+// GET  /api/factory/qc/inspections — completed inspections (paginated)
+// POST /api/factory/qc/inspections — create inspection
+// GET  /api/factory/qc/inspections/:id — detail
+
+// DASHBOARD STATS
+// GET  /api/factory/qc/stats — today: inspected count, pending count, pass rate, rejection count
+```
+
+**POST /api/factory/qc/inspections** flow:
+1. Validate lot exists and is pending
+2. Create qc_inspections record
+3. Update production_lots.qc_status = overallResult
+4. Update production_lots.qc_inspection_id = new inspection id
+5. If rejected → create notification to fabrika_mudur + gida_muhendisi
+6. Return inspection record
+
+**GET /api/factory/lots/:lotNumber/trace** returns:
+```json
+{
+  "lot": { "lotNumber": "LOT-20260326-001", "quantity": 24, "qcStatus": "approved" },
+  "product": { "name": "Donut Klasik Çikolata", "category": "donut" },
+  "station": { "name": "Donut Hamur Hattı", "code": "DONUT_HAMUR" },
+  "producer": { "firstName": "Fatma", "lastName": "Arslan" },
+  "qcInspection": { "inspector": "Ayşe Yılmaz", "result": "approved", "date": "..." },
+  "shipment": null,
+  "timeline": [
+    { "event": "Üretim", "date": "...", "by": "Fatma A.", "detail": "24 adet" },
+    { "event": "QC Kontrol", "date": "...", "by": "Ayşe Y.", "detail": "Onaylandı" }
+  ]
+}
+```
+
+Register route in server/index.ts:
+```bash
+grep -n "factory" server/index.ts | head -5
+# Add: import and app.use for qc routes
+```
+
+### 1D: Auto-lot creation on production recording
+
+Find the existing production output endpoint and ADD lot creation AFTER it saves:
+```bash
+grep -B5 -A30 "POST.*production.*output\|insert.*production_output\|factory_production_output" server/routes/factory.ts | head -40
+```
+
+After production output is saved successfully, add:
+```typescript
+// Auto-create lot
+try {
+  const lotNumber = await generateLotNumber(db, new Date());
+  await db.insert(productionLots).values({
+    lotNumber,
+    productionDate: new Date().toISOString().split('T')[0],
+    productId: output.productId,
+    stationId: output.stationId,
+    producerUserId: output.userId,
+    quantity: output.quantity,
+    productionOutputId: output.id,
+    qcStatus: 'pending',
+  });
+} catch (lotError) {
+  console.error("[QC] Lot creation failed:", lotError);
+  // Don't fail the production recording — lot is supplementary
+}
+```
+
+### 1E: Factory kiosk QC mode
+
+Add QC button to kiosk select-user screen (right sidebar, below stations):
+```bash
+grep -n "istasyon\|station\|sidebar\|right.*panel" client/src/pages/fabrika/kiosk.tsx | head -15
+```
+
+**QC Button:** Only visible if current week has an active QC assignment.
+- Shows: "QC: [Assigned Person]" in amber
+- Click → QC person enters PIN → enters QC mode
+
+**QC Mode screens in kiosk:**
+1. **Pending list:** Lots with qc_status='pending', oldest first. Each card: lot number + product + producer + quantity + time ago
+2. **Inspection form:** Large touch-friendly toggles for each check:
+   - Görsel ✓/✗, Ağırlık ✓/✗, Ambalaj ✓/✗, Sıcaklık ✓/✗ (+value input), Allerjen ✓/✗, HACCP ✓/✗
+   - Notes textarea
+   - 3 big buttons: "Onayla" (green), "Koşullu" (amber), "Reddet" (red)
+3. **Result screen:** Confirmation → back to pending list
+
+### 1F: QC management page
+
+Create `client/src/pages/fabrika/qc-yonetimi.tsx`:
+
+4 tabs:
+1. **Bu Hafta:** Current QC assignment + pending count + today's stats (inspected, pass rate)
+2. **Kontroller:** All inspections list (filter: date, product, result, inspector)
+3. **Lot Takip:** Search by lot number → timeline visualization (Üretim → QC → Sevkiyat → Şube)
+4. **Atamalar:** QC assignment history + create new assignment form
+
+Add to sidebar for: admin, fabrika_mudur, gida_muhendisi, kalite_kontrol
+
+### 1G: Mr. Dobody QC skill
+
+Create `server/agent/skills/qc-tracker.ts`:
+- "5 lot hâlâ QC bekliyor" (daily, if pending > 5)
+- "Bugün 2 lot reddedildi" (on rejection)
+- "Bu hafta QC sorumlusu atanmadı" (weekly check)
+- Target roles: gida_muhendisi, fabrika_mudur, kalite_kontrol, admin
+
+---
+
+## ═══════════════════════════════════
+## SECTION 2: PAYROLL CONSOLIDATION
+## ═══════════════════════════════════
+
+### 2A: Investigate both engines
+
+```bash
+# Full read of both engines
+cat server/services/payroll-engine.ts 2>/dev/null
+echo "=== HR.TS PAYROLL SECTION ==="
+grep -B2 -A50 "function.*calc.*payroll\|function.*calc.*salary\|function.*sgk\|function.*gelirVergisi" server/routes/hr.ts | head -150
+```
+
+### 2B: Create consolidated payroll service
+
+Create `server/services/payroll-calculation-service.ts`:
+
+This is THE ONE engine. Key functions:
+
+```typescript
+// Main function
+export async function calculateMonthlyPayroll(db, input: PayrollInput): Promise<PayrollResult>
+
+// Sub-functions
+function calculateBaseSalary(grossMonthly: number, workedDays: number, expectedDays: number): number
+function calculateOvertime(overtimeMinutes: number, hourlyGross: number, params: PayrollParams): number
+function calculateSGK(grossTotal: number, params: PayrollParams): { employee: number, employer: number }
+function calculateIncomeTax(taxableIncome: number, cumulativeBase: number, params: PayrollParams): number
+function calculateStampTax(grossTotal: number, params: PayrollParams): number
+function calculateAGI(maritalStatus: string, childCount: number, spouseWorking: boolean, params: PayrollParams): number
+
+// Helper
+async function getActivePayrollParams(db): Promise<PayrollParams>
+async function getEmployeeCumulativeTaxBase(db, userId: string, year: number, upToMonth: number): Promise<number>
+```
+
+**Turkish labor law rules embedded:**
+1. Monthly salary always 30-day basis (even Feb 28)
+2. Daily gross = monthly / 30, hourly = daily / 7.5
+3. Overtime: normal day 1.5x, OFF day 1.5x (all hours), holiday 2.0x
+4. Holiday not worked: paid as normal (no extra)
+5. SGK ceiling check: if gross > ceiling, SGK on ceiling only
+6. Income tax: CUMULATIVE brackets (must track YTD)
+7. Damga vergisi: on total gross
+8. AGI: based on family status (read from payroll_parameters)
+9. Sick leave: SGK pays, employer doesn't (different handling)
+10. Unauthorized absence: daily deduction = gross / 30
+
+**Read all rates from payroll_parameters table — NEVER hardcode:**
+```typescript
+// Decode integer-stored values
+const params = {
+  sgkEmployeeRate: dbRow.sgk_worker_rate / 1000,       // 140 → 0.14
+  sgkEmployerRate: dbRow.sgk_employer_rate / 1000,      // 205 → 0.205
+  unemploymentEmployeeRate: dbRow.unemployment_worker_rate / 1000,
+  unemploymentEmployerRate: dbRow.unemployment_employer_rate / 1000,
+  stampTaxRate: dbRow.stamp_tax_rate / 100000,           // 759 → 0.00759
+  minimumWageGross: dbRow.gross_minimum_wage / 100,      // in kuruş → TL
+  incomeTaxBrackets: [
+    { limit: dbRow.income_tax_bracket1 / 100, rate: dbRow.income_tax_rate1 / 1000 },
+    { limit: dbRow.income_tax_bracket2 / 100, rate: dbRow.income_tax_rate2 / 1000 },
+    { limit: dbRow.income_tax_bracket3 / 100, rate: dbRow.income_tax_rate3 / 1000 },
+    { limit: dbRow.income_tax_bracket4 / 100, rate: dbRow.income_tax_rate4 / 1000 },
+    { limit: Infinity, rate: dbRow.income_tax_rate5 / 1000 },
+  ],
+  // ... decode all fields
+};
+```
+
+### 2C: PDKS → Payroll data pipeline
+
+Create function in payroll-calculation-service.ts:
+
+```typescript
+export async function calculateMonthlyPDKSForPayroll(
+  db: any,
+  userId: string,
+  month: number,
+  year: number
+): Promise<PDKSPayrollData> {
+  // 1. Get all PDKS records for user in this month
+  // 2. Get shift assignments for this month
+  // 3. Get approved leaves (authorized absence)
+  // 4. Get public holidays
+  // 5. For each day of month:
+  //    - Is it a work day? (not OFF, not holiday, not leave)
+  //    - What was planned? (shift start/end)
+  //    - What was actual? (PDKS check-in/out)
+  //    - Calculate: worked minutes, overtime, deficit, late, early leave
+  //    - Special: OFF day worked (1.5x), holiday worked (2.0x)
+  // 6. Sum up monthly totals
+  
+  // USE existing pdks-engine.ts logic where available
+  // Map its output format to PayrollInput.pdksData format
+}
+```
+
+### 2D: Payroll generation endpoint
+
+```typescript
+// POST /api/payroll/generate
+// Body: { month, year, branchId?, scope: 'merkez'|'sube'|'all' }
+// Auth: admin, muhasebe_ik, ceo, cgo only
+//
+// Flow:
+// 1. Get employees in scope
+// 2. For each employee:
+//    a. Get base salary from salary_scales or user record
+//    b. Calculate PDKS data (2C above)
+//    c. Get bonuses (sales, cash register, performance)
+//    d. Get cumulative tax base from previous months
+//    e. Calculate payroll (2B above)
+//    f. Save to monthly_payrolls
+// 3. Return summary: total gross, total net, total employer cost, per-branch breakdown
+
+// GET /api/payroll/monthly/:year/:month — list all payroll records
+// GET /api/payroll/monthly/:year/:month/:userId — individual record
+// GET /api/payroll/export/excel/:year/:month — Excel (existing 3-tab format)
+// GET /api/payroll/export/pdf/:year/:month — PDF (NEW)
+// GET /api/payroll/export/pdf/:year/:month/:userId — individual payslip PDF
+```
+
+### 2E: Update old engines as wrappers
+
+```typescript
+// In payroll-engine.ts — keep existing function signatures
+// But internally delegate to new payroll-calculation-service
+// This preserves backward compatibility
+
+// In hr.ts — keep existing endpoints
+// But use new service for calculation
+// Remove duplicated SGK/tax math
+```
+
+### 2F: Merkez vs Şube filter
+
+On the Muhasebe-İK frontend page, add filter buttons:
+- [Merkez (HQ + Fabrika + Işıklar)] [Şubeler] [Tümü]
+- This is a client-side filter on the payroll data
+- Check which branch IDs are "merkez" (HQ, factory, Işıklar) vs franchise
+
+---
+
+## ═══════════════════════════════════
+## SECTION 3: PDF EXPORT
+## ═══════════════════════════════════
+
+### 3A: Install PDF library if needed
+
+```bash
+npm list pdf-lib 2>/dev/null || npm install pdf-lib --save
+```
+
+If npm install is restricted, use html-to-string approach with existing libraries.
+
+### 3B: PDF generator utility
+
+Create `server/utils/pdf-generator.ts`:
+
+**PDKS Monthly PDF:**
+- Page 1: Header (DOSPRESSO logo text + date range + branch name) + Summary table (all employees: worked days, hours, overtime, deficit, performance %)
+- Page 2+: One page per employee with daily breakdown (date, shift, actual, status)
+
+**Payroll Monthly PDF:**
+- Page 1: Header + Summary (total employees, total gross, total net, total employer cost)
+- Per employee (1/2 page each): Name, position, branch, earnings breakdown, deductions breakdown, net salary
+- Last page: Branch-by-branch cost summary
+
+**Individual Payslip PDF:**
+- Single page: Employee info + month + earnings + deductions + net
+- Professional layout: company header, signature lines at bottom
+
+### 3C: PDF endpoints
+
+```typescript
+// GET /api/pdks/export/pdf/:uploadId — PDKS monthly report PDF
+// GET /api/payroll/export/pdf/:year/:month — Payroll summary PDF
+// GET /api/payroll/export/pdf/:year/:month/:userId — Individual payslip
+```
+
+Each endpoint:
+1. Gathers data
+2. Generates PDF using pdf-lib (or html string approach)
+3. Returns PDF as download: `res.setHeader('Content-Type', 'application/pdf')`
+
+---
+
+## DO NOT TOUCH:
+- localAuth.ts, vite.ts, vite.config.ts, package.json (except pdf-lib install), drizzle.config.ts
+- Existing production recording logic (only ADD lot creation after it)
+- Existing kiosk screens (only ADD QC mode alongside)
+- Scoring services (don't change formulas)
+- Existing API response formats (only ADD new endpoints)
+- Dashboard/Mission Control components (separate sprint)
+
+## Testing:
+
+### QC System:
+1. Tables created: qc_assignments, production_lots, qc_inspections
+2. POST /api/factory/qc/assignments → creates weekly assignment
+3. GET /api/factory/qc/current-assignment → returns this week's QC person
+4. Production recording → auto-creates lot with LOT-YYYYMMDD-XXX number
+5. GET /api/factory/qc/pending → lists pending lots
+6. POST /api/factory/qc/inspections → creates inspection, updates lot status
+7. GET /api/factory/lots/LOT-20260326-001/trace → returns full trace chain
+8. Kiosk: QC button visible when assignment exists
+9. Kiosk: QC inspection form works with touch toggles
+10. QC management page loads with 4 tabs
+11. Sidebar: QC Yönetimi visible for factory roles
+
+### Payroll:
+12. payroll-calculation-service.ts created and exports calculateMonthlyPayroll
+13. All rates read from payroll_parameters (not hardcoded)
+14. Monthly salary on 30-day basis (Feb works correctly)
+15. Overtime at 1.5x, holiday at 2.0x
+16. SGK ceiling applied
+17. Income tax uses cumulative brackets
+18. POST /api/payroll/generate → calculates for employees, saves to monthly_payrolls
+19. Merkez/şube filter works
+20. Old payroll-engine.ts still works (wrapper to new service)
+
+### PDF:
+21. GET /api/payroll/export/pdf/2026/3 → downloads valid PDF
+22. Individual payslip PDF generates correctly
+23. PDKS PDF report generates correctly
+
+### General:
+24. App starts without errors
+25. No existing features broken
+26. Mr. Dobody QC skill registered
+27. All new endpoints require authentication
+
+## After:
+1. Report: QC tables created + row counts
+2. Report: QC endpoints (list all URLs)
+3. Report: lot number format working? Sample lot number
+4. Report: kiosk QC mode — which screens implemented
+5. Report: payroll service — which engine is primary now?
+6. Report: sample payroll calculation for one employee (show numbers)
+7. Report: PDF library used
+8. Report: PDF endpoints working?
+9. Report: any features that couldn't be implemented (and why)

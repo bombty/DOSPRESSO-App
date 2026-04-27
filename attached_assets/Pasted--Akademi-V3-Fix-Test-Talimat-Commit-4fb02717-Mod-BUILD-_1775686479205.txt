@@ -1,0 +1,123 @@
+# Akademi V3 Fix — Test Talimatı
+## Commit: 4fb02717
+## Mod: BUILD + TEST (kod değişikliği var, build gerekli)
+
+---
+
+## BAĞLAM — Ne Oldu?
+
+RGM (recete_gm) rolüyle giriş yapıldığında Akademi sayfasında
+"Importing a module script failed" hatası çıkıyordu. Senin önceki
+analizinde (Task raporunda) 6 sorun tespit ettin. IT danışman bu
+raporuna göre 4 kritik sorunu düzeltti.
+
+## YAPILAN DEĞİŞİKLİKLER — IT Danışman Ne Düzeltti?
+
+### Değişiklik 1: Chunk Crash Fix (KRİTİK)
+**Dosya:** `client/src/pages/akademi-v3/index.tsx`
+**Neden:** 4 tab (HomeTab, TrainingTab, WebinarTab, CareerTab) `lazy()` ile
+yükleniyordu. Deploy/rebuild sonrası eski chunk hash'leri değişince tarayıcı
+yeni chunk'ı bulamıyordu → "Importing a module script failed" hatası.
+**Düzeltme:** `lazy()` → `lazyWithRetry()` değiştirildi. Bu fonksiyon 3 kere
+retry yapıyor, başarısız olursa sayfayı yeniliyor. App.tsx'teki tüm sayfalar
+zaten bunu kullanıyordu — akademi tab'ları eksikti.
+```
+ESKİ: const HomeTab = lazy(() => import("./HomeTab"));
+YENİ: const HomeTab = lazyWithRetry(() => import("./HomeTab"));
+```
+
+### Değişiklik 2: HQ Rol Tanıma Genişletme (KRİTİK)
+**Dosya:** `client/src/pages/akademi-v3/index.tsx`
+**Neden:** Akademi sayfası HQ rollerini hardcoded 7 elemanlı bir array ile
+kontrol ediyordu: `['admin','ceo','cgo','coach','trainer','kalite_kontrol','gida_muhendisi']`.
+Bu listede `recete_gm`, `sef`, `fabrika_mudur`, `muhasebe_ik`, `satinalma`,
+`marketing` gibi roller YOKTU. Bu roller akademi sayfasına girince HQ yönetim
+paneline yönlendirilmek yerine öğrenci görünümünü görüyordu.
+**Düzeltme:** Hardcoded array kaldırıldı, yerine `isHQRole()` fonksiyonu
+(shared/schema'dan import) kullanıldı. Bu fonksiyon tüm HQ rollerini otomatik
+tanır — yeni rol eklendiğinde de çalışır.
+```
+ESKİ: const HQ_ROLES = ['admin','ceo','cgo','coach','trainer','kalite_kontrol','gida_muhendisi'];
+      const isHQUser = user && HQ_ROLES.includes(user.role);
+YENİ: const isHQUser = user && isHQRole(user.role);
+```
+
+### Değişiklik 3: Akademi Sidebar Path Düzeltme
+**Dosya:** `client/src/components/layout/module-menu-config.ts`
+**Neden:** Akademi sidebar'ında 3 item yanlış path kullanıyordu:
+- "Eğitim Modülleri" → `/egitim` (bu path hard redirect yapıyor, tam sayfa yenileniyor)
+- "Webinar" → `/akademi` (tab parametresi yok, ana sayfaya düşüyor)
+- "Kariyer Yolu" → `/akademi` (aynı sorun)
+**Düzeltme:** Query parameter ile doğru tab'a yönlendirme eklendi:
+```
+ESKİ: { path: "/egitim" }     → hard redirect, sayfa yenileniyor
+YENİ: { path: "/akademi?tab=egitim" }  → SPA navigasyonu, doğru tab açılıyor
+
+ESKİ: { path: "/akademi" }    → ana sayfa, webinar tab değil
+YENİ: { path: "/akademi?tab=webinar" } → webinar tab açılıyor
+
+ESKİ: { path: "/akademi" }    → ana sayfa, kariyer tab değil
+YENİ: { path: "/akademi?tab=kariyer" } → kariyer tab açılıyor
+```
+
+---
+
+## SENİN YAPMANLARI
+
+### Adım 1: Pull + Build
+```bash
+git pull --rebase origin main
+npm run build
+```
+Build PASS olmalı. FAIL olursa hangi dosyada hata var raporla.
+
+### Adım 2: RGM ile Akademi Test
+```
+1. RGM (recete_gm) kullanıcısı ile giriş yap (kullanıcı: RGM, şifre: 0000)
+2. Sidebar'dan "Akademi" tıkla
+3. Beklenen: /akademi-hq sayfasına yönlendirilmeli (HQ yönetim paneli)
+   ESKİ davranış: /akademi öğrenci sayfası görünüyordu
+4. "Importing a module script failed" hatası OLMAMALI
+```
+
+### Adım 3: Şef ile Akademi Test
+```
+1. Ümit (sef) kullanıcısı ile giriş yap (kullanıcı: Umit, şifre: 0000)
+2. Sidebar'dan "Akademi" tıkla (varsa)
+3. Beklenen: /akademi-hq sayfasına yönlendirilmeli
+```
+
+### Adım 4: Sidebar Path Test (herhangi bir HQ rolü ile)
+```
+1. Akademi modül sidebar'ında:
+   - "Eğitim Modülleri" tıkla → /akademi?tab=egitim açılmalı (TAM SAYFA YENİLEMESİ OLMAMALI)
+   - "Webinar" tıkla → /akademi?tab=webinar açılmalı
+   - "Kariyer Yolu" tıkla → /akademi?tab=kariyer açılmalı
+2. Sayfa yenilenmeden (SPA navigasyonu ile) tab değişmeli
+```
+
+### Adım 5: Branch Rol ile Akademi Test
+```
+1. Barista veya supervisor ile giriş yap
+2. /akademi sayfasına git
+3. Beklenen: öğrenci görünümü (HQ yönetim DEĞİL)
+   Bu roller HQ değil — yönlendirilMEMELİ
+```
+
+---
+
+## RAPOR FORMATI
+
+```
+BUILD: ✅/❌
+RGM AKADEMİ: ✅ HQ'ya yönlendi / ❌ öğrenci görünümü / ❌ hata
+ŞEF AKADEMİ: ✅ HQ'ya yönlendi / ❌ sorun
+SIDEBAR PATHS: ✅ tab doğru açılıyor / ❌ yanlış sayfa
+BARİSTA AKADEMİ: ✅ öğrenci görünümü / ❌ yanlış yönlendirme
+CHUNK HATASI: ✅ yok / ❌ hala var
+PUSH: hayır
+```
+
+## DÜZELTİLMEYEN 2 DÜŞÜK ÖNCELİKLİ SORUN (bilgi için)
+- factory-stations sidebar path yanlış (sonraki oturumda)
+- Reçeteler link fabrika dışı rollere görünüyor (sonraki oturumda)

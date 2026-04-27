@@ -1,0 +1,177 @@
+Mükemmel analiz. Replit'in önerdiği 2 prompt yapısını takip ediyorum. Önce Prompt A (HQ + Supervisor + Stajyer):
+
+---
+
+**Replit'e yapıştırın:**
+
+**"Aşama 1 tamamlandı — toggle, hook'lar, Mr. Dobody paneli çalışıyor. Şimdi Aşama 2 Prompt A: Mission Control sayfalarını oluşturuyoruz.**
+
+## AŞAMA 2A: HQ + Supervisor + Stajyer Mission Control
+
+### Genel prensipler
+- Mevcut dashboard dosyalarına DOKUNMA — yeni dosyalar oluştur
+- Mevcut API endpoint'lerini kullan — yeni backend endpoint'i EKLEME
+- Mevcut widget'ları mümkün olduğunca yeniden kullan (senin analizindeki 8 widget)
+- Toggle 'mission-control' modunda bu yeni bileşenler render edilecek
+- Toggle 'classic' modunda mevcut davranış AYNEN devam edecek
+- Tüm yeni dosyalar `client/src/components/mission-control/` altında
+
+### ADIM 0: Mevcut API'leri keşfet
+
+Her varyant için hangi endpoint'lerden veri çekeceğini BELİRLE — yeni endpoint yazma, mevcut olanları kullan:
+
+```bash
+echo "=== HQ için mevcut endpoint'ler ==="
+grep -n "queryKey\|useQuery" client/src/pages/hq-dashboard.tsx | head -20
+grep -n "queryKey\|useQuery" client/src/pages/hq-ozet.tsx | head -20
+
+echo "=== Supervisor/şube için ==="
+grep -n "queryKey\|useQuery" client/src/pages/sube/dashboard.tsx | head -15
+
+echo "=== Stajyer/akademi için ==="
+grep -n "queryKey\|useQuery" client/src/pages/akademi*.tsx | head -15
+grep -n "queryKey\|useQuery" client/src/pages/benim-gunum*.tsx | head -10
+
+echo "=== Ortak widget verileri ==="
+grep -n "queryKey\|useQuery" client/src/components/widgets/compact-stats-bar.tsx | head -5
+grep -n "queryKey\|useQuery" client/src/components/widgets/todays-tasks-widget.tsx | head -5
+grep -n "queryKey\|useQuery" client/src/components/widgets/activity-timeline.tsx | head -5
+```
+
+Bulduğun endpoint'leri raporla — sonra her varyant hangi endpoint'leri çağıracak belirle.
+
+---
+
+### VARYANT 1: MissionControlHQ.tsx
+
+Hedef roller: ceo, cgo, admin, coach, trainer, muhasebe_ik, satinalma, kalite_kontrol, gida_muhendisi
+
+Senin analizinde belirttiğin gibi: hq-dashboard.tsx'teki API endpoint'lerini kullan ama widget-grid layout'unda render et.
+
+**Layout yapısı:**
+- Sol: Mr. Dobody paneli (Aşama 1'de oluşturuldu — DobodyPanel bileşeni)
+- Ana alan: Widget grid
+
+**İçerik (mevcut widget'ları + yeni 2-3 bileşen kullanarak):**
+- Header: unified-hero veya welcome-hero + LayoutToggle
+- KPI strip: compact-stats-bar veya DashboardKpiStrip (mevcut) — şube sayısı, aktif personel, SLA, açık ticket, QC pending
+- Görevler: todays-tasks-widget (mevcut)
+- Şube durumu: Mevcut branch listesi/health verilerinden basit kart grid (branch-health API)
+- QC + İK özet: /api/factory/qc/stats + /api/hr/ik-dashboard verilerinden küçük KPI kartları
+- Canlı akış: activity-timeline (mevcut) veya bildirimlerden son 5 kayıt
+- Hızlı erişim: quick-actions-grid (mevcut)
+
+**Yeni yazılacak bileşenler (minimum):**
+- BranchHealthGrid — şubelerin sağlık skorlarını 2-3 kolonlu kart grid olarak göster
+- QCStatusMini — QC pending + pass rate küçük kart
+- IKStatusMini — özlük + tutanak küçük kart
+
+Bu bileşenlerin boyutu KÜÇÜK olmalı (her biri 50-100 satır). Karmaşık widget değil, basit veri gösterimi.
+
+---
+
+### VARYANT 2: MissionControlSupervisor.tsx
+
+Hedef roller: supervisor, supervisor_buddy, mudur
+
+**İçerik (mevcut widget'ları + branch-summary API):**
+- Header: unified-hero + LayoutToggle
+- KPI strip: burada (aktif), geç, molada, gelmedi, checklist %, performans
+- Personel durumu: branch-summary'den gelen staff verisiyle basit kart listesi (isim, rol, durum, skor)
+- Vardiya bilgisi: bugünkü vardiyalardan basit liste (saatler + kişiler)
+- Checklist: mevcut checklist verisinden tamamlanma özeti
+- Görevler: todays-tasks-widget (branch filtreli)
+- Canlı akış: son aktiviteler
+
+Personel kartı için yeni bileşen: StaffStatusCard — avatar + isim + rol + durum badge + skor. Basit, 60-80 satır.
+
+---
+
+### VARYANT 3: MissionControlStajyer.tsx
+
+Hedef roller: stajyer, bar_buddy, barista
+
+Senin analizinde "kolay" dedin — katılıyorum.
+
+**İçerik:**
+- Header: Motivasyonel selamlama ("4 gün seri! Bugün tamamlarsan 5 gün!")
+- Kariyer yolu: Stajyer → Bar Buddy → Barista → Supervisor (basit adım göstergesi — mevcut rol nerede?)
+- Devam et kartı: Aktif eğitim modülü + "Devam et →" butonu
+- Streak göstergesi: 7 günlük kutu (Pt Sa Ça... — tamamlandı/boş/bugün)
+- Modül listesi: progress-overview (mevcut) veya akademi verilerinden
+- Bugünkü vardiya: basit saat + durum
+
+Bu varyant en basit — çoğunlukla mevcut akademi verilerini farklı layout'ta göstermek.
+
+---
+
+### ROUTING ENTEGRASYONU
+
+Aşama 1'deki toggle kontrolünü güncelle — placeholder yerine gerçek bileşenleri göster:
+- dashboard.tsx'te: mission-control modundayken → DashboardRouter çağır
+- hq-ozet.tsx'te: mission-control modundayken → MissionControlHQ çağır
+
+DashboardRouter.tsx oluştur:
+```
+role → varyant mapping:
+  ceo, cgo, admin, coach, trainer... → MissionControlHQ
+  supervisor, supervisor_buddy, mudur → MissionControlSupervisor
+  stajyer, bar_buddy, barista → MissionControlStajyer
+  fabrika_* → placeholder (Prompt B'de yapılacak)
+  diğer → MissionControlHQ (fallback)
+```
+
+Lazy loading kullan — mevcut pattern'ı takip et.
+
+---
+
+## KURALLAR
+
+- Mevcut dashboard dosyalarının İÇERİĞİNE dokunma
+- Mevcut widget'ları import ederek kullan — kopyalama, yeniden yazma
+- Yeni endpoint EKLEME — mevcut API'lerden veri çek
+- Her varyant bağımsız çalışabilmeli
+- Mobilde tek kolon, masaüstünde grid layout
+- Dark mode uyumlu (mevcut CSS variable'ları kullan)
+- Veri yokken crash etme — "Henüz veri yok" göster
+- Her yeni bileşen ErrorBoundary ile sarılı olmalı
+- useGuidanceData hook'unu kullan (Aşama 1'de oluşturuldu)
+
+## TEST
+
+1. Classic mod → mevcut dashboard AYNEN (hiçbir fark yok)
+2. Mission Control mod + CEO/Admin → MissionControlHQ render ediliyor
+3. Mission Control mod + Supervisor → MissionControlSupervisor render ediliyor
+4. Mission Control mod + Stajyer → MissionControlStajyer render ediliyor
+5. Mission Control mod + Fabrika → placeholder ("Yakında")
+6. HQ dashboard: KPI strip, şube kartları, görevler, QC/İK özet görünüyor
+7. Supervisor dashboard: personel listesi, vardiya, checklist görünüyor
+8. Stajyer dashboard: kariyer yolu, streak, modüller görünüyor
+9. Mr. Dobody panel her 3 varyantında çalışıyor
+10. Toggle tıklayınca smooth geçiş (sayfa yenilenmeden)
+11. Mobilde responsive (tek kolon)
+12. E2E testler hala 26/26 PASS
+13. Mevcut guidance-widget bozulmadı
+
+## BİTTİĞİNDE RAPOR
+
+1. Oluşturulan dosyalar + satır sayıları
+2. Yeniden kullanılan mevcut widget'lar listesi
+3. Yeni yazılan bileşenler listesi
+4. Her varyant hangi API endpoint'leri çağırıyor
+5. Toggle geçişi çalışıyor mu?
+6. Mobil responsive mi?
+7. E2E test sonucu
+8. Bilinen kısıtlamalar veya eksikler
+
+**Başla — önce ADIM 0 (API keşfi), sonra HQ varyantı, sonra Supervisor, sonra Stajyer.**"
+
+---
+
+Yapıştırın. Bu prompt:
+- Exact kod yok — hedef + kural
+- Replit'in kendi analizine referans veriyor
+- Mevcut widget'ları kullanmasını söylüyor (yeniden yazmak yerine)
+- Fabrika ayrı tutuldu (Prompt B)
+
+Sonuçları paylaşın — Prompt B (Fabrika) hazır bekliyor.

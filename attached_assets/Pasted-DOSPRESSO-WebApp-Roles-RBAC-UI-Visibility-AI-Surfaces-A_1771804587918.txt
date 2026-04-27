@@ -1,0 +1,77 @@
+DOSPRESSO WebApp — Roles, RBAC, UI Visibility, AI Surfaces Audit (CODE-EVIDENCE REQUIRED)
+
+This is an AUDIT + SPEC request. Do NOT implement, do NOT change code, do NOT build features. Output only.
+
+Goal:
+Produce a complete, code-referenced view of:
+- ALL roles (exact strings), where defined, and the single source of truth
+- RBAC/permissions enforcement (deny-by-default proof)
+- UI visibility vs route access mismatches
+- Current AI surfaces/capabilities (what exists today)
+- A global “AI for every role” target plan that is READ-ONLY and deterministic, based on existing data only (no new DB tables)
+
+Deliverables (must be precise and evidence-based):
+
+1) Roles Inventory (Single Source of Truth)
+- Extract full list of roles from codebase (exact strings/enums).
+- For each role provide:
+  a) roleId (exact)
+  b) TR/EN label if present
+  c) scope mapping if present in code (HQ/Branch/Factory/Partner); else mark UNKNOWN
+  d) where used (file paths + line refs)
+- Identify the role “source of truth” file(s). If roles appear in multiple places, list conflicts.
+
+2) Permissions & RBAC Matrix (Evidence)
+- Build role → module/action matrix using actual implementation:
+  - shared/permissions.ts (or equivalent)
+  - server middleware guards
+  - route configs
+- Provide:
+  a) 10 most critical endpoints + allow/deny by role (file + line refs)
+  b) deny-by-default proof: where enforced in code (file + line refs)
+
+3) UI Visibility Map (Menu vs Route Reality)
+- For major nav items/route groups:
+  - which roles see it (menu visibility)
+  - which roles can access it (route/guard)
+  - file + line refs for both
+- Identify mismatches:
+  - menu shows but route 403
+  - route accessible but menu hidden
+  - route+menu ok but page empty due to missing data (list which data missing)
+
+4) AI Agent — Current Capabilities (What exists TODAY)
+- List all AI surfaces (paths/tabs/components) + how to reach them
+- Endpoints used by these surfaces
+- Data read/write inventory (tables + columns; mark PII risk)
+- Trigger mechanism (when it runs)
+- Confirm with evidence:
+  - any LLM/external calls? YES/NO
+  - any autonomous writes beyond logs? YES/NO
+  - logging tables + retention/redaction status
+
+5) AI Agent — Target Capabilities (READ-ONLY Global Plan, no DB changes)
+Create “Role → AI Surface Plan” for EACH role:
+- Primary surface must be: Dashboard card (“AI Önerileri”) for ALL roles
+- Secondary surfaces allowed: Notifications badge; existing “AI Kanıt” only as evidence console
+- For each role:
+  - top 3 deterministic daily suggestions (NBA-style) using existing tables only
+  - P0 alerts (max 3)
+  - required signals (tables/fields)
+  - human-in-the-loop note (what would require approval later)
+Constraints:
+- No autonomous writes
+- No new DB tables
+- No one-off role hacks; use reusable patterns
+
+6) Gaps & Next Sprint Plan (max 5 items, still NO BUILD now)
+- Top blockers for “AI visible/useful for all roles”
+- Minimal next sprint plan (max 5 items) that would implement:
+  Phase 1: dashboard AI card + role-scoped endpoint + empty states
+- Provide acceptance criteria + manual test steps
+
+Output rules:
+- Use headings 1–6
+- Every critical claim must include file path + short code pointer (line refs)
+- If something is not found: write NOT FOUND and what you searched.
+- Do NOT implement anything.

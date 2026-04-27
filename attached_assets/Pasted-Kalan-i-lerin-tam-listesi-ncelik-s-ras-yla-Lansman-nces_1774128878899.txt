@@ -1,0 +1,315 @@
+Kalan işlerin tam listesi — öncelik sırasıyla:
+
+**Lansman öncesi yapılabilecek:**
+
+| # | İş | Süre | Birleştir? |
+|---|-----|------|-----------|
+| 1 | Mr. Dobody "Düzelt" buton navigasyonu doğrulama | 30dk | → Prompt 1 |
+| 2 | 2026 bordro Resmi Gazete teyidi (manuel) | 5dk | Manuel |
+| 3 | Akademi modülü aktifleştirme (flag açma) | 15dk | → Prompt 1 |
+| 4 | Mr. Dobody pending actions temizleme (50 eski öneri) | 10dk | → Prompt 1 |
+| 5 | Stub endpoint'leri kullanıcıya "yakında" mesajı göstersin | 30dk | → Prompt 1 |
+| 6 | Dark mode uyumsuz renkler (28 adet) | 1 saat | → Prompt 2 |
+| 7 | console.log temizliği (56 server dosyası) | 30dk | → Prompt 2 |
+| 8 | N+1 sorgu riskleri fix (12 adet) | 1 saat | → Prompt 2 |
+
+**Lansman sonrası 1. hafta:**
+
+| # | İş | Süre |
+|---|-----|------|
+| 9 | QC + lot takip sistemi | 4-5 saat |
+| 10 | Maaş motoru konsolidasyonu | 3-4 saat |
+| 11 | PDKS ↔ Vardiya ↔ Maaş tam entegrasyon | 3 saat |
+| 12 | İK modülü genişletme | 4-5 saat |
+| 13 | misc.ts 13K satır bölünme | 2 saat |
+| 14 | ~1000 TypeScript `:any` temizliği | 3 saat |
+
+İki prompt'a birleştiriyorum. İlk prompt — Replit'e yapıştırın:
+
+---
+
+```
+## Pre-Launch Polish Sprint — Quick Fixes Bundle
+
+### Context
+Launch in 3 days. These are small but important fixes bundled together.
+1. Mr. Dobody "Düzelt" button navigation verification + fix
+2. Akademi module flag activation
+3. Old agent pending actions cleanup (50 stale suggestions)
+4. Stub endpoints — show "Yakında" message instead of empty data
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json
+- Do NOT touch scoring services or payroll
+- MINIMAL changes — quick polish only
+- Turkish UI
+
+---
+
+## FIX 1: Mr. Dobody "Düzelt" Button Verification
+
+```bash
+echo "═══ FIX 1: Düzelt Button ═══"
+
+# Check if navigation mapping was added in the recent UI sprint
+grep -n "Düzelt\|düzelt\|handleFix\|getActionForGap\|deepLink\|navigate.*düzelt" client/src/components/widgets/guidance-widget.tsx | head -20
+
+# What does clicking Düzelt do?
+grep -B5 -A15 "Düzelt" client/src/components/widgets/guidance-widget.tsx | head -40
+
+# Check if deepLinks are set in system-completeness-service
+grep -n "deepLink\|deep_link\|actionUrl\|actionPath" server/services/system-completeness-service.ts | head -20
+
+# Sample deepLink values
+echo "SELECT DISTINCT action_url FROM agent_pending_actions WHERE action_url IS NOT NULL LIMIT 10;" | psql 2>/dev/null
+```
+
+If "Düzelt" button has no onClick handler or navigates nowhere:
+
+Add navigation mapping — each gap type should go to the correct page:
+
+```typescript
+// Gap ID patterns → navigation targets
+const GAP_NAVIGATION: Record<string, string> = {
+  // Personnel
+  'yonetici-yok': '/admin/kullanicilar',
+  'yetersiz-personel': '/admin/kullanicilar',
+  'no-manager': '/admin/kullanicilar',
+  'insufficient-staff': '/admin/kullanicilar',
+  
+  // Checklist
+  'checklist': '/yonetim/checklist-yonetimi',
+  'acilis-kapalis': '/yonetim/checklist-yonetimi',
+  
+  // Shift/Schedule
+  'vardiya': '/vardiya-planlama',
+  'shift': '/vardiya-planlama',
+  'no-shifts': '/vardiya-planlama',
+  
+  // Training
+  'egitim': '/akademi-hq',
+  'onboarding': '/akademi-hq',
+  'training': '/akademi-hq',
+  
+  // Factory
+  'fabrika': '/fabrika/dashboard',
+  'uretim': '/fabrika/uretim-planlama',
+  'factory': '/fabrika/dashboard',
+  
+  // Settings
+  'sla': '/admin',
+  'ayar': '/admin',
+  'settings': '/admin',
+};
+
+function getNavigationForGap(gap: any): string {
+  // 1. Check deepLink from backend
+  if (gap.deepLink || gap.actionUrl || gap.action_url) {
+    return gap.deepLink || gap.actionUrl || gap.action_url;
+  }
+  
+  // 2. Match by gap ID or title keywords
+  const searchText = ((gap.id || '') + ' ' + (gap.title || '') + ' ' + (gap.description || '')).toLowerCase();
+  
+  for (const [keyword, path] of Object.entries(GAP_NAVIGATION)) {
+    if (searchText.includes(keyword)) return path;
+  }
+  
+  // 3. Default
+  return '/admin';
+}
+```
+
+Update the "Düzelt" button:
+```typescript
+<Button variant="outline" size="sm" onClick={() => navigate(getNavigationForGap(gap))}>
+  Düzelt →
+</Button>
+```
+
+If deepLinks already work from the backend (system-completeness-service.ts sets them), just verify they're being used in the onClick handler.
+
+---
+
+## FIX 2: Akademi Module Flag Activation
+
+```bash
+echo "═══ FIX 2: Akademi Flag ═══"
+
+# Check current akademi flag status
+echo "SELECT module_key, is_enabled, flag_behavior FROM module_flags WHERE module_key = 'akademi' OR module_key LIKE 'akademi%';" | psql
+
+# Check what's currently fully_hidden
+echo "SELECT module_key, flag_behavior FROM module_flags WHERE flag_behavior = 'fully_hidden' AND deleted_at IS NULL ORDER BY module_key;" | psql
+```
+
+Akademi should be activated for launch (training system is ready):
+
+```sql
+-- Activate akademi module (if currently fully_hidden)
+UPDATE module_flags SET flag_behavior = 'always_on', is_enabled = true 
+WHERE module_key = 'akademi' AND deleted_at IS NULL;
+```
+
+BUT — check if sub-modules should stay hidden:
+```bash
+echo "SELECT module_key, flag_behavior, parent_key FROM module_flags WHERE parent_key = 'akademi' AND deleted_at IS NULL;" | psql
+```
+
+Sub-modules (like akademi.webinar, akademi.badges) can stay hidden if not ready. Only activate the main akademi module.
+
+---
+
+## FIX 3: Stale Agent Pending Actions Cleanup
+
+```bash
+echo "═══ FIX 3: Stale Actions ═══"
+
+# How many pending actions exist?
+echo "SELECT status, count(*) FROM agent_pending_actions GROUP BY status;" | psql
+
+# How old are they?
+echo "SELECT status, min(created_at)::date, max(created_at)::date, count(*) FROM agent_pending_actions GROUP BY status;" | psql
+
+# Sample of pending actions
+echo "SELECT id, title, status, created_at::date FROM agent_pending_actions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 10;" | psql
+```
+
+Clean up old pending actions (older than 7 days):
+
+```sql
+-- Mark old pending actions as expired (don't delete — soft close)
+UPDATE agent_pending_actions 
+SET status = 'expired', 
+    resolved_at = NOW(),
+    resolution_notes = 'Lansman öncesi temizlik — otomatik kapatıldı'
+WHERE status = 'pending' 
+AND created_at < NOW() - INTERVAL '7 days';
+```
+
+Also clean guidance_dismissals older than 30 days:
+```sql
+DELETE FROM guidance_dismissals WHERE dismissed_at < NOW() - INTERVAL '30 days';
+```
+
+And clean old notifications:
+```sql
+-- Mark old unread notifications as read (> 14 days)
+UPDATE notifications SET is_read = true 
+WHERE is_read = false AND created_at < NOW() - INTERVAL '14 days';
+
+-- Delete very old notifications (> 60 days)
+DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '60 days';
+```
+
+---
+
+## FIX 4: Stub Endpoints — "Yakında" Message
+
+```bash
+echo "═══ FIX 4: Stub Endpoints ═══"
+
+# How many stub endpoints?
+wc -l server/routes/stub-endpoints.ts
+grep -c "router\.\(get\|post\)" server/routes/stub-endpoints.ts
+
+# What do they return?
+head -30 server/routes/stub-endpoints.ts
+grep -A3 "router.get\|router.post" server/routes/stub-endpoints.ts | head -30
+```
+
+Update stub endpoints to return a consistent "coming soon" response:
+
+```typescript
+// BEFORE (typical stub):
+router.get("/api/some-stub", isAuthenticated, (req, res) => {
+  res.json([]);  // or res.json({})
+});
+
+// AFTER:
+router.get("/api/some-stub", isAuthenticated, (req, res) => {
+  res.json({ 
+    data: [], 
+    _stub: true, 
+    _message: "Bu özellik yakında aktif olacak" 
+  });
+});
+```
+
+Add `_stub: true` flag to ALL stub responses. This way:
+- Frontend can detect stubs and show "Yakında" badge
+- API consumers know this isn't real data
+- No breaking change (data field still returns [] or {})
+
+For POST stubs:
+```typescript
+router.post("/api/some-stub", isAuthenticated, (req, res) => {
+  res.status(202).json({ 
+    success: false, 
+    _stub: true, 
+    _message: "Bu özellik henüz aktif değil" 
+  });
+});
+```
+
+---
+
+## FIX 5: Quick Wins — Small Issues
+
+```bash
+echo "═══ FIX 5: Quick Wins ═══"
+
+# 5A: Check if "İlk İşe Başla" button on HQ dashboard does anything
+grep -n "İlk İşe Başla\|ilk.*ise.*basla\|firstTask\|onboarding.*start" client/src/pages/hq-dashboard.tsx | head -5
+
+# 5B: Check Mr. Dobody avatar/mascot consistency
+grep -rn "dobody\|mascot\|mr.*dobody\|avatar.*dobody" client/src/components/ --include="*.tsx" | head -10
+
+# 5C: "Kendi başıma devam etmek istiyorum" link — does it work?
+grep -n "Kendi başıma\|kendi.*basima\|skip.*onboard\|dismiss.*welcome" client/src/pages/hq-dashboard.tsx | head -5
+
+# 5D: Badge count on notification bell — is it accurate?
+grep -n "notification.*count\|unread.*count\|badge.*count" client/src/components/app-header.tsx | head -5
+```
+
+For each:
+- If "İlk İşe Başla" goes nowhere → make it navigate to the first pending action
+- If "Kendi başıma devam" does nothing → make it dismiss the welcome card
+- If notification badge is inaccurate → fix the query
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- server/localAuth.ts
+- Scoring services, payroll engine
+- Kiosk pages (already fixed)
+- shift scheduler (already done)
+
+## Testing:
+1. Mr. Dobody "Düzelt" → click on "Batman: Şube yöneticisi yok" → navigates to /admin/kullanicilar ✓
+2. Mr. Dobody "Düzelt" → click on checklist gap → navigates to checklist management ✓
+3. Akademi visible in sidebar for appropriate roles ✓
+4. Old pending actions cleaned: SELECT count(*) FROM agent_pending_actions WHERE status='pending' → fewer than before ✓
+5. Stub endpoints return {_stub: true, _message: "..."} ✓
+6. "İlk İşe Başla" button works ✓
+7. HQ Dashboard loads without errors ✓
+8. No regressions in existing features ✓
+
+## After:
+1. Report: Düzelt button — was it already working or newly fixed?
+2. Report: Akademi flag — what was changed?
+3. Report: how many pending actions expired
+4. Report: how many notifications cleaned
+5. Report: how many stub endpoints updated
+6. Report: any quick wins fixed
+```
+
+---
+
+Bu Prompt 1 — yapıştırın, **Autonomous + Power**. 
+
+Bitmesini beklerken Prompt 2'yi (dark mode + console.log + N+1 fix) hazırlıyorum. Bitince söyleyin!

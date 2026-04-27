@@ -1,0 +1,625 @@
+# MEGA SPRİNT 2: BİLDİRİM ZİNCİRLERİ
+# Tahmini süre: 6 saat | Öncelik: KRİTİK | 9 kopuk zincir tamiri
+
+**KURAL: Her adımı sırayla yap. Her bildirim ekledikten sonra sunucu hatasız çalıştığını doğrula. createNotification() fonksiyonunu kullan — yeni bildirim sistemi OLUŞTURMA, mevcut altyapıyı kullan.**
+
+**ÖNEMLİ BAĞLAM:** Mevcut bildirim sistemi çalışıyor (31.969 kayıt). createNotification() fonksiyonu zaten var ve tüm route dosyalarında kullanılıyor. Sorun: bazı kritik akışlarda bu fonksiyon HİÇ çağrılmıyor. Bu sprint sadece eksik createNotification() çağrılarını ekliyor.
+
+---
+
+## ÖN ARAŞTIRMA (ilk bu komutu çalıştır)
+
+```bash
+echo "═══════════════════════════════════════════"
+echo "BİLDİRİM SİSTEMİ MEVCUT DURUM"
+echo "═══════════════════════════════════════════"
+
+echo "=== createNotification fonksiyon imzası ==="
+grep -n "function createNotification\|const createNotification\|export.*createNotification" server/ -r --include="*.ts" | head -5
+
+echo ""
+echo "=== Mevcut bildirim tipleri (DB'de) ==="
+echo "SELECT DISTINCT type FROM notifications ORDER BY type;" | psql
+
+echo ""
+echo "=== En çok kullanılan createNotification çağrıları (örnek pattern) ==="
+grep -A8 "createNotification" server/routes/tasks.ts | head -20
+
+echo ""
+echo "=== factory.ts'de mevcut createNotification çağrıları ==="
+grep -n "createNotification" server/routes/factory.ts
+
+echo ""
+echo "=== branch-tasks.ts'de mevcut createNotification çağrıları ==="
+grep -n "createNotification" server/routes/branch-tasks.ts
+
+echo ""
+echo "=== Fabrika müdür user_id ==="
+echo "SELECT id, first_name, last_name, role FROM users WHERE role = 'fabrika_mudur' AND is_active = true;" | psql
+
+echo ""
+echo "=== Gıda mühendisi user_id ==="
+echo "SELECT id, first_name, last_name, role FROM users WHERE role = 'gida_muhendisi' AND is_active = true;" | psql
+
+echo ""
+echo "=== Fabrika operatör user_id'leri ==="
+echo "SELECT id, first_name, last_name, role FROM users WHERE role = 'fabrika_operator' AND is_active = true;" | psql
+
+echo ""
+echo "=== Admin user_id'leri ==="
+echo "SELECT id, first_name, last_name, role FROM users WHERE role = 'admin' AND is_active = true;" | psql
+```
+
+**Bu çıktıları oku, createNotification imzasını öğren, sonra adımlara geç.**
+
+---
+
+## ADIM 1: FABRİKA — Üretim Kaydı Bildirimi (30 dk)
+
+**Sorun:** factory.ts'deki log-production endpoint'i üretim kaydı girildiğinde fabrika müdürüne hiç bildirim göndermiyor. 128 endpoint, 0 üretim bildirimi.
+
+**Bul:** factory.ts'de log-production POST endpoint'ini bul.
+
+```bash
+grep -n "log-production\|logProduction\|log_production" server/routes/factory.ts | head -10
+```
+
+**Ekle:** INSERT başarılı olduktan sonra, createNotification çağrısı ekle:
+
+```typescript
+// Üretim kaydı başarılı INSERT'ten sonra ekle:
+
+// 1. Fabrika müdürüne bildirim
+const fabrikaMudurler = await db.select({ id: users.id })
+  .from(users)
+  .where(and(eq(users.role, 'fabrika_mudur'), eq(users.isActive, true)));
+
+for (const mudur of fabrikaMudurler) {
+  await createNotification({
+    userId: mudur.id,
+    type: 'factory_production_log',
+    title: 'Yeni üretim kaydı',
+    message: `${userName} — ${productName}: ${quantity} ${unit} üretildi${wasteQuantity > 0 ? `, ${wasteQuantity} ${wasteUnit} fire` : ''}`,
+    severity: 'info',
+    deepLink: '/fabrika/uretim-planlama',
+  });
+}
+```
+
+**NOT:** Her üretim kaydında bildirim çok fazla olabilir. Alternatif: sadece fire oranı yüksekse (%5+) bildirim gönder. Karar: İKİSİNİ DE YAP — normal üretim = info, yüksek fire = warning.
+
+```typescript
+// Fire oranı kontrolü
+const wasteRatio = wasteQuantity / (quantity + wasteQuantity);
+if (wasteRatio > 0.05) {
+  // %5'ten fazla fire → UYARI seviyesiyle gönder
+  for (const mudur of fabrikaMudurler) {
+    await createNotification({
+      userId: mudur.id,
+      type: 'factory_high_waste_alert',
+      title: 'Yüksek fire uyarısı',
+      message: `${userName} — ${productName}: %${(wasteRatio * 100).toFixed(1)} fire oranı (${wasteQuantity} ${wasteUnit})`,
+      severity: 'warning',
+      deepLink: '/fabrika/uretim-planlama',
+    });
+  }
+  
+  // Gıda mühendisine de gönder
+  const gidaMuhendisleri = await db.select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.role, 'gida_muhendisi'), eq(users.isActive, true)));
+  
+  for (const muh of gidaMuhendisleri) {
+    await createNotification({
+      userId: muh.id,
+      type: 'factory_high_waste_alert',
+      title: 'Yüksek fire uyarısı',
+      message: `${userName} — ${productName}: %${(wasteRatio * 100).toFixed(1)} fire oranı`,
+      severity: 'warning',
+      deepLink: '/fabrika/uretim-planlama',
+    });
+  }
+}
+```
+
+**Test:** Bir üretim kaydı gir → notifications tablosunda factory_production_log görünmeli.
+
+---
+
+## ADIM 2: FABRİKA — QC Sonucu Bildirimi (30 dk)
+
+**Sorun:** QC denetimi yapıldığında (approved/rejected) ne fabrika müdürü ne de ilgili operatör bilgilendirilmiyor.
+
+**Bul:** factory.ts'de QC inspection/decision endpoint'ini bul.
+
+```bash
+grep -n "quality.*check\|qc.*inspect\|qc.*decision\|inspection\|quality_check" server/routes/factory.ts | grep -i "post\|patch\|put" | head -10
+```
+
+**Ekle:** QC kararı (approved/rejected/pending_engineer) kaydedildikten sonra:
+
+```typescript
+// QC sonucu bildirimi
+
+// 1. Üreten operatöre bildir
+if (producerId) {
+  await createNotification({
+    userId: producerId,
+    type: 'qc_result',
+    title: decision === 'approved' ? 'QC onaylandı' : decision === 'rejected' ? 'QC reddedildi' : 'Gıda mühendisi incelemesine yönlendirildi',
+    message: `${productName} (LOT: ${lotNumber || 'N/A'}) — ${decisionReason || ''}`,
+    severity: decision === 'rejected' ? 'warning' : 'info',
+    deepLink: '/fabrika/kalite-kontrol',
+  });
+}
+
+// 2. Fabrika müdürüne bildir
+for (const mudur of fabrikaMudurler) {
+  await createNotification({
+    userId: mudur.id,
+    type: 'qc_result',
+    title: `QC: ${decision === 'approved' ? 'Onaylandı' : decision === 'rejected' ? 'Reddedildi' : 'Mühendise yönlendirildi'}`,
+    message: `${productName} — Denetçi: ${inspectorName}`,
+    severity: decision === 'rejected' ? 'warning' : 'info',
+    deepLink: '/fabrika/kalite-kontrol',
+  });
+}
+
+// 3. Gıda mühendisine yönlendirildiyse
+if (decision === 'pending_engineer') {
+  const gidaMuhendisleri = await db.select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.role, 'gida_muhendisi'), eq(users.isActive, true)));
+  
+  for (const muh of gidaMuhendisleri) {
+    await createNotification({
+      userId: muh.id,
+      type: 'qc_engineer_review',
+      title: 'QC inceleme bekliyor',
+      message: `${productName} (LOT: ${lotNumber || 'N/A'}) — gıda mühendisi onayı gerekiyor`,
+      severity: 'warning',
+      deepLink: '/fabrika/kalite-kontrol',
+    });
+  }
+}
+```
+
+---
+
+## ADIM 3: FABRİKA — Skor Hesaplama Bildirimi (20 dk)
+
+**Sorun:** factory-scoring-service.ts her gece 02:00'de skor hesaplıyor ama sonucu kimseye bildirmiyor.
+
+**Bul:** factory-scoring-service.ts'de calculateAndSaveDailyScores ve calculateAndSaveWeeklyScores fonksiyonlarını bul.
+
+```bash
+grep -n "calculateAndSaveDaily\|calculateAndSaveWeekly\|saveWorkerScores" server/services/factory-scoring-service.ts | head -10
+```
+
+**Ekle:** Skorlar kaydedildikten sonra, düşük skor uyarısı:
+
+```typescript
+// saveWorkerScores sonrası veya calculateAndSave sonrası:
+
+// Düşük skor uyarısı (toplam < 60)
+for (const score of savedScores) {
+  if (score.totalScore < 60) {
+    // Çalışanın kendisine
+    await createNotification({
+      userId: score.userId,
+      type: 'factory_low_score',
+      title: 'Performans skoru düşük',
+      message: `${periodType === 'daily' ? 'Günlük' : 'Haftalık'} skorunuz: ${score.totalScore.toFixed(1)}/100`,
+      severity: 'warning',
+      deepLink: '/fabrika/performans',
+    });
+    
+    // Fabrika müdürüne
+    for (const mudur of fabrikaMudurler) {
+      await createNotification({
+        userId: mudur.id,
+        type: 'factory_low_score_alert',
+        title: 'Düşük performans uyarısı',
+        message: `${score.userName} — ${periodType === 'daily' ? 'Günlük' : 'Haftalık'} skor: ${score.totalScore.toFixed(1)}/100`,
+        severity: 'warning',
+        deepLink: '/fabrika/performans',
+      });
+    }
+  }
+}
+```
+
+**NOT:** createNotification'ı service dosyasından çağırmak için import gerekebilir. Mevcut import yapısını kontrol et.
+
+---
+
+## ADIM 4: ŞUBE GÖREV — Oluşturma + Claim + Tamamlama Bildirimleri (1.5 saat)
+
+**Sorun:** branch-tasks.ts'de 21 endpoint var, claim/complete mekanizması çalışıyor ama HİÇBİR bildirim gönderilmiyor.
+
+**Bul:**
+
+```bash
+echo "=== branch-tasks.ts endpoint'leri ==="
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/branch-tasks.ts | head -25
+
+echo ""
+echo "=== claim endpoint ==="
+grep -n "claim" server/routes/branch-tasks.ts
+
+echo ""
+echo "=== complete endpoint ==="  
+grep -n "complete" server/routes/branch-tasks.ts
+
+echo ""
+echo "=== Mevcut bildirim çağrıları ==="
+grep -n "createNotification\|notification" server/routes/branch-tasks.ts
+```
+
+### 4A: Instance oluşturulunca (generate endpoint)
+
+Recurring task'tan instance oluşturulduğunda şube personeline bildir:
+
+```typescript
+// Instance generate/create sonrası:
+
+// Şubedeki tüm aktif çalışanlara bildir
+const subePersoneli = await db.select({ id: users.id })
+  .from(users)
+  .where(and(
+    eq(users.branchId, branchId),
+    eq(users.isActive, true),
+    inArray(users.role, ['supervisor', 'supervisor_buddy', 'barista', 'bar_buddy', 'stajyer', 'mudur'])
+  ));
+
+for (const personel of subePersoneli) {
+  await createNotification({
+    userId: personel.id,
+    type: 'branch_task_created',
+    title: 'Yeni şube görevi',
+    message: `${taskTitle} — ${isOpenPool ? 'Açık havuz (sahiplenebilirsiniz)' : 'Atandı'}`,
+    severity: 'info',
+    deepLink: `/sube-gorevler/${branchId}`,
+  });
+}
+```
+
+### 4B: Görev claim edilince
+
+```typescript
+// Claim endpoint başarılı olduktan sonra:
+
+// 1. Supervisor + müdüre bildir
+const subeYoneticileri = await db.select({ id: users.id })
+  .from(users)
+  .where(and(
+    eq(users.branchId, branchId),
+    eq(users.isActive, true),
+    inArray(users.role, ['supervisor', 'mudur'])
+  ));
+
+for (const yonetici of subeYoneticileri) {
+  await createNotification({
+    userId: yonetici.id,
+    type: 'branch_task_claimed',
+    title: 'Görev sahiplenildi',
+    message: `${claimerName} "${taskTitle}" görevini üstlendi`,
+    severity: 'info',
+    deepLink: `/sube-gorevler/${branchId}`,
+  });
+}
+
+// 2. Coach'a bildir (HQ)
+const coaches = await db.select({ id: users.id })
+  .from(users)
+  .where(and(
+    eq(users.role, 'coach'),
+    eq(users.isActive, true)
+  ));
+
+for (const coach of coaches) {
+  await createNotification({
+    userId: coach.id,
+    type: 'branch_task_claimed',
+    title: `${branchName}: Görev sahiplenildi`,
+    message: `${claimerName} "${taskTitle}" görevini üstlendi`,
+    severity: 'info',
+    deepLink: `/sube-gorevler/${branchId}`,
+  });
+}
+```
+
+### 4C: Görev tamamlanınca
+
+```typescript
+// Complete endpoint başarılı olduktan sonra:
+
+// 1. Supervisor + müdüre bildir
+for (const yonetici of subeYoneticileri) {
+  await createNotification({
+    userId: yonetici.id,
+    type: 'branch_task_completed',
+    title: 'Görev tamamlandı',
+    message: `${completerName} "${taskTitle}" görevini tamamladı`,
+    severity: 'success',
+    deepLink: `/sube-gorevler/${branchId}`,
+  });
+}
+
+// 2. Coach'a bildir
+for (const coach of coaches) {
+  await createNotification({
+    userId: coach.id,
+    type: 'branch_task_completed',
+    title: `${branchName}: Görev tamamlandı`,
+    message: `${completerName} "${taskTitle}" görevini tamamladı`,
+    severity: 'success',
+    deepLink: `/sube-gorevler/${branchId}`,
+  });
+}
+```
+
+---
+
+## ADIM 5: GENEL — Değerlendirme Bildirimi (20 dk)
+
+**Sorun:** Personel değerlendirmesi yapıldığında değerlendirilen kişi bilgilendirilmiyor.
+
+```bash
+grep -n "evaluation\|degerlendirme\|assessment\|review.*submit\|staff.*eval" server/routes/ -r --include="*.ts" | grep "post\|patch" | head -10
+```
+
+**Ekle:** Değerlendirme kaydedildikten sonra:
+
+```typescript
+// Değerlendirme kaydı sonrası:
+await createNotification({
+  userId: evaluatedUserId,
+  type: 'evaluation_result',
+  title: 'Performans değerlendirmesi yapıldı',
+  message: `${evaluatorName} tarafından değerlendirildiniz. Detaylar için profil sayfanızı kontrol edin.`,
+  severity: 'info',
+  deepLink: '/profilim',
+});
+```
+
+---
+
+## ADIM 6: GENEL — Bordro Hesaplama Bildirimi (20 dk)
+
+**Sorun:** Bordro hesaplandığında muhasebe'ye bildirim gitmiyor.
+
+```bash
+grep -n "payroll\|bordro\|calculate.*salary\|generate.*payroll" server/routes/ -r --include="*.ts" | grep "post\|patch" | head -10
+```
+
+**Ekle:** Bordro hesaplama sonrası:
+
+```typescript
+// Bordro hesaplama sonrası:
+const muhasebeKullanicilari = await db.select({ id: users.id })
+  .from(users)
+  .where(and(
+    inArray(users.role, ['muhasebe', 'muhasebe_ik']),
+    eq(users.isActive, true)
+  ));
+
+for (const muh of muhasebeKullanicilari) {
+  await createNotification({
+    userId: muh.id,
+    type: 'payroll_calculated',
+    title: 'Bordro hesaplandı',
+    message: `${branchName || 'Tüm şubeler'} — ${month}/${year} bordrosu hesaplandı. Onay bekliyor.`,
+    severity: 'info',
+    deepLink: '/bordrom',
+  });
+}
+
+// CEO ve CGO'ya da bildir
+const ustYonetim = await db.select({ id: users.id })
+  .from(users)
+  .where(and(
+    inArray(users.role, ['ceo', 'cgo']),
+    eq(users.isActive, true)
+  ));
+
+for (const yonetici of ustYonetim) {
+  await createNotification({
+    userId: yonetici.id,
+    type: 'payroll_calculated',
+    title: 'Bordro onay bekliyor',
+    message: `${branchName || 'Tüm şubeler'} — ${month}/${year} bordrosu hazır`,
+    severity: 'info',
+    deepLink: '/bordrom',
+  });
+}
+```
+
+---
+
+## ADIM 7: GENEL — Arıza Bildirimi İyileştirme (20 dk)
+
+**Sorun:** Arıza bildirimi sadece admin'e gidiyor. Teknik role (destek), fabrika müdürüne ve ilgili şube müdürüne de gitmeli.
+
+```bash
+grep -n "fault\|ariza\|createNotification" server/routes/equipment.ts | head -15
+```
+
+**Ekle:** Mevcut admin bildirimine EK OLARAK:
+
+```typescript
+// Arıza bildirimi — mevcut admin bildirimine ek:
+
+// Teknik/destek rolüne
+const teknikPersonel = await db.select({ id: users.id })
+  .from(users)
+  .where(and(
+    inArray(users.role, ['teknik', 'destek']),
+    eq(users.isActive, true)
+  ));
+
+for (const tekniker of teknikPersonel) {
+  await createNotification({
+    userId: tekniker.id,
+    type: 'equipment_fault',
+    title: 'Yeni arıza bildirimi',
+    message: `${equipmentName} — ${faultDescription}`,
+    severity: faultSeverity === 'critical' ? 'critical' : 'warning',
+    deepLink: `/ekipman/${equipmentId}`,
+  });
+}
+
+// Fabrika arızasıysa fabrika müdürüne de gönder
+if (isFabrikaEkipman) {
+  const fabrikaMudurler = await db.select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.role, 'fabrika_mudur'), eq(users.isActive, true)));
+  
+  for (const mudur of fabrikaMudurler) {
+    await createNotification({
+      userId: mudur.id,
+      type: 'equipment_fault',
+      title: 'Fabrika ekipman arızası',
+      message: `${equipmentName} — ${faultDescription}`,
+      severity: 'warning',
+      deepLink: `/ekipman/${equipmentId}`,
+    });
+  }
+}
+
+// İlgili şube müdürüne
+if (branchId) {
+  const subeMuduru = await db.select({ id: users.id })
+    .from(users)
+    .where(and(
+      eq(users.branchId, branchId),
+      eq(users.role, 'mudur'),
+      eq(users.isActive, true)
+    ));
+  
+  for (const mudur of subeMuduru) {
+    await createNotification({
+      userId: mudur.id,
+      type: 'equipment_fault',
+      title: 'Ekipman arızası',
+      message: `${equipmentName} — ${faultDescription}`,
+      severity: 'warning',
+      deepLink: `/ekipman/${equipmentId}`,
+    });
+  }
+}
+```
+
+---
+
+## ADIM 8: GENEL — Vardiya Oluşturma Bildirimi İyileştirme (20 dk)
+
+**Sorun:** Vardiya oluşturulduğunda çalışanlara bildirim sadece 58 kez gönderilmiş (çok düşük). Otomatik ve tutarlı olmalı.
+
+```bash
+grep -n "createNotification\|shift.*assign\|publish.*schedule" server/routes/shifts.ts | head -15
+```
+
+**Kontrol et:** Mevcut bildirim mantığını incele. Eğer publish/assign sırasında bildirim zaten varsa → trigger koşulunu kontrol et (belki koşul çok dar). Eğer hiç yoksa → ekle.
+
+```typescript
+// Vardiya publish/atama sonrası — atanan her çalışana:
+for (const workerId of assignedWorkerIds) {
+  await createNotification({
+    userId: workerId,
+    type: 'shift_assigned',
+    title: 'Vardiya ataması',
+    message: `${shiftDate} ${shiftTime} — ${branchName} ${shiftType}`,
+    severity: 'info',
+    deepLink: '/vardiya-planlama',
+  });
+}
+```
+
+---
+
+## ADIM 9: TAM DOĞRULAMA (30 dk)
+
+### 9A: Sunucu Hata Kontrolü
+
+```bash
+echo "=== Sunucu hatasız mı? ==="
+# Server restart yap
+# Log'larda hata kontrolü
+```
+
+### 9B: E2E Testler
+
+```bash
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -15
+# Hedef: Mevcut testler PASS
+```
+
+### 9C: Bildirim Tipleri Kontrolü
+
+```bash
+echo "=== Yeni bildirim tipleri eklendi mi? ==="
+echo "SELECT type, COUNT(*) FROM notifications WHERE created_at > NOW() - INTERVAL '1 hour' GROUP BY type ORDER BY count DESC;" | psql
+```
+
+### 9D: Fabrika Müdür Bildirim Sayısı
+
+```bash
+echo "=== Fabrika müdür bildirim sayısı ==="
+echo "
+SELECT u.first_name, u.role, COUNT(n.id) as bildirim_sayisi
+FROM users u 
+LEFT JOIN notifications n ON n.user_id = u.id 
+WHERE u.role = 'fabrika_mudur' AND u.is_active = true
+GROUP BY u.first_name, u.role;
+" | psql
+# Önceki: 7 bildirim. Artık daha fazla olmalı.
+```
+
+### 9E: Kopuk Zincir Sayısı
+
+```bash
+echo "=== Kopuk zincir kontrolü ==="
+echo "--- factory.ts createNotification sayısı ---"
+grep -c "createNotification" server/routes/factory.ts
+echo "Önceki: ~8, şimdi daha fazla olmalı"
+
+echo ""
+echo "--- branch-tasks.ts createNotification sayısı ---"
+grep -c "createNotification" server/routes/branch-tasks.ts
+echo "Önceki: 0, şimdi en az 3 olmalı (create/claim/complete)"
+```
+
+---
+
+## BAŞARI KRİTERLERİ
+
+Sprint tamamlandığında:
+
+1. ✅ Üretim kaydı → fabrika_mudur'a bildirim gidiyor
+2. ✅ Yüksek fire (%5+) → fabrika_mudur + gida_muhendisi'ye UYARI
+3. ✅ QC sonucu → operatöre + fabrika_mudur'a bildirim
+4. ✅ QC pending_engineer → gida_muhendisi'ye bildirim
+5. ✅ Düşük skor (<60) → çalışana + müdüre uyarı
+6. ✅ Şube görevi oluşturulunca → şube personeline bildirim
+7. ✅ Görev claim edilince → supervisor + müdür + coach bildirim
+8. ✅ Görev tamamlanınca → supervisor + müdür + coach bildirim
+9. ✅ Değerlendirme → değerlendirilen kişiye bildirim
+10. ✅ Bordro → muhasebe + CEO/CGO bildirim
+11. ✅ Arıza → teknik + fabrika_mudur + şube müdürü bildirim
+12. ✅ Vardiya atama → çalışana bildirim
+13. ✅ E2E testler PASS
+14. ✅ Sunucu hatasız
+
+---
+
+## YAPMA LİSTESİ (Bu sprint'te)
+
+- ❌ Yeni bildirim sistemi oluşturma (mevcut createNotification kullan)
+- ❌ Agent skill ekleme (Sprint 3'te)
+- ❌ Frontend bildirim UI değişikliği
+- ❌ Bildirim spam azaltma (gerekirse küçük optimizasyonlar OK ama büyük refactor değil)
+- ❌ Yeni tablo oluşturma
+- ❌ Module flag değişikliği
+
+**Sadece eksik createNotification() çağrılarını ekle, doğrula, commit et.**

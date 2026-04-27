@@ -1,0 +1,256 @@
+Çok doğru — navigasyon sorunu sadece sidebar değil. Menü öğeleri, linkler ve başlıklar birçok yerde tekrarlanıyor: sidebar, header, bottom nav, dashboard kartları, breadcrumb, sayfa içi linkler... Hepsini tek seferde taramalıyız.
+
+Audit prompt'unu genişletiyorum. **Öncekini Replit'e gönderme**, bunun yerine şunu gönder:
+
+---
+
+## TASK: Sprint 4 Hazırlık — Tam Navigasyon & Menü Audit (Tüm Sistem)
+
+Kod değişikliği YAPMA. Sadece analiz et ve rapor ver.
+
+Sidebar, header, footer, bottom nav, dashboard kartları, breadcrumb, sayfa içi linkler — TÜM navigasyon noktalarını tara. Tekrarlayan, tutarsız, kırık veya gereksiz linkleri tespit et.
+
+---
+
+### BÖLÜM A: Sidebar Yapısı & İçeriği
+
+```bash
+# 1. Menü servisi
+cat server/menu-service.ts | head -80
+
+# 2. SIDEBAR_ALLOWED_ITEMS haritası (tüm roller)
+grep -A 200 "SIDEBAR_ALLOWED_ITEMS" server/menu-service.ts
+
+# 3. Menü blueprint — tüm tanımlı öğeler
+grep -rn "menuBlueprint\|menuItems\|MENU_ITEMS\|sidebarItems\|menuConfig" server/ --include="*.ts" | head -10
+# Blueprint dosyasını bul ve tamamını göster (ilk 200 satır)
+
+# 4. Grup/section tanımları
+grep -rn "section\|group\|parent\|submenu\|children" server/menu-service.ts | head -30
+
+# 5. Her rol için kaç öğe görünüyor?
+# SIDEBAR_ALLOWED_ITEMS'dan her rolün item sayısını say
+```
+
+Raporla:
+- Sidebar blueprint'te toplam kaç menü öğesi var?
+- Kaç ana grup var? Her grubun altında kaç alt öğe?
+- Her rol (admin, barista, supervisor, mudur, cgo, trainer, gida_muhendisi) kaç öğe görüyor?
+- Duplicate öğeler var mı? (Widget Management 2 kez gibi)
+- İngilizce kalan label/slug'lar var mı? Tam liste ver
+
+---
+
+### BÖLÜM B: Header & Top Bar
+
+```bash
+# 1. Header dosyası
+grep -rn "header\|Header\|TopBar\|topbar\|AppBar" client/src/components/ --include="*.tsx" -l
+grep -rn "header\|Header\|TopBar" client/src/layouts/ client/src/components/layout/ --include="*.tsx" -l 2>/dev/null
+
+# 2. Header içindeki linkler/butonlar
+grep -rn "Link\|navigate\|href\|onClick.*navigate\|button\|icon" client/src/components/header* client/src/components/Header* --include="*.tsx" 2>/dev/null | head -30
+
+# 3. Logo, theme toggle, QR code, bildirim ikonu, profil ikonu
+grep -rn "logo\|theme\|toggle\|qr\|notification\|bell\|profile\|avatar" client/src/components/header* client/src/components/Header* --include="*.tsx" 2>/dev/null | head -20
+
+# 4. Header'da arama var mı / kaldırıldı mı?
+grep -rn "search\|Search\|arama" client/src/components/header* client/src/components/Header* --include="*.tsx" 2>/dev/null | head -10
+```
+
+Raporla:
+- Header'da hangi öğeler var? (logo, butonlar, ikonlar, linkler)
+- Arama kaldırılmış mı? Yerine ne gelmiş?
+- Header rol bazlı değişiyor mu?
+- Header'daki öğelerden hangileri sidebar'da da var? (tekrar)
+
+---
+
+### BÖLÜM C: Bottom Navigation Bar
+
+```bash
+# 1. Bottom nav dosyası
+grep -rn "bottom.*nav\|BottomNav\|bottomBar\|MobileNav\|TabBar" client/src/ --include="*.tsx" -l
+
+# 2. Bottom nav butonları
+cat $(grep -rl "bottom.*nav\|BottomNav" client/src/components/ --include="*.tsx" | head -1) | head -100
+
+# 3. Rol bazlı bottom nav
+grep -rn "role\|isAdmin\|isHQ\|roleGroup\|bottomNav" client/src/ --include="*.tsx" | grep -i "bottom\|nav\|tab.*bar" | head -15
+
+# 4. Bottom nav'daki her butonun route'u
+grep -rn "to=\|href=\|navigate(" client/src/components/bottom* client/src/components/Bottom* --include="*.tsx" 2>/dev/null | head -20
+```
+
+Raporla:
+- Bottom nav'da hangi butonlar var? (Home, Admin, Notifications, Search, Profile?)
+- Her buton nereye yönlendiriyor?
+- Rol bazlı farklılık var mı? Hangi roller hangi butonları görüyor?
+- Bottom nav butonları sidebar'dakilerle örtüşüyor mu?
+- Arama (Search) butonu var mı?
+
+---
+
+### BÖLÜM D: Dashboard Kartları & Linkleri
+
+```bash
+# 1. Dashboard sayfaları
+ls client/src/pages/dashboard* client/src/pages/hq-dashboard* 2>/dev/null
+
+# 2. Dashboard'daki tüm link/navigate çağrıları
+grep -rn "Link\|navigate\|href\|to=" client/src/pages/dashboard.tsx client/src/pages/hq-dashboard.tsx --include="*.tsx" 2>/dev/null | head -40
+
+# 3. Hızlı erişim/quick action kartları
+grep -rn "quick.*action\|hızlı.*erişim\|shortcut\|kısayol\|QuickAction\|ActionCard" client/src/ --include="*.tsx" | head -15
+
+# 4. Widget'lardaki linkler
+grep -rn "Link\|navigate\|to=" client/src/components/widgets/ --include="*.tsx" 2>/dev/null | head -30
+
+# 5. CardGridHub linkleri
+grep -rn "Link\|navigate\|to=" client/src/pages/card-grid-hub* client/src/components/card-grid* --include="*.tsx" 2>/dev/null | head -20
+```
+
+Raporla:
+- Dashboard'da kaç farklı link/kısayol var?
+- Hangileri sidebar'da da var? (tekrar eden linkler)
+- Quick action kartları hangi sayfalara yönlendiriyor?
+- Widget'lardaki "Tümünü Gör" linkleri doğru çalışıyor mu?
+- HQ vs şube dashboard'ında link farkları ne?
+
+---
+
+### BÖLÜM E: Sayfa İçi Navigasyon (Tab'lar, Breadcrumb, Alt Menüler)
+
+```bash
+# 1. Tab kullanılan tüm sayfalar ve tab sayıları
+for f in $(grep -rl "TabsTrigger" client/src/pages/ --include="*.tsx"); do
+  count=$(grep -c 'TabsTrigger' "$f")
+  echo "$f: $count tabs"
+done
+
+# 2. Breadcrumb sistemi
+grep -rn "breadcrumb\|Breadcrumb\|BreadCrumb" client/src/ --include="*.tsx" -l
+grep -rn "breadcrumb\|Breadcrumb" client/src/components/ --include="*.tsx" | head -10
+
+# 3. Sayfa içi alt menüler / secondary nav
+grep -rn "sub.*menu\|secondary.*nav\|inner.*nav\|page.*nav\|alt.*menü" client/src/ --include="*.tsx" | head -10
+
+# 4. Geri butonu kullanımı
+grep -rn "goBack\|navigate(-1)\|back.*button\|geri.*buton\|ArrowLeft\|ChevronLeft" client/src/ --include="*.tsx" | head -15
+
+# 5. Mega-module sayfaları (çok tab'lı)
+grep -rn "TabsTrigger" client/src/pages/admin-mega* client/src/pages/ik-yonetimi* client/src/pages/operasyonlar* client/src/pages/raporlar* --include="*.tsx" 2>/dev/null | head -30
+```
+
+Raporla:
+- Hangi sayfalarda tab navigasyonu var? Her birinde kaç tab?
+- 8+ tab olan sayfalar (mega-module) hangileri? Tam liste
+- Breadcrumb var mı? Hangi sayfalarda?
+- Tab içerikleri sidebar'daki alt menülerle örtüşüyor mu? (aynı şeye 2 yerden erişim)
+- Tab overflow (horizontal scroll) çözümü var mı?
+
+---
+
+### BÖLÜM F: Tüm Sistemde Tekrar Eden Linkler
+
+Bu bölüm en kritik — aynı sayfaya kaç farklı yerden erişiliyor?
+
+```bash
+# 1. En çok referans edilen route'lar
+grep -rn "to=\"\|to={\|navigate(\|href=\"" client/src/ --include="*.tsx" | \
+  grep -oP '(?:to="|to={"|navigate\("|href=")[^"]*' | \
+  sort | uniq -c | sort -rn | head -30
+
+# 2. Sidebar'da olan ama dashboard'da da olan linkler
+# (Manuel karşılaştırma gerekebilir — sidebar items vs dashboard links)
+
+# 3. Kullanılmayan/kırık route'lar
+# Tanımlı ama hiçbir yerden link verilmeyen sayfalar
+ls client/src/pages/*.tsx | while read f; do
+  page=$(basename "$f" .tsx)
+  count=$(grep -rn "$page" client/src/ --include="*.tsx" | grep -v "import\|from\|pages/$page" | wc -l)
+  if [ "$count" -lt 2 ]; then
+    echo "AZ REFERANS: $page ($count referans)"
+  fi
+done 2>/dev/null | head -20
+
+# 4. Aynı menü öğesinin farklı label'larla görünmesi
+grep -rn "Görevler\|görevler\|Gorevler\|gorevler\|tasks\|Tasks" client/src/ --include="*.tsx" | grep -i "label\|title\|text\|children" | head -10
+grep -rn "Vardiya\|vardiya\|shift\|Shift" client/src/ --include="*.tsx" | grep -i "label\|title\|text\|children" | head -10
+grep -rn "Raporlar\|raporlar\|report\|Report" client/src/ --include="*.tsx" | grep -i "label\|title\|text\|children" | head -10
+```
+
+Raporla:
+- En çok tekrar eden linkler hangileri? (aynı sayfaya kaç yerden gidiliyor?)
+- Sidebar + Dashboard + Bottom Nav'da aynı anda bulunan öğeler
+- Farklı label'larla aynı sayfaya yönlendiren linkler (tutarsızlık)
+- Hiçbir yerden link verilmeyen "yetim" sayfalar var mı?
+- Kırık linkler var mı? (route tanımlı ama sayfa yok, veya tersi)
+
+---
+
+### BÖLÜM G: Route/Sayfa Envanteri
+
+```bash
+# 1. Tüm route tanımları
+grep -rn "path.*=" client/src/App.tsx client/src/routes/ --include="*.tsx" 2>/dev/null | head -60
+
+# 2. Toplam sayfa dosyası
+ls client/src/pages/*.tsx 2>/dev/null | wc -l
+
+# 3. Sayfa dosyası listesi (kategorize)
+ls client/src/pages/*.tsx 2>/dev/null
+
+# 4. Lazy-loaded vs normal
+grep -c "lazy\|React.lazy" client/src/App.tsx client/src/routes/*.tsx 2>/dev/null
+```
+
+Raporla:
+- Toplam kaç route, kaç sayfa dosyası?
+- Kategorize liste: Operasyon sayfaları, İK sayfaları, Rapor sayfaları, Eğitim sayfaları, Admin sayfaları, Diğer
+- Hangi sayfalar lazy-loaded?
+
+---
+
+### BÖLÜM H: Spesifik Sorunlar (Screenshot'lardan Bilinen)
+
+```bash
+# 1. Widget Management duplicate
+grep -rn "Widget Management\|widget-management\|WidgetManagement" server/menu-service.ts | head -5
+
+# 2. kampanya-yonetimi slug
+grep -rn "kampanya-yonetimi\|kampanya" server/menu-service.ts client/src/ --include="*.tsx" --include="*.ts" | head -10
+
+# 3. ai-asistan slug (İngilizce karışık)
+grep -rn "ai-asistan" server/menu-service.ts client/src/ --include="*.tsx" --include="*.ts" | head -10
+
+# 4. misafir-memnuniyeti slug
+grep -rn "misafir-memnuniyeti" server/menu-service.ts client/src/ --include="*.tsx" --include="*.ts" | head -10
+
+# 5. Tüm menü label'ları
+grep -rn "label:" server/menu-service.ts | sort | head -50
+```
+
+Raporla:
+- Widget Management gerçekten 2 kez mi tanımlı? Hangisi doğru?
+- İngilizce kalan tüm slug/label listesi
+- Slug vs label tutarsızlıkları (URL: kampanya-yonetimi, Label: Kampanya Yönetimi gibi)
+
+---
+
+### FORMAT:
+
+Her bölümü (A-H) ayrı raporla:
+1. **Mevcut durum** — ne var
+2. **Tekrarlar** — aynı şeye kaç yerden erişim
+3. **Sorunlar** — kırık, tutarsız, gereksiz
+4. **Sprint 4 iş tahmini** — küçük/orta/büyük
+
+### DO NOT:
+- Kod değişikliği yapma
+- Yeni dosya oluşturma
+- DB'de INSERT/UPDATE/DELETE çalıştırma
+
+---
+
+Bunu Replit'e yapıştır, sonucu getir.

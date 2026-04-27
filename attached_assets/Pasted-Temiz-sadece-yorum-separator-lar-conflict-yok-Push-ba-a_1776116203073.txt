@@ -1,0 +1,60 @@
+Temiz — sadece yorum separator’ları, conflict yok.​​​​​​​​​​​​​​​​
+
+Push başarılı: fdbc1c57
+Replit test talimatı:
+
+TASK #90: sql.raw Refactoring + moduleFlags Seed Fix — Pull + Build + Test
+Step 1: Pull + Build
+
+git pull origin main
+npm run build
+
+
+Must complete with zero TypeScript errors.
+Step 2: Server Start — moduleFlags Seed Fix Doğrulama
+
+npm run dev
+
+
+Watch startup logs:
+
+grep -i "module\|seed\|constraint" /tmp/server.log 2>/dev/null | tail -10
+
+
+Expected: NO “cannot drop index uq_module_flags_key_scope_branch_role” error anymore.
+Step 3: Production Planning API Test
+
+COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"adminhq","password":"TestPass123!"}' | grep connect.sid | awk '{print $NF}')
+
+# Plan listesi
+curl -s -b "connect.sid=$COOKIE" "http://localhost:5000/api/production-planning/plans" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Plans: {len(d)} items')"
+
+# Rapor
+curl -s -b "connect.sid=$COOKIE" "http://localhost:5000/api/production-planning/reports?type=monthly" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Report type: {d.get(\"type\")}')"
+
+# Sorumluluklar
+curl -s -b "connect.sid=$COOKIE" "http://localhost:5000/api/production-planning/responsibilities" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Responsibilities: {len(d)} items')"
+
+
+DO NOT BREAK: Login, dashboard, factory, production planning UI, inventory counts.
+Report:
+
+PULL+BUILD: ✅/❌
+SEED FIX: ✅/❌ (no moduleFlags error on boot)
+PRODUCTION PLANNING API: ✅/❌ (plans/reports/responsibilities working)
+
+
+Bu oturumun tam kapanış özeti:
+
+
+
+|#|İş                                    |Commit    |Replit Test|
+|-|--------------------------------------|----------|:---------:|
+|1|Motor birleştirme (unified payroll)   |`d3ff92bd`|✅          |
+|2|Sidebar rol çakışmaları (allowedRoles)|`64c2c950`|✅          |
+|3|Sidebar active highlight (?tab=)      |`bbf0cc21`|✅          |
+|4|product_recipes migrasyon (12 kayıt)  |Replit DB |✅          |
+|5|sql.raw refactoring (23→10)           |`fdbc1c57`|⏳          |
+|6|moduleFlags seed fix                  |`fdbc1c57`|⏳          |
+
+4 commit, 12 dosya değişti. Devir teslim listesindeki tüm işler + Replit raporundan gelen ek sorunlar tamamlandı.​​​​​​​​​​​​​​​​

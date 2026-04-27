@@ -1,0 +1,39 @@
+You are implementing a Franchise Audit module for a DOSPRESSO-like brand.
+We already have a webapp; the "Audit" area is empty. Build the full audit feature end-to-end using the provided JSON seeds:
+- audit_template.json (sections, items, weights, critical flags, evidence requirements)
+- audit_rules.json (score bands, critical gating, action SLA rules, auto action creation)
+
+Requirements:
+1) Data model:
+   - AuditTemplate, AuditSection, AuditItem
+   - AuditInstance (audit header), AuditResponse (per item score, notes, evidence), Evidence (photo/video/measurement), ActionItem (CAPA)
+   - Include fields: branch_id, auditor_id, audit_type, started_at, completed_at, status, total_score, grade, has_critical, re_audit_required
+
+2) Scoring engine:
+   - Compute section averages (0-5) then weighted total score (0-100).
+   - Apply critical_gate: if any critical item score <= 1 => status cannot be PASS; set has_critical=true; re_audit_required=true.
+   - Assign grade using score_bands.
+
+3) UX:
+   - Mobile-first audit form. Sections -> items.
+   - For items with evidence_required.photo/video/measurement, enforce upload/input before allowing completion.
+   - When score <= 2, auto-create an ActionItem with severity from item.auto_action; set SLA hours from rules.
+   - Provide audit summary page with section breakdown + top strengths/risks + open actions.
+
+4) Action workflow:
+   - Actions have: owner (default Branch Manager), due_at, status (OPEN/IN_PROGRESS/VERIFY/Closed), root_cause, corrective_action, preventive_action, closure_evidence.
+   - HQ approval required on close for major/critical actions.
+
+5) Seeding:
+   - Create a seed endpoint or script to import the JSON files into DB.
+   - Ensure idempotent seeding (upsert by template_id / section_id / item_id).
+
+6) Security:
+   - Role-based access: HQ Admin can edit templates & weights; auditors can run audits; branch users can only see their branch and close actions.
+
+Return:
+- DB schema / migrations
+- API routes
+- Core scoring code
+- Minimal UI screens: Audit list, Start audit, Audit form, Audit summary, Action list, Action details
+- Provide instructions where to place the JSON files and how to run the seed.

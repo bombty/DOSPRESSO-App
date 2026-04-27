@@ -1,0 +1,57 @@
+TICKET: CGO Command Center - Quick UX Fixes
+Priority: HIGH
+Estimated effort: 1-2 hours
+
+Based on the analysis you just completed, implement these 5 fixes:
+
+TASK 1 - Score-based progress bar colors:
+File: client/src/pages/cgo-command-center.tsx
+- Branch performance bars (line ~207) should use score-based colors:
+  - Score >= 80: green (emerald-500)
+  - Score 60-79: yellow/amber (amber-500)  
+  - Score < 60: red (red-500)
+- Apply same logic to Department tab progress bars (line ~391)
+- Use the existing getScoreColor() logic (lines 544-548) as reference
+- Implementation: pass a className or style prop to Progress component, or use inline style on the indicator
+
+TASK 2 - Turkish role labels:
+File: client/src/pages/cgo-command-center.tsx (line ~306)
+- Import roleLabels from client/src/pages/hq-personel-istatistikleri.tsx (or extract to shared util)
+- Replace raw role names with Turkish labels: {roleLabels[role] || role}: {count}
+- If roleLabels is not exported, export it or move to a shared file like client/src/lib/turkish-labels.ts
+
+TASK 3 - Fix Turkish characters in alert messages:
+File: server/routes/misc.ts (lines 11464-11478)
+- "kritik/yuksek oncelikli ariza acik" → "kritik/yüksek öncelikli arıza açık"
+- "subede yetersiz personel" → "şubede yetersiz personel"
+- "sube kritik performans seviyesinde" → "şube kritik performans seviyesinde"
+- "hedefin altinda" → "hedefin altında"
+
+TASK 4 - Turkish alert type badges:
+File: client/src/pages/cgo-command-center.tsx (line ~239)
+- Add mapping: { fault: "Arıza", hr: "İK", performance: "Performans", equipment: "Ekipman" }
+- Replace {alert.type} with mapped Turkish label
+
+TASK 5 - Branch list "Show All" toggle:
+File: client/src/pages/cgo-command-center.tsx
+- Remove .slice(0, 8) hard limit on branch performance list (line ~189)
+- Add a toggle: show top 8 by default, "Tümünü Gör (22)" button expands to full list
+- Same for branch fault list: remove .slice(0, 6) (line ~442), add toggle
+- When expanded, show "Daralt" button to collapse back
+
+DO NOT BREAK:
+- Existing getScoreColor() logic for text colors
+- StatusIcon component (healthy/warning/critical)
+- Branch sort order (by score descending)
+- "Şube Karşılaştırma" button functionality
+- Any existing API endpoints
+- breadcrumb PATH_LABELS + toLocaleUpperCase('tr-TR')
+- Auth middleware on all routes
+
+ACCEPTANCE CRITERIA:
+- Progress bars: green for 80+, amber for 60-79, red for <60
+- Role chips show Turkish names (Süpervizör Yardımcısı, Bar Yardımcısı etc.)
+- Alert messages display proper Turkish characters
+- Alert badges show Arıza/İK/Performans/Ekipman
+- Branch list shows 8 by default with "Tümünü Gör" toggle
+- No console errors, no build errors

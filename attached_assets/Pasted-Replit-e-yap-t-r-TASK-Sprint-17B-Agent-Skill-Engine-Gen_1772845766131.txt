@@ -1,0 +1,562 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 17B — Agent Skill Engine Genişletme + AI Zenginleştirme
+
+### ÖZET
+
+Sprint 12'de Mr. Dobody temel agent sistemi kuruldu (cron-based analiz, pending_actions, onay akışı). Sprint 17A'da kural bazlı öneri motoru eklendi (12 kural, SQL bazlı, dashboard'larda gösteriliyor). Bu sprint agent'ı gerçek bir proaktif asistana dönüştürüyor — periyodik analiz yapıyor, kişiselleştirilmiş öneriler üretiyor ve kullanıcıya tek tıkla aksiyon sunuyor.
+
+**PRENSİP: Kural Önce, AI Sonra**
+- Adım 1: Kural bazlı analiz (SQL sorgusu — bedava, hızlı)
+- Adım 2: AI zenginleştirme (sadece gerektiğinde — maliyet optimize)
+
+**MEVCUT ALTYAPI:**
+- Agent Engine: server/agent/agent-engine.ts (cron scheduler, runAgentAnalysis)
+- Agent Safety: server/agent/agent-safety.ts (output validation, PII check)
+- Agent Escalation: server/agent/agent-escalation.ts (T+0 → T+24 → T+48 → T+72)
+- Pending Actions: agent_pending_actions tablosu (öneri → onay → aksiyon)
+- Agent Logs: ai_agent_logs tablosu (audit trail)
+- Dobody Suggestions: server/lib/dobody-suggestions.ts (12 kural bazlı öneri)
+- Quick Action: server/routes/quick-action.ts (tek tıkla aksiyon)
+- Token Budget: Per-user token budget (gpt-4o-mini varsayılan)
+
+---
+
+### T001 — Skill Registry & Tanımlama (~2 saat)
+
+**Problem:** Mevcut agent engine tek bir monolitik analiz fonksiyonu çalıştırıyor. Skill bazlı modüler yapıya geçilmeli.
+
+**Yapılacak:**
+
+1. Skill tanımlama yapısı:
+
+```typescript
+// server/agent/skills/skill-registry.ts (yeni)
+
+interface AgentSkill {
+  id: string;
+  name: string;
+  description: string;
+  targetRoles: string[];
+  schedule: 'realtime' | 'hourly' | 'daily' | 'weekly';
+  autonomyLevel: 'full_auto' | 'suggest_approve' | 'info_only';
+  dataSources: string[];
+  
+  // Kural bazlı analiz (her zaman çalışır — bedava)
+  analyze: (context: SkillContext) => Promise<SkillInsight[]>;
+  
+  // AI zenginleştirme (opsiyonel — sadece insight varsa)
+  aiEnrich?: (insights: SkillInsight[]) => Promise<EnrichedInsight[]>;
+  
+  // Aksiyon üretme
+  generateActions: (insights: SkillInsight[]) => PendingAction[];
+}
+
+interface SkillContext {
+  userId: string;
+  role: string;
+  branchId?: number;
+  timeRange: { start: Date; end: Date };
+}
+
+interface SkillInsight {
+  type: string;
+  severity: 'critical' | 'warning' | 'info' | 'positive';
+  message: string;
+  data: any;
+  requiresAI: boolean; // AI zenginleştirme gerekli mi?
+}
+```
+
+2. Skill Registry:
+```typescript
+const SKILL_REGISTRY: AgentSkill[] = [
+  dailyCoachSkill,        // Barista günlük koçluk
+  teamTrackerSkill,       // Supervisor ekip takibi
+  stockAssistantSkill,    // Stok yönetimi
+  customerWatcherSkill,   // Müşteri memnuniyeti
+  productionDirectorSkill,// Fabrika üretim
+  foodSafetySkill,        // Gıda güvenliği
+  trainingOptimizerSkill, // Eğitim optimizasyonu
+  performanceCoachSkill,  // Performans koçluğu
+];
+```
+
+3. Agent Engine'i skill-based çalışacak şekilde güncelle:
+```typescript
+// Mevcut runAgentAnalysis yerine:
+async function runSkillsForUser(userId: string, role: string) {
+  const applicableSkills = SKILL_REGISTRY.filter(
+    skill => skill.targetRoles.includes(role)
+  );
+  
+  for (const skill of applicableSkills) {
+    // Adım 1: Kural bazlı analiz
+    const insights = await skill.analyze(context);
+    
+    if (insights.length === 0) continue; // Sorun yoksa atla
+    
+    // Adım 2: AI zenginleştirme (sadece gerekiyorsa)
+    const aiInsights = insights.filter(i => i.requiresAI);
+    let enriched = insights;
+    if (aiInsights.length > 0 && skill.aiEnrich) {
+      enriched = await skill.aiEnrich(aiInsights);
+    }
+    
+    // Adım 3: Aksiyon üret
+    const actions = skill.generateActions(enriched);
+    
+    // Adım 4: pending_actions'a kaydet
+    for (const action of actions) {
+      await savePendingAction(action);
+    }
+  }
+}
+```
+
+---
+
+### T002 — 8 Temel Skill Implementasyonu (~3-4 saat)
+
+Her skill için: kural bazlı analyze fonksiyonu + aksiyon üretme. AI zenginleştirme T004'te eklenecek.
+
+**Skill 1: Günlük Koç (daily_coach)**
+```typescript
+// server/agent/skills/daily-coach.ts
+targetRoles: ['stajyer', 'bar_buddy', 'barista']
+schedule: 'daily' (sabah 08:00)
+
+analyze:
+- Checklist tamamlanmamışsa → insight: "Checklist bekliyor"
+- Atanmış eğitim varsa → insight: "Bugünkü eğitim: [modül]"
+- Streak 5+ ve devam ediyorsa → insight: "Streak motivasyon"
+- Streak kırılmak üzereyse → insight: "Streak uyarı"
+- Rozet/gate yakınsa → insight: "Hedefe yakınsın"
+
+generateActions:
+- autonomyLevel: full_auto (bildirim gönder, onay gerekmez)
+- Sabah bildirimi: "Günaydın! Bugün checklist + [eğitim] var. Streak: 7 gün 🔥"
+```
+
+**Skill 2: Ekip Takipçisi (team_tracker)**
+```typescript
+targetRoles: ['supervisor', 'supervisor_buddy', 'mudur']
+schedule: 'hourly'
+
+analyze:
+- Checklist 30dk+ gecikmiş personel → insight
+- Eğitim 3+ gün tamamlanmamış → insight
+- Skor düşen personel (son 2 hafta -10 puan) → insight
+- Bugün izinli personel → insight (bilgi)
+- Vardiya eksik → insight
+
+generateActions:
+- autonomyLevel: suggest_approve
+- "Cihan checklist tamamlamadı — hatırlat?" [Onayla]
+- "Ayşe'nin eğitimi 3 gündür bekliyor — bildir?" [Onayla]
+```
+
+**Skill 3: Stok Asistanı (stock_assistant)**
+```typescript
+targetRoles: ['supervisor', 'mudur', 'satinalma']
+schedule: 'daily' (sabah 07:00)
+
+analyze:
+- Şube stok minimum altında → insight (ürün listesi)
+- Fabrika stok minimum altında → insight (hammadde listesi)
+- SKT 3 gün içinde dolacak ürünler → insight
+- Son 7 günlük tüketim hızına göre stok tahmini → insight
+
+generateActions:
+- "3 ürün minimum altında — sipariş ver?" [Onayla → sipariş formu açılır]
+- "Süt 2 günde bitecek (tüketim tahmini)" [Bilgi]
+```
+
+**Skill 4: Müşteri Nöbetçisi (customer_watcher)**
+```typescript
+targetRoles: ['supervisor', 'mudur', 'cgo', 'coach']
+schedule: 'hourly'
+
+analyze:
+- Son 24 saatte düşük puan (1-2 yıldız) → insight
+- Şube ortalaması 3.5 altına düştüyse → insight
+- SLA breach (yanıtlanmamış feedback) → insight
+- Pozitif trend (puan yükseliyor) → insight (positive)
+
+generateActions:
+- "2 düşük puan geldi — detay gör?" [Bilgi → CRM'e yönlendir]
+- "SLA breach: 1 feedback 24 saat yanıtsız" [Yanıtla → CRM]
+```
+
+**Skill 5: Üretim Direktörü (production_director)**
+```typescript
+targetRoles: ['fabrika_mudur', 'fabrika_operator']
+schedule: 'hourly' (fabrika çalışma saatlerinde)
+
+analyze:
+- Günlük üretim hedefine göre ilerleme → insight
+- Fire oranı %5+ → insight (warning)
+- Hammadde yetersizliği (üretim planına göre) → insight
+- İstasyon bazlı verimlilik düşüşü → insight
+
+generateActions:
+- "Donut fire oranı %6.2 — kontrol et" [Bilgi]
+- "Çikolata stoku 2 gün sonra bitecek" [Sipariş öner]
+```
+
+**Skill 6: Gıda Güvenliği Nöbetçisi (food_safety)**
+```typescript
+targetRoles: ['gida_muhendisi', 'fabrika_mudur']
+schedule: 'hourly'
+
+analyze:
+- Kalite onay bekleyen lot sayısı → insight
+- SKT 3 gün içinde dolan lot → insight (warning)
+- SKT geçmiş ama hâlâ stokta olan lot → insight (critical)
+- HACCP kontrol yapılması gereken → insight
+- Bugün yapılması gereken kontrol noktaları → insight
+
+generateActions:
+- "3 lot kalite onay bekliyor — acil!" [Onayla → kalite sayfası]
+- "Cheesecake SKT yarın doluyor — kontrol et" [Bilgi]
+```
+
+**Skill 7: Eğitim Optimizasyoncusu (training_optimizer)**
+```typescript
+targetRoles: ['trainer', 'coach']
+schedule: 'weekly' (Pazartesi 09:00)
+
+analyze:
+- En az tamamlanan modüller → insight
+- En çok terk edilen (yarıda bırakılan) modüller → insight
+- Quiz başarı oranı düşük modüller → insight
+- Genel eğitim tamamlama oranı → insight
+
+generateActions:
+- "Latte Art modülü %34 tamamlanıyor — kısaltılmalı mı?" [Bilgi]
+- "Hijyen quiz başarı oranı %92 — harika!" [Positive]
+```
+
+**Skill 8: Performans Koçu (performance_coach)**
+```typescript
+targetRoles: ['barista', 'bar_buddy', 'stajyer']
+schedule: 'weekly' (Cuma 17:00)
+
+analyze:
+- Haftalık skor değişimi → insight
+- Güçlü alanlar → insight (positive)
+- Geliştirilecek alanlar → insight
+- Akranlarla karşılaştırma → insight
+
+generateActions:
+- autonomyLevel: full_auto
+- "Bu hafta skorun +5 arttı! Güçlü alanın: müşteri memnuniyeti 🏆"
+- "Geliştirilecek alan: checklist tamamlama — düzenli yapmaya çalış"
+```
+
+---
+
+### T003 — Scheduler Güncellemesi (~1 saat)
+
+**Mevcut agent scheduler'ı skill-based çalışacak şekilde güncelle.**
+
+```bash
+# Mevcut scheduler
+grep -rn "agentScheduler\|runAgentAnalysis\|agent.*cron\|agent.*interval" server/ --include="*.ts" | head -15
+```
+
+**Yapılacak:**
+
+1. Mevcut scheduler korunacak (backward compatible)
+2. Yeni skill scheduler eklenir:
+
+```typescript
+// Skill schedule'ları:
+// 'realtime' → her API çağrısında (dashboard yüklenirken)
+// 'hourly'   → saatte bir (09:00-18:00 arası)
+// 'daily'    → günde bir (sabah 07:00 veya 08:00)
+// 'weekly'   → haftada bir (Pazartesi 09:00 veya Cuma 17:00)
+
+function startSkillScheduler() {
+  // Saatlik skill'ler
+  setInterval(async () => {
+    const hour = new Date().getHours();
+    if (hour >= 7 && hour <= 20) { // Çalışma saatleri
+      await runHourlySkills();
+    }
+  }, 60 * 60 * 1000); // 1 saat
+
+  // Günlük skill'ler (sabah 07:00)
+  scheduleDaily('07:00', runDailySkills);
+  
+  // Haftalık skill'ler (Pazartesi 09:00)
+  scheduleWeekly('monday', '09:00', runWeeklySkills);
+}
+
+async function runHourlySkills() {
+  const hourlySkills = SKILL_REGISTRY.filter(s => s.schedule === 'hourly');
+  const activeUsers = await getActiveUsers(); // Bugün giriş yapmış kullanıcılar
+  
+  for (const user of activeUsers) {
+    const userSkills = hourlySkills.filter(s => s.targetRoles.includes(user.role));
+    for (const skill of userSkills) {
+      await runSkillForUser(skill, user);
+    }
+  }
+}
+```
+
+3. Token budget kontrolü:
+- Her skill çalışmadan önce kullanıcının token budget'ını kontrol et
+- Budget aşıldıysa AI zenginleştirmeyi atla, sadece kural bazlı çalış
+- Bu sayede maliyet kontrol altında
+
+---
+
+### T004 — AI Zenginleştirme Entegrasyonu (~2 saat)
+
+**Problem:** Kural bazlı öneriler iyi ama kişiselleştirilmiş değil. "Cihan checklist tamamlamadı" yerine "Cihan son 2 haftadır motivasyonu düşük, birebir görüşme önerilir" diyebilmeli.
+
+**Yapılacak:**
+
+1. Mevcut AI altyapısını kontrol et:
+```bash
+grep -rn "openai\|callLlm\|gpt\|aiProvider" server/ --include="*.ts" | head -15
+```
+
+2. AI zenginleştirme fonksiyonu:
+```typescript
+// server/agent/skills/ai-enrichment.ts (yeni)
+
+async function enrichInsightsWithAI(
+  insights: SkillInsight[],
+  userContext: UserContext
+): Promise<EnrichedInsight[]> {
+  
+  // Token budget kontrolü
+  const budget = await checkTokenBudget(userContext.userId);
+  if (!budget.hasRemaining) {
+    return insights.map(i => ({ ...i, aiMessage: null }));
+  }
+  
+  // Sadece requiresAI=true olan insight'lar için
+  const aiInsights = insights.filter(i => i.requiresAI);
+  if (aiInsights.length === 0) return insights;
+  
+  // Batch prompt (tüm insight'ları tek çağrıda)
+  const prompt = buildEnrichmentPrompt(aiInsights, userContext);
+  
+  const response = await callLlm({
+    model: 'gpt-4o-mini', // Varsayılan ucuz model
+    messages: [
+      { role: 'system', content: DOBODY_SYSTEM_PROMPT },
+      { role: 'user', content: prompt }
+    ],
+    max_tokens: 500,
+    temperature: 0.7
+  });
+  
+  // Token kullanımı güncelle
+  await incrementTokenUsage(userContext.userId, response.usage.total_tokens);
+  
+  return parseAIResponse(response, insights);
+}
+```
+
+3. Mr. Dobody system prompt:
+```typescript
+const DOBODY_SYSTEM_PROMPT = `
+Sen DOSPRESSO kahve zincirinin AI asistanı Mr. Dobody'sin.
+Görevin personele kısa, motive edici ve aksiyon odaklı öneriler sunmak.
+
+KURALLAR:
+- Türkçe konuş, samimi ama profesyonel
+- Öneriler 1-2 cümle, kısa ve net
+- Her zaman pozitif ve yapıcı ol
+- Somut aksiyon öner (ne yapmalı)
+- DOSPRESSO markasını ve çalışanlarını olumsuz etkileyecek öneri YAPMA
+- PII (kişisel veri) paylaşma
+- Finansal talimat verme
+- Maliyet düşürme önerileri kaliteyi düşürmemeli
+`;
+```
+
+4. AI zenginleştirme kullanım kuralları:
+- Günlük bazda: kural bazlı insight varsa + kullanıcı aktifse
+- Haftalık bazda: performans özeti için
+- Acil durumda: kritik severity insight'larda
+
+5. Fallback: AI erişilemezse kural bazlı öneri gösterilir (graceful degradation)
+
+---
+
+### T005 — Proaktif Bildirim Sistemi (~1-2 saat)
+
+**Problem:** Mevcut öneriler sadece dashboard açıldığında görünüyor. Agent proaktif olmalı — kullanıcı dashboard açmadan da bildirim gönderebilmeli.
+
+**Yapılacak:**
+
+1. Skill aksiyon sonuçlarını bildirime dönüştür:
+```typescript
+// full_auto skill'ler → doğrudan bildirim gönder
+// suggest_approve skill'ler → pending_action oluştur + bildirim
+
+async function processSkillActions(actions: PendingAction[], skill: AgentSkill) {
+  for (const action of actions) {
+    if (skill.autonomyLevel === 'full_auto') {
+      // Doğrudan bildirim gönder
+      await createNotification({
+        userId: action.targetUserId,
+        type: 'agent_suggestion',
+        title: `💬 Mr. Dobody: ${action.title}`,
+        message: action.description,
+        link: action.deepLink
+      });
+      // Log
+      await logAgentAction(action, 'auto_executed');
+      
+    } else if (skill.autonomyLevel === 'suggest_approve') {
+      // Pending action oluştur
+      await savePendingAction(action);
+      // Onay bekleyen kişiye bildirim
+      await createNotification({
+        userId: action.approverUserId,
+        type: 'agent_pending',
+        title: `🤖 Mr. Dobody öneri bekliyor`,
+        message: action.title,
+        link: '/agent-center'
+      });
+    }
+  }
+}
+```
+
+2. Bildirim throttle: Aynı kullanıcıya aynı tipte günde max 3 agent bildirimi
+
+3. Sessiz saatler: 20:00 - 07:00 arası agent bildirimi gönderme (sabah toplu gönder)
+
+---
+
+### T006 — Agent Center Sayfası Genişletme (~1-2 saat)
+
+**Mevcut:** /agent-center sayfası var (Sprint 12'de oluşturuldu).
+
+**Genişlet:**
+
+```
+🤖 Mr. Dobody — Agent Merkezi
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 ÖZET:
+  Bu hafta: 23 öneri üretildi, 18 onaylandı, 5 bekliyor
+  Otomatik: 12 bildirim gönderildi
+
+⏳ ONAY BEKLEYEN ÖNERİLER:
+┌────────────────────────────────────┐
+│ 1. "Cihan'a checklist hatırlatması" │
+│    Skill: Ekip Takipçisi            │
+│    Oluşturulma: 2 saat önce        │
+│    [Onayla ✅] [Reddet ❌]          │
+│                                      │
+│ 2. "Beachpark'a stok siparişi"      │
+│    Skill: Stok Asistanı             │
+│    Oluşturulma: 5 saat önce        │
+│    [Onayla ✅] [Reddet ❌]          │
+└────────────────────────────────────┘
+
+📜 GEÇMİŞ AKSİYONLAR:
+  ✅ Streak bildirimi → Elif (otomatik)
+  ✅ Checklist hatırlatma → Mehmet (onaylandı)
+  ❌ Stok siparişi → Reddedildi (stok yeterli)
+
+⚙️ AYARLAR:
+  AI Model: gpt-4o-mini
+  Günlük token limiti: 5.000/10.000 kullanıldı
+  Sessiz saatler: 20:00 - 07:00
+  [Skill'leri Yönet →]
+```
+
+---
+
+### T007 — Dashboard Entegrasyonu (~1 saat)
+
+Sprint 17A'daki dashboard'ları güncel skill çıktılarıyla besle:
+
+1. `/api/my-day` → daily_coach + performance_coach skill insight'larını dahil et
+2. `/api/branch-summary` → team_tracker + stock_assistant + customer_watcher insight'larını dahil et
+3. `/api/hq-summary` → tüm şubelerin özet skill insight'larını dahil et
+4. `/api/coach-summary` → team_tracker + training_optimizer insight'larını dahil et
+
+Her summary endpoint'inde:
+```typescript
+// Önce dobody-suggestions (mevcut kural bazlı)
+const suggestions = await getSupervisorSuggestions(branchId);
+
+// Sonra skill insight'ları (agent'ın son çalışmasından)
+const skillInsights = await getLatestSkillInsights(userId, role);
+
+// Birleştir (duplikasyonu önle)
+const combined = deduplicateSuggestions([...suggestions, ...skillInsights]);
+```
+
+---
+
+### T008 — E2E Test (~1 saat)
+
+**Senaryo 1 — Skill Registry:**
+1. Skill registry'de 8 skill tanımlı mı?
+2. Her skill'in targetRoles doğru mu?
+
+**Senaryo 2 — Kural Bazlı Analiz:**
+1. Barista için daily_coach çalıştır → insight üretiyor mu?
+2. Supervisor için team_tracker çalıştır → insight üretiyor mu?
+3. Fabrika müdürü için production_director → insight üretiyor mu?
+
+**Senaryo 3 — Proaktif Bildirim:**
+1. full_auto skill çalıştığında bildirim gidiyor mu?
+2. suggest_approve skill çalıştığında pending_action oluşuyor mu?
+3. Throttle: aynı tipte 4. bildirim engelleniyor mu?
+
+**Senaryo 4 — Agent Center:**
+1. Bekleyen öneriler görünüyor mu?
+2. Onayla/Reddet çalışıyor mu?
+3. Geçmiş aksiyonlar listeleniyor mu?
+
+**Senaryo 5 — Dashboard Entegrasyonu:**
+1. /benim-gunum → skill insight'ları görünüyor mu?
+2. /sube-ozet → skill insight'ları Mr. Dobody'de gösteriliyor mu?
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T005 → T004 → T007 → T006 → T008
+
+### DO NOT BREAK:
+- Mevcut agent engine (agent-engine.ts, agent-safety.ts, agent-escalation.ts)
+- Mevcut pending_actions ve agent_logs tabloları
+- Sprint 17A dashboard'ları ve kural bazlı öneriler
+- Quick action API
+- Bildirim sistemi (throttle, dedup)
+- Token budget sistemi
+- Sprint 1-17A'daki tüm değişiklikler
+
+### KABUL KRİTERLERİ:
+- [ ] 8 skill tanımlı ve registry'de kayıtlı
+- [ ] Her skill kural bazlı analyze fonksiyonu çalışıyor
+- [ ] Scheduler skill'leri doğru zamanda çalıştırıyor (hourly/daily/weekly)
+- [ ] full_auto skill'ler otomatik bildirim gönderiyor
+- [ ] suggest_approve skill'ler pending_action oluşturuyor
+- [ ] AI zenginleştirme çalışıyor (gpt-4o-mini)
+- [ ] AI erişilemezse graceful fallback (kural bazlı devam)
+- [ ] Token budget kontrolü çalışıyor
+- [ ] Bildirim throttle: günde max 3 aynı tipte
+- [ ] Sessiz saatler: 20:00-07:00 bildirim yok
+- [ ] Agent Center'da bekleyen öneriler + geçmiş görünüyor
+- [ ] Dashboard'larda skill insight'ları görünüyor
+- [ ] Mevcut agent engine bozulmamış
+- [ ] 0 console error
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.

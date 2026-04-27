@@ -1,0 +1,593 @@
+{
+  "category": "ICED_KUP_BUZLU",
+  "version": "v3.6-json-iced-1-17",
+  "cup_settings": {
+    "massivo": {
+      "code": "M",
+      "hot_volume_ml": 300,
+      "iced_volume_ml": 400
+    },
+    "long_diva": {
+      "code": "L",
+      "hot_volume_ml": 550,
+      "iced_volume_ml": 650
+    },
+    "espresso_standard": {
+      "single_ml": 50,
+      "double_ml": 80
+    },
+    "powder_scoop_grams_default": 10,
+    "matcha_scoop_grams": 2.5
+  },
+  "common_rules": {
+    "sweetness": "Tüm aromalarda tat oranı standarttır; ekstra 'sweetness' seçeneği yoktur.",
+    "aroma_selection": "Aroma isimleri misafir isteğine göre seçilir (Mango, Pinkberry, vb.).",
+    "ice_type": "küp buz",
+    "note": "Tüm reçetelerde toz ölçekleri yaklaşık 10 g, matcha küçük ölçek 2.5 g olarak kabul edilir."
+  },
+  "products": [
+    {
+      "id": 1,
+      "code": "A",
+      "name": "Iced Americano",
+      "group": "coffee",
+      "has_espresso": true,
+      "has_milk": false,
+      "description": "Su, espresso ve buz ile hazırlanan klasik iced americano.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Bardağın boğum çizgisine kadar su eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine double more espresso (2 shot, toplam ~80 ml) eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Bardağın boğum çizgisine kadar su eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine double more + single more espresso (toplam 3 shot, ~130 ml) eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "code": "L",
+      "name": "Iced Latte",
+      "group": "coffee_milk",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Soğuk süt ve espresso ile hazırlanan iced latte.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Bardak boğum çizgisine kadar soğuk süt eklenir.",
+            "Üzerine single more espresso (1 shot, ~50 ml) eklenir.",
+            "Milk çizgisine kadar süt tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Bardak boğum çizgisine kadar soğuk süt eklenir.",
+            "Üzerine double more espresso (2 shot, ~80 ml) eklenir.",
+            "Milk çizgisine kadar süt tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "code": "FW",
+      "name": "Iced Flat White",
+      "group": "coffee_milk",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Daha yoğun espresso oranı ile iced flat white.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Bardak boğum çizgisine kadar soğuk süt eklenir.",
+            "Üzerine double more espresso (2 shot, ~80 ml) eklenir.",
+            "Milk çizgisine kadar süt tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Bardak boğum çizgisine kadar soğuk süt eklenir.",
+            "Üzerine double more + single more espresso (3 shot, ~130 ml) eklenir.",
+            "Milk çizgisine kadar süt tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "code": "BE",
+      "name": "Iced Bull Eye",
+      "group": "coffee_milk_filter",
+      "has_espresso": true,
+      "has_filter_coffee": true,
+      "description": "Espresso ve soğuk filtre kahve kombinasyonu.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Bardağa silme küp buz eklenir (bardak tamamen buz ile dolar).",
+            "Üzerine single more espresso eklenir.",
+            "Sunum çizgisine kadar soğuk filtre kahve eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Bardağa silme küp buz eklenir.",
+            "Üzerine double more espresso eklenir.",
+            "Sunum çizgisine kadar soğuk filtre kahve eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "code": "CREAMY_LATTE",
+      "name": "Iced Creamy Latte",
+      "group": "coffee_cream",
+      "has_espresso": true,
+      "has_milk": true,
+      "has_cream_mix": true,
+      "description": "Özel krema karışımı ile hazırlanmış iced creamy latte.",
+      "special_mix": "Özel krema: 100 ml krema + 400 ml laktozsuz süt (ön karışım).",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Bardak boğum çizgisine kadar özel krema karışımı eklenir.",
+            "Üzerine single more espresso eklenir.",
+            "Milk çizgisine kadar özel krema karışımı tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Bardak boğum çizgisine kadar özel krema karışımı eklenir.",
+            "Üzerine single more espresso eklenir.",
+            "Milk çizgisine kadar özel krema karışımı tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "code": "BL",
+      "name": "Iced Bombty Latte",
+      "group": "signature_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "has_powder": true,
+      "description": "Bombty latte tozu ve beyaz çikolata ile hazırlanan imza iced latte.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "1 pump beyaz çikolata şurubu bardağa eklenir.",
+            "1 ölçek Bombty latte tozu (≈10 g) eklenir.",
+            "Üzerine single more espresso eklenir ve bar mikseri veya el miks ile iyice karıştırılır.",
+            "Milk çizgisine kadar soğuk süt eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Kremasızdır.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "1.5 pump beyaz çikolata şurubu eklenir.",
+            "2 ölçek Bombty latte tozu (≈20 g) eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar soğuk süt eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Kremasızdır.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "code": "PECAN",
+      "name": "Iced Pecan Nutty Latte",
+      "group": "signature_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Pekan aromalı krema topping’li iced latte.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "3 pump pecan şurup bardağa eklenir.",
+            "Bardak boğum çizgisine kadar soğuk süt eklenir.",
+            "Üzerine single more espresso eklenir ve miksleme işlemi yapılır.",
+            "Milk çizgisine kadar süt tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve pecan şurup ile süsleme yapılır.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "4 pump pecan şurup eklenir.",
+            "Bardak boğum çizgisine kadar soğuk süt eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt tamamlanır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve pecan şurup ile süsleme yapılır.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 8,
+      "code": "PB",
+      "name": "Iced Power Brown",
+      "group": "signature_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "has_powder": true,
+      "description": "Tarçın ve karamel aromalı, Bombty latte tozu ile hazırlanan yoğun iced içecek.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "1 pump tarçın şurubu ve 2 pump karamel şurubu bardağa eklenir.",
+            "1 ölçek Bombty latte tozu (≈10 g) eklenir.",
+            "Üzerine single more espresso eklenir ve miksleme işlemi yapılır.",
+            "Milk çizgisine kadar süt eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Kremasızdır.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "1 pump tarçın şurubu ve 3 pump karamel şurubu eklenir.",
+            "2 ölçek Bombty latte tozu (≈20 g) eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Kremasızdır.",
+            "Strawless (pipetsiz) kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 9,
+      "code": "CB",
+      "name": "Iced Chocobianco",
+      "group": "signature_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Beyaz çikolata aromalı iced latte, krema ve beyaz çikolata parçalı topping ile.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "1.5 pump beyaz çikolata şurubu bardağa eklenir.",
+            "Üzerine single more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve beyaz çikolata parçaları eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "2 pump beyaz çikolata şurubu eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve beyaz çikolata parçaları eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 10,
+      "code": "CN",
+      "name": "Iced Choconero",
+      "group": "mocha",
+      "has_espresso": true,
+      "has_milk": true,
+      "has_powder": true,
+      "description": "Creamice base, fındık şurubu ve çikolata tozu ile hazırlanan iced mocha.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "1 pump Creamice Base şurubu eklenir.",
+            "1 pump fındık şurubu eklenir.",
+            "1,5 ölçek çikolata tozu (≈15 g) eklenir.",
+            "Üzerine single more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve siyah çikolata parçası eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "2 pump Creamice Base şurubu eklenir.",
+            "1 pump fındık şurubu eklenir.",
+            "2,5 ölçek çikolata tozu (≈25 g) eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve siyah çikolata parçası eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 11,
+      "code": "NN",
+      "name": "Iced Nut Nougat",
+      "group": "mocha",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Beyaz çikolata ve fındık aromalı, kremalı iced içecek.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "1 pump beyaz çikolata ve 1 pump fındık şurubu bardağa eklenir.",
+            "Üzerine single more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve fındık mix eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "1.5 pump beyaz çikolata ve 1 pump fındık şurubu eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve fındık mix eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 12,
+      "code": "CRH",
+      "name": "Iced Caramocha",
+      "group": "mocha",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Karamel şurubu ve krema topping ile iced mocha.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "3 pump karamel şurup bardağa eklenir.",
+            "Alt boğuma kadar süt eklenir.",
+            "Üzerine single more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve karamel hypnose eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "4 pump karamel şurup eklenir.",
+            "Alt boğuma kadar süt eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve karamel hypnose eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 13,
+      "code": "VL",
+      "name": "Iced French Vanilla Latte",
+      "group": "flavored_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Vanilya aromalı, kremalı iced latte.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "3 pump vanilya şurup bardağa eklenir.",
+            "Alt boğuma kadar süt eklenir.",
+            "Üzerine single more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "4 pump vanilya şurup eklenir.",
+            "Alt boğuma kadar süt eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 14,
+      "code": "MC_CREAMY",
+      "name": "Iced Matcha Creamy Latte",
+      "group": "matcha_signature",
+      "has_espresso": false,
+      "has_milk": true,
+      "has_matcha": true,
+      "description": "Creamy latte tabanı, aroma ve matcha ile iki katmanlı iced içecek.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Bardağın en alt boğumuna creamy latte karışımı eklenir.",
+            "1 pump vanilya ve 2 pump istenen aroma (Mango, Şeftali veya Pinkberry) eklenir.",
+            "El mikseri ile karıştırılır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üst boğuma kadar süt eklenir.",
+            "Ayrı bir kapta: küçük ölçü kaşığı ile 1 ölçek (≈2,5 g) matcha tozu, 30 ml arıtma su ve 30 ml sıcak su ile Artemis bar mikserinde 15 sn mikslenir.",
+            "Hazırlanan matcha bardağa üstten eklenir.",
+            "Düz pipetli kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Bardağın en alt boğumuna creamy latte karışımı eklenir.",
+            "1 pump vanilya ve 3 pump istenen aroma (Mango, Şeftali veya Pinkberry) eklenir.",
+            "El mikseri ile karıştırılır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üst boğuma kadar süt eklenir.",
+            "Ayrı bir kapta: 1 küçük ölçek (≈2,5 g) matcha tozu, 30 ml arıtma su ve 30 ml sıcak su ile Artemis bar mikserinde 15 sn mikslenir.",
+            "Hazırlanan matcha bardağa eklenir.",
+            "Düz pipetli kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 15,
+      "code": "CM",
+      "name": "Iced Caramel Macchiato",
+      "group": "layered_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Vanilya süt tabanı, üstte espresso ve karamel mazgallı iced içecek.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Blend yazısına kadar süt eklenir.",
+            "2 pump vanilya şurup eklenir ve 5 saniye karıştırılır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine single more espresso eklenir.",
+            "Üst yüzeye karamel mazgal yapılır.",
+            "Düz pipetli kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Blend yazısına kadar süt eklenir.",
+            "3 pump vanilya şurup eklenir ve 5 saniye karıştırılır.",
+            "Sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine double more espresso eklenir.",
+            "Üst yüzeye karamel mazgal yapılır.",
+            "Düz pipetli kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 16,
+      "code": "TN",
+      "name": "Iced Toffee Nut",
+      "group": "flavored_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Karamel ve fındık aromalı, esmer şeker ve karamel hypnose topping’li iced latte.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Boğum çizgisine kadar süt eklenir.",
+            "2 pump karamel ve 1 pump fındık şurubu eklenir.",
+            "Üzerine single more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema, karamel hypnose ve esmer şeker eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Boğum çizgisine kadar süt eklenir.",
+            "3 pump karamel ve 1 pump fındık şurubu eklenir.",
+            "Üzerine double more espresso eklenir ve mikslenir.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema, karamel hypnose ve esmer şeker eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    },
+    {
+      "id": 17,
+      "code": "PL",
+      "name": "Iced Pumpkin Latte",
+      "group": "seasonal_latte",
+      "has_espresso": true,
+      "has_milk": true,
+      "description": "Pumpkin şurubu ve krema topping ile hazırlanan sezonluk iced latte.",
+      "size_variants": {
+        "massivo": {
+          "cup_type": "Massivo PET",
+          "steps": [
+            "Boğum çizgisine kadar süt eklenir.",
+            "3 pump pumpkin şurup eklenir.",
+            "Üzerine single more espresso eklenir ve miksleme işlemi yapılır.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve pumpkin şurup eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        },
+        "long_diva": {
+          "cup_type": "Long Diva PET",
+          "steps": [
+            "Boğum çizgisine kadar süt eklenir.",
+            "4 pump pumpkin şurup eklenir.",
+            "Üzerine double more espresso eklenir ve miksleme işlemi yapılır.",
+            "Milk çizgisine kadar süt eklenir, sunum çizgisine kadar küp buz eklenir.",
+            "Üzerine 3,5 numarada krema ve pumpkin şurup eklenir.",
+            "Bombe kapak ile servis edilir."
+          ]
+        }
+      }
+    }
+  ]
+}

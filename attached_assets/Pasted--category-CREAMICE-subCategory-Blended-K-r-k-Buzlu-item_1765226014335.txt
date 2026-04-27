@@ -1,0 +1,241 @@
+{
+  "category": "CREAMICE",
+  "subCategory": "Blended / Kırık Buzlu",
+  "items": [
+    {
+      "no": 1,
+      "code": "FP",
+      "name_tr": "Espresso Frappe",
+      "name_en": "Espresso Frappe",
+      "coffee_free": false,
+      "description": "Espresso ve süt bazlı, buzla blender’da hazırlanmış Creamice klasik frappe.",
+      "sizes": {
+        "massivo": {
+          "cup_ml": 400,
+          "liquids": {
+            "milk_ml": 180,
+            "espresso_ml": 80
+          },
+          "flavor": [],
+          "ice": "1 massivo bardak silme buz",
+          "steps": [
+            "Massivo bardağın alt boğumuna kadar (~180 ml) süt koy.",
+            "Bu sütü Artemis blender kabına boşalt.",
+            "Aynı bardağı silme buzla doldur, blender’a aktar.",
+            "Double more espresso (80 ml) ekle.",
+            "Artemis ile kremamsı yapı oluşana kadar blend et.",
+            "Karışımı bardağa dök.",
+            "Strawless kapak ile servis et (kremasız)."
+          ]
+        },
+        "long_diva": {
+          "cup_ml": 650,
+          "liquids": {
+            "milk_ml": 250,
+            "espresso_ml": 130
+          },
+          "ice": "1 long diva bardak silme buz",
+          "steps": [
+            "Long Diva bardağın boğumuna kadar (~250 ml) süt ekle, blender kabına al.",
+            "Bardağı silme buzla doldur, blender’a aktar.",
+            "Double + Single more espresso (130 ml) ekle.",
+            "Kremamsı doku oluştur, bardağa dök.",
+            "Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+
+    {
+      "no": 2,
+      "code": "BLC",
+      "name_tr": "Bombty Latte Creamice",
+      "name_en": "Bombty Latte Creamice",
+      "coffee_free": false,
+      "flavor_powder": "Bombty latte tozu",
+      "sizes": {
+        "massivo": {
+          "cup_ml": 400,
+          "liquids": {
+            "milk_ml": 180,
+            "espresso_ml": 50
+          },
+          "powders_g": {
+            "bombty": 10
+          },
+          "ice": "1 massivo bardak silme buz",
+          "steps": [
+            "Bardağın alt boğumuna kadar süt ekle ve blender kabına boşalt.",
+            "1 scoop Bombty tozu + single more espresso ekle.",
+            "Bardağı silme buzla doldurup blender’a aktar.",
+            "Artemis ile iyice çek ve krema dokusu oluştur.",
+            "Bardağa dök, sunum çizgisine kadar tamamla.",
+            "Kremasız, strawless kapak ile servis."
+          ]
+        },
+        "long_diva": {
+          "cup_ml": 650,
+          "liquids": {
+            "milk_ml": 250,
+            "espresso_ml": 80
+          },
+          "powders_g": {
+            "bombty": 20
+          },
+          "ice": "1 long diva bardak silme buz",
+          "steps": [
+            "290 ml süt kadar ekle, blender’a boşalt.",
+            "2 scoop Bombty + Double more espresso.",
+            "1 bardak buz → blender.",
+            "Blend, bardağa dök.",
+            "Kremasız servis."
+          ]
+        }
+      }
+    },
+
+    {
+      "no": 3,
+      "code": "PBC",
+      "name_tr": "Power Brown Creamice",
+      "name_en": "Power Brown Creamice",
+      "coffee_free": false,
+      "flavor": "Tarçın + Karamel + Bombty latte tozu",
+      "sizes": {
+        "massivo": {
+          "milk_ml": 180,
+          "espresso_ml": 50,
+          "syrups": {
+            "cinnamon": 1,
+            "caramel": 2
+          },
+          "powder_g": {
+            "bombty": 10
+          },
+          "ice": "1 bardak silme buz",
+          "steps": [
+            "Sütü alt boğuma kadar doldurup blender kabına aktar.",
+            "1 pump tarçın + 2 pump karamel + 1 scoop Bombty ekle.",
+            "Single more espresso ekle.",
+            "Bardağı buzla doldurup blender’a aktar.",
+            "Homojen kıvamda blend et.",
+            "Bardağa dök, strawless kapakla servis."
+          ]
+        },
+        "long_diva": {
+          "milk_ml": 250,
+          "espresso_ml": 80,
+          "syrups": {
+            "cinnamon": 1,
+            "caramel": 3
+          },
+          "powder_g": {
+            "bombty": 20
+          },
+          "ice": "1 bardak buz",
+          "steps": [
+            "Süt + 1 pump tarçın + 3 pump karamel + 2 scoop Bombty + double espresso.",
+            "Buz ekle, blend, servis."
+          ]
+        }
+      }
+    },
+
+    {
+      "no": 4,
+      "code": "CNC",
+      "name_tr": "Choconero Creamice",
+      "name_en": "Choconero Creamice",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "milk_ml": 180,
+          "espresso_ml": 50,
+          "syrups": {
+            "creamice_base": 1,
+            "hazelnut": 1
+          },
+          "powders": {
+            "chocolate_g": 15
+          },
+          "ice": "1 bardak buz",
+          "garnish": [
+            "3,5 krema",
+            "çikolata parçaları"
+          ],
+          "steps": [
+            "Süt + Creamice + fındık + çikolata tozu → blender kabına.",
+            "Single espresso ekle.",
+            "Buz ekle, blend.",
+            "Bardağa dök + krema + çikolata topping.",
+            "Bombe kapak."
+          ]
+        },
+        "long_diva": {
+          "milk_ml": 250,
+          "espresso_ml": 80,
+          "syrups": {
+            "creamice_base": 2,
+            "hazelnut": 1
+          },
+          "powders": {
+            "chocolate_g": 25
+          },
+          "ice": "1 bardak buz",
+          "garnish": [
+            "krema",
+            "çikolata topping"
+          ],
+          "steps": [
+            "Tüm içerikler blender kabına.",
+            "Double espresso + buz.",
+            "Blend, servis."
+          ]
+        }
+      }
+    },
+
+    {
+      "no": 5,
+      "code": "CBC",
+      "name_tr": "Chocobianco Creamice",
+      "name_en": "Chocobianco Creamice",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "milk_ml": 180,
+          "espresso_ml": 50,
+          "syrups": {
+            "white_chocolate": 1.5
+          },
+          "ice": "1 bardak buz",
+          "garnish": [
+            "3,5 krema",
+            "beyaz çikolata parçaları"
+          ],
+          "steps": [
+            "Süt + beyaz çikolata + espresso + buz → blend.",
+            "Krema + beyaz çikolata topping.",
+            "Bombe kapak."
+          ]
+        },
+        "long_diva": {
+          "milk_ml": 250,
+          "espresso_ml": 80,
+          "syrups": {
+            "white_chocolate": 2
+          },
+          "ice": "1 bardak buz",
+          "garnish": [
+            "krema",
+            "beyaz çikolata"
+          ],
+          "steps": [
+            "Long Diva reçetesi aynı mantık + miktar artışı.",
+            "Bombe kapak."
+          ]
+        }
+      }
+    }
+  ]
+}

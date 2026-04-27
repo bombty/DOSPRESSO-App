@@ -1,0 +1,30 @@
+Mükemmel sonuçlar! T0.0’ın üç görevi de başarıyla tamamlanmış. Hızlıca değerlendireyim:
+
+T0.0 Sonuç Kartı
+T001 — Admin Şifresi: ✅ TAMAMLANDI
+Default ‘0000’ kaldırıldı, env variable zorunlu, yoksa başlatmayı reddediyor.
+T002 — Auth Audit: ✅ TAMAMLANDI
+40 “eksik” endpoint aslında hepsi kasıtlı tasarım çıktı: public (7), kiosk/PIN (20), factory kiosk (19), müşteri feedback (5), auth (4). Güvenlik açığı yok. docs/auth-audit-report.md oluşturulmuş — harika.
+T003 — Bildirim Krizi: ✅ TAMAMLANDI
+31,089 okunmamış → 0. Kök neden bulundu ve düzeltildi: evaluation_reminder in-memory Set → DB-based dedup (24h pencere). Restart sonrası 22 supervisor skip ediliyor, yeni bildirim üretimi 0. Timestamp/timezone sorunu da çözülmüş.
+Code Review: PASS ✅
+
+Sıradaki Adım
+Şimdi T0.1’e geçme zamanı — veri temizliği. Replit’e şunu yaz:
+T0.0 tamamlandı, harika iş! Şimdi T0.1’e geçelim. IT danışmanımın (Claude) hazırladığı ticket:
+TICKET: T0.1 — Veri Temizliği & Dashboard Güvenilirlik
+GOAL: Dashboard’larda görünen tutarsızlıkları düzelt.
+TASKS:
+	1.	Ekipman bakım tarihlerini düzelt — “Sonraki Bakım: 9.01.2025” olan kayıtları güncelle, 414 gün gecikmiş bakım uyarısı makul aralığa gelmeli
+	2.	Arıza sayı tutarsızlığını araştır — Admin Arıza dashboard 0 Kritik/0 Yüksek gösterirken CGO dashboard 11 kritik/yüksek diyor. Kaynağı bul ve düzelt
+	3.	“Ayın Elemanı: Bilinmiyor — 0 puan” kaydını düzelt — ya gerçek seçim yap ya da veri yokken widget’ı gizle
+	4.	CGO dashboard “Ekipman uptime %0” hesaplamasını kontrol et — veri yoksa neutral göster veya gizle
+	5.	Gecikmiş görevlerin (50+) toplu arşivleme/kapatma mekanizması ekle — supervisor’ların eski görevlerle boğulmasını engelle
+ACCEPTANCE CRITERIA:
+	∙	Ekipman kartlarında gecikmiş bakım < 60 gün
+	∙	Admin ve CGO arıza sayıları tutarlı
+	∙	Ayın Elemanı ya isim gösteriyor ya gizli
+	∙	Ekipman uptime %0 değil
+	∙	Supervisor’da gecikmiş görev sayısı yönetilebilir seviyede
+DO NOT BREAK: AI Policy Engine, NBA Copilot, checklist akışı, bildirim dedup (yeni fix)
+Bu mesajı Replit’e gönder, cevabını bana getir!​​​​​​​​​​​​​​​​

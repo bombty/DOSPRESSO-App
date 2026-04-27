@@ -1,0 +1,74 @@
+Mükemmel — iki büyük fix birden tamamlandı:
+
+**Fix 1:** Bildirim Gönder artık:
+- Göndermeden önce onay dialog'u gösteriyor (alıcı + mesaj)
+- Gönderdikten sonra detaylı bilgi veriyor (kim aldı, hangi şube, saat)
+- Cross-branch güvenlik kontrolü eklendi
+
+**Fix 2:** dobody-suggestions.ts'de 25+ ASCII Türkçe string düzeltildi — tüm roller temiz.
+
+**Fix 3:** Admin artık Flow Mode kartı görüyor.
+
+**Fix 4:** Service Worker v8'e güncellendi.
+
+Şimdi kalite kontrol yapalım. Replit'e yapıştır:
+
+---
+
+## TASK: Quality Control — 6-Perspective Audit for Sprint 21A + Fixes (NO CODE CHANGES)
+
+Do NOT modify any code. Only analyze and report issues.
+
+### 1. CRITICAL ERRORS
+
+```bash
+grep -rn "Cannot access\|is not defined\|is not a function" client/src/contexts/dobody-flow-context.tsx client/src/components/dobody-flow-mode.tsx client/src/components/dobody-mini-bar.tsx server/routes/dobody-flow.ts server/routes/quick-action.ts 2>/dev/null | head -10
+```
+
+Check: Does flow-tasks API handle edge cases (no tasks, no user, invalid role)?
+
+### 2. SECURITY
+
+```bash
+grep -rn "isAuthenticated\|requireAuth\|requireRole" server/routes/dobody-flow.ts server/routes/quick-action.ts | head -10
+```
+
+Check: Can user A complete user B's flow task? Is cross-branch auth enforced?
+
+### 3. TYPE SAFETY
+
+```bash
+grep -rn "dobody_flow_tasks\|dobody_flow_completions" server/ --include="*.ts" | head -15
+```
+
+Check: user_id column type matches users.id type? (varchar vs integer issue from Sprint 18)
+
+### 4. UI/UX
+
+```bash
+grep -rn "Iletisim\|iletisim\|gundur\|Gonder\|gonder\|Ozet\|ozet\|tamamlandi" server/lib/dobody-suggestions.ts client/src/pages/hq-ozet.tsx client/src/pages/sube-ozet.tsx | grep -v "import\|className\|node_modules" | head -15
+```
+
+Check: Any remaining ASCII Turkish in user-visible strings?
+
+### 5. PERFORMANCE
+
+```bash
+grep -rn "setInterval\|setTimeout\|useEffect" client/src/contexts/dobody-flow-context.tsx client/src/components/dobody-flow-mode.tsx | head -15
+```
+
+Check: Cleanup functions exist for all timers? Context causes unnecessary re-renders?
+
+### 6. INTEGRATION
+
+Run e2e tests and check: login redirects, sidebar filtering, bottom nav, existing Dobody suggestions, notification system all still working?
+
+```bash
+npx playwright test --reporter=list 2>&1 | tail -20
+```
+
+Report format: CATEGORY / FILE / ISSUE / IMPACT / FIX. If no issues: "✅ Check complete"
+
+---
+
+Sonucu getir — temizse genel durum özeti güncelleyelim.

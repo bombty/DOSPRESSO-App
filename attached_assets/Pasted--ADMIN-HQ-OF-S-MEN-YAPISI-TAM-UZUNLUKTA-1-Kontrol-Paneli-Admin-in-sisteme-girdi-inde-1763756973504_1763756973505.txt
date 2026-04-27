@@ -1,0 +1,243 @@
+
+
+⭐ ADMIN (HQ – OFİS) MENÜ YAPISI – TAM UZUNLUKTA
+
+⸻
+
+1. Kontrol Paneli
+
+Admin’in sisteme girdiğinde gördüğü ana ekran.
+
+Alt Menüler:
+	•	Genel Gösterge Paneli:
+Tüm şubelerden gelen temel KPI’lar, sıcak uyarılar, günlük özet.
+	•	Şube KPI Özetleri:
+Ciro, maliyet, performans, kalite puanları, denetim skorları.
+	•	Operasyon Uyarıları:
+Eksik checklist, kapanmamış görevler, kritik arızalar, gecikmiş vardiya giriş/çıkışları.
+	•	Sistem Bildirimleri:
+Onay bekleyen izinler, yeni franchise başvuruları, kritik stok gibi genel uyarılar.
+
+⸻
+
+2. AI Asistan
+
+Yapay zeka destekli tüm fonksiyonlar burada bulunur.
+
+Alt Menüler:
+	•	Soru–Cevap Asistanı:
+Operasyon, insan kaynakları, kalite, ekipman sorunlarıyla ilgili doğal dilde yardım.
+	•	Görev Oluşturma Yardımcısı:
+AI tabanlı görev önerme, checklist oluşturma.
+	•	Doküman Arama Asistanı:
+SOP, ekipman kılavuzu, reçete veya prosedür sorgulama.
+	•	Troubleshooting Asistanı:
+Teknik arızaları çözme, arıza analiz önerileri, ekipman fonksiyon açıklamaları.
+
+⸻
+
+3. Şubeler
+
+Admin’in tüm şubeleri görebildiği ve yönetebildiği bölüm.
+
+Alt Menüler:
+	•	Tüm Şubeler Listesi:
+Lokasyon, franchise sahibi, durum, kira sözleşmesi bilgileri, aktiflik durumu.
+	•	Şube Detayları:
+Her şube için ayrı dashboard, personel listesi, ciro, gider, kalite, ekipman.
+	•	Şube KPI Paneli:
+Aylık hedefler, gerçekleşenler, karşılaştırmalı performans.
+	•	Şube Yönetim İşlemleri:
+Şube açma, kapatma, dondurma, sahip değişikliği, sözleşme güncelleme.
+
+⸻
+
+4. Franchise Açılış Yönetimi
+
+Yeni franchise adayları ve açılış süreçleri buradan yönetilir.
+
+Alt Menüler:
+	•	Yeni Franchise Başvuruları:
+Formlar, profiller, değerlendirme notları, aday görüşme kayıtları.
+	•	Açılış Kontrol Listesi:
+Tadilat, ekipman kurulumu, personel eğitimi, stok yerleştirme, signage kontrol.
+	•	Saha Raporları:
+Lokasyon uygunluğu, yaya trafiği raporu, rakip analizi, bölge notları.
+	•	Açılış Onay Akışı:
+Tasarım onayı, operasyon onayı, finansal onay, final açılış izni.
+	•	Franchise Kayıt İşlemleri:
+Sözleşme, ödeme, eğitim planı, şirket kayıtları.
+
+⸻
+
+5. Operasyon Yönetimi
+
+Alt Menüler:
+	•	Görev Yönetimi:
+Tüm şubelerdeki görevlerin oluşturulması, ataması, takibi, sonuç onayı.
+	•	Görev Şablonları:
+Günlük, haftalık, aylık görev setleri; değiştirilebilir operasyon standartları.
+	•	Günlük Operasyon Durumu:
+Şube bazlı görev tamamlama yüzdeleri.
+	•	Operasyon Süreklilik Takibi:
+Şubelerdeki uygulama standardı, eksik adımlar, iyileştirme alanları.
+
+⸻
+
+6. Ekipman & Arıza Yönetimi
+
+Alt Menüler:
+	•	Ekipman Envanteri:
+Tüm şubelerdeki ekipmanlar, seri numarası, garanti, bakım zamanı.
+	•	Ekipman Atamaları:
+Hangi ekipmanın hangi şubede/hangi konumda olduğu.
+	•	Arıza Bildirimleri:
+Açık arızalar, bekleyen arızalar, kapanmış arızalar.
+	•	Arıza Çözüm Süreçleri:
+Teknik ekibin çözümleri, notlar, parça değişimi kayıtları.
+	•	Troubleshooting Kılavuzları:
+Ekipman bazlı sorun çözme kılavuzu.
+
+⸻
+
+7. Vardiya & Devam Yönetimi
+
+Alt Menüler:
+	•	Haftalık Vardiya Planı:
+Şubelerin vardiya çizelgeleri, eksik personel uyarıları.
+	•	Tüm Şubelerde Devam Takibi:
+Giriş–çıkış kayıtları, gecikme raporları, devamsızlık tespiti.
+	•	Geciken / Erken Çıkış Raporları:
+Performans analizi için detaylı personel kayıtları.
+	•	Vardiya İstatistikleri:
+İş yoğunluğu analizleri, şube bazlı performans.
+
+⸻
+
+8. İzin & Mesai Yönetimi
+
+Alt Menüler:
+	•	İzin Talepleri:
+Bekleyen, onaylanan, reddedilen tüm izinler.
+	•	Mesai Talepleri:
+Ek mesai talepleri, onay akışı, çalışma saatleri analizleri.
+	•	Onay Süreçleri:
+Admin onayları + şube müdürü onayları.
+	•	Yıllık İzin Takvimi:
+Tüm personelin yıllık izin grafiği.
+	•	Personel İzin Analizi:
+Şube bazlı izin dağılımı, risk tespiti.
+
+⸻
+
+9. Finans
+
+Alt Menüler:
+	•	Kasa Raporları:
+Şube günlük kasa giriş–çıkış verileri.
+	•	Gün Sonu Raporları:
+Gün sonunda şubelerden gelen otomatik raporlar.
+	•	Gelir–Gider Analizi:
+Ürün bazlı, kategori bazlı, dönem bazlı finansal analiz.
+	•	Ürün Bazlı Ciro:
+En çok satan ürünler, düşük performanslı ürünler.
+	•	Royalty Raporlama:
+Franchise ödemeleri, gecikmeler, borç kayıtları.
+	•	Faturalar & Belgeler:
+Gider yüklemeleri, satınalma faturaları, onay akışları.
+
+⸻
+
+10. İnsan Kaynakları
+
+Alt Menüler:
+	•	Personel Listesi:
+Tüm şubelerdeki çalışanlar.
+	•	İşe Giriş / Çıkış:
+Evrak, kayıtlar, çıkış mülakatı.
+	•	Özlük Dosyaları:
+Kimlik, banka, sözleşme, eğitim belgeleri.
+	•	Disiplin Süreçleri:
+Uyarılar, tutanaklar, raporlar.
+	•	Performans Raporları:
+Şube ve kişi bazlı performans hesaplamaları.
+	•	Bordro (Read):
+Bordro arşivi (görüntüleme).
+
+⸻
+
+11. Kalite & Gelişim
+
+Alt Menüler:
+	•	Kalite Standartları:
+Ürün, hizmet, hijyen standart belgeleri.
+	•	Denetim Sonuçları:
+Şube denetim raporları, puanlamalar.
+	•	Denetim Şablonları:
+Şube, ürün, bar, hijyen için ayrı kontrol setleri.
+	•	Gelişim Planları:
+Şubeye özel iyileştirme planları.
+	•	Geri Bildirim & Uygunsuzluklar:
+Şubeden gelen kalite geri bildirimleri, uygunsuzluk kayıtları.
+
+⸻
+
+12. Akademi (Eğitim Yönetimi)
+
+Alt Menüler:
+	•	Eğitim Modülleri:
+Barista, yönetici, kalite, operasyon eğitimleri.
+	•	Eğitim Atamaları:
+Şube veya kişiye eğitim atama.
+	•	Sınavlar:
+Eğitim sonrası testler, başarı yüzdeleri.
+	•	Sertifikalar:
+Eğitim tamamlayan personele otomatik sertifika üretimi.
+	•	Eğitim İlerleme Raporları:
+Şube/çalışan bazlı eğitim ilerleyişi.
+
+⸻
+
+13. Bilgi Bankası
+
+Alt Menüler:
+	•	SOP – Standart Operasyon Prosedürleri:
+Tüm operasyon belgeleri.
+	•	Reçeteler:
+Donut, içecek, kahve, pastry, soslar.
+	•	Ekipman Kılavuzları:
+Makine bakım dokümanları, kullanım kılavuzları.
+	•	Marka Rehberleri:
+Logo, signage, ambalaj standartları.
+	•	Doküman Arşivi:
+Tüm PDF/Word/Video dokümanlar.
+
+⸻
+
+14. Destek Merkezi
+
+Alt Menüler:
+	•	Destek Talepleri (Ticket):
+Tüm şubelerden gelen destek istekleri.
+	•	Atamalar:
+Teknik, satınalma, operasyon destek ekiplerine yönlendirme.
+	•	Çözüm Süreçleri:
+SLA süreleri, çözüm oranları, kapanan talepler.
+	•	Saha Destek Raporları:
+Bölge ziyaret raporları, ekip notları.
+
+⸻
+
+15. Yönetim / Ayarlar
+
+Alt Menüler:
+	•	Rol & Yetki Yönetimi:
+Her rolün (13 rol + fabrika rolleri + franchise rolleri) yetkileri.
+	•	Kullanıcı Yönetimi:
+Kullanıcı oluşturma, pasif etme, şube ataması.
+	•	Sistem Ayarları:
+Uygulama genel ayarları, modül aktif/pasif yönetimi.
+	•	Bildirim Ayarları:
+Email, push, SMS uyarıları.
+	•	Entegrasyonlar:
+

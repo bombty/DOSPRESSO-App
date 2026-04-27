@@ -1,0 +1,62 @@
+Sprint 1 kalan işler + Sprint 2 bildirim temizliği başlıyorum. Önce Aşama A araştırmasını yapayım:
+Araştırma tamamlandı. Şimdi eksik dosyaları okuyup session plan oluşturayım:
+Let me check a few more things before creating the plan:
+Now I have the full picture. Let me create the session plan and start working:
+Başlıyorum. T001, T002, T003 paralel yapılabilir. Önce T001 (QR→ticket) ve T003 (deep links) ile başlayalım:
+Now let me check what columns support_tickets has and read the deep link files:
+Now I have everything I need. Let me do T001 (QR→ticket), T003 (deep links) in parallel:
+Now I have all the context. Let me implement T001, T003, and the notification link updates in parallel:
+T003 (deep links) done. Now also fix the notification link references inside operations.ts, and implement T001 (QR→support_tickets):
+Now implement T001 — add support_tickets creation after customerFeedback insert. Let me find the right spot:
+Now I'll add the support_tickets creation after customerFeedback insert. I need to generate a ticket_number:
+Now let me add the support_tickets creation in the QR feedback submit handler:
+T001 done. Now T002 — update NewTicketDialog for misafir channel. Let me check it:
+Now let me add channel prop to NewTicketDialog so misafir channel shows rating fields. I need to update the component to accept a channel prop:
+Now I'll update NewTicketDialog to accept a channel prop and show rating fields for misafir channel:
+Now update the mutation to include misafir channel fields:
+Now update the resetForm and the JSX to include misafir fields:
+Now add the misafir-specific form fields in the JSX. I'll insert them after the department section and before the title:
+I need to close the !isMisafir div that wraps the department section and equipment section. Let me find where the department section ends:
+I need to close the {!isMisafir && conditional wrapper. The department div ends at line 302, then the auto-assign and equipment sections follow. Let me wrap those properly:
+I need to close the {!isMisafir && wrapper properly. The department grid ends at line 302 with </div>, but the auto-assign and equipment sections need wrapping too:
+Good. Now let me pass the channel prop from crm-mega.tsx to NewTicketDialog:
+Now T004 — Bildirim Arşivleme. Let me create the archive table and move old notifications:
+Now move 30+ day old read notifications to archive:
+8,619 old read notifications to archive. Let me batch move them:
+8,619 archived, 23,551 remaining (from 32,170). Now add the archive scheduler. Let me find the existing scheduler:
+Good. Now let me add the notification archive scheduler. I'll find where schedulers are initialized:
+I'll add the notification archive scheduler after the hourly tick. Let me read the end of the function:
+Good. Let me add the notification archive scheduler and also check imports:
+Now add the archive scheduler:
+Now T005 — Bildirimler filtre iyileştirmesi. Let me check the current notifications page:
+The notifications page already has NOTIFICATION_CATEGORIES with filters. Let me check if they're actually being used in the UI:
+The notifications page already has category filters with CRM missing. Let me add CRM and Dobody categories, and also add unread badge counts. Let me check the existing filter UI:
+The filter UI already exists with categories. Let me add the missing CRM and Dobody categories, and show unread counts instead of total counts:
+Now update the badge to show unread counts:
+Now let me restart and test:
+Server is up. Let me run the verification tests:
+Let me check why the login/ticket output was empty:
+Ticket created successfully with channel=misafir, ratings, and customer info. Let me check dashboards:
+All verifications pass:
+
+Misafir ticket creation: TKT-B039 created with channel=misafir, ratings, customer info
+Dashboard KPIs: Misafir 14 open/avgRating 3.8, Franchise 10 open/2 SLA breach
+Deep links: 0 old links remaining
+Archive: 8,619 archived, 23,552 active
+25 misafir + 14 franchise tickets
+Now let me update replit.md and create commit:
+Now let me write the commit message:
+Sprint 1 kalan işler + Sprint 2 tamamlandı. İşte yapılanların özeti:
+
+Aşama A — Sprint 1 Kalan:
+
+QR → Ticket Entegrasyonu: QR geri bildirim formu artık hem customer_feedback'e hem de support_tickets'a kayıt oluşturuyor (channel=misafir, source=qr). Puan ortalamasına göre SLA belirleniyor (2 ve altı → 4 saat, 3 → 24 saat, 4+ → 72 saat).
+Misafir Ticket Formu: CRM sayfasında misafir kanalında "Yeni" butonuna basılınca artık yıldız puanlama (Hizmet/Temizlik/Ürün/Personel), şube seçimi ve müşteri bilgileri alanları gösteriliyor.
+Deep Link Güncellemesi: 6 eski deep link güncellendi — /misafir-memnuniyeti → /crm?channel=misafir, /hq-destek → /crm?channel=franchise
+Aşama B — Sprint 2 Bildirim Temizliği:
+4. Bildirim Arşivleme: notifications_archive tablosu oluşturuldu, 8,619 eski okunmuş bildirim arşive taşındı (32K → 23.5K aktif). Her gece 03:30'da otomatik arşivleme çalışıyor.
+
+Bildirimler Filtre İyileştirmesi: CRM, Dobody ve genişletilmiş İK kategorileri eklendi. Filtre badge'leri artık okunmamış sayısını kırmızı badge ile gösteriyor.
+Doğrulama: Server temiz çalışıyor, 25 misafir + 14 franchise ticket, 0 eski deep link.
+
+Make, test, iterate…

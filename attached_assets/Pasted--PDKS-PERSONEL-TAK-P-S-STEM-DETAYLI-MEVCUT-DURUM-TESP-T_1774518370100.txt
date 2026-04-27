@@ -1,0 +1,214 @@
+# PDKS (PERSONEL TAKİP SİSTEMİ) — DETAYLI MEVCUT DURUM TESPİTİ
+# DEĞİŞİKLİK YAPMA, SADECE ARAŞTIR VE RAPORLA
+# Amaç: Kiosk giriş/çıkış + vardiya + mesai + bordro akışını tam anlamak
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "PDKS SİSTEMİ — DETAYLI MEVCUT DURUM"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. VERİ DOLULUKLARI ████"
+
+echo "=== Ana PDKS tabloları ==="
+for TABLE in pdks_records branch_shift_sessions branch_shift_events factory_shift_sessions hq_shift_sessions branch_break_logs branch_shift_daily_summary branch_weekly_attendance_summary scheduled_offs leave_requests overtime_requests attendance_penalties shift_corrections monthly_payroll branch_staff_pins factory_staff_pins branch_kiosk_settings; do
+  COUNT=$(echo "SELECT count(*) FROM $TABLE;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$COUNT" ] && [ "$COUNT" != "" ]; then
+    if [ "$COUNT" = "0" ]; then
+      echo "  ❌ $TABLE: BOŞ (0)"
+    else
+      echo "  ✅ $TABLE: $COUNT kayıt"
+    fi
+  else
+    echo "  ⚠️  $TABLE: tablo yok veya hata"
+  fi
+done
+
+echo ""
+echo "████ 2. PDKS KAYITLARI DETAY ████"
+
+echo "=== Son 30 günde PDKS kayıt dağılımı ==="
+echo "SELECT record_type, count(*) FROM pdks_records WHERE record_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY record_type;" | psql 2>/dev/null
+
+echo ""
+echo "=== Kaynak dağılımı (kiosk/manuel/mobil) ==="
+echo "SELECT source, count(*) FROM pdks_records GROUP BY source ORDER BY count DESC;" | psql 2>/dev/null
+
+echo ""
+echo "=== Şube bazlı PDKS kayıt sayısı (son 30 gün) ==="
+echo "SELECT b.name, count(p.id) FROM pdks_records p JOIN branches b ON b.id = p.branch_id WHERE p.record_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY b.name ORDER BY count DESC LIMIT 10;" | psql 2>/dev/null
+
+echo ""
+echo "=== Eşleşmemiş giriş/çıkış (giriş var, çıkış yok — son 30 gün) ==="
+echo "SELECT count(*) FROM pdks_records p1 WHERE p1.record_type = 'giris' AND p1.record_date >= CURRENT_DATE - INTERVAL '30 days' AND NOT EXISTS (SELECT 1 FROM pdks_records p2 WHERE p2.user_id = p1.user_id AND p2.record_date = p1.record_date AND p2.record_type = 'cikis');" | psql -t 2>/dev/null
+
+echo ""
+echo "████ 3. VARDİYA OTURUMLARI ████"
+
+echo "=== Şube oturumları (son 30 gün) ==="
+echo "SELECT status, count(*) FROM branch_shift_sessions WHERE check_in_time >= CURRENT_DATE - INTERVAL '30 days' GROUP BY status;" | psql 2>/dev/null
+
+echo ""
+echo "=== Fabrika oturumları (son 30 gün) ==="
+echo "SELECT status, count(*) FROM factory_shift_sessions WHERE check_in_time >= CURRENT_DATE - INTERVAL '30 days' GROUP BY status;" | psql 2>/dev/null
+
+echo ""
+echo "=== HQ oturumları (son 30 gün) ==="
+echo "SELECT status, count(*) FROM hq_shift_sessions WHERE check_in_time >= CURRENT_DATE - INTERVAL '30 days' GROUP BY status;" | psql 2>/dev/null
+
+echo ""
+echo "████ 4. SENKRONİZASYON KONTROLÜ ████"
+
+echo "=== Session var ama PDKS kaydı yok (veri kaybı riski) ==="
+echo "--- Şube: completed session ama PDKS giriş yok ---"
+echo "SELECT count(*) FROM branch_shift_sessions bss WHERE bss.check_in_time >= CURRENT_DATE - INTERVAL '30 days' AND bss.status = 'completed' AND NOT EXISTS (SELECT 1 FROM pdks_records p WHERE p.user_id = bss.user_id::text AND p.record_date = bss.check_in_time::date AND p.record_type = 'giris');" | psql -t 2>/dev/null
+
+echo ""
+echo "--- Fabrika: completed session ama PDKS giriş yok ---"
+echo "SELECT count(*) FROM factory_shift_sessions fss WHERE fss.check_in_time >= CURRENT_DATE - INTERVAL '30 days' AND fss.status IN ('completed','auto_closed') AND NOT EXISTS (SELECT 1 FROM pdks_records p WHERE p.user_id = fss.user_id::text AND p.record_date = fss.check_in_time::date AND p.record_type = 'giris');" | psql -t 2>/dev/null
+
+echo ""
+echo "--- PDKS giriş var ama çıkış yok (son 7 gün, bugün hariç) ---"
+echo "SELECT count(*) FROM pdks_records p1 WHERE p1.record_type = 'giris' AND p1.record_date >= CURRENT_DATE - INTERVAL '7 days' AND p1.record_date < CURRENT_DATE AND NOT EXISTS (SELECT 1 FROM pdks_records p2 WHERE p2.user_id = p1.user_id AND p2.record_date = p1.record_date AND p2.record_type = 'cikis');" | psql -t 2>/dev/null
+
+echo ""
+echo "████ 5. PERSONEL ÇALIŞMA TİPİ + ÖZlÜK ████"
+
+echo "=== users tablosunda çalışma tipi kolonu ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='users' AND (column_name LIKE '%employ%' OR column_name LIKE '%contract%' OR column_name LIKE '%work%type%' OR column_name LIKE '%part%' OR column_name LIKE '%full%' OR column_name LIKE '%weekly%' OR column_name LIKE '%daily%' OR column_name LIKE '%hour%' OR column_name LIKE '%saat%' OR column_name LIKE '%calisma%' OR column_name LIKE '%shift_start%' OR column_name LIKE '%shift_end%');" | psql 2>/dev/null
+
+echo ""
+echo "=== payroll_parameters — personel maaş/çalışma bilgileri ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='payroll_parameters' ORDER BY ordinal_position;" | psql 2>/dev/null
+echo ""
+echo "--- Kaç personelin bordro parametresi var? ---"
+echo "SELECT count(*) FROM payroll_parameters;" | psql -t 2>/dev/null
+echo "--- Örnek kayıt ---"
+echo "SELECT * FROM payroll_parameters LIMIT 2;" | psql 2>/dev/null
+
+echo ""
+echo "=== Personelin part-time/full-time bilgisi nerede? ==="
+grep -rn "part.time\|partTime\|full.time\|fullTime\|employment_type\|employmentType\|contract_type\|contractType\|haftalik_saat\|weeklyHours" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "████ 6. SABİT MESAİ AYARLARI (FABRİKA + MERKEZ) ████"
+
+echo "=== Fabrika başlangıç/bitiş saati tanımı ==="
+grep -rn "shift_start\|shiftStart\|work_start\|workStart\|factory.*start\|factory.*hour\|08:00\|08:30\|09:00" server/ --include="*.ts" | grep -iv "node_modules\|\.test\." | head -15
+
+echo ""
+echo "=== HQ başlangıç/bitiş saati tanımı ==="
+grep -rn "hq.*start\|hq.*hour\|merkez.*saat\|office.*hour" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== branch_kiosk_settings detay ==="
+echo "SELECT * FROM branch_kiosk_settings LIMIT 3;" | psql 2>/dev/null
+
+echo ""
+echo "████ 7. GEÇ KALMA + TOLERANS SİSTEMİ ████"
+
+echo "=== Tolerans ayarları ==="
+grep -rn "tolerance\|tolerans\|late\|gec.*kal\|tardiness\|gecikme\|latePenalty" server/ --include="*.ts" | grep -v node_modules | head -15
+
+echo ""
+echo "=== attendance_penalties detay ==="
+echo "SELECT penalty_type, count(*) FROM attendance_penalties GROUP BY penalty_type;" | psql 2>/dev/null
+echo ""
+echo "SELECT * FROM attendance_penalties LIMIT 3;" | psql 2>/dev/null
+
+echo ""
+echo "████ 8. HAFTALIK 45 SAAT KONTROL ████"
+
+echo "=== weekly_attendance_summary veri ==="
+echo "SELECT * FROM branch_weekly_attendance_summary LIMIT 3;" | psql 2>/dev/null
+echo ""
+echo "--- 45 saat kontrol mantığı ---"
+grep -rn "45\|2700\|weekly.*hour\|haftalik.*saat\|weekly_minutes\|weeklyMinutes" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "████ 9. PDKS MOTOR — GÜN SINIFLANDIRMA ████"
+
+echo "=== pdks-engine.ts tam içerik ==="
+cat server/lib/pdks-engine.ts 2>/dev/null | head -100
+
+echo ""
+echo "████ 10. BORDRO MOTOR — HESAPLAMA DETAY ████"
+
+echo "=== payroll-engine.ts tam içerik ==="
+cat server/lib/payroll-engine.ts 2>/dev/null | head -100
+
+echo ""
+echo "████ 11. MUHASEBE RAPORU / AY SONU ████"
+
+echo "=== monthly_payroll tablo yapısı ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='monthly_payroll' ORDER BY ordinal_position;" | psql 2>/dev/null
+echo ""
+echo "--- Son 3 ay bordro kaydı ---"
+echo "SELECT month, year, count(*) as personel_sayisi FROM monthly_payroll GROUP BY month, year ORDER BY year DESC, month DESC LIMIT 3;" | psql 2>/dev/null
+
+echo ""
+echo "=== Bordro hesaplama endpoint ==="
+grep -rn "pdks-payroll\|calculate.*payroll\|payroll.*calculate" server/routes/ --include="*.ts" | head -10
+
+echo ""
+echo "████ 12. ŞUBE YÖNETİCİSİNE OTOMATİK RAPOR ████"
+
+echo "=== Supervisor'a PDKS bildirimi gidiyor mu? ==="
+grep -rn "supervisor.*attendance\|supervisor.*pdks\|supervisor.*yoklama\|devamsizlik.*bildirim\|attendance.*notification\|shift.*notification.*supervisor" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== Günlük/haftalık devamsızlık raporu scheduler ==="
+grep -rn "attendance.*report\|devamsizlik.*rapor\|daily.*attendance\|weekly.*attendance\|shift.*report" server/services/agent-scheduler.ts | head -10
+
+echo ""
+echo "████ 13. AUTO-CLOSE + CLEANUP ████"
+
+echo "=== Fabrika auto-close ==="
+grep -rn "forceClose\|auto.*close\|auto.*checkout\|20:30\|shift.*cleanup" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== Şube auto-close var mı? ==="
+grep -rn "branch.*auto.*close\|branch.*force.*close\|sube.*auto" server/ --include="*.ts" | grep -v node_modules | head -5
+
+echo ""
+echo "████ 14. VARDIYA PLANLAMA SİSTEMİ ████"
+
+echo "=== shifts tablosu yapısı ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='shifts' ORDER BY ordinal_position;" | psql 2>/dev/null
+
+echo ""
+echo "=== Vardiya tipleri ==="
+echo "SELECT DISTINCT shift_type FROM shifts LIMIT 10;" | psql 2>/dev/null
+echo ""
+echo "--- Planlanan vs gerçekleşen vardiya karşılaştırması yapılıyor mu? ---"
+grep -rn "planned.*actual\|plan.*vs.*actual\|vardiya.*uyum\|shift.*compliance\|shift.*match" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "████ 15. KİOSK AKIŞI — DETAY ████"
+
+echo "=== Şube kiosk — giriş/çıkış akışı ==="
+grep -n "punch\|checkin\|checkout\|check_in\|check_out\|giris\|cikis" server/routes/pdks-routes.ts server/routes/shift-*.ts 2>/dev/null | head -20
+
+echo ""
+echo "=== Kiosk'ta PDKS + Session birlikte yazılıyor mu? ==="
+grep -A5 "pdks_records\|pdksRecords" server/routes/shift-*.ts server/routes/pdks-routes.ts 2>/dev/null | head -30
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPORLA — HER BÖLÜM İÇİN:"
+echo ""
+echo "1. VERİ SAĞLIĞI: Hangi tablolar dolu, boş?"
+echo "2. SENKRONİZASYON: Session var PDKS yok kaç kayıt? Giriş var çıkış yok kaç?"  
+echo "3. ÇALIŞMA TİPİ: Part-time/full-time bilgisi nerede tanımlı?"
+echo "4. SABİT MESAİ: Fabrika/merkez başlangıç saati nasıl belirleniyor?"
+echo "5. GEÇ KALMA: Tolerans sistemi aktif mi, nasıl çalışıyor?"
+echo "6. HAFTALIK 45 SAAT: Kontrol yapılıyor mu?"
+echo "7. BORDRO: Kaç ay hesaplanmış, formül nasıl?"
+echo "8. RAPOR: Supervisor'a otomatik rapor gidiyor mu?"
+echo "9. AUTO-CLOSE: Fabrika 20:30 dışında başka auto-close var mı?"
+echo "10. VARDIYA PLANLAMA: Plan vs gerçekleşen karşılaştırma var mı?"
+echo "11. KİOSK AKIŞI: Giriş anında PDKS + Session ikisi de yazılıyor mu?"
+echo "12. KRİTİK SORUNLAR: Veri kaybı, senkronizasyon, eksik tanımlar"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```

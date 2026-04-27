@@ -1,0 +1,116 @@
+Evet — bunu rol bazlı, izlenebilir ve admin’den yönetilebilir hale getirmek mümkün. Şu an gördüğün örnekler (CGO Utku / Coach Yavuz) üzerinden hangi soru cevaplanır, hangisi reddedilir mantığını “tek bir güvenlik katmanı”na bağlamalısın.
+
+Aşağıda hem ne cevaplanmalı / ne saklanmalı net çerçeve, hem de admin ayar sayfası + teknik yol haritası var.
+
+⸻
+
+1) Mr. Dobody neyi cevaplamalı / neyi saklamalı? (pratik kural seti)
+
+A) Her rol için “Cevaplanabilir”
+	•	Kendi rolünün KPI’ları (ör: CGO → büyüme, şube skorları, genel uyarılar; Coach → mentor olduğu ekip/şubeler)
+	•	Anonim/aggregate çıktılar:
+	•	“Hangi şubelerde açık arıza sayısı yüksek?” ✅ (şube adı + sayı)
+	•	“En çok arıza türü hangisi?” ✅ (kategori + adet)
+	•	İş akışına yönlendirme + deep link:
+	•	“Personel listesi sayfasına git” ✅ (ama PII göstermeden)
+
+B) Varsayılan olarak “Saklanmalı / Reddedilmeli” (tüm roller)
+	•	Fabrika batch/üretim maliyeti, satınalma fiyatları, tedarikçi sözleşmesi ❌ (sadece HQ finans/satınalma üst rolleri)
+	•	Kişisel veri (PII): telefon, email, maaş, kimlik, adres, sağlık vb. ❌
+	•	Başka personelin isim+detay performans kırılımı (göreve gerek yoksa) ❌
+	•	İlla gerekiyorsa: inisyal + rol + skor bandı gibi redakte ✅
+
+C) Coach için özel
+	•	Coach rolü genelde çok geniş olur. O yüzden:
+	•	“Hangi şubelerde sorun var?” ✅
+	•	“En sorunlu personeller kim?” → isim vermeden, “X şubesinde 3 kişi risk bandında” gibi ✅
+	•	“Şu personelin telefonu/email’i” ❌
+	•	“Fabrika maliyeti / satınalma” ❌
+
+D) CGO için özel
+	•	CGO genelde aggregate ve stratejik görür:
+	•	Şube sıralaması, risk uyarıları, trendler ✅
+	•	Personel bazlı PII ❌
+	•	Üretim maliyeti/satınalma fiyatı ❌ (sen özellikle saklamak istiyorsun)
+
+⸻
+
+2) “Admin’den ayarlanabilir” bir sistem kurulur mu?
+
+Evet. En doğru yaklaşım: “Deny by default + allowlist”.
+
+Admin panelinde 3 ekran yeter
+	1.	AI Policy Registry
+	•	Rol → “İzinli bilgi alanları (domains)”
+	•	Rol → “İzinli aksiyonlar (actions)”
+	•	Rol → “İzinli cevap formatı” (aggregate-only / detail-allowed / link-only)
+	2.	Data Domain Sensitivity
+	•	Domain listesi: factory_costs, procurement_prices, supplier_contracts, personnel_pii, personnel_perf_detail, branch_aggregate_kpis, equipment_faults…
+	•	Her domain için: Allowed roles, Redaction mode, Max detail level
+	3.	Audit & Alerts
+	•	Kim ne sordu, hangi domain’e çarptı, ALLOW/DENY, hangi kural tetiklendi
+	•	“Şüpheli prompt / jailbreak denemesi” flag
+
+⸻
+
+3) Teknik olarak nasıl ilerleyelim? (adım adım)
+
+Adım 1 — “Domain sınıflandırma” katmanı ekle
+
+Mr. Dobody’ye gelen her mesaj için:
+	•	requestedDomains = classify(question) (deterministik: keyword + route mapping; LLM şart değil)
+	•	Örn: “satınalma fiyatları” → procurement_prices
+
+Adım 2 — Policy Engine (senin EmployeeType policy gibi, deterministik)
+	•	Input: role, group, branchId, employeeTypeId, requestedDomains
+	•	Output:
+	•	allowedDomains, deniedDomains
+	•	redactionLevel (none / initials / aggregate-only)
+	•	allowedActions (deep link üretme vs.)
+	•	denyReasonCode (audit için)
+
+Adım 3 — Context Builder “sadece izinli domain’den veri çeksin”
+
+Şu an en kritik güvenlik prensibi:
+	•	LLM prompt’una asla “izin dışı veri” girmez.
+	•	İzin dışı domain → direkt “yetkin yok” cevabı + güvenli alternatif öner.
+
+Adım 4 — Loglama standardı (ai_agent_logs)
+
+Her chat turn için:
+	•	userId, role, domains, decision, execution_time, redaction_level, deepLinks
+	•	Böylece hem izlenebilir hem denetlenebilir olur.
+
+Adım 5 — Admin UI
+	•	Policy CRUD + Domain CRUD + Audit viewer
+
+⸻
+
+4) Senin ekran örneklerinde “doğru davranış” ne?
+	•	“Fabrikadaki batch/üretim maliyetlerini göster” → Reddetmesi doğru ✅
+	•	“Satınalma fiyatlarını ver” → Reddetmesi doğru ✅
+	•	“Hangi şubelerde en sorunlu olan personel” → Coach/CGO için:
+	•	isim vermeden: “Şanlıurfa: 3 risk, Konya Meram: 2 risk…” ✅
+	•	(Ekranda buna benzer dönmüş → bu doğru yöne yakın)
+	•	“personel telefon email listelerini alayım” → Kesin red ✅
+
+⸻
+
+5) Şu an en mantıklı “bir sonraki sprint”
+
+Senin hedefin: tek AI yüzü (Mr. Dobody) + sağlam policy layer.
+
+Önerim sprint sırası:
+	1.	AI Policy Registry (domain/role izinleri) + audit  ✅ en kritik
+	2.	Coach scope düzeltmesi (coach’un kapsadığı şube/personel seti net)
+	3.	NBA V2 sinyal kaynakları (ama policy layer oturmadan büyütme)
+
+⸻
+
+İstersen bir sonraki mesajında, Replit’e yapıştırman için tek bir “implementation prompt” yazayım:
+	•	hangi tablolar eklenecek
+	•	hangi endpoint’ler (/api/admin/ai/policies, /api/admin/ai/domains, /api/admin/ai/audit)
+	•	Mr. Dobody chat route’una nerede enforce edilecek
+	•	UI’de hangi sayfalar açılacak (/admin/ai-policies)
+
+Sadece bana şunu söyle: policy kararını “role+group+employeeType” üçlüsüyle mi bağlayalım, yoksa ayrıca “department (HQ/branch/factory)” alanın da var mı?

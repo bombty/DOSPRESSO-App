@@ -1,0 +1,129 @@
+Ekran görüntülerinden birçok sorun görüyorum:
+
+**Görünen sorunlar:**
+1. **Desktop'ta menü kayboluyor** — sol sidebar sadece ikon gösteriyor, etiketler yok
+2. **Çift header** — üstte "Yavuz • Coach" + altında breadcrumb "Koçluk paneli" 
+3. **İki home butonu** — sol sidebar'da ev ikonu + breadcrumb'da ev ikonu
+4. **İçerik çok dikey/list** — "Dikkat Gereken Personel" tek kolon, card grid olabilir
+5. **Mission Control toggle bulunamıyor** — admin'de nerede?
+6. **Koçluk paneli kompakt değil** — şube chip'leri, personel listesi çok fazla yer kaplıyor
+
+Bu sorunları düzgün çözmek için önce Replit'ten tam UI audit alalım. Yapıştırın:
+
+---
+
+**"Kullanıcı ekran görüntüleri gönderdi — birçok UI/UX sorunu var. Değişiklik yapma, sadece araştır:**
+
+```bash
+echo "══════════════════════════════════════"
+echo "UI/UX FULL AUDIT"
+echo "══════════════════════════════════════"
+
+echo "=== 1. LAYOUT SİSTEMİ ==="
+echo "--- Ana layout bileşeni ---"
+find client/src -name "*layout*" -o -name "*Layout*" | sort
+for f in $(find client/src -name "*layout*" -o -name "*Layout*" -path "*/components/*" | head -5); do
+  echo "--- $(basename $f) ($(wc -l < $f) satır) ---"
+  head -30 "$f"
+done
+
+echo ""
+echo "=== 2. HEADER BİLEŞENLERİ ==="
+find client/src -name "*header*" -o -name "*Header*" -o -name "*topbar*" -o -name "*Topbar*" | sort
+for f in $(find client/src -name "*header*" -o -name "*Header*" | head -5); do
+  echo "--- $(basename $f) ($(wc -l < $f) satır) ---"
+  head -20 "$f"
+done
+
+echo ""
+echo "=== 3. SIDEBAR / NAV BİLEŞENLERİ ==="
+find client/src -name "*sidebar*" -o -name "*Sidebar*" -o -name "*nav-rail*" -o -name "*NavRail*" | sort
+for f in $(find client/src -name "*sidebar*" -o -name "*nav-rail*" | head -5); do
+  echo "--- $(basename $f) ($(wc -l < $f) satır) ---"
+  head -30 "$f"
+done
+
+echo ""
+echo "=== 4. ÇİFT HEADER SORUNU ==="
+echo "--- App.tsx layout yapısı ---"
+grep -n "header\|Header\|Topbar\|breadcrumb\|Breadcrumb" client/src/App.tsx | head -20
+echo "--- Layout wrapper ---"
+grep -n "header\|Header\|nav\|Nav\|sidebar\|Sidebar" client/src/components/layout/*.tsx 2>/dev/null | head -20
+
+echo ""
+echo "=== 5. BREADCRUMB ==="
+find client/src -name "*breadcrumb*" -o -name "*Breadcrumb*" | sort
+grep -rn "breadcrumb\|Breadcrumb" client/src/components/ --include="*.tsx" | head -10
+
+echo ""
+echo "=== 6. DESKTOP vs MOBİL RESPONSIVE ==="
+echo "--- Sidebar desktop/mobil davranışı ---"
+grep -n "hidden\|lg:\|md:\|sm:\|mobile\|desktop\|hamburger\|isOpen\|collapsed" client/src/components/sidebar*.tsx client/src/components/nav-rail*.tsx 2>/dev/null | head -20
+
+echo ""
+echo "=== 7. MİSSİON CONTROL TOGGLE NEREDE? ==="
+echo "--- DashboardModeToggle bileşeni ---"
+find client/src -name "*toggle*" -o -name "*Toggle*" | grep -i "dashboard\|mode\|mission" | sort
+grep -rn "DashboardModeToggle\|mission-control\|MissionControl" client/src/components/ client/src/pages/ --include="*.tsx" | head -15
+echo "--- Toggle nerede render ediliyor? ---"
+grep -rn "DashboardModeToggle\|LayoutToggle" client/src/pages/ client/src/components/ --include="*.tsx" | head -10
+
+echo ""
+echo "=== 8. COACH DASHBOARD YAPISI ==="
+echo "--- Koçluk paneli dosyası ---"
+find client/src/pages -name "*coach*" -o -name "*kocluk*" -o -name "*koçluk*" | sort
+echo "--- Dashboard routing coach için ---"
+grep -n "coach" client/src/pages/dashboard.tsx | head -10
+
+echo ""
+echo "=== 9. İÇERİK LAYOUT (LIST vs GRID) ==="
+echo "--- Koçluk paneli grid kullanımı ---"
+grep -n "grid\|Grid\|flex\|col-span\|grid-cols" client/src/pages/*coach* client/src/pages/*kocluk* 2>/dev/null | head -15
+
+echo ""
+echo "=== 10. TÜM ROLLER VE DASHBOARD MAPPING ==="
+echo "--- dashboard.tsx rol yönlendirmesi ---"
+cat client/src/pages/dashboard.tsx | head -80
+
+echo ""
+echo "=== 11. HER ROL HANGİ SAYFAYI GÖRÜYOR ==="
+grep -n "redirect\|Navigate\|role\|hasSpecial\|isFactory" client/src/pages/dashboard.tsx | head -30
+
+echo ""
+echo "=== 12. SOL SIDEBAR İÇERİĞİ ==="
+echo "--- NavRail icon listesi ---"
+grep -n "icon\|Icon\|path\|label\|title" client/src/lib/navigation-config.ts | head -30
+echo "--- Nav items ---"
+grep -n "icon\|path\|label" client/src/lib/nav-registry.ts | head -30
+
+echo ""
+echo "=== 13. ADMIN DASHBOARD ==="
+echo "--- Admin hangi sayfayı görüyor? ---"
+grep -n "admin\|Admin\|cgo\|CEO" client/src/pages/dashboard.tsx | head -15
+echo "--- hq-ozet sayfası ---"
+wc -l client/src/pages/hq-ozet.tsx
+head -40 client/src/pages/hq-ozet.tsx
+
+echo ""
+echo "=== 14. HAMBURGER MENÜ vs SIDEBAR FARK ==="
+echo "--- Hamburger hangi durumda görünüyor? ---"
+grep -n "hamburger\|Hamburger\|isOpen\|menuOpen\|showMenu" client/src/components/hamburger-menu.tsx | head -15
+echo "--- NavRail hangi durumda? ---"
+grep -n "collapsed\|expanded\|width\|isOpen" client/src/components/nav-rail*.tsx client/src/components/sidebar*.tsx 2>/dev/null | head -15
+```
+
+**RAPORLA:**
+1. Layout sistemi nasıl çalışıyor (header + sidebar + content akışı)
+2. Çift header neden oluyor — hangi bileşenler çakışıyor
+3. Desktop'ta sidebar neden sadece ikon gösteriyor — etiketler neden yok
+4. Mission Control toggle nerede — admin nasıl erişecek
+5. Coach dashboard yapısı — neden list layout, grid yapılabilir mi
+6. Her rolün gördüğü dashboard sayfası (mapping)
+7. Hamburger menü vs sidebar — ne zaman hangisi görünüyor
+8. Öneriler: bu sorunları nasıl düzeltmeliyiz, risk ve süre tahmini
+
+**Sadece araştır — değişiklik yapma."**
+
+---
+
+Yapıştırın. Bu audit ile gerçek UI yapısını anlayacağız — sonra birlikte sistematik çözüm planlayacağız. Her rolün dashboard'unu ve navigasyon akışını net görmemiz lazım.

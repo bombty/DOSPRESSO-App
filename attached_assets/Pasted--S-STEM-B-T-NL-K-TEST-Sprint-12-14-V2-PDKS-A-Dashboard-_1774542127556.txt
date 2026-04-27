@@ -1,0 +1,138 @@
+# SİSTEM BÜTÜNLÜK TESTİ — Sprint 12-14 + V2 + PDKS A + Dashboard Fix
+# DEĞİŞİKLİK YAPMA, SADECE TEST ET VE RAPORLA
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "DOSPRESSO TAM SİSTEM TESTİ"
+echo "Tarih: $(date)"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. SUNUCU ████"
+curl -s -o /dev/null -w "Server: %{http_code}\n" http://localhost:5000/
+
+echo ""
+echo "████ 2. TÜM ROL LOGIN + DASHBOARD MODU ████"
+for ROLE in ceo cgo admin coach trainer supervisor mudur barista stajyer muhasebe_ik fabrika_mudur uretim_sefi satinalma marketing kalite_kontrol gida_muhendisi yatirimci_branch; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    RESULT=$(curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" -c /tmp/sysall_${ROLE}.txt 2>/dev/null)
+    if echo "$RESULT" | grep -q "id"; then
+      MODE=$(curl -s -b /tmp/sysall_${ROLE}.txt "http://localhost:5000/api/me/dashboard-preferences" 2>/dev/null)
+      echo "  ✅ $ROLE ($USER) — mode: $MODE"
+    else
+      echo "  ❌ $ROLE ($USER) — login hatası"
+    fi
+  else
+    echo "  ⚠️  $ROLE: aktif kullanıcı yok"
+  fi
+done
+
+echo ""
+echo "████ 3. DASHBOARD API'LERİ ████"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/sysapi.txt > /dev/null 2>&1
+for ep in "/api/dashboard/executive" "/api/dashboard/coach" "/api/dashboard/branch/5" "/api/dashboard/finance" "/api/dashboard/factory" "/api/hq-summary" "/api/me/dashboard-briefing" "/api/me/widget-config"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sysapi.txt "http://localhost:5000${ep}" 2>/dev/null)
+  echo "  $ep → $STATUS"
+done
+
+echo ""
+echo "████ 4. PDKS SİSTEMİ ████"
+echo "--- PDKS kayıt sayıları ---"
+echo "  pdks_records: $(echo 'SELECT count(*) FROM pdks_records;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  branch_shift_sessions: $(echo 'SELECT count(*) FROM branch_shift_sessions;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  factory_shift_sessions: $(echo 'SELECT count(*) FROM factory_shift_sessions;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  hq_shift_sessions: $(echo 'SELECT count(*) FROM hq_shift_sessions;' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo ""
+echo "--- Fabrika senkronizasyon (PDKS Sprint A fix) ---"
+echo "SELECT 
+  count(*) as toplam,
+  count(*) FILTER (WHERE EXISTS(SELECT 1 FROM pdks_records p WHERE p.user_id=fss.user_id::text AND p.record_date=fss.check_in_time::date AND p.record_type='giris')) as pdks_var,
+  count(*) FILTER (WHERE NOT EXISTS(SELECT 1 FROM pdks_records p WHERE p.user_id=fss.user_id::text AND p.record_date=fss.check_in_time::date AND p.record_type='giris')) as pdks_yok
+FROM factory_shift_sessions fss;" | psql 2>/dev/null
+
+echo ""
+echo "--- Auto-close scheduler aktif mi? ---"
+grep -c "branch.*auto.*close\|branch-auto-close\|hq.*auto.*close" server/index.ts server/services/agent-scheduler.ts 2>/dev/null
+
+echo ""
+echo "--- Geç kalma kaydı ---"
+echo "SELECT count(*) FROM attendance_penalties;" | psql -t 2>/dev/null
+
+echo ""
+echo "--- Employment type standardize ---"
+echo "SELECT employment_type, count(*) FROM users WHERE is_active=true AND employment_type IS NOT NULL GROUP BY employment_type;" | psql 2>/dev/null
+
+echo ""
+echo "████ 5. DASHBOARD ROLE WİDGET CONFIG ████"
+echo "SELECT role, count(*) as widget_count FROM dashboard_role_widgets WHERE is_enabled=true GROUP BY role ORDER BY role;" | psql 2>/dev/null
+echo ""
+echo "--- Seed'lenmemiş aktif roller ---"
+echo "SELECT DISTINCT u.role FROM users u WHERE u.is_active=true AND u.role NOT IN (SELECT DISTINCT role FROM dashboard_role_widgets) ORDER BY u.role;" | psql 2>/dev/null
+
+echo ""
+echo "████ 6. AI SİSTEMİ ████"
+echo "  ai-client kullanan dosya: $(grep -rln 'from.*ai-client' server/ --include='*.ts' | wc -l)"
+echo "  Hardcoded OpenAI (ai.ts/admin hariç): $(grep -rn 'new OpenAI' server/ --include='*.ts' | grep -v 'node_modules\|ai\.ts\|admin\.ts\|ai-client' | wc -l)"
+echo "  AI briefing: $(wc -l server/services/ai-dashboard-briefing.ts 2>/dev/null | awk '{print $1}') satır"
+
+echo ""
+echo "████ 7. BİLDİRİM V2 ████"
+echo "  SmartNotificationDialog: $(find client/src -name '*smart*notification*' -o -name '*SmartNotification*' | wc -l) dosya"
+echo "  Compliance tickets: $(echo 'SELECT count(*) FROM support_tickets WHERE channel='\''compliance'\'';' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  scoreCompliance: $(grep -c 'scoreCompliance\|complianceScore' server/services/branch-health-scoring.ts 2>/dev/null)"
+
+echo ""
+echo "████ 8. TASARIM TUTARLILIĞI ████"
+echo "  Font ailesi: $(grep -o 'family=' client/index.html | wc -l) (2 olmalı)"
+echo "  UnifiedKPI: $(grep -rln 'UnifiedKPI' client/src/ --include='*.tsx' | wc -l) dosya"
+echo "  CollapsibleSection: $(grep -rln 'CollapsibleSection' client/src/ --include='*.tsx' | wc -l) dosya"
+
+echo ""
+echo "████ 9. CRM + GÖREV + MODÜLLER ████"
+for ep in "/api/iletisim/dashboard?channel=franchise" "/api/tasks" "/api/ajanda/todos" "/api/production-planning/plans" "/api/equipment" "/api/pdks/records?branchId=5&month=3&year=2026"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sysapi.txt "http://localhost:5000${ep}" 2>/dev/null)
+  echo "  $ep → $STATUS"
+done
+
+echo ""
+echo "████ 10. VERİ BÜTÜNLÜĞÜ ████"
+echo "  Users: $(echo 'SELECT count(*) FROM users WHERE is_active=true;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Tasks: $(echo 'SELECT count(*) FROM tasks;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Notifications: $(echo 'SELECT count(*) FROM notifications;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Support tickets: $(echo 'SELECT count(*) FROM support_tickets;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Shifts: $(echo 'SELECT count(*) FROM shifts;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  PDKS records: $(echo 'SELECT count(*) FROM pdks_records;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Branches: $(echo 'SELECT count(*) FROM branches WHERE is_active=true;' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo ""
+echo "████ 11. PLATFORM METRİKLERİ ████"
+echo "  Toplam tablo: $(echo 'SELECT count(*) FROM information_schema.tables WHERE table_schema='\''public'\'';' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Backend satır: $(find server -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+echo "  Frontend satır: $(find client/src -name '*.tsx' -o -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+echo "  Sayfa sayısı: $(find client/src/pages -name '*.tsx' | wc -l)"
+echo "  Route dosyası: $(find server/routes -name '*.ts' 2>/dev/null | wc -l)"
+echo "  Scheduler job: $(grep -c 'schedule\|registerJob\|setInterval' server/services/agent-scheduler.ts server/index.ts 2>/dev/null | tail -1 | cut -d: -f2)"
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "═══ SONUÇ TABLOSU ═══"
+echo ""
+echo "  Sunucu: ✅/❌"
+echo "  Tüm roller login: ✅/❌"
+echo "  Dashboard modları: ✅/❌ (classic kalmış var mı?)"
+echo "  Dashboard API'ler: ✅/❌"
+echo "  PDKS senkronizasyon: ✅/❌"
+echo "  Auto-close: ✅/❌"
+echo "  AI sistemi: ✅/❌"
+echo "  Bildirim V2: ✅/❌"
+echo "  Tasarım: ✅/❌"
+echo "  CRM + Görev: ✅/❌"
+echo "  Veri bütünlüğü: ✅/❌"
+echo ""
+echo "  KRİTİK SORUNLAR (varsa):"
+echo "  ..."
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```

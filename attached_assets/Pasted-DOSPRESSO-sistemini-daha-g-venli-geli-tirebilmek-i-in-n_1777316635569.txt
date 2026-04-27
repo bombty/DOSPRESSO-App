@@ -1,0 +1,137 @@
+DOSPRESSO sistemini daha güvenli geliştirebilmek için önce kalıcı sistem haritası çıkar.
+
+KURAL:
+- Uygulama kodu değiştirme.
+- Backend değiştirme.
+- DB/schema/migration değiştirme.
+- package.json, package-lock.json, .replit, env, secrets değiştirme.
+- Sadece okuma yap.
+- Eğer dosya oluşturacaksan sadece docs/audit/dospresso-system-map-and-roadmap-2026-04-27.md adlı markdown dosyasını oluştur/güncelle.
+- Başka hiçbir dosyaya dokunma.
+- Migration çalıştırma.
+- Seed çalıştırma.
+- npm install yapma.
+
+Amaç:
+DOSPRESSO sistemini modül, rol, route, DB tablo ailesi, frontend sayfa, backend endpoint ve iş akışı bazında haritalandır. Bu belge ileride ChatGPT/Replit ortak çalışmasında referans olacak.
+
+Dokümana şu bölümleri koy:
+
+1) Genel sistem mimarisi
+- Şube operasyonu
+- HQ/merkez kontrol
+- Fabrika/üretim
+- Gıda mühendisi/kalite/etiket
+- İK/bordro/özlük
+- CRM/şikayet/destek
+- Raporlama/analitik
+- Yönetim/ayarlar
+
+2) Rol ve scope matrisi
+Roller:
+admin, ceo, cgo, coach, mudur, supervisor, supervisor_buddy, barista, bar_buddy, stajyer, sube_kiosk, yatirimci_branch, yatirimci_hq, recete_gm, gida_muhendisi, kalite_kontrol, fabrika_mudur, fabrika_operator, muhasebe_ik.
+
+Her rol için:
+- Hangi modülleri görür?
+- Şube scope’u var mı?
+- Kendi şubesi mi, tüm şubeler mi, fabrika mı, HQ mu?
+- Maaş/puantaj/bordro görebilir mi?
+- Silebilme yetkisi var mı?
+- Kiosk veya device rolü mü?
+
+3) Frontend route haritası
+client/src/App.tsx ve module-menu-config üzerinden:
+- Route path
+- Page component
+- allowedRoles
+- Menüde görünüyor mu?
+- Route guard ile sidebar allowedRoles uyumlu mu?
+- 404 / redirect / unauthorized riski var mı?
+
+4) Backend endpoint haritası
+server/routes ve server/index içinden:
+- Auth gerektiren endpointler
+- Role guard kullanılan endpointler
+- Branch scope kontrolü olan endpointler
+- Eksik branch scope riski olan endpointler
+- Inline role check bulunan yerler
+- Permission map ile çelişen yerler
+
+5) DB tablo aileleri
+Şema dosyalarına göre tablo grupları:
+- users / roles / permissions
+- branches
+- PDKS / attendance / shifts
+- HR / payroll / leave / overtime
+- tasks / checklists / announcements
+- equipment / faults / maintenance
+- factory recipes / ingredients / nutrition / allergens
+- inventory / stock / movements / lots / suppliers
+- production / quality / shipments
+- CRM / tickets / complaints
+- audit logs
+- module flags / branch overrides
+
+6) Mevcut açık hatalar ve kapatılan hotfixler
+Kapatılanları commit hash ile yaz:
+- canli-takip JSX raw text fix
+- vardiya-planlama shifts.filter fix
+- reçete hammadde değiştirme modalı
+- onboarding redirect/empty state fix
+
+Açık kalanları ayrı yaz:
+- role/scope matrix tutarsızlıkları
+- alerjen 403 / backend-role mismatch varsa
+- kiosk personel listelerine karışıyor mu?
+- müdür/yatırımcı sadece kendi şubesini görüyor mu?
+- supervisor delete yetkisi kalmış mı?
+- supervisor_buddy delegasyon mantığı net mi?
+- İK raporları hata ekranı
+- fabrika/gıda mühendisliği eksik altyapılar
+
+7) Gıda mühendisi ve etiketleme yol planı
+Kullanıcı iş kuralı:
+- Besin değerinde öncelik tedarikçi verisi.
+- Yoksa gıda mühendisi kontrolünde manuel/TürKomp verisi.
+- Bazı hammaddeler EK-14 kapsamında besin değeri gerektirmeyebilir.
+- Alerjen, besin değeri, reçete içerikleri ve fonksiyonel sınıflar etiket taslağına bağlanmalı.
+- Katkı maddesi fonksiyonel sınıfı hammadde bazında değil, reçetede kullanım amacı bazında tutulmalı.
+- Örnek: E300 donut reçetesinde un işlem maddesi, şurupta antioksidan olabilir.
+
+Buna göre eksik tablo/kolon/UI önerilerini yaz ama uygulama yapma.
+
+8) Hammadde kodlama / lot / FEFO / ara depo planı
+Şunları analiz et:
+- internal_code
+- supplier_product_code
+- supplier_invoice_no
+- lot_code
+- expiry_date
+- received_at
+- ara depo kodu / production pick code
+- FEFO/FIFO nasıl uygulanmalı?
+- üretime çekilen hammaddenin hangi lot ile tüketildiği nasıl izlenmeli?
+- ara depo etiketi/QR gerekir mi?
+
+9) Üretim formları entegrasyonu
+Aşağıdaki formlar için sistemde nereye bağlanacağını yaz:
+- Üretime sevk ve ara depo formu
+- Hafif fırıncılık proses kontrol formu
+- Tartım kontrol formu
+- Uygunsuzluk/imha formu
+
+Kod yazma, sadece data model + route + UI planı çıkar.
+
+10) P0 / P1 / P2 yol planı
+Kısa ve uygulanabilir sırayla:
+P0: Güvenlik, scope, pilot kıran hatalar
+P1: Üretim/gıda mühendisliği temel altyapı
+P2: Otomasyon, TürKomp entegrasyonu, gelişmiş raporlar
+
+11) Son doğrulama
+Çıktıda şunları ver:
+- Değişen dosya listesi
+- git diff --stat
+- Kod dosyası değişti mi? Evet/Hayır
+- DB/migration/env değişti mi? Evet/Hayır
+- Sonraki önerilen ilk 3 task

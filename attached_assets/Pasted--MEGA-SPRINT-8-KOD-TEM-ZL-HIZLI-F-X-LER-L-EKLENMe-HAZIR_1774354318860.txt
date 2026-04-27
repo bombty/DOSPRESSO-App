@@ -1,0 +1,586 @@
+# MEGA SPRINT 8: KOD TEMİZLİĞİ + HIZLI FİX'LER + ÖLÇEKLENMe HAZIRLIK
+# misc.ts bölme + schema.ts bölme + :any cleanup + O1-O6 sorun düzeltme
+# Tahmini: 8-10 saat
+# Bağımlılık: Sprint 1-5B tamamlandı, sistem sağlık testi geçti
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts
+- Do NOT break existing imports — barrel re-export ile geriye uyumluluk koru
+- Do NOT change business logic — sadece dosya yapısı ve tip güvenliği değişiyor
+- Her bölüm sonunda server'ın hatasız çalıştığını doğrula
+- **HER DOSYA ÇIKARMADAN SONRA** restart + endpoint test et — kırık bırakma
+
+**DANIŞMA MEKANİZMASI:**
+1. misc.ts'ten route çıkarırken paylaşılan helper fonksiyon varsa → DUR, bağımlılığı göster
+2. schema.ts'ten tablo çıkarırken circular FK dependency varsa → DUR, alternatif öner
+3. Tablo silmek gerekirse → kayıt sayısı + kullanan dosyaları göster, onay al
+4. Compile hatası → hatayı göster, düzeltme planı öner
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+---
+
+## STEP 0: ÖN ARAŞTIRMA
+
+```bash
+echo "═══ SPRINT 8: KOD TEMİZLİĞİ ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "████ 1. misc.ts DURUMU ████"
+wc -l server/routes/misc.ts
+grep -c "router\.\(get\|post\|patch\|put\|delete\)" server/routes/misc.ts
+echo "--- Route prefix grupları (en büyük 15) ---"
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/misc.ts | grep -oP '"/api/[^/"]+' | sort | uniq -c | sort -rn | head -15
+echo "--- Paylaşılan helper fonksiyonlar ---"
+grep -n "^function \|^async function \|^const .* = .*=>" server/routes/misc.ts | grep -v "router\." | head -20
+echo "--- misc.ts'ten export edilen şeyler ---"
+grep -n "^export " server/routes/misc.ts | head -10
+echo "--- misc nasıl import ediliyor? ---"
+grep -rn "from.*routes/misc\|require.*routes/misc" server/ --include="*.ts" | grep -v node_modules | head -5
+grep -n "misc" server/index.ts | head -5
+
+echo ""
+echo "████ 2. schema.ts DURUMU ████"
+wc -l shared/schema.ts
+grep -c "pgTable\b" shared/schema.ts
+echo "--- schema/ dizini var mı? ---"
+ls shared/schema/ 2>/dev/null || echo "YOK — oluşturulacak"
+echo "--- Tablo grupları (prefix) ---"
+grep -oP 'export const (\w+)' shared/schema.ts | sed 's/export const //' | sed 's/[A-Z].*$//' | sort | uniq -c | sort -rn | head -20
+echo "--- Non-table export'lar ---"
+grep "^export " shared/schema.ts | grep -v "pgTable\|relations\|= z\." | head -15
+echo "--- Schema nasıl import ediliyor? ---"
+grep -rn "from.*shared/schema\|from.*@shared/schema" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -oP "from ['\"].*?['\"]" | sort | uniq -c | sort -rn | head -10
+
+echo ""
+echo "████ 3. TypeScript :any DURUMU ████"
+echo "--- req.user as any ---"
+grep -rn "(req.user as any)" server/ --include="*.ts" | grep -v node_modules | wc -l
+echo "--- catch error: any ---"
+grep -rn "catch.*: any\|error.*: any" server/ --include="*.ts" | grep -v node_modules | wc -l
+echo "--- Toplam :any / as any ---"
+grep -rn ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+echo "--- AuthUser type mevcut mu? ---"
+cat server/types/auth.ts 2>/dev/null | head -15
+
+echo ""
+echo "████ 4. O1-O6 SORUNLAR MEVCUT DURUM ████"
+echo ""
+echo "--- O1: admin menü ---"
+grep -n "admin:" server/menu-service.ts | head -3
+grep -A20 "admin:" server/menu-service.ts | grep "SIDEBAR_ALLOWED_ITEMS\|sidebar\|allowed" | head -3
+echo ""
+echo "--- O2: CRM department validation ---"
+grep -n "department\|departman" server/routes/crm-iletisim.ts | grep -i "valid\|enum\|check\|lower" | head -5
+echo ""
+echo "--- O3: İK endpoint rol erişimi ---"
+grep -n "ik-dashboard\|disciplinary" server/routes/hr.ts | head -5
+grep -B5 "ik-dashboard" server/routes/hr.ts | grep "role\|permission\|access\|allowed" | head -3
+echo ""
+echo "--- O5: Kullanılmayan lazy import'lar ---"
+grep "const.*lazy\|const.*= React.lazy" client/src/App.tsx | while read line; do
+  COMP=$(echo "$line" | grep -oP "const\s+(\w+)" | awk '{print $2}')
+  if [ -n "$COMP" ]; then
+    USAGE=$(grep -c "$COMP" client/src/App.tsx)
+    if [ "$USAGE" -le "1" ]; then
+      echo "  KULLANILMIYOR: $COMP"
+    fi
+  fi
+done
+
+echo ""
+echo "████ 5. BOŞ TABLO ANALİZİ ████"
+echo "--- Toplam boş tablo sayısı ---"
+EMPTY_COUNT=0
+echo "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name;" | psql -t 2>/dev/null | while read tbl; do
+  tbl=$(echo "$tbl" | tr -d ' ')
+  if [ -n "$tbl" ]; then
+    count=$(echo "SELECT count(*) FROM \"$tbl\";" | psql -t 2>/dev/null | tr -d ' ')
+    if [ "$count" = "0" ] 2>/dev/null; then
+      echo "$tbl"
+    fi
+  fi
+done 2>/dev/null | wc -l
+echo "--- Boş tabloların modül dağılımı ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name;" | psql -t 2>/dev/null | while read tbl; do
+  tbl=$(echo "$tbl" | tr -d ' ')
+  if [ -n "$tbl" ]; then
+    count=$(echo "SELECT count(*) FROM \"$tbl\";" | psql -t 2>/dev/null | tr -d ' ')
+    if [ "$count" = "0" ] 2>/dev/null; then
+      echo "$tbl"
+    fi
+  fi
+done 2>/dev/null | sed 's/_.*$//' | sort | uniq -c | sort -rn | head -15
+
+echo ""
+echo "████ 6. MEVCUT ROUTE DOSYALARI ████"
+find server/routes -name "*.ts" | sort
+echo "--- Toplam route dosyası ---"
+find server/routes -name "*.ts" | wc -l
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM A: HIZLI FİX'LER — O1, O2, O3, O5 (30dk)
+# Bu bölüm önce yapılır — düşük risk, hızlı kazanım
+# ████████████████████████████████████████████████
+
+## A1: O1 — Admin menü düzeltmesi
+
+admin rolü SIDEBAR_ALLOWED_ITEMS'ta tanımlı değil → 0 menü öğesi görüyor.
+
+```
+menu-service.ts'te SIDEBAR_ALLOWED_ITEMS objesine admin anahtarı ekle.
+Admin tüm menü öğelerini görmeli — en geniş whitelist.
+Mevcut ceo veya cgo'nun listesini referans alarak admin'e kopyala (+ ekstra admin-only öğeler).
+```
+
+**Doğrulama:**
+```bash
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"admin_user","password":"ADMIN_BOOTSTRAP_PASSWORD_VEYA_0000"}' -c /tmp/admin_fix.txt > /dev/null 2>&1
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_fix.txt | node -e "
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  let c=0;d.forEach(s=>{if(s.items)c+=s.items.length});
+  console.log('Admin menü: '+c+' öğe (0 olmamalı)');
+"
+```
+
+## A2: O2 — CRM department case-insensitive
+
+Ticket oluşturma endpoint'inde department validation case-sensitive:
+"Teknik" → hata, "teknik" → OK.
+
+```
+crm-iletisim.ts'te ticket oluşturma endpoint'inde:
+- department alanını toLowerCase() ile normalize et
+- VEYA validation'ı case-insensitive yap
+- VEYA enum'a her iki hali de ekle
+
+En temiz çözüm: gelen department'ı kaydetmeden önce toLowerCase():
+  const department = (req.body.department || '').toLowerCase();
+```
+
+## A3: O3 — İK endpoint rol erişimi
+
+İK dashboard ve disciplinary endpoint'leri CGO (utku) için 403.
+CGO İK dashboard'u görmeli — stratejik bakış açısıyla personel durumunu takip etmeli.
+
+```
+hr.ts'te ilgili endpoint'lerin rol kontrolüne 'cgo' ve 'ceo' ekle:
+  const allowedRoles = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'coach', 'mudur', 'supervisor'];
+```
+
+## A4: O5 — Kullanılmayan lazy import temizliği
+
+App.tsx'ten kullanılmayan 8 lazy import'ı kaldır:
+- Announcements
+- Mesajlar
+- FabrikaKaliteKontrol
+- FabrikaPerformans
+- FabrikaAIRaporlar
+- FabrikaUretimPlanlama
+- FabrikaVardiyaUyumluluk
+- MisafirMemnuniyetiModul
+
+**⚠ Her birini kaldırmadan ÖNCE App.tsx'te kullanılmadığını grep ile doğrula.**
+
+## A5: Hızlı fix doğrulama
+
+```bash
+echo "=== Hızlı fix doğrulama ==="
+echo "O1 - Admin menü:"
+# admin login test
+echo "O2 - CRM department:"
+curl -s -X POST http://localhost:5000/api/iletisim/tickets \
+  -H "Content-Type: application/json" -b /tmp/syscheck.txt \
+  -d '{"title":"Test","description":"Test","channel":"franchise","ticketType":"franchise_talep","department":"Teknik","branchId":5}' | head -3
+echo "(Büyük harf 'Teknik' artık çalışmalı)"
+echo "O3 - İK erişim:"
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/hr/ik-dashboard"
+echo " (200 olmalı)"
+echo "O5 - Lazy import:"
+grep -c "const.*lazy\|React.lazy" client/src/App.tsx
+echo "(8 azalmış olmalı)"
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM B: misc.ts BÖLME (2-3 saat)
+# 13K+ satır → <3K satır, 5-8 modüler route dosyası
+# ████████████████████████████████████████████████
+
+## B1: Strateji
+
+misc.ts'teki route'ları prefix gruplarına göre ayır. Her grup yeni bir dosyaya taşınır.
+
+**Her çıkarma adımı:**
+1. Route prefix grubunu belirle (ör: /api/notifications/*)
+2. İlgili satır aralığını bul (ilk ve son satır numarası)
+3. Bu satırlarda kullanılan import'ları tespit et
+4. Yeni dosya oluştur: `server/routes/[grup]-routes.ts`
+5. Import'ları + route'ları yeni dosyaya kopyala
+6. `server/index.ts`'e yeni router'ı kaydet
+7. misc.ts'ten çıkarılan route'ları SİL
+8. **HEMEN** server restart + endpoint test
+9. Çalışıyorsa → sonraki gruba geç. Çalışmıyorsa → GERİ AL
+
+**Çıkarma sırası (en güvenli → en riskli):**
+
+| # | Prefix | Tahmini satır | Risk |
+|---|--------|--------------|------|
+| 1 | /api/notifications/* | ~300-500 | Düşük |
+| 2 | /api/announcements/* | ~200-300 | Düşük |
+| 3 | /api/messages/* | ~200-400 | Düşük |
+| 4 | /api/dashboard/* veya /api/dashboard-stats/* | ~300-500 | Orta |
+| 5 | /api/reports/* | ~400-600 | Orta |
+| 6 | /api/employee/* veya /api/personnel/* | ~500-800 | Orta |
+| 7 | /api/operations/* | ~300-500 | Orta |
+| 8 | /api/knowledge-base/* | ~200-300 | Düşük |
+
+**⚠ DANIŞMA NOKTALARI:**
+- misc.ts'te route OLMAYAN helper fonksiyonlar (utility) varsa → ayrı `server/utils/misc-helpers.ts` dosyasına çıkar, SONRA route'ları böl
+- Bir route grubu paylaşılan state (değişken, middleware) kullanıyorsa → bağımlılığı göster, onay al
+- misc.ts'ten EXPORT edilen şeyler varsa (router hariç) → re-export ile geriye uyumluluk koru
+
+## B2: Her çıkarma sonrası test
+
+```bash
+# Her route grubu çıkardıktan sonra:
+echo "misc.ts: $(wc -l < server/routes/misc.ts) satır"
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+# Çıkarılan bir endpoint'i test et
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/syscheck.txt "http://localhost:5000/api/[endpoint]"
+```
+
+## B3: Hedef
+
+```
+misc.ts ÖNCEKİ: ~13,000 satır
+misc.ts SONRAKI: <3,000 satır
+Yeni route dosyası: 5-8 adet
+Tüm endpoint'ler çalışıyor: ✅
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM C: schema.ts BÖLME (2-3 saat)
+# 15K+ satır → barrel re-export pattern
+# ████████████████████████████████████████████████
+
+## C1: Strateji
+
+```
+shared/schema/ dizini oluştur
+Her modül grubu için ayrı dosya
+shared/schema.ts → barrel dosyası (export * from './schema/...')
+Mevcut tüm import'lar ('from @shared/schema') değişmeden çalışır
+```
+
+## C2: Çıkarma sırası
+
+| # | Dosya | İçerik | Tahmini satır |
+|---|-------|--------|--------------|
+| 1 | settings.ts | module_flags, ai_system_config, sla_rules | ~200 |
+| 2 | factory.ts | factory_*, production_lots, qc_* | ~500 |
+| 3 | training.ts | training_modules, certificates, quizzes, badges | ~400 |
+| 4 | messaging.ts | notifications, messages, announcements | ~300 |
+| 5 | shifts.ts | shifts, shift_attendance, pdks | ~300 |
+| 6 | payroll.ts | payroll_*, salary_scales | ~400 |
+| 7 | tasks.ts | tasks, assignments, checklists, branch_tasks | ~500 |
+| 8 | crm.ts | support_tickets, customer_feedback, campaigns | ~400 |
+| 9 | agent.ts | agent_*, skills, guidance | ~400 |
+| 10 | hr.ts | employee_*, disciplinary, leaves | ~400 |
+| 11 | equipment.ts | equipment, equipment_faults, maintenance | ~300 |
+| 12 | branches.ts | branches, branch_health | ~300 |
+| 13 | ajanda.ts | user_todos, user_calendar_events, user_notes | ~150 |
+| 14 | users.ts | users, roles, sessions — EN SON | ~500 |
+
+**Her adım:**
+1. Yeni dosya oluştur: `shared/schema/[modul].ts`
+2. pgTable tanımlarını + relations + Zod schema'ları kopyala
+3. Gerekli Drizzle import'ları ekle
+4. `shared/schema.ts`'in BAŞINA `export * from './schema/[modul]';` ekle
+5. Orijinal tanımları schema.ts'ten SİL
+6. **HEMEN** server restart + compile check
+7. Çalışıyorsa → sonraki gruba geç
+
+## C3: Circular dependency çözümü
+
+Foreign key referansları aynı dosyada olmalı:
+- `factory_production_batches` → `users` FK var → `users` henüz ayrılmamışsa, factory.ts'te `users`'ı import et
+- Circular olursa → o tabloyu schema.ts'te bırak
+- `relations()` tanımlarını ayrı `shared/schema/relations.ts`'e koyabilirsin
+
+**⚠ users tablosu EN SON çıkarılır — en çok FK referans alan tablo**
+
+## C4: Hedef
+
+```
+schema.ts ÖNCEKİ: ~15,000 satır
+schema.ts SONRAKI: <500 satır (barrel re-export)
+Schema modül dosyası: 12-14 adet
+Tüm mevcut import'lar çalışıyor: ✅
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM D: TypeScript :any TEMİZLİĞİ (1-2 saat)
+# ████████████████████████████████████████████████
+
+## D1: Öncelik 1 — req.user as any → req.user as AuthUser
+
+```bash
+# Kaç yerde var?
+grep -rn "(req.user as any)" server/ --include="*.ts" | grep -v node_modules | wc -l
+```
+
+AuthUser tipi server/types/auth.ts'te mevcut. Tüm `(req.user as any)` → `(req.user as AuthUser)` yap.
+
+**Toplu değiştirme:**
+```bash
+# Güvenli sed ile toplu değiştirme
+find server/routes -name "*.ts" -exec sed -i 's/(req.user as any)/(req.user as AuthUser)/g' {} \;
+# Her dosyaya AuthUser import'u ekle (yoksa)
+```
+
+**⚠ Her dosyada AuthUser import'u olduğundan emin ol:**
+```typescript
+import { AuthUser } from '../types/auth';
+```
+
+## D2: Öncelik 2 — catch (error: any) → catch (error: unknown)
+
+```bash
+grep -rn "catch.*: any\|catch (error: any)" server/ --include="*.ts" | grep -v node_modules | wc -l
+```
+
+```typescript
+// ÖNCE:
+catch (error: any) { console.error(error.message); res.status(500).json({ error: error.message }); }
+
+// SONRA:
+catch (error: unknown) {
+  const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
+  console.error(message);
+  res.status(500).json({ error: message });
+}
+```
+
+**Toplu değiştirme riskli — her dosyada farklı pattern olabilir. Dosya dosya yap, her değişiklikten sonra compile check.**
+
+## D3: Öncelik 3 — Gereksiz as any kaldırma
+
+Drizzle query sonuçlarında, component prop'larında gereksiz `as any` varsa kaldır.
+Karmaşık generic durumlarında `as any` bırak — zorla kaldırma.
+
+## D4: Hedef
+
+```
+:any ÖNCEKİ: ~X adet
+:any SONRAKI: X - 100+ azalmış
+Compile hatası: 0
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM E: BOŞ TABLO + DUPLIKAT DOSYA TEMİZLİĞİ (1 saat)
+# ████████████████████████████████████████████████
+
+## E1: Boş tablo analizi
+
+156 boş tablodan 3 kategori:
+1. **Henüz aktif olmayan modüller** (fabrika.kavurma, fabrika.stok vb.) → dokunma, gelecekte kullanılacak
+2. **Aktif modülün boş tablosu** (kiosk_sessions, issued_certificates vb.) → veri girilmemiş, dokunma
+3. **Gerçekten kullanılmayan** (eski migration kalıntısı, deneme tablosu) → SİLİNEBİLİR
+
+**⚠ DANIŞMA: Silmeden önce her tablo için:**
+1. Schema'da tanımlı mı? (tanımlıysa silme — module_flag ile yönetilmeli)
+2. Route dosyasında referans var mı?
+3. Frontend'te referans var mı?
+4. 3'ü de yoksa → silinebilir, SQL göster, onay al
+
+**Hedef: Gerçekten kullanılmayan tabloları tespit et, listeyi göster, ONAY bekle.**
+
+## E2: Duplikat dosya analizi
+
+7 duplikat dosya adı farklı dizinlerde:
+- dashboard.tsx (pages/ vs fabrika/)
+- index.tsx (çeşitli alt dizinlerde)
+- kiosk.tsx (pages/ vs fabrika/)
+- vb.
+
+**Bunlar aslında farklı dosyalar farklı dizinlerde — aynı isim ama farklı içerik.** Genellikle sorun değil (React'ta yaygın pattern). Ama karışıklık yaratıyorsa yeniden adlandırma düşünülebilir.
+
+**⚠ DOSYA SİLME veya RENAME yapmadan önce import kontrolü yap. Bu bölüm sadece ANALİZ — silme kararı DANIŞMA ile.**
+
+## E3: Kullanılmayan route dosyaları
+
+```bash
+# Route dosyaları ama index.ts'te register edilmemiş
+for f in server/routes/*.ts; do
+  base=$(basename "$f" .ts)
+  if ! grep -q "$base" server/index.ts; then
+    echo "KAYITSIZ: $f ($(wc -l < "$f") satır)"
+  fi
+done
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM F: SKİLL DOSYALARI GÜNCELLE (30dk)
+# ████████████████████████████████████████████████
+
+## F1: dospresso-architecture/SKILL.md güncelle
+
+Mevcut skill dosyasını oku ve şunları güncelle:
+- Güncel tablo sayısı
+- Yeni route dosyaları (misc.ts bölünmesinden)
+- Yeni schema modül dosyaları
+- Güncel endpoint sayısı
+- Mission Control bileşenleri
+- CRM 3 kanal yapısı
+- Ajanda modülü
+- Widget registry
+
+## F2: dospresso-quality-gate/SKILL.md güncelle
+
+- misc.ts bölme sonrası import kontrolü
+- schema.ts barrel re-export doğrulama
+- CRM 3 kanal test kontrol listesi
+- Ajanda CRUD test
+- Sidebar accordion test
+
+## F3: dospresso-debug-guide/SKILL.md güncelle
+
+- Schema import hataları debug (bölme sonrası)
+- Route dosyası bulunamama debug
+- CRM kanal filtreleme sorunları
+- Ajanda todo/event oluşturma sorunları
+
+---
+
+# ████████████████████████████████████████████████
+# GENEL DOĞRULAMA
+# ████████████████████████████████████████████████
+
+```bash
+echo "═══ SPRINT 8 GENEL DOĞRULAMA ═══"
+
+echo ""
+echo "=== Server ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+
+echo ""
+echo "=== O1-O5 Fix'ler ==="
+echo "O1 - Admin menü:"
+# Admin login + menü sayısı
+echo "O2 - Department case:"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/s8.txt > /dev/null 2>&1
+curl -s -X POST http://localhost:5000/api/iletisim/tickets \
+  -H "Content-Type: application/json" -b /tmp/s8.txt \
+  -d '{"title":"Case test","description":"Test","channel":"franchise","ticketType":"franchise_talep","department":"Teknik","branchId":5}' | head -3
+echo "O3 - İK erişim:"
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/s8.txt "http://localhost:5000/api/hr/ik-dashboard"
+echo ""
+echo "O5 - Lazy import temizliği:"
+grep -c "const.*lazy\|React.lazy" client/src/App.tsx
+
+echo ""
+echo "=== misc.ts ==="
+echo "  Önceki: $(cat /tmp/misc_before 2>/dev/null || echo '?') satır"
+echo "  Sonraki: $(wc -l < server/routes/misc.ts) satır"
+echo "  Yeni route dosyaları:"
+ls server/routes/*-routes.ts 2>/dev/null | wc -l
+
+echo ""
+echo "=== schema.ts ==="
+echo "  Önceki: $(cat /tmp/schema_before 2>/dev/null || echo '?') satır"
+echo "  Sonraki: $(wc -l < shared/schema.ts) satır"
+echo "  Schema modül dosyaları:"
+ls shared/schema/*.ts 2>/dev/null | wc -l
+
+echo ""
+echo "=== :any sayısı ==="
+ANY_COUNT=$(grep -rn ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l)
+echo "  Toplam :any: $ANY_COUNT"
+REQ_ANY=$(grep -rn "(req.user as any)" server/ --include="*.ts" | grep -v node_modules | wc -l)
+echo "  req.user as any: $REQ_ANY (0 olmalı)"
+
+echo ""
+echo "=== Kritik API endpoint testi ==="
+for ep in "/api/me/menu" "/api/iletisim/tickets" "/api/ajanda/todos" "/api/tasks" "/api/branches" "/api/hr/ik-dashboard" "/api/equipment" "/api/factory/production-logs" "/api/academy/modules" "/api/notifications"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/s8.txt "http://localhost:5000${ep}" 2>/dev/null)
+  if [ "$STATUS" = "200" ]; then
+    echo "  ✅ $ep"
+  else
+    echo "  ❌ $ep → HTTP $STATUS"
+  fi
+done
+
+echo ""
+echo "=== Skill dosyaları ==="
+for f in dospresso-architecture dospresso-quality-gate dospresso-debug-guide; do
+  wc -l .agents/skills/$f/SKILL.md 2>/dev/null
+done
+
+echo ""
+echo "=== Genel metrikler ==="
+echo "  Route dosyası: $(find server/routes -name '*.ts' | wc -l)"
+echo "  Schema modül: $(ls shared/schema/*.ts 2>/dev/null | wc -l)"
+echo "  Skill: $(ls server/services/skills/*.ts 2>/dev/null | wc -l)"
+echo "  Frontend sayfa: $(find client/src/pages -name '*.tsx' -not -path '*/components/*' | wc -l)"
+echo "  Toplam backend satır: $(find server -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+
+echo ""
+echo "═══ SONUÇ RAPORU ═══"
+echo ""
+echo "BÖLÜM A (Hızlı fix'ler):"
+echo "  O1 admin menü: ✅/❌"
+echo "  O2 department case: ✅/❌"
+echo "  O3 İK erişim: ✅/❌"
+echo "  O5 lazy import: ✅/❌ (X kaldırıldı)"
+echo ""
+echo "BÖLÜM B (misc.ts bölme):"
+echo "  Önceki: X satır → Sonraki: Y satır"
+echo "  Çıkarılan dosya: Z adet"
+echo "  Tüm endpoint'ler çalışıyor: ✅/❌"
+echo ""
+echo "BÖLÜM C (schema.ts bölme):"
+echo "  Önceki: X satır → Sonraki: Y satır"
+echo "  Modül dosyası: Z adet"
+echo "  Tüm import'lar çalışıyor: ✅/❌"
+echo ""
+echo "BÖLÜM D (:any temizliği):"
+echo "  Önceki: X → Sonraki: Y (Z azalma)"
+echo "  req.user as any: 0 ✅/❌"
+echo ""
+echo "BÖLÜM E (boş tablo + duplikat):"
+echo "  Analiz tamamlandı: ✅/❌"
+echo "  Silinen tablo: X (DANIŞMA ile)"
+echo ""
+echo "BÖLÜM F (skill güncelleme):"
+echo "  3 skill dosyası güncellendi: ✅/❌"
+echo ""
+echo "Server: hatasız ✅/❌"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- ❌ İş mantığını değiştirme — sadece dosya yapısı ve tip güvenliği
+- ❌ Mevcut import path'leri kırma — barrel re-export ile uyumluluk
+- ❌ Circular dependency'li tabloları zorla ayırma
+- ❌ misc.ts'ten paylaşılan helper'ları kopyalamadan route çıkarma
+- ❌ Boş tabloları DANIŞMA'sız silme
+- ❌ Kullanılan lazy import'ları kaldırma

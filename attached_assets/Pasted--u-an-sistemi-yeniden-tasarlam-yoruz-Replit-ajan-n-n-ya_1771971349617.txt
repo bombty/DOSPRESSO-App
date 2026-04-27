@@ -1,0 +1,100 @@
+Şu an sistemi yeniden tasarlamıyoruz — Replit ajanının yaptığı şey mevcut deterministik çekirdeğin üstüne çok küçük bir “AI orchestration katmanı” eklemek (read-only + JSON schema + circuit breaker + log). Yani “baştan sona değişim” yok; yol planı güncellemesi / yeni modül ekleme var. ✅
+
+Ayrıca deploy bitmiş. Şu an sende kalan tek “insan gözü” işi var: prod UI + prod auth davranışı.
+
+Şu an ne yapmalısın? (2–3 dk Prod Smoke Test)
+
+1) Prod domain’i aç
+
+Ekran görüntünde domain görünüyor: https://dospressoHQ.replit.app
+	•	Replit’te View App’e bas (ya da linki Safari’de aç).
+
+2) UI kontrolü: sayfa açılıyor mu?
+
+Aşağıdakilerden birini aç:
+	•	/raporlar/sube-saglik
+	•	(veya uygulama menüsünden “Raporlar → Şube Sağlık”)
+
+Beklenen:
+	•	Sayfa render oluyor, boş beyaz ekran yok
+	•	Konsolda belirgin hata yok (iPad’de zorunlu değil)
+
+3) AI Copilot kartı görünüyor mu?
+
+Aynı sayfada AiCopilotCard / AI Özet / Operasyon Copilot kartını gör.
+
+Beklenen:
+	•	Kart görünüyor
+	•	“fallback_used” gibi teknik alanlar UI’da kullanıcıya ham basılmıyor (sadece içerik/özet görünüyor)
+	•	İçerik Türkçe
+
+4) Range butonları (7d / 30d / 90d)
+
+Kart üzerinde veya sayfadaki range seçicisinde:
+	•	7d → tıkla, içerik değişiyor mu?
+	•	30d → tıkla
+	•	90d → tıkla
+
+Beklenen:
+	•	Her tıkta kart “loading” olur, sonra güncellenir
+	•	7d’de bazen “fallback” devreye girebilir (normal), ama kart yine içerik göstermeli
+
+5) Unauth 401 kontrolü (incognito)
+
+Safari’de Özel Sekme (Private) aç:
+	•	https://dospressoHQ.replit.app/api/ai/ops-copilot/summary?range=30d
+
+Beklenen:
+	•	401 (veya sistemin standart “unauth” cevabı)
+
+Eğer 200 dönüyorsa bu “auth bypass” alarmıdır → hemen durdurup bana yaz.
+
+6) Auth 200 kontrolü (normal sekme)
+
+Normal sekmede login’liyken aynı endpoint’i aç:
+	•	/api/ai/ops-copilot/summary?range=30d
+
+Beklenen:
+	•	200 ve JSON (HTML değil)
+
+Bunların hepsi OK ise: release kapanmış sayılır.
+
+⸻
+
+Replit ile daha güvenli/hızlı ilerlemek için optimizasyon (senin sorunun cevabı)
+
+Altın kural
+
+1 Agent run = 1 feature + 1 QA + 1 deploy (gerekirse).
+Karıştırırsan agent “scope creep” yaşar ve refactor’a kayar.
+
+Replit’te “Start building” / “Revise plan” nasıl kullanılmalı?
+	•	Tek bir master prompt yapıştır → Agent plan üretsin.
+	•	Plan doğruysa Start building.
+	•	Plan yanlış/eksikse Revise plan ile aynı feature scope içinde düzelt.
+	•	Build bitince ayrı bir “QA-only prompt” ile son kontrol yaptır (senin checklist’in gibi).
+	•	Sonra deploy.
+
+Aynı anda 1-2-3 farklı prompt’u art arda yapıştırma.
+Çünkü agent bunları “tek görev” sanıp scope’u büyütür veya istemeden refactor eder.
+
+En iyi pratik: 3 aşamalı prompt seti
+	1.	BUILD PROMPT (feature implement)
+	2.	QA PROMPT (sadece test, sadece bug fix)
+	3.	RELEASE PROMPT (deploy + prod smoke checklist)
+
+Bunları sırayla çalıştırırsın. Her aşamadan sonra:
+	•	Plan iyi → Start building
+	•	Plan değil → Revise plan
+
+⸻
+
+Hazır “kopyala-yapıştır” Prod Smoke Checklist (Replit’e değil, sana)
+	1.	https://dospressoHQ.replit.app/raporlar/sube-saglik aç → kart var mı?
+	2.	7d/30d/90d tıkla → kart güncelleniyor mu?
+	3.	Private tab: /api/ai/ops-copilot/summary?range=30d → 401 mi?
+	4.	Login’li tab: aynı endpoint → 200 JSON mi?
+
+⸻
+
+İstersen sen sadece şu 4 adımdan hangisinde takıldığını (ör. “Private tab 401 değil” veya “AI kart görünmüyor”) yaz; ben de hata olasılıklarına göre direkt “neye bak / neyi düzelt” şeklinde net aksiyon listesi çıkarayım.

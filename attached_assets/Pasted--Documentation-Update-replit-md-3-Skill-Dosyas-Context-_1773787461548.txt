@@ -1,0 +1,276 @@
+# Documentation Update — replit.md + 3 Skill Dosyası
+
+## Context
+DOSPRESSO franchise management platform. 
+Update all project documentation to reflect current state.
+Create replit.md (doesn't exist yet) and update 3 skill files.
+
+---
+
+## TASK 1 — Create replit.md
+
+Create `replit.md` in the project root with this content:
+
+```markdown
+# DOSPRESSO Franchise Management Platform
+
+## Quick Start
+- Frontend: http://localhost:5173
+- Backend: http://localhost:5000
+- Run: `npm run dev`
+
+## Stack
+- Frontend: React 18 + TypeScript + Vite + Wouter + TanStack Query v5 + Shadcn/ui (New York) + Tailwind
+- Backend: Node.js + Express + TypeScript
+- Database: PostgreSQL (Neon serverless) via Drizzle ORM
+- Auth: Local Auth + Replit Auth + Passport.js
+- AI: OpenAI API (Mr. Dobody agent system)
+
+## Critical Rules — NEVER Break
+1. users.id = VARCHAR (gen_random_uuid()) — NOT integer
+2. Soft delete only — use deletedAt, NEVER hard delete
+3. All queries filter: WHERE deletedAt IS NULL
+4. Money = integers in TL (some salary in kuruş)
+5. Radix UI — exact version pinning, DO NOT upgrade
+6. Data Lock System — HTTP 423 for locked records
+7. Kiosk endpoints use isKioskAuthenticated, not isAuthenticated
+
+## Role System (31 roles)
+### Executive: admin, ceo, cgo
+### HQ Dept: muhasebe_ik, muhasebe, satinalma, coach, marketing, pazarlama, trainer, kalite_kontrol, gida_muhendisi, fabrika_mudur, fabrika, teknik, destek, yatirimci_hq, ekipman_teknik, ik
+### Branch: mudur, supervisor, supervisor_buddy, barista, bar_buddy, stajyer, yatirimci_branch, sube_kiosk
+### Factory Floor: fabrika_operator, fabrika_sorumlu, fabrika_personel
+### Kiosk Accounts (login with username+0000):
+- fabrika → fabrika_operator → /fabrika/kiosk
+- isiklar, lara, batman etc. → sube_kiosk → /sube/kiosk/:branchId
+
+## Key Modules
+- Authentication + RBAC (31 roles, branch-level filtering)
+- İletişim Merkezi (CRM) — crm-iletisim.ts, 30 endpoints, 12 frontend files
+- Academy V3 — LMS with gamification
+- Factory Module — kiosk, production, shifts, quality
+- HR Module — payroll, attendance, leave
+- Delegation System — module_delegations table
+- SLA System — business hours aware (sla_rules + sla_business_hours tables)
+- Mr. Dobody AI Agent — 18 skills, scheduler
+
+## Kiosk System
+- Factory: /fabrika/kiosk — username: fabrika, password: 0000
+- Branch: /sube/kiosk/:branchId — username: [branch-name], password: 0000
+- Auth: isKioskAuthenticated middleware (separate from web auth)
+- Session: in-memory Map (kioskSessions), 8hr TTL
+- PIN: bcrypt hashed, 3 attempts → 15min lockout
+
+## Database
+- 375+ tables in shared/schema.ts
+- ~1320 API endpoints across 46+ route files
+- Soft delete on 18+ tables
+
+## Skills Reference
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+```
+
+---
+
+## TASK 2 — Update dospresso-architecture/SKILL.md
+
+File: `.agents/skills/dospresso-architecture/SKILL.md`
+
+### 2A: Update numbers
+- Tables: 375+ (was 373)
+- Schema lines: 15533+ 
+- Endpoints: ~1320 (was ~1313)
+
+### 2B: Add sube_kiosk role
+In the role system section, add:
+```
+### Kiosk Accounts (31st role)
+sube_kiosk — Branch kiosk terminal accounts
+- Login: username = branch name (e.g. "isiklar"), password = "0000"
+- Redirects to: /sube/kiosk/:branchId
+- No nav items (fullscreen kiosk)
+```
+
+### 2C: Add Kiosk Auth Pattern
+```
+## Kiosk Auth Pattern
+
+### isKioskAuthenticated middleware
+Used for all kiosk endpoints (NOT isAuthenticated):
+- Checks x-kiosk-token header
+- Falls back to web session for admin/fabrika_mudur
+- Kiosk sessions stored in-memory (kioskSessions Map)
+
+### createKioskSession(userId)
+Returns kioskToken (UUID), stored with 8hr TTL
+
+### PIN Verification
+- factory_staff_pins / branch_staff_pins tables
+- bcrypt.compare(pin, hashedPin)
+- 3 failures → pinLockedUntil set to +15min
+- Admin notified on lockout
+
+### Kiosk Device Passwords
+- factory_kiosk_config table (key='device_password')
+- branch_kiosk_settings table (kiosk_password column)
+- All stored as bcrypt hashes
+- Default: "0000" (should be changed per location)
+```
+
+### 2D: Add new modules to Completed Modules list
+```
+✅ İletişim Merkezi (CRM) — split panel, role separation, SLA, attachments
+✅ Delegation System — module_delegations, admin panel, dashboard integration
+✅ SLA Business Hours — sla_rules + sla_business_hours, Europe/Istanbul
+✅ Kiosk System — factory + branch, PIN auth, bcrypt, device passwords
+✅ Franchise/Investor module — franchise_investors tables
+✅ Webinar system — webinars + webinar_registrations tables
+```
+
+### 2E: Add new tables
+```
+## New Tables (added after initial build)
+- ticket_attachments — CRM ticket file attachments
+- support_tickets + support_ticket_comments — branch→HQ ticket system
+- sla_rules — SLA time limits per dept/priority
+- sla_business_hours — business hours config (Mon-Fri 08-18 Istanbul)
+- factory_kiosk_config — factory kiosk device password
+- branch_kiosk_settings — branch kiosk settings
+- module_delegations — module responsibility delegation
+- module_departments + module_department_topics — module content map
+- hq_tasks — HQ internal task system
+- broadcast_receipts — announcement read tracking
+- factory_station_benchmarks — station performance targets
+- franchise_investors + related — investor management
+- webinars + webinar_registrations — webinar calendar
+```
+
+### 2F: Add new route files
+Add to route files list:
+```
+crm-iletisim.ts — İletişim Merkezi (30 endpoints)
+delegation-routes.ts — Module delegation CRUD
+franchise-investors.ts — Investor management
+franchise-summary.ts — Franchise overview
+coach-summary.ts — Coach dashboard data
+hq-summary.ts — HQ dashboard data
+my-day.ts — Daily schedule
+quick-action.ts — Quick action cards
+trash.ts — Soft delete recovery
+ai-ops-copilot.ts — AI operations
+ai-policy-admin.ts — AI policy management
+ops-rules.ts — Operations rules
+```
+
+---
+
+## TASK 3 — Update dospresso-debug-guide/SKILL.md
+
+File: `.agents/skills/dospresso-debug-guide/SKILL.md`
+
+Add these new sections at the end:
+
+```markdown
+## 10. Kiosk Auth Failures
+
+### Symptom: 401 on kiosk endpoints
+- Kiosk endpoints use isKioskAuthenticated (not isAuthenticated)
+- Check x-kiosk-token header is being sent
+- Kiosk session stored in-memory — lost on server restart
+- Fix: worker must re-login with PIN after server restart
+
+### Symptom: PIN always fails
+- Check factory_staff_pins / branch_staff_pins table
+- PIN must be bcrypt hashed — plain text rejected
+- Check pinLockedUntil — may be locked for 15 min
+- Fix: POST /api/factory/pins/:userId/unlock (admin only)
+
+### Symptom: Device password rejected
+- Check factory_kiosk_config or branch_kiosk_settings
+- Password must be bcrypt hash — plain text rejected
+- migrateKioskPasswords() runs on startup and hashes plain text
+- Default password: "0000"
+
+### Symptom: KioskRoleGuard redirecting everyone
+- KioskRoleGuard only affects: fabrika_operator, fabrika_personel, 
+  fabrika_sorumlu, sube_kiosk roles
+- /login path must be excluded from redirect
+- If ALL users are trapped: remove KioskRoleGuard wrapper, it's too aggressive
+
+## 11. SLA Business Hours Issues
+
+### Symptom: SLA deadline is wrong timezone
+- Uses Europe/Istanbul via addBusinessHours() in business-hours.ts
+- Check sla_business_hours table has exactly 1 row
+- Default: Mon-Fri 08:00-18:00
+
+### Symptom: SLA breach notification on weekend
+- checkSlaBreaches() checks isBusinessHours() before sending
+- Off-hours breaches deferred to next business day
+
+### Symptom: SLA rules not loading
+- Check sla_rules table has 24 rows (6 depts × 4 priorities)
+- seedSlaRules() runs on startup — check server logs
+
+## 12. Delegation System Issues
+
+### Symptom: User has role but can't access module
+- Check module_delegations table for active delegations
+- GET /api/delegations/active returns delegations for current user's role
+- Frontend checks this and adds ModuleCards to dashboard
+
+### Symptom: Delegation not showing in CRM nav
+- CRM nav reads delegatedDepts from active delegations
+- Check iletisim-merkezi/index.tsx for delegation query
+```
+
+---
+
+## TASK 4 — Update dospresso-quality-gate/SKILL.md
+
+File: `.agents/skills/dospresso-quality-gate/SKILL.md`
+
+Add these checks to the checklist:
+
+```markdown
+## 11. Kiosk Auth Check
+- New kiosk endpoints use isKioskAuthenticated (not isAuthenticated)?
+  grep -n "isKioskAuthenticated" server/routes/factory.ts | head -5
+- No kiosk endpoint uses plain isAuthenticated?
+
+## 12. bcrypt Password Security
+- New user/kiosk accounts have bcrypt hashed passwords?
+  Never store plain text passwords or PINs
+- New seed scripts use bcrypt.hash() before inserting?
+  grep -n "bcrypt\|hash" server/routes/seed.ts | head -10
+
+## 13. SLA Business Hours Consistency
+- sla_rules table has 24 rows after any migration?
+  SELECT COUNT(*) FROM sla_rules; — Expected: 24
+- sla_business_hours has 1 row?
+  SELECT COUNT(*) FROM sla_business_hours; — Expected: 1
+
+## 14. CRM Endpoint Auth
+- All crm-iletisim.ts endpoints have auth middleware?
+  grep -n "router\." server/routes/crm-iletisim.ts | wc -l
+  grep -n "isAuthenticated\|requireAuth" server/routes/crm-iletisim.ts | wc -l
+  Both counts should be similar
+
+## 15. Kiosk Role Guard Safety
+- KioskRoleGuard allows /login path?
+  grep -n "login" in KioskRoleGuard function
+- sube_kiosk + fabrika_operator users redirect to correct kiosk?
+```
+
+---
+
+## Verification
+
+- [ ] replit.md created in project root
+- [ ] dospresso-architecture/SKILL.md updated with new roles, tables, patterns
+- [ ] dospresso-debug-guide/SKILL.md has 3 new sections (kiosk, SLA, delegation)
+- [ ] dospresso-quality-gate/SKILL.md has 5 new checks
+- [ ] All files readable and properly formatted markdown
+- [ ] No existing content removed — only additions

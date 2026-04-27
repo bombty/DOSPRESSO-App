@@ -1,0 +1,51 @@
+Merhaba, 4 haftalık launch planı yapıyoruz. IT danışmanla (Claude Opus) birlikte 
+strateji belirliyoruz, senin teknik görüşünü almak istiyoruz. 
+Kod değişikliği yapma, sadece görüşünü yaz.
+
+BAĞLAM:
+- T0.0 → T3.0 tamamlandı (güvenlik, bildirim, BHS, coach dashboard)
+- 1 ay içinde 22 şube + fabrika aynı anda publish/launch olacak
+- Tüm modüller çalışır durumda olmalı (boş modül kalmamalı)
+- Vardiya giriş-çıkış: şifre ile (fabrika kiosk modeli gibi), NFC/QR gerekmez
+- İki AI paralel çalışıyor (sen kod yazıyorsun, Claude Opus strateji/ticket/QA)
+
+SORULAR:
+
+1. BOŞ MODÜLLER: Şu an boş/kullanılmayan modülleri listele. Her biri için:
+   - Mevcut durumu (tablo var mı, UI var mı, endpoint var mı)
+   - Çalışır hale getirmek için tahmini efor (kolay/orta/zor)
+   - Hangisi en kritik, hangisi launch sonrasına bırakılabilir
+
+2. SEED DATA vs GERÇEK VERİ: Boş modüller için launch'ta ne yapmalıyız?
+   - Satınalma: seed data mı, gerçek tedarikçi/ürün verisi mi?
+   - Müşteri şikayet: boş başlasın mı, örnek veri mi?
+   - Fabrika analytics: gerçek üretim verisi mi lazım?
+   - Akademi: 245 kullanıcının hepsine career_progress kaydı oluşturulmalı mı?
+
+3. VARDIYA CHECK-IN (ŞİFRE İLE): Fabrikadaki kiosk/PIN giriş modeli 
+   şubelere taşınacak. 
+   - Mevcut fabrika kiosk kodu nerede? Şubelere adapte edilebilir mi?
+   - shift_attendance tablosu boş — bu tablo mu kullanılacak yoksa 
+     farklı bir mekanizma mı var?
+   - Tahmini efor ne kadar?
+
+4. EN BÜYÜK TEKNİK RİSKLER: 4 haftalık launch hedefi için sence en büyük 
+   3 teknik risk ne? Özellikle:
+   - misc.ts 12K satır — launch öncesi bölünmeli mi?
+   - 158 boş tablo — temizlenmeli mi yoksa bıraksak olur mu?
+   - Background job'lar tek process — risk mi?
+   - Başka görmediğimiz bir risk var mı?
+
+5. ROADMAP ÖNCELİK: 4 haftayı sen planlasan nasıl bölerdin?
+   - Hafta 1: ?
+   - Hafta 2: ?
+   - Hafta 3: ?
+   - Hafta 4: ?
+
+6. 158 BOŞ TABLO ANALİZİ: Hızlıca sınıflandırabilir misin?
+   - Aktif feature'a ait ama veri girilmemiş (launch'ta dolacak)
+   - Dead code (hiçbir endpoint/UI kullanmıyor)
+   - Future plan (henüz geliştirilmemiş feature)
+   Tam liste gerekmez, en azından büyük grupları belirle.
+
+Sadece görüşünü ve analizini yaz. Sonra birlikte kesin plan yapacağız.

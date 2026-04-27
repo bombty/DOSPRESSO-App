@@ -1,0 +1,60 @@
+📋 IT Danışmandan Onay
+
+Onaylandı — Build mode'a geç, Seçenek 2 ile doğrudan çalıştır ve raporla.
+
+IT danışman notları:
+✅ update-prices script idempotent, muhasebe tetiklemiyor (sadece inventory + price_history)
+✅ fix-recipe-product script duplicate-safe (SKU kontrolü yapıyor, varsa skip)
+❌ A4 production smoke test YAPMA — sadece code review
+
+──────────────────────────────────────────────
+TEK KOMUT ÇALIŞTIR (pre-check + 5 adım + DB doğrulama dahil):
+──────────────────────────────────────────────
+
+cd /home/runner/workspace && \
+git pull --rebase origin main && \
+\
+echo "=== PRE-CHECK: Duplicate ürün var mı? ===" && \
+psql $DATABASE_URL -c "SELECT sku FROM factory_products WHERE sku LIKE 'FP-CHE-%' OR sku LIKE 'FP-BRW-%' OR sku LIKE 'FP-COK-%' OR sku LIKE 'FP-EKM-%' OR sku LIKE 'FP-CIN-%';" && \
+\
+echo "" && echo "=== 1) Fatura fiyat senkronizasyonu ===" && \
+npx tsx server/scripts/update-prices-from-invoices.ts && \
+\
+echo "" && echo "=== 2) Recipe↔Product mapping ===" && \
+npx tsx server/scripts/fix-recipe-product-mapping.ts && \
+\
+echo "" && echo "=== 3) TypeScript build ===" && \
+npx tsc --noEmit && echo "✅ TS build temiz" && \
+\
+echo "" && echo "=== 4) A4 code review ===" && \
+grep -c "SEED_GUARDS" server/routes/seed.ts && echo "(20 olmalı: 1 tanım + 19 endpoint)" && \
+\
+echo "" && echo "=== 5) DB doğrulama ===" && \
+psql $DATABASE_URL -c "
+SELECT 'Reçete ürüne bağlı' as metric, COUNT(*) FROM factory_recipes WHERE product_id IS NOT NULL
+UNION ALL
+SELECT 'Yeni FP-* ürün', COUNT(*) FROM factory_products WHERE sku LIKE 'FP-%'
+UNION ALL
+SELECT 'Son 10dk price history', COUNT(*) FROM inventory_price_history WHERE created_at > NOW() - INTERVAL '10 minutes'
+UNION ALL
+SELECT 'Yetim reçete (productId NULL)', COUNT(*) FROM factory_recipes WHERE product_id IS NULL;
+"
+
+──────────────────────────────────────────────
+HEDEF ACCEPTANCE:
+──────────────────────────────────────────────
+✓ Reçete↔Ürün: 0/27 → 14/27
+✓ Fatura fiyat: ~130 malzeme güncel
+✓ TS build: 0 error
+✓ A4 SEED_GUARDS count: 20
+✓ inventory_price_history audit trail dolu (~130 son 10dk)
+
+──────────────────────────────────────────────
+RAPOR FORMATI:
+──────────────────────────────────────────────
+1) Her adım için ✅/❌ + kısa açıklama
+2) Son SELECT sorgusundaki 4 satırın tam değerleri
+3) Beklenmedik hata çıktıysa ilk 20 satır log
+4) Kalan 13 yetim reçetenin code listesi (manuel mapping için)
+
+Task çok küçük (10 dk). Build mode'a geç, çalıştır, raporla.

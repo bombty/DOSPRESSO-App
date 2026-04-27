@@ -1,0 +1,117 @@
+import { Switch, Route, useLocation } from "wouter";
+import { useAuth } from "./auth/useAuth";
+
+// 1) Public route'ları tek yerde topla
+const PUBLIC_PATH_PREFIXES = ["/login", "/register", "/feedback"];
+
+// 2) Public mi kontrolü (prefix bazlı; /feedback/xxx gibi alt path'leri de kapsar)
+function isPublicPath(path: string) {
+  return PUBLIC_PATH_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
+}
+
+// 3) Auth yokken her şeyi yakalayıp login'e yönlendiren guard
+function AuthCatchAllToLogin() {
+  const [location, setLocation] = useLocation();
+
+  // Eğer zaten public path'teysek asla redirect yapma (loop önler)
+  if (isPublicPath(location)) return null;
+
+  // Hedefi sakla (hem query hem storage; biri bozulursa diğeri çalışır)
+  sessionStorage.setItem("postLoginRedirect", location);
+  const next = encodeURIComponent(location);
+
+  // Wouter'da Redirect yok; setLocation ile yönlendir
+  setLocation(`/login?next=${next}`);
+  return null;
+}
+
+// 4) next parametresini güvenli şekilde al
+function getSafeNextFromUrl(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("next");
+  if (!raw) return null;
+
+  const decoded = decodeURIComponent(raw);
+
+  // Open redirect önlemi: sadece internal path kabul et
+  if (!decoded.startsWith("/")) return null;
+
+  // Public sayfalara "geri dönüş" istemiyorsan engelleyebilirsin:
+  // if (isPublicPath(decoded)) return "/";
+
+  return decoded;
+}
+
+export function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Loading ekranı route çözümünü bozmasın
+  if (isLoading) return <div>Yükleniyor...</div>;
+
+  return (
+    <Switch>
+      {/* PUBLIC ROUTES */}
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/feedback" component={MusteriFeedbackPublic} />
+
+      {/* AUTH YOKKEN: public olmayan her şeyi yakala → login */}
+      {!isAuthenticated && (
+        <Route path="/:rest*" component={AuthCatchAllToLogin} />
+      )}
+
+      {/* AUTH VARSA: protected route'lar (mevcut yapıyı koruyoruz) */}
+      {isAuthenticated && (
+        <>
+          <Route path="/" component={Dashboard} />
+          <Route path="/gorevler" component={Tasks} />
+          <Route path="/ekipman" component={Equipment} />
+          {/* ... 100+ protected route */}
+        </>
+      )}
+
+      {/* Son çare */}
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+Login component’inde “geri dönüş” (başarılı girişten sonra)
+
+Login içinde (submit başarılı olduğunda) şu yönlendirme mantığını kullan:
+
+import { useLocation } from "wouter";
+
+export function Login() {
+  const [, setLocation] = useLocation();
+
+  async function onLoginSuccess() {
+    const nextFromUrl = getSafeNextFromUrl();
+    const nextFromStorage = sessionStorage.getItem("postLoginRedirect");
+
+    sessionStorage.removeItem("postLoginRedirect");
+
+    const target =
+      nextFromUrl ||
+      (nextFromStorage && nextFromStorage.startsWith("/") ? nextFromStorage : null) ||
+      "/";
+
+    setLocation(target);
+  }
+
+  return (
+    <div>
+      {/* login form */}
+      {/* submit → auth → onLoginSuccess() */}
+    </div>
+  );
+}
+
+Test senaryosu (senin kontrolün)
+	1.	Logout ol (incognito iyi olur)
+	2.	Direkt URL: /gorevler
+	•	Beklenen: /login?next=%2Fgorevler
+	3.	Login ol
+	•	Beklenen: otomatik /gorevler
+
+Bu düzenleme “tek guard route” ile 100+ protected route’u tek tek sarmadan problemi çözer ve loop riskini public whitelist ile temizler.

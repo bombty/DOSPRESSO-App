@@ -1,0 +1,266 @@
+{
+  "category": "ICED",
+  "subCategory": "Küp Buzlu",
+  "items": [
+    {
+      "no": 1,
+      "code": "A",
+      "name_tr": "Iced Americano",
+      "name_en": "Iced Americano",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "water + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar su ile doldur.",
+            "Sunum çizgisine kadar küp buz ekle.",
+            "Üzerine double more espresso dök.",
+            "Strawless (pipetsiz) kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "water + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar su ile doldur.",
+            "Sunum çizgisine kadar küp buz ekle.",
+            "Üzerine double more + single more espresso dök.",
+            "Strawless (pipetsiz) kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 2,
+      "code": "L",
+      "name_tr": "Iced Latte",
+      "name_en": "Iced Latte",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "milk + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar süt ile doldur.",
+            "Üzerine single more espresso ekle.",
+            "Milk çizgisine kadar süt ile tamamla.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Strawless kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "milk + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar süt ile doldur.",
+            "Üzerine double more espresso ekle.",
+            "Milk çizgisine kadar süt ile tamamla.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 3,
+      "code": "FW",
+      "name_tr": "Iced Flat White",
+      "name_en": "Iced Flat White",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "milk + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar süt ile doldur.",
+            "Üzerine double more espresso ekle.",
+            "Milk çizgisine kadar süt ile tamamla.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Strawless kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "milk + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar süt ile doldur.",
+            "Üzerine double more + single more espresso ekle.",
+            "Milk çizgisine kadar süt ile tamamla.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 4,
+      "code": "BE",
+      "name_tr": "Iced Bull Eye",
+      "name_en": "Iced Bull Eye",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "buz + cold brew + espresso",
+          "steps": [
+            "Bardağı silme buz ile doldur.",
+            "Üzerine single more espresso dök.",
+            "Sunum çizgisine kadar soğuk filtre kahve (cold brew) ekle.",
+            "Strawless kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "buz + cold brew + espresso",
+          "steps": [
+            "Bardağı silme buz ile doldur.",
+            "Üzerine double more espresso dök.",
+            "Sunum çizgisine kadar soğuk filtre kahve ekle.",
+            "Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 5,
+      "code": "Creamy Latte",
+      "name_tr": "Iced Creamy Latte",
+      "name_en": "Iced Creamy Latte",
+      "coffee_free": false,
+      "notes": "Özel krema karışımı: 100 ml krema + 400 ml laktozsuz süt.",
+      "sizes": {
+        "massivo": {
+          "base": "özel krema + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar özel krema karışımı ile doldur.",
+            "Üzerine single more espresso ekle.",
+            "Milk çizgisine kadar tekrar özel krema doldur.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Strawless kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "özel krema + espresso",
+          "steps": [
+            "Bardağı boğum çizgisine kadar özel krema karışımı ile doldur.",
+            "Üzerine single more espresso ekle.",
+            "Milk çizgisine kadar tekrar özel krema doldur.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 6,
+      "code": "BL",
+      "name_tr": "Iced Bombty Latte",
+      "name_en": "Iced Bombty Latte",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "milk + espresso + Bombty latte tozu + beyaz çikolata",
+          "steps": [
+            "Bardağa 1 pump beyaz çikolata ve 1 ölçek Bombty latte tozu koy.",
+            "Üzerine single more espresso ekle ve el mikseri ile karıştır.",
+            "Milk çizgisine kadar süt ekle.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Krema ekleme, Strawless kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "milk + espresso + Bombty latte tozu + beyaz çikolata",
+          "steps": [
+            "Bardağa 1.5 pump beyaz çikolata ve 2 ölçek Bombty latte tozu koy.",
+            "Üzerine double more espresso ekle ve karıştır.",
+            "Milk çizgisine kadar süt ekle.",
+            "Sunum çizgisine kadar buz ekle.",
+            "Krema ekleme, Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 7,
+      "code": "Pecan Nutty Latte",
+      "name_tr": "Iced Pecan Nutty Latte",
+      "name_en": "Iced Pecan Nutty Latte",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "milk + espresso + pecan şurup + krema",
+          "steps": [
+            "Bardağa 3 pump pecan şurup ekle.",
+            "Boğum çizgisine kadar süt ekle.",
+            "Üzerine single more espresso ekle ve karıştır.",
+            "Milk çizgisine kadar süt, ardından sunum çizgisine kadar buz ekle.",
+            "3,5 numaraya kadar krema sık ve pecan şurup ile süsle.",
+            "Bombe kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "milk + espresso + pecan şurup + krema",
+          "steps": [
+            "Bardağa 4 pump pecan şurup ekle.",
+            "Boğum çizgisine kadar süt ekle.",
+            "Üzerine double more espresso ekle ve karıştır.",
+            "Milk çizgisine kadar süt, ardından sunum çizgisine kadar buz ekle.",
+            "3,5 numaraya kadar krema sık ve pecan şurup ile süsle.",
+            "Bombe kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 8,
+      "code": "PB",
+      "name_tr": "Iced Power Brown",
+      "name_en": "Iced Power Brown",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "milk + espresso + Bombty latte tozu + tarçın + karamel",
+          "steps": [
+            "Bardağa 1 pump tarçın ve 2 pump karamel ekle.",
+            "1 ölçek Bombty latte tozu ekle.",
+            "Üzerine single more espresso dök ve karıştır.",
+            "Milk çizgisine kadar süt ekle, sonra sunum çizgisine kadar buz ekle.",
+            "Krema ekleme, Strawless kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "milk + espresso + Bombty latte tozu + tarçın + karamel",
+          "steps": [
+            "Bardağa 1 pump tarçın ve 3 pump karamel ekle.",
+            "2 ölçek Bombty latte tozu ekle.",
+            "Üzerine double more espresso dök ve karıştır.",
+            "Milk çizgisine kadar süt ekle, sonra sunum çizgisine kadar buz ekle.",
+            "Krema ekleme, Strawless kapakla servis et."
+          ]
+        }
+      }
+    },
+    {
+      "no": 9,
+      "code": "CB",
+      "name_tr": "Iced Chocobianco",
+      "name_en": "Iced Chocobianco",
+      "coffee_free": false,
+      "sizes": {
+        "massivo": {
+          "base": "milk + espresso + beyaz çikolata + krema",
+          "steps": [
+            "Bardağa 1.5 pump beyaz çikolata ekle.",
+            "Üzerine single more espresso ekle ve karıştır.",
+            "Milk çizgisine kadar süt ekle, ardından sunum çizgisine kadar buz ekle.",
+            "3,5 numaraya kadar krema sık ve beyaz çikolata parçaları serpiştir.",
+            "Bombe kapakla servis et."
+          ]
+        },
+        "long_diva": {
+          "base": "milk + espresso + beyaz çikolata + krema",
+          "steps": [
+            "Bardağa 2 pump beyaz çikolata ekle.",
+            "Üzerine double more espresso ekle ve karıştır.",
+            "Milk çizgisine kadar süt ekle, ardından sunum çizgisine kadar buz ekle.",
+            "3,5 numaraya kadar krema sık ve beyaz çikolata parçaları serpiştir.",
+            "Bombe kapakla servis et."
+          ]
+        }
+      }
+    }
+  ]
+}

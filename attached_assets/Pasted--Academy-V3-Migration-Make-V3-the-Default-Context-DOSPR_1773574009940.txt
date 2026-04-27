@@ -1,0 +1,113 @@
+# Academy V3 Migration — Make V3 the Default
+
+## Context
+DOSPRESSO franchise platform. Stack: React 18 + TypeScript, Wouter routing.
+Academy V3 is fully built and tested at `/akademi-v3`.
+The old academy (`AkademiMegaModule`) is still at `/akademi`.
+Goal: Make V3 the default `/akademi` experience with zero data loss.
+
+Do NOT touch: backend APIs, database, auth system, any non-academy files.
+
+---
+
+## Current State (App.tsx ~line 348-349)
+
+```tsx
+<Route path="/akademi-v3/*?" component={AkademiV3} />
+<Route path="/akademi/*?" component={AkademiMegaModule} />
+```
+
+---
+
+## TASK 1 — Swap Routes in App.tsx
+
+**File:** `client/src/App.tsx`
+
+Change the route assignment so V3 becomes the default:
+
+```tsx
+// After change:
+<Route path="/akademi/*?" component={AkademiV3} />
+<Route path="/akademi-legacy/*?" component={AkademiMegaModule} />
+```
+
+- `/akademi` → AkademiV3 (new default)
+- `/akademi-legacy` → AkademiMegaModule (kept for fallback, not deleted)
+- `/akademi-v3` route can be removed or kept as alias — keep it as alias for now
+
+So final state:
+```tsx
+<Route path="/akademi/*?" component={AkademiV3} />
+<Route path="/akademi-v3/*?" component={AkademiV3} />
+<Route path="/akademi-legacy/*?" component={AkademiMegaModule} />
+```
+
+---
+
+## TASK 2 — Update Internal Links
+
+Search the entire codebase for any hardcoded links to `/akademi-v3` 
+that should now point to `/akademi`:
+
+```bash
+grep -r "akademi-v3" client/src --include="*.tsx" --include="*.ts" -l
+```
+
+For each file found:
+- If it's a navigation link pointing users to the academy → change `/akademi-v3` to `/akademi`
+- If it's a Route definition in App.tsx → keep as alias (already handled in Task 1)
+- If it's a comment or documentation → leave as-is
+
+---
+
+## TASK 3 — Update navigation-config.ts
+
+**File:** `client/src/lib/navigation-config.ts`
+
+Find the Akademi nav item. It may currently point to `/akademi-v3` or `/akademi`.
+Ensure it points to `/akademi`:
+
+```typescript
+{ key: 'akademi', icon: 'GraduationCap', label: 'Akademi', path: '/akademi', badge: true },
+```
+
+---
+
+## TASK 4 — Update NavRail if needed
+
+**File:** `client/src/components/nav-rail.tsx`
+
+Check if the Akademi path in the rail is `/akademi-v3`. 
+If so, update to `/akademi`.
+
+---
+
+## TASK 5 — Verify No Broken References
+
+After the route swap, check these:
+
+1. Does `AkademiMegaModule` have any internal links that assume it lives at `/akademi`?
+   - If yes, update those internal links to `/akademi-legacy`
+   - Search: `grep -r "href.*akademi\b\|path.*akademi\b\|to.*akademi\b" client/src/pages/akademi-mega --include="*.tsx"`
+
+2. Do any bottom nav items point to `/akademi-v3`?
+   - Check `bottom-nav.tsx` for akademi path
+   - Update to `/akademi` if needed
+
+3. Do any role-route definitions point to `/akademi-v3`?
+   - Check `client/src/lib/role-routes.ts`
+   - Update to `/akademi` if needed
+
+---
+
+## Verification Checklist
+
+- [ ] `/akademi` route renders AkademiV3 component
+- [ ] `/akademi-v3` route still works as alias (renders AkademiV3)
+- [ ] `/akademi-legacy` route renders AkademiMegaModule (fallback preserved)
+- [ ] NavRail akademi icon navigates to `/akademi`
+- [ ] Bottom nav akademi item navigates to `/akademi`
+- [ ] No 404 errors when navigating to `/akademi`
+- [ ] TypeScript has no new errors
+- [ ] App starts successfully
+- [ ] Old AkademiMegaModule component is NOT deleted (kept at /akademi-legacy)

@@ -1,0 +1,226 @@
+═══════════════════════════════════════════════════════════════════
+DOSPRESSO — Şube + Personel + Görev Sistemi Denetim Raporu
+Talep eden: Aslan + Claude
+Amaç: Kiosk dashboard yeniden tasarımı için mevcut veri+sistem fotoğrafı
+Kapsam: Sadece okuma + rapor. HİÇBİR değişiklik yapma.
+═══════════════════════════════════════════════════════════════════
+
+Aşağıdaki 7 bölümde somut sayılar + SQL bulgularıyla rapor ver.
+Markdown tablo formatı, maksimum 2-3 sayfa özet.
+
+─── BÖLÜM 1: ŞUBELER ENVANTERİ ───
+
+Tablo: branches (tüm alanlarla)
+SQL:
+SELECT id, name, is_active, 
+       (SELECT COUNT(*) FROM users WHERE branch_id = b.id AND is_active = true) as active_users,
+       created_at
+FROM branches b
+ORDER BY id;
+
+SORULAR:
+- Kaç aktif şube var? Kaç pasif?
+- Pilot 4 lokasyon (Işıklar 5, Lara 8, HQ 23, Fabrika 24) hepsi aktif mi?
+- Test/örnek şubeler var mı (isim listesini ver)?
+- Eksik/hatalı isim var mı (ör: "Antalya Mallof")?
+
+─── BÖLÜM 2: PERSONEL DAĞILIMI ───
+
+SQL:
+SELECT 
+  b.name as branch,
+  u.role,
+  COUNT(*) as count,
+  COUNT(*) FILTER (WHERE u.is_active = true) as active,
+  COUNT(*) FILTER (WHERE u.account_status = 'approved') as approved
+FROM users u
+LEFT JOIN branches b ON b.id = u.branch_id
+GROUP BY b.name, u.role
+ORDER BY b.name, u.role;
+
+SORULAR:
+- Toplam kaç aktif kullanıcı? Pilot 4 lokasyonda kaç kullanıcı?
+- Her şubede hangi roller var, sayıları?
+- Account_status 'pending' olan var mı (onay bekleyen)?
+- Branch_id NULL olan (şubesiz) kullanıcı var mı?
+- Role dağılımı mantıklı mı (örn: her şubede 1 müdür olmalı)?
+
+─── BÖLÜM 3: ŞUBE GÖREV SİSTEMİ (CLAIM/HAVUZ) ───
+
+Tablolar: branch_task_categories, branch_recurring_tasks, 
+         branch_task_instances, branchRecurringTaskOverrides
+
+SQL:
+-- Kategoriler
+SELECT id, name, is_active FROM branch_task_categories ORDER BY id;
+
+-- Aktif recurring tasks (şablon)
+SELECT 
+  rt.id, rt.name, rt.frequency, rt.category_id,
+  bc.name as category,
+  COUNT(ti.id) as instance_count_30d
+FROM branch_recurring_tasks rt
+LEFT JOIN branch_task_categories bc ON bc.id = rt.category_id  
+LEFT JOIN branch_task_instances ti ON ti.recurring_task_id = rt.id 
+  AND ti.created_at > NOW() - INTERVAL '30 days'
+WHERE rt.is_active = true
+GROUP BY rt.id, bc.name
+ORDER BY rt.frequency, rt.name;
+
+-- Son 7 gün claim istatistiği
+SELECT 
+  COUNT(*) as toplam,
+  COUNT(*) FILTER (WHERE claimed_by IS NOT NULL) as claim_edilen,
+  COUNT(*) FILTER (WHERE completed_at IS NOT NULL) as tamamlanan,
+  COUNT(*) FILTER (WHERE claimed_by IS NULL AND completed_at IS NULL) as havuzda_bekleyen
+FROM branch_task_instances
+WHERE created_at > NOW() - INTERVAL '7 days';
+
+SORULAR:
+- Şube görevi claim sistemi GERÇEKTEN kullanılıyor mu (son 7 günde)?
+- Kaç farklı görev şablonu var? (günlük/haftalık/aylık dağılımı)
+- Havuzda bekleyen (claim edilmemiş) görev oranı nedir?
+- En çok hangi kategoride görev var?
+
+─── BÖLÜM 4: KİŞİSEL GÖREVLER (ATANAN) ───
+
+Tablolar: shiftTasks, roleTaskTemplates, roleTaskCompletions, 
+         eventTriggeredTasks, checklists
+
+SQL:
+-- Vardiya görevleri
+SELECT 
+  COUNT(*) as total,
+  COUNT(*) FILTER (WHERE status = 'completed') as completed,
+  COUNT(*) FILTER (WHERE status = 'pending') as pending,
+  COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress
+FROM shift_tasks
+WHERE created_at > NOW() - INTERVAL '7 days';
+
+-- Rol bazlı görev şablonları
+SELECT role, COUNT(*) as template_count 
+FROM role_task_templates 
+WHERE is_active = true 
+GROUP BY role 
+ORDER BY template_count DESC;
+
+-- Checklist kullanımı
+SELECT 
+  c.title,
+  c.branch_id,
+  b.name as branch_name,
+  COUNT(cc.id) as completion_count_7d
+FROM checklists c
+LEFT JOIN branches b ON b.id = c.branch_id
+LEFT JOIN checklist_completions cc ON cc.checklist_id = c.id 
+  AND cc.completed_at > NOW() - INTERVAL '7 days'
+WHERE c.is_active = true
+GROUP BY c.id, b.name
+ORDER BY completion_count_7d DESC
+LIMIT 20;
+
+SORULAR:
+- Shift_tasks kullanılıyor mu? Günlük ortalama kaç görev?
+- Role task templates hangi rollerde var, hangi rollerde yok?
+- Checklist'ler hangi şubelerde aktif?
+- 4 ayrı görev sistemi (shift_tasks, branch_tasks, role_tasks, checklists) 
+  birbiriyle nasıl ilişkili? Kopuk mu, entegre mi?
+
+─── BÖLÜM 5: KİOSK KULLANIMI (ŞUAN) ───
+
+SQL:
+-- Kiosk giriş/çıkış
+SELECT 
+  b.name as branch,
+  DATE(sa.check_in_time) as date,
+  COUNT(*) as giris_sayisi,
+  COUNT(DISTINCT sa.user_id) as farkli_kullanici
+FROM shift_attendance sa
+JOIN branches b ON b.id = sa.branch_id
+WHERE sa.source IN ('kiosk', 'hq_kiosk', 'factory_kiosk')
+  AND sa.check_in_time > NOW() - INTERVAL '14 days'
+GROUP BY b.name, DATE(sa.check_in_time)
+ORDER BY date DESC, giris_sayisi DESC
+LIMIT 30;
+
+-- Quiz zorunluluğu
+SELECT 
+  a.id, a.title, a.has_quiz, a.is_mandatory, a.audience,
+  COUNT(aq.id) as question_count,
+  COUNT(DISTINCT aack.user_id) as acknowledged_users
+FROM announcements a
+LEFT JOIN announcement_quiz_questions aq ON aq.announcement_id = a.id
+LEFT JOIN announcement_acknowledgments aack ON aack.announcement_id = a.id
+WHERE a.is_active = true
+GROUP BY a.id
+ORDER BY a.created_at DESC
+LIMIT 20;
+
+SORULAR:
+- Kiosk son 14 günde hangi şubelerde kullanılıyor?
+- Günlük ortalama kaç giriş/çıkış?
+- Aktif zorunlu quiz'li duyuru sayısı nedir?
+- Hangi duyurular "test/taslak" (pilot öncesi temizlenmeli)?
+
+─── BÖLÜM 6: SKOR VE İNİSİYATİF SİSTEMİ ───
+
+SQL:
+-- Branch-tasks score endpoint'i hangi tabloyu kullanıyor?
+-- Schema ve mevcut veriyi bul
+\d branch_task_instances
+\d users
+-- skor ile ilgili kolonlar/tablolar var mı?
+SELECT table_name, column_name 
+FROM information_schema.columns 
+WHERE column_name ILIKE '%score%' 
+   OR column_name ILIKE '%skor%'
+   OR column_name ILIKE '%initiative%'
+   OR column_name ILIKE '%inisiyatif%'
+ORDER BY table_name;
+
+-- Son 30 günde personel skoru
+-- (branch-tasks.ts'te /api/branch-tasks/score endpoint'inin mantığını bak)
+
+SORULAR:
+- İnisiyatif/skor tablosu gerçekten var mı, yoksa sadece endpoint mi?
+- Claim + complete sayısından dinamik mi hesaplanıyor?
+- Leaderboard mevcut mu (en çok iş üstlenen)?
+- Skor kullanıcı görebilir mi, sadece yönetici mi?
+
+─── BÖLÜM 7: EKSİKLER + SORUN RAPORU ───
+
+Sen Replit olarak kod + DB yakınlığından:
+
+1. ŞUBE GÖREVLERİ SİSTEMİNDE SORUN VAR MI?
+   - Scheduler çalışıyor mu (günlük task üretim)?
+   - Ölü endpoint var mı?
+   - UI'dan yazılmayan ama DB'de olan alanlar?
+
+2. PERSONEL DAĞILIMINDA TUTARSIZLIK?
+   - Hangi şubede kritik eksik var (müdür yok, supervisor yok)?
+   - Pilot 4 lokasyon için yeterli personel var mı?
+
+3. QUIZ SİSTEMİNİN KIOSK'TAN ÇIKARILMASI
+   - Hangi dosyalar/endpoint'ler quiz'i kiosk'ta zorluyor?
+   - Kaldırmak için minimum değişiklik hangi satırlarda?
+
+4. KISOK YENİDEN TASARIMI İÇİN HAZIR VERİLER
+   - branch-tasks/kiosk endpoint'leri çalışıyor mu?
+   - Frontend (pages/sube/kiosk.tsx) bunları kullanıyor mu?
+   - "Telefonundan oku" akışı için benim-gunum.tsx hazır mı?
+
+═══════════════════════════════════════════════════════════════════
+ÇIKTI FORMATI
+═══════════════════════════════════════════════════════════════════
+
+- Dosya: docs/sistem-denetim/subeler-personeller-gorevler-raporu.md
+- Max 3 sayfa, markdown tablo + madde madde
+- Her bölüm sonunda "KEŞIF" + "ÖNERİ" kutusu
+- Rakamlar + gerçek veriler (tahmin yok)
+- En son "TASARIM İÇİN 5 ÖNCELIK" listesi
+
+COMMİT MESAJI: 
+docs(denetim): Şube+personel+görev sistemi raporu (kiosk redesign öncesi)
+
+SÜRE TAHMİNİ: ~30-45 dk (sadece okuma + rapor)
+COST: Sınırlı tut, sadece bu 7 bölüm. Ekstra analiz YOK.

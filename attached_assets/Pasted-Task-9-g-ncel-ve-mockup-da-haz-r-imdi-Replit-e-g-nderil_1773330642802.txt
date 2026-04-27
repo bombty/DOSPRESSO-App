@@ -1,0 +1,148 @@
+Task #9 güncel ve mockup da hazır. Şimdi Replit'e gönderilecek **eksiksiz build prompt**'u yazıyorum — hem bug fix hem Phase 1 birleştirerek:
+
+---
+
+## 🚀 Replit'e Gönderilecek Prompt
+
+### ÖNCE — Bug Fix (5 dakika, ayrı gönder)
+
+```
+Two quick bug fixes only. Do NOT start Sprint 30C yet.
+
+FIX 1: client/src/pages/academy-my-path.tsx
+Find the empty state that renders "Tebrikler! Tüm adımlarınızı tamamladınız."
+Only show this message when user is at career level 5 (supervisor).
+If actions array is empty and user is NOT at max level, show:
+  - Title: "Kariyer yolunuz henüz başlatılmamış"
+  - Subtitle: "Mentorunuz sizi sisteme ekledikten sonra kariyer 
+    hedeflerin burada görünecek."
+  - Use a 🗺️ or road icon, NOT a green checkmark
+
+FIX 2: client/src/pages/akademi-mega.tsx (AI Kanıt tab)
+Find the "Detayları Gör" button in NBA actions list.
+Change navigation logic:
+  - If action.deepLink exists → navigate to that deepLink
+  - If no deepLink → open a bottom sheet/modal showing action 
+    title + description. Do NOT navigate to /akademi?tab=my-path
+
+Report: exact line numbers changed in each file.
+```
+
+---
+
+### SONRA — Sprint 30C Phase 1 + Phase 2
+
+```
+Sprint 30C — Phase 1 and Phase 2 implementation.
+Use the React mockup in attached_assets/ as the design reference.
+The mockup shows: dark/light theme, 4 tabs, circular progress, 
+module thumbnails with emoji+gradient, career timeline, gate grid.
+
+IMPORTANT DESIGN ADDITION (not in original task #9):
+The app must respect the device system theme (dark/light mode).
+Use CSS prefers-color-scheme or pass a isDark prop derived from
+window.matchMedia("(prefers-color-scheme: dark)") at the root level.
+All color values must use theme-aware CSS variables or conditional values.
+This applies to ALL new files created in this sprint.
+
+--- PHASE 1: DATABASE ---
+
+Task 1: Add 2 columns to training_modules table:
+  - is_mandatory: boolean, NOT NULL, default false
+  - deadline_days: integer, nullable
+
+Task 2: Standardize training_modules.category with UPDATE statements:
+  - 'barista', 'barista_basics', 'barista temelleri' → 'barista_temelleri'
+  - 'bar buddy', 'bar_buddy' → 'bar_buddy'
+  - 'supervisor', 'supervisor_buddy' → 'supervisor'
+  - 'stajyer' → 'stajyer'
+  - 'gida_guvenligi', 'food_safety', 'hijyen', 'hygiene',
+    'uretim_hijyen', 'is_guvenligi' → 'hijyen_guvenlik'
+  - 'ekipman', 'ekipman_kullanim', 'equipment' → 'ekipman'
+  - 'mesleki_gelisim', 'management', 'soft-skills',
+    'leadership', 'yonetim' → 'yonetim'
+  - 'customer_service', 'musteri_hizmetleri' → 'musteri_iliskileri'
+  - NULL or anything unmatched → 'genel'
+
+Task 3: Create webinars table:
+  id (serial PK), title (text, not null), description (text),
+  host_name (text), host_user_id (varchar FK users.id, nullable),
+  webinar_date (timestamp, not null), duration_minutes (integer),
+  meeting_link (text), target_roles (text[]), is_live (boolean, default false),
+  status (text, default 'scheduled' — values: scheduled/live/completed/cancelled),
+  branch_id (integer FK branches.id, nullable),
+  max_participants (integer), created_by (varchar FK users.id),
+  created_at (timestamp, default now()), updated_at (timestamp, default now())
+
+Task 4: Create webinar_registrations table:
+  id (serial PK), webinar_id (integer FK webinars.id, not null),
+  user_id (varchar FK users.id, not null), registered_at (timestamp, default now()),
+  attended (boolean, default false),
+  UNIQUE constraint on (webinar_id, user_id)
+
+Task 5: Seed 3 webinars (status: scheduled, target_roles: all roles array):
+  1. "Yeni Ürün Tanıtımı: Berry Serisi" — 3 days from now, 60 min
+  2. "KVKK Güncellemesi" — 8 days from now, 45 min
+  3. "Q1 Değerlendirme" — 16 days from now, 90 min
+
+After Phase 1, report:
+  - Row count per category after UPDATE
+  - Confirm webinars + webinar_registrations tables created
+  - Show 3 seeded webinar titles and dates
+
+--- PHASE 2: BACKEND ---
+
+Task 6: Create server/routes/academy-v3.ts
+Register it in server/routes.ts at prefix /api/v3/academy
+DO NOT touch server/routes/academy.ts or academy-v2.ts
+
+Task 7: GET /api/v3/academy/home-data
+Use Promise.all for parallel queries:
+  - career: query user_career_progress + career_levels for current user
+    If no record exists, return { currentLevel: null, compositeScore: null }
+    Do NOT auto-create records. Do NOT return fake "completed" state.
+  - mandatoryModules: top 5 from training_modules where is_mandatory=true,
+    LEFT JOIN user_training_progress for this user (progress, status)
+  - onboardingStatus: only if role in ['stajyer','bar_buddy'] —
+    query onboarding assignment for this user
+  - teamSummary: only if role in ['supervisor','mudur','supervisor_buddy'] —
+    count of team members + average compositeScore
+  - upcomingWebinars: top 3 from webinars where webinar_date > now()
+    AND (target_roles @> ARRAY[userRole] OR target_roles = '{}')
+    LEFT JOIN webinar_registrations to get isRegistered for this user
+Return shape:
+  { career, mandatoryModules, onboardingStatus, teamSummary, upcomingWebinars }
+
+Task 8: GET /api/v3/academy/modules
+Query params: category (string), mandatory (boolean), search (string)
+JOIN user_training_progress for progress/status
+Return: array of modules with { id, title, category, is_mandatory,
+  deadline_days, duration_minutes, thumbnail_url, progress, status }
+
+Task 9: Webinar endpoints:
+  GET /api/v3/academy/webinars — list with role filter + isRegistered JOIN
+    query params: status (scheduled/live/completed), limit (default 20)
+  POST /api/v3/academy/webinars — HQ roles only (admin,ceo,cgo,coach,trainer)
+  PATCH /api/v3/academy/webinars/:id — HQ roles only
+  POST /api/v3/academy/webinars/:id/register — any authenticated user
+    insert into webinar_registrations, 409 if already registered
+  DELETE /api/v3/academy/webinars/:id/register — any authenticated user
+    delete from webinar_registrations
+
+After Phase 2, report:
+  - List all new endpoints with their HTTP methods
+  - Confirm academy-v3.ts is registered in routes.ts
+  - Confirm no changes made to academy.ts or academy-v2.ts
+
+Do NOT start Phase 3 (frontend) until Phase 2 is confirmed.
+```
+
+---
+
+## 📌 Sıra Önerisi
+
+1. Bug fix promptunu gönder → onayla
+2. Phase 1+2 promptunu gönder → raporu bekle
+3. Rapor gelince Phase 3 promptunu yazacağım (mockup'taki tasarımı referans alarak)
+
+Phase 3'te yeni mockup dosyasını da `attached_assets/` klasörüne eklemen gerekecek — bunu Replit'e nasıl yükleyeceğini biliyor musun? 🎯

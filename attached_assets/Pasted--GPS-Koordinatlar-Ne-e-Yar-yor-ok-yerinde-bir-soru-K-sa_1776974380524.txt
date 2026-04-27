@@ -1,0 +1,64 @@
+🎯 GPS Koordinatları — Ne İşe Yarıyor?
+Çok yerinde bir soru. Kısaca açıklayayım:
+
+📍 Amaç: Tablet GPS ile Vardiya Doğrulama
+Senaryo:
+	•	Barista sabah 08:00’da şubeye gelir
+	•	Kiosk tablete PIN’ini girer, “Vardiya Başlat” butonuna basar
+	•	Tablet’in GPS’i kendi konumunu ölçer
+	•	Sistem karşılaştırır: “Tabletin konumu şubenin koordinatına yakın mı?”
+	•	≤ 50 metre ise ✅ vardiya başlar (is_location_verified = true)
+	•	50 metre ise ⚠️ vardiya yine başlar ama “konum doğrulanmadı” notu düşer
+Yani: Barista evden uzaktan kendini “vardiyaya başlattı” gösteremez.
+
+🔢 Gerçek Sayılar
+
+shift_corner_latitude = 36.8969   -- Şubenin enlem konumu
+shift_corner_longitude = 30.7133  -- Şubenin boylam konumu
+geo_radius = 50                    -- Metre (hoşgörü mesafesi)
+
+
+Kod haversine formülü ile mesafe hesaplıyor:
+
+mesafe = haversine(tablet_lat, tablet_lng, sube_lat, sube_lng)
+if mesafe <= 50 meters: konum_dogrulandi = true
+
+
+🤔 Peki Pilot İçin ŞART mı?
+Dürüst cevap: HAYIR, pilot için kritik değil.
+Şu an DB’de 4 koordinat NULL. Kod bunu zaten permissive (izin verici) şekilde işliyor:
+
+// Mevcut kod davranışı:
+if (branch && branch.shiftCornerLatitude && branch.shiftCornerLongitude) {
+  // Varsa hesapla
+} else {
+  // Yoksa sessizce atla → vardiya yine başlar
+}
+
+
+Yani koordinat NULL ise vardiya açılır, sadece is_location_verified = false kaydedilir.
+
+🎯 Üç Seçenek Var
+Seçenek A: Şimdi Gir (önerilen, 15 dk)
+Faydaları:
+	•	Pilot tam teşekküllü başlar, gerçek GPS logları biriker
+	•	28 Nis Day-1 raporunda “konum doğrulama %95” diyebiliriz
+	•	Kullanıcılar baştan doğru alışkanlık kazanır
+Dezavantajı: 15 dakikan gidiyor.
+Seçenek B: Pilot Sonrası Gir (2 hafta sonra)
+Faydaları:
+	•	Pilot başlar, öğrendiklerimize göre radius ayarlayabiliriz (50m yeterli mi? 100m mi?)
+	•	Bir şey bozulmaz
+Dezavantajı: İlk hafta veri raporlarında “konum: N/A” görünür.
+Seçenek C: Hiç Girme (önerilmez)
+Dezavantajı: Barista evden vardiya başlatabilir, suistimal riski var. Ama S-GPS sprint’i ile supervisor PIN ile manuel override zaten var — yani fallback hazır.
+
+💡 Benim Önerim
+Seçenek A — çünkü:
+	1.	15 dakikalık iş — sen Google Maps’te 4 lokasyon bul, koordinatları bana yaz, Replit SQL çalıştırsın
+	2.	Pilot dataset’i temiz başlar — sonradan “koordinat NULL iken başlatılmış vardiyalar” anomalisi çıkmaz
+	3.	Raporlamada profesyonel — yatırımcıya sunum yaparsan “konum doğrulama aktif” demek güzel
+	4.	GPS fallback de var — GPS izin vermezse (tablet sorunu) supervisor PIN yine kurtarır
+Ama kritik değil. Eğer başka daha önemli işlerin varsa bu pilot sonrasına kalabilir.
+
+Karar bekliyorum. ☕​​​​​​​​​​​​​​​​

@@ -1,0 +1,487 @@
+# MEGA SPRİNT 1: YETKİ + TEMEL FIX
+# Tahmini süre: 4 saat | Öncelik: ACİL | Değişiklik SONRASI test zorunlu
+
+**KURAL: Her adımı sırayla yap. Bir adımı bitirmeden diğerine geçme. Her adım sonunda mini test yap.**
+
+---
+
+## ADIM 1: canViewSalary Bug Fix (15 dk)
+
+**Sorun:** hr.ts satır ~4560 civarı — canViewSalary() fonksiyonu CEO, CGO, Muhasebe_IK rollerini reddediyor. Sadece admin ve muhasebe true dönüyor.
+
+**Bul ve düzelt:**
+
+```bash
+echo "=== canViewSalary mevcut durumu ==="
+grep -n "canViewSalary" server/routes/hr.ts | head -10
+echo ""
+echo "--- Fonksiyon içeriği ---"
+grep -A20 "const canViewSalary" server/routes/hr.ts
+```
+
+**Düzeltme kuralı:**
+- CEO → tüm maaşları görebilmeli (return true)
+- CGO → tüm maaşları görebilmeli (return true)  
+- Muhasebe_IK → tüm maaşları görebilmeli (return true)
+- Coach → SADECE şube personeli maaşını görebilmeli (HQ personeli göremez)
+- Trainer → HİÇBİR maaş göremez
+- Yatırımcı → SADECE kendi şubesi maaşını görebilmeli
+- Admin + Muhasebe → her şeyi görebilir (mevcut — dokunma)
+
+**Önerilen implementasyon:**
+```typescript
+const canViewSalary = (viewerRole: string, targetUserId: string, viewerUserId: string, viewerBranchId: number | null, targetBranchId: number | null): boolean => {
+    // Tam erişim: admin, muhasebe, ceo, cgo, muhasebe_ik
+    if (['admin', 'muhasebe', 'ceo', 'cgo', 'muhasebe_ik'].includes(viewerRole)) return true;
+    
+    // Coach: sadece şube personeli (HQ personeli hariç)
+    if (viewerRole === 'coach') {
+        return targetBranchId !== null; // HQ (null branch) personeli göremez
+    }
+    
+    // Yatırımcı: sadece kendi şubesi
+    if (viewerRole === 'yatirimci_branch') {
+        return viewerBranchId === targetBranchId;
+    }
+    
+    // Kendi maaşını herkes görebilir
+    if (viewerUserId === targetUserId) return true;
+    
+    // Diğer herkes: göremez
+    return false;
+};
+```
+
+**Test:**
+```bash
+echo "=== canViewSalary TEST ==="
+# CEO bordro sayfasını açabiliyor mu?
+curl -s -b /tmp/ceo_cookie http://localhost:5000/api/salary/employees 2>/dev/null | head -5
+echo ""
+echo "Düzeltme sonrası CEO, CGO, Muhasebe_IK true dönmeli"
+```
+
+---
+
+## ADIM 2: factory_production Actions Fix (5 dk)
+
+**Sorun:** role_module_permissions tablosunda fabrika_operator'ün factory_production modülü actions = {} (boş). Operatör web arayüzünden üretim sayfasını göremiyor.
+
+```sql
+-- Mevcut durumu kontrol et
+SELECT role, module, actions FROM role_module_permissions 
+WHERE module = 'factory_production' AND role IN ('fabrika_operator', 'fabrika_mudur', 'fabrika_sorumlu', 'fabrika_personel')
+ORDER BY role;
+
+-- Düzelt
+UPDATE role_module_permissions 
+SET actions = '{"view","create"}'::text[]
+WHERE module = 'factory_production' AND role = 'fabrika_operator';
+
+UPDATE role_module_permissions 
+SET actions = '{"view","create","edit"}'::text[]
+WHERE module = 'factory_production' AND role IN ('fabrika_mudur', 'fabrika_sorumlo');
+
+-- Doğrula
+SELECT role, module, actions FROM role_module_permissions 
+WHERE module = 'factory_production'
+ORDER BY role;
+```
+
+**Test:** Fabrika operatörü web'den /fabrika sayfasını açınca üretim verilerini görebilmeli.
+
+---
+
+## ADIM 3: HQ_ROLES Konsolidasyonu (30 dk)
+
+**Sorun:** Aynı HQ_ROLES sabiti 5 farklı dosyada 5 farklı şekilde tanımlı. Trainer bazı listelerde yok.
+
+### 3A: Merkezi tanım oluştur
+
+`server/routes/helpers.ts` dosyasına ekle (zaten bu dosya helpers.ts var — responseCache, ensurePermission vb. burada):
+
+```typescript
+/**
+ * HQ rolleri — şubeye bağlı olmayan, merkez ofis rolleri.
+ * TÜM dosyalar bu tek tanımı import etmeli.
+ */
+export const HQ_ROLES = [
+  'admin', 'ceo', 'cgo', 'coach', 'trainer',
+  'muhasebe_ik', 'satinalma', 'marketing',
+  'kalite_kontrol', 'gida_muhendisi', 'fabrika_mudur',
+  'yatirimci_hq'
+] as const;
+
+export type HQRole = typeof HQ_ROLES[number];
+
+/** HQ rolü mü kontrolü */
+export const isHQRole = (role: string): boolean => HQ_ROLES.includes(role as HQRole);
+```
+
+### 3B: Tüm dosyalarda güncelle
+
+Bu dosyalardaki yerel HQ_ROLES tanımlarını bul ve helpers.ts'den import ile değiştir:
+
+```bash
+echo "=== HQ_ROLES tanımlı olan dosyalar ==="
+grep -rn "HQ_ROLES\s*=" server/routes/ --include="*.ts" | grep -v node_modules
+grep -rn "const HQ_ROLES" server/routes/ --include="*.ts"
+grep -rn "const HQ_ROLES" server/services/ --include="*.ts"
+```
+
+**Her dosya için:**
+1. Yerel `const HQ_ROLES = [...]` tanımını SİL
+2. Dosyanın başına `import { HQ_ROLES } from './helpers';` ekle (path'i ayarla)
+3. Fonksiyonalite değişmemeli — sadece kaynak tek noktaya taşınıyor
+
+**Önemli:** academy.ts'deki HQ_ROLES'a trainer EKSİK — konsolidasyon sonrası otomatik düzelecek.
+
+**Test:**
+```bash
+echo "=== Konsolidasyon sonrası kontrol ==="
+echo "--- Yerel HQ_ROLES tanımı kalmadı mı? ---"
+grep -rn "const HQ_ROLES\s*=" server/routes/ --include="*.ts" | grep -v helpers.ts
+# Sonuç BOŞ olmalı (sadece helpers.ts'de tanımlı)
+
+echo ""
+echo "--- helpers.ts'den import eden dosyalar ---"
+grep -rn "import.*HQ_ROLES.*from" server/ --include="*.ts" | grep -v node_modules
+# En az 5 dosya import etmeli
+```
+
+---
+
+## ADIM 4: Trainer Eksik Modüller (30 dk)
+
+**Sorun:** Trainer, Coach'un erişebildiği modüllerin %67'sine erişemiyor. academy.ts HQ_ROLES'ta trainer yoktu (Adım 3 ile düzeldi). Ama role_module_permissions'da da eksikler olabilir.
+
+```bash
+echo "=== Coach vs Trainer modül karşılaştırması ==="
+echo "
+SELECT 'coach_only' as status, module, actions 
+FROM role_module_permissions 
+WHERE role = 'coach' 
+AND module NOT IN (SELECT module FROM role_module_permissions WHERE role = 'trainer')
+ORDER BY module;
+" | psql
+
+echo ""
+echo "--- Trainer'ın mevcut modül sayısı ---"
+echo "SELECT COUNT(*) FROM role_module_permissions WHERE role = 'trainer';" | psql
+
+echo ""
+echo "--- Coach'un mevcut modül sayısı ---"
+echo "SELECT COUNT(*) FROM role_module_permissions WHERE role = 'coach';" | psql
+```
+
+**Düzeltme kuralı:**
+Trainer'ın erişmesi gereken modüller (Coach ile aynı olmalı, şunlar HARİÇ):
+- `accounting` → Trainer maaş GÖREMEMELİ
+- `admin` → Trainer admin paneline GİREMEMELİ
+- Finans/bordro → Trainer erişmemeli
+
+Trainer'ın KESİNLİKLE erişmesi gerekenler:
+- `akademi` + tüm alt modülleri (trainer'ın asıl işi!)
+- `gorevler`, `checklist` (şube operasyonu izleme)
+- `raporlar` (performans takibi)
+- `denetim` (kalite denetimi)
+- `ekipman` (ekipman izleme)
+- `iletisim_merkezi` (iletişim)
+- `dobody`, `dobody.bildirim` (Mr. Dobody)
+
+```sql
+-- Trainer'a eksik modülleri ekle (Coach'ta olup Trainer'da olmayanlar)
+-- Finans/bordro/admin hariç
+INSERT INTO role_module_permissions (role, module, actions)
+SELECT 'trainer', module, actions
+FROM role_module_permissions
+WHERE role = 'coach'
+AND module NOT IN (SELECT module FROM role_module_permissions WHERE role = 'trainer')
+AND module NOT IN ('accounting', 'admin', 'bordro', 'finans')
+ON CONFLICT (role, module) DO NOTHING;
+
+-- Doğrula
+SELECT COUNT(*) as trainer_modules FROM role_module_permissions WHERE role = 'trainer';
+SELECT COUNT(*) as coach_modules FROM role_module_permissions WHERE role = 'coach';
+```
+
+---
+
+## ADIM 5: 17 Rol İçin Grant Oluşturma (1.5 saat)
+
+**Sorun:** 17 rolün hiç granüler grant kaydı yok — permission_actions tablosunda tanımlı 53 aksiyon var ama bu roller hiçbirini almamış.
+
+### 5A: Mevcut grant'ları incele
+
+```bash
+echo "=== Mevcut grant dağılımı ==="
+echo "
+SELECT rp.role, COUNT(*) as grant_count 
+FROM role_permission_grants rp 
+GROUP BY rp.role 
+ORDER BY grant_count DESC;
+" | psql
+
+echo ""
+echo "=== Grant'sız roller ==="
+echo "
+SELECT DISTINCT u.role 
+FROM users u 
+WHERE u.is_active = true 
+AND u.role NOT IN (SELECT DISTINCT role FROM role_permission_grants)
+ORDER BY u.role;
+" | psql
+```
+
+### 5B: Her rol için uygun grant'lar
+
+**CEO (53 aksiyon — admin ile aynı, tam erişim):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'ceo', id, true FROM permission_actions
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**CGO (finans + operasyon + raporlama — admin gibi ama kullanıcı yönetimi hariç):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'cgo', id, true FROM permission_actions
+WHERE module NOT IN ('users') OR action NOT IN ('create_user', 'delete_user', 'reset_password')
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Trainer (eğitim + raporlama + denetim — maaş/bordro hariç):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'trainer', id, true FROM permission_actions
+WHERE module IN ('academy.quizzes', 'quality_audit', 'reports', 'support')
+   OR (module = 'employees' AND action IN ('view_personal_info'))
+   OR (module = 'shifts' AND action IN ('view_shifts'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Müdür (şube yönetimi — kendi şubesi kapsamında):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'mudur', id, true FROM permission_actions
+WHERE module IN ('employees', 'hr', 'leave_requests', 'overtime_requests', 'shifts', 'equipment_faults', 'reports', 'support', 'quality_audit')
+   OR (module = 'accounting' AND action IN ('view_salary', 'view_payroll'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Muhasebe_IK (finans + İK):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'muhasebe_ik', id, true FROM permission_actions
+WHERE module IN ('accounting', 'employees', 'hr', 'leave_requests', 'overtime_requests', 'reports')
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Satınalma (tedarik + maliyet):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'satinalma', id, true FROM permission_actions
+WHERE module IN ('reports', 'support')
+   OR (module = 'equipment_faults' AND action IN ('view_costs', 'approve_cost'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Marketing:**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'marketing', id, true FROM permission_actions
+WHERE module IN ('reports', 'support')
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Kalite Kontrol:**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'kalite_kontrol', id, true FROM permission_actions
+WHERE module IN ('quality_audit', 'reports')
+   OR (module = 'equipment_faults' AND action IN ('create_fault', 'view_costs'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Gıda Mühendisi:**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'gida_muhendisi', id, true FROM permission_actions
+WHERE module IN ('quality_audit', 'reports')
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Fabrika Müdür (fabrika operasyonları + personel):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'fabrika_mudur', id, true FROM permission_actions
+WHERE module IN ('employees', 'hr', 'shifts', 'leave_requests', 'overtime_requests', 'quality_audit', 'reports', 'equipment_faults')
+   OR (module = 'accounting' AND action IN ('view_salary', 'view_payroll'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Fabrika Operatör (temel):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'fabrika_operator', id, true FROM permission_actions
+WHERE (module = 'equipment_faults' AND action IN ('create_fault'))
+   OR (module = 'shifts' AND action IN ('view_shifts'))
+   OR (module = 'leave_requests' AND action IN ('create_request'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Yatırımcı Branch (kendi şubesi görüntüleme):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'yatirimci_branch', id, true FROM permission_actions
+WHERE (module = 'reports' AND action IN ('view_branch_reports'))
+   OR (module = 'accounting' AND action IN ('view_salary', 'view_payroll'))
+   OR (module = 'employees' AND action IN ('view_personal_info'))
+   OR (module = 'shifts' AND action IN ('view_shifts'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+**Sube Kiosk (minimal — sadece kiosk fonksiyonları):**
+```sql
+INSERT INTO role_permission_grants (role, action_id, granted)
+SELECT 'sube_kiosk', id, true FROM permission_actions
+WHERE (module = 'shifts' AND action IN ('view_shifts'))
+ON CONFLICT (role, action_id) DO NOTHING;
+```
+
+### 5C: Doğrulama
+
+```sql
+-- Tüm rollerin grant durumu
+SELECT rp.role, COUNT(*) as grant_count 
+FROM role_permission_grants rp 
+GROUP BY rp.role 
+ORDER BY grant_count DESC;
+
+-- Grant'sız rol kalmadı mı?
+SELECT DISTINCT u.role 
+FROM users u 
+WHERE u.is_active = true 
+AND u.role NOT IN (SELECT DISTINCT role FROM role_permission_grants)
+ORDER BY u.role;
+-- Bu sorgu BOŞ dönmeli (tüm aktif roller grant almış olmalı)
+```
+
+---
+
+## ADIM 6: sube_gorevleri Flag AÇ (1 dk)
+
+```sql
+UPDATE module_flags SET is_enabled = true WHERE module_key = 'sube_gorevleri';
+
+-- Doğrula
+SELECT module_key, is_enabled, flag_behavior FROM module_flags WHERE module_key = 'sube_gorevleri';
+```
+
+---
+
+## ADIM 7: TAM DOĞRULAMA (30 dk)
+
+### 7A: E2E Testler
+
+```bash
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -15
+# Hedef: 26/26 PASS (veya daha fazla)
+```
+
+### 7B: Rol Bazlı Erişim Testleri
+
+```bash
+echo "=== ROL BAZLI ERİŞİM TESTİ ==="
+
+# Test kullanıcıları ve beklenen sonuçlar
+echo "--- CEO: bordro erişimi ---"
+# CEO login → /api/salary/employees çağır → 200 OK beklenir
+
+echo "--- Fabrika Operatör: üretim sayfası ---"
+# Operatör login → /api/factory/production-outputs çağır → 200 OK beklenir
+
+echo "--- Trainer: akademi erişimi ---"
+# Trainer login → /api/academy/modules çağır → 200 OK beklenir
+# Trainer login → /api/salary/employees çağır → 403 beklenir (maaş göremez)
+
+echo "--- Yatırımcı: kendi şube maaşı ---"
+# Yatırımcı login → kendi şubesinin maaşı → 200 OK
+# Yatırımcı login → başka şubenin maaşı → 403 beklenir
+```
+
+### 7C: HQ_ROLES Tutarlılık Testi
+
+```bash
+echo "=== HQ_ROLES TUTARLILIK ==="
+echo "--- helpers.ts'deki merkezi tanım ---"
+grep -A15 "export const HQ_ROLES" server/routes/helpers.ts
+
+echo ""
+echo "--- Başka yerde yerel HQ_ROLES tanımı var mı? ---"
+grep -rn "const HQ_ROLES\s*=" server/ --include="*.ts" | grep -v helpers.ts | grep -v node_modules
+# BOŞSA → başarılı (tek tanım)
+```
+
+### 7D: Grant Sayıları
+
+```bash
+echo "=== GRANT SAYILARI ==="
+echo "
+SELECT rp.role, COUNT(*) as grants
+FROM role_permission_grants rp
+JOIN users u ON u.role = rp.role AND u.is_active = true
+GROUP BY rp.role
+ORDER BY grants DESC;
+" | psql
+```
+
+### 7E: Module Flag Durumu
+
+```bash
+echo "=== MODULE FLAGS ==="
+echo "
+SELECT module_key, is_enabled, flag_behavior 
+FROM module_flags 
+WHERE deleted_at IS NULL 
+ORDER BY is_enabled DESC, module_key;
+" | psql
+```
+
+### 7F: Sunucu Hata Kontrolü
+
+```bash
+echo "=== SUNUCU HATALARI ==="
+# Son 50 log satırında hata var mı?
+# Server restart sonrası crash yok mu?
+```
+
+---
+
+## BAŞARI KRİTERLERİ
+
+Sprint tamamlandığında şunlar doğru olmalı:
+
+1. ✅ canViewSalary: CEO, CGO, Muhasebe_IK maaş görebilmeli
+2. ✅ canViewSalary: Coach sadece şube personelini, Trainer hiç görmemeli
+3. ✅ factory_production: Operatör web'den üretim verilerini görebilmeli
+4. ✅ HQ_ROLES: Tek merkezi tanım (helpers.ts), başka yerde yerel tanım YOK
+5. ✅ HQ_ROLES: Trainer dahil
+6. ✅ Trainer: Coach ile aynı modüller (finans/admin hariç)
+7. ✅ 17 rol: Hepsinin en az 1 grant kaydı var
+8. ✅ sube_gorevleri: Flag AÇIK, menüde görünüyor
+9. ✅ E2E: 26/26 PASS
+10. ✅ Sunucu: Hata yok, crash yok
+
+---
+
+## YAPMA LİSTESİ (Bu sprint'te)
+
+- ❌ Bildirim ekleme (Sprint 2'de)
+- ❌ Agent skill ekleme (Sprint 3'te)
+- ❌ Frontend değişikliği (gerekmedikçe)
+- ❌ Yeni tablo oluşturma
+- ❌ Module flag kapatma (sadece açma var)
+- ❌ factory.ts bölme (Sprint 5'te)
+
+**Sadece yetki düzelt, doğrula, commit et.**

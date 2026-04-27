@@ -1,0 +1,49 @@
+FIX 5 CRITICAL DATA DISPLAY BUGS — BLOCKER PRIORITY
+
+These are broken UI elements that show wrong data or empty content. Fix each one independently.
+
+TASK 1 — Fix CAPA List Branch Name Showing "#undefined"
+WHERE: The CAPA tab under Kalite Kontrol (Quality Control) page
+PROBLEM: All CAPA items show "Şube #undefined" instead of actual branch name like "Samsun Marina" or "Antalya Beachpark"
+ROOT CAUSE: The CAPA query is not JOINing the branches table properly. The branchId exists but branch name isn't being resolved.
+FIX: Find where CAPA list items are rendered. Check the API query — add LEFT JOIN to branches table on capa.branchId = branches.id. Display branches.name. If null, show "Belirtilmemiş" as fallback.
+VERIFY: CAPA list shows real branch names.
+
+TASK 2 — Fix Recipe Fields Displaying Raw JSON
+WHERE: Recipe detail/edit page (Reçete detay sayfası)
+PROBLEM: Three fields show raw JSON instead of clean text:
+- "Satış İpuçları" shows: {"Bu espresso, zengin aromasıyla...","Sıcak servis edilen..."}
+- "Upselling Notları" shows similar raw JSON
+- "Sunum Notları" shows similar raw JSON
+ROOT CAUSE: These fields store AI-generated content as JSON arrays but the display component renders them raw.
+FIX: In the recipe display component, add a safe JSON parse wrapper. If the value is a valid JSON array, map items to a clean bulleted list or comma-separated text. If it's a plain string, show as-is. Do NOT change how data is stored — only change display.
+VERIFY: Recipe fields show clean readable text, not curly braces and quotes.
+
+TASK 3 — Fix Empty "Arıza Öncelik Dağılımı" Chart
+WHERE: Ekipman Analitiği (Equipment Analytics) page
+PROBLEM: The "Arıza Öncelik Dağılımı" (Fault Priority Distribution) section is completely empty — no chart rendered at all.
+FIX: Check if the chart component receives data. If data is null or all faults have the same priority, show either a simple bar with the single category OR a "Veri yetersiz" (Insufficient data) message. Never leave the section completely blank.
+VERIFY: The section shows either a chart or an appropriate empty state message.
+
+TASK 4 — Fix CAPA Durumları Pie Chart Labels
+WHERE: Kalite Kontrol dashboard/summary — the "CAPA Durumları" donut chart
+PROBLEM: ALL slices are labeled "Eskalasyon" — shows "Eskalasyon: 1", "Eskalasyon: 2", "Eskalasyon: 1". These should show DIFFERENT statuses like Açık, Kapatıldı, Eskalasyon.
+ROOT CAUSE: The data transformation maps all statuses to the same label.
+FIX: Check the chart data mapping. Each CAPA status (open, closed, escalated, overdue) should map to its correct Turkish label: open → "Açık", closed → "Kapatıldı", escalated → "Eskalasyon", overdue → "Gecikmiş", in_progress → "Devam Ediyor".
+VERIFY: Pie chart shows different colored slices with different correct Turkish labels.
+
+TASK 5 — Fix Kalite Kontrol Badge Count Mismatch
+WHERE: Kalite Kontrol dashboard — "Bekleyen Geri Bildirimler" section
+PROBLEM: Header badge shows "10 bekleyen" but content area says "Tebrikler! Bekleyen geri bildirim bulunmuyor" — contradicts each other.
+ROOT CAUSE: The badge count and the content list use different data sources or filters.
+FIX: Make both the badge count and the list content use the same query/data source. The badge number should reflect the actual count of items visible in the list.
+VERIFY: If there are pending items, badge shows correct count and list shows them. If there are none, badge shows 0 or is hidden, and list shows the "Tebrikler" message.
+
+DO NOT BREAK:
+- Breadcrumb PATH_LABELS map + toLocaleUpperCase('tr-TR')
+- Existing CAPA create/update/delete operations
+- Recipe create/update operations (only change DISPLAY, not storage)
+- Equipment Analytics other charts (Sağlık Durumu, Arıza Durum)
+- Quality control dashboard other sections
+- Auth middleware on all endpoints
+- Soft delete (isActive) pattern

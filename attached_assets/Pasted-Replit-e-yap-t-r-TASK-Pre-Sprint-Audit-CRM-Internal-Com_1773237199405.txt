@@ -1,0 +1,266 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Pre-Sprint Audit — CRM & Internal Communication System (NO CODE CHANGES)
+
+Analyze the current state of ALL systems related to internal communication, ticketing, and relationship management. Do NOT modify any code.
+
+### 1. Database Tables Inventory
+
+```bash
+echo "=== CRM & Communication Tables ==="
+psql -c "
+SELECT table_name, 
+  (SELECT COUNT(*) FROM information_schema.columns WHERE table_name=t.table_name) as columns
+FROM information_schema.tables t
+WHERE table_schema='public' 
+AND (table_name ILIKE '%feedback%' 
+  OR table_name ILIKE '%complaint%' 
+  OR table_name ILIKE '%ticket%' 
+  OR table_name ILIKE '%crm%' 
+  OR table_name ILIKE '%campaign%' 
+  OR table_name ILIKE '%branch_feedback%'
+  OR table_name ILIKE '%investor%'
+  OR table_name ILIKE '%franchise%'
+  OR table_name ILIKE '%task%'
+  OR table_name ILIKE '%notification%'
+  OR table_name ILIKE '%agent%'
+  OR table_name ILIKE '%sla%')
+ORDER BY table_name;" 2>/dev/null
+
+echo ""
+echo "=== Record Counts ==="
+psql -c "
+SELECT 'customer_feedback' as tbl, COUNT(*) FROM customer_feedback
+UNION ALL SELECT 'feedback_responses', COUNT(*) FROM feedback_responses
+UNION ALL SELECT 'guest_complaints', COUNT(*) FROM guest_complaints
+UNION ALL SELECT 'branch_feedbacks', COUNT(*) FROM branch_feedbacks
+UNION ALL SELECT 'product_complaints', COUNT(*) FROM product_complaints
+UNION ALL SELECT 'campaigns', COUNT(*) FROM campaigns
+UNION ALL SELECT 'campaign_branches', COUNT(*) FROM campaign_branches
+UNION ALL SELECT 'franchise_investors', COUNT(*) FROM franchise_investors
+UNION ALL SELECT 'franchise_investor_branches', COUNT(*) FROM franchise_investor_branches
+UNION ALL SELECT 'franchise_investor_notes', COUNT(*) FROM franchise_investor_notes
+UNION ALL SELECT 'tasks', COUNT(*) FROM tasks
+UNION ALL SELECT 'notifications', COUNT(*) FROM notifications
+UNION ALL SELECT 'agent_pending_actions', COUNT(*) FROM agent_pending_actions
+UNION ALL SELECT 'equipment_faults', COUNT(*) FROM equipment_faults
+ORDER BY tbl;" 2>/dev/null
+```
+
+### 2. Branch Feedback / Ticket System Analysis
+
+```bash
+echo "=== branch_feedbacks table structure ==="
+psql -c "\d branch_feedbacks" 2>/dev/null
+
+echo ""
+echo "=== branch_feedbacks sample data ==="
+psql -c "SELECT id, branch_id, category, status, subject, created_at FROM branch_feedbacks ORDER BY created_at DESC LIMIT 10;" 2>/dev/null
+
+echo ""
+echo "=== branch_feedbacks categories ==="
+psql -c "SELECT category, COUNT(*) FROM branch_feedbacks GROUP BY category ORDER BY COUNT(*) DESC;" 2>/dev/null
+
+echo ""
+echo "=== branch_feedbacks statuses ==="
+psql -c "SELECT status, COUNT(*) FROM branch_feedbacks GROUP BY status ORDER BY COUNT(*) DESC;" 2>/dev/null
+
+echo ""
+echo "=== product_complaints structure and data ==="
+psql -c "\d product_complaints" 2>/dev/null
+psql -c "SELECT id, branch_id, product_name, status, created_at FROM product_complaints ORDER BY created_at DESC LIMIT 5;" 2>/dev/null
+```
+
+### 3. Task / Assignment System Analysis
+
+```bash
+echo "=== tasks table structure ==="
+psql -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='tasks' ORDER BY ordinal_position;" 2>/dev/null
+
+echo ""
+echo "=== Task assignment patterns (who assigns to whom) ==="
+psql -c "
+SELECT 
+  creator.role as assigned_by_role,
+  assignee.role as assigned_to_role,
+  COUNT(*) as count
+FROM tasks t
+JOIN users creator ON t.created_by = creator.id
+JOIN users assignee ON t.assigned_to::integer = assignee.id
+GROUP BY creator.role, assignee.role
+ORDER BY count DESC
+LIMIT 15;" 2>/dev/null
+
+echo ""
+echo "=== Task statuses ==="
+psql -c "SELECT status, COUNT(*) FROM tasks GROUP BY status ORDER BY COUNT(*) DESC;" 2>/dev/null
+
+echo ""
+echo "=== HQ-to-branch task flow ==="
+psql -c "
+SELECT 
+  creator.role as from_role,
+  assignee.role as to_role,
+  t.priority,
+  t.status,
+  t.title
+FROM tasks t
+JOIN users creator ON t.created_by = creator.id
+JOIN users assignee ON t.assigned_to::integer = assignee.id
+WHERE creator.role IN ('admin','ceo','cgo','coach','trainer')
+ORDER BY t.created_at DESC
+LIMIT 10;" 2>/dev/null
+```
+
+### 4. Agent System — What Actions Flow Where
+
+```bash
+echo "=== Agent actions by category and target role ==="
+psql -c "
+SELECT category, subcategory, target_role, status, COUNT(*)
+FROM agent_pending_actions
+GROUP BY category, subcategory, target_role, status
+ORDER BY category, subcategory;" 2>/dev/null
+
+echo ""
+echo "=== Agent routing rules ==="
+psql -c "SELECT category, subcategory, primary_role, secondary_role, escalation_role, escalation_days FROM agent_routing_rules ORDER BY category;" 2>/dev/null
+```
+
+### 5. Equipment Faults — Current Ticket-like System
+
+```bash
+echo "=== equipment_faults structure ==="
+psql -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='equipment_faults' ORDER BY ordinal_position;" 2>/dev/null
+
+echo ""
+echo "=== equipment_faults statuses ==="
+psql -c "SELECT status, COUNT(*) FROM equipment_faults GROUP BY status ORDER BY COUNT(*) DESC;" 2>/dev/null
+
+echo ""
+echo "=== equipment_faults — who reports, who resolves ==="
+psql -c "
+SELECT 
+  reporter.role as reported_by,
+  resolver.role as resolved_by,
+  COUNT(*)
+FROM equipment_faults ef
+JOIN users reporter ON ef.reported_by = reporter.id
+LEFT JOIN users resolver ON ef.resolved_by = resolver.id
+GROUP BY reporter.role, resolver.role
+ORDER BY COUNT(*) DESC
+LIMIT 10;" 2>/dev/null
+```
+
+### 6. Notification System — What Types Exist
+
+```bash
+echo "=== Notification types ==="
+psql -c "SELECT type, COUNT(*) FROM notifications GROUP BY type ORDER BY COUNT(*) DESC LIMIT 20;" 2>/dev/null
+
+echo ""
+echo "=== Notifications per role (last 7 days) ==="
+psql -c "
+SELECT u.role, COUNT(n.id) as notification_count
+FROM notifications n
+JOIN users u ON n.user_id = u.id
+WHERE n.created_at > NOW() - INTERVAL '7 days'
+GROUP BY u.role
+ORDER BY notification_count DESC;" 2>/dev/null
+```
+
+### 7. Frontend — Current CRM Pages and Components
+
+```bash
+echo "=== CRM related files ==="
+find client/src -name "*.tsx" | xargs grep -l "crm\|CRM\|ticket\|Ticket\|feedback\|complaint\|branch_feedback\|investor" 2>/dev/null | sort
+
+echo ""
+echo "=== CRM routes in App.tsx ==="
+grep -n "crm\|CRM\|ticket\|misafir\|franchise\|investor" client/src/App.tsx 2>/dev/null
+
+echo ""
+echo "=== Sidebar CRM-related items ==="
+grep -n "crm\|CRM\|ticket\|misafir\|franchise\|investor\|feedback\|ariza\|destek" server/menu-service.ts 2>/dev/null
+```
+
+### 8. API Endpoints — Communication Related
+
+```bash
+echo "=== All feedback/complaint/ticket API endpoints ==="
+grep -rn "router\.\(get\|post\|put\|patch\|delete\)" server/routes/ --include="*.ts" | grep -i "feedback\|complaint\|ticket\|branch_feedback\|crm\|investor\|fault" | head -30
+
+echo ""
+echo "=== SLA related code ==="
+grep -rn "sla\|SLA\|response_time\|resolution_time" server/ --include="*.ts" | grep -v node_modules | head -15
+```
+
+### 9. Flow Analysis — What Happens When...
+
+Answer these questions by tracing the code:
+
+```bash
+echo "=== Q1: Supervisor creates a support request — where does it go? ==="
+grep -rn "branch_feedback\|support.*request\|ticket.*create\|talep.*olustur" server/routes/ --include="*.ts" | head -10
+
+echo ""
+echo "=== Q2: Misafir gives low rating — what triggers? ==="
+grep -rn "low.*rating\|rating.*low\|guest.*complaint\|auto.*complaint" server/ --include="*.ts" | head -10
+
+echo ""
+echo "=== Q3: CGO assigns task to Coach — how tracked? ==="
+grep -rn "assign.*task\|task.*assign\|createTask" server/routes/ --include="*.ts" | head -10
+
+echo ""
+echo "=== Q4: Equipment fault reported — notification chain? ==="
+grep -rn "fault.*notify\|fault.*notification\|ariza.*bildirim" server/ --include="*.ts" | head -10
+```
+
+### REPORT FORMAT
+
+```
+╔══════════════════════════════════════════════════════╗
+║  DOSPRESSO CRM & COMMUNICATION AUDIT                 ║
+╠══════════════════════════════════════════════════════╣
+
+1. DATA INVENTORY
+   Tables: X tables, Y total records
+   
+2. TICKET/SUPPORT SYSTEM
+   - branch_feedbacks: X records, Y categories, Z statuses
+   - product_complaints: X records
+   - equipment_faults: X records
+   
+3. TASK/ASSIGNMENT SYSTEM
+   - Total tasks: X
+   - HQ→Branch assignments: X
+   - Assignment patterns: [who→whom breakdown]
+   
+4. AGENT SYSTEM
+   - Routing rules: X
+   - Pending actions: X by category
+   
+5. NOTIFICATION FLOW
+   - Types: X different types
+   - Volume: X per week
+   
+6. CURRENT GAPS
+   - [List what's missing or broken]
+   
+7. OVERLAP/DUPLICATION
+   - [Where same data appears in multiple places]
+   
+8. RECOMMENDATION
+   - What should be unified
+   - What should stay separate
+
+╚══════════════════════════════════════════════════════╝
+```
+
+Do NOT fix anything. Only analyze and report.
+
+---
+
+Bu audit CRM'in gerçek durumunu gösterecek — hangi tablolar var, ne kadar veri var, ne eksik, ne çakışıyor. Sonucu getir — HQ Komuta Merkezi planını buna göre yazarız.

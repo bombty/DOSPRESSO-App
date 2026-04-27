@@ -1,0 +1,249 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 9 — Kritik Bug Fix + Güvenlik Düzeltmeleri
+
+### ÖZET
+
+2 runtime error sistemi kırıyor, güvenlik açıkları pilot öncesi kapatılmalı. Bu sprint hepsini düzeltiyor.
+
+---
+
+### T001 — "Can't find variable: setIsAiOnboardingOpen" Fix (~30 dakika)
+
+**Problem:** academy-hq.tsx'te state satır 610'da tanımlı ama satır 371 ve 509'da RoleDashboardSection (scope dışı fonksiyon) içinde kullanılıyor. Coach sayfasında runtime error veriyor.
+
+**Araştırma:**
+```bash
+grep -n "setIsAiOnboardingOpen\|isAiOnboardingOpen" client/src/pages/academy-hq.tsx
+grep -n "RoleDashboardSection" client/src/pages/academy-hq.tsx
+```
+
+**Yapılacak:**
+
+İki çözümden biri:
+
+**Seçenek A (önerilen):** RoleDashboardSection'ı AcademyHQ component'inin İÇİNE taşı (inner function olarak) — böylece parent state'e doğrudan erişir.
+
+**Seçenek B:** State'leri prop olarak geçir:
+```tsx
+<RoleDashboardSection 
+  isAiOnboardingOpen={isAiOnboardingOpen}
+  setIsAiOnboardingOpen={setIsAiOnboardingOpen}
+/>
+```
+
+**Doğrulama:**
+- Coach (Yavuz) ile giriş → Akademi sayfası → hata yok
+- AI Onboarding butonu çalışıyor
+- Console'da 0 error
+
+---
+
+### T002 — "Cannot access 'module' before initialization" Fix (~2-3 saat)
+
+**Problem:** Lazy-load zincirinde circular dependency — megaModuleConfig.ts → modules-registry → schema.ts arasında döngüsel import. Bazı sayfalarda sayfa tamamen çöküyor.
+
+**Araştırma:**
+```bash
+# 1. Circular dependency zincirini bul
+grep -rn "import.*from.*megaModuleConfig\|import.*from.*modules-registry\|import.*from.*schema" client/src/ --include="*.tsx" --include="*.ts" | head -30
+
+# 2. megaModuleConfig ne import ediyor?
+head -30 client/src/**/megaModuleConfig* 2>/dev/null
+find client/src -name "megaModuleConfig*" -exec head -30 {} \;
+
+# 3. modules-registry ne import ediyor?
+find client/src -name "modules-registry*" -exec head -30 {} \;
+
+# 4. App.tsx'teki 75+ lazy import'ları listele
+grep "React.lazy\|lazy(" client/src/App.tsx | wc -l
+grep "React.lazy\|lazy(" client/src/App.tsx | head -20
+```
+
+**Yapılacak:**
+
+1. Circular dependency zincirini tespit et (hangi dosya hangisini import ediyor)
+2. Döngüyü kır — en yaygın çözümler:
+   - Config objesini ayrı dosyaya taşı (dependency inversion)
+   - Lazy initialization kullan (fonksiyon olarak export, çağrılınca resolve)
+   - Dynamic import ile gerektiğinde yükle
+3. Tüm mega-module sayfalarını test et — hiçbirinde "Cannot access module" hatası olmamalı
+
+**Doğrulama:**
+- Tüm mega-module sayfalarını tek tek aç (İK, Operasyonlar, Raporlar, Admin, Fabrika)
+- Hiçbirinde "Cannot access 'module' before initialization" hatası yok
+- Console'da 0 error
+- Sayfa yükleme süreleri etkilenmemiş
+
+---
+
+### T003 — Session Timeout 7 Gün → 8 Saat (~30 dakika)
+
+**Problem:** Web session'ı 7 gün sürüyor — çok uzun. Birisi tablet'i açık bırakırsa 7 gün boyunca oturum açık kalır.
+
+**Araştırma:**
+```bash
+grep -rn "maxAge\|session.*age\|expire\|cookie.*max" server/ --include="*.ts" | head -10
+grep -rn "express-session\|session(" server/ --include="*.ts" | head -10
+```
+
+**Yapılacak:**
+
+1. Session konfigürasyonunu bul
+2. maxAge'i değiştir:
+```typescript
+// ÖNCE
+maxAge: 7 * 24 * 60 * 60 * 1000  // 7 gün
+
+// SONRA  
+maxAge: 8 * 60 * 60 * 1000  // 8 saat (bir vardiya süresi)
+```
+
+3. Kiosk session'ı zaten 8 saat — dokunma
+
+**Doğrulama:**
+- Giriş yap → session cookie'nin expire süresini kontrol et (8 saat olmalı)
+- Kiosk session'ı etkilenmemiş (hâlâ 8 saat)
+
+---
+
+### T004 — Web Login Hesap Kilitleme (~2 saat)
+
+**Problem:** Kiosk'ta 3 yanlış PIN → 15 dk kilitleme var ama web login'de hesap kilitleme YOK. Brute force saldırısına açık.
+
+**Araştırma:**
+```bash
+# 1. Mevcut login endpoint
+grep -rn "login\|auth.*login\|authenticate" server/routes/ --include="*.ts" | head -10
+
+# 2. Kiosk kilitleme mantığı (örnek pattern)
+grep -rn "lockout\|lock.*account\|failed.*attempt\|yanlış.*şifre\|wrong.*password\|brute" server/ --include="*.ts" | head -15
+
+# 3. Login attempt tablosu var mı?
+```
+```sql
+SELECT table_name FROM information_schema.tables WHERE table_name ILIKE '%attempt%' OR table_name ILIKE '%login_log%' OR table_name ILIKE '%auth_log%';
+```
+
+**Yapılacak:**
+
+1. Login endpoint'ine başarısız deneme sayacı ekle:
+
+**Mantık:**
+- Her başarısız login denemesini kaydet (kullanıcı adı, IP, zaman)
+- 5 başarısız deneme (15 dakika içinde) → hesabı 15 dakika kilitle
+- Kilitli hesap login denemesinde: "Hesabınız geçici olarak kilitlendi. 15 dakika sonra tekrar deneyin." mesajı
+- Kilitleme süresi dolunca otomatik aç
+- Başarılı login → sayaç sıfırla
+
+2. Kilitleme verisi nerede saklanacak:
+   - **Seçenek A (basit):** In-memory Map (sunucu restart'ta sıfırlanır — kabul edilebilir)
+   - **Seçenek B (kalıcı):** DB tablosu (login_attempts)
+   - Seçenek A yeterli — pilot için uygun
+
+3. Admin'e bildirim: bir hesap kilitlendiğinde admin'e bildirim gönder
+
+4. Admin panelinde: kilidi manuel açma butonu (acil durumlar için)
+
+**Doğrulama:**
+- 5 kez yanlış şifre gir → "Hesap kilitlendi" mesajı
+- 15 dakika sonra tekrar dene → giriş yapabilir
+- Doğru şifre ile giriş → sayaç sıfırlanır
+- Admin bildirimi gidiyor
+
+---
+
+### T005 — Şifre Karmaşıklığı Güçlendirme (~1 saat)
+
+**Problem:** Mevcut: minimum 8 karakter + 1 harf + 1 rakam. Büyük harf ve özel karakter zorunlu değil.
+
+**Yapılacak:**
+
+1. Şifre validasyon fonksiyonunu bul:
+```bash
+grep -rn "password.*valid\|validatePassword\|password.*check\|password.*strength\|min.*length\|minLength.*password" server/ client/src/ --include="*.ts" --include="*.tsx" | head -15
+```
+
+2. Yeni kurallar:
+```typescript
+// Minimum 8 karakter
+// En az 1 büyük harf (A-Z)
+// En az 1 küçük harf (a-z)
+// En az 1 rakam (0-9)
+// En az 1 özel karakter (!@#$%^&*._-)
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*._-]).{8,}$/;
+```
+
+3. Frontend'de şifre gücü göstergesi:
+   - Zayıf (kırmızı): sadece küçük harf + rakam
+   - Orta (sarı): büyük harf veya özel karakter var ama ikisi birden yok
+   - Güçlü (yeşil): tüm kurallar sağlanıyor
+
+4. Mevcut kullanıcıların şifreleri: DEĞİŞTİRME — sadece yeni şifre oluştururken veya şifre değiştirirken yeni kurallar uygulanır
+
+5. Hata mesajı Türkçe: "Şifreniz en az 8 karakter, 1 büyük harf, 1 küçük harf, 1 rakam ve 1 özel karakter içermelidir."
+
+**Doğrulama:**
+- Zayıf şifre ile kayıt → hata mesajı
+- Güçlü şifre ile kayıt → başarılı
+- Şifre değiştirme'de de aynı kurallar
+- Mevcut kullanıcılar giriş yapabiliyor (eski şifreler etkilenmemiş)
+
+---
+
+### T006 — E2E Doğrulama (~30 dakika)
+
+**Senaryo 1 — Runtime Error:**
+1. Coach (Yavuz) ile giriş → Akademi → hata yok
+2. Admin ile giriş → İK mega-module → hata yok
+3. Admin → Operasyonlar mega-module → hata yok
+4. Admin → Raporlar mega-module → hata yok
+5. Barista → tüm sayfalar → hata yok
+6. Console'da 0 error
+
+**Senaryo 2 — Session:**
+1. Giriş yap → session cookie expire = ~8 saat
+2. Kiosk giriş → session = 8 saat (değişmemiş)
+
+**Senaryo 3 — Login Kilitleme:**
+1. 5 kez yanlış şifre → "Hesap kilitlendi" mesajı
+2. Doğru şifreyle tekrar dene → hâlâ kilitli
+3. 15 dakika bekle (veya test için süreyi kısalt) → açıldı
+
+**Senaryo 4 — Şifre Güçlendirme:**
+1. Şifre değiştirme → "1234" gir → hata mesajı
+2. "Test1234!" gir → başarılı
+3. Eski şifreyle giriş → çalışıyor (mevcut kullanıcılar etkilenmemiş)
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T004 → T005 → T006
+
+### DO NOT BREAK:
+- Kiosk PIN kilitleme sistemi (zaten çalışıyor)
+- Mevcut kullanıcıların şifreleri (eski şifreler geçerli kalmalı)
+- Session'daki kullanıcı bilgileri (userId, role, username)
+- Mevcut rate limiting (200/dk genel, 20/dk auth)
+- Sprint 1-8'deki tüm değişiklikler
+- Background job sistemi
+- Bildirim sistemi
+
+### KABUL KRİTERLERİ:
+- [ ] "setIsAiOnboardingOpen" hatası düzeltildi — Coach sayfasında 0 error
+- [ ] "Cannot access module" hatası düzeltildi — tüm mega-module sayfaları çalışıyor
+- [ ] Session timeout 8 saat (7 gün değil)
+- [ ] 5 yanlış login → 15 dk hesap kilitleme aktif
+- [ ] Kilitleme mesajı Türkçe
+- [ ] Admin'e kilitleme bildirimi gidiyor
+- [ ] Yeni şifre kuralları aktif (büyük harf + özel karakter)
+- [ ] Şifre gücü göstergesi frontend'de var
+- [ ] Mevcut kullanıcılar eski şifrelerle giriş yapabiliyor
+- [ ] 0 console error tüm sayfalarda
+- [ ] Kiosk sistemi etkilenmemiş
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.

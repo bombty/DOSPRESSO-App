@@ -1,0 +1,215 @@
+# SİSTEM SAĞLIK KONTROLÜ — Sprint 9+10 Sonrası
+# DEĞİŞİKLİK YAPMA, SADECE TEST ET VE RAPORLA
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "DOSPRESSO SİSTEM SAĞLIK KONTROLÜ — Sprint 9+10"
+echo "Tarih: $(date)"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ 1. SUNUCU + GENEL DURUM ████"
+curl -s -o /dev/null -w "Server: HTTP %{http_code}\n" http://localhost:5000/
+echo "Scheduler sayısı: $(grep -c 'schedule\|cron\|setInterval' server/scheduler*.ts server/services/scheduler*.ts server/services/agent-scheduler.ts 2>/dev/null)"
+echo "Skill sayısı: $(ls server/services/skills/*.ts 2>/dev/null | wc -l)"
+echo "Route dosyası: $(find server/routes -name '*.ts' | wc -l)"
+echo "Rol sayısı: $(echo 'SELECT count(*) FROM roles;' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo ""
+echo "████ 2. TÜM ROL LOGIN TESTİ ████"
+for ROLE in admin ceo cgo coach trainer supervisor mudur barista stajyer muhasebe_ik fabrika_mudur satinalma marketing kalite_kontrol gida_muhendisi yatirimci_branch uretim_sefi fabrika_operator; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    RESULT=$(curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" -c /tmp/test_${ROLE}.txt 2>/dev/null)
+    if echo "$RESULT" | grep -q "id\|success\|username"; then
+      MENU=$(curl -s http://localhost:5000/api/me/menu -b /tmp/test_${ROLE}.txt 2>/dev/null | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));let c=0;d.forEach(s=>{if(s.items)c+=s.items.length});console.log(c+' öğe')}catch(e){console.log('?')}" 2>/dev/null)
+      echo "  ✅ $ROLE ($USER): login OK, menü $MENU"
+    else
+      echo "  ❌ $ROLE ($USER): LOGIN BAŞARISIZ"
+    fi
+  else
+    echo "  ⚠️  $ROLE: kullanıcı yok"
+  fi
+done
+
+echo ""
+echo "████ 3. SPRINT 9 — DASHBOARD API'LERİ ████"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/sys.txt > /dev/null 2>&1
+
+echo "--- Executive dashboard ---"
+EXEC=$(curl -s -b /tmp/sys.txt "http://localhost:5000/api/dashboard/executive" 2>/dev/null)
+EXEC_S=$(echo "$EXEC" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log('kpis:'+(d.kpis?'OK':'YOK')+' branches:'+(d.branchComparison?.length||0)+' trends:'+(d.trends?'OK':'YOK')+' alerts:'+(d.alerts?.length||0))}catch(e){console.log('PARSE_ERROR')}" 2>/dev/null)
+echo "  $EXEC_S"
+
+echo "--- Coach dashboard ---"
+curl -s -o /dev/null -w "  HTTP %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/dashboard/coach"
+
+echo "--- Branch dashboard (Işıklar) ---"
+BRANCH=$(curl -s -b /tmp/sys.txt "http://localhost:5000/api/dashboard/branch/5" 2>/dev/null)
+echo "  $(echo "$BRANCH" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log('today:'+(d.today?'OK':'YOK')+' weeklyTrend:'+(d.weeklyTrend?'OK':'YOK')+' staff:'+(d.staffPerformance?.length||0))}catch(e){console.log('PARSE_ERROR')}" 2>/dev/null)"
+
+echo "--- Finance dashboard ---"
+curl -s -o /dev/null -w "  HTTP %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/dashboard/finance"
+
+echo "--- Factory dashboard ---"
+curl -s -o /dev/null -w "  HTTP %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/dashboard/factory"
+
+echo "--- Barista dashboard ---"
+curl -s -o /dev/null -w "  HTTP %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/dashboard/barista"
+
+echo "--- Tarih filtresi ---"
+for period in this_week this_month last_quarter last_6months; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sys.txt "http://localhost:5000/api/dashboard/executive?period=$period")
+  echo "  ?period=$period → $STATUS"
+done
+
+echo ""
+echo "████ 4. SPRINT 9 — SNAPSHOT SİSTEMİ ████"
+echo "--- Snapshot tabloları ---"
+for tbl in branch_monthly_snapshots factory_monthly_snapshots; do
+  EXISTS=$(echo "SELECT count(*) FROM information_schema.tables WHERE table_name='$tbl';" | psql -t 2>/dev/null | tr -d ' ')
+  COUNT=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: tablo=$EXISTS, kayıt=$COUNT"
+done
+echo "--- Snapshot scheduler kayıtlı mı? ---"
+grep -rn "monthly.*snapshot\|snapshot.*schedule\|calculateMonthly" server/ --include="*.ts" | head -3
+
+echo ""
+echo "████ 5. SPRINT 9 — SHARED DASHBOARD BİLEŞENLERİ ████"
+for comp in DateRangeFilter EmptyStateCard TrendChart BranchComparisonTable AlertPanel; do
+  FILE=$(find client/src/components -name "$comp*" -o -name "$(echo $comp | sed 's/\([A-Z]\)/-\L\1/g' | sed 's/^-//')*" 2>/dev/null | head -1)
+  if [ -n "$FILE" ]; then
+    echo "  ✅ $comp ($(wc -l < "$FILE") satır)"
+  else
+    echo "  ❌ $comp EKSİK"
+  fi
+done
+
+echo ""
+echo "████ 6. SPRINT 9 — BİLDİRİM SEVİYE FİLTRESİ ████"
+grep -rn "notification.*level\|shouldReceiveNotification\|filterNotifications\|NOTIFICATION_LEVELS" server/ --include="*.ts" | head -5
+echo "(bildirim seviye filtresi dosya referansı)"
+
+echo ""
+echo "████ 7. SPRINT 10 — ÜRETİM PLANLAMA API'LERİ ████"
+echo "--- Plan listesi ---"
+curl -s -o /dev/null -w "  GET plans: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/production-planning/plans"
+
+echo "--- Plan oluştur ---"
+PLAN_RESULT=$(curl -s -X POST http://localhost:5000/api/production-planning/plans \
+  -H "Content-Type: application/json" -b /tmp/sys.txt \
+  -d "{\"weekStart\":\"$(date -d 'next monday' +%Y-%m-%d 2>/dev/null || date -v+1w -v-mon +%Y-%m-%d 2>/dev/null || echo '2026-03-30')\",\"items\":[{\"productId\":41,\"mondayQty\":50,\"tuesdayQty\":60,\"wednesdayQty\":50,\"thursdayQty\":60,\"fridayQty\":50,\"saturdayQty\":30,\"sundayQty\":0}],\"notes\":\"SYSCHECK test plan\"}" 2>/dev/null)
+echo "  POST plan: $(echo $PLAN_RESULT | head -c 200)"
+
+echo "--- Karşılaştırma ---"
+curl -s -o /dev/null -w "  GET comparison: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/production-planning/comparison?weekStart=$(date +%Y-%m-%d)"
+
+echo "--- Geçen hafta kopyala ---"
+curl -s -o /dev/null -w "  POST copy-last-week: %{http_code}\n" -X POST -b /tmp/sys.txt "http://localhost:5000/api/production-planning/plans/copy-last-week"
+
+echo "--- Raporlama ---"
+curl -s -o /dev/null -w "  GET weekly report: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/production-planning/reports/weekly?week=12&year=2026"
+
+echo ""
+echo "████ 8. SPRINT 10 — ÜRETİM ŞEFİ ROLÜ ████"
+echo "--- Rol mevcut mu? ---"
+echo "SELECT name, display_name FROM roles WHERE name='uretim_sefi';" | psql 2>/dev/null
+echo "--- Kullanıcı mevcut mu? ---"
+echo "SELECT id, first_name, last_name, role FROM users WHERE role='uretim_sefi' AND is_active=true;" | psql 2>/dev/null
+echo "--- production_responsibility tablosu ---"
+EXISTS=$(echo "SELECT count(*) FROM information_schema.tables WHERE table_name='production_responsibility';" | psql -t 2>/dev/null | tr -d ' ')
+echo "  Tablo: $EXISTS"
+
+echo ""
+echo "████ 9. SPRINT 10 — ÜRETİM PLANLAMA DB TABLOLARI ████"
+for tbl in weekly_production_plans production_plan_items daily_production_records; do
+  EXISTS=$(echo "SELECT count(*) FROM information_schema.tables WHERE table_name='$tbl';" | psql -t 2>/dev/null | tr -d ' ')
+  COUNT=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: tablo=$EXISTS, kayıt=$COUNT"
+done
+
+echo ""
+echo "████ 10. SPRINT 10 — KİOSK ÜRETİM BUTONU ████"
+grep -n "Üretim Planla\|uretim-planla\|production.*plan.*button\|weeklyPlan" client/src/pages/fabrika-kiosk.tsx 2>/dev/null | head -5
+echo "(kiosk'ta üretim planlama butonu referansı)"
+
+echo ""
+echo "████ 11. SPRINT 10 — FRONTEND SAYFALARI ████"
+echo "--- Üretim planlama sayfası ---"
+wc -l client/src/pages/uretim-planlama.tsx 2>/dev/null || wc -l client/src/pages/fabrika/uretim-planlama.tsx 2>/dev/null
+echo "--- WeeklyPlanTab bileşeni ---"
+find client/src -name "*WeeklyPlan*" -o -name "*weekly-plan*" | while read f; do echo "  $(wc -l < "$f") — $f"; done
+echo "--- PlanComparison bileşeni ---"
+find client/src -name "*PlanComparison*" -o -name "*plan-comparison*" | while read f; do echo "  $(wc -l < "$f") — $f"; done
+
+echo ""
+echo "████ 12. ÖNCEKİ SPRİNTLER REGRESYON TESTİ ████"
+
+echo "--- CRM 3 kanal ---"
+for ch in franchise misafir; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sys.txt "http://localhost:5000/api/iletisim/dashboard?channel=$ch")
+  echo "  CRM $ch: $STATUS"
+done
+curl -s -o /dev/null -w "  Tasks: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/tasks"
+
+echo "--- Ajanda ---"
+for ep in todos events notes briefing archive; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/sys.txt "http://localhost:5000/api/ajanda/$ep")
+  echo "  Ajanda $ep: $STATUS"
+done
+
+echo "--- Bildirimler ---"
+echo "  Aktif: $(echo 'SELECT count(*) FROM notifications;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Arşiv: $(echo 'SELECT count(*) FROM notifications_archive;' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo "--- Cross-modül insight ---"
+curl -s -o /dev/null -w "  Insights: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/reports/insights"
+curl -s -o /dev/null -w "  Financial: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/reports/financial/branches"
+
+echo "--- Ekipman ---"
+curl -s -o /dev/null -w "  Equipment: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/equipment"
+curl -s -o /dev/null -w "  Faults: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/faults"
+
+echo "--- Akademi ---"
+curl -s -o /dev/null -w "  Modules: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/academy/modules"
+
+echo "--- İK ---"
+curl -s -o /dev/null -w "  IK Dashboard: %{http_code}\n" -b /tmp/sys.txt "http://localhost:5000/api/hr/ik-dashboard"
+
+echo ""
+echo "████ 13. GENEL METRİKLER ████"
+echo "  Toplam tablo: $(echo 'SELECT count(*) FROM information_schema.tables WHERE table_schema='\''public'\'';' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Toplam index: $(echo 'SELECT count(*) FROM pg_indexes WHERE schemaname='\''public'\'';' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Kullanıcı: $(echo 'SELECT count(*) FROM users WHERE is_active=true;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Rol: $(echo 'SELECT count(*) FROM roles;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Şube: $(echo 'SELECT count(*) FROM branches WHERE is_active=true;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Backend satır: $(find server -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+echo "  Frontend satır: $(find client/src -name '*.tsx' -o -name '*.ts' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+echo "  Skill: $(ls server/services/skills/*.ts 2>/dev/null | wc -l)"
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPOR FORMAT:"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "1. KRİTİK HATALAR"
+echo "2. ORTA SEVİYE SORUNLAR"
+echo "3. SPRİNT 9 DOĞRULAMA"
+echo "   Dashboard API'leri (6): ✅/❌"
+echo "   Snapshot sistemi: ✅/❌"
+echo "   Shared bileşenler (5): ✅/❌"
+echo "   Bildirim filtresi: ✅/❌"
+echo "   Tarih filtresi: ✅/❌"
+echo "4. SPRİNT 10 DOĞRULAMA"
+echo "   Üretim planlama API: ✅/❌"
+echo "   Plan oluşturma: ✅/❌"
+echo "   Karşılaştırma: ✅/❌"
+echo "   Üretim Şefi rolü: ✅/❌"
+echo "   DB tabloları (3): ✅/❌"
+echo "   Kiosk butonu: ✅/❌"
+echo "   Frontend bileşenler: ✅/❌"
+echo "5. REGRESYON (önceki sprint'ler): ✅/❌"
+echo "6. SONRAKİ ADIMLAR"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```

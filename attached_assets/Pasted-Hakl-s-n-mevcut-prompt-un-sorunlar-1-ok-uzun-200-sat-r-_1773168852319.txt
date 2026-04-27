@@ -1,0 +1,309 @@
+Haklısın — mevcut prompt'un sorunları:
+
+1. **Çok uzun** (200+ satır) — Replit yarısını atlayabilir
+2. **Sadece API yanıtı kontrol** — iş mantığı doğruluğu yok
+3. **Çapraz rol testi yok** — A yapar, B görür mü?
+4. **Hata senaryoları yok** — yanlış veri girince ne olur?
+5. **Yanıt süreleri yok** — yavaş endpoint var mı?
+
+Optimize edilmiş versiyon — Replit'e yapıştır:
+
+---
+
+## TASK: Full System E2E Test — 7 Perspectives (NO CODE CHANGES)
+
+Test the entire system. Report ALL failures with exact details.
+
+### SETUP
+
+```bash
+# Get one user per role
+psql -c "SELECT DISTINCT ON (role) username, role, branch_id FROM users WHERE is_active = true ORDER BY role, id;" 2>/dev/null
+
+# Store login function
+login() {
+  curl -s -c /tmp/$1.cookie -X POST http://localhost:5000/api/login \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"$1\",\"password\":\"dospresso123\"}" -o /tmp/$1.login
+  echo "$1 ($(cat /tmp/$1.login | python3 -c 'import json,sys;print(json.load(sys.stdin).get("user",{}).get("role","FAIL"))' 2>/dev/null)): $(cat /tmp/$1.login | python3 -c 'import json,sys;d=json.load(sys.stdin);print("OK" if d.get("user") else "FAIL: "+str(d))' 2>/dev/null)"
+}
+
+api() {
+  START=$(date +%s%N)
+  RESP=$(curl -s -b /tmp/$1.cookie -w "\n%{http_code}" "$2")
+  END=$(date +%s%N)
+  MS=$(( (END - START) / 1000000 ))
+  CODE=$(echo "$RESP" | tail -1)
+  BODY=$(echo "$RESP" | head -n -1)
+  echo "  [$CODE] ${MS}ms — $3"
+  if [ "$CODE" != "200" ] && [ "$CODE" != "201" ]; then
+    echo "    ❌ FAIL: Expected 200, got $CODE"
+    echo "    Response: $(echo $BODY | head -c 200)"
+  fi
+}
+```
+
+### PERSPECTIVE 1: Can Every Role Login & See Their Dashboard?
+
+```bash
+echo "=== P1: LOGIN & DASHBOARD ==="
+# Login ALL roles
+for USER in [admin_username] [ceo_username] [cgo_username] [coach_username] [trainer_username] [supervisor_username] [barista_username] [mudur_username] [muhasebe_username] [muhasebe_ik_username] [satinalma_username] [marketing_username] [kalite_kontrol_username] [gida_muhendisi_username] [fabrika_mudur_username] [fabrika_operator_username] [yatirimci_username]; do
+  login $USER
+done
+
+# Check flow mode for each
+echo "--- Flow Mode ---"
+for USER in [same_list]; do
+  TASKS=$(curl -s -b /tmp/$USER.cookie http://localhost:5000/api/dobody/flow-tasks | python3 -c "import json,sys;d=json.load(sys.stdin);print(f\"{len(d.get('tasks',[]))} tasks, greeting: {d.get('greeting','NONE')[:30]}\")" 2>/dev/null)
+  echo "  $USER: $TASKS"
+done
+
+# Check sidebar item count
+echo "--- Sidebar ---"
+for USER in [same_list]; do
+  ITEMS=$(curl -s -b /tmp/$USER.cookie http://localhost:5000/api/me/menu | python3 -c "import json,sys;d=json.load(sys.stdin);print(sum(len(s.get('items',[])) for s in d.get('sections',[])))" 2>/dev/null)
+  echo "  $USER: $ITEMS items"
+  if [ "$ITEMS" -gt "6" ] 2>/dev/null; then
+    ROLE=$(curl -s -b /tmp/$USER.cookie http://localhost:5000/api/me | python3 -c "import json,sys;print(json.load(sys.stdin).get('role','?'))" 2>/dev/null)
+    if [ "$ROLE" != "admin" ]; then
+      echo "    ⚠️ WARNING: $ROLE has $ITEMS items (max 6)"
+    fi
+  fi
+done
+```
+
+### PERSPECTIVE 2: Cross-Role Chain Tests (A acts → B sees)
+
+**Chain A: Supervisor assigns task → Barista sees it**
+```bash
+echo "=== P2: CROSS-ROLE CHAINS ==="
+echo "--- Chain A: Task Assignment ---"
+# Supervisor creates task
+BARISTA_ID=$(curl -s -b /tmp/[supervisor].cookie "http://localhost:5000/api/branches/5/staff" | python3 -c "import json,sys;d=json.load(sys.stdin);staff=d if isinstance(d,list) else d.get('staff',[]);print(staff[0]['id'] if staff else 'NONE')" 2>/dev/null)
+TASK_RESP=$(curl -s -b /tmp/[supervisor].cookie -X POST http://localhost:5000/api/tasks \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"E2E Test Görevi\",\"assignedTo\":\"$BARISTA_ID\",\"priority\":\"medium\",\"branchId\":5}")
+TASK_ID=$(echo $TASK_RESP | python3 -c "import json,sys;print(json.load(sys.stdin).get('id','FAIL'))" 2>/dev/null)
+echo "  Supervisor created task: $TASK_ID"
+
+# Barista sees it
+BARISTA_TASKS=$(curl -s -b /tmp/[barista].cookie http://localhost:5000/api/tasks/my | python3 -c "import json,sys;d=json.load(sys.stdin);tasks=d if isinstance(d,list) else [];found=[t for t in tasks if 'E2E Test' in t.get('title','')];print(f'FOUND ({len(found)})' if found else 'NOT FOUND')" 2>/dev/null)
+echo "  Barista sees task: $BARISTA_TASKS"
+```
+
+**Chain B: Agent action approved → Supervisor gets notification + task**
+```bash
+echo "--- Chain B: Agent Approval Chain ---"
+# Get a pending action
+ACTION_ID=$(curl -s -b /tmp/[admin].cookie "http://localhost:5000/api/agent/actions?status=pending&limit=1" | python3 -c "import json,sys;d=json.load(sys.stdin);actions=d.get('actions',[]) if isinstance(d,dict) else d if isinstance(d,list) else [];print(actions[0]['id'] if actions else 'NONE')" 2>/dev/null)
+echo "  Pending action: $ACTION_ID"
+
+if [ "$ACTION_ID" != "NONE" ]; then
+  # Approve it
+  APPROVE_RESP=$(curl -s -b /tmp/[admin].cookie -X POST "http://localhost:5000/api/agent/actions/$ACTION_ID/approve" -H "Content-Type: application/json" -d '{}')
+  echo "  Approve result: $(echo $APPROVE_RESP | python3 -c "import json,sys;d=json.load(sys.stdin);print(f\"supervisor={d.get('supervisorName','?')}, task={d.get('taskCreated','?')}\")" 2>/dev/null)"
+fi
+```
+
+**Chain C: Customer feedback → Shows on dashboard**
+```bash
+echo "--- Chain C: Feedback Chain ---"
+# Submit feedback
+FB_RESP=$(curl -s -X POST http://localhost:5000/api/feedback/public \
+  -H "Content-Type: application/json" \
+  -d '{"branchId":5,"rating":5,"comment":"E2E test feedback","customerName":"Test"}')
+echo "  Feedback submitted: $(echo $FB_RESP | python3 -c "import json,sys;print(json.load(sys.stdin).get('id','FAIL'))" 2>/dev/null)"
+
+# Supervisor sees it
+FB_COUNT=$(curl -s -b /tmp/[supervisor].cookie "http://localhost:5000/api/feedback?branchId=5&limit=1" | python3 -c "import json,sys;d=json.load(sys.stdin);items=d if isinstance(d,list) else d.get('feedback',[]);found=[f for f in items if 'E2E test' in f.get('comment','')];print('FOUND' if found else 'NOT FOUND')" 2>/dev/null)
+echo "  Supervisor sees feedback: $FB_COUNT"
+```
+
+### PERSPECTIVE 3: Security Boundaries
+
+```bash
+echo "=== P3: SECURITY ==="
+# Barista → admin endpoint
+echo "  Barista→admin: $(curl -s -o /dev/null -w '%{http_code}' -b /tmp/[barista].cookie http://localhost:5000/api/admin/users)"
+# Barista → other branch
+echo "  Barista→branch10: $(curl -s -o /dev/null -w '%{http_code}' -b /tmp/[barista].cookie http://localhost:5000/api/branch-summary/10)"
+# Supervisor → payroll
+echo "  Supervisor→payroll: $(curl -s -o /dev/null -w '%{http_code}' -b /tmp/[supervisor].cookie -X POST http://localhost:5000/api/pdks-payroll/calculate -H 'Content-Type: application/json' -d '{"branchId":5,"month":3,"year":2026}')"
+# No auth → protected
+echo "  NoAuth→protected: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/api/admin/users)"
+# Rate limiting
+echo "  Rate limit test:"
+for i in $(seq 1 12); do
+  echo -n "    Attempt $i: "
+  curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"wrong","password":"wrong"}'
+done
+# Security headers
+echo "  Headers:"
+curl -s -I http://localhost:5000/ | grep -i "x-frame\|content-security\|x-content-type\|helmet\|strict-transport"
+```
+
+### PERSPECTIVE 4: Business Logic Correctness
+
+```bash
+echo "=== P4: BUSINESS LOGIC ==="
+
+# A) Payroll calculation sanity check
+echo "--- Payroll ---"
+curl -s -b /tmp/[muhasebe].cookie "http://localhost:5000/api/pdks-payroll/calculate?branchId=5&month=2&year=2026" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+records=d if isinstance(d,list) else d.get('records',[])
+for r in records[:3]:
+  name=r.get('fullName',r.get('userName','?'))
+  gross=r.get('grossSalary',0)
+  net=r.get('netSalary',0)
+  days=r.get('workingDays',0)
+  print(f\"  {name}: gross={gross}, net={net}, days={days}\")
+  if gross > 0 and net > gross:
+    print(f\"    ❌ NET > GROSS — calculation error!\")
+  if days > 31:
+    print(f\"    ❌ DAYS > 31 — impossible!\")
+"
+
+# B) Composite score sanity
+echo "--- Composite Scores ---"
+curl -s -b /tmp/[admin].cookie "http://localhost:5000/api/branches/5/staff-scores?days=30" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+staff=d.get('staff',[]) if isinstance(d,dict) else d if isinstance(d,list) else []
+for s in staff[:5]:
+  score=s.get('score',s.get('compositeScore',0))
+  name=s.get('fullName',s.get('name','?'))
+  print(f\"  {name}: {score}/100\")
+  if score and (score < 0 or score > 100):
+    print(f\"    ❌ SCORE OUT OF RANGE!\")
+"
+
+# C) Factory chain integrity
+echo "--- Factory Chain ---"
+psql -c "
+SELECT 'products' as step, COUNT(*) FROM factory_products
+UNION ALL SELECT 'lots', COUNT(*) FROM production_lots
+UNION ALL SELECT 'qc_checks', COUNT(*) FROM factory_quality_checks
+UNION ALL SELECT 'shipments', COUNT(*) FROM factory_shipments
+UNION ALL SELECT 'branch_inventory', COUNT(*) FROM branch_inventory
+UNION ALL SELECT 'haccp', COUNT(*) FROM haccp_check_records;
+" 2>/dev/null
+```
+
+### PERSPECTIVE 5: Performance (Slow Endpoints)
+
+```bash
+echo "=== P5: PERFORMANCE ==="
+# Test critical endpoints and measure response time
+endpoints=(
+  "[admin] /api/hq-summary HQ_Summary"
+  "[admin] /api/me/menu Menu"
+  "[admin] /api/dobody/flow-tasks FlowTasks"
+  "[admin] /api/agent/actions?status=pending AgentActions"
+  "[supervisor] /api/branch-summary/5 BranchSummary"
+  "[barista] /api/tasks/my MyTasks"
+  "[barista] /api/academy/modules TrainingModules"
+  "[muhasebe] /api/pdks?branchId=5 PDKSRecords"
+  "[fabrika] /api/factory/products FactoryProducts"
+  "[admin] /api/notifications?limit=20 Notifications"
+)
+
+for e in "${endpoints[@]}"; do
+  USER=$(echo $e | cut -d' ' -f1 | tr -d '[]')
+  URL="http://localhost:5000$(echo $e | cut -d' ' -f2)"
+  NAME=$(echo $e | cut -d' ' -f3)
+  START=$(date +%s%N)
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/$USER.cookie "$URL")
+  END=$(date +%s%N)
+  MS=$(( (END - START) / 1000000 ))
+  STATUS="✅"
+  if [ "$MS" -gt "3000" ]; then STATUS="🔴 SLOW"; fi
+  if [ "$MS" -gt "1000" ]; then STATUS="🟡 WARN"; fi
+  if [ "$CODE" != "200" ]; then STATUS="❌ $CODE"; fi
+  echo "  $STATUS ${MS}ms — $NAME ($CODE)"
+done
+```
+
+### PERSPECTIVE 6: Data Integrity
+
+```bash
+echo "=== P6: DATA INTEGRITY ==="
+psql -c "
+-- Orphan records check
+SELECT 'orphan_tasks' as check, COUNT(*) FROM tasks t LEFT JOIN users u ON t.assigned_to::integer = u.id WHERE u.id IS NULL AND t.assigned_to IS NOT NULL
+UNION ALL SELECT 'orphan_checklists', COUNT(*) FROM checklist_assignments ca LEFT JOIN branches b ON ca.branch_id = b.id WHERE b.id IS NULL
+UNION ALL SELECT 'users_no_branch', COUNT(*) FROM users WHERE role IN ('barista','supervisor','mudur') AND branch_id IS NULL AND is_active = true
+UNION ALL SELECT 'hq_with_branch', COUNT(*) FROM users WHERE role IN ('ceo','cgo','admin','trainer','coach') AND branch_id IS NOT NULL AND is_active = true
+UNION ALL SELECT 'duplicate_agent_actions', COUNT(*) - COUNT(DISTINCT title || status) FROM agent_pending_actions WHERE status = 'pending'
+UNION ALL SELECT 'salary_missing_roles', COUNT(DISTINCT u.role) - COUNT(DISTINCT ps.position_code) FROM users u LEFT JOIN position_salaries ps ON u.role = ps.position_code WHERE u.is_active = true;
+" 2>/dev/null
+```
+
+### PERSPECTIVE 7: Error Handling
+
+```bash
+echo "=== P7: ERROR HANDLING ==="
+# Invalid IDs
+echo "  Invalid user ID: $(curl -s -o /dev/null -w '%{http_code}' -b /tmp/[admin].cookie http://localhost:5000/api/users/99999)"
+echo "  Invalid branch ID: $(curl -s -o /dev/null -w '%{http_code}' -b /tmp/[admin].cookie http://localhost:5000/api/branch-summary/99999)"
+echo "  Invalid task ID: $(curl -s -o /dev/null -w '%{http_code}' -b /tmp/[admin].cookie http://localhost:5000/api/tasks/99999)"
+# Expected: 404 not 500
+
+# Empty/malformed requests
+echo "  Empty login: $(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:5000/api/login -H 'Content-Type: application/json' -d '{}')"
+echo "  No body: $(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:5000/api/login)"
+# Expected: 400 not 500
+
+# Check no stack traces leak
+ERRORS=$(curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"x"}')
+if echo "$ERRORS" | grep -qi "stack\|trace\|at /\|node_modules"; then
+  echo "  ❌ Stack trace leaked in error response!"
+else
+  echo "  ✅ Error responses clean (no stack traces)"
+fi
+```
+
+### FINAL REPORT FORMAT
+
+```
+╔══════════════════════════════════════╗
+║  DOSPRESSO E2E TEST REPORT          ║
+║  Date: [date]                       ║
+╠══════════════════════════════════════╣
+║ P1 Login & Dashboard    ?/? passed  ║
+║ P2 Cross-Role Chains    ?/? passed  ║
+║ P3 Security              ?/? passed  ║
+║ P4 Business Logic        ?/? passed  ║
+║ P5 Performance           ?/? passed  ║
+║ P6 Data Integrity        ?/? passed  ║
+║ P7 Error Handling        ?/? passed  ║
+╠══════════════════════════════════════╣
+║ TOTAL: ?/? passed                   ║
+║ CRITICAL: ? failures                ║
+║ WARNINGS: ?                         ║
+╚══════════════════════════════════════╝
+
+TOP FAILURES (ranked by severity):
+1. ...
+2. ...
+```
+
+Do NOT fix anything. Only test and report.
+
+---
+
+Bu optimize versiyonun farkları:
+
+| Önceki | Optimize |
+|--------|----------|
+| 15 section, 200+ satır | 7 perspektif, daha kompakt |
+| Sadece API yanıt kontrolü | İş mantığı doğruluğu (net>gross?) |
+| Tek rol testi | Çapraz rol zincirleri (A→B→C) |
+| Performans yok | Her endpoint ms cinsinden ölçülüyor |
+| Data integrity yok | Orphan kayıt, duplicate, eksik ilişki kontrolü |
+| Hata senaryosu yok | Invalid ID, boş request, stack trace leak |
+| Güvenlik ayrı | Güvenlik entegre (P3) |
+
+Replit'e yapıştır. Sonucu Kevin'e verebilirsin — hem otomatik test raporu hem de nerede sorun var net görünür.

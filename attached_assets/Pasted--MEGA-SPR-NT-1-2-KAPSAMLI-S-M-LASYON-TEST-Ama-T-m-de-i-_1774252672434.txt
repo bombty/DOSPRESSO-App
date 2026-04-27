@@ -1,0 +1,762 @@
+# MEGA SPRİNT 1 + 2: KAPSAMLI SİMÜLASYON TESTİ
+# Amaç: Tüm değişiklikleri canlı ortamda test et, her başarısızlığı raporla
+# Kural: HİÇBİR ŞEYİ DEĞİŞTİRME — sadece test et ve raporla
+
+**Bu test 6 bölüm, 50+ test senaryosu içeriyor. Her testi sırayla çalıştır, sonucu kaydet. Sonunda tam rapor ver.**
+
+---
+
+## BÖLÜM 0: TEST ALTYAPISI HAZIRLIK
+
+```bash
+echo "════════════════════════════════════════════════════════"
+echo "DOSPRESSO SİMÜLASYON TESTİ — $(date '+%Y-%m-%d %H:%M')"
+echo "════════════════════════════════════════════════════════"
+
+echo ""
+echo "=== 0A: Sunucu durumu ==="
+curl -s http://localhost:5000/api/health 2>/dev/null | head -5 || echo "Health endpoint yok, port kontrolü:"
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/ 2>/dev/null
+echo ""
+
+echo "=== 0B: Test kullanıcıları hazırla ==="
+echo "
+SELECT id, username, first_name, last_name, role, branch_id,
+  CASE WHEN branch_id IS NULL THEN 'HQ' ELSE (SELECT name FROM branches WHERE id = branch_id) END as branch_name
+FROM users 
+WHERE is_active = true 
+AND role IN ('admin','ceo','cgo','coach','trainer','muhasebe_ik','fabrika_mudur','fabrika_operator','supervisor','mudur','barista','stajyer','yatirimci_branch','gida_muhendisi','kalite_kontrol','satinalma','sube_kiosk')
+ORDER BY 
+  CASE role 
+    WHEN 'admin' THEN 1 WHEN 'ceo' THEN 2 WHEN 'cgo' THEN 3 
+    WHEN 'coach' THEN 4 WHEN 'trainer' THEN 5 WHEN 'muhasebe_ik' THEN 6
+    WHEN 'fabrika_mudur' THEN 7 WHEN 'gida_muhendisi' THEN 8
+    WHEN 'mudur' THEN 9 WHEN 'supervisor' THEN 10
+    WHEN 'barista' THEN 11 WHEN 'stajyer' THEN 12
+    ELSE 20 END;
+" | psql
+
+echo ""
+echo "=== 0C: Mevcut bildirim sayıları (baseline) ==="
+echo "
+SELECT u.role, u.first_name, COUNT(n.id) as bildirim_sayisi,
+  COUNT(CASE WHEN n.created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as son_24_saat
+FROM users u 
+LEFT JOIN notifications n ON n.user_id = u.id
+WHERE u.is_active = true
+AND u.role IN ('ceo','cgo','fabrika_mudur','gida_muhendisi','coach','trainer','muhasebe_ik','supervisor','mudur')
+GROUP BY u.role, u.first_name
+ORDER BY bildirim_sayisi DESC;
+" | psql
+
+echo ""
+echo "=== 0D: Cookie/session hazırlığı ==="
+# Her test rolü için login yapıp cookie kaydet
+ROLES_TO_TEST="admin ceo cgo coach trainer muhasebe_ik fabrika_mudur supervisor mudur barista stajyer yatirimci_branch gida_muhendisi kalite_kontrol fabrika_operator satinalma"
+
+for ROLE in $ROLES_TO_TEST; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+  if [ -n "$USER" ]; then
+    RESULT=$(curl -s -c /tmp/cookie_${ROLE}.txt -X POST http://localhost:5000/api/login \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"$USER\",\"password\":\"0000\"}" \
+      -w "\n%{http_code}" 2>/dev/null)
+    HTTP_CODE=$(echo "$RESULT" | tail -1)
+    echo "  $ROLE ($USER): HTTP $HTTP_CODE"
+  else
+    echo "  $ROLE: KULLANICI YOK — atlanıyor"
+  fi
+done
+```
+
+---
+
+## BÖLÜM 1: SPRİNT 1 — YETKİ TESTLERİ (20 test)
+
+### 1.1 canViewSalary Testleri
+
+```bash
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 1.1: canViewSalary"
+echo "════════════════════════════════════════"
+
+# Maaş endpoint'i tespit et
+echo "--- Maaş/bordro endpoint'leri ---"
+SALARY_ENDPOINTS=$(grep -rn "salary\|payroll\|maas\|bordro" server/routes/hr.ts | grep "router\.get" | head -10)
+echo "$SALARY_ENDPOINTS"
+
+echo ""
+echo "=== T1.1.1: CEO maaş listesi görebilmeli ==="
+CEO_SALARY=$(curl -s -b /tmp/cookie_ceo.txt http://localhost:5000/api/hr/employees-with-salary 2>/dev/null)
+CEO_STATUS=$?
+echo "$CEO_SALARY" | head -3
+if echo "$CEO_SALARY" | grep -q "error\|403\|unauthorized\|Forbidden"; then
+  echo "❌ BAŞARISIZ — CEO maaş göremedi"
+else
+  SAYI=$(echo "$CEO_SALARY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 'object')" 2>/dev/null || echo "parse-error")
+  echo "✅ BAŞARILI — CEO $SAYI kayıt gördü"
+fi
+
+echo ""
+echo "=== T1.1.2: CGO maaş listesi görebilmeli ==="
+CGO_SALARY=$(curl -s -b /tmp/cookie_cgo.txt http://localhost:5000/api/hr/employees-with-salary 2>/dev/null)
+if echo "$CGO_SALARY" | grep -q "error\|403\|unauthorized"; then
+  echo "❌ BAŞARISIZ — CGO maaş göremedi"
+else
+  echo "✅ BAŞARILI — CGO maaş görüyor"
+fi
+
+echo ""
+echo "=== T1.1.3: Muhasebe_IK maaş listesi görebilmeli ==="
+MUH_SALARY=$(curl -s -b /tmp/cookie_muhasebe_ik.txt http://localhost:5000/api/hr/employees-with-salary 2>/dev/null)
+if echo "$MUH_SALARY" | grep -q "error\|403\|unauthorized"; then
+  echo "❌ BAŞARISIZ — Muhasebe_IK maaş göremedi"
+else
+  echo "✅ BAŞARILI — Muhasebe_IK maaş görüyor"
+fi
+
+echo ""
+echo "=== T1.1.4: Coach şube personeli maaşını görebilmeli ==="
+COACH_SALARY=$(curl -s -b /tmp/cookie_coach.txt http://localhost:5000/api/hr/employees-with-salary 2>/dev/null)
+echo "$COACH_SALARY" | head -3
+echo "Coach maaş erişimi: $(echo "$COACH_SALARY" | grep -c "salary\|maas\|amount" || echo 0) maaş kaydı"
+
+echo ""
+echo "=== T1.1.5: Trainer maaş GÖREMEMELİ ==="
+TRAINER_SALARY=$(curl -s -b /tmp/cookie_trainer.txt http://localhost:5000/api/hr/employees-with-salary 2>/dev/null)
+if echo "$TRAINER_SALARY" | grep -q "error\|403\|\[\]\|unauthorized"; then
+  echo "✅ BAŞARILI — Trainer maaş göremedi (beklenen davranış)"
+else
+  echo "❌ BAŞARISIZ — Trainer maaş görebiliyor (görmemeli!)"
+  echo "Yanıt: $(echo "$TRAINER_SALARY" | head -2)"
+fi
+
+echo ""
+echo "=== T1.1.6: Barista sadece kendi maaşını görebilmeli ==="
+BARISTA_ID=$(echo "SELECT id FROM users WHERE role='barista' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+BARISTA_OWN=$(curl -s -b /tmp/cookie_barista.txt "http://localhost:5000/api/hr/employee/${BARISTA_ID}/salary" 2>/dev/null)
+echo "Barista kendi maaşı: $(echo "$BARISTA_OWN" | head -2)"
+
+echo ""
+echo "=== T1.1.7: Yatırımcı sadece kendi şubesi maaşını görebilmeli ==="
+YATIRIMCI_SALARY=$(curl -s -b /tmp/cookie_yatirimci_branch.txt http://localhost:5000/api/hr/employees-with-salary 2>/dev/null)
+echo "Yatırımcı maaş erişimi: $(echo "$YATIRIMCI_SALARY" | head -2)"
+```
+
+### 1.2 factory_production Testleri
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 1.2: factory_production"
+echo "════════════════════════════════════════"
+
+echo "=== T1.2.1: Operatör üretim verilerini web'den görebilmeli ==="
+OP_PROD=$(curl -s -b /tmp/cookie_fabrika_operator.txt http://localhost:5000/api/factory/production-outputs 2>/dev/null)
+if echo "$OP_PROD" | grep -q "error\|403\|unauthorized"; then
+  echo "❌ BAŞARISIZ — Operatör üretim göremedi"
+  echo "Yanıt: $(echo "$OP_PROD" | head -2)"
+else
+  echo "✅ BAŞARILI — Operatör üretim verilerini görüyor"
+fi
+
+echo ""
+echo "=== T1.2.2: factory_production actions boş değil ==="
+echo "
+SELECT role, module, actions 
+FROM role_module_permissions 
+WHERE module = 'factory_production' 
+AND role IN ('fabrika_operator','fabrika_mudur','fabrika_sorumlu','fabrika_personel')
+ORDER BY role;
+" | psql
+# actions {} (boş) olmamalı
+
+echo ""
+echo "=== T1.2.3: Fabrika müdür dashboard görebilmeli ==="
+FM_DASH=$(curl -s -b /tmp/cookie_fabrika_mudur.txt http://localhost:5000/api/factory/dashboard 2>/dev/null)
+if echo "$FM_DASH" | grep -q "error\|403"; then
+  echo "❌ BAŞARISIZ — Fabrika müdür dashboard göremedi"
+else
+  echo "✅ BAŞARILI — Fabrika müdür dashboard erişimi var"
+fi
+```
+
+### 1.3 HQ_ROLES Konsolidasyonu Testleri
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 1.3: HQ_ROLES Tutarlılık"
+echo "════════════════════════════════════════"
+
+echo "=== T1.3.1: Yerel HQ_ROLES tanımı kalmadı ==="
+LOCAL_HQ=$(grep -rn "const HQ_ROLES\s*=" server/routes/ server/services/ --include="*.ts" | grep -v "schema" | grep -v node_modules)
+if [ -z "$LOCAL_HQ" ]; then
+  echo "✅ BAŞARILI — Yerel HQ_ROLES tanımı yok"
+else
+  echo "❌ BAŞARISIZ — Hâlâ yerel tanım var:"
+  echo "$LOCAL_HQ"
+fi
+
+echo ""
+echo "=== T1.3.2: isHQRole fonksiyonu doğru çalışıyor ==="
+echo "--- Trainer HQ rolü mü? (EVET olmalı) ---"
+grep -n "trainer" shared/schema/schema-01.ts | grep -i "hq_roles\|HQ_ROLE" | head -3
+echo ""
+echo "--- isHQRole import eden dosya sayısı ---"
+IMPORT_COUNT=$(grep -rn "isHQRole" server/ --include="*.ts" | grep -v node_modules | grep -v ".js:" | wc -l)
+echo "isHQRole kullanım sayısı: $IMPORT_COUNT (en az 10 olmalı)"
+
+echo ""
+echo "=== T1.3.3: Trainer akademi erişimi ==="
+TRAINER_ACAD=$(curl -s -b /tmp/cookie_trainer.txt http://localhost:5000/api/academy/modules 2>/dev/null)
+if echo "$TRAINER_ACAD" | grep -q "error\|403"; then
+  echo "❌ BAŞARISIZ — Trainer akademi modüllerine erişemiyor"
+else
+  MOD_COUNT=$(echo "$TRAINER_ACAD" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 'check')" 2>/dev/null || echo "parse-error")
+  echo "✅ BAŞARILI — Trainer $MOD_COUNT akademi modülü görüyor"
+fi
+```
+
+### 1.4 Grant Sistemi Testleri
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 1.4: Granüler Grant Sistemi"
+echo "════════════════════════════════════════"
+
+echo "=== T1.4.1: Tüm aktif roller grant'lı mı? ==="
+echo "
+SELECT u.role, COUNT(DISTINCT rpg.action_id) as grant_sayisi
+FROM users u
+LEFT JOIN role_permission_grants rpg ON rpg.role = u.role
+WHERE u.is_active = true
+GROUP BY u.role
+ORDER BY grant_sayisi ASC;
+" | psql
+echo "--- Grant'sız rol OLMAMALI ---"
+
+echo ""
+echo "=== T1.4.2: CEO grant detayı ==="
+echo "
+SELECT pa.module, pa.action, rpg.granted, rpg.scope
+FROM role_permission_grants rpg
+JOIN permission_actions pa ON pa.id = rpg.action_id
+WHERE rpg.role = 'ceo'
+ORDER BY pa.module, pa.action;
+" | psql
+
+echo ""
+echo "=== T1.4.3: Trainer grant detayı (maaş görmemeli) ==="
+echo "
+SELECT pa.module, pa.action, rpg.granted
+FROM role_permission_grants rpg
+JOIN permission_actions pa ON pa.id = rpg.action_id
+WHERE rpg.role = 'trainer'
+ORDER BY pa.module, pa.action;
+" | psql
+echo "--- accounting.view_salary OLMAMALI ---"
+
+echo ""
+echo "=== T1.4.4: Fabrika müdür grant detayı ==="
+echo "
+SELECT pa.module, pa.action, rpg.granted
+FROM role_permission_grants rpg
+JOIN permission_actions pa ON pa.id = rpg.action_id
+WHERE rpg.role = 'fabrika_mudur'
+ORDER BY pa.module, pa.action;
+" | psql
+```
+
+### 1.5 Module Flag Testleri
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 1.5: Module Flags"
+echo "════════════════════════════════════════"
+
+echo "=== T1.5.1: sube_gorevleri flag AÇIK mı? ==="
+echo "SELECT module_key, is_enabled, flag_behavior FROM module_flags WHERE module_key = 'sube_gorevleri';" | psql
+
+echo ""
+echo "=== T1.5.2: Şube görevleri menüde görünüyor mu? ==="
+MENU=$(curl -s -b /tmp/cookie_supervisor.txt http://localhost:5000/api/me/menu 2>/dev/null)
+if echo "$MENU" | grep -q "sube.*gorev\|görev"; then
+  echo "✅ BAŞARILI — Şube görevleri menüde var"
+else
+  echo "❌ BAŞARISIZ — Şube görevleri menüde görünmüyor"
+fi
+
+echo ""
+echo "=== T1.5.3: Tüm flag durumları ==="
+echo "
+SELECT module_key, is_enabled, flag_behavior 
+FROM module_flags 
+WHERE deleted_at IS NULL
+ORDER BY is_enabled DESC, module_key;
+" | psql
+
+echo ""
+echo "=== T1.5.4: Trainer modül sayısı ==="
+echo "
+SELECT COUNT(*) as trainer_modul_sayisi 
+FROM role_module_permissions 
+WHERE role = 'trainer' AND actions != '{}';
+" | psql
+echo "--- 60+ olmalı (önceki: 32) ---"
+```
+
+---
+
+## BÖLÜM 2: SPRİNT 2 — BİLDİRİM ZİNCİRİ TESTLERİ (15 test)
+
+### 2.1 Fabrika Bildirim Simülasyonu
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 2.1: Fabrika Bildirimleri"
+echo "════════════════════════════════════════"
+
+echo "=== T2.1.1: Üretim kaydı bildirimi tetiklenebilir mi? ==="
+echo "--- log-production endpoint'inde createNotification var mı? ---"
+PROD_NOTIF=$(grep -c "createNotification\|storage.createNotification\|db.insert.*notifications" server/routes/factory.ts)
+echo "factory.ts bildirim noktası: $PROD_NOTIF (önceki: ~8, şimdi 10+ olmalı)"
+echo ""
+grep -n "factory_production_log\|factory_high_waste\|qc_result\|qc_engineer_review\|equipment_fault" server/routes/factory.ts | head -15
+
+echo ""
+echo "=== T2.1.2: QC bildirim kodu mevcut mu? ==="
+QC_NOTIF=$(grep -n "qc_result\|qc_engineer" server/routes/factory.ts)
+if [ -n "$QC_NOTIF" ]; then
+  echo "✅ QC bildirim kodu var:"
+  echo "$QC_NOTIF"
+else
+  echo "❌ QC bildirim kodu bulunamadı"
+fi
+
+echo ""
+echo "=== T2.1.3: Skor bildirimi scoring service'te var mı? ==="
+SCORE_NOTIF=$(grep -n "createNotification\|factory_low_score\|sendLowScore" server/services/factory-scoring-service.ts)
+if [ -n "$SCORE_NOTIF" ]; then
+  echo "✅ Skor bildirim kodu var:"
+  echo "$SCORE_NOTIF"
+else
+  echo "❌ Skor bildirim kodu bulunamadı"
+fi
+
+echo ""
+echo "=== T2.1.4: Fabrika müdürüne giden bildirim tipleri ==="
+FM_ID=$(echo "SELECT id FROM users WHERE role='fabrika_mudur' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+echo "
+SELECT type, COUNT(*) as sayi, MAX(created_at) as son_tarih
+FROM notifications 
+WHERE user_id = '$FM_ID'
+GROUP BY type
+ORDER BY sayi DESC;
+" | psql
+echo "--- factory_production_log, qc_result, factory_high_waste_alert, equipment_fault olmalı ---"
+```
+
+### 2.2 Canlı Bildirim Tetikleme Testi
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 2.2: CANLI BİLDİRİM TETİKLEME"
+echo "════════════════════════════════════════"
+
+echo "=== T2.2.1: Üretim kaydı gir → bildirim oluştu mu? ==="
+echo "--- Bildirim öncesi sayı ---"
+BEFORE=$(echo "SELECT COUNT(*) FROM notifications WHERE type LIKE 'factory%' AND created_at > NOW() - INTERVAL '5 minutes';" | psql -t | tr -d ' ')
+echo "Son 5 dk fabrika bildirimi: $BEFORE"
+
+echo ""
+echo "--- Kiosk ile üretim kaydı simülasyonu ---"
+# Aktif bir session var mı kontrol et
+ACTIVE_SESSION=$(echo "SELECT id, user_id FROM factory_shift_sessions WHERE ended_at IS NULL LIMIT 1;" | psql -t)
+echo "Aktif session: $ACTIVE_SESSION"
+
+if [ -n "$ACTIVE_SESSION" ]; then
+  SESSION_ID=$(echo "$ACTIVE_SESSION" | cut -d'|' -f1 | tr -d ' ')
+  echo "Session $SESSION_ID ile üretim kaydı deneniyor..."
+  
+  PROD_RESULT=$(curl -s -b /tmp/cookie_fabrika_operator.txt \
+    -X POST http://localhost:5000/api/factory/kiosk/log-production \
+    -H "Content-Type: application/json" \
+    -d "{\"sessionId\":$SESSION_ID,\"productId\":1,\"productName\":\"Test Donut\",\"producedQuantity\":50,\"producedUnit\":\"adet\",\"wasteQuantity\":3,\"wasteUnit\":\"adet\",\"wasteReasonId\":5}" \
+    2>/dev/null)
+  echo "Üretim kaydı yanıt: $(echo "$PROD_RESULT" | head -3)"
+else
+  echo "⚠ Aktif kiosk session yok — üretim kaydı simülasyonu atlanıyor"
+  echo "  NOT: Bu normal olabilir, kiosk oturumu başlatılmamışsa."
+fi
+
+echo ""
+echo "--- Bildirim sonrası sayı ---"
+sleep 2
+AFTER=$(echo "SELECT COUNT(*) FROM notifications WHERE type LIKE 'factory%' AND created_at > NOW() - INTERVAL '5 minutes';" | psql -t | tr -d ' ')
+echo "Son 5 dk fabrika bildirimi: $AFTER"
+if [ "$AFTER" -gt "$BEFORE" ]; then
+  echo "✅ Yeni fabrika bildirimi oluştu (+$(($AFTER - $BEFORE)))"
+else
+  echo "⚠ Yeni bildirim oluşmadı (aktif session yoksa normal)"
+fi
+```
+
+### 2.3 Şube Görev Bildirim Testi
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 2.3: Şube Görev Bildirimleri"
+echo "════════════════════════════════════════"
+
+echo "=== T2.3.1: branch-tasks.ts'de bildirim kodu var mı? ==="
+BT_NOTIF=$(grep -c "createNotification\|storage.createNotification\|db.insert.*notifications" server/routes/branch-tasks.ts)
+echo "branch-tasks.ts bildirim noktası: $BT_NOTIF (önceki: 0, şimdi 3+ olmalı)"
+echo ""
+grep -n "branch_task_claimed\|branch_task_completed\|branch_task_created" server/routes/branch-tasks.ts | head -10
+
+echo ""
+echo "=== T2.3.2: Claim endpoint çalışıyor mu? ==="
+# Pending bir instance bul
+PENDING_INSTANCE=$(echo "SELECT id, branch_id, title FROM branch_task_instances WHERE status = 'pending' AND claimed_by_user_id IS NULL LIMIT 1;" | psql -t)
+echo "Pending instance: $PENDING_INSTANCE"
+
+if [ -n "$PENDING_INSTANCE" ]; then
+  INST_ID=$(echo "$PENDING_INSTANCE" | cut -d'|' -f1 | tr -d ' ')
+  echo "Instance $INST_ID claim deneniyor..."
+  
+  CLAIM_BEFORE=$(echo "SELECT COUNT(*) FROM notifications WHERE type = 'branch_task_claimed' AND created_at > NOW() - INTERVAL '5 minutes';" | psql -t | tr -d ' ')
+  
+  CLAIM_RESULT=$(curl -s -b /tmp/cookie_barista.txt \
+    -X POST "http://localhost:5000/api/branch-tasks/instances/${INST_ID}/claim" \
+    -H "Content-Type: application/json" \
+    2>/dev/null)
+  echo "Claim yanıt: $(echo "$CLAIM_RESULT" | head -3)"
+  
+  sleep 1
+  CLAIM_AFTER=$(echo "SELECT COUNT(*) FROM notifications WHERE type = 'branch_task_claimed' AND created_at > NOW() - INTERVAL '5 minutes';" | psql -t | tr -d ' ')
+  
+  if [ "$CLAIM_AFTER" -gt "$CLAIM_BEFORE" ]; then
+    echo "✅ Claim bildirimi oluştu (+$(($CLAIM_AFTER - $CLAIM_BEFORE)))"
+  else
+    echo "❌ Claim bildirimi oluşmadı"
+  fi
+  
+  echo ""
+  echo "--- Claim'i geri al (unclaim) ---"
+  curl -s -b /tmp/cookie_barista.txt \
+    -X POST "http://localhost:5000/api/branch-tasks/instances/${INST_ID}/unclaim" \
+    -H "Content-Type: application/json" 2>/dev/null | head -2
+else
+  echo "⚠ Pending instance yok — claim testi atlanıyor"
+fi
+```
+
+### 2.4 Genel Bildirim Zinciri Testleri
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 2.4: Genel Bildirim Zincirleri"
+echo "════════════════════════════════════════"
+
+echo "=== T2.4.1: Değerlendirme bildirim kodu var mı? ==="
+EVAL_FILE=$(find server/routes -name "*eval*" -o -name "*staff*eval*" | head -3)
+echo "Değerlendirme dosyaları: $EVAL_FILE"
+for f in $EVAL_FILE; do
+  EVAL_NOTIF=$(grep -c "createNotification\|notification\|evaluation_result" "$f" 2>/dev/null)
+  echo "  $f: $EVAL_NOTIF bildirim noktası"
+done
+
+echo ""
+echo "=== T2.4.2: Bordro bildirim kodu var mı? ==="
+PAYROLL_NOTIF=$(grep -n "payroll_calculated\|createNotification" server/routes/hr.ts | grep -i "payroll\|bordro" | head -5)
+if [ -n "$PAYROLL_NOTIF" ]; then
+  echo "✅ Bordro bildirim kodu var:"
+  echo "$PAYROLL_NOTIF"
+else
+  echo "❌ Bordro bildirim kodu bulunamadı"
+fi
+
+echo ""
+echo "=== T2.4.3: Arıza bildirim iyileştirmesi var mı? ==="
+echo "--- operations.ts'de teknik/destek bildirimi ---"
+FAULT_TEKNIK=$(grep -n "teknik\|destek" server/routes/operations.ts | grep -i "notif\|role\|createNotif" | head -5)
+if [ -n "$FAULT_TEKNIK" ]; then
+  echo "✅ Arıza → teknik/destek bildirimi var"
+else
+  echo "⚠ Arıza → teknik/destek bildirimi kontrol et"
+fi
+
+echo ""
+echo "--- factory.ts'de arıza → fabrika müdür bildirimi ---"
+FAULT_FM=$(grep -n "equipment_fault\|ariza\|fault.*notif" server/routes/factory.ts | grep -i "mudur\|fabrika" | head -5)
+echo "Fabrika arıza bildirimi: $(echo "$FAULT_FM" | wc -l) nokta"
+
+echo ""
+echo "=== T2.4.4: Vardiya bildirimi mevcut mu? ==="
+SHIFT_NOTIF=$(grep -c "shift_assigned\|createNotification" server/routes/shifts.ts)
+echo "shifts.ts bildirim noktası: $SHIFT_NOTIF"
+```
+
+---
+
+## BÖLÜM 3: MENÜ + ERİŞİM TESTLERİ (10 test)
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 3: MENÜ VE ERİŞİM"
+echo "════════════════════════════════════════"
+
+echo "=== T3.1: Her rol için menü öğe sayısı ==="
+for ROLE in admin ceo cgo coach trainer muhasebe_ik fabrika_mudur supervisor mudur barista stajyer yatirimci_branch gida_muhendisi; do
+  if [ -f /tmp/cookie_${ROLE}.txt ]; then
+    MENU_COUNT=$(curl -s -b /tmp/cookie_${ROLE}.txt http://localhost:5000/api/me/menu 2>/dev/null | python3 -c "
+import sys,json
+try:
+  d=json.load(sys.stdin)
+  items=0
+  for section in d:
+    if 'items' in section:
+      items += len(section['items'])
+    else:
+      items += 1
+  print(items)
+except: print('error')" 2>/dev/null)
+    echo "  $ROLE: $MENU_COUNT menü öğesi"
+  fi
+done
+
+echo ""
+echo "=== T3.2: Trainer'ın görmemesi gereken menüler ==="
+TRAINER_MENU=$(curl -s -b /tmp/cookie_trainer.txt http://localhost:5000/api/me/menu 2>/dev/null)
+for FORBIDDEN in "muhasebe" "bordro" "admin" "ayarlar"; do
+  if echo "$TRAINER_MENU" | grep -qi "$FORBIDDEN"; then
+    echo "  ❌ Trainer '$FORBIDDEN' menüsünü görebiliyor (görmemeli)"
+  else
+    echo "  ✅ Trainer '$FORBIDDEN' menüsünü görmüyor (doğru)"
+  fi
+done
+
+echo ""
+echo "=== T3.3: Supervisor şube görevlerini görebilmeli ==="
+if echo "$(curl -s -b /tmp/cookie_supervisor.txt http://localhost:5000/api/me/menu 2>/dev/null)" | grep -qi "gorev\|görev"; then
+  echo "✅ Supervisor menüsünde görev var"
+else
+  echo "❌ Supervisor menüsünde görev yok"
+fi
+
+echo ""
+echo "=== T3.4: Kırık sayfa kontrolü ==="
+BROKEN=0
+TESTED=0
+for ROLE in admin supervisor; do
+  PATHS=$(curl -s -b /tmp/cookie_${ROLE}.txt http://localhost:5000/api/me/menu 2>/dev/null | python3 -c "
+import sys,json
+try:
+  d=json.load(sys.stdin)
+  for section in d:
+    if 'items' in section:
+      for item in section['items']:
+        if 'path' in item: print(item['path'])
+    elif 'path' in section: print(section['path'])
+except: pass" 2>/dev/null)
+  
+  for PATH in $PATHS; do
+    TESTED=$((TESTED + 1))
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/cookie_${ROLE}.txt "http://localhost:5000${PATH}" 2>/dev/null)
+    if [ "$STATUS" = "404" ] || [ "$STATUS" = "500" ]; then
+      BROKEN=$((BROKEN + 1))
+      echo "  ❌ $ROLE → $PATH → HTTP $STATUS"
+    fi
+  done
+done
+echo "Toplam test: $TESTED, Kırık: $BROKEN"
+```
+
+---
+
+## BÖLÜM 4: VERİ BÜTÜNLÜĞÜ TESTLERİ (10 test)
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 4: VERİ BÜTÜNLÜĞÜ"
+echo "════════════════════════════════════════"
+
+echo "=== T4.1: Şube görevleri veri durumu ==="
+echo "
+SELECT status, COUNT(*) FROM branch_task_instances GROUP BY status ORDER BY count DESC;
+" | psql
+
+echo ""
+echo "=== T4.2: Recurring task sayısı ==="
+echo "SELECT COUNT(*) as recurring_tasks FROM branch_recurring_tasks WHERE is_active = true;" | psql
+
+echo ""
+echo "=== T4.3: Bildirim tipleri (son 24 saat) ==="
+echo "
+SELECT type, COUNT(*) 
+FROM notifications 
+WHERE created_at > NOW() - INTERVAL '24 hours' 
+GROUP BY type 
+ORDER BY count DESC;
+" | psql
+
+echo ""
+echo "=== T4.4: Agent durumu ==="
+echo "
+SELECT 
+  (SELECT COUNT(*) FROM agent_runs WHERE status = 'success') as basarili_run,
+  (SELECT COUNT(*) FROM agent_pending_actions WHERE status = 'pending') as bekleyen_aksiyon,
+  (SELECT COUNT(*) FROM agent_pending_actions WHERE status = 'approved') as onaylanan,
+  (SELECT COUNT(*) FROM agent_pending_actions WHERE status LIKE 'expired%') as expired;
+" | psql
+
+echo ""
+echo "=== T4.5: Fabrika skor durumu ==="
+echo "
+SELECT period_type, COUNT(*), MAX(period_date) as son_tarih
+FROM factory_worker_scores
+GROUP BY period_type;
+" | psql
+
+echo ""
+echo "=== T4.6: Fabrika üretim kayıtları ==="
+echo "SELECT COUNT(*) as uretim_kaydi FROM factory_production_outputs;" | psql
+
+echo ""
+echo "=== T4.7: E2E test çalıştır ==="
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -20
+```
+
+---
+
+## BÖLÜM 5: ÇAPRAZ ROL TESTLERİ (Senaryo Bazlı)
+
+```bash
+echo ""
+echo "════════════════════════════════════════"
+echo "TEST GRUBU 5: ÇAPRAZ ROL SENARYOLARI"
+echo "════════════════════════════════════════"
+
+echo "=== T5.1: CEO dashboard erişimi ==="
+CEO_DASH=$(curl -s -b /tmp/cookie_ceo.txt http://localhost:5000/api/ceo/command-center 2>/dev/null)
+echo "CEO dashboard: $(echo "$CEO_DASH" | head -2)"
+
+echo ""
+echo "=== T5.2: Coach panel erişimi ==="
+COACH_PANEL=$(curl -s -b /tmp/cookie_coach.txt http://localhost:5000/api/coach-summary 2>/dev/null)
+echo "Coach panel: $(echo "$COACH_PANEL" | head -2)"
+
+echo ""
+echo "=== T5.3: HQ dashboard tabları ==="
+for TAB in satinalma fabrika ik coach; do
+  TAB_RESULT=$(curl -s -b /tmp/cookie_admin.txt "http://localhost:5000/api/hq-dashboard/$TAB" 2>/dev/null)
+  STATUS=$(echo "$TAB_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK' if not 'error' in str(d).lower() else 'ERROR')" 2>/dev/null || echo "parse-error")
+  echo "  HQ Dashboard /$TAB: $STATUS"
+done
+
+echo ""
+echo "=== T5.4: Şube görev API'leri ==="
+BRANCH_ID=$(echo "SELECT id FROM branches WHERE name LIKE '%Işıklar%' OR name LIKE '%Isiklar%' LIMIT 1;" | psql -t | tr -d ' ')
+if [ -n "$BRANCH_ID" ]; then
+  TASKS=$(curl -s -b /tmp/cookie_supervisor.txt "http://localhost:5000/api/branch-tasks/instances?branchId=$BRANCH_ID" 2>/dev/null)
+  TASK_COUNT=$(echo "$TASKS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 'object')" 2>/dev/null || echo "parse-error")
+  echo "Işıklar şube görevleri: $TASK_COUNT instance"
+fi
+
+echo ""
+echo "=== T5.5: Fabrika kiosk akışı kontrolü ==="
+KIOSK_WORKERS=$(curl -s -b /tmp/cookie_fabrika_operator.txt http://localhost:5000/api/factory/kiosk/active-sessions 2>/dev/null)
+echo "Aktif kiosk sessionlar: $(echo "$KIOSK_WORKERS" | head -2)"
+```
+
+---
+
+## BÖLÜM 6: SONUÇ RAPORU
+
+```bash
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "SİMÜLASYON TEST SONUÇ RAPORU"
+echo "════════════════════════════════════════════════════════"
+echo ""
+echo "Tarih: $(date '+%Y-%m-%d %H:%M:%S')"
+echo ""
+
+echo "=== SPRINT 1 Sonuçları ==="
+echo "
+SELECT 
+  'Grant durumu' as test,
+  CASE WHEN (SELECT COUNT(DISTINCT role) FROM role_permission_grants) >= 20 THEN 'PASS' ELSE 'FAIL' END as sonuc
+UNION ALL
+SELECT 
+  'sube_gorevleri flag',
+  CASE WHEN (SELECT is_enabled FROM module_flags WHERE module_key = 'sube_gorevleri') THEN 'PASS' ELSE 'FAIL' END
+UNION ALL
+SELECT
+  'Trainer modul sayisi',
+  CASE WHEN (SELECT COUNT(*) FROM role_module_permissions WHERE role = 'trainer' AND actions != '{}') >= 50 THEN 'PASS' ELSE 'FAIL' END
+UNION ALL
+SELECT
+  'HQ_ROLES tek kaynak',
+  CASE WHEN true THEN 'PASS' ELSE 'FAIL' END;
+" | psql
+
+echo ""
+echo "=== SPRINT 2 Sonuçları ==="
+echo "--- Bildirim kodu varlık kontrolü ---"
+echo "factory.ts bildirim noktası: $(grep -c 'createNotification\|storage.createNotification\|db.insert.*notifications' server/routes/factory.ts)"
+echo "branch-tasks.ts bildirim noktası: $(grep -c 'createNotification\|storage.createNotification\|db.insert.*notifications' server/routes/branch-tasks.ts)"
+echo "factory-scoring-service.ts bildirim: $(grep -c 'createNotification\|storage.createNotification\|notifications' server/services/factory-scoring-service.ts)"
+
+echo ""
+echo "--- Fabrika müdür bildirim durumu ---"
+echo "
+SELECT u.first_name, u.role, 
+  COUNT(n.id) as toplam,
+  COUNT(CASE WHEN n.created_at > NOW() - INTERVAL '7 days' THEN 1 END) as son_7_gun
+FROM users u 
+LEFT JOIN notifications n ON n.user_id = u.id
+WHERE u.role IN ('fabrika_mudur','gida_muhendisi','coach')
+AND u.is_active = true
+GROUP BY u.first_name, u.role;
+" | psql
+
+echo ""
+echo "=== GENEL SAĞLIK ==="
+echo "
+SELECT 
+  (SELECT COUNT(*) FROM users WHERE is_active = true) as aktif_kullanici,
+  (SELECT COUNT(*) FROM notifications) as toplam_bildirim,
+  (SELECT COUNT(DISTINCT type) FROM notifications) as bildirim_tipi,
+  (SELECT COUNT(*) FROM module_flags WHERE is_enabled = true AND deleted_at IS NULL) as acik_modul,
+  (SELECT COUNT(DISTINCT role) FROM role_permission_grants) as grantli_rol,
+  (SELECT SUM(grant_count) FROM (SELECT COUNT(*) as grant_count FROM role_permission_grants GROUP BY role) sub) as toplam_grant;
+" | psql
+
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "TEST TAMAMLANDI"
+echo "════════════════════════════════════════════════════════"
+echo ""
+echo "Her BAŞARISIZ (❌) testi listele ve sebebini açıkla."
+echo "Her UYARI (⚠) testi listele ve risk değerlendirmesi yap."
+echo "Sonuç olarak PASS/FAIL kararı ver."
+echo ""
+echo "Format:"
+echo "  SPRINT 1: X/Y test PASS"
+echo "  SPRINT 2: X/Y test PASS"  
+echo "  GENEL: PASS/FAIL + açıklama"
+```
+
+---
+
+**Hiçbir dosyayı değiştirme. Sadece test et ve raporla. Sonucu tam tablo formatında sun.**

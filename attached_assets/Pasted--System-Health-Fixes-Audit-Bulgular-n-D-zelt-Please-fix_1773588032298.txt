@@ -1,0 +1,106 @@
+# System Health Fixes — Audit Bulgularını Düzelt
+
+Please fix the following issues found in the system health audit.
+Fix them in order of priority. Do NOT touch anything outside the scope of each fix.
+
+---
+
+## FIX 1 (CRITICAL) — /siralama Dead Link
+
+**Problem:** Branch dashboard has a ModuleCard with `path="/siralama"` but this route does not exist in App.tsx → 404 error for branch users.
+
+**Steps:**
+1. Find the route in App.tsx — does `/siralama` or a leaderboard/ranking page exist under any other path?
+   - Search: `grep -r "siralama\|leaderboard\|ranking\|sıralama" client/src/pages --include="*.tsx" -l`
+   - Search: `grep -r "siralama\|leaderboard" client/src/App.tsx`
+
+2. If the page EXISTS at a different path (e.g. `/akademi/siralama` or `/liderlik`):
+   - Update the ModuleCard path in `client/src/pages/dashboard.tsx` to the correct path
+
+3. If the page does NOT exist yet:
+   - Change the ModuleCard path to `/akademi` (the closest relevant page) as a temporary placeholder
+   - Change the label to "Akademi" and icon to "📚"
+   - Add a TODO comment: `// TODO: Replace with /siralama when leaderboard page is built`
+
+**File to update:** `client/src/pages/dashboard.tsx` (branch/barista dashboard)
+
+---
+
+## FIX 2 (SECURITY) — İletişim Merkezi Route Guard
+
+**Problem:** `/iletisim-merkezi` has no route-level auth guard. The component filters by role internally, but the URL is accessible to anyone (including factory workers, kiosk users) if they type it manually.
+
+**Steps:**
+1. Find how other protected routes are guarded in App.tsx
+   - Look for patterns like `<ProtectedRoute>`, `<RoleGuard>`, or role check wrappers
+   - Find an example of a route that IS properly guarded
+
+2. Add the same guard to the `/iletisim-merkezi` route in App.tsx
+   - Allowed roles: all HQ roles + mudur + supervisor (NOT barista, NOT fabrika_*)
+   - If the existing guard component accepts a `roles` prop, use it
+   - If not, follow whatever pattern is already used for other restricted routes
+
+3. Also check `/crm/*` routes — apply the same fix if they have the same issue
+
+---
+
+## FIX 3 — TypeScript Errors in Sprint Files
+
+**Problem:** 6 TypeScript type errors in sprint files. They don't crash the app but should be clean.
+
+**Steps:**
+1. Run: `npx tsc --noEmit 2>&1 | grep -v node_modules | grep -E "nav-rail|module-card|delegasyon|dashboard-alert|dashboard-kpi|module-content|navigation-config"`
+2. Fix each error found. Common patterns:
+   - Add missing type annotations
+   - Fix `any` types with proper interfaces
+   - Fix missing return types on functions
+
+Report which files had errors and what was fixed.
+
+---
+
+## FIX 4 — 17 Users Without Branch Assignment
+
+**Problem:** 17 non-HQ users (barista, supervisor, etc.) have no branchId. They may see wrong/empty dashboards.
+
+**Steps:**
+1. First, identify who they are:
+```sql
+SELECT id, name, role, "branchId", "createdAt"
+FROM users
+WHERE "branchId" IS NULL
+AND "deletedAt" IS NULL
+AND role NOT IN ('admin','ceo','cgo','coach','trainer','muhasebe','ik','satinalma','teknik_sorumlu','pazarlama')
+ORDER BY "createdAt" DESC;
+```
+
+2. Report the list. Do NOT automatically assign branches — a human needs to decide.
+
+3. However, add a safety check to the branch dashboard component:
+   - If `user.branchId` is null for a branch-role user, show a friendly message instead of crashing:
+```tsx
+// In branch dashboard (dashboard.tsx), near the top:
+if (!user?.branchId && ['mudur','supervisor','barista','bar_buddy','stajyer'].includes(user?.role)) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 text-center px-6">
+      <span className="text-4xl">🏪</span>
+      <div className="text-base font-bold text-foreground">Şube Ataması Yok</div>
+      <div className="text-sm text-muted-foreground">
+        Hesabınıza henüz bir şube atanmamış. Yöneticinizle iletişime geçin.
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Verification Checklist
+
+- [ ] /siralama no longer causes 404 (either fixed path or /akademi fallback)
+- [ ] /iletisim-merkezi returns 403/redirects for factory/kiosk roles
+- [ ] TypeScript errors in sprint files resolved (or reduced)
+- [ ] Branch dashboard shows friendly message for users without branchId
+- [ ] SQL query run and results reported for the 17 users
+- [ ] App starts without errors
+- [ ] No new TypeScript errors introduced

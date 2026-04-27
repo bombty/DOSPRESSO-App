@@ -1,0 +1,320 @@
+Evet, kesinlikle detaylı bir audit lazım. Screenshot'larda **2 kritik runtime error** + birçok UX tutarsızlık görüyorum. Bunları kategorize edeyim:
+
+**Acil Bug'lar (runtime error):**
+1. `Cannot access 'module' before initialization` — sayfa çöküyor
+2. `Can't find variable: setIsAiOnboardingOpen` — Coach sayfasında hata
+
+**UX Tutarsızlıklar:**
+3. Menü pattern'i universal değil (bazı sayfalarda yan menü, bazılarında header tab)
+4. Reçete/ürün kartı sistemi uygun değil (kahveli/kahvesiz checkbox yiyecekte anlamsız)
+5. Onboarding sistemi çalışmıyor
+6. Akademi HQ yönetim paneli karmaşık
+
+**Büyük Modül Sorunları:**
+7. Fabrika üretim zinciri (hammadde → üretim → stok → sevkiyat) bağlantıları kopuk
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Kapsamlı Sistem Audit — Runtime Hatalar, UX Tutarsızlıklar, Fabrika & Reçete Sistemi
+
+Kod değişikliği YAPMA. Sadece analiz et ve DETAYLI rapor ver. Bu audit çok önemli — tüm sistemi baştan sona tara.
+
+---
+
+### BÖLÜM A: Runtime Hatalar (KRİTİK)
+
+```bash
+# 1. "Cannot access 'module' before initialization" hatası
+grep -rn "module" client/src/ --include="*.tsx" | grep -i "import\|export\|lazy\|React.lazy" | head -20
+# Circular dependency kontrolü
+# Bu hata genellikle circular import'tan kaynaklanır
+
+# 2. "Can't find variable: setIsAiOnboardingOpen" hatası  
+grep -rn "setIsAiOnboardingOpen\|isAiOnboardingOpen\|AiOnboarding" client/src/ --include="*.tsx" | head -15
+# Bu değişken nerede tanımlanıyor, nerede kullanılıyor?
+
+# 3. Tüm console error'ları tespit et
+grep -rn "useState\|useEffect\|useRef\|useCallback" client/src/ --include="*.tsx" | grep -i "undefined\|null\|error" | head -20
+
+# 4. Sunucu loglarında hata var mı?
+# Son 100 satır log kontrol et
+```
+
+Her hata için raporla:
+- Hangi dosyada?
+- Hangi sayfada tetikleniyor?
+- Root cause ne?
+- Nasıl düzeltilir?
+
+---
+
+### BÖLÜM B: Menü & Navigasyon Tutarsızlıkları
+
+```bash
+# 1. Yan menü (sidebar) kullanan sayfalar
+grep -rn "SideNav\|SideMenu\|sidebar\|side-nav\|leftMenu\|LeftPanel" client/src/ --include="*.tsx" -l
+
+# 2. Header tab kullanan sayfalar  
+grep -rn "TabsList\|TabsTrigger\|Tabs " client/src/pages/ --include="*.tsx" -l
+
+# 3. İçerik içi yan menü kullanan sayfalar (module-detail gibi)
+grep -rn "aside\|leftPanel\|sidePanel\|menuItems\|MODÜL YAPISI" client/src/ --include="*.tsx" | head -20
+
+# 4. Her sayfanın navigasyon pattern'i
+# Hangi sayfalar hangi pattern kullanıyor?
+for f in client/src/pages/*.tsx; do
+  name=$(basename "$f" .tsx)
+  has_tabs=$(grep -c "TabsTrigger" "$f" 2>/dev/null || echo 0)
+  has_sidenav=$(grep -c "aside\|leftPanel\|sidePanel\|sidebar" "$f" 2>/dev/null || echo 0)
+  if [ "$has_tabs" -gt 0 ] || [ "$has_sidenav" -gt 0 ]; then
+    echo "$name: tabs=$has_tabs, sidenav=$has_sidenav"
+  fi
+done
+
+# 5. Breadcrumb tutarlılığı
+grep -rn "Breadcrumb\|breadcrumb\|useBreadcrumb" client/src/pages/ --include="*.tsx" -l | wc -l
+```
+
+Raporla:
+- Yan menü kullanan sayfaların tam listesi
+- Header tab kullanan sayfaların tam listesi
+- Her iki pattern'i aynı anda kullanan sayfalar (tutarsız)
+- Önerilen universal pattern: hangi tür sayfalar hangi navigasyonu kullanmalı?
+
+---
+
+### BÖLÜM C: Akademi & Coach Eğitim Yönetim Sistemi
+
+```bash
+# 1. Coach/Trainer eğitim yönetim sayfaları
+grep -rn "content.*management\|içerik.*yönetim\|modül.*oluştur\|module.*create\|ModuleEditor\|ContentStudio" client/src/ --include="*.tsx" -l
+
+# 2. Modül oluşturma formu — hangi alanlar?
+grep -rn "ModuleEditor\|ModuleForm\|CreateModule\|EditModule" client/src/ --include="*.tsx" | head -15
+
+# 3. Modül oluşturma API endpoint
+grep -rn "POST.*module\|POST.*modul\|createModule\|training_modules.*insert" server/ --include="*.ts" | head -10
+
+# 4. Yavuz (Coach) modül oluştururken hangi hata alıyor?
+# academy-content-management.tsx veya module-editor sayfasını incele
+grep -rn "error\|Error\|catch\|throw" client/src/pages/academy-content* client/src/pages/module-* --include="*.tsx" 2>/dev/null | head -20
+
+# 5. AI modül üretimi endpoint
+grep -rn "ai.*module\|generate.*module\|ai.*content\|enrichContent" server/ --include="*.ts" | head -10
+
+# 6. Modül onay akışı
+grep -rn "status.*draft\|status.*pending\|status.*approved\|approval\|onay" server/ --include="*.ts" | grep -i "module\|training" | head -15
+```
+
+Raporla:
+- Modül oluşturma akışı nasıl çalışıyor? Adım adım
+- Hangi aşamada hata veriyor?
+- AI ile modül oluşturma çalışıyor mu?
+- Onay akışı (draft → pending → approved) aktif mi?
+- Coach vs Trainer yetki farkı ne?
+
+---
+
+### BÖLÜM D: Reçete & Ürün Kartı Sistemi
+
+```bash
+# 1. Reçete sistemi dosyaları
+grep -rn "recete\|recipe\|Recipe\|Recete" client/src/ --include="*.tsx" -l
+ls client/src/pages/recete* 2>/dev/null
+
+# 2. Ürün kartı sistemi
+grep -rn "urun.*kart\|product.*card\|UrunKart\|ProductCard\|menu.*item" client/src/ --include="*.tsx" -l
+
+# 3. Ürün tipleri (kahve, yiyecek, tatlı, vb.)
+grep -rn "product.*type\|urun.*tip\|category\|kategori\|kahve\|yiyecek\|tatli\|donut" client/src/ server/ --include="*.tsx" --include="*.ts" | grep -i "type\|tip\|category" | head -20
+
+# 4. Checkbox/özellik alanları
+grep -rn "kahveli\|kahvesiz\|süt\|şeker\|beden\|boyut\|size\|option\|variant" client/src/ --include="*.tsx" | head -20
+
+# 5. Reçete DB tabloları
+```
+
+```sql
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%recipe%' OR table_name ILIKE '%recete%' 
+OR table_name ILIKE '%product%' OR table_name ILIKE '%urun%'
+OR table_name ILIKE '%menu_item%' OR table_name ILIKE '%ingredient%';
+
+-- Ürün kartı yapısı
+SELECT column_name, data_type FROM information_schema.columns 
+WHERE table_name ILIKE '%recipe%' OR table_name ILIKE '%product%' OR table_name ILIKE '%menu_item%'
+ORDER BY table_name, ordinal_position;
+
+-- Mevcut ürün/reçete sayıları
+SELECT 'recipes' as tablo, COUNT(*) FROM recipes
+UNION ALL SELECT 'menu_items', COUNT(*) FROM menu_items
+UNION ALL SELECT 'products', COUNT(*) FROM products;
+```
+
+Raporla:
+- Reçete sistemi kaç tablo, kaç kayıt?
+- Ürün tipleri nasıl ayrılıyor? (kahve, yiyecek, donut)
+- "Kahveli/kahvesiz" checkbox nerede tanımlı?
+- Ürün tipine göre farklı form alanları var mı yoksa hepsi aynı form mu?
+- Yeni ürün oluşturma akışı nasıl çalışıyor?
+- Reçete → hammadde bağlantısı var mı?
+
+---
+
+### BÖLÜM E: Onboarding Sistemi
+
+```bash
+# 1. Onboarding sayfaları
+grep -rn "onboarding\|Onboarding" client/src/ --include="*.tsx" -l
+
+# 2. Onboarding API endpoint'leri
+grep -rn "onboarding" server/routes/ --include="*.ts" | head -15
+
+# 3. Onboarding template/program tabloları
+```
+
+```sql
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%onboard%';
+
+-- Her tablonun yapısı ve kayıt sayısı
+SELECT 'onboarding_programs' as tablo, COUNT(*) FROM onboarding_programs
+UNION ALL SELECT 'onboarding_templates', COUNT(*) FROM onboarding_templates  
+UNION ALL SELECT 'onboarding_instances', COUNT(*) FROM onboarding_instances
+UNION ALL SELECT 'onboarding_tasks', COUNT(*) FROM onboarding_tasks;
+```
+
+```bash
+# 4. Onboarding'deki hatalar
+grep -rn "error\|Error\|catch\|throw" client/src/pages/*onboarding* --include="*.tsx" 2>/dev/null | head -15
+
+# 5. Coach onboarding studio
+grep -rn "coach.*onboarding\|onboarding.*studio\|OnboardingStudio" client/src/ --include="*.tsx" -l
+```
+
+Raporla:
+- Onboarding sistemi kaç bileşenden oluşuyor?
+- Hangi kısmı çalışıyor, hangi kısmı kırık?
+- Template oluşturma çalışıyor mu?
+- Yeni personel onboarding akışı: adım adım ne olması gerekiyor vs ne oluyor?
+
+---
+
+### BÖLÜM F: Fabrika Üretim & Stok Zinciri (BÜYÜK)
+
+```bash
+# 1. Fabrika sayfaları
+grep -rn "fabrika\|Fabrika\|factory\|Factory\|production\|Production\|uretim\|Uretim" client/src/ --include="*.tsx" -l
+
+# 2. Fabrika API endpoint'leri
+grep -rn "fabrika\|factory\|production\|uretim" server/routes/ --include="*.ts" | head -20
+
+# 3. Stok/depo sistemi
+grep -rn "stok\|stock\|inventory\|depo\|warehouse\|hammadde\|raw.*material" client/src/ server/ --include="*.tsx" --include="*.ts" | head -20
+
+# 4. Sevkiyat sistemi
+grep -rn "sevkiyat\|shipment\|dispatch\|delivery\|transfer" client/src/ server/ --include="*.tsx" --include="*.ts" | head -20
+
+# 5. Batch/parti sistemi
+grep -rn "batch\|parti\|lot\|Batch\|Parti" client/src/ server/ --include="*.tsx" --include="*.ts" | head -20
+```
+
+```sql
+-- Fabrika ile ilgili tüm tablolar
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%factory%' OR table_name ILIKE '%fabrika%' 
+OR table_name ILIKE '%production%' OR table_name ILIKE '%uretim%'
+OR table_name ILIKE '%stock%' OR table_name ILIKE '%stok%'
+OR table_name ILIKE '%inventory%' OR table_name ILIKE '%depo%'
+OR table_name ILIKE '%warehouse%' OR table_name ILIKE '%batch%'
+OR table_name ILIKE '%shipment%' OR table_name ILIKE '%sevkiyat%'
+OR table_name ILIKE '%raw_material%' OR table_name ILIKE '%hammadde%'
+OR table_name ILIKE '%ingredient%';
+
+-- Her tablonun kayıt sayısı
+-- (yukarıdaki sorgudaki tabloların her biri için COUNT(*))
+
+-- Stok hareketleri
+SELECT table_name FROM information_schema.tables 
+WHERE table_name ILIKE '%stock_movement%' OR table_name ILIKE '%stok_hareket%'
+OR table_name ILIKE '%transaction%' OR table_name ILIKE '%transfer%';
+```
+
+Raporla:
+- Fabrika sisteminde kaç sayfa, kaç API endpoint, kaç tablo var?
+- Üretim akışı: hammadde → üretim → stok → sevkiyat zinciri mevcut mu?
+- Batch/parti sistemi var mı?
+- Stok düşme/artma otomatik mi yoksa manuel mi?
+- Sevkiyat sistemi çalışıyor mu?
+- Reçete → hammadde → stok bağlantısı var mı?
+- En kritik eksikler neler?
+
+---
+
+### BÖLÜM G: Ece (Trainer) Dashboard & UX Sorunları
+
+```bash
+# 1. Trainer dashboard
+grep -rn "trainer.*dashboard\|TrainerDashboard\|ece.*dashboard" client/src/ --include="*.tsx" -l
+
+# 2. Trainer'ın gördüğü sayfalar (sidebar)
+grep -rn "trainer" server/menu-service.ts | head -10
+
+# 3. Dashboard widget'ları
+grep -rn "trainer\|Trainer" client/src/components/widgets/ --include="*.tsx" | head -10
+```
+
+Raporla:
+- Ece (Trainer) dashboard'ında ne görüyor?
+- Karmaşık olan nedir?
+- Reçete/ürün kartı oluşturma Trainer'ın sorumluluğunda mı?
+
+---
+
+### BÖLÜM H: Genel UX Pattern Tutarsızlıkları
+
+```bash
+# 1. Farklı form dialog pattern'leri
+grep -rn "Dialog\|Sheet\|Modal\|Drawer" client/src/pages/ --include="*.tsx" | grep -c "Dialog"
+grep -rn "Dialog\|Sheet\|Modal\|Drawer" client/src/pages/ --include="*.tsx" | grep -c "Sheet"
+
+# 2. Farklı tablo pattern'leri  
+grep -rn "DataTable\|Table\|table" client/src/pages/ --include="*.tsx" | grep -c "DataTable"
+
+# 3. Farklı kart pattern'leri
+grep -rn "Card\|ModernStatCard\|StatCard\|KpiCard" client/src/ --include="*.tsx" | head -15
+
+# 4. Loading state pattern'leri
+grep -rn "isLoading\|isPending\|Skeleton\|spinner\|Spinner" client/src/pages/ --include="*.tsx" | wc -l
+
+# 5. Error boundary
+grep -rn "ErrorBoundary\|error.*boundary\|componentDidCatch" client/src/ --include="*.tsx" | head -5
+```
+
+Raporla:
+- Kaç farklı form/dialog pattern'i kullanılıyor?
+- Kaç farklı tablo pattern'i?
+- Error boundary var mı?
+- En tutarsız UX alanları hangileri?
+
+---
+
+### FORMAT:
+
+Her bölümü (A-H) ayrı raporla:
+1. **Mevcut durum** — ne var, ne çalışıyor
+2. **Sorunlar** — spesifik bug/tutarsızlık listesi
+3. **Root cause** — neden oluyor
+4. **Düzeltme önerisi** — ne yapılmalı
+5. **İş tahmini** — küçük/orta/büyük
+
+### DO NOT:
+- Kod değişikliği yapma
+- Yeni dosya oluşturma
+- DB'de INSERT/UPDATE/DELETE çalıştırma
+
+---
+
+Bunu Replit'e yapıştır. Bu sefer çok kapsamlı bir audit — sonucu getirince yeni sprint planı yapacağız.

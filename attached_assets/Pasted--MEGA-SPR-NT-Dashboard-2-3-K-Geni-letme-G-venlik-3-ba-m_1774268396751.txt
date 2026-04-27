@@ -1,0 +1,738 @@
+# MEGA SPRİNT — Dashboard 2/3 + İK Genişletme + Güvenlik
+# 3 bağımsız bölüm — sırayla yap, her bölüm sonunda rapor ver
+# Tahmini: 8-12 saat toplam
+
+---
+
+## ⚠ KRİTİK KURALLAR (TÜM BÖLÜMLER İÇİN)
+
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Do NOT modify existing classic dashboard pages — only add layout check at top
+- Do NOT change scoring services, payroll engine, or kiosk
+- Use AuthUser type (not req.user as any)
+- Turkish UI, users.id is VARCHAR
+- Default passwords: admin=env, others=0000
+
+**DANIŞMA MEKANİZMASI — Şu durumlarda DUR ve kullanıcıya sor:**
+1. DB şeması değişikliği gerekirse → raw SQL göster, onay al
+2. 500+ satır tek dosya oluşturmak gerekirse → bölme planı öner
+3. Mevcut endpoint davranışı değişecekse → eski/yeni davranışı açıkla
+4. Compile/runtime hatası oluşursa → hatayı göster, düzeltme planı öner
+5. Mevcut bileşenin iç mantığına dokunmak gerekirse → DUR
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM A: DASHBOARD SPRINT 2/3
+# Supervisor + Stajyer + Factory Mission Control
+# ████████████████████████████████████████████████
+
+## A0: ÖN ARAŞTIRMA
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM A — DASHBOARD 2/3 ÖN ARAŞTIRMA"
+echo "════════════════════════════════════════"
+
+echo "=== Sprint 1 bileşenleri mevcut mu? ==="
+ls -la client/src/components/mission-control/
+ls -la client/src/components/mission-control/shared/
+
+echo "--- Toggle hook ---"
+cat client/src/hooks/useDashboardLayout.ts | head -20
+
+echo "--- MissionControlHQ mevcut? ---"
+wc -l client/src/components/mission-control/MissionControlHQ.tsx 2>/dev/null
+
+echo ""
+echo "=== Supervisor veri kaynakları ==="
+grep -n "useQuery\|queryKey" client/src/pages/sube-ozet.tsx | head -20
+
+echo "--- Shift API ---"
+grep -rn "router.get.*shift\|router.get.*vardiya" server/routes/ --include="*.ts" | head -10
+
+echo "--- PDKS API ---"
+grep -rn "router.get.*pdks\|router.get.*attendance" server/routes/ --include="*.ts" | head -10
+
+echo "--- Branch staff API ---"
+grep -rn "router.get.*branch.*staff\|router.get.*branch.*employee" server/routes/ --include="*.ts" | head -5
+
+echo ""
+echo "=== Stajyer veri kaynakları ==="
+grep -n "useQuery\|queryKey" client/src/pages/akademi*.tsx 2>/dev/null | head -15
+grep -rn "router.get.*training\|router.get.*academy\|router.get.*module" server/routes/academy*.ts | head -10
+echo "--- Streak/badge ---"
+grep -rn "streak\|badge\|rozet\|sertifika\|certificate" server/routes/academy*.ts | head -10
+
+echo ""
+echo "=== Factory veri kaynakları ==="
+grep -n "useQuery\|queryKey" client/src/pages/fabrika/dashboard.tsx 2>/dev/null | head -15
+echo "--- QC stats ---"
+grep -n "qc/stats\|qc/pending" server/routes/factory.ts | head -5
+echo "--- Factory stations ---"
+echo "SELECT id, name, station_type, is_active FROM factory_stations WHERE is_active=true;" | psql
+echo "--- Factory products ---"
+echo "SELECT count(*) FROM factory_products WHERE is_active=true;" | psql -t
+
+echo ""
+echo "=== DashboardRouter mevcut mu? ==="
+cat client/src/components/mission-control/DashboardRouter.tsx 2>/dev/null | head -30
+```
+
+---
+
+## A1: SUPERVISOR MISSION CONTROL
+
+Create `client/src/components/mission-control/SupervisorDashboard.tsx`
+
+**Layout — üstten alta:**
+
+### Header (40px)
+- Sol: Avatar + "Merhaba, {firstName}" + tarih
+- Sağ: Şube adı badge + LayoutToggle + rol badge
+
+### KPI Strip (6 metrik, grid-cols-3 veya grid-cols-6)
+1. **Burada** — aktif personel sayısı (yeşil)
+2. **Geç** — bugün geç gelen (amber, >0 ise)
+3. **Molada** — şu an molada (mor)
+4. **Gelmedi** — devamsız (kırmızı, >0 ise)
+5. **Checklist** — bugünkü tamamlama % (yeşil >80)
+6. **Performans** — şube sağlık skoru % (yeşil >80)
+
+Veri: sube-ozet.tsx'in kullandığı aynı query'ler + PDKS verileri
+
+### Presence Bar (shared/PresenceBar.tsx)
+- 32px avatar satırı
+- Kenar rengi = durum: yeşil=aktif, amber=geç, mor=mola, kırmızı=gelmedi, kesikli gri=izinli
+- Hover: tooltip (isim + vardiya + rol)
+- >10 kişi ise "+3" overflow
+- Alt: renk açıklaması
+
+### Personel Grid (grid-cols-4, shared/StaffCard.tsx)
+Her kart (min 48px touch):
+- 40px avatar + 2.5px renkli halka
+- İsim (10px bold), Rol (8px muted)
+- Vardiya saati veya durum
+- Skor (16px, renkli) + trend oku (↑+3 veya ↓-5)
+
+### Vardiya Timeline (shared/ShiftTimeline.tsx)
+- Sol: personel isimleri (55px)
+- Sağ: zaman çizgisi 07:00-19:00
+- Barlar: yeşil=aktif, amber=geç başladı, mor=mola, gri=bitti, kırmızı="Gelmedi"
+- Şu anki zaman: dikey kesikli çizgi
+
+### Checklist Bölümü
+- Bugünkü checklist'ler: yapıldı (yeşil ✓) + bekleyen (boş)
+- Veri: mevcut checklist API
+
+### Görev + Canlı Akış
+- Sprint 1'den aynı TaskFeedItem + LiveFeedItem bileşenleri
+- Bu şubeye filtrelenmiş
+
+### Mobil (<768px)
+- Presence bar: yatay scroll
+- Staff grid → 2 kolon
+- Timeline → GİZLE, yerine basit durum listesi
+- Tek kolon
+
+---
+
+## A2: STAJYER/BARİSTA MISSION CONTROL
+
+Create `client/src/components/mission-control/StajyerDashboard.tsx`
+
+**Mr. Dobody kişiliği: "Kişisel eğitim koçu"**
+- Motivasyon: "4 gün seri! Bugün tamamlarsan 5 gün!"
+- Quiz ipucu: "Allerjen bölümünde 2 hatan vardı"
+- Kariyer: "Bar Buddy'ye 3 modül kaldı"
+
+### KPI Strip (6 metrik)
+1. **Eğitim İlerleme** — genel % (mor)
+2. **Gün Serisi** — streak (yeşil)
+3. **Ort. Quiz Puanı** — ortalama (renkli)
+4. **Tamamlanan** — "5/8" format
+5. **Kalan Modül** — sayı (amber)
+6. **Sertifika** — kazanılan sayı
+
+Veri: mevcut akademi/eğitim query'leri
+
+### Kariyer Yol Haritası (shared/CareerRoadmap.tsx)
+- Yatay: Stajyer → Bar Buddy → Barista → Sup. Buddy → Supervisor
+- Daireler: tamamlanan (yeşil ✓), mevcut (mor çerçeve), kilitli (gri)
+- Adımlar arası ilerleme çizgisi
+
+### Devam Et Kartı (en belirgin)
+- Mor border vurgu
+- Mevcut ders: modül + başlık + süre + tür
+- "Devam et →"
+- KPI'lardan sonra en görünür öğe
+
+### Öğrenme Serisi (shared/LearningStreak.tsx)
+- 7 gün kutusu: Pt Sa Ça Pe Cu Ct Pz
+- Yapıldı=yeşil, bugün=mor çerçeve, gelecek=gri, kaçırıldı=kırmızı
+- "4 gün seri! Bugün 1 ders = 5 gün!"
+
+### Modül Listesi (shared/ModuleCard.tsx)
+Her biri: kapak ikonu (52px, renkli) + isim + ilerleme çubuğu + badge
+Badge'ler: Tamamlandı (yeşil), Aktif (mor), Zorunlu (kırmızı)
+
+### Quiz Sonuçları
+- Liste: ikon (✓/!/✗) + isim + tarih + puan
+
+### Rozet Koleksiyonu (shared/BadgeGrid.tsx)
+- 32px daire grid: kazanılmış (renkli) vs kilitli (gri kesikli)
+
+### Bugünün Vardiyası (kompakt)
+- Bar: "09:00-17:00" + "Mola 12:30" badge
+
+### Mobil (<768px)
+- Kariyer: küçük daireler (20px)
+- Devam et kartı: tam genişlik
+- Modüller: tek kolon
+
+---
+
+## A3: FABRİKA MISSION CONTROL
+
+Create `client/src/components/mission-control/FactoryDashboard.tsx`
+
+### KPI Strip (6 metrik)
+1. **Bugün Üretim** — toplam adet
+2. **Fire Oranı** — % (kırmızı >2)
+3. **Aktif Personel** — sayı
+4. **QC Bekleyen** — bekleyen lot sayısı (/api/factory/qc/stats, amber >0)
+5. **QC Onay Oranı** — geçme oranı (yeşil >95)
+6. **Hedef Tamamlama** — % (renkli)
+
+### İstasyon Durumu Grid (grid-cols-3, shared/StationCard.tsx)
+Her kart:
+- İstasyon adı (bold) + ürettiği ürün
+- Durum: Aktif (yeşil) / Boşta (gri) / Bakım (amber)
+- Mevcut operatör (isim + avatar)
+- Bugünkü üretim vs hedef + ilerleme çubuğu
+
+### QC Özet Bölümü (shared/QCSummary.tsx)
+- Bekleyen lot sayısı + "Kontrol Bekleyen" etiketi
+- Bugünkü denetimler: onaylanan / reddedilen / koşullu
+- Geçme oranı çubuğu
+- "QC Yönetimi →" linki
+- Veri: /api/factory/qc/stats
+
+### Aktif İşçiler
+- StaffCard bileşeni fabrika bağlamında: kim hangi istasyonda, vardiya, mola
+
+### Üretim Akış Logu
+- "Fatma 24 adet donut tamamladı"
+- "LOT-20260322-001 QC onaylandı"
+- Veri: üretim + QC olayları
+
+### Mobil (<768px)
+- İstasyon grid → 2 kolon
+- QC özet: kompakt yatay bar
+- Tek kolon
+
+---
+
+## A4: DASHBOARD ROUTER GÜNCELLEMESİ
+
+Mevcut DashboardRouter.tsx'i güncelle (veya oluştur):
+
+```typescript
+// Rol → dashboard tipi eşleme
+const ROLE_MAP: Record<string, string> = {
+  admin: 'hq', ceo: 'hq', cgo: 'hq', coach: 'hq',
+  trainer: 'hq', muhasebe_ik: 'hq', muhasebe: 'hq',
+  satinalma: 'hq', kalite_kontrol: 'hq', gida_muhendisi: 'hq', marketing: 'hq',
+  
+  supervisor: 'supervisor', supervisor_buddy: 'supervisor', mudur: 'supervisor',
+  
+  stajyer: 'stajyer', bar_buddy: 'stajyer', barista: 'stajyer',
+  
+  fabrika_mudur: 'factory', fabrika_operator: 'factory',
+  fabrika_sorumlu: 'factory', fabrika_personel: 'factory',
+};
+```
+
+Lazy import ile 4 dashboard bileşenini yükle, role göre doğru olanı render et.
+
+---
+
+## A5: YENİ SHARED BİLEŞENLER
+
+`client/src/components/mission-control/shared/` altına ekle:
+
+| Bileşen | Kullanan | Açıklama |
+|---------|----------|----------|
+| PresenceBar.tsx | Supervisor | Personel avatar satırı + durum halkaları |
+| StaffCard.tsx | Supervisor, Factory | Foto + durum + skor |
+| ShiftTimeline.tsx | Supervisor | Gantt tarzı vardiya barları |
+| CareerRoadmap.tsx | Stajyer | Seviye ilerleme görselleştirmesi |
+| LearningStreak.tsx | Stajyer | 7 günlük seri takibi |
+| ModuleCard.tsx | Stajyer | Eğitim modülü + ilerleme |
+| BadgeGrid.tsx | Stajyer | Rozet koleksiyonu grid |
+| StationCard.tsx | Factory | İstasyon durumu + operatör |
+| QCSummary.tsx | Factory, HQ | QC istatistik mini widget |
+
+---
+
+## A6: DOĞRULAMA
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM A DOĞRULAMA"
+echo "════════════════════════════════════════"
+
+echo "=== Yeni dosyalar ==="
+ls -la client/src/components/mission-control/SupervisorDashboard.tsx
+ls -la client/src/components/mission-control/StajyerDashboard.tsx
+ls -la client/src/components/mission-control/FactoryDashboard.tsx
+ls -la client/src/components/mission-control/shared/
+
+echo ""
+echo "=== DashboardRouter tüm rolleri kapsıyor mu? ==="
+cat client/src/components/mission-control/DashboardRouter.tsx | grep -c ":" 
+
+echo ""
+echo "=== Server hatasız mı? ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+
+echo ""
+echo "=== Test — farklı roller ==="
+for ROLE in supervisor stajyer fabrika_mudur admin; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    curl -s -X POST http://localhost:5000/api/login \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"$USER\",\"password\":\"0000\"}" \
+      -c /tmp/da_${ROLE}.txt > /dev/null 2>&1
+    
+    LAYOUT=$(curl -s http://localhost:5000/api/me/dashboard-layout -b /tmp/da_${ROLE}.txt 2>/dev/null)
+    echo "  $ROLE: $LAYOUT"
+  fi
+done
+```
+
+**Rapor ver: hangi dosyalar oluşturuldu, hangi API'ler kullanıldı, mobil responsive çalışıyor mu.**
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM B: İK MODÜLÜ GENİŞLETME
+# Özlük dosyası + Tutanak sistemi
+# ████████████████████████████████████████████████
+
+## B0: ÖN ARAŞTIRMA
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM B — İK ÖN ARAŞTIRMA"
+echo "════════════════════════════════════════"
+
+echo "=== Mevcut İK route'ları ==="
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/hr.ts | head -30
+wc -l server/routes/hr.ts
+
+echo ""
+echo "=== employee_documents tablosu var mı? ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='employee_documents' ORDER BY ordinal_position;" | psql
+
+echo ""
+echo "=== disciplinary tablosu var mı? ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%disciplin%' OR table_name LIKE '%tutanak%';" | psql
+
+echo ""
+echo "=== İK dashboard endpoint var mı? ==="
+grep -n "ik-dashboard\|hr-dashboard\|hr/dashboard" server/routes/hr.ts | head -5
+
+echo ""
+echo "=== Mevcut document upload sistemi ==="
+grep -rn "upload\|multer\|formidable\|file.*upload" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo ""
+echo "=== İK frontend sayfaları ==="
+find client/src/pages -name "*ik*" -o -name "*hr*" -o -name "*personel*" | sort
+```
+
+---
+
+## B1: ÖZLÜK DOSYASI (Personnel File)
+
+### ⚠ DANIŞMA: DB şeması — tabloyu oluşturmadan ÖNCE mevcut durumu kontrol et
+
+Eğer `employee_documents` tablosu YOKSA:
+
+```sql
+CREATE TABLE IF NOT EXISTS employee_documents (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  document_type VARCHAR(50) NOT NULL,
+  -- 'kimlik', 'adli_sicil', 'ikametgah', 'diploma', 'saglik_raporu',
+  -- 'is_sozlesmesi', 'sgk_bildirge', 'maas_bordrosu', 'izin_formu',
+  -- 'tutanak', 'performans', 'egitim_sertifika', 'diger'
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  file_url TEXT,
+  file_type VARCHAR(20),
+  file_size INTEGER,
+  uploaded_by VARCHAR(36) REFERENCES users(id),
+  is_required BOOLEAN DEFAULT false,
+  expiry_date DATE,
+  status VARCHAR(20) DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_employee_docs_user ON employee_documents(user_id, document_type);
+```
+
+### API endpoint'leri:
+```
+GET  /api/hr/employees/:userId/documents    — tüm belgeler
+POST /api/hr/employees/:userId/documents    — belge yükle
+DELETE /api/hr/employees/:userId/documents/:docId — belge sil
+GET  /api/hr/documents/missing              — eksik zorunlu belgeler
+GET  /api/hr/documents/expiring             — 30 gün içinde süresi dolacak
+```
+
+### Frontend — Özlük dosyası tab'ı
+Mevcut İK sayfasına tab ekle (veya mevcut employee detail sayfasına):
+- Bölümler: Kimlik, İş Sözleşmesi, SGK, Sağlık, Eğitim, Diğer
+- Her bölüm: yüklü belge listesi + "Ekle" butonu
+- Eksik zorunlu belgeler kırmızı
+- Süresi dolmak üzere belgeler amber + tarih
+
+---
+
+## B2: TUTANAK SİSTEMİ (Disciplinary Records)
+
+### ⚠ DANIŞMA: DB şeması
+
+Eğer `disciplinary_records` tablosu YOKSA:
+
+```sql
+CREATE TABLE IF NOT EXISTS disciplinary_records (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  record_type VARCHAR(30) NOT NULL,
+  -- 'sozlu_uyari', 'yazili_uyari', 'ihtar', 'savunma_talebi',
+  -- 'kinama', 'ucret_kesintisi', 'fesih', 'odullendirme', 'tesekkur'
+  title VARCHAR(200) NOT NULL,
+  description TEXT NOT NULL,
+  incident_date DATE NOT NULL,
+  witnesses TEXT,
+  evidence_urls TEXT,
+  response TEXT,
+  response_date DATE,
+  action_taken TEXT,
+  created_by VARCHAR(36) NOT NULL REFERENCES users(id),
+  approved_by VARCHAR(36) REFERENCES users(id),
+  status VARCHAR(20) DEFAULT 'active',
+  severity VARCHAR(20) DEFAULT 'medium',
+  affects_score BOOLEAN DEFAULT true,
+  score_impact INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_disciplinary_user ON disciplinary_records(user_id, status);
+```
+
+### API:
+```
+GET   /api/hr/disciplinary              — tüm kayıtlar (şube filtreli)
+GET   /api/hr/disciplinary/:userId      — personel bazlı
+POST  /api/hr/disciplinary              — yeni tutanak (supervisor+)
+PATCH /api/hr/disciplinary/:id          — güncelle (yanıt ekle, kapat)
+POST  /api/hr/disciplinary/:id/respond  — personel savunma yazısı
+```
+
+### Frontend — Tutanak sayfası
+- Liste: tarih, personel, tip, önem, durum
+- Oluşturma formu: personel seç → tip seç → açıklama → tanıklar → kanıt ekle
+- Detay: tam kayıt + personel yanıtı + alınan aksiyon
+- Personel profilinde tutanak tab'ı
+
+---
+
+## B3: İK DASHBOARD İYİLEŞTİRMELERİ
+
+Mevcut İK sayfasına ekle (veya /api/hr/ik-dashboard varsa güncelle):
+- **Özlük tamamlama oranı:** tüm zorunlu belgesi olan personel %'si
+- **Yaklaşan son kullanma:** 30 gün içinde süresi dolacak belgeler
+- **Aktif tutanaklar:** açık disiplin kaydı sayısı
+- **İzin özeti:** bu ayki izin kullanımı vs hak
+
+---
+
+## B4: DOĞRULAMA
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM B DOĞRULAMA"
+echo "════════════════════════════════════════"
+
+echo "=== Tablolar oluşturuldu mu? ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name IN ('employee_documents', 'disciplinary_records');" | psql
+
+echo "=== Endpoint'ler çalışıyor mu? ==="
+# Admin login
+curl -s -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"utku","password":"0000"}' \
+  -c /tmp/ik_test.txt > /dev/null 2>&1
+
+# Belge listesi
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/ik_test.txt "http://localhost:5000/api/hr/documents/missing"
+echo " — missing docs endpoint"
+
+# Tutanak listesi
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/ik_test.txt "http://localhost:5000/api/hr/disciplinary"
+echo " — disciplinary endpoint"
+
+# İK dashboard
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/ik_test.txt "http://localhost:5000/api/hr/ik-dashboard"
+echo " — ik-dashboard endpoint"
+
+echo ""
+echo "=== Server hatasız mı? ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+```
+
+---
+
+# ████████████████████████████████████████████████
+# BÖLÜM C: GÜVENLİK + STABİLİZASYON
+# Auth audit + Soft delete + Transaction wrapping
+# ████████████████████████████████████████████████
+
+## C0: ÖN ARAŞTIRMA
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM C — GÜVENLİK ÖN ARAŞTIRMA"
+echo "════════════════════════════════════════"
+
+echo "=== Delegation endpoint'leri auth kontrolü ==="
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/delegation-routes.ts | head -10
+grep -n "isAuthenticated\|isKioskAuthenticated" server/routes/delegation-routes.ts | head -5
+
+echo ""
+echo "=== Kiosk endpoint'leri auth kontrolü ==="
+grep -rn "kiosk" server/routes/*.ts | grep "router\.\(get\|post\)" | grep -v "isKioskAuthenticated\|isAuthenticated" | head -10
+
+echo ""
+echo "=== Academy DELETE'ler — hard delete mi? ==="
+grep -n "db.delete\|\.delete()" server/routes/academy.ts server/routes/academy-v2.ts 2>/dev/null | head -10
+
+echo ""
+echo "=== Payroll write endpoint'leri — transaction var mı? ==="
+grep -n "transaction\|db.transaction" server/routes/payroll.ts | head -5
+grep -n "router.post\|router.patch" server/routes/payroll.ts | head -10
+
+echo ""
+echo "=== MissionControlPlaceholder.tsx hâlâ var mı? ==="
+ls client/src/components/mission-control/MissionControlPlaceholder.tsx 2>/dev/null && echo "MEVCUT — silinmeli" || echo "YOK — temiz"
+```
+
+---
+
+## C1: AUTH MİDDLEWARE AUDIT
+
+### Delegation endpoint'leri
+`server/routes/delegation-routes.ts` — tüm route'ların `isAuthenticated` ile korunduğunu doğrula. Eksik varsa ekle.
+
+### Kiosk endpoint'leri
+Tüm route dosyalarında `/kiosk/` path'li endpoint'leri tara. `isKioskAuthenticated` middleware'i olmayanları bul. Kiosk login endpoint'leri doğal olarak auth gerektirmez — onlara dokunma.
+
+```bash
+echo "=== Auth'suz kiosk endpoint'leri ==="
+for f in server/routes/*.ts; do
+  grep -n "/kiosk/" "$f" | grep -v "isKioskAuthenticated\|isAuthenticated\|login\|verify" | head -5
+done
+```
+
+---
+
+## C2: ACADEMY HARD DELETE → SOFT DELETE
+
+Aşağıdaki endpoint'lerde `db.delete()` → `db.update().set({ deletedAt: new Date() })` veya `isActive: false`:
+
+| Endpoint | Dosya:satır | Dönüşüm |
+|----------|-----------|---------|
+| DELETE /api/academy/question/:id | academy.ts ~825 | deletedAt veya isActive=false |
+| DELETE /api/academy/recipe-categories/:id | academy.ts ~1437 | deletedAt veya isActive=false |
+| DELETE /api/academy/questions/:id | academy.ts ~2697 | deletedAt veya isActive=false |
+| DELETE /api/academy/onboarding/steps/:id | academy-v2.ts ~1387 | deletedAt veya isActive=false |
+
+**⚠ DOKUNMA — zaten soft delete olanlar:**
+- recipes/:id (satır ~1991) — zaten soft delete
+- modules/:id (satır ~2559) — zaten soft delete
+- onboarding/templates/:id (academy-v2 ~1338) — zaten soft delete
+
+Her dönüşümde:
+1. Tabloda `deleted_at` veya `is_active` kolonu var mı kontrol et
+2. Yoksa uygun alternatif kullan
+3. İlgili SELECT query'lerinde `WHERE deleted_at IS NULL` filtresi ekle
+
+---
+
+## C3: PAYROLL TRANSACTION WRAPPING
+
+3 write endpoint'i `db.transaction()` ile sar:
+
+| Endpoint | Dosya:satır |
+|----------|-----------|
+| POST /api/pdks-payroll/calculate | payroll.ts ~25 |
+| PATCH /api/pdks-payroll/:id/approve | payroll.ts ~275 |
+| POST /api/payroll/calculate-detailed | payroll.ts ~328 |
+
+```typescript
+// Örnek pattern:
+await db.transaction(async (tx) => {
+  // Tüm DB yazımları tx üzerinden
+  await tx.insert(...)
+  await tx.update(...)
+});
+```
+
+`catch (error: any)` → `catch (error: unknown)` pattern'ini kullan.
+
+---
+
+## C4: KULLANILMAYAN DOSYA TEMİZLİĞİ
+
+```bash
+echo "=== Kullanılmayan mission-control dosyaları ==="
+# MissionControlPlaceholder varsa sil
+ls client/src/components/mission-control/MissionControlPlaceholder.tsx 2>/dev/null && echo "SİLİNECEK" || echo "Zaten yok"
+
+# Başka kullanılmayan dosya var mı?
+find client/src/components/mission-control -name "*.tsx" | while read f; do
+  base=$(basename "$f" .tsx)
+  IMPORT=$(grep -rl "$base" client/src/ --include="*.tsx" --include="*.ts" 2>/dev/null | grep -v "$f" | wc -l)
+  if [ "$IMPORT" = "0" ]; then
+    echo "KULLANILMIYOR: $f"
+  fi
+done
+```
+
+---
+
+## C5: DOĞRULAMA
+
+```bash
+echo "════════════════════════════════════════"
+echo "BÖLÜM C DOĞRULAMA"
+echo "════════════════════════════════════════"
+
+echo "=== Server hatasız mı? ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+echo ""
+
+echo "=== Auth audit sonucu ==="
+echo "Delegation endpoint'leri korunuyor mu?"
+grep -c "isAuthenticated" server/routes/delegation-routes.ts
+echo "Korunmayan kiosk endpoint var mı?"
+for f in server/routes/*.ts; do
+  grep -n "/kiosk/" "$f" | grep -v "isKioskAuthenticated\|isAuthenticated\|login\|verify" | head -2
+done
+
+echo ""
+echo "=== Academy soft delete ==="
+grep -c "db.delete" server/routes/academy.ts server/routes/academy-v2.ts 2>/dev/null
+echo "(0 olmalı — tüm delete'ler soft delete olmalı)"
+
+echo ""
+echo "=== Payroll transaction ==="
+grep -c "db.transaction" server/routes/payroll.ts
+echo "(3 olmalı)"
+
+echo ""
+echo "=== Kullanılmayan dosya ==="
+ls client/src/components/mission-control/MissionControlPlaceholder.tsx 2>/dev/null && echo "❌ Hâlâ var" || echo "✅ Silindi"
+```
+
+---
+
+# ████████████████████████████████████████████████
+# GENEL DOĞRULAMA
+# ████████████████████████████████████████████████
+
+```bash
+echo "════════════════════════════════════════"
+echo "MEGA SPRİNT — GENEL SONUÇ"
+echo "════════════════════════════════════════"
+
+echo "=== Server durumu ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+echo ""
+
+echo "=== Yeni dashboard bileşenleri ==="
+for f in SupervisorDashboard StajyerDashboard FactoryDashboard; do
+  ls client/src/components/mission-control/${f}.tsx 2>/dev/null && echo "✅ $f" || echo "❌ $f EKSİK"
+done
+
+echo ""
+echo "=== Yeni shared bileşenler ==="
+ls client/src/components/mission-control/shared/ | sort
+
+echo ""
+echo "=== İK tabloları ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name IN ('employee_documents', 'disciplinary_records');" | psql
+
+echo ""
+echo "=== Güvenlik ==="
+echo "Hard delete kalan: $(grep -c 'db.delete' server/routes/academy.ts server/routes/academy-v2.ts 2>/dev/null | tail -1)"
+echo "Transaction sayısı: $(grep -c 'db.transaction' server/routes/payroll.ts)"
+
+echo ""
+echo "=== Toplam dosya sayısı ==="
+find client/src/components/mission-control -name "*.tsx" | wc -l
+echo "mission-control bileşen"
+```
+
+---
+
+## SONUÇ RAPORU FORMATI
+
+```
+MEGA SPRİNT SONUÇ RAPORU
+
+BÖLÜM A — Dashboard 2/3:
+  SupervisorDashboard: ✅/❌ (shared bileşen sayısı)
+  StajyerDashboard: ✅/❌ (shared bileşen sayısı)
+  FactoryDashboard: ✅/❌ (shared bileşen sayısı)
+  DashboardRouter: tüm roller kapsanıyor mu?
+  Mobil responsive: ✅/❌
+
+BÖLÜM B — İK:
+  employee_documents tablosu: ✅/❌
+  disciplinary_records tablosu: ✅/❌
+  Belge CRUD endpoint'leri: ✅/❌
+  Tutanak CRUD endpoint'leri: ✅/❌
+  İK dashboard KPI'ları: ✅/❌
+  Frontend tab/sayfa: ✅/❌
+
+BÖLÜM C — Güvenlik:
+  Auth audit: X endpoint kontrol edildi
+  Academy soft delete: X endpoint dönüştürüldü
+  Payroll transaction: X endpoint sarıldı
+  Dosya temizliği: X dosya silindi
+
+GENEL:
+  Server: hatasız ✅/❌
+  Yeni dosya sayısı: X
+  Değiştirilen dosya sayısı: Y
+  DB tablosu: Z yeni
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json değiştirme
+- ❌ Mevcut klasik dashboard kodunu değiştirme
+- ❌ Scoring servisleri değiştirme
+- ❌ Kiosk mantığını değiştirme
+- ❌ Widget Studio (bu sprint'te YOK — Dashboard 3/3 ayrı)
+- ❌ misc.ts/schema.ts bölme (ayrı sprint)

@@ -1,0 +1,61 @@
+Please generate a comprehensive UI/UX audit report for the entire 
+DOSPRESSO application. I need to understand the current state of 
+navigation, header, sidebar, footer, and color usage across all pages.
+
+Specifically audit and report:
+
+1. HEADER ANALYSIS
+- What does the header look like on each page/role?
+- Is the header color/style consistent across all pages?
+- List any pages where the header differs from others
+
+2. NAVIGATION AUDIT
+- List every unique navigation pattern found in the app
+- Which roles use bottom footer navigation?
+- Which roles use hamburger menu?
+- Which roles use sidebar navigation?
+- Are the same menu items always in the same position across roles?
+- Example: Is the "İK" link always in the same position for all HQ roles?
+
+3. SIDEBAR ANALYSIS  
+- What color is the sidebar on each page?
+- What width is the sidebar?
+- Is there an icon-only rail version anywhere?
+- List all sidebar variations found
+
+4. COLOR USAGE
+- What is the primary header background color currently?
+- What colors are used for active/selected navigation items?
+- Are brand colors (navy #122549, red #ec5b13) used consistently?
+- List all hardcoded color variations found
+
+5. DASHBOARD/HOME PAGE AUDIT
+- What does each role see when they first log in?
+- Is the layout consistent between roles?
+- List all dashboard variations
+
+6. MENU ITEM ORDER AUDIT
+- For HQ roles (admin, ceo, cgo, muhasebe_ik, satinalma, coach, trainer):
+  List the exact menu items each role sees and their order
+- For Branch roles (mudur, supervisor, barista):
+  List the exact menu items each role sees and their order
+- For Factory roles (fabrika_sorumlu, fabrika_operator):
+  List the exact menu items each role sees and their order
+- Are there any inconsistencies where the same menu item appears 
+  in different positions for different roles?
+
+7. COMPONENT INCONSISTENCIES
+- List any pages where the same component (button, card, badge) 
+  looks different than on other pages
+- Are Shadcn components used consistently?
+
+8. FILES TO CHECK
+- client/src/components/sidebar.tsx (or similar)
+- client/src/components/layout.tsx (or similar)  
+- client/src/App.tsx
+- client/src/pages/ (all page files)
+- Any file containing navigation/menu configuration
+
+Please output this as a structured markdown report with clear 
+sections, tables where appropriate, and specific file:line 
+references for each finding.
