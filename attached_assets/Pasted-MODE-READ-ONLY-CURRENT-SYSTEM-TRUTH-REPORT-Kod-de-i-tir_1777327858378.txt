@@ -1,0 +1,109 @@
+MODE: READ-ONLY CURRENT SYSTEM TRUTH REPORT
+
+Kod değiştirme.
+DB yazma.
+Migration çalıştırma.
+Env/package/schema değiştirme.
+Commit/push yapma.
+Sadece oku ve raporla.
+
+Amaç:
+ChatGPT’nin DOSPRESSO sistemini %98 seviyesinde anlayabilmesi için güncel canlı sistem gerçeklik raporu çıkar.
+
+Rapor bölümleri:
+
+1. Git / deployment durumu
+- Son local commit
+- origin/main son commit
+- ahead/behind
+- son 10 commit özeti
+- app workflow healthy mi?
+
+2. Aktif roller ve kullanıcılar
+- Her rol için aktif kullanıcı sayısı
+- Branch bağlı roller
+- HQ roller
+- Kiosk/device rolleri
+- Yatırımcı rolleri
+
+3. Rol → dashboard → menü haritası
+Roller:
+admin, cgo, coach, mudur, supervisor, supervisor_buddy, barista, stajyer, sube_kiosk, yatirimci_branch, recete_gm, gida_muhendisi, fabrika_mudur, muhasebe_ik.
+
+Her rol için:
+- default dashboard route
+- görünen ana menüler
+- erişim engeli riski olan menüler
+- kendi şube / tüm şube / fabrika / HQ scope
+
+4. Kritik endpoint yetki haritası
+Şunları kontrol et:
+- PDKS
+- vardiya
+- payroll
+- HR/personel
+- onboarding
+- branch_orders
+- inventory
+- factory_recipes
+- allergens/nutrition
+- equipment_faults
+- CRM/tickets
+
+Her endpoint ailesi için:
+- dosya
+- auth var mı?
+- role guard var mı?
+- branchId scope var mı?
+- client-provided branchId riski var mı?
+
+5. Canlı DB veri özeti
+Sadece SELECT:
+- branches sayısı ve setup_complete durumu
+- active users sayısı rol bazlı
+- kiosk user sayısı
+- shifts sayısı
+- pdks_records sayısı
+- payroll/monthly summary kayıt sayısı
+- factory_recipes sayısı
+- ingredients / inventory kayıt sayısı
+- customer_feedback sayısı
+- support_tickets sayısı
+- onboarding kayıt sayısı
+
+Değerleri özetle, hassas kişisel veri yazma.
+
+6. Ana iş akışları mevcut durum
+Aşağıdaki akışlar için mevcut kod/DB durumunu özetle:
+- Şube vardiya → PDKS → puantaj
+- PDKS → payroll
+- Reçete → hammadde → besin/alerjen
+- Fabrika üretim → lot/stok/sevkiyat
+- Onboarding → eğitim/personel gelişimi
+- CRM şikayet → ticket/görev
+- Kiosk login → personel PIN → işlem
+
+7. Açık buglar ve yarım kalan hotfixler
+Özellikle kontrol et:
+- Reçete hammadde dropdown sonuç bulmuyor
+- Onboarding /api/onboarding-templates 403
+- Kiosk insan personel listesine karışıyor mu?
+- Alerjen & Besin 403 kaldı mı?
+- Menüde görünür ama backend 403 veren sayfalar
+- İK raporları error
+- Test/demo data pilot ekranlarında görünüyor mu?
+
+8. Hangi modüller canlı, hangileri dormant/demo?
+- Canlı operasyon modülleri
+- Pilot modüller
+- Demo/test data içeren modüller
+- Dormant ama kodu olan modüller
+
+9. Sonuç
+- Sistemin en büyük 10 riski
+- En önemli 10 doğrulanmış güçlü tarafı
+- İlk yapılması gereken 5 task
+- Owner kararı gereken maddeler
+
+Rapor kısa ama net olsun.
+Kod değiştirme yok.
