@@ -319,16 +319,9 @@ export default function FabrikaReceteDuzenle() {
     },
   });
 
-  // ─────────────────────────────────────────────────────────
-  // Hammadde (envanter) listesi — Malzeme Düzenle modalı için.
-  //
-  // Backend `/api/inventory` route'u Drizzle `like()` (case-sensitive) ile arama
-  // yapıyor — yani büyük harf "ACI" ile ararsan "Acı badem" eşleşmiyordu.
-  // Backend'e dokunma yasağı olduğu için modal açıldığında tüm aktif inventory
-  // listesini bir kez çekip (940 kayıt ≈ ~150KB), client tarafında TR locale +
-  // diakritik kaldırarak filtreliyoruz. Detay ekranıyla davranışsal olarak
-  // tutarlı, ama "Sonuç bulunamadı" yanlış pozitifini önlüyor.
-  // ─────────────────────────────────────────────────────────
+  // Inventory list for the ingredient-edit modal. Backend /api/inventory uses
+  // Drizzle like() which is case-sensitive, so we fetch once and filter client
+  // side with TR locale + diacritic stripping.
   const { data: inventoryItems = [], isFetching: inventoryFetching } = useQuery<any[]>({
     queryKey: ["/api/inventory", "all-active"],
     queryFn: async () => {
@@ -342,21 +335,13 @@ export default function FabrikaReceteDuzenle() {
   });
 
   const filteredInventoryItems = useMemo(() => {
-    const q = (inventorySearch || "").trim();
+    const q = inventorySearch.trim();
     if (q.length < 2) return [];
     const norm = (s: string) =>
-      (s || "")
-        .toLocaleLowerCase("tr")
-        .normalize("NFKD")
-        .replace(/[\u0300-\u036f]/g, "");
+      s.toLocaleLowerCase("tr").normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
     const nq = norm(q);
-    const list = Array.isArray(inventoryItems) ? inventoryItems : [];
-    return list
-      .filter((it: any) => {
-        const name = norm(it?.name || "");
-        const code = norm(it?.code || "");
-        return name.includes(nq) || code.includes(nq);
-      })
+    return inventoryItems
+      .filter((it: any) => norm(it.name || "").includes(nq) || norm(it.code || "").includes(nq))
       .slice(0, 30);
   }, [inventoryItems, inventorySearch]);
 
