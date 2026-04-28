@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle, Key, Eye } from "lucide-react";
+import { AlertTriangle, Key, Eye, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
 
