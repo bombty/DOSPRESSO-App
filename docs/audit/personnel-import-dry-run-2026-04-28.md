@@ -7,6 +7,41 @@
 
 ---
 
+## 📊 FINAL TABLO — Kaç kişi etkilenecek (sayım özeti)
+
+| # | Kategori | Sayı | Aksiyon |
+|---|---|---|---|
+| 1 | **Güvenli UPDATE** (yüksek güven eşleşme) | **6** | UPDATE `users` (birth_date, hire_date, department, net_salary) |
+| 2 | **Reaktive** (DB'de pasif, Excel'de aktif) | **1** | UPDATE `users` SET is_active=true (BÜŞRA DOĞMUŞ) |
+| 3 | **Yeni oluşturma adayı** (Excel'de var, DB'de yok) | **21–26** | INSERT `users` (karar sonrası net) |
+| 4 | **Pasifleştirme adayı** (DB'de test/demo, Excel'de yok) | **14–19** | UPDATE `users` SET is_active=false, deleted_at=now() (soft-delete; HARD DELETE YOK) |
+| 5 | **Owner kararı gerekli** (soyad çakışması veya rol belirsiz) | **8 vaka** (~12-14 kişi etkili) | Karar gelmeden işlem yok |
+| 6 | **Pilot user — korunacak** (Excel'de yok ama replit.md pilot) | **2** (mudur5/Erdem, eren/Eren Fabrika) | Dokunma |
+| 7 | **Kapsam dışı (kiosk)** | **3** (isiklar, lara, fabrika kiosk hesapları) | Dokunma — insan personel değil |
+| 8 | **Kapsam dışı (yatırımcı/CEO/admin/system)** | **1** (yatirimci5/Halil Özkan) | Dokunma |
+| 9 | **Diğer şubeler** (Mallof, Markantalya, Beachpark, Gaziantep, Konya, Samsun, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip vs.) | **~326 user** | **Tamamen dokunulmayacak — rapora dahil değil** |
+| 10 | **Lara aylık puantaj** (Excel'den 9 kişi × 4 ay) | **36 satır** | INSERT `monthly_payroll` (status='draft', notes='manual_excel_import') |
+| 11 | **İşten ayrılma kaydı** | **1** (BUĞRA SAKIZ — 19.02.2026) | INSERT `employee_terminations` |
+| 12 | **Maaş history** | ~30 (eşleşen + yeni) | INSERT `employee_salaries` |
+| 13 | **Yıllık izin 2026** | ~30 | INSERT/UPSERT `employee_leaves` |
+| 14 | **Yan haklar** (kasa tazminatı + yakıt) | ~10-15 | INSERT `employee_benefits` |
+
+### Özet sayım (sadece kapsam içi 4 birim — toplam 46 user):
+- ✏️ Etkilenecek: ~**42-50 user** (eşleşme + yeni + pasif)
+- 🛡️ Korunacak: ~**4-6 user** (kiosk, yatırımcı, pilot)
+- 🌐 Tamamen dışarıda: ~**326 user** (18 diğer şube + admin + service hesapları)
+
+### Hard delete: ❌ YOK
+Tüm "silme" aksiyonları **soft-delete** (`is_active=false` + `deleted_at=now()`).
+**Sebep:** `users` tablosundan FK CASCADE ile uçacak tablolar:
+- `branch_monthly_payroll_summary` (CASCADE) — payroll geçmişi
+- `branch_shift_sessions` (CASCADE) — vardiya kayıtları
+- `disciplinary_reports` (CASCADE) — disiplin
+- `audit_personnel_feedback` (CASCADE) — denetim feedback
+- `checklist_completions` (CASCADE) — checklist tamamlama
+
+---
+
 ## ✅ Şube ID doğrulama
 
 | Excel etiketi | DB Şube | DB ID | Doğrulandı |
