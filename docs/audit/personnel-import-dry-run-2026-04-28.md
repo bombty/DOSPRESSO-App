@@ -22,7 +22,8 @@
 | `umit` (52665297, uretim_sefi, Fabrika) | Duplicate (Ümit Usta'nın 2. kaydı) | **Soft-delete** |
 
 ### Excel'den çıkarılacak kişi
-- **ÜMÜT KOŞAR (ÇİZERGE sıra 17, İMALATHANE)** → Owner: "ümüt koşar artık yok, ayrıldı işten" → **INSERT ETME**, ayrıca `employee_terminations` kaydına gerek yok (DB'de hiç yoktu)
+- ⚠️ **GERİ ALINDI (28 Nis):** Owner doğruladı: ÜMÜT KOŞAR **işten ayrılmadı**, normal aktif personel olarak eklenecek (Excel sıra 17, İMALATHANE, Fabrika branch=24). Önerilen rol: `sef` veya `uretim_sefi` veya `fabrika_operator` — owner kararı (yüksek maaşlı).
+- ❓ **Owner'ın "ümran koşan artık yok" notu:** Excel'de ÜMRAN diye bir kişi yok. Hangi kişi kastedildiği netleşmeden hiçbir kişi terminated olarak işaretlenmeyecek.
 
 ### Branch transfer (Ece + Yavuz)
 - **ECE ÖZ** → branch=**HQ (23)**, role=`trainer` (Excel'de IŞIKLAR ama owner: "Ece ofise aktarılacak")
