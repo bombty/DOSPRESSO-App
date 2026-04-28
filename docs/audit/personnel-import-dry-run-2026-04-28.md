@@ -1,31 +1,54 @@
 # PERSONEL IMPORT — DRY-RUN RAPORU
 
-**Tarih:** 28 Nisan 2026
+**Tarih:** 28 Nisan 2026 (rev. 2 — clean slate stratejisi)
 **Mod:** READ-ONLY (hiçbir DB write yapılmadı)
 **Kapsam:** Lara (id=8), Işıklar (id=5), Fabrika/İmalathane (id=24), Ofis/HQ (id=23)
 **Kaynak dosyalar:** `PERSONEL_özlük_app_1777403226993.xlsx`, `Lara_Sube_Maas_2026_1777403226993.xlsx`
 
 ---
 
-## 📊 FINAL TABLO — Kaç kişi etkilenecek (sayım özeti)
+## 🔄 STRATEJİ — Clean Slate (owner kararı, 28 Nis)
+
+**Eşleştirme yok.** 4 birimde tüm mevcut gerçek-olmayan personel **soft-delete** edilir, Excel'deki kişiler **sıfırdan yeni user** olarak açılır. Sadece şu istisnalar mevcut kayıt olarak korunur:
+
+| Kayıt | Sebep | Aksiyon |
+|---|---|---|
+| `isiklar` / `lara` / `fabrika` (3 kiosk) | İnsan personel değil | Dokunma |
+| `yatirimci5` (Halil Özkan, yatirimci_branch) | Yatırımcı, personel değil | Dokunma |
+| `mudur5` (Erdem Yıldız, mudur, Işıklar) | Pilot user (replit.md'de pilot Erdem) | Dokunma |
+| `hq-eren-fabrika` (Eren Fabrika, fabrika_mudur) | Pilot fabrika müdürü | Dokunma + (Eren Elmas ile aynı kişiyse last_name='Elmas' güncelle — owner doğrula) |
+| `hq-umit-sef` (Umit / Ümit Usta, sef, Fabrika) | **Pasta şefi (owner onayı)** | Dokunma — `sef` olarak kalacak |
+| `atiyekar0706` (Atiye Kar, supervisor, Fabrika) | **Owner: "Atiye fabrikada supervisor olarak geçiyor"** | UPDATE birth/hire Excel'den, rol KORUN |
+| `umit` (52665297, uretim_sefi, Fabrika) | Duplicate (Ümit Usta'nın 2. kaydı) | **Soft-delete** |
+
+### Excel'den çıkarılacak kişi
+- **ÜMÜT KOŞAR (ÇİZERGE sıra 17, İMALATHANE)** → Owner: "ümüt koşar artık yok, ayrıldı işten" → **INSERT ETME**, ayrıca `employee_terminations` kaydına gerek yok (DB'de hiç yoktu)
+
+### Branch transfer (Ece + Yavuz)
+- **ECE ÖZ** → branch=**HQ (23)**, role=`trainer` (Excel'de IŞIKLAR ama owner: "Ece ofise aktarılacak")
+- **YAVUZ KOLAKAN** → branch=**HQ (23)**, role=`coach` (Excel'de IŞIKLAR ama owner: "Yavuz ofise aktarılacak")
+
+---
+
+## 📊 FINAL TABLO — Kaç kişi etkilenecek (sayım özeti, REV.2 clean slate)
 
 | # | Kategori | Sayı | Aksiyon |
 |---|---|---|---|
-| 1 | **Güvenli UPDATE** (yüksek güven eşleşme) | **6** | UPDATE `users` (birth_date, hire_date, department, net_salary) |
-| 2 | **Reaktive** (DB'de pasif, Excel'de aktif) | **1** | UPDATE `users` SET is_active=true (BÜŞRA DOĞMUŞ) |
-| 2b | **Rol değişikliği** (mevcut user, yeni rol) | **2** | Sema: `recete_gm`→`gida_muhendisi`; Eren Fabrika: last_name='Elmas' (Eren Elmas ile aynı kişi ise) |
-| 3 | **Yeni oluşturma adayı** (Excel'de var, DB'de yok) | **21–27** | INSERT `users` (karar sonrası net — +1 Aslan/RGM) |
-| 4 | **Pasifleştirme adayı** (DB'de test/demo, Excel'de yok) | **14–19** | UPDATE `users` SET is_active=false, deleted_at=now() (soft-delete; HARD DELETE YOK) |
-| 5 | **Owner kararı gerekli** (soyad çakışması veya rol belirsiz) | **8 vaka** (~12-14 kişi etkili) | Karar gelmeden işlem yok |
-| 6 | **Pilot user — korunacak** (Excel'de yok ama replit.md pilot) | **2** (mudur5/Erdem, eren/Eren Fabrika) | Dokunma |
-| 7 | **Kapsam dışı (kiosk)** | **3** (isiklar, lara, fabrika kiosk hesapları) | Dokunma — insan personel değil |
-| 8 | **Kapsam dışı (yatırımcı/CEO/admin/system)** | **1** (yatirimci5/Halil Özkan) | Dokunma |
-| 9 | **Diğer şubeler** (Mallof, Markantalya, Beachpark, Gaziantep, Konya, Samsun, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip vs.) | **~326 user** | **Tamamen dokunulmayacak — rapora dahil değil** |
-| 10 | **Lara aylık puantaj** (Excel'den 9 kişi × 4 ay) | **36 satır** | INSERT `monthly_payroll` (status='draft', notes='manual_excel_import') |
-| 11 | **İşten ayrılma kaydı** | **1** (BUĞRA SAKIZ — 19.02.2026) | INSERT `employee_terminations` |
-| 12 | **Maaş history** | ~30 (eşleşen + yeni) | INSERT `employee_salaries` |
-| 13 | **Yıllık izin 2026** | ~30 | INSERT/UPSERT `employee_leaves` |
-| 14 | **Yan haklar** (kasa tazminatı + yakıt) | ~10-15 | INSERT `employee_benefits` |
+| 1 | **Mevcut kayıt UPDATE** (istisna olarak korunacak) | **3** | Atiye Kar (birth/hire), Sema (rol→gida_muhendisi), Eren Fabrika (last_name=Elmas eğer onaylanırsa) |
+| 2 | **Soft-delete** (4 birimde tüm gerçek-olmayan + Excel'de olmayan) | **~37** | UPDATE `users` SET is_active=false, deleted_at=now() — HARD DELETE YOK |
+| 3 | **Yeni INSERT** (Excel'den temiz kayıt) | **~28** | Işıklar 9, HQ 6 (4 yeni + Ece + Yavuz transfer), Fabrika 5, Lara 8-12, Aslan/RGM (+1 owner verirse) |
+| 4 | **Excel'de var ama EKLENMEYECEK** | **1** | ÜMÜT KOŞAR (işten ayrıldı, owner) |
+| 5 | **Korunacak istisnalar (dokunulmayacak)** | **6** | 3 kiosk + yatirimci5 + mudur5/Erdem + hq-umit-sef/Ümit |
+| 6 | **Owner kararı bekleyen** | **4 nokta** | Aslan kimliği, Eren Elmas eşleşme, Lara pilot Andre, TC'li mevcut Işıklar/Fabrika kayıtları sil-mi-koru-mu |
+| 7 | **Diğer şubeler** (Mallof, Markantalya, Beachpark, Gaziantep, Konya, Samsun, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip vs.) | **~326 user** | Dokunulmayacak |
+| 8 | **Lara aylık puantaj** | **36 satır** | INSERT `monthly_payroll` (Şubat-Nisan, status='draft') |
+| 9 | **İşten ayrılma** | **1** | BUĞRA SAKIZ (Lara, 19.02.2026) → `employee_terminations` |
+| 10 | **Maaş history** | **~28-30** | INSERT `employee_salaries` |
+| 11 | **Yıllık izin 2026** | **~28-30** | INSERT `employee_leaves` |
+| 12 | **Yan haklar (kasa+yakıt)** | **~10-15** | INSERT `employee_benefits` |
+
+### ⚠️ Clean slate riski — bilinçli karar gerekli
+TC'li gerçek aktif kayıtları silmek (cihan, atesguney, basri, abdullah, arifeyildirim0) = **vardiya/payroll/checklist geçmişi eski user'da kalır**, yeni user fresh-start. Pilot için kabul edilebilir ama bu kişilerin geçmiş raporları yeni user'da görünmez. Alternatif: bu 5 kişi UPDATE ile korunabilir, sadece ad/soyad/branch teyiti yapılır. **Owner kararı.**
 
 ### Özet sayım (sadece kapsam içi 4 birim — toplam 46 user):
 - ✏️ Etkilenecek: ~**42-50 user** (eşleşme + yeni + pasif)
