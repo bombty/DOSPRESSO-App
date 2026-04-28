@@ -13,7 +13,8 @@
 |---|---|---|---|
 | 1 | **Güvenli UPDATE** (yüksek güven eşleşme) | **6** | UPDATE `users` (birth_date, hire_date, department, net_salary) |
 | 2 | **Reaktive** (DB'de pasif, Excel'de aktif) | **1** | UPDATE `users` SET is_active=true (BÜŞRA DOĞMUŞ) |
-| 3 | **Yeni oluşturma adayı** (Excel'de var, DB'de yok) | **21–26** | INSERT `users` (karar sonrası net) |
+| 2b | **Rol değişikliği** (mevcut user, yeni rol) | **2** | Sema: `recete_gm`→`gida_muhendisi`; Eren Fabrika: last_name='Elmas' (Eren Elmas ile aynı kişi ise) |
+| 3 | **Yeni oluşturma adayı** (Excel'de var, DB'de yok) | **21–27** | INSERT `users` (karar sonrası net — +1 Aslan/RGM) |
 | 4 | **Pasifleştirme adayı** (DB'de test/demo, Excel'de yok) | **14–19** | UPDATE `users` SET is_active=false, deleted_at=now() (soft-delete; HARD DELETE YOK) |
 | 5 | **Owner kararı gerekli** (soyad çakışması veya rol belirsiz) | **8 vaka** (~12-14 kişi etkili) | Karar gelmeden işlem yok |
 | 6 | **Pilot user — korunacak** (Excel'de yok ama replit.md pilot) | **2** (mudur5/Erdem, eren/Eren Fabrika) | Dokunma |
@@ -225,36 +226,43 @@ Tüm "silme" aksiyonları **soft-delete** (`is_active=false` + `deleted_at=now()
 
 **Genel öneri:** username = ad+soyad slugify (Türkçe karakter normalize), password = `0000` (pilot kuralı), email yoksa boş bırak veya `<username>@dospresso.placeholder` (ileride güncellenir).
 
-### Fabrika (5 yeni)
+### Fabrika (5 yeni + 1 yeni RGM Aslan + 1 rol değişikliği)
 | Excel adı | Username önerisi | Önerilen rol | Eksik alanlar |
 |---|---|---|---|
-| GALİP CAN BORAN | galipcanboran | fabrika_operator | TC, telefon, email |
-| HATİCE KOCABAŞ | haticekocabas | fabrika_operator | TC, telefon, email |
-| MUSTAFA CAN HORZUM | mustafacanhorzum | fabrika_operator | TC, telefon, email |
-| ÜMÜT KOŞAR | umutkosar | **owner decision** (sef/uretim_sefi/operator?) | TC, telefon, email — yüksek maaşlı (üst pozisyon?) |
-| FİLİZ KARALİ (eğer DB'deki Filiz Demir ile aynı kişi DEĞİLSE) | filizkarali | fabrika_operator | TC, telefon, email |
-| MİHRİCAN VEZİROĞLU (DB'deki ile farklıysa) | mihricanveziroglu | fabrika_operator | TC, telefon, email |
-| LEYLA SÖNMEZ (DB'deki ile farklıysa) | leylasonmez | fabrika_operator | TC, telefon, email |
+| GALİP CAN BORAN | galipcanboran | `fabrika_operator` | TC, telefon, email |
+| HATİCE KOCABAŞ | haticekocabas | `fabrika_operator` | TC, telefon, email |
+| MUSTAFA CAN HORZUM | mustafacanhorzum | `fabrika_operator` | TC, telefon, email |
+| ÜMÜT KOŞAR | umutkosar | **owner decision** (`sef` / `uretim_sefi` / `fabrika_operator`?) | TC, telefon, email — yüksek maaşlı |
+| FİLİZ KARALİ (eğer DB'deki Filiz Demir ile aynı kişi DEĞİLSE) | filizkarali | `fabrika_operator` | TC, telefon, email |
+| MİHRİCAN VEZİROĞLU (DB'deki ile farklıysa) | mihricanveziroglu | `fabrika_operator` | TC, telefon, email |
+| LEYLA SÖNMEZ (DB'deki ile farklıysa) | leylasonmez | `fabrika_operator` | TC, telefon, email |
+| **ASLAN (RGM)** ⚠️ Excel'de YOK, owner direkt verdi | ? (ad/soyad netleşince) | **`recete_gm`** ✅ | **Tam ad/soyad, TC, telefon, email, branch, hire_date — owner decision** |
 
-### HQ Ofis (5 yeni — TÜMÜ yeni)
-| Excel adı | Username önerisi | Önerilen rol | Eksik alanlar |
+### Fabrika — mevcut user'larda rol değişikliği (owner kararı)
+| Mevcut user | Mevcut rol | **Yeni rol** | Aksiyon |
 |---|---|---|---|
-| DIANA NAYFONOVA | dianan | **owner decision** (HQ rolü?) | TC, telefon, email |
-| EREN ELMAS | erenelmas | **owner decision** (operasyon/finans?) | TC, telefon, email |
-| MAHMUT ALTUNAY | mahmutaltunay | **owner decision** (yüksek maaş — üst düzey?) | TC, telefon, email |
-| ŞEVKET SAMET KARA | sevketsametkara | **owner decision** | TC, telefon, email |
-| UTKU DERNEK | utkudernek | **owner decision** (en yüksek maaş, kıdem 10+ yıl — CGO/yönetici?) | TC, telefon, email |
+| `hq-ilker-recete-gm` (Sema Reçete GM) | `recete_gm` | **`gida_muhendisi`** ✅ | UPDATE users SET role='gida_muhendisi' (RGM görevi Aslan'a devredilecek) |
+| `hq-eren-fabrika` (Eren Fabrika) | `fabrika_mudur` | `fabrika_mudur` (KORU) ✅ | Eğer EREN ELMAS ile aynı kişi ise → last_name='Elmas', birth/hire date Excel'den UPDATE |
 
-### Işıklar (3-6 yeni — kararına bağlı)
-| Excel adı | Username önerisi | Önerilen rol | Not |
+### HQ Ofis (4 yeni + 1 belirsiz) — owner kararıyla rol mapping NETLEŞTİ ✅
+| Excel adı | Username önerisi | **Onaylanmış rol** | Eksik alanlar |
 |---|---|---|---|
-| ECE ÖZ | ece veya eceoz | **owner decision** (coach/trainer/supervisor — replit.md'de "Coach=ece/0000") | Username `ece` daha önce coach olarak geçti |
-| YAVUZ KOLAKAN | yavuzkolakan | **owner decision** (mudur/yatirimci?) | En yüksek maaş, kıdem 5 yıl |
+| UTKU DERNEK | utkudernek | **`cgo`** ✅ | TC, telefon, email |
+| DIANA NAYFONOVA | diana | **`marketing`** ✅ | TC, telefon, email |
+| ŞEVKET SAMET KARA | samet (veya sevketsamet) | **`satinalma`** ✅ | TC, telefon, email |
+| MAHMUT ALTUNAY | mahmut (veya mahmutaltunay) | **`muhasebe_ik`** ✅ | TC, telefon, email |
+| EREN ELMAS | ⚠️ **Bekleyen karar:** mevcut `hq-eren-fabrika` (Eren Fabrika, fabrika_mudur) ile **AYNI KİŞİ** mi? Eğer öyleyse → mevcut kaydı güncelle (last_name='Elmas', birth_date=22.04.1994, hire_date=25.05.2021), branch=Fabrika kalsın. Eğer farklı kişi ise → HQ'da yeni kayıt aç, rol? | TC, telefon, email |
+
+### Işıklar — owner kararıyla ECE ve YAVUZ rolleri NETLEŞTİ ✅
+| Excel adı | Username önerisi | **Onaylanmış rol** | Not |
+|---|---|---|---|
+| ECE ÖZ | ece (veya eceoz) | **`trainer`** ✅ | ⚠️ Branch: HQ (23) mü Işıklar (5) mı? — pilot için **bekleyen karar** |
+| YAVUZ KOLAKAN | yavuz (veya yavuzkolakan) | **`coach`** ✅ | ⚠️ Branch: HQ (23) mü Işıklar (5) mı? Mevcut `test-employee` (Yavuz Supervisor, coach, HQ, pasif) ile çakışma yok ama username `yavuz` müsait |
 | HÜLYA TÜZÜN | hulyatuzun | stajyer | Yeni giriş |
 | İSMAİL SİVRİ | ismailsivri | stajyer | Yeni giriş |
-| (KEMAL HÜSEYİNOĞLU eğer DB'deki Kemal ile farklıysa) | kemalhuseyinoglu | barista | |
-| (EFE KADİR KOCAKAYA eğer DB'deki Efe ile farklıysa) | efekadirkocakaya | barista | |
-| (SÜLEYMAN OLGUN eğer DB'deki Süleyman ile farklıysa) | suleymanolgun | barista | |
+| (KEMAL HÜSEYİNOĞLU eğer DB'deki Kemal ile farklıysa) | kemalhuseyinoglu | barista | Soyad çakışması — owner decision |
+| (EFE KADİR KOCAKAYA eğer DB'deki Efe ile farklıysa) | efekadirkocakaya | barista | Soyad çakışması — owner decision |
+| (SÜLEYMAN OLGUN eğer DB'deki Süleyman ile farklıysa) | suleymanolgun | barista | Soyad çakışması — owner decision |
 
 ### Lara (8-12 yeni)
 | Excel adı | Username önerisi | Önerilen rol | Not |
