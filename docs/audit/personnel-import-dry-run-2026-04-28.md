@@ -507,3 +507,52 @@ Aşağıdaki 8 karar gelmeden Phase 1-6 başlatılamaz:
 6. **Fabrika duplicate:** "Umit" (hq-umit-sef) ve "umit" (uretim_sefi) — hangi ID kalsın?
 7. **Pilot kullanıcıları (Erdem mudur5, Eren fabrika_mudur):** Excel'de yok, korunsun mu?
 8. **Test email patternli aktif Fabrika user'ları (emreacar, fatiharslan, filizdemir):** Gerçek mi test mi? Eğer test ise pasifleştir, gerçek ise Excel'de neden yok?
+
+---
+
+## ✅ PHASE 1 SQL PREVIEW HAZIR (28 Nis 2026)
+
+Owner'ın 5 kararı doğrultusunda SQL preview dosyası üretildi:
+
+📄 **Dosya:** `docs/audit/personnel-import-phase1-preview.sql` (1143 satır)
+
+### İçerik
+| Phase | İş | Sayı |
+|---|---|---|
+| 0 | Pre-flight snapshot (sayım) | 1 SELECT |
+| 1 | Korunacak user listesi (no-op, bilgi) | 10 user |
+| 2 | Soft-delete (`is_active=false`, `deleted_at=now()`) | 36 user |
+| 3 | UPDATE (Eren Elmas, Atiye Kar, Sema rol) | 3 user |
+| 4 | INSERT users (Excel'den temiz kayıt) | 35 user |
+| 4b | INSERT employee_salaries (history) | 27 user |
+| 5 | TERMINATE (Buğra Sakız, 19.02.2026) | 1 user + employee_terminations INSERT |
+| 6 | Post-verification (sayım, korunan kontrol) | 5 SELECT |
+
+### DB schema doğrulamaları (preview yazılırken)
+- ✅ `users.password` → **`hashed_password`** (gerçek kolon adı)
+- ✅ `users.base_salary` YOK → **`employee_salaries`** tablosuna gider (Phase 4b)
+- ✅ `users.termination_date` YOK → **`employee_terminations`** tablosuna gider (Phase 5)
+- ⚠️ `pgcrypto` extension YÜKLÜ DEĞİL → `crypt()` çalışmaz
+  - Çözüm: bcrypt hash uygulama katmanından üretilip `:BCRYPT_0000` placeholder ile değiştirilir
+  - `node -e "console.log(require('bcryptjs').hashSync('0000',10))"`
+- ✅ Kullanılan kolonlar: `bonus_base` (=temel), `net_salary` (=hakediş), `meal_allowance` (=kasa_taz), `transport_allowance` (=yakıt)
+
+### DRY-RUN modu
+- Dosya tamamı tek `BEGIN; ... ROLLBACK;` bloğunda
+- Owner gerçek run için **sondaki `ROLLBACK;` satırını `COMMIT;`** yapar
+- Öncesinde **`pg_dump` backup zorunlu**
+
+### Owner'ın 5 kararı (final tablo)
+1. ❌ **Aslan import kapsam dışı** — bu run'da yok
+2. ✏️ **Eren Elmas = `hq-eren-fabrika` UPDATE** (fabrika_mudur korunur, birth/hire/maaş güncellenir)
+3. 🛡️ **Andre/laramudur korunur** (Lara pilot müdürü)
+4. ➕ **ÜMÜT KOŞAR yeni INSERT** fabrika_operator (ayrılmadı)
+5. 🚫 **Ümran=`hq-umran-kalite` zaten pasif** — aksiyon yok
+
+### Sonraki Phase'ler (bu preview KAPSAMINDA DEĞİL)
+- Phase 2: Lara aylık puantaj (`monthly_payroll`, ~36 satır)
+- Phase 3: `employee_leaves` 2026 izin hakkı
+- Phase 4: `employee_benefits` yan haklar detayı
+- Phase 5: `audit_logs` toplu özet kayıt
+
+Bu dosyalar owner Phase 1'i COMMIT ettikten sonra ayrı preview olarak üretilebilir.
