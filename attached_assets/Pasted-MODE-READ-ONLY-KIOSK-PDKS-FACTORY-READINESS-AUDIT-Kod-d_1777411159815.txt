@@ -1,0 +1,81 @@
+MODE: READ-ONLY KIOSK PDKS FACTORY READINESS AUDIT
+
+Kod değiştirme.
+DB write yapma.
+Migration/schema/env/package değiştirme.
+Commit/push yapma.
+Sadece mevcut sistemi oku ve pilot başlangıç için eksik listesini çıkar.
+
+AMAÇ:
+Işıklar, Lara, Fabrika ve Ofis/HQ için personel giriş-çıkış, puantaj ve basit fabrika üretim takibini başlatmak istiyoruz.
+
+KAPSAM:
+1. Işıklar kiosk
+2. Lara kiosk
+3. Fabrika kiosk
+4. Ofis/HQ kiosk
+
+KONTROL ET:
+
+1) Personel listesi
+- Bu 4 birimde aktif insan personel kimler?
+- Kiosk/admin/system/yatırımcı hesapları personel listelerine karışıyor mu?
+- Her personelin branch_id/department bilgisi doğru mu?
+
+2) Kiosk ayarları
+- Işıklar, Lara, Fabrika, Ofis için kiosk account/settings var mı?
+- Kiosk login çalışıyor mu?
+- Kiosk kendi branch/department personelini gösteriyor mu?
+- Eksik kiosk ayarı var mı?
+
+3) PIN durumu
+- Personellerin PIN kayıtları var mı?
+- PIN tablosu hangisi?
+- Eksik PIN olan kişiler kimler?
+- Pilot için 0000 PIN kullanılabilir mi?
+
+4) Vardiya / PDKS
+- Bu 4 birim için vardiya var mı?
+- Giriş/çıkış endpointleri hazır mı?
+- Mola endpointleri hazır mı?
+- Geç kalma / eksik çıkış / plansız giriş takibi var mı?
+- PDKS kayıtları hangi tablolara yazılıyor?
+
+5) İzin / rapor / ücretsiz izin
+- Yıllık izin kayıtları nerede tutuluyor?
+- Ücretsiz izin nasıl işaretleniyor?
+- Raporlu gün nasıl kaydediliyor?
+- İzin talep/onay akışı çalışıyor mu?
+
+6) Maaş / puantaj
+- Maaşlar hangi tabloda?
+- monthly_payroll veya salary history hazır mı?
+- Ay sonu puantaj hangi tablodan hesaplanıyor?
+- PDKS ile payroll arasında eksik bağlantı var mı?
+
+7) Fabrika üretim takibi
+- Fabrika kioskta personel ürün seçebiliyor mu?
+- Ürün/reçete listesi nereden geliyor?
+- Üretim başlat / bitir endpointleri var mı?
+- Üretilen miktar / fire / süre kaydı var mı?
+- Kişi bazlı ve ürün bazlı üretim raporu var mı?
+
+8) Pilot başlamak için eksikler
+Bana net liste ver:
+- Başlamak için hazır olanlar
+- Eksik ayarlar
+- Eksik PIN’ler
+- Eksik vardiyalar
+- Eksik maaş/izin verileri
+- Eksik fabrika üretim ayarları
+- Riskler
+
+9) Minimum başlama planı
+Şu formatta ver:
+Phase 1: Personel import tamamla
+Phase 2: Kioskları aktif et
+Phase 3: PIN’leri ata
+Phase 4: Basit vardiyaları oluştur
+Phase 5: PDKS canlı başlat
+Phase 6: Fabrika basit üretim takibini başlat
+Phase 7: Ay sonu puantaj kontrolü
