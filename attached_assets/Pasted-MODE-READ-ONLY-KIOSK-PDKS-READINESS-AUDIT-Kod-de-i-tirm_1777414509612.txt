@@ -1,0 +1,105 @@
+MODE: READ-ONLY KIOSK PDKS READINESS AUDIT
+
+Kod değiştirme.
+DB write yapma.
+Insert/update/delete yapma.
+Schema/migration/env/package değiştirme.
+Commit/push yapma.
+Sadece mevcut DB ve kod durumunu oku, raporla.
+
+Amaç:
+Phase 1 personel import tamamlandı. Şimdi Lara, Işıklar, Fabrika ve Ofis/HQ için kiosk + PDKS + puantaj başlangıç hazırlığını kontrol etmek istiyoruz.
+
+KAPSAM:
+1. Işıklar Şube
+2. Lara Şube
+3. Fabrika / İmalathane
+4. Ofis / HQ
+
+Kontrol et:
+
+1) Aktif personel listesi
+Her birim için:
+- aktif insan personel sayısı
+- roller dağılımı
+- kiosk/admin/system/yatırımcı hesapları ayrılmış mı?
+- yeni import edilen personeller doğru branch_id ve role ile geldi mi?
+
+2) Kiosk hesapları
+Her birim için:
+- kiosk user var mı?
+- kiosk settings var mı?
+- kiosk username/device config var mı?
+- branch_id doğru mu?
+- kiosk human personnel listesinde görünür mü, görünmemeli mi?
+
+3) PIN / şifre durumu
+- Yeni personellerin login password/hash durumu var mı?
+- Personel kiosk PIN kayıtları hangi tabloda?
+- Yeni import edilen kişilerin PIN’i var mı?
+- Eğer yoksa pilot için 0000 PIN nasıl atanmalı?
+- Şifre ve PIN aynı mı ayrı mı tutuluyor?
+
+4) Kiosk personel görünürlüğü
+Her kioskta hangi personel görünmeli?
+- Işıklar kiosk → sadece Işıklar aktif insan personeli
+- Lara kiosk → sadece Lara aktif insan personeli
+- Fabrika kiosk → sadece Fabrika/İmalathane aktif insan personeli
+- Ofis/HQ kiosk → sadece HQ/Ofis aktif insan personeli
+Kiosk/admin/yatırımcı/system/test soft-deleted kişiler görünmemeli.
+
+5) PDKS endpoint ve tablolar
+Kontrol et:
+- giriş endpointi
+- çıkış endpointi
+- mola başlat/bitir endpointi
+- plansız giriş davranışı
+- geç kalma davranışı
+- eksik çıkış davranışı
+- PDKS kayıtları hangi tablolara yazılıyor?
+- branch_shift_sessions, pdks_records, shift_attendance ilişkisi nedir?
+
+6) Vardiya durumu
+Bu 4 birim için:
+- mevcut vardiyalar var mı?
+- yeni import edilen personeller için bugünden başlayacak vardiya var mı?
+- yoksa giriş/çıkış yine yapılabiliyor mu?
+- pilot için minimum vardiya seed gerekli mi?
+
+7) İzin / rapor / ücretsiz izin
+Kontrol et:
+- yıllık izin kayıtları Phase 1’de geldi mi, gelmediyse eksik mi?
+- ücretsiz izin nerede tutuluyor?
+- raporlu gün nerede tutuluyor?
+- izin talep/onay akışı çalışıyor mu?
+- puantaj bunları dikkate alıyor mu?
+
+8) Maaş / puantaj
+Kontrol et:
+- employee_salaries geldi mi?
+- monthly_payroll hâlâ boş mu?
+- Lara monthly payroll import ayrı faz mı?
+- PDKS’den ay sonu puantaj nasıl oluşacak?
+- maaş hesaplama için hangi alanlar eksik?
+
+9) Başlamak için minimum eksik listesi
+Şu formatta ver:
+- Hemen başlayabiliriz
+- Önce ayar gerekir
+- Eksik PIN
+- Eksik kiosk setting
+- Eksik vardiya
+- Eksik izin/maaş bağlantısı
+- Risk
+
+10) Minimum başlama planı
+Phase 1: kiosk ayarlarını tamamla
+Phase 2: PIN/şifreleri doğrula
+Phase 3: minimum vardiya oluştur
+Phase 4: ilk giriş/çıkış testini yap
+Phase 5: gün sonu PDKS raporu al
+Phase 6: ay sonu puantaj testini simüle et
+
+Rapor sonunda:
+- Pilot giriş/çıkış takibine bugün başlayabilir miyiz? Evet/Hayır
+- Başlamak için önce hangi 5 ayar yapılmalı?
