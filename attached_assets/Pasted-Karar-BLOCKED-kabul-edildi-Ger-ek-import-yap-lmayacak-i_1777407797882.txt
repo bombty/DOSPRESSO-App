@@ -1,0 +1,70 @@
+Karar: BLOCKED kabul edildi. Gerçek import yapılmayacak.
+
+Şimdi sadece Phase 1 SQL Preview REV2 hazırla.
+DB write yapma.
+SQL çalıştırma.
+COMMIT yapma.
+Kod değiştirme.
+Migration/schema/env/package değiştirme.
+Sadece preview SQL dosyasını düzelt.
+
+Düzeltilecek blocking hatalar:
+
+1. employee_salaries.id
+- id SERIAL/integer olduğu için INSERT içinde id kolonunu hiç verme.
+- DB kendi nextval ile üretsin.
+- gen_random_uuid()::text kullanma.
+
+2. employee_salaries.created_by_id
+- NOT NULL olduğu için zorunlu ekle.
+- created_by_id için owner/admin user id placeholder kullan:
+  :IMPORT_ACTOR_USER_ID
+- Preview dosyasının üstünde bu placeholder’ın importu çalıştıracak admin/owner user id ile replace edileceğini açık yaz.
+
+3. employee_terminations.id
+- id SERIAL/integer olduğu için INSERT içinde id kolonunu hiç verme.
+- DB kendi nextval ile üretsin.
+- gen_random_uuid()::text kullanma.
+
+Non-blocking düzeltmeler:
+4. Sayım yorumlarını gerçek sayılarla düzelt.
+5. Sema rol değişimi için explicit verification SELECT ekle.
+6. employment_type değerini DB default ile uyumlu yap:
+   Eğer DB default 'fulltime' ise 'fulltime' kullan; 'full_time' kullanma.
+7. Buğra Sakız için INSERT_THEN_TERMINATE akışında verification çıktısını kafa karıştırmayacak şekilde ayır:
+   - created user
+   - terminated user
+8. Phase 4b opsiyonel notunu düzelt:
+   - Eğer employee_salaries insert kalacaksa schema uyumlu olmalı.
+   - Eğer çıkarılacaksa açıkça phase dışı yaz.
+   Ama yarım bırakma.
+
+Preview dosyası:
+- Yeni dosya oluştur:
+  docs/audit/personnel-import-phase1-preview-rev2.sql
+- Eski dosyayı silme.
+- ROLLBACK ile bitsin.
+- COMMIT olmasın.
+- DELETE/TRUNCATE/DROP/ALTER olmasın.
+- Hard delete olmasın.
+- Sadece branch_id 5, 8, 23, 24 kapsamı kalsın.
+- Kiosk, yatırımcı, Andre/laramudur, mudur5/Erdem, hq-eren-fabrika korunma kuralları kalsın.
+
+Ayrıca review raporunu güncelle:
+- docs/audit/personnel-import-phase1-review-2026-04-28.md
+- REV2 sonrası blocking maddeler kapandı mı?
+- Kalan riskler neler?
+
+Sonuçta raporla:
+1. Yeni preview dosyası yolu
+2. Blocking hatalar kapandı mı?
+3. Placeholder listesi:
+   - :BCRYPT_0000
+   - :IMPORT_ACTOR_USER_ID
+   - varsa diğerleri
+4. ROLLBACK ile bitti mi?
+5. COMMIT var mı?
+6. Hard delete var mı?
+7. Çalıştırmaya hazır mı, yoksa hâlâ BLOCKED mi?
+8. Değişen dosyalar
+9. git diff --stat

@@ -1,16 +1,57 @@
 # PHASE 1 SQL PREVIEW — RİSK İNCELEMESİ
 
 **Tarih:** 28 Nisan 2026
-**İncelenen dosya:** `docs/audit/personnel-import-phase1-preview.sql` (1143 satır)
-**İnceleme modu:** READ-ONLY (DB'ye hiçbir şey çalıştırılmadı, dosya da değiştirilmedi)
-**Kontrol edilen 20 madde:** aşağıdaki tabloda
+**REV1 incelenen dosya:** `docs/audit/personnel-import-phase1-preview.sql` (1143 satır) — 🔴 BLOCKED
+**REV2 düzeltilmiş dosya:** `docs/audit/personnel-import-phase1-preview-rev2.sql` (1248 satır) — 🟡 RISKY (owner doğrulamaları + run prosedürü)
+**İnceleme modu:** READ-ONLY (DB'ye hiçbir şey çalıştırılmadı)
 
 ---
 
-## 🚦 KARAR: **BLOCKED**
+## 🚦 KARAR — REV2 SONRASI: **RISKY** (BLOCKED → açıldı)
 
-**Dosya state olarak:** ✅ Güvenli — `ROLLBACK;` ile bitiyor, yanlışlıkla DB'ye uygulanamaz.
-**Gerçek çalıştırma için:** ❌ **3 kritik bug** var, fix edilmeden COMMIT'e geçilemez. Phase 4b'de transaction patlar, tüm Phase 1-5 geri alınır, **0 user eklenmiş olur**.
+| Boyut | REV1 | REV2 |
+|---|---|---|
+| Dosya state | ✅ Güvenli (ROLLBACK) | ✅ Güvenli (ROLLBACK) |
+| Schema uyumu | ❌ 3 BLOCKING bug | ✅ B1, B2, B3 fix uygulandı |
+| Çalıştırma kararı | ❌ BLOCKED | 🟡 RISKY (owner doğrulama + run prosedürü) |
+
+**REV2 ile blocking yokoldu**, ancak hala 8 non-blocking risk var (R5/R6 owner doğrulaması + R3/R8/R9/R10 prosedür notları). Owner pg_dump + bcrypt + IMPORT_ACTOR_USER_ID belirleme adımlarını tamamladıktan sonra COMMIT'e geçebilir.
+
+---
+
+## ✅ REV2'DE KAPATILAN BLOCKING'LER
+
+| Kod | Eski hata | REV2 fix | Durum |
+|---|---|---|---|
+| **B1** | `employee_salaries.id` SERIAL'a `gen_random_uuid()::text` döküyordu | INSERT kolon listesinden `id` çıkarıldı, SELECT'ten `gen_random_uuid()::text,` silindi → DB nextval kullanıyor | ✅ KAPALI |
+| **B2** | `employee_salaries.created_by_id` NOT NULL ama kolon eksikti | `created_by_id` kolonu eklendi, `:IMPORT_ACTOR_USER_ID` placeholder'ı SELECT clause'a eklendi (31 yerde) | ✅ KAPALI |
+| **B3** | `employee_terminations.id` SERIAL'a `gen_random_uuid()::text` döküyordu | Phase 5.2 INSERT kolon listesinden `id` çıkarıldı, SELECT'ten UUID silindi → DB nextval | ✅ KAPALI |
+
+## ✅ REV2'DE KAPATILAN NON-BLOCKING'LER
+
+| Kod | Eski sorun | REV2 fix | Durum |
+|---|---|---|---|
+| **R1** | Sayım yorumları yanlış (35→36, 27→31, 81→82) | Header + Phase 4/4b/6 başlıkları gerçek değerlerle güncellendi | ✅ KAPALI |
+| **R4** | Sema rol değişimi için verification SELECT yoktu | Phase 6'ya `[V6]` eklendi: `SELECT role FROM users WHERE id='hq-ilker-recete-gm'` | ✅ KAPALI |
+| **R7** | `'full_time'` kullanıyordu, DB default `'fulltime'` (alt çizgisiz) | 67 yerde `'full_time'` → `'fulltime'` (36 users INSERT + 31 salary INSERT) | ✅ KAPALI |
+| **R10** | Phase 4b "opsiyonel" notu yanıltıcıydı | Başlık: "31 INSERT — ŞEMA UYUMLU, ÇALIŞTIRILACAK"; sonda atlama prosedürü açıkça yazıldı | ✅ KAPALI |
+| Buğra | INSERT_THEN_TERMINATE verification belirsizdi | Phase 6'da `[V2]` aktif yeni (Buğra hariç) ve `[V3]` Buğra explicit JOIN ile ayrıldı | ✅ KAPALI |
+
+---
+
+## 🟡 REV2 SONRASI KALAN RİSKLER (8 madde)
+
+### Owner Doğrulama Gerektirenler
+- **R5** Eren/Atiye maaş rakamları (Eren `bonus_base=46000, net=60000, transport=6000` / Atiye `bonus_base=42000, net=50000`) Excel ile birebir karşılaştırılmalı
+- **R6** `department='OFİS' / 'İMALATHANE'` string'leri Excel'den mi yoksa varsayım mı?
+- 36 INSERT username'lerinin gerçek olduğu, test/placeholder olmadığı sözel onay
+
+### Prosedür/Operasyonel Notlar
+- **R3** Verification zaman penceresi `15 minutes` (REV2'de 5'ten 15'e çıkarıldı). Owner adım adım çalıştırırsa pencere yetebilir, ama tüm transaction tek seferde 15 dakikadan uzun sürerse `[V2]` ve `[V4]` bazı kayıtları kaçırabilir. Çözüm: BCRYPT replace edildikten sonra dosyayı **tek psql çağrısında** çalıştırmak
+- **R8** `employee_benefits` tablosuna yan haklar tarihçesi yazılmıyor (kasa tazminatı + yakıt yardımı snapshot yine `users.meal_allowance`/`transport_allowance`'da). İleride yan hak değişimi takibi için Phase 2 ayrı preview gerek
+- **R9** İki placeholder'ın replace edilmemesi durumunda psql parse error → transaction güvenli abort. Bu **mekanizma** ✓, ama owner `psql -v BCRYPT_0000=... -v IMPORT_ACTOR_USER_ID=...` syntax'ını bilmeli (REV2 header'da örnek var)
+- **IMPORT_ACTOR_USER_ID seçimi** Owner hangi user ID'yi kullanacak? Önerilen: HQ rolünde aktif bir owner/RGM/CGO. `'hq-ilker-recete-gm'` kullanılabilir (Sema'nın güncellendiği user) ama kafa karışıklığı yaratabilir. Daha temiz seçenek: dedicated bir admin user veya Aslan RGM ID'si
+- **Phase 5 sıralaması** Buğra önce Phase 4'te INSERT, sonra Phase 5.1'de `is_active=false` + `deleted_at='2026-02-19'`, sonra Phase 5.2'de termination kaydı. Aynı transaction içinde ardışık çalıştığı için `WHERE username='bugrasakiz'` her seferinde Buğra'yı bulur ✓
 
 ---
 
@@ -116,90 +157,97 @@ Preview: "Phase 4b (employee_salaries) opsiyonel — atlanabilir". Ancak B1+B2 b
 
 ---
 
-## ✅ PASS — 20 Madde Sonucu
+## ✅ REV2 — 20 Madde Sonucu
 
-| # | Kontrol | Sonuç |
-|---|---|---|
-| 1 | Dosya `ROLLBACK;` ile mi bitiyor? | ✅ PASS (line 1139) |
-| 2 | `COMMIT` var mı? | ✅ PASS (yok, sadece `BEGIN` line 37 + `ROLLBACK` line 1139) |
-| 3 | DELETE / TRUNCATE / DROP / ALTER var mı? | ✅ PASS (hiçbiri yok) |
-| 4 | Soft-delete dışında riskli UPDATE var mı? | ✅ PASS (40 UPDATE: 36 soft-delete + 3 controlled UPDATE + 1 termination soft-delete; hepsi güvenli) |
-| 5 | Kapsam dışı şubeyi etkileyen branchId var mı? | ✅ PASS (sadece 5, 8, 23, 24) |
-| 6 | Sadece branch_id 5/8/23/24 etkileniyor mu? | ✅ PASS (Phase 0/6 SELECT'leri ve INSERT'lerin tümü kapsam içi) |
-| 7 | Kiosk/admin/yatırımcı korunuyor mu? | ✅ PASS (3 kiosk + yatirimci5 soft-delete listesinde **yok**) |
-| 8 | Andre/laramudur korunuyor mu? | ✅ PASS (`629b81fd-...` soft-delete listesinde yok, korunan listesinde var) |
-| 9 | hq-eren-fabrika korunup Eren Elmas olarak güncelleniyor mu? | ✅ PASS (UP-1: `last_name='Elmas'` line 152) |
-| 10 | ÜMÜT KOŞAR fabrika_operator olarak yeni kişi mi? | ✅ PASS (`umutkosar`, branch=24, role=`fabrika_operator` line 370) |
-| 11 | Ümran no-op/pasif olarak kalıyor mu? | ✅ PASS (preview'da hiç geçmiyor — DB'de zaten pasif, dokunulmuyor) |
-| 12 | `:BCRYPT_0000` placeholder kaç yerde? | ✅ PASS (35 gerçek INSERT placeholder + 5 yorum = 40 satır) |
-| 13 | bcrypt hash üretilmeden SQL çalışır mı? | ✅ PASS (psql parse error → transaction abort = güvenlik mekanizması) |
-| 14 | employee_salaries / employee_terminations doğru kolonlara mı? | ❌ **FAIL** (B1, B2, B3 — yukarıda) |
-| 15 | FK riski var mı? | ✅ PASS (sadece soft-delete + INSERT, FK referans bütünlüğü etkilenmez) |
-| 16 | Username çakışması riski var mı? | ✅ PASS (DB'de 0 çakışma — 36 yeni username unique) |
-| 17 | Aynı kişi iki kez insert olabilir mi? | ✅ PASS (36 farklı username, hepsi unique; UP-1/2/3 zaten korunan kayıtlar) |
-| 18 | Verification SELECT'leri yeterli mi? | 🟡 RISKY (R3, R4 — zaman penceresi + Sema rol kontrolü eksik) |
-| 19 | Rollback notları yeterli mi? | ✅ PASS (4 maddelik checklist + transaction abort açıklaması var) |
-| 20 | Çalıştırma öncesi onay maddeleri | (aşağıda checklist) |
+| # | Kontrol | REV1 | REV2 |
+|---|---|---|---|
+| 1 | Dosya `ROLLBACK;` ile mi bitiyor? | ✅ | ✅ (line 1242) |
+| 2 | `COMMIT` var mı? | ✅ yok | ✅ yok |
+| 3 | DELETE / TRUNCATE / DROP / ALTER var mı? | ✅ yok | ✅ yok |
+| 4 | Soft-delete dışında riskli UPDATE? | ✅ | ✅ (40 UPDATE, hepsi soft-delete veya whitelisted UP-1/2/3) |
+| 5 | Kapsam dışı şubeyi etkileyen branchId? | ✅ | ✅ (sadece 5, 8, 23, 24) |
+| 6 | Sadece branch_id 5/8/23/24? | ✅ | ✅ |
+| 7 | Kiosk/admin/yatırımcı korunuyor mu? | ✅ | ✅ |
+| 8 | Andre/laramudur korunuyor mu? | ✅ | ✅ |
+| 9 | hq-eren-fabrika UPDATE'leniyor mu? | ✅ | ✅ |
+| 10 | ÜMÜT KOŞAR (umutkosar) fabrika_operator? | ✅ | ✅ |
+| 11 | Ümran no-op? | ✅ | ✅ |
+| 12 | `:BCRYPT_0000` placeholder sayısı | ✅ 35 INSERT | ✅ 35 INSERT (40 toplam satır) |
+| 13 | bcrypt yoksa SQL çalışır mı? | ✅ parse error → abort | ✅ aynı (REV2'de IMPORT_ACTOR_USER_ID için de aynı koruma) |
+| 14 | employee_salaries / employee_terminations şema uyumu | ❌ FAIL (B1+B2+B3) | ✅ **PASS** (B1, B2, B3 kapatıldı) |
+| 15 | FK riski | ✅ | ✅ |
+| 16 | Username çakışma riski | ✅ (DB kontrolü 0) | ✅ |
+| 17 | Aynı kişi 2 kez insert? | ✅ | ✅ |
+| 18 | Verification SELECT'leri yeterli mi? | 🟡 (R3+R4) | ✅ (V1-V7, Sema explicit, Buğra explicit, zaman penceresi 15 dk) |
+| 19 | Rollback notları yeterli mi? | ✅ | ✅ (4 zorunlu adım + 2 placeholder talimatı) |
+| 20 | Çalıştırma öncesi onay | (checklist) | (aşağıdaki kısaltılmış checklist) |
+
+**Skor:** 20/20 PASS (REV1'de 17/20 + 1 FAIL + 2 RISKY → REV2'de hepsi PASS)
 
 ---
 
-## 📋 GERÇEK ÇALIŞTIRMA ÖNCESİ ZORUNLU CHECKLIST
+## 📋 REV2 ÇALIŞTIRMA ÖNCESİ KISALTILMIŞ CHECKLIST
 
-### Aşama 1 — Preview dosyasını düzelt (zorunlu)
-- [ ] **B1 fix**: Phase 4b INSERT'lerden `id` kolonunu çıkar, `gen_random_uuid()::text` parametresini sil
-- [ ] **B2 fix**: Phase 4b INSERT'lere `created_by_id` kolonu ekle, owner user ID'sini parametrik geçir (`:OWNER_USER_ID`)
-- [ ] **B3 fix**: Phase 5.2 employee_terminations INSERT'inden `id` kolonunu çıkar, UUID parametresini sil
-- [ ] **R7 fix**: `'full_time'` → `'fulltime'` (DB default ile uyum)
-- [ ] **R1 fix**: Phase 4 başlığını "35 yeni user" → "36 yeni user" olarak güncelle, Phase 4b başlığını "27" → "31" olarak güncelle, Phase 6 hesabını "46+35=81" → "46+36=82" yap
-- [ ] **R4 fix**: Phase 6'ya `SELECT id, role FROM users WHERE id='hq-ilker-recete-gm';` ekle (Sema rol doğrulaması)
+### Aşama 1 — Preview düzeltme — ✅ TAMAMLANDI (REV2)
+B1, B2, B3, R1, R4, R7, R10 + Buğra verification — hepsi `personnel-import-phase1-preview-rev2.sql`'de uygulandı.
 
-### Aşama 2 — Owner doğrulamaları (zorunlu)
-- [ ] Eren/Atiye maaş rakamları (R5) Excel ile birebir karşılaştırıldı
-- [ ] department='OFİS' / 'İMALATHANE' string'leri (R6) Excel'den çıktı, varsayım değil
-- [ ] 36 INSERT username'lerinin **gerçek** olduğu, test/placeholder olmadığı sözel onay
-- [ ] Owner gerçek user ID'si (`:OWNER_USER_ID`) belirlendi (audit log + created_by_id için)
+### Aşama 2 — Owner doğrulamaları (zorunlu, ÇALIŞTIRMA ÖNCESİ)
+- [ ] **R5** Eren `bonus_base=46000, net=60000, transport=6000` ve Atiye `bonus_base=42000, net=50000` rakamları Excel'le birebir karşılaştırıldı
+- [ ] **R6** `department='OFİS'` (Eren), `'İMALATHANE'` (Atiye + fabrika operatörleri) Excel'de geçen kelimeler
+- [ ] 36 INSERT username'i (Phase 4 IN-01 ... IN-36) gerçek personel; test/placeholder yok
+- [ ] **IMPORT_ACTOR_USER_ID** seçildi: önerilen seçenekler:
+  - Aslan RGM (varsa kendi user ID'si)
+  - HQ rolünde aktif bir admin/owner
+  - `'hq-ilker-recete-gm'` kullanılabilir ama Sema'nın kaydı (UP-3) olduğu için karışıklık yaratabilir
 
 ### Aşama 3 — Operasyonel hazırlık (zorunlu)
-- [ ] `pg_dump $DATABASE_URL > /tmp/backup_pre_personnel_import_$(date +%F).sql` çalıştırıldı, dosya boyutu kontrol edildi
-- [ ] Yedeğin geri yüklenebilir olduğu test edildi (pg_restore --list ile içerik kontrolü)
-- [ ] `node -e "console.log(require('bcryptjs').hashSync('0000', 10))"` ile bcrypt hash üretildi
-- [ ] Üretilen hash 35 yere `:BCRYPT_0000` yerine konuldu (preview kopyası üzerinde, orijinal preview salt şablon olarak kalsın)
-- [ ] DB connection pooler kapalıysa direct connection kullanıldı (uzun transaction için)
+- [ ] `pg_dump $DATABASE_URL > /tmp/backup_pre_personnel_import_$(date +%F).sql`
+- [ ] `pg_restore --list /tmp/backup_pre_personnel_import_*.sql | head` (yedeğin okunabilirliği)
+- [ ] `node -e "console.log(require('bcryptjs').hashSync('0000', 10))"` ile bcrypt hash üretildi (örn. `$2b$10$...`)
 
-### Aşama 4 — Run (zorunlu sıra)
-1. [ ] **DRY-RUN doğrulama**: Preview kopyasını (BCRYPT replace edilmiş, ROLLBACK hala duruyor) çalıştır → Phase 0 ve Phase 6 sayım çıktılarını al
-2. [ ] **Sayı doğrulama**: Phase 0 (4 birim toplam=46) ve Phase 6 (toplam=82, aktif=45, pasif/silinen=37) beklentilerle uyuştu mu?
-3. [ ] Eğer sayım uyumsuzsa **DURDUR** ve farkı analiz et
-4. [ ] **COMMIT switch**: Sondaki `ROLLBACK;` → `COMMIT;` değiştir
-5. [ ] Çalıştır
-6. [ ] Phase 6 verification SELECT'lerini tekrar çalıştır (transaction dışında)
-7. [ ] Korunan 10 user'ın `is_active=true` ve `deleted_at IS NULL` (UPDATE'lenenler hariç) olduğunu doğrula
-8. [ ] Buğra Sakız `is_active=false` AND `employee_terminations` kaydının var olduğunu doğrula
+### Aşama 4 — Run sıra (zorunlu)
+1. [ ] **DRY-RUN doğrulama** (ROLLBACK hala duruyor):
+   ```bash
+   psql "$DATABASE_URL" \
+     -v BCRYPT_0000="'\$2b\$10\$gerçek_hash_burada'" \
+     -v IMPORT_ACTOR_USER_ID="'seçilen_user_id'" \
+     -f docs/audit/personnel-import-phase1-preview-rev2.sql
+   ```
+2. [ ] Phase 0 çıktısı: 4 şube toplamı = 46 user
+3. [ ] Phase 6 çıktısı (V1-V7) beklenenle uyuştu:
+   - V1 toplam = 82, aktif = 44, pasif/silinen = 37
+   - V2 = 35 satır (35 yeni aktif)
+   - V3 = 1 satır (Buğra terminate)
+   - V4 = 31 salary (2'sinin net_salary NULL)
+   - V5 = 1 termination, son_tarih=2026-02-19
+   - V6 = Sema role='gida_muhendisi'
+   - V7 = 10 korunan satır (hepsi is_active=true)
+4. [ ] Eğer sayım uyumsuzsa **DURDUR**, farkı analiz et
+5. [ ] **COMMIT switch**: REV2 dosyasının kopyasında sondaki `ROLLBACK;` → `COMMIT;` değiştir
+6. [ ] Aynı psql komutuyla COMMIT'li dosyayı çalıştır
+7. [ ] Verification SELECT'leri (V1-V7) tek tek transaction dışında tekrar çalıştır
 
-### Aşama 5 — Post-run (zorunlu)
-- [ ] 36 yeni user'a "şifre 0000, ilk girişte değiştirin" bildirim mekanizması (manual/email)
-- [ ] `audit_logs` tablosuna toplu özet kayıt INSERT (preview'da yorumlanmış şablon var)
-- [ ] Soft-delete edilen 36 user'ın FK bağımlılıklarının (vardiya, payroll, checklist) hala görünür olduğu spot kontrolü
+### Aşama 5 — Post-run
+- [ ] 36 yeni user'a "şifre 0000, ilk girişte değiştirin" bildirim
+- [ ] `audit_logs` toplu özet INSERT (Phase 2 follow-up)
 - [ ] Pilot şubeler (Lara, Işıklar, Fabrika) müdürlerine yeni listeyi paylaş
-- [ ] Phase 2-5 (monthly_payroll, employee_leaves, employee_benefits, audit_logs) için ayrı preview dosyası iste
+- [ ] Phase 2 preview iste: Lara monthly_payroll + employee_leaves + employee_benefits
 
-### Aşama 6 — Acil ROLLBACK senaryosu
-Eğer COMMIT sonrası 30 dakika içinde kritik bir tutarsızlık fark edilirse:
-- [ ] `pg_restore` ile Aşama 3'teki yedeği geri yükle
-- [ ] Kullanıcıların ara kazanan iş yapıp yapmadığını kontrol et (vardiya açma vs.)
-- [ ] Replit'in checkpoint sistemi de yedek olarak kullanılabilir (24 saat içinde)
+### Aşama 6 — Acil ROLLBACK
+- [ ] `psql $DATABASE_URL < /tmp/backup_pre_personnel_import_*.sql` (Aşama 3 yedeği)
+- [ ] Replit checkpoint sistemi alternatif yedek (24 saat içinde)
 
 ---
 
-## 🎯 ÖZET
+## 🎯 REV2 ÖZET
 
 | Boyut | Durum |
 |---|---|
-| **Dosya state** | ✅ Güvenli (ROLLBACK ile bitiyor, DB'ye yazmaz) |
-| **20 kontrol noktası** | 17 PASS, 1 FAIL (madde 14: schema kolon mismatch), 2 RISKY |
-| **Blocking bug** | 3 (B1, B2, B3 — hepsi Phase 4b/5 INSERT şema uyumsuzluğu) |
-| **Non-blocking risk** | 10 (R1-R10) |
-| **Gerçek run kararı** | ❌ **BLOCKED** — preview düzeltilmeden COMMIT edilmemeli |
-| **Tahmini fix süresi** | 30-60 dakika (preview regenerate + owner doğrulamaları) |
+| **Dosya state** | ✅ Güvenli (ROLLBACK ile bitiyor) |
+| **20 kontrol noktası** | 20/20 PASS (REV1'deki FAIL kapatıldı) |
+| **Blocking bug** | 0 (B1, B2, B3 fix uygulandı) |
+| **Non-blocking risk** | 8 (R3 prosedür, R5/R6 owner doğrulaması, R8 follow-up, R9 mekanizma, IMPORT_ACTOR_USER_ID seçimi, Phase 5 sıralama, 36 username gerçeklik) |
+| **Gerçek run kararı** | 🟡 **RISKY** — owner Aşama 2-3 tamamladıktan sonra COMMIT edilebilir |
+| **Tahmini owner doğrulama süresi** | 15-30 dakika |
 
-**Sonraki adım:** Owner B1+B2+B3 fix'lerini onaylar → preview generator script'i (`/tmp/gen_sql.js`) düzeltilir → Phase 1 SQL preview rev2 üretilir → bu rapor güncellenir → Aşama 2-6 checklist'i takip edilir.
+**Sonraki adım:** Owner Aşama 2 (maaş + department + username doğrulama + IMPORT_ACTOR_USER_ID seçimi) → Aşama 3 (pg_dump + bcrypt hash) → Aşama 4 (DRY-RUN doğrulama → COMMIT switch).
