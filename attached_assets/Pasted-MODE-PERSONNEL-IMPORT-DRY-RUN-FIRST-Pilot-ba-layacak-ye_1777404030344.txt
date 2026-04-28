@@ -1,0 +1,128 @@
+MODE: PERSONNEL IMPORT DRY-RUN FIRST
+
+Pilot başlayacak yerlerde gerçek personel listesine geçeceğiz. Excel’deki personeller güncel doğru liste kabul edilecek. Ancak DB’ye yazmadan önce dry-run raporu istiyorum.
+
+KAPSAM:
+Sadece şu birimler:
+1. Lara Şube
+2. Işıklar Şube
+3. Fabrika / İmalathane
+4. Ofis / HQ
+
+KAPSAM DIŞI:
+Diğer tüm şubeler aynen kalacak. Mallof, Markantalya, Beachpark, Gaziantep, Konya, Samsun, Batman, Düzce, Siirt, Kilis, Şanlıurfa, Nizip ve diğer şubelere dokunma.
+
+KAYNAK DOSYALAR:
+- PERSONEL özlük app.xlsx
+- Lara_Sube_Maas_2026.xlsx
+
+İSTENEN SON HEDEF:
+Bu 4 birimde sistemdeki deneme/test personeller pilotta görünmesin.
+Excel’deki gerçek personeller aktif güncel personel olsun.
+Özlük, işe giriş, doğum tarihi, izin, kalan izin, maaş, prim, hakediş, rol/statü ve branch/department bilgileri Excel’e göre güncellensin.
+
+ÖNEMLİ GÜVENLİK KURALLARI:
+- Şu aşamada DB write yapma.
+- Insert/update/delete/soft-delete yapma.
+- Sadece dry-run raporu çıkar.
+- Hard delete asla önerme.
+- Deneme personeller için önerilen aksiyon: is_active=false / archived / test_data_hidden.
+- Kiosk kullanıcıları insan personel değildir; import kapsamına alma.
+- Admin, CEO, system, service hesaplarına dokunma.
+- Diğer şubelerdeki kullanıcıları rapora bile “değişecek” olarak alma.
+
+EŞLEŞTİRME KURALI:
+1. TC varsa TC ile eşleştir.
+2. TC yoksa telefon ile eşleştir.
+3. Telefon yoksa ad-soyad + branch/department ile eşleştir.
+4. Sadece ad-soyad ile global eşleştirme yapma.
+5. Aynı isimli/şüpheli kişiler owner decision required olarak işaretlensin.
+
+BRANCH MAPPING:
+- IŞIKLAR → Işıklar Şube, branch_id doğrula
+- LARA → Lara Şube, branch_id doğrula
+- OFİS / HQ → Merkez Ofis / HQ, branch_id doğrula
+- İMALATHANE / FABRİKA → Fabrika, branch_id doğrula
+
+ROL MAPPING:
+- Stajyer → stajyer
+- Bar Buddy → bar_buddy
+- Barista → barista
+- Supervisor Buddy → supervisor_buddy
+- Supervisor → supervisor
+- Müdür → mudur
+- Fabrika Müdürü → fabrika_mudur
+- Fabrika/imalathane personeli → fabrika_personel veya fabrika_operator öner
+- Ofis personeli → uygun HQ rolü öner; emin değilsen owner decision required
+
+DRY-RUN RAPORU:
+1. Excel’den okunan kişiler:
+   - ad soyad
+   - kaynak dosya/sheet
+   - departman/şube
+   - önerilen branch
+   - önerilen rol
+   - TC/telefon var mı? Tam değeri yazma, maskele.
+   - maaş/izin/hakediş bilgisi var mı? Tutarları gerekiyorsa maskele veya özetle.
+
+2. DB’de bu 4 birimde şu an görünen kişiler:
+   - userId
+   - ad soyad
+   - branch
+   - role
+   - aktif mi?
+   - test/demo gibi görünüyor mu?
+   - Excel’de karşılığı var mı?
+
+3. Güvenli update edilecek kişiler:
+   - Excel kişisi
+   - mevcut userId
+   - eşleşme yöntemi
+   - güncellenecek alanlar
+
+4. Yeni açılacak kişiler:
+   - ad soyad
+   - branch
+   - önerilen role
+   - username önerisi
+   - pilot password önerisi: 0000
+   - eksik bilgiler
+
+5. Pasife/arşive alınacak deneme kişiler:
+   - sadece bu 4 birimde
+   - Excel’de karşılığı olmayan
+   - kiosk/admin/system olmayan
+   - test/demo görünen kişiler
+   - önerilen aksiyon: is_active=false veya archived
+   - hard delete yok
+
+6. Maaş/izin/hakediş import planı:
+   - hangi Excel alanı hangi DB alanına gidecek?
+   - hangi alanın DB karşılığı yok?
+   - hangi alan owner kararı ister?
+
+7. Lara aylık maaş/puantaj dosyası:
+   - Ocak/Şubat/Mart/Nisan verileri var mı?
+   - Bunlar payroll/attendance tablolarına nasıl yazılabilir?
+   - Mevcut PDKS ile çakışma riski var mı?
+   - şimdilik yazma yapma
+
+8. Final tablo:
+   - kaç kişi update
+   - kaç kişi yeni
+   - kaç kişi pasife alınacak
+   - kaç kişi owner kararı istiyor
+   - kaç kayıt kapsam dışı
+
+9. Uygulama için önerilen güvenli plan:
+   Phase 1: Excel eşleşen personel update
+   Phase 2: Yeni gerçek personel create
+   Phase 3: Deneme personel pasifleştir
+   Phase 4: Maaş/izin/hakediş update
+   Phase 5: Lara aylık puantaj/payroll import
+   Phase 6: audit log + rollback raporu
+
+ŞİMDİ SADECE DRY-RUN.
+DB write yok.
+Commit yok.
+Push yok.

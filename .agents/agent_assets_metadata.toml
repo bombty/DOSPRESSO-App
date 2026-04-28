@@ -324,3 +324,9 @@ id = "ZRiUDKza8b_CHT3ronHQm"
 uri = "file://docs/reports/dospresso-rol-raporu-per-role.zip"
 type = "unspecified"
 title = "Her rol için ayrı PDF (26 dosya, ZIP)"
+
+[[outputs]]
+id = "CIeOxtatureH50eTtE-yh"
+uri = "file://docs/audit/personnel-import-dry-run-2026-04-28.md"
+type = "text"
+title = "Personel Import — Dry-Run Raporu (28 Nisan 2026)"
