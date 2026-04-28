@@ -1,0 +1,88 @@
+MODE: KIOSK PDKS PHASE 1 SQL PREVIEW
+
+Amaç:
+Lara, Işıklar, Fabrika ve Ofis/HQ için kiosk + PIN altyapısını pilot giriş/çıkış takibine hazır hale getirmek.
+
+Şimdilik DB write yapma.
+SQL çalıştırma.
+COMMIT yapma.
+Migration/schema/env/package/kod değiştirme.
+Sadece SQL preview + dry-run planı hazırla.
+
+Kapsam:
+1. Işıklar branch_id=5
+2. Lara branch_id=8
+3. HQ/Ofis branch_id=23
+4. Fabrika branch_id=24
+
+Yapılacak hazırlıklar:
+
+1) PIN seed planı
+- Şube/ofis personeli için branch_staff_pins tablosuna PIN kaydı öner.
+- Fabrika personeli için factory_staff_pins tablosuna PIN kaydı öner.
+- PIN başlangıç değeri pilot için 0000.
+- bcrypt hash placeholder kullan: :BCRYPT_0000_PIN
+- Kiosk, admin, system, yatırımcı, soft-deleted kullanıcılar PIN listesine dahil edilmesin.
+- Sadece aktif insan personel dahil edilsin.
+
+2) Işıklar kiosk mode
+- Işıklar branch_id=5 şu an QR mode görünüyorsa PIN mode’a alınması için SQL preview hazırla.
+- Ama mevcut QR ayarlarını silme; sadece mode update öner.
+
+3) HQ kiosk user
+- HQ branch_id=23 için kiosk user yok.
+- SQL preview’da hqkiosk veya hq_kiosk isimli kiosk/device user oluşturma öner.
+- role olarak sube_kiosk mı, hq_kiosk mı sistemde mevcut role göre doğrula.
+- Eğer hq_kiosk rolü yoksa sube_kiosk kullan, ama branch_id=23 olacak.
+- Admin/system/yatırımcı/personel gibi değil, cihaz hesabı olarak işaretle.
+- Kiosk için branch_kiosk_settings bağlantısını kontrol et.
+
+4) Fabrika kiosk filtre riski
+- Fabrika kiosk user role=fabrika_operator görünüyor.
+- Bu kullanıcı PIN/personel listesine dahil oluyor mu, SQL/kod üzerinden kontrol et.
+- Eğer görünme riski varsa raporla.
+- Bu preview’da role değiştirme yapma; sadece risk ve öneri ver.
+- Gerekirse ayrı frontend/backend filter task açacağız.
+
+5) must_change_password / PIN değişim
+- users.must_change_password veya pin_must_change benzeri alan var mı kontrol et.
+- Pilot için web şifre değişimi ve kiosk PIN değişimi ayrı mı?
+- Eğer alan varsa yeni import edilen kullanıcılar için true yapmayı öner.
+- Eğer yoksa sadece not düş.
+
+6) Vardiya
+- Bugün için vardiya yok ama plansız giriş destekleniyor.
+- Bu fazda shift seed yapma.
+- Sadece minimum vardiya seed için ayrı öneri ver.
+
+SQL preview dosyası:
+docs/audit/kiosk-pdks-phase1-pin-preview.sql
+
+Dosya:
+- BEGIN ile başlasın.
+- ROLLBACK ile bitsin.
+- COMMIT olmasın.
+- Hard delete olmasın.
+- Sadece INSERT/UPDATE preview olsun.
+- Verification SELECT’leri içersin:
+  V1: PIN eklenecek kişi sayısı
+  V2: Işıklar/Lara/HQ/Fabrika kiosk ayarları
+  V3: HQ kiosk user oluşacak mı?
+  V4: Kioskların personel listesine karışmadığı kontrol
+  V5: PIN kayıtları hangi tabloda kaç adet olacak?
+  V6: Soft-deleted/test/yatırımcı/admin/kiosk kullanıcılar hariç mi?
+
+Dry-run:
+- Placeholder replace için geçici /tmp dosya kullan.
+- bcrypt hash üret.
+- ROLLBACK modunda çalıştır.
+- DB kalıcı değişmediğini pre/post snapshot ile doğrula.
+
+Rapor:
+1. Kaç kişiye PIN seed öneriliyor?
+2. Hangi tablolar etkilenecek?
+3. HQ kiosk nasıl oluşturulacak?
+4. Işıklar mode update önerisi nedir?
+5. Fabrika kiosk user riski nedir?
+6. Dry-run PASS/BLOCKED/RISKY?
+7. Gerçek uygulama için owner kararları nelerdir?
