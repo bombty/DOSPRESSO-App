@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { Calendar, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Star } from "lucide-react";
 import { format } from "date-fns";
 
 export default function LeaveManagementSection({ employees }: { employees: User[] }) {

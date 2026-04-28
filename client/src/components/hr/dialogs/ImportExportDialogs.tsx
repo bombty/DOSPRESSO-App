@@ -20,11 +20,22 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
 import {
   Download, Upload, FileSpreadsheet, CheckCircle, XCircle,
-  SkipForward, AlertCircle, RotateCcw, Eye, Info, Undo2, FileDown, Copy
+  SkipForward, AlertCircle, RotateCcw, Eye, Info, Undo2, FileDown, Copy,
+  AlertTriangle, ChevronDown, Clock, Edit, File, UserX
 } from "lucide-react";
 import { format } from "date-fns";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
