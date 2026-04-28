@@ -1,0 +1,284 @@
+# HQ Dashboard — CGO, Marketing, Kalite, Destek Dinamik Fix
+
+## Context
+DOSPRESSO franchise platform. Stack: React 18 + TypeScript, TanStack Query v5, Drizzle ORM, Express.
+File: server/routes/hq-dashboard-routes.ts + client/src/pages/hq-dashboard.tsx
+
+Fix 4 remaining hardcoded HQ dashboard handlers. Replace fake numbers with real DB queries.
+Do NOT touch: auth system, other dashboards, factory module, CRM module.
+
+---
+
+## TASK 1 — CGO Dashboard: Fix hardcoded checklist + dept health
+
+**File:** `server/routes/hq-dashboard-routes.ts` — handler at line 830
+
+Currently 3/4 metrics are real. Fix the remaining hardcoded parts:
+
+### 1A: Checklist completion rate (currently hardcoded "92%")
+```typescript
+// Replace hardcoded "92%" with real query
+// Check table: grep -n "checklistCompletion\|checklist_completion" shared/schema.ts | head -5
+// If checklistCompletions table exists:
+const startOfWeek = new Date();
+startOfWeek.setDate(startOfWeek.getDate() - 7);
+
+const [totalAssigned] = await db
+  .select({ count: count() })
+  .from(checklistCompletions) // use actual table name
+  .where(gte(checklistCompletions.createdAt, startOfWeek));
+
+const [completed] = await db
+  .select({ count: count() })
+  .from(checklistCompletions)
+  .where(
+    and(
+      gte(checklistCompletions.createdAt, startOfWeek),
+      eq(checklistCompletions.status, 'completed') // check actual column
+    )
+  );
+
+const completionRate = totalAssigned?.count > 0
+  ? Math.round((completed?.count / totalAssigned?.count) * 100)
+  : null;
+```
+
+### 1B: Department health scores (currently all hardcoded)
+Instead of hardcoded scores per department, aggregate from real data:
+- Akademi health: query from userTrainingProgress (avg completion)
+- IK health: query from users (active ratio)
+- Fabrika health: query from factoryShiftSessions (efficiency)
+- For departments with no data: return null, frontend shows "—"
+
+### 1C: Alerts — make dynamic
+```typescript
+const alerts = [];
+if (openFaults > 0) alerts.push({ type: 'warning', message: `${openFaults} açık arıza mevcut` });
+if (completionRate !== null && completionRate < 80) alerts.push({ type: 'warning', message: `Checklist tamamlanma oranı düşük: %${completionRate}` });
+if (alerts.length === 0) alerts.push({ type: 'success', message: 'Tüm sistemler normal' });
+```
+
+---
+
+## TASK 2 — Marketing Dashboard: Full dynamic replacement
+
+**File:** `server/routes/hq-dashboard-routes.ts` — handler at line 1140
+Currently 100% hardcoded. Replace with real queries.
+
+```typescript
+router.get('/marketing', requireAuth, requireRole(['admin','ceo','cgo']), async (req, res) => {
+  try {
+    // Check actual table names first:
+    // grep -n "campaign\|Campaign" shared/schema.ts | grep "pgTable" | head -10
+    // grep -n "customerFeedback\|customer_feedback" shared/schema.ts | grep "pgTable" | head -5
+
+    // 1. Active campaigns count
+    const today = new Date();
+    // Query campaigns where status='active' OR (startDate <= today AND endDate >= today)
+    // Use actual column names from campaigns table
+
+    // 2. Customer satisfaction (reuse from customerFeedback)
+    const [satisfaction] = await db
+      .select({ avg: avg(customerFeedback.rating) }) // use actual column
+      .from(customerFeedback)
+      .where(gte(customerFeedback.createdAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)));
+
+    // 3. Campaign reach (how many branches have active campaigns)
+    // Query campaignBranches table if exists
+
+    // 4. For metrics without available data: return null
+    res.json({
+      metrics: [
+        {
+          title: 'Aktif Kampanya',
+          value: activeCampaigns?.count?.toString() ?? '0',
+          icon: 'Megaphone',
+        },
+        {
+          title: 'Müşteri Memnuniyeti',
+          value: satisfaction?.avg ? `${parseFloat(satisfaction.avg).toFixed(1)}/5` : '—',
+          icon: 'Star',
+        },
+        {
+          title: 'Kampanya Erişimi',
+          value: campaignBranchCount?.toString() ?? '—',
+          icon: 'TrendingUp',
+        },
+        {
+          title: 'Kampanya ROI',
+          value: '—', // No ROI table yet — don't fake it
+          icon: 'DollarSign',
+        },
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Marketing verisi alınamadı' });
+  }
+});
+```
+
+---
+
+## TASK 3 — Kalite Dashboard: Fix 3 hardcoded metrics
+
+**File:** `server/routes/hq-dashboard-routes.ts` — handler at line 1171
+Currently only customerFeedback avg rating is real. Fix the rest.
+
+```typescript
+// 1. Quality score — use qualityAudits or branchAuditScores
+// grep -n "qualityAudit\|branchAuditScore\|auditInstance" shared/schema.ts | grep "pgTable" | head -8
+// Calculate avg score from recent audits
+
+// 2. Open complaints
+// grep -n "complaint\|sikayet\|guestComplaint" shared/schema.ts | grep "pgTable" | head -5
+// Count open/pending complaints
+
+// 3. Audit grade — derive from avg score
+// If avg audit score >= 90: "A+", >= 80: "A", >= 70: "B", else "C"
+
+// 4. Replace hardcoded qualityTrend with real monthly data
+// Query last 6 months of audit scores grouped by month
+
+// 5. Dynamic alerts based on real data
+const alerts = [];
+if (openComplaints > 0) {
+  alerts.push({ type: 'warning', message: `${openComplaints} açık şikayet` });
+}
+if (avgAuditScore !== null && avgAuditScore < 80) {
+  alerts.push({ type: 'critical', message: `Denetim skoru düşük: ${avgAuditScore}` });
+}
+```
+
+---
+
+## TASK 4 — Destek Dashboard: Create missing handler
+
+**File:** `server/routes/hq-dashboard-routes.ts`
+No handler exists. Create one using hqSupportTickets table.
+
+```typescript
+// GET /api/hq-dashboard/destek (NEW — doesn't exist yet)
+router.get('/destek', requireAuth, requireRole(['admin','ceo','cgo']), async (req, res) => {
+  try {
+    // Check actual table/column names:
+    // grep -n "hqSupportTicket\|hq_support_ticket" shared/schema.ts | head -10
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Open ticket count
+    const [openTickets] = await db
+      .select({ count: count() })
+      .from(hqSupportTickets) // actual table name
+      .where(
+        and(
+          notInArray(hqSupportTickets.status, ['resolved', 'closed', 'cozuldu', 'kapatildi']),
+          // check actual status values with:
+          // grep -n "status" shared/schema.ts | grep "hqSupport" | head -5
+        )
+      );
+
+    // 2. Resolved today
+    const [resolvedToday] = await db
+      .select({ count: count() })
+      .from(hqSupportTickets)
+      .where(
+        and(
+          inArray(hqSupportTickets.status, ['resolved', 'cozuldu', 'kapatildi']),
+          gte(hqSupportTickets.updatedAt, today) // or resolvedAt if exists
+        )
+      );
+
+    // 3. Average resolution time (hours)
+    // If resolvedAt and createdAt both exist:
+    // AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600) WHERE resolved
+
+    // 4. Satisfaction score from hqSupportTickets if has rating column
+    // or from hqSupportMessages if feedback stored there
+
+    res.json({
+      metrics: [
+        {
+          title: 'Açık Talep',
+          value: openTickets?.count?.toString() ?? '0',
+          icon: 'TicketIcon',
+        },
+        {
+          title: 'Bugün Çözülen',
+          value: resolvedToday?.count?.toString() ?? '0',
+          icon: 'CheckCircle',
+        },
+        {
+          title: 'Ort. Çözüm Süresi',
+          value: avgResolutionHours ? `${avgResolutionHours.toFixed(1)} saat` : '—',
+          icon: 'Clock',
+        },
+        {
+          title: 'Memnuniyet',
+          value: avgSatisfaction ? `${avgSatisfaction.toFixed(1)}/5` : '—',
+          icon: 'Star',
+        },
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Destek verisi alınamadı' });
+  }
+});
+```
+
+---
+
+## TASK 5 — Frontend: Remove remaining hardcoded fallbacks
+
+**File:** `client/src/pages/hq-dashboard.tsx`
+
+For each of the 4 dashboards, replace hardcoded fallback numbers with '—':
+
+```tsx
+// Pattern for ALL 4 dashboards:
+// Find fallbackMetrics arrays and replace fake numbers:
+
+// CGO fallback:
+{ title: 'Checklist', value: '—', ... }
+{ title: 'Dept Health', value: '—', ... }
+
+// Marketing fallback:
+{ title: 'Aktif Kampanya', value: '—', ... }
+{ title: 'Müşteri Memnuniyeti', value: '—', ... }
+{ title: 'Kampanya Erişimi', value: '—', ... }
+{ title: 'Kampanya ROI', value: '—', ... }
+
+// Kalite fallback:
+{ title: 'Kalite Skoru', value: '—', ... }
+{ title: 'Açık Şikayet', value: '—', ... }
+{ title: 'Denetim Puanı', value: '—', ... }
+
+// Destek fallback:
+{ title: 'Açık Talep', value: '—', ... }
+{ title: 'Bugün Çözülen', value: '—', ... }
+{ title: 'Ort. Çözüm Süresi', value: '—', ... }
+{ title: 'Memnuniyet', value: '—', ... }
+```
+
+---
+
+## IMPORTANT NOTES
+
+1. **Check actual column/table names** with grep before every query
+2. **If a table exists but has no data yet** → return 0 or null (not fake numbers)
+3. **If a table doesn't exist at all** → return null, skip that metric
+4. **Never return hardcoded business numbers** like "125K", "92%", "4.5/5"
+5. **Partial data is fine** — "Aktif Kampanya: 3, ROI: —" is better than "ROI: 3.2x" (fake)
+
+---
+
+## Verification
+
+- [ ] GET /api/hq-dashboard/cgo — checklist rate from DB, no hardcoded "92%"
+- [ ] GET /api/hq-dashboard/marketing — campaign count from DB, fake "125K" gone
+- [ ] GET /api/hq-dashboard/kalite — quality score from audit tables, fake "94%" gone
+- [ ] GET /api/hq-dashboard/destek — handler exists, open ticket count from hqSupportTickets
+- [ ] All 4 frontend fallbacks show '—' not fake numbers
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors
+- [ ] Other dashboards (coach, ik, trainer, satinalma, fabrika) untouched

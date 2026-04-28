@@ -1,0 +1,57 @@
+GOAL: Add an "Import Review" step (Quality Pack) to the HR Excel import flow WITHOUT breaking or changing existing steps. This is additive: insert a new step between Mapping (Preview) and Config.
+
+CONTEXT:
+Current flow: Upload → Mapping/Preview → Config → DryRun (Simülasyon) → Execute/Result + Batch History.
+Existing mapping UI + dry-run + batch history MUST remain intact.
+
+WHAT TO BUILD (in this order):
+
+1) New step: "Review"
+- After user finishes Mapping, before Config, show a Review screen.
+- Review shows first 20 mapped rows (not raw), with per-row Issue Badges:
+  OK / Warning / Error / Conflict / Duplicate.
+- Add filter tabs: All / Errors / Warnings / Conflicts / Duplicates.
+- Add counts summary on top (total rows scanned, errors count, warnings count, duplicates count, conflicts count).
+
+2) Client-side validation (in Review)
+Implement validators on mapped rows:
+- username regex (define clearly; must be Turkish error messages)
+- email format validation (if email present)
+- phone normalization + validation (if phone present) (E.164-like normalization; accept TR formats)
+- date parsing for startDate/leaveDate etc (if present) (invalid date => error)
+- role/branch matching (if role/branch value not found in known lists => warning or error; choose policy and document it)
+- required fields already exist; keep them but surface them in Review with badges.
+
+3) Duplicate detection (in-file)
+- Detect duplicates within the uploaded file for username/email/phone (case-insensitive, trimmed).
+- Mark rows as Duplicate and show which key collided.
+
+4) DB conflict detection (minimal backend change allowed if truly necessary)
+- Add a lightweight validate endpoint OR reuse existing dry-run logic safely to detect whether each row would be Create vs Update vs Skip vs Error.
+- Show Conflicts in Review: e.g., matchKey collisions, email already used by another user, username exists, etc.
+- IMPORTANT: Do NOT execute any writes. This must be read-only validation.
+
+5) Validation-aware proceed rules
+- If there are any Errors in Review: block moving to Config ("Devam" disabled) and show a clear message.
+- If only Warnings/Conflicts/Duplicates exist: allow proceed but require user acknowledgement checkbox "Uyarıları anladım".
+- Keep current Config and DryRun screens unchanged.
+
+6) Performance
+- For very large files, only fully validate first 500 rows in the UI (still show that it is a sample). Allow user to run full validation via a button if feasible, otherwise keep the cap.
+
+7) i18n
+- All messages in Turkish.
+- Clear, non-technical wording.
+
+ACCEPTANCE CHECKLIST:
+- Upload → Mapping works as before.
+- After mapping, Review screen appears.
+- Review shows 20-row mapped preview + issue badges + filter tabs + counts.
+- Errors block proceeding; warnings require acknowledgement.
+- Config → DryRun → Execute works unchanged.
+- Batch history + detail sheet continues working.
+
+OUTPUT:
+- List changed files.
+- Short summary of changes.
+- Manual test checklist (upload + mapping + review + proceed rules + simulate + execute).

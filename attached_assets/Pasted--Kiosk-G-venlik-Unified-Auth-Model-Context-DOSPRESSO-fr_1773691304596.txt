@@ -1,0 +1,296 @@
+# Kiosk Güvenlik + Unified Auth Model
+
+## Context
+DOSPRESSO franchise platform. Stack: React 18 + TypeScript, Express, bcrypt, Drizzle ORM.
+
+Two fixes:
+1. PIN admin endpoints have no role check — any authenticated user can manage PINs
+2. Factory kiosk shows staff list without any pre-auth — branch kiosk has "kiosk password" step but factory doesn't
+
+Do NOT touch: PIN verification logic, kiosk session mechanism, shift tracking, production entry.
+
+---
+
+## FIX 1 — PIN Admin Rol Kontrolü (Security)
+
+### 1A: Factory PIN endpoints
+**File:** `server/routes/factory.ts`
+
+Find all PIN management endpoints (lines ~405-540):
+- GET /api/factory/pins (~405)
+- POST /api/factory/pins (~424)  
+- PATCH /api/factory/pins/:userId (~463)
+- POST /api/factory/pins/:userId/unlock (~496)
+- DELETE /api/factory/pins/:userId (~521)
+
+Add role check to ALL of them:
+
+```typescript
+// Add after isAuthenticated check:
+const userRole = (req as any).user?.role;
+const canManagePins = ['admin', 'ceo', 'fabrika_mudur'].includes(userRole);
+if (!canManagePins) {
+  return res.status(403).json({ error: 'PIN yönetimi için yetkiniz yok' });
+}
+```
+
+### 1B: Branch PIN endpoints
+**File:** `server/routes/` — find branch PIN routes:
+```bash
+grep -rn "branch.*pin\|staff.*pin\|branchPin\|branch_staff_pins" server/routes/ --include="*.ts" | grep "router\." | head -10
+```
+
+Apply same role check to branch PIN endpoints:
+- Allowed roles: `['admin', 'ceo', 'mudur']`
+
+### 1C: Frontend PIN maxLength fix
+**File:** `client/src/pages/fabrika/kiosk.tsx`
+
+Find PIN input field (around line 680):
+```tsx
+// Change maxLength from 6 to 4 to match backend:
+<input
+  type="password"
+  maxLength={4}  // was 6
+  // ...
+/>
+
+// Also update the button enable condition if it checks < 4:
+// Keep: disabled={pinInput.length < 4}
+// This is already correct
+```
+
+---
+
+## FIX 2 — Unified Kiosk Auth Model
+
+### Goal
+Both factory and branch kiosks should have the same 2-layer auth:
+- **Layer 1:** Kiosk device password (set by admin, same for all tablets at that location)
+- **Layer 2:** Personal PIN (per worker)
+
+Branch kiosk already has Layer 1. Factory kiosk doesn't. Add Layer 1 to factory kiosk.
+
+### 2A: Add Kiosk Device Password to Factory Backend
+
+**File:** `server/routes/factory.ts`
+
+Add a new endpoint for kiosk device authentication:
+
+```typescript
+// POST /api/factory/kiosk/device-auth
+// Verifies the kiosk device password
+// This is separate from personal PIN — it's the "tablet password"
+router.post('/kiosk/device-auth', async (req, res) => {
+  try {
+    const { devicePassword } = req.body;
+    if (!devicePassword) {
+      return res.status(400).json({ error: 'Cihaz şifresi gerekli' });
+    }
+
+    // Check against a stored kiosk device password
+    // Store in a simple config or environment variable
+    // For now: check against a factory_kiosk_config table or use env var
+    
+    // Check if factory_kiosk_settings table exists:
+    // grep -n "kioskSettings\|kiosk_settings\|kiosk_config" shared/schema.ts | head -5
+    
+    // If no table exists, use a simple env-based approach:
+    const KIOSK_DEVICE_PASSWORD = process.env.FACTORY_KIOSK_PASSWORD || 'dospresso2024';
+    
+    if (devicePassword !== KIOSK_DEVICE_PASSWORD) {
+      return res.status(401).json({ error: 'Hatalı cihaz şifresi' });
+    }
+    
+    // Return a device token stored in sessionStorage (not user session)
+    const deviceToken = crypto.randomUUID();
+    // Store temporarily (5 minutes TTL for security)
+    // Use same in-memory map pattern as kiosk sessions
+    
+    res.json({ success: true, deviceToken });
+  } catch (err) {
+    res.status(500).json({ error: 'Cihaz doğrulama hatası' });
+  }
+});
+
+// GET /api/factory/kiosk/device-password — admin only, get current password
+router.get('/kiosk/device-password', isAuthenticated, async (req, res) => {
+  const userRole = (req as any).user?.role;
+  if (!['admin', 'ceo'].includes(userRole)) {
+    return res.status(403).json({ error: 'Yetkisiz' });
+  }
+  res.json({ 
+    password: process.env.FACTORY_KIOSK_PASSWORD || 'dospresso2024',
+    hint: 'Fabrika kiosk tablet şifresi'
+  });
+});
+
+// PATCH /api/factory/kiosk/device-password — admin only, update password
+router.patch('/kiosk/device-password', isAuthenticated, async (req, res) => {
+  const userRole = (req as any).user?.role;
+  if (!['admin', 'ceo'].includes(userRole)) {
+    return res.status(403).json({ error: 'Yetkisiz' });
+  }
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
+  }
+  // In production: store in DB. For now: update env or in-memory config
+  // This is a placeholder — real implementation should use a DB table
+  res.json({ success: true, message: 'Şifre güncellendi (sunucu yeniden başlatılana kadar geçerli)' });
+});
+```
+
+**Better approach — use DB:**
+Check if a settings/config table exists:
+```bash
+grep -n "settings\|config\|appConfig\|systemConfig" shared/schema.ts | grep "pgTable" | head -5
+```
+
+If a settings table exists, store kiosk password there.
+If not, add a simple factory_kiosk_config table:
+
+```typescript
+export const factoryKioskConfig = pgTable('factory_kiosk_config', {
+  id: serial('id').primaryKey(),
+  key: varchar('key', { length: 100 }).notNull().unique(),
+  value: varchar('value', { length: 500 }).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedBy: varchar('updated_by').references(() => users.id),
+});
+```
+
+Seed with default password:
+```sql
+INSERT INTO factory_kiosk_config (key, value) 
+VALUES ('device_password', 'dospresso2024')
+ON CONFLICT (key) DO NOTHING;
+```
+
+### 2B: Add Device Auth Step to Factory Kiosk Frontend
+
+**File:** `client/src/pages/fabrika/kiosk.tsx`
+
+Add a new first step `device-password` before `select-user`:
+
+```typescript
+// Add to steps type:
+type KioskStep = 'device-password' | 'select-user' | 'enter-pin' | 'select-station' | 
+                  'working' | 'stop-options' | 'production-entry' | 
+                  'end-shift-summary' | 'auto-logout' | 'fault-report';
+
+// Initial step:
+const [step, setStep] = useState<KioskStep>('device-password');
+```
+
+Add device password screen (similar to branch kiosk password screen):
+
+```tsx
+{step === 'device-password' && (
+  <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-8 px-6">
+    {/* DOSPRESSO Logo */}
+    <div className="text-center">
+      <div className="text-4xl font-black text-foreground mb-2">DOSPRESSO</div>
+      <div className="text-sm text-muted-foreground">Fabrika Kiosk Sistemi</div>
+    </div>
+
+    {/* Password input */}
+    <div className="w-full max-w-sm space-y-4">
+      <div className="text-center text-base font-semibold text-foreground">
+        Cihaz Şifresi
+      </div>
+      <input
+        type="password"
+        value={devicePassword}
+        onChange={(e) => setDevicePassword(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleDeviceAuth()}
+        placeholder="Tablet şifresini girin"
+        className="w-full text-center text-lg px-4 py-3 rounded-xl border border-border bg-card text-foreground outline-none focus:border-[#122549]"
+        autoFocus
+      />
+      {deviceAuthError && (
+        <div className="text-center text-sm text-red-500">{deviceAuthError}</div>
+      )}
+      <button
+        onClick={handleDeviceAuth}
+        disabled={!devicePassword || deviceAuthLoading}
+        className="w-full py-3 rounded-xl bg-[#122549] text-white font-bold disabled:opacity-40"
+      >
+        {deviceAuthLoading ? 'Doğrulanıyor...' : 'Giriş'}
+      </button>
+    </div>
+  </div>
+)}
+```
+
+Add state and handler:
+```typescript
+const [devicePassword, setDevicePassword] = useState('');
+const [deviceAuthError, setDeviceAuthError] = useState('');
+const [deviceAuthLoading, setDeviceAuthLoading] = useState(false);
+
+const handleDeviceAuth = async () => {
+  if (!devicePassword) return;
+  setDeviceAuthLoading(true);
+  setDeviceAuthError('');
+  try {
+    const res = await fetch('/api/factory/kiosk/device-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ devicePassword }),
+    });
+    if (res.ok) {
+      setStep('select-user');
+      setDevicePassword(''); // clear for security
+    } else {
+      setDeviceAuthError('Hatalı şifre. Lütfen tekrar deneyin.');
+      setDevicePassword('');
+    }
+  } catch {
+    setDeviceAuthError('Bağlantı hatası');
+  } finally {
+    setDeviceAuthLoading(false);
+  }
+};
+```
+
+### 2C: Add Device Password Management to Admin Panel
+
+**File:** `client/src/pages/admin/fabrika-pin-yonetimi.tsx`
+
+Add a "Cihaz Şifresi" section at the top of the page:
+
+```tsx
+// Add a card showing current kiosk device password with a "Change" button
+// Only admin/ceo can see this section
+// Shows: current password (masked), last updated date, change button
+
+const { data: deviceConfig } = useQuery({
+  queryKey: ['/api/factory/kiosk/device-password'],
+  queryFn: () => fetch('/api/factory/kiosk/device-password').then(r => r.json()),
+  enabled: ['admin', 'ceo'].includes(user?.role ?? ''),
+});
+```
+
+---
+
+## Verification Checklist
+
+**Security (Fix 1):**
+- [ ] GET /api/factory/pins returns 403 for non-admin/fabrika_mudur roles
+- [ ] POST /api/factory/pins returns 403 for non-admin/fabrika_mudur roles
+- [ ] Branch PIN endpoints also protected
+- [ ] Factory kiosk PIN input maxLength = 4
+
+**Unified Auth (Fix 2):**
+- [ ] Factory kiosk opens to "Cihaz Şifresi" screen (not staff list)
+- [ ] Wrong device password → error message, try again
+- [ ] Correct device password → staff selection screen
+- [ ] Default password works: "dospresso2024"
+- [ ] Admin can see/change device password in PIN management page
+- [ ] Branch kiosk behavior unchanged
+
+**General:**
+- [ ] TypeScript has no new errors
+- [ ] Existing kiosk PIN login flow unchanged (only added device-password step before it)
+- [ ] App starts without errors

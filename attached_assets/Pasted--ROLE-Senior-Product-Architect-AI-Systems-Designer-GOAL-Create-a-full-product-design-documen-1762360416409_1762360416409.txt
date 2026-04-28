@@ -1,0 +1,136 @@
+[ROLE]: Senior Product Architect & AI Systems Designer
+
+[GOAL]:
+Create a full product design document for the **DOSPRESSO Franchise Management WebApp**.
+The platform must allow DOSPRESSO HQ to manage and monitor all franchise branches, tasks, personnel performance, equipment, training, and AI-assisted verification.
+The entire **software, database fields, interface texts, and user-facing language must be in Turkish.**
+The documentation and explanations can remain in English.
+
+[CORE OBJECTIVES]:
+1. Centralize branch operations under one management platform.
+2. Verify photo-based tasks with AI image analysis.
+3. Manage assignments, education, maintenance, and equipment tracking.
+4. Provide automatic reminders, performance metrics, and summarized AI dashboards.
+5. Include an **AI Knowledge Base (KB)** system that HQ can continuously update and train the AI with new machine/equipment info, recipes, procedures, and visual guides.
+6. Maintain DOSPRESSO’s professional identity, standards, and visual design.
+
+[PRIMARY USERS & ROLES]:
+- **HQ Roles**
+  - Muhasebe
+  - Satınalma
+  - Coach (Eğitim ve Standart)
+  - Teknik (Cihaz & ekipman sorunları)
+  - Destek (Şube talepleri, lojistik)
+  - Fabrika Üretim Personelleri
+- **Branch Roles**
+  - Yatırımcı
+  - Supervisor
+  - Supervisor Buddy
+  - Barista
+  - Bar Buddy
+  - Stajyer
+- Admin panel can add new branches and users.
+
+[AI FEATURES]:
+- Photo analysis → task verification, error detection, improvement suggestions.  
+- Fault reporting → image + text analysis, automated solution guidance.  
+- Education & exam evaluation → auto grading and personalized feedback.  
+- Automatic reminders → every 10 minutes if checklist not completed.  
+- Recipe & machine calibration assistant → step-by-step guidance.  
+- KPI & performance scoring dashboards.  
+- Summarized visual + textual AI reporting for managers.  
+- **AI Knowledge Base (KB) & Admin CMS:**  
+  HQ can upload SOPs, recipes, calibration settings, maintenance guides, and visuals to train the AI system.  
+  The AI uses RAG (retrieval-augmented generation) to answer only from approved HQ content.  
+  Content types: SOP, Recipe, Calibration, Troubleshooting, Safety Notice, Spare Parts Catalog, FAQ.
+
+[UI/UX STYLE]:
+- Clean, professional, minimal dashboard design.  
+- DOSPRESSO navy & beige corporate palette.  
+- Turkish-only interface language (no English labels).  
+- DOSPRESSO logo visible on all screens.  
+- Mobile-first, fully responsive layout.
+
+[MVP MODULES]:
+1. Görev & Check-list Yönetimi  
+2. Fotoğraf Doğrulama (AI)  
+3. Arıza & Ekipman Yönetimi  
+4. Eğitim / Online Akademi  
+5. Dashboard & Otomatik Uyarı Sistemi  
+6. AI KB & Admin CMS (v1): content creation, tagging, approval, RAG integration.
+
+[UNIQUE VALUE]:
+“AI-powered summarized reporting and visual analysis” —  
+HQ can instantly monitor all branches without manual inspection.  
+The AI verifies visuals, proposes corrections, and summarizes key findings.
+
+[TECHNICAL STACK SUGGESTION]:
+Frontend: React + Next.js (all Turkish labels & components)  
+Backend: Node.js (NestJS) + PostgreSQL  
+AI Layer: Python (FastAPI) + Vision API / custom CNN model  
+RAG Layer: Python + pgvector / Milvus  
+Storage: AWS S3 (images, videos, PDFs)  
+Notifications: Firebase / Twilio  
+Auth: JWT + RBAC  
+Languages: **All interfaces, field names, DB labels, UI components, and text outputs must be in Turkish.**
+
+[OUTPUT FORMAT]:
+Generate a complete Markdown document with:
+1. 📘 Executive Summary  
+2. 🎯 Goals & Success Metrics  
+3. 🧩 User Roles & Permissions Matrix  
+4. ⚙️ System Architecture Diagram (text-based)  
+5. 🧠 AI Modules & Data Flow  
+6. 🪄 UI/UX Structure & Turkish Screen List  
+7. 🗂️ Database & API Schema (all Turkish field names)  
+8. 🔔 Notification & Reminder Logic  
+9. 📊 Dashboard Metrics (KPI list)  
+10. 📚 AI Knowledge Base Architecture & RAG Flow  
+11. 🚀 MVP Roadmap (2 months)  
+12. ✅ Definition of Done & QA Criteria  
+
+[AI KNOWLEDGE BASE (DETAIL)]:
+- KB-Service microservice:  
+  - Storage: S3 (media), Postgres (metadata), Vector DB (pgvector)  
+  - Embedding: text + image captions  
+  - Approval workflow: draft → review → approved → archived  
+  - API endpoints (all responses in Turkish):  
+    - POST /admin/kb/icerikler (create draft)  
+    - POST /admin/kb/icerikler/{id}/onayla (approve & embed)  
+    - GET /kb/ara?q&etiket&rol&sube_id  
+    - POST /kb/cevapla {soru, rol, sube_id, kaynak:true}  
+  - Role-based visibility (HQ / branch / specific role).  
+  - Audit logs and version control.  
+  - AI uses only **approved Turkish content** for responses.
+
+[NOTIFICATION & REMINDER LOGIC]:
+- Task not completed → reminder every 10 minutes.  
+- New critical KB entry → push/email notification to relevant roles.  
+- “Unread after 24h” → reminder; “Unread after 72h” → flagged as noncompliant.  
+
+[DASHBOARD METRICS (KPI)]:
+- Görev Tamamlama Oranı (%)  
+- Arıza Çözüm Süresi (saat)  
+- Eğitim Başarı Puanı (%)  
+- KB Kapsam Oranı (%)  
+- İçerik Benimseme Oranı (%)  
+- Yapay Zeka Yardımcı Yanıt Memnuniyeti (≥4/5)  
+- Tekrarlayan Hata Azalma Oranı (≥%50 düşüş hedefi)
+
+[DEFINITION OF DONE & QA]:
+- All system text, UI components, and database fields are Turkish.  
+- AI answers must cite at least 2 approved KB items.  
+- Role-based access enforced.  
+- Photo analysis module must suggest relevant KB items with ≥80% accuracy.  
+- Dashboard KPIs must fetch accurate real-time data.  
+- Accessibility: WCAG AA compliance.
+
+[SCORING RUBRIC]:
+A perfect answer must:
+1. Define full Turkish user flows and screen names.  
+2. Include detailed AI input/output examples.  
+3. Provide KB data pipeline (create→approve→embed→RAG).  
+4. Specify measurable dashboard KPIs.  
+5. Provide 8-week MVP roadmap.  
+6. Include all Turkish DB & UI field names.  
+7. Reflect DOSPRESSO’s corporate identity.

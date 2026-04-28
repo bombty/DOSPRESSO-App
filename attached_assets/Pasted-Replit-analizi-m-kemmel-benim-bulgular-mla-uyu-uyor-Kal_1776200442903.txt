@@ -1,0 +1,50 @@
+Replit analizi mükemmel — benim bulgularımla uyuşuyor. Kalan fix’leri tamamlayıp tek commit’te push ediyorum:​​​​​​​​​​​​​​​​
+
+Push: 6e81d057. 10 rolde 15+ eksik sidebar item düzeltildi.
+Değişiklik özeti:
+
+
+
+|Rol             |Önceki|Şimdi|Eklenen                                                             |
+|----------------|:----:|:---:|--------------------------------------------------------------------|
+|coach           |7     |13   |branches, inspection, checklists, onboarding, performance, knowledge|
+|trainer         |7     |13   |branches, inspection, onboarding, knowledge, performance, reports   |
+|cgo             |7     |11   |branches, equipment, faults, performance                            |
+|admin           |34    |37   |lost-found-hq, onboarding, keyblend                                 |
+|kalite_kontrol  |8     |10   |inspection, product-complaints                                      |
+|supervisor      |17    |19   |lost-found, qr-scan                                                 |
+|mudur           |16    |18   |lost-found, qr-scan                                                 |
+|supervisor_buddy|7     |8    |lost-found                                                          |
+|barista         |5     |6    |lost-found                                                          |
+
+Replit talimatı:
+
+TASK #103: Sidebar Fix — Pull + Build + Rol Doğrulama
+
+git pull origin main
+npm run build
+
+
+# Coach sidebar check
+grep -A5 "coach:" server/menu-service.ts | head -5
+# Expected: branches-list, branch-inspection, checklists, onboarding-programs
+
+# Trainer sidebar check  
+grep -A5 "trainer:" server/menu-service.ts | head -5
+# Expected: branches-list, onboarding-programs, knowledge-base
+
+# Barista sidebar check
+grep -A3 "barista:" server/menu-service.ts | head -3
+# Expected: lost-found
+
+
+PULL+BUILD: ✅/❌
+COACH SIDEBAR: ✅/❌ (13 items)
+TRAINER SIDEBAR: ✅/❌ (13 items)
+CGO SIDEBAR: ✅/❌ (11 items)
+BARISTA SIDEBAR: ✅/❌ (lost-found)
+
+
+DO NOT modify any files. Report only.
+
+Bu oturumun son durumu: 468 tablo, 1722 endpoint, 314 sayfa, 31 rol. Sidebar audit tamamlandı, kritik eksikler düzeltildi. Devam edelim mi?​​​​​​​​​​​​​​​​

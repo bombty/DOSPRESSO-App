@@ -1,0 +1,693 @@
+# DOSPRESSO OPTİMİZASYON YOL HARİTASI
+# 8 Mega Sprint — Sıralı, bağımlılık sırasına göre
+# Her sprint önceki sprint'in çıktısına güvenir
+# Tarih: 23 Mart 2026
+
+---
+
+## GENEL PRENSİPLER (TÜM SPRİNTLER İÇİN)
+
+**Danışma mekanizması — şu durumlarda DUR:**
+1. DB şeması değişikliği → SQL göster, onay al
+2. Mevcut sayfa kodunu silmek/değiştirmek → etki analizi göster, onay al
+3. 500+ satır tek dosya → bölme planı öner
+4. Compile/runtime hatası → göster, düzeltme planı öner
+5. Veri kaybı riski olan migrasyon → backup + rollback planı göster
+
+**Her sprint başında:**
+- Skill dosyalarını oku (.agents/skills/dospresso-*)
+- Mevcut durumu araştır (ön araştırma scripti)
+- Session plan oluştur
+
+**Her sprint sonunda:**
+- Server hatasız çalışıyor doğrula
+- Değiştirilen dosya listesi
+- Sonraki sprint için hazırlık notu
+
+**DOKUNMA:** localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 1: CRM BİRLEŞTİRME
+# İletişim Merkezi + CRM + Misafir Memnuniyeti → Tek CRM (2 kanal)
+# Tahmini: 6-8 saat
+# Bağımlılık: Yok (ilk sprint)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 1 — Ön Araştırma
+
+```bash
+echo "═══ MEGA SPRINT 1: CRM BİRLEŞTİRME ÖN ARAŞTIRMA ═══"
+
+echo "=== 1. Mevcut CRM sayfası yapısı ==="
+wc -l client/src/pages/crm-mega.tsx
+grep -n "tab\|Tab\|lazy\|import" client/src/pages/crm-mega.tsx | head -20
+echo "--- CRM alt sayfaları ---"
+find client/src/pages -path "*crm*" -name "*.tsx" | while read f; do
+  echo "$(wc -l < "$f") — $f"
+done | sort -rn
+
+echo ""
+echo "=== 2. İletişim Merkezi yapısı ==="
+find client/src/pages/iletisim-merkezi -name "*.tsx" | while read f; do
+  echo "$(wc -l < "$f") — $(basename "$f")"
+done | sort -rn
+echo "--- Tab yapısı ---"
+grep -n "tab\|Tab\|section\|screen\|view\|mode" client/src/pages/iletisim-merkezi/index.tsx | head -15
+
+echo ""
+echo "=== 3. Misafir Memnuniyeti yapısı ==="
+wc -l client/src/pages/misafir-memnuniyeti*.tsx 2>/dev/null
+grep -n "tab\|Tab\|useQuery" client/src/pages/misafir-memnuniyeti*.tsx 2>/dev/null | head -15
+
+echo ""
+echo "=== 4. Tüm ticket tabloları ==="
+for tbl in support_tickets hq_support_tickets customer_feedback guest_complaints product_complaints; do
+  echo "--- $tbl ---"
+  echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' '
+  echo "SELECT column_name FROM information_schema.columns WHERE table_name='$tbl' ORDER BY ordinal_position;" | psql -t 2>/dev/null | head -20
+done
+
+echo ""
+echo "=== 5. support_tickets mevcut ticket_type değerleri ==="
+echo "SELECT DISTINCT ticket_type FROM support_tickets;" | psql 2>/dev/null
+echo "--- department değerleri ---"
+echo "SELECT DISTINCT department FROM support_tickets;" | psql 2>/dev/null
+echo "--- status değerleri ---"
+echo "SELECT DISTINCT status FROM support_tickets;" | psql 2>/dev/null
+
+echo ""
+echo "=== 6. API route dosyaları ==="
+wc -l server/routes/crm-iletisim.ts server/routes/hq-support-routes.ts 2>/dev/null
+echo "--- CRM endpoint'leri ---"
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/crm-iletisim.ts | head -20
+echo "--- HQ Support endpoint'leri ---"
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/hq-support-routes.ts | head -20
+
+echo ""
+echo "=== 7. Misafir feedback endpoint'leri ==="
+grep -rn "router\.\(get\|post\).*feedback\|router\.\(get\|post\).*memnuniyet\|router\.\(get\|post\).*guest" server/routes/ --include="*.ts" | head -10
+
+echo ""
+echo "=== 8. SLA sistemi ==="
+echo "SELECT * FROM sla_rules ORDER BY id;" | psql 2>/dev/null
+wc -l server/services/ticket-routing-engine.ts 2>/dev/null
+
+echo ""
+echo "=== 9. Bu sayfalara link veren TÜM dosyalar ==="
+echo "--- /iletisim-merkezi linkleri ---"
+grep -rn "iletisim-merkezi\|/iletisim" client/src/ server/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -v "pages/iletisim-merkezi" | wc -l
+echo "--- /crm linkleri ---"
+grep -rn '"/crm' client/src/ server/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -v "pages/crm" | wc -l
+echo "--- /misafir-memnuniyeti linkleri ---"
+grep -rn "misafir-memnuniyeti" client/src/ server/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -v "pages/misafir" | wc -l
+echo "--- /hq-destek linkleri ---"
+grep -rn "hq-destek\|hq-support" client/src/ server/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -v "pages/hq" | wc -l
+
+echo ""
+echo "=== 10. Menü öğeleri ==="
+grep -n "crm\|iletisim\|memnuniyet\|feedback\|destek\|support\|ticket\|talep" server/menu-service.ts | head -20
+```
+
+## Sprint 1 — Bölüm A: DB Hazırlık
+
+### A1: support_tickets tablosuna eksik kolonlar ekle (⚠ DANIŞMA)
+
+```sql
+-- Önce mevcut yapıyı kontrol et, sonra eksik olanları ekle
+-- ticket_type: kanal belirleme
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS ticket_type VARCHAR(50) DEFAULT 'franchise_talep';
+-- rating: müşteri puanı (Misafir kanalı için)
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS rating INTEGER;
+-- rating_hizmet, rating_temizlik, rating_urun, rating_personel: detay puanlar
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS rating_hizmet INTEGER;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS rating_temizlik INTEGER;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS rating_urun INTEGER;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS rating_personel INTEGER;
+-- source: nereden geldi (qr, web, app, manual, escalation)
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS source VARCHAR(30) DEFAULT 'manual';
+-- channel: misafir | franchise
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS channel VARCHAR(20) DEFAULT 'franchise';
+```
+
+### A2: Mevcut verileri migrate et (⚠ DANIŞMA — SQL göster)
+
+```sql
+-- hq_support_tickets (4 kayıt) → support_tickets
+INSERT INTO support_tickets (title, description, status, branch_id, created_by, department, ...)
+SELECT title, description, status, branch_id, created_by, department, ...
+FROM hq_support_tickets;
+-- ticket_type = 'franchise_talep', channel = 'franchise', source = 'manual'
+
+-- customer_feedback (23 kayıt) → support_tickets
+INSERT INTO support_tickets (title, description, status, branch_id, rating, ...)
+SELECT comment, comment, 'open', branch_id, overall_rating, ...
+FROM customer_feedback;
+-- ticket_type = 'musteri_geri_bildirim', channel = 'misafir', source = 'qr'
+
+-- guest_complaints → support_tickets
+-- ticket_type = 'musteri_sikayet', channel = 'misafir'
+```
+
+### A3: Mevcut support_tickets kayıtlarını güncelle
+
+```sql
+-- Mevcut 10 kayıt İletişim Merkezi'nden gelmiş — franchise_talep olarak işaretle
+UPDATE support_tickets SET ticket_type = 'franchise_talep', channel = 'franchise'
+WHERE ticket_type IS NULL OR ticket_type = 'franchise_talep';
+```
+
+## Sprint 1 — Bölüm B: CRM Frontend Yeniden Yapılandırma
+
+### B1: CRM ana sayfasını yeniden yaz
+
+Mevcut `crm-mega.tsx`'i güncelle veya yeni bileşen oluştur:
+
+**Yapı:**
+```
+CRM Sayfası
+├── Header: "CRM" başlık + [Misafir | Franchise] kanal toggle
+├── Sidebar (sol 200px)
+│   ├── Misafir kanalı: Tüm geri bildirimler | Şikayetler | Övgüler | Kampanyalar | QR Ayarları | SLA
+│   └── Franchise kanalı: Tüm talepler | Teknik | Muhasebe | Lojistik | Eğitim | İK | Marketing | SLA
+├── Ana alan
+│   ├── KPI strip (4 metrik — kanala göre değişir)
+│   ├── Ticket listesi (filtrelenmiş — sidebar seçimine göre)
+│   │   └── "Tümünü gör" → tam sayfa liste
+│   └── Trend grafik (alt bölüm)
+└── Ticket detay (tıklanınca sağda veya modal)
+    ├── Bilgiler + durum
+    ├── Sohbet paneli
+    └── Aksiyon butonları (ata, çöz, kapat)
+```
+
+**Misafir kanalı KPI'ları:**
+1. Ortalama puan (5 üzerinden)
+2. Yeni geri bildirim (bu hafta)
+3. SLA ihlali
+4. Çözüm süresi (ortalama)
+
+**Franchise kanalı KPI'ları:**
+1. Açık talep
+2. SLA ihlali
+3. Bu hafta çözülen
+4. Ortalama çözüm süresi
+
+**Kanal toggle mantığı:**
+- URL: /crm?channel=misafir veya /crm?channel=franchise
+- Default: rol bazlı (supervisor→franchise, coach→misafir)
+- Toggle tıklanınca sadece filtreleme değişir, sayfa yeniden yüklenmez
+
+### B2: Ticket listesi bileşeni (shared)
+
+`client/src/components/crm/TicketList.tsx` oluştur:
+- Props: channel, department, status, branchId
+- Her satır: ID, departman/kaynak badge, başlık, durum, SLA durumu, tarih
+- Misafir kanalında ek: yıldız puanı göster
+- Tıklanınca → ticket detay
+
+### B3: Ticket detay bileşeni (shared)
+
+`client/src/components/crm/TicketDetail.tsx` oluştur:
+- Mevcut İletişim Merkezi sohbet panelini kullan (zaten iyi çalışıyor)
+- Header: ticket ID, durum badge, SLA sayaç
+- Sol: detay bilgiler (şube, departman, tarih, puan)
+- Sağ: sohbet akışı
+- Alt: aksiyon butonları (ata, yanıtla, çöz, kapat, escalate)
+
+### B4: Yeni talep formu
+
+`client/src/components/crm/NewTicketForm.tsx`:
+- Franchise kanalı: Departman seç → Başlık → Açıklama → Fotoğraf → Gönder
+- Misafir kanalı: (QR formdan gelir — manuel oluşturma da mümkün)
+- Arıza escalation: otomatik oluşur (tip: ariza_escalation, dept: Teknik)
+
+## Sprint 1 — Bölüm C: Backend API Güncelleme
+
+### C1: CRM API'sını birleştir
+
+Mevcut `crm-iletisim.ts` güncelle veya yeni endpoint'ler ekle:
+
+```
+GET /api/crm/tickets?channel=misafir|franchise&department=X&status=X&branch_id=X
+  → support_tickets tablosundan kanal + filtre ile çek
+
+POST /api/crm/tickets
+  → { channel, ticket_type, department, title, description, rating?, branch_id }
+
+GET /api/crm/tickets/:id → detay + sohbet geçmişi
+PATCH /api/crm/tickets/:id → durum güncelle, ata, çöz, kapat
+POST /api/crm/tickets/:id/messages → sohbet mesajı ekle
+
+GET /api/crm/dashboard?channel=misafir|franchise → KPI verileri
+GET /api/crm/trends?channel=X&period=week|month → trend verileri
+```
+
+### C2: QR form → ticket oluşturma
+
+Mevcut QR geri bildirim formunu ticket oluşturacak şekilde güncelle:
+- Form submit → POST /api/crm/tickets { channel: 'misafir', ticket_type: 'musteri_geri_bildirim', rating: X }
+- Puan ≤2 ise → priority: 'high', SLA: 4 saat
+- Puan ≥4 ise → priority: 'low', SLA: 72 saat
+
+### C3: Eski endpoint'leri koruma (geriye uyumluluk)
+
+- /api/iletisim/* → /api/crm/* redirect (1 ay sonra kaldır)
+- /api/hq-support/* → /api/crm/* redirect
+
+## Sprint 1 — Bölüm D: Link Temizliği + Menü
+
+### D1: Tüm eski linkleri güncelle
+
+```bash
+# Tüm dosyalardaki /iletisim-merkezi → /crm?channel=franchise
+# Tüm dosyalardaki /hq-destek → /crm?channel=franchise
+# Tüm dosyalardaki /misafir-memnuniyeti → /crm?channel=misafir
+# Etkilenen dosyalar (ön araştırmadan): hamburger-menu, card-grid-hub,
+# MissionControlHQ, hq-ozet, dashboard, navigation-config, 
+# system-completeness-service, ticket-routing-engine, crm-iletisim
+```
+
+### D2: App.tsx route güncellemesi
+
+```
+/crm → CRM ana sayfa (2 kanallı)
+/crm/:ticketId → ticket detay
+/iletisim-merkezi → Redirect → /crm?channel=franchise
+/hq-destek → Redirect → /crm?channel=franchise
+/misafir-memnuniyeti → Redirect → /crm?channel=misafir
+/misafir-geri-bildirim → Redirect → /crm?channel=misafir
+```
+
+### D3: Menü güncelleme
+
+```
+menu-service.ts:
+  - İletişim Merkezi menü öğesini KALDIR
+  - Misafir Memnuniyeti menü öğesini KALDIR
+  - CRM menü öğesi: "CRM" olarak Müşteri İlişkileri bölümünde
+  - Tüm roller CRM'i görebilmeli (farklı izin seviyeleriyle)
+  
+SIDEBAR_ALLOWED_ITEMS güncelle:
+  - supervisor, barista, stajyer, mudur → 'crm' ekle
+  - Mevcut 'iletisim-merkezi' referanslarını 'crm' yap
+```
+
+## Sprint 1 — Bölüm E: Bildirim Deep Link Güncelleme
+
+Tüm createNotification çağrılarında deepLink alanını güncelle:
+- ticket oluşturulunca → /crm/{ticketId}
+- ticket atanınca → /crm/{ticketId}
+- SLA breach → /crm?channel=X&filter=sla
+
+## Sprint 1 — Doğrulama
+
+```bash
+echo "═══ MEGA SPRINT 1 DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+
+echo "=== CRM endpoint'leri ==="
+# Admin login
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/crm.txt > /dev/null 2>&1
+for ep in "/api/crm/tickets?channel=misafir" "/api/crm/tickets?channel=franchise" "/api/crm/dashboard?channel=misafir" "/api/crm/dashboard?channel=franchise"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/crm.txt "http://localhost:5000${ep}")
+  echo "  $ep → $STATUS"
+done
+
+echo "=== Migrasyon ==="
+echo "SELECT channel, ticket_type, count(*) FROM support_tickets GROUP BY channel, ticket_type;" | psql
+
+echo "=== Eski endpoint redirect ==="
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/crm.txt "http://localhost:5000/api/iletisim/tickets"
+echo " — /api/iletisim (redirect olmalı veya 301)"
+
+echo "=== Menü ==="
+for ROLE in supervisor barista admin; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" -c /tmp/m_${ROLE}.txt > /dev/null 2>&1
+    echo "--- $ROLE CRM menüde? ---"
+    curl -s http://localhost:5000/api/me/menu -b /tmp/m_${ROLE}.txt | grep -i "crm"
+  fi
+done
+
+echo "=== Eski sayfalar redirect ediyor mu? ==="
+# App.tsx'te /iletisim-merkezi → /crm redirect var mı?
+grep "iletisim-merkezi" client/src/App.tsx | head -3
+grep "misafir-memnuniyeti" client/src/App.tsx | head -3
+```
+
+**Başarı kriterleri:**
+1. ✅ /crm?channel=misafir → müşteri geri bildirimleri görünüyor
+2. ✅ /crm?channel=franchise → şube talepleri görünüyor
+3. ✅ Kanal toggle çalışıyor (tek tıkla geçiş)
+4. ✅ Tüm roller CRM'i menüde görüyor
+5. ✅ Eski URL'ler redirect ediyor
+6. ✅ Ticket oluşturma çalışıyor (her iki kanal)
+7. ✅ Sohbet/mesajlaşma çalışıyor
+8. ✅ SLA takibi çalışıyor
+9. ✅ support_tickets'ta migrate edilmiş veriler mevcut
+10. ✅ Server hatasız
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 2: BİLDİRİM TEMİZLİĞİ + ARŞİVLEME
+# Posta Kutusu optimizasyonu + İletişim Merkezi tab temizliği
+# Tahmini: 3-4 saat
+# Bağımlılık: Sprint 1 (CRM birleştirme tamamlanmış olmalı)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 2 Kapsamı:
+1. **Bildirim arşivleme:** 30 günden eski bildirimleri archive tablosuna taşı
+2. **İletişim Merkezi tab temizliği:** Bildirim + Duyuru + Mesaj tab'larını çıkar (zaten /bildirimler'de var)
+3. **Posta Kutusu iyileştirme:** /bildirimler sayfasına filtre ekle (Tümü | Görevler | Arızalar | Eğitim | İK | Mr. Dobody)
+4. **Header bell:** Bell ikonunun /bildirimler'e gitmesini doğrula
+5. **Bildirim deep link'leri:** Tüm deepLink'lerin doğru sayfaya gittiğini doğrula (artık /crm)
+6. **Gereksiz sayfa temizliği:** /mesajlar redirect'i doğrula, eski bildirim sayfaları varsa temizle
+
+**Başarı kriterleri:**
+- İletişim Merkezi = saf ticket sistemi (bildirim/duyuru/mesaj tab'ı YOK)
+- /bildirimler = tek posta kutusu (bildirimler + mesajlar + duyurular)
+- 30 gün+ bildirimler arşivde
+- notifications tablosu < 5000 kayıt (aktif)
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 3: KOPUK ZİNCİR OTOMASYONLARI
+# Mr. Dobody skill'leri ile 4 operasyonel zinciri bağla
+# Tahmini: 4-5 saat
+# Bağımlılık: Sprint 1-2 (CRM + bildirimler temiz olmalı)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 3 Kapsamı:
+
+### Zincir 1: Vardiya → Devam → Bordro
+- Vardiya oluşturulunca → çalışana bildirim
+- PDKS gecikme → supervisor bildirim
+- Ay sonu → bordro hesaplama otomatik tetiklenme (veya hatırlatma)
+- Mr. Dobody skill: `payroll-reminder`
+
+### Zincir 2: Eğitim → Rol Yükseltme
+- Stajyer 8 modülü tamamladı → Mr. Dobody: "Bar Buddy'ye yükseltme önerisi"
+- Quiz ortalaması > 85% → sertifika otomatik oluştur
+- Mr. Dobody skill: `career-progression-tracker`
+
+### Zincir 3: Arıza → Satınalma → Tedarikçi
+- Arıza kaydedildi → supervisor'a bildirim
+- Aynı ekipman 3. kez arızalandı → Mr. Dobody: "Bakım planı veya değişim önerisi"
+- Çözülemezse → CRM Franchise kanalına otomatik escalation ticket
+- Yedek parça gerekli → satınalma modülüne otomatik talep
+- Mr. Dobody skill: `equipment-lifecycle-tracker`
+
+### Zincir 4: Stok → Üretim → Sevkiyat
+- Şube stok kritik seviyeye düştü → fabrikaya üretim talebi
+- Üretim tamamlandı → sevkiyat bildirimi
+- Mr. Dobody skill: `supply-chain-monitor`
+
+**Başarı kriterleri:**
+- 4 zincir bağlı, Mr. Dobody proaktif bildirim gönderiyor
+- Her zincir test edilmiş (simülasyon)
+- Mevcut iş akışı bozulmamış
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 4: AJANDA MODÜLÜ
+# Kişisel takvim + todo + not + Mr. Dobody entegrasyonu
+# Tahmini: 6-8 saat
+# Bağımlılık: Sprint 3 (zincirler bağlı olmalı — todo'lar otomatik oluşacak)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 4 Kapsamı:
+
+### A: Database
+```sql
+CREATE TABLE user_todos (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id),
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  due_date TIMESTAMP,
+  priority VARCHAR(20) DEFAULT 'medium', -- low, medium, high, urgent
+  status VARCHAR(20) DEFAULT 'pending', -- pending, in_progress, done, cancelled
+  source VARCHAR(30) DEFAULT 'manual', -- manual, crm_ticket, equipment, system, dobody
+  source_id VARCHAR(50), -- ilgili ticket/arıza/görev ID'si
+  tags TEXT[], -- ['tedarikci', 'ahmet', 'numune']
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE TABLE user_calendar_events (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id),
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP,
+  event_type VARCHAR(30) DEFAULT 'meeting', -- meeting, reminder, deadline, visit, call
+  location TEXT,
+  related_entity_type VARCHAR(30), -- branch, supplier, user, ticket
+  related_entity_id VARCHAR(50),
+  recurrence VARCHAR(30), -- none, daily, weekly, monthly
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE user_notes (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id),
+  title VARCHAR(200),
+  content TEXT NOT NULL,
+  related_entity_type VARCHAR(30), -- branch, supplier, user, equipment
+  related_entity_id VARCHAR(50),
+  tags TEXT[],
+  is_pinned BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### B: Ajanda Sayfası
+- Route: /ajanda
+- Görünüm toggle: Takvim | Todo | Notlar
+- Takvim: gün/hafta/ay (mevcut kütüphane veya basit grid)
+- Todo: liste + filtre (kaynak: tümü/CRM/ekipman/kişisel) + öncelik sırası
+- Notlar: kart grid + arama + etiket filtre
+- Sağ panel: Mr. Dobody sabah briefing özeti
+
+### C: Mr. Dobody Skill'leri
+- `daily-briefing`: Sabah "3 toplantı, 5 todo, 2 SLA riski" özeti
+- `natural-language-todo`: "Yarın Ahmet'i ara" → todo + takvim oluştur
+- `smart-reminder`: Deadline yaklaşınca proaktif hatırlatma
+- `auto-todo-from-ticket`: CRM ticket atanınca → todo oluştur
+
+### D: Menü
+- Ajanda → Ana Sayfa bölümüne ekle (Dashboard'un altına)
+- HQ + yönetici roller: görür
+- Barista/stajyer: görmez (basit roller için gereksiz)
+
+**Başarı kriterleri:**
+- /ajanda çalışıyor (takvim + todo + not)
+- CRM ticket atanınca otomatik todo oluşuyor
+- Mr. Dobody sabah briefing gönderiyor
+- Doğal dil komut çalışıyor ("yarın toplantı ekle")
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 5: TAB'SIZ DASHBOARD DÖNÜŞÜMÜ
+# Akademi, İK, Ekipman, Fabrika → tek dashboard + sidebar
+# Tahmini: 5-6 saat
+# Bağımlılık: Sprint 1 (CRM pattern'i referans)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 5 Kapsamı:
+
+CRM'deki "tek dashboard + sidebar filtre" yaklaşımını diğer modüllere uygula:
+
+### Akademi
+- Mevcut tab'lar: Modüller, Quizler, Sertifikalar, Onboarding, İstatistikler
+- Yeni: Tek dashboard + sidebar (Modüller | Quizler | Sertifikalar | Onboarding | Ayarlar)
+- KPI strip: Aktif öğrenci, tamamlama oranı, ort. quiz puanı, sertifika sayısı
+
+### İK & Personel  
+- Mevcut tab'lar: Personel, Özlük dosyası, Tutanaklar, İzinler
+- Yeni: Tek dashboard + sidebar (Tüm personel | Özlük | Tutanaklar | İzinler | Ayarlar)
+- KPI strip: Aktif personel, özlük tamamlama %, açık tutanak, izin kullanımı
+
+### Ekipman
+- Mevcut tab'lar: Ekipman listesi, Arızalar, Bakım takvimi
+- Yeni: Tek dashboard + sidebar (Tüm ekipman | Arızalar | Bakım | Ayarlar)
+- KPI strip: Toplam ekipman, aktif arıza, bakım yaklaşan, ortalama arıza süresi
+- "HQ destek iste" butonu → CRM Franchise kanalına escalation ticket (Sprint 3 ile bağlantılı)
+
+### Fabrika
+- Zaten dashboard var ama tab'lı yapıda
+- Yeni: Tek dashboard + sidebar (Üretim | İstasyonlar | QC | Personel | Ayarlar)
+
+**Başarı kriterleri:**
+- 4 modül tab'sız dashboard'a dönmüş
+- Sidebar filtreleme çalışıyor
+- Mevcut tüm özellikler korunmuş (sadece layout değişti)
+- Mobile responsive
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 6: MOBİL HIZLI EYLEM MODU
+# Rol bazlı kısayol butonları + kiosk iyileştirme
+# Tahmini: 4-5 saat
+# Bağımlılık: Sprint 1-5 (tüm modüller hazır olmalı)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 6 Kapsamı:
+
+### Barista modu (3 büyük buton)
+- Giriş yap (kiosk bağlantısı)
+- Arıza bildir (hızlı form: foto + açıklama → ekipman modülü)
+- Talep oluştur (hızlı form: dept + açıklama → CRM Franchise)
+
+### Supervisor modu (dashboard + quick actions)
+- Mevcut Mission Control dashboard
+- Hızlı eylemler çubuğu: Yedek çağır, Talep oluştur, Arıza bildir, Vardiya değiştir
+- Swipe/dokunma optimizasyonu (48px min touch target)
+
+### Kiosk iyileştirme
+- Kiosk ekranına "sorun bildir" butonu
+- Butona basınca: basit form → CRM ticket oluşur
+- Giriş yapmış personelin kimliği otomatik eklenir
+
+**Başarı kriterleri:**
+- Barista 3 butonla tüm temel işleri yapabiliyor
+- Supervisor tek ekranda dashboard + aksiyon
+- Kiosk'tan sorun bildirme çalışıyor
+- Tüm butonlar 48px+ touch target
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 7: CROSS-MODÜL ZEKA + P&L
+# Mr. Dobody seviye 2 + şube kar/zarar raporu
+# Tahmini: 6-8 saat
+# Bağımlılık: Sprint 1-4 (CRM + ajanda + zincirler hazır olmalı)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 7 Kapsamı:
+
+### Mr. Dobody Seviye 2: Cross-modül korelasyon
+- Yeni skill: `cross-module-insight`
+- Farklı modüllerdeki verileri tarar:
+  - Müşteri şikayeti arttı + personel değişimi oldu → korelasyon bulur
+  - Arıza tekrarı + aynı ekipman + bakım yapılmamış → kök neden
+  - Eğitim tamamlanmadı + quiz puanı düşük + şube performansı düştü → bağlantı
+- CEO'ya haftalık "insight raporu" oluşturur
+- Ajanda'ya otomatik "dikkat gerektiren konular" todo ekler
+
+### Şube P&L Raporu
+- Gelir (POS verisi varsa) veya tahmini gelir
+- Personel maliyeti (bordro verisinden)
+- Kira/sabit giderler (şube ayarlarından)
+- Hammadde maliyeti (stok + satınalma verisinden)
+- Net kar/zarar hesaplama
+- Şube karşılaştırma tablosu
+- Mr. Dobody: "Işıklar şubesi 3 aydır zarar ediyor — personel maliyeti gelirin %65'i"
+
+**Başarı kriterleri:**
+- Mr. Dobody cross-modül insight gönderiyor
+- CEO haftalık insight raporu alıyor
+- Şube P&L raporu oluşturuluyor
+- Korelasyonlar mantıklı ve actionable
+
+---
+
+# ████████████████████████████████████████████████████████████
+# MEGA SPRINT 8: ÖLÇEKLENMEye HAZIRLIK + KOD TEMİZLİĞİ
+# Altyapı iyileştirmeleri + teknik borç temizliği
+# Tahmini: 8-10 saat
+# Bağımlılık: Sprint 1-7 (tüm özellikler stabil olmalı)
+# ████████████████████████████████████████████████████████████
+
+## Sprint 8 Kapsamı:
+
+### A: misc.ts bölme (13K → <3K satır)
+- 5-8 route grubu çıkar (notifications, messages, dashboard-stats, reports, employee, operations, knowledge-base, announcements)
+- Her çıkarmadan sonra test et
+
+### B: schema.ts bölme (15K → barrel re-export)
+- shared/schema/ dizini altına 10-12 modül dosyası
+- Barrel re-export ile mevcut import'lar bozulmaz
+
+### C: TypeScript :any temizliği
+- req.user as any → req.user as AuthUser (100+ yer)
+- catch (error: any) → catch (error: unknown)
+
+### D: Boş tablo temizliği
+- 375 tablodan <10 kayıtlı olanları tespit et
+- Kullanılmayan tabloları disable et veya sil (⚠ DANIŞMA)
+
+### E: Rol şablon sistemi
+- "Yeni şube aç" butonu → standart roller otomatik oluşur
+- Şube grubu kavramı (bölge/şehir bazlı filtreleme)
+
+### F: Performans optimizasyonu
+- Bildirim batch gönderim (tek tek değil, toplu)
+- Query optimizasyonu (N+1 sorunları)
+- Index eksikleri
+
+### G: Skill dosyaları güncelle
+- dospresso-architecture/SKILL.md → güncel tablo, route, bileşen listesi
+- dospresso-quality-gate/SKILL.md → yeni test kontrol listesi
+- dospresso-debug-guide/SKILL.md → yeni debug yöntemleri
+
+**Başarı kriterleri:**
+- misc.ts < 3000 satır
+- schema.ts = barrel dosyası (< 500 satır)
+- :any sayısı 100+ azalmış
+- Boş tablolar temizlenmiş
+- Skill dosyaları güncel
+- Tüm mevcut özellikler çalışıyor
+
+---
+
+# ████████████████████████████████████████████████████████████
+# ÖZET TABLO
+# ████████████████████████████████████████████████████████████
+
+| # | Sprint | Süre | Bağımlılık | Risk |
+|---|--------|------|------------|------|
+| 1 | CRM birleştirme (2 kanal) | 6-8s | - | Orta |
+| 2 | Bildirim temizliği + arşivleme | 3-4s | Sprint 1 | Düşük |
+| 3 | Kopuk zincir otomasyonları (4 zincir) | 4-5s | Sprint 1-2 | Düşük |
+| 4 | Ajanda modülü (takvim+todo+not) | 6-8s | Sprint 3 | Orta |
+| 5 | Tab'sız dashboard dönüşümü (4 modül) | 5-6s | Sprint 1 | Orta |
+| 6 | Mobil hızlı eylem modu | 4-5s | Sprint 1-5 | Düşük |
+| 7 | Cross-modül zeka + P&L | 6-8s | Sprint 1-4 | Yüksek |
+| 8 | Ölçeklenme + kod temizliği | 8-10s | Sprint 1-7 | Orta |
+
+**Toplam: ~42-54 saat (5-7 tam iş günü)**
+
+**Paralel çalışma mümkün:**
+- Sprint 2 + Sprint 5 paralel olabilir (farklı dosyalar)
+- Sprint 3 + Sprint 5 paralel olabilir
+- Sprint 6 herhangi bir sprint sonrasında eklenebilir
+- Sprint 7 ve 8 EN SON çalışmalı (tüm altyapı hazır olmalı)
+
+---
+
+## HER SPRİNT SONRASI KONTROL LİSTESİ
+
+```
+✅ Server hatasız çalışıyor
+✅ Menü doğru (tüm roller kontrol)
+✅ Eski URL'ler redirect ediyor
+✅ Bildirim deep link'leri doğru sayfaya gidiyor
+✅ Mr. Dobody skill'leri çalışıyor
+✅ Mobil responsive
+✅ SLA takibi çalışıyor
+✅ Veri kaybı yok (migrasyon doğrulaması)
+✅ Console hatası yok
+```

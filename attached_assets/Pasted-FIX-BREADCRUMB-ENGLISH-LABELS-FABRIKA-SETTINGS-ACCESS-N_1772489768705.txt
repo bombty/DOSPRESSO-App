@@ -1,0 +1,56 @@
+FIX BREADCRUMB ENGLISH LABELS + FABRIKA SETTINGS ACCESS + NAVIGATION ISSUES
+
+TASK 1 — Fix Remaining English Breadcrumb Labels
+WHERE: Breadcrumb navigation bar at top of pages
+PROBLEM: Some breadcrumbs still show English words mixed with Turkish. 
+CHECK the PATH_LABELS map (or equivalent breadcrumb config) and fix ANY remaining English labels:
+
+Known issues (verify each — some may be fixed already):
+- "Akademi badges" → "Akademi Rozetleri"
+- "Akademi learning path" → "Akademi Kariyer Yolu" or "Akademi Öğrenme Yolu"
+- "Dashboard" → "Ana Sayfa" or "Gösterge Paneli"
+- "Settings" → "Ayarlar"
+- "Profile" → "Profil"
+- "Notifications" → "Bildirimler"
+- "Reports" → "Raporlar"
+- "Analytics" → "Analitik"
+- "Equipment" → "Ekipman"
+- "Inventory" → "Envanter"
+- "Quality Control" → "Kalite Kontrol"
+- "Feedback" → "Geri Bildirim"
+
+HOW TO FIX: 
+1. Find the PATH_LABELS map or breadcrumb configuration
+2. List ALL entries
+3. Replace any English values with Turkish equivalents
+4. Make sure toLocaleUpperCase('tr-TR') is still applied for proper İ/I handling
+
+TASK 2 — Fix "Fabrika Ayarları" Access Issue
+WHERE: Settings/Ayarlar page — "Fabrika Ayarlarına Sıfırla" (Factory Reset) button or section
+PROBLEM: From the Phase 2 audit screenshots, the Fabrika Ayarları section had display or access issues. Specifically:
+- Check if "Fabrika Ayarları" page/section exists and is accessible
+- Check if it loads without errors
+- If it's a reset function, make sure it has a confirmation dialog (don't let users accidentally reset)
+- If it's a settings page, make sure all form fields render correctly
+
+TASK 3 — Fix Any Broken Navigation Links
+Do a systematic check:
+1. Get ALL routes defined in App.tsx (or router config)
+2. Get ALL navigation links (bottom-nav, sidebar, quick-actions, card-grid-hub)
+3. Compare: flag any link that points to a route that doesn't exist
+4. Fix mismatches by either:
+   a. Correcting the link path, OR
+   b. Adding the missing route (if the page component exists but route is missing)
+Previous finding: Admin "Duyurular" was pointing to non-existent "/admin/icerik-yonetimi" — this was already fixed to "/icerik-studyosu". Check if there are similar issues for other roles (supervisor, muhasebe, satin-alma).
+
+TASK 4 — Verify Breadcrumb Consistency
+After fixes, verify:
+- Navigate to 5+ different pages across different roles
+- Breadcrumb should show: Ana Sayfa > Bölüm > Alt Sayfa (all in Turkish)
+- No English words anywhere in breadcrumbs
+- Proper Turkish capitalization (İ not I, Ö not O, etc.)
+
+DO NOT BREAK:
+- URL paths (keep ASCII slugs like /satinalma, /kalite-kontrol — only change display labels)
+- PATH_LABELS map structure
+- toLo

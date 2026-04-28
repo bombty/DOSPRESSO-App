@@ -1,0 +1,58 @@
+Önce Excel dosyalarını inceleyeyim, sonra Replit’e depocu rolü sorusu hazırlayacağım.​​​​​​​​​​​​​​​​
+
+Excel verisi çok değerli. İşte bulgular:
+408 benzersiz malzeme, 5 kategori:
+	•	HM (Hammadde): 47 — şeker, yumurta, maya, yağ, çikolata, kahve çekirdeği, katkı maddeleri
+	•	YM (Yarı Mamül): 35 — peynirler, dolgular, un, yağ, soslar
+	•	MM (Mamül): 86 — şuruplar, kahveler, donutlar, sandviçler, kekler
+	•	TM (Ticari Mal): 228 — paket ürünler, çaylar
+	•	TK (Tüketim): 10 — temizlik, ambalaj
+Birim dönüşümü sorusu netleşti: Excelde KG ve ADET var. Reçetelerde gram kullanılıyor. Yani KG↔gram arası otomatik dönüşüm gerekecek. ADET olan malzemeler (örn: “Yaş Maya 500gr×24” = 1 ADET) için birim tanımlama şart.
+Replit’e soru gönderelim. İşte prompt:
+
+TASK: Bilgi Toplama — Depocu Rolü + Mevcut Inventory Durumu (Kod Değişikliği YOK)
+DO NOT change any code. Only analyze and report.
+1. Depocu rolü var mı?
+
+echo "SELECT DISTINCT role FROM users WHERE role ILIKE '%depo%' OR role ILIKE '%warehouse%' OR role ILIKE '%stok%' ORDER BY role;" | psql $DATABASE_URL
+grep -n "depo\|warehouse\|stokcu" server/menu-service.ts shared/schema/schema-02.ts client/src/components/protected-route.tsx | head -10
+
+
+2. Inventory tablosu mevcut veri durumu
+
+echo "SELECT count(*) as total_items FROM inventory;" | psql $DATABASE_URL
+echo "SELECT category, count(*) FROM inventory GROUP BY category ORDER BY count DESC LIMIT 15;" | psql $DATABASE_URL
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='inventory' ORDER BY ordinal_position;" | psql $DATABASE_URL
+
+
+3. Factory inventory durumu
+
+echo "SELECT count(*) FROM factory_inventory;" | psql $DATABASE_URL
+echo "SELECT count(*) FROM factory_products;" | psql $DATABASE_URL
+
+
+4. Mevcut malzeme/stok verileri ne kadar dolu?
+
+echo "SELECT count(*) FROM inventory_movements;" | psql $DATABASE_URL
+echo "SELECT count(*) FROM production_ingredients;" | psql $DATABASE_URL
+echo "SELECT count(*) FROM factory_recipe_ingredients;" | psql $DATABASE_URL
+
+
+5. factory_recipe_ingredients yapısı — inventory ile bağlantı var mı?
+
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_recipe_ingredients' ORDER BY ordinal_position;" | psql $DATABASE_URL
+
+
+Report format:
+
+DEPOCU ROLÜ: var/yok (detay)
+INVENTORY: X kayıt, kategoriler
+FACTORY_INVENTORY: X kayıt
+FACTORY_PRODUCTS: X kayıt
+RECIPE_INGREDIENTS: X kayıt, inventory bağlantısı var/yok
+MOVEMENTS: X kayıt
+
+
+DO NOT fix anything. Report only.
+
+Bu talimatı Replit’e gönder. Cevaba göre malzeme çekme sisteminin hangi tablolara bağlanacağını netleştireceğim.​​​​​​​​​​​​​​​​

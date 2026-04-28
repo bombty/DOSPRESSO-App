@@ -1,0 +1,426 @@
+Sprint 21A — temiz, tek parça, İngilizce. Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 21A — Mr. Dobody Flow Mode (Guided Daily Workflow)
+
+Transform Mr. Dobody from a suggestion bot into a step-by-step work flow guide. When users log in, Mr. Dobody greets them, shows their prioritized task list, and guides them through each task sequentially.
+
+This is NOT a chatbot. This is a guided workflow overlay on existing landing pages.
+
+### T001 — Database Tables for Flow Tasks (~30 min)
+
+Create two new tables:
+
+```sql
+CREATE TABLE dobody_flow_tasks (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  navigate_to VARCHAR(255),
+  estimated_minutes INTEGER DEFAULT 5,
+  priority VARCHAR(20) DEFAULT 'normal',
+  target_roles TEXT[],
+  target_branches INTEGER[],
+  target_users INTEGER[],
+  created_by INTEGER REFERENCES users(id),
+  start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  end_date DATE,
+  is_active BOOLEAN DEFAULT true,
+  source VARCHAR(20) DEFAULT 'manual',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE dobody_flow_completions (
+  id SERIAL PRIMARY KEY,
+  task_id VARCHAR(100) NOT NULL,
+  user_id INTEGER REFERENCES users(id),
+  completed_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(task_id, user_id, completed_at::date)
+);
+```
+
+Add these to schema.ts / drizzle schema following existing patterns.
+
+### T002 — Flow Tasks API Endpoint (~3 hours)
+
+Create: `GET /api/dobody/flow-tasks`
+
+Auth: `isAuthenticated` required.
+
+**Response shape:**
+```json
+{
+  "greeting": "İyi Günler, Cihan!",
+  "personalMessage": "🔥 8 gün streak! Bugün de devam edelim.",
+  "tasks": [
+    {
+      "id": "manual_12",
+      "title": "Yeni Temizlik Protokolü",
+      "description": "HQ tarafından atanan görev",
+      "estimatedMinutes": 5,
+      "navigateTo": "/egitim/modul/45",
+      "type": "manual",
+      "source": "manual",
+      "priority": "high",
+      "isCompleted": false
+    },
+    {
+      "id": "auto_checklist",
+      "title": "Açılış Checklist",
+      "description": "Günlük açılış checklistini tamamla",
+      "estimatedMinutes": 5,
+      "navigateTo": "/checklists",
+      "type": "checklist",
+      "source": "auto",
+      "priority": "normal",
+      "isCompleted": false
+    }
+  ],
+  "completedToday": 0,
+  "totalTasks": 3,
+  "streak": 8,
+  "score": 78
+}
+```
+
+**The endpoint merges TWO sources:**
+
+**Source 1 — Manual tasks (from dobody_flow_tasks table):**
+```sql
+SELECT * FROM dobody_flow_tasks WHERE
+  is_active = true
+  AND start_date <= CURRENT_DATE
+  AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+  AND (target_roles IS NULL OR user_role = ANY(target_roles))
+  AND (target_branches IS NULL OR user_branch_id = ANY(target_branches))
+  AND (target_users IS NULL OR user_id = ANY(target_users))
+```
+Exclude tasks already in dobody_flow_completions for today.
+
+**Source 2 — Auto-generated tasks per role:**
+
+**Barista / Bar Buddy / Stajyer:**
+1. Uncompleted daily checklist → title: "Açılış Checklist", navigateTo: "/checklists"
+2. AI recommended training module (use existing daily-recommendation logic) → "Bugünün Eğitimi", navigateTo: "/egitim"
+3. Pending tasks assigned to this user → "Atanan Görevler", navigateTo: "/gorevler"
+4. If streak milestone approaching → "Streak'ini koru!", navigateTo: "/egitim"
+
+**Supervisor / Supervisor Buddy:**
+1. Uncompleted daily checklist → "Açılış Checklist", navigateTo: "/checklists"
+2. Pending approvals count > 0 → "X onay bekliyor", navigateTo: "/gorevler"
+3. Staff with attendance issues today → "Devamsız personel kontrol", navigateTo: "/sube-ozet"
+4. Low stock items → "Stok uyarılarını incele", navigateTo: "/sube/siparis-stok"
+5. Unanswered customer complaints → "Müşteri yanıt bekliyor", navigateTo: "/misafir-memnuniyeti"
+
+**Müdür:**
+Same as supervisor plus:
+- Weekly report due → "Haftalık raporu incele", navigateTo: "/raporlar"
+- Staff evaluations pending → "Performans değerlendirmesi", navigateTo: "/performans"
+
+**CEO / CGO:**
+1. Branch alerts (kritik/dikkat) → "X şube dikkat gerektiriyor", navigateTo: "/hq-ozet"
+2. SLA breaches → "X SLA ihlali", navigateTo: "/crm"
+3. Weekly performance → "Haftalık performans özeti", navigateTo: "/raporlar"
+
+**Coach:**
+1. Overdue branch visits → "X şubeyi ziyaret et", navigateTo: "/kocluk-paneli"
+2. Staff with critical scores → "Y personel dikkat gerektiriyor", navigateTo: "/kocluk-paneli"
+3. Training gaps → "Z şubede eğitim gecikmiş", navigateTo: "/egitim"
+
+**Trainer:**
+1. Pending module approvals → "X modül onay bekliyor", navigateTo: "/egitim"
+2. Low quiz pass rates → "Başarı oranı düşük modüller", navigateTo: "/raporlar"
+
+**Fabrika Müdür:**
+1. Daily production target → "Bugünkü üretim hedefi", navigateTo: "/fabrika/uretim-planlama"
+2. Pending quality checks → "Kalite kontrol bekliyor", navigateTo: "/fabrika/kalite-kontrol"
+3. Absent staff → "Personel devam durumu", navigateTo: "/fabrika/dashboard"
+
+**Muhasebe / Muhasebe_IK:**
+1. Pending payroll → "Bordro hesaplanmadı", navigateTo: "/maas"
+2. Missing PDKS entries → "Eksik PDKS kaydı", navigateTo: "/pdks"
+
+**Kalite Kontrol:**
+1. Pending QC checks → "Bekleyen kalite kontrol", navigateTo: "/kalite-kontrol-dashboard"
+2. Product complaints → "Ürün şikayeti", navigateTo: "/product-complaints"
+
+**Gıda Mühendisi:**
+1. Pending engineer approvals → "Mühendis onayı bekliyor", navigateTo: "/fabrika/kalite-kontrol"
+2. Expiring LOTs → "SKT yaklaşan LOT", navigateTo: "/fabrika/lot-izleme"
+
+**Satınalma:**
+1. Critical stock items → "Kritik stok", navigateTo: "/stok-yonetimi"
+2. Approaching delivery dates → "Teslim tarihi yaklaşıyor", navigateTo: "/siparis-yonetimi"
+
+**Marketing:**
+1. Active campaigns → "Aktif kampanyalar", navigateTo: "/kampanya-yonetimi"
+2. Satisfaction score drops → "Müşteri puanı düştü", navigateTo: "/misafir-memnuniyeti"
+
+**For all other roles:** Convert their existing Dobody suggestions (from Sprint 20B) into flow tasks.
+
+**Merge and sort order:**
+1. Manual tasks with priority='high' FIRST (show ⭐ badge)
+2. Auto-generated tasks
+3. Manual tasks with priority='normal'
+4. Manual tasks with priority='low'
+
+**Max 5 tasks shown.** If more exist, show top 5 and "ve X görev daha..." link.
+
+**Greeting logic:**
+- 05:00-11:59 → "Günaydın, [name]!"
+- 12:00-17:59 → "İyi Günler, [name]!"
+- 18:00-04:59 → "İyi Akşamlar, [name]!"
+
+**Personal message logic:**
+- Has streak ≥ 3 → "🔥 X gün streak! Bugün de devam edelim."
+- Completed all tasks yesterday → "Dün harika iş çıkardın!"
+- Missed yesterday → "Tekrar hoş geldin! Bugün X görev seni bekliyor."
+- Monday → "Yeni hafta, yeni hedefler!"
+- First ever login (0 completions) → "DOSPRESSO'ya hoş geldin! Sana günlük işlerinde yardımcı olacağım."
+
+**Also create:** `POST /api/dobody/flow-tasks/:taskId/complete`
+- Records completion in dobody_flow_completions
+- Returns updated task list
+
+### T003 — Flow Mode Component (~4 hours)
+
+Create: `client/src/components/dobody-flow-mode.tsx`
+
+**Props:**
+```typescript
+interface FlowModeProps {
+  userId: string;
+  userRole: string;
+  userName: string;
+  branchId?: string;
+}
+```
+
+**Rendering — Flow Card (shown at TOP of landing page, above existing content):**
+
+```
+┌─────────────────────────────────────────────┐
+│ 🤖 İyi Günler, Cihan!                       │
+│ 🔥 8 gün streak! Bugün de devam edelim.     │
+│                                              │
+│ Bugün 4 işin var:                            │
+│                                              │
+│ 1. ⭐ Yeni Temizlik Protokolü (HQ)   ~5dk  │
+│ 2. ☐ Açılış Checklist                ~5dk  │
+│ 3. ☐ Cold Brew Eğitimi              ~5dk  │
+│ 4. ☐ Stok Bildirimi                 ~2dk  │
+│                                              │
+│         [ İlk İşe Başla → ]                 │
+│                                              │
+│ ── veya ──                                   │
+│ Kendi başıma devam etmek istiyorum →         │
+└─────────────────────────────────────────────┘
+```
+
+⭐ = manual task from HQ (source='manual')
+☐ = auto-detected task (source='auto')
+Completed tasks show ✅ with strikethrough
+
+**Behavior:**
+1. On mount: fetch GET /api/dobody/flow-tasks
+2. Show flow card with task list
+3. "İlk İşe Başla" tapped → navigate to task[0].navigateTo, activate mini-bar
+4. "Kendi başıma devam" tapped → hide card, save to localStorage `dobody_flow_dismissed_YYYY-MM-DD`, show normal page
+5. If ALL tasks already completed today → show completion card instead
+6. If 0 tasks → show "Bugün planlanmış görev yok. İyi çalışmalar! 🎉"
+
+**Completion card:**
+```
+┌─────────────────────────────────────────────┐
+│ 🎉 Bugünkü görevlerini tamamladın!          │
+│                                              │
+│ ⭐ 8 gün streak!  📊 Skor: 78/100          │
+│                                              │
+│ [ Mr. Dobody'ye Sor ]     [ Kapat ]         │
+└─────────────────────────────────────────────┘
+```
+
+**Design requirements:**
+- Subtle gradient background (dark: slate-800 to slate-900, light: brand colors)
+- Mr. Dobody icon (small 🤖 or existing dobody avatar) on left of greeting
+- Task items as cards with icon + title + estimated time
+- Smooth fade-in animation on mount
+- Dark mode compatible
+- Mobile-first: works perfectly at 375px
+- All touch targets ≥ 44px
+
+### T004 — Mini-Bar (Floating Task Progress Indicator) (~2 hours)
+
+Create: `client/src/components/dobody-mini-bar.tsx`
+
+When user navigates AWAY from the landing page to complete a task, show a floating bar above bottom nav.
+
+**Create context provider:** `client/src/contexts/dobody-flow-context.tsx`
+
+```typescript
+interface DobodyFlowState {
+  isFlowActive: boolean;
+  tasks: FlowTask[];
+  activeTaskIndex: number;
+  setTaskComplete: (taskId: string) => void;
+  dismissFlow: () => void;
+  activateFlow: () => void;
+}
+```
+
+**Wrap in main layout** (the root layout component that wraps all pages):
+```tsx
+<DobodyFlowProvider>
+  <AppLayout>
+    {children}
+  </AppLayout>
+  {/* Mini-bar renders here, above bottom nav */}
+  <DobodyMiniBar />
+</DobodyFlowProvider>
+```
+
+**Mini-bar visual (fixed position, bottom of screen, above bottom nav):**
+
+Active task state:
+```
+┌──────────────────────────────────────────┐
+│ 🤖 Görev 1/3: Açılış Checklist  [✓ Bitti]│
+└──────────────────────────────────────────┘
+```
+
+Transition state (after marking complete, 2 second duration):
+```
+┌──────────────────────────────────────────┐
+│ ✅ Harika! Sıradaki: Cold Brew Eğitimi    │
+└──────────────────────────────────────────┘
+```
+After 2 seconds → auto-navigate to next task's page.
+
+All complete state (5 second duration then auto-dismiss):
+```
+┌──────────────────────────────────────────┐
+│ 🎉 Tüm görevler tamamlandı! Harika iş!   │
+└──────────────────────────────────────────┘
+```
+
+**Mini-bar rules:**
+- Only visible when flow mode is active AND user is NOT on their landing page
+- Does NOT show on landing page (because flow card is visible there)
+- Fixed bottom position, z-index above page content but below modals
+- Height: ~48px, full width, semi-transparent background
+- "✓ Bitti" button = calls POST /api/dobody/flow-tasks/:taskId/complete
+- Tapping the task title text navigates back to landing page
+- Swipe down to minimize (becomes small floating dot with task count badge)
+
+### T005 — Integrate into All Landing Pages (~2 hours)
+
+Add DobodyFlowMode component to ALL role-specific landing pages as the FIRST child element:
+
+```bash
+# Find all landing page files
+grep -rn "benim-gunum\|sube-ozet\|hq-ozet\|franchise-ozet\|kocluk-paneli" client/src/pages/ --include="*.tsx" -l
+```
+
+For each landing page:
+```tsx
+import { DobodyFlowMode } from '@/components/dobody-flow-mode';
+
+// Add as FIRST element, above existing content:
+<DobodyFlowMode 
+  userId={user.id}
+  userRole={user.role}
+  userName={user.fullName || user.username}
+  branchId={user.branchId}
+/>
+```
+
+**Pages to update:**
+- benim-gunum.tsx (barista, stajyer, bar_buddy)
+- sube-ozet.tsx (supervisor, supervisor_buddy, mudur)
+- hq-ozet.tsx (ceo, cgo, admin)
+- franchise-ozet.tsx (yatirimci_hq, yatirimci_branch)
+- kocluk-paneli.tsx (coach)
+- fabrika/dashboard.tsx (fabrika_mudur, fabrika)
+- merkez-dashboard.tsx (muhasebe, muhasebe_ik)
+- kalite-kontrol-dashboard.tsx (kalite_kontrol)
+- hq-dashboard.tsx sub-sections (trainer, teknik, destek, marketing, satinalma, gida_muhendisi)
+
+**Also wrap the main app layout with DobodyFlowProvider:**
+```bash
+# Find the main layout component
+grep -rn "AppLayout\|MainLayout\|RootLayout" client/src/ --include="*.tsx" -l | head -5
+```
+
+### VERIFICATION
+
+After implementation:
+
+1. **Barista (cihan) login:**
+   - Flow card appears with greeting + 2-3 tasks
+   - "İlk İşe Başla" → navigates to checklist page
+   - Mini-bar visible at bottom showing "Görev 1/3"
+   - Tap "✓ Bitti" → mini-bar transitions to next task
+   - Complete all → celebration card on landing page
+
+2. **CEO (ali) login:**
+   - Flow card with strategic tasks (branch alerts, performance)
+   - Tasks are different from barista tasks
+
+3. **Supervisor (basri) login:**
+   - Flow card with operational tasks (approvals, attendance, stock)
+
+4. **Dismiss test:**
+   - Tap "Kendi başıma devam" → card disappears
+   - Refresh → card stays hidden (localStorage check)
+   - Tomorrow (or clear localStorage) → card reappears
+
+5. **Manual task test (SQL):**
+   ```sql
+   INSERT INTO dobody_flow_tasks (title, description, navigate_to, estimated_minutes, priority, target_roles, created_by, start_date)
+   VALUES ('Test Görevi', 'Bu bir test görevidir', '/gorevler', 3, 'high', ARRAY['barista', 'supervisor'], 1, CURRENT_DATE);
+   ```
+   - Login as barista → ⭐ "Test Görevi" appears at top of flow card
+
+6. **Mobile (375px):**
+   - Flow card fits screen, scrollable if many tasks
+   - Mini-bar doesn't overlap bottom nav
+   - Touch targets ≥ 44px
+
+7. **Empty state:**
+   - If user has 0 tasks → "Bugün planlanmış görev yok. İyi çalışmalar! 🎉"
+
+### PRIORITY ORDER: T001 → T002 → T003 → T004 → T005
+
+### DO NOT BREAK:
+- Existing landing page content (flow card is PREPENDED, not replacing anything)
+- Existing Mr. Dobody suggestion sections (these stay below flow card)
+- Login redirects and sidebar (Sprint 20A/20B)
+- Notification system
+- Background jobs and schedulers
+- Bottom navigation
+- Any Sprint 1-20B features
+
+### ACCEPTANCE CRITERIA:
+- [ ] dobody_flow_tasks and dobody_flow_completions tables created
+- [ ] GET /api/dobody/flow-tasks returns role-appropriate tasks
+- [ ] POST /api/dobody/flow-tasks/:taskId/complete records completion
+- [ ] Flow card appears on ALL landing pages for ALL roles
+- [ ] Each role gets different auto-generated tasks
+- [ ] Manual tasks (from DB) show with ⭐ badge
+- [ ] Manual tasks sort by priority (high first)
+- [ ] "İlk İşe Başla" navigates and activates mini-bar
+- [ ] Mini-bar shows current task + "✓ Bitti" button
+- [ ] Completing task transitions to next task
+- [ ] All complete → celebration card
+- [ ] "Kendi başıma devam" dismisses for the day only
+- [ ] Greeting changes by time of day
+- [ ] Personal messages (streak, yesterday status, Monday)
+- [ ] Mobile (375px) fully functional
+- [ ] Dark mode compatible
+- [ ] 0 console errors
+- [ ] Existing page content unchanged below flow card
+
+---
+
+Replit'e yapıştır. Sonucu getirince kalite kontrol yaparız.

@@ -1,0 +1,247 @@
+# DASHBOARD HATA TESPİTİ — NEDEN BOŞ, NEDEN YANLIŞ ROL?
+# DEĞİŞİKLİK YAPMA, SADECE ARAŞTIR VE RAPORLA
+# Ekran görüntülerinden tespit edilen 4 kritik sorun
+
+```bash
+echo "════════════════════════════════════════════════════════════"
+echo "DASHBOARD HATA TESPİTİ"
+echo "4 kritik sorun: boş widget'lar, yanlış rol yönlendirme"
+echo "════════════════════════════════════════════════════════════"
+
+echo ""
+echo "████ SORUN 1: ÜMİT USTA (uretim_sefi) BOŞ WİDGET'LAR ████"
+echo "Klasik modda 15+ widget başlığı var ama HEPSİ BOŞ"
+echo "Şube Durumu, SLA Takip, İzin Talepleri, İK Özeti... içerik yok"
+
+echo ""
+echo "=== Ümit Usta hangi dashboard'a yönlendiriliyor? ==="
+echo "--- DashboardRouter'da uretim_sefi nerede? ---"
+grep -n "uretim_sefi\|FACTORY_ROLES\|fabrika" client/src/components/mission-control/DashboardRouter.tsx | head -10
+
+echo ""
+echo "--- dashboard.tsx'te uretim_sefi nereye gidiyor? ---"
+grep -n "uretim_sefi\|factory\|fabrika\|HQ_ROLES\|BRANCH_ROLES" client/src/pages/dashboard.tsx | head -15
+
+echo ""
+echo "--- hq-ozet.tsx klasik modda ne gösteriyor? ---"
+grep -n "Klasik\|classic\|isClassic\|CardGridHub\|DashboardWidgets\|widget" client/src/pages/hq-ozet.tsx | head -20
+
+echo ""
+echo "--- Ümit Usta login yapınca ne oluyor? ---"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"umit","password":"0000"}' -c /tmp/umit.txt 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log('Role:', d.role);
+  console.log('BranchId:', d.branchId);
+  console.log('DashboardPreferences:', d.dashboardPreferences);
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "--- Ümit'in dashboard modu nedir? ---"
+curl -s -b /tmp/umit.txt "http://localhost:5000/api/me/dashboard-preferences" 2>/dev/null
+
+echo ""
+echo "--- Klasik moddaki boş widget'ların kaynağı ---"
+echo "DashboardWidgets bileşeni var mı?"
+find client/src -name "*DashboardWidgets*" -o -name "*dashboard-widgets*" | sort
+echo ""
+echo "CardGridHub bileşeni var mı?"
+find client/src -name "*CardGridHub*" -o -name "*card-grid-hub*" | sort
+echo ""
+echo "--- Klasik moddaki widget listesi nereden geliyor? ---"
+grep -n "widget\|Widget\|CardGrid\|DashboardWidget" client/src/pages/hq-ozet.tsx | head -20
+
+echo ""
+echo "████ SORUN 2: COACH (Yavuz) ESKİ PANEL GÖRÜNİYOR ████"
+echo "Sprint 13'te MissionControlCoach yeniden yazıldı ama"
+echo "Yavuz hâlâ eski 'Koçluk Paneli' görüyor"
+
+echo ""
+echo "=== Yavuz giriş yapınca ne oluyor? ==="
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"yavuz","password":"0000"}' -c /tmp/yavuz.txt 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  console.log('Role:', d.role);
+  console.log('BranchId:', d.branchId);
+  console.log('DashboardPreferences:', d.dashboardPreferences);
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "--- Yavuz'un dashboard modu ---"
+curl -s -b /tmp/yavuz.txt "http://localhost:5000/api/me/dashboard-preferences" 2>/dev/null
+
+echo ""
+echo "--- Coach route akışı ---"
+echo "1. dashboard.tsx'te coach nereye gidiyor?"
+grep -n "coach\|COACH" client/src/pages/dashboard.tsx | head -10
+
+echo ""
+echo "2. DashboardRouter'da COACH_ROLES:"
+grep -n "COACH\|coach\|trainer" client/src/components/mission-control/DashboardRouter.tsx | head -10
+
+echo ""
+echo "3. Koçluk paneli ayrı bir route mu?"
+grep -rn "kocluk\|koçluk\|kocluk-paneli\|coach.*panel" client/src/App.tsx | head -5
+
+echo ""
+echo "4. Yavuz / path'ine girince dashboard.tsx mı yoksa kocluk-paneli mi açılıyor?"
+grep -n "path.*['\"]\/['\"]" client/src/App.tsx | head -5
+
+echo ""
+echo "5. MissionControlCoach bileşeni mevcut mu ve kaç satır?"
+wc -l client/src/components/mission-control/MissionControlCoach.tsx 2>/dev/null
+echo "--- İlk 30 satır ---"
+head -30 client/src/components/mission-control/MissionControlCoach.tsx 2>/dev/null
+
+echo ""
+echo "████ SORUN 3: CGO (Utku) 40× STOK SAYIMI GÖREVİ ████"
+echo "CGO'nun stok sayımıyla ne işi var? Rol filtresi çalışmıyor"
+
+echo ""
+echo "=== Bugünün Görevleri nereden geliyor? ==="
+grep -n "daily-tasks\|dailyTasks\|TodaysTask\|Bugünün Görevleri\|today.*task" client/src/components/mission-control/MissionControlHQ.tsx | head -10
+
+echo ""
+echo "--- daily-tasks API ne dönüyor? ---"
+curl -s -b /tmp/umit.txt "http://localhost:5000/api/daily-tasks" 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  if(Array.isArray(d)) {
+    console.log('Toplam:', d.length);
+    const types = {};
+    d.forEach(t => { types[t.title || t.name || 'unknown'] = (types[t.title || t.name || 'unknown'] || 0) + 1; });
+    Object.entries(types).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => console.log('  '+v+'x '+k));
+  } else {
+    console.log(Object.keys(d));
+  }
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "--- CGO (Utku) olarak daily-tasks ---"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/utku2.txt > /dev/null 2>&1
+curl -s -b /tmp/utku2.txt "http://localhost:5000/api/daily-tasks" 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  if(Array.isArray(d)) {
+    console.log('CGO görev sayısı:', d.length);
+    const types = {};
+    d.forEach(t => { types[t.title || t.name || 'unknown'] = (types[t.title || t.name || 'unknown'] || 0) + 1; });
+    Object.entries(types).sort((a,b) => b[1]-a[1]).slice(0,5).forEach(([k,v]) => console.log('  '+v+'x '+k));
+  }
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "--- daily-tasks endpoint'inde rol filtresi var mı? ---"
+grep -n "daily-tasks\|dailyTasks" server/routes/*.ts | head -5
+grep -A30 "daily-tasks\|dailyTasks" server/routes/task*.ts server/routes/daily*.ts 2>/dev/null | grep -i "role\|filter\|branch\|where" | head -10
+
+echo ""
+echo "████ SORUN 4: GENEL ROUTE AKIŞI ████"
+
+echo ""
+echo "=== Her rolün giriş akışı — adım adım ==="
+
+echo ""
+echo "--- dashboard.tsx tam akış (role göre dallanma) ---"
+head -80 client/src/pages/dashboard.tsx 2>/dev/null
+
+echo ""
+echo "--- hq-ozet.tsx — MC vs Klasik dallanma ---"
+grep -n "isMissionControl\|isClassic\|useDashboardMode\|DashboardRouter\|DashboardWidgets\|CardGridHub" client/src/pages/hq-ozet.tsx | head -20
+
+echo ""
+echo "--- DashboardRouter tam içerik ---"
+cat client/src/components/mission-control/DashboardRouter.tsx 2>/dev/null
+
+echo ""
+echo "████ SORUN 5: KLASİK MOD BOŞ WİDGET'LAR ████"
+
+echo "=== Klasik moddaki widget'lar nereden veri alıyor? ==="
+echo "--- DashboardWidgets bileşeni ---"
+for f in $(find client/src -name "*DashboardWidgets*" -o -name "*dashboard-widgets*" -name "*.tsx" 2>/dev/null); do
+  echo "--- $(basename $f) — $(wc -l < "$f") satır ---"
+  grep -n "useQuery\|queryKey\|/api/\|data\.\|isLoading\|isEmpty" "$f" | head -15
+done
+
+echo ""
+echo "--- CardGridHub bileşeni ---"
+for f in $(find client/src -name "*CardGridHub*" -o -name "*card-grid-hub*" -name "*.tsx" 2>/dev/null); do
+  echo "--- $(basename $f) — $(wc -l < "$f") satır ---"
+  grep -n "useQuery\|queryKey\|/api/\|data\.\|isLoading\|items\|widget" "$f" | head -15
+done
+
+echo ""
+echo "████ SORUN 6: dashboard_role_widgets SEED VERİSİ ████"
+
+echo "=== DB'deki widget config doğru mu? ==="
+echo "SELECT role, count(*) as widget_count FROM dashboard_role_widgets WHERE is_enabled=true GROUP BY role ORDER BY role;" | psql 2>/dev/null
+echo ""
+echo "--- uretim_sefi config ---"
+echo "SELECT widget_key, is_enabled, display_order FROM dashboard_role_widgets WHERE role='uretim_sefi' ORDER BY display_order;" | psql 2>/dev/null
+echo ""
+echo "--- coach config ---"
+echo "SELECT widget_key, is_enabled, display_order FROM dashboard_role_widgets WHERE role='coach' ORDER BY display_order;" | psql 2>/dev/null
+echo ""
+echo "--- cgo config ---"
+echo "SELECT widget_key, is_enabled, display_order FROM dashboard_role_widgets WHERE role='cgo' ORDER BY display_order;" | psql 2>/dev/null
+
+echo ""
+echo "████ SORUN 7: MEVCUT MC BİLEŞENLERİ ÇALIŞIYOR MU? ████"
+
+echo "=== Her MC bileşeninin varlığı ve boyutu ==="
+for MC in MissionControlHQ MissionControlCoach MissionControlSupervisor MissionControlMuhasebe MissionControlStajyer MissionControlFabrika MissionControlYatirimci; do
+  FILE="client/src/components/mission-control/${MC}.tsx"
+  if [ -f "$FILE" ]; then
+    echo "  ✅ $(wc -l < "$FILE") satır — $MC"
+  else
+    echo "  ❌ YOK — $MC"
+  fi
+done
+
+echo ""
+echo "=== MissionControlCoach ilk 5 satır (doğru bileşen mi?) ==="
+head -5 client/src/components/mission-control/MissionControlCoach.tsx 2>/dev/null
+
+echo ""
+echo "████ SORUN 8: useDashboardMode — VARSAYILAN NE? ████"
+
+echo "=== useDashboardMode hook ==="
+cat client/src/hooks/useDashboardMode.ts 2>/dev/null
+
+echo ""
+echo "--- Kaç kullanıcının tercihi kayıtlı? ---"
+echo "SELECT count(*) FROM users WHERE dashboard_preferences IS NOT NULL;" | psql -t 2>/dev/null
+echo ""
+echo "--- Kayıtlı tercihleri göster ---"
+echo "SELECT username, role, dashboard_preferences FROM users WHERE dashboard_preferences IS NOT NULL LIMIT 10;" | psql 2>/dev/null
+
+echo ""
+echo "════════════════════════════════════════════════════════════"
+echo "RAPORLA:"
+echo ""
+echo "SORUN 1 (Ümit Usta boş widget'lar):"
+echo "  - Hangi bileşen render ediliyor?"
+echo "  - Klasik moddaki widget'lar hangi API'den veri alıyor?"
+echo "  - Neden boş? API hata mı veriyor, veri yok mu?"
+echo ""
+echo "SORUN 2 (Yavuz eski panel):"
+echo "  - Coach giriş yapınca gerçekte hangi sayfa açılıyor?"
+echo "  - MissionControlCoach render ediliyor mu, edilmiyorsa neden?"
+echo "  - kocluk-paneli ayrı route mu, / path'i mi?"
+echo ""
+echo "SORUN 3 (Utku 40x stok sayımı):"
+echo "  - daily-tasks API rol filtresi yapıyor mu?"
+echo "  - CGO'ya neden şube görevleri düşüyor?"
+echo "  - Görevler hangi mekanizma ile atanıyor?"
+echo ""
+echo "SORUN 4 (Genel):"
+echo "  - Her rol için route akışı doğru mu?"
+echo "  - Dashboard modu (klasik/MC) doğru çalışıyor mu?"
+echo "  - dashboard_role_widgets seed verisi doğru mu?"
+echo ""
+echo "HİÇBİR DEĞİŞİKLİK YAPMA. SADECE RAPORLA."
+```

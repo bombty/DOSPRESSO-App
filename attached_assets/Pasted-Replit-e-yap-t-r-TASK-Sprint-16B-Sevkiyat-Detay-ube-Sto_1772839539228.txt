@@ -1,0 +1,394 @@
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 16B — Sevkiyat Detay + Şube Stok Transferi
+
+### ÖZET
+
+Sprint 16A'da sevkiyat temel altyapısı kuruldu (factory_shipments + factory_shipment_items, atomik stok düşme, row lock). Ama şube tarafı eksik — fabrikadan ürün çıkıyor ama şube stokuna girmiyor. Şubeler sipariş talebi oluşturamıyor. Bu sprint tam sevkiyat döngüsünü tamamlıyor.
+
+**İş akışı hedefi:**
+```
+Şube sipariş talebi → Fabrika hazırlık → Sevk → Yolda → Teslim → Şube stokuna giriş
+```
+
+**KRİTİK KURALLAR:**
+- Işıklar Şubesi (Bombtea'ya ait) = iç transfer (maliyet aktarımı)
+- 19 franchise şube = satış (fatura kesilir)
+- SKT geçmiş lot SEVKİYATA ÇIKAMAZ
+- Kalite onayı olmayan ürün sevkiyata çıkamaz
+
+---
+
+### T001 — Şube Sipariş Talebi Sistemi (~2-3 saat)
+
+**Problem:** Şubeler fabrikadan ürün talep edemiyor. Şu an sevkiyat sadece fabrika tarafından oluşturuluyor.
+
+**A) Yeni tablo (yoksa):**
+```sql
+CREATE TABLE IF NOT EXISTS branch_order_requests (
+  id SERIAL PRIMARY KEY,
+  branch_id INTEGER REFERENCES branches(id) NOT NULL,
+  requested_by VARCHAR(255) REFERENCES users(id) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, approved, preparing, shipped, delivered, cancelled
+  priority VARCHAR(20) DEFAULT 'normal', -- urgent, normal, low
+  requested_delivery_date DATE,
+  notes TEXT,
+  approved_by VARCHAR(255) REFERENCES users(id),
+  approved_at TIMESTAMP,
+  shipment_id INTEGER REFERENCES factory_shipments(id), -- Sevkiyata bağlandığında
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS branch_order_items (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES branch_order_requests(id) NOT NULL,
+  product_id INTEGER REFERENCES factory_products(id) NOT NULL,
+  requested_quantity INTEGER NOT NULL,
+  approved_quantity INTEGER, -- Fabrika onayladığında (stok yetersizse azaltılabilir)
+  unit VARCHAR(20) NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**B) Sipariş endpoint'leri:**
+```
+POST /api/branch-orders — Yeni sipariş talebi (supervisor/müdür)
+GET /api/branch-orders — Sipariş listesi (şube bazlı filtre)
+GET /api/branch-orders/:id — Sipariş detay
+PATCH /api/branch-orders/:id/approve — Fabrika onay (stok kontrolü + miktar ayarı)
+PATCH /api/branch-orders/:id/cancel — İptal
+```
+
+**C) Sipariş akışı:**
+```
+1. Supervisor/Müdür → Sipariş oluştur (ürün + miktar listesi)
+2. Fabrika müdürü → Onay (stok yeterliyse approved_quantity = requested_quantity)
+   → Stok yetersizse: approved_quantity < requested_quantity + not
+3. Onaylanan sipariş → Sevkiyat hazırlığına düşer
+4. Sevkiyat oluşturulduğunda → shipment_id bağlanır
+5. Teslimde → sipariş status='delivered'
+```
+
+**D) Stok yeterlilik kontrolü:**
+- Onay sırasında her ürün için factory_inventory kontrol edilir
+- Yetersizse: "Stokta 300 adet var, 500 talep edildi — 300 olarak onaylansın mı?"
+- Tamamen yoksa: "Stokta yok — üretim planına eklensin mi?"
+
+---
+
+### T002 — Sevkiyat → Şube Stok Girişi (~2-3 saat)
+
+**Problem:** Fabrikadan çıkan ürün şube stokuna girmiyor. Sevkiyat "teslim edildi" olduğunda şube stoku güncellenmiyor.
+
+**A) Şube stok tablosunu kontrol et:**
+```bash
+# Şube stok tablosu var mı?
+grep -rn "branch.*stock\|branch.*inventory\|sube.*stok\|branch_inventory" server/ --include="*.ts" | head -10
+```
+
+```sql
+-- Şube stok tablosu
+SELECT column_name, data_type FROM information_schema.columns 
+WHERE table_name ILIKE '%branch_stock%' OR table_name ILIKE '%branch_inventory%'
+ORDER BY ordinal_position;
+```
+
+Yoksa oluştur:
+```sql
+CREATE TABLE IF NOT EXISTS branch_inventory (
+  id SERIAL PRIMARY KEY,
+  branch_id INTEGER REFERENCES branches(id) NOT NULL,
+  product_id INTEGER REFERENCES factory_products(id) NOT NULL,
+  current_stock DECIMAL(10,2) DEFAULT 0,
+  minimum_stock DECIMAL(10,2) DEFAULT 5,
+  unit VARCHAR(20),
+  last_received_at TIMESTAMP,
+  last_counted_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(branch_id, product_id)
+);
+
+CREATE TABLE IF NOT EXISTS branch_stock_movements (
+  id SERIAL PRIMARY KEY,
+  branch_id INTEGER REFERENCES branches(id) NOT NULL,
+  product_id INTEGER REFERENCES factory_products(id) NOT NULL,
+  movement_type VARCHAR(30) NOT NULL, -- 'sevkiyat_giris', 'satis', 'zayiat', 'sayim_duzeltme', 'iade'
+  quantity DECIMAL(10,2) NOT NULL,
+  previous_stock DECIMAL(10,2),
+  new_stock DECIMAL(10,2),
+  reference_type VARCHAR(50), -- 'shipment', 'daily_sales', 'waste', 'count'
+  reference_id INTEGER,
+  lot_number VARCHAR(50), -- Hangi lot'tan geldi (izlenebilirlik)
+  expiry_date TIMESTAMP, -- O lot'un SKT'si
+  notes TEXT,
+  created_by VARCHAR(255) REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**B) Teslim akışı:**
+
+Sevkiyat "teslim edildi" olarak işaretlendiğinde (mevcut endpoint güncelle):
+
+```
+1. factory_shipments.status = 'delivered'
+2. Her shipment_item için:
+   → branch_inventory'de o ürün var mı? Yoksa oluştur.
+   → branch_inventory.current_stock += quantity
+   → branch_stock_movements'a kayıt (movement_type: 'sevkiyat_giris')
+   → lot_number ve expiry_date bilgisi shipment_item'dan alınır
+3. İlgili branch_order_request varsa status='delivered' yap
+4. Şube supervisor'a bildirim: "Sevkiyat teslim alındı: X ürün, Y adet"
+```
+
+**C) Tüm işlem tek transaction içinde:**
+```typescript
+await db.transaction(async (tx) => {
+  // shipment status güncelle
+  // her item için branch_inventory güncelle
+  // branch_stock_movements kayıt
+  // sipariş status güncelle
+  // bildirim gönder
+});
+```
+
+---
+
+### T003 — Şube Stok Endpoint'leri (~1-2 saat)
+
+```
+GET /api/branch-inventory/:branchId — Şube stok listesi
+GET /api/branch-inventory/:branchId/movements — Stok hareketleri
+POST /api/branch-inventory/:branchId/waste — Zayiat kaydı (SKT, dökülen, bozulan)
+POST /api/branch-inventory/:branchId/count — Stok sayım düzeltme
+GET /api/branch-inventory/:branchId/expiring — SKT yaklaşan ürünler
+```
+
+**Şube stok görünürlük kuralları:**
+- Supervisor/Müdür: kendi şubesinin stokunu görebilir
+- Coach: sorumlu olduğu şubelerin stokunu görebilir
+- HQ rolleri: tüm şubelerin stokunu görebilir
+- Barista: göremez
+
+---
+
+### T004 — Sevkiyat UI Genişletme (~2 saat)
+
+**A) Fabrika sevkiyat tab'ını genişlet:**
+
+Mevcut sevkiyat tab'ına ekle:
+- Bekleyen sipariş talepleri listesi (onay bekleyen)
+- Sipariş detay modal (ürünler + miktarlar + stok durumu)
+- "Onayla" ve "Reddet" butonları
+- Onaylanan siparişten "Sevkiyat Oluştur" tek tıkla
+- Sevkiyat durumu timeline: Hazırlanıyor → Sevk Edildi → Teslim Edildi
+
+**B) Sevkiyat detay genişletme:**
+- Her item'da lot_number ve expiry_date görünsün
+- Toplam ağırlık hesaplama (ürün_ağırlık × miktar)
+- Koli sayısı hesaplama (miktar / packaging_unit)
+- Teslimat notu ve kurye bilgisi alanları
+
+---
+
+### T005 — Şube Sipariş & Stok UI (~2 saat)
+
+**A) Şube tarafında sipariş oluşturma:**
+
+Supervisor/Müdür dashboard'ına veya operasyon modülüne "Sipariş Ver" bölümü ekle:
+
+```
+📦 Fabrikadan Sipariş Ver
+
+Ürün Seç:
+[Çikolatalı Donut     ▼] Miktar: [48 ] (1 koli = 48)
+[Limonata Konsantre   ▼] Miktar: [16 ] (2 koli = 8×2)
+[+ Ürün Ekle]
+
+Teslim Tarihi: [___________]
+Öncelik: [Normal ▼]
+Not: [____________________]
+
+[Sipariş Gönder]
+```
+
+- Ürün listesi factory_products'tan gelir (is_produced=true ve alsat)
+- Miktar girerken koli hesabı otomatik: "48 adet = 1 koli"
+- Sipariş geçmişi görüntüleme
+
+**B) Şube stok görüntüleme:**
+
+Supervisor dashboard'ına "Stok Durumu" widget'ı ekle:
+
+```
+📊 Şube Stok Durumu
+
+Ürün              Stok    Min    Durum
+Çikolatalı Donut   24     10     🟢
+Limonata Kons.      3      5     🟡 Azalıyor
+Oreo Cheesecake     0      3     🔴 Stokta Yok
+
+[Sipariş Ver →]
+```
+
+- Minimum stok altındakiler kırmızı
+- "Sipariş Ver" butonuna tıklayınca otomatik eksik ürünler listeli form açılır
+
+---
+
+### T006 — SKT Sevkiyat Kontrolü (~30 dakika)
+
+**Mevcut sevkiyat oluşturma endpoint'inde SKT kontrolü ekle:**
+
+```typescript
+// Sevkiyat oluşturulurken her item için:
+for (const item of items) {
+  // LOT'un SKT'sini kontrol et
+  const lot = await tx.select().from(productionLots)
+    .where(and(
+      eq(productionLots.productId, item.productId),
+      eq(productionLots.status, 'in_stock'),
+      gt(productionLots.expiryDate, new Date()) // SKT geçmemiş olmalı
+    ));
+  
+  if (!lot.length) {
+    throw new Error(`${item.productName} için geçerli SKT'li stok bulunamadı`);
+  }
+}
+
+// Kalite onayı kontrolü
+// quality_status = 'approved' olmayanlar sevkiyata çıkamaz
+```
+
+**Ayrıca:** Sevkiyat item'larına otomatik lot atama:
+- FIFO (First In First Out): En eski SKT'li lot'tan başla
+- Lot bilgisi shipment_item'a kaydedilsin (lot_number, expiry_date)
+- Şube tesliminde aynı lot bilgisi branch_stock_movements'a geçsin
+
+---
+
+### T007 — Bombtea vs Franchise Ayrımı (~1 saat)
+
+**Problem:** Işıklar şubesi (Bombtea'ya ait) ile franchise şubeleri farklı muhasebe işlemi gerektirir.
+
+**Yapılacak:**
+
+1. branches tablosunda franchise_type alanı kontrol et:
+```bash
+grep -rn "franchise\|ownership\|branch_type\|is_franchise" shared/schema.ts | head -10
+```
+```sql
+SELECT column_name, data_type FROM information_schema.columns 
+WHERE table_name = 'branches' AND (column_name ILIKE '%type%' OR column_name ILIKE '%franchise%');
+```
+
+Yoksa ekle:
+```sql
+ALTER TABLE branches ADD COLUMN IF NOT EXISTS ownership_type VARCHAR(20) DEFAULT 'franchise';
+-- 'bombtea' = Işıklar (kendi şubemiz)
+-- 'franchise' = Bayi şubeleri
+```
+
+2. Işıklar şubesini 'bombtea' olarak işaretle:
+```sql
+UPDATE branches SET ownership_type = 'bombtea' WHERE name ILIKE '%ışıklar%' OR name ILIKE '%isiklar%';
+```
+
+3. Sevkiyat oluşturulduğunda:
+   - Franchise şubeye → transfer_type: 'sale' (satış fiyatından)
+   - Bombtea şubeye → transfer_type: 'internal' (maliyet fiyatından)
+
+4. factory_shipments tablosuna ekle:
+```sql
+ALTER TABLE factory_shipments ADD COLUMN IF NOT EXISTS transfer_type VARCHAR(20) DEFAULT 'sale';
+ALTER TABLE factory_shipments ADD COLUMN IF NOT EXISTS total_cost DECIMAL(12,2);
+ALTER TABLE factory_shipments ADD COLUMN IF NOT EXISTS total_sale_price DECIMAL(12,2);
+```
+
+5. Raporlarda ayrım:
+   - "Franchise Satış" raporu: franchise şubelere gönderilen ürünlerin toplam tutarı
+   - "İç Transfer" raporu: Işıklar'a gönderilen ürünlerin maliyeti
+
+---
+
+### T008 — Bildirimler (~30 dakika)
+
+Sevkiyat döngüsünde bildirimler:
+
+1. **Şube sipariş oluşturduğunda:** Fabrika müdürüne: "Beachpark'tan sipariş talebi: 5 ürün"
+2. **Sipariş onaylandığında:** Şube supervisor'a: "Siparişiniz onaylandı, hazırlanıyor"
+3. **Sipariş reddedildiğinde:** Şube supervisor'a: "Siparişiniz reddedildi — sebep: [not]"
+4. **Sevkiyat oluşturulduğunda:** Şube supervisor'a: "Sevkiyatınız hazırlanıyor"
+5. **Sevk edildiğinde:** Şube supervisor'a: "Sevkiyatınız yola çıktı — tahmini teslim: [tarih]"
+6. **Teslim edildiğinde:** Fabrika müdürüne: "Beachpark teslim alındı" + Şube supervisor'a: "Sevkiyat teslim alındı — stok güncellendi"
+7. **Şube stok minimum altında:** Supervisor'a: "Çikolatalı Donut stokta 3 adet kaldı (min: 10) — sipariş verin"
+
+---
+
+### T009 — E2E Test (~1 saat)
+
+**Senaryo 1 — Sipariş Döngüsü:**
+1. Supervisor ile giriş → Sipariş oluştur (3 ürün)
+2. Fabrika müdürü ile giriş → Sipariş onay bekliyor mu?
+3. Onayla → status 'approved'
+4. Sevkiyat oluştur (siparişten)
+5. Sevk et → fabrika stoku düştü mü?
+6. Teslim et → şube stoku arttı mı?
+7. Sipariş status 'delivered' mı?
+
+**Senaryo 2 — SKT Kontrolü:**
+1. Süresi dolmuş lot'lu ürünü sevkiyata eklemeye çalış → HATA
+2. Geçerli SKT'li lot → başarılı
+
+**Senaryo 3 — Şube Stok:**
+1. Şube stok listesi → ürünler ve miktarlar doğru mu?
+2. Stok hareketleri → sevkiyat girişi kaydı var mı?
+3. Minimum stok altındaki ürünler kırmızı mı?
+
+**Senaryo 4 — Bombtea Ayrımı:**
+1. Işıklar şubesine sevkiyat → transfer_type 'internal' mi?
+2. Franchise şubeye sevkiyat → transfer_type 'sale' mi?
+
+**Senaryo 5 — Yetki:**
+1. Barista ile giriş → sipariş oluşturamaz
+2. Supervisor → sipariş oluşturabilir
+3. Fabrika müdürü → onaylayabilir
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T006 → T007 → T004 → T005 → T008 → T009
+
+### DO NOT BREAK:
+- Sprint 16A'daki tüm fabrika değişiklikleri (LOT, anti-suistimal, kavurma, kalite, HACCP)
+- Mevcut sevkiyat sistemi (factory_shipments, atomik stok düşme, row lock)
+- Kiosk 3 buton sistemi
+- SKT background job
+- Sprint 1-15'teki tüm değişiklikler
+
+### KABUL KRİTERLERİ:
+- [ ] Şube sipariş talebi oluşturulabiliyor (supervisor/müdür)
+- [ ] Fabrika müdürü siparişi onaylayabiliyor
+- [ ] Onay sırasında stok yeterlilik kontrolü var
+- [ ] Sevkiyat teslim edildiğinde şube stokuna ekleniyor (transaction içinde)
+- [ ] Şube stok hareketleri kaydediliyor (lot_number, expiry_date dahil)
+- [ ] branch_inventory ve branch_stock_movements tabloları çalışıyor
+- [ ] Şube stok endpoint'leri yetkilendirilmiş (supervisor kendi şubesi)
+- [ ] SKT geçmiş lot sevkiyata çıkamıyor
+- [ ] FIFO lot atama çalışıyor (en eski SKT önce)
+- [ ] Kalite onaysız ürün sevkiyata çıkamıyor
+- [ ] Bombtea (Işıklar) = internal transfer
+- [ ] Franchise = sale transfer
+- [ ] Sevkiyat UI'da sipariş talepleri görünüyor
+- [ ] Şube tarafında sipariş formu ve stok widget'ı var
+- [ ] Tüm sevkiyat adımlarında bildirim gönderiliyor
+- [ ] Barista sipariş oluşturamıyor (yetki kontrolü)
+- [ ] 0 console error
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.

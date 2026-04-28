@@ -1,0 +1,162 @@
+# ÜRETİM ŞEFİ KULLANICI + ÜRÜN SORUMLULUK ATAMASI
+# Hızlı görev — 15-20 dakika
+
+---
+
+## ⚠ KRİTİK
+- Şifre bcrypt ile hashle (mevcut seed pattern'ini kullan)
+- users.id VARCHAR UUID formatında olmalı
+- factory_staff_pins'e de PIN ekle (kiosk girişi için)
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts
+
+---
+
+## ADIM 1: Üretim Şefi kullanıcı oluştur
+
+```sql
+-- Önce mevcut uretim_sefi rolü var mı kontrol et
+SELECT name, display_name FROM roles WHERE name = 'uretim_sefi';
+
+-- Kullanıcı oluştur (bcrypt hash gerekli — kod ile yap)
+```
+
+**Kod ile kullanıcı oluştur** (bcrypt hash için):
+
+```typescript
+// server tarafında çalıştır veya seed script'ine ekle
+import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
+
+const userId = uuidv4();
+const hashedPassword = await bcrypt.hash('0000', 10);
+
+await db.insert(users).values({
+  id: userId,
+  username: 'umit',
+  password: hashedPassword,
+  firstName: 'Ümit',
+  lastName: 'Usta',
+  role: 'uretim_sefi',
+  branchId: 24,          // Fabrika branch ID
+  isActive: true,
+  email: null,
+  phone: null,
+});
+
+// Kiosk PIN ekle
+await db.insert(factoryStaffPins).values({
+  userId: userId,
+  pin: '5555',           // 4 haneli PIN (kiosk girişi için)
+});
+
+console.log('Üretim Şefi oluşturuldu:', userId);
+```
+
+**Veya mevcut seed pattern'ini kullanarak ekle.** Önemli olan:
+1. role = 'uretim_sefi'
+2. branchId = 24 (Fabrika)
+3. Şifre bcrypt hash'li
+4. factory_staff_pins'te PIN kaydı
+
+## ADIM 2: Ürün sorumluluk ataması
+
+Üretim Şefi (Ümit) sorumlu kategorileri:
+
+```sql
+-- Ümit Usta — Tatlı + Tuzlu tüm gıda ürünleri
+-- (userId'yi ADIM 1'de oluşturulan UUID ile değiştir)
+
+INSERT INTO production_responsibilities (user_id, product_category, is_active) VALUES
+  ('<UMIT_USER_ID>', 'Tatlılar', true),
+  ('<UMIT_USER_ID>', 'Tuzlular', true),
+  ('<UMIT_USER_ID>', 'Donut', true),
+  ('<UMIT_USER_ID>', 'Cookie', true),
+  ('<UMIT_USER_ID>', 'Brownie', true),
+  ('<UMIT_USER_ID>', 'Kek', true),
+  ('<UMIT_USER_ID>', 'Cheesecake', true),
+  ('<UMIT_USER_ID>', 'Mamabon', true),
+  ('<UMIT_USER_ID>', 'Kruvasan', true),
+  ('<UMIT_USER_ID>', 'Cinnaboom', true),
+  ('<UMIT_USER_ID>', 'Quesadilla', true)
+ON CONFLICT DO NOTHING;
+```
+
+Fabrika Müdürü (Eren) sorumlu kategorileri:
+
+```sql
+-- Eren — İçecek bazlı ürünler (Şurup, Kahve, Çay, Toz, Sos)
+-- Önce Eren'in user_id'sini bul
+-- SELECT id FROM users WHERE role = 'fabrika_mudur' AND is_active = true;
+
+INSERT INTO production_responsibilities (user_id, product_category, is_active) VALUES
+  ('<EREN_USER_ID>', 'Şurup', true),
+  ('<EREN_USER_ID>', 'Kahveler', true),
+  ('<EREN_USER_ID>', 'Çaylar', true),
+  ('<EREN_USER_ID>', 'Toz&Topping', true),
+  ('<EREN_USER_ID>', 'Sos', true)
+ON CONFLICT DO NOTHING;
+```
+
+## ADIM 3: Menü erişimi (SIDEBAR_ALLOWED_ITEMS)
+
+```
+menu-service.ts → SIDEBAR_ALLOWED_ITEMS'a uretim_sefi ekle:
+  - fabrika ile aynı erişim (üretim, istasyonlar, personel)
+  - dashboard
+  - üretim planlama sayfası
+  
+Mevcut fabrika_mudur'ün listesini referans al, kopyala.
+```
+
+## ADIM 4: Doğrulama
+
+```bash
+echo "=== Üretim Şefi doğrulama ==="
+
+echo "--- Kullanıcı mevcut mu? ---"
+echo "SELECT id, username, first_name, last_name, role, branch_id FROM users WHERE username='umit';" | psql
+
+echo "--- Login testi ---"
+RESULT=$(curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"umit","password":"0000"}' -c /tmp/umit.txt)
+echo "Login: $RESULT" | head -c 200
+
+echo ""
+echo "--- Menü ---"
+curl -s http://localhost:5000/api/me/menu -b /tmp/umit.txt | node -e "
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  d.forEach(s=>{if(s.items)s.items.forEach(i=>console.log('  '+i.label+' → '+(i.path||'')))});
+" 2>/dev/null
+
+echo ""
+echo "--- Kiosk PIN ---"
+echo "SELECT user_id, pin FROM factory_staff_pins WHERE user_id = (SELECT id FROM users WHERE username='umit');" | psql
+
+echo ""
+echo "--- Ürün sorumlulukları ---"
+echo "SELECT pr.product_category, u.first_name, u.last_name, u.role 
+FROM production_responsibilities pr 
+JOIN users u ON pr.user_id = u.id 
+WHERE pr.is_active = true
+ORDER BY u.role, pr.product_category;" | psql
+
+echo ""
+echo "--- Üretim planlama erişimi ---"
+curl -s -o /dev/null -w "Plans API: %{http_code}\n" -b /tmp/umit.txt "http://localhost:5000/api/production-planning/plans"
+
+echo ""
+echo "--- Fabrika Müdürü sorumlulukları ---"
+echo "SELECT pr.product_category FROM production_responsibilities pr 
+JOIN users u ON pr.user_id = u.id 
+WHERE u.role = 'fabrika_mudur' AND pr.is_active = true
+ORDER BY pr.product_category;" | psql
+
+echo ""
+echo "Server: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/)"
+```
+
+## ÖZET
+
+| Kullanıcı | Rol | Sorumlu Kategoriler |
+|-----------|-----|-------------------|
+| Ümit Usta | uretim_sefi | Tatlılar, Tuzlular, Donut, Cookie, Brownie, Kek, Cheesecake, Mamabon, Kruvasan, Cinnaboom, Quesadilla (11 kategori, ~70 ürün) |
+| Eren | fabrika_mudur | Şurup, Kahveler, Çaylar, Toz&Topping, Sos (5 kategori, ~93 ürün) |

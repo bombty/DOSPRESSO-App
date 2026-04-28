@@ -1,0 +1,64 @@
+Ürünler	Ürün Kodu	Koli içi	Birim fiyatı 	Dış satış fiyatı	Sipariş Adedi	Kdv Oranı	Kdv Dahil Fiyat	Toplam Tutar
+Donut		48	39,60₺	55,44₺		1,01	40,00	0,00
+Donut Gourmet 		48	52,50₺	73,50₺		1,01	53,03	0,00
+Cinnaboom (6'LI)		36	54,35₺	76,09₺		1,01	54,89	0,00
+BBQ 30cm		20	82,00₺	114,80₺		1,01	82,82	0,00
+Sweet Chili 30cm		20	82,00₺	114,80₺		1,01	82,82	0,00
+Mamabon								
+Hi Five Cheese (5 peynir)		30	49,50₺	64,35₺		1,01	50,00	0,00
+Texas BBQ (piliç köfte)		30	49,50₺	64,35₺		1,01	50,00	0,00
+Crumble Cookie		60	49,50₺	64,35₺		1,01	50,00	0,00
+NewYork COOKİE		60	49,50₺	64,35₺		1,01	50,00	0,00
+Bunny cake		48	49,50₺	64,35₺		1,01	50,00	0,00
+Everest cake		48	49,50₺	64,35₺		1,01	50,00	0,00
+Gold Brownie		48	49,50₺	64,35₺		1,01	50,00	0,00
+Brownie		48	49,50₺	64,35₺		1,01	50,00	0,00
+Kruvasan Sade Tereyağlı		40	45,73₺	59,45₺		1,01	46,19	0,00
+Chesecake Frambuaz		48	76,00₺	98,80₺			0,00	0,00
+Chesecake Lotus		48	76,00₺	98,80₺			0,00	0,00
+Chesecake Oreo		48	76,00₺	98,80₺			0,00	0,00
+950 ml Konsantreler								
+Karamel Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Vanilya Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Fındık Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Tarçın Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Chaity Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Pumpkin Şurup 950 ml	Geçici Olarak Durduruldu	8	199,75₺	269,66₺		1,01	201,75	0,00
+Creamice Base Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Lime Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Pinkberry Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Toasted Marshmallow 950 ml	 	8	199,75₺	269,66₺		1,01	201,75	0,00
+Hibiscus Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Mango Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Şeftali Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Blueberry Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Nane Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Aloe Vera Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+ Cola Natura 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+365 şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Popflix 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Narita Sakura 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+Pecan Nuty Şurup 950 ml		8	199,75₺	269,66₺		1,01	201,75	0,00
+White Chocolate sos 1*6		1	4.219,84₺	5.696,78₺		1,01	4262,04	0,00
+TOPPİNG GRUPLARI								
+B. Latte Tozu 1000 gr		8	332,69₺	449,13₺		1,01	336,02	0,00
+Cream Base 1000 gr		8	317,37₺	428,45₺		1,01	320,54	0,00
+Cinnaboom key blend toz		8	98,45₺	132,91₺		1,01	99,43	0,00
+Classic Donut Dekstroz Toz		1	152,53₺	205,92₺		1,01	154,06	0,00
+Golden Latte 1000 gr		8	270,63₺	365,35₺		1,01	273,34	0,00
+Coconut		6	110,50₺	149,18₺		1,01	111,61	0,00
+Nut Mix		6	174,24₺	235,22₺		1,01	175,98	0,00
+Doreo Crash		8	318,21₺	429,58₺		1,01	321,39	0,00
+Sıcak Çikolata 1000gr		8	422,61₺	570,52₺		1,01	426,84	0,00
+Pumpkin Latte 250 gr 	Yeni ürün!!!	1	360,00₺	486,00₺		1,01	363,60	0,00
+Topping Çilek		6	95,45₺	128,86₺		1,01	96,40	0,00
+Beyaz Stick Şeker (kg)		1	249,38₺			1,01	251,87	0,00
+Esmer Stick Şeker (kg)		1	275,63₺			1,01	278,39	0,00
+KAHVELER								
+Espresso (250 gr)		30	190,46₺	228,55₺		1,01	192,36	0,00
+Dospresso Filtre Kahve 250 gr		30	210,65₺	252,78₺		1,01	212,76	0,00
+Türk Kahvesi (250 gr)		30	167,42₺	200,90₺		1,01	169,09	0,00
+Espresso (1kg)		12	737,70₺	885,24₺		1,01	745,08	0,00
+Dospresso Filtre Kahve 1 kg		12	785,92₺	943,10₺		1,01	793,78	0,00
+Decaf kahve  1000 gr 		5	883,72₺	1.060,46₺		1,01	892,56	0,00
+Espresso Blend Granül Kahve (  500 gr )		8	286,34₺	343,61₺		1,01	289,20	0,00

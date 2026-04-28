@@ -1,0 +1,50 @@
+Screenshot'ları inceliyorum — ciddi yapısal sorunlar görüyorum. Önce derin analiz, sonra Replit istişare talimatı, sonra plan.Şimdi tüm bulguları kapsamlı bir analiz dokümanına dönüştürüyorum:## Derin Analiz Tamamlandı — 9 Commit Bu Oturumda
+
+### Screenshot'lardan Tespit Edilen Kritik Sorunlar:
+
+**🔴 #1: 734 Gecikmiş Görev** — Tekrarlayan görev şablonları her gün yeni görev oluşturuyor, kimse tamamlamıyor → katlanarak büyüyor. "Tezgah dezenfeksiyon kontrolü" 20 kez aynı şekilde açık.
+
+**🔴 #2: CRM ↔ Operasyon Görev Duplikasyonu** — CRM'deki "Görevler" tab'ı ve Operasyon'daki "Görevler" sayfası **aynı tasks tablosunu** gösteriyor. Kullanıcı aynı veriyi iki yerde görüyor.
+
+**🔴 #3: 3 Ayrı Ticket Sistemi** — `hqSupportTickets` (eski), `supportTickets` (yeni), `guestComplaints` (misafir) — birbirine bağlı değil.
+
+**🔴 #4: 5 Farklı İletişim Kanalı** — CRM ticket, görev sistemi, duyurular, bildirimler, Dobody — hepsi ayrı yerde.
+
+### Vizyon Önerisi: 3 Katmanlı Basitleştirme
+
+```
+KATMAN 1: İLETİŞİM MERKEZİ (CRM)
+  └── Ticket (departman bazlı) + Misafir (NPS+şikayet) + Duyurular
+
+KATMAN 2: GÖREV MERKEZİ (OPERASYON)  
+  └── Görev atama + Checklistler + Denetim/CAPA
+
+KATMAN 3: DOBODY (AI — her yerde)
+  └── SLA uyarısı + geciken görev + günlük brief
+```
+
+CRM'deki "Görevler" tab'ı kaldırılır → yerine **"Ticket → Görev Dönüştür"** butonu eklenir.
+
+### Replit İstişare Talimatı Hazır
+
+Replit'e bu dosyayı gönder: **`REPLIT-CRM-ISTISARE.md`**
+
+İçerik:
+- 10 SQL sorgusu (görev durumu, ticket, şikayet, kiosk eksikleri)
+- 11 sayfa testi (CRM, Operasyon, Misafir, Şube Panel hata)
+- 6 istişare sorusu (Replit'in kendi görüşü isteniyor)
+- Kod analizi komutları
+
+### Akış
+```
+Şu an buradayız:
+  ✅ Derin analiz tamamlandı
+  ⏳ Replit istişare raporu beklenecek
+  → Replit raporu + senin kararların → Final plan
+  → Build başlangıcı
+```
+
+### Replit'e Ayrıca Hatırlatılması Gerekenler:
+1. **monthly_payroll'a 3 kolon migration** (holiday_worked_days, holiday_pay, meal_allowance) — henüz yapılmadı
+2. **2026 tatil seed** (`POST /api/admin/seed-holidays-2026`) — henüz çalıştırılmadı
+3. Bu istişare görevi KOD DEĞİŞİKLİĞİ İÇERMİYOR — sadece analiz ve rapor

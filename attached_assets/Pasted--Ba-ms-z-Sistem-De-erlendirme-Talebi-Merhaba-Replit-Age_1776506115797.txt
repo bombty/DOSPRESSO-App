@@ -1,0 +1,125 @@
+📋 Bağımsız Sistem Değerlendirme Talebi
+
+Merhaba Replit Agent,
+
+Aslan IT danışmandan (Claude) sistemin KAPSAMLI ANLAYIŞ RAPORU
+istedi. Rapor hazır: docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md
+Commit: 6599d752
+
+Aslan şimdi SENDEN bağımsız ikinci bir değerlendirme istiyor.
+Senin DB'ye direkt erişimin IT danışmandan daha iyi — gerçek
+veriye bakarak raporun ne kadar doğru olduğunu kontrol etmen
+istenir.
+
+═══════════════════════════════════════════════════════════
+GÖREV (READ-ONLY, hiçbir kod/DB değişikliği YOK)
+═══════════════════════════════════════════════════════════
+
+1. git pull --rebase origin main
+2. cat docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md — raporu TAM OKU
+3. Her bölümü DB gerçeği ile karşılaştır ve raporla
+
+═══════════════════════════════════════════════════════════
+DEĞERLENDİRME KRİTERLERİ (Her biri için ✅/❌/⚠️)
+═══════════════════════════════════════════════════════════
+
+KISIM A — MARKA VE İŞ MODELİ DOĞRULAMASI
+  □ Donut & Coffee Shop tanımı doğru mu? (factory_products'ta
+    DNT-*, CIN-*, CHE-*, BRW-*, COK- ürün prefix'leri var mı?)
+  □ Merkezi üretim modeli (fabrika→şube sevk) gerçek mi?
+    (factory_shipments tablosunda kayıt var mı?)
+  □ Şubede sadece kahve hazırlandığı doğru mu? (SYR/KHV/CAY
+    prefix'li ürünler sadece şubede mi satılır?)
+
+KISIM B — ROL SİSTEMİ DOĞRULAMASI
+  □ 27 rol gerçekten var mı? (SELECT DISTINCT role FROM users)
+  □ Şube kariyer yolu 7 seviye (stajyer→yatirimci_branch) DB'de
+    kullanıcı sayıları makul mü?
+  □ Ölü roller (fabrika_personel, fabrika_sorumlu — 0 kullanıcı) hala 0 mı?
+  □ Gate-0, Gate-1 vs sınav sistemi kodda implement edilmiş mi?
+    (gate_exams, career_gates benzeri tablo var mı?)
+
+KISIM C — AKIŞ DOĞRULAMASI
+  □ Barista günlük akış (check-in → checklist → görev → check-out)
+    gerçek DB verisinde izlenebiliyor mu?
+  □ Fabrika 7-aşama pipeline (plan → çekme → üretim → QC → LOT →
+    sevkiyat → şube stok) gerçek kayıtlarda tamam mı?
+  □ Stajyer 14 günlük onboarding (Gate-0 sınav) gerçekte
+    kullanılıyor mu? (employee_onboarding + gate_exams kayıt sayısı)
+  □ Coach denetim akışı (şablon → rapor → aksiyon → escalation)
+    kullanılıyor mu? (audit_instances + audit_actions kayıt sayısı)
+
+KISIM D — HAZIRLIK YÜZDELERİ DOĞRULAMASI
+  Raporda 12 modül için % verildi (Kiosk 95%, Checklist 85%,
+  Bordro 30%, vs.). Senin DB gerçeğine göre:
+  
+  □ Kiosk 95%: gerçek kiosk check-in kullanım oranı nedir?
+    (son 7 gün pdks_records / shift_attendance kayıt sayısı)
+  □ Checklist 85%: 5,098 tamamlama yüzdesi (kaç şube, kaç rol)
+  □ Fabrika 85%: production_batches kayıt sayısı (1 diyordun)
+  □ Bordro 30%: payroll_records halen 0 mı?
+  □ CRM 40%: crm_* tablosu VAR MI aslında? (varsa isimlendirme)
+  □ Görev 60%: %49 iptal oranı hala doğru mu?
+  □ Akademi 50%: v1/v2/v3 karışıklığı DB'de nasıl görünüyor?
+
+KISIM E — EKSİKLER VE HATALAR DOĞRULAMASI
+  Raporda 17 eksik/hata listesi. Her biri için DB'den teyit:
+  
+  🔴 Kritik (5):
+  □ Bordro 0 kayıt: SELECT COUNT(*) FROM payroll_records
+  □ 3 paralel puantaj: shift_attendance, pdks_excel_records,
+    pdks_records — her biri kayıt sayısı
+  □ 20,327 bildirim spam: bugün archive sonrası sayı ne?
+  □ 14 rol boş dashboard: dashboard_role_widgets'ta kaç rol yok?
+  □ Test yok: package.json'da vitest/jest/playwright var mı?
+  
+  🟡 Önemli (5):
+  □ 2,389 TS error: hala pre-existing mi?
+  □ 170 orphan sayfa: App.tsx'te var, menu_items'ta yok — kaç?
+  □ Akademi v1/v2/v3: academy-*.ts endpoint dosyaları
+  □ CRM tablo yok: gerçekten hiç crm_* tablo YOK mu?
+  □ Schema drift: 469 kod vs DB gerçek (280?) — yeniden say
+
+KISIM F — RAPORDAKİ EKSİKLİKLER
+  IT danışman raporunu yazarken GÖRMEDİĞİ veya YANLİŞ ANLADIĞI
+  şeyler var mı? DB'de olan ama raporda bahsedilmeyen önemli modül?
+  
+  Örnek düşün: 
+  - Müşteri QR feedback sistemi var mı, raporda var mı?
+  - Franchise projelerinin yönetimi (franchiseProjects) rapora
+    girmiş mi?
+  - Banner/duyuru/billboard gibi şubeye basılan materyaller
+    sistemdeki nasıl?
+  - Dobody'nin ajan tipi (17 event type) doğru yansıtılmış mı?
+
+═══════════════════════════════════════════════════════════
+RAPOR FORMATI
+═══════════════════════════════════════════════════════════
+
+Başlık: "Replit 2. Değerlendirme Raporu — 18 Nisan 2026"
+
+Her KISIM için:
+  ✅ Doğru — [DB kanıtı]
+  ❌ Yanlış — [DB gerçeği + Claude'un hatası]
+  ⚠️ Kısmen doğru — [nüans eklenmeli]
+
+Son bölüm: "TESPİT EDİLEN EKSİKLİKLER"
+  Claude'un raporunda bahsetmediği ama senin DB'de gördüğün
+  kritik konular (max 10 madde).
+
+Son bölüm: "GENEL YARGI"
+  Claude'un raporunun güvenilirlik yüzdesi (senin DB gerçeğine
+  göre). %X doğru, %Y eksik/yanlış.
+
+═══════════════════════════════════════════════════════════
+ZAMAN VE KAPSAM
+═══════════════════════════════════════════════════════════
+
+Tahmini süre: 30-45 dakika (sadece DB sorguları + okuma)
+Kod değişikliği: YOK
+Commit: YOK (sadece chat yanıt)
+
+Bu değerlendirme Aslan'ın sistemi tam olarak anlamasına yardımcı
+olacak — IT danışmanın kör noktalarını yakalayacağını düşünüyoruz.
+
+Başla.

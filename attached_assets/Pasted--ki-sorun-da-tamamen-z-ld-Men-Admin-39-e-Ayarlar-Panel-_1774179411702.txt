@@ -1,0 +1,83 @@
+İki sorun da tamamen çözüldü:
+
+**Menü:** ✅ Admin 39 öğe (Ayarlar, Panel, Kullanıcılar), Coach İK var, Profil tüm rollerde
+**Deep link:** ✅ 10 kırık → 0 kırık
+
+Şimdi "lansman öncesi her şey bitsin" hedefiyle kalan iş listesi. Replit'e danışalım — yapıştırın:
+
+---
+
+**"Menü + deep link düzeltmeleri tamam. Şimdi lansman öncesi kalan HER ŞEYİ listele. Hiçbir iş lansman sonrasına bırakılmayacak.**
+
+**Kapsamlı kontrol yap:**
+
+```bash
+echo "══════════════════════════════════════"
+echo "LANSMAN ÖNCESİ KALAN İŞ LİSTESİ"
+echo "══════════════════════════════════════"
+
+echo "=== 1. STUB ENDPOINT'LER ==="
+echo "Kaç stub kaldı?"
+wc -l server/routes/stub-endpoints.ts 2>/dev/null
+grep -c "router\.\(get\|post\|patch\|delete\)" server/routes/stub-endpoints.ts 2>/dev/null
+echo "Her stub ne dönüyor?"
+grep -n "stub\|_stub\|Yakında" server/routes/stub-endpoints.ts | head -15
+
+echo ""
+echo "=== 2. GİZLİ MODÜLLER ==="
+echo "SELECT module_key, flag_behavior, display_name FROM module_flags WHERE flag_behavior != 'always_on' AND deleted_at IS NULL;" | psql
+
+echo ""
+echo "=== 3. BİLİNEN BUG'LAR ==="
+echo "TaskTrigger null branch_id hala var mı?"
+grep -n "branch_id.*null\|branchId.*null\|null.*branch" server/services/task-trigger*.ts server/routes/branch-tasks.ts 2>/dev/null | head -5
+
+echo ""
+echo "=== 4. E2E TEST ==="
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -10
+
+echo ""
+echo "=== 5. QUALITY GATE ==="
+echo "Son quality gate sonucu?"
+
+echo ""
+echo "=== 6. KIRIK SAYFALAR ==="
+echo "Menüde olup 404 dönen sayfa var mı?"
+curl -s http://localhost:5000/api/me/menu -b /tmp/menu_test.txt 2>/dev/null | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+const paths=[];
+d.forEach(s=>{if(s.items)s.items.forEach(i=>{if(i.path)paths.push(i.path)})});
+console.log(paths.length+' menü path\'i bulundu');
+" 2>/dev/null
+
+echo ""
+echo "=== 7. KONSOL HATALARI ==="
+echo "Server başlarken hata var mı?"
+# Son log'dan hata satırları
+
+echo ""
+echo "=== 8. DEPLOYMENT ==="
+echo "Docker çalışır durumda mı?"
+cat Dockerfile | head -5
+echo "SSL/domain planı?"
+
+echo ""
+echo "=== 9. VERİ EKSİKLİĞİ ==="
+echo "Kullanıcı boş ekran görecek mi?"
+for tbl in branches users shifts tasks training_modules knowledge_base_articles notifications equipment factory_stations; do
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: $count"
+done
+
+echo ""
+echo "=== 10. SENİN GÖZÜNDE ==="
+echo "Lansmanı engelleyen KALAN her şeyi listele."
+echo "Küçük büyük, kolay zor — hepsini say."
+echo "Her biri için: ne, nerede, süre tahmini, risk"
+```
+
+**Tam liste ver — değişiklik yapma. Bu liste üzerinden birlikte son sprint'i planlayacağız."**
+
+---
+
+Yapıştırın. Bu Replit'in son "kalan her şey" listesi olacak — ondan sonra son sprint'i birlikte yazacağız.

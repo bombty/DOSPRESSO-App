@@ -1,0 +1,77 @@
+Please provide a comprehensive audit for DOSPRESSO module architecture planning.
+I need to understand every module, its usage, and toggle potential.
+
+## 1. ALL MODULES & PAGES INVENTORY
+
+List every major module with:
+- Module name
+- Main pages (file paths)
+- Who uses it (which roles)
+- Database tables it uses
+- Current status (fully working / partial / broken)
+
+Categories to cover:
+a) Branch modules (used by mudur/supervisor/barista)
+b) HQ modules (used by HQ dept roles)
+c) Factory modules (used by fabrika roles)
+d) Shared modules (used by multiple role groups)
+e) Admin/system modules
+
+## 2. CURRENT PERMISSION SYSTEM
+
+grep -n "PERMISSIONS\|moduleKey\|module_key" shared/schema.ts | head -40
+
+How does the current permission system work?
+- What modules are defined?
+- How granular is it? (read/write/delete?)
+- Is it role-based or user-based?
+
+## 3. FEATURE FLAG POTENTIAL
+
+For each module, answer:
+- Can it be disabled without breaking other modules?
+- Does any other module depend on it?
+- Is it branch-specific or global?
+
+## 4. DATABASE DEPENDENCIES
+
+Which modules share tables?
+Which modules are completely independent?
+
+Example:
+- Checklist → checklist_completions, checklist_templates
+- CRM → support_tickets, ticket_attachments, sla_rules
+- Academy → user_progress, quiz_attempts, badges
+
+## 5. CURRENT USAGE DATA
+
+SELECT 
+  (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) as total_users,
+  (SELECT COUNT(*) FROM branches WHERE deleted_at IS NULL) as total_branches,
+  (SELECT COUNT(*) FROM checklist_completions) as checklist_completions,
+  (SELECT COUNT(*) FROM support_tickets WHERE is_deleted = false) as crm_tickets,
+  (SELECT COUNT(*) FROM user_training_progress) as academy_progress,
+  (SELECT COUNT(*) FROM factory_production_runs) as factory_runs,
+  (SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL) as tasks;
+
+## 6. NAVIGATION STRUCTURE
+
+For each role group, what modules appear in:
+- NavRail (desktop)
+- Bottom nav (mobile)
+- Dashboard module cards
+
+grep -n "items:" client/src/lib/navigation-config.ts
+
+## 7. INTER-MODULE DEPENDENCIES
+
+Does CRM depend on HR? Does Academy depend on anything?
+List any cross-module data dependencies.
+
+## 8. ADMIN PANEL CURRENT MODULES
+
+What's currently in the admin panel?
+ls client/src/pages/admin/
+grep -n "tab\|Tab\|label" client/src/pages/admin/index.tsx | head -30
+
+Report everything in structured format.

@@ -1,0 +1,108 @@
+Yeni kapsam: Gıda mühendisi / reçete / hammadde / besin değeri / alerjen / etiket / ara depo / üretim kontrol sistemi.
+
+Önce sadece READ-ONLY analiz yap. Kod değiştirme, DB yazma, migration oluşturma. Mevcut schema, route ve frontend modüllerini incele; sonra uygulanabilir data model + task planı çıkar.
+
+İş kuralları:
+
+1) Hammadde master sistemi
+- Her hammaddenin sistem içinde tek bir internal kodu olmalı.
+- Tedarikçi ürün kodu, fatura/irsaliye kodu, lot/parti no, SKT, gelen miktar ayrı tutulmalı.
+- Fatura kodu ile ürün kodunu tek ID gibi kullanma; izlenebilirlik için master_code + supplier_code + lot_code ayrı kalmalı.
+- FIFO/FEFO uygulanmalı: SKT olan ürünlerde önce FEFO, aynı SKT varsa FIFO.
+- Ara depoya çekilen hammadde yeni bir ürün gibi değil, mevcut lot’un production/staging lokasyonuna transferi olarak takip edilmeli.
+- Ara depo çıkışı için ayrı transfer/issue document code üretilebilir.
+
+2) Besin değeri ve alerjen sistemi
+- Besin değeri kaynağı önceliği:
+  1. Tedarikçi teknik spesifikasyonu / ürün etiketi
+  2. Gıda mühendisi manuel onayı
+  3. TürKomp / ulusal veri kaynağı
+  4. Yönetmelik gereği besin bildirimi muaf ürün sınıfı
+- Besin değeri olmayan veya bildirim gerekmeyen ürünler için “nutrition_required=false” veya benzeri bir sınıflandırma olmalı.
+- Aroma vericiler, gıda katkı maddeleri, işlem yardımcıları, gıda enzimleri, maya, sakızlar, jelatin/jelleştirme karışımları gibi ürünler için Gıda Etiketleme ve Tüketicileri Bilgilendirme Yönetmeliği EK-14 mantığına uygun exemption/approval akışı düşün.
+- Gıda mühendisi onayı olmadan etiket final durumuna geçmemeli.
+
+3) Katkı maddesi fonksiyonel sınıfı
+- Fonksiyonel sınıf hammaddeye tek başına sabit yazılmamalı.
+- Aynı madde farklı ürün/reçete kategorisinde farklı fonksiyonel sınıfa sahip olabilir.
+- Örnek: Ascorbic Acid E300 donut reçetesinde un işlem maddesi gibi çalışabilir; şuruplarda antioksidan fonksiyonel sınıfında olabilir.
+- Bu yüzden recipe_ingredient_usage veya benzeri seviyede usage_purpose / functional_class / legal_reference / approved_by / approved_at alanları olmalı.
+- Türk Gıda Kodeksi Gıda Katkı Maddeleri Yönetmeliği EK-I fonksiyonel sınıfları referans alınmalı.
+
+4) Reçete → etiket bağlantısı
+- Reçetede kullanılan hammaddelerden otomatik:
+  - içerik listesi
+  - alerjen listesi
+  - katkı maddesi fonksiyonel sınıfı
+  - besin değeri tablosu
+  - etiket taslağı
+oluşmalı.
+- Etiket “taslak / gıda mühendisi onayında / onaylı / revize gerekli” statülerine sahip olmalı.
+- Reçete versiyonu değişirse etiket yeniden onaya düşmeli.
+
+5) Üretime Sevk ve Ara Depo Formu entegrasyonu
+Ekteki ÜSF-01 Üretime Sevk ve Ara Depo Formu mantığını sisteme modelle:
+- Tarih
+- Hammadde adı
+- Hammadde kodu
+- Depodan çıkış miktarı
+- Verilen bölüm
+- Ara depo kalan miktar
+- Depodan teslim eden ad-soyad
+- Açıklama
+- Ara depodaki ürüne tanımlama etiketi: ürün adı, açılış tarihi, miktar/adet
+- Uygun olmayan/kullanım ömrü dolan ürünler için imha/uygunsuzluk süreci
+
+6) Tartım Kontrol Formu entegrasyonu
+Ekteki TF-02 Tartım Kontrol Formu sisteme üretim batch bazlı kayıt olarak eklenmeli:
+- Tarih
+- Ürün adı
+- İlk tartım / çiğ veya hamur
+- Kızarmış ağırlık
+- Dolgulu ağırlık
+- Kaplanmış ağırlık
+- Son tartım / pişmiş veya süslenmiş
+- Hazırlayan kalite
+- Onaylayan genel müdür
+
+7) Hafif Fırıncılık Proses Kontrol Formu entegrasyonu
+Ekteki UR-FH-FR-01 formunu üretim kontrol kartı olarak modelle:
+- Ürün adı
+- Üretim miktarı
+- Hammadde kodu
+- Un eleme kontrol
+- Yumurta süzme kontrol
+- Hammadde görsel kontrolü
+- Tartım miktarı
+- Mayalama süre/sıcaklık
+- Pişirme sıcaklık/süre
+- Kızartma sıcaklık/süre
+- Kızartma polar madde
+- Ürün merkez sıcaklığı kontrol
+- Süsleme malzemesi görsel kontrol
+- Soğutma ürün sıcaklık kontrol
+- Ani soğutma süre/merkez sıcaklık kontrol
+- Ürün görsel kontrol
+- Ambalaj görsel kontrol
+- Alerjen bilgisi
+- Üretim başlangıcı / öğle sonrası / üretim bitişi kontrolleri:
+  ekipman kontrolü, toz varlığı, metal tozu, açıkta cıvata/somun, kirli yağlı bez, makine yağı, alerjen bulaşma kontrolü
+
+8) Personel özlük Excel import
+- PERSONEL özlük app.xlsx içinde ÇİZERGE, OFİS, İMALATHANE, IŞIKLAR sayfaları var.
+- Bu dosyada maaş, prim, hakediş, doğum tarihi, işe giriş tarihi, kıdem, yıllık izin ve kalan izin bilgileri var.
+- Bu veri kişisel/maaş verisi olduğu için doğrudan DB’ye yazma.
+- Önce güvenli import planı çıkar:
+  Excel yükle → ön izleme → personel eşleştirme → fark/hata göster → admin veya Muhasebe & İK onayı → DB write → audit log.
+- Işıklar, fabrika ve ofis personelleri branch/department bazında eşleşmeli.
+- Kiosk hesapları personel özlük importuna dahil edilmemeli.
+
+İstenen çıktı:
+1. Mevcut sistemde bu alanlardan hangileri zaten var?
+2. Hangi tablolar eksik?
+3. Hangi frontend sayfaları genişletilmeli?
+4. Minimum migration planı ne olmalı?
+5. Hangi işleri ayrı tasklara bölmeliyiz?
+6. Önce yapılması gereken P0/P1 sıralaması ne?
+7. Riskler: KVKK, etiket mevzuatı, yanlış besin değeri, yanlış FIFO/FEFO, audit eksikliği.
+8. Kod değiştirme yok. Sadece rapor ve uygulanabilir task planı.

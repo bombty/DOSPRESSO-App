@@ -1,0 +1,70 @@
+Tamam — Seçenek 1: A4 (seed security) + A2 (recipe↔product mapping) başlıyoruz. Önce A4:​​​​​​​​​​​​​​​​
+
+🎉 İyi haber — seed endpoint’leri zaten requireAdmin middleware ile korunmuş! Ama Replit audit’te “19 seed endpoint prod’da açık” denmişti. Detaylı kontrol:​​​​​​​​​​​​​​​​
+
+Mükemmel — 19 seed endpoint’in hepsi zaten isAuthenticated + requireAdmin ile korunuyor. Replit audit’te “prod’da açık” demek yanıltıcıydı — auth’suz değil, sadece /api/seed/* path pattern’ını gördü.
+Ama ek güvenlik katmanı ekleyebiliriz — production’da tamamen devre dışı bırakan ENV flag. Bu gerçekten risk azaltıyor:​​​​​​​​​​​​​​​​
+
+NODE_ENV zaten var. Şimdi seed.ts’i güçlendiriyorum: production’da tamamen disable + log ekle:​​​​​​​​​​​​​​​​
+
+Şimdi isAuthenticated, requireAdmin pattern’ını ...SEED_GUARDS ile değiştireyim — tek satır hata olmasın diye toplu ama dikkatli:​​​​​​​​​​​​​​​​
+
+1 tane eski pattern kalmış — muhtemelen farklı bir örüntü. Kontrol:​​​​​​​​​​​​​​​​
+
+Kalan isAuthenticated, requireAdmin zaten SEED_GUARDS tanımında — yani tüm 19 endpoint dönüşmüş. Syntax check yapayım:​​​​​​​​​​​​​​​​
+
+Mükemmel, temiz. A4 tamam. Şimdi A2 (Recipe↔Product mapping) hazır script’i zaten commit’li. Kontrol edeyim:​​​​​​​​​​​​​​​​
+
+İki script hazır. Şimdi commit + push:​​​​​​​​​​​​​​​​
+
+Commit ad035b89 push edildi.
+✅ A4 (Seed Security) — TAMAM
+Ne yapıldı:
+	•	3 katmanlı middleware: isAuthenticated → requireAdmin → productionSafeGuard
+	•	Production’da seed endpoint’leri otomatik 403 döner
+	•	Açmak için ENV flag: ALLOW_SEED_IN_PRODUCTION=true (sadece acil durumda)
+	•	Her yetkisiz/engellenen çağrı loglanır (audit trail)
+	•	19 endpoint tek satırda — ...SEED_GUARDS pattern
+📋 Replit Agent İçin Tek Komut (A2 + Fatura Fiyatları + A4 Smoke Test)
+Replit’e gönder:
+
+cd /home/runner/workspace && \
+git pull --rebase && \
+echo "=== 1) Fatura fiyat senkronizasyonu (143 malzeme) ===" && \
+npx tsx server/scripts/update-prices-from-invoices.ts && \
+echo "" && echo "=== 2) Recipe↔Product mapping fix (14 reçete) ===" && \
+npx tsx server/scripts/fix-recipe-product-mapping.ts && \
+echo "" && echo "=== 3) Build check ===" && \
+npx tsc --noEmit && echo "✅ TypeScript build temiz"
+
+
+Beklenen çıktı:
+	1.	~130 malzeme fatura fiyatı güncellendi + inventory_price_history kayıtları
+	2.	14 reçete productId dolu, 9 yeni ürün oluştu (FP-CHE-, FP-BRW-, FP-COK-, FP-EKM-, FP-CIN-*)
+	3.	Build hatası yok
+Ek Replit kontrolü:
+
+-- A4 doğrulaması: bu log mesajlarını görmeli
+-- [SEED-CALL] kayıtları seed çağrılarında
+-- Production'da: [SEED-PROD-BLOCKED] mesajı (beklenen)
+
+
+🎯 Bu Oturum Özeti
+Bugün commit’ler (3 adet):
+
+
+
+|Commit    |Değişiklik                                             |
+|----------|-------------------------------------------------------|
+|`90e5b72a`|Fatura fiyat senkronizasyonu (143 malzeme)             |
+|`9b152384`|8 haftalık yol haritası + Recipe↔Product mapping script|
+|`ad035b89`|**A4 — Seed endpoint production safeguard**            |
+
+📅 Hafta Sonu: İstirahat, Pazartesi Sprint A Devam
+Pazartesi 21 Nisan başlangıç:
+	•	A1: 17 kırık sidebar linki düzelt (audit script ile tam liste, sonra düzeltme)
+	•	A3: Equipment enum TR→EN migration
+	•	A5: Stub endpoint temizlik
+	•	A6: Notification aggregation
+Sen Replit’e yukarıdaki komutu gönder, sonuçları gördüğünde “script başarılı” dersin ve Pazartesi devam ederiz.
+Başka eklemek istediğin bir şey var mı bu oturumda, yoksa iyi bir hafta sonu mu dileyeyim?​​​​​​​​​​​​​​​​

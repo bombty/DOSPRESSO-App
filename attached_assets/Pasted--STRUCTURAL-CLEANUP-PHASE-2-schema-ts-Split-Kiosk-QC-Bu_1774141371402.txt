@@ -1,0 +1,524 @@
+## STRUCTURAL CLEANUP PHASE 2 — schema.ts Split + Kiosk QC + Bug Fixes
+
+### Context
+misc.ts split completed successfully (13K → 1.3K, 42 files). TypeScript :any reduced by 91%.
+This sprint completes the remaining 3 structural items:
+1. schema.ts split (15,708 lines → barrel re-export)
+2. Kiosk QC mode (add QC screens to factory kiosk)
+3. Fix 2 pre-existing bugs found during cleanup
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Do NOT change business logic
+- INCREMENTAL: one schema group at a time, test after each
+- Use AuthUser type (server/types/auth.ts)
+- Use catch (error: unknown) pattern (already cleaned)
+- Turkish UI
+
+---
+
+## TASK 1: FIX PRE-EXISTING BUGS (quick wins)
+
+### Bug 1: /api/certificates/settings — NaN integer parse
+
+```bash
+echo "--- Find the bug ---"
+grep -n "certificates.*settings\|parseInt\|Number(" server/routes/certificate-routes.ts | head -10
+# The error: "invalid input syntax for type integer: NaN"
+# Likely: parseInt(undefined) = NaN being passed to DB query
+```
+
+Fix: Add validation before DB query:
+```typescript
+const id = parseInt(req.params.id);
+if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+```
+
+### Bug 2: /api/hq-support/tickets — missing table
+
+```bash
+echo "--- Check table ---"
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%hq_support%';" | psql
+echo "--- Check route ---"
+grep -n "hq_support_category" server/routes/hq-support-routes.ts | head -5
+```
+
+If table doesn't exist:
+- Option A: Create the missing migration (if feature is needed)
+- Option B: Return empty array with _stub flag (if feature not ready)
+
+Choose the simpler option. If the feature isn't needed for launch, use Option B.
+
+---
+
+## TASK 2: SPLIT schema.ts (15,708 lines)
+
+### Step 0: Analyze
+
+```bash
+echo "═══ schema.ts ANALYSIS ═══"
+wc -l shared/schema.ts
+grep -c "pgTable\b" shared/schema.ts
+grep -c "^export " shared/schema.ts
+
+# Find natural groupings by table prefix
+grep -oP 'export const (\w+)\s*=' shared/schema.ts | sed 's/export const //' | sed 's/ =//' | head -50
+
+# Check what imports schema
+grep -rn "from.*shared/schema\|from.*@shared/schema" server/routes/*.ts | head -5
+grep -rn "from.*shared/schema" client/src/ --include="*.ts" --include="*.tsx" | head -5
+
+# Check import path format
+grep -oP "from ['\"].*schema['\"]" server/routes/factory.ts | head -3
+```
+
+### Step 1: Create directory + start with SMALLEST group
+
+```bash
+mkdir -p shared/schema
+```
+
+**Extract settings tables first (safest, fewest cross-references):**
+
+```bash
+grep -n "export const moduleFlags\|export const aiSystemConfig\|export const slaRules\|export const systemSettings\|export const auditLogs" shared/schema.ts | head -10
+```
+
+1. Copy those table definitions + their relations + their Zod schemas to `shared/schema/settings.ts`
+2. Add imports at top of new file (pgTable, varchar, etc.)
+3. Add to schema.ts: `export * from './schema/settings';`
+4. Remove copied definitions from schema.ts
+5. Test: app starts
+
+### Step 2: Extract factory group
+
+```bash
+grep -n "export const factory\|export const productionLots\|export const qcInspections\|export const qcAssignments" shared/schema.ts | head -15
+```
+
+Move to `shared/schema/factory.ts`. Handle cross-references:
+- If factory tables reference `users` → `import { users } from './users';` 
+- BUT users.ts doesn't exist yet → use forward reference or keep FK as raw column
+
+**Strategy for cross-references:**
+```typescript
+// In factory.ts, DON'T import users (circular risk)
+// Instead, just define the column without .references():
+producerUserId: varchar("producer_user_id", { length: 36 }),
+// The DB constraint already exists — Drizzle just needs the column definition
+// Relations can stay in a separate relations file or in schema.ts
+```
+
+### Step 3-12: Continue extraction order
+
+Extract in this order (safest → most cross-referenced):
+
+| Order | Group | File | Estimated Lines |
+|-------|-------|------|----------------|
+| 1 | Settings | settings.ts | ~300 |
+| 2 | Factory + QC | factory.ts | ~600 |
+| 3 | Training + Academy | training.ts | ~400 |
+| 4 | Messaging + Notifications | messaging.ts | ~500 |
+| 5 | Tasks + Checklists | tasks.ts | ~500 |
+| 6 | CRM + Orders | crm.ts | ~400 |
+| 7 | Agent + Skills | agent.ts | ~400 |
+| 8 | Shifts + Schedules | shifts.ts | ~400 |
+| 9 | PDKS + Attendance | pdks.ts | ~300 |
+| 10 | Payroll + Salary | payroll.ts | ~500 |
+| 11 | HR + Documents + Disciplinary | hr.ts | ~400 |
+| 12 | Branches | branches.ts | ~400 |
+| LAST | Users + Roles + Sessions | users.ts | ~600 |
+
+Users LAST because everything references it.
+
+**After EACH extraction:**
+```bash
+# Quick test
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/health
+# Should be 200
+```
+
+### Step 13: Handle relations
+
+If Drizzle `relations()` cause circular dependency issues:
+- Keep ALL `relations()` definitions in a single `shared/schema/relations.ts`
+- Or keep them in schema.ts itself (now just re-exports + relations)
+
+### Step 14: Final state
+
+```bash
+echo "--- schema.ts final ---"
+wc -l shared/schema.ts  # Should be mostly re-exports
+
+echo "--- Schema files ---"
+for f in shared/schema/*.ts; do
+  echo "$(wc -l < $f) lines — $(basename $f)"
+done
+
+echo "--- Total ---"
+wc -l shared/schema/*.ts | tail -1
+
+echo "--- All imports work? ---"
+grep "from.*shared/schema" server/routes/factory.ts | head -3
+# Should still resolve
+```
+
+---
+
+## TASK 3: KIOSK QC MODE
+
+### Step 0: Investigate current kiosk
+
+```bash
+echo "═══ KIOSK QC INVESTIGATION ═══"
+wc -l client/src/pages/fabrika/kiosk.tsx
+
+echo "--- Step types ---"
+grep -n "type.*Step\|'select-user'\|'enter-pin'\|'worker-home'" client/src/pages/fabrika/kiosk.tsx | head -15
+
+echo "--- How steps render ---"
+grep -n "step ===\|currentStep ===\|screen ===" client/src/pages/fabrika/kiosk.tsx | head -20
+
+echo "--- Right sidebar content ---"
+grep -n "sidebar\|right.*panel\|istasyon\|station\|Mr.*Dobody" client/src/pages/fabrika/kiosk.tsx | head -10
+
+echo "--- QC assignment API ---"
+grep -n "qc.*assignment\|current-assignment\|quality.*assignment" server/routes/factory.ts | head -5
+
+echo "--- QC pending API ---"
+grep -n "qc.*pending\|quality.*pending" server/routes/factory.ts | head -5
+
+echo "--- QC inspection POST ---"
+grep -n "POST.*qc.*inspection\|POST.*quality.*check" server/routes/factory.ts | head -5
+
+echo "--- How kioskFetch works ---"
+grep -n "kioskFetch\|function.*kiosk.*fetch" client/src/pages/fabrika/kiosk.tsx | head -5
+```
+
+### Step 1: Add QC step types
+
+Find the step/screen type union and add:
+```typescript
+// Add to existing type:
+| 'qc-pending' | 'qc-inspect' | 'qc-result'
+```
+
+### Step 2: Add QC state variables
+
+```typescript
+const [qcMode, setQcMode] = useState(false);
+const [selectedLot, setSelectedLot] = useState<any>(null);
+const [qcChecks, setQcChecks] = useState({
+  visualCheck: 'na' as 'passed' | 'failed' | 'na',
+  weightCheck: 'na' as 'passed' | 'failed' | 'na',
+  packagingCheck: 'na' as 'passed' | 'failed' | 'na',
+  temperatureCheck: 'na' as 'passed' | 'failed' | 'na',
+  temperatureValue: '',
+  allergenCheck: false,
+  haccpCompliant: false,
+  inspectorNotes: '',
+});
+```
+
+### Step 3: QC button on select-user screen
+
+In the right sidebar, after stations section:
+
+```typescript
+// Fetch QC assignment
+const qcAssignment = useQuery({
+  queryKey: ['/api/factory/qc/current-assignment'],
+  refetchInterval: 300000,
+});
+
+// Render (only if assignment exists)
+{qcAssignment.data && (
+  <button
+    onClick={() => {
+      setQcMode(true);
+      // Navigate to PIN entry for QC person
+      setStep('enter-pin');
+    }}
+    className="w-full p-3 mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm font-medium text-center"
+  >
+    QC Kontrol: {qcAssignment.data.assigneeName || 'Atanmış'}
+  </button>
+)}
+```
+
+### Step 4: QC mode PIN handling
+
+In the PIN verification logic, add QC path:
+```typescript
+// After PIN is verified:
+if (qcMode) {
+  // QC person logged in → go to pending list
+  setStep('qc-pending');
+} else {
+  // Normal worker → go to worker home
+  setStep('worker-home');
+}
+```
+
+### Step 5: qc-pending screen
+
+```typescript
+{step === 'qc-pending' && (
+  <div className="fixed inset-0 bg-slate-900 flex flex-col">
+    {/* Header */}
+    <div className="flex-shrink-0 p-4 border-b border-slate-700 flex items-center justify-between">
+      <h2 className="text-lg font-bold text-white">Kalite Kontrol — Bekleyen Lotlar</h2>
+      <button onClick={() => { setQcMode(false); resetWorker(); }} 
+        className="px-3 py-1 text-sm bg-slate-700 rounded-lg text-slate-300">
+        Çıkış
+      </button>
+    </div>
+    
+    {/* Pending lots list */}
+    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {pendingLots?.map(lot => (
+        <button key={lot.id}
+          onClick={() => { setSelectedLot(lot); setStep('qc-inspect'); }}
+          className="w-full p-4 bg-slate-800 rounded-xl border border-slate-700 text-left hover:border-amber-500/50 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-amber-400 font-mono font-bold">{lot.lotNumber}</span>
+            <span className="text-xs text-slate-400">{formatTimeAgo(lot.createdAt)}</span>
+          </div>
+          <p className="text-white font-medium">{lot.productName}</p>
+          <p className="text-sm text-slate-400">Üreten: {lot.producerName} — {lot.quantity} adet</p>
+        </button>
+      ))}
+      
+      {(!pendingLots || pendingLots.length === 0) && (
+        <div className="text-center text-slate-400 py-12">
+          <p className="text-lg mb-2">Bekleyen lot yok</p>
+          <p className="text-sm">Tüm üretimler kontrol edilmiş</p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+```
+
+### Step 6: qc-inspect screen
+
+```typescript
+{step === 'qc-inspect' && selectedLot && (
+  <div className="fixed inset-0 bg-slate-900 flex flex-col">
+    {/* Header — lot info */}
+    <div className="flex-shrink-0 p-4 border-b border-slate-700">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setStep('qc-pending')} className="text-slate-400 text-sm">← Geri</button>
+        <span className="text-amber-400 font-mono font-bold">{selectedLot.lotNumber}</span>
+      </div>
+      <p className="text-white font-medium mt-1">{selectedLot.productName}</p>
+      <p className="text-sm text-slate-400">{selectedLot.producerName} — {selectedLot.quantity} adet</p>
+    </div>
+    
+    {/* Check toggles — large touch targets */}
+    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Each check: label + 3 buttons (passed/failed/na) */}
+      {['visual', 'weight', 'packaging', 'temperature'].map(check => (
+        <div key={check} className="flex items-center justify-between p-3 bg-slate-800 rounded-xl">
+          <span className="text-white font-medium text-sm">
+            {check === 'visual' ? 'Görsel Kontrol' : 
+             check === 'weight' ? 'Ağırlık Kontrol' :
+             check === 'packaging' ? 'Ambalaj Kontrol' : 'Sıcaklık Kontrol'}
+          </span>
+          <div className="flex gap-2">
+            <button onClick={() => setQcChecks(prev => ({...prev, [`${check}Check`]: 'passed'}))}
+              className={`w-12 h-12 rounded-lg text-lg font-bold ${
+                qcChecks[`${check}Check`] === 'passed' ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-400'
+              }`}>✓</button>
+            <button onClick={() => setQcChecks(prev => ({...prev, [`${check}Check`]: 'failed'}))}
+              className={`w-12 h-12 rounded-lg text-lg font-bold ${
+                qcChecks[`${check}Check`] === 'failed' ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-400'
+              }`}>✗</button>
+          </div>
+        </div>
+      ))}
+      
+      {/* Temperature value input (if temperature check is passed/failed) */}
+      {qcChecks.temperatureCheck !== 'na' && (
+        <div className="p-3 bg-slate-800 rounded-xl">
+          <label className="text-sm text-slate-400 mb-1 block">Sıcaklık Değeri (°C)</label>
+          <input type="number" step="0.1" value={qcChecks.temperatureValue}
+            onChange={e => setQcChecks(prev => ({...prev, temperatureValue: e.target.value}))}
+            className="w-full p-3 bg-slate-700 rounded-lg text-white text-lg" placeholder="Örn: 4.2" />
+        </div>
+      )}
+      
+      {/* Allergen + HACCP toggles */}
+      <div className="flex items-center justify-between p-3 bg-slate-800 rounded-xl">
+        <span className="text-white font-medium text-sm">Allerjen Kontrolü</span>
+        <button onClick={() => setQcChecks(prev => ({...prev, allergenCheck: !prev.allergenCheck}))}
+          className={`w-12 h-12 rounded-lg text-lg font-bold ${
+            qcChecks.allergenCheck ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-400'
+          }`}>{qcChecks.allergenCheck ? '✓' : '—'}</button>
+      </div>
+      
+      <div className="flex items-center justify-between p-3 bg-slate-800 rounded-xl">
+        <span className="text-white font-medium text-sm">HACCP Uygunluk</span>
+        <button onClick={() => setQcChecks(prev => ({...prev, haccpCompliant: !prev.haccpCompliant}))}
+          className={`w-12 h-12 rounded-lg text-lg font-bold ${
+            qcChecks.haccpCompliant ? 'bg-green-600 text-white' : 'bg-slate-700 text-slate-400'
+          }`}>{qcChecks.haccpCompliant ? '✓' : '—'}</button>
+      </div>
+      
+      {/* Notes */}
+      <div className="p-3 bg-slate-800 rounded-xl">
+        <label className="text-sm text-slate-400 mb-1 block">Notlar</label>
+        <textarea value={qcChecks.inspectorNotes}
+          onChange={e => setQcChecks(prev => ({...prev, inspectorNotes: e.target.value}))}
+          className="w-full p-3 bg-slate-700 rounded-lg text-white text-sm h-20 resize-none"
+          placeholder="İsteğe bağlı not..." />
+      </div>
+    </div>
+    
+    {/* Action buttons — large, full width */}
+    <div className="flex-shrink-0 p-4 space-y-2 border-t border-slate-700">
+      <button onClick={() => submitQCInspection('approved')}
+        className="w-full py-4 bg-green-600 rounded-xl text-white font-bold text-lg">
+        ONAYLA
+      </button>
+      <button onClick={() => submitQCInspection('conditional')}
+        className="w-full py-4 bg-amber-600 rounded-xl text-white font-bold text-lg">
+        KOŞULLU ONAYLA
+      </button>
+      <button onClick={() => submitQCInspection('rejected')}
+        className="w-full py-4 bg-red-600 rounded-xl text-white font-bold text-lg">
+        REDDET
+      </button>
+    </div>
+  </div>
+)}
+```
+
+### Step 7: Submit QC inspection
+
+```typescript
+async function submitQCInspection(overallResult: 'approved' | 'conditional' | 'rejected') {
+  try {
+    await kioskFetch('/api/factory/qc/inspections', {
+      method: 'POST',
+      body: JSON.stringify({
+        lotId: selectedLot.id,
+        ...qcChecks,
+        temperatureValue: qcChecks.temperatureValue ? parseFloat(qcChecks.temperatureValue) : null,
+        overallResult,
+      }),
+    });
+    
+    setStep('qc-result');
+    setQcResult(overallResult);
+  } catch (err) {
+    console.error("[QC] Inspection submit failed:", err);
+    // Show error toast
+  }
+}
+```
+
+### Step 8: qc-result screen
+
+```typescript
+{step === 'qc-result' && (
+  <div className="fixed inset-0 bg-slate-900 flex items-center justify-center">
+    <div className="text-center p-8">
+      <div className={`w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl ${
+        qcResult === 'approved' ? 'bg-green-600' : qcResult === 'conditional' ? 'bg-amber-600' : 'bg-red-600'
+      }`}>
+        {qcResult === 'approved' ? '✓' : qcResult === 'conditional' ? '!' : '✗'}
+      </div>
+      <p className="text-white text-xl font-bold mb-1">
+        {selectedLot?.lotNumber}
+      </p>
+      <p className={`text-lg mb-8 ${
+        qcResult === 'approved' ? 'text-green-400' : qcResult === 'conditional' ? 'text-amber-400' : 'text-red-400'
+      }`}>
+        {qcResult === 'approved' ? 'Onaylandı' : qcResult === 'conditional' ? 'Koşullu Onay' : 'Reddedildi'}
+      </p>
+      
+      <div className="space-y-3">
+        <button onClick={() => { 
+          setSelectedLot(null); 
+          resetQcChecks();
+          setStep('qc-pending'); 
+        }} className="w-64 py-3 bg-slate-700 rounded-xl text-white font-medium">
+          Başka Lot Kontrol Et
+        </button>
+        <button onClick={() => { 
+          setQcMode(false); 
+          resetWorker(); 
+        }} className="w-64 py-3 bg-slate-800 rounded-xl text-slate-300">
+          Çıkış
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+```
+
+### Step 9: Reset helper
+
+```typescript
+function resetQcChecks() {
+  setQcChecks({
+    visualCheck: 'na', weightCheck: 'na', packagingCheck: 'na', temperatureCheck: 'na',
+    temperatureValue: '', allergenCheck: false, haccpCompliant: false, inspectorNotes: '',
+  });
+}
+```
+
+### Step 10: Add to resetWorker
+
+In the existing resetWorker function, add:
+```typescript
+setQcMode(false);
+setSelectedLot(null);
+resetQcChecks();
+```
+
+---
+
+## DO NOT TOUCH:
+- localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Existing kiosk screens (production, shift, break — only ADD QC)
+- Scoring services
+- Recently split route files (they're working)
+- helpers.ts (already extracted)
+
+## Testing:
+
+### Bug fixes:
+1. GET /api/certificates/settings → no more NaN error (400 for invalid ID)
+2. GET /api/hq-support/tickets → returns [] or proper error (not 500 crash)
+
+### schema.ts:
+3. shared/schema/ directory created with 10+ files
+4. schema.ts is mostly re-exports (< 500 lines)
+5. All existing imports still work
+6. App starts without TypeScript errors
+7. DB queries work (test: GET /api/branches)
+
+### Kiosk QC:
+8. Select-user screen: QC button visible (when assignment exists)
+9. QC person enters PIN → goes to qc-pending (not worker-home)
+10. Pending list shows lots with status='pending'
+11. Click lot → inspection form with toggles
+12. Submit → lot status updated in DB
+13. Result screen shows correct status
+14. "Başka Lot" → back to pending list
+15. "Çıkış" → back to select-user
+16. Normal kiosk flow NOT broken (production, shift, break still work)
+17. 30s inactivity timer still works in QC mode
+
+## After:
+1. Report: bug fixes (what was wrong, how fixed)
+2. Report: schema.ts before/after line count, files created
+3. Report: circular dependency issues? how resolved?
+4. Report: kiosk QC — screens implemented, flow tested
+5. Report: any issues encountered

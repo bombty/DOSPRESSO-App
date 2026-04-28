@@ -1,0 +1,66 @@
+Haklısınız — aynı sorunlar şube kiosk'ta da var. Promptu her iki kiosk'u kapsayacak şekilde güncelleyelim.
+
+🔧 **MOD: Power**
+
+```
+IMPORTANT: Apply ALL 3 fixes to BOTH kiosk files:
+- client/src/pages/fabrika/kiosk.tsx (factory kiosk)
+- client/src/pages/sube/kiosk.tsx (branch kiosk)
+
+The fixes are identical in concept for both files.
+
+## FIX 1 — Exit Button Security (BOTH kiosks)
+
+In BOTH kiosk files, find any button that navigates away from the kiosk page:
+grep -n "navigate\|setLocation\|window.location\|href" client/src/pages/fabrika/kiosk.tsx
+grep -n "navigate\|setLocation\|window.location\|href" client/src/pages/sube/kiosk.tsx
+
+ANY navigation away from kiosk must be replaced with resetKiosk() 
+(back to device-password screen). No button in kiosk should ever go to 
+a management page.
+
+Also update KioskGuard in App.tsx to redirect kiosk-role users 
+(fabrika_operator, fabrika_personel, sube_kiosk) back to their kiosk 
+if they somehow reach a non-kiosk URL.
+
+## FIX 2 — Two-Level Reset (BOTH kiosks)
+
+In BOTH kiosk files, split reset into:
+
+resetWorker() → staff selection screen (device stays authenticated)
+resetKiosk()  → device password screen (full reset)
+
+Worker logout/end-shift/auto-logout → resetWorker()
+"Kiosk'tan Çık" explicit exit → resetKiosk()
+
+Add deviceAuthenticated state to BOTH kiosk files.
+
+## FIX 3 — Production/Shift Plan (factory kiosk only)
+
+Only fabrika/kiosk.tsx needs production plan.
+Branch kiosk already has checklist/task info.
+
+Check if branch kiosk shows today's tasks/checklists:
+grep -n "checklist\|task\|görev\|plan" client/src/pages/sube/kiosk.tsx | head -10
+
+If branch kiosk doesn't show today's tasks, add similar read-only display.
+
+## Verification
+
+Factory kiosk (fabrika/kiosk.tsx):
+- [ ] Exit button → device-password (NOT dashboard)
+- [ ] Worker logout → select-user (device-password NOT shown again)
+- [ ] KioskGuard blocks navigation to management pages
+- [ ] Today's production plan visible (read-only)
+
+Branch kiosk (sube/kiosk.tsx):
+- [ ] Exit button → device-password (NOT any management page)
+- [ ] Worker logout → select-user (device-password NOT shown again)
+- [ ] KioskGuard blocks navigation to management pages
+
+General:
+- [ ] TypeScript has no new errors
+- [ ] App starts without errors
+```
+
+Gönderin — fabrika ve şube kiosk aynı anda düzelecek.

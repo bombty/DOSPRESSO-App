@@ -1,0 +1,160 @@
+Mükemmel işbirliği — Replit'in önerileri çok mantıklı. Paralel çalışma önerisi de doğru. Şimdi Sıra 1 + 2'yi tek prompt'a yazıyorum — ama bu sefer farklı:
+
+**Yeni prompt stratejim:**
+- Exact kod snippet YOK — hedef + kural veriyorum
+- Replit kendi investigation'ını yapıp adapte edecek
+- Çelişki bulursa ÖNCE rapor verecek
+
+Replit'e yapıştırın:
+
+---
+
+**"Planı birlikte onayladık. Sıra 1 (E2E test) ve Sıra 2 (stub implementasyon) paralel başlıyoruz — farklı dosyaları etkiliyor, çakışma riski düşük.**
+
+## PARALEL GÖREV A: E2E Test Altyapısı
+
+### Hedef
+Kritik iş akışlarını otomatik test eden bir script oluştur. Her deploy öncesi çalıştırılabilir olmalı. Test framework tercihi sana ait — Playwright, basit curl script, veya Node.js fetch tabanlı — hangisi bu projeye en uygunsa onu seç.
+
+### Öncelik sırasına göre test edilecek akışlar:
+
+**1. Login + auth akışı**
+- Admin login → session cookie alır → /api/auth/user 200 döner → doğru rol
+- Yanlış şifre → 401
+- Session olmadan korumalı endpoint → 401
+- Rate limit: 10+ başarısız deneme → lockout
+
+**2. Kiosk giriş + shift start/end**
+- Kiosk token ile giriş
+- Shift başlatma → aktif shift var
+- Shift bitirme → shift kapandı
+- Çift shift engeli (aynı anda 2 shift açılamaz)
+
+**3. Kiosk QC inspection (yeni — hiç test edilmedi)**
+- /api/factory/qc/pending-outputs → bekleyen çıktıları listeler
+- /api/factory/qc/inspections POST → inspection kaydı oluşturur
+- Inspection sonrası üretim çıktısının qualityStatus güncellenmiş mi?
+- /api/factory/qc/assignments/check → atama kontrolü çalışıyor mu?
+
+**4. Payroll calculation (para — hata affetmez)**
+- /api/payroll/calculate-detailed → brüt 33.030 TL için hesaplama
+- SGK %14, damga vergisi %0.759 (÷100000 ile decode)
+- Net maaş makul aralıkta mı? (brüt'ün %65-80'i arası)
+- Negatif değer gönderince → 400 validation hatası
+
+**5. Branch task CRUD**
+- Task oluştur → ID döner
+- Task listele → oluşturulan task listede
+- Task güncelle → değişiklik yansıdı
+- Task sil → artık listede yok
+
+**6. Smoke test (top 10 GET endpoint)**
+- /api/health → 200
+- /api/auth/user (session ile) → 200 + kullanıcı verisi
+- /api/branches → 200 + array
+- /api/factory/stations → 200
+- /api/factory/qc/stats → 200
+- /api/hr/ik-dashboard → 200
+- /api/module-flags → 200
+- /api/notifications → 200
+- /api/shifts (branch filtreli) → 200
+- /api/me/menu → 200 + role-filtered items
+
+### Çıktı:
+- Test script dosyası (çalıştırılabilir: `npx tsx server/scripts/e2e-tests.ts` veya benzeri)
+- Her test: PASS / FAIL / SKIP + detay
+- Özet: X/Y geçti, Z başarısız
+- Başarısız testlerin hata mesajı
+
+### Kurallar:
+- Test sadece OKUR ve DOĞRULAR — production verisini silmesin
+- Test verisi oluşturuyorsa, sonra temizlesin (cleanup)
+- Mevcut admin/utku kullanıcısını kullanabilir
+- Testler birbirinden bağımsız çalışabilmeli
+
+---
+
+## PARALEL GÖREV B: Top 5 Stub → Gerçek İmplementasyon
+
+### Hedef
+En çok kullanıcı etkisi olan 5 stub endpoint'i gerçek implementasyona çevir. Her biri için: mevcut DB verisi var mı kontrol et, varsa kullan, yoksa temel CRUD oluştur.
+
+### Önce mevcut stub'ları incele:
+
+```bash
+echo "=== Stub endpoints listesi ==="
+grep -n "router\.\(get\|post\|patch\|delete\)" server/routes/stub-endpoints.ts | head -40
+
+echo "=== Hangi tablolar zaten var? ==="
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%payroll_param%' OR table_name LIKE '%academy%' OR table_name LIKE '%achievement%' OR table_name LIKE '%streak%' OR table_name LIKE '%knowledge%' OR table_name LIKE '%coaching%' OR table_name LIKE '%franchise_perf%';" | psql
+
+echo "=== Bu tablolarda veri var mı? ==="
+for tbl in payroll_parameters academy_achievements knowledge_base_articles coaching_sessions franchise_performance; do
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: ${count:-'tablo yok'}"
+done
+```
+
+### 5 Stub (senin önerdiğin sırayla):
+
+**1. Payroll parameters**
+- Stub: /api/payroll/parameters → boş dönüyor
+- Gerçek: payroll_parameters tablosu ZATEN VAR ve 2026 verisi aktif
+- İş: Stub'ı kaldır, gerçek DB sorgusuyla değiştir
+- Dikkat: Mevcut payroll.ts'de zaten çalışan endpoint olabilir — çakışma kontrolü yap
+
+**2. Academy achievements/streaks**
+- İncele: achievement veya streak tablosu var mı?
+- Varsa: CRUD endpoint'leri oluştur
+- Yoksa: Temel tablo oluştur + basit endpoint (kullanıcının tamamladığı modül sayısı, streak günleri)
+- Frontend'de nerede kullanılıyor kontrol et
+
+**3. Knowledge base**
+- İncele: knowledge_base veya articles tablosu var mı?
+- Varsa: Liste + arama + detay endpoint'leri
+- Yoksa: Basit articles tablosu + CRUD
+- Tüm roller erişebilmeli
+
+**4. Coaching sessions**
+- İncele: coaching tablosu var mı?
+- Varsa: Liste + oluştur + güncelle
+- Yoksa: coaching_sessions tablosu + coach-trainee eşleştirmesi
+- Roller: coach, trainer, supervisor
+
+**5. Franchise performance**
+- İncele: franchise ilgili performance tablosu var mı?
+- Varsa: Branch bazlı performans metrikleri endpoint'i
+- Yoksa: branch_health verilerinden türetilebilir — ayrı tablo gerekmeyebilir
+- Roller: yatirimci_branch, ceo, cgo
+
+### Her stub için süreç:
+1. Mevcut stub kodunu oku — ne dönüyor?
+2. İlgili tablo var mı kontrol et
+3. Tablo + veri varsa → stub'ı gerçek sorguyla değiştir
+4. Tablo yoksa → oluştur (mümkünse mevcut veriden türet)
+5. Frontend'de bu endpoint nerede çağrılıyor kontrol et
+6. Test: endpoint gerçek veri dönüyor mu?
+
+### Kurallar:
+- Stub endpoint'i silmek yerine, AYNI URL'de gerçek implementasyonla DEĞİŞTİR
+- Mevcut route dosyalarında aynı URL varsa → ÇAKIŞMA — stub'ı sil, gerçek olan kalsın
+- Yeni tablo oluşturuyorsan, mevcut schema pattern'ini takip et
+- Her endpoint isAuthenticated middleware kullanmalı
+- Hata durumunda boş array veya anlamlı hata mesajı dön (500 crash değil)
+
+---
+
+## ORTAK KURALLAR
+
+- Çelişki bulursan (mevcut kodla uyumsuzluk, tablo zaten var, endpoint çakışması) → ÖNCE rapor ver, sonra çöz
+- Hiçbir mevcut çalışan endpoint'i bozma
+- AuthUser tipini kullan (req.user as any değil)
+- catch (error: unknown) pattern kullan
+- Her görev bittiğinde kısa rapor ver (ne yapıldı, ne çalışıyor, ne sorunlu)
+- İki görev de bittikten sonra tam rapor ver
+
+**Başla — önce investigation, sonra implementasyon.**"
+
+---
+
+Yapıştırın. Bu sefer Replit'e esneklik verdik — kendi investigation'ını yapıp adapte edecek.

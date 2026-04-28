@@ -1,0 +1,58 @@
+📋 Sprint B Başlangıç — İlk DB Analizi (READ-ONLY)
+
+Merhaba Replit,
+
+Pazartesi Sprint B (Attendance Pipeline Repair) başladı.
+Kod analizim: monthly_payroll → calculate-unified → getMonthClassification 
+→ pdks_records. Yani monthly_payroll pdks_records'tan besleniyor, 
+shift_attendance'ı okumuyor.
+
+DB'de doğrulaman gereken 4 sorgu (~5 dk, kod değişikliği YOK):
+
+1) monthly_payroll son yazım zamanı + dönem dağılımı:
+   SELECT year, month, COUNT(*), 
+          MIN(created_at) AS ilk_yazim, 
+          MAX(created_at) AS son_yazim
+   FROM monthly_payroll
+   GROUP BY year, month
+   ORDER BY year DESC, month DESC;
+
+2) Nisan 2026 için pdks_records vs shift_attendance karşılaştır:
+   SELECT 'pdks_records' AS kaynak,
+          COUNT(*) AS event_sayisi,
+          COUNT(DISTINCT user_id) AS unique_user
+   FROM pdks_records
+   WHERE record_date BETWEEN '2026-04-01' AND '2026-04-30'
+   UNION ALL
+   SELECT 'shift_attendance',
+          COUNT(*),
+          COUNT(DISTINCT user_id)
+   FROM shift_attendance
+   WHERE DATE(created_at) BETWEEN '2026-04-01' AND '2026-04-30';
+
+3) monthly_payroll workedDays/absentDays dağılımı (pdks_records'tan 
+   mı geldiği doğrulama — ham event sayısı ile bağ var mı?):
+   SELECT mp.user_id, mp.year, mp.month, 
+          mp.worked_days, mp.absent_days, mp.off_days,
+          (SELECT COUNT(DISTINCT record_date) 
+           FROM pdks_records pr 
+           WHERE pr.user_id = mp.user_id 
+             AND EXTRACT(YEAR FROM pr.record_date) = mp.year
+             AND EXTRACT(MONTH FROM pr.record_date) = mp.month
+             AND pr.record_type = 'in') AS pdks_unique_days
+   FROM monthly_payroll mp
+   ORDER BY mp.created_at DESC
+   LIMIT 10;
+   -- worked_days ≈ pdks_unique_days olmalı (kod analizi doğruysa)
+
+4) pdks_records veri kaynağı (kiosk mi excel mi):
+   SELECT source, COUNT(*), MIN(record_date), MAX(record_date)
+   FROM pdks_records
+   GROUP BY source
+   ORDER BY COUNT(*) DESC;
+
+Rapor: Yukarıdaki 4 sorgunun çıktısını paylaş. Kod analizi Senaryo A 
+gösterdi, DB doğrularsa Pazartesi aggregate job'u güvenle yazabilirim.
+
+Kod değişikliği: YOK
+Commit: YOK

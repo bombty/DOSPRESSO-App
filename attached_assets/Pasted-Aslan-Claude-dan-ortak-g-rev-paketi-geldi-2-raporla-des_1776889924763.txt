@@ -1,0 +1,80 @@
+Aslan/Claude'dan ortak görev paketi geldi. 2 raporla destek gerekiyor:
+
+═══════════════════════════════════════════════
+RAPOR 1 - S-BORDRO + S-UX MIGRATION (5 dk)
+═══════════════════════════════════════════════
+
+Son 2 commit (7184d9a ve e064f72) push edildi:
+- S-Bordro: DRY_RUN + dataSource kilidi
+- S-UX: Day-1 banner + mola 90→120 override
+
+YAPILACAK:
+1. git pull
+2. DB migration çalıştır:
+   psql "$DATABASE_URL" -f scripts/pilot/10-bordro-dry-run-migration.sql
+3. Çıktıda şunu görmeli: "S-Bordro Migration Tamamlandı"
+4. ALTER TABLE başarı: is_dry_run kolonu monthly_payroll'a eklendi mi?
+   SQL kontrol:
+   \d monthly_payroll | grep is_dry_run
+
+RAPOR ET:
+- Migration başarı/hata
+- is_dry_run kolonu schema'da mı?
+- Build hala çalışıyor mu?
+
+═══════════════════════════════════════════════
+RAPOR 2 - REPLIT 3 KRİTİK RİSK DOĞRULAMA (10 dk)
+═══════════════════════════════════════════════
+
+Kendi 20 Nis raporunda 3 KRİTİK risk işaretledin. Claude 2'sini 
+doğruladı, 1 tanesini SQL ile sen doğrulayacaksın:
+
+RİSK 1 - Mr. Dobody chat: ✅ ÇÖZÜLDÜ (Claude)
+- 24 cheat-sheet güncellendi (Cowork + WhatsApp)
+- Commit 7dd4076
+
+RİSK 2 - HQ rolleri DB'de var mı: ⏳ SQL BEKLİYOR
+
+Şu sorguyu çalıştır ve çıktıyı paylaş:
+
+SELECT role, COUNT(*) as user_count,
+       STRING_AGG(first_name || ' ' || last_name, ', ') as users
+FROM users
+WHERE deleted_at IS NULL AND is_active = true
+  AND role IN (
+    'admin','ceo','cgo','muhasebe','muhasebe_ik','satinalma',
+    'coach','marketing','trainer','kalite_kontrol','gida_muhendisi',
+    'teknik','destek','yatirimci_hq','fabrika_mudur'
+  )
+GROUP BY role
+ORDER BY user_count DESC, role;
+
+ÖZELLİKLE: Mahmut'un rolü 'muhasebe' mi yoksa 'muhasebe_ik' mi?
+Bu kritik - cheat-sheet'te muhasebe yazdık ama Mahmut muhasebe_ik olabilir.
+
+RİSK 3 - Sidebar adları gerçek mi: ⏳ MANUEL SMOKE BEKLİYOR
+- 26 Nis Cumartesi Aslan manuel test yapacak
+- Şu an bir şey yapma
+
+═══════════════════════════════════════════════
+BONUS - SPRINT DURUMU (bilgi)
+═══════════════════════════════════════════════
+
+Claude pilot kritik 4 kod sprint'inden 2'sini bitirdi:
+✅ S-Bordro (DRY_RUN + dataSource lock)
+✅ S-UX (Day-1 banner + mola override)
+⚪ S-GPS (GPS fallback) - kalan
+⚪ S-Flag (PDKS Excel devre dışı) - kalan
+
+Replit sadece migration + SQL doğrulama yapacak. 
+Kod değişikliği YOK, sprint işini Claude halleder.
+
+═══════════════════════════════════════════════
+COST UYARISI
+═══════════════════════════════════════════════
+
+Bu iki iş toplamı ~15 dakika. Ekstra iş yapma:
+- Yeni doküman yazma
+- Kod refactor
+- Kapsamlı audit
+Sadece migration + SQL + rapor.

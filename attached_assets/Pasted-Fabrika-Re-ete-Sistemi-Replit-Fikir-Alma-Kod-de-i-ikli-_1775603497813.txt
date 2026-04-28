@@ -1,0 +1,107 @@
+Fabrika Reçete Sistemi — Replit Fikir Alma
+Kod değişikliği YAPMA — Sadece analiz ve görüş
+IT danışman (Claude) fabrika reçete yönetim sistemi için kapsamlı bir plan hazırladı.
+Planı oku ve kendi perspektifinden değerlendir.
+PLAN DOSYASI
+bashgit pull --rebase origin main
+cat docs/FABRIKA-RECETE-SISTEMI-PLAN.md
+522 satırlık plan. Oku ve aşağıdaki soruları yanıtla.
+
+SENİN GÖRÜŞLERİN İSTENİYOR
+S1: Mevcut Fabrika Tabloları ile Çakışma
+Sistemde zaten productRecipes + productRecipeIngredients tabloları var (schema-10.ts).
+Yeni plan 9 tablo daha ekliyor (factory_recipes, factory_recipe_ingredients, vs.).
+
+Mevcut tablolar kaldırılmalı mı, yoksa yenileriyle birlikte mi yaşayacak?
+Çakışma riski var mı?
+Veri migrasyonu gerekir mi?
+
+S2: Keyblend Sistemi
+Gizli formül sistemi öneriliyor:
+
+factory_keyblends + factory_keyblend_ingredients tabloları
+Personel sadece kod+ağırlık görür, admin içeriği görür
+Sence bu yaklaşım doğru mu?
+Güvenlik açısından API seviyesinde nasıl korunmalı?
+Başka bir yaklaşım önerir misin?
+
+S3: Mamül / Yarı Mamül
+
+output_type: "mamul" | "yari_mamul" + parent_recipe_id ile ilişkilendirme
+Plain Donut (yarı mamül) → Çikolata Glazed (mamül) türev ilişkisi
+Bu yapı yeterli mi? Daha derin bir ürün ağacı (BOM - Bill of Materials) gerekir mi?
+
+S4: Mevcut Factory Kodu ile Entegrasyon
+
+factoryProducts tablosu zaten var — yeni factory_recipes ile nasıl bağlanacak?
+factoryProductionRuns var — yeni factory_production_logs ile çakışma?
+factoryStations var — reçete→istasyon bağlantısı doğru mu?
+Mevcut factory API'leri etkilenir mi?
+
+S5: Şef Rolü
+
+Yeni sef rolü eklenmesi öneriliyor
+Mevcut 27 rol var — yeni rol eklemek mi, yoksa mevcut bir role (gida_muhendisi?) permission vermek mi daha iyi?
+module-manifest.ts ve schema-02.ts PERMISSIONS etkisi?
+
+S6: 9 Tablo Çok Mu?
+Plan 9 yeni tablo öngörüyor. Sence:
+
+Hangileri birleştirilebilir?
+Hangileri gereksiz?
+Tablo sayısı makul mü?
+
+S7: Üretim Ekosistemi Parametreleri
+Her reçetede: hazırlık+üretim+temizlik süresi, personel, KWh, su, fire, zayi
+
+Bunlar factory_recipes tablosunda mı olmalı yoksa ayrı bir tablo mu?
+Mevcut factoryProductionRuns ile nasıl ilişkilendirilmeli?
+
+S8: Sprint Planı
+4 sprint, ~20 saat:
+
+R-1: DB + API + Liste/Detay (6-7 saat)
+R-2: Kiosk üretim modu (5-6 saat)
+R-3: AR-GE + Admin panel (4-5 saat)
+R-4: Versiyon diff + Maliyet (4-5 saat)
+Süre tahminleri gerçekçi mi?
+Sprint sırası doğru mu?
+Önce ne yapılmalı?
+
+S9: Genel Değerlendirme
+
+Planın güçlü yönleri?
+Planın zayıf yönleri / riskleri?
+Önerdiğin değişiklikler?
+Öncelik sırası önerilerin?
+
+
+RAPOR FORMATI
+=== S1: Mevcut Tablo Çakışması ===
+[görüşün]
+
+=== S2: Keyblend Sistemi ===
+[görüşün]
+
+=== S3: Mamül / Yarı Mamül ===
+[görüşün]
+
+=== S4: Factory Entegrasyon ===
+[görüşün]
+
+=== S5: Şef Rolü ===
+[görüşün]
+
+=== S6: 9 Tablo ===
+[görüşün]
+
+=== S7: Üretim Parametreleri ===
+[görüşün]
+
+=== S8: Sprint Planı ===
+[görüşün]
+
+=== S9: Genel Değerlendirme ===
+[görüşün]
+
+PUSH: hayır

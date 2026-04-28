@@ -1,0 +1,295 @@
+# DASHBOARD ACİL DÜZELTME — 3 KRİTİK SORUN
+# Boş widget'lar, yanlış panel, filtresiz görevler
+# Tahmini: 2-3 saat (küçük, odaklı fix'ler)
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- Do NOT rewrite MissionControlHQ, MissionControlCoach veya diğer MC bileşenlerini
+- Do NOT change DashboardRouter'daki MC mod yönlendirmesini (zaten doğru çalışıyor)
+- Sadece 3 spesifik sorunu düzelt — başka hiçbir şeye dokunma
+- Her değişiklikten sonra compile kontrol et
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+---
+
+## STEP 0: ÖN ARAŞTIRMA
+
+```bash
+echo "═══ DASHBOARD FIX ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "=== Mevcut classic modda kalan kullanıcılar ==="
+echo "SELECT username, role, dashboard_preferences FROM users WHERE dashboard_preferences IS NOT NULL AND dashboard_preferences::text LIKE '%classic%' AND is_active=true;" | psql 2>/dev/null
+
+echo ""
+echo "=== dashboard.tsx klasik mod akışı ==="
+grep -n "isClassic\|classic\|hasSpecialDashboard\|HQ_SPECIAL\|isFactoryFloor\|FACTORY_FLOOR\|fallback\|DashboardWidgets\|CardGridHub\|HQDashboard" client/src/pages/dashboard.tsx | head -25
+
+echo ""
+echo "=== dashboard_role_widgets seed durumu — eksik roller ==="
+echo "SELECT DISTINCT u.role FROM users u WHERE u.is_active=true AND u.role NOT IN (SELECT DISTINCT role FROM dashboard_role_widgets) ORDER BY u.role;" | psql 2>/dev/null
+
+echo ""
+echo "=== /api/tasks endpoint — rol filtresi var mı? ==="
+grep -n "daily-tasks\|dailyTasks\|/api/tasks" server/routes/task*.ts server/routes/daily*.ts 2>/dev/null | head -10
+echo ""
+echo "--- TodaysTasksWidget'ta filtreleme ==="
+grep -n "assignedTo\|role\|filter\|where\|userId" client/src/components/*TodaysTask* client/src/components/*today*task* 2>/dev/null | head -10
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# FIX A: "CLASSIC" MODDA KALAN KULLANICILARI DÜZELt (15 dk)
+# Kök neden: Sprint 13'te default "mission-control" yapıldı ama
+# eski kullanıcılar DB'de "classic" kayıtlı kalmış
+# ██████████████████████████████████████████████████████████████████
+
+## A1: Tüm kullanıcıların dashboard modunu "mission-control" yap
+
+```sql
+-- Eski "classic" tercihlerini "mission-control"a güncelle
+-- Bu, Sprint 13'teki varsayılan kararı geriye dönük uygular
+UPDATE users 
+SET dashboard_preferences = jsonb_set(
+  COALESCE(dashboard_preferences, '{}')::jsonb, 
+  '{mode}', 
+  '"mission-control"'
+)
+WHERE dashboard_preferences IS NOT NULL 
+AND dashboard_preferences::text LIKE '%classic%';
+
+-- Doğrulama:
+SELECT username, role, dashboard_preferences FROM users 
+WHERE dashboard_preferences IS NOT NULL AND is_active=true;
+-- Hepsi "mission-control" olmalı
+```
+
+**⚠ Bu değişiklik sonrası:**
+- Ümit Usta → DashboardRouter → FACTORY_ROLES → MissionControlFabrika ✅
+- Yavuz → DashboardRouter → COACH_ROLES → MissionControlCoach ✅
+- Utku → DashboardRouter → EXEC_ROLES → MissionControlHQ ✅
+
+## A2: Klasik modu tamamen kaldır VEYA düzelt
+
+**Seçenek 1 (önerilen — en güvenli):** Klasik/MC toggle'ı kaldır, herkes MC görsün:
+
+```typescript
+// hq-ozet.tsx veya dashboard.tsx'te:
+// DashboardModeToggle bileşenini gizle veya kaldır
+// Herkes otomatik MC modunda açılsın
+
+// useDashboardMode hook'unda:
+// ÖNCE: const mode = data?.mode || "mission-control";
+// SONRA: return "mission-control"; // Her zaman MC
+```
+
+**Seçenek 2 (eğer klasik mod kalacaksa):** dashboard.tsx klasik modda da doğru yönlendirme yap:
+
+```typescript
+// dashboard.tsx klasik modda:
+// Coach/Trainer → MissionControlCoach (HQDashboard DEĞİL)
+// Fabrika rolleri → MissionControlFabrika (DashboardWidgets DEĞİL)
+// Bu, mevcut hasSpecialDashboard akışını düzeltmek demek
+
+// MEVCUT (hatalı):
+if (hasSpecialDashboard) return <HQDashboard />;  // Coach buraya düşüyor
+
+// DÜZELTİLMİŞ:
+if (isCoachRole) return <MissionControlCoach />;
+if (isFactoryRole) return <MissionControlFabrika />;
+if (hasSpecialDashboard) return <HQDashboard />;
+```
+
+**⚠ DANIŞMA:** Seçenek 1 mi 2 mi? Klasik modu tamamen kaldırmak mı, yoksa düzeltmek mi?
+Önerim: Seçenek 1 (kaldır). Klasik mod zaten kırık ve bakımsız — iki farklı dashboard'u sürdürmek kaynak israfı.
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# FIX B: EKSİK ROL SEED VERİLERİ (30 dk)
+# 13 rol seed'lenmiş, fabrika + şube + diğerleri eksik
+# ██████████████████████████████████████████████████████████████████
+
+```sql
+-- Eksik fabrika rolleri
+INSERT INTO dashboard_role_widgets (role, widget_key, is_enabled, display_order, default_open) VALUES
+  ('uretim_sefi', 'factory_summary', true, 1, true),
+  ('uretim_sefi', 'equipment_status', true, 2, true),
+  ('uretim_sefi', 'checklist_status', true, 3, true),
+  ('uretim_sefi', 'shift_compliance', true, 4, true),
+  ('uretim_sefi', 'critical_alerts', true, 5, false),
+  
+  ('fabrika_mudur', 'factory_summary', true, 1, true),
+  ('fabrika_mudur', 'equipment_status', true, 2, true),
+  ('fabrika_mudur', 'staff_distribution', true, 3, true),
+  ('fabrika_mudur', 'checklist_status', true, 4, true),
+  ('fabrika_mudur', 'critical_alerts', true, 5, true),
+  ('fabrika_mudur', 'sla_tickets', true, 6, false)
+ON CONFLICT (role, widget_key) DO NOTHING;
+
+-- Eksik şube rolleri (supervisor, mudur MC bileşenleri farklı ama seed olsun)
+INSERT INTO dashboard_role_widgets (role, widget_key, is_enabled, display_order, default_open) VALUES
+  ('supervisor', 'branch_scorecard', true, 1, true),
+  ('supervisor', 'shift_compliance', true, 2, true),
+  ('supervisor', 'checklist_status', true, 3, true),
+  ('supervisor', 'equipment_status', true, 4, true),
+  ('supervisor', 'customer_feedback', true, 5, true),
+  ('supervisor', 'sla_tickets', true, 6, false),
+  
+  ('mudur', 'branch_scorecard', true, 1, true),
+  ('mudur', 'shift_compliance', true, 2, true),
+  ('mudur', 'checklist_status', true, 3, true),
+  ('mudur', 'equipment_status', true, 4, true),
+  ('mudur', 'customer_feedback', true, 5, true),
+  ('mudur', 'staff_distribution', true, 6, false),
+  ('mudur', 'sla_tickets', true, 7, false),
+  
+  ('yatirimci_branch', 'branch_scorecard', true, 1, true),
+  ('yatirimci_branch', 'customer_feedback', true, 2, true),
+  ('yatirimci_branch', 'equipment_status', true, 3, true),
+  ('yatirimci_branch', 'checklist_status', true, 4, true),
+  ('yatirimci_branch', 'sla_tickets', true, 5, true),
+  
+  ('barista', 'checklist_status', true, 1, true),
+  ('stajyer', 'checklist_status', true, 1, true)
+ON CONFLICT (role, widget_key) DO NOTHING;
+
+-- Doğrulama:
+SELECT role, count(*) as widget_count FROM dashboard_role_widgets WHERE is_enabled=true GROUP BY role ORDER BY role;
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# FIX C: CGO GÖREV FİLTRESİ (1 saat)
+# CEO/CGO 1201 görev görüyor — sadece kendilerine atananları göstermeli
+# ██████████████████████████████████████████████████████████████████
+
+## C1: TodaysTasksWidget'ta executive rol filtresi
+
+```typescript
+// TodaysTasksWidget bileşeninde (veya daily-tasks API'de):
+// MEVCUT: Executive roller TÜM görevleri görüyor
+// YENİ: Executive roller sadece kendilerine atanan görevleri görsün
+
+// Seçenek 1 — Frontend filtresi (en güvenli):
+// TodaysTasksWidget'ta:
+const { user } = useAuth();
+const EXEC_ROLES = ['ceo', 'cgo', 'admin'];
+const isExec = EXEC_ROLES.includes(user?.role || '');
+
+// Görevleri filtrele:
+const filteredTasks = isExec 
+  ? tasks.filter(t => t.assignedToId === user?.id || t.createdById === user?.id)
+  : tasks;
+
+// Seçenek 2 — Backend filtresi (daha iyi):
+// /api/daily-tasks veya /api/tasks endpoint'inde:
+// CEO/CGO için: WHERE assigned_to_id = :userId OR created_by_id = :userId
+// Diğer roller: mevcut davranış (şube bazlı)
+```
+
+## C2: MissionControlHQ'daki "Bugünün Görevleri" düzeltme
+
+```typescript
+// MissionControlHQ.tsx'te TodaysTasksWidget kullanılıyorsa:
+// assignedToMe={true} prop'u ekle veya widget içinde filtrele
+
+// VEYA: HQ görev widget'ını tamamen farklılaştır:
+// CEO/CGO: "Bugünün Görevlerim" (sadece kişisel)
+// Admin: "Tüm Sistem Görevleri" (özet — sayı)
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# DOĞRULAMA
+# ██████████████████████████████████████████████████████████████████
+
+```bash
+echo "═══ DASHBOARD FIX DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "Server: %{http_code}\n" http://localhost:5000/
+
+echo ""
+echo "████ FIX A: Dashboard Modu ████"
+
+echo "--- Classic modda kalan kullanıcı var mı? ---"
+CLASSIC=$(echo "SELECT count(*) FROM users WHERE dashboard_preferences::text LIKE '%classic%' AND is_active=true;" | psql -t 2>/dev/null | tr -d ' ')
+echo "  Classic modda: $CLASSIC (0 olmalı)"
+
+echo ""
+echo "--- Her rol doğru MC bileşenine yönleniyor mu? ---"
+for ROLE_USER in "umit:uretim_sefi" "yavuz:coach" "utku:cgo" "ali:ceo" "eren:fabrika_mudur"; do
+  USER=$(echo $ROLE_USER | cut -d: -f1)
+  ROLE=$(echo $ROLE_USER | cut -d: -f2)
+  curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" -c /tmp/fix_${USER}.txt > /dev/null 2>&1
+  MODE=$(curl -s -b /tmp/fix_${USER}.txt "http://localhost:5000/api/me/dashboard-preferences" 2>/dev/null)
+  echo "  $USER ($ROLE): mode=$MODE"
+done
+
+echo ""
+echo "████ FIX B: Seed Verileri ████"
+
+echo "--- Tüm roller seed'lenmiş mi? ---"
+echo "SELECT role, count(*) FROM dashboard_role_widgets WHERE is_enabled=true GROUP BY role ORDER BY role;" | psql 2>/dev/null
+
+echo "--- Seed'lenmemiş aktif roller ---"
+echo "SELECT DISTINCT u.role FROM users u WHERE u.is_active=true AND u.role NOT IN (SELECT DISTINCT role FROM dashboard_role_widgets) ORDER BY u.role;" | psql 2>/dev/null
+echo "(Bu liste boş olmalı veya sadece kiosk/system rolleri kalmalı)"
+
+echo ""
+echo "████ FIX C: Görev Filtresi ████"
+
+echo "--- CGO olarak görev sayısı ---"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/fix_utku2.txt > /dev/null 2>&1
+curl -s -b /tmp/fix_utku2.txt "http://localhost:5000/api/daily-tasks" 2>/dev/null | node -e "
+try {
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  if(Array.isArray(d)) console.log('CGO görev sayısı: '+d.length+' (40 değil, <10 olmalı)');
+  else console.log('Keys: '+Object.keys(d));
+} catch(e) { console.log('ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "████ REGRESYON ████"
+
+for ep in "/api/dashboard/executive" "/api/dashboard/coach" "/api/dashboard/factory" "/api/hq-summary" "/api/tasks"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/fix_utku2.txt "http://localhost:5000${ep}" 2>/dev/null)
+  echo "  $ep → $STATUS"
+done
+
+echo ""
+echo "--- Tüm roller login ---"
+for ROLE in ceo cgo admin coach trainer supervisor mudur barista stajyer muhasebe_ik fabrika_mudur uretim_sefi; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+  if [ -n "$USER" ]; then
+    RESULT=$(curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$USER\",\"password\":\"0000\"}" 2>/dev/null)
+    if echo "$RESULT" | grep -q "id"; then echo "  ✅ $ROLE"; else echo "  ❌ $ROLE"; fi
+  fi
+done
+
+echo ""
+echo "═══ SONUÇ ═══"
+echo "  Classic mod temizlendi: ✅/❌"
+echo "  Eksik rol seed'leri: ✅/❌"
+echo "  CGO görev filtresi: ✅/❌"
+echo "  Tüm roller login: ✅/❌"
+echo "  Dashboard API'ler: ✅/❌"
+echo "  Regresyon: ✅/❌"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- ❌ MC bileşenlerini yeniden yazma (sadece routing fix)
+- ❌ DashboardRouter'ı değiştirme (MC modunda zaten doğru çalışıyor)
+- ❌ Mevcut MC bileşenlerin içeriğini değiştirme
+- ❌ Diğer kullanıcıların görev atamalarını değiştirme (sadece görüntüleme filtresi)
+- ❌ dashboard_role_widgets'taki mevcut kayıtları silme (sadece yeni EKLE)

@@ -1,0 +1,300 @@
+Çok detaylı audit. Kritik bulgu: **30 sayfada tab overflow, hiçbirinde çözüm yok.** Sprint 6 ticket'ını yazıyorum.
+
+Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 6 — Mobil UX İyileştirme
+
+### ÖZET
+
+iPad tablet üzerinde kullanılan sistemde en kritik sorun: 30 sayfada 8+ tab var ve hiçbirinde overflow çözümü yok. Dark theme ve responsive altyapı iyi ama tab overflow, dashboard grid'ler ve lazy loading düzeltilmeli.
+
+---
+
+### T001 — ScrollableTabsList Component + 30 Sayfada Uygulama (~6-8 saat)
+
+**Problem:** 30 sayfada 8+ tab var (İK:29, modül-detay:23, yeni-şube-detay:19, reçeteler:19...). iPad'de tab'lar taşıyor, son tab'lar görünmüyor.
+
+**Yapılacak:**
+
+**A) Reusable ScrollableTabsList component oluştur:**
+
+```
+client/src/components/ui/scrollable-tabs-list.tsx
+```
+
+Özellikleri:
+- Mevcut Shadcn TabsList'i wrap eder
+- Horizontal scroll aktif (overflow-x-auto)
+- Sol ve sağ tarafta fade gradient göstergesi (daha fazla tab olduğunu belirtir)
+- Aktif tab'a otomatik scroll (scrollIntoView)
+- Touch swipe desteği (mobilde parmakla kaydırma)
+- Scroll indicator: sağda daha fazla tab varsa sağ ok, solda varsa sol ok
+- Scrollbar gizli (scrollbar-hide class)
+- Tab sayısı 6'dan az ise normal TabsList gibi davransın (scroll gereksiz)
+
+**B) 30 sayfada TabsList → ScrollableTabsList değiştir:**
+
+En kritik sayfalardan başla:
+
+```
+Öncelik 1 (KRİTİK — 15+ tab):
+- ik.tsx (29 tab)
+- module-detail.tsx (23 tab)
+- yeni-sube-detay.tsx (19 tab)
+- receteler.tsx (19 tab)
+- personel-detay.tsx (19 tab)
+- vardiya-planlama.tsx (17 tab)
+- equipment-detail.tsx (17 tab)
+- akademi.tsx (17 tab)
+
+Öncelik 2 (YÜKSEK — 10-14 tab):
+- proje-detay.tsx (13 tab)
+- personel-duzenle.tsx (13 tab)
+- muhasebe-raporlama.tsx (13 tab)
+- muhasebe.tsx (13 tab)
+- gida-guvenligi-dashboard.tsx (13 tab)
+- urun-karti.tsx (11 tab)
+- employee-of-month.tsx (11 tab)
+- e2e-raporlar.tsx (11 tab)
+- cgo-command-center.tsx (11 tab)
+- ariza-detay.tsx (11 tab)
+- sube-detay.tsx (10 tab)
+
+Öncelik 3 (ORTA — 8-9 tab):
+- Kalan 11 sayfa
+```
+
+Her sayfada:
+1. `TabsList` import'unu `ScrollableTabsList` ile değiştir
+2. Mevcut tab yapısını bozmadan sadece wrapper'ı değiştir
+3. Aktif tab'a otomatik scroll çalıştığını doğrula
+
+**Doğrulama:**
+- İK sayfasında 29 tab'ın hepsi kaydırılarak erişilebilir
+- Aktif tab görünür alanda (ortada)
+- Fade gradient'ler doğru çalışıyor (sol/sağda daha fazla tab var göstergesi)
+- Touch swipe düzgün çalışıyor
+
+---
+
+### T002 — Dashboard Responsive Grid Fix (~2-3 saat)
+
+**Problem:** 5-6 dashboard sayfasında `grid-cols-3` veya `grid-cols-4` breakpoint olmadan kullanılmış. Mobilde/tablette kartlar sıkışıyor.
+
+**Yapılacak:**
+
+Her dosyada sabit grid'i responsive yap:
+
+```
+manager-dashboard.tsx:43 → grid-cols-3 → grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+barista-dashboard.tsx:46 → grid-cols-3 → grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+teknik-dashboard.tsx:49 → grid-cols-3 → grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+teknik-dashboard.tsx:89 → grid-cols-4 → grid-cols-2 sm:grid-cols-3 lg:grid-cols-4
+muhasebe-dashboard.tsx:106 → grid-cols-3 → grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+analytics-card.tsx:39 → grid-cols-3 → grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+```
+
+Ayrıca grep ile başka sabit grid'leri de tara:
+```bash
+grep -rn "grid-cols-[3-6]" client/src/pages/ --include="*.tsx" | grep -v "sm:\|md:\|lg:" | head -20
+```
+
+Bulunan her sabit grid'i responsive breakpoint ile düzelt.
+
+**Doğrulama:**
+- 768px genişlikte (iPad portrait) kartlar 2 sütun
+- 375px genişlikte (mobil) kartlar 1 sütun
+- 1024px+ genişlikte (iPad landscape / desktop) orijinal 3-4 sütun
+
+---
+
+### T003 — Safe Area Desteği (~1 saat)
+
+**Problem:** viewport-fit=cover meta var ama env(safe-area-inset-bottom) kullanılmıyor. iPhone notch ve home indicator ile bottom nav çakışabilir.
+
+**Yapılacak:**
+
+1. Bottom nav component'ine safe area padding ekle:
+```css
+padding-bottom: env(safe-area-inset-bottom, 0px);
+```
+
+2. Ana layout'a safe area desteği:
+```css
+/* globals.css veya tailwind config'e */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+```
+
+3. Bottom nav'ın bottom pozisyonunu safe area'ya göre ayarla:
+```
+bottom: max(12px, env(safe-area-inset-bottom, 12px))
+```
+
+**Doğrulama:**
+- iPhone X+ modelde bottom nav home indicator'ın üzerinde kalıyor
+- iPad'de değişiklik yok (safe area 0)
+
+---
+
+### T004 — Küçük Touch Hedefi Düzeltmeleri (~1-2 saat)
+
+**Problem:** ~15 buton 24-28px yükseklikte (minimum 44px önerilir). Mobilde tıklaması zor.
+
+**Yapılacak:**
+
+1. h-6 (24px) icon butonlarını bul ve minimum h-9 (36px) veya h-10 (40px) yap:
+```bash
+grep -rn "h-6.*button\|h-6.*click\|h-6.*Button\|h-7.*button\|h-7.*click" client/src/ --include="*.tsx" | head -15
+```
+
+2. Her küçük butonu düzelt — butonun kendisi küçük kalabilir ama tıklanabilir alan (padding) büyütülmeli:
+```tsx
+// ÖNCE (kötü)
+<button className="h-6 w-6">
+  <Icon size={14} />
+</button>
+
+// SONRA (iyi) — görsel boyut aynı, dokunma alanı büyük
+<button className="h-6 w-6 p-2 -m-2"> 
+  <Icon size={14} />
+</button>
+// veya
+<button className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+  <Icon size={14} />
+</button>
+```
+
+3. text-xs butonlarda da minimum padding ekle
+
+**Doğrulama:**
+- Tüm tıklanabilir öğeler en az 36x36px dokunma alanına sahip
+
+---
+
+### T005 — Lazy Loading Genişletme (~2-3 saat)
+
+**Problem:** 228 sayfa dosyasından sadece 11'i lazy-loaded. Geri kalanı App.tsx'te direkt import — ilk yükleme süresini artırıyor.
+
+**Yapılacak:**
+
+1. App.tsx'teki route tanımlarını kontrol et:
+```bash
+grep -rn "import.*from.*pages/" client/src/App.tsx | wc -l
+head -80 client/src/App.tsx
+```
+
+2. En az kullanılan / en büyük sayfaları lazy-load'a çevir. Strateji:
+   - Dashboard ve login: lazy YAPMA (ilk yüklenen sayfalar)
+   - Diğer tüm sayfalar: React.lazy ile lazy load
+
+3. Her lazy-loaded sayfa için Suspense wrapper + loading skeleton:
+```tsx
+const IKPage = React.lazy(() => import('./pages/ik'));
+
+// Route'da:
+<Suspense fallback={<PageSkeleton />}>
+  <IKPage />
+</Suspense>
+```
+
+4. PageSkeleton component oluştur (generic loading placeholder):
+- Header skeleton
+- Kart grid skeleton
+- Tablo skeleton
+- Sayfa tipine göre farklı skeleton'lar (opsiyonel)
+
+5. Image lazy loading:
+```bash
+grep -rn "<img " client/src/ --include="*.tsx" | grep -v 'loading="lazy"' | head -20
+```
+Bulunan tüm img tag'lerine `loading="lazy"` ekle.
+
+**Doğrulama:**
+- Network tab'da ilk yükleme boyutu azalmış
+- Sayfa geçişlerinde kısa loading skeleton görünüyor
+- Fonksiyonalite aynı (lazy loading kırıklık yapmamış)
+
+---
+
+### T006 — Form Grid Responsive Fix (~1 saat)
+
+**Problem:** Bazı form dialog'larında grid-cols-2 breakpoint olmadan kullanılmış. Mobilde form alanları sıkışıyor.
+
+**Yapılacak:**
+
+```bash
+grep -rn "grid-cols-2" client/src/ --include="*.tsx" | grep -i "dialog\|modal\|form\|sheet" | grep -v "sm:\|md:\|lg:" | head -15
+```
+
+Bulunan her sabit form grid'i responsive yap:
+```
+grid-cols-2 → grid-cols-1 sm:grid-cols-2
+```
+
+Özellikle:
+- DisciplinaryDialogs.tsx (4 adet grid-cols-2)
+- Diğer form dialog'ları
+
+---
+
+### T007 — E2E Mobil Test (~1 saat)
+
+**Test cihazı simülasyonu:** Chrome DevTools → Device Toolbar → iPad (768x1024)
+
+**Senaryo 1 — Tab Overflow:**
+1. İK sayfasını aç → 29 tab görünür ve kaydırılabilir mi?
+2. Son tab'a kaydır → fade gradient doğru çalışıyor mu?
+3. Aktif tab'a tıkla → otomatik scroll çalışıyor mu?
+
+**Senaryo 2 — Dashboard Grid:**
+1. iPad portrait (768px) → dashboard kartları 2 sütun mu?
+2. Barista dashboard → kartlar sıkışmıyor mu?
+
+**Senaryo 3 — Bottom Nav:**
+1. Tüm bottom nav butonları tıklanabilir mi?
+2. Safe area çalışıyor mu? (iPhone simülasyonu)
+
+**Senaryo 4 — Form:**
+1. Bir dialog aç (görev ekle, izin ekle vb.)
+2. Form alanları mobilde düzgün stack'leniyor mu?
+3. Input'lara dokunmak kolay mı?
+
+**Senaryo 5 — Performans:**
+1. Sayfa yükleme süresi kontrol (Network tab)
+2. Lazy-loaded sayfada skeleton görünüyor mu?
+3. Image lazy loading çalışıyor mu?
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T003 → T004 → T005 → T006 → T007
+
+### DO NOT BREAK:
+- Mevcut tab içerikleri ve fonksiyonalitesi (sadece scroll wrapper ekleniyor)
+- Dashboard widget'ları ve veri akışı
+- Bottom nav rol bazlı yapısı
+- Sprint 1-5'te yapılan tüm değişiklikler
+- Form validasyon ve submit akışları
+- Mevcut lazy-loaded 11 sayfa
+
+### KABUL KRİTERLERİ:
+- [ ] 30 sayfada ScrollableTabsList aktif, tüm tab'lar erişilebilir
+- [ ] Fade gradient sol/sağ göstergesi çalışıyor
+- [ ] Aktif tab'a otomatik scroll çalışıyor
+- [ ] Touch swipe ile tab kaydırma düzgün
+- [ ] Dashboard kartları 768px'de 2 sütun, 375px'de 1 sütun
+- [ ] Safe area desteği eklenmiş (iPhone notch/home indicator)
+- [ ] Küçük butonlar minimum 36px dokunma alanına sahip
+- [ ] 50+ sayfa lazy-loaded (11'den artmış)
+- [ ] PageSkeleton loading göstergesi var
+- [ ] Image'larda loading="lazy" var
+- [ ] Form dialog'ları mobilde düzgün stack'leniyor
+- [ ] 0 console error
+- [ ] iPad'de tüm temel akışlar düzgün çalışıyor
+
+---
+
+Replit'e yapıştır ve çalıştır. Sonucu getir doğrularız.

@@ -1,0 +1,51 @@
+Evet, taşıma sistemi yol haritasına kesinlikle girmeli. Audit beklerken, dikkat edilmesi gereken ek konuları düşüneyim:
+
+---
+
+## Audit'e Ek Dikkat Noktaları (Replit cevap verince kontrol ederiz)
+
+**Güvenlik:**
+- Şifre politikası: minimum uzunluk, karmaşıklık kontrolü var mı?
+- Session timeout: 24 saat çok uzun olabilir, 8 saat daha güvenli
+- Brute force koruması: 5 yanlış şifre → hesap kilitleme var mı?
+- API rate limiting: dışarıdan spam istek koruması
+
+**Veri Yedekleme:**
+- Otomatik backup çalışıyor mu? Ne sıklıkta?
+- Backup restore test edildi mi?
+- Backup nerede saklanıyor? (Replit'te mi, harici mi?)
+
+**Email/SMS Altyapısı:**
+- IONOS SMTP limitleri ne? Günde kaç email gönderilebilir?
+- Müşteriye email gidiyor mu gerçekten? (misafir feedback teşekkür)
+- SMS altyapısı hiç kuruldu mu?
+
+**Performans İzleme:**
+- Gerçek kullanıcı sayısı arttığında performans nasıl etkilenir?
+- 245 kullanıcı aynı anda girse ne olur?
+- Database connection pool limitleri
+
+**Mobil PWA:**
+- Uygulamayı ana ekrana ekleme (Add to Home Screen) çalışıyor mu?
+- Offline mod gerekiyor mu? (internet kesildiğinde ne olur?)
+- Push notification altyapısı var mı?
+
+---
+
+## Güncellenmiş Yol Haritası (Yeni Sprint'ler)
+
+Audit sonucuna göre şekillenecek ama tahmini:
+
+| Sprint | Konu | Öncelik |
+|--------|------|---------|
+| Sprint 9 | Runtime bug fix'ler + UX tutarsızlık düzeltmeleri | KRİTİK |
+| Sprint 10 | Menü sadeleştirme v2 + sayfa birleştirmeleri | YÜKSEK |
+| Sprint 11 | Reçete/ürün kartı sistemi yeniden tasarım | YÜKSEK |
+| Sprint 12 | Onboarding sistemi düzeltme | ORTA |
+| Sprint 13 | Fabrika üretim-stok-sevkiyat zinciri | BÜYÜK |
+| Sprint 14 | Güvenlik + performans optimizasyon | ORTA |
+| Sprint 15 | WordPress tarzı dışa aktarma + setup wizard | ORTA |
+| Sprint 16 | Alternatif sunucuya taşıma (IONOS/Hetzner) | ORTA |
+| Pilot Sonrası | PDKS entegrasyonu, Mevzuat AI, Admin AI Developer | DÜŞÜK |
+
+Audit sonucu gelince bu listeyi netleştirip önceliklendireceğiz. Sonucu getir, yeni yol haritasını yazalım.

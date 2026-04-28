@@ -1,0 +1,110 @@
+Önceki prompt'u henüz Replit'e yapıştırmadıysan, şunu ekle. Zaten yapıştırdıysan "Revise plan" ile ekle:
+
+---
+
+### BÖLÜM I: Sidebar Menü Tam Analiz & Sadeleştirme Önerisi
+
+```bash
+# 1. Tüm sidebar menü öğelerini listele (tam blueprint)
+cat server/menu-service.ts | grep -A 3 "label:\|title:\|id:\|href:\|section:" | head -200
+
+# 2. SIDEBAR_ALLOWED_ITEMS — her rol kaç öğe görüyor?
+grep -A 50 "SIDEBAR_ALLOWED_ITEMS" server/menu-service.ts
+
+# 3. Hub sayfaları (Sprint 4'te eklendi)
+grep -rn "HubPage\|hub-page\|hubCards\|NAV_GROUPS" client/src/ --include="*.tsx" | head -15
+
+# 4. Her ana grubun alt öğe sayısı
+# Sidebar'daki section/group başlıkları ve altındaki item sayıları
+
+# 5. Menü öğelerinin gerçek kullanım sıklığı
+# Her route'a kaç yerden link veriliyor?
+for route in $(grep -oP 'href="[^"]*"' server/menu-service.ts | sed 's/href="//;s/"//'); do
+  count=$(grep -rn "$route" client/src/ --include="*.tsx" | wc -l)
+  echo "$route: $count referans"
+done 2>/dev/null | sort -t: -k2 -rn | head -30
+
+# 6. Birleştirilebilecek sayfalar — aynı veri kaynağını kullananlar
+# Personel & İK altındaki tüm sayfalar
+grep -rn "personel\|ik-yonetimi\|vardiya\|izin\|maas\|onboarding\|performans\|disiplin" server/menu-service.ts | head -20
+
+# 7. Operasyonlar altındaki tüm sayfalar
+grep -rn "sube\|gorev\|checklist\|ariza\|kayip\|destek\|mesaj\|misafir" server/menu-service.ts | head -20
+
+# 8. Raporlar altındaki tüm sayfalar
+grep -rn "rapor\|analitik\|performans\|denetim\|capa\|sikayet\|e2e" server/menu-service.ts | head -20
+```
+
+```sql
+-- 9. Hangi sayfalar en çok ziyaret ediliyor? (eğer analytics varsa)
+-- Yoksa en az kullanılan sayfalara bakarak gereksiz olanları tespit et
+
+-- 10. Her rolün günlük kullandığı maksimum 5 sayfa ne?
+-- Barista: görevler, akademi, vardiya, bildirimler, profil
+-- Supervisor: görevler, ekip, vardiya, onaylar, raporlar  
+-- CGO: komuta merkezi, şubeler, raporlar, personel, ayarlar
+```
+
+Raporla detaylı:
+
+**A) Mevcut Sidebar Yapısı (her rol için):**
+- Admin: kaç grup, kaç alt öğe, toplam kaç tıklanabilir link?
+- Supervisor: aynı analiz
+- Barista: aynı analiz
+- Coach/Trainer: aynı analiz
+- Her rol için "gerçekten günlük kullandığı" vs "sidebar'da görüp hiç tıklamadığı" ayrımı
+
+**B) Birleştirilebilecek Sayfalar — Spesifik Öneriler:**
+
+"Personel & İK" altında muhtemelen şunlar var:
+- Vardiyalar, HQ Vardiya Görüntüleme, İzin Talepleri, Muhasebe, HQ Personel İstatistikleri, İK Yönetimi, Ayın Elemanı, Performansım, Maaş, Disiplin, Onboarding, Özlük, Mesai, İşe Alım, Çıkış, İzinler
+
+Bu 15+ öğenin hangilerini tek sayfada birleştirmek mantıklı? Örneğin:
+- "İK Yönetimi" tek sayfa → içinde tab ile: Personel, Disiplin, Onboarding, Özlük, İşe Alım, Çıkış
+- "Vardiya & Mesai" tek sayfa → Vardiyalar + HQ Vardiya + Mesai
+- "İzin & Maaş" tek sayfa → İzin Talepleri + Maaş + Muhasebe
+
+Benzer analiz yap:
+- "Operasyonlar" altındaki öğeler nasıl birleştirilir?
+- "Raporlar & Analitik" altındaki 10+ tab nasıl sadeleştirilir?
+- "Eğitim & Akademi" altında ne var?
+- "Ekipman & Bakım" altında ne var?
+- "Yönetim & Ayarlar" altında ne var?
+
+**C) Önerilen Yeni Sidebar Yapısı:**
+
+Her rol için ideal sidebar'da MAX 8-10 öğe olmalı. Şu formatla öner:
+
+```
+ADMIN/CGO (max 10 öğe):
+1. Ana Sayfa (dashboard)
+2. Operasyonlar Hub → [Şubeler, Görevler, Checklistler, ...]
+3. Personel & İK Hub → [İK Yönetimi, Vardiya, İzin, Maaş, ...]
+4. Eğitim Hub → [Akademi, İçerik Yönetimi, ...]
+5. Raporlar Hub → [...]
+6. Ekipman Hub → [...]
+7. Bildirimler
+8. Mesajlar  
+9. Ayarlar Hub → [...]
+10. Profilim
+
+BARISTA (max 6 öğe):
+1. Ana Sayfa
+2. Görevlerim
+3. Akademi
+4. Bildirimler
+5. Merkez Destek
+6. Profilim
+```
+
+**D) Sayfa Birleştirme Detay Önerisi:**
+
+Her birleştirme için:
+- Hangi mevcut sayfalar birleşecek?
+- Yeni sayfanın adı ne olacak?
+- İçeride tab mı, section mı, kart grid mi kullanılacak?
+- Tahmini iş (küçük/orta/büyük)
+
+---
+
+Bu bölümü önceki audit prompt'una (BÖLÜM A-H) ekleyerek Replit'e gönder. Toplam 9 bölümlük kapsamlı audit olacak. Sonucu getirince yeni sprint planı yapacağız.

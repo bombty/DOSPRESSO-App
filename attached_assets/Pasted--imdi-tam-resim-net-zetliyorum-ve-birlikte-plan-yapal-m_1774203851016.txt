@@ -1,0 +1,56 @@
+Şimdi tam resim net. Özetliyorum ve birlikte plan yapalım:
+
+**3 rapor birleşik analizi:**
+
+| Sorun | Etki | Süre |
+|-------|------|------|
+| Breadcrumb çift header hissi veriyor | Tüm roller | 2-3 saat |
+| NavRail 50px ikon-only, etiket yok | Desktop tüm roller | 4-6 saat |
+| MC toggle bulunamıyor | Tüm roller | 1-2 saat |
+| İki home butonu | Kafa karıştırıcı | 30dk |
+| İçerik list → grid olmalı | Coach, supervisor vb. | 2-3 saat |
+| Supervisor/Fabrika müdür menüde Ana Sayfa yok | 2 rol | 30dk |
+| Trainer menüsü çok az (7 öğe) | 1 rol | 30dk |
+| 3 kullanıcı login olamıyor | Test engeli | 15dk |
+
+Bu büyük bir UI/UX sprint. Ama hepsini birden yaparsak risk yüksek. Replit ile birlikte planlayalım — yapıştırın:
+
+---
+
+**"UI/UX audit tamamlandı — çok detaylı, teşekkürler. Şimdi birlikte planlayalım.**
+
+**Tespit edilen sorunları 3 gruba ayırıyorum:**
+
+**GRUP A — Hızlı fix'ler (düşük risk, yüksek etki, toplam ~2 saat):**
+1. Supervisor menüde Ana Sayfa yok → whitelist'e `dashboard-branch` ekle
+2. Fabrika müdür menüde Ana Sayfa yok → whitelist'e ekle
+3. Trainer menüsü çok az → Raporlar, Performans ekle
+4. 3 kullanıcı login sorunu (samet, diana, sema) → şifrelerini 0000'a resetle
+5. İki home butonu → Logo tıklanabilirliğini kaldır VEYA NavRail'deki Home'u kaldır (hangisi daha kolay?)
+
+**GRUP B — Orta işler (orta risk, toplam ~4 saat):**
+6. Breadcrumb'ı header içine entegre et (dashboard'da breadcrumb gizle)
+7. MC toggle'ı daha görünür yap (header'a küçük ikon veya first-time tooltip)
+8. İçerik list → grid (personel listeleri, görev kartları md:grid-cols-2)
+
+**GRUP C — Büyük karar (yüksek risk, ~6 saat):**
+9. NavRail'i genişletilebilir sidebar'a dönüştürme VEYA sadece hamburger kullanma
+
+**Sana sorularım:**
+
+**1. GRUP A'yı hemen yapabilir misin? Düşük riskli, hızlı fix'ler.**
+
+**2. GRUP B için: Breadcrumb'ı header'a entegre etmenin en az riskli yolu ne? Mevcut breadcrumb-navigation.tsx nasıl çalışıyor, kaç dosya etkilenir?**
+
+**3. GRUP C için senin önerini detaylandır:**
+- Mevcut sidebar.tsx (kullanılmayan genişletilebilir sidebar) ne kadar hazır?
+- NavRail'i kaldırıp sadece hamburger + expanded sidebar kullanmak mümkün mü?
+- Bu değişiklik kaç dosyayı etkiler?
+
+**4. Bu 3 grubu sırayla yaparsak mı yoksa A+B paralel mi olmalı?**
+
+**Değişiklik yapma — plan öner.**"
+
+---
+
+Yapıştırın. Replit'in teknik değerlendirmesiyle birlikte adım adım ilerleyeceğiz — tek seferde büyük değişiklik yapmak yerine.

@@ -1,0 +1,244 @@
+Sprint 28 — CRM/Misafir Memnuniyeti ayrıştırma. Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 28 — CRM & Guest Feedback Module Separation
+
+The CRM module currently mixes 3 different concepts: guest satisfaction (QR ratings), business relationships (franchise investors), and support tickets (branch requests to HQ). These must be separated into distinct modules.
+
+### CURRENT STATE (Broken Logic)
+
+```
+CRM Module (currently):
+  ├── Dashboard → shows guest ratings + campaign metrics (MIXED)
+  ├── Geri Bildirimler → guest QR feedback (WRONG PLACE)
+  ├── Şikayetler → guest complaints + product complaints (MIXED)
+  ├── Kampanyalar → marketing campaigns (CORRECT)
+  ├── Analizler → mixed analytics (MIXED)
+  └── SLA Takibi → feedback response SLA (WRONG PLACE)
+```
+
+### TARGET STATE (Clean Separation)
+
+```
+Module 1: Misafir Memnuniyeti (Guest Satisfaction) — SEPARATE
+  ├── Dashboard → avg ratings, trend, branch comparison
+  ├── Geri Bildirimler → QR/Google feedback list + responses
+  ├── Misafir Şikayetleri → auto-created from low ratings
+  ├── SLA Takibi → response time tracking
+  ├── Form Ayarları → QR form config (colors, fields, languages)
+  └── Analizler → satisfaction trends, category breakdown
+
+Module 2: CRM (Business Relations) — CLEANED
+  ├── Dashboard → campaign metrics, investor relations
+  ├── Kampanyalar → campaign management
+  ├── Ticket/Talepler → branch-to-HQ requests (renamed from Şikayetler)
+  ├── Ürün Şikayetleri → product quality complaints from branches
+  └── Analizler → campaign performance, business analytics
+
+Module 3: /misafir-memnuniyeti page → already exists, becomes the main entry
+```
+
+### T001 — Create Guest Satisfaction Mega Module (~2 hours)
+
+**Create new file:** `client/src/pages/misafir-memnuniyeti-modul.tsx`
+
+This is a mega module (tabbed page) with these tabs:
+
+```typescript
+const tabs = [
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart },
+  { id: 'geri-bildirimler', label: 'Geri Bildirimler', icon: MessageSquare },
+  { id: 'sikayetler', label: 'Misafir Şikayetleri', icon: AlertTriangle },
+  { id: 'sla', label: 'SLA Takibi', icon: Clock },
+  { id: 'form-ayarlari', label: 'Form Ayarları', icon: Settings },
+  { id: 'analizler', label: 'Analizler', icon: TrendingUp },
+];
+```
+
+**Data sources (existing tables — NO new tables needed):**
+- `customer_feedback` → QR/Google ratings (hizmet, temizlik, ürün, personel, ortam)
+- `feedback_responses` → staff responses to feedback
+- `feedback_form_settings` → QR form configuration
+- `guest_complaints` → auto-created from low ratings
+- `feedback_sla_config` → SLA rules
+
+**Dashboard tab content:**
+```
+┌─────────────────────────────────────────────┐
+│ Misafir Memnuniyeti Dashboard               │
+│                                             │
+│ Genel Ortalama: 4.2/5  |  Bu Ay: 4.1/5    │
+│ Toplam Değerlendirme: 156  |  Yanıt: %78   │
+│                                             │
+│ Kategori Ortalamaları:                      │
+│  Hizmet: 4.3  Temizlik: 4.0  Ürün: 4.4    │
+│  Personel: 4.1  Ortam: 4.2                 │
+│                                             │
+│ En İyi Şube: Antalya Lara (4.6)            │
+│ En Düşük: Batman (3.2) ⚠️                  │
+│                                             │
+│ [Trend Grafiği — son 3 ay]                  │
+└─────────────────────────────────────────────┘
+```
+
+**Geri Bildirimler tab:** Move existing feedback list from CRM here. Show: branch, date, ratings, comment, response status, responder.
+
+**Misafir Şikayetleri tab:** Show `guest_complaints` table data — auto-created when rating < 3. Status tracking (açık/işleniyor/çözüldü).
+
+**SLA Takibi tab:** Move existing SLA tracking from CRM here.
+
+**Form Ayarları tab:** Move existing form settings from CRM here.
+
+**Analizler tab:** Move satisfaction analytics from CRM here. Branch comparison, time trends, category breakdown.
+
+### T002 — Clean CRM Module (~1.5 hours)
+
+**Edit existing:** `client/src/pages/crm/` files
+
+Remove from CRM:
+- Guest feedback data from Dashboard
+- "Geri Bildirimler" tab → removed entirely
+- Guest satisfaction analytics from Analizler
+- SLA Takibi for guest feedback → removed
+
+Rename in CRM:
+- "Şikayetler" tab → "Ticket / Talepler"
+
+Keep in CRM:
+- Dashboard (only campaign metrics + business KPIs)
+- Kampanyalar (unchanged)
+- Ticket/Talepler (branch_feedbacks + product_complaints)
+- Analizler (only campaign/business analytics)
+
+**CRM Dashboard after cleanup:**
+```
+┌─────────────────────────────────────────────┐
+│ CRM Dashboard                               │
+│                                             │
+│ Aktif Kampanyalar: 3  |  Toplam Ticket: 12  │
+│ Açık Ticket: 5  |  Ortalama Çözüm: 2.3 gün│
+│                                             │
+│ Son Ticketlar:                              │
+│  • Batman — Fatura gecikmesi (2 gün)        │
+│  • Antalya Lara — Ekipman talebi (yeni)     │
+│                                             │
+│ Kampanya Performansı:                       │
+│  Happy Hour: %12 satış artışı               │
+└─────────────────────────────────────────────┘
+```
+
+**Ticket/Talepler tab content:**
+```
+┌─────────────────────────────────────────────┐
+│ Ticket / Talepler                           │
+│                                             │
+│ [Yeni Ticket +]  Filtre: [Tümü ▼] [Şube ▼]│
+│                                             │
+│ #12 Batman — Fatura 3 gündür gelmedi        │
+│    Kategori: Muhasebe  |  Durum: Açık       │
+│    Oluşturan: Şube Müdürü  |  2 gün önce   │
+│                                             │
+│ #11 Antalya Lara — Espresso makinesi arızalı│
+│    Kategori: Teknik  |  Durum: İşleniyor    │
+│    Atanan: Teknik Ekip  |  1 gün önce       │
+└─────────────────────────────────────────────┘
+```
+
+### T003 — Route & Sidebar Updates (~1 hour)
+
+**Add new route in App.tsx:**
+```typescript
+// New route for Guest Satisfaction module
+<Route path="/misafir-memnuniyeti" component={MisafirMemnuniyetiModul} />
+```
+
+If `/misafir-memnuniyeti` route already exists, replace the current simple page with the new mega module.
+
+**Update sidebar menu (SIDEBAR_ALLOWED_ITEMS in server/menu-service.ts):**
+
+For these roles, add "Misafir Memnuniyeti" to sidebar:
+- `kalite_kontrol` → must see (primary user)
+- `coach` → must see
+- `supervisor` → must see (their branch only)
+- `mudur` → must see (their branch only)
+- `cgo` → must see (all branches)
+- `admin` → must see
+
+For CRM sidebar visibility:
+- `marketing` → must see CRM
+- `cgo` → must see CRM
+- `admin` → must see CRM
+- Remove CRM access from: `kalite_kontrol`, `supervisor`, `mudur` (they use Misafir Memnuniyeti instead)
+
+**IMPORTANT:** Respect max 6 sidebar items per role. If adding Misafir Memnuniyeti pushes a role over 6, remove the least important item or group it.
+
+### T004 — Agent Routing Update (~30 min)
+
+Update agent routing rules for the new module separation:
+
+```sql
+-- Guest satisfaction complaints should route to kalite_kontrol, not CRM
+UPDATE agent_routing_rules 
+SET primary_role = 'kalite_kontrol', description = 'Misafir şikayeti (düşük puan)'
+WHERE category = 'quality' AND subcategory = 'customer_complaint';
+
+-- Add new routing rule for support tickets
+INSERT INTO agent_routing_rules (category, subcategory, description, primary_role, secondary_role, escalation_role, escalation_days)
+VALUES ('operations', 'support_ticket', 'Şubeden gelen destek talebi', 'destek', 'teknik', 'cgo', 3);
+```
+
+Also update Mr. Dobody suggestions — when agent detects low satisfaction score, route to `kalite_kontrol` not CRM role.
+
+### T005 — Data Integrity Check (~30 min)
+
+Verify NO data is lost during separation. Run these checks:
+
+```sql
+-- Count feedback records (must stay same before/after)
+SELECT COUNT(*) as total_feedback FROM customer_feedback;
+SELECT COUNT(*) as total_responses FROM feedback_responses;
+SELECT COUNT(*) as total_complaints FROM guest_complaints;
+SELECT COUNT(*) as total_branch_feedbacks FROM branch_feedbacks;
+SELECT COUNT(*) as total_campaigns FROM campaigns;
+
+-- Verify all feedback still accessible
+SELECT branch_id, COUNT(*) FROM customer_feedback GROUP BY branch_id ORDER BY branch_id;
+```
+
+### T006 — Flow Mode Navigation Update (~30 min)
+
+Update Flow Mode tasks for affected roles:
+
+- Coach flow tasks about "Misafir memnuniyeti düşük" → navigate to `/misafir-memnuniyeti` (not CRM)
+- Supervisor flow tasks about feedback → navigate to `/misafir-memnuniyeti`
+- CGO strategic suggestions about satisfaction trends → navigate to `/misafir-memnuniyeti`
+
+```bash
+grep -rn "misafir\|memnuniyet\|feedback\|geri.bildirim" server/routes/dobody-flow.ts server/agent/skills/ --include="*.ts" | head -15
+```
+
+Update `navigateTo` paths from `/crm` to `/misafir-memnuniyeti` where appropriate.
+
+### VERIFICATION
+
+1. **Guest Satisfaction module loads:** `/misafir-memnuniyeti` shows 6 tabs with real data
+2. **CRM module is clean:** No guest ratings on CRM dashboard, no "Geri Bildirimler" tab
+3. **CRM Ticket tab works:** Shows branch_feedbacks + product_complaints
+4. **Sidebar correct:** kalite_kontrol sees Misafir Memnuniyeti (not CRM), marketing sees CRM (not Misafir Memnuniyeti)
+5. **Data intact:** Same record counts before/after
+6. **Agent routing:** Low satisfaction → kalite_kontrol (not CRM)
+7. **Flow mode:** Feedback-related tasks navigate to `/misafir-memnuniyeti`
+8. **No role exceeds 6 sidebar items**
+
+### DO NOT BREAK:
+- Customer feedback QR submission flow (public endpoint)
+- Existing feedback data in database
+- Campaign management
+- Agent routing system
+- Flow Mode
+- Any Sprint 1-27 features
+
+---
+
+Bu Sprint 28 — CRM ve Misafir Memnuniyeti temiz ayrışma. 6 task, tahmini 6 saat. Replit'e yapıştır.

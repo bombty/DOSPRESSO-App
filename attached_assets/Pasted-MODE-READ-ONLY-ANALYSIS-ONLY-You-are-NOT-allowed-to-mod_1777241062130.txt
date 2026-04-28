@@ -1,0 +1,154 @@
+MODE: READ-ONLY ANALYSIS ONLY
+
+You are NOT allowed to modify, create, delete, rename, move, format, refactor, or fix any file.
+
+Your only job is to inspect the existing DOSPRESSO-App project and produce a written report directly in the chat.
+
+STRICT RULES:
+- Do not edit code.
+- Do not create files.
+- Do not create markdown report files.
+- Do not apply fixes.
+- Do not run migrations.
+- Do not run npm install.
+- Do not update package-lock.json.
+- Do not change database data.
+- Do not expose secrets, passwords, tokens, DATABASE_URL, API keys, or env values.
+- If you query the database, use SELECT only.
+- If a command may modify files or DB, do not run it.
+- Output only a report in the chat.
+
+PROJECT:
+DOSPRESSO-App on Replit.
+
+ANALYSIS GOAL:
+Audit only these areas:
+1. branch role permissions
+2. branch_id data scoping
+3. investor_branch permissions
+4. sube_kiosk permissions and kiosk scope
+
+Do not suggest fixes yet. Only identify and explain.
+
+REPORT SECTIONS REQUIRED:
+
+1. ROLES IN SCOPE
+Analyze these roles only:
+- mudur
+- supervisor
+- supervisor_buddy
+- barista
+- bar_buddy
+- stajyer
+- sube_kiosk
+- yatirimci_branch
+- coach
+- cgo
+- admin
+
+For each role, report:
+- business purpose
+- expected branch scope
+- dashboard route
+- visible modules
+- create/edit/delete permissions
+- suspicious permissions, if any
+
+2. PERMISSION SOURCE MAP
+Identify where permissions are defined:
+- shared/schema/schema-02.ts
+- shared/module-manifest.ts
+- shared/permissions.ts if relevant
+- server/menu-service.ts
+- any DB tables used for role/module/dashboard permissions
+
+Explain whether there are multiple permission sources and where drift may happen.
+
+3. BRANCH_ID SCOPING
+Inspect how branch_id is enforced in backend routes.
+
+Focus on:
+- PDKS
+- shifts
+- tasks
+- checklists
+- branch_orders
+- branch_inventory
+- customer feedback / complaints
+- equipment faults
+- employee / HR routes
+- dashboard data
+
+For each area, report:
+- route file
+- endpoint examples
+- whether req.user.branchId is enforced
+- whether HQ roles bypass branch scope
+- whether client-provided branchId can override user branchId
+- risk level
+
+4. INVESTOR_BRANCH AUDIT
+For yatirimci_branch:
+- list all modules and actions
+- identify whether this role can create/edit/delete branch_orders
+- identify whether this role can create/edit branch_inventory
+- identify whether it can view payroll, PDKS, employee, or customer PII
+- identify whether it is truly read-only or operational
+- explain where this is defined
+
+5. SUPERVISOR / SUPERVISOR_BUDDY AUDIT
+For supervisor and supervisor_buddy:
+- can they edit attendance / PDKS?
+- can they approve leave / overtime?
+- can they create/edit/delete HR records?
+- can they approve employees?
+- can they create/edit/delete branch orders?
+- can they edit inventory?
+- can they affect payroll indirectly?
+- list exact files/routes/permission definitions
+
+6. SUBE_KIOSK AUDIT
+For sube_kiosk:
+- list permissions
+- explain kiosk login flow
+- explain kiosk session/token flow
+- explain staff PIN flow
+- identify whether kiosk can complete tasks/checklists
+- identify whether task/checklist completion is tied to staff PIN or only kiosk account
+- identify whether kiosk can see/edit data beyond its own branch
+- identify any public or unauthenticated kiosk endpoints
+- risk level
+
+7. FRONTEND VS BACKEND CONSISTENCY
+Check whether frontend visible routes match backend permissions for:
+- mudur
+- supervisor
+- supervisor_buddy
+- sube_kiosk
+- yatirimci_branch
+
+Report:
+- frontend route visible but backend likely denies
+- backend allows but frontend hides
+- menu entry exists but route missing
+- route exists but not in menu
+- dashboard widget exists but no backend data source or component
+
+8. TOP FINDINGS
+List findings only. No code changes.
+
+For each finding:
+- severity: Critical / High / Medium / Low
+- role/module
+- what was found
+- why it matters
+- files/routes involved
+- owner decision needed or not
+
+9. OWNER QUESTIONS
+List questions only if truly needed.
+
+FINAL INSTRUCTION:
+Do not implement anything.
+Do not create files.
+Return the report directly in chat only.

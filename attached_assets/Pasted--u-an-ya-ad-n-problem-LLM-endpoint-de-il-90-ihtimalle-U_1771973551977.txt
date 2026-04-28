@@ -1,0 +1,102 @@
+Şu an yaşadığın problem LLM / endpoint değil — %90 ihtimalle UI’da yanlış sayfadasın (route mismatch).
+
+Replit ajanının da tespit ettiği gibi:
+	•	Senin eklettiğin AiCopilotCard → client/src/pages/sube-saglik-skoru.tsx
+	•	Senin ekranda gördüğün sayfa (“Raporlar > Şube sağlık”, bar chart, PDF butonu vs.) → büyük ihtimalle raporlar.tsx / raporlar-mega.tsx
+	•	Yani kart doğru dosyaya eklendi ama kullanıcının girdiği menü oraya hiç gitmiyor.
+
+Ayrıca: /api/ai/ops-copilot/summary?range=30d açınca “siyah ekranda JSON” görmen hata değil. Bu endpoint UI değil, API; tarayıcıda raw JSON basması normal.
+
+⸻
+
+Şu an hemen ne yapmalısın? (en doğru 3 adım)
+
+1) Replit’te ekranda görünen planda Start building’e bas
+
+Son ekran görüntünde ajan “Sorunun kaynağı bulundu, düzeltme planı hazır” diyor ve altta Start building var.
+Buna basıp fix’i uygulatman gerekiyor.
+
+Revise plan değil, Start building. Çünkü plan net: menü/route düzeltmesi.
+
+2) Build bitince Republish
+
+Fix merge/commit olacak. Sonra Production’a yansıtmak için Republish.
+
+3) Prod’da doğru sayfayı doğrula
+
+Fix sonrası hedef şu olmalı:
+	•	Menüden “Raporlar” içine “Şube Sağlık Skoru” tab’ı gelmiş olmalı veya
+	•	/raporlar/sube-saglik route’u artık sube-saglik-skoru.tsx’i render ediyor olmalı veya
+	•	Kart, kullanıcıların zaten gördüğü raporlar.tsx sayfasına da eklenmiş olmalı.
+
+Bu üçünden hangisini ajan uyguladıysa, prod’da AI kartı görünür.
+
+⸻
+
+Admin login konusu (admin/0000)
+
+Bu ayrı bir konu ve muhtemelen prod seed şifresi artık 0000 değil (veya admin hesabı farklı). Ama şu an “AI kartı görünmüyor” sorununu çözmek için admin’e hiç ihtiyaç yok çünkü sen zaten “Yavuz • Coach” ile sisteme girebilmişsin ve API endpoint’i cookie ile 200 dönmüş.
+
+Yine de admin şartsa, en güvenlisi:
+	•	Prod’da admin şifresini reset eden bir “ops-only” script/endpoint (sadece server-side, env guard’lı) eklemek.
+
+Bunu AI kart fix’inden sonra yapalım; iki işi karıştırmayalım.
+
+⸻
+
+Replit ile çalışma hızını/güvenliğini nasıl optimize edelim?
+
+Altın kural: “1 prompt = 1 değişiklik paketi”
+
+Senin sorundaki kafa karışıklığının ana sebebi şu: Replit agent “plan → build” döngüsünde birden fazla hedef verilince bazen doğru dosyaya ekliyor ama UI navigasyonunu kaçırabiliyor.
+
+En hızlı ve risksiz akış:
+	1.	Sen tek bir “iş paketi promptu” yapıştırırsın.
+	2.	Agent plan çıkarır.
+	3.	Planı okursun: “doğru sayfayı mı hedefliyor?”
+	4.	Start building
+	5.	QA + Republish
+	6.	Sonra ikinci paket.
+
+Revise plan ne zaman?
+
+Sadece şu durumda:
+	•	Agent planı yanlış dosyaya götürüyorsa,
+	•	“refactor yapacağım” gibi riskli şeye kayıyorsa,
+	•	RBAC/write-path gibi güvenlik çizgilerini aşıyorsa.
+
+Onun dışında her prompt sonrası Revise plan değil → Start building.
+
+⸻
+
+Şimdi Replit’e yapıştırman için tek parça “fix prompt” (kopyala-yapıştır)
+
+Aşağıdaki metni Replit agent’e gönder:
+
+PROMPT
+	•	Prod’da kullanıcılar “Raporlar > Şube sağlık” menüsünden raporlar.tsx / raporlar-mega.tsx sayfasına geliyor ve burada AiCopilotCard görünmüyor.
+	•	AiCopilotCard şu an client/src/pages/sube-saglik-skoru.tsx içinde; ama kullanıcı bu route’a erişemiyor (route mismatch).
+	•	Hedef: Kullanıcının gördüğü raporlar ekranından “Şube Sağlık Skoru” sayfasına erişim sağla ve AI kartını görünür yap.
+
+Uygulama seçenekleri (en az diff ile birini seç):
+	1.	/raporlar/sube-saglik route’unu sube-saglik-skoru.tsx render edecek şekilde düzelt (tercih).
+veya
+	2.	Raporlar mega modülüne “Şube Sağlık Skoru” tab’ı ekle ve tab tıklanınca sube-saglik-skoru.tsx route’una götür.
+veya
+	3.	AiCopilotCard bileşenini kullanıcıların gördüğü raporlar.tsx sayfasına da ekle (en hızlı hotfix).
+
+Acceptance criteria
+	•	Prod’da Coach rolüyle “Raporlar” ekranında AI kartı görünür hale gelsin.
+	•	Range 7d/30d/90d tıklayınca kart güncellensin.
+	•	API /api/ai/ops-copilot/summary?range=30d çalışmaya devam etsin.
+	•	Minimal diff, refactor yok.
+
+⸻
+
+Son soru: “Şu an ne yapayım?”
+
+Senin ekranındaki durumda doğru hamle:
+
+✅ Start building (route mismatch fix planını uygulat) → build bitince ✅ Republish → prod’da tekrar Raporlar sayfasından kontrol.
+
+Fix prod’a çıktıktan sonra, eğer istersen ikinci paket olarak “admin şifre reset” işini ayrı bir promptla alırız.

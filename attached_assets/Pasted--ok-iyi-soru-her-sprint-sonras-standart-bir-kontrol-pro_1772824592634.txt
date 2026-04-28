@@ -1,0 +1,108 @@
+Çok iyi soru — her sprint sonrası standart bir kontrol prompt'u olması kaliteyi çok artırır. İşte her sprint sonrası Replit'e yapıştırabileceğin **universal kontrol prompt'u:**
+
+---
+
+## Yapılan güncellemeleri 6 farklı perspektiften kontrol et. Kod değişikliği YAPMA — sadece analiz et ve sorunları raporla.
+
+### 1. KRİTİK HATALAR (Veri Kaybı / Crash Riski)
+```bash
+# Runtime error kontrolü — uygulama çöküyor mu?
+grep -rn "Cannot access\|is not defined\|is not a function\|undefined is not\|null is not" client/src/ --include="*.tsx" --include="*.ts" 2>/dev/null | head -10
+
+# Kullanılmayan/kırık import'lar
+# Build hataları var mı?
+```
+- Yeni eklenen dosyalarda circular dependency var mı?
+- Yeni state/değişken tanımları scope dışında mı kullanılıyor?
+- Yeni API endpoint'leri hata döndürüyor mu?
+- Veri kaybı riski olan akışlar var mı? (form gönderildiğinde veri boş mu gidiyor, kayıt silinebiliyor mu, vb.)
+
+### 2. GÜVENLİK KONTROL
+```bash
+# Yeni endpoint'lerde yetkilendirme var mı?
+grep -rn "router\.\(get\|post\|put\|patch\|delete\)" server/ --include="*.ts" | grep -v "requireAuth\|requireRole\|requireHQ\|isAdmin\|checkPermission" | tail -20
+
+# Yeni endpoint'ler hangileri?
+git diff --name-only HEAD~1 2>/dev/null | grep "server/" | head -20
+```
+- Yeni eklenen TÜM API endpoint'lerinde auth kontrolü var mı?
+- Rol bazlı erişim doğru mu? (barista admin endpoint'ine erişebilir mi?)
+- Kullanıcı verisi (şifre, email, telefon) loglanıyor mu? Loglanmamalı.
+- SQL injection riski var mı? (raw SQL kullanılıyorsa parametrize mi?)
+
+### 3. TÜR UYUMU & VERİ BÜTÜNLÜĞÜ
+```bash
+# Type mismatch — varchar vs integer, string vs number
+grep -rn "parseInt\|Number(\|\.id)" server/ --include="*.ts" | grep -v "node_modules" | tail -15
+
+# Yeni tablo/kolon eklenmiş mi? Schema uyumlu mu?
+grep -rn "CREATE TABLE\|ALTER TABLE\|ADD COLUMN" server/ --include="*.ts" | tail -10
+```
+- Yeni DB kolonlarının tipleri schema.ts ile uyumlu mu? (özellikle varchar vs integer id'ler)
+- Frontend'de backend'den gelen veri doğru parse ediliyor mu?
+- Yeni tablolarda foreign key referansları doğru mu?
+
+### 4. UI/UX TUTARLILIK
+```bash
+# Yeni component'ler mevcut pattern'leri takip ediyor mu?
+# Hardcoded renkler (dark mode uyumsuz)
+grep -rn "bg-white\|text-black\|border-gray-200" client/src/ --include="*.tsx" | grep -v "dark:\|print:" | tail -10
+
+# Mobil uyumluluk — sabit genişlikler
+grep -rn "w-\[.*px\]\|grid-cols-[3-6]" client/src/ --include="*.tsx" | grep -v "sm:\|md:\|lg:\|max-w\|min-w-0" | tail -10
+
+# Türkçe kontrol — İngilizce kalan metin
+grep -rn '"Save"\|"Cancel"\|"Delete"\|"Submit"\|"Loading"\|"Error"\|"Success"' client/src/ --include="*.tsx" | grep -v "import\|className\|console\|//" | head -10
+```
+- Yeni eklenen component'ler dark mode'da düzgün görünüyor mu?
+- Yeni sayfalar 375px (mobil telefon) da düzgün mü?
+- Yeni buton/metin İngilizce mi kalmış?
+- Yeni dialog/modal telefonda tam ekran açılıyor mu?
+
+### 5. PERFORMANS & BELLEK
+```bash
+# Yeni setInterval/setTimeout — temizleniyor mu? (memory leak riski)
+grep -rn "setInterval\|setTimeout" client/src/ --include="*.tsx" | grep -v "clear\|cleanup\|return" | tail -10
+
+# Duplicate render riski — aynı component birden fazla yerde mi?
+# Gereksiz re-render — useEffect dependency array doğru mu?
+```
+- Yeni background job/interval eklendiyse cleanup fonksiyonu var mı?
+- Aynı API birden fazla yerden çağrılıyor mu? (gereksiz yük)
+- Yeni hook her component instance'ında ayrı çalışıyor mu yoksa Context ile tek mi?
+- localStorage/sessionStorage kullanımı varsa boyut kontrolü var mı?
+
+### 6. ENTEGRASYON & REGRESYON
+```bash
+# Mevcut testlerin kırılmadığını doğrula
+# Sunucu hatasız çalışıyor mu?
+# Background job'lar aktif mi?
+```
+- Önceki sprint'lerde yapılan özellikler hâlâ çalışıyor mu?
+- Bildirim sistemi etkilenmiş mi?
+- Agent sistemi (Mr. Dobody) etkilenmiş mi?
+- Sidebar/menü sistemi etkilenmiş mi?
+- Quiz anti-cheat etkilenmiş mi?
+- CRM modülü etkilenmiş mi?
+
+### RAPOR FORMATI:
+
+Her bulguyu şu şekilde raporla:
+
+```
+KATEGORİ: [Kritik/Güvenlik/Tür/UI/Performans/Entegrasyon]
+DOSYA: [dosya:satır]
+SORUN: [ne yanlış]
+ETKİ: [ne olur düzeltilmezse]
+ÇÖZÜM: [nasıl düzeltilir]
+```
+
+Sorun YOKSA: "✅ Kontrol tamamlandı — sorun bulunamadı" yaz.
+
+Sorun VARSA: Önce düzeltme planı sun, onay bekle, sonra düzelt.
+
+---
+
+Bu prompt'u her sprint build'i bittikten sonra Replit'e yapıştır. Standart kalite kontrol süreci olur — hiçbir sorun kaçmaz.
+
+İstersen bunu bir dosya olarak kaydedeyim, her seferinde kopyalaman kolay olsun?

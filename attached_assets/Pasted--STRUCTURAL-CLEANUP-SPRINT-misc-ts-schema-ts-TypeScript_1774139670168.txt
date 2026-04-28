@@ -1,0 +1,678 @@
+## STRUCTURAL CLEANUP SPRINT — misc.ts + schema.ts + TypeScript + Kiosk QC
+
+### Context
+DOSPRESSO code structure cleanup. No launch deadline — do it right.
+4 tasks, executed SEQUENTIALLY (each depends on previous being stable):
+
+1. misc.ts split (13,221 lines → modular route files)
+2. schema.ts split (15,707 lines → barrel re-export pattern)
+3. TypeScript :any cleanup (1,086 req.user + 1,307 catch blocks)
+4. Kiosk QC mode (add QC screens to factory kiosk)
+
+IMPORTANT LESSONS FROM PREVIOUS ATTEMPT:
+- Replit previously said misc.ts and schema.ts splitting was "too risky"
+- The risk is real — but manageable with INCREMENTAL approach
+- Do ONE group at a time, test after EACH extraction
+- If anything breaks, REVERT that one change and try differently
+- DO NOT attempt to split everything in one batch
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+### CRITICAL RULES
+- users.id is VARCHAR (UUID), Turkish UI
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts
+- Do NOT change business logic, scoring, or API response formats
+- INCREMENTAL: extract → test → next. Never batch.
+- If app breaks after extraction → REVERT immediately, try different approach
+- Keep original files as barrel re-exports (zero import breakage)
+
+---
+
+## ═══════════════════════════════════════════
+## TASK 1: SPLIT misc.ts (13,221 lines → modular)
+## ═══════════════════════════════════════════
+
+### Step 0: Analyze route groups
+
+```bash
+echo "══════════════════════════════════════"
+echo "TASK 1: misc.ts ANALYSIS"
+echo "══════════════════════════════════════"
+
+echo "--- Total lines and routes ---"
+wc -l server/routes/misc.ts
+grep -c "router\.\(get\|post\|patch\|put\|delete\)" server/routes/misc.ts
+
+echo "--- Route prefix groups (top 20) ---"
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/misc.ts | grep -oP '"/api/[^/"]+' | sort | uniq -c | sort -rn | head -20
+
+echo "--- Section markers ---"
+grep -n "// ===\|// ---\|// ###\|// ~~~\|// \*\*\*" server/routes/misc.ts | head -30
+
+echo "--- What misc.ts exports besides router ---"
+grep -n "^export " server/routes/misc.ts | head -10
+
+echo "--- What other files import FROM misc.ts ---"
+grep -rn "from.*routes/misc\|require.*routes/misc" server/ --include="*.ts" | grep -v node_modules | head -10
+
+echo "--- How misc router is registered ---"
+grep -n "misc" server/index.ts | head -5
+
+echo "--- Helper functions defined in misc.ts (not routes) ---"
+grep -n "^function \|^async function \|^const .* = " server/routes/misc.ts | grep -v "router\." | head -20
+
+echo "--- Shared middleware or helpers used across groups ---"
+grep -n "function.*req.*res\|const.*middleware" server/routes/misc.ts | head -10
+```
+
+### Step 1: Identify the 5 LARGEST extractable groups
+
+Based on route prefix analysis, identify groups. Example expected groups:
+```
+/api/notifications/*     → notifications-routes.ts
+/api/messages/*          → messaging-routes.ts  
+/api/announcements/*     → announcements-routes.ts
+/api/dashboard/*         → dashboard-routes.ts
+/api/employee/*          → employee-routes.ts
+/api/knowledge-base/*    → knowledge-base-routes.ts
+/api/operations/*        → operations-routes.ts
+/api/reports/*           → reports-routes.ts
+```
+
+### Step 2: Extract FIRST group (smallest, safest)
+
+Pick the group with FEWEST routes and FEWEST dependencies:
+
+```bash
+# Example: extract notifications
+# 1. Find all notification routes
+grep -n "router\.\(get\|post\|patch\|delete\).*notification" server/routes/misc.ts | head -20
+
+# 2. Find line range
+# Note the FIRST and LAST line numbers of this group
+```
+
+**Extraction process:**
+
+```typescript
+// NEW FILE: server/routes/notifications-routes.ts
+
+import express from 'express';
+import { isAuthenticated } from '../middleware/auth'; // or wherever auth is
+import { db } from '../db'; // or however DB is accessed
+// ... copy needed imports from misc.ts
+
+const router = express.Router();
+
+// PASTE all /api/notifications/* routes here
+// Keep EXACT same route paths, handlers, middleware
+
+export default router;
+```
+
+**Remove from misc.ts:** Delete the extracted routes (the exact lines).
+
+**Register in index.ts:**
+```bash
+# Find where misc router is registered
+grep -n "misc" server/index.ts
+```
+
+Add: `import notificationsRouter from './routes/notifications-routes'; app.use(notificationsRouter);`
+
+**TEST immediately:**
+```bash
+# Restart app
+# Test one endpoint from the extracted group
+curl -s http://localhost:5000/api/notifications -H "Cookie: connect.sid=..." | head -5
+echo "Status: $?"
+```
+
+If broken → REVERT the extraction, investigate why.
+
+### Step 3: Extract SECOND group
+
+Only after Step 2 is verified working. Same process.
+
+### Step 4: Continue until misc.ts < 3000 lines
+
+Don't try to get to 500 lines — that's too aggressive. Target: **< 3000 lines**.
+
+**After EACH extraction:**
+1. App restarts without errors
+2. Extracted endpoints respond correctly
+3. No other pages broken (check HQ dashboard, İK page)
+
+### Step 5: Verify final state
+
+```bash
+echo "--- misc.ts final size ---"
+wc -l server/routes/misc.ts
+
+echo "--- New route files ---"
+ls -la server/routes/*-routes.ts server/routes/*-route.ts 2>/dev/null
+
+echo "--- Total route files ---"
+find server/routes -name "*.ts" | wc -l
+
+echo "--- All endpoints still reachable ---"
+curl -s http://localhost:5000/api/health
+```
+
+### IMPORTANT: What NOT to extract
+- Routes that share state/variables with other routes in misc.ts
+- Routes that use locally-defined helper functions (extract the helper too, or leave both)
+- The router export itself (keep misc.ts as a reduced file, not empty)
+
+---
+
+## ═══════════════════════════════════════════
+## TASK 2: SPLIT schema.ts (15,707 lines → barrel)
+## ═══════════════════════════════════════════
+
+### Step 0: Analyze schema structure
+
+```bash
+echo "══════════════════════════════════════"
+echo "TASK 2: schema.ts ANALYSIS"  
+echo "══════════════════════════════════════"
+
+echo "--- Total tables ---"
+grep -c "pgTable\b" shared/schema.ts
+
+echo "--- Total exports ---"
+grep -c "^export " shared/schema.ts
+
+echo "--- Table groups by prefix ---"
+grep -oP 'export const (\w+)' shared/schema.ts | sed 's/export const //' | sed 's/[A-Z].*$//' | sort | uniq -c | sort -rn | head -20
+
+echo "--- Non-table exports (types, enums, constants) ---"
+grep "^export " shared/schema.ts | grep -v "pgTable\|relations\|= z\." | head -20
+
+echo "--- Zod schemas ---"
+grep -c "= z\.\|= createInsertSchema\|= createSelectSchema" shared/schema.ts
+
+echo "--- Relations ---"
+grep -c "relations\b" shared/schema.ts
+
+echo "--- What imports schema.ts ---"
+grep -rn "from.*shared/schema\|from.*@shared/schema\|from.*schema'" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+
+echo "--- How schema is imported (path pattern) ---"
+grep -rn "from.*schema" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | grep -oP "from ['\"].*?['\"]" | sort | uniq -c | sort -rn | head -10
+
+echo "--- Does shared/schema/ directory exist? ---"
+ls -la shared/schema/ 2>/dev/null || echo "Directory does not exist"
+```
+
+### Step 1: Create schema directory
+
+```bash
+mkdir -p shared/schema
+```
+
+### Step 2: Extract SMALLEST group first (settings/config tables)
+
+```bash
+# Find settings-related tables
+grep -n "export const moduleFlags\|export const aiSystemConfig\|export const slaRules\|export const systemSettings" shared/schema.ts | head -10
+```
+
+**Create `shared/schema/settings.ts`:**
+```typescript
+import { pgTable, serial, varchar, text, boolean, integer, timestamp, date, real, jsonb } from 'drizzle-orm/pg-core';
+// Copy ONLY the table definitions for: moduleFlags, aiSystemConfig, slaRules
+// Also copy their relations if any
+// Also copy their Zod schemas if any
+```
+
+**Add barrel re-export to schema.ts:**
+At the TOP of schema.ts, add:
+```typescript
+export * from './schema/settings';
+```
+
+**Remove the extracted table definitions from schema.ts** (the lines you copied to settings.ts).
+
+**TEST:**
+```bash
+# Check TypeScript resolves
+npx tsc --noEmit 2>&1 | head -20
+# Or just restart app
+```
+
+If TypeScript errors → the most likely cause is missing import in the new file. Fix imports.
+
+### Step 3: Extract next group (factory tables)
+
+```bash
+grep -n "export const factory" shared/schema.ts | head -15
+```
+
+Move all `factory*` tables + `productionLots` + `qcInspections` + `qcAssignments` to `shared/schema/factory.ts`.
+
+Add: `export * from './schema/factory';` to schema.ts.
+Remove extracted definitions from schema.ts.
+Test.
+
+### Step 4: Continue with remaining groups
+
+Order (smallest → largest, safest → riskiest):
+1. ✅ settings (module_flags, config) — ~200 lines
+2. factory (factory_*, qc_*, production_lots) — ~500 lines
+3. training (training_modules, certificates, quizzes) — ~300 lines
+4. messaging (messages, notifications, conversations) — ~400 lines
+5. shifts (shifts, shift_schedules) — ~300 lines
+6. pdks (pdks_records) — ~200 lines
+7. payroll (payroll_*, salary_scales) — ~400 lines
+8. tasks (tasks, assignments, checklists) — ~500 lines
+9. crm (customers, orders, feedback) — ~300 lines
+10. agent (agent_*, skills, guidance) — ~400 lines
+11. hr (employee_*, disciplinary, leaves) — ~400 lines
+12. branches (branches, branch_health) — ~300 lines
+13. users (users, roles, sessions) — LAST (most cross-referenced) — ~500 lines
+
+**Each step: extract → add re-export → remove from schema.ts → test**
+
+### Step 5: Handle cross-references
+
+Some tables reference others (foreign keys). When splitting:
+- Import the referenced table from its new location
+- Example: `factory.ts` references `users` → `import { users } from './users';`
+- BUT this creates circular dependencies if users.ts also references factory
+
+**Solution for circular deps:**
+- Keep ALL pgTable definitions that have FK references to tables in OTHER files
+- Only extract tables that reference tables WITHIN the same file
+- OR use Drizzle's `relations()` separately (relations can stay in schema.ts)
+
+**If circular dependency issues arise:**
+- Keep the problematic table in schema.ts
+- Don't force it — some tables are too interconnected
+
+### Step 6: Final state
+
+```bash
+echo "--- schema.ts final size ---"
+wc -l shared/schema.ts  # Target: < 500 lines (mostly re-exports)
+
+echo "--- Schema module files ---"
+ls -la shared/schema/*.ts
+for f in shared/schema/*.ts; do
+  echo "$(wc -l < $f) lines — $(basename $f)"
+done
+
+echo "--- Verify all imports still work ---"
+grep -rn "from.*schema" server/routes/*.ts | head -5
+# These should still resolve correctly
+```
+
+---
+
+## ═══════════════════════════════════════════
+## TASK 3: TypeScript :any CLEANUP
+## ═══════════════════════════════════════════
+
+### Step 0: Current count
+
+```bash
+echo "══════════════════════════════════════"
+echo "TASK 3: TypeScript :any AUDIT"
+echo "══════════════════════════════════════"
+
+echo "--- Total :any ---"
+grep -rn ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+
+echo "--- req.user as any ---"
+grep -c "(req.user as any)\|(req.user as AuthUser)" server/routes/*.ts | awk -F: '{sum+=$2} END {print sum}'
+
+echo "--- catch error any ---"
+grep -c "catch.*: any\|catch.*:any" server/routes/*.ts | awk -F: '{sum+=$2} END {print sum}'
+
+echo "--- as any on queries ---"
+grep -c "as any" server/routes/*.ts | awk -F: '{sum+=$2} END {print sum}'
+
+echo "--- AuthUser type exists? ---"
+cat server/types/auth.ts 2>/dev/null || echo "NOT FOUND"
+```
+
+### Step 1: Ensure AuthUser type exists
+
+```bash
+cat server/types/auth.ts
+```
+
+If it doesn't have enough fields, update it:
+```typescript
+export interface AuthUser {
+  id: string;
+  username: string;
+  email?: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  branchId?: number;
+  isActive: boolean;
+  profileImageUrl?: string;
+  dashboardLayout?: string;
+  employmentType?: string;
+  phone?: string;
+  title?: string;
+}
+```
+
+### Step 2: Batch replace `(req.user as any)` → `(req.user as AuthUser)`
+
+For EACH route file:
+
+```bash
+# List files with req.user as any
+grep -rl "(req.user as any)" server/routes/*.ts | sort
+```
+
+For each file:
+1. Add import at top: `import { AuthUser } from '../types/auth';`
+   (adjust path if needed — check relative path)
+2. Replace ALL `(req.user as any)` with `(req.user as AuthUser)`
+
+```bash
+# Example for one file:
+# sed -i 's/(req.user as any)/(req.user as AuthUser)/g' server/routes/hr.ts
+# Then add import manually
+```
+
+**VERIFY after each file:** App still starts.
+
+### Step 3: Replace `catch (error: any)` → `catch (error: unknown)`
+
+Same batch approach per file:
+
+```bash
+grep -rl "catch.*: any\|catch.*:any" server/routes/*.ts | sort
+```
+
+For each occurrence:
+```typescript
+// BEFORE:
+} catch (error: any) {
+  console.error("Error:", error.message);
+  res.status(500).json({ error: error.message });
+}
+
+// AFTER:
+} catch (error: unknown) {
+  const message = error instanceof Error ? error.message : 'Beklenmeyen hata';
+  console.error("Error:", message);
+  res.status(500).json({ error: message });
+}
+```
+
+**Use sed carefully or do it manually for each file.**
+
+### Step 4: Remove unnecessary `as any` on Drizzle queries
+
+```bash
+grep -n "as any" server/routes/*.ts | grep -i "select\|insert\|update\|delete\|db\." | head -20
+```
+
+Most Drizzle query results don't need `as any`. Remove where the type is already inferred.
+
+**Be careful:** Some `as any` exist for legitimate reasons (complex joins, raw SQL). Don't remove those.
+
+### Step 5: Final count
+
+```bash
+echo "--- :any AFTER cleanup ---"
+grep -rn ": any\|:any\|as any" server/ client/src/ --include="*.ts" --include="*.tsx" | grep -v node_modules | wc -l
+
+echo "--- req.user as any remaining ---"
+grep -c "(req.user as any)" server/routes/*.ts | awk -F: '{sum+=$2} END {print sum}'
+
+echo "--- Reduction ---"
+# Compare with Step 0 numbers
+```
+
+Target: **reduce by 200+ occurrences** (req.user + catch blocks).
+
+---
+
+## ═══════════════════════════════════════════
+## TASK 4: KIOSK QC MODE
+## ═══════════════════════════════════════════
+
+### Step 0: Understand kiosk structure
+
+```bash
+echo "══════════════════════════════════════"
+echo "TASK 4: KIOSK QC MODE"
+echo "══════════════════════════════════════"
+
+echo "--- Kiosk file size ---"
+wc -l client/src/pages/fabrika/kiosk.tsx
+
+echo "--- Kiosk steps/screens ---"
+grep -n "step\|screen\|view\|mode\|Step\|Screen\|View\|setStep\|setScreen\|setCurrentView" client/src/pages/fabrika/kiosk.tsx | head -20
+
+echo "--- Step type definition ---"
+grep -n "type.*Step\|type.*Screen\|type.*View\|'select-user'\|'enter-pin'\|'worker-home'" client/src/pages/fabrika/kiosk.tsx | head -15
+
+echo "--- How steps render ---"
+grep -n "step ===\|screen ===\|currentView ===" client/src/pages/fabrika/kiosk.tsx | head -15
+
+echo "--- Right sidebar on select-user ---"
+grep -n "sidebar\|right.*panel\|saat\|istasyon\|station\|Mr.*Dobody\|dobody" client/src/pages/fabrika/kiosk.tsx | head -15
+
+echo "--- QC assignment query available? ---"
+grep -n "qc\|quality\|kalite\|assignment" client/src/pages/fabrika/kiosk.tsx | head -5
+
+echo "--- How kiosk fetches data ---"
+grep -n "kioskFetch\|fetch\|useQuery" client/src/pages/fabrika/kiosk.tsx | head -10
+
+echo "--- Existing QC API ---"
+grep -n "router\.\(get\|post\).*qc\|router\.\(get\|post\).*quality\|router\.\(get\|post\).*kalite" server/routes/factory.ts | head -10
+```
+
+### Step 1: Add QC step types
+
+Find the step/screen type and add QC steps:
+
+```typescript
+// Add to the step type:
+// Existing: 'select-user' | 'enter-pin' | 'worker-home' | ...
+// Add: 'qc-pending' | 'qc-inspect' | 'qc-result'
+```
+
+### Step 2: Add QC button to select-user screen
+
+In the right sidebar (where stations and Mr. Dobody are):
+
+```typescript
+// After stations section, before or after Mr. Dobody:
+
+// Fetch current QC assignment
+const qcAssignmentQuery = useQuery({
+  queryKey: ['/api/factory/qc/current-assignment'],
+  refetchInterval: 300000, // 5 min
+  enabled: true,
+});
+
+const qcAssignment = qcAssignmentQuery.data;
+
+// Render QC button (only if assignment exists)
+{qcAssignment && (
+  <button
+    onClick={() => {
+      setQcMode(true);
+      setStep('enter-pin'); // QC person enters their PIN
+      setQcAssigneeId(qcAssignment.assignedUserId);
+    }}
+    className="w-full p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm font-medium"
+  >
+    QC Kontrol: {qcAssignment.assigneeName}
+  </button>
+)}
+```
+
+### Step 3: QC Pending screen
+
+When step === 'qc-pending':
+
+```typescript
+// Fetch pending lots
+const pendingLotsQuery = useQuery({
+  queryKey: ['/api/factory/qc/pending'],
+  enabled: step === 'qc-pending',
+});
+
+// Render:
+// Header: "Kalite Kontrol — Bekleyen Lotlar" + count
+// List of lot cards:
+//   Each card: LOT number (bold) | Product name | Producer name | Quantity | Time ago
+//   Click → setSelectedLot(lot) → setStep('qc-inspect')
+// Back button → resetWorker()
+// Empty state: "Bekleyen lot yok — tüm üretimler kontrol edilmiş"
+```
+
+### Step 4: QC Inspection form
+
+When step === 'qc-inspect':
+
+```typescript
+// Header: LOT-20260322-001 | Donut Klasik | Fatma A. | 24 adet (read-only)
+
+// Check toggles (large, touch-friendly — 48px min height):
+const [checks, setChecks] = useState({
+  visualCheck: 'na',       // 'passed' | 'failed' | 'na'
+  weightCheck: 'na',
+  packagingCheck: 'na',
+  temperatureCheck: 'na',
+  allergenCheck: false,
+  haccpCompliant: false,
+  temperatureValue: '',
+  inspectorNotes: '',
+});
+
+// Each check row:
+// [Label] .............. [✓ green] [✗ red] [— gray]
+// Large tap targets, clear visual feedback
+
+// Temperature: toggle + number input (when passed/failed selected)
+// Allergen: simple yes/no toggle
+// HACCP: simple yes/no toggle
+// Notes: textarea (optional)
+
+// Bottom: 3 large action buttons (full width, stacked):
+// [ONAYLA — Tüm kontroller başarılı] (green, 56px height)
+// [KOŞULLU ONAYLA — Küçük sorunlar var] (amber, 56px height)
+// [REDDET — Kalite yetersiz] (red, 56px height)
+
+// On submit:
+// POST /api/factory/qc/inspections with all check data + overall result
+// On success → setStep('qc-result')
+```
+
+### Step 5: QC Result screen
+
+When step === 'qc-result':
+
+```typescript
+// Success icon (green check or red X based on result)
+// "LOT-20260322-001 — Onaylandı" or "Reddedildi"
+// 2 buttons:
+// [Başka Lot Kontrol Et] → setStep('qc-pending')
+// [Çıkış] → resetWorker() → setStep('select-user')
+```
+
+### Step 6: QC mode state management
+
+```typescript
+// Add state variables:
+const [qcMode, setQcMode] = useState(false);
+const [selectedLot, setSelectedLot] = useState(null);
+const [qcAssigneeId, setQcAssigneeId] = useState('');
+
+// When QC person enters PIN successfully:
+// Instead of going to worker-home, go to qc-pending
+// Check: if qcMode && PIN matches qcAssigneeId → setStep('qc-pending')
+
+// Reset on logout:
+// resetWorker should also reset: setQcMode(false), setSelectedLot(null)
+```
+
+### Step 7: Test QC flow
+
+1. Select-user screen shows QC button (if assignment exists)
+2. Click QC → PIN screen → enter QC person's PIN
+3. Success → pending lots list
+4. Click a lot → inspection form
+5. Fill checks → click Onayla
+6. Result screen → "Başka Lot" or "Çıkış"
+7. Lot status updated in DB (check: SELECT qc_status FROM production_lots)
+
+---
+
+## EXECUTION ORDER:
+
+```
+TASK 1: misc.ts split
+  → Extract group 1 → test → extract group 2 → test → ... → report
+  
+TASK 2: schema.ts split  
+  → Extract settings → test → extract factory → test → ... → report
+
+TASK 3: TypeScript :any
+  → AuthUser type → req.user batch replace → catch blocks → report
+
+TASK 4: Kiosk QC
+  → Add steps → QC button → pending screen → inspect form → result → test → report
+```
+
+**After EACH task: verify app starts, test key features, report.**
+**After ALL tasks: full validation run.**
+
+## DO NOT TOUCH:
+- localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- Scoring services
+- Payroll calculation logic (already consolidated)
+- API response formats
+- Existing working kiosk screens (only ADD new QC screens)
+
+## Testing:
+
+### misc.ts:
+1. misc.ts < 3000 lines (target)
+2. All extracted routes work (same URLs, same responses)
+3. No 404s on any existing endpoint
+4. New route files properly registered in index.ts
+
+### schema.ts:
+5. All imports from '@shared/schema' still work
+6. schema.ts is mostly re-exports (< 500 lines, or significantly reduced)
+7. No TypeScript errors on schema imports
+8. Drizzle migration still works
+
+### TypeScript:
+9. `(req.user as any)` count reduced by 80%+
+10. `catch (error: any)` count reduced by 50%+
+11. AuthUser type used consistently
+12. No TypeScript compile errors
+
+### Kiosk QC:
+13. QC button visible on select-user when assignment exists
+14. QC PIN entry works
+15. Pending lots list loads
+16. Inspection form submits correctly
+17. Lot qc_status updated in DB after inspection
+18. Result screen works
+19. "Çıkış" returns to select-user
+20. Existing kiosk flow NOT broken (production, shift, break all still work)
+
+## FINAL REPORT must include:
+1. misc.ts: before/after line count, extracted files (list), any groups NOT extracted (and why)
+2. schema.ts: before/after line count, schema/ files created, circular dep issues encountered
+3. TypeScript: :any before/after count, files modified
+4. Kiosk QC: screens implemented, QC flow verified, any limitations
+5. Overall: app health, any regressions, recommendations

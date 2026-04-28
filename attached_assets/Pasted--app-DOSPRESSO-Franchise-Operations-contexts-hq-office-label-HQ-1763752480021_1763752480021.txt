@@ -1,0 +1,245 @@
+{
+  "app": "DOSPRESSO Franchise & Operations",
+  "contexts": {
+    "hq_office": {
+      "label": "HQ - Ofis",
+      "roles": {
+        "admin": {
+          "label": "Admin - Sistem Yöneticisi",
+          "menu": [
+            { "key": "hq_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+
+            { "key": "branches", "label": "Şubeler", "perm": ["view","create","edit","delete"] },
+            { "key": "franchise_openings", "label": "Franchise Açılış", "perm": ["view","create","edit","approve"] },
+
+            { "key": "operations", "label": "Operasyon", "perm": ["view","create","edit","delete"] },
+            { "key": "checklists", "label": "Checklistler", "perm": ["view","create","edit","approve"] },
+            { "key": "equipment", "label": "Ekipman", "perm": ["view","create","edit"] },
+            { "key": "equipment_issues", "label": "Ekipman Arızaları", "perm": ["view","create","edit","approve"] },
+
+            { "key": "shifts", "label": "Vardiya & Devam", "perm": ["view","create","edit","approve"] },
+            { "key": "leave_requests", "label": "İzin Talepleri", "perm": ["view","approve"] },
+            { "key": "overtime_requests", "label": "Mesai Talepleri", "perm": ["view","approve"] },
+
+            { "key": "finance", "label": "Finans", "perm": ["view","create","edit","export"] },
+            { "key": "hr", "label": "İnsan Kaynakları", "perm": ["view","create","edit","approve"] },
+            { "key": "quality", "label": "Kalite & Gelişim", "perm": ["view","create","edit","approve"] },
+
+            { "key": "academy", "label": "Akademi", "perm": ["view","create","edit","approve"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view","create","edit"] },
+
+            { "key": "support_center", "label": "Destek Merkezi", "perm": ["view","create","assign","close"] },
+            { "key": "settings", "label": "Yönetim / Ayarlar", "perm": ["view","create","edit"] }
+          ]
+        },
+
+        "muhasebe": {
+          "label": "Muhasebe",
+          "menu": [
+            { "key": "hq_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "finance", "label": "Finans", "perm": ["view","create","edit","export"] },
+            { "key": "cash_reports", "label": "Kasa Raporları", "perm": ["view","export"] },
+            { "key": "branches", "label": "Şubeler", "perm": ["view"] },
+            { "key": "hr", "label": "İK (Read Only)", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] },
+            { "key": "support_center", "label": "Destek Merkezi", "perm": ["view","create"] }
+          ]
+        },
+
+        "satinalma": {
+          "label": "Satınalma (HQ)",
+          "menu": [
+            { "key": "hq_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "procurement", "label": "Satınalma", "perm": ["view","create","edit"] },
+            { "key": "inventory", "label": "Stok / Depo (Read)", "perm": ["view"] },
+            { "key": "equipment", "label": "Ekipman", "perm": ["view","create","edit"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] }
+          ]
+        },
+
+        "coach": {
+          "label": "Coach",
+          "menu": [
+            { "key": "hq_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "academy", "label": "Akademi", "perm": ["view","create","edit","approve"] },
+            { "key": "training_assign", "label": "Eğitim Atamaları", "perm": ["view","create","edit"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view","create","edit"] }
+          ]
+        },
+
+        "teknik": {
+          "label": "Teknik",
+          "menu": [
+            { "key": "hq_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "equipment", "label": "Ekipman", "perm": ["view","create","edit"] },
+            { "key": "equipment_issues", "label": "Ekipman Arızaları", "perm": ["view","create","edit","approve"] },
+            { "key": "troubleshooting", "label": "Arıza Çözümleri", "perm": ["view","create","edit"] },
+            { "key": "branches", "label": "Şubeler", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] }
+          ]
+        },
+
+        "destek": {
+          "label": "Destek (HQ)",
+          "menu": [
+            { "key": "hq_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "support_center", "label": "Destek Merkezi", "perm": ["view","create","assign","close"] },
+            { "key": "branches", "label": "Şubeler", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] }
+          ]
+        },
+
+        "yatirimci_hq": {
+          "label": "Yatırımcı (HQ) - Read Only",
+          "menu": [
+            { "key": "hq_dashboard_summary", "label": "Kontrol Paneli (Özet)", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "performance", "label": "Performans", "perm": ["view"] },
+            { "key": "reports", "label": "Raporlar", "perm": ["view","export"] },
+            { "key": "announcements", "label": "Duyurular", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] }
+          ]
+        }
+      }
+    },
+
+    "franchise_branch": {
+      "label": "Franchise - Şube",
+      "roles": {
+        "stajyer": {
+          "label": "Stajyer",
+          "menu": [
+            { "key": "branch_dashboard", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "my_tasks", "label": "Görevlerim", "perm": ["view"] },
+            { "key": "checklists", "label": "Checklistler", "perm": ["view"] },
+            { "key": "academy", "label": "Akademi", "perm": ["view"] },
+            { "key": "my_shift", "label": "Vardiyam", "perm": ["view"] },
+            { "key": "leave_requests", "label": "İzin Taleplerim", "perm": ["view","create"] },
+            { "key": "overtime_requests", "label": "Mesai Taleplerim", "perm": ["view","create"] },
+            { "key": "attendance", "label": "Devam Takibim", "perm": ["view"] },
+            { "key": "messages", "label": "Mesajlar", "perm": ["view","create"] },
+            { "key": "announcements", "label": "Duyurular", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] }
+          ]
+        },
+
+        "bar_buddy": {
+          "label": "Bar Buddy",
+          "inherits": "stajyer",
+          "overrides": {
+            "my_tasks": ["view","edit_complete","upload_media"],
+            "checklists": ["view","edit_complete"],
+            "equipment": ["view"],
+            "equipment_issues": ["view","create"]
+          }
+        },
+
+        "barista": {
+          "label": "Barista",
+          "inherits": "bar_buddy",
+          "overrides": {
+            "performance": ["view"]
+          }
+        },
+
+        "supervisor_buddy": {
+          "label": "Supervisor Buddy (Vardiya Lideri)",
+          "inherits": "barista",
+          "overrides": {
+            "my_tasks": ["view","create","edit_complete","assign"],
+            "my_shift": ["view","edit"],
+            "attendance": ["view","edit"],
+            "equipment_issues": ["view","create","edit"],
+            "hr_read": ["view"]
+          }
+        },
+
+        "supervisor": {
+          "label": "Supervisor (Şube Müdürü)",
+          "menu": [
+            { "key": "branch_dashboard_full", "label": "Kontrol Paneli", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "tasks", "label": "Görev Yönetimi", "perm": ["view","create","edit","delete","approve","assign"] },
+            { "key": "checklists", "label": "Checklist Yönetimi", "perm": ["view","create","edit","delete","approve"] },
+            { "key": "equipment", "label": "Ekipman", "perm": ["view"] },
+            { "key": "equipment_issues", "label": "Ekipman Arızaları", "perm": ["view","create","edit"] },
+
+            { "key": "shifts", "label": "Vardiya Yönetimi", "perm": ["view","create","edit","delete"] },
+            { "key": "leave_requests", "label": "İzin Talepleri", "perm": ["view","create","approve"] },
+            { "key": "overtime_requests", "label": "Mesai Talepleri", "perm": ["view","create","approve"] },
+            { "key": "attendance", "label": "Devam Takibi", "perm": ["view","edit"] },
+
+            { "key": "performance", "label": "Performans", "perm": ["view"] },
+            { "key": "employees", "label": "Personel Yönetimi", "perm": ["view","create","edit","delete","approve"] },
+            { "key": "hr", "label": "İK İşlemleri", "perm": ["view","create","edit","delete"] },
+
+            { "key": "academy", "label": "Akademi", "perm": ["view","approve"] },
+            { "key": "complaints", "label": "Müşteri Şikayetleri", "perm": ["view","create","edit"] },
+
+            { "key": "messages", "label": "Mesajlar", "perm": ["view","create"] },
+            { "key": "announcements", "label": "Duyurular", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] },
+            { "key": "support_center", "label": "Destek Merkezi", "perm": ["view","create"] }
+          ]
+        },
+
+        "yatirimci_branch": {
+          "label": "Yatırımcı (Şube) - Read Only",
+          "menu": [
+            { "key": "branch_dashboard_summary", "label": "Kontrol Paneli (Özet)", "perm": ["view"] },
+            { "key": "ai_assistant", "label": "AI Asistan", "perm": ["view","use"] },
+            { "key": "performance", "label": "Performans", "perm": ["view"] },
+            { "key": "attendance", "label": "Devam Takibi", "perm": ["view"] },
+            { "key": "messages", "label": "Mesajlar", "perm": ["view"] },
+            { "key": "announcements", "label": "Duyurular", "perm": ["view"] },
+            { "key": "knowledge_base", "label": "Bilgi Bankası", "perm": ["view"] }
+          ]
+        }
+      }
+    },
+
+    "hq_factory": {
+      "label": "HQ - Fabrika",
+      "roles": {
+        "uretim_teknik_muduru": { "$ref": "SEE_FACTORY_JSON_V2" },
+        "supervisor_uretim": { "$ref": "SEE_FACTORY_JSON_V2" },
+        "pasta_sefi": { "$ref": "SEE_FACTORY_JSON_V2" },
+        "operator": { "$ref": "SEE_FACTORY_JSON_V2" },
+        "depo_personeli": { "$ref": "SEE_FACTORY_JSON_V2" },
+        "lojistik_depo_sorumlusu": { "$ref": "SEE_FACTORY_JSON_V2" },
+        "satin_alma_sorumlusu": { "$ref": "SEE_FACTORY_JSON_V2" }
+      },
+
+      "stations": {
+        "types": [
+          "donut",
+          "konsantre",
+          "cookie",
+          "pasta",
+          "kahve_kavurma",
+          "kahve_paketleme",
+          "pastry_paketleme"
+        ],
+        "assignment": {
+          "assignable_by_roles": ["uretim_teknik_muduru", "supervisor_uretim"],
+          "one_active_station_per_operator": true,
+          "history_enabled": true
+        }
+      },
+
+      "productionEntryTemplates": { "$ref": "SEE_FACTORY_JSON_V2" }
+    }
+  },
+
+  "globalRules": {
+    "ai_assistant_visible_for_all_roles": true,
+    "accordion_single_open_group": true
+  }
+}

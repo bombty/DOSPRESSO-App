@@ -1,0 +1,86 @@
+Hayır; senin paylaştığın tüm ana listenin tamamı değil. Aşağıdaki tablo, benim bu sohbet boyunca fiyat ataması yaptığım (web + kural + tahmin) tüm kalemlerin eksiksiz listesidir — toplam 72 satır.
+
+Not: “Fiyat Kaynağı/Not” sütununda
+	•	web/önceki_kaynak = web’de fiyatı olan / önce kaynak gösterdiğimiz kalem
+	•	kural = senin verdiğin kural (aromalar 4.000 TL)
+	•	tahmin = web’de net toptan liste bulunamadığı için piyasa ortalamasıyla atanan fiyat
+
+Tür	Kod	Malzeme Açıklaması	Birim	Birim Fiyat (TL)	Fiyat Kaynağı/Not
+HM	H-1001	TOZ ŞEKER 50 KG	KG	1.920,00	web/önceki_kaynak
+HM	H-1005	Yumurta L	ADET	6,19	BizimToptan 15’li -> adet
+HM	H-1006	Yaş Maya 500 gr*24	ADET	360,00	tahmin
+HM	H-1007	Yağsız Süt Tozu 25 kg	ADET	2.200,00	tahmin
+HM	H-1008	Buğday Gluteni 25 kg	ADET	7.337,32	web/önceki_kaynak
+HM	H-1009	Vanilya Dkt	ADET	450,00	tahmin
+HM	H-1010	Vanilya Dolgu Krater	ADET	2.000,00	tahmin
+HM	H-1011	Turyağ T2	ADET	350,00	tahmin
+HM	H-1012	Turyağ Mayalı 10 kg	ADET	2.600,00	tahmin
+HM	H-1014	Turyağ Fritöz 18 lt	ADET	3.000,00	tahmin
+HM	H-1015	Cool Lime Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1016	Çilek-Ahududu Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1018	Nane Aroma Verici-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1019	Karamel Aroma Verici-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1020	Yaban mersini Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1021	Vanilya Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1025	Masala Chai Tea Latte Aroma Vercisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1026	Kola Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1027	Mango Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1028	Tarçın Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1034	Kızarmış Marshmallow Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1035	Kırmızı Orman Meyveleri Aroma Vericisi-1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1038	Pumpkin Aroma Vericisi -1 kg	ADET	4.000,00	kural: aroma ort. 4000
+HM	H-1041	Karbon Black	ADET	650,00	tahmin
+HM	H-1043	Brezilya Cerrado Yeşil Kahve Çekirdeği	KG	280,00	tahmin: yeşil kahve TL/kg (teklif ile netleşir)
+HM	H-1045	Brezilya Rio Minas Yeşil Kahve Çekirdeği	KG	280,00	tahmin: yeşil kahve TL/kg (teklif ile netleşir)
+HM	H-1047	Bulanıklık Verici	ADET	250,00	tahmin
+HM	H-1048	Barbekü sos	ADET	120,00	tahmin
+HM	H-1049	Beyaz Konfiseri Para Çikolata 10 kg	ADET	2.100,00	tahmin: konfiseri para çikolata 10kg
+HM	H-1050	Sütlü Konfiseri Para Çikolata 10 kg	ADET	2.100,00	tahmin: konfiseri para çikolata 10kg
+HM	H-1051	Bitter Konfiseri Para Çikolata 10 kg	ADET	2.100,00	tahmin: konfiseri para çikolata 10kg
+HM	H-1052	Sweet Chilli Sos	ADET	120,00	tahmin
+HM	H-1055	Esmer Toz Şeker	KG	45,00	tahmin: şeker TL/kg (50kg torba bazında)
+HM	H-1056	Zencefil Toz	ADET	650,00	tahmin
+HM	H-1059	Sunset Glaze 1 kg	ADET	500,00	tahmin
+HM	H-1063	Malik Asit E296	ADET	232,16	web/önceki_kaynak
+HM	H-1064	Ksantan Gam	ADET	59,78	web/önceki_kaynak
+HM	H-1067	Kalsiyum Propiyanat E282 1 kg	ADET	418,95	web/önceki_kaynak
+HM	H-1069	Trisodyum Fosfat E339 1 kg	ADET	405,41	web/önceki_kaynak
+HM	H-1073	Bitkisel Karbon (Aktif Karbon) Siyahı Gıda Renklen	ADET	650,00	tahmin
+HM	H-1077	Şeftali Konserve 5 Kg	ADET	650,00	tahmin
+HM	H-1079	Dondurulmuş Piliç Kasap Köfte	ADET	250,00	tahmin
+HM	H-1080	Yer Fıstığı Pirinç Kırılmış	ADET	180,00	tahmin
+HM	H-1081	Labne	ADET	260,00	tahmin
+HM	H-1082	Petibör Bisküvi	ADET	130,00	tahmin/kg
+HM	H-1083	Hamur Kabartma Tozu 25 kg	ADET	1.100,00	tahmin
+HM	H-1087	Peynir Altı Suyu Tozu	ADET	420,00	tahmin
+HM	H-1088	Tereyağ 1 Kg	ADET	320,00	tahmin
+HM	H-1089	Izgara Dilimli Piliç Fileto 500 gr (12li)	ADET	1.200,00	tahmin
+HM	H-1090	Karabiber 1 kg	ADET	300,00	tahmin
+HM	H-1091	Bitkisel Gliserin - Gliserol %99,7 - 25 Kg	ADET	4.032,96	web/önceki_kaynak
+HM	H-1092	Lavaş 30 cm 18lix6	ADET	180,00	tahmin: 18li x6 paket
+HM	H-1093	Maltodekstrin DE=6 1 Kg	ADET	332,94	web/önceki_kaynak
+HM	H-1094	İzomalt E953 5 Kg	ADET	2.517,03	web/önceki_kaynak
+HM	H-1095	Nicaragua Shg EP Yeşil Kahve Çekirdeği	KG	280,00	tahmin: yeşil kahve TL/kg (teklif ile netleşir)
+HM	H-1096	Kenya AB Top Yeşil Kahve Çekirdeği	KG	280,00	tahmin: yeşil kahve TL/kg (teklif ile netleşir)
+HM	H-1097	Rio Minas Nicchio Sabrina Yeşil Kahve Çekirdeği	KG	280,00	tahmin: yeşil kahve TL/kg (teklif ile netleşir)
+HM	H-1098	Rwanda Kula Yeşil Kahve Çekirdeği	KG	280,00	tahmin: yeşil kahve TL/kg (teklif ile netleşir)
+HM	H-1099	Malt Ekstraktı Özü Gıda Tipi 1 Kg	ADET	550,00	tahmin
+HM	H-1100	Kievit 30-S Kahve Kreması	KG	160,00	tahmin/kg
+HM	H-1101	Kahve Aroma Vericisi	KG	4.000,00	kural: aroma ort. 4000
+HM	H-1102	Mango Adet	ADET	45,00	tahmin/adet
+HM	H-1103	Pastörize Yumurta Beyazı 1 Kg	KG	150,00	tahmin/kg
+HM	H-1104	Pastörize Yumurta Sarısı 1 Kg	KG	150,00	tahmin/kg
+HM	H-1105	Pastörize Bütün Yumurta 1 Kg	KG	150,00	tahmin/kg
+MM	M-1130	Dekstroz	ADET	3.584,57	web/önceki_kaynak
+TM	T-0109	Yarım Yağlı Süt	ADET	29,50	BizimToptan Halk Yarım Yağlı 1L
+TM	T-0110	Tam Yağlı Süt	ADET	38,50	BizimToptan Halk %3,1 1L
+TM	T-0151	Laktozsuz Süt	ADET	49,50	BizimToptan Sütaş Laktozsuz 1L
+YM	Y-1123	Ayçiçek Yağı 5 lt	ADET	764,91	Akakçe Bizim 5L teneke
+TM	T-0423	70024562 SUMA CRYSTAL A8.8 5L/5,065 KG	ADET	2.025,00	web/önceki_kaynak
+TM	T-0292	Thermoplan B&W4 CTS Pro Tam Otom. Kahve Makinesi	ADET	803.751,47	web/önceki_kaynak
+
+Eğer “hepsini eksiksiz” derken senin gönderdiğin ana listede (TM/TK/YM dahil) yer alan tüm kalemlerin tamamını kastediyorsan, onu bu sohbette henüz yapmadık; çünkü o ana listede yüzlerce satır var ve çok büyük bir kısmının fiyatı teklif/distribütör kataloğu olmadan netleşmiyor (özellikle ekipman, POS, ambalaj, sarf, temizlik kimyasalları).
+
+İstersen, ana listenin tamamını da bitirebilmem için şu iki yoldan birini seçelim:
+	1.	Web liste fiyatı olan kaynaklardan (BizimToptan/Metro/Akakçe vb.) mümkün olanları otomatik doldurayım + bulunamayanlara tahmin atayayım
+	2.	Senin fiili satınalma fiyatlarını (fatura/irsaliye) baz alalım (COGS için en doğru yöntem)

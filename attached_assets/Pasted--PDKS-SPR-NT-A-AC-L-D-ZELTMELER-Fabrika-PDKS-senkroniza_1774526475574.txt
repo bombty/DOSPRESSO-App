@@ -1,0 +1,571 @@
+# PDKS SPRİNT A: ACİL DÜZELTMELER
+# Fabrika PDKS senkronizasyonu + Auto-close + Tolerans + employment_type
+# İş kuralları kesinleşmiş — bordro'yu etkileyen kritik fix'ler
+# Tahmini: 6-8 saat
+
+---
+
+## ⚠ KRİTİK İŞ KURALLARI (TÜM GELİŞTİRMEDE BUNLARA UYULMALI)
+
+1. **Vardiya planı ESAS** — Personelin vardiya planındaki başlangıç saati referans alınır. Geç kalma bu saate göre hesaplanır.
+2. **Geç kalma + FM BAĞIMSIZ** — Geç kalma cezası ayrı yazılır, fazla mesai ayrı hesaplanır. Birbirini telafi etmez, birbirini iptal etmez.
+3. **Tolerans ayarlanabilir** — Admin panelden şube/fabrika/HQ için ayrı ayrı tolerans dakikası belirlenir.
+4. **HQ muhasebe kapsamı** — Sadece 3 birim: Merkez (HQ), Fabrika, Işıklar şubesi. Diğer 19 şube franchise → kendi muhasebeleri.
+5. **Franchise şubeler bağımsız** — Kendi PDKS takibini yapar. HQ isterse görüntüleyebilir (read-only).
+6. **Fabrika** — Kiosk'ta ilk giriş = vardiya başlangıcı. Üretim (istasyon/ürün seçimi) AYRI katman, vardiya giriş/çıkıştan bağımsız.
+7. **PDKS kaydı ZORUNLU** — Session açılmadan önce veya aynı anda pdks_records'a yazılmalı. PDKS olmadan bordro hesaplanamaz.
+
+---
+
+## ⚠ TEKNİK GÜVENLİK KURALLARI
+
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- Do NOT change mevcut şube kiosk akışını (zaten çalışıyor)
+- Do NOT change mevcut bordro formüllerini (payroll-engine.ts)
+- Do NOT delete mevcut PDKS kayıtlarını
+- Do NOT change shifts tablosunun yapısını
+- Her değişiklikten sonra compile kontrol et
+
+**DANIŞMA MEKANİZMASI:**
+1. Fabrika kiosk endpoint değişikliği → mevcut akışı göster, onay al
+2. Auto-close scheduler → mevcut fabrika 20:30 pattern'ını göster
+3. DB migration → tablo yapısını göster
+4. Tolerans ayar UI → mevcut branch_kiosk_settings yapısını göster
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+---
+
+## STEP 0: ÖN ARAŞTIRMA
+
+```bash
+echo "═══ PDKS SPRİNT A ÖN ARAŞTIRMA ═══"
+
+echo ""
+echo "████ 1. FABRİKA KİOSK ENDPOİNT ████"
+echo "=== Fabrika check-in endpoint ==="
+grep -n "check.in\|checkin\|punch\|factory.*kiosk.*start\|factory.*session.*create" server/routes/factory-*.ts server/factory-*.ts 2>/dev/null | head -15
+echo ""
+echo "--- Fabrika check-in fonksiyonunda PDKS yazılıyor mu? ---"
+grep -A20 "check.in\|punch.*factory\|factory.*start" server/routes/factory-*.ts server/factory-*.ts 2>/dev/null | grep -i "pdks\|pdks_records" | head -5
+
+echo ""
+echo "=== Fabrika check-out endpoint ==="
+grep -n "check.out\|checkout\|factory.*end\|factory.*close" server/routes/factory-*.ts server/factory-*.ts 2>/dev/null | head -15
+echo ""
+echo "--- Fabrika check-out'ta PDKS yazılıyor mu? ---"
+grep -A20 "check.out\|checkout\|factory.*end" server/routes/factory-*.ts server/factory-*.ts 2>/dev/null | grep -i "pdks\|pdks_records" | head -5
+
+echo ""
+echo "████ 2. ŞUBE KİOSK AKIŞI (REFERANS — DOĞRU ÇALIŞAN) ████"
+echo "=== Şube check-in'de PDKS nasıl yazılıyor? ==="
+grep -B5 -A15 "pdks_records\|pdksRecords" server/routes/shift-*.ts server/routes/pdks-routes.ts 2>/dev/null | head -40
+
+echo ""
+echo "████ 3. HQ KİOSK ENDPOİNT ████"
+grep -n "hq.*check.in\|hq.*punch\|hq.*kiosk\|hq.*session.*create" server/routes/*.ts server/*.ts 2>/dev/null | head -10
+echo "--- HQ'da PDKS yazılıyor mu? ---"
+grep -A20 "hq.*check.in\|hq.*session" server/routes/*.ts 2>/dev/null | grep -i "pdks" | head -5
+
+echo ""
+echo "████ 4. MEVCUT AUTO-CLOSE (FABRİKA 20:30) ████"
+grep -B5 -A20 "forceClose\|force_close\|auto.*close\|20:30\|autoClose" server/index.ts server/services/agent-scheduler.ts 2>/dev/null | head -40
+
+echo ""
+echo "████ 5. MEVCUT TOLERANS AYARLARI ████"
+echo "=== branch_kiosk_settings tablo yapısı ==="
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='branch_kiosk_settings' ORDER BY ordinal_position;" | psql 2>/dev/null
+echo ""
+echo "=== Mevcut ayar değerleri ==="
+echo "SELECT branch_id, kiosk_mode, late_tolerance_minutes, early_departure_tolerance_minutes, shift_start_time, shift_end_time FROM branch_kiosk_settings;" | psql 2>/dev/null
+
+echo ""
+echo "████ 6. FABRİKA + HQ İÇİN AYAR TABLOSU ████"
+echo "=== factory_kiosk_settings var mı? ==="
+echo "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='factory_kiosk_settings');" | psql -t 2>/dev/null
+echo ""
+echo "=== hq_kiosk_settings var mı? ==="
+echo "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name='hq_kiosk_settings');" | psql -t 2>/dev/null
+
+echo ""
+echo "████ 7. EMPLOYMENT_TYPE DAĞILIMI ████"
+echo "SELECT employment_type, count(*) FROM users WHERE is_active=true AND employment_type IS NOT NULL GROUP BY employment_type;" | psql 2>/dev/null
+
+echo ""
+echo "████ 8. VARDİYA PLANI — GEÇ KALMA KONTROL AKIŞI ████"
+echo "=== Vardiya planından başlangıç saatini nasıl alıyorsun? ==="
+grep -rn "shift.*start\|planned.*start\|vardiya.*baslangic\|schedule.*time" server/routes/pdks-routes.ts server/routes/shift-*.ts 2>/dev/null | head -10
+echo ""
+echo "=== shifts tablosu — başlangıç/bitiş kolon ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='shifts' AND (column_name LIKE '%start%' OR column_name LIKE '%end%' OR column_name LIKE '%time%');" | psql 2>/dev/null
+
+echo ""
+echo "████ 9. FABRİKA SESSİON + PDKS EŞLEŞMESİ ████"
+echo "=== Fabrika session'lar (son 30 gün) ==="
+echo "SELECT fss.id, fss.user_id, fss.check_in_time::date as tarih, fss.status,
+  EXISTS(SELECT 1 FROM pdks_records p WHERE p.user_id = fss.user_id::text AND p.record_date = fss.check_in_time::date AND p.record_type='giris') as pdks_giris
+FROM factory_shift_sessions fss
+WHERE fss.check_in_time >= CURRENT_DATE - INTERVAL '30 days'
+ORDER BY fss.check_in_time DESC
+LIMIT 10;" | psql 2>/dev/null
+
+echo ""
+echo "████ 10. IŞIKLAR ŞUBESİ BRANCH_ID ████"
+echo "SELECT id, name FROM branches WHERE name ILIKE '%isik%' OR name ILIKE '%ışık%';" | psql 2>/dev/null
+echo ""
+echo "=== Fabrika branch_id ==="
+echo "SELECT id, name FROM branches WHERE name ILIKE '%fabrika%' OR branch_type = 'factory';" | psql 2>/dev/null
+echo ""
+echo "=== HQ branch_id ==="
+echo "SELECT id, name FROM branches WHERE name ILIKE '%merkez%' OR name ILIKE '%hq%' OR branch_type = 'hq';" | psql 2>/dev/null
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# BÖLÜM A1: FABRİKA KİOSK → PDKS SENKRONİZASYONU (KRİTİK — 2 saat)
+# 80/82 session'da PDKS kaydı yok → bordro "devamsız" → maaş 0
+# ██████████████████████████████████████████████████████████████████
+
+## A1.1: Fabrika kiosk check-in endpoint'ine PDKS insert ekle
+
+**Pattern:** Şube kiosk'un PDKS yazma akışını referans al — aynı mantığı fabrika'ya ekle.
+
+```typescript
+// Fabrika check-in endpoint'inde (factory-shift-routes.ts veya benzeri):
+// MEVCUT: Sadece factory_shift_sessions'a insert
+// EKLENECEK: pdks_records'a da "giris" kaydı yaz
+
+// Session oluşturulduktan HEMEN SONRA:
+try {
+  await db.insert(pdksRecords).values({
+    userId: userId.toString(),
+    branchId: factoryBranchId,  // Fabrika'nın branch_id'si
+    recordDate: new Date().toISOString().split('T')[0],
+    recordTime: new Date().toTimeString().split(' ')[0],  // "HH:MM:SS"
+    recordType: 'giris',
+    source: 'kiosk',
+  });
+} catch (pdksError) {
+  // PDKS hatası session'ı engellememeli — log yaz, devam et
+  console.error('Fabrika PDKS giriş kaydı hatası:', pdksError);
+}
+```
+
+**⚠ PDKS insert try/catch içinde — başarısız olsa bile session çalışmaya devam eder. Ama log ile izlenebilir.**
+
+## A1.2: Fabrika kiosk check-out endpoint'ine PDKS insert ekle
+
+```typescript
+// Fabrika check-out / session kapatma endpoint'inde:
+// MEVCUT: factory_shift_sessions status → 'completed'
+// EKLENECEK: pdks_records'a "cikis" kaydı yaz
+
+try {
+  await db.insert(pdksRecords).values({
+    userId: userId.toString(),
+    branchId: factoryBranchId,
+    recordDate: checkInTime.toISOString().split('T')[0],  // Giriş tarihini kullan
+    recordTime: new Date().toTimeString().split(' ')[0],
+    recordType: 'cikis',
+    source: 'kiosk',
+  });
+} catch (pdksError) {
+  console.error('Fabrika PDKS çıkış kaydı hatası:', pdksError);
+}
+```
+
+## A1.3: Fabrika auto-close'a da PDKS çıkış ekle
+
+**Mevcut:** `forceCloseAllFactoryShifts` fonksiyonu 20:30'da açık session'ları kapatıyor.
+**Kontrol et:** Auto-close sırasında PDKS çıkış kaydı yazılıyor mu? Yazılmıyorsa ekle.
+
+```typescript
+// forceCloseAllFactoryShifts fonksiyonunda:
+// Session kapatıldıktan sonra:
+try {
+  await db.insert(pdksRecords).values({
+    userId: session.userId.toString(),
+    branchId: factoryBranchId,
+    recordDate: session.checkInTime.toISOString().split('T')[0],
+    recordTime: '20:30:00',  // Auto-close saati
+    recordType: 'cikis',
+    source: 'auto_close',  // Manuel değil, otomatik kapatma
+  });
+} catch (pdksError) {
+  console.error('Fabrika auto-close PDKS çıkış hatası:', pdksError);
+}
+```
+
+## A1.4: HQ kiosk PDKS kontrolü
+
+**Kontrol et:** HQ kiosk check-in/check-out'ta PDKS yazılıyor mu?
+- Yazılıyorsa → dokunma
+- Yazılmıyorsa → fabrika ile aynı pattern ekle
+
+## A1.5: Geriye dönük PDKS migration (80 eksik kayıt)
+
+```sql
+-- Fabrika session'larından eksik PDKS giriş kayıtları oluştur
+INSERT INTO pdks_records (user_id, branch_id, record_date, record_time, record_type, source)
+SELECT 
+  fss.user_id::text,
+  (SELECT id FROM branches WHERE name ILIKE '%fabrika%' OR branch_type = 'factory' LIMIT 1),
+  fss.check_in_time::date,
+  fss.check_in_time::time,
+  'giris',
+  'migration_fix'
+FROM factory_shift_sessions fss
+WHERE NOT EXISTS (
+  SELECT 1 FROM pdks_records p 
+  WHERE p.user_id = fss.user_id::text 
+  AND p.record_date = fss.check_in_time::date 
+  AND p.record_type = 'giris'
+);
+
+-- Fabrika session'larından eksik PDKS çıkış kayıtları oluştur (completed + auto_closed)
+INSERT INTO pdks_records (user_id, branch_id, record_date, record_time, record_type, source)
+SELECT 
+  fss.user_id::text,
+  (SELECT id FROM branches WHERE name ILIKE '%fabrika%' OR branch_type = 'factory' LIMIT 1),
+  fss.check_in_time::date,
+  COALESCE(fss.check_out_time::time, '20:30:00'),
+  'cikis',
+  'migration_fix'
+FROM factory_shift_sessions fss
+WHERE fss.status IN ('completed', 'auto_closed')
+AND NOT EXISTS (
+  SELECT 1 FROM pdks_records p 
+  WHERE p.user_id = fss.user_id::text 
+  AND p.record_date = fss.check_in_time::date 
+  AND p.record_type = 'cikis'
+);
+```
+
+**⚠ Migration çalıştırmadan ÖNCE:**
+- Fabrika branch_id'sini doğrula
+- Kaç kayıt oluşacağını SELECT ile kontrol et (INSERT yapmadan)
+- Onay al
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# BÖLÜM A2: AUTO-CLOSE (ŞUBE + HQ) (1-2 saat)
+# ██████████████████████████████████████████████████████████████████
+
+## A2.1: Şube auto-close scheduler (22:00)
+
+**Mevcut fabrika pattern'ını kopyala:**
+
+```typescript
+// agent-scheduler.ts veya index.ts'e ekle:
+
+// Her gün 22:00 TR — şube açık session'ları kapat
+schedule('branch-auto-close', '0 22 * * *', async () => {
+  const openSessions = await db.select()
+    .from(branchShiftSessions)
+    .where(eq(branchShiftSessions.status, 'active'));
+  
+  for (const session of openSessions) {
+    // Session kapat
+    await db.update(branchShiftSessions)
+      .set({
+        status: 'auto_closed',
+        checkOutTime: new Date(),
+        netWorkMinutes: calculateMinutes(session.checkInTime, new Date()),
+      })
+      .where(eq(branchShiftSessions.id, session.id));
+    
+    // PDKS çıkış yaz
+    try {
+      await db.insert(pdksRecords).values({
+        userId: session.userId.toString(),
+        branchId: session.branchId,
+        recordDate: session.checkInTime.toISOString().split('T')[0],
+        recordTime: '22:00:00',
+        recordType: 'cikis',
+        source: 'auto_close',
+      });
+    } catch (e) {
+      console.error('Şube auto-close PDKS hatası:', e);
+    }
+  }
+  
+  if (openSessions.length > 0) {
+    console.log(`[Branch Auto-Close] ${openSessions.length} session kapatıldı`);
+    // İsteğe bağlı: Supervisor'lara bildirim gönder
+  }
+});
+```
+
+## A2.2: HQ auto-close scheduler (21:00)
+
+**Aynı pattern — hq_shift_sessions için:**
+
+```typescript
+schedule('hq-auto-close', '0 21 * * *', async () => {
+  // hq_shift_sessions'ta status='active' olanları kapat
+  // PDKS çıkış yaz
+  // Log
+});
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# BÖLÜM A3: TOLERANS AYARLARI — ADMİN PANEL (2-3 saat)
+# ██████████████████████████████████████████████████████████████████
+
+## A3.1: Fabrika + HQ için tolerans ayar tablosu
+
+**Seçenek 1 (önerilen):** Mevcut `branch_kiosk_settings` tablosunu genelleştir — `location_type` kolonu ekle:
+
+```sql
+-- Mevcut branch_kiosk_settings'e location_type ekle (yoksa)
+-- VEYA fabrika + HQ için ayrı ayar kayıtları ekle
+
+-- Fabrika ayarı
+INSERT INTO branch_kiosk_settings (branch_id, kiosk_mode, late_tolerance_minutes, early_departure_tolerance_minutes, shift_start_time, shift_end_time, break_duration_minutes)
+VALUES (
+  (SELECT id FROM branches WHERE name ILIKE '%fabrika%' LIMIT 1),
+  'pin',
+  15,  -- Tolerans: admin değiştirebilir
+  15,
+  '08:00',  -- Fabrika mesai başlangıç
+  '17:00',  -- Fabrika mesai bitiş
+  60    -- Mola süresi
+);
+
+-- HQ ayarı
+INSERT INTO branch_kiosk_settings (branch_id, kiosk_mode, late_tolerance_minutes, early_departure_tolerance_minutes, shift_start_time, shift_end_time, break_duration_minutes)
+VALUES (
+  (SELECT id FROM branches WHERE name ILIKE '%merkez%' OR name ILIKE '%hq%' LIMIT 1),
+  'pin',
+  10,  -- HQ toleransı farklı olabilir
+  10,
+  '09:00',  -- HQ mesai başlangıç
+  '18:00',
+  60
+);
+```
+
+**Seçenek 2:** Ayrı tablolar (factory_kiosk_settings, hq_kiosk_settings) — gereksiz karmaşıklık.
+
+**⚠ DANIŞMA:** Mevcut branch_kiosk_settings'in yapısını göster. Fabrika + HQ kayıt ekleme yeterli mi, yoksa yeni tablo mı gerekli?
+
+## A3.2: Admin tolerans ayar UI
+
+**Mevcut admin sayfalarında kiosk ayarları var mı kontrol et. Yoksa ekle:**
+
+```
+Admin > Kiosk Ayarları
+
+┌─────────────────────────────────────────────────┐
+│ Lokasyon: [Tüm Şubeler ▾] [Fabrika] [HQ]        │
+│                                                   │
+│ ┌─ Fabrika Ayarları ──────────────────────────┐  │
+│ │ Mesai başlangıç: [08:00]                     │  │
+│ │ Mesai bitiş:     [17:00]                     │  │
+│ │ Geç kalma toleransı: [15] dakika             │  │
+│ │ Erken çıkış toleransı: [15] dakika           │  │
+│ │ Mola süresi: [60] dakika                     │  │
+│ │ Auto-close saati: [20:30]                    │  │
+│ │ Kiosk modu: [PIN ▾]                          │  │
+│ └──────────────────────────────────────────────┘  │
+│                                                   │
+│ ┌─ HQ (Merkez) Ayarları ──────────────────────┐  │
+│ │ Mesai başlangıç: [09:00]                     │  │
+│ │ Mesai bitiş:     [18:00]                     │  │
+│ │ Geç kalma toleransı: [10] dakika             │  │
+│ │ Auto-close saati: [21:00]                    │  │
+│ └──────────────────────────────────────────────┘  │
+│                                                   │
+│ ┌─ Şube Ayarları (şube bazlı) ─────────────┐    │
+│ │ Şube: [Işıklar ▾]                          │    │
+│ │ Geç kalma toleransı: [15] dakika            │    │
+│ │ Auto-close saati: [22:00]                   │    │
+│ │ Kiosk modu: [QR ▾]                          │    │
+│ └────────────────────────────────────────────┘    │
+│                                                   │
+│ [Kaydet]                                          │
+└─────────────────────────────────────────────────┘
+```
+
+## A3.3: Geç kalma tespiti — kiosk giriş anında
+
+```typescript
+// Tüm kiosk'larda (şube/fabrika/HQ) check-in anında:
+
+// 1. Bu personelin bugünkü planlanan vardiya saatini bul
+const plannedShift = await db.select()
+  .from(shifts)
+  .where(and(
+    eq(shifts.userId, userId),
+    eq(shifts.date, today),
+  ))
+  .limit(1);
+
+// 2. Veya lokasyon ayarlarından varsayılan başlangıç saatini al
+const kioskSettings = await db.select()
+  .from(branchKioskSettings)
+  .where(eq(branchKioskSettings.branchId, branchId))
+  .limit(1);
+
+const plannedStart = plannedShift?.[0]?.startTime || kioskSettings?.[0]?.shiftStartTime || '08:00';
+const tolerance = kioskSettings?.[0]?.lateToleranceMinutes || 15;
+
+// 3. Geç kalma hesapla
+const actualTime = new Date();
+const plannedTime = parseTime(plannedStart);  // "08:00" → Date
+const diffMinutes = (actualTime - plannedTime) / 60000;
+
+if (diffMinutes > tolerance) {
+  // Geç kalma kaydı yaz
+  await db.insert(attendancePenalties).values({
+    userId: userId,
+    branchId: branchId,
+    penaltyDate: today,
+    penaltyType: 'late_arrival',
+    plannedTime: plannedStart,
+    actualTime: actualTime.toTimeString().split(' ')[0],
+    lateMinutes: Math.round(diffMinutes),
+    toleranceMinutes: tolerance,
+    excessMinutes: Math.round(diffMinutes - tolerance),  // Tolerans sonrası net ihlal
+  });
+  
+  // İsteğe bağlı: Supervisor bildirim (ileri aşamada)
+}
+```
+
+**⚠ Bu mantık mevcut check-in akışına EKLENIR — mevcut session + PDKS yazma akışı değişmez.**
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# BÖLÜM A4: EMPLOYMENT_TYPE STANDARDİZASYONU (30 dk)
+# ██████████████████████████████████████████████████████████████████
+
+```sql
+-- Tutarsız değerleri standardize et
+UPDATE users SET employment_type = 'fulltime' WHERE employment_type = 'tam_zamanli';
+UPDATE users SET employment_type = 'parttime' WHERE employment_type = 'yari_zamanli';
+
+-- Doğrulama
+SELECT employment_type, count(*) FROM users WHERE is_active=true AND employment_type IS NOT NULL GROUP BY employment_type;
+-- Sadece 'fulltime' ve 'parttime' olmalı
+```
+
+**Frontend'te de select option kontrolü:**
+```typescript
+// Personel oluşturma/düzenleme formunda:
+// employment_type seçenekleri: 'fulltime' ve 'parttime' (başka değer kabul etme)
+```
+
+---
+
+# ██████████████████████████████████████████████████████████████████
+# DOĞRULAMA
+# ██████████████████████████████████████████████████████████████████
+
+```bash
+echo "═══ PDKS SPRİNT A DOĞRULAMA ═══"
+
+echo "=== Server ==="
+curl -s -o /dev/null -w "Server: %{http_code}\n" http://localhost:5000/
+
+echo ""
+echo "████ A1: Fabrika PDKS Senkronizasyonu ████"
+
+echo "--- Fabrika kiosk'ta pdks insert var mı? ---"
+grep -c "pdks_records\|pdksRecords" server/routes/factory-*.ts server/factory-*.ts 2>/dev/null
+echo "(0 değil, 2+ olmalı — giriş ve çıkış)"
+
+echo "--- Migration sonrası PDKS kayıt sayısı ---"
+echo "  PDKS toplam: $(echo 'SELECT count(*) FROM pdks_records;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Migration fix: $(echo 'SELECT count(*) FROM pdks_records WHERE source='\''migration_fix'\'';' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo "--- Fabrika senkronizasyon kontrolü ---"
+echo "SELECT count(*) as toplam_session,
+  count(*) FILTER (WHERE EXISTS(SELECT 1 FROM pdks_records p WHERE p.user_id = fss.user_id::text AND p.record_date = fss.check_in_time::date AND p.record_type='giris')) as pdks_var,
+  count(*) FILTER (WHERE NOT EXISTS(SELECT 1 FROM pdks_records p WHERE p.user_id = fss.user_id::text AND p.record_date = fss.check_in_time::date AND p.record_type='giris')) as pdks_yok
+FROM factory_shift_sessions fss;" | psql 2>/dev/null
+
+echo ""
+echo "████ A2: Auto-Close ████"
+
+echo "--- Şube auto-close scheduler ---"
+grep -c "branch.*auto.*close\|branch-auto-close" server/services/agent-scheduler.ts server/index.ts 2>/dev/null
+echo "(1+ olmalı)"
+
+echo "--- HQ auto-close scheduler ---"
+grep -c "hq.*auto.*close\|hq-auto-close" server/services/agent-scheduler.ts server/index.ts 2>/dev/null
+echo "(1+ olmalı)"
+
+echo "--- Açık session sayıları ---"
+echo "  Şube active: $(echo 'SELECT count(*) FROM branch_shift_sessions WHERE status='\''active'\'';' | psql -t 2>/dev/null | tr -d ' ') (0 olmalı — eski olanlar da kapatılmış olmalı)"
+echo "  HQ active: $(echo 'SELECT count(*) FROM hq_shift_sessions WHERE status='\''active'\'';' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo ""
+echo "████ A3: Tolerans Ayarları ████"
+
+echo "--- Fabrika kiosk ayarı var mı? ---"
+echo "SELECT branch_id, late_tolerance_minutes, shift_start_time, shift_end_time FROM branch_kiosk_settings WHERE branch_id IN (SELECT id FROM branches WHERE name ILIKE '%fabrika%' OR branch_type='factory');" | psql 2>/dev/null
+
+echo "--- HQ kiosk ayarı var mı? ---"
+echo "SELECT branch_id, late_tolerance_minutes, shift_start_time, shift_end_time FROM branch_kiosk_settings WHERE branch_id IN (SELECT id FROM branches WHERE name ILIKE '%merkez%' OR name ILIKE '%hq%');" | psql 2>/dev/null
+
+echo "--- Geç kalma tespiti kodu var mı? ---"
+grep -c "late_arrival\|lateMinutes\|attendance_penalties\|attendancePenalties" server/routes/factory-*.ts server/factory-*.ts server/routes/shift-*.ts server/routes/pdks-routes.ts 2>/dev/null
+
+echo ""
+echo "████ A4: Employment Type ████"
+echo "SELECT employment_type, count(*) FROM users WHERE is_active=true AND employment_type IS NOT NULL GROUP BY employment_type;" | psql 2>/dev/null
+echo "(Sadece fulltime ve parttime olmalı)"
+
+echo ""
+echo "████ REGRESYON ████"
+
+echo "--- Mevcut PDKS API'leri ---"
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/pdks.txt > /dev/null 2>&1
+for ep in "/api/pdks/records" "/api/pdks/daily-summary" "/api/pdks/branch-summary"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/pdks.txt "http://localhost:5000${ep}?branchId=5&month=3&year=2026" 2>/dev/null)
+  echo "  $ep → $STATUS"
+done
+
+echo ""
+echo "--- Kiosk'lar çalışıyor mu? ---"
+curl -s -o /dev/null -w "  Şube kiosk: %{http_code}\n" http://localhost:5000/sube/kiosk
+curl -s -o /dev/null -w "  Fabrika kiosk: %{http_code}\n" http://localhost:5000/fabrika/kiosk
+
+echo ""
+echo "--- Veri bütünlüğü ---"
+echo "  Users: $(echo 'SELECT count(*) FROM users WHERE is_active=true;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  PDKS: $(echo 'SELECT count(*) FROM pdks_records;' | psql -t 2>/dev/null | tr -d ' ')"
+echo "  Shifts: $(echo 'SELECT count(*) FROM shifts;' | psql -t 2>/dev/null | tr -d ' ')"
+
+echo ""
+echo "═══ SONUÇ ═══"
+echo "  Fabrika PDKS senkronizasyonu: ✅/❌"
+echo "  HQ PDKS kontrolü: ✅/❌"
+echo "  Geriye dönük migration: ✅/❌"
+echo "  Şube auto-close: ✅/❌"
+echo "  HQ auto-close: ✅/❌"
+echo "  Tolerans ayarları: ✅/❌"
+echo "  Geç kalma tespiti: ✅/❌"
+echo "  Employment type fix: ✅/❌"
+echo "  Regresyon: ✅/❌"
+echo "  Server hatasız: ✅/❌"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- ❌ Mevcut şube kiosk akışını değiştirme (zaten çalışıyor)
+- ❌ Mevcut bordro formüllerini değiştirme (payroll-engine.ts)
+- ❌ Mevcut PDKS kayıtlarını silme
+- ❌ shifts tablosu yapısını değiştirme
+- ❌ Mevcut fabrika auto-close (20:30) mekanizmasını değiştirme — ek scheduler ekle
+- ❌ Geç kalma cezasını bordro'ya otomatik yansıtma (bu Sprint B'de)
+- ❌ Supervisor bildirimi (bu Sprint C'de)
+- ❌ FM hesaplamasını değiştirme (mevcut mantık korunur)

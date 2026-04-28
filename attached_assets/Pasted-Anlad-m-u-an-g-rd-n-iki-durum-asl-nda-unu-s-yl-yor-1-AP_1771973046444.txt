@@ -1,0 +1,102 @@
+Anladım — şu an gördüğün iki durum aslında şunu söylüyor:
+	1.	API çalışıyor. Sen /api/ai/ops-copilot/summary?range=30d açınca ekranda siyah sayfada JSON görmen “hata” değil; bu endpoint UI değil, JSON dönen API. (Ekran görüntüsündeki çıktı 200 yanıtı gibi duruyor.)
+	2.	UI’de AI kartı görünmüyor → büyük ihtimalle kartın eklendiği sayfa ile senin açtığın sayfa aynı değil (route mismatch) veya tarayıcı cache yüzünden eski bundle geliyor.
+
+Aşağıdaki sırayla ilerleyelim.
+
+⸻
+
+Şu an senin yapman gereken (3 dakikalık kontrol)
+
+1) Cache’i ele
+	•	Aynı linki Private/Incognito sekmede aç:
+https://dospressohq.replit.app/raporlar/sube-saglik
+(Private’da kart görünüyorsa sorun %90 cache.)
+	•	Olmazsa normal sekmede hard refresh yap (iPad Safari: sayfayı yenile + gerekirse “Website Data” temizliği).
+
+2) Doğru sayfayı açtığından emin ol
+
+Replit ajanının dediğine göre kart client/src/pages/sube-saglik-skoru.tsx içine eklendi. Senin ekran görüntüsünde breadcrumb “Raporlar > Şube sağlık” ve içerik “Şube Performans Karşılaştırması” grafiği — bu sayfa başka bir page/component olabilir.
+
+Şunları sırayla dene (kopyala-yapıştır):
+	•	https://dospressohq.replit.app/raporlar/sube-saglik-skoru
+	•	https://dospressohq.replit.app/raporlar/sube-saglik-skoru/
+	•	UI içindeki arama (üstte büyüteç) varsa: “sağlık skoru” diye ara ve çıkan sayfaya git.
+
+Eğer bu URL’lerden biri 404 / yönlenme yapıyorsa: route gerçekten farklı ve kart şu an senin kullandığın rapor ekranına eklenmemiş demektir.
+
+3) Admin girişi konusu
+
+admin / 0000 prod’da seed aynı kalmamış olabilir (env’den geliyor olabilir, hash farklı olabilir, kullanıcı adı email olabilir). Bu, Ops Copilot kartını görmene engel olmak zorunda değil; ama admin’i düzeltmemiz iyi olur.
+
+⸻
+
+Replit’e göndereceğin optimize “tek seferlik” prompt (UI kartı görünmüyor fix)
+
+Aşağıdakini tek mesaj olarak Replit Agent’a yapıştır. Agent plan çıkarınca Start building de.
+
+PROD BUGFIX – Ops Copilot UI kartı prod’da görünmüyor.
+
+Durum:
+- Prod domain: https://dospressohq.replit.app
+- /api/ai/ops-copilot/summary?range=30d endpoint JSON döndürüyor (çalışıyor).
+- Ancak UI’de “Raporlar > Şube sağlık” ekranında AiCopilotCard görünmüyor.
+- Kartın eklendiği dosya: client/src/pages/sube-saglik-skoru.tsx (önceki commit).
+- Muhtemel sorun: route mismatch (kullanıcı başka sayfaya bakıyor) veya kart yanlış component’e eklendi.
+
+İstenenler (minimal diff, refactor yok):
+1) Frontend route mapping’i bul:
+   - sube-saglik-skoru.tsx hangi path ile render ediliyor?
+   - “Raporlar > Şube sağlık” ekranı hangi page/component?
+   - Bu iki route aynı mı farklı mı açıkça raporla.
+
+2) Fix:
+   - Eğer kullanıcı “/raporlar/sube-saglik” sayfasını kullanıyorsa, AiCopilotCard’ı bu sayfaya da ekle (üst kısımda, görünür).
+   - Alternatif: Menü/breadcrumb linkini doğru sayfaya yönlendir (sube-saglik-skoru route’una).
+   - Kart mutlaka render olsun; API 401/403 dönerse kart içinde “Bu rolde yetki yok” mesajı göster (kart tamamen kaybolmasın).
+
+3) QA (prod’a çıkmadan):
+   - Dev’de 3 kontrol: (a) kart DOM’da görünüyor mu, (b) range 7d/30d/90d değişince request atıyor mu, (c) 401/403’te kart mesaj gösteriyor mu.
+   - Hangi URL’de kart göründüğünü net yaz.
+
+Çıktı:
+- Değişen dosyalar listesi
+- Net URL: “AiCopilotCard şu path’te görünür: …”
+- Kısa QA evidence (3 madde)
+
+
+⸻
+
+Admin / 0000 çalışmıyor: güvenli çözüm için ayrı prompt
+
+Bunu UI kartı düzeldikten sonra ayrı bir run olarak yapmanı öneririm (tek değişiklik seti = daha güvenli). Replit’e şu prompt:
+
+PROD ADMIN LOGIN FIX – admin/0000 çalışmıyor.
+
+İstenen:
+1) Admin hesabı nasıl seed ediliyor bul (hangi dosya, hangi env değişkenleri).
+2) Prod’da admin username/email nedir tespit et (DB’den).
+3) Güvenli reset mekanizması ekle:
+   - Yeni bir env secret: ADMIN_RESET_PASSWORD (veya ADMIN_PASSWORD)
+   - One-time script veya protected internal endpoint ile (sadece server-side, log’a password yazmadan) admin şifresini bu secret’a set et.
+4) Uygulama içi dokümantasyon:
+   - “Prod admin şifresi Replit Secrets üzerinden yönetilir” notu.
+
+QA:
+- Reset sonrası login 200 ve role=admin doğrulaması.
+
+Not: Prod’da 0000 gibi zayıf şifreyi önermem. Secrets’e güçlü bir şifre koymak daha doğru.
+
+⸻
+
+Senin ekrandaki “API hatalı sayfa” konusu (netleştirme)
+
+/api/ai/ops-copilot/summary?... UI sayfası değil. Tarayıcıda siyah sayfa + JSON görmek normal. UI kartı bu JSON’u arka planda çekip render eder.
+
+⸻
+
+Şimdi hızlı karar
+	1.	Private sekmede .../raporlar/sube-saglik-skoru dene.
+	2.	Kart yoksa: yukarıdaki PROD BUGFIX promptunu Replit’e yapıştır → Plan → Start building.
+
+İstersen sen bana şunu yaz: Private’da hangi URL’yi açtın ve 404 mü geldi yoksa aynı sayfa mı? Ona göre route’u %100 nokta atışı söyleyebilirim.

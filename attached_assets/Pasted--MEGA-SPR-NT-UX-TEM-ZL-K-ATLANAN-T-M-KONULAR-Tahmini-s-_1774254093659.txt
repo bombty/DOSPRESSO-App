@@ -1,0 +1,504 @@
+# MEGA SPRİNT: UX TEMİZLİK + ATLANAN TÜM KONULAR
+# Tahmini süre: 8-10 saat | Öncelik: LANSMAN ÖNCESİ KRİTİK
+# 6 bölüm — sırayla yap, her bölüm sonunda rapor ver
+
+---
+
+## ⚠ KRİTİK KURAL: DANIŞMA MEKANİZMASI
+
+**Şu durumlarda DURUR ve kullanıcıya danışırsın:**
+1. **Mevcut sayfa koduna dokunmak gerekirse** (menu-service.ts ve header HARİÇ) → DUR, neyi değiştirmek istediğini açıkla
+2. **Bir sayfayı silmek gerekirse** → DUR, import eden dosyaları göster, onay al
+3. **DB şeması değişikliği gerekirse** → DUR, raw SQL göster, onay al
+4. **Herhangi bir compile/runtime hatası oluşursa** → DUR, hatayı göster, düzeltme planı öner
+5. **500+ satır tek dosya oluşturmak gerekirse** → DUR, bölme planı öner
+
+**Danışma formatı:**
+```
+⚠ DANIŞMA GEREKLİ
+Durum: [ne oldu / ne yapmak istiyorum]
+Risk: [ne kırılabilir]
+Seçenekler: A) ... B) ...
+Önerim: [hangisi ve neden]
+Onay bekliyor...
+```
+
+---
+
+## ÖN ARAŞTIRMA (HER ŞEYİ ÖNCE ANLA)
+
+```bash
+echo "════════════════════════════════════════════════"
+echo "ÖN ARAŞTIRMA — MEVCUT DURUM TAM HARİTA"
+echo "════════════════════════════════════════════════"
+
+echo "=== 1: Mevcut menü yapısı (admin) ==="
+# Admin login
+curl -s -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"utku","password":"0000"}' \
+  -c /tmp/admin_cookie.txt > /dev/null 2>&1
+
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+let total=0;
+d.forEach(s=>{
+  console.log('\n=== '+s.label+' ('+(s.items||[]).length+' öğe) ===');
+  if(s.items) s.items.forEach(i=>{console.log('  '+i.id+' → '+i.label+' → '+i.path);total++});
+});
+console.log('\nTOPLAM: '+total+' menü öğesi');
+"
+
+echo ""
+echo "=== 2: Öksüz sayfalar (route'suz dosyalar) ==="
+find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  if ! grep -q "$base" client/src/App.tsx 2>/dev/null; then
+    size=$(wc -l < "$f")
+    echo "  ROUTE YOK: $base ($size satır) — $f"
+  fi
+done | sort -t'(' -k2 -rn | head -30
+
+echo ""
+echo "=== 3: Duplikat dosyalar ==="
+find client/src/pages -name "*.tsx" | xargs -I{} basename {} | sort | uniq -d | while read dup; do
+  echo "  DUPLİKAT: $dup"
+  find client/src/pages -name "$dup" | while read f; do
+    echo "    $(wc -l < $f) satır — $f"
+  done
+done
+
+echo ""
+echo "=== 4: menu-service.ts yapısı ==="
+wc -l server/menu-service.ts
+grep -n "SIDEBAR_ALLOWED_ITEMS\|function.*menu\|function.*sidebar" server/menu-service.ts | head -10
+
+echo ""
+echo "=== 5: app-header.tsx yapısı (Profilim/Kılavuz nerede?) ==="
+grep -n "profil\|kilavuz\|yardim\|help\|guide\|avatar.*dropdown" client/src/components/app-header.tsx 2>/dev/null | head -10
+grep -n "profil\|kilavuz\|yardim\|help\|guide\|avatar.*dropdown" client/src/components/app-layout.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== 6: İletişim bölümü analizi ==="
+echo "--- İletişim menü öğeleri ---"
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+d.forEach(s=>{
+  if(s.label && s.label.toLowerCase().includes('ileti')) {
+    console.log(s.label+':');
+    if(s.items) s.items.forEach(i=>console.log('  '+i.label+' → '+i.path));
+  }
+});
+"
+
+echo ""
+echo "--- Merkez Destek vs İletişim Merkezi (aynı mı?) ---"
+grep -rn "/api/hq-support\|/api/iletisim-merkezi\|/api/support" client/src/pages/ --include="*.tsx" | grep "useQuery\|fetch\|queryKey" | head -10
+
+echo ""
+echo "=== 7: Pazarlama bölümü (tek öğe mi?) ==="
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | node -e "
+const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+d.forEach(s=>{
+  if(s.label && (s.label.toLowerCase().includes('pazarlama') || s.label.toLowerCase().includes('crm'))) {
+    console.log(s.label+' ('+(s.items||[]).length+' öğe):');
+    if(s.items) s.items.forEach(i=>console.log('  '+i.label+' → '+i.path));
+  }
+});
+"
+
+echo ""
+echo "=== 8: Trainer maaş endpoint erişimi (simülasyon testi bulgusu) ==="
+# Trainer login
+TRAINER_USER=$(echo "SELECT username FROM users WHERE role='trainer' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+curl -s -X POST http://localhost:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"$TRAINER_USER\",\"password\":\"0000\"}" \
+  -c /tmp/trainer_cookie.txt > /dev/null 2>&1
+
+echo "--- Trainer maaş endpoint'lerine erişim ---"
+for endpoint in "/api/salary/branch/1/summary" "/api/hr/employees-with-salary" "/api/payroll/summary"; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/trainer_cookie.txt "http://localhost:5000${endpoint}" 2>/dev/null)
+  echo "  $endpoint → HTTP $STATUS"
+done
+
+echo ""
+echo "=== 9: Simülasyon testi — branch_task_instances şema kontrolü ==="
+echo "SELECT column_name FROM information_schema.columns WHERE table_name = 'branch_task_instances' ORDER BY ordinal_position;" | psql
+echo ""
+echo "--- title kolonu var mı? ---"
+echo "SELECT column_name FROM information_schema.columns WHERE table_name = 'branch_task_instances' AND column_name = 'title';" | psql
+
+echo ""
+echo "=== 10: Kapalı modüller (module_flags) ==="
+echo "SELECT module_key, is_enabled, flag_behavior FROM module_flags WHERE is_enabled = false AND deleted_at IS NULL ORDER BY module_key;" | psql
+
+echo ""
+echo "=== 11: Stub endpoint sayısı ==="
+wc -l server/routes/stub-endpoints.ts 2>/dev/null
+grep -c "router\.\(get\|post\|patch\|delete\)" server/routes/stub-endpoints.ts 2>/dev/null
+```
+
+**Bu çıktıları oku ve devam et. Özellikle şunları not et:**
+1. Menü kaç öğe (39 mu hâlâ?)
+2. Öksüz sayfa sayısı ve toplam satır
+3. Duplikat dosyalar
+4. Profilim/Kılavuz nerede (sidebar mı header mı?)
+5. Merkez Destek = İletişim Merkezi mi?
+6. Trainer maaş erişimi engelli mi?
+
+---
+
+## BÖLÜM 1: SİMÜLASYON TESTİ DÜZELTMELERİ (30dk)
+
+### 1A: Trainer maaş endpoint'ini engelle
+
+Trainer'ın `/api/salary/branch/:id/summary` endpoint'ine erişimi var — boş veri dönüyor ama endpoint engellenmemiş. Düzelt:
+
+```
+server/routes/hr.ts veya payroll.ts'te ilgili endpoint'i bul.
+Trainer rolünü maaş endpoint'lerinden exclude et.
+canViewSalary fonksiyonunda trainer = false olduğunu doğrula.
+Eğer endpoint role check yapmıyorsa, middleware ekle.
+```
+
+### 1B: branch_task_instances şema uyumsuzluğu
+
+Simülasyon testinde `title` kolonu bulunamadı. Kontrol et:
+- `branch_task_instances`'ta title yok — `branch_recurring_tasks`'tan JOIN gerekiyor
+- Bu bildirim kodunu etkiliyor mu? Sprint 2'de eklenen claim/complete bildirimleri doğru çalışıyor mu?
+
+```bash
+echo "--- branch_task_instances + recurring_tasks JOIN testi ---"
+echo "
+SELECT bti.id, brt.title, bti.status, bti.claimed_by_user_id 
+FROM branch_task_instances bti 
+JOIN branch_recurring_tasks brt ON bti.recurring_task_id = brt.id 
+LIMIT 5;
+" | psql
+```
+
+### 1C: Doğrulama
+
+```bash
+echo "=== Düzeltme sonrası kontrol ==="
+# Trainer maaş endpoint'i artık 403 dönmeli
+curl -s -o /dev/null -w "%{http_code}" -b /tmp/trainer_cookie.txt "http://localhost:5000/api/salary/branch/1/summary"
+echo " (403 olmalı)"
+
+# Server hatasız çalışıyor mu?
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/
+echo " (200 olmalı)"
+```
+
+---
+
+## BÖLÜM 2: MENÜ KONSOLİDASYONU 39→25 (2 saat)
+
+**Sadece `server/menu-service.ts` dosyasını değiştir. Sayfa kodlarına DOKUNMA.**
+
+### 2A: Kaldırılacak öğeler (tekrar/gereksiz)
+
+| Menü öğesi | Sebep | Aksiyon |
+|------------|-------|---------|
+| Merkez Destek | = İletişim Merkezi (aynı API) | SİL |
+| Kampanyalar | CRM'in tab'ı zaten | SİL |
+| Pazarlama bölümü | Tek öğeli bölüm anlamsız | BÖLÜMÜ SİL |
+
+### 2B: Taşınacak öğeler (yanlış yerde)
+
+| Menü öğesi | Mevcut bölüm | Doğru bölüm |
+|------------|-------------|-------------|
+| PDKS | Finans & Tedarik | İK & Personel |
+| Maaş Hesaplama | Finans & Tedarik | İK & Personel |
+| AI Asistan | İletişim | Eğitim |
+| Agent Merkezi | İletişim | Yönetim (sadece admin) |
+| Misafir Memnuniyeti | Denetim & Analitik | Müşteri İlişkileri (CRM ile birleştir) |
+
+### 2C: Sidebar'dan çıkarılacak öğeler
+
+| Öğe | Nereye taşınacak |
+|-----|------------------|
+| Profilim | Header avatar dropdown |
+| Kılavuz | Header yardım ikonu (?) |
+
+**Profilim/Kılavuz taşıma:**
+
+```
+1. app-header.tsx (veya app-layout.tsx) dosyasını bul
+2. Avatar dropdown varsa → "Profilim" ve "Kılavuz" linkini ekle
+3. Avatar dropdown yoksa → sağ üstte avatar + dropdown oluştur
+4. menu-service.ts'ten Profilim ve Kılavuz'u SİL
+```
+
+### 2D: Bölüm yeniden adlandırma
+
+| Mevcut bölüm | Yeni bölüm |
+|-------------|-----------|
+| CRM + Pazarlama | Müşteri İlişkileri |
+| Finans & Tedarik (PDKS/Maaş çıktıktan sonra) | Finans & Tedarik (4 öğe) |
+| İK & Vardiya + PDKS + Maaş | İK & Personel (5 öğe) |
+| İletişim (7→2 öğe) | İletişim (Bildirimler + İletişim Merkezi) |
+
+### 2E: Rol bazlı menü güncelleme
+
+Her rol için SIDEBAR_ALLOWED_ITEMS'ı güncelle:
+- Yatırımcı: Finansal raporlama ekle
+- CEO: Akademi Yönetimi ekle (stratejik bakış)
+- Fabrika müdür: Performans ekle (Raporlar + Performans birlikte anlamlı)
+
+### 2F: Doğrulama
+
+```bash
+echo "=== Menü konsolidasyonu doğrulama ==="
+for ROLE in admin ceo cgo coach trainer muhasebe_ik fabrika_mudur supervisor mudur barista stajyer yatirimci_branch; do
+  USER=$(echo "SELECT username FROM users WHERE role='$ROLE' AND is_active=true LIMIT 1;" | psql -t | tr -d ' ')
+  if [ -n "$USER" ]; then
+    curl -s -X POST http://localhost:5000/api/login \
+      -H "Content-Type: application/json" \
+      -d "{\"username\":\"$USER\",\"password\":\"0000\"}" \
+      -c /tmp/test_${ROLE}.txt > /dev/null 2>&1
+    
+    COUNT=$(curl -s http://localhost:5000/api/me/menu -b /tmp/test_${ROLE}.txt | node -e "
+      const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      let c=0; d.forEach(s=>{if(s.items)c+=s.items.length}); console.log(c);
+    " 2>/dev/null)
+    echo "  $ROLE: $COUNT menü öğesi"
+  fi
+done
+
+echo ""
+echo "--- Admin menü ≤28 olmalı (önceki: 39) ---"
+echo "--- Trainer'da muhasebe/bordro OLMAMALI ---"
+echo "--- Profilim sidebar'da OLMAMALI ---"
+echo "--- Kılavuz sidebar'da OLMAMALI ---"
+echo "--- Kampanyalar ayrı öğe OLMAMALI ---"
+echo "--- Merkez Destek OLMAMALI ---"
+```
+
+---
+
+## BÖLÜM 3: ÖKSÜZ SAYFA TEMİZLİĞİ (1 saat)
+
+### 3A: Öksüz sayfaları tespit et
+
+```bash
+echo "=== Öksüz sayfalar (route yok, import yok) ==="
+find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  # App.tsx'te route var mı?
+  ROUTE=$(grep -c "$base" client/src/App.tsx 2>/dev/null)
+  # Başka dosyadan import ediliyor mu?
+  IMPORT=$(grep -rl "$base" client/src/ --include="*.tsx" --include="*.ts" 2>/dev/null | grep -v "$f" | grep -v node_modules | wc -l)
+  
+  if [ "$ROUTE" = "0" ] && [ "$IMPORT" = "0" ]; then
+    size=$(wc -l < "$f")
+    echo "  ÖKSÜZ ($size satır): $f"
+  fi
+done | sort -t'(' -k2 -rn
+```
+
+### 3B: Öksüz sayfaları sil
+
+**⚠ DANIŞMA NOKTASI:** Silmeden önce tam listeyi göster ve onay al.
+
+Her öksüz dosya için:
+1. `grep -rl "dosya_adı" client/src/` ile import kontrolü
+2. Import YOKSA → sil
+3. Import VARSA → neyin import ettiğini göster, DUR
+
+### 3C: Duplikat sayfaları birleştir
+
+Bilinen duplikatlar:
+- `admin/kullanicilar.tsx` vs `yonetim/kullanicilar.tsx` → hangisi aktif? Diğerini sil
+- `admin/duyurular.tsx` vs `announcements.tsx` → hangisi kullanılıyor? Diğerini sil
+- `destek.tsx` → `hq-support.tsx` ve `iletisim-merkezi` ile aynı → sil
+
+**⚠ DANIŞMA NOKTASI:** Her duplikat için hangi dosyanın kalacağını göster, onay al.
+
+---
+
+## BÖLÜM 4: ADMIN BÖLÜMÜ YENİDEN YAPILANDIRMA (1.5 saat)
+
+### 4A: Mevcut admin yapısını analiz et
+
+```bash
+echo "=== Admin yapısı ==="
+echo "--- admin-mega.tsx tab'ları ---"
+grep -n "id.*:\|label.*:\|tab" client/src/pages/admin-mega.tsx | head -20
+
+echo ""
+echo "--- admin/ dizini ---"
+find client/src/pages/admin -name "*.tsx" -exec sh -c 'echo "$(wc -l < "$1") $(basename "$1")"' _ {} \; | sort -rn
+
+echo ""
+echo "--- yonetim/ dizini ---"
+find client/src/pages/yonetim -name "*.tsx" -exec sh -c 'echo "$(wc -l < "$1") $(basename "$1")"' _ {} \; 2>/dev/null | sort -rn
+
+echo ""
+echo "--- admin route'ları ---"
+grep -n "admin\|yonetim" client/src/App.tsx | head -20
+```
+
+### 4B: Yönetim dizinini admin'e birleştir
+
+- `yonetim/` dizinindeki dosyalar `admin/` altına taşınmalı
+- Route'lar güncellenmeli
+- Menu-service'te referanslar güncellenmeli
+
+### 4C: Ayarlar tek yere toplanmalı
+
+Mevcut dağılım:
+- Genel ayarlar → admin mega tab
+- Yetki ayarları → ayrı sayfa
+- Widget ayarları → admin mega tab
+- Modül açma/kapama → belirsiz UI
+- Dashboard modu → dashboard sayfası içinde
+- CRM ayarları → CRM içinde
+
+**Aksiyon:** Sistem geneli ayarlar admin/ayarlar'da tek yerde olmalı. Modül-spesifik ayarlar modülde kalabilir.
+
+---
+
+## BÖLÜM 5: KAPATILMASI GEREKEN MODÜLLER (15dk)
+
+Simülasyon testinden ve önceki audit'ten:
+
+```sql
+-- Tablası olmayan, stub olan modülleri kapat
+UPDATE module_flags SET is_enabled = false WHERE module_key IN (
+  'delegasyon',        -- tablo boş, işlevsiz
+  'fabrika.hammadde',  -- henüz hazır değil
+  'fabrika.kalite',    -- factory_quality_records tablosu yok
+  'fabrika.kavurma',   -- sadece stub
+  'fabrika.sayim',     -- sadece stub
+  'fabrika.sevkiyat',  -- tablo belirsiz
+  'fabrika.siparis',   -- tablo belirsiz
+  'fabrika.stok'       -- tablo eksik
+) AND deleted_at IS NULL;
+```
+
+**⚠ DANIŞMA NOKTASI:** Bu SQL'i çalıştırmadan önce mevcut durumu göster, onay al.
+
+---
+
+## BÖLÜM 6: DOĞRULAMA + RAPOR (30dk)
+
+### 6A: Tam sistem kontrolü
+
+```bash
+echo "════════════════════════════════════════════════"
+echo "MEGA SPRİNT UX TEMİZLİK — SONUÇ RAPORU"
+echo "════════════════════════════════════════════════"
+
+echo ""
+echo "=== 1: Menü konsolidasyonu ==="
+# Admin menü öğe sayısı
+ADMIN_COUNT=$(curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | node -e "
+  const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  let c=0; d.forEach(s=>{if(s.items)c+=s.items.length}); console.log(c);
+" 2>/dev/null)
+echo "Admin menü: $ADMIN_COUNT öğe (hedef: ≤28, önceki: 39)"
+
+echo ""
+echo "--- Profilim sidebar'da mı? ---"
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | grep -i "profil" && echo "❌ Profilim hâlâ sidebar'da" || echo "✅ Profilim sidebar'dan çıkarıldı"
+
+echo ""
+echo "--- Merkez Destek kaldırıldı mı? ---"
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | grep -i "merkez.*destek" && echo "❌ Merkez Destek hâlâ var" || echo "✅ Merkez Destek kaldırıldı"
+
+echo ""
+echo "--- Kampanyalar ayrı öğe mi? ---"
+curl -s http://localhost:5000/api/me/menu -b /tmp/admin_cookie.txt | grep -i "kampanya" | grep -v "crm" && echo "❌ Kampanyalar hâlâ ayrı" || echo "✅ Kampanyalar CRM'de birleştirildi"
+
+echo ""
+echo "=== 2: Öksüz sayfa temizliği ==="
+ORPHAN_COUNT=$(find client/src/pages -name "*.tsx" -not -path "*/components/*" | while read f; do
+  base=$(basename "$f" .tsx)
+  ROUTE=$(grep -c "$base" client/src/App.tsx 2>/dev/null)
+  IMPORT=$(grep -rl "$base" client/src/ --include="*.tsx" --include="*.ts" 2>/dev/null | grep -v "$f" | grep -v node_modules | wc -l)
+  if [ "$ROUTE" = "0" ] && [ "$IMPORT" = "0" ]; then echo "orphan"; fi
+done | wc -l)
+echo "Kalan öksüz sayfa: $ORPHAN_COUNT (hedef: 0)"
+
+echo ""
+echo "=== 3: Duplikat dosyalar ==="
+DUP_COUNT=$(find client/src/pages -name "*.tsx" | xargs -I{} basename {} | sort | uniq -d | wc -l)
+echo "Duplikat dosya: $DUP_COUNT (hedef: 0)"
+
+echo ""
+echo "=== 4: Trainer maaş erişimi ==="
+TRAINER_SALARY=$(curl -s -o /dev/null -w "%{http_code}" -b /tmp/trainer_cookie.txt "http://localhost:5000/api/salary/branch/1/summary" 2>/dev/null)
+echo "Trainer maaş endpoint: HTTP $TRAINER_SALARY (403 olmalı)"
+
+echo ""
+echo "=== 5: Kapatılan modüller ==="
+echo "SELECT module_key, is_enabled FROM module_flags WHERE module_key IN ('delegasyon','fabrika.hammadde','fabrika.kalite','fabrika.kavurma','fabrika.sayim','fabrika.sevkiyat','fabrika.siparis','fabrika.stok') AND deleted_at IS NULL;" | psql
+
+echo ""
+echo "=== 6: E2E test ==="
+npx tsx server/scripts/e2e-tests.ts 2>/dev/null | tail -10
+
+echo ""
+echo "=== 7: Sunucu durumu ==="
+curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5000/
+echo ""
+
+echo ""
+echo "=== 8: Toplam sayfa/route sayısı ==="
+PAGE_COUNT=$(find client/src/pages -name "*.tsx" -not -path "*/components/*" | wc -l)
+ROUTE_COUNT=$(grep -c "Route\|path=" client/src/App.tsx)
+echo "Sayfa: $PAGE_COUNT, Route: $ROUTE_COUNT, Fark: $((PAGE_COUNT - ROUTE_COUNT))"
+
+echo ""
+echo "════════════════════════════════════════════════"
+echo "SONUÇ RAPORU — FORMAT:"
+echo "════════════════════════════════════════════════"
+echo ""
+echo "1. Menü: Önceki X öğe → Sonraki Y öğe"
+echo "2. Bölüm: Önceki 10 → Sonraki Z"
+echo "3. Öksüz sayfa: Önceki A → Sonraki B (silinen dosya listesi)"
+echo "4. Duplikat: Önceki C → Sonraki D (birleştirilen dosya listesi)"
+echo "5. Trainer maaş: DÜZELTİLDİ / DÜZELTİLMEDİ"
+echo "6. Kapalı modüller: X modül kapatıldı"
+echo "7. Admin yapısı: Ne değişti?"
+echo "8. Değiştirilen dosyalar tam listesi"
+echo "9. E2E: PASS / FAIL"
+echo "10. Kalan sorunlar varsa listele"
+```
+
+---
+
+## YAPILMAYACAKLAR (Bu sprint'te YOK — sonraki sprint'lere)
+
+- ❌ Sprint 3 (Mr. Dobody + yeni skill'ler) — ayrı sprint, prompt hazır
+- ❌ Sprint 4 (Şube görev sistemi tam) — ayrı sprint
+- ❌ Dashboard redesign (Mission Control Sprint 1/2/3) — ayrı sprint serisi
+- ❌ İK modülü genişletme (özlük dosyası + tutanak) — ayrı sprint
+- ❌ Kod yapısı temizliği (misc.ts/schema.ts bölme + :any cleanup) — ayrı sprint
+- ❌ NavRail → Sidebar dönüşümü — ayrı sprint
+- ❌ Tablet touch target iyileştirme — lansman sonrası
+- ❌ Sevkiyat modülü — lansman sonrası
+- ❌ Bordro onay akışı — lansman sonrası
+- ❌ SLA escalation otomasyonu — lansman sonrası
+- ❌ Onboarding otomasyonu — lansman sonrası
+- ❌ Frontend değişikliği (sayfa kodları) — sadece menü + header
+
+## BAŞARI KRİTERLERİ
+
+1. ✅ Admin menü ≤28 öğe (önceki: 39)
+2. ✅ Bölüm sayısı ≤8 (önceki: 10)
+3. ✅ Profilim + Kılavuz sidebar'dan çıktı, header'da
+4. ✅ Merkez Destek kaldırıldı
+5. ✅ Kampanyalar ayrı menü öğesi değil
+6. ✅ PDKS + Maaş İK bölümünde
+7. ✅ Öksüz sayfa sayısı ≤5 (önceki: ~25)
+8. ✅ Duplikat dosya sayısı: 0
+9. ✅ Trainer maaş endpoint'i engelli (403)
+10. ✅ 8 işlevsiz modül kapatıldı
+11. ✅ E2E testler PASS
+12. ✅ Sunucu hatasız çalışıyor
+13. ✅ Mevcut sayfa kodları DEĞİŞMEDİ (sadece menu-service + header)
+
+**Hiçbir sayfa kodunu değiştirme. Sadece menu-service.ts + app-header.tsx + dosya silme/taşıma.**

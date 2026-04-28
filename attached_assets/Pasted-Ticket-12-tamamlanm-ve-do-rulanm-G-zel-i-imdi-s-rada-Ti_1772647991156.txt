@@ -1,0 +1,140 @@
+Ticket 12 tamamlanmış ve doğrulanmış. Güzel iş.
+
+Şimdi sırada **Ticket 13** (Sidebar Erişilemeyen Öğe Gizleme) var — Sprint 1'in son parçası. İşte prompt:
+
+---
+
+```
+TICKET 13: Hide Inaccessible Sidebar Menu Items Per Role
+Priority: MEDIUM
+Estimated effort: 1-2 hours (4 tasks, sequential)
+
+Do NOT use subagents or delegation for this ticket. Execute all tasks sequentially.
+
+CONTEXT: Currently the sidebar shows ~18 menu items for almost every role. A Trainer (Ece) sees Satınalma, Kalite Kontrol, CAPA, KPI Sinyalleri, Widget Yönetimi etc. — pages she has no business accessing. When clicked, some return permission errors or empty pages. The sidebar should only show items the user can actually use. The backend RBAC is solid — the problem is purely frontend sidebar filtering.
+
+TASK 1 — Audit Current Sidebar Filtering Logic
+Files: Check the sidebar component (likely client/src/components/layout/sidebar.tsx or similar), and the menu-service.ts or equivalent that generates menu items.
+Action:
+(a) Find where sidebar menu items are defined (the full list)
+(b) Find how they are filtered — is there a scope/permissionModule check per item?
+(c) List which roles currently see which menu groups
+(d) Report findings before making changes
+
+TASK 2 — Define Role-Based Menu Groups
+Based on Task 1 findings, implement strict role-based menu filtering. Target menu groups per role:
+
+BARISTA / STAJYER (max 5-6 items):
+- Ana Sayfa (dashboard)
+- Görevlerim / Checklist
+- Akademi
+- Vardiyalarım (self-view only)
+- Arıza Bildirimi
+- Profil
+
+SUPERVISOR (max 7-8 items):
+- Ana Sayfa
+- Görevler (branch tasks + assignment)
+- Checklistler
+- Vardiya Yönetimi (branch)
+- Ekipman / Arıza
+- Personel (branch, read-only)
+- Bildirimler
+- Profil
+
+MÜDÜR (max 8-9 items):
+- Ana Sayfa / Şube Dashboard
+- Görevler + Atama
+- Checklistler
+- Vardiya Yönetimi
+- Ekipman Yönetimi
+- Personel (branch)
+- Raporlar (branch)
+- Misafir Geri Bildirim
+- Profil
+
+CGO / CEO (max 8-10 items):
+- Komuta Merkezi
+- Şubeler
+- Raporlar & Analitik
+- Personel
+- Operasyonlar (Görevler, Checklist, HQ Destek)
+- Eğitim / Akademi
+- AI Asistan
+- Profil
+
+COACH / BÖLGE MÜDÜRÜ:
+- Ana Sayfa
+- Şubeler (multi-branch view)
+- Personel
+- Raporlar
+- Eğitim Takibi
+- Profil
+
+KALITE_KONTROL:
+- Ana Sayfa
+- Kalite Kontrol
+- CAPA
+- Ekipman
+- Raporlar (quality-related)
+- Profil
+
+FABRIKA ROLES:
+- Ana Sayfa
+- Üretim / İstasyonlar
+- Kalite Kontrol
+- Fire Sebepleri
+- Profil
+
+OTHER HQ ROLES (pazarlama, muhasebe, ik_uzmani, satinalma, egitim_sorumlusu, misafir_iliskileri, teknik_destek, depo_sorumlusu):
+- Ana Sayfa
+- Their primary module (e.g., pazarlama → İçerik Stüdyosu; muhasebe → Mali Yönetim; ik_uzmani → İK Yönetimi; satinalma → Satınalma; etc.)
+- Raporlar (if relevant)
+- Profil
+
+ADMIN:
+- Everything (no filtering)
+
+Implementation approach: Either extend the existing scope/permissionModule system, or add a roleMenuConfig object that maps each role to allowed menu item IDs. Prefer the approach that fits the existing codebase pattern.
+
+TASK 3 — Hide Empty Parent Groups
+If a parent menu group (e.g., "Operasyonlar") has sub-items but ALL sub-items are hidden for the current role, the parent group itself should also be hidden. Don't show empty expandable groups.
+
+Logic:
+```
+if (parentGroup.children.every(child => !isAllowedForRole(child, userRole))) {
+  // hide entire parent group
+}
+```
+
+TASK 4 — Verify Per-Role Sidebar
+Test with at least 3 different roles:
+(a) Login as Barista (cihan) — should see max 5-6 sidebar items, NO Satınalma, NO Kalite Kontrol, NO Widget Yönetimi, NO CAPA
+(b) Login as CGO (or admin acting as CGO) — should see full management menu
+(c) Login as kalite_kontrol (or egitim_sorumlusu) — should see only relevant items
+
+Report the exact menu items visible for each tested role.
+
+DO NOT BREAK:
+- CGO Komuta Merkezi and full admin access
+- Existing sidebar scope + permissionModule filtering logic
+- Bottom nav role-based assignments
+- Dashboard routing (just fixed in Ticket 12)
+- Sidebar expand/collapse state persistence
+- Academy V2 features (fixed in Ticket 11)
+- Notification dedup system
+- Any existing working menu item — only HIDE, never DELETE routes
+
+ACCEPTANCE CRITERIA:
+- Barista sees max 6 sidebar items (not 18)
+- Each role sees only items they can actually use
+- No empty parent groups visible
+- Clicking any visible sidebar item works (no permission error)
+- Admin still sees everything
+- Zero console errors
+- All routes still work if accessed directly via URL (don't remove routes, just hide menu items)
+```
+
+---
+
+Bunu Replit'e gönder. Sprint 1 bu ticket'la kapanacak, sonra **Sprint 1.5** (bildirim spam + görev butonları) ticket'larını hazırlarım — bunlar pilot'ta en büyük farkı yaratacak quick wins.

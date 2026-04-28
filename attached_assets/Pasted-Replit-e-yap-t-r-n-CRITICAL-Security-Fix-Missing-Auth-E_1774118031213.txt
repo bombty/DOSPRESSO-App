@@ -1,0 +1,139 @@
+Replit'e yapıştırın:
+
+---
+
+```
+## CRITICAL Security Fix — Missing Auth + Error Handling
+
+### Context
+Audit found 2 urgent issues before launch:
+1. CRITICAL: branch-health.ts has NO auth middleware — anyone can access branch health metrics without login
+2. HIGH: 5 route files have routes without try/catch — unhandled errors crash the server
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json
+- Do NOT change any business logic — only ADD auth middleware and wrap with try/catch
+- Do NOT modify response formats of working endpoints
+
+---
+
+## FIX 1: branch-health.ts — Add Auth Middleware (CRITICAL)
+
+```bash
+# Verify the issue
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/branch-health.ts | head -20
+grep -n "isAuthenticated\|isKioskAuthenticated" server/routes/branch-health.ts | head -5
+# Expected: no auth middleware found
+
+# Check how it's registered
+grep -n "branch-health\|branchHealth\|BranchHealth" server/routes.ts server/index.ts | head -10
+```
+
+Add `isAuthenticated` to EVERY endpoint in branch-health.ts:
+
+```typescript
+// BEFORE (no auth):
+router.get("/api/branch-health/:branchId", async (req, res) => { ... });
+
+// AFTER (with auth):
+router.get("/api/branch-health/:branchId", isAuthenticated, async (req, res) => { ... });
+```
+
+Make sure `isAuthenticated` is imported at the top of the file:
+```typescript
+import { isAuthenticated } from "../localAuth";
+```
+
+Apply to ALL routes in the file. Do NOT skip any.
+
+Also add scope check — branch users should only see their own branch:
+```typescript
+router.get("/api/branch-health/:branchId", isAuthenticated, async (req, res) => {
+  const user = req.user as any;
+  const branchId = parseInt(req.params.branchId);
+  
+  // Branch-level users can only see their own branch
+  const branchRoles = ['supervisor', 'supervisor_buddy', 'mudur', 'barista', 'bar_buddy', 'stajyer'];
+  if (branchRoles.includes(user.role) && user.branchId !== branchId) {
+    return res.status(403).json({ error: "Bu şubenin verilerine erişim yetkiniz yok" });
+  }
+  
+  // ... existing logic
+});
+```
+
+---
+
+## FIX 2: Add try/catch to Unprotected Routes (HIGH)
+
+```bash
+# Find routes without try/catch in the 5 affected files
+for file in server/routes/employee-summary.ts server/routes/hr.ts server/routes/pdks.ts server/routes/branch-orders.ts server/routes/branch-inventory.ts; do
+  echo "=== $file ==="
+  # Count total routes
+  total=$(grep -c "router\.\(get\|post\|patch\|put\|delete\)" "$file" 2>/dev/null)
+  # Count routes with try/catch
+  protected=$(grep -A3 "router\.\(get\|post\|patch\|put\|delete\)" "$file" 2>/dev/null | grep -c "try {")
+  echo "  Total routes: $total, With try/catch: $protected, Missing: $((total - protected))"
+done
+```
+
+For each unprotected route, wrap the handler body:
+
+```typescript
+// BEFORE (no error handling):
+router.get("/api/some-endpoint", isAuthenticated, async (req, res) => {
+  const data = await db.select()...;
+  res.json(data);
+});
+
+// AFTER (with error handling):
+router.get("/api/some-endpoint", isAuthenticated, async (req, res) => {
+  try {
+    const data = await db.select()...;
+    res.json(data);
+  } catch (error) {
+    console.error("[API] GET /api/some-endpoint error:", error);
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+```
+
+Apply to ALL unprotected routes in these 5 files:
+- server/routes/employee-summary.ts (3 routes)
+- server/routes/hr.ts (10+ routes)
+- server/routes/pdks.ts (9 routes)
+- server/routes/branch-orders.ts (5 routes)
+- server/routes/branch-inventory.ts (5 routes)
+
+IMPORTANT: Do NOT change the logic inside the try block. Only add try/catch wrapper and console.error.
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- server/localAuth.ts
+- Frontend files
+- Route business logic
+- Response format of working endpoints
+- factory.ts (already has error handling)
+- Any scoring service
+
+## Testing:
+1. App starts without errors
+2. GET /api/branch-health/5 WITHOUT login → 401 (was 200 before — BUG FIXED)
+3. GET /api/branch-health/5 WITH login (branch user, own branch) → 200 with data
+4. GET /api/branch-health/5 WITH login (branch user, OTHER branch) → 403
+5. GET /api/branch-health/5 WITH login (HQ user) → 200 (can see any branch)
+6. All 5 route files: intentionally bad request → 500 with { error: "Sunucu hatası" } (not crash)
+7. No existing endpoints broken
+
+## After:
+1. Report: how many routes in branch-health.ts were missing auth
+2. Report: how many routes across 5 files got try/catch added
+3. Verify: no regression in existing API responses
+```
+
+---
+
+Yapıştırın! Bu güvenlik fix'i lansman öncesi zorunlu — auth eksikliği production'da ciddi risk.

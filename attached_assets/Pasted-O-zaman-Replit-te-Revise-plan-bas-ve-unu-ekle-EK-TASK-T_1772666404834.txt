@@ -1,0 +1,72 @@
+O zaman Replit'te **"Revise plan"** bas ve şunu ekle:
+
+---
+
+### EK TASK — T008: Trainer/Coach İçerik Yönetim Paneli (~3-4 saat)
+
+Mevcut 50 modül seed data olarak eklendi. Gerçek kullanımda Trainer ve Coach modül oluşturacak, düzenleyecek ve onaylayacak. Bu panel gerekli.
+
+**A) Modül Oluşturma Sayfası (Trainer/Coach rollerine özel):**
+
+Sidebar'da "İçerik Yönetimi" veya mevcut "İçerik Stüdyosu" menü öğesinin altında:
+
+- Form alanları:
+  - Başlık (zorunlu)
+  - Açıklama (zorunlu, 2-3 cümle)
+  - İçerik (zengin metin editörü veya textarea, modül içeriği)
+  - Kategori (dropdown: Kahve Bilgisi, Hijyen, Müşteri Deneyimi, Yönetim, vb.)
+  - Zorluk (dropdown: Kolay, Orta, Zor)
+  - Hedef Roller (multi-select: Stajyer, Bar Buddy, Barista, Supervisor, HQ rolleri...)
+  - Tahmini Süre (dakika)
+  - Kariyer Seviyesi (hangi seviyede gerekli: opsiyonel)
+- "AI ile İçerik Zenginleştir" butonu — mevcut AI altyapısını kullanarak başlık ve açıklamadan içerik taslağı üretir
+- Kaydet → modül "taslak" (draft) statüsünde kaydedilir
+
+**B) Modül Onay Akışı:**
+
+- Statüler: `draft` → `pending_review` → `approved` / `rejected`
+- Trainer oluşturur → "Onaya Gönder" basar → statü `pending_review` olur
+- Coach veya üst yetkili (admin/cgo) "Onayla" veya "Reddet" basar
+- Onaylanınca: statü `approved`, modül kullanıcılara görünür olur
+- Reddedilince: sebep yazılır (zorunlu), Trainer'a bildirim gider, düzeltip tekrar gönderebilir
+- training_modules tablosuna `status` kolonu ekle (yoksa): `draft`, `pending_review`, `approved`, `rejected`
+- **Tüm mevcut 50 modülü `approved` statüsüne çek** (geriye dönük uyumluluk)
+- Akademi sayfasında sadece `approved` modüller gösterilsin
+
+**C) Quiz Soru Yönetimi:**
+
+- Modül detay sayfasında "Sorular" tab'ı
+- Mevcut soruları listele (AI üretilmiş olanlar dahil)
+- Her soru için: düzenle, sil, aktif/pasif toggle
+- Yeni soru ekleme formu: soru metni, 4 şık, doğru cevap işaretleme
+- "AI ile 10 Soru Üret" butonu — modül içeriğinden otomatik soru üretir, Trainer inceler/düzenler/onaylar
+- Soru onay durumu: AI üretilmiş sorular `auto_generated` flag'i taşır, Trainer onaylarsa `reviewed` olur
+- Sınavda öncelikle `reviewed` sorular kullanılır, yetmezse `auto_generated` da dahil edilir
+
+**D) İçerik Listesi ve Yönetim Paneli:**
+
+- Tüm modüllerin listesi (tablo formatı):
+  - Başlık, Kategori, Zorluk, Hedef Roller, Statü, Soru Sayısı, Oluşturan, Tarih
+  - Filtreler: statü (taslak/bekleyen/onaylı/red), kategori, oluşturan
+  - Aksiyonlar: düzenle, onayla/reddet, sil (soft delete)
+- Bu sayfayı sadece trainer, coach, admin, cgo rolleri görebilir
+
+**E) Rol Yetkileri:**
+
+- **Trainer:** modül oluştur, düzenle (kendi oluşturduklarını), onaya gönder, soru ekle/düzenle
+- **Coach:** Trainer'ın yapabildiği her şey + başkalarının modüllerini onayla/reddet
+- **Admin/CGO:** her şeyi yapabilir + modül sil
+
+**KABUL KRİTERLERİ (ek):**
+- [ ] Trainer yeni modül oluşturabiliyor (draft statüsünde)
+- [ ] Modül onay akışı çalışıyor (draft → pending → approved/rejected)
+- [ ] Sadece approved modüller kullanıcılara görünüyor
+- [ ] Mevcut 50 modül approved statüsünde
+- [ ] AI ile içerik ve soru üretimi çalışıyor
+- [ ] Soru düzenleme/silme/ekleme çalışıyor
+- [ ] Sadece yetkili roller (trainer/coach/admin) bu paneli görebiliyor
+- [ ] Bildirimler çalışıyor (onaya gönderildi, onaylandı, reddedildi)
+
+---
+
+Bunu Replit'e yapıştır. Mevcut T001-T007'ye T008 olarak eklenecek, E2E test T009'a kayacak.

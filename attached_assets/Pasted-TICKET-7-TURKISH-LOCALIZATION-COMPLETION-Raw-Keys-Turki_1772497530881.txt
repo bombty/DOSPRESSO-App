@@ -1,0 +1,125 @@
+TICKET 7 — TURKISH LOCALIZATION COMPLETION (Raw Keys → Turkish Labels)
+
+Phase 2 Tickets 2-3 fixed most Turkish encoding issues, but several modules still display raw database keys, English tags, and URL slugs instead of proper Turkish labels. This ticket completes that work.
+
+IMPORTANT CONTEXT:
+- Phase 2 already established a pattern: label maps/dictionaries that translate DB keys → Turkish display text
+- Follow the SAME pattern used in Phase 2 fixes. Search the codebase for existing label maps (e.g., objects like STATUS_LABELS, CATEGORY_LABELS, or similar translation dictionaries) and extend them.
+- Do NOT change database values — only change what's DISPLAYED in the UI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TASK 1 — Sidebar Menu Slug Labels (Role: Trainer and others)
+WHERE: Sidebar navigation component, specifically for roles that see limited menus
+PROBLEM: Some menu items show raw URL slugs instead of proper Turkish names. For example:
+  - "ai-asistan" should display as "AI Asistan" or "Bilgi Bankası"
+  - "misafir-memnuniyeti" should display as "Misafir Memnuniyeti"
+  - Any other slug-style menu labels (words-with-dashes) visible in sidebar
+FIX:
+1. Find the sidebar/navigation component that renders menu items
+2. Find where menu labels are determined — there should be a label map or config
+3. Ensure EVERY menu item has a proper Turkish display label, not a URL slug
+4. Check ALL roles (admin, manager, trainer, barista, kitchen, muhasebe) — switch between roles and verify sidebar labels
+VERIFY: No menu item in any role shows a slug with dashes. Every item has a proper Turkish label.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TASK 2 — Quality Audit Template Tags
+WHERE: Kalite Denetim (Quality Audit) pages — template list, audit detail, audit forms
+PROBLEM: Template category tags display raw database keys like:
+  - "quality_audit" → should be "Kalite Denetimi"
+  - "hijyen" → should be "Hijyen" (capitalize)
+  - "food_safety" → should be "Gıda Güvenliği"
+  - Any other snake_case or English tag visible in audit screens
+FIX:
+1. Find the audit/quality control components
+2. Create or extend a label map for audit template tags/categories
+3. Map every raw key to its Turkish equivalent
+4. Apply the map wherever tags are rendered (badges, filters, cards, detail views)
+VERIFY: No snake_case or raw English tags visible in any audit screen.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TASK 3 — KPI Signal Codes & Severity Labels
+WHERE: KPI dashboard, KPI detail pages, KPI alerts/signals list
+PROBLEM A — Signal codes show raw database keys:
+  - "cold_chain_violation" → "Soğuk Zincir İhlali"
+  - "temperature_alert" → "Sıcaklık Uyarısı"
+  - "stock_threshold" → "Stok Eşiği"
+  - Any other snake_case signal identifier visible to users
+PROBLEM B — Severity levels show English words:
+  - "critical" → "Kritik"
+  - "warning" → "Uyarı"
+  - "info" → "Bilgi"
+  - "high" → "Yüksek"
+  - "medium" → "Orta"
+  - "low" → "Düşük"
+FIX:
+1. Find KPI-related components and pages
+2. Create SIGNAL_CODE_LABELS map for all signal type keys
+3. Create SEVERITY_LABELS map for all severity levels
+4. Apply both maps wherever these values are displayed (cards, tables, badges, alerts)
+5. Check badge colors still work after label change (the color logic should use the original key, not the display label)
+VERIFY: No English severity words or snake_case signal codes visible in KPI screens.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TASK 4 — CAPA English Tags
+WHERE: CAPA list page, CAPA detail page, CAPA dashboard/cards
+PROBLEM: Status and type tags display in English:
+  - "OVERDUE" → "GECİKMİŞ"
+  - "OPEN" → "AÇIK"
+  - "IN_PROGRESS" → "DEVAM EDİYOR"
+  - "CLOSED" → "KAPATILDI"
+  - "corrective" → "Düzeltici"
+  - "preventive" → "Önleyici"
+  - "corrective_and_preventive" → "Düzeltici ve Önleyici"
+  - Any other English status/type labels in CAPA screens
+FIX:
+1. Find CAPA components
+2. Create or extend CAPA_STATUS_LABELS and CAPA_TYPE_LABELS maps
+3. Apply to all badge/tag/status displays in CAPA pages
+4. Ensure filtering still works (filter by original key value, display Turkish label)
+VERIFY: No English words in CAPA status badges, type labels, or filter options.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TASK 5 — Stock Category Raw Keys
+WHERE: Stok (Stock/Inventory) pages — stock list, stock categories, stock detail
+PROBLEM: Category names show database keys with underscores instead of proper Turkish:
+  - "sut_urunleri" → "Süt Ürünleri"
+  - "cikolata" → "Çikolata"
+  - "kahve_cesitleri" → "Kahve Çeşitleri"
+  - "temizlik" → "Temizlik"
+  - "kagit_urunleri" → "Kağıt Ürünleri"
+  - "diger" → "Diğer"
+  - Any other underscore-separated or ASCII-only category names
+FIX:
+1. Find stock/inventory components
+2. Create STOCK_CATEGORY_LABELS map
+3. If a label map already exists from Phase 2, extend it with any missing categories
+4. Apply wherever stock categories appear (list filters, cards, detail view, forms)
+5. For categories not in the map, auto-format: replace underscores with spaces, capitalize first letter of each word
+VERIFY: No underscore-separated category names visible in stock screens.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TASK 6 — Global Fallback: Catch Any Remaining Raw Keys
+WHERE: Entire application
+FIX:
+1. Create a shared utility function (if one doesn't already exist) like:
+   formatDisplayLabel(key) that:
+   - First checks all known label maps
+   - If not found, applies auto-formatting: replace _ with space, replace - with space, capitalize each word, apply Turkish character corrections (e.g., "urun" → "Ürün", "sut" → "Süt", "cigara" → not applicable here)
+2. Apply this utility in components that render dynamic tags/categories/statuses
+3. This ensures any NEW data added to the database in the future will at least display in a readable format
+VERIFY: Browse through ALL major pages and verify no raw database keys (snake_case or kebab-case) are visible as labels.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DO NOT BREAK:
+- Any fixes from Tickets 0-6
+- Filtering/sorting logic (filters should use original DB keys, only DISPLAY changes)
+- Badge/tag color mappings (colors should be based on original keys)
+- API endpoints or database values
+- Auth system or role-based access

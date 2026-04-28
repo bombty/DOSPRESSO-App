@@ -1,0 +1,178 @@
+Sorun net — banner eklemek yeterli değilmiş. Kök sorun şu: HQ kullanıcıları sidebar'dan "Akademi Yönetimi"ne tıklasa bile, akademi içindeki navigasyon (Ana Sayfa, Eğitimler, Webinar, Kariyer tab'ları) onları öğrenci görünümüne hapsediyor.
+
+Daha agresif bir çözüm lazım. Şu promptu Replit'e yapıştırın:
+
+---
+
+```
+## CRITICAL FIX: Academy HQ Access — Force HQ Users to Management View
+
+### Problem
+HQ users (coach, trainer, admin, CEO, CGO) STILL see the student academy view and cannot manage modules. The banner fix is not enough — the fundamental routing is broken. When HQ users click sidebar "Akademi Yönetimi", they should ALWAYS land on the management panel, not the student view.
+
+Read skills first:
+- .agents/skills/dospresso-debug-guide/SKILL.md
+- .agents/skills/dospresso-architecture/SKILL.md
+
+### INVESTIGATION — Run these first, report ALL results before making changes
+
+```bash
+# 1. What URL does sidebar actually link to for coach?
+# Login as coach (Yavuz) and check the API response:
+curl -s -b "connect.sid=$COOKIE" http://localhost:5000/api/sidebar-menu | python3 -c "import sys,json; d=json.load(sys.stdin); [print(i.get('path',''),i.get('titleTr','')) for s in d.get('sections',[]) for i in s.get('items',[])]" 2>/dev/null
+# OR simpler:
+curl -s -b "connect.sid=$COOKIE" http://localhost:5000/api/sidebar-menu | grep -o '"path":"[^"]*akademi[^"]*"'
+
+# 2. What does the sidebar menu API return for trainer?
+# First login as trainer:
+TRAINER_COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"ece","password":"TestPass123!"}' | grep connect.sid | awk '{print $NF}')
+curl -s -b "connect.sid=$TRAINER_COOKIE" http://localhost:5000/api/sidebar-menu | grep -i "akademi\|academy\|eğitim"
+
+# 3. Check if /akademi-hq actually renders the management panel
+curl -s -b "connect.sid=$TRAINER_COOKIE" http://localhost:5000/akademi-hq | head -5
+# (This returns HTML — check if it's the app shell, not a 404)
+
+# 4. Check the EXACT sidebar item definition
+grep -B2 -A10 "training-academy-hq" server/menu-service.ts
+
+# 5. Check the EXACT route in App.tsx
+grep -B3 -A5 "akademi-hq" client/src/App.tsx
+
+# 6. Check if there's a redirect happening
+grep -rn "navigate\|redirect\|replace.*akademi" client/src/pages/akademi-hq/ --include="*.tsx" | head -10
+
+# 7. CRITICAL: Check what the akademi-hq index.tsx actually renders
+head -60 client/src/pages/akademi-hq/index.tsx
+
+# 8. Check if the coach's role is in the allowed list for akademi-hq
+grep -n "coach\|trainer\|admin\|hasPermission\|allowedRoles\|HQ_ROLES" client/src/pages/akademi-hq/index.tsx | head -15
+
+# 9. Check what happens when coach navigates — does the page check roles?
+grep -n "role\|permission\|redirect\|navigate" client/src/pages/akademi-hq/index.tsx | head -20
+
+# 10. Does akademi-v3 (student view) have auto-redirect logic?
+grep -n "redirect\|navigate\|replace\|useEffect.*role\|isHQ" client/src/pages/akademi-v3/index.tsx | head -10
+
+# 11. Check the banner we added — is it actually there?
+grep -n "ön izleme\|preview\|Yönetim Paneline" client/src/pages/akademi-v3/index.tsx | head -5
+```
+
+### REPORT the results of ALL 11 checks before proceeding to fixes.
+
+### FIX PLAN (apply based on investigation results)
+
+#### Fix A: Force redirect for HQ roles on /akademi
+
+In `client/src/pages/akademi-v3/index.tsx`, add an automatic redirect (not just a banner):
+
+```typescript
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+
+// At the TOP of the component, before any other rendering:
+const { user } = useAuth();
+const [, navigate] = useLocation();
+
+const HQ_MANAGEMENT_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'kalite_kontrol', 'gida_muhendisi', 'fabrika_mudur'];
+
+// Auto-redirect HQ users to management panel
+// Unless they explicitly navigated here with ?preview=true for content review
+const searchParams = new URLSearchParams(window.location.search);
+const isPreviewMode = searchParams.get('preview') === 'true';
+
+useEffect(() => {
+  if (user && HQ_MANAGEMENT_ROLES.includes(user.role) && !isPreviewMode) {
+    navigate('/akademi-hq', { replace: true });
+  }
+}, [user, navigate, isPreviewMode]);
+
+// If in preview mode, show the banner
+// If redirecting, show loading spinner
+if (user && HQ_MANAGEMENT_ROLES.includes(user.role) && !isPreviewMode) {
+  return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+}
+```
+
+This way:
+- Coach clicks ANY link to /akademi → auto-redirected to /akademi-hq
+- Coach can still preview student view via /akademi?preview=true
+- Banner shows in preview mode with "Yönetim Paneline Dön" button
+
+#### Fix B: Verify /akademi-hq management panel works
+
+Check that the akademi-hq/index.tsx:
+1. Has all 7 tabs rendering
+2. Each tab can load data from API
+3. Module creation/editing works
+4. No auth errors for coach/trainer roles
+
+If any tab crashes or shows errors, fix them.
+
+#### Fix C: Add "Öğrenci Görünümünü Önizle" button to /akademi-hq
+
+In the management panel, add a small button in the header:
+```typescript
+<Button variant="outline" size="sm" onClick={() => navigate('/akademi?preview=true')}>
+  <Eye className="h-4 w-4 mr-2" /> Öğrenci Görünümü
+</Button>
+```
+
+This creates a clean two-way navigation:
+- /akademi-hq → Management (default for HQ)
+- /akademi?preview=true → Student preview (opt-in for HQ)
+- /akademi → Student view (default for branch staff, auto-redirect for HQ)
+
+#### Fix D: Update all internal links in akademi-hq tabs
+
+Check if any tab inside akademi-hq links to /akademi/* student routes:
+```bash
+grep -rn "\/akademi\b\|\/akademi-v3\|\/akademi-modul" client/src/pages/akademi-hq/ --include="*.tsx" | grep -v "akademi-hq" | head -15
+```
+
+Any such links should either:
+- Go to /akademi?preview=true (for content preview)
+- Stay within /akademi-hq (for management actions)
+
+#### Fix E: Ensure ModullerTab CRUD actually works
+
+The Modüller tab needs to support:
+1. Creating new modules (via form or AI)
+2. Editing existing modules
+3. Viewing module content
+4. Managing module lessons/content
+
+Test each action:
+```bash
+# Check if module creation endpoint exists and works
+grep -n "POST.*module\|create.*module" server/routes/academy-v3.ts server/routes/training.ts server/routes/*.ts 2>/dev/null | head -10
+
+# Check if module editing endpoint exists
+grep -n "PATCH.*module\|PUT.*module\|update.*module" server/routes/academy-v3.ts server/routes/training.ts server/routes/*.ts 2>/dev/null | head -10
+
+# Test module list API
+curl -s -b "connect.sid=$TRAINER_COOKIE" http://localhost:5000/api/training/modules | head -100
+```
+
+If the ModullerTab currently only shows a read-only list, add create/edit dialogs.
+
+### Testing Checklist
+1. Login as coach (Yavuz) → click "Akademi Yönetimi" in sidebar → lands on /akademi-hq with 7 tabs ✓
+2. Navigate directly to /akademi → auto-redirected to /akademi-hq ✓
+3. Navigate to /akademi?preview=true → student view with banner ✓
+4. Click "Yönetim Paneline Dön" in banner → returns to /akademi-hq ✓
+5. In /akademi-hq Modüller tab → can see all modules ✓
+6. Can create new module → form opens, saves successfully ✓
+7. Can edit existing module → dialog opens, saves ✓
+8. Login as barista → /akademi → normal student view, NO redirect ✓
+9. All 7 tabs in /akademi-hq load without errors ✓
+10. /akademi-hq "Öğrenci Görünümü" button → opens /akademi?preview=true ✓
+
+### After fixes:
+1. Run quality gate on changed files
+2. Report what each fix addressed
+3. Update architecture skill if routing pattern changed
+```
+
+---
+
+Direkt build başlatın! Bu sefer auto-redirect çözümü — banner yetmedi, HQ kullanıcıları otomatik olarak yönetim paneline yönlendirilecek.

@@ -1,0 +1,353 @@
+Mükemmel soru. Gerçekten bulletproof olmak için sistemin her kritik noktasından veri çekmem gerek. Replit’ten isteyeceğim yüksek-değerli sorgular kategorilere ayrılmış:
+📋 Replit’e Yollayacağım Master Talep
+
+═══════════════════════════════════════════════════════
+DOSPRESSO PILOT - BULLETPROOF DOĞRULAMA SORGULARI
+23 Nis 2026 | Pilot 5 gün kaldı | Read-only
+═══════════════════════════════════════════════════════
+
+Aşağıdaki 30 SQL + 5 kod taraması yapıp HEPSİNİN çıktısını yolla.
+Plan mode ile yeterli. Hiçbir şey değiştirme, sadece SELECT/tarama.
+Toplam süre: ~45 dakika. Cost: düşük (sadece sorgu + chat).
+
+
+🔴 KATEGORİ 1 — Pilot 4 Lokasyon “Can Damarı” Doğrulama
+Bu 7 sorgu olmazsa pilot Day-1 patlar:
+
+-- Q1: Pilot lokasyonlarda kritik hesaplar aktif mi?
+SELECT b.id, b.name, b.is_active, b.setup_complete,
+       b.shift_corner_latitude, b.shift_corner_longitude, b.geo_radius,
+       b.kiosk_password IS NOT NULL as has_kiosk_pwd,
+       b.manager_name, b.qr_code_token IS NOT NULL as has_qr
+FROM branches b WHERE b.id IN (5, 8, 23, 24);
+
+-- Q2: Her pilot lokasyonda KAÇ aktif rol var, eksik mi?
+SELECT b.name, u.role, COUNT(*) as count,
+       STRING_AGG(u.first_name || ' ' || u.last_name, ', ') as users
+FROM users u JOIN branches b ON b.id = u.branch_id
+WHERE u.is_active = true AND u.deleted_at IS NULL
+  AND u.branch_id IN (5, 8, 23, 24)
+GROUP BY b.name, u.role ORDER BY b.name, u.role;
+
+-- Q3: Her pilot kullanıcı için PIN tanımlı mı? (Login blocker)
+SELECT b.name, u.first_name, u.last_name, u.role,
+       CASE WHEN p.pin IS NOT NULL THEN 'VAR' ELSE 'YOK' END as pin_status
+FROM users u
+JOIN branches b ON b.id = u.branch_id
+LEFT JOIN branch_staff_pins p ON p.user_id = u.id AND p.branch_id = u.branch_id
+WHERE u.is_active = true AND u.deleted_at IS NULL
+  AND u.branch_id IN (5, 8)
+ORDER BY b.name, pin_status DESC;
+
+-- Q4: Pilot haftası (28 Nis-4 May) vardiya planı
+SELECT b.name, COUNT(s.id) as planned_shifts,
+       MIN(s.shift_date) as first_shift, MAX(s.shift_date) as last_shift,
+       COUNT(DISTINCT s.assigned_to_id) as unique_assignees
+FROM branches b LEFT JOIN shifts s ON s.branch_id = b.id
+  AND s.shift_date BETWEEN '2026-04-28' AND '2026-05-04'
+WHERE b.id IN (5, 8, 23, 24) GROUP BY b.name;
+
+-- Q5: Pilot lokasyonlarda DEVRE DIŞI modül var mı?
+SELECT b.name, mf.module_key, mf.is_enabled, mf.flag_behavior
+FROM module_flags mf
+LEFT JOIN branches b ON b.id = mf.branch_id
+WHERE (mf.branch_id IN (5, 8, 23, 24) OR mf.scope = 'global')
+  AND mf.is_enabled = false
+ORDER BY mf.scope, b.name, mf.module_key;
+
+-- Q6: Kiosk endpoint'leri test edilmiş mi? Son 24 saat session
+SELECT b.name, COUNT(bss.id) as sessions_24h,
+       COUNT(*) FILTER (WHERE bss.status = 'active') as active_now,
+       COUNT(*) FILTER (WHERE bss.gps_fallback_used = true) as gps_fallback_24h
+FROM branches b
+LEFT JOIN branch_shift_sessions bss ON bss.branch_id = b.id
+  AND bss.check_in_time >= NOW() - INTERVAL '24 hours'
+WHERE b.id IN (5, 8, 23, 24) GROUP BY b.name;
+
+-- Q7: Notifications & Agent Routing sağlıklı mı?
+SELECT 'agent_routing_rules' as tbl, COUNT(*) as row_count FROM agent_routing_rules
+UNION ALL SELECT 'dobody_scopes', COUNT(*) FROM dobody_scopes
+UNION ALL SELECT 'escalation_config', COUNT(*) FROM escalation_config
+UNION ALL SELECT 'notifications_24h',
+  (SELECT COUNT(*) FROM notifications WHERE created_at >= NOW() - INTERVAL '24 hours')
+UNION ALL SELECT 'notifications_unread_total',
+  (SELECT COUNT(*) FROM notifications WHERE is_read = false);
+
+
+🟠 KATEGORİ 2 — Bordro & Yasal Risk Doğrulama
+SGK yasal risk - Mahmut’un ay sonu felaket yaşamaması için:
+
+-- Q8: Bordro güvenlik (DRY_RUN + dataSource kolonları DB'de mi?)
+SELECT column_name, data_type, column_default, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'monthly_payroll'
+  AND column_name IN ('is_dry_run', 'data_source', 'calculation_mode');
+
+-- Q9: 2026 SGK + Asgari ücret parametreleri doğru mu?
+SELECT year, month, key, value, notes, updated_at
+FROM payroll_parameters WHERE year = 2026
+ORDER BY key;
+
+-- Q10: position_salaries 19 satır — tüm roller kapsanıyor mu?
+SELECT ps.position_code, ps.year, ps.month,
+       ps.total_salary, ps.bonus, ps.base_salary
+FROM position_salaries ps
+WHERE ps.year = 2026 AND ps.month IN (4, 5)
+ORDER BY ps.position_code;
+
+-- Q11: Son bordro hesaplaması hatasız mı?
+SELECT year, month, COUNT(*) as user_count,
+       SUM(net_pay) / 100 as total_net_tl,
+       COUNT(*) FILTER (WHERE net_pay < 0) as negative_net,
+       COUNT(*) FILTER (WHERE total_deductions > gross_total) as over_deducted,
+       MAX(calculated_at) as last_calc
+FROM monthly_payroll WHERE year = 2026 GROUP BY year, month;
+
+-- Q12: PDKS verisi düzenli geliyor mu? (son 7 gün her pilot lok için)
+SELECT b.name, COUNT(DISTINCT pr.record_date) as active_days,
+       COUNT(*) as total_records,
+       MAX(pr.record_date) as last_record
+FROM branches b LEFT JOIN pdks_records pr ON pr.branch_id = b.id
+WHERE b.id IN (5, 8, 23, 24)
+  AND pr.record_date >= CURRENT_DATE - INTERVAL '7 days'
+GROUP BY b.name;
+
+
+🟡 KATEGORİ 3 — Veri Bütünlüğü (Corruption Check)
+Pilot sırasında veri korrupsiyonu çıkmasın:
+
+-- Q13: Orphan referanslar var mı? (FK'lar sağlam mı)
+SELECT 'branch_shift_sessions_orphan_user' as issue, COUNT(*) as count
+FROM branch_shift_sessions bss
+LEFT JOIN users u ON u.id = bss.user_id WHERE u.id IS NULL
+UNION ALL SELECT 'branch_shift_sessions_orphan_branch', COUNT(*)
+FROM branch_shift_sessions bss
+LEFT JOIN branches b ON b.id = bss.branch_id WHERE b.id IS NULL
+UNION ALL SELECT 'shifts_orphan_branch', COUNT(*)
+FROM shifts s LEFT JOIN branches b ON b.id = s.branch_id WHERE b.id IS NULL
+UNION ALL SELECT 'monthly_payroll_orphan_user', COUNT(*)
+FROM monthly_payroll mp LEFT JOIN users u ON u.id = mp.user_id WHERE u.id IS NULL;
+
+-- Q14: Soft-delete tutarsızlıkları
+SELECT 'active_users_with_deleted_at' as issue, COUNT(*) as count
+FROM users WHERE is_active = true AND deleted_at IS NOT NULL
+UNION ALL SELECT 'inactive_users_without_deleted', COUNT(*)
+FROM users WHERE is_active = false AND deleted_at IS NULL
+UNION ALL SELECT 'inactive_sessions_open', COUNT(*)
+FROM branch_shift_sessions WHERE status IN ('active','on_break')
+  AND check_in_time < NOW() - INTERVAL '30 days';
+
+-- Q15: Duplicate kontrolü (aynı kullanıcı + tarih ikinci vardiya?)
+SELECT user_id, branch_id, DATE(check_in_time) as day, COUNT(*) as session_count
+FROM branch_shift_sessions
+WHERE check_in_time >= NOW() - INTERVAL '30 days'
+GROUP BY user_id, branch_id, DATE(check_in_time)
+HAVING COUNT(*) > 1
+ORDER BY session_count DESC LIMIT 10;
+
+-- Q16: Negatif değer/tutarsız veri (sanity check)
+SELECT 'negative_work_minutes' as issue, COUNT(*)
+FROM branch_shift_sessions WHERE work_minutes < 0
+UNION ALL SELECT 'break_longer_than_work', COUNT(*)
+FROM branch_shift_sessions WHERE break_minutes > work_minutes
+UNION ALL SELECT 'checkout_before_checkin', COUNT(*)
+FROM branch_shift_sessions WHERE check_out_time < check_in_time
+UNION ALL SELECT 'negative_payroll', COUNT(*)
+FROM monthly_payroll WHERE net_pay < 0 OR total_deductions < 0;
+
+
+🔵 KATEGORİ 4 — Cron & Scheduler (Runtime Sağlık)
+38 scheduler aktif deniyor — gerçekten çalışıyor mu?
+
+-- Q17: Cron job log kayıtları var mı?
+SELECT DATE_TRUNC('hour', created_at) as hour, COUNT(*) as runs,
+       COUNT(*) FILTER (WHERE success = true) as success_count
+FROM cron_execution_log
+WHERE created_at >= NOW() - INTERVAL '24 hours'
+GROUP BY hour ORDER BY hour DESC LIMIT 24;
+-- Eğer tablo yok: "cron log tablosu yok" de.
+
+-- Q18: branch_task_instances - scheduler günlük üretiyor mu?
+SELECT DATE(created_at) as day, COUNT(*) as new_tasks,
+       COUNT(DISTINCT template_id) as unique_templates
+FROM branch_task_instances
+WHERE created_at >= NOW() - INTERVAL '7 days'
+GROUP BY DATE(created_at) ORDER BY day DESC;
+
+-- Q19: Monthly snapshot cron çalışıyor mu?
+SELECT 'branch_monthly_snapshots' as tbl, MAX(created_at) as last_run
+FROM branch_monthly_snapshots
+UNION ALL SELECT 'factory_monthly_snapshots', MAX(created_at) FROM factory_monthly_snapshots
+UNION ALL SELECT 'leaderboard_snapshots', MAX(created_at) FROM leaderboard_snapshots
+UNION ALL SELECT 'factory_worker_scores', MAX(updated_at) FROM factory_worker_scores;
+
+-- Q20: Real-time skor güncelleme var mı?
+SELECT COUNT(*) as score_writes_today, MAX(created_at) as last_score
+FROM employee_performance_scores
+WHERE created_at >= CURRENT_DATE;
+
+
+🔒 KATEGORİ 5 — Güvenlik & Auth
+
+-- Q21: Hardcoded session secret / null secret var mı?
+SELECT 'users_without_password' as issue, COUNT(*)
+FROM users WHERE (password IS NULL OR password = '') AND is_active = true
+UNION ALL SELECT 'users_must_change_password', COUNT(*)
+FROM users WHERE must_change_password = true AND is_active = true
+UNION ALL SELECT 'users_default_password_0000',
+  (SELECT COUNT(*) FROM users WHERE is_active = true);
+-- NOT: password hash ile 0000 eşleşmesi manuel kontrol gerek
+
+-- Q22: Pilot 4 lokasyon admin/müdür erişimleri
+SELECT u.username, u.role, u.branch_id, u.is_active, u.last_login,
+       u.must_change_password, u.email IS NOT NULL as has_email
+FROM users u
+WHERE u.username IN ('admin','adminhq','mudur5','laramudur','eren','sema','yavuz','aslan','mahmut')
+ORDER BY u.role, u.username;
+
+-- Q23: Audit log son 48 saat
+SELECT action, COUNT(*) as count, MAX(created_at) as last_action
+FROM audit_logs WHERE created_at >= NOW() - INTERVAL '48 hours'
+GROUP BY action ORDER BY count DESC LIMIT 20;
+-- Eğer sütun 'action' değilse: \d audit_logs sonucunu gönder
+
+
+💾 KATEGORİ 6 — Performans & Kapasite
+270-user pilot yükünde patlamayacak mı?
+
+-- Q24: En büyük 20 tablo (disk boyutu + satır)
+SELECT
+  schemaname || '.' || tablename AS table_name,
+  pg_size_pretty(pg_total_relation_size(schemaname || '.' || tablename)) AS total_size,
+  pg_stat_get_live_tuples(c.oid) AS row_estimate
+FROM pg_tables t
+JOIN pg_class c ON c.relname = t.tablename
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname || '.' || tablename) DESC LIMIT 20;
+
+-- Q25: Kritik tablolarda index var mı?
+SELECT t.tablename, i.indexname
+FROM pg_tables t
+LEFT JOIN pg_indexes i ON i.tablename = t.tablename
+WHERE t.tablename IN (
+  'branch_shift_sessions', 'shifts', 'pdks_records',
+  'employee_performance_scores', 'notifications',
+  'branch_task_instances', 'monthly_payroll'
+) ORDER BY t.tablename;
+
+-- Q26: Slow query log (son 24 saat)
+SELECT query, calls, total_exec_time, mean_exec_time
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC LIMIT 20;
+-- Eğer pg_stat_statements yok: "extension yok" de.
+
+-- Q27: Connection pool durumu
+SELECT state, COUNT(*) FROM pg_stat_activity
+WHERE datname = current_database() GROUP BY state;
+
+
+💻 KATEGORİ 7 — Kod Tarafı (Replit yapacak)
+
+# T1: Build testleri
+npm run build 2>&1 | tail -20
+# ve:
+npx tsc --noEmit 2>&1 | grep -c "error TS"
+# Sonuç: 0 olmalı
+
+# T2: Server restart sonrası 30 dakika log
+# /tmp/server.log son 30 dakika "ERROR" ve "WARN" sayısı
+grep -c "ERROR" /tmp/server.log | tail -n 1000
+grep -c "WARN" /tmp/server.log | tail -n 1000
+
+# T3: Endpoint canlı mı? 10 kritik endpoint health check
+for endpoint in \
+  "/api/branches" \
+  "/api/users/me" \
+  "/api/branches/5/kiosk/staff" \
+  "/api/pdks-import/mappings" \
+  "/api/monthly-payroll" \
+  "/api/branch-tasks/categories" \
+  "/api/announcements" \
+  "/api/shifts" \
+  "/api/dobody/proposals" \
+  "/api/health"; do
+  echo -n "$endpoint: "
+  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5000$endpoint
+done
+
+# T4: Disk kullanımı
+df -h /
+du -sh /home/runner/*  # Replit workspace
+
+# T5: Env değişkenleri gerçekten set mi? (değerleri yazma, sadece var mı)
+for var in DATABASE_URL SESSION_SECRET PAYROLL_LOCKED_DATASOURCE \
+  PAYROLL_DRY_RUN PILOT_BREAK_MINUTES_OVERRIDE PDKS_EXCEL_IMPORT_ENABLED \
+  ADMIN_BOOTSTRAP_PASSWORD OPENAI_API_KEY; do
+  if [ -n "${!var}" ]; then echo "$var: SET"; else echo "$var: MISSING"; fi
+done
+
+
+🎯 KATEGORİ 8 — Edge Case / Felaket Senaryoları
+“Acaba X olursa ne olur?” testleri:
+
+-- E1: Aynı anda 2 kullanıcı aynı PIN'i girse ne olur?
+SELECT p.pin, COUNT(DISTINCT p.user_id) as user_count,
+       STRING_AGG(u.first_name || ' ' || u.last_name, ', ') as users
+FROM branch_staff_pins p JOIN users u ON u.id = p.user_id
+WHERE p.branch_id IN (5, 8, 23, 24)
+GROUP BY p.pin HAVING COUNT(DISTINCT p.user_id) > 1;
+-- BEKLENTI: 0 satır (her PIN tekil)
+
+-- E2: "Unutulan" vardiya (8+ saat açık)
+SELECT b.name, u.first_name || ' ' || u.last_name as user, bss.status,
+       bss.check_in_time, NOW() - bss.check_in_time as duration
+FROM branch_shift_sessions bss
+JOIN branches b ON b.id = bss.branch_id
+JOIN users u ON u.id = bss.user_id
+WHERE bss.status IN ('active', 'on_break')
+  AND bss.check_in_time < NOW() - INTERVAL '8 hours'
+ORDER BY bss.check_in_time;
+
+-- E3: Kiosk token güvenliği - eski token'lar temizleniyor mu?
+-- (Eğer kiosk_tokens tablosu varsa)
+SELECT COUNT(*) as total, COUNT(*) FILTER (WHERE expires_at < NOW()) as expired
+FROM kiosk_sessions;
+
+-- E4: Mr. Dobody routing - pilot rolleri için kural var mı?
+SELECT primary_role, COUNT(*) as rules_count,
+       STRING_AGG(DISTINCT category, ', ') as covered_categories
+FROM agent_routing_rules
+WHERE is_active = true
+GROUP BY primary_role ORDER BY primary_role;
+
+-- E5: Döngüsel referans (müdür kendi kendine raporluyor mu?)
+SELECT u1.username as user, u1.role, u1.supervisor_id
+FROM users u1 WHERE u1.supervisor_id = u1.id;
+
+
+📊 Bonus — Ek Derinlik
+İstersem daha derine:
+	1.	React component render hatası — React error boundary logs
+	2.	WebSocket bağlantı stabilitesi — Kiosk real-time updates
+	3.	Cache invalidation — TanStack Query staleness bugs
+	4.	Gerçek user behaviour pattern — 20 Nis Lara’da günde kaç unique login?
+	5.	Network latency — Şube → HQ ping ortalama
+
+🎯 Özet — Neden Bu Sorular?
+
+
+
+|Kategori         |Neden Kritik                                             |
+|-----------------|---------------------------------------------------------|
+|1. Can Damarı    |**Day-1 patlar** yoksa (kiosk açılamaz, vardiya başlamaz)|
+|2. Bordro Yasal  |**Ay sonu** SGK yasal risk                               |
+|3. Veri Bütünlüğü|**Pilot sırasında** corruption sessiz büyür              |
+|4. Cron Runtime  |**Skor/snapshot** güncellenmez → dashboard boş           |
+|5. Güvenlik      |**Login açığı** = tüm sistem riske                       |
+|6. Performans    |**270 user** → yavaşlık = abandonment                    |
+|7. Kod           |**Build hatası** prod’a sızdı mı?                        |
+|8. Edge Case     |**%90 sistemler pilot-etinde patlar** — bunları bulduk   |
+
+⚙️ Şimdi Ne Yapayım?​​​​​​​​​​​​​​​​
+
+Karar bekliyorum. ☕​​​​​​​​​​​​​​​​

@@ -1,0 +1,238 @@
+Kesinlikle — admin'de gördüğümüz sorunlar (hardcoded kontroller, kopuk zincirler) muhtemelen tüm rollerde var. Sprint'e geçmeden önce tam resmi görelim. Yapıştırın:
+
+---
+
+**"Tüm roller için aksiyon→etki→tepki zincirlerini araştır. Her rolün günlük iş akışında ne yapıyor, ne tetikleniyor, ne kopuk. Değişiklik yapma.**
+
+```bash
+echo "══════════════════════════════════════════════════════"
+echo "TÜM ROLLER — AKSİYON → ETKİ → TEPKİ TAM SİMÜLASYON"
+echo "══════════════════════════════════════════════════════"
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 1: ÜST YÖNETİM (CEO, CGO, Admin)"
+echo "████████████████████████████████████████████"
+
+echo "=== CEO/CGO Dashboard açınca ne görüyor? ==="
+echo "--- hq-ozet.tsx ne yüklüyor? ---"
+grep -n "useQuery\|queryKey" client/src/pages/hq-ozet.tsx | head -15
+echo ""
+echo "--- Bu query'ler hangi endpoint'leri çağırıyor? ---"
+grep -oP "queryKey.*?\]" client/src/pages/hq-ozet.tsx | head -10
+echo ""
+echo "--- Bu endpoint'ler hangi verileri dönüyor? ---"
+grep -n "router\.\(get\|post\).*hq-dashboard\|router\.\(get\|post\).*hq-ozet\|router\.\(get\|post\).*branch-health" server/routes/*.ts | head -10
+
+echo ""
+echo "=== CEO rapor istediğinde ==="
+echo "--- Raporlar sayfası ne gösteriyor? ---"
+grep -n "useQuery\|queryKey" client/src/pages/raporlar.tsx | head -10
+echo "--- Hangi raporlar mevcut? ---"
+grep -n "tab\|Tab\|report.*type\|rapor.*tur" client/src/pages/raporlar.tsx | head -10
+
+echo ""
+echo "=== Admin kullanıcı oluşturdu → ZİNCİR ==="
+echo "--- 1. Kullanıcı INSERT endpoint ---"
+grep -B2 -A15 "router.post.*users\|router.post.*user.*create\|POST.*register" server/routes/admin*.ts server/routes/*.ts 2>/dev/null | head -30
+echo ""
+echo "--- 2. INSERT sonrası tetiklenen şeyler ---"
+grep -A30 "insert.*users\|INSERT.*users" server/routes/admin*.ts 2>/dev/null | grep -i "notification\|permission\|onboard\|email\|dobody\|log\|audit" | head -10
+echo ""
+echo "--- 3. Yeni kullanıcı ilk login'de ne görüyor? ---"
+grep -n "firstLogin\|first_login\|onboarding\|welcome\|isFirstLogin" server/ client/src/ -r --include="*.ts" --include="*.tsx" | head -10
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 2: COACH + TRAINER"
+echo "████████████████████████████████████████████"
+
+echo "=== Coach dashboard açınca ==="
+grep -n "useQuery\|queryKey" client/src/pages/kocluk-paneli.tsx 2>/dev/null | head -15
+echo ""
+echo "--- Coach şube seçince ne oluyor? ---"
+grep -n "branch\|sube\|selectBranch\|activeBranch" client/src/pages/kocluk-paneli.tsx 2>/dev/null | head -10
+
+echo ""
+echo "=== Coach personel değerlendirme yapınca → ZİNCİR ==="
+echo "--- Değerlendirme endpoint ---"
+grep -n "evaluation\|degerlendirme\|assessment\|score.*submit\|rating" server/routes/*.ts | head -10
+echo "--- Değerlendirme sonrası: personel skoru güncelleniyor mu? ---"
+grep -n "employee.*score\|updateScore\|recalculate" server/services/ -r --include="*.ts" | head -5
+echo "--- Mr. Dobody bilgilendirilior mu? ---"
+grep -n "dobody\|guidance\|gap\|completeness" server/services/employee-summary*.ts 2>/dev/null | head -5
+
+echo ""
+echo "=== Coach görev atadığında → ZİNCİR ==="
+grep -B2 -A10 "POST.*task\|create.*task\|insert.*task" server/routes/branch-tasks.ts 2>/dev/null | head -20
+echo "--- Görev atandığında bildirim gidiyor mu? ---"
+grep -A10 "insert.*task" server/routes/branch-tasks.ts 2>/dev/null | grep "notification\|bildirim" | head -3
+
+echo ""
+echo "=== Trainer eğitim atadığında → ZİNCİR ==="
+grep -n "assign.*training\|assign.*module\|ata.*egitim\|training.*assign" server/routes/academy*.ts | head -10
+echo "--- Atama sonrası stajyer bildirim alıyor mu? ---"
+grep -A10 "assign.*module\|training.*assign" server/routes/academy*.ts | grep "notification\|bildirim" | head -3
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 3: MUHASEBE + SATINALMA + UZMANLAR"
+echo "████████████████████████████████████████████"
+
+echo "=== Muhasebe bordro hesapladığında → ZİNCİR ==="
+grep -B2 -A20 "calculate.*payroll\|bordro.*hesapla\|generatePayroll" server/routes/payroll.ts | head -30
+echo "--- Hesaplama sonrası: kayıt oluşuyor mu? ---"
+echo "--- PDF oluşuyor mu? ---"
+echo "--- Onay akışı var mı? ---"
+grep -A20 "calculate\|generate" server/routes/payroll.ts | grep "insert\|save\|pdf\|approve\|onay\|notification" | head -10
+
+echo ""
+echo "=== Muhasebe izin onayladığında → ZİNCİR ==="
+grep -n "approve.*leave\|leave.*approve\|izin.*onayla" server/routes/hr.ts | head -5
+echo "--- Onay sonrası: PDKS güncelleniyor mu? Vardiya güncelleniyor mu? ---"
+grep -A10 "approve.*leave\|izin.*onayla" server/routes/hr.ts | grep "pdks\|shift\|vardiya\|attendance\|devam" | head -5
+
+echo ""
+echo "=== Satınalma sipariş oluşturduğunda → ZİNCİR ==="
+grep -n "create.*order\|siparis.*olustur\|insert.*purchase" server/routes/satinalma*.ts server/routes/operations*.ts 2>/dev/null | head -5
+echo "--- Sipariş sonrası: onay akışı var mı? Stok güncelleniyor mu? ---"
+grep -A10 "insert.*purchase\|create.*order" server/routes/satinalma*.ts server/routes/operations*.ts 2>/dev/null | grep "approve\|stock\|stok\|notification" | head -5
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 4: ŞUBE YÖNETİMİ (Müdür + Supervisor)"
+echo "████████████████████████████████████████████"
+
+echo "=== Supervisor vardiya başlattığında → ZİNCİR ==="
+grep -n "start.*shift\|shift.*start\|vardiya.*basla\|clock.*in\|check.*in" server/routes/shifts.ts server/routes/*.ts 2>/dev/null | head -10
+echo "--- PDKS kaydı oluşuyor mu? ---"
+echo "--- Bildirim gidiyor mu (müdüre)? ---"
+grep -A10 "clock.*in\|check.*in\|start.*shift" server/routes/shifts.ts 2>/dev/null | grep "pdks\|attendance\|notification\|bildirim" | head -5
+
+echo ""
+echo "=== Supervisor checklist doldurduğunda → ZİNCİR ==="
+grep -n "complete.*checklist\|checklist.*complete\|submit.*checklist" server/routes/*.ts | head -5
+echo "--- Tamamlanma sonrası: puan hesaplanıyor mu? HQ bilgilendiriliyor mu? ---"
+grep -A10 "complete.*checklist\|submit.*checklist" server/routes/*.ts | grep "score\|point\|puan\|notification\|hq" | head -5
+
+echo ""
+echo "=== Supervisor arıza bildirdiğinde → ZİNCİR ==="
+grep -n "create.*fault\|fault.*create\|ariza.*bildir\|report.*fault" server/routes/*.ts | head -5
+echo "--- Arıza sonrası: CGO bilgilendiriliyor mu? SLA timer başlıyor mu? ---"
+grep -A10 "create.*fault\|insert.*fault" server/routes/*.ts | grep "notification\|sla\|timer\|escalat\|cgo\|admin" | head -5
+
+echo ""
+echo "=== Müdür personel izin verdiğinde → ZİNCİR ==="
+grep -n "approve.*leave\|leave.*approve\|izin.*ver\|izin.*onayla" server/routes/hr.ts | head -5
+echo "--- İzin sonrası: vardiya güncelleniyor mu? PDKS güncelleniyor mu? ---"
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 5: SAHA ÇALIŞAN (Barista + Stajyer)"
+echo "████████████████████████████████████████████"
+
+echo "=== Stajyer eğitim modülü tamamladığında → ZİNCİR ==="
+grep -n "complete.*module\|module.*complete\|finish.*lesson\|tamamla" server/routes/academy*.ts | head -10
+echo "--- Tamamlama sonrası: streak güncelleniyor mu? ---"
+echo "--- Sertifika oluşuyor mu? ---"
+echo "--- Rozet veriliyor mu? ---"
+echo "--- Trainer bilgilendiriliyor mu? ---"
+grep -A15 "complete.*module\|finish.*lesson" server/routes/academy*.ts | grep "streak\|certificate\|badge\|notification\|trainer\|coach" | head -10
+
+echo ""
+echo "=== Stajyer quiz çözdüğünde → ZİNCİR ==="
+grep -n "submit.*quiz\|quiz.*submit\|quiz.*complete\|quiz.*result" server/routes/academy*.ts | head -5
+echo "--- Quiz sonrası: puan hesaplanıyor mu? Geçti/kaldı durumu? ---"
+grep -A10 "submit.*quiz\|quiz.*complete" server/routes/academy*.ts | grep "score\|pass\|fail\|grade\|notification" | head -5
+
+echo ""
+echo "=== Barista kiosk'tan giriş yaptığında → ZİNCİR ==="
+grep -n "kiosk.*login\|kiosk.*check.*in\|clock.*in\|pin.*verify" server/routes/branches.ts server/routes/factory.ts 2>/dev/null | head -10
+echo "--- Giriş sonrası: PDKS kaydı? Vardiya başlama? Bildirim? ---"
+grep -A15 "kiosk.*login\|createKioskSession" server/routes/branches.ts 2>/dev/null | grep "pdks\|attendance\|shift\|notification\|checklist" | head -10
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 6: FABRİKA (Müdür + Operatör)"
+echo "████████████████████████████████████████████"
+
+echo "=== Operatör üretim kaydı girdiğinde → ZİNCİR ==="
+grep -n "production.*output\|uretim.*kayit\|create.*production" server/routes/factory.ts | head -5
+echo "--- Üretim sonrası: LOT oluşuyor mu? QC pending? Stok güncelleniyor mu? ---"
+grep -A15 "insert.*production_output\|create.*production" server/routes/factory.ts | grep "lot\|qc\|quality\|stock\|stok\|notification" | head -10
+
+echo ""
+echo "=== QC kontrol sonrası → ZİNCİR ==="
+grep -n "qc.*inspect\|quality.*check\|POST.*inspection" server/routes/factory.ts server/routes/qc*.ts 2>/dev/null | head -5
+echo "--- QC red: fabrika müdür bildirimi? LOT durumu? ---"
+echo "--- QC onay: sevkiyat hazır mı? ---"
+grep -A15 "insert.*inspection\|quality.*check" server/routes/factory.ts 2>/dev/null | grep "notification\|lot\|shipment\|sevkiyat\|status\|reject\|approve" | head -10
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "ROL GRUBU 7: ÖZEL ROLLER"  
+echo "████████████████████████████████████████████"
+
+echo "=== Yatırımcı ne görebiliyor? ==="
+echo "--- Yatırımcı dashboard ---"
+grep -n "yatirimci\|investor" client/src/pages/dashboard.tsx | head -5
+echo "--- Yatırımcı menüsü ---"
+grep -A10 "yatirimci" server/menu-service.ts | head -15
+echo "--- Yatırımcı endpoint erişimi ---"
+echo "SELECT module, actions FROM role_module_permissions WHERE role='yatirimci_branch' LIMIT 20;" | psql
+
+echo ""
+echo "=== Kiosk hesabı ne yapabiliyor? ==="
+echo "--- sube_kiosk erişimi ---"
+echo "SELECT module, actions FROM role_module_permissions WHERE role='sube_kiosk' LIMIT 10;" | psql
+echo "--- Kiosk route'ları ---"
+grep -n "kiosk" client/src/App.tsx | head -5
+
+echo ""
+echo "████████████████████████████████████████████"
+echo "BÖLÜM 8: KOPUK ZİNCİRLER ÖZET"
+echo "████████████████████████████████████████████"
+
+echo "=== Bildirim sistemi — kim kime bildirim gönderiyor? ==="
+grep -rn "createNotification\|sendNotification\|insert.*notification" server/ --include="*.ts" | grep -v node_modules | head -20
+echo ""
+echo "--- Otomatik bildirim var mı yoksa hepsi manuel mi? ---"
+grep -rn "cron\|schedule\|interval\|automated.*notification\|auto.*notify" server/ --include="*.ts" | head -10
+
+echo ""
+echo "=== SLA sistemi — tetikleniyor mu? ==="
+grep -rn "sla\|SLA\|escalat\|timeout.*ticket\|deadline.*ticket" server/ --include="*.ts" | head -10
+
+echo ""
+echo "=== Onay akışları — hangileri var, hangileri yok? ==="
+grep -rn "approve\|reject\|pending.*approval\|onay\|red" server/routes/ --include="*.ts" | head -15
+
+echo ""
+echo "=== Otomatik tetikleme (event→action) ==="
+grep -rn "trigger\|emit\|event.*handler\|afterInsert\|afterUpdate\|hook.*after" server/ --include="*.ts" | head -15
+
+echo ""
+echo "══════════════════════════════════════════════════════"
+echo "RAPORLA (ÇOK DETAYLI):"
+echo ""
+echo "Her rol grubu için:"
+echo "  a) Günlük temel aksiyonlar listesi"
+echo "  b) Her aksiyon sonrası ne tetikleniyor (var olan zincir)"
+echo "  c) Ne tetiklenMİYOR ama tetiklenmeli (kopuk zincir)"
+echo "  d) Hardcoded kontroller (admin panelinden değiştirilemiyor)"
+echo ""
+echo "Genel:"
+echo "  1. Bildirim sistemi tam mı kopuk mu?"
+echo "  2. Onay akışları hangileri var hangileri yok?"
+echo "  3. SLA/escalation sistemi çalışıyor mu?"
+echo "  4. Event→trigger otomasyonu var mı?"
+echo "  5. Hangi zincirler KOPUK — acil düzeltme gereken?"
+echo "  6. ÖNERİ: Sprint öncesi düzeltilmesi gereken en kritik 10 kopuk zincir"
+echo "══════════════════════════════════════════════════════"
+```
+
+**Sadece araştır — değişiklik yapma.**"
+
+---
+
+Yapıştırın. Bu rapor tüm sistemin aksiyon→tepki haritasını çıkaracak — hangi zincirler çalışıyor, hangileri kopuk. Sprint planını bu haritaya göre yapacağız.

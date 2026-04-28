@@ -1,0 +1,272 @@
+# GÖREV ATAMA SİSTEMİ — HATA DÜZELTMELERİ + BASİTLEŞTİRME
+# Odaklı fix'ler — yeni özellik YOK, sadece mevcut sorunları düzelt
+# Tahmini: 3-4 saat
+
+---
+
+## ⚠ KRİTİK KURALLAR
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, drizzle.config.ts, package.json
+- Do NOT delete iletisim-merkezi/ klasörü — CRM bileşenleri oradan import ediliyor
+- Do NOT delete hq-support.tsx — 35K satırlık dosya, ayrı sistem
+- Do NOT change mevcut task verilerini (1.202 kayıt)
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-quality-gate/SKILL.md
+
+---
+
+## DÜZELTME 1: NewTaskDialog şube seçim hatası (KRİTİK)
+
+### Sorun:
+Adım 1'de (Kapsam) "Şube" seçildiğinde hemen departman dropdown'u açılıyor.
+Kullanıcı "şube seçtim" sanıyor ama şube listesi Adım 2'de.
+Bu çok kafa karıştırıcı.
+
+### Düzeltme:
+
+`client/src/components/tasks/new-task-dialog.tsx` dosyasında:
+
+**Adım 1'i basitleştir — sadece kapsam seçimi (4 buton), departman dropdown KALDIR:**
+
+```
+Adım 1 (Kapsam):
+  [Şube] [Merkez HQ] [Fabrika] [Tümü]
+  ← sadece bu 4 buton, başka hiçbir şey yok
+  [İptal] [İleri →]
+```
+
+**Adım 2'yi yeniden düzenle — kapsam bazlı akış:**
+
+Eğer "Şube" seçildiyse:
+```
+Adım 2 (Hedef):
+  
+  Şube seçin: (çoklu seçim checkbox)
+  ☑ Işıklar         ☐ Antalya Mallof    ☐ Antalya Markantalya
+  ☐ Antalya Lara     ☐ Beachpark         ☐ Gaziantep İbrahimli
+  ☐ Gaziantep İbnisina ☐ Gaziantep Üni.  ☐ Konya Meram
+  ...
+  [Tümünü Seç] [Temizle]
+
+  Departman filtresi: (opsiyonel)
+  [Tümü ▾] → Operasyon | Teknik | Eğitim | İK | Kalite | Genel
+  
+  Kişi seçimi:
+  ○ Seçili şubelerin tüm personeli
+  ● Belirli kişiler seç:
+    Rol filtresi: [Tümü ▾] [Supervisor ▾] [Barista ▾]
+    ☑ Ayşe Demir (Supervisor - Işıklar)
+    ☑ Ali Kaya (Barista - Işıklar) 
+    ☐ Mehmet Öz (Stajyer - Mallof)
+    
+  [← Geri] [İptal] [İleri →]
+```
+
+Eğer "Merkez HQ" seçildiyse:
+```
+  Departman: [Muhasebe ▾] [Eğitim ▾] [Pazarlama ▾]
+  Kişi: (departman personeli listelenir)
+```
+
+Eğer "Fabrika" seçildiyse:
+```
+  Kişi: (fabrika personeli listelenir)
+  ☐ Ümit Usta (Üretim Şefi)
+  ☐ Eren Bey (Fabrika Müdürü)
+  ☐ Operatörler...
+```
+
+Eğer "Tümü" seçildiyse:
+```
+  Rol filtresi: [Supervisor ▾] (o roldeki herkese atar)
+  VEYA belirli kişiler seç (tüm lokasyonlardan)
+```
+
+### Teknik uygulama:
+
+1. `new-task-dialog.tsx`'te satır 303-318'deki Adım 1 departman dropdown'unu KALDIR
+2. Adım 2'ye şube seçim checkbox grid'i ekle
+3. Şube seçilince → o şubelerdeki kullanıcıları `/api/branches/:id/staff` veya `/api/users?branchId=X` ile çek
+4. Rol filtresi: kullanıcı listesini client-side filtrele
+5. Departman filtresi: Adım 2'de opsiyonel (görev tipini belirler, kişi seçimini etkilemez)
+
+### Şube listesi API:
+```
+GET /api/branches → mevcut endpoint, tüm şubeleri döner
+GET /api/users?branchId=5&isActive=true → şubedeki aktif personel
+  VEYA mevcut bir endpoint varsa onu kullan
+```
+
+**⚠ ÖN ARAŞTIRMA:** Kullanıcı listesi API'si mevcut mu kontrol et:
+```bash
+grep -n "router.get.*users\|router.get.*staff\|router.get.*personel" server/routes/ --include="*.ts" | head -10
+```
+
+---
+
+## DÜZELTME 2: Header "Destek" butonu → CRM'e yönlendir
+
+### Sorun:
+Header profil dropdown'daki "Destek" butonu `/hq-destek` sayfasına gidiyor.
+Bu sayfa 35K satırlık ayrı bir sistem — CRM ile birleşmemiş.
+
+### Düzeltme:
+`client/src/components/app-header.tsx` satır ~139'da:
+
+```typescript
+// ÖNCE:
+onClick={() => navigate('/hq-destek')}
+
+// SONRA:
+onClick={() => navigate('/crm?channel=franchise'))
+```
+
+Bu kadar. HQ Destek sayfasını silme — sadece header butonunu CRM'e yönlendir.
+`/hq-destek` route'u olduğu gibi kalabilir (eski bookmark'lar için).
+
+---
+
+## DÜZELTME 3: İletişim Merkezi başlığı düzelt
+
+### Sorun:
+`/iletisim-merkezi` URL'si CRM sayfasını render ediyor (doğru) ama başlık hâlâ "İletişim Merkezi" yazıyor olabilir.
+
+### Düzeltme:
+App.tsx'te `/iletisim-merkezi` route'unun CRMMegaModule render ettiğini doğrula.
+Eğer CRM sayfası render oluyorsa ve başlık "CRM" yazıyorsa → sorun yok, dokunma.
+Eğer başlık hâlâ "İletişim Merkezi" yazıyorsa → breadcrumb'da düzelt.
+
+**⚠ İletişim Merkezi'ndeki "Görev Ata" butonu:** Bu buton CRM sayfasında gösteriliyorsa sorun yok (CRM render ediyor). Eğer eski İletişim Merkezi sayfasında gösteriliyorsa → kaldır (duplicate).
+
+---
+
+## DÜZELTME 4: Görev akışı simülasyon testi
+
+Tüm düzeltmelerden SONRA aşağıdaki simülasyonu çalıştır:
+
+```bash
+echo "═══ GÖREV ATAMA SİMÜLASYON TESTİ ═══"
+
+# Admin login
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"utku","password":"0000"}' -c /tmp/sim.txt > /dev/null 2>&1
+
+echo ""
+echo "=== 1. Şube görev oluştur (Işıklar şubesi, 2 kişiye) ==="
+# Önce Işıklar şubesindeki personeli bul
+echo "SELECT id, first_name, last_name, role FROM users WHERE branch_id=5 AND is_active=true AND role IN ('supervisor','barista','stajyer') LIMIT 5;" | psql
+
+# Görev oluştur
+TASK_RESULT=$(curl -s -X POST http://localhost:5000/api/tasks \
+  -H "Content-Type: application/json" -b /tmp/sim.txt \
+  -d '{
+    "title":"SİMÜLASYON: Haftalık stok sayımı",
+    "description":"Tüm ürünlerin stok sayımı yapılacak, sonuçlar rapora yazılacak",
+    "priority":"high",
+    "dueDate":"2026-04-01",
+    "taskScope":"branch",
+    "targetBranchIds":[5],
+    "isGroupTask":true,
+    "acceptanceRequired":true,
+    "category":"Operasyon",
+    "source":"manual"
+  }')
+TASK_ID=$(echo "$TASK_RESULT" | node -e "try{const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));console.log(d.id||d.task?.id||'?')}catch(e){console.log('FAIL')}" 2>/dev/null)
+echo "  Görev oluşturuldu: ID=$TASK_ID"
+echo "  Detay: $(echo $TASK_RESULT | head -c 300)"
+
+echo ""
+echo "=== 2. Görev detayını kontrol et ==="
+curl -s -b /tmp/sim.txt "http://localhost:5000/api/tasks/$TASK_ID" | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const t = d.task || d;
+    console.log('  Başlık:', t.title || t.description);
+    console.log('  Durum:', t.status);
+    console.log('  Scope:', t.taskScope || t.task_scope);
+    console.log('  Grup:', t.isGroupTask || t.is_group_task);
+    console.log('  Kabul gerekli:', t.acceptanceRequired || t.acceptance_required);
+    console.log('  Assignees:', (t.assignees || []).length);
+  } catch(e) { console.log('PARSE_ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== 3. Atanan kişi olarak kabul et ==="
+# Supervisor olarak login
+SUP_USER=$(echo "SELECT username FROM users WHERE branch_id=5 AND role='supervisor' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+if [ -n "$SUP_USER" ]; then
+  curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$SUP_USER\",\"password\":\"0000\"}" -c /tmp/sim_sup.txt > /dev/null 2>&1
+  
+  ACCEPT_RESULT=$(curl -s -X POST -b /tmp/sim_sup.txt "http://localhost:5000/api/tasks/$TASK_ID/accept")
+  echo "  $SUP_USER kabul: $(echo $ACCEPT_RESULT | head -c 200)"
+fi
+
+echo ""
+echo "=== 4. Başka bir kişi olarak reddet ==="
+BAR_USER=$(echo "SELECT username FROM users WHERE branch_id=5 AND role='barista' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+if [ -n "$BAR_USER" ]; then
+  curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$BAR_USER\",\"password\":\"0000\"}" -c /tmp/sim_bar.txt > /dev/null 2>&1
+  
+  REJECT_RESULT=$(curl -s -X POST -H "Content-Type: application/json" -b /tmp/sim_bar.txt \
+    -d '{"reason":"O gün izinliyim"}' \
+    "http://localhost:5000/api/tasks/$TASK_ID/reject-assignment")
+  echo "  $BAR_USER reddet: $(echo $REJECT_RESULT | head -c 200)"
+fi
+
+echo ""
+echo "=== 5. Yorum ekle (sohbet) ==="
+COMMENT_RESULT=$(curl -s -X POST -H "Content-Type: application/json" -b /tmp/sim.txt \
+  -d '{"message":"Stok formunu lütfen kullanın, fotoğraf da çekin"}' \
+  "http://localhost:5000/api/tasks/$TASK_ID/comments")
+echo "  Yorum: $(echo $COMMENT_RESULT | head -c 200)"
+
+echo ""
+echo "=== 6. Görev son durumu kontrol et ==="
+curl -s -b /tmp/sim.txt "http://localhost:5000/api/tasks/$TASK_ID" | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const t = d.task || d;
+    console.log('  Durum:', t.status);
+    const assignees = t.assignees || [];
+    assignees.forEach(a => {
+      console.log('  →', a.user?.firstName || a.userId, ':', a.acceptanceStatus || a.acceptance_status || 'pending');
+    });
+    const comments = t.comments || [];
+    console.log('  Yorum sayısı:', comments.length);
+  } catch(e) { console.log('PARSE_ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== 7. CRM Task kanalında görünüyor mu? ==="
+curl -s -b /tmp/sim.txt "http://localhost:5000/api/tasks?status=all" | node -e "
+  try {
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const tasks = Array.isArray(d) ? d : d.tasks || [];
+    const simTask = tasks.find(t => (t.title||t.description||'').includes('SİMÜLASYON'));
+    if(simTask) console.log('  ✅ CRM Task kanalında görünüyor:', simTask.title || simTask.description);
+    else console.log('  ❌ CRM Task kanalında bulunamadı');
+  } catch(e) { console.log('PARSE_ERROR'); }
+" 2>/dev/null
+
+echo ""
+echo "=== 8. Mevcut görevler bozulmadı mı? ==="
+echo "  Toplam görev: $(echo 'SELECT count(*) FROM tasks;' | psql -t 2>/dev/null | tr -d ' ') (1202+ olmalı)"
+
+echo ""
+echo "=== DOĞRULAMA ==="
+echo "  Server: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/)"
+echo ""
+echo "  Düzeltme 1 (şube seçim): ✅/❌"
+echo "  Düzeltme 2 (header destek): ✅/❌"
+echo "  Düzeltme 3 (iletişim merkezi): ✅/❌"
+echo "  Simülasyon (oluştur/kabul/red/yorum): ✅/❌"
+echo "  Mevcut veri: ✅/❌"
+```
+
+## YAPMA LİSTESİ
+- ❌ localAuth.ts, vite.ts, vite.config.ts, package.json
+- ❌ iletisim-merkezi/ klasörünü silme (CRM bileşenleri import ediyor)
+- ❌ hq-support.tsx silme (35K satır, ayrı sistem)
+- ❌ Mevcut 1.202 görev kaydını bozma
+- ❌ Yeni tablo/kolon ekleme — bu sprint sadece FIX
+- ❌ CRM Franchise/Misafir kanallarına dokunma

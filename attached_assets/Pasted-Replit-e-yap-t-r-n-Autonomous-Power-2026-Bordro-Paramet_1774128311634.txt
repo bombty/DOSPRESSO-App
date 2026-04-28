@@ -1,0 +1,322 @@
+Replit'e yapıştırın — **Autonomous + Power**:
+
+---
+
+```
+## 2026 Bordro Parametreleri + Role Permissions Fix
+
+### Context
+Audit found 2 issues:
+1. Payroll parameters table only has 2025 data — needs 2026 values for launch
+2. role_permissions table has 0 rows — seed was "skipped (preserved)". Need to verify permissions work and fix if broken.
+
+Read skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+
+### CRITICAL RULES
+- Do NOT touch localAuth.ts, vite.ts, vite.config.ts, package.json
+- Do NOT modify payroll-engine.ts or hr.ts calculation logic
+- Do NOT break existing permission checks
+- Turkish UI, users.id is VARCHAR
+
+---
+
+## PART 1: INVESTIGATE CURRENT STATE
+
+```bash
+echo "═══ PART 1: INVESTIGATION ═══"
+
+# 1A: Payroll parameters
+echo "--- payroll_parameters table ---"
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='payroll_parameters' ORDER BY ordinal_position;" | psql
+
+echo "--- Current data ---"
+echo "SELECT * FROM payroll_parameters ORDER BY year DESC, id DESC;" | psql
+
+echo "--- What year values exist? ---"
+echo "SELECT DISTINCT year FROM payroll_parameters;" | psql 2>/dev/null
+echo "SELECT DISTINCT effective_year FROM payroll_parameters;" | psql 2>/dev/null
+
+# If no year column, check what identifies the period
+echo "SELECT id, created_at FROM payroll_parameters ORDER BY id DESC LIMIT 5;" | psql
+
+# 1B: What parameters are stored?
+echo "--- Parameter keys/names ---"
+echo "SELECT parameter_name, parameter_value FROM payroll_parameters LIMIT 30;" | psql 2>/dev/null
+echo "SELECT key, value FROM payroll_parameters LIMIT 30;" | psql 2>/dev/null
+echo "SELECT * FROM payroll_parameters LIMIT 10;" | psql
+
+# 1C: SGK/Tax rates in hr.ts
+echo "--- Current hardcoded rates in hr.ts ---"
+grep -n "0\.14\|0\.01\|0\.0759\|sgk\|SGK\|vergi\|vergisi\|damga\|gelir\|matrah\|dilim\|bracket" server/routes/hr.ts | head -20
+
+# 1D: payroll-engine.ts rates
+echo "--- Rates in payroll-engine ---"
+grep -n "0\.14\|0\.01\|sgk\|rate\|oran\|kesinti" server/services/payroll-engine.ts 2>/dev/null | head -15
+find server -name "*payroll*" | head -5
+cat server/services/payroll-engine.ts 2>/dev/null | head -80
+
+# 1E: salary_scales table
+echo "--- salary_scales ---"
+echo "SELECT * FROM salary_scales ORDER BY id LIMIT 15;" | psql
+
+# 2A: Role permissions
+echo "═══ ROLE PERMISSIONS ═══"
+
+echo "--- role_permissions table ---"
+echo "SELECT count(*) as role_permissions_count FROM role_permissions;" | psql
+
+echo "--- role_permission_grants table ---"
+echo "SELECT count(*) as grants_count FROM role_permission_grants;" | psql 2>/dev/null
+
+echo "--- role_module_permissions table ---"
+echo "SELECT count(*) as module_perms_count FROM role_module_permissions;" | psql 2>/dev/null
+
+echo "--- permission tables overview ---"
+for tbl in role_permissions role_permission_grants role_module_permissions roles role_templates; do
+  count=$(echo "SELECT count(*) FROM $tbl;" | psql -t 2>/dev/null | tr -d ' ')
+  echo "  $tbl: $count rows"
+done
+
+# 2B: How are permissions ACTUALLY checked?
+echo "--- Permission check in code ---"
+grep -rn "hasPermission\|checkPermission\|resolvePermission\|PERMISSIONS\|canAccess" server/ --include="*.ts" | grep -v node_modules | head -20
+
+# 2C: Is there a static PERMISSIONS object?
+echo "--- Static PERMISSIONS in schema ---"
+grep -n "PERMISSIONS\s*=" shared/schema.ts | head -3
+grep -B2 -A20 "export const PERMISSIONS" shared/schema.ts | head -30
+
+# 2D: How does permission middleware work?
+echo "--- Permission middleware ---"
+grep -rn "requirePermission\|hasModulePermission\|checkAccess" server/ --include="*.ts" | head -15
+grep -rn "resolvePermissionScope\|permissionScope" server/ --include="*.ts" | head -10
+
+# 2E: Does the app work WITHOUT role_permissions rows?
+echo "--- Test: does admin see everything? ---"
+# If PERMISSIONS is a static object in schema.ts, the app uses that instead of DB
+grep -c "PERMISSIONS\[" server/ -r --include="*.ts"
+grep -c "role_permissions" server/ -r --include="*.ts"
+
+# 2F: Seed file for permissions
+echo "--- Permission seed ---"
+grep -rn "role_permissions\|seedPermissions\|permission.*seed" server/seeds/ server/seed*.ts 2>/dev/null | head -10
+find server -name "*seed*" -name "*.ts" | head -10
+grep -rn "permission" server/seeds/*.ts 2>/dev/null | head -15
+
+# 2G: Check permission_modules (303 rows)
+echo "--- permission_modules ---"
+echo "SELECT count(*) FROM permission_modules;" | psql 2>/dev/null
+echo "SELECT module_key, action, count(*) FROM permission_modules GROUP BY module_key, action ORDER BY module_key LIMIT 20;" | psql 2>/dev/null
+```
+
+### Report ALL findings before implementing.
+
+---
+
+## PART 2: 2026 BORDRO PARAMETRELERİ
+
+Based on investigation, update or insert 2026 payroll parameters.
+
+### Turkish 2026 Rates (approximate — should match government gazette):
+
+```typescript
+const PARAMS_2026 = {
+  // SGK
+  sgk_employee_rate: 0.14,        // İşçi SGK payı %14
+  sgk_employer_rate: 0.205,       // İşveren SGK payı %20.5
+  unemployment_employee_rate: 0.01, // İşçi işsizlik payı %1
+  unemployment_employer_rate: 0.02, // İşveren işsizlik payı %2
+  
+  // Asgari ücret (2026 — güncellenmeli)
+  minimum_wage_gross: 26000,       // Brüt asgari ücret (TL/ay — tahmini)
+  minimum_wage_net: 22100,         // Net asgari ücret (TL/ay — tahmini)
+  
+  // Gelir vergisi dilimleri (2026 — güncellenmeli)
+  income_tax_bracket_1_limit: 120000,  // %15
+  income_tax_bracket_1_rate: 0.15,
+  income_tax_bracket_2_limit: 250000,  // %20
+  income_tax_bracket_2_rate: 0.20,
+  income_tax_bracket_3_limit: 900000,  // %27
+  income_tax_bracket_3_rate: 0.27,
+  income_tax_bracket_4_limit: 3200000, // %35
+  income_tax_bracket_4_rate: 0.35,
+  income_tax_bracket_5_rate: 0.40,     // %40 (üstü)
+  
+  // Damga vergisi
+  stamp_tax_rate: 0.00759,         // %0.759
+  
+  // SGK tavan
+  sgk_ceiling: 260000,             // Aylık SGK tavan (tahmini)
+  
+  // Çalışma saatleri
+  weekly_hours_fulltime: 45,
+  weekly_hours_parttime: 25,
+  daily_break_minutes: 60,
+  yearly_overtime_limit_hours: 270,
+  
+  // Fazla mesai çarpanları
+  overtime_multiplier: 1.5,
+  off_day_multiplier: 1.5,
+  holiday_multiplier: 2.0,
+  
+  // Yıllık izin (kıdeme göre)
+  annual_leave_1_5_years: 14,      // 1-5 yıl: 14 gün
+  annual_leave_5_15_years: 20,     // 5-15 yıl: 20 gün
+  annual_leave_15_plus_years: 26,  // 15+ yıl: 26 gün
+  
+  // Effective period
+  year: 2026,
+  effective_from: '2026-01-01',
+  effective_to: '2026-12-31',
+};
+```
+
+### Insert logic:
+
+```bash
+# Check table structure to know exact column names
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='payroll_parameters' ORDER BY ordinal_position;" | psql
+```
+
+Based on table structure:
+
+**If table has key/value format:**
+```sql
+-- Insert each parameter as a row
+INSERT INTO payroll_parameters (key, value, year, description) VALUES
+  ('sgk_employee_rate', '0.14', 2026, 'İşçi SGK payı'),
+  ('sgk_employer_rate', '0.205', 2026, 'İşveren SGK payı'),
+  -- ... all parameters
+ON CONFLICT (key, year) DO UPDATE SET value = EXCLUDED.value;
+```
+
+**If table has typed columns:**
+```sql
+-- Insert single row with all 2026 values
+INSERT INTO payroll_parameters (year, sgk_employee_rate, ...) VALUES (2026, 0.14, ...)
+ON CONFLICT (year) DO UPDATE SET ...;
+```
+
+**If 2025 data exists, copy and update:**
+```sql
+-- Copy 2025 row, change year to 2026, update values
+INSERT INTO payroll_parameters (year, ...)
+SELECT 2026, ... FROM payroll_parameters WHERE year = 2025
+ON CONFLICT DO NOTHING;
+-- Then update 2026 values
+UPDATE payroll_parameters SET 
+  minimum_wage_gross = 26000,
+  income_tax_bracket_1_limit = 120000,
+  -- ... updated 2026 values
+WHERE year = 2026;
+```
+
+Also update salary_scales if amounts are outdated:
+```bash
+echo "SELECT position_name, base_salary FROM salary_scales ORDER BY base_salary;" | psql
+```
+
+---
+
+## PART 3: ROLE PERMISSIONS FIX
+
+Based on investigation:
+
+### Scenario A: App uses STATIC permissions (schema.ts PERMISSIONS object)
+If `role_permissions` table is empty but app works fine → the app uses the static PERMISSIONS constant from schema.ts. In this case:
+- **No fix needed** — the static system is working
+- Just verify: login as different roles, check they see correct menus/pages
+- Document: "Permissions are managed via static PERMISSIONS object in shared/schema.ts, not via role_permissions table"
+
+### Scenario B: App uses DB permissions AND table is empty → BROKEN
+If permission checks query role_permissions and find nothing → users may have too much or too little access.
+
+Fix: Run the permission seed:
+```bash
+# Find the seed function
+grep -rn "seedPermissions\|seedRolePermissions\|insertPermission" server/ --include="*.ts" | head -10
+
+# Check if there's a seed command
+grep -n "seed.*permission\|permission.*seed" server/index.ts server/seeds/*.ts 2>/dev/null | head -10
+```
+
+If seed exists but skips existing data, force re-seed:
+```typescript
+// Temporarily: clear and re-seed
+// ONLY if Scenario B is confirmed
+await db.delete(rolePermissions); // Clear empty table
+await seedPermissions(); // Re-run seed
+```
+
+### Scenario C: Hybrid — static for roles, DB for overrides
+The app might use static PERMISSIONS as default and role_permissions for per-branch or per-user overrides. In this case:
+- Static system works → no fix needed
+- DB table is for future granular overrides → leave empty, it's by design
+
+### Verification test:
+
+```bash
+# Login as different roles and check menu visibility
+# Admin — should see everything
+echo "--- Admin menu ---"
+ADMIN_COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"admin","password":"Dospresso2026!"}' 2>/dev/null | grep connect.sid | awk '{print $NF}')
+curl -s -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/me/menu 2>/dev/null | grep -o '"path":"[^"]*"' | wc -l
+
+# Supervisor — should see shift, hr, branch management
+echo "--- Supervisor permissions ---"
+# Find a supervisor username
+SUPV_USER=$(echo "SELECT username FROM users WHERE role='supervisor' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+echo "Supervisor: $SUPV_USER"
+SUPV_COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$SUPV_USER\",\"password\":\"Dospresso2026!\"}" 2>/dev/null | grep connect.sid | awk '{print $NF}')
+curl -s -b "connect.sid=$SUPV_COOKIE" http://localhost:5000/api/me/menu 2>/dev/null | grep -o '"path":"[^"]*"' | wc -l
+
+# Barista — should see limited menu
+echo "--- Barista permissions ---"
+BAR_USER=$(echo "SELECT username FROM users WHERE role='barista' AND is_active=true LIMIT 1;" | psql -t 2>/dev/null | tr -d ' ')
+echo "Barista: $BAR_USER"
+BAR_COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d "{\"username\":\"$BAR_USER\",\"password\":\"Dospresso2026!\"}" 2>/dev/null | grep connect.sid | awk '{print $NF}')
+curl -s -b "connect.sid=$BAR_COOKIE" http://localhost:5000/api/me/menu 2>/dev/null | grep -o '"path":"[^"]*"' | wc -l
+
+echo "--- Menu comparison ---"
+echo "Admin: $(curl -s -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/me/menu 2>/dev/null | grep -o '"path":"[^"]*"' | wc -l) items"
+echo "Supervisor: $(curl -s -b "connect.sid=$SUPV_COOKIE" http://localhost:5000/api/me/menu 2>/dev/null | grep -o '"path":"[^"]*"' | wc -l) items"
+echo "Barista: $(curl -s -b "connect.sid=$BAR_COOKIE" http://localhost:5000/api/me/menu 2>/dev/null | grep -o '"path":"[^"]*"' | wc -l) items"
+```
+
+If menu counts are different → permissions are working (static system).
+If all roles see same menu → permissions broken → fix needed.
+
+---
+
+## DO NOT TOUCH:
+- server/vite.ts, vite.config.ts, package.json, drizzle.config.ts
+- server/localAuth.ts
+- payroll-engine.ts calculation logic
+- hr.ts calculation logic
+- Any scoring service
+- Existing permission check middleware
+
+## Testing:
+1. payroll_parameters has 2026 data: SELECT * FROM payroll_parameters WHERE year=2026
+2. 2026 rates are correct (SGK 14%, damga 0.759%, etc.)
+3. salary_scales have reasonable 2026 amounts
+4. Admin sees full menu (30+ items)
+5. Supervisor sees limited menu (shift, hr, branch — 15-20 items)
+6. Barista sees minimal menu (5-10 items)
+7. Permission checks don't crash any page
+8. Mr. Dobody "Düzelt" buttons navigate correctly (from previous sprint)
+9. App starts without errors
+
+## After:
+1. Report: payroll_parameters — how many 2026 rows inserted
+2. Report: what were the 2025 values vs 2026 values changed
+3. Report: salary_scales — any updates made?
+4. Report: role_permissions — Scenario A, B, or C?
+5. Report: menu item counts per role (Admin vs Supervisor vs Barista)
+6. Report: is permission system working correctly?
+```
+
+---
+
+Yapıştırın! Bu küçük ama kritik sprint — bordro parametreleri olmadan maaş hesaplanamaz, izinler yanlış olur.

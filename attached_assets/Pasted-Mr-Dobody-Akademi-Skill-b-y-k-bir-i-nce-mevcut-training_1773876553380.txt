@@ -1,0 +1,50 @@
+Mr. Dobody Akademi Skill büyük bir iş. Önce mevcut training-optimizer skill'ini görelim. Replit'e yapıştırın:
+
+---
+
+```
+## Investigation: Mr. Dobody Academy Skill — Current State
+
+Read and report ALL results (do NOT modify anything):
+
+```bash
+# 1. Current training-optimizer skill
+cat server/agent/skills/training-optimizer.ts 2>/dev/null | head -80
+# OR find it:
+find server/agent -name "*training*" -o -name "*academy*" -o -name "*education*" | head -10
+
+# 2. All agent skills list
+ls server/agent/skills/ 2>/dev/null
+
+# 3. How skills are registered and scheduled
+grep -n "training.optimizer\|training_optimizer\|TrainingOptimizer" server/agent/skills/skill-registry.ts 2>/dev/null | head -10
+cat server/agent/skills/skill-registry.ts 2>/dev/null | head -60
+
+# 4. How skill results are delivered (notifications)
+grep -n "notification\|createNotification\|sendNotification" server/agent/skill-notifications.ts 2>/dev/null | head -20
+
+# 5. Skill action types — what can a skill DO?
+grep -n "SkillAction\|ActionType\|action.*type" server/agent/ --include="*.ts" -r | head -15
+
+# 6. Agent routing — who receives skill outputs?
+grep -n "training\|academy\|akademi\|coach\|trainer" server/agent/routing.ts 2>/dev/null | head -15
+
+# 7. What academy data is available via API?
+grep -n "router\.\(get\|post\)" server/routes/academy-v3.ts server/routes/training.ts 2>/dev/null | head -30
+
+# 8. Quiz/exam data tables
+grep -n "quiz\|exam\|question\|answer\|attempt\|result" shared/schema.ts | grep "pgTable" | head -10
+
+# 9. Training module completion tracking
+grep -n "completion\|progress\|enrollment\|module_progress" shared/schema.ts | grep "pgTable\|column" | head -15
+
+# 10. Current training-optimizer full content
+cat server/agent/skills/training-optimizer.ts 2>/dev/null
+```
+
+Report ALL results with clear headers. This will tell me exactly what exists and what needs to be built.
+```
+
+---
+
+Bu bilgiyle mevcut skill'in kapsamını, veri kaynaklarını ve delivery mekanizmasını tam göreceğim. Sonra genişletilmiş akademi skill promptunu yazarım.

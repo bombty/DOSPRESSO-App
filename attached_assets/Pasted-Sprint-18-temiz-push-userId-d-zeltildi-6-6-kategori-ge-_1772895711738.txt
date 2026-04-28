@@ -1,0 +1,381 @@
+Sprint 18 temiz — push userId düzeltildi, 6/6 kategori geçti.
+
+Sprint 19A'ya geçelim. Prompt'u yazıyorum — Replit'e yapıştır:
+
+---
+
+## TASK: Sprint 19A — WordPress Tarzı Dışa Aktarma + Setup Wizard
+
+### ÖZET
+
+DOSPRESSO HQ sistemi 321 tablo, 245 kullanıcı, 20 şube, 1.200+ API endpoint içeriyor. Tüm bu veriyi tek tıkla dışa aktarabilmek (backup/taşıma) ve yeni kurulumda tek seferde içe aktarabilmek (setup wizard) gerekiyor. WordPress'in "Export All" ve "Import" mantığı.
+
+**Kullanım senaryoları:**
+- Sunucu taşıma (Replit → AWS/VPS)
+- Tam sistem yedeği (disaster recovery)
+- Yeni franchise şube açılışında şablon kurulum
+- Demo/test ortamı oluşturma
+
+---
+
+### T001 — Dışa Aktarma Altyapısı (~2-3 saat)
+
+**Yapılacak:**
+
+1. Export endpoint'i:
+```
+POST /api/admin/export
+{
+  scope: 'full' | 'config_only' | 'branch',
+  branchId?: number, // branch scope'ta hangi şube
+  includeMedia: boolean, // fotoğraflar dahil mi
+  password?: string // export dosyasını şifrele (opsiyonel)
+}
+→ Response: { jobId: string, status: 'processing' }
+
+GET /api/admin/export/:jobId/status
+→ { status: 'processing' | 'completed' | 'failed', progress: 50, downloadUrl?: string }
+
+GET /api/admin/export/:jobId/download
+→ .zip dosyası
+```
+
+2. Export scope'ları:
+
+**A) Full Export (tüm sistem):**
+```
+export.zip
+├── manifest.json          — Versiyon, tarih, scope bilgisi
+├── schema_version.json    — DB schema hash (uyumluluk kontrolü)
+├── data/
+│   ├── users.json         — Kullanıcılar (şifreler HASH olarak)
+│   ├── branches.json      — Şubeler
+│   ├── permissions.json   — Rol-yetki matrisi
+│   ├── menu_config.json   — Menü yapısı
+│   ├── training/          — Eğitim modülleri, quiz'ler, materyaller
+│   ├── recipes/           — Reçeteler ve versiyonlar
+│   ├── products/          — Ürün kataloğu
+│   ├── factory/           — Fabrika istasyonlar, üretim kayıtları
+│   ├── crm/               — Müşteri verileri, feedback
+│   ├── notifications/     — Bildirim şablonları (kayıtlar değil)
+│   ├── agent_config/      — Agent skill ayarları, policy
+│   └── settings.json      — Sistem ayarları
+├── media/                 — Fotoğraflar, dosyalar (opsiyonel)
+└── checksum.sha256        — Bütünlük doğrulama
+```
+
+**B) Config Only (sadece yapılandırma — veri yok):**
+- Kullanıcılar, şubeler, izinler, menü, eğitim şablonları, reçeteler, ürünler, agent ayarları
+- Müşteri verileri, üretim kayıtları, bildirimler, loglar HARİÇ
+
+**C) Branch Export (tek şube):**
+- O şubenin kullanıcıları, stok verileri, feedback'leri, checklist'leri
+- Genel konfigürasyon dahil (reçeteler, ürünler, eğitimler)
+
+3. Export işlemi background job olarak çalışsın (büyük veri):
+```typescript
+// server/lib/export-service.ts
+
+async function runExport(jobId: string, options: ExportOptions) {
+  const zip = new JSZip();
+  
+  // Manifest
+  zip.file('manifest.json', JSON.stringify({
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    scope: options.scope,
+    appVersion: process.env.APP_VERSION || '16.0',
+    tableCount: 321,
+    userCount: await db.select({ count: count() }).from(users)
+  }));
+  
+  // Tablolar — kategori bazlı export
+  for (const category of EXPORT_CATEGORIES) {
+    for (const table of category.tables) {
+      const data = await db.select().from(table.schema);
+      zip.file(`data/${category.name}/${table.name}.json`, JSON.stringify(data, null, 2));
+      updateProgress(jobId, ...);
+    }
+  }
+  
+  // Media (opsiyonel)
+  if (options.includeMedia) {
+    // Upload dosyalarını ekle
+  }
+  
+  // Checksum
+  const content = await zip.generateAsync({ type: 'nodebuffer' });
+  const checksum = crypto.createHash('sha256').update(content).digest('hex');
+  zip.file('checksum.sha256', checksum);
+  
+  // Dosyayı kaydet
+  const finalContent = await zip.generateAsync({ type: 'nodebuffer' });
+  fs.writeFileSync(`/tmp/export-${jobId}.zip`, finalContent);
+}
+```
+
+4. **GÜVENLİK:**
+- Sadece admin/super_admin export yapabilir
+- Export dosyasında şifreler bcrypt hash olarak kalır (plaintext ASLA)
+- Opsiyonel AES-256 şifreleme (parola ile)
+- Export audit log'a kayıt düşsün
+- PII verileri (email, telefon) maskelenebilir seçeneği
+
+---
+
+### T002 — İçe Aktarma (Import) Altyapısı (~2-3 saat)
+
+**Yapılacak:**
+
+1. Import endpoint'i:
+```
+POST /api/admin/import
+  Body: multipart/form-data (zip dosyası + seçenekler)
+  {
+    file: export.zip,
+    mode: 'full_replace' | 'merge' | 'config_only',
+    password?: string // şifreli export ise
+  }
+→ { jobId: string, status: 'validating' }
+
+GET /api/admin/import/:jobId/status
+→ { status: 'validating' | 'importing' | 'completed' | 'failed', 
+    progress: 50, errors: [], warnings: [] }
+```
+
+2. Import modları:
+
+**A) Full Replace:** Tüm mevcut veriyi sil, import'tan yükle (temiz kurulum)
+**B) Merge:** Mevcut veriyle birleştir (çakışan ID'lerde import kazanır)
+**C) Config Only:** Sadece yapılandırma import et (kullanıcı/veri dokunma)
+
+3. Import validasyonu (import başlamadan önce):
+```typescript
+async function validateImport(zip: JSZip): Promise<ValidationResult> {
+  // 1. manifest.json var mı?
+  // 2. Schema versiyonu uyumlu mu?
+  // 3. Checksum doğru mu? (dosya bozulmamış)
+  // 4. Gerekli dosyalar tamam mı?
+  // 5. Veri formatı doğru mu? (JSON parse)
+  // 6. FK referansları tutarlı mı?
+  
+  return {
+    isValid: true,
+    warnings: ['3 kullanıcının email adresi mevcut sistemde zaten var'],
+    errors: [],
+    summary: {
+      users: 245, branches: 20, products: 63, recipes: 42,
+      estimatedTime: '~2 dakika'
+    }
+  };
+}
+```
+
+4. Import sırası (FK bağımlılıklarına göre):
+```
+1. branches (şubeler)
+2. users (kullanıcılar — şubelere bağlı)
+3. permissions (izinler — rollere bağlı)
+4. factory_products, raw_materials
+5. recipes, recipe_versions, recipe_ingredients
+6. factory_stations
+7. training_materials, quiz'ler
+8. ... (diğer tablolar)
+```
+
+5. **GÜVENLİK:**
+- Sadece admin/super_admin import yapabilir
+- Import öncesi otomatik backup alınsın
+- Import başarısız olursa rollback (transaction)
+- Import audit log'a kayıt
+
+---
+
+### T003 — Setup Wizard (~2 saat)
+
+**Problem:** Yeni kurulumda (sunucu taşıma veya demo ortamı) sistem boş. Admin tek tek her şeyi kurması gerekiyor. Setup Wizard ilk kurulumu kolaylaştırır.
+
+**Yapılacak:**
+
+1. Setup Wizard route: `/setup` (sadece DB boşsa veya admin tetiklerse)
+
+```
+Setup Wizard — DOSPRESSO HQ Kurulum
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Adım 1/6: Şirket Bilgileri
+  Şirket Adı: [DOSPRESSO        ]
+  Şube Sayısı: [20               ]
+  Fabrika Var mı: [✅ Evet         ]
+
+Adım 2/6: İlk Admin Kullanıcı
+  Ad Soyad: [Ozan              ]
+  Email: [ozan@dospresso.com   ]
+  Şifre: [••••••••            ]
+
+Adım 3/6: Şubeler
+  [Import'tan yükle] veya [Manuel ekle]
+  Şube 1: [Antalya Beachpark  ] [Franchise ▼]
+  Şube 2: [Antalya Lara       ] [Franchise ▼]
+  Şube 3: [Işıklar            ] [Bombtea   ▼]
+  [+ Şube Ekle]
+
+Adım 4/6: Ürün Kataloğu
+  [Varsayılan DOSPRESSO ürünlerini yükle ✅]
+  veya [Boş başla]
+
+Adım 5/6: Pozisyonlar & Maaş Tablosu
+  [Varsayılan DOSPRESSO pozisyonlarını yükle ✅]
+  veya [Özelleştir]
+
+Adım 6/6: Başlangıç Verileri
+  [x] Örnek eğitim modülleri yükle
+  [x] Örnek reçeteler yükle
+  [x] Fabrika istasyonlarını yükle
+  [ ] Demo verisi yükle (test kullanıcıları, sahte veri)
+
+[🚀 Kurulumu Tamamla]
+```
+
+2. Wizard backend:
+```
+POST /api/setup/initialize
+{
+  company: { name, branchCount, hasFactory },
+  admin: { fullName, email, password },
+  branches: [{ name, type }],
+  options: {
+    loadDefaultProducts: true,
+    loadDefaultPositions: true,
+    loadSampleTraining: true,
+    loadSampleRecipes: true,
+    loadFactoryStations: true,
+    loadDemoData: false
+  }
+}
+```
+
+3. Wizard sadece şu durumlarda erişilebilir:
+- DB'de hiç kullanıcı yoksa (ilk kurulum)
+- Admin `/setup` URL'ini manuel açarsa ve super_admin ise
+
+---
+
+### T004 — Admin Panel Export/Import UI (~1-2 saat)
+
+**Yapılacak:**
+
+Admin panele "Veri Yönetimi" bölümü ekle:
+
+```
+💾 Veri Yönetimi
+━━━━━━━━━━━━━━━
+
+📤 Dışa Aktar (Export):
+┌────────────────────────────────────┐
+│ Kapsam: [Tam Sistem ▼]             │
+│ Media dahil: [☐]                    │
+│ Şifreleme: [☐]                      │
+│ [📤 Dışa Aktar]                     │
+│                                      │
+│ Son export: 5 Mart 2026, 14:00      │
+│ Boyut: 12.4 MB                      │
+│ [⬇️ İndir]                          │
+└────────────────────────────────────┘
+
+📥 İçe Aktar (Import):
+┌────────────────────────────────────┐
+│ [📁 Dosya Seç] export.zip          │
+│ Mod: [Birleştir (Merge) ▼]         │
+│                                      │
+│ Doğrulama sonucu:                   │
+│ ✅ 245 kullanıcı, 20 şube          │
+│ ⚠️ 3 email çakışması               │
+│ Tahmini süre: ~2 dakika            │
+│                                      │
+│ [📥 İçe Aktar] [İptal]              │
+└────────────────────────────────────┘
+
+🔧 Setup Wizard:
+  [Kurulum Sihirbazını Aç →]
+  (Dikkat: Mevcut veriyi etkileyebilir)
+```
+
+---
+
+### T005 — Otomatik Backup Entegrasyonu (~1 saat)
+
+**Problem:** Mevcut backup sistemi var mı kontrol et, yoksa ekle.
+
+```bash
+grep -rn "backup\|Backup\|BACKUP" server/ --include="*.ts" | head -15
+```
+
+**Yapılacak:**
+
+1. Günlük otomatik backup (02:00):
+- Config-only export'u otomatik oluştur
+- Son 7 backup'ı sakla, eskilerini sil
+- Backup başarılı/başarısız bildirim admin'e
+
+2. Import öncesi otomatik backup:
+- Her import'tan önce mevcut durumun backup'ını al
+- Import başarısız olursa rollback bilgisi
+
+---
+
+### T006 — E2E Test (~1 saat)
+
+**Senaryo 1 — Export:**
+1. Admin ile giriş → Veri Yönetimi aç
+2. "Tam Sistem" export başlat
+3. Job status takip → completed
+4. Zip dosyasını indir → manifest.json var mı? data/ klasörü var mı?
+
+**Senaryo 2 — Import Validasyon:**
+1. Export'tan alınan zip'i import'a yükle
+2. Validasyon sonucu: kullanıcı/şube/ürün sayıları doğru mu?
+3. "Config Only" modda import → sadece yapılandırma geldi mi?
+
+**Senaryo 3 — Setup Wizard:**
+1. /setup sayfası açılıyor mu?
+2. Adımlar arası geçiş çalışıyor mu?
+3. "Varsayılan ürünleri yükle" seçeneği çalışıyor mu?
+
+**Senaryo 4 — Güvenlik:**
+1. Barista ile giriş → export endpoint'ine erişim yok (403)
+2. Export dosyasında plaintext şifre yok (hash kontrol)
+
+---
+
+### ÖNCELİK SIRASI: T001 → T002 → T004 → T003 → T005 → T006
+
+### DO NOT BREAK:
+- Sprint 1-18'deki tüm değişiklikler
+- Mevcut backup sistemi (varsa)
+- Kullanıcı verileri
+- Session/auth sistemi
+- Agent sistemi
+- Push notification
+
+### KABUL KRİTERLERİ:
+- [ ] Full export zip oluşturuluyor (manifest + data + checksum)
+- [ ] Config-only export çalışıyor
+- [ ] Branch export çalışıyor
+- [ ] Export background job olarak çalışıyor (progress takibi)
+- [ ] Export'ta şifreler hash olarak (plaintext YOK)
+- [ ] Import validasyonu çalışıyor (format, uyumluluk, FK)
+- [ ] Import merge modu çalışıyor
+- [ ] Import full-replace modu çalışıyor
+- [ ] Import öncesi otomatik backup
+- [ ] Setup Wizard 6 adımlı çalışıyor
+- [ ] Setup varsayılan ürünler/istasyonlar yüklüyor
+- [ ] Admin panelde export/import UI var
+- [ ] Günlük otomatik backup (02:00)
+- [ ] Sadece admin/super_admin erişebilir
+- [ ] Audit log'a export/import kaydı
+- [ ] 0 console error
+
+---
+
+Bunu Replit'e yapıştır ve çalıştır. Sonucu getir.

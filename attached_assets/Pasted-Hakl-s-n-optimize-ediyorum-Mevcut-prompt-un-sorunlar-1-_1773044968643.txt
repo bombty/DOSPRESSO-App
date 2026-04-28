@@ -1,0 +1,262 @@
+Haklısın — optimize ediyorum. Mevcut prompt'un sorunları:
+
+1. **Çok uzun** (150+ satır) — Replit Agent kaybolabilir
+2. **SQL'ler çalışmayabilir** — tablo adları yanlışsa hata verir
+3. **Bazı section'lar overlap** — tekrar var
+4. **Eksik perspektifler** — iş mantığı doğruluğu, cross-module entegrasyon, edge case'ler
+
+Optimize edilmiş versiyon — Replit'e yapıştır:
+
+---
+
+## TASK: Comprehensive System Audit — 8 Perspectives (NO CODE CHANGES)
+
+Do NOT modify any code. Test everything, report all findings.
+
+### PERSPECTIVE 1: DATA HEALTH (What data exists, what's missing?)
+
+Run these counts and report the EXACT numbers:
+
+```sql
+-- Core tables
+SELECT 'users (active)' as t, COUNT(*) FROM users WHERE is_active = true
+UNION ALL SELECT 'users (total)', COUNT(*) FROM users
+UNION ALL SELECT 'branches', COUNT(*) FROM branches
+UNION ALL SELECT 'audit_logs', COUNT(*) FROM audit_logs;
+
+-- Operations
+SELECT 'tasks', COUNT(*) FROM tasks
+UNION ALL SELECT 'checklist_templates', COUNT(*) FROM checklist_templates
+UNION ALL SELECT 'checklist_assignments', COUNT(*) FROM checklist_assignments
+UNION ALL SELECT 'equipment', COUNT(*) FROM equipment
+UNION ALL SELECT 'faults', COUNT(*) FROM faults;
+
+-- HR & Payroll
+SELECT 'shifts', COUNT(*) FROM shifts
+UNION ALL SELECT 'leave_requests', COUNT(*) FROM leave_requests
+UNION ALL SELECT 'pdks_records', COUNT(*) FROM pdks_records
+UNION ALL SELECT 'monthly_payroll', COUNT(*) FROM monthly_payroll
+UNION ALL SELECT 'position_salaries', COUNT(*) FROM position_salaries;
+
+-- Training
+SELECT 'training_modules', COUNT(*) FROM training_modules
+UNION ALL SELECT 'quiz_questions', COUNT(*) FROM quiz_questions
+UNION ALL SELECT 'training_completions', COUNT(*) FROM training_completions
+UNION ALL SELECT 'quiz_attempts', COUNT(*) FROM quiz_attempts;
+
+-- Factory
+SELECT 'factory_products', COUNT(*) FROM factory_products
+UNION ALL SELECT 'factory_stations', COUNT(*) FROM factory_stations
+UNION ALL SELECT 'production_lots', COUNT(*) FROM production_lots
+UNION ALL SELECT 'factory_shipments', COUNT(*) FROM factory_shipments
+UNION ALL SELECT 'factory_inventory', COUNT(*) FROM factory_inventory
+UNION ALL SELECT 'branch_inventory', COUNT(*) FROM branch_inventory
+UNION ALL SELECT 'factory_quality_checks', COUNT(*) FROM factory_quality_checks
+UNION ALL SELECT 'haccp_check_records', COUNT(*) FROM haccp_check_records;
+
+-- CRM & Feedback
+SELECT 'customer_feedback', COUNT(*) FROM customer_feedback
+UNION ALL SELECT 'notifications', COUNT(*) FROM notifications
+UNION ALL SELECT 'agent_actions', COUNT(*) FROM agent_actions;
+
+-- Dobody Flow
+SELECT 'dobody_flow_tasks', COUNT(*) FROM dobody_flow_tasks
+UNION ALL SELECT 'dobody_flow_completions', COUNT(*) FROM dobody_flow_completions;
+
+-- Scores
+SELECT 'composite_scores', COUNT(*) FROM employee_performance_scores;
+```
+
+If any table doesn't exist, note it. Report which tables have 0 records that SHOULD have data for pilot.
+
+### PERSPECTIVE 2: SECURITY & ACCESS CONTROL
+
+**A) Unprotected endpoints:**
+```bash
+for f in server/routes/*.ts; do
+  UNPROTECTED=$(grep -c "router\.\(get\|post\|put\|patch\|delete\)" "$f" 2>/dev/null)
+  PROTECTED=$(grep -c "isAuthenticated\|requireAuth\|requireRole\|isAdmin" "$f" 2>/dev/null)
+  if [ "$UNPROTECTED" -gt "$PROTECTED" ] 2>/dev/null; then
+    echo "⚠️ $f: $UNPROTECTED endpoints, $PROTECTED with auth"
+  fi
+done
+```
+
+**B) Cross-role access test — simulate these 5 critical scenarios:**
+
+1. Login as barista → call GET /api/admin/users → should return 403
+2. Login as supervisor (branch 24) → call GET /api/branches/5/staff-scores → should be denied (different branch)
+3. Login as muhasebe → call POST /api/admin/dobody-tasks → check if allowed
+4. Login as yatirimci_branch → call GET /api/branches (all) → should only see their own
+5. Login as fabrika_operator → call GET /api/admin/role-permissions → should be 403
+
+**C) Check for sensitive data exposure:**
+```bash
+grep -rn "password\|secret\|api_key\|apiKey" server/routes/ --include="*.ts" | grep -i "res.json\|console.log\|return" | grep -v "bcrypt\|hash\|compare\|node_modules" | head -10
+```
+
+### PERSPECTIVE 3: BUSINESS LOGIC CORRECTNESS
+
+Test these critical business flows by tracing the code path:
+
+**A) Shift → PDKS → Payroll chain:**
+```bash
+# Does shift assignment feed PDKS?
+grep -rn "pdks.*shift\|shift.*pdks\|attendance.*shift" server/ --include="*.ts" | head -5
+
+# Does PDKS feed payroll calculation?
+grep -rn "pdks.*payroll\|payroll.*pdks\|pdks.*salary\|attendance.*payroll" server/ --include="*.ts" | head -5
+
+# Payroll formula: günlük = aylık/30, eksik gün kesinti, FM×1.5
+grep -rn "30\|eksik\|fazla_mesai\|overtime\|1\.5\|multiplier" server/lib/payroll-engine.ts 2>/dev/null | head -10
+```
+
+**B) Factory chain: Production → Quality → LOT → Shipment → Branch Stock:**
+```bash
+# Is the chain fully connected?
+grep -rn "factory_inventory\|branch_inventory" server/routes/factory.ts | grep -i "insert\|update\|decrement\|increment" | head -10
+
+# Transaction safety on shipment status changes
+grep -rn "transaction\|BEGIN\|COMMIT\|FOR UPDATE" server/routes/factory.ts | head -5
+```
+
+**C) Composite score calculation:**
+```bash
+# What feeds into composite score?
+grep -rn "composite\|calculateScore\|updateScore\|nba" server/ --include="*.ts" | grep -i "function\|async\|export" | head -10
+
+# Components: checklist, training, attendance, feedback, tasks?
+grep -rn "checklist.*score\|training.*score\|attendance.*score\|feedback.*score\|task.*score" server/ --include="*.ts" | head -10
+```
+
+**D) Leave balance calculation:**
+```bash
+grep -rn "leave.*balance\|annual.*leave\|remaining.*leave\|izin.*bakiye" server/ --include="*.ts" | head -5
+```
+
+**E) Quiz anti-cheat:**
+```bash
+grep -rn "anti.cheat\|tab.*switch\|timer\|cheating\|suspicion\|flag" server/ client/src/ --include="*.ts" --include="*.tsx" | head -10
+```
+
+### PERSPECTIVE 4: BACKGROUND SYSTEMS & JOBS
+
+```bash
+# All scheduled jobs/crons
+grep -rn "cron\|schedule\|setInterval\|scheduler\|registerJob\|addJob" server/ --include="*.ts" | grep -v "node_modules\|test\|\.d\.ts" | head -20
+
+# Agent skill registry
+grep -rn "registerSkill\|skills\.\|SKILLS" server/agent/ --include="*.ts" | head -15
+
+# Recent agent execution logs
+grep -i "agent\|skill\|dobody\|scheduler" /tmp/server.log 2>/dev/null | tail -10
+
+# Check for failed/stuck jobs
+grep -i "error\|failed\|timeout\|stuck" /tmp/server.log 2>/dev/null | grep -i "job\|cron\|schedule\|agent" | tail -10
+```
+
+Report: How many jobs? How often do they run? Any failures?
+
+### PERSPECTIVE 5: CROSS-MODULE INTEGRATION
+
+Test that modules talk to each other correctly:
+
+**A) Does checklist completion update composite score?**
+**B) Does training completion unlock badges?**
+**C) Does fault reporting trigger notification to supervisor?**
+**D) Does leave approval update shift calendar?**
+**E) Does customer feedback update branch health score?**
+**F) Does production output trigger quality check requirement?**
+**G) Does shipment delivery update branch inventory?**
+**H) Does PDKS absence trigger Mr. Dobody warning?**
+
+For each: trace the code path and confirm the connection exists. If it's a TODO or not implemented, note it.
+
+```bash
+# Quick check for cross-module connections
+grep -rn "createNotification" server/routes/ --include="*.ts" | wc -l
+grep -rn "updateCompositeScore\|recalculate.*score" server/ --include="*.ts" | head -5
+grep -rn "badge.*unlock\|unlock.*badge\|awardBadge" server/ --include="*.ts" | head -5
+```
+
+### PERSPECTIVE 6: ERROR HANDLING & EDGE CASES
+
+```bash
+# Pages without loading states
+grep -rL "isLoading\|loading\|Loading\|Spinner\|skeleton" client/src/pages/*.tsx | head -10
+
+# Pages without error states
+grep -rL "isError\|error\|Error\|retry\|Retry" client/src/pages/*.tsx | head -10
+
+# API endpoints without try-catch
+grep -rn "router\.\(get\|post\)" server/routes/ --include="*.ts" -l | while read f; do
+  ROUTES=$(grep -c "router\.\(get\|post\|put\|patch\|delete\)" "$f")
+  CATCHES=$(grep -c "catch\|try {" "$f")
+  if [ "$CATCHES" -lt "$ROUTES" ] 2>/dev/null; then
+    echo "⚠️ $f: $ROUTES routes but only $CATCHES try-catch blocks"
+  fi
+done
+```
+
+### PERSPECTIVE 7: ALL REMAINING ASCII TURKISH + ENGLISH TEXT
+
+```bash
+# ASCII Turkish (comprehensive scan)
+grep -rn '"[^"]*"' client/src/ server/lib/ server/routes/ --include="*.tsx" --include="*.ts" | grep -v "className\|import\|require\|node_modules\|console\|path\|route\|url\|key\|id\|type\|status\|role" | grep -i "Sube\b\|Musteri\|Gorev\|Ozet\b\|Orani\|Muduru\|Basarili\|Tamamlandi\|Guncelle\|Olustur\|Degerlendir\|Iletisim\|uyarisi\|Gonder\b\|Sagligi\|Performans[^ı]\|cozum\|Egitim\b\|Kiosk Ac\b" | head -20
+
+# English text that should be Turkish
+grep -rn '"Save"\|"Cancel"\|"Delete"\|"Submit"\|"Loading\.\.\.\|"Error"\|"Success"\|"Close"\|"Back"\|"Next"\|"Previous"\|"Search"\|"Filter"' client/src/pages/ client/src/components/ --include="*.tsx" | grep -v "import\|className\|console\|aria-\|placeholder\|node_modules" | head -15
+```
+
+### PERSPECTIVE 8: PILOT READINESS ASSESSMENT
+
+Based on ALL findings above, score each system 1-10 for pilot readiness:
+
+| System | Score | Status | Blocking Issues |
+|--------|-------|--------|-----------------|
+| Login & Navigation | ?/10 | | |
+| Sidebar & Roles | ?/10 | | |
+| Checklist System | ?/10 | | |
+| Task Management | ?/10 | | |
+| Shift Planning | ?/10 | | |
+| Leave Management | ?/10 | | |
+| PDKS (Attendance) | ?/10 | | |
+| Payroll | ?/10 | | |
+| Training & Academy | ?/10 | | |
+| Factory Production | ?/10 | | |
+| Factory Quality | ?/10 | | |
+| Shipment & Stock | ?/10 | | |
+| CRM & Feedback | ?/10 | | |
+| Mr. Dobody Agent | ?/10 | | |
+| Flow Mode | ?/10 | | |
+| Notifications | ?/10 | | |
+| Reports | ?/10 | | |
+| Admin Panel | ?/10 | | |
+| Equipment & Faults | ?/10 | | |
+| Composite Score | ?/10 | | |
+
+**OVERALL PILOT READINESS: ?/100**
+
+### FINAL DELIVERABLES
+
+1. **Data table** with ALL record counts
+2. **Security findings** with severity ratings
+3. **Broken business logic** chains
+4. **Cross-module gaps** (A talks to B but not C)
+5. **Pilot readiness scorecard** (table above)
+6. **TOP 10 MUST-FIX before pilot** (ranked by impact)
+7. **TOP 10 NICE-TO-HAVE for pilot** (ranked by value)
+8. **Estimated work hours** for must-fix items
+
+Do NOT fix anything. Only test and report.
+
+---
+
+Bu versiyon:
+- **8 perspektif** (önceki 15 section yerine — daha odaklı)
+- **İş mantığı doğruluğu** eklendi (shift→PDKS→payroll zinciri)
+- **Cross-module entegrasyon** eklendi (A modülü B'ye bağlı mı?)
+- **Edge case'ler** eklendi (loading/error state eksik sayfalar)
+- **Pilot hazırlık puanı** — 20 sistem × 10 puan = 100 üzerinden skor
+- **TOP 10 must-fix + TOP 10 nice-to-have** listesi isteniyor
+- **Daha kısa** — gereksiz tekrarlar kaldırıldı

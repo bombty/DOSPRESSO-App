@@ -1,0 +1,141 @@
+Mükemmel — 31 rol (kodda), depocu çalışıyor. Devam ediyorum — skill + devir teslim güncelleyip MRP-Light schema’ya geçiyorum:​​​​​​​​​​​​​​​​
+
+MRP-Light schema’yı oluşturuyorum — 4 tablo:​​​​​​​​​​​​​​​​
+
+4 yeni tablo — import satırı grep’e dahil olmuş. Gerçek sayı: 464 + 4 = 468 tablo.​​​​​​​​​​​​​​​​
+
+Push: 0e63e1c3. MRP-Light schema hazır. Skill + devir teslim güncelleyip Replit talimatı hazırlıyorum:​​​​​​​​​​​​​​​​
+
+Push: 2b0c0e7b. Replit talimatı — DB migration + depocu + MRP-Light tabloları:
+
+TASK #98: Depocu Rolü + MRP-Light Migration — Pull + Build + Migration + Test
+Step 1: Pull + Build
+
+git pull origin main
+npm run build
+
+
+Step 2: MRP-Light 4 tablo migration
+
+echo "CREATE TABLE IF NOT EXISTS daily_material_plans (
+  id SERIAL PRIMARY KEY,
+  plan_date DATE NOT NULL UNIQUE,
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  created_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  confirmed_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  confirmed_at TIMESTAMPTZ,
+  total_item_count INTEGER DEFAULT 0,
+  total_picked_count INTEGER DEFAULT 0,
+  total_cost_estimate NUMERIC(12,2),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);" | psql $DATABASE_URL
+
+echo "CREATE TABLE IF NOT EXISTS daily_material_plan_items (
+  id SERIAL PRIMARY KEY,
+  plan_id INTEGER NOT NULL REFERENCES daily_material_plans(id) ON DELETE CASCADE,
+  inventory_id INTEGER NOT NULL REFERENCES inventory(id) ON DELETE RESTRICT,
+  recipe_id INTEGER REFERENCES factory_recipes(id) ON DELETE SET NULL,
+  batch_count NUMERIC(5,1),
+  required_quantity NUMERIC(12,3) NOT NULL,
+  leftover_quantity NUMERIC(12,3) DEFAULT 0,
+  net_pick_quantity NUMERIC(12,3) NOT NULL,
+  actual_picked_quantity NUMERIC(12,3),
+  unit VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  picked_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  picked_at TIMESTAMPTZ,
+  verified_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  verified_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);" | psql $DATABASE_URL
+
+echo "CREATE TABLE IF NOT EXISTS production_area_leftovers (
+  id SERIAL PRIMARY KEY,
+  record_date DATE NOT NULL,
+  inventory_id INTEGER NOT NULL REFERENCES inventory(id) ON DELETE RESTRICT,
+  remaining_quantity NUMERIC(12,3) NOT NULL,
+  unit VARCHAR(20) NOT NULL,
+  condition VARCHAR(20) NOT NULL DEFAULT 'good',
+  storage_temp NUMERIC(4,1),
+  expiry_risk BOOLEAN DEFAULT false,
+  usable_for_recipes JSONB DEFAULT '[]',
+  used_in_next_day BOOLEAN DEFAULT false,
+  used_quantity NUMERIC(12,3),
+  wasted_quantity NUMERIC(12,3),
+  waste_reason TEXT,
+  recorded_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  verified_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  UNIQUE(record_date, inventory_id)
+);" | psql $DATABASE_URL
+
+echo "CREATE TABLE IF NOT EXISTS material_pick_logs (
+  id SERIAL PRIMARY KEY,
+  plan_item_id INTEGER REFERENCES daily_material_plan_items(id) ON DELETE SET NULL,
+  inventory_id INTEGER NOT NULL REFERENCES inventory(id) ON DELETE RESTRICT,
+  quantity NUMERIC(12,3) NOT NULL,
+  unit VARCHAR(20) NOT NULL,
+  from_location VARCHAR(50) NOT NULL,
+  to_location VARCHAR(50) NOT NULL DEFAULT 'uretim_alani',
+  lot_number VARCHAR(100),
+  expiry_date DATE,
+  picked_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  verified_by VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  movement_id INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);" | psql $DATABASE_URL
+
+
+Step 3: Indexler
+
+echo "CREATE INDEX IF NOT EXISTS dmp_status_idx ON daily_material_plans(status);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS dmp_date_idx ON daily_material_plans(plan_date);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS dmpi_plan_idx ON daily_material_plan_items(plan_id);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS dmpi_inventory_idx ON daily_material_plan_items(inventory_id);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS dmpi_status_idx ON daily_material_plan_items(status);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS pal_date_idx ON production_area_leftovers(record_date);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS pal_inventory_idx ON production_area_leftovers(inventory_id);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS mpl_plan_item_idx ON material_pick_logs(plan_item_id);" | psql $DATABASE_URL
+echo "CREATE INDEX IF NOT EXISTS mpl_inventory_idx ON material_pick_logs(inventory_id);" | psql $DATABASE_URL
+
+
+Step 4: Doğrulama
+
+echo "SELECT table_name FROM information_schema.tables WHERE table_name IN ('daily_material_plans','daily_material_plan_items','production_area_leftovers','material_pick_logs') ORDER BY table_name;" | psql $DATABASE_URL
+
+
+Expected: 4 tables.
+Step 5: Depocu login test
+
+npm run dev
+curl -s -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"depocu","password":"0000"}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('Depocu:', d.get('role',''), d.get('error',''))"
+
+
+Report:
+
+PULL+BUILD: ✅/❌
+MRP TABLES: ✅/❌ (4 tables)
+INDEXES: ✅/❌
+DEPOCU LOGIN: ✅/❌
+
+
+Bunu Replit’e gönder. MRP-Light schema + depocu rolü + migration tek seferde tamamlanacak.​​​​​​​​​​​​​​​​
+
+Memory güncellendi. Bu oturumun özeti:
+25+ commit, 468 tablo, 1711 endpoint, 31 rol, 24 QG madde
+Tamamlanan büyük işler:
+	•	✅ Unified Payroll Engine
+	•	✅ sql.raw refactoring (23→10)
+	•	✅ Reçete versiyonlama (otomatik PATCH→snapshot)
+	•	✅ Inventory fiyat sistemi (926 malzeme, 1501 fiyat kaydı)
+	•	✅ 14/14 reçete→inventory bağlantısı
+	•	✅ Depocu rolü (fabrika_depo, 8 dosya)
+	•	✅ MRP-Light schema (4 tablo)
+	•	✅ RGM/Şef dashboard fix (0 modül → 5 modül)
+	•	✅ Gıda mühendisi yetki temizliği
+	•	✅ İK Building2 crash fix
+Replit’e TASK #98’i gönder — MRP tabloları + depocu test. Sıradaki: MRP-Light API endpoint’leri yazılacak (plan oluşturma, malzeme çekme, artan kayıt).​​​​​​​​​​​​​​​​

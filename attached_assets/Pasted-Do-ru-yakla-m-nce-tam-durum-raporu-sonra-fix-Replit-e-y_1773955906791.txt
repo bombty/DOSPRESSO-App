@@ -1,0 +1,417 @@
+Doğru yaklaşım — önce tam durum raporu, sonra fix. Replit'e yapıştırın:
+
+---
+
+```
+## CRITICAL: Factory Kiosk — Complete Production Workflow Audit
+
+### Context
+Factory kiosk is a LAUNCH-CRITICAL module. Users report they CANNOT take breaks (mola) after selecting a station. We need a COMPLETE, DEEP audit of the entire factory kiosk workflow — every step, every button, every API call, every state transition.
+
+This is a READ-ONLY investigation first. Do NOT modify any code until the full report is complete.
+
+Read ALL skills:
+- .agents/skills/dospresso-architecture/SKILL.md
+- .agents/skills/dospresso-debug-guide/SKILL.md
+
+---
+
+## SECTION 1: FACTORY KIOSK — COMPLETE CODE ANALYSIS
+
+### 1A: Frontend — Every Step of the Kiosk Flow
+
+```bash
+# Full kiosk page structure
+wc -l client/src/pages/fabrika/kiosk.tsx
+echo "=== ALL STEPS/STATES ==="
+grep -n "step\|Step\|stage\|Stage\|phase\|Phase\|currentStep\|setStep\|useState.*step" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# What states/steps exist?
+grep -n "=== \|step ===\|'device-\|'select-\|'enter-\|'working\|'break\|'mola\|'idle\|'station" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# All state variables
+grep -n "useState\|useQuery\|useMutation" client/src/pages/fabrika/kiosk.tsx | head -30
+
+# All button/action handlers
+grep -n "onClick\|onSubmit\|handleClick\|handle[A-Z]\|Button.*onClick\|function handle" client/src/pages/fabrika/kiosk.tsx | head -30
+
+# Break/mola related code
+grep -n -i "mola\|break\|pause\|休\|ara ver\|molaya" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# Station selection related
+grep -n "station\|istasyon\|Station\|selectStation\|setStation" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# Production start/end related
+grep -n "production\|üretim\|uretim\|start.*production\|end.*production\|begin\|finish\|complete" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# Logout/reset related
+grep -n "logout\|çıkış\|cikis\|reset\|resetKiosk\|endSession" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# Timer/clock related (for tracking work time)
+grep -n "timer\|Timer\|clock\|Clock\|elapsed\|duration\|time\|süre" client/src/pages/fabrika/kiosk.tsx | head -20
+```
+
+### 1B: Read the FULL kiosk page in sections
+
+```bash
+# Section 1: Imports and state setup (first 100 lines)
+head -100 client/src/pages/fabrika/kiosk.tsx
+
+# Section 2: Mutations and handlers (lines 100-300)
+sed -n '100,300p' client/src/pages/fabrika/kiosk.tsx
+
+# Section 3: More handlers (lines 300-500)
+sed -n '300,500p' client/src/pages/fabrika/kiosk.tsx
+
+# Section 4: JSX render — device auth step
+grep -n "device-password\|devicePassword\|device-auth" client/src/pages/fabrika/kiosk.tsx | head -5
+# Read the JSX for that step
+# (use the line numbers found above)
+
+# Section 5: JSX render — enter credentials step  
+grep -n "enter-credentials\|enterCredentials" client/src/pages/fabrika/kiosk.tsx | head -5
+
+# Section 6: JSX render — station selection step
+grep -n "select-station\|selectStation\|station-select" client/src/pages/fabrika/kiosk.tsx | head -5
+
+# Section 7: JSX render — working/production step
+grep -n "working\|isWorking\|production.*active\|activeProduction" client/src/pages/fabrika/kiosk.tsx | head -5
+
+# Section 8: JSX render — break/mola step (if exists)
+grep -n "break\|mola\|onBreak\|isOnBreak" client/src/pages/fabrika/kiosk.tsx | head -5
+
+# Read the full render/return section
+grep -n "return (" client/src/pages/fabrika/kiosk.tsx | head -3
+# Read from the return statement to the end
+```
+
+### 1C: Full file content (for complete understanding)
+```bash
+# Read the entire file — it's critical to understand everything
+cat client/src/pages/fabrika/kiosk.tsx
+```
+
+---
+
+## SECTION 2: FACTORY KIOSK — BACKEND API ANALYSIS
+
+### 2A: All Factory Kiosk Endpoints
+
+```bash
+# All kiosk-related endpoints in factory routes
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/factory.ts | grep -i "kiosk\|session\|station\|production\|break\|mola\|clock\|attendance\|pdks" | head -30
+
+# All factory endpoints (for full context)
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/factory.ts | head -50
+
+# Kiosk auth endpoints
+grep -n "device-auth\|login\|login-by-username\|kiosk.*auth" server/routes/factory.ts | head -10
+
+# Station endpoints
+grep -n "station\|istasyon" server/routes/factory.ts | head -15
+
+# Production run endpoints
+grep -n "production\|run\|batch\|üretim" server/routes/factory.ts | head -15
+
+# Break/mola endpoints
+grep -n -i "break\|mola\|pause\|ara" server/routes/factory.ts | head -15
+
+# Clock in/out endpoints
+grep -n "clock\|attendance\|pdks\|checkin\|checkout\|giriş\|çıkış" server/routes/factory.ts | head -15
+
+# Session management
+grep -n "session\|active-session\|kiosk-session" server/routes/factory.ts | head -10
+```
+
+### 2B: Read Break/Mola Related Backend Code
+
+```bash
+# Find the exact break/mola endpoint implementations
+grep -n -B2 -A30 "break\|mola" server/routes/factory.ts | head -80
+
+# If break endpoints are in a different file
+grep -rn -i "break\|mola" server/routes/ --include="*.ts" | grep -i "factory\|kiosk" | head -10
+
+# Check if breaks are tracked in a separate table
+grep -n "break\|mola\|pause" shared/schema.ts | head -10
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%break%' OR table_name LIKE '%mola%' OR table_name LIKE '%pause%';" | psql
+```
+
+### 2C: Production Run Data Model
+
+```bash
+# Production run table structure
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='factory_production_runs' ORDER BY ordinal_position;" | psql
+
+# Are there break/pause columns in production runs?
+echo "SELECT column_name FROM information_schema.columns WHERE table_name='factory_production_runs' AND column_name LIKE '%break%' OR column_name LIKE '%pause%' OR column_name LIKE '%mola%';" | psql
+
+# Station table structure
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='factory_stations' ORDER BY ordinal_position;" | psql
+
+# All factory-related tables
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'factory%' ORDER BY table_name;" | psql
+
+# Kiosk session structure
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='kiosk_sessions' ORDER BY ordinal_position;" | psql
+
+# PDKS records structure (for clock in/out)
+echo "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='pdks_records' ORDER BY ordinal_position;" | psql
+
+# Check for factory attendance/break specific tables
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'factory%' OR table_name LIKE 'kiosk%' ORDER BY table_name;" | psql
+```
+
+---
+
+## SECTION 3: STATE FLOW DIAGRAM
+
+Based on the code analysis, document the COMPLETE state machine:
+
+```bash
+# What are ALL possible kiosk states?
+grep -oP "'[a-z_-]+'" client/src/pages/fabrika/kiosk.tsx | sort -u | head -20
+
+# What transitions between states?
+grep -n "setStep\|setCurrentStep\|setStage\|setPhase" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# What triggers each transition?
+grep -B5 "setStep\|setCurrentStep" client/src/pages/fabrika/kiosk.tsx | head -40
+```
+
+Document:
+```
+State 1: device-password → (enter device password) → State 2
+State 2: enter-credentials → (username + PIN) → State 3
+State 3: select-station → (pick station) → State 4
+State 4: working → (production active) → State 5? or back to 3?
+State 5: on-break? → (mola) → back to State 4?
+```
+
+---
+
+## SECTION 4: TEST EACH STATE TRANSITION
+
+### 4A: Login as factory kiosk user
+```bash
+# Get admin cookie for API testing
+ADMIN_COOKIE=$(curl -s -c - -X POST http://localhost:5000/api/login -H "Content-Type: application/json" -d '{"username":"admin","password":"AdminPass123!"}' 2>/dev/null | grep connect.sid | awk '{print $NF}')
+
+# Test device auth
+echo "=== Step 1: Device Auth ==="
+curl -s -X POST http://localhost:5000/api/factory/kiosk/device-auth \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test"}' | head -50
+
+# What are the correct device credentials?
+grep -n "device.*auth\|device.*password\|factoryKioskConfig" server/routes/factory.ts | head -10
+echo "SELECT * FROM factory_kiosk_config LIMIT 5;" | psql 2>/dev/null
+```
+
+### 4B: Test station selection
+```bash
+echo "=== Step 2: Stations ==="
+# List available stations
+curl -s -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/stations | head -100
+
+# Station status
+echo "SELECT id, name, status, is_active FROM factory_stations ORDER BY id;" | psql
+```
+
+### 4C: Test production start/end
+```bash
+echo "=== Step 3: Production ==="
+# How to start production?
+grep -n "start.*production\|create.*production\|POST.*production" server/routes/factory.ts | head -10
+
+# Test start production
+curl -s -X POST -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/production \
+  -H "Content-Type: application/json" \
+  -d '{"stationId":1,"productId":1}' 2>/dev/null | head -50
+
+# Current active productions
+echo "SELECT id, station_id, status, started_at, ended_at FROM factory_production_runs WHERE status='active' OR status='in_progress' ORDER BY id DESC LIMIT 5;" | psql
+```
+
+### 4D: Test BREAK/MOLA functionality (THE REPORTED BUG)
+```bash
+echo "=== Step 4: Break/Mola ==="
+
+# Is there a break endpoint?
+grep -n "break\|mola" server/routes/factory.ts | head -20
+
+# Try to start a break
+curl -s -X POST -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/kiosk/break/start \
+  -H "Content-Type: application/json" 2>/dev/null | head -50
+
+# Try alternative endpoints
+curl -s -X POST -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/kiosk/mola/start 2>/dev/null | head -50
+curl -s -X POST -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/break 2>/dev/null | head -50
+curl -s -X PATCH -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/kiosk/session/break 2>/dev/null | head -50
+
+# Check if break is handled via PDKS
+grep -n "break\|mola" server/routes/pdks*.ts server/routes/attendance*.ts 2>/dev/null | head -10
+
+# Check if break is a production run status change
+grep -n "break\|pause\|mola" server/routes/factory.ts | head -15
+```
+
+### 4E: Test clock out / session end
+```bash
+echo "=== Step 5: Session End ==="
+# How does the kiosk user end their session?
+grep -n "logout\|end.*session\|clock.*out\|signout\|çıkış" server/routes/factory.ts | head -10
+
+# Try logout
+curl -s -X POST -b "connect.sid=$ADMIN_COOKIE" http://localhost:5000/api/factory/kiosk/logout 2>/dev/null | head -50
+```
+
+---
+
+## SECTION 5: RELATED SYSTEMS CHECK
+
+### 5A: How do branch kiosks handle breaks?
+```bash
+# Branch kiosk break flow (for comparison)
+grep -n -i "break\|mola\|pause\|ara ver" client/src/pages/sube/kiosk.tsx | head -20
+grep -n -i "break\|mola" server/routes/branches.ts | head -10
+```
+
+### 5B: PDKS integration
+```bash
+# How is PDKS (attendance) tracked for factory workers?
+grep -n "pdks\|attendance\|devam\|clock" server/routes/factory.ts | head -15
+
+# Is there factory-specific attendance?
+echo "SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%attendance%' OR table_name LIKE '%pdks%';" | psql
+
+# Recent PDKS records for factory users
+echo "SELECT pr.id, pr.user_id, pr.type, pr.timestamp, u.first_name, u.last_name 
+FROM pdks_records pr 
+JOIN users u ON pr.user_id = u.id 
+WHERE u.branch_id = (SELECT id FROM branches WHERE name LIKE '%Fabrika%' LIMIT 1)
+ORDER BY pr.timestamp DESC LIMIT 10;" | psql 2>/dev/null
+```
+
+### 5C: Factory kiosk config
+```bash
+# Kiosk configuration
+echo "SELECT * FROM factory_kiosk_config;" | psql 2>/dev/null || echo "Table not found"
+grep -n "kioskConfig\|kiosk_config\|factoryKiosk" server/routes/factory.ts | head -10
+```
+
+---
+
+## SECTION 6: COMPLETE BUTTON/ACTION INVENTORY
+
+For the "working" state (after station selected), list EVERY button and action available:
+
+```bash
+# Find the working/production-active UI section
+grep -n "working\|isWorking\|activeProduction\|currentProduction" client/src/pages/fabrika/kiosk.tsx | head -15
+
+# What buttons are shown in working state?
+# Read the JSX section for working state
+# Find all Button components in that section
+grep -n "<Button\|<button" client/src/pages/fabrika/kiosk.tsx | head -30
+
+# What does each button do?
+grep -B2 "onClick" client/src/pages/fabrika/kiosk.tsx | grep -A1 "Mola\|Break\|Ara\|Üretim\|Bitir\|Tamamla\|Çıkış\|İstasyon\|Değiştir" | head -30
+```
+
+---
+
+## SECTION 7: FACTORY KIOSK — USER INTERFACE FLOW
+
+Take screenshots or describe what the user sees at each step:
+
+```bash
+# What text/labels are shown at each step?
+grep -n "Mola\|Ara Ver\|Üretime Başla\|Üretimi Bitir\|İstasyon Seç\|Giriş Yap\|Çıkış\|Tamamla\|Devam Et\|Başla\|Bitir\|Mola Başlat\|Moladan Dön" client/src/pages/fabrika/kiosk.tsx | head -30
+
+# Are there disabled states for buttons?
+grep -n "disabled\|isDisabled\|loading\|isPending\|isLoading" client/src/pages/fabrika/kiosk.tsx | head -20
+
+# Error messages
+grep -n "error\|Error\|hata\|Hata\|toast\|alert" client/src/pages/fabrika/kiosk.tsx | head -20
+```
+
+---
+
+## SECTION 8: FACTORY PRODUCTION WORKFLOW — EXPECTED vs ACTUAL
+
+### Expected workflow (from business requirements):
+```
+1. Kiosk açılır → Cihaz doğrulama (device password)
+2. Personel giriş yapar (username + PIN)
+3. İstasyon seçer (örn: Donut İstasyonu, Kavurma İstasyonu)
+4. Üretim başlatır (ürün seç + adet gir)
+5. Üretim süresince:
+   a. Mola butonu → molaya çıkar (süre durur)
+   b. Moladan dön butonu → üretime devam
+   c. Üretimi bitir → sonuçları kaydet
+6. Yeni üretim başlat veya çıkış yap
+```
+
+### Report the ACTUAL workflow based on code analysis:
+- What steps actually exist?
+- What buttons are available at each step?
+- What API calls are made?
+- Where does the break/mola flow break down?
+
+---
+
+## OUTPUT FORMAT
+
+```
+═══════════════════════════════════════════════════
+FACTORY KIOSK WORKFLOW AUDIT — [DATE]
+═══════════════════════════════════════════════════
+
+KIOSK STATES:
+  State 1: [name] → buttons: [...] → transitions to: [...]
+  State 2: [name] → buttons: [...] → transitions to: [...]
+  ...
+
+API ENDPOINTS:
+  POST /api/factory/kiosk/device-auth → [works/broken]
+  POST /api/factory/kiosk/login-by-username → [works/broken]
+  GET  /api/factory/stations → [works/broken]
+  POST /api/factory/production → [works/broken]
+  POST /api/factory/kiosk/break/start → [works/broken/MISSING]
+  POST /api/factory/kiosk/break/end → [works/broken/MISSING]
+  ...
+
+BREAK/MOLA ANALYSIS:
+  Frontend button exists: YES/NO
+  Backend endpoint exists: YES/NO
+  API called when button clicked: [endpoint] or NONE
+  Error returned: [error message] or N/A
+  Root cause: [explanation]
+
+DATA MODEL:
+  Production runs table: [columns relevant to breaks]
+  Break tracking table: [exists/missing]
+  PDKS integration: [how factory attendance works]
+
+COMPLETE BUG LIST:
+  1. [bug description + severity + root cause]
+  2. ...
+
+MISSING FEATURES:
+  1. [feature + who needs it + priority]
+  2. ...
+
+RECOMMENDED FIX PLAN:
+  1. [fix + estimated time]
+  2. ...
+
+═══════════════════════════════════════════════════
+```
+
+Report EVERYTHING. Every state, every button, every API call, every table. Be exhaustive.
+```
+
+---
+
+Bu sefer çok detaylı ve kapsamlı — sadece "mola çalışmıyor" değil, tüm fabrika kiosk akışının her adımını, her butonu, her API çağrısını analiz edecek. Sonucu paylaşın, fix promptunu yazarım.
