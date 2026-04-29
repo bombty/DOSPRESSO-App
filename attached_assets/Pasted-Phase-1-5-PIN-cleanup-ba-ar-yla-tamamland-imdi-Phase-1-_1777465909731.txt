@@ -1,0 +1,71 @@
+Phase 1.5 PIN cleanup başarıyla tamamlandı.
+
+Şimdi Phase 1 PIN seed + HQ kiosk + Işıklar PIN mode COMMIT hazırlığı yap.
+
+Kurallar:
+- DB’ye henüz yazma.
+- COMMIT çalıştırma.
+- Kod değiştirme.
+- Schema/migration/env/package değiştirme.
+- Hard delete yapma.
+- Backup tablolarını silme.
+- Sadece hazırlık ve COMMIT öncesi son rapor ver.
+- Ben “GO” demeden çalıştırma.
+
+Yapılacaklar:
+
+1. Mevcut state’i doğrula:
+- branch_staff_pins aktif = 5 olmalı
+- factory_staff_pins aktif = 2 olmalı
+- eski/inactive/soft-deleted aktif PIN kalmamış olmalı
+- hqkiosk henüz yok olmalı
+- Işıklar kiosk_mode hâlâ qr olmalı
+
+2. Backup al:
+- Phase 1.5 sonrası güncel branch_staff_pins backup
+- Phase 1.5 sonrası güncel factory_staff_pins backup
+- users tablosunda branch_id 5,8,23,24 snapshot
+- branch_kiosk_settings snapshot
+
+3. Phase 1 COMMIT dosyasını hazırla:
+Kaynak:
+docs/audit/kiosk-pdks-phase1-pin-preview.sql
+
+COMMIT dosyası:
+docs/audit/kiosk-pdks-phase1-pin-COMMIT.sql
+
+İçerik:
+- 26 branch_staff_pins INSERT
+- 11 factory_staff_pins INSERT
+- HQ kiosk user oluşturma: username = hqkiosk, role = sube_kiosk, branch_id = 23
+- Işıklar branch_id=5 kiosk_mode qr → pin
+- 36 yeni import kullanıcı için must_change_password=true
+- Mevcut geçerli 7 PIN korunmalı
+- Kiosk/admin/yatırımcı/soft-deleted kullanıcıya yeni PIN verilmemeli
+- Hard delete yok
+- ROLLBACK değil, COMMIT dosyası olacak ama çalıştırılmayacak
+
+4. Safety guard ekle:
+COMMIT öncesi ve sonrası beklenen kontroller:
+- branch_staff_pins aktif 5 → 31 olmalı
+- factory_staff_pins aktif 2 → 13 olmalı
+- hqkiosk oluşmalı ve branch_id=23, role=sube_kiosk olmalı
+- Işıklar kiosk_mode pin olmalı
+- soft-deleted/inactive/kiosk/yatırımcı/admin aktif PIN oluşmamalı
+- korunan eski 7 PIN hâlâ aktif olmalı
+- yeni 37 PIN doğru gerçek aktif insan personellere ait olmalı
+- must_change_password=true olan yeni import kullanıcı sayısı 36 olmalı
+- herhangi kontrol başarısızsa RAISE EXCEPTION ile transaction rollback olsun
+
+5. COMMIT öncesi rapor ver:
+- Backup dosyaları/tables oluştu mu?
+- Kaç branch_staff_pins eklenecek?
+- Kaç factory_staff_pins eklenecek?
+- HQ kiosk user nasıl oluşacak?
+- Işıklar mode ne olacak?
+- must_change_password kaç kişiye set edilecek?
+- COMMIT dosyası hazır mı?
+- Safety guard var mı?
+- Gerçek çalıştırma için GO bekleniyor mu?
+
+Şimdilik sadece hazırla ve raporla.
