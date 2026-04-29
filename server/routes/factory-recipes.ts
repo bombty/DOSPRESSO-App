@@ -2251,7 +2251,8 @@ router.post("/api/factory/recipe-access", isAuthenticated, async (req: any, res:
 // REÇETE ONAYLARI (Task #164)
 // ═══════════════════════════════════════
 
-const APPROVAL_ROLES = ["admin", "recete_gm", "gida_muhendisi"];
+// P7.2 (29 Nis 2026): ceo (Aslan) reçete onay verebilir (owner madde 1: ceo tam yetki)
+const APPROVAL_ROLES = ["admin", "recete_gm", "gida_muhendisi", "ceo"];
 
 // GET /api/factory/recipes/:id/approvals — Reçete onay listesi
 router.get("/api/factory/recipes/:id/approvals", isAuthenticated, async (req: any, res: Response) => {
