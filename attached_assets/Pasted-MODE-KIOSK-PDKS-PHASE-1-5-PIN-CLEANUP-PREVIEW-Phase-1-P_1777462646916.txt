@@ -1,0 +1,62 @@
+MODE: KIOSK PDKS PHASE 1.5 PIN CLEANUP PREVIEW
+
+Phase 1 PIN seed dry-run başarılı ama mevcut DB'de 211 soft-deleted/inactive branch_staff_pins ve 11 soft-deleted/inactive factory_staff_pins bulundu. Pilot Day-1 öncesi bu eski PIN kayıtları karışıklık yaratabilir.
+
+Şimdilik DB write yapma.
+COMMIT yapma.
+Kod değiştirme.
+Schema/migration/env/package değiştirme.
+
+Amaç:
+1. Kiosk personel listesi gerçekten inactive/deleted kullanıcıları filtreliyor mu doğrula.
+2. Eski/inactive/soft-deleted PIN kayıtları authentication risk yaratıyor mu doğrula.
+3. Gerekirse Phase 1.5 PIN cleanup SQL preview + dry-run hazırla.
+
+Kontrol et:
+
+1) Kiosk personel listesi
+- Branch kiosk login personel listesi hangi endpointten geliyor?
+- Query users.is_active=true ve users.deleted_at IS NULL filtreliyor mu?
+- role NOT IN ('sube_kiosk', 'yatirimci_branch', 'admin', 'ceo', 'cgo') gibi filtre var mı?
+- PIN tablosundaki eski userlar seçilebilir mi?
+
+2) PIN doğrulama güvenliği
+- branch_staff_pins doğrulamasında user aktif mi kontrol ediliyor mu?
+- factory_staff_pins doğrulamasında user aktif mi kontrol ediliyor mu?
+- inactive/deleted user_id ile direkt API çağrısı yapılırsa giriş mümkün mü?
+
+3) Temizlik preview
+Eğer eski PIN kayıtları riskliyse şu preview dosyasını hazırla:
+docs/audit/kiosk-pdks-phase1-5-pin-cleanup-preview.sql
+
+Bu dosya:
+- BEGIN ile başlasın
+- ROLLBACK ile bitsin
+- COMMIT olmasın
+- DELETE yerine mümkünse is_active=false kullan
+- branch_staff_pins içinde soft-deleted/inactive/user role kiosk-yatırımcı-admin olan PINleri pasifleştirsin
+- factory_staff_pins içinde soft-deleted/inactive ve fabrika kiosk user PINini pasifleştirsin
+- yeni import edilen aktif gerçek personel PINlerine dokunmasın
+- existing valid PINleri korusun: mudur5, laramudur, eren, atiye gibi gerçek aktif kişiler
+
+Verification SELECT:
+V1: cleanup öncesi aktif PIN sayısı
+V2: cleanup sonrası aktif PIN sayısı
+V3: inactive/deleted user'a bağlı aktif PIN kaldı mı?
+V4: kiosk/yatırımcı/system user'a bağlı aktif PIN kaldı mı?
+V5: gerçek aktif insan personel PINleri korunuyor mu?
+V6: branch_id 5,8,23,24 için beklenen PIN sayıları ne olacak?
+V7: fabrika kiosk user personel PIN listesinde kalıyor mu?
+
+Dry-run:
+- SQL’i ROLLBACK modunda çalıştır
+- Pre/post snapshot ile DB değişmediğini doğrula
+
+Rapor:
+1. Kiosk listesi eski PINleri gösteriyor mu?
+2. Eski PINler authentication risk yaratıyor mu?
+3. Cleanup gerekli mi?
+4. Kaç PIN pasifleştirilecek?
+5. Kaç PIN korunacak?
+6. Dry-run PASS/RISKY/BLOCKED?
+7. Phase 1 PIN seed ile birlikte mi çalışmalı, önce mi çalışmalı?
