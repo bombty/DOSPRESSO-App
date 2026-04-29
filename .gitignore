@@ -60,3 +60,15 @@ attached_assets/**
 *.doc
 *.pages
 attached_assets/*.pdf
+
+# docs/audit — hassas COMMIT/backup/log dosyaları (KVKK + bcrypt hash içerir)
+# Phase 1 PIN seed sonrası eklendi (29 Apr 2026)
+# NOT: preview dosyaları (placeholder içerir) Git'te kalır.
+docs/audit/backups/
+docs/audit/*COMMIT*.sql
+docs/audit/*-COMMIT-*.sql
+docs/audit/import-output-*.log
+docs/audit/*backup*.sql
+docs/audit/*backup*.dump
+docs/audit/*.sql.gz
+docs/audit/*.dump
