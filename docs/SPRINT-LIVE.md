@@ -50,5 +50,6 @@ Hedef: Pilot Day-1 öncesi personel kayıtları, kiosk giriş/çıkış akışı
 
 - Pilot test kayıtları (4 birim) gerçek operasyon değildir; raporlamalarda `notes='PILOT_PRE_DAY1_TEST_2026_04_29'` filtresi ile dışlanmalıdır.
 - Aylık raporlamalar Excel kaynaklı `pdks_daily_summary` ve `pdks_monthly_stats` üzerinden hesaplandığı için pilot test kayıtları aylık maaş hesabını etkilemez.
+- **Reçete detay sayfası — bilinen geçici davranış (T2.1, 29 Nis 2026):** Reçete detay sayfasında nadiren yükleme spinner'da kalma görülebilir. Geçici çözüm: sayfayı yenile / hard refresh (Cmd+Shift+R). Backend recipe API 200 dönüyor; kalıcı frontend UX iyileştirme post-pilot değerlendirilecek.
 - Detaylı ürün/operasyon kararları: `docs/DECISIONS.md`.
 - Çalışma protokolü: `docs/COLLABORATION-PROTOCOL.md`.
