@@ -54,7 +54,8 @@ export default function FabrikaReceteler() {
 
   const unapprovedCount = recipes.filter((r: any) => !r.gramajApproved).length;
 
-  const canCreate = ["admin", "recete_gm", "sef"].includes(user?.role || "");
+  // P7.2 (29 Nis 2026): ceo (Aslan) reçete oluşturabilir, sef (Ümit) oluşturamaz.
+  const canCreate = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
 
   // Aktif kategorileri bul
   const categories = [...new Set(recipes.map((r: any) => r.category).filter(Boolean))];

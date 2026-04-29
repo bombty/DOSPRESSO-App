@@ -29,7 +29,8 @@ const APPROVAL_SCOPE_LABELS: Record<string, string> = {
   alerjen: "Alerjenler",
 };
 
-const APPROVAL_ROLES = ["admin", "recete_gm", "gida_muhendisi"];
+// P7.2 (29 Nis 2026): ceo (Aslan) gramaj/besin/alerjen onayı verebilir.
+const APPROVAL_ROLES = ["admin", "recete_gm", "gida_muhendisi", "ceo"];
 
 const CATEGORY_LABELS: Record<string, string> = {
   cookie: "Kurabiye", cinnamon_roll: "Cinnamon Roll", donut: "Donut",
@@ -79,8 +80,11 @@ export default function FabrikaReceteDetay() {
     enabled: !!recipeId,
   });
 
-  const canEdit = ["admin", "recete_gm", "sef"].includes(user?.role || "") && !recipe?.editLocked;
-  const isAdmin = ["admin", "recete_gm"].includes(user?.role || "");
+  // P7.2 (29 Nis 2026):
+  //   - ceo (Aslan) reçete tam yetkili (EKLENDİ)
+  //   - sef (Ümit) reçete editleyemez (ÇIKARILDI)
+  const canEdit = ["admin", "recete_gm", "ceo"].includes(user?.role || "") && !recipe?.editLocked;
+  const isAdmin = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
   const canEditIngredients = recipe?.canEditIngredients;
   const canViewCost = recipe?.canViewCost;
   const canApprove = APPROVAL_ROLES.includes(user?.role || "");

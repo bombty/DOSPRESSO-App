@@ -53,7 +53,8 @@ export default function FabrikaKeyblendYonetimi() {
   const [newKb, setNewKb] = useState({ code: "", name: "", description: "" });
   const [newIng, setNewIng] = useState({ name: "", amount: "", unit: "gr", isAllergen: false });
 
-  const canManage = ["admin", "recete_gm"].includes(user?.role || "");
+  // P7.2 (29 Nis 2026): ceo (Aslan) keyblend yönetebilir.
+  const canManage = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
   if (!canManage) {
     return (
       <div className="p-8 text-center">

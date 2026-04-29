@@ -35,16 +35,22 @@ function normalizeIngredientPayload<T extends { name?: string | null }>(payload:
 }
 
 // ── Role Guards ──
-const RECIPE_ADMIN_ROLES = ["admin", "recete_gm"];
-const RECIPE_EDIT_ROLES = ["admin", "recete_gm", "sef"];
+// P7.2 (29 Nis 2026 — pilot rol matrisi):
+//   - ceo (Aslan) reçete genel müdürü gibi davranır → tüm reçete yetkilerinde
+//   - sef (Ümit) reçete editleyemez, sadece üretim plan/takip yapar (RECIPE_EDIT_ROLES'tan ÇIKARILDI)
+//   - gida_muhendisi (Sema) sadece besin/alerjen/gramaj onayında kalır
+//   - fabrika_mudur (Eren) görür ama değiştirmez
+const RECIPE_ADMIN_ROLES = ["admin", "recete_gm", "ceo"];
+const RECIPE_EDIT_ROLES = ["admin", "recete_gm", "ceo"];
 // Task #184: Besin değer / alerjen düzenleme yalnızca gıda mühendisi + reçete
 // yönetimi (recete_gm) + admin yetkisindedir. Şef reçete değiştirebilir ama
 // besin değer tablosunu (factory_ingredient_nutrition) güncelleyemez.
-const NUTRITION_EDIT_ROLES = ["admin", "gida_muhendisi", "recete_gm"];
-const RECIPE_VIEW_ROLES = ["admin", "recete_gm", "gida_muhendisi", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "fabrika_personel", "uretim_sefi"];
-const KEYBLEND_ROLES = ["admin", "recete_gm"]; // Keyblend içerik = en gizli
+// P7.2: ceo da besin/alerjen düzenleyebilir.
+const NUTRITION_EDIT_ROLES = ["admin", "gida_muhendisi", "recete_gm", "ceo"];
+const RECIPE_VIEW_ROLES = ["admin", "recete_gm", "gida_muhendisi", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "fabrika_personel", "uretim_sefi", "ceo"];
+const KEYBLEND_ROLES = ["admin", "recete_gm", "ceo"]; // Keyblend içerik = en gizli
 const PRODUCTION_ROLES = ["admin", "recete_gm", "sef", "fabrika_mudur", "fabrika_sorumlu", "fabrika_operator", "uretim_sefi"];
-const GRAMMAGE_APPROVE_ROLES = ["admin", "recete_gm", "gida_muhendisi"];
+const GRAMMAGE_APPROVE_ROLES = ["admin", "recete_gm", "gida_muhendisi", "ceo"];
 
 function isFactoryRole(role: string): boolean {
   return RECIPE_VIEW_ROLES.includes(role);
@@ -324,7 +330,9 @@ router.get("/api/factory/recipes/:id", isAuthenticated, async (req: any, res: Re
         .where(and(eq(factoryRecipes.parentRecipeId, id), eq(factoryRecipes.isActive, true)));
     }
 
-    const INGREDIENT_EDIT_ROLES = ["admin", "ceo", "gida_muhendisi"];
+    // P7.2: gida_muhendisi (Sema) hammadde değiştiremez (owner kararı 5)
+    // → INGREDIENT_EDIT_ROLES'tan gida_muhendisi çıkarıldı, recete_gm eklendi
+    const INGREDIENT_EDIT_ROLES = ["admin", "ceo", "recete_gm"];
     const PRICE_EDIT_ROLES = ["admin", "ceo", "satinalma"];
 
     // Task #163: Sema gramaj onay durumu

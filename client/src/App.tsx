@@ -532,12 +532,15 @@ function Router() {
           <Route path="/muhasebe">{() => <ModuleGuard moduleKey="finans"><Muhasebe /></ModuleGuard>}</Route>
           <Route path="/mali-yonetim">{() => <ModuleGuard moduleKey="finans"><MaliYonetim /></ModuleGuard>}</Route>
           <Route path="/hq-fabrika-analitik">{() => <FabrikaOnly><HQFabrikaAnalitik /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/receteler/yeni">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","sef"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
+          {/* P7.2 (29 Nis 2026): ceo (Aslan) yeni reçete oluşturabilir, sef (Ümit) oluşturamaz */}
+          <Route path="/fabrika/receteler/yeni">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","ceo"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
           <Route path="/fabrika/receteler/:id/uretim">{() => <FabrikaOnly><FabrikaUretimModu /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/receteler/:id/duzenle">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","sef"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
+          {/* P7.2 (29 Nis 2026): ceo (Aslan) reçete düzenleyebilir, sef (Ümit) düzenleyemez */}
+          <Route path="/fabrika/receteler/:id/duzenle">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","ceo"]}><FabrikaReceteDuzenle /></ProtectedRoute>}</Route>
           <Route path="/fabrika/receteler/:id">{() => <FabrikaOnly><FabrikaReceteDetay /></FabrikaOnly>}</Route>
           <Route path="/fabrika/receteler">{() => <FabrikaOnly><FabrikaReceteler /></FabrikaOnly>}</Route>
-          <Route path="/fabrika/keyblend-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","recete_gm"]}><FabrikaKeyblendYonetimi /></ProtectedRoute>}</Route>
+          {/* P7.2 (29 Nis 2026): ceo (Aslan) keyblend yönetebilir */}
+          <Route path="/fabrika/keyblend-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","recete_gm","ceo"]}><FabrikaKeyblendYonetimi /></ProtectedRoute>}</Route>
           <Route path="/fabrika/malzeme-cekme">{() => <FabrikaOnly><MRPDailyPlan /></FabrikaOnly>}</Route>
           <Route path="/fabrika/maliyet-analizi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe","muhasebe_ik","satinalma","recete_gm","gida_muhendisi","fabrika_mudur","uretim_sefi"]}><MaliyetAnalizi /></ProtectedRoute>}</Route>
           <Route path="/fabrika/stok-merkezi">{() => <FabrikaOnly><FabrikaStokMerkezi /></FabrikaOnly>}</Route>

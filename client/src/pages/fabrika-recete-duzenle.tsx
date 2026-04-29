@@ -61,11 +61,14 @@ export default function FabrikaReceteDuzenle() {
   const qc = useQueryClient();
   const isNew = !id || id === "yeni";
 
-  const canEdit = ["admin", "recete_gm", "sef"].includes(user?.role || "");
-  // Task #184: Besin değer / alerjen düzenleme yalnızca gıda mühendisi + admin
-  // + recete_gm yetkisindedir. Şef reçete malzemesi ekleyebilir ama besin değer
-  // tablosunu güncelleyemez (form salt-okunur, kaydet butonu disable).
-  const canEditNutrition = ["admin", "gida_muhendisi", "recete_gm"].includes(user?.role || "");
+  // P7.2 (29 Nis 2026 — pilot rol matrisi):
+  //   - ceo (Aslan) reçete tam yetkili (RECIPE_EDIT_ROLES'a EKLENDİ)
+  //   - sef (Ümit) reçete editleyemez (RECIPE_EDIT_ROLES'tan ÇIKARILDI)
+  //   - gida_muhendisi (Sema) sadece besin/alerjen/gramaj alanında
+  //   - fabrika_mudur (Eren) görür ama düzenleyemez
+  const canEdit = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
+  // Task #184 + P7.2: ceo besin/alerjen düzenleyebilir.
+  const canEditNutrition = ["admin", "gida_muhendisi", "recete_gm", "ceo"].includes(user?.role || "");
   if (!canEdit) {
     return <div className="p-8 text-center"><p>Düzenleme yetkiniz yok</p></div>;
   }
@@ -249,7 +252,8 @@ export default function FabrikaReceteDuzenle() {
     createdByFirstName: string | null; createdByLastName: string | null;
     createdByEmail: string | null;
   };
-  const canManageSnapshots = ["admin", "recete_gm"].includes(user?.role || "");
+  // P7.2: ceo (Aslan) snapshot yönetimi yapabilir.
+  const canManageSnapshots = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
   const [historyOpen, setHistoryOpen] = useState(false);
   const { data: snapshotHistory = [], isLoading: snapshotHistoryLoading } = useQuery<SnapshotRow[]>({
     queryKey: ["/api/factory/recipes", id, "ingredients/snapshots"],
