@@ -1,0 +1,85 @@
+MODE: DOCS-ONLY — SPRINT LIVE + DECISIONS
+
+Önce Git sync kontrolü yap:
+- local HEAD ve origin/main aynı mı kontrol et.
+- Eğer local behind ise normal pull/ff-only yap.
+- Conflict veya divergence varsa dur ve raporla.
+- Sync temizse devam et.
+
+Kod değiştirme.
+DB’ye dokunma.
+Migration/schema/env/package değiştirme.
+SQL çalıştırma.
+Commit/push yapma.
+Sadece dokümantasyon dosyası oluştur/güncelle.
+
+Amaç:
+Bugüne kadar alınan kararları ve güncel sprint durumunu kalıcı hale getirmek.
+
+Dosyalar:
+1. docs/DECISIONS.md
+2. docs/SPRINT-LIVE.md
+3. Varsa docs/COLLABORATION-PROTOCOL.md
+
+docs/DECISIONS.md içine yaz:
+- Kiosk insan personel değildir.
+- Kiosk kullanıcıları personel/maaş/izin/performans listelerinde görünmemeli.
+- Müdür sadece kendi şubesini yönetir.
+- Yatırımcı/franchise alan sadece kendi şubesinin verisini görür.
+- Supervisor personel silemez.
+- Supervisor buddy sadece delegasyonla supervisor yetkisi alabilir.
+- Excel personel listesi pilot için doğru kaynak kabul edildi.
+- Hard delete yok; test/demo kullanıcılar soft-delete/pasif yapılır.
+- DB write öncesi backup + dry-run + owner GO zorunlu.
+- Personel import Phase 1 tamamlandı.
+- PIN cleanup + PIN seed tamamlandı.
+- 4 birim kiosk giriş/çıkış testi başarılı.
+- Test kayıtları PILOT_PRE_DAY1_TEST_2026_04_29 notu ile işaretlendi.
+- HQ kiosk PIN plaintext konusu ayrı risk olarak açık.
+- shift_attendance check-out kapanış mantığı açık teknik borç.
+- Reçete değişince etiket revize gerekli durumuna düşmeli.
+- Gıda mühendisi besin/alerjen tarafında aktif rol almalı.
+
+docs/SPRINT-LIVE.md içine yaz:
+- Aktif sprint: Sprint 1 — Personel + Kiosk + PDKS Pilot Hazırlığı.
+- Tamamlanan işler:
+  - personel import
+  - PIN cleanup
+  - PIN seed
+  - HQ kiosk
+  - Işıklar PIN mode
+  - backend kiosk güvenlik yaması
+  - 4 birim kiosk giriş/çıkış testi
+  - GitHub hassas dosya cleanup
+- Açık işler:
+  1. HQ kiosk PIN güvenliği
+  2. shift_attendance check-out kapanışı
+  3. izin/rapor/ücretsiz izin bakiyeleri
+  4. ay sonu puantaj simülasyonu
+  5. fabrika üretim MVP
+  6. reçete + besin + alerjen + etiket sistemi
+- Sonraki 3 adım:
+  1. HQ kiosk PIN güvenliğini planla
+  2. shift_attendance kapanış bug’ını planla
+  3. fabrika üretim MVP planını çıkar
+
+docs/COLLABORATION-PROTOCOL.md içine yaz:
+- Aslan = owner / iş kararı / GO-NO GO
+- ChatGPT = IT danışman / mimari / prompt / risk analizi / sade karar özeti
+- Replit = uygulayıcı / DB / runtime / test / deploy
+- Her iş tek mode ile başlar: READ-ONLY, PLAN, IMPLEMENTATION, DB-WRITE, GIT-ONLY, DOCS-ONLY.
+- Aynı anda tek aktif iş.
+- Her Replit işi başında Git sync kontrolü yapılır.
+- Her iş sonunda şu rapor verilir:
+  - değişen dosyalar
+  - DB write var mı
+  - commit/push durumu
+  - test sonucu
+  - risk
+  - sonraki adım
+
+Raporla:
+1. Hangi dosyalar oluşturuldu/güncellendi?
+2. Kod/DB/env/schema değişti mi?
+3. Git status nedir?
+4. Commit/push yapılmadığını doğrula.
