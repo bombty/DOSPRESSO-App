@@ -159,7 +159,7 @@ function matchNutritionDB(ingredientName: string): typeof NUTRITION_DB[string] |
 // POST /api/factory/recipes/:id/calculate-nutrition
 router.post("/api/factory/recipes/:id/calculate-nutrition", isAuthenticated, async (req: any, res: Response) => {
   try {
-    if (!["admin", "recete_gm", "gida_muhendisi"].includes(req.user.role)) {
+    if (!["admin", "recete_gm", "gida_muhendisi", "ceo"].includes(req.user.role)) {
       return res.status(403).json({ error: "Besin değer hesaplama yetkiniz yok" });
     }
 
@@ -413,7 +413,7 @@ router.post("/api/factory/seed-cinnabon", isAuthenticated, async (req: any, res:
 // (Task #146)
 // ═══════════════════════════════════════
 
-const APPROVAL_ROLES = ["admin", "gida_muhendisi", "kalite_yoneticisi", "ust_yonetim"];
+const APPROVAL_ROLES = ["admin", "gida_muhendisi", "kalite_yoneticisi", "ust_yonetim", "recete_gm", "ceo"];
 
 function canApproveNutrition(role?: string | null): boolean {
   return !!role && APPROVAL_ROLES.includes(role);
