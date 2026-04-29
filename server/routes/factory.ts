@@ -17,6 +17,7 @@ import {
   getWorkerScoreSummary,
 } from "../services/factory-scoring-service";
 import bcrypt from "bcrypt";
+import { kioskEligibleWhere, checkKioskLoginEligibility, KIOSK_GENERIC_LOGIN_ERROR } from "../lib/kiosk-eligibility";
 import { requireManifestAccess } from '../services/manifest-auth';
 import {
   hasPermission,
@@ -673,7 +674,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         role: users.role,
       }).from(users)
         .where(and(
-          eq(users.isActive, true),
+          kioskEligibleWhere(),
           or(
             eq(users.role, 'fabrika'),
             eq(users.role, 'fabrika_mudur'),
@@ -774,6 +775,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .where(eq(users.id, userId))
         .limit(1);
 
+      const eligibility = checkKioskLoginEligibility(user);
+      if (!eligibility.ok || !user) {
+        console.warn(`[KIOSK-401] factory userId=${userId} reason=${eligibility.reason ?? 'not_found'}`);
+        return res.status(401).json({ message: KIOSK_GENERIC_LOGIN_ERROR });
+      }
+
       // Check for active session
       const [activeSession] = await db.select().from(factoryShiftSessions)
         .where(and(
@@ -817,7 +824,7 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         .from(users)
         .where(and(
           eq(users.username, username.trim().toLowerCase()),
-          eq(users.isActive, true)
+          kioskEligibleWhere()
         ))
         .limit(1);
 

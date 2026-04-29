@@ -11,6 +11,7 @@ import { handleApiError } from "./helpers";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import QRCode from "qrcode";
+import { kioskEligibleWhere, checkKioskLoginEligibility, KIOSK_GENERIC_LOGIN_ERROR } from "../lib/kiosk-eligibility";
 import {
   branches,
   users,
@@ -2654,8 +2655,8 @@ router.get('/api/branches/:branchId/kiosk/staff', async (req, res) => {
       role: users.role,
     }).from(users)
       .where(and(
-        eq(users.isActive, true),
-        eq(users.branchId, branchId)
+        eq(users.branchId, branchId),
+        kioskEligibleWhere()
       ))
       .orderBy(users.firstName);
     
@@ -2764,6 +2765,12 @@ router.post('/api/branches/:branchId/kiosk/login', async (req, res) => {
     const [user] = await db.select().from(users)
       .where(eq(users.id, userId))
       .limit(1);
+
+    const eligibility = checkKioskLoginEligibility(user);
+    if (!eligibility.ok || !user) {
+      console.warn(`[KIOSK-401] branch=${branchId} userId=${userId} reason=${eligibility.reason ?? 'not_found'}`);
+      return res.status(401).json({ message: KIOSK_GENERIC_LOGIN_ERROR });
+    }
 
     const [activeSession] = await db.select().from(branchShiftSessions)
       .where(and(
@@ -4098,8 +4105,8 @@ router.get('/api/hq/kiosk/staff', async (req, res) => {
     }).from(users)
       .where(and(
         isNull(users.branchId),
-        eq(users.isActive, true),
-        sql`${users.role} NOT IN ('barista', 'stajyer')`
+        kioskEligibleWhere(),
+        notInArray(users.role, ['barista', 'stajyer'])
       ));
     
     res.json(hqStaff.map((s) => ({
@@ -4120,10 +4127,14 @@ router.post('/api/hq/kiosk/login', async (req, res) => {
     }
     
     const [user] = await db.select().from(users).where(eq(users.id, userId));
-    if (!user) {
-      return res.status(404).json({ message: "Kullanici bulunamadi" });
+    const eligibility = checkKioskLoginEligibility(user);
+    if (!eligibility.ok || !user) {
+      console.warn(`[KIOSK-401] hq userId=${userId} reason=${eligibility.reason ?? 'not_found'}`);
+      return res.status(401).json({ message: KIOSK_GENERIC_LOGIN_ERROR });
     }
     
+    // NOT: HQ kiosk login PIN'i hala plaintext phoneNumber.slice(-4) ile kontrol ediliyor.
+    // Bu A-3 görev kapsamı dışında bırakıldı; ayrı bir yamada bcrypt'e geçirilmeli.
     const userPin = user.phoneNumber ? user.phoneNumber.slice(-4) : '0000';
     if (pin !== userPin) {
       return res.status(401).json({ message: "Hatali PIN" });
