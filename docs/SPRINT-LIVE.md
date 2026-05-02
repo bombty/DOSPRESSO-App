@@ -38,6 +38,25 @@ Hedef: Pilot Day-1 öncesi personel kayıtları, kiosk giriş/çıkış akışı
 
 ---
 
+## 🌊 BÜTÜNSEL DALGA PLANI (Wave A/B/C)
+
+Sprint 2'nin 20 işi tek tek değil, **paralel dalga planı** ile çalışır. Detay: **`docs/SPRINT-2-WAVE-PLAN.md`** (~400 satır).
+
+**Wave A (T-7 → T-1, Pilot Day-1 öncesi acil, 3 paralel task):**
+- W-A1: I1 (G1+G2 AUTH fix — delegation-routes 5 + module-content-routes 5) — 1.5 saat
+- W-A2: B16 (pg_dump cron + S3 + DR playbook) — 4 saat
+- W-A3: B14 (ROLE_MODULE_DEFAULTS 16 eksik rol) — 2 saat
+- W-A4: Eğitim materyali (Sema/Eren/Aslan) — outline ✅ hazır
+- W-A5: Pilot kullanıcı listesi doldurma (Owner)
+
+**Wave B (Day-1 → Day-14, 6 iş):** B11 #276, B17 lockout DB, B19 legacy rol, B15 advisory lock, B18 TEST-MATRIX, B13 public endpoint.
+
+**Wave C (Day-30+, 9 iş):** B1 HQ kiosk, B2 SA refactor, B3 izin, B5 fabrika, B4 PDKS Excel, B6 Mr. Dobody, B7-B10, B20 KVKK.
+
+**5 kritik eksik kategori:** Teknik (T1-T5), Operasyonel (O1-O5), Kullanıcı/Eğitim (K1-K4), Mevzuat (M1-M4), Test/Kalite (Q1-Q4).
+
+---
+
 ## Açık İşler
 
 1. **HQ kiosk PIN güvenliği (B1)** — Plan ✅ hazır (`docs/plans/hq-kiosk-pin-security.md`); implementasyon owner GO bekliyor (~4.5 saat).
