@@ -67,6 +67,7 @@ TEST-MATRIX (13 rol smoke test), 4 runbook (db-write, kiosk PDKS, git security, 
 
 **Tamamlanan task'lar (Replit otomatik propose, owner approved):**
 - **Task #272 MERGED** — Day-5 güvenlik paketi: `POST /api/auth/register` artık admin/ceo/muhasebe_ik korumalı (anonim 401, yetkisiz 403); helmet `frameguard: sameorigin`; `authLimiter` register + `passwordResetLimiter` reset-password endpoint'lerine mount; admin bootstrap log'undan bcrypt hash_prefix kaldırıldı.
+- **Task #279 (Wave A-1) NO-OP fix** — G1+G2 audit bulguları doğrulamada eskimiş çıktı: `delegation-routes.ts` ve `module-content-routes.ts` zaten `router.use(isAuthenticated)` + handler-level `isAdminRole(['admin','ceo'])` ile korumalı (10/10 endpoint anonim curl 401). Kod değişikliği gerekmedi; audit + SPRINT-LIVE "ÇÖZÜLDÜ" notu ile güncellendi.
 - **Task #273 MERGED** — `shift_attendance.check_out_time` atomik kapanış (DECISIONS#15 çözüldü): branch (4 endpoint), HQ (1 endpoint), factory (2 endpoint) `db.transaction` içinde session UPDATE + SA UPDATE birlikte commit/rollback. HQ/Factory için kullanıcının açık SA kaydı `userId + check_out_time IS NULL + check_in_time ±5dk + pilot test notu hariç` filtresi ile bulunuyor. Backfill script `scripts/backfill-shift-attendance-checkout.ts` (--dry-run / --commit), pilot notu hariç. Dry-run 0 aday, prod tutarlı (`docs/audit/shift-attendance-backfill-2026-05-02.md`).
 
 **IN_PROGRESS:** Task #276 (pdks_daily_summary sync), Task #277 (kiosk vardiya E2E test).

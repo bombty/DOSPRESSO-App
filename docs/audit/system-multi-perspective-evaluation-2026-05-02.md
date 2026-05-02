@@ -35,7 +35,7 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 
 | # | Bulgu | Severity | Önerilen Aksiyon |
 |---|---|---|---|
-| **K1** | **`delegation-routes.ts` 5 endpoint TAMAMEN AUTH YOK** (`router.get/post/patch/delete` üzerinde `isAuthenticated` middleware YOK) | 🔴 KRİTİK | Acil patch (Sprint 2 hafta 1) |
+| **K1** | ~~**`delegation-routes.ts` 5 endpoint TAMAMEN AUTH YOK**~~ | ✅ ÇÖZÜLDÜ (Task #279) | Kod zaten korumalı (bkz. Bölüm 2.2 G1). Audit bulgusu eskimişti. |
 | **K2** | **`ROLE_MODULE_DEFAULTS` tablosunda 16 rol eksik** — ceo, cgo, gida_muhendisi, sef, recete_gm, mudur, sube_kiosk, kalite_kontrol, marketing, factory floor 5 rol, vs. UI'da rol bazlı modül görünürlüğü eksik | 🔴 YÜKSEK | Sprint 2 hafta 1 |
 | **K3** | **Eski/legacy roller hâlâ enum'da** (`muhasebe`, `teknik`, `destek`, `fabrika`, `yatirimci_hq`) — geriye dönük uyumluluk için, ama dökümante edilmemiş; karışıklık riski | 🟡 ORTA | Sprint 2 sonu — temizlik veya açık dökümante |
 | **K4** | **31 roldan sadece 13'ü TEST-MATRIX'te** — eksik 18 rol (factory floor 5 rol + HQ marketing/trainer/kalite_kontrol + branch hiyerarşi 3 rol + factory recete_gm + legacy 5) | 🟡 ORTA | Sprint 2 hafta 2 — TEST-MATRIX genişlet |
@@ -58,8 +58,8 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 
 | # | Bulgu | Risk | Konum | Önerilen Fix |
 |---|---|---|---|---|
-| **G1** | `delegation-routes.ts` 5 endpoint AUTH YOK | 🔴 KRİTİK | `server/routes/delegation-routes.ts:26,43,72,120,150` | `isAuthenticated` ekle, rol kontrolü düşün (admin/ceo only?) |
-| **G2** | `module-content-routes.ts` 5 endpoint AUTH YOK (CRUD!) | 🔴 KRİTİK | `server/routes/module-content-routes.ts:27,57,85,101,127` | `isAuthenticated` + admin role check |
+| **G1** | ~~`delegation-routes.ts` 5 endpoint AUTH YOK~~ | ✅ ÇÖZÜLDÜ (2 May 2026, Task #279 doğrulama) | `server/routes/delegation-routes.ts:20` | **Kod zaten korumalı:** `router.use(isAuthenticated)` + GET/POST/PATCH/DELETE handler'larında `isAdminRole(['admin','ceo'])` rol kontrolü mevcut. GET `/active` sadece kendi role'ünün aktif delegation'larını döner. Anonim `/api/delegations` çağrıları **401** dönüyor (curl ile doğrulandı). Audit bulgusu eskimiş — son commit'lerde sertleştirilmiş. |
+| **G2** | ~~`module-content-routes.ts` 5 endpoint AUTH YOK (CRUD!)~~ | ✅ ÇÖZÜLDÜ (2 May 2026, Task #279 doğrulama) | `server/routes/module-content-routes.ts:14` | **Kod zaten korumalı:** `router.use(isAuthenticated)` + tüm POST/DELETE handler'larında `isAdminRole(['admin','ceo'])` kontrolü mevcut. GET `/api/module-content/:moduleKey` authenticated user'a (yayınlanmış departman+topic listesi) açık. Anonim çağrılar **401** dönüyor (curl 5/5 endpoint doğrulandı). |
 | **G3** | `crm-iletisim.ts` 16 endpoint `AuthRequest` tipinde ama `isAuthenticated` middleware görünmüyor | 🟡 ORTA (doğrulanmalı) | `server/routes/crm-iletisim.ts:126-781` | DOĞRULA: muhtemelen üst seviye `app.use('/api/crm-iletisim', isAuthenticated, ...)` mount, ama belirtilmemiş |
 | **G4** | `mega-module-routes.ts` 4 public endpoint (staff-qr + staff-rating) | 🟢 PUBLIC kasıtlı (QR feedback) | `server/routes/mega-module-routes.ts:28,66,206,245` | Token expiry + rate limit doğrulanmalı |
 | **G5** | `/api/export/*` 19 endpoint AUTH YOK (FULL_AUDIT Issue #2 — 26 Apr) | 🔴 KRİTİK (eski bulgu) | FULL_AUDIT Bölüm 2 | Sprint 2 hafta 1 — tüm export endpoint'ler `isAuthenticated` + role check |

@@ -59,6 +59,8 @@ Son güncelleme: 2 Mayıs 2026
 16. **Reçete değişince etiket revize gerekli durumuna düşmeli.** Bir reçetenin gramaj, içerik veya alerjen alanı değiştiğinde bağlı etiketler "revize gerekli" statüsüne otomatik geçer.
 17. **Gıda mühendisi besin/alerjen tarafında aktif rol almalı.** Besin değerleri ve alerjen onay/yayın akışında gıda mühendisi pasif gözlemci değil, aktif onay merci olarak konumlanır.
 
+29. **Delegation + Module-Content rol matrisi: pilot için `admin` + `ceo` ile sınırlı kalır.** (Task #279 / Wave A-1, 2 May 2026.) Audit doc G1+G2'de önerilen genişletme (mudur/fabrika_mudur GET için, coach/trainer module-content yazma için) Pilot Day-1 öncesi UYGULANMADI. Mevcut `isAdminRole(['admin','ceo'])` kontrolleri sağlam (10/10 endpoint anonim 401, yetkisiz 403 doğrulandı). Genişletme ihtiyacı pilot retrospektifinde frontend kullanım pattern'lerine göre tekrar değerlendirilecek. Minimum-risk gerekçe: pilot'ta mudur/coach kullanıcısı bu admin sayfalarına erişmiyor, gereksiz attack surface açmaktan kaçınıldı.
+
 ---
 
 > Karar değişikliği için: önce bu dosyada yeni karar maddesi yazılır, owner'dan açık onay alınır, eski karar ya günceller ya da "geçersiz — bkz. madde X" notu ile arşivlenir.
