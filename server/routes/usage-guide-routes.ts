@@ -82,6 +82,8 @@ Kurallar:
       const answer = (completion.choices[0]?.message?.content || "Üzgünüm, sorunuza yanıt veremedim. Lütfen tekrar deneyin.") + '\n\n-- Kullanım Kılavuzu sayfasında rolünüze özel tüm modül bilgilerini ve ipuçlarını bulabilirsiniz.';
       res.json({ answer });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Usage guide AI error:", error);
       res.status(500).json({ message: "AI yanıt üretemedi, lütfen tekrar deneyin" });
     }

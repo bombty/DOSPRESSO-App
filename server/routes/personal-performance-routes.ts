@@ -291,6 +291,8 @@ Dusuk puanli alanlara odaklan ve pozitif, motive edici ol. JSON dizisi olarak ya
         const tips = JSON.parse(content.replace(/```json\n?|```/g, "").trim());
         res.json({ tips });
       } catch (error: unknown) {
+        const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+        if (respondIfAiBudgetError(error, res)) return;
         console.error("OpenAI error:", error);
         res.json({
           tips: [

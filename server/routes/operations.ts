@@ -52,6 +52,7 @@ import {
 import { eq, desc, sql, and, or, not, inArray, lte, gte, isNull, type SQL } from "drizzle-orm";
 import { compressChecklistPhotoBase64 } from "../photo-utils";
 import { verifyChecklistPhoto, analyzeFaultPhoto, diagnoseFault } from "../ai";
+import { respondIfAiBudgetError } from "../ai-budget-guard";
 import { onChecklistAssigned, onFaultReported } from "../event-task-generator";
 import * as XLSX from "xlsx";
 import { z } from "zod";
@@ -725,6 +726,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       
       res.json(completion);
     } catch (error: unknown) {
+      if (respondIfAiBudgetError(error, res)) return;
       console.error('Error submitting checklist:', error);
       res.status(500).json({ message: 'Checklist gönderilemedi' });
     }
@@ -1265,6 +1267,7 @@ function ensurePermission(user: Express.User, module: string, action: string, er
           });
           res.json(updatedFault || fault);
         } catch (aiError) {
+          if (respondIfAiBudgetError(aiError, res)) return;
           console.error("AI analysis error:", aiError);
           res.json(fault);
         }
@@ -5167,6 +5170,8 @@ Turkish question: "${question.questionTr}"`;
 
       res.json(updated);
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Error translating question:", error);
       res.status(500).json({ message: "Çeviri yapılamadı" });
     }

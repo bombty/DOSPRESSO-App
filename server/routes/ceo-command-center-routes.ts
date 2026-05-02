@@ -8,6 +8,7 @@ import { notifications } from "@shared/schema";
 import { filterNotificationsForRole } from "../services/notification-level-filter";
 import { gatherAIAssistantContext } from "../ai-assistant-context";
 import { checkAndEnforcePolicy } from "../services/ai-policy-engine";
+import { aiChatCall } from "../ai";
 import { z } from "zod";
 import {
   branches,
@@ -303,33 +304,16 @@ const router = Router();
 
       const systemPrompt = 'Sen DOSPRESSO kahve zincirinin CEO\'su icin ozel bir AI danismanisin. CEO\'nun sorularina sirket verileri ve ic gorulere dayanarak cevap veriyorsun.\n\nGuncel Sirket Durumu:\n' + contextSummary + '\n\nYanitlarini su sekilde ver:\n1. Net ve ozlu ol\n2. Somut sayilar ve oneriler sun\n3. Riskleri ve firsatlari acikca belirt\n4. Aksiyon onerileri sun\n5. Turkce yaz';
 
-      const ceoApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-      if (!ceoApiKey) {
-        return res.status(500).json({ message: "OpenAI API key yapilandirilmamis" });
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + ceoApiKey
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: question }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('OpenAI API error');
-      }
-
-      const aiResponse = await response.json();
+      const aiResponse = await aiChatCall({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        __aiContext: { feature: "ceo_assistant", operation: "ceoAsk", userId: req.user?.id ?? null },
+      } as Parameters<typeof aiChatCall>[0]);
       let answer = aiResponse.choices[0]?.message?.content || 'Yanit alinamadi';
       
       const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];
@@ -380,35 +364,16 @@ const router = Router();
         policyAwarePrompt += `\n\n=== KAPSAM KISITLAMALARI ===\n${policyResult.scopePrompt}`;
       }
 
-      const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ message: "OpenAI API key yapilandirilmamis" });
-      }
-
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: policyAwarePrompt },
-            { role: "user", content: question }
-          ],
-          temperature: 0.7,
-          max_tokens: 1200
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("OpenAI API error:", errorText);
-        throw new Error("OpenAI API error");
-      }
-
-      const aiResponse = await response.json();
+      const aiResponse = await aiChatCall({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: policyAwarePrompt },
+          { role: "user", content: question }
+        ],
+        temperature: 0.7,
+        max_tokens: 1200,
+        __aiContext: { feature: "ai_chat", operation: "globalChat", userId: user.id, branchId: user.branchId ?? null },
+      } as Parameters<typeof aiChatCall>[0]);
       let answer = aiResponse.choices[0]?.message?.content || "Yanit alinamadi";
       
       const usageKeywords = ['nasıl kullanılır', 'nasıl yapılır', 'nerede bulabilirim', 'nereden ulaşabilirim', 'sistem', 'menü', 'sayfa', 'modül', 'yetki', 'erişim', 'kullanım', 'özellik'];

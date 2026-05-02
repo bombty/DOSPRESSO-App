@@ -6,7 +6,8 @@ import { db } from "../db";
 import { eq, lt, desc, asc, sql, and, or, count, isNull } from "drizzle-orm";
 import { z } from "zod";
 import bcrypt from "bcrypt";
-import { clearAIConfigCache, getAIConfig, getActiveProvider } from "../ai";
+import { clearAIConfigCache, getAIConfig, getActiveProvider, calculateCostByProvider } from "../ai";
+import { getBudgetStatus, invalidateBudgetCache, assertBudgetAvailable, isAiBudgetError } from "../ai-budget-guard";
 import {
   hasPermission,
   escalationConfig,
@@ -461,6 +462,21 @@ function isAdminOrCeo(req: any, res: any, next: any) {
         return res.status(400).json({ message: "Geçersiz veri", errors: error.errors });
       }
       res.status(500).json({ message: "Logo güncellenirken hata oluştu" });
+    }
+  });
+
+  // AI monthly budget cap live status (used, remaining, exceeded).
+  router.get('/api/admin/ai-budget', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && (!user.role || !isHQRole(user.role as UserRoleType))) {
+        return res.status(403).json({ message: "Yetkiniz yok" });
+      }
+      const status = await getBudgetStatus(true);
+      res.json(status);
+    } catch (error: unknown) {
+      console.error("Get AI budget status error:", error);
+      res.status(500).json({ message: "AI bütçe durumu alınamadı" });
     }
   });
 
@@ -1777,6 +1793,9 @@ function isAdminOrCeo(req: any, res: any, next: any) {
         openaiApiKey: settings.openaiApiKey ? "********" : null,
         geminiApiKey: settings.geminiApiKey ? "********" : null,
         anthropicApiKey: settings.anthropicApiKey ? "********" : null,
+        monthlyBudgetUsd: settings.monthlyBudgetUsd != null ? Number(settings.monthlyBudgetUsd) : 50,
+        budgetEnforcementEnabled: settings.budgetEnforcementEnabled !== false,
+        budgetAlertThresholdPct: settings.budgetAlertThresholdPct ?? 80,
       };
       
       res.json(maskedSettings);
@@ -1813,6 +1832,25 @@ function isAdminOrCeo(req: any, res: any, next: any) {
         updatedById: user.id,
         updatedAt: new Date(),
       };
+
+      // Monthly USD budget cap + alert threshold + enforcement toggle.
+      if (data.monthlyBudgetUsd !== undefined && data.monthlyBudgetUsd !== null && data.monthlyBudgetUsd !== "") {
+        const n = Number(data.monthlyBudgetUsd);
+        if (!Number.isFinite(n) || n < 0) {
+          return res.status(400).json({ message: "Aylık bütçe geçersiz (>= 0 olmalı)" });
+        }
+        updateData.monthlyBudgetUsd = n.toFixed(2);
+      }
+      if (typeof data.budgetEnforcementEnabled === "boolean") {
+        updateData.budgetEnforcementEnabled = data.budgetEnforcementEnabled;
+      }
+      if (data.budgetAlertThresholdPct !== undefined && data.budgetAlertThresholdPct !== null && data.budgetAlertThresholdPct !== "") {
+        const p = Math.round(Number(data.budgetAlertThresholdPct));
+        if (!Number.isFinite(p) || p < 1 || p > 100) {
+          return res.status(400).json({ message: "Uyarı eşiği 1-100 arası olmalı" });
+        }
+        updateData.budgetAlertThresholdPct = p;
+      }
       
       // Only update API keys if new value provided (not masked)
       if (data.openaiApiKey && data.openaiApiKey !== "********") {
@@ -1843,6 +1881,7 @@ function isAdminOrCeo(req: any, res: any, next: any) {
       auditLog(req, { eventType: "settings.changed", action: "updated", resource: "ai_settings", details: { provider: data.provider } });
 
       clearAIConfigCache();
+      invalidateBudgetCache();
 
       res.json({ success: true, id: result.id });
     } catch (error: unknown) {
@@ -1857,7 +1896,22 @@ function isAdminOrCeo(req: any, res: any, next: any) {
       if (user.role !== 'admin') {
         return res.status(403).json({ message: "Admin yetkisi gerekli" });
       }
-      
+
+      try {
+        await assertBudgetAvailable();
+      } catch (e: unknown) {
+        if (isAiBudgetError(e)) {
+          return res.status(503).json({
+            ok: false,
+            provider: req.body?.provider || 'unknown',
+            error: (e as Error).message,
+            code: 'AI_BUDGET_EXCEEDED',
+            hint: 'AI aylık bütçe tavanı aşıldı. Tavanı yükseltin veya enforcement\'ı kapatın.',
+          });
+        }
+        throw e;
+      }
+
       const { provider } = req.body;
       if (!provider) {
         return res.json({ ok: false, provider: "unknown", error: "Sağlayıcı belirtilmedi" });
@@ -1865,8 +1919,34 @@ function isAdminOrCeo(req: any, res: any, next: any) {
       const settingsResult = await db.select().from(aiSettings).limit(1);
       const settings = settingsResult[0] || null;
       const OpenAI = (await import('openai')).default;
-      
+
       const testPrompt = "Merhaba, bu bir bağlantı testidir. Sadece 'OK' yanıtı ver.";
+
+      const logTestUsage = async (providerName: string, modelName: string, latencyMs: number, usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined) => {
+        try {
+          const promptTokens = usage?.prompt_tokens ?? 0;
+          const completionTokens = usage?.completion_tokens ?? 0;
+          const totalTokens = usage?.total_tokens ?? promptTokens + completionTokens;
+          const cost = calculateCostByProvider(providerName, modelName, promptTokens, completionTokens);
+          await storage.logAiUsage({
+            feature: "admin_connection_test",
+            model: modelName,
+            operation: providerName + "_test",
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            costUsd: cost.toFixed(6),
+            requestLatencyMs: latencyMs,
+            userId: user.id,
+            branchId: null,
+            cachedHit: false,
+            metadata: { testPrompt: true },
+          });
+          invalidateBudgetCache();
+        } catch (logErr) {
+          console.warn("[admin/test] usage log failed:", logErr);
+        }
+      };
 
       if (provider === 'openai') {
         const apiKey = settings?.openaiApiKey || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
@@ -1884,14 +1964,17 @@ function isAdminOrCeo(req: any, res: any, next: any) {
             model, messages: [{ role: "user", content: testPrompt }], max_tokens: 50,
           });
           const latencyMs = Date.now() - start;
-          return res.json({ 
-            ok: true, provider: "openai", requestedModel: model, 
+          await logTestUsage("openai", resp.model || model, latencyMs, resp.usage);
+          return res.json({
+            ok: true, provider: "openai", requestedModel: model,
             actualModel: resp.model || model, latencyMs,
-            message: `OpenAI bağlantısı başarılı (${latencyMs}ms)` 
+            message: `OpenAI bağlantısı başarılı (${latencyMs}ms)`
           });
-        } catch (e) {
-          const hint = e.status === 401 ? "API anahtarı geçersiz" : e.status === 429 ? "Rate limit / kota aşıldı" : "Bağlantı hatası";
-          return res.json({ ok: false, provider: "openai", error: e.message, hint });
+        } catch (e: unknown) {
+          const status = (e as { status?: number })?.status;
+          const message = e instanceof Error ? e.message : String(e);
+          const hint = status === 401 ? "API anahtarı geçersiz" : status === 429 ? "Rate limit / kota aşıldı" : "Bağlantı hatası";
+          return res.json({ ok: false, provider: "openai", error: message, hint });
         }
       }
       
@@ -1911,14 +1994,17 @@ function isAdminOrCeo(req: any, res: any, next: any) {
             model, messages: [{ role: "user", content: testPrompt }], max_tokens: 50,
           });
           const latencyMs = Date.now() - start;
+          await logTestUsage("gemini", resp.model || model, latencyMs, resp.usage);
           return res.json({
             ok: true, provider: "gemini", requestedModel: model,
             actualModel: resp.model || model, latencyMs,
             message: `Gemini bağlantısı başarılı (${latencyMs}ms)`
           });
-        } catch (e) {
-          const hint = e.status === 401 || e.status === 403 ? "API anahtarı geçersiz" : e.status === 429 ? "Kota aşıldı" : "Bağlantı hatası";
-          return res.json({ ok: false, provider: "gemini", error: e.message, hint });
+        } catch (e: unknown) {
+          const status = (e as { status?: number })?.status;
+          const message = e instanceof Error ? e.message : String(e);
+          const hint = status === 401 || status === 403 ? "API anahtarı geçersiz" : status === 429 ? "Kota aşıldı" : "Bağlantı hatası";
+          return res.json({ ok: false, provider: "gemini", error: message, hint });
         }
       }
       
@@ -1948,13 +2034,19 @@ function isAdminOrCeo(req: any, res: any, next: any) {
             const hint = resp.status === 401 ? "API anahtarı geçersiz" : resp.status === 429 ? "Rate limit aşıldı" : data?.error?.message || "Bağlantı hatası";
             return res.json({ ok: false, provider: "anthropic", error: data?.error?.message || "API hatası", hint });
           }
+          await logTestUsage("anthropic", data?.model || model, latencyMs, {
+            prompt_tokens: data?.usage?.input_tokens,
+            completion_tokens: data?.usage?.output_tokens,
+            total_tokens: (data?.usage?.input_tokens || 0) + (data?.usage?.output_tokens || 0),
+          });
           return res.json({
             ok: true, provider: "anthropic", requestedModel: model,
             actualModel: data?.model || model, latencyMs,
             message: `Anthropic bağlantısı başarılı (${latencyMs}ms)`
           });
-        } catch (e) {
-          return res.json({ ok: false, provider: "anthropic", error: e.message, hint: "Ağ bağlantısı hatası" });
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
+          return res.json({ ok: false, provider: "anthropic", error: message, hint: "Ağ bağlantısı hatası" });
         }
       }
       

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
-import { AuthorizationError, ensurePermission } from "./helpers";
+import { AuthorizationError, ensurePermission, handleApiError } from "./helpers";
+import { aiChatCall } from "../ai";
 import { z } from "zod";
 import {
   messages,
@@ -174,24 +175,12 @@ const router = Router();
       
       Önemli bulguları ve önerileri kısaca yaz.`;
 
-      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: summaryPrompt }],
-          max_tokens: 500,
-        }),
-      });
-
-      if (!openaiResponse.ok) {
-        throw new Error("OpenAI API error");
-      }
-
-      const data = await openaiResponse.json();
+      const data = await aiChatCall({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: summaryPrompt }],
+        max_tokens: 500,
+        __aiContext: { feature: "system_health", operation: "reportSummary", userId: user.id },
+      } as Parameters<typeof aiChatCall>[0]);
       const summary = data.choices?.[0]?.message?.content || "";
 
       const aiSummary = await storage.createAISummary({
@@ -204,8 +193,7 @@ const router = Router();
 
       res.json(aiSummary);
     } catch (error: unknown) {
-      console.error("AI summary error:", error);
-      res.status(500).json({ message: "AI özeti oluşturulamadı" });
+      handleApiError(res, error, "SystemHealthAISummary");
     }
   });
 

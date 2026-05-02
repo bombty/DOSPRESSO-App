@@ -100,6 +100,8 @@ const router = Router();
       }
       res.json({ lessons: insertedLessons });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Error generating training lessons:", error);
       res.status(500).json({ message: "Ders içerikleri oluşturulurken hata oluştu" });
     }
@@ -211,6 +213,8 @@ const router = Router();
       });
       res.json({ questions });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Error generating quiz:", error);
       res.status(500).json({ message: "Sınav soruları oluşturulurken hata oluştu" });
     }

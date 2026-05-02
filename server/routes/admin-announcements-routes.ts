@@ -3,6 +3,7 @@ import { db } from "../db";
 import { storage } from "../storage";
 import { isAuthenticated } from "../localAuth";
 import { handleApiError } from "./helpers";
+import { generateImageWithAI } from "../ai";
 import { or, not, max } from "drizzle-orm";
 import {
   announcements,
@@ -107,31 +108,13 @@ const router = Router();
       }
 
 
-      // OpenAI DALL-E API'sini çağır (Replit AI Integrations üzerinden)
-      const response = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY || ''}`
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          model: "dall-e-3",
-          size: "1792x1024",  // 3:1 banner aspect ratio'ya yakın
-          quality: "standard",
-          n: 1
-        })
+      // OpenAI image API'sini guarded wrapper üzerinden çağır (DALL-E 3, banner aspect ratio)
+      const tempImageUrl = await generateImageWithAI(prompt, req.user?.id, {
+        model: "dall-e-3",
+        size: "1792x1024",
+        quality: "standard",
+        rawPrompt: true,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("DALL-E error:", error);
-        return res.status(500).json({ message: "Sunucu hatası oluştu" });
-      }
-
-      const data = await response.json();
-      const tempImageUrl = data.data[0]?.url;
-      
       if (!tempImageUrl) {
         return res.status(500).json({ message: "Görsel URL alınamadı" });
       }

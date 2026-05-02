@@ -178,7 +178,7 @@ export const aiUsageLogs = pgTable("ai_usage_logs", {
   promptTokens: integer("prompt_tokens").notNull().default(0),
   completionTokens: integer("completion_tokens").notNull().default(0),
   totalTokens: integer("total_tokens").notNull().default(0),
-  costUsd: numeric("cost_usd", { precision: 10, scale: 4 }).notNull().default('0'),
+  costUsd: numeric("cost_usd", { precision: 14, scale: 6 }).notNull().default('0'),
   requestLatencyMs: integer("request_latency_ms").notNull().default(0),
   userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
   branchId: integer("branch_id").references(() => branches.id, { onDelete: "set null" }),

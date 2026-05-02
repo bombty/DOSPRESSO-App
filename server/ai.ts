@@ -4,6 +4,12 @@ import { PDFParse } from "pdf-parse";
 import { optimizeGalleryImage } from "./imageProcessor";
 import { cache, generateCacheKey, aiRateLimiter } from "./cache";
 import { storage } from "./storage";
+import {
+  assertBudgetAvailable,
+  notifyBudgetThresholdIfNeeded,
+  invalidateBudgetCache,
+  AiBudgetExceededError,
+} from "./ai-budget-guard";
 import type { SummaryCategoryType, AISummaryResponse, Task, EquipmentFault } from "@shared/schema";
 import { isHQRole } from "@shared/schema";
 
@@ -220,15 +226,113 @@ async function refreshAIConfig() {
   console.log(`🤖 AI provider: ${provider}, chat: ${CHAT_MODEL}, vision: ${VISION_MODEL}`);
 }
 
-export async function aiChatCall(params: any) {
-  await refreshAIConfig();
-  if (_activeProvider === "anthropic") {
-    return anthropicFetchChat(params);
-  }
-  return openai.chat.completions.create(params);
+export interface AiCallContext {
+  feature?: string;
+  operation?: string;
+  userId?: string | null;
+  branchId?: number | null;
+  metadata?: Record<string, unknown> | null;
+  skipLogging?: boolean;
 }
 
-export async function aiEmbeddingCall(params: any) {
+interface AiCallParams {
+  model?: string;
+  __aiContext?: AiCallContext;
+  [key: string]: unknown;
+}
+
+interface ProviderUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
+interface ProviderResult {
+  usage?: ProviderUsage;
+}
+
+function stripAiContext<T extends AiCallParams>(
+  params: T,
+): { params: Omit<T, "__aiContext">; ctx: AiCallContext } {
+  const { __aiContext, ...rest } = params;
+  return { params: rest, ctx: __aiContext ?? {} };
+}
+
+function extractUsage(result: unknown): ProviderUsage {
+  if (result && typeof result === "object" && "usage" in result) {
+    const u = (result as ProviderResult).usage;
+    if (u && typeof u === "object") return u;
+  }
+  return {};
+}
+
+async function logCall(
+  feature: string,
+  operation: string,
+  model: string,
+  promptTokens: number,
+  completionTokens: number,
+  totalTokens: number,
+  costUsd: number,
+  latencyMs: number,
+  ctx: AiCallContext,
+  errorMessage?: string,
+): Promise<void> {
+  if (ctx.skipLogging) return;
+  try {
+    await storage.logAiUsage({
+      feature: ctx.feature || feature,
+      model,
+      operation: ctx.operation || operation,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      costUsd: costUsd.toFixed(6),
+      requestLatencyMs: latencyMs,
+      userId: ctx.userId ?? null,
+      branchId: ctx.branchId ?? null,
+      cachedHit: false,
+      metadata: errorMessage
+        ? { error: errorMessage, ...(ctx.metadata || {}) }
+        : (ctx.metadata ?? null),
+    });
+  } catch (err) {
+    console.error("[ai] Failed to log AI usage:", err);
+  }
+}
+
+export async function aiChatCall(params: AiCallParams): Promise<any> {
+  await refreshAIConfig();
+  await assertBudgetAvailable();
+  const { params: clean, ctx } = stripAiContext(params);
+  const startedAt = Date.now();
+  const model = clean.model || CHAT_MODEL || "unknown";
+  try {
+    const result = _activeProvider === "anthropic"
+      ? await anthropicFetchChat(clean as Parameters<typeof anthropicFetchChat>[0])
+      : await openai.chat.completions.create(clean as Parameters<typeof openai.chat.completions.create>[0]);
+    const latency = Date.now() - startedAt;
+    const usage = extractUsage(result);
+    const promptTokens = usage.prompt_tokens ?? usage.input_tokens ?? 0;
+    const completionTokens = usage.completion_tokens ?? usage.output_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? (promptTokens + completionTokens);
+    const cost = calculateCost(model, promptTokens, completionTokens);
+    await logCall("chat", "aiChatCall", model, promptTokens, completionTokens, totalTokens, cost, latency, ctx);
+    invalidateBudgetCache();
+    await notifyBudgetThresholdIfNeeded();
+    return result;
+  } catch (err) {
+    if (!(err instanceof AiBudgetExceededError)) {
+      const latency = Date.now() - startedAt;
+      await logCall("chat", "aiChatCall", model, 0, 0, 0, 0, latency, ctx, err instanceof Error ? err.message : String(err));
+    }
+    throw err;
+  }
+}
+
+export async function aiEmbeddingCall(params: AiCallParams): Promise<any> {
   await refreshAIConfig();
   if (_activeProvider === "anthropic") {
     const config = await getAIConfig();
@@ -237,40 +341,85 @@ export async function aiEmbeddingCall(params: any) {
       throw new Error("Claude embeddings desteklememektedir. Embedding için OpenAI API anahtarı gereklidir. Ayarlardan OpenAI anahtarını girin.");
     }
   }
-  return embeddingsClient.embeddings.create(params);
+  await assertBudgetAvailable();
+  const { params: clean, ctx } = stripAiContext(params);
+  const startedAt = Date.now();
+  const model = clean.model || EMBEDDING_MODEL || "text-embedding-3-small";
+  try {
+    const result = await embeddingsClient.embeddings.create(clean as Parameters<typeof embeddingsClient.embeddings.create>[0]);
+    const latency = Date.now() - startedAt;
+    const usage = extractUsage(result);
+    const promptTokens = usage.prompt_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? promptTokens;
+    const cost = calculateCost(model, promptTokens, 0);
+    await logCall("embedding", "aiEmbeddingCall", model, promptTokens, 0, totalTokens, cost, latency, ctx);
+    invalidateBudgetCache();
+    await notifyBudgetThresholdIfNeeded();
+    return result;
+  } catch (err) {
+    if (!(err instanceof AiBudgetExceededError)) {
+      const latency = Date.now() - startedAt;
+      await logCall("embedding", "aiEmbeddingCall", model, 0, 0, 0, 0, latency, ctx, err instanceof Error ? err.message : String(err));
+    }
+    throw err;
+  }
 }
 
 export function getActiveProvider() {
   return _activeProvider;
 }
 
-// Pricing map (per 1K tokens) - Updated as of 2024
-const PRICING = {
-  "gpt-4o": {
-    input: 0.0025,  // $2.50 per 1M tokens
-    output: 0.010,  // $10.00 per 1M tokens
-  },
-  "gpt-4o-mini": {
-    input: 0.00015, // $0.15 per 1M tokens
-    output: 0.0006, // $0.60 per 1M tokens
-  },
-  "text-embedding-3-small": {
-    input: 0.00002, // $0.02 per 1M tokens
-    output: 0,      // No output tokens for embeddings
-  },
-} as const;
+// Pricing per 1K tokens (USD). Covers all configured providers/models.
+// Source: provider docs as of 2025-Q2. Update as pricing changes.
+interface ModelPrice { input: number; output: number; }
 
-// Helper to calculate cost based on token usage
+const PRICING: Record<string, ModelPrice> = {
+  // OpenAI chat
+  "gpt-4o":          { input: 0.0025,   output: 0.010 },
+  "gpt-4o-mini":     { input: 0.00015,  output: 0.0006 },
+  "gpt-4.1":         { input: 0.003,    output: 0.012 },
+  "gpt-4.1-mini":    { input: 0.0008,   output: 0.0032 },
+  "gpt-4.1-nano":    { input: 0.0002,   output: 0.0008 },
+  "gpt-4-turbo":     { input: 0.01,     output: 0.03 },
+  "gpt-3.5-turbo":   { input: 0.0005,   output: 0.0015 },
+  "o3-mini":         { input: 0.0011,   output: 0.0044 },
+  // OpenAI embeddings (no output tokens)
+  "text-embedding-3-small":  { input: 0.00002, output: 0 },
+  "text-embedding-3-large":  { input: 0.00013, output: 0 },
+  "text-embedding-ada-002":  { input: 0.0001,  output: 0 },
+  // Anthropic
+  "claude-sonnet-4-20250514":   { input: 0.003,  output: 0.015 },
+  "claude-3-5-sonnet-20241022": { input: 0.003,  output: 0.015 },
+  "claude-3-5-haiku-20241022":  { input: 0.0008, output: 0.004 },
+  "claude-3-opus-20240229":     { input: 0.015,  output: 0.075 },
+  // Google Gemini
+  "gemini-2.0-flash":      { input: 0.0001,  output: 0.0004 },
+  "gemini-2.0-flash-lite": { input: 0.000075, output: 0.0003 },
+  "gemini-1.5-pro":        { input: 0.00125, output: 0.005 },
+  "gemini-1.5-flash":      { input: 0.000075, output: 0.0003 },
+};
+
+// Fail-closed fallback: if a configured model's price isn't mapped, use the
+// most expensive known model so the budget guard can over-count rather than
+// silently undercount provider spend.
+const FALLBACK_PRICE: ModelPrice = { input: 0.015, output: 0.075 };
+const _warnedUnknownModels = new Set<string>();
+
+export function calculateCostByProvider(_provider: string, model: string, promptTokens: number, completionTokens: number): number {
+  return calculateCost(model, promptTokens, completionTokens);
+}
+
 function calculateCost(model: string, promptTokens: number, completionTokens: number): number {
-  const pricing = PRICING[model as keyof typeof PRICING];
-  if (!pricing) {
-    console.warn(`Unknown model pricing: ${model}, using $0`);
-    return 0;
+  const pricing = PRICING[model];
+  let p = pricing;
+  if (!p) {
+    if (!_warnedUnknownModels.has(model)) {
+      _warnedUnknownModels.add(model);
+      console.warn(`[ai] Unknown model pricing for "${model}" — using fail-closed fallback ($${FALLBACK_PRICE.input}/$${FALLBACK_PRICE.output} per 1K).`);
+    }
+    p = FALLBACK_PRICE;
   }
-  
-  const inputCost = (promptTokens / 1000) * pricing.input;
-  const outputCost = (completionTokens / 1000) * pricing.output;
-  return inputCost + outputCost;
+  return (promptTokens / 1000) * p.input + (completionTokens / 1000) * p.output;
 }
 
 // ========================================
@@ -692,7 +841,6 @@ export async function analyzeTaskPhoto(
       }
     }
     
-    const startTime = Date.now();
     const response = await aiChatCall({
       model: VISION_MODEL,
       messages: [
@@ -729,8 +877,13 @@ JSON formatında yanıt verin:
       ],
       response_format: { type: "json_object" },
       max_completion_tokens: 8192,
+      __aiContext: {
+        feature: "task_photo",
+        operation: "analyzeTaskPhoto",
+        userId: userId || null,
+        branchId: branchId || null,
+      },
     });
-    const latency = Date.now() - startTime;
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
@@ -744,36 +897,16 @@ JSON formatında yanıt verin:
       passed: result.passed || false,
     };
 
-    // Cache for 72 hours (extended for $200/month - task analysis rarely changes)
     cache.set(cacheKey, analysis, 72 * 60 * 60 * 1000);
-    
-    // Log AI usage
-    const usage = response.usage;
-    const costUsd = calculateCost(VISION_MODEL, usage?.prompt_tokens || 0, usage?.completion_tokens || 0);
-    storage.logAiUsage({
-      feature: 'task_photo',
-      model: VISION_MODEL,
-      operation: 'analyzeTaskPhoto',
-      promptTokens: usage?.prompt_tokens || 0,
-      completionTokens: usage?.completion_tokens || 0,
-      totalTokens: usage?.total_tokens || 0,
-      costUsd: costUsd.toString(),
-      requestLatencyMs: latency,
-      userId: userId || null,
-      branchId: branchId || null,
-      cachedHit: false,
-      metadata: null,
-    }).catch(err => console.error('Failed to log AI usage:', err));
-    
-    // Increment rate limit counter (only on successful AI call)
+
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'photo');
-      const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
-    } else {
+      aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
     }
 
     return analysis;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Görev fotoğrafı analiz hatası:", error);
     return {
       analysis: "AI analizi yapılamadı. Fotoğraf başarıyla yüklendi ancak otomatik değerlendirme mevcut değil.",
@@ -848,6 +981,11 @@ JSON formatında yanıt verin:
       ],
       response_format: { type: "json_object" },
       max_completion_tokens: 8192,
+      __aiContext: {
+        feature: "fault_photo",
+        operation: "analyzeFaultPhoto",
+        userId: userId || null,
+      },
     });
 
     const content = response.choices[0]?.message?.content;
@@ -862,18 +1000,16 @@ JSON formatında yanıt verin:
       recommendations: result.recommendations || [],
     };
 
-    // Cache for 72 hours (extended for $200/month - fault analysis rarely changes)
     cache.set(cacheKey, analysis, 72 * 60 * 60 * 1000);
-    
-    // Increment rate limit counter (shares photo quota)
+
     if (userId) {
       aiRateLimiter.incrementRequest(userId, 'photo');
-      const remaining = aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
-    } else {
+      aiRateLimiter.getRemainingCalls(userId, 'photo', PHOTO_LIMIT);
     }
 
     return analysis;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Arıza fotoğrafı analiz hatası:", error);
     return {
       analysis: "AI analizi yapılamadı. Fotoğraf başarıyla yüklendi ancak otomatik değerlendirme mevcut değil. Lütfen bir teknisyen ile iletişime geçin.",
@@ -938,6 +1074,7 @@ JSON formatında yanıt verin:
       recommendations: result.recommendations || [],
     };
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Temizlik analiz hatası:", error);
     return {
       isClean: false, // FALSE - requires manual review
@@ -1055,6 +1192,7 @@ JSON formatında TÜRKÇE yanıt verin:
 
     return analysis;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Dress code analiz hatası:", error);
     return {
       isCompliant: false, // FALSE - requires manual review
@@ -1101,6 +1239,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     
     return response.data[0].embedding;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Embedding oluşturma hatası:", error);
     throw new Error("Embedding oluşturulamadı");
   }
@@ -1189,6 +1328,7 @@ export async function answerQuestionWithRAG(
 
     return result;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("RAG soru-cevap hatası:", error);
     throw new Error("Soru cevaplanamadı");
   }
@@ -1278,6 +1418,7 @@ export async function answerTechnicalQuestion(
       };
     }
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.warn("Knowledge base search failed, falling back to LLM:", error);
   }
 
@@ -1320,6 +1461,7 @@ export async function answerTechnicalQuestion(
 
     return result;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Fallback LLM error:", error);
     throw new Error("AI asistan şu anda cevap veremiyor. Lütfen daha sonra tekrar deneyin.");
   }
@@ -1528,6 +1670,7 @@ JSON yanit ver:
 
     return planResponse;
   } catch (error: any) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Vardiya planı oluşturma hatası:", error?.message || error);
     // Return rule-based fallback instead of throwing
     const fallback = buildRuleBasedPlan();
@@ -2380,6 +2523,7 @@ JSON formatında yanıt ver: {
 
     return diagnosis;
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Fault diagnosis error:", error);
     throw new Error("Arıza analiz edilemedi");
   }
@@ -2555,9 +2699,11 @@ ZORUNLU KURALLAR:
     const remaining = aiRateLimiter.getRemainingCalls(effectiveUserId, 'module_generation', MODULE_GEN_LIMIT);
 
     return module;
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Module generation error:", error);
-    throw new Error("Modül oluşturulamadı: " + (error.message || "Bilinmeyen hata"));
+    const msg = error instanceof Error ? error.message : "Bilinmeyen hata";
+    throw new Error("Modül oluşturulamadı: " + msg);
   }
 }
 
@@ -2577,9 +2723,10 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     }
     
     return allText;
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
     console.error("PDF parsing error:", error);
-    throw new Error("PDF dosyası okunamadı: " + (error.message || "Bilinmeyen hata"));
+    const msg = error instanceof Error ? error.message : "Bilinmeyen hata";
+    throw new Error("PDF dosyası okunamadı: " + msg);
   }
 }
 
@@ -2645,9 +2792,11 @@ Görüntüdeki metni düzenli, okunabilir bir formatta yaz. Eğer tablo veya lis
     aiRateLimiter.incrementRequest(effectiveUserId, 'image_extraction');
     
     return extractedText;
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Image extraction error:", error);
-    throw new Error("Görüntü işlenemedi: " + (error.message || "Bilinmeyen hata"));
+    const msg = error instanceof Error ? error.message : "Bilinmeyen hata";
+    throw new Error("Görüntü işlenemedi: " + msg);
   }
 }
 
@@ -2684,23 +2833,57 @@ export async function optimizeImageForGallery(buffer: Buffer, mimeType: string):
 }
 
 // Generate image with DALL-E
+// DALL·E 2 1024x1024 fixed price (May 2026): $0.020 per image.
+const DALLE2_1024_COST_USD = 0.020;
+const DALLE3_PRICING_USD: Record<string, number> = {
+  "1024x1024_standard": 0.040,
+  "1024x1792_standard": 0.080,
+  "1792x1024_standard": 0.080,
+  "1024x1024_hd": 0.080,
+  "1024x1792_hd": 0.120,
+  "1792x1024_hd": 0.120,
+};
+function getImageCostUsd(model: string, size: string, quality: string): number {
+  if (model === "dall-e-3") {
+    return DALLE3_PRICING_USD[`${size}_${quality}`] ?? 0.080;
+  }
+  return DALLE2_1024_COST_USD;
+}
+
+export interface GenerateImageOptions {
+  model?: "dall-e-2" | "dall-e-3";
+  size?: "1024x1024" | "1024x1792" | "1792x1024";
+  quality?: "standard" | "hd";
+  rawPrompt?: boolean;
+}
+
 export async function generateImageWithAI(
   prompt: string,
-  userId?: string
+  userId?: string,
+  options?: GenerateImageOptions,
 ): Promise<string> {
   const effectiveUserId = userId || 'system';
   const IMAGE_GEN_LIMIT = 5; // 5 images per day
-  
+
   if (!aiRateLimiter.canMakeRequest(effectiveUserId, 'image_generation', IMAGE_GEN_LIMIT)) {
     throw new Error("Günlük görüntü üretme limitiniz doldu. Yarın tekrar deneyin.");
   }
 
+  await assertBudgetAvailable();
+  const startedAt = Date.now();
+  const model = options?.model ?? "dall-e-2";
+  const size = options?.size ?? "1024x1024";
+  const quality = options?.quality ?? "standard";
+  const finalPrompt = options?.rawPrompt
+    ? prompt
+    : `DOSPRESSO kahvesine uygun, profesyonel görünümlü banner-style fotoğraf: ${prompt}. Profesyonel, yüksek kaliteli ve eğitim materyali için uygun.`;
   try {
     const response = await openai.images.generate({
-      model: "dall-e-2",
-      prompt: `DOSPRESSO kahvesine uygun, profesyonel görünümlü banner-style fotoğraf: ${prompt}. Fotoğraf 600x400 piksel için optimize edilmiş, profesyonel, yüksek kaliteli ve eğitim materyali için uygun.`,
+      model,
+      prompt: finalPrompt,
       n: 1,
-      size: "1024x1024"
+      size,
+      ...(model === "dall-e-3" ? { quality } : {}),
     });
 
     const imageUrl = response.data[0]?.url;
@@ -2709,11 +2892,33 @@ export async function generateImageWithAI(
     }
 
     aiRateLimiter.incrementRequest(effectiveUserId, 'image_generation');
-    
+
+    const latency = Date.now() - startedAt;
+    await logCall(
+      "image",
+      "generateImageWithAI",
+      model,
+      0,
+      0,
+      0,
+      getImageCostUsd(model, size, quality),
+      latency,
+      {
+        feature: "image",
+        operation: "generateImageWithAI",
+        userId: effectiveUserId === "system" ? null : effectiveUserId,
+        metadata: { size, quality },
+      },
+    );
+    invalidateBudgetCache();
+    await notifyBudgetThresholdIfNeeded();
+
     return imageUrl;
-  } catch (error: Error | unknown) {
-    console.error("❌ Image generation error:", error.message || error);
-    throw new Error("Görüntü üretilmesi başarısız oldu: " + (error.message || "Bilinmeyen hata"));
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Image generation error:", msg);
+    throw new Error("Görüntü üretilmesi başarısız oldu: " + msg);
   }
 }
 
@@ -2800,7 +3005,8 @@ Veriler: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev
     const summary = response.choices[0]?.message?.content?.trim() || `${data.branchName} ${period}: ${data.activeFaults} arıza, ${data.pendingTasks} görev`;
     aiRateLimiter.incrementRequest(effectiveUserId, 'summary_generation');
     return summary;
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Summary generation error:", error);
     return `${data.branchName} ${periodLabel} Özet: ${data.activeFaults} aktif arıza, ${data.pendingTasks} bekleyen görev.`;
   }
@@ -2846,7 +3052,8 @@ export async function generatePersonalSummaryReport(
     const summary = response.choices[0]?.message?.content?.trim() || `${data.firstName}, bugün ${data.pendingTasks} görev ve ${data.pendingChecklists} checklist bekliyor.`;
     aiRateLimiter.incrementRequest(userId, 'personal_summary');
     return summary;
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Personal summary generation error:", error);
     const taskStatus = data.pendingTasks > 0 ? `${data.pendingTasks} bekleyen görev` : 'Tüm görevler tamam';
     return `${data.firstName}, ${taskStatus}.`;
@@ -2923,9 +3130,11 @@ JSON formatında yanıt ver:
       content: result.content || '',
       tags: result.tags || [],
     };
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Article draft generation error:", error);
-    throw new Error("Makale taslağı oluşturulamadı: " + ((error as Error).message || "Bilinmeyen hata"));
+    const msg = error instanceof Error ? error.message : "Bilinmeyen hata";
+    throw new Error("Makale taslağı oluşturulamadı: " + msg);
   }
 }
 
@@ -3066,14 +3275,15 @@ export async function verifyChecklistPhoto(
         suggestions: result.suggestions || [],
       }
     };
-  } catch (error: Error | unknown) {
+  } catch (error: unknown) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Checklist photo verification error:", error);
-    
+    const msg = error instanceof Error ? error.message : 'Bilinmeyen hata';
     // Return a failed result instead of throwing for graceful handling
     return {
       passed: false,
       similarityScore: 0,
-      verificationNote: 'AI doğrulama yapılamadı: ' + ((error as Error).message || 'Bilinmeyen hata'),
+      verificationNote: 'AI doğrulama yapılamadı: ' + msg,
       details: {
         matchingAspects: [],
         differences: ['AI analiz hatası'],
@@ -3144,6 +3354,7 @@ export async function verifyPhotoQuality(
       note: result.note || 'Kontrol tamamlandı'
     };
   } catch (error) {
+    if (error instanceof AiBudgetExceededError) throw error;
     console.error("Photo quality check error:", error);
     return { passed: true, score: 70, note: 'Kontrol yapılamadı - varsayılan kabul' };
   }

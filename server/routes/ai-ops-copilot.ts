@@ -4,6 +4,8 @@ import { isHQRole, isBranchRole, aiAgentLogs } from "@shared/schema";
 import { computeBranchHealthScores } from "../services/branch-health-scoring";
 import { db } from "../db";
 import { isAuthenticated } from "../localAuth";
+import { aiChatCall } from "../ai";
+import { respondIfAiBudgetError } from "../ai-budget-guard";
 
 const router = Router();
 
@@ -141,35 +143,18 @@ Ortalama skor: ${avgScore}/100
 En riskli şubeler: ${JSON.stringify(topRiskBranches)}`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const openaiData = await aiChatCall({
+      model: "gpt-4o-mini",
+      temperature: 0,
+      max_tokens: 600,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      __aiContext: { feature: "ai_ops_copilot", operation: "summarize", userId: user.id, branchId: user.branchId ?? null },
+    } as Parameters<typeof aiChatCall>[0]);
 
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0,
-        max_tokens: 600,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!openaiRes.ok) {
-      throw new Error(`OpenAI HTTP ${openaiRes.status}`);
-    }
-
-    const openaiData = await openaiRes.json() as any;
     const rawContent = openaiData.choices?.[0]?.message?.content;
     const tokenUsage = openaiData.usage?.total_tokens ?? 0;
 
@@ -194,6 +179,10 @@ En riskli şubeler: ${JSON.stringify(topRiskBranches)}`;
     return res.json(result);
 
   } catch (err) {
+    if (respondIfAiBudgetError(err, res)) {
+      await logRun(user.id, role, user.branchId, rangeUsed, report.branches.length, "budget_exceeded", Date.now() - startTime, false);
+      return;
+    }
     const fallback = buildFallback(report, rangeUsed);
     await logRun(user.id, role, user.branchId, rangeUsed, report.branches.length, "fallback_error", Date.now() - startTime, true);
     return res.json(fallback);

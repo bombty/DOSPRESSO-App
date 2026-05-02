@@ -171,6 +171,8 @@ Kurallar:
 
     return result;
   } catch (error) {
+    const { isAiBudgetError } = await import("../ai-budget-guard");
+    if (isAiBudgetError(error)) throw error;
     console.error("[AI Briefing] Error:", error);
     return {
       summary: "AI brifing şu an kullanılamıyor.",

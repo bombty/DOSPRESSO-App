@@ -335,6 +335,8 @@ const router = Router();
         });
         res.json({ analysis: completion.choices[0]?.message?.content || 'Analiz yapilamadi.' });
       } catch (error: unknown) {
+        const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+        if (respondIfAiBudgetError(error, res)) return;
         console.error('AI analysis error:', error);
         const fallback = 'Mali Özet (' + targetYear + '):\n\nToplam Gelir: ' + totalRevenue.toLocaleString('tr-TR') + ' TL\nToplam Gider: ' + totalExpenses.toLocaleString('tr-TR') + ' TL\nNet Kar: ' + totalProfit.toLocaleString('tr-TR') + ' TL\nKar Marjı: %' + margin + '\nRapor Sayısı: ' + reports.length + '\n\n(AI analizi şu an kullanılamıyor.)';
         res.json({ analysis: fallback });

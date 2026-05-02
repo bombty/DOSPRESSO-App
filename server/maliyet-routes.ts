@@ -2406,8 +2406,11 @@ Sadece JSON döndür, başka metin ekleme.`;
         allRecipes: allRecipes,
       });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import("./ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Error in AI recipe parse:", error);
-      res.status(500).json({ error: "AI reçete analizi başarısız: " + (error.message || "Bilinmeyen hata") });
+      const msg = error instanceof Error ? error.message : "Bilinmeyen hata";
+      res.status(500).json({ error: "AI reçete analizi başarısız: " + msg });
     }
   });
 

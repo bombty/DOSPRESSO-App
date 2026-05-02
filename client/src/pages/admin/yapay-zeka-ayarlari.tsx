@@ -96,8 +96,22 @@ interface AISettings {
   temperature: number;
   maxTokens: number;
   rateLimitPerMinute: number;
+  monthlyBudgetUsd: number;
+  budgetEnforcementEnabled: boolean;
+  budgetAlertThresholdPct: number;
   needsReembed: boolean;
   lastEmbeddingProvider: string | null;
+}
+
+interface BudgetStatus {
+  enforcementEnabled: boolean;
+  monthlyBudgetUsd: number;
+  monthToDateCost: number;
+  percentUsed: number;
+  remainingUsd: number;
+  exceeded: boolean;
+  alertThresholdPct: number;
+  monthKey: string;
 }
 
 export default function AdminYapayZekaAyarlari() {
@@ -128,10 +142,18 @@ export default function AdminYapayZekaAyarlari() {
     temperature: 0.7,
     maxTokens: 2000,
     rateLimitPerMinute: 60,
+    monthlyBudgetUsd: 50,
+    budgetEnforcementEnabled: true,
+    budgetAlertThresholdPct: 80,
   });
 
   const { data: settings, isLoading, isError, refetch } = useQuery<AISettings>({
     queryKey: ["/api/admin/ai-settings"],
+  });
+
+  const { data: budgetStatus } = useQuery<BudgetStatus>({
+    queryKey: ["/api/admin/ai-budget"],
+    refetchInterval: 60000,
   });
 
   const { data: dynamicModels } = useQuery<ModelsResponse>({
@@ -170,6 +192,7 @@ export default function AdminYapayZekaAyarlari() {
     onSuccess: () => {
       const providerWasChanged = savedProvider !== null && formData.provider !== savedProvider;
       queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/ai-budget"] });
       setSavedProvider(formData.provider || null);
       if (providerWasChanged && autoReEmbed) {
         toast({ title: "AI ayarları kaydedildi", description: "Vektörler otomatik yenileniyor..." });
@@ -616,6 +639,92 @@ export default function AdminYapayZekaAyarlari() {
                     data-testid="input-rate-limit"
                   />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-ai-budget">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Aylık Harcama Tavanı
+              </CardTitle>
+              <CardDescription>
+                AI sağlayıcıya yapılan tüm çağrıların aylık toplam maliyeti bu tavana ulaştığında çağrılar otomatik 503 ile durdurulur. Eşik aşıldığında admin'lere bildirim gider.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {budgetStatus && (
+                <div className="rounded-md border p-3 space-y-2" data-testid="ai-budget-status">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">Bu ay ({budgetStatus.monthKey})</span>
+                    <span className="text-sm font-medium" data-testid="text-ai-budget-used">
+                      ${budgetStatus.monthToDateCost.toFixed(2)} / ${budgetStatus.monthlyBudgetUsd.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full ${budgetStatus.exceeded ? "bg-destructive" : budgetStatus.percentUsed >= budgetStatus.alertThresholdPct ? "bg-amber-500" : "bg-primary"}`}
+                      style={{ width: `${Math.min(100, budgetStatus.percentUsed).toFixed(1)}%` }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span data-testid="text-ai-budget-pct">%{budgetStatus.percentUsed.toFixed(1)} kullanıldı</span>
+                    <span>Kalan: ${budgetStatus.remainingUsd.toFixed(2)}</span>
+                  </div>
+                  {budgetStatus.exceeded && (
+                    <div className="flex items-center gap-2 text-xs text-destructive" data-testid="text-ai-budget-exceeded">
+                      <AlertCircle className="h-3 w-3" />
+                      <span>Tavan aşıldı — yapay zeka çağrıları geçici olarak durduruldu.</span>
+                    </div>
+                  )}
+                  {!budgetStatus.enforcementEnabled && (
+                    <div className="flex items-center gap-2 text-xs text-amber-600">
+                      <Info className="h-3 w-3" />
+                      <span>Tavan zorlama kapalı — sadece izleme yapılıyor.</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Aylık Tavan (USD)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={formData.monthlyBudgetUsd ?? 50}
+                    onChange={(e) => setFormData(prev => ({ ...prev, monthlyBudgetUsd: parseFloat(e.target.value) || 0 }))}
+                    data-testid="input-monthly-budget"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Uyarı Eşiği (%)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={formData.budgetAlertThresholdPct ?? 80}
+                    onChange={(e) => setFormData(prev => ({ ...prev, budgetAlertThresholdPct: parseInt(e.target.value) || 80 }))}
+                    data-testid="input-budget-alert-threshold"
+                  />
+                  <p className="text-xs text-muted-foreground">Bu yüzdeye ulaşıldığında admin'lere bildirim gönderilir.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div>
+                  <Label>Tavan Zorlama Aktif</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Kapalıyken sadece uyarı yapılır, AI çağrıları durdurulmaz.
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.budgetEnforcementEnabled !== false}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, budgetEnforcementEnabled: checked }))}
+                  data-testid="switch-budget-enforcement"
+                />
               </div>
             </CardContent>
           </Card>

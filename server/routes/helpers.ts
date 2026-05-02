@@ -1,8 +1,20 @@
 import type { Response } from "express";
 import { hasPermission, type UserRoleType } from "../permission-service";
 import { generateBranchSummaryReport } from "../ai";
+import { isAiBudgetError } from "../ai-budget-guard";
 
 export function handleApiError(res: Response, error: unknown, context: string): void {
+  if (!res.headersSent && isAiBudgetError(error)) {
+    const e = error as { message?: string; monthToDateCost?: number; monthlyBudget?: number };
+    console.warn(`[${context}] AI_BUDGET_EXCEEDED`);
+    res.status(503).json({
+      message: e.message || "AI aylık bütçe tavanı aşıldı",
+      code: "AI_BUDGET_EXCEEDED",
+      monthToDateCost: e.monthToDateCost,
+      monthlyBudget: e.monthlyBudget,
+    });
+    return;
+  }
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[${context}]`, message);
   if (!res.headersSent) {

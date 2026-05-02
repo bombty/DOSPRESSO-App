@@ -1491,6 +1491,8 @@ En az 5 satış cümlesi ve 5 soru-cevap oluştur. Türkçe olmalı.`;
 
       res.json({ success: true, salesTips: parsed.salesTips, customerQA: parsed.customerQA });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Generate sales tips error:", error);
       res.status(500).json({ message: "Satış ipuçları oluşturulamadı" });
     }
@@ -1548,6 +1550,8 @@ Türkçe ve profesyonel olmalı.`;
 
       res.json({ success: true, presentationGuide: parsed });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Generate presentation error:", error);
       res.status(500).json({ message: "Sunum rehberi oluşturulamadı" });
     }
@@ -1608,6 +1612,8 @@ Türkçe, samimi ve çağdaş bir dil kullan.`;
 
       res.json({ success: true, marketingContent: parsed });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Generate marketing error:", error);
       res.status(500).json({ message: "Pazarlama içerikleri oluşturulamadı" });
     }
@@ -1667,6 +1673,8 @@ JSON formatında yanıt ver:
 
       res.json({ success: true, scenarios: parsed.scenarios });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Generate roleplay error:", error);
       res.status(500).json({ message: "Senaryolar oluşturulamadı" });
     }

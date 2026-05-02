@@ -129,6 +129,8 @@ En az 6, en fazla 12 adım oluştur. Sadece JSON array döndür, başka açıkla
       steps,
     });
   } catch (error: unknown) {
+    const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+    if (respondIfAiBudgetError(error, res)) return;
     console.error("Error generating onboarding template:", error);
     res.status(500).json({ message: "AI onboarding şablonu oluşturulamadı" });
   }
@@ -218,6 +220,8 @@ Her modül şu formatta olmalı (JSON array):
       modules,
     });
   } catch (error: unknown) {
+    const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+    if (respondIfAiBudgetError(error, res)) return;
     console.error("Error generating training program:", error);
     res.status(500).json({ message: "AI eğitim programı oluşturulamadı" });
   }
@@ -1889,6 +1893,8 @@ Süt İçerir: ${hasMilk ? 'Evet' : 'Hayır'}`;
     const parsed = JSON.parse(content);
     res.json(parsed);
   } catch (error: unknown) {
+    const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+    if (respondIfAiBudgetError(error, res)) return;
     console.error("Generate marketing preview error:", error);
     res.status(500).json({ message: "Pazarlama içeriği oluşturulamadı" });
   }
@@ -1956,6 +1962,8 @@ Süt İçerir: ${recipe.hasMilk ? 'Evet' : 'Hayır'}`;
 
     res.json(updateData);
   } catch (error: unknown) {
+    const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+    if (respondIfAiBudgetError(error, res)) return;
     console.error("Generate marketing error:", error);
     res.status(500).json({ message: "Pazarlama içeriği oluşturulamadı" });
   }

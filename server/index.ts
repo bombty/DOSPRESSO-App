@@ -141,8 +141,20 @@ app.use((req, res, next) => {
   });
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    const status = (err as any).status || (err as any).statusCode || 500;
-    const message = (err as any).message || "Internal Server Error";
+    const e = err as { status?: number; statusCode?: number; message?: string; code?: string };
+    if (e?.code === "AI_BUDGET_EXCEEDED") {
+      const ae = err as { message?: string; monthToDateCost?: number; monthlyBudget?: number };
+      res.status(503).json({
+        message: ae.message || "AI aylık bütçe tavanı aşıldı",
+        code: "AI_BUDGET_EXCEEDED",
+        monthToDateCost: ae.monthToDateCost,
+        monthlyBudget: ae.monthlyBudget,
+      });
+      console.error("[GlobalErrorHandler] AI_BUDGET_EXCEEDED");
+      return;
+    }
+    const status = e?.status || e?.statusCode || 500;
+    const message = e?.message || "Internal Server Error";
 
     res.status(status).json({ message });
     console.error("[GlobalErrorHandler]", err);

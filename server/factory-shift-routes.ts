@@ -1352,6 +1352,8 @@ JSON formatında yanıt ver:
         generatedAt: new Date().toISOString(),
       });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import("./ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("AI recommendations error:", error);
       res.status(500).json({ error: "AI önerileri alınamadı" });
     }

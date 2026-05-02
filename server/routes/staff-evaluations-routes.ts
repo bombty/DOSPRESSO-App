@@ -756,6 +756,8 @@ Bu verilere dayanarak performans analizi ve iyileştirme önerileri oluştur.`
         levelRisk: parsed.levelRisk || overallScore < 65,
       });
     } catch (error: unknown) {
+      const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Error generating AI recommendations:", error);
       res.status(500).json({ message: "AI önerileri oluşturulurken hata oluştu" });
     }

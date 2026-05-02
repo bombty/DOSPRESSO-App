@@ -72,6 +72,8 @@ ${insightDescriptions}`;
       return { ...insight, aiMessage: undefined };
     });
   } catch (err) {
+    const { isAiBudgetError } = await import("../../ai-budget-guard");
+    if (isAiBudgetError(err)) throw err;
     console.error("[AI Enrichment] Fallback to rule-based:", err);
     return insights.map((i) => ({ ...i, aiMessage: undefined }));
   }

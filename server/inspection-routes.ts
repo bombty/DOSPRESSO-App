@@ -517,6 +517,8 @@ Güçlü yönleri, zayıf yönleri ve iyileştirme önerilerini belirt. Kısa ve
 
       res.json({ summary: response.choices[0]?.message?.content || "Özet oluşturulamadı." });
     } catch (error) {
+      const { respondIfAiBudgetError } = await import("./ai-budget-guard");
+      if (respondIfAiBudgetError(error, res)) return;
       console.error("Error generating AI summary:", error);
       res.json({ summary: "AI özeti oluşturulurken hata oluştu. Lütfen daha sonra tekrar deneyin." });
     }

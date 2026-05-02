@@ -12,6 +12,8 @@ import {
 } from "@shared/schema";
 import { eq, and, or, lt, gt, gte, lte, sql, desc, count, notInArray } from "drizzle-orm";
 import { ROLE_GROUP_MAP, getRoleGroup } from "./ai-policy-engine";
+import { aiChatCall } from "../ai";
+import { isAiBudgetError } from "../ai-budget-guard";
 import { checkBatchActions, getSystemPromptPolicy } from "./agent-safety";
 
 const ACTION_TYPES = ["remind", "escalate", "report", "suggest_task", "alert"] as const;
@@ -681,33 +683,18 @@ KPI verileri: ${JSON.stringify(kpis)}
 Mevcut aksiyonlar (tekrarlama): ${existingTitles || "yok"}`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const data = await aiChatCall({
+      model: "gpt-4o-mini",
+      temperature: 0.1,
+      max_tokens: 500,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      __aiContext: { feature: "agent_engine", operation: "llmGateway" },
+    } as Parameters<typeof aiChatCall>[0]);
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.1,
-        max_tokens: 500,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!res.ok) return null;
-
-    const data = await res.json() as any;
     const rawContent = data.choices?.[0]?.message?.content;
     const tokensUsed = data.usage?.total_tokens ?? 0;
     const model = data.model || "gpt-4o-mini";
@@ -738,6 +725,7 @@ Mevcut aksiyonlar (tekrarlama): ${existingTitles || "yok"}`;
 
     return { actions: validActions, tokensUsed, model };
   } catch (err) {
+    if (isAiBudgetError(err)) throw err;
     console.error("LLM gateway error:", err);
     return null;
   }

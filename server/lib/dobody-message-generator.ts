@@ -55,6 +55,8 @@ export async function generateContextMessage(context: MessageContext): Promise<s
     // AI yanıt vermezse template kullan
     return generateTemplateMessage(context);
   } catch (error) {
+    const { isAiBudgetError } = await import("../ai-budget-guard");
+    if (isAiBudgetError(error)) throw error;
     console.error("AI mesaj üretme hatası:", error);
     return generateTemplateMessage(context);
   }

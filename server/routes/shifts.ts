@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, sql, isNull, gte, lte, ne, notInArray, inArray } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
+import { respondIfAiBudgetError } from "../ai-budget-guard";
 import { auditLog, createAuditEntry, getAuditContext } from "../audit";
 import { requireManifestAccess, getScopeFilter } from '../services/manifest-auth';
 import { evaluateShiftBlockRules } from "../services/rules-engine";
@@ -2421,6 +2422,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req, res) => {
       weekEnd,
     });
   } catch (error: unknown) {
+    if (respondIfAiBudgetError(error, res)) return;
     console.error("Error generating shift recommendations:", error);
     const message = error instanceof Error ? error.message : "Vardiya önerileri oluşturulamadı";
     res.status(500).json({ message });

@@ -107,7 +107,9 @@ Sadece mesaj metnini yaz, başka açıklama ekleme.`;
       templateKey,
       senderTitle,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const { respondIfAiBudgetError } = await import("../ai-budget-guard");
+    if (respondIfAiBudgetError(error, res)) return;
     console.error("Generate message error:", error);
     res.status(500).json({ message: "Metin üretilirken hata oluştu" });
   }

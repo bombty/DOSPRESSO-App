@@ -184,6 +184,13 @@ export const aiSettings = pgTable("ai_settings", {
   temperature: real("temperature").default(0.7),
   maxTokens: integer("max_tokens").default(2000),
   rateLimitPerMinute: integer("rate_limit_per_minute").default(60),
+  // Aylık AI harcama tavanı (USD) ve uyarı sistemi
+  monthlyBudgetUsd: numeric("monthly_budget_usd", { precision: 10, scale: 2 }).default("50.00"),
+  budgetEnforcementEnabled: boolean("budget_enforcement_enabled").default(true),
+  budgetAlertThresholdPct: integer("budget_alert_threshold_pct").default(80),
+  lastBudgetAlertPct: integer("last_budget_alert_pct").default(0),
+  lastBudgetAlertAt: timestamp("last_budget_alert_at"),
+  lastBudgetAlertMonth: varchar("last_budget_alert_month", { length: 7 }),
   // Embedding tracking
   lastEmbeddingProvider: varchar("last_embedding_provider", { length: 30 }),
   needsReembed: boolean("needs_reembed").default(false),

@@ -241,6 +241,8 @@ Buyume odakli, stratejik ve aksiyona yonelik cevaplar ver. Turkce yanit ver.`;
         
         res.json({ answer: cgoAnswer });
       } catch (error: unknown) {
+        const { respondIfAiBudgetError } = await import('../ai-budget-guard');
+        if (respondIfAiBudgetError(error, res)) return;
         console.error('CGO AI Error:', error);
         res.json({ answer: `DOSPRESSO Ozet:
 - ${allBranches.length} sube aktif
