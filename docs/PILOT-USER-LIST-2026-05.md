@@ -79,6 +79,8 @@ _(Owner her aktif pilot şube için satır ekler)_
 
 ## 6. Rol Dağılımı Özet (Day-1 Aktif)
 
+> **Not:** Sistem toplam **31 rol** tanımlı. Aşağıdaki tablo Day-1'de aktif olması beklenen 26 ana rolü içerir. **5 legacy rol** (`muhasebe`, `teknik`, `destek`, `fabrika`, `yatirimci_hq`) Bölüm 7'de pilot dışı tutulur — Sprint 2 B19 ile temizlenecek. **`admin`** rolü sadece sistem yöneticisi (Aslan), pilot operasyonel kullanım dışında.
+
 | Rol | Kişi Sayısı | Notlar |
 |---|---|---|
 | admin | _______ | Sadece Aslan? |

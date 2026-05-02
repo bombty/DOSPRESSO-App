@@ -32,43 +32,6 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 
 ---
 
-## §24 — Pilot Parola Gate / mustChangePassword (Task #274, 2 May 2026)
-
-**Sorun:** Önceki kod `resetNonAdminPasswords()` ile her server restart'ta tüm aktif personeli `'0000'`'a düşürüyordu — pilot bittikten sonra ciddi güvenlik açığı (Audit Issue #10).
-
-**Düzeltme:**
-
-1. **`server/index.ts`** — `resetNonAdminPasswords()` üretimde ASLA çalışmaz:
-   ```typescript
-   if (process.env.NODE_ENV !== 'development') return;
-   if (process.env.ALLOW_PILOT_PASSWORD_RESET !== '1') return;
-   ```
-
-2. **Yeni `rotatePilotDefaultPasswords()`** — Tek seferlik:
-   - `site_settings.pilot_launched=true` koşulu
-   - bcrypt.compare ile hash'i `'0000'` eşleşen aktif non-admin kullanıcıları bul
-   - `mustChangePassword=true` ata
-   - Marker `site_settings.pilot_default_passwords_rotated=true` (sadece HATASIZ bittikten sonra)
-   - Hata varsa bir sonraki başlangıçta tekrar dener
-
-3. **`server/localAuth.ts` — `enforcePasswordChangeGate`:**
-   ```typescript
-   if (req.user?.mustChangePassword) {
-     const whitelist = ['/api/auth/user', '/api/me/change-password',
-                        '/api/logout', '/api/auth/logout'];
-     if (!whitelist.includes(req.path)) {
-       return res.status(423).json({ error: 'password_change_required' });
-     }
-   }
-   ```
-   - Kiosk token (`authMethod=kiosk_token`) gate'ten muaf — kiosk akışı kullanıcı parolası kullanmaz
-
-**Kullanıcı semptomu:** Login OK, ama her API çağrısı 423 dönüyor → frontend `ForcePasswordChangeDialog` açmalı.
-
-**Bireysel reset:** `server/routes/admin-password.ts` üzerinden (admin/ceo/muhasebe_ik). `'0000'` reset endpoint'i kapalı.
-
----
-
 ## §22 — Day-5 Güvenlik Sertleştirme (Task #272, 2 May 2026)
 
 **Sorun:** `POST /api/auth/register` public, helmet frameguard yok, register/reset-password rate limit yok, log'da bcrypt hash_prefix sızıntısı.
@@ -109,6 +72,43 @@ AND (notes IS NULL OR notes != 'PILOT_PRE_DAY1_TEST_2026_04_29')
 **Backfill:** `scripts/backfill-shift-attendance-checkout.ts` (`--dry-run` default, `--commit`). Dry-run 0 aday → backfill gerekmedi (`docs/audit/shift-attendance-backfill-2026-05-02.md`).
 
 **İlgili açık iş:** Task #276 — `pdks_daily_summary` sync (B11), Task #277 — kiosk vardiya E2E test (B12).
+
+---
+
+## §24 — Pilot Parola Gate / mustChangePassword (Task #274, 2 May 2026)
+
+**Sorun:** Önceki kod `resetNonAdminPasswords()` ile her server restart'ta tüm aktif personeli `'0000'`'a düşürüyordu — pilot bittikten sonra ciddi güvenlik açığı (Audit Issue #10).
+
+**Düzeltme:**
+
+1. **`server/index.ts`** — `resetNonAdminPasswords()` üretimde ASLA çalışmaz:
+   ```typescript
+   if (process.env.NODE_ENV !== 'development') return;
+   if (process.env.ALLOW_PILOT_PASSWORD_RESET !== '1') return;
+   ```
+
+2. **Yeni `rotatePilotDefaultPasswords()`** — Tek seferlik:
+   - `site_settings.pilot_launched=true` koşulu
+   - bcrypt.compare ile hash'i `'0000'` eşleşen aktif non-admin kullanıcıları bul
+   - `mustChangePassword=true` ata
+   - Marker `site_settings.pilot_default_passwords_rotated=true` (sadece HATASIZ bittikten sonra)
+   - Hata varsa bir sonraki başlangıçta tekrar dener
+
+3. **`server/localAuth.ts` — `enforcePasswordChangeGate`:**
+   ```typescript
+   if (req.user?.mustChangePassword) {
+     const whitelist = ['/api/auth/user', '/api/me/change-password',
+                        '/api/logout', '/api/auth/logout'];
+     if (!whitelist.includes(req.path)) {
+       return res.status(423).json({ error: 'password_change_required' });
+     }
+   }
+   ```
+   - Kiosk token (`authMethod=kiosk_token`) gate'ten muaf — kiosk akışı kullanıcı parolası kullanmaz
+
+**Kullanıcı semptomu:** Login OK, ama her API çağrısı 423 dönüyor → frontend `ForcePasswordChangeDialog` açmalı.
+
+**Bireysel reset:** `server/routes/admin-password.ts` üzerinden (admin/ceo/muhasebe_ik). `'0000'` reset endpoint'i kapalı.
 
 ---
 
