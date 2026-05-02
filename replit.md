@@ -1,7 +1,7 @@
 # DOSPRESSO Franchise Management Platform
 
 ## Overview
-DOSPRESSO is a comprehensive franchise management platform designed to centralize and streamline operations for a coffee/food franchise network. It integrates HR, factory management, training, finance, CRM, quality control, and equipment management across 22 locations (20 branches, 1 HQ, 1 Factory). The platform aims to support 270 users with 29 distinct roles, providing efficient oversight and data management for a multi-location franchise business.
+DOSPRESSO is a comprehensive franchise management platform designed to centralize and streamline operations for a coffee/food franchise network. It integrates HR, factory management, training, finance, CRM, quality control, and equipment management across 22 locations (20 branches, 1 HQ, 1 Factory). The platform supports ~372 users (159 aktif) with **31 distinct roles** across 326 frontend pages and 1,768 backend endpoints, providing efficient oversight and data management for a multi-location franchise business.
 
 ## User Preferences
 - Preferred communication: Simple, everyday language, Turkish preferred
@@ -30,8 +30,8 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Shadcn/ui, 
 
 ### Technical Implementations
 - **Authentication:** Session-based authentication via Passport.js supports both web (username/password with bcrypt) and kiosk (PIN-based with bcrypt) logins, incorporating security measures like password stripping, account lockout, and status management.
-- **Role System:** A robust Role-Based Access Control (RBAC) system manages 29 roles across HQ, branches, and the factory. Permissions are defined through a static map, and `module_flags` offer granular control over module visibility.
-- **Database Schema:** The data model is extensive, organized into 16 modular schema files covering various domains including users, roles, HR, academy, factory operations, CRM, and finance.
+- **Role System:** A robust Role-Based Access Control (RBAC) system manages **31 roles** across HQ, branches, and the factory (system: admin / executive: ceo, cgo / HQ departman: 8 / HQ legacy: 5 / branch hierarchy: 7 / factory floor: 5 / factory recipe: 2 / kiosk: 1). Permissions are defined through a static map, and `module_flags` offer granular control over module visibility. **Bilinen açık (2 May 2026):** `ROLE_MODULE_DEFAULTS` tablosunda 16 rol eksik (ceo, cgo, mudur, sef, gida_muhendisi, sube_kiosk, factory floor 5, marketing, kalite_kontrol, vs.) — Sprint 2 B14 ile tamamlanacak.
+- **Database Schema:** The data model is extensive, organized into **23 modular schema files** (`shared/schema/schema-01.ts` → `schema-23.ts`) defining **455 pgTable** covering various domains including users, roles, HR, academy, factory operations, CRM, and finance.
 - **PDKS Excel Import:** A dedicated 5-table system handles the import of attendance data from external Excel files.
 - **Key Architectural Patterns:**
     - **Soft Deletion:** Implemented using a `deleted_at` column across all core business tables.
@@ -57,3 +57,27 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Shadcn/ui, 
 - **AWS S3 / Replit Object Storage**: Cloud-based storage for files.
 - **Neon Database**: Provides serverless PostgreSQL database services.
 - **IONOS SMTP**: Used for sending email notifications.
+
+## Pilot Hazırlık — Sprint 1 + Sprint 2 (Nis-May 2026)
+
+### Sprint 1 — Pre-Day-1 Hazırlık (TAMAMLANDI, 1-2 May 2026)
+TEST-MATRIX (13 rol smoke test), 4 runbook (db-write, kiosk PDKS, git security, recipe-label), 4 plan dosyası (HQ kiosk PIN, shift_attendance fix, izin bakiye, fabrika MVP), Pilot Day-1 GO/NO-GO checklist + incident log + readiness raporu, Sprint 2 master backlog (B1-B12), çok perspektifli sistem audit (31 rol × 326 sayfa). Toplam: ~3,100 satır docs, 11 commit pilot hazırlık.
+
+### Sprint 2 — Pilot Day-5 Sertleştirme (DEVAM, 2 May 2026 →)
+
+**Tamamlanan task'lar (Replit otomatik propose, owner approved):**
+- **Task #272 MERGED** — Day-5 güvenlik paketi: `POST /api/auth/register` artık admin/ceo/muhasebe_ik korumalı (anonim 401, yetkisiz 403); helmet `frameguard: sameorigin`; `authLimiter` register + `passwordResetLimiter` reset-password endpoint'lerine mount; admin bootstrap log'undan bcrypt hash_prefix kaldırıldı.
+- **Task #273 MERGED** — `shift_attendance.check_out_time` atomik kapanış (DECISIONS#15 çözüldü): branch (4 endpoint), HQ (1 endpoint), factory (2 endpoint) `db.transaction` içinde session UPDATE + SA UPDATE birlikte commit/rollback. HQ/Factory için kullanıcının açık SA kaydı `userId + check_out_time IS NULL + check_in_time ±5dk + pilot test notu hariç` filtresi ile bulunuyor. Backfill script `scripts/backfill-shift-attendance-checkout.ts` (--dry-run / --commit), pilot notu hariç. Dry-run 0 aday, prod tutarlı (`docs/audit/shift-attendance-backfill-2026-05-02.md`).
+
+**IN_PROGRESS:** Task #276 (pdks_daily_summary sync), Task #277 (kiosk vardiya E2E test).
+
+**Sprint 2 master backlog:** `docs/audit/sprint-2-master-backlog.md` — B1-B20 (B13-B20 yeni, çok perspektifli audit sonucu eklendi: public endpoint sertleştirme, ROLE_MODULE_DEFAULTS tamamlama, scheduler advisory lock, pg_dump cron, login lockout DB'ye taşı, TEST-MATRIX 31 role genişletme, legacy rol denetimi, KVKK audit).
+
+**Çok perspektifli sistem audit** (`docs/audit/system-multi-perspective-evaluation-2026-05-02.md`, ~520 satır) — 6 perspektif (güvenlik/performans/veri bütünlüğü/UX/mevzuat/operasyonel), 31 rol denetimi, 326 sayfa kategorizasyonu, 5 kritik bulgu (K1-K5). En kritik 3: G1 `delegation-routes.ts` 5 endpoint AUTH yok, G2 `module-content-routes.ts` 5 CRUD AUTH yok, K2 `ROLE_MODULE_DEFAULTS`'ta 16 rol eksik.
+
+### Owner Tercihler / Çalışma Modeli (May 2026)
+- ChatGPT + Claude geçici devre dışı, sadece Replit Agent ile ilerlenir.
+- Plan/Build mode ayrımı titiz: DB write, schema, migration, env değişiklik için Plan moduna geçiş + isolated task agent + backup + dry-run + GO zorunlu.
+- DOCS-ONLY işler Build modunda yapılabilir (plan dosyaları, audit, runbook, skill güncelleme).
+- Force push yasak; commit/push owner Replit Shell'den manuel.
+- `session-protocol` skill (`.agents/skills/session-protocol/SKILL.md`) her oturum sonu 5 adım zorunlu (devir teslim push, 4 skill update, docs/, replit.md memory, sonraki oturum talimatı).

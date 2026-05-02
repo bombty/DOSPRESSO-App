@@ -39,22 +39,50 @@ Hedef: Pilot Day-1 öncesi personel kayıtları, kiosk giriş/çıkış akışı
 
 ## Açık İşler
 
-1. **HQ kiosk PIN güvenliği** — Plan ✅ hazır (`docs/plans/hq-kiosk-pin-security.md`); implementasyon owner GO bekliyor.
-2. **İzin / rapor / ücretsiz izin bakiyeleri** — Bakiye hesap ve gösterim mantığı. Plan dokümanı YOK.
-4. **Ay sonu puantaj simülasyonu** — Pilot ay sonu öncesi tam puantaj kuru çalıştırması.
-5. **Fabrika üretim MVP** — Fabrika üretim modülünün pilot için MVP kapsamı. Plan dokümanı YOK.
-6. **Reçete + besin + alerjen + etiket sistemi** — Reçete değişikliğinin etiket revize akışına bağlanması. Workflow runbook ✅ var (`docs/runbooks/recipe-label-workflow.md`); implementasyon planı YOK (Sprint 2 / post-pilot).
-7. **Replit otomatik propose ettiği task'lar** (PROPOSED, owner inceleme bekliyor):
-   - **#273** "shift_attendance check-out kapanış bug'ını düzelt (DECISIONS madde 15)" — Madde 14 plan ile destekleniyor (`docs/plans/shift-attendance-checkout-fix.md`); implementasyon için owner GO yeterli.
-   - **#272** "Pilot Day-5 Güvenlik Sertleştirme Paketi (register + frameguard + authLimiter + log temizliği)" — isim/zamanlama tuhaf, içerik anlamlı; owner inceleyip retract veya scope netleştirsin.
+1. **HQ kiosk PIN güvenliği (B1)** — Plan ✅ hazır (`docs/plans/hq-kiosk-pin-security.md`); implementasyon owner GO bekliyor (~4.5 saat).
+2. **İzin / rapor / ücretsiz izin bakiyeleri (B3)** — Plan ✅ hazır (`docs/plans/leave-balance-system.md`); implementasyon owner GO bekliyor (~12 saat).
+3. **Ay sonu puantaj simülasyonu (B4)** — Pilot ay sonu öncesi tam puantaj kuru çalıştırması (~2 saat).
+4. **Fabrika üretim MVP (B5)** — Plan ✅ hazır (`docs/plans/factory-production-mvp.md`, S1+S2 scope); implementasyon owner GO bekliyor (~6-10 saat).
+5. **Reçete + besin + alerjen + etiket sistemi (B6)** — Workflow runbook ✅ var (`docs/runbooks/recipe-label-workflow.md`); implementasyon planı YOK (Sprint 3, ~16-24 saat).
+6. **Sprint 2 backlog yeni 8 iş (B13-B20)** — Çok perspektifli audit sonucu eklenenler:
+   - **B13** Public endpoint sertleştirme (delegation + module-content + export, 5 saat) 🔴 KRİTİK
+   - **B14** ROLE_MODULE_DEFAULTS — 16 eksik rol (2 saat) 🔴 YÜKSEK
+   - **B15** Scheduler advisory lock (3 saat) 🔴 YÜKSEK (autoscale öncesi zorunlu)
+   - **B16** pg_dump cron + S3 yedek (2 saat) 🔴 YÜKSEK
+   - **B17** Login lockout DB'ye taşı (3 saat) 🟡 ORTA
+   - **B18** TEST-MATRIX 31 role genişletme (4 saat) 🟡 ORTA
+   - **B19** Legacy rol denetimi + temizlik (2 saat) 🟡 ORTA
+   - **B20** KVKK audit + iyileştirme (6 saat) 🟡 ORTA
+7. **Replit otomatik IN_PROGRESS task'lar:**
+   - **Task #276** — Şube/HQ/fabrika kapanışlarında `pdks_daily_summary` sync (B11)
+   - **Task #277** — Kiosk vardiya kapanış E2E test (B12)
 
 ---
 
-## Sonraki 3 Adım (öncelik sırası)
+## Sonraki 3 Adım (öncelik sırası — 2 May 2026 akşam)
 
-1. **Push** — local 2 commit ahead (`57a6c4c0c` + `bf2ac7c94`); owner Replit Shell'den `git push origin main` ile origin/main güncelle (ChatGPT/Claude reaktive olursa divergence riskini sıfırla).
-2. **Task #272 değerlendir** — Replit otomatik propose ettiği "Day-5 güvenlik paketi" task'ını UI'dan aç, isim/zamanlama/scope netleştir veya `markFollowUpTaskObsolete({ taskRef: "#272" })` ile retract.
-3. **Owner kararı: implementasyon mı, ek docs mı?** — A) HQ PIN implementasyonu (~4.5 saat), B) shift_attendance fix (~3 saat), C) İzin/rapor bakiye planı (~30 dk DOCS), D) Fabrika üretim MVP planı (~45 dk DOCS), E) Sprint 2 master backlog audit (~1.5 saat DOCS, ChatGPT önerisi).
+1. **Push** — Owner Replit Shell'den `git push origin main` ile origin/main güncelle (Task #272 + #273 merge sonrası bekleyen commit'ler push'lansın).
+2. **Plan moduna geç + I1 öner** — Task #278 (G1+G2 acil AUTH fix) — `delegation-routes.ts` 5 + `module-content-routes.ts` 5 endpoint AUTH ekleme. Pilot Day-1 ÖNCESİ kritik (~1.5 saat isolated agent). Audit referansı: `docs/audit/system-multi-perspective-evaluation-2026-05-02.md` G1, G2.
+3. **Owner karar — D1-D6** (audit B paketi):
+   - D1: Pilot Day-1 tarihi?
+   - D2: Pilot kullanıcı listesi (kim hangi rol)?
+   - D3: Mr. Dobody Day-1 açık mı kapalı mı?
+   - D4: Feature Freeze (15 Haziran'a kadar) ile Sprint 2 implementasyon işleri uyumlu mu?
+   - D5: R3 (izin Day-1 scope — manuel/Excel mi)?
+   - D6: R4 (fabrika scope S1+S2 mi)?
+
+---
+
+## Sprint 1 Çıktıları (Tamamlandı, 1-2 May 2026)
+
+Toplam ~3,100 satır docs, 11 commit:
+- **TEST-MATRIX + 4 runbook** (`57a6c4c0c`) — `docs/TEST-MATRIX.md` (13 rol), db-write-protocol, kiosk-pdks-test, git-security-cleanup, recipe-label-workflow (913 satır)
+- **4 plan dosyası** (`bf2ac7c94` + ek) — HQ kiosk PIN security, shift_attendance fix, leave balance, factory production MVP
+- **Pilot Day-1 hazırlık seti** — GO/NO-GO checklist, incident log template, readiness raporu
+- **Sprint 2 master backlog** — `docs/audit/sprint-2-master-backlog.md` (B1-B20 toplam)
+- **Çok perspektifli sistem audit** — `docs/audit/system-multi-perspective-evaluation-2026-05-02.md` (~520 satır, 31 rol × 326 sayfa, 6 perspektif, 5 kritik bulgu K1-K5, B13-B20 önerisi)
+
+---
 
 ---
 

@@ -26,6 +26,51 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 | Görev patlaması (yüzlerce overdue) | §19 Scheduler Max Instance Limiti |
 | CRM görev tab duplikasyonu | §20 CRM Task Channel Duplikasyonu |
 | Seed script INSERT → NOT NULL violation | §21 Seed Script DB Kolon Uyumsuzluğu |
+| Anonim register / brute force / clickjacking | §22 Day-5 Güvenlik Sertleştirme (Task #272) |
+| `shift_attendance.check_out_time` NULL kalıyor | §23 Atomik Vardiya Kapanışı (Task #273) |
+
+---
+
+## §22 — Day-5 Güvenlik Sertleştirme (Task #272, 2 May 2026)
+
+**Sorun:** `POST /api/auth/register` public, helmet frameguard yok, register/reset-password rate limit yok, log'da bcrypt hash_prefix sızıntısı.
+
+**Düzeltme:**
+- `server/routes/auth.ts` — `POST /api/auth/register` artık `isAuthenticated` + rol kontrolü (`admin`, `ceo`, `muhasebe_ik`); anonim çağrı 401, yetkisiz 403
+- `server/index.ts` — `helmet({ frameguard: { action: 'sameorigin' } })` eklendi (X-Frame-Options: SAMEORIGIN)
+- `server/routes/auth.ts` — `authLimiter` register endpoint'ine + `passwordResetLimiter` reset-password endpoint'ine mount
+- `server/index.ts` — admin bootstrap log'undan `hash_prefix`, `existing_hash_prefix` kaldırıldı; sadece `pw_len`, `id`, `login_sim` kalır
+
+**Doğrulama:** `docs/audit/pilot-day5-hardening-2026-05-02.md`
+
+**İlgili açık iş:** HQ kiosk PIN plaintext (DECISIONS#14 — pilot sonrası, B1)
+
+---
+
+## §23 — Atomik Vardiya Kapanışı (Task #273, 2 May 2026)
+
+**Sorun:** Branch/HQ/Factory shift-end endpoint'leri sadece `*_shift_sessions.check_out_time`'ı UPDATE ediyor, bağlı `shift_attendance.check_out_time` NULL kalıyor. Açık SA satırları birikiyor, kayıt bütünlüğü bozuluyor (DECISIONS#15).
+
+**Düzeltme — `server/routes/branches.ts` (4 yer) + `server/routes/factory.ts` (2 yer):**
+```typescript
+await db.transaction(async (tx) => {
+  await tx.update(branchShiftSessions).set({ checkOutTime: now }).where(...);
+  await tx.update(shiftAttendance).set({ checkOutTime: now }).where(...);
+});
+```
+
+**HQ/Factory'de SA lookup filtresi (FK yok):**
+```sql
+userId == session.userId
+AND check_out_time IS NULL
+AND check_in_time IS NOT NULL
+AND check_in_time BETWEEN session.check_in_time ± 5dk
+AND (notes IS NULL OR notes != 'PILOT_PRE_DAY1_TEST_2026_04_29')
+```
+
+**Backfill:** `scripts/backfill-shift-attendance-checkout.ts` (`--dry-run` default, `--commit`). Dry-run 0 aday → backfill gerekmedi (`docs/audit/shift-attendance-backfill-2026-05-02.md`).
+
+**İlgili açık iş:** Task #276 — `pdks_daily_summary` sync (B11), Task #277 — kiosk vardiya E2E test (B12).
 
 ---
 

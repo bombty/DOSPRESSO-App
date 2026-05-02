@@ -236,6 +236,116 @@ Aşağıdakiler tamamlanmadan Sprint 2'ye geçilmemeli:
 
 ---
 
+## 5.5 Yeni 8 İş — Çok Perspektifli Audit Sonucu (2 May 2026)
+
+`docs/audit/system-multi-perspective-evaluation-2026-05-02.md` raporundan sprint-2 backlog'a eklenen yeni işler. Mevcut B1-B12 listesini tamamlar.
+
+### B13 — Public Endpoint Sertleştirme 🔴 KRİTİK
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🔴 KRİTİK |
+| **Kapsam** | `delegation-routes.ts` 5 endpoint + `module-content-routes.ts` 5 endpoint + `/api/export/*` 19 endpoint AUTH eklenmesi |
+| **Süre** | ~5 saat (3 saat export + 1 saat delegation + 1 saat module-content) |
+| **Plan dokümanı** | YOK — Plan moduna geçince yazılır |
+| **Acceptance** | Tüm 29 endpoint anonim çağrıda 401, yetkisiz rolde 403; pozitif/negatif test her endpoint için |
+| **Bağlı bulgu** | G1, G2, G5 (audit) + FULL_AUDIT Issue #2 |
+| **Risk** | Pilot Day-1 öncesi acil — anonim erişim mevcut |
+
+### B14 — ROLE_MODULE_DEFAULTS Tamamlama 🔴 YÜKSEK
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🔴 YÜKSEK |
+| **Kapsam** | `shared/modules-registry.ts` `ROLE_MODULE_DEFAULTS` tablosuna 16 eksik rol için varsayılan modül listesi |
+| **Eksik roller** | ceo, cgo, mudur, sef, gida_muhendisi, sube_kiosk, kalite_kontrol, marketing, stajyer, bar_buddy, uretim_sefi, fabrika_operator, fabrika_sorumlu, fabrika_personel, fabrika_depo, recete_gm, muhasebe_ik |
+| **Süre** | ~2 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Her yeni rol kullanıcısı login olduğunda boş/eksik modül listesi görmesin; UI sidebar dolu |
+| **Bağlı bulgu** | K2, U3 (audit) |
+| **Risk** | Pilot kullanıcı (Aslan, Eren, Sema, Ümit) ilk login boş ekran görebilir |
+
+### B15 — Scheduler Advisory Lock 🔴 YÜKSEK
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🔴 YÜKSEK (autoscale öncesi zorunlu) |
+| **Kapsam** | `server/services/agent-scheduler.ts` ve 30+ scheduler job'a `pg_advisory_lock` veya distributed lock |
+| **Süre** | ~3 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Replit autoscale'de 2+ instance varken scheduler job'ları aynı anda 2 kere çalışmaz; lock timeout dökümante |
+| **Bağlı bulgu** | P3 (audit) + FULL_AUDIT Issue #11 |
+| **Risk** | Pilot 1 instance OK, ama autoscale geçilirse görev duplikasyonu |
+
+### B16 — pg_dump Cron + S3 Yedek Otomasyonu 🔴 YÜKSEK
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🔴 YÜKSEK (DR temeli) |
+| **Kapsam** | Günlük `pg_dump` cron + Object Storage / S3'e upload + son 30 gün retention + restore test playbook |
+| **Süre** | ~2 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Her gece 03:00 backup, Object Storage'da görünür, manuel restore test başarılı |
+| **Bağlı bulgu** | O6 (audit) |
+| **Risk** | Pilot Day-1 öncesi ZORUNLU |
+
+### B17 — Login Lockout DB'ye Taşı 🟡 ORTA
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🟡 ORTA |
+| **Kapsam** | `server/localAuth.ts` in-memory lockout map → DB tablosuna (`login_attempts` veya `users.lockout_until`) |
+| **Süre** | ~3 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Restart sonrası lockout devam, autoscale'de paralel instance ortak sayar |
+| **Bağlı bulgu** | G7 (audit) + FULL_AUDIT A3 |
+
+### B18 — TEST-MATRIX 31 Role Genişletme 🟡 ORTA
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🟡 ORTA |
+| **Kapsam** | `docs/TEST-MATRIX.md` mevcut 13 rol → 31 rol smoke test |
+| **Eksik roller** | coach, marketing, trainer, kalite_kontrol, supervisor_buddy, stajyer, bar_buddy, uretim_sefi, fabrika_operator, fabrika_sorumlu, fabrika_personel, fabrika_depo, recete_gm, muhasebe (legacy), teknik (legacy), destek, fabrika (legacy), yatirimci_hq |
+| **Süre** | ~4 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Her rol için login + dashboard + 3 ana endpoint test sonucu (geçti/kaldı) |
+| **Bağlı bulgu** | K4 (audit) |
+
+### B19 — Legacy Rol Denetimi + Temizlik 🟡 ORTA
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🟡 ORTA |
+| **Kapsam** | `muhasebe`, `teknik`, `destek`, `fabrika`, `yatirimci_hq` legacy rolleri — kullanım denetimi: gerçekten kullanılıyor mu, kim hangi rolle login? |
+| **Süre** | ~2 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Kullanılmayan roller dökümante (deprecated note); kullanılanlar dökümante (yeni rolle ilişkisi) |
+| **Bağlı bulgu** | K3 (audit) |
+
+### B20 — KVKK Audit + İyileştirme 🟡 ORTA
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🟡 ORTA (hukuki risk) |
+| **Kapsam** | M1-M8 (audit Bölüm 6.1): kişisel veri şifreleme, personel dosya RBAC, audit log denetimi, sağlık raporu sebep yazımı yasak, veri silme akışı, aydınlatma metni, saklama süreleri, kiosk QR IP toplama |
+| **Süre** | ~6 saat |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | KVKK 8 maddenin her biri için mevcut durum + plan dökümante |
+| **Bağlı bulgu** | M1-M8 (audit) |
+
+---
+
+## 5.6 Sprint 2 Toplam Yük
+
+| Grup | İş Sayısı | Toplam Süre |
+|---|---|---|
+| B1-B12 (orijinal) | 12 | ~50-65 saat |
+| B13-B20 (audit) | 8 | ~27 saat |
+| **TOPLAM** | **20** | **~75-90 saat** (8-10 hafta @ 10 saat/hafta) |
+
+---
+
 ## 6. İLİŞKİLİ DOKÜMANLAR
 
 - `docs/SPRINT-LIVE.md` — Aktif sprint canlı durum

@@ -5,19 +5,23 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
-## Platform Metrics (18 Nisan 2026 — Sprint D+E doğrulaması sonrası)
-- **Database tablosu (kodda):** 446 pgTable tanımı
-- **Database tablosu (DB'de gerçek):** 435 (11 fark — dormant modüller)
-- **Backend endpoint:** 1,963 (Sprint A5 sonrası, -14)
-- **Backend route dosyası:** 114
-- **Frontend sayfa:** 316
-- **Frontend route:** 250 (App.tsx)
-- **Aktif kullanıcı:** 159 (372 toplam — Replit DB doğrulaması)
-- **Rol sayısı:** 27 aktif (schema'da 31, 4 hayalet/legacy)
+## Platform Metrics (2 Mayıs 2026 — Sprint 2 başı, çok perspektifli audit sonrası)
+- **Database tablosu (kodda):** **455 pgTable** tanımı (Apr-26 drift kapatıldı; 13 yeni tablo + 4 UNIQUE + 83 index + 47 FK eklendi, Task #255)
+- **Database tablosu (DB'de gerçek):** ~457 (drift = 0, baseline `migrations/0000_baseline.sql`)
+- **Backend endpoint:** **1,768** (118 route dosyası × ortalama 15 endpoint)
+- **Backend route dosyası:** **118**
+- **Frontend sayfa:** **326** (208 kök seviye + 12 klasörde 118 sayfa: admin/37, fabrika/17, yonetim/11, iletisim-merkezi/11, akademi-hq/10, satinalma/9, crm/8, akademi-v3/5, sube/5, hq/2, kalite/1)
+- **Frontend route (App.tsx):** **266**
+- **Aktif kullanıcı:** ~159 (372 toplam — Replit DB doğrulaması)
+- **Rol sayısı:** **31** (sistem 1 + executive 2 + HQ departman 8 + HQ legacy 5 + branch hierarchy 7 + factory floor 5 + factory recipe 2 + kiosk 1). `ROLE_MODULE_DEFAULTS` tablosunda 16 rol eksik (Sprint 2 B14 ile tamamlanacak).
 - **Şube:** 22 (20 aktif + HQ + Fabrika)
-- **Toplam kod:** ~410,000 satır TS/TSX
-- **Doküman:** 68 markdown (docs/)
-- **Schema dosyası:** 23 (shared/schema/schema-01.ts → schema-23.ts)
+- **Schema dosyası:** **23** (`shared/schema/schema-01.ts` → `schema-23.ts`)
+- **App.tsx satır:** 944
+- **nav-registry.ts satır:** 871
+- **Mr. Dobody skill:** 17
+- **Scheduler job:** 30+
+- **Doküman:** 80+ markdown (docs/)
+- **Pilot Day-1 hazırlık:** Sprint 1 tamamlandı (~3,100 satır docs, 11 commit), Sprint 2 başladı (Task #272+#273 MERGED)
 
 ### Aktif Modül Gerçek Durumu (Replit DB 3 tur doğrulama)
 
