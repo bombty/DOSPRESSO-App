@@ -276,6 +276,7 @@ app.use((req, res, next) => {
     await logDbDiagnostics();
     await bootstrapAdminUser();
     await resetNonAdminPasswords();
+    await rotatePilotDefaultPasswords();
     await ensureAdminUserApproved();
     await migrateKioskPasswords();
     await seedKioskAccounts();
@@ -481,8 +482,23 @@ async function bootstrapAdminUser() {
   }
 }
 
+/**
+ * [Task #274 / Audit Issue #10]
+ * Pilot bittikten sonra (pilot_launched=true), startup'ta tüm aktif personelin
+ * parolasını "0000"a sıfırlayan rutin KALICI olarak devre dışı bırakıldı.
+ *
+ * Sadece dev ortamında ve ALLOW_PILOT_PASSWORD_RESET=1 env'i açıkça verildiğinde
+ * çalışır. Üretimde hiçbir koşulda toplu sıfırlama yapılmaz; bireysel/şube bazlı
+ * sıfırlama için server/routes/admin-password.ts kullanılır.
+ */
 async function resetNonAdminPasswords() {
   try {
+    const isDev = process.env.NODE_ENV === "development";
+    const allowReset = process.env.ALLOW_PILOT_PASSWORD_RESET === "1";
+    if (!isDev || !allowReset) {
+      return;
+    }
+
     const { siteSettings } = await import("@shared/schema");
     const [pilotFlag] = await db.select().from(siteSettings).where(eq(siteSettings.key, "pilot_launched"));
     if (pilotFlag && pilotFlag.value === "true") {
@@ -495,9 +511,84 @@ async function resetNonAdminPasswords() {
       .set({ hashedPassword })
       .where(and(ne(users.username, 'admin'), eq(users.isActive, true)))
       .returning({ id: users.id, username: users.username });
-    log(`🔑 Reset passwords for ${result.length} non-admin active users to "0000" (pilot mode)`);
+    log(`🔑 [DEV] Reset passwords for ${result.length} non-admin active users to "0000"`);
   } catch (error) {
     console.error("❌ Non-admin password reset failed:", error);
+  }
+}
+
+/**
+ * [Task #274 / Audit Issue #10]
+ * Pilot süresince "0000" parolası ile çalışan tüm aktif personel için
+ * mustChangePassword=true zorunlu hale getirilir; ilk girişte parola değişimi
+ * istenir (ForcePasswordChangeDialog client/src/App.tsx içinde).
+ *
+ * Idempotent: site_settings.pilot_default_passwords_rotated=true olduğunda
+ * tekrar çalıştırılmaz. Yalnızca bcrypt hash'i "0000" ile eşleşen kullanıcılar
+ * etkilenir; özel parola belirleyenler dokunulmaz.
+ */
+async function rotatePilotDefaultPasswords() {
+  try {
+    const { siteSettings } = await import("@shared/schema");
+    const ROTATED_KEY = "pilot_default_passwords_rotated";
+
+    const [rotatedFlag] = await db.select().from(siteSettings).where(eq(siteSettings.key, ROTATED_KEY));
+    if (rotatedFlag && rotatedFlag.value === "true") {
+      return;
+    }
+
+    const [pilotFlag] = await db.select().from(siteSettings).where(eq(siteSettings.key, "pilot_launched"));
+    if (!pilotFlag || pilotFlag.value !== "true") {
+      // Pilot henüz başlamamış, rotasyona gerek yok
+      return;
+    }
+
+    const candidates = await db.select({
+      id: users.id,
+      username: users.username,
+      hashedPassword: users.hashedPassword,
+      mustChangePassword: users.mustChangePassword,
+    }).from(users).where(and(ne(users.username, 'admin'), eq(users.isActive, true)));
+
+    let affected = 0;
+    let errors = 0;
+    for (const u of candidates) {
+      if (!u.hashedPassword) continue;
+      try {
+        const isDefault = await bcrypt.compare("0000", u.hashedPassword);
+        if (isDefault && !u.mustChangePassword) {
+          await db.update(users)
+            .set({ mustChangePassword: true })
+            .where(eq(users.id, u.id));
+          affected++;
+        }
+      } catch (cmpErr) {
+        errors++;
+        console.error(`[Task#274] bcrypt.compare failed for user ${u.username}:`, cmpErr);
+      }
+    }
+
+    // Marker yalnızca taramanın tüm kullanıcıları hatasız işlediği durumda
+    // yazılır. Aksi halde bir sonraki başlangıçta tekrar denenir, böylece
+    // güvenlik durumu garanti altına alınmadan "tamamlandı" işareti
+    // konmaz. (Kod review feedback'i Task #274.)
+    if (errors === 0) {
+      await db.insert(siteSettings).values({
+        key: ROTATED_KEY,
+        value: "true",
+        type: "boolean",
+        category: "security",
+        description: "Task #274 — Pilot sonrası '0000' parola sahiplerine mustChangePassword=true uygulandı",
+      }).onConflictDoUpdate({
+        target: siteSettings.key,
+        set: { value: "true", updatedAt: new Date() },
+      });
+      log(`🔐 [Task#274] Pilot default password rotation complete — ${affected} user(s) flagged mustChangePassword=true`);
+    } else {
+      log(`⚠️ [Task#274] Rotation finished with ${errors} error(s); marker NOT set, will retry on next startup. Affected so far: ${affected}`);
+    }
+  } catch (error) {
+    console.error("❌ [Task#274] rotatePilotDefaultPasswords failed:", error);
   }
 }
 

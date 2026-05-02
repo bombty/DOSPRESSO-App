@@ -452,8 +452,42 @@ export async function setupAuth(app: Express, authLimiter?: any) {
 
 }
 
+/**
+ * [Task #274 / Audit Issue #10]
+ * mustChangePassword=true olan kullanıcılar parolalarını değiştirmeden
+ * hiçbir korumalı API'ye erişemez. Sadece aşağıdaki uç noktalar serbesttir:
+ *  - GET  /api/auth/user           (oturum bilgisi/flag okuma)
+ *  - POST /api/me/change-password  (parola değiştirme akışı)
+ *  - POST /api/logout, /api/auth/logout (çıkış)
+ *
+ * Kiosk token ile gelen istekler bu kontrole tabi DEĞİLDİR; çünkü kiosk
+ * akışında kullanıcı parolası kullanılmaz (PIN/QR ile ayrı oturum).
+ */
+const PASSWORD_CHANGE_ALLOWED_PATHS = new Set<string>([
+  "/api/auth/user",
+  "/api/me/change-password",
+  "/api/logout",
+  "/api/auth/logout",
+]);
+
+function enforcePasswordChangeGate(req: any, res: any): boolean {
+  const user = req.user;
+  if (!user || !(user as any).mustChangePassword) return false;
+  const isKioskToken = (req as any).authMethod === "kiosk_token";
+  if (isKioskToken) return false;
+  const path = (req.path || req.url || "").split("?")[0];
+  if (PASSWORD_CHANGE_ALLOWED_PATHS.has(path)) return false;
+  res.status(423).json({
+    error: "password_change_required",
+    message: "Devam etmeden önce parolanızı değiştirmelisiniz.",
+    mustChangePassword: true,
+  });
+  return true;
+}
+
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   if (req.isAuthenticated()) {
+    if (enforcePasswordChangeGate(req, res)) return;
     return next();
   }
   const token = req.headers['x-kiosk-token'] as string;
