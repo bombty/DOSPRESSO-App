@@ -252,18 +252,16 @@ Aşağıdakiler tamamlanmadan Sprint 2'ye geçilmemeli:
 | **Bağlı bulgu** | G1, G2, G5 (audit) + FULL_AUDIT Issue #2 |
 | **Risk** | Pilot Day-1 öncesi acil — anonim erişim mevcut |
 
-### B14 — ROLE_MODULE_DEFAULTS Tamamlama 🔴 YÜKSEK
+### B14 — ROLE_MODULE_DEFAULTS Tamamlama ✅ ÇÖZÜLDÜ NO-OP (Task #281, 2 May 2026)
 
 | Alan | Değer |
 |---|---|
-| **Severity** | 🔴 YÜKSEK |
-| **Kapsam** | `shared/modules-registry.ts` `ROLE_MODULE_DEFAULTS` tablosuna 16 eksik rol için varsayılan modül listesi |
-| **Eksik roller** | ceo, cgo, mudur, sef, gida_muhendisi, sube_kiosk, kalite_kontrol, marketing, stajyer, bar_buddy, uretim_sefi, fabrika_operator, fabrika_sorumlu, fabrika_personel, fabrika_depo, recete_gm, muhasebe_ik |
-| **Süre** | ~2 saat |
-| **Plan dokümanı** | YOK |
-| **Acceptance** | Her yeni rol kullanıcısı login olduğunda boş/eksik modül listesi görmesin; UI sidebar dolu |
-| **Bağlı bulgu** | K2, U3 (audit) |
-| **Risk** | Pilot kullanıcı (Aslan, Eren, Sema, Ümit) ilk login boş ekran görebilir |
+| **Severity** | ✅ NO-OP — teşhis hatası |
+| **Gerçek durum** | `ROLE_MODULE_DEFAULTS` (`shared/modules-registry.ts:384`) **dead code** — 0 import. Gerçek erişim mekanizması `role_module_permissions` DB tablosu (3127 satır, **31 rol DOLU**) → `GET /api/me/permissions` |
+| **Doğrulama (2 May 2026)** | 5 pilot rol için `psql` ile modül listesi kontrol edildi: ceo (79), cgo (79), mudur (79), fabrika_mudur (79), sube_kiosk (78) — hepsi dashboard/hr/employees/equipment/shifts/tasks/users/factory_* gibi kritik modüllere `view` (+ rol bazlı create/edit/delete/approve) izinli |
+| **Aksiyon** | (a) `ROLE_MODULE_DEFAULTS`'a `@deprecated` JSDoc + DEAD CODE açıklaması eklendi; (b) `replit.md` "Bilinen açık" notu düzeltildi; (c) audit raporu K2/U3 düzeltme bölümü eklendi; (d) Sprint 3 backlog'a B21 (modül erişim mimari konsolidasyon) + B22 (`manifest-auth` fail-open) eklendi |
+| **Pilot etkisi** | SIFIR — CEO Aslan, mudur Erdem/Mahmut, fabrika_mudur Eren, sube_kiosk hepsi normal modül listesi görür |
+| **Bağlı kayıt** | DECISIONS#31, audit `system-multi-perspective-evaluation-2026-05-02.md` K2 düzeltme |
 
 ### B15 — Scheduler Advisory Lock 🔴 YÜKSEK
 
@@ -367,3 +365,31 @@ Aşağıdakiler tamamlanmadan Sprint 2'ye geçilmemeli:
 ---
 
 > **Bu doküman MASTER BACKLOG'tur. Sprint 2 başında her iş için ayrı sprint planlaması yapılır. Replit Agent + Owner periyodik retro toplantısında bu liste güncellenir, yeni işler eklenir, tamamlananlar arşivlenir.**
+
+---
+
+## EK — Sprint 3'e Önerilen Yeni İşler (Task #281 audit sonucu, 2 May 2026)
+
+### B21 — Modül Erişim Mimari Konsolidasyon (mimari borç)
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🟡 ORTA (mimari borç, pilot etkisi yok) |
+| **Kapsam** | Sistemde 9 paralel rol/modül erişim mekanizması var (bkz. audit Bölüm 11.5). Konsolidasyon planı: (1) `role_module_permissions` ana kanal olarak kararlaştır; (2) naming drift kapat (`academy.ai` vs `academy_ai` vs `akademi-ai-assistant` — 243 distinct vs 304 in `permission_modules` registry); (3) `permission_actions`+`role_permission_grants` boş RBAC v2 — gömülü mü canlandır mı karar; (4) `ROLE_MODULE_DEFAULTS` dead code SİL; (5) `MODULES[].roles` + `dobody-proposals.ts` inline matrisi tek kaynaktan üret. |
+| **Süre** | ~12-16 saat (DOCS + plan + faz faz refactor) |
+| **Plan dokümanı** | YOK — Sprint 3 başında yazılır |
+| **Acceptance** | (a) Modül key naming standartı (snake_case), tüm DB tabloları + registry tek isim kullanır; (b) tek RBAC mekanizması live (diğerleri @deprecated veya silindi); (c) 31 rol için "kullanıcı hangi modülleri görür?" sorgusu tek SQL ile çözülür; (d) drift script (`scripts/permission-drift-check.ts`) eklendi. |
+| **Bağlı bulgu** | Audit K2 düzeltmesi (Bölüm 11.5), DECISIONS#31 |
+| **Risk** | DOCS-only başlar, refactor faz faz yapılır, prod kesintisi yok. |
+
+### B22 — `manifest-auth.ts` Fail-Open Düzelt (güvenlik)
+
+| Alan | Değer |
+|---|---|
+| **Severity** | 🟡 ORTA (G-serisi güvenlik, pilot sonrası) |
+| **Kapsam** | `server/services/manifest-auth.ts:60-65` — `requireManifestAccess` middleware catch bloğu hata yakaladığında `next()` çağırıyor ("fail-open" — yetki kontrolü hata atarsa erişim VERİLİYOR). Olması gereken: hata durumunda `res.status(500).json({ error: 'authorization_check_failed' })` veya en azından admin'e alarm + `next(error)`. |
+| **Süre** | ~1.5 saat (fix + test + audit log) |
+| **Plan dokümanı** | YOK |
+| **Acceptance** | Middleware throw eder → 500 + audit log; mevcut `requireManifestAccess` consumer'ları regression test'i geçer. |
+| **Bağlı bulgu** | Audit Bölüm 11.5 (9 mekanizma tablosu — #4) |
+| **Risk** | Düşük — mevcut consumer az (manifest sistemi opsiyonel adoption). |

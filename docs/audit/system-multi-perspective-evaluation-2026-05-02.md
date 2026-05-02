@@ -36,7 +36,7 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 | # | Bulgu | Severity | Önerilen Aksiyon |
 |---|---|---|---|
 | **K1** | ~~**`delegation-routes.ts` 5 endpoint TAMAMEN AUTH YOK**~~ | ✅ ÇÖZÜLDÜ (Task #279) | Kod zaten korumalı (bkz. Bölüm 2.2 G1). Audit bulgusu eskimişti. |
-| **K2** | **`ROLE_MODULE_DEFAULTS` tablosunda 16 rol eksik** — ceo, cgo, gida_muhendisi, sef, recete_gm, mudur, sube_kiosk, kalite_kontrol, marketing, factory floor 5 rol, vs. UI'da rol bazlı modül görünürlüğü eksik | 🔴 YÜKSEK | Sprint 2 hafta 1 |
+| **K2** | ~~**`ROLE_MODULE_DEFAULTS` tablosunda 16 rol eksik**~~ | ✅ ÇÖZÜLDÜ NO-OP (Task #281) | **Teşhis hatası:** `ROLE_MODULE_DEFAULTS` (`shared/modules-registry.ts:384`) **dead code** — 0 import. Gerçek erişim `role_module_permissions` DB tablosu (3127 satır, 31 rol DOLU) → `GET /api/me/permissions`. 5 pilot rol (ceo, cgo, mudur, fabrika_mudur, sube_kiosk) modül listesi `psql` ile doğrulandı. Pilot etkisi YOK. Konsolidasyon Sprint 3 B21'e taşındı. Detay: bkz. Bölüm 11. |
 | **K3** | **Eski/legacy roller hâlâ enum'da** (`muhasebe`, `teknik`, `destek`, `fabrika`, `yatirimci_hq`) — geriye dönük uyumluluk için, ama dökümante edilmemiş; karışıklık riski | 🟡 ORTA | Sprint 2 sonu — temizlik veya açık dökümante |
 | **K4** | **31 roldan sadece 13'ü TEST-MATRIX'te** — eksik 18 rol (factory floor 5 rol + HQ marketing/trainer/kalite_kontrol + branch hiyerarşi 3 rol + factory recete_gm + legacy 5) | 🟡 ORTA | Sprint 2 hafta 2 — TEST-MATRIX genişlet |
 | **K5** | **326 sayfadan 208'i kök seviyede dağınık** (sadece 12 sayfa kategorize klasörlerde — admin/yonetim/fabrika/sube/crm/satinalma/hq/akademi/iletisim/kalite) — navigasyon + nav-registry karmaşık | 🟢 DÜŞÜK | Sprint 3 — refactor (UI etkisi yok, kod organizasyonu) |
@@ -147,7 +147,7 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 |---|---|---|---|---|
 | **U1** | Reçete detay sayfası nadiren spinner'da kalır (md. 28) | 🟢 DÜŞÜK (geçici çözüm var) | Hard refresh çözer | Post-pilot UX iyileştirme |
 | **U2** | 326 sayfa, 208'i kök seviye → nav-registry karmaşık | 🟡 ORTA | Yeni geliştirici onboarding zor | Sprint 3 — klasör organizasyonu |
-| **U3** | 16 rol için ROLE_MODULE_DEFAULTS yok (K2) → UI'da modül görünürlüğü eksik | 🔴 YÜKSEK | Yeni rol kullanıcısı boş ekran görebilir | Sprint 2 hafta 1 — defaults ekle |
+| **U3** | ~~16 rol için ROLE_MODULE_DEFAULTS yok~~ | ✅ ÇÖZÜLDÜ NO-OP (Task #281) | UI etkisi YOK — `role_module_permissions` DB 31 rol DOLU, `/api/me/permissions` normal döner. K2 düzeltmesi geçerli. |
 | **U4** | Fabrika modülü 17 sayfa ama Day-1 scope S1+S2 (plan + batch) → fazla sayfa görünüyor olabilir | 🟡 ORTA | Eren'in beklentisi kafası karışabilir | F4 plan — module_flags ile gizle |
 | **U5** | Kullanıcı dashboard'unda izin bakiye widget yok | 🟡 ORTA | Pilot personeli "kalan iznim ne?" sorabilir | B3 plan — yeni widget |
 | **U6** | "Yardım" / "Kullanım kılavuzu" rolü bazlı içerik var mı? (`server/usage-guide-content.ts` kod tabanında) | ❓ BELİRSİZ | Onboarding zor | Doğrula + 31 rol için tamamla |
@@ -375,7 +375,7 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 | 1 | **G1: `delegation-routes.ts` 5 endpoint AUTH ekle** | 1 saat | Yeni |
 | 2 | **G2: `module-content-routes.ts` 5 endpoint AUTH ekle** | 1 saat | Yeni |
 | 3 | **G5: `/api/export/*` 19 endpoint AUTH ekle** | 3 saat | FULL_AUDIT Issue #2 |
-| 4 | **K2/U3: ROLE_MODULE_DEFAULTS — 16 eksik rol ekle** (en kritik: ceo, mudur, sef, gida_muhendisi) | 2 saat | Yeni |
+| 4 | ~~**K2/U3: ROLE_MODULE_DEFAULTS — 16 eksik rol ekle**~~ | ✅ ÇÖZÜLDÜ NO-OP (Task #281) | Bkz. §11.5 — dead code, `role_module_permissions` DB 31 rol DOLU |
 | 5 | **B1: HQ PIN bcrypt + lockout** (Sprint 2 master backlog) | 4.5 saat | Plan ✅ |
 | 6 | **G6/B9: Pilot "0000" parola değişimi akışı** | 2 saat | B1 ile birleşir |
 | 7 | **P3: Scheduler advisory lock** (autoscale öncesi) | 3 saat | Yeni |
@@ -422,6 +422,65 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 
 ---
 
+## 11.5 K2 / U3 DÜZELTMESİ — Modül Erişim Mekanizması Gerçek Haritası (Task #281, 2 May 2026)
+
+K2 ve U3 bulguları **yanlış katmanı** işaret ediyordu. Sistemde **9 paralel rol/modül erişim mekanizması** var; gerçek tüketici DB tablosu zaten 31 rol için DOLU.
+
+### Doğrulanmış gerçek mekanizma — `role_module_permissions` DB tablosu
+
+```
+psql sorgusu (2 May 2026):
+  SELECT role, COUNT(*) FROM role_module_permissions GROUP BY role;
+  → 31 rol, toplam 3127 satır
+  → admin: 240, supervisor: 240, coach: 235, muhasebe: 231
+  → ceo/cgo/mudur/sef/recete_gm/uretim_sefi/satinalma/trainer/fabrika_mudur/muhasebe_ik: 79
+  → supervisor_buddy: 123, yatirimci_hq: 98
+  → bar_buddy/barista/destek/fabrika*/gida_muhendisi/kalite_kontrol/marketing/stajyer/sube_kiosk/teknik/yatirimci_branch: 78
+```
+
+**Frontend kanal:** `GET /api/me/permissions` (`server/routes/certificate-routes.ts:751`) → `storage.getRolePermissions()` → `role_module_permissions` SELECT → `{ permissions: { module: actions[] } }` → mega-modules render.
+
+**5 pilot rolün kritik modül kontrolü (PASS):**
+| Rol | Modül sayısı | Kritik modüller |
+|---|---|---|
+| ceo | 79 | dashboard, hr, employees, equipment, shifts, tasks, users, akademi |
+| cgo | 79 | dashboard, hr, employees, equipment, shifts, tasks |
+| mudur | 79 | dashboard, employees, equipment, branch_inspection, branch_inventory, shifts |
+| fabrika_mudur | 79 | factory_dashboard, factory_kiosk, factory_compliance, equipment, employees |
+| sube_kiosk | 78 | dashboard, checklists, inventory, shifts, tasks, notifications |
+
+### Sistemde 9 paralel modül erişim mekanizması
+
+| # | Mekanizma | Kaynak | Durum | Tüketici |
+|---|---|---|---|---|
+| 1 | `role_module_permissions` DB | `shared/schema/schema-05.ts` | ✅ DOLU + KULLANILIYOR | `/api/me/permissions` → frontend mega-modules |
+| 2 | `permission_actions` (269) + `role_permission_grants` (**0**) | `shared/schema` | ⚠️ YARIM RBAC v2 — `resolvePermissionScope` hep `false` döner | `permission-service.ts` |
+| 3 | `module_flags` DB (93 satır, `target_role=NULL`) | `shared/schema` | ✅ kullanılıyor (kapı açma) | `requireModuleEnabled` middleware |
+| 4 | `module-manifest.ts ALL_MODULES[].roles` | `shared/module-manifest.ts` | ⚠️ **FAIL-OPEN** (catch'te `next()`) | `requireManifestAccess` middleware |
+| 5 | `MODULES[].roles` | `shared/modules-registry.ts` | ✅ | frontend `module-hub-page.tsx` |
+| 6 | `dobody-proposals.ts` inline matris | `server/routes/dobody-proposals.ts:253-` | ✅ | Mr. Dobody scope |
+| 7 | `dashboard_role_widgets` DB | `shared/schema` | ✅ | Komuta Merkezi 2.0 |
+| 8 | `module-menu-config.ts allowedRoles` | `client/src/components/layout/` | ✅ | `RouteModuleSidebar` |
+| 9 | `ROLE_MODULE_DEFAULTS` | `shared/modules-registry.ts:384` | ❌ **DEAD CODE, 0 import** | — (bu auditin yanlış işaret ettiği yer) |
+
+### Pilot etkisi: SIFIR
+
+CEO Aslan, mudur Erdem/Mahmut, fabrika_mudur Eren, sube_kiosk hepsi `role_module_permissions` üzerinden normal modül listesi görür. Audit'in "boş ekran" kaygısı geçersiz.
+
+### Sprint 3'e taşınan işler
+
+- **B21** — Modül erişim mimari konsolidasyon: 9 mekanizmayı haritala, naming drift kapat (`academy.ai` vs `academy_ai` vs `akademi-ai-assistant` — DB'de 243 distinct module vs 304 in `permission_modules`), RBAC v2 dead path (`role_permission_grants` boş) gömülü mü canlandır mı kararı.
+- **B22** — `manifest-auth.ts` fail-open düzelt: `requireManifestAccess` middleware catch bloğu `next()` yerine `res.status(500)` dönmeli (G-serisi güvenlik bulgusu, pilot sonrası).
+
+### Bu bölümün takibi
+
+- `shared/modules-registry.ts:368` — `ROLE_MODULE_DEFAULTS` üstünde `@deprecated` JSDoc
+- `replit.md` Role System notu düzeltildi
+- `docs/audit/sprint-2-master-backlog.md` B14 → ÇÖZÜLDÜ NO-OP
+- `docs/DECISIONS.md` madde 31
+
+---
+
 ## 11. ÖNERİ — SPRINT 2 MASTER BACKLOG'A EKLENECEKLER
 
 `docs/audit/sprint-2-master-backlog.md` mevcut B1-B12 listesine bu rapor sonucu **YENİ 8 iş** önerilir:
@@ -429,7 +488,7 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 | Yeni # | İş | Severity | Süre | Açıklama |
 |---|---|---|---|---|
 | **B13** | Public endpoint sertleştirme (G1 + G2 + G5) | 🔴 KRİTİK | 5 saat | delegation, module-content, export endpoint'lerine AUTH ekle |
-| **B14** | ROLE_MODULE_DEFAULTS — 16 eksik rol tamamlama | 🔴 YÜKSEK | 2 saat | Modül görünürlüğü pilot UX kritik |
+| ~~**B14**~~ | ~~ROLE_MODULE_DEFAULTS — 16 eksik rol tamamlama~~ | ✅ ÇÖZÜLDÜ NO-OP (Task #281) | — | Dead code, `role_module_permissions` DB 31 rol DOLU; bkz. §11.5 + DECISIONS#31 |
 | **B15** | Scheduler advisory lock (P3) | 🔴 YÜKSEK | 3 saat | Autoscale öncesi ZORUNLU |
 | **B16** | pg_dump cron + S3 yedek otomasyonu (O6) | 🔴 YÜKSEK | 2 saat | DR temeli |
 | **B17** | Login lockout DB'ye taşı (G7) | 🟡 ORTA | 3 saat | Restart resistance |
@@ -449,14 +508,14 @@ Status: **YENİ AUDIT** — Sprint 2 master backlog'a önerilen ekler
 - ✅ **DB sağlığı temiz** — drift = 0
 - ✅ **Sprint 1 tamam** — TEST-MATRIX, runbook'lar, plan dosyaları, GO/NO-GO checklist
 - ⚠️ **Güvenlik kritik açıklar** — G1, G2, G5 (toplam 29 endpoint AUTH yok) — Sprint 2 hafta 1 zorunlu fix
-- ⚠️ **Rol/modül uyumsuzluğu** — 16/31 rol ROLE_MODULE_DEFAULTS'ta yok (UI yan etki)
+- ✅ ~~**Rol/modül uyumsuzluğu** — 16/31 rol ROLE_MODULE_DEFAULTS'ta yok~~ — ÇÖZÜLDÜ NO-OP (Task #281): teşhis hatasıydı; gerçek mekanizma `role_module_permissions` DB tablosu 31 rol için DOLU. Mimari borç (9 paralel mekanizma) → Sprint 3 B21+B22.
 - ⚠️ **Test coverage** — Vitest var ama düzenli koşmuyor, E2E yok
 - 🟢 **Mevcut mimari sağlam** — büyük ama düzenli, refactor yerine hedefli iyileştirme yeterli
 
 ### 12.2 Sprint 2 Önerilen Yol Haritası
 
 **Hafta 1 (KRİTİK güvenlik):**
-- B13 (public endpoint AUTH) + B1 (HQ PIN) + B14 (ROLE_MODULE_DEFAULTS) + B15 (advisory lock) + B16 (yedek)
+- B13 (public endpoint AUTH) + B1 (HQ PIN) + ~~B14 (ROLE_MODULE_DEFAULTS)~~ ✅ NO-OP + B15 (advisory lock) + B16 (yedek ✅ Task #280)
 
 **Hafta 2-3 (Pilot bug + test):**
 - B11 (pdks sync) + B12 (E2E test) + B17 (lockout DB) + B19 (legacy rol)
