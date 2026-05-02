@@ -1,0 +1,145 @@
+MODE: DOCS-ONLY + READ-ONLY AUDIT — TODAY FREE SPRINT MASTER WORK
+
+Bugün Replit kullanımını verimli kullanmak istiyoruz. Ama güvenli ilerleyeceğiz.
+
+Önce Git sync kontrolü yap:
+- git fetch origin
+- local HEAD ve origin/main aynı mı kontrol et
+- Eğer local behind ise normal pull/ff-only yap
+- Conflict/divergence varsa dur ve raporla
+
+Kurallar:
+- DB write yapma.
+- SQL INSERT/UPDATE/DELETE/ALTER/DROP çalıştırma.
+- Migration/schema/env/package değiştirme.
+- Production veriye dokunma.
+- Kod değiştirme.
+- Commit/push yapma.
+- Sadece markdown dokümantasyon oluştur/güncelle ve read-only audit yap.
+- Eğer otomatik checkpoint olursa raporla.
+
+Önce şu dosyaları oku:
+- docs/DECISIONS.md
+- docs/SPRINT-LIVE.md
+- docs/COLLABORATION-PROTOCOL.md
+- docs/audit/dospresso-system-map-and-roadmap-2026-04-27.md
+- docs/audit/gida-muh-system-analysis-2026-04-27.md
+- docs/audit/recete-etiket-pending-decisions-report.md
+
+Bugün oluşturulacak/güncellenecek dosyalar:
+
+1. docs/TEST-MATRIX.md
+Rol bazlı test matrisi oluştur.
+Roller:
+admin, ceo, cgo, gida_muhendisi, sef, fabrika_mudur, mudur, supervisor, barista, sube_kiosk, yatirimci_branch, muhasebe_ik, satinalma.
+Her rol için:
+- görebileceği modüller
+- yapabileceği kritik işlemler
+- yapmaması gereken işlemler
+- smoke test adımları
+
+Özellikle yaz:
+- kiosk insan personel değildir
+- CEO/Aslan reçete tam yetkili
+- Sema/gida_muhendisi besin/alerjen/gramaj
+- Ümit/sef reçete edit yok, üretim takip var
+- Eren/fabrika_mudur görür ama değiştirmez
+- yatırımcı sadece kendi şubesini görür
+
+2. docs/runbooks/db-write-protocol.md
+DB write protokolünü yaz:
+- read-only analiz
+- SQL preview
+- dry-run / ROLLBACK
+- backup
+- owner GO
+- COMMIT
+- verification
+- rollback planı
+- hard delete yasak
+- hassas veri loglanmaz
+- DB write işleri Replit tarafından yapılır
+
+3. docs/runbooks/kiosk-pdks-test.md
+Kiosk/PDKS test runbook’u yaz:
+- Işıklar, Lara, Fabrika, HQ
+- login → shift-start → shift-end
+- test kayıtları PILOT_PRE_DAY1_TEST_2026_04_29 notes ile işaretlenir
+- PDKS doğrulama SELECT örnekleri
+- test kayıtları gerçek operasyon değildir
+- kiosk kullanıcıları personel listesinde görünmemeli
+- soft-deleted/inactive user PIN bilse bile login olamamalı
+
+4. docs/runbooks/git-security-cleanup.md
+Git güvenlik runbook’u yaz:
+- COMMIT SQL
+- backup
+- dump
+- sql.gz
+- import-output logs
+- bcrypt hash
+- KVKK/personel dosyaları
+- .gitignore kuralları
+- current tracking cleanup
+- history rewrite yapılmadığı notu
+- force push/history rewrite sadece owner özel kararıyla
+- public repo risk notu
+
+5. docs/runbooks/recipe-label-workflow.md
+Reçete + etiket workflow runbook’u yaz:
+- CEO/Aslan tam yetki
+- gida_muhendisi besin/alerjen/gramaj
+- sef edit yok
+- fabrika_mudur read-only
+- reçete değişince etiket revize gerekli olmalı
+- besin değeri güncel reçete/hammaddeye göre hesaplanmalı
+- TGK uyumlu etiket hedefi
+- etiket statüleri:
+  - taslak
+  - onay bekliyor
+  - onaylı
+  - revize gerekli
+- Sprint 2 / post-pilot kapsamı olarak işaretle
+
+6. docs/audit/pilot-readiness-current.md
+Güncel pilot readiness raporu hazırla:
+- tamamlananlar
+- açık riskler
+- pilot öncesi zorunlu işler
+- pilot sonrası işler
+- Replit’in gözünden GO/NO-GO durumu
+- hangi işler DB write gerektirir
+- hangi işler sadece kod/docs işidir
+
+7. docs/audit/sprint-2-master-backlog.md
+Sprint 2 master backlog hazırla:
+- HQ kiosk PIN güvenliği
+- shift_attendance check-out kapanışı
+- izin/rapor/ücretsiz izin altyapısı
+- ay sonu puantaj simülasyonu
+- fabrika üretim MVP
+- reçete + besin + alerjen + etiket sistemi
+Her iş için:
+- amaç
+- risk
+- tahmini süre
+- etkilenen dosyalar/tablolar
+- DB write gerekir mi?
+- pilot öncesi mi sonrası mı?
+- önerilen sıra
+
+Read-only kontroller:
+- npm run check mümkünse çalıştır, sonucu raporla
+- build çalıştırma gerekiyorsa önce sor; uzun sürebilir
+- DB’ye SELECT atabilirsin ama write yok
+- canlı veri risklerini sadece raporla
+
+Raporla:
+1. Git sync durumu
+2. Oluşturulan/güncellenen dosyalar
+3. Kod/DB/env/schema/package değişti mi?
+4. Commit/push yapılmadığını doğrula
+5. npm run check sonucu varsa yaz
+6. En kritik 10 açık iş
+7. Bugün Replit ücretsizken sıradaki en mantıklı 5 iş
+8. Hangi işler için owner GO gerekir?
