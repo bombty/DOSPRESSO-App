@@ -696,14 +696,16 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     frameSrc: ["'self'", "https://www.youtube.com"],
     baseUri: ["'self'"],
     formAction: ["'self'"],
-    frameAncestors: ["'self'", "https://*.replit.dev", "https://*.replit.app", "https://*.repl.co"],
+    frameAncestors: isDev
+      ? ["'self'", "https://*.replit.dev", "https://*.replit.app", "https://*.repl.co"]
+      : ["'self'"],
   };
   app.use(helmet({
     contentSecurityPolicy: { directives: cspDirectives },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    frameguard: false,
+    frameguard: { action: 'sameorigin' },
   }));
 
   app.use((req, res, next) => {
@@ -794,6 +796,8 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
 
   app.use('/api/login', loginLimiter);
   app.use('/api/auth/forgot-password', passwordResetLimiter);
+  app.use('/api/auth/reset-password', passwordResetLimiter);
+  app.use('/api/auth/register', authLimiter);
 
   await setupAuth(app, authLimiter);
 
@@ -975,8 +979,16 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   });
 
 
-  // POST /api/auth/register - Public registration endpoint
-  app.post('/api/auth/register', async (req, res) => {
+  // POST /api/auth/register - Restricted to authenticated admin/HQ-HR roles (Pilot Day-5 sertleştirme)
+  const REGISTER_ALLOWED_ROLES = new Set(['admin', 'ceo', 'muhasebe_ik']);
+  const requireRegisterRole = (req: any, res: any, next: any) => {
+    const role = req.user?.role;
+    if (!role || !REGISTER_ALLOWED_ROLES.has(role)) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+    next();
+  };
+  app.post('/api/auth/register', isAuthenticated, requireRegisterRole, async (req, res) => {
     try {
       const { sendApprovalRequestEmail, sendWelcomeEmail } = await import('./email');
       const crypto = await import('crypto');

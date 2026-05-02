@@ -8,7 +8,7 @@ Son güncelleme: 2 Mayıs 2026
 
 ## Aktif Sprint
 
-**Sprint 1 — Personel + Kiosk + PDKS Pilot Hazırlığı**
+**Sprint 2 — Pilot Day-5 Sertleştirme**
 
 Hedef: Pilot Day-1 öncesi personel kayıtları, kiosk giriş/çıkış akışı ve PDKS verisinin uçtan uca çalışır durumda olması.
 
@@ -32,6 +32,7 @@ Hedef: Pilot Day-1 öncesi personel kayıtları, kiosk giriş/çıkış akışı
 14. **`shift_attendance` check-out bug planı** (2 May 2026, commit `bf2ac7c94`) — `docs/plans/shift-attendance-checkout-fix.md` (~280 satır): branch/HQ/factory 3 endpoint root cause, ortak utility refactor önerisi, 5 faz, 14 test, 6 açık karar. Implementasyon BEKLİYOR (owner GO).
 15. **Pilot Day-1 GO/NO-GO checklist** (2 May 2026, commit `bf2ac7c94`) — `docs/PILOT-DAY1-CHECKLIST.md` (~200 satır): 7 kategori 50+ kontrol, 7 NO-GO senaryosu + tampon plan, saat-bazlı izleme tablosu, gün sonu değerlendirme şablonu.
 16. **Pilot Day-1 incident log template** (2 May 2026, commit `bf2ac7c94`) — `docs/PILOT-DAY1-INCIDENT-LOG.md` (~210 satır): severity matrisi (P0-P3), eskalasyon zinciri, incident kayıt formatı, 6 P0/P1 acil runbook shortcut, gün sonu metrik tablosu.
+17. **Pilot Day-5 güvenlik sertleştirme paketi** (2 May 2026, task #272) — `POST /api/auth/register` artık `isAuthenticated` + `admin/ceo/muhasebe_ik` rol kontrolü ile korumalı (anonim çağrı 401, yetkisiz 403); helmet `frameguard: { action: 'sameorigin' }` aktif (X-Frame-Options: SAMEORIGIN); `authLimiter` register ve `passwordResetLimiter` reset-password endpoint'lerine de mount edildi; `server/index.ts` admin bootstrap log'undan bcrypt `hash_prefix` ve `existing_hash_prefix` alanları kaldırıldı, sadece `pw_len`, `id`, `login_sim` kalır. Doğrulama notu: `docs/audit/pilot-day5-hardening-2026-05-02.md`.
 
 ---
 
@@ -44,7 +45,6 @@ Hedef: Pilot Day-1 öncesi personel kayıtları, kiosk giriş/çıkış akışı
 5. **Fabrika üretim MVP** — Fabrika üretim modülünün pilot için MVP kapsamı. Plan dokümanı YOK.
 6. **Reçete + besin + alerjen + etiket sistemi** — Reçete değişikliğinin etiket revize akışına bağlanması. Workflow runbook ✅ var (`docs/runbooks/recipe-label-workflow.md`); implementasyon planı YOK (Sprint 2 / post-pilot).
 7. **Replit otomatik propose ettiği task'lar** (PROPOSED, owner inceleme bekliyor):
-   - **#272** "Pilot Day-5 Güvenlik Sertleştirme Paketi (register + frameguard + authLimiter + log temizliği)" — isim/zamanlama tuhaf, içerik anlamlı; owner inceleyip retract veya scope netleştirsin.
    - **#273** "shift_attendance check-out kapanış bug'ını düzelt (DECISIONS madde 15)" — Madde 14 plan ile destekleniyor (`docs/plans/shift-attendance-checkout-fix.md`); implementasyon için owner GO yeterli.
 
 ---
