@@ -10,7 +10,7 @@ import {
   pdksExcelImports, pdksExcelRecords, pdksDailySummary,
   pdksMonthlyStats, pdksEmployeeMappings, users, branches,
 } from "@shared/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, ne } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 import multer from "multer";
 import * as XLSX from "xlsx";
@@ -272,6 +272,8 @@ router.get("/api/pdks-import/list", isAuthenticated, async (req: any, res: Respo
     })
     .from(pdksExcelImports)
     .leftJoin(branches, eq(pdksExcelImports.branchId, branches.id))
+    // Hide internal kiosk_sync imports (shift_attendance-derived) from UI
+    .where(ne(pdksExcelImports.importType, 'kiosk_sync'))
     .orderBy(desc(pdksExcelImports.createdAt))
     .limit(50);
 

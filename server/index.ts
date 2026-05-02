@@ -23,6 +23,7 @@ import { seedRoles } from "./seed-roles";
 import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
 import { seedPdksSprintA } from "./seed-pdks-sprint-a";
+import { startPdksDailySummarySyncScheduler } from "./services/pdks-daily-summary-sync";
 import { cleanupExpiredKioskSessions } from "./localAuth";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
@@ -404,6 +405,7 @@ app.use((req, res, next) => {
       startPdksDailyAbsenceScheduler();
       startPdksMonthlyPayrollScheduler();
       startPdksMonthlyAttendanceSummaryScheduler();
+      startPdksDailySummarySyncScheduler();
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);

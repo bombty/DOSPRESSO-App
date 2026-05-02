@@ -145,16 +145,33 @@ async function getExcelMonthSummary(
   let effectiveImportId = importId ?? null;
 
   if (!effectiveImportId) {
-    const imports = await db.select({ id: pdksExcelImports.id })
+    // Prefer real Excel imports; fall back to kiosk_sync (shift_attendance-derived)
+    // when no operator-uploaded Excel exists for the period.
+    const realImports = await db.select({ id: pdksExcelImports.id })
       .from(pdksExcelImports)
       .where(and(
         eq(pdksExcelImports.branchId, branchId),
         eq(pdksExcelImports.month, month),
         eq(pdksExcelImports.year, year),
+        sql`${pdksExcelImports.importType} <> 'kiosk_sync'`,
       ))
       .orderBy(sql`${pdksExcelImports.id} DESC`)
       .limit(1);
-    if (imports[0]) effectiveImportId = imports[0].id;
+    if (realImports[0]) {
+      effectiveImportId = realImports[0].id;
+    } else {
+      const syncImports = await db.select({ id: pdksExcelImports.id })
+        .from(pdksExcelImports)
+        .where(and(
+          eq(pdksExcelImports.branchId, branchId),
+          eq(pdksExcelImports.month, month),
+          eq(pdksExcelImports.year, year),
+          eq(pdksExcelImports.importType, 'kiosk_sync'),
+        ))
+        .orderBy(sql`${pdksExcelImports.id} DESC`)
+        .limit(1);
+      if (syncImports[0]) effectiveImportId = syncImports[0].id;
+    }
   }
 
   if (!effectiveImportId) {
