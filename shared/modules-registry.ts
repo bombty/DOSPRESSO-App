@@ -362,22 +362,7 @@ export function getMegaModuleMapping(): Record<string, string[]> {
   return mapping;
 }
 
-/**
- * @deprecated DEAD CODE (Task #281, 2 May 2026 — kept for backwards compatibility, do NOT use).
- *
- * Bu sabit hiçbir yerden import edilmiyor (audit doğruladı: 0 consumer).
- * Gerçek rol-bazlı modül erişimi `role_module_permissions` DB tablosu üzerinden çalışır:
- *   - Schema: `shared/schema/schema-05.ts`
- *   - Seed:   `server/seed-role-permissions.ts` (kaynak: `PERMISSIONS` sabiti `shared/schema/schema-02.ts`)
- *   - API:    `GET /api/me/permissions` (`server/routes/certificate-routes.ts:751`)
- *   - Doğrulama (2 May 2026): 31 rol × 78-240 modül permission, toplam 3127 satır DOLU.
- *
- * Sprint 2 audit'in (`docs/audit/system-multi-perspective-evaluation-2026-05-02.md`) "K2 — 16 rol eksik"
- * teşhisi YANLIŞ KATMANI işaret ediyordu. Pilot Day-1 etkisi YOK; CEO/CGO/mudur/fabrika_mudur/sube_kiosk
- * için modül listesi `role_module_permissions` üzerinden normal döner.
- *
- * Konsolidasyon işi Sprint 3 B21 backlog'unda (9 paralel modül erişim mekanizmasının birleştirilmesi).
- */
+/** @deprecated DEAD CODE — 0 consumer. Real source of truth: `role_module_permissions` DB. See DECISIONS#31. */
 export const ROLE_MODULE_DEFAULTS: Record<string, string[]> = {
   admin: ['*'],
   muhasebe: ['dashboard', 'accounting', 'hr_reports', 'cash_reports', 'employees', 'urun_maliyetleri', 'cari_takip', 'hq_academy_muhasebe'],
