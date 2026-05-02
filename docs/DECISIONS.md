@@ -2,7 +2,7 @@
 
 Bu dosya bugüne kadar alınan ürün/operasyon kararlarının kalıcı kaydıdır. Her madde owner (Aslan) tarafından onaylı, ChatGPT (IT danışman) ile gözden geçirilmiş ve Replit (uygulayıcı) tarafından sisteme yansıtılmış / yansıtılması beklenen karardır.
 
-Son güncelleme: 29 Nisan 2026
+Son güncelleme: 2 Mayıs 2026
 
 ---
 
@@ -23,6 +23,19 @@ Son güncelleme: 29 Nisan 2026
 ## Veri Güvenliği & DB Disiplini
 
 9. **DB write öncesi backup + dry-run + owner GO zorunlu.** Production veritabanına yazma operasyonu için sırasıyla: backup alındı → dry-run sonucu paylaşıldı → owner açık GO verdi.
+18. **GitHub hassas dosya cleanup current tracking içindir.** Hassas COMMIT SQL ve backup dosyaları current HEAD tracking'inden çıkarıldı; `.gitignore` ile yeniden eklenmeleri engellendi. Git history rewrite YAPILMADI; repo public olduğu için geçmiş commit'lerdeki hassas içerikler ayrı risk/karar konusudur ve pilot sonrası ele alınır.
+
+## Reçete Yetkileri (P7.2 — 29 Nisan 2026)
+
+19. **Aslan mevcut `ceo` rolünde kalır.** Rolü `recete_gm` olarak değiştirilmez. Reçete yetkisi rol değişikliğiyle değil, `ceo` rolüne reçete tarafında doğrudan yetki tanımlanarak çözülür.
+20. **CEO / Aslan reçete tarafında tam yetkilidir.** Kapsam: reçete oluşturma, düzenleme, hammadde/adım CRUD, oran/miktar düzenleme, keyblend, gramaj onayı, besin/alerjen işlemleri ve reçete kilitleme/açma — hepsi `ceo` rolüyle yapılabilir.
+21. **Sema / `gida_muhendisi` besin, alerjen ve gramaj onayında aktif yetkilidir.** Hammadde ekle/sil/değiştir, oran/miktar değiştir veya keyblend yönetimi YAPMAZ. Bu kapsam dışı işlemler `recete_gm` veya `ceo` tarafından yapılır.
+22. **Ümit / `sef` reçete editleyemez.** Sadece kendisine atanmış kategori/reçeteler için üretim planlama ve üretim takibi yapabilir.
+23. **Eren / `fabrika_mudur` reçete ve gıda bilgilerini görebilir ama değiştiremez.** Üretim planlama, üretim takibi ve sevkiyat hazırlığı tarafında yetkilidir.
+
+## API Davranış Kuralları
+
+24. **Tanımsız `/api/...` route'ları artık Vite HTML fallback yerine JSON 404 döner.** `server/index.ts`'e eklenen middleware ile `/api` ile başlayan ve hiçbir backend route'a denk gelmeyen istekler `{ error, path }` formatında JSON 404 cevabı verir. Bu sayede frontend istemcileri (TanStack Query, fetch wrapper'ları) HTML payload'u JSON olarak parse etmeye çalışıp gizli hata üretmez.
 
 ## Tamamlanmış Pilot Hazırlık Adımları
 
@@ -30,11 +43,15 @@ Son güncelleme: 29 Nisan 2026
 11. **PIN cleanup + PIN seed tamamlandı.**
 12. **4 birim kiosk giriş/çıkış testi başarılı.** (Işıklar, Lara, Fabrika, HQ — 29 Nisan 2026.)
 13. **Test kayıtları `PILOT_PRE_DAY1_TEST_2026_04_29` notu ile işaretlendi.** İlgili `branch_shift_sessions`, `factory_shift_sessions`, `hq_shift_sessions` ve `shift_attendance` satırlarında `notes` alanı ile pilot test kayıtları gerçek operasyon kayıtlarından ayrıştırılır.
+25. **P7.2 reçete rol matrisi düzeltmesi tamamlandı.** CEO, gida_muhendisi, sef ve fabrika_mudur rollerinin reçete modülündeki backend + frontend yetkileri madde 19-23 ile uyumlu olacak şekilde güncellendi (commit aralığı: `e91bd51e2` … `1d014334b`).
+26. **P7.2.1 CEO nutrition approval düzeltmesi tamamlandı.** `factory-recipe-nutrition.ts` içindeki `APPROVAL_ROLES` listesine `ceo` rolü eklendi; `/api/factory/recipes/:id/calculate-nutrition` endpoint'inin rol kontrolü güncellendi (commit `3939b9f52`).
+27. **API 404 fallback düzeltmesi tamamlandı.** Madde 24 kapsamındaki middleware `server/index.ts`'e eklendi (commit `d99898064`).
 
 ## Açık Riskler & Teknik Borçlar (karar olarak işaretli)
 
 14. **HQ kiosk PIN plaintext konusu ayrı risk olarak açık.** Henüz hash'lenmemiş HQ kiosk PIN'leri pilot sonrası ele alınacak, kapsam ayrıdır.
 15. **`shift_attendance` check-out kapanış mantığı açık teknik borç.** Branch shift-end endpoint'i `shift_attendance.check_out_time` alanını güncellemiyor; bordrosu `pdks_daily_summary` (Excel) üzerinden okunduğu için maaş etkilenmez ama kayıt bütünlüğü açısından düzeltilmesi gerekir.
+28. **Reçete detay sayfasındaki intermittent spinner davranışı post-pilot UX iyileştirmesi olarak ele alınır.** Backend recipe API 200 döner; sorun lazy chunk / cache kaynaklı geçici yükleme davranışıdır. Geçici çözüm: hard refresh (Cmd+Shift+R). Kalıcı UX iyileştirmesi pilot sonrası planlanır (T2.1).
 
 ## Ürün / İçerik Kararları
 
