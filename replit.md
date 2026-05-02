@@ -73,9 +73,9 @@ TEST-MATRIX (13 rol smoke test), 4 runbook (db-write, kiosk PDKS, git security, 
 
 **IN_PROGRESS:** Task #276 (pdks_daily_summary sync), Task #277 (kiosk vardiya E2E test).
 
-**Sprint 2 master backlog:** `docs/audit/sprint-2-master-backlog.md` — B1-B20 (B13-B20 yeni, çok perspektifli audit sonucu eklendi: public endpoint sertleştirme, ROLE_MODULE_DEFAULTS tamamlama, scheduler advisory lock, pg_dump cron, login lockout DB'ye taşı, TEST-MATRIX 31 role genişletme, legacy rol denetimi, KVKK audit).
+**Sprint 2 master backlog:** `docs/audit/sprint-2-master-backlog.md` — B1-B20 (B13-B20 yeni, çok perspektifli audit sonucu eklendi: public endpoint sertleştirme, ~~ROLE_MODULE_DEFAULTS tamamlama~~ ✅ NO-OP (Task #281, DECISIONS#31), scheduler advisory lock, pg_dump cron ✅ Task #280, login lockout DB'ye taşı, TEST-MATRIX 31 role genişletme, legacy rol denetimi, KVKK audit). Sprint 3 ek: B21 (modül erişim konsolidasyon), B22 (manifest-auth fail-open).
 
-**Çok perspektifli sistem audit** (`docs/audit/system-multi-perspective-evaluation-2026-05-02.md`, ~520 satır) — 6 perspektif (güvenlik/performans/veri bütünlüğü/UX/mevzuat/operasyonel), 31 rol denetimi, 326 sayfa kategorizasyonu, 5 kritik bulgu (K1-K5). En kritik 3: G1 `delegation-routes.ts` 5 endpoint AUTH yok, G2 `module-content-routes.ts` 5 CRUD AUTH yok, K2 `ROLE_MODULE_DEFAULTS`'ta 16 rol eksik.
+**Çok perspektifli sistem audit** (`docs/audit/system-multi-perspective-evaluation-2026-05-02.md`, ~520 satır) — 6 perspektif (güvenlik/performans/veri bütünlüğü/UX/mevzuat/operasyonel), 31 rol denetimi, 326 sayfa kategorizasyonu, 5 kritik bulgu (K1-K5). En kritik 3: G1 `delegation-routes.ts` 5 endpoint AUTH yok ✅ Task #279 NO-OP doğrulandı, G2 `module-content-routes.ts` 5 CRUD AUTH yok ✅ Task #279 NO-OP doğrulandı, ~~K2 `ROLE_MODULE_DEFAULTS`'ta 16 rol eksik~~ ✅ Task #281 NO-OP (dead code, gerçek mekanizma `role_module_permissions` DB DOLU; DECISIONS#31, audit §11.5).
 
 ### Owner Tercihler / Çalışma Modeli (May 2026)
 - ChatGPT + Claude geçici devre dışı, sadece Replit Agent ile ilerlenir.

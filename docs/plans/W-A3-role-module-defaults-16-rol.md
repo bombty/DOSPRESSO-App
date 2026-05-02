@@ -1,9 +1,22 @@
-# Wave A-3 Plan — ROLE_MODULE_DEFAULTS 16 Eksik Rol Tamamlama
+# ⚠️ SUPERSEDED — Bu plan Task #281 ile NO-OP olarak kapatıldı (2 May 2026)
+
+> **DURUM:** ❌ **OBSOLETE — UYGULAMAYIN.**
+> **Karar:** B14 ÇÖZÜLDÜ NO-OP. `ROLE_MODULE_DEFAULTS` (`shared/modules-registry.ts:368`) **dead code** (0 import). Gerçek mekanizma `role_module_permissions` DB tablosu (3127 satır, 31 rolün hepsi DOLU) → `GET /api/me/permissions`. Bu plan dosyasındaki "16 eksik rol" teşhisi yanlış katmanı işaret ediyordu.
+> **Kanıt:** `docs/audit/role-module-defaults-noop-verification-2026-05-02.md` (rg + psql sorguları)
+> **Karar dokümanı:** `docs/DECISIONS.md` madde 31
+> **Audit düzeltmesi:** `docs/audit/system-multi-perspective-evaluation-2026-05-02.md` Bölüm 11.5
+> **Sprint 3 takip:** B21 (modül erişim mimari konsolidasyon — 9 paralel mekanizmayı birleştir)
+>
+> **Aşağıdaki orijinal plan tarihsel referans için tutuluyor; uygulanmayacaktır.**
+
+---
+
+# Wave A-3 Plan — ROLE_MODULE_DEFAULTS 16 Eksik Rol Tamamlama (SUPERSEDED)
 
 > **Sprint 2 / Wave A / İş #3** — 31 rolün modül erişim varsayılanları
-> **Backlog ref:** B14 (Sprint 2 master backlog)
-> **Tahmini süre:** 2 saat (isolated task agent — DB write seed)
-> **Mode:** Plan + isolated agent (DB write protokol uygulanmalı)
+> **Backlog ref:** B14 (Sprint 2 master backlog) — ✅ ÇÖZÜLDÜ NO-OP (Task #281)
+> **Tahmini süre:** ~~2 saat~~ — UYGULANMADI
+> **Mode:** ~~Plan + isolated agent~~ — gerek yok
 > **Bağımlılık:** Yok — bağımsız, paralel başlatılabilir.
 
 ---
