@@ -51,6 +51,7 @@ Son güncelleme: 2 Mayıs 2026
 
 14. **HQ kiosk PIN plaintext konusu ayrı risk olarak açık.** Henüz hash'lenmemiş HQ kiosk PIN'leri pilot sonrası ele alınacak, kapsam ayrıdır.
 15. **`shift_attendance` check-out kapanış mantığı açık teknik borç.** Branch shift-end endpoint'i `shift_attendance.check_out_time` alanını güncellemiyor; bordrosu `pdks_daily_summary` (Excel) üzerinden okunduğu için maaş etkilenmez ama kayıt bütünlüğü açısından düzeltilmesi gerekir.
+    **Çözüldü:** task #273, 2 May 2026 — `server/routes/branches.ts` 4 yerinde (kiosk shift-end, HQ end_of_day, phone checkin shift_end, QR checkin shift_end) ve `server/routes/factory.ts` 2 yerinde (shift-end, quick-end) session UPDATE + `shift_attendance.check_out_time` UPDATE artık `db.transaction` içinde atomik çalışır (ya ikisi birlikte commit ya rollback). Branch için `session.shift_attendance_id` linki üzerinden; HQ/Factory için (FK yok) `userId + checkInTime ± 5 dk pencere + pilot notu (PILOT_PRE_DAY1_TEST_2026_04_29) hariç` filtresi ile daraltılmış lookup. Backfill scripti (`scripts/backfill-shift-attendance-checkout.ts`) eklendi; dry-run 0 aday döndü, backfill gerekmedi (bkz. `docs/audit/shift-attendance-backfill-2026-05-02.md`).
 28. **Reçete detay sayfasındaki intermittent spinner davranışı post-pilot UX iyileştirmesi olarak ele alınır.** Backend recipe API 200 döner; sorun lazy chunk / cache kaynaklı geçici yükleme davranışıdır. Geçici çözüm: hard refresh (Cmd+Shift+R). Kalıcı UX iyileştirmesi pilot sonrası planlanır (T2.1).
 
 ## Ürün / İçerik Kararları

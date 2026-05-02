@@ -3350,20 +3350,35 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
       }
     }
 
-    const [updatedSession] = await db.update(branchShiftSessions)
-      .set({
-        checkOutTime: now,
-        workMinutes: totalWorkMinutes,
-        netWorkMinutes: netWorkMinutes,
-        status: 'completed',
-        notes: notes || null,
-        checkOutLatitude: latitude ? String(latitude) : null,
-        checkOutLongitude: longitude ? String(longitude) : null,
-        earlyLeaveMinutes,
-        overtimeMinutes,
-      })
-      .where(eq(branchShiftSessions.id, sessionId))
-      .returning();
+    // DECISIONS madde 15 fix: branch_shift_sessions kapanışı ve bağlı
+    // shift_attendance.check_out_time aynı transaction içinde atomik yazılır.
+    const [updatedSession] = await db.transaction(async (tx) => {
+      const [s] = await tx.update(branchShiftSessions)
+        .set({
+          checkOutTime: now,
+          workMinutes: totalWorkMinutes,
+          netWorkMinutes: netWorkMinutes,
+          status: 'completed',
+          notes: notes || null,
+          checkOutLatitude: latitude ? String(latitude) : null,
+          checkOutLongitude: longitude ? String(longitude) : null,
+          earlyLeaveMinutes,
+          overtimeMinutes,
+        })
+        .where(eq(branchShiftSessions.id, sessionId))
+        .returning();
+      if (session.shiftAttendanceId) {
+        await tx.update(shiftAttendance)
+          .set({ checkOutTime: now, status: 'completed' })
+          .where(and(
+            eq(shiftAttendance.id, session.shiftAttendanceId),
+            isNull(shiftAttendance.checkOutTime),
+          ));
+      } else {
+        console.warn(`[BRANCH-KIOSK] shift_attendance closure SKIPPED: session ${sessionId} (user ${session.userId}) has no shiftAttendanceId link`);
+      }
+      return [s];
+    });
 
     await db.insert(branchShiftEvents).values({
       sessionId,
@@ -4337,15 +4352,43 @@ router.post('/api/hq/kiosk/exit', isKioskAuthenticated, async (req, res) => {
       const netMins = totalMinutes - breakMins - outsideMins;
       
       const checkOutNow = new Date();
-      await db.update(hqShiftSessions)
-        .set({
-          status: 'completed',
-          checkOutTime: checkOutNow,
-          workMinutes: totalMinutes,
-          netWorkMinutes: Math.max(0, netMins),
-        })
-        .where(eq(hqShiftSessions.id, sessionId));
-      
+      // DECISIONS madde 15 fix: hq_shift_sessions tablosunda shift_attendance_id
+      // FK'sı yok. Bağlı SA kaydını session.checkInTime ± 5 dk penceresinde,
+      // pilot test notlarını hariç tutarak bul ve aynı transaction içinde kapat.
+      const sessionCheckIn = new Date(session.checkInTime);
+      const saWindowStart = new Date(sessionCheckIn.getTime() - 5 * 60_000);
+      const saWindowEnd = new Date(sessionCheckIn.getTime() + 5 * 60_000);
+      await db.transaction(async (tx) => {
+        await tx.update(hqShiftSessions)
+          .set({
+            status: 'completed',
+            checkOutTime: checkOutNow,
+            workMinutes: totalMinutes,
+            netWorkMinutes: Math.max(0, netMins),
+          })
+          .where(eq(hqShiftSessions.id, sessionId));
+
+        const [openSA] = await tx.select({ id: shiftAttendance.id })
+          .from(shiftAttendance)
+          .where(and(
+            eq(shiftAttendance.userId, session.userId),
+            isNull(shiftAttendance.checkOutTime),
+            isNotNull(shiftAttendance.checkInTime),
+            gte(shiftAttendance.checkInTime, saWindowStart),
+            lte(shiftAttendance.checkInTime, saWindowEnd),
+            or(isNull(shiftAttendance.notes), ne(shiftAttendance.notes, 'PILOT_PRE_DAY1_TEST_2026_04_29')),
+          ))
+          .orderBy(desc(shiftAttendance.checkInTime))
+          .limit(1);
+        if (openSA) {
+          await tx.update(shiftAttendance)
+            .set({ checkOutTime: checkOutNow, status: 'completed' })
+            .where(eq(shiftAttendance.id, openSA.id));
+        } else {
+          console.warn(`[HQ-KIOSK] shift_attendance closure SKIPPED: no open SA in ±5min window for user ${session.userId} (session ${sessionId}, checkIn=${sessionCheckIn.toISOString()})`);
+        }
+      });
+
       await db.insert(hqShiftEvents).values({
         sessionId,
         userId: session.userId,
@@ -5212,9 +5255,23 @@ router.post('/api/kiosk/phone-checkin', isAuthenticated, async (req, res) => {
     if (action === 'shift_end') {
       const totalMinutes = Math.floor((now.getTime() - new Date(activeSession.checkInTime).getTime()) / 60000);
       const netWork = totalMinutes - (activeSession.breakMinutes || 0);
-      await db.update(branchShiftSessions).set({
-        status: 'completed', checkOutTime: now, workMinutes: totalMinutes, netWorkMinutes: netWork,
-      }).where(eq(branchShiftSessions.id, activeSession.id));
+      // DECISIONS madde 15 fix: session + shift_attendance atomik kapanış
+      await db.transaction(async (tx) => {
+        await tx.update(branchShiftSessions).set({
+          status: 'completed', checkOutTime: now, workMinutes: totalMinutes, netWorkMinutes: netWork,
+        }).where(eq(branchShiftSessions.id, activeSession.id));
+        if (activeSession.shiftAttendanceId) {
+          await tx.update(shiftAttendance)
+            .set({ checkOutTime: now, status: 'completed' })
+            .where(and(
+              eq(shiftAttendance.id, activeSession.shiftAttendanceId),
+              isNull(shiftAttendance.checkOutTime),
+            ));
+        } else {
+          console.warn(`[PHONE-CHECKIN] shift_attendance closure SKIPPED: session ${activeSession.id} (user ${userId}) has no shiftAttendanceId link`);
+        }
+      });
+
       await db.insert(branchShiftEvents).values({
         sessionId: activeSession.id, userId, branchId: parseInt(branchId),
         eventType: 'check_out', eventTime: now,
@@ -5407,15 +5464,29 @@ router.post('/api/kiosk/qr-checkin', async (req, res) => {
       const breakMins = activeSession.breakMinutes || 0;
       const netWorkMinutes = Math.max(0, totalMinutes - breakMins);
 
-      const [updatedSession] = await db.update(branchShiftSessions)
-        .set({
-          checkOutTime: now,
-          status: 'completed',
-          workMinutes: totalMinutes,
-          netWorkMinutes,
-        })
-        .where(eq(branchShiftSessions.id, activeSession.id))
-        .returning();
+      // DECISIONS madde 15 fix: session + shift_attendance atomik kapanış
+      const [updatedSession] = await db.transaction(async (tx) => {
+        const [s] = await tx.update(branchShiftSessions)
+          .set({
+            checkOutTime: now,
+            status: 'completed',
+            workMinutes: totalMinutes,
+            netWorkMinutes,
+          })
+          .where(eq(branchShiftSessions.id, activeSession.id))
+          .returning();
+        if (activeSession.shiftAttendanceId) {
+          await tx.update(shiftAttendance)
+            .set({ checkOutTime: now, status: 'completed' })
+            .where(and(
+              eq(shiftAttendance.id, activeSession.shiftAttendanceId),
+              isNull(shiftAttendance.checkOutTime),
+            ));
+        } else {
+          console.warn(`[QR-CHECKIN] shift_attendance closure SKIPPED: session ${activeSession.id} (user ${user.id}) has no shiftAttendanceId link`);
+        }
+        return [s];
+      });
 
       await db.insert(branchShiftEvents).values({
         sessionId: activeSession.id,

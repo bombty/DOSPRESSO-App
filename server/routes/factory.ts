@@ -1752,16 +1752,43 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       // Calculate work minutes
       const workMinutes = Math.round((now.getTime() - new Date(session.checkInTime).getTime()) / 60000);
 
-      // Update session
-      await db.update(factoryShiftSessions)
-        .set({
-          checkOutTime: now,
-          totalProduced: (session.totalProduced || 0) + (session.stationId ? (quantityProduced || 0) : 0),
-          totalWaste: (session.totalWaste || 0) + (session.stationId ? (quantityWaste || 0) : 0),
-          workMinutes,
-          status: 'completed',
-        })
-        .where(eq(factoryShiftSessions.id, sessionId));
+      // DECISIONS madde 15 fix: factory_shift_sessions FK'sız olduğundan
+      // shift_attendance kaydını session.checkInTime ± 5 dk penceresinde,
+      // pilot test notlarını hariç tutarak bul ve aynı transaction içinde kapat.
+      const factCheckIn = new Date(session.checkInTime);
+      const factSAStart = new Date(factCheckIn.getTime() - 5 * 60_000);
+      const factSAEnd = new Date(factCheckIn.getTime() + 5 * 60_000);
+      await db.transaction(async (tx) => {
+        await tx.update(factoryShiftSessions)
+          .set({
+            checkOutTime: now,
+            totalProduced: (session.totalProduced || 0) + (session.stationId ? (quantityProduced || 0) : 0),
+            totalWaste: (session.totalWaste || 0) + (session.stationId ? (quantityWaste || 0) : 0),
+            workMinutes,
+            status: 'completed',
+          })
+          .where(eq(factoryShiftSessions.id, sessionId));
+
+        const [openSA] = await tx.select({ id: shiftAttendance.id })
+          .from(shiftAttendance)
+          .where(and(
+            eq(shiftAttendance.userId, session.userId),
+            isNull(shiftAttendance.checkOutTime),
+            isNotNull(shiftAttendance.checkInTime),
+            gte(shiftAttendance.checkInTime, factSAStart),
+            lte(shiftAttendance.checkInTime, factSAEnd),
+            or(isNull(shiftAttendance.notes), ne(shiftAttendance.notes, 'PILOT_PRE_DAY1_TEST_2026_04_29')),
+          ))
+          .orderBy(desc(shiftAttendance.checkInTime))
+          .limit(1);
+        if (openSA) {
+          await tx.update(shiftAttendance)
+            .set({ checkOutTime: now, status: 'completed' })
+            .where(eq(shiftAttendance.id, openSA.id));
+        } else {
+          console.warn(`[FACTORY-KIOSK] shift_attendance closure SKIPPED: no open SA in ±5min window for user ${session.userId} (session ${sessionId}, checkIn=${factCheckIn.toISOString()})`);
+        }
+      });
 
       // PDKS cikis kaydı yaz (non-blocking) — Sprint D: TR timezone + CRITICAL log
       try {
@@ -6913,15 +6940,42 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
       const totalProduced = Math.round(parseFloat(outputAgg[0]?.totalProduced || '0'));
       const totalWaste = Math.round(parseFloat(outputAgg[0]?.totalWaste || '0'));
 
-      await db.update(factoryShiftSessions)
-        .set({
-          status: 'completed',
-          checkOutTime,
-          totalProduced,
-          totalWaste,
-          workMinutes: Math.max(0, workMinutes),
-        })
-        .where(eq(factoryShiftSessions.id, activeSession.id));
+      // DECISIONS madde 15 fix: session + shift_attendance atomik kapanış
+      // (factory FK'sız → checkInTime ± 5 dk pencere, pilot notları hariç)
+      const qeCheckIn = new Date(activeSession.checkInTime);
+      const qeSAStart = new Date(qeCheckIn.getTime() - 5 * 60_000);
+      const qeSAEnd = new Date(qeCheckIn.getTime() + 5 * 60_000);
+      await db.transaction(async (tx) => {
+        await tx.update(factoryShiftSessions)
+          .set({
+            status: 'completed',
+            checkOutTime,
+            totalProduced,
+            totalWaste,
+            workMinutes: Math.max(0, workMinutes),
+          })
+          .where(eq(factoryShiftSessions.id, activeSession.id));
+
+        const [openSA] = await tx.select({ id: shiftAttendance.id })
+          .from(shiftAttendance)
+          .where(and(
+            eq(shiftAttendance.userId, activeSession.userId),
+            isNull(shiftAttendance.checkOutTime),
+            isNotNull(shiftAttendance.checkInTime),
+            gte(shiftAttendance.checkInTime, qeSAStart),
+            lte(shiftAttendance.checkInTime, qeSAEnd),
+            or(isNull(shiftAttendance.notes), ne(shiftAttendance.notes, 'PILOT_PRE_DAY1_TEST_2026_04_29')),
+          ))
+          .orderBy(desc(shiftAttendance.checkInTime))
+          .limit(1);
+        if (openSA) {
+          await tx.update(shiftAttendance)
+            .set({ checkOutTime, status: 'completed' })
+            .where(eq(shiftAttendance.id, openSA.id));
+        } else {
+          console.warn(`[FACTORY-QUICK-END] shift_attendance closure SKIPPED: no open SA in ±5min window for user ${activeSession.userId} (session ${activeSession.id}, checkIn=${qeCheckIn.toISOString()})`);
+        }
+      });
 
       res.json({
         message: "Vardiya sonlandırıldı",
