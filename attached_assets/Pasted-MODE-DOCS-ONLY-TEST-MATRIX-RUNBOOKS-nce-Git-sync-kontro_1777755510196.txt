@@ -1,0 +1,113 @@
+MODE: DOCS-ONLY — TEST-MATRIX + RUNBOOKS
+
+Önce Git sync kontrolü yap:
+- git fetch origin
+- local HEAD ve origin/main aynı mı kontrol et.
+- Eğer local behind ise normal pull/ff-only yap.
+- Conflict/divergence varsa dur ve raporla.
+- Sync temizse devam et.
+
+Kurallar:
+- DB’ye dokunma.
+- Kod değiştirme.
+- Migration/schema/env/package değiştirme.
+- SQL çalıştırma.
+- Commit/push yapma.
+- Sadece markdown dokümantasyon dosyaları oluştur/güncelle.
+
+Önce şu dosyaları oku:
+- docs/DECISIONS.md
+- docs/SPRINT-LIVE.md
+- docs/COLLABORATION-PROTOCOL.md
+
+Oluşturulacak dosyalar:
+1. docs/TEST-MATRIX.md
+2. docs/runbooks/db-write-protocol.md
+3. docs/runbooks/kiosk-pdks-test.md
+4. docs/runbooks/git-security-cleanup.md
+5. docs/runbooks/recipe-label-workflow.md
+
+İçerik hedefi:
+
+docs/TEST-MATRIX.md:
+- Rol bazlı test matrisi olsun.
+- Roller: admin, ceo, cgo, gida_muhendisi, sef, fabrika_mudur, mudur, supervisor, barista, sube_kiosk, yatirimci_branch, muhasebe_ik, satinalma.
+- Her rol için:
+  - görebileceği modüller
+  - yapabileceği kritik işlemler
+  - yapmaması gereken işlemler
+  - smoke test adımları
+- Özellikle:
+  - kiosk insan personel değildir
+  - CEO/Aslan reçete tam yetkili
+  - Sema/gida_muhendisi besin/alerjen/gramaj
+  - Ümit/sef reçete edit yok, üretim takip var
+  - Eren/fabrika_mudur görür ama değiştirmez
+  - yatırımcı sadece kendi şubesini görür
+
+docs/runbooks/db-write-protocol.md:
+- DB write öncesi backup + dry-run + owner GO zorunlu.
+- Production DB yazma akışı:
+  1. read-only analiz
+  2. SQL preview
+  3. dry-run / ROLLBACK
+  4. backup
+  5. owner GO
+  6. COMMIT
+  7. verification
+  8. rollback planı
+- Hard delete yasak.
+- Hassas veri loglanmaz.
+- DB write işleri Replit tarafından yapılır.
+
+docs/runbooks/kiosk-pdks-test.md:
+- 4 birim test süreci:
+  - Işıklar
+  - Lara
+  - Fabrika
+  - HQ
+- login → shift-start → shift-end akışı
+- test kayıtlarının PILOT_PRE_DAY1_TEST_2026_04_29 notes ile işaretlenmesi
+- PDKS doğrulama SELECT örnekleri
+- test kayıtları gerçek operasyon değildir
+- kiosk kullanıcıları personel listesinde görünmemeli
+- soft-deleted/inactive kullanıcı PIN bilse bile login olamamalı
+
+docs/runbooks/git-security-cleanup.md:
+- Hassas dosya türleri:
+  - COMMIT SQL
+  - backup
+  - dump
+  - sql.gz
+  - import-output logs
+  - bcrypt hash
+  - personel/KVKK dosyaları
+- .gitignore kuralları
+- current tracking cleanup
+- history rewrite yapılmadığı notu
+- force push / history rewrite sadece owner özel kararıyla
+- public repo risk notu
+
+docs/runbooks/recipe-label-workflow.md:
+- Reçete rol matrisi:
+  - CEO/Aslan tam yetki
+  - gida_muhendisi besin/alerjen/gramaj
+  - sef edit yok
+  - fabrika_mudur read-only
+- Reçete değişince etiket revize gerekli olmalı
+- Besin değeri güncel reçete/hammaddeye göre hesaplanmalı
+- Etiket sistemi TGK uyumlu olmalı
+- Etiket onay statüleri önerisi:
+  - taslak
+  - onay bekliyor
+  - onaylı
+  - revize gerekli
+- Sprint 2 / post-pilot kapsamı olarak işaretle.
+
+Raporla:
+1. Git sync durumu
+2. Oluşturulan/güncellenen dosyalar
+3. Kod/DB/env/schema değişti mi?
+4. Commit/push yapılmadığını doğrula
+5. Git status nedir?
+6. Bir sonraki adım commit/push için GO bekliyor musun?
