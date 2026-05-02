@@ -330,3 +330,9 @@ id = "CIeOxtatureH50eTtE-yh"
 uri = "file://docs/audit/personnel-import-dry-run-2026-04-28.md"
 type = "text"
 title = "Personel Import — Dry-Run Raporu (Final tablo eklendi)"
+
+[[outputs]]
+id = "WKlLhBcDXmrJdt2ky5Cjq"
+uri = "file://ORPHAN_PAGES_DELETION_REPORT.md"
+type = "text"
+title = "Öksüz Sayfa Silme Raporu (ChatGPT için)"

@@ -37,7 +37,7 @@ const GUIDANCE_ROLES = [
   "mudur", "supervisor", "supervisor_buddy",
 ];
 
-const GUIDANCE_PATHS = ["/", "/dashboard", "/ana-sayfa", "/mission-control"];
+const GUIDANCE_PATHS = ["/", "/ana-sayfa", "/mission-control"];
 
 function GuidanceWidgetWrapper({ user }: { user: any }) {
   const [location] = useLocation();
