@@ -68,7 +68,7 @@ const ROLE_QUICK_ACTIONS: Record<string, QuickActionItem[]> = {
   ],
   marketing: [
     { label: "CRM", path: "/crm", iconName: "MessageSquare", color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-    { label: "Müşteri", path: "/musteri-memnuniyeti", iconName: "Star", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+    { label: "Müşteri", path: "/misafir-memnuniyeti", iconName: "Star", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
     { label: "Şubeler", path: "/subeler", iconName: "Building2", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400" },
     { label: "Raporlar", path: "/raporlar", iconName: "BarChart3", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400" },
   ],

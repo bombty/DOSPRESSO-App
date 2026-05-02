@@ -409,7 +409,7 @@ export default function SubeDashboard() {
                 </Button>
               </Link>
             )}
-            <Link href="/qr-scanner">
+            <Link href="/qr-tara">
               <Button size="sm" variant="outline" className="gap-1.5" data-testid="button-qr-view">
                 <QrCode className="h-3.5 w-3.5" />
                 QR

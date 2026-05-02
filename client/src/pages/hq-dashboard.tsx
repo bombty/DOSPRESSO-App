@@ -1694,7 +1694,7 @@ function DestekDashboard() {
         </Card>
         <Card
           className="hover-elevate cursor-pointer"
-          onClick={() => setLocation('/musteri-memnuniyeti')}
+          onClick={() => setLocation('/misafir-memnuniyeti')}
           data-testid="card-musteri-memnuniyeti"
         >
           <CardContent className="p-3 flex flex-col items-center text-center gap-2">
@@ -1807,7 +1807,7 @@ function GidaMuhendisiDashboard() {
         </Card>
         <Card
           className="hover-elevate cursor-pointer"
-          onClick={() => setLocation('/kalite-kontrol')}
+          onClick={() => setLocation('/kalite-kontrol-dashboard')}
           data-testid="card-kalite-kontrol"
         >
           <CardContent className="p-3 flex flex-col items-center text-center gap-2">

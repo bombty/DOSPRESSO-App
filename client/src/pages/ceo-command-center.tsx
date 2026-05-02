@@ -117,7 +117,7 @@ export default function CEOCommandCenter() {
           { label: "Kira+gider", value: `₺${dashData?.rentExpense || "—"}` },
           { label: "Stok", value: `₺${dashData?.stockCost || "—"}`, color: "#fbbf24" },
           { label: "Toplam", value: `₺${dashData?.totalExpense || "—"}` },
-        ]} onLink={() => setLocation("/finans")} />
+        ]} onLink={() => setLocation("/mali-yonetim")} />
         <MiniStats title="Franchise KPI" rows={[
           { label: "Müşteri", value: `${dashData?.avgRating || healthData?.avgRating || "—"}★`, color: "#fbbf24" },
           { label: "Eğitim", value: `%${dashData?.trainingCompletion || "—"}`, color: "#ef4444" },

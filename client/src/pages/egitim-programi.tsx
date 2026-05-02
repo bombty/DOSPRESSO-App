@@ -188,7 +188,7 @@ export default function EgitimProgrami() {
             <GraduationCap className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-xl font-semibold mb-2" data-testid="text-no-access">Bu eğitime erişim yetkiniz bulunmamaktadır</h2>
             <p className="text-muted-foreground mb-4">Bu eğitim programı rolünüze atanmamış.</p>
-            <Button onClick={() => setLocation("/personel-profil")} data-testid="button-back-profile">
+            <Button onClick={() => setLocation("/profil")} data-testid="button-back-profile">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Profile Dön
             </Button>
@@ -212,7 +212,7 @@ export default function EgitimProgrami() {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/personel-profil")} data-testid="button-back">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/profil")} data-testid="button-back">
           <ArrowLeft className="w-4 h-4 mr-1" />
           Geri
         </Button>

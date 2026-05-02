@@ -89,7 +89,7 @@ export default function FabrikaCentrum() {
           { label: "Fire Oranı", value: `%${fireRate}`, color: fireRate > 5 ? "#ef4444" : fireRate > 3 ? "#fbbf24" : "#22c55e" },
           { label: "Bu Hafta", value: `${wasteData?.totalWaste ?? 0} kg` },
           { label: "Hedef", value: "<%5", color: "#6b7a8d" },
-        ]} onLink={() => navigate("/waste-executive")} />
+        ]} onLink={() => navigate("/waste")} />
 
         {/* Dobody */}
         <DobodySlot actions={dobodyActions.length > 0 ? dobodyActions.map((a: any) => ({

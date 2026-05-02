@@ -42,6 +42,12 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Shadcn/ui, 
 - **Komuta Merkezi 2.0 (Dynamic Dashboard System):** A widget-based dashboard infrastructure with 24 registered widgets across 7 categories. It uses `dashboard_widgets` for registry and `dashboard_role_widgets` for per-role assignments. A unified API endpoint `GET /api/me/dashboard-data` delivers role-tailored widgets with real data, KPIs, and quick actions.
 - **Late Arrival Detection:** Uses `LATE_THRESHOLD_MINUTES=15` and `SEVERE_LATE_MINUTES=60` global hard-coded constants. Mr. Dobody skill `late_arrival_tracker` runs daily, targeting specific roles.
 
+## Pilot & Sprint Durumu (May 2026)
+- **Pilot 5 gün UZATILDI** (2 May 2026, owner kararı) — Day-1 acelesi yok, Sprint 2/3 sırayla işlenir.
+- **APP_AUDIT_REPORT_2026-05.md** (Task #278, repo kökü, 820 satır) — 326 sayfa × 1985 endpoint × 806 FE çağrısı tek tarama. Sayısal özet: 326 sayfa, 260 route, 10 gerçek öksüz sayfa, 81 mega-modül alt sayfası, 10 kırık link, 3 menü kırık path, 118 kırık API çağrısı, 1278 ölü endpoint adayı, 8 duplikat/legacy grup. Auto-türetilen 3 task: #282 ✅ IMPLEMENTED, #283 (eksik API), #284 ✅ IMPLEMENTED.
+- **Task #282 — 12 kırık link/menü düzeltmesi (IMPLEMENTED, 2 May 2026):** APP_AUDIT Bölüm 3 (10 link) + Bölüm 6.1 (3 menü) statik string replace ile çözüldü. Düzeltme haritası (yanlış→doğru): `/bordro→/bordrom`, `/hq-support→/hq-destek`, `/personel-profil→/profil`, `/finans→/mali-yonetim`, `/waste-executive→/waste`, `/musteri-memnuniyeti→/misafir-memnuniyeti` (×2 yer: hq-dashboard + dashboard-section-config), `/kalite-kontrol→/kalite-kontrol-dashboard`, `/qr-scanner→/qr-tara`, `/leave-requests→/izin-talepleri`, `/overtime-requests→/mesai-talepleri`, `/stok-transferleri` menü kaydı silindi (sayfa yok), `/canli-izleme→/canli-takip`. `/kiosk` (menu-config:302) false positive (NO_SIDEBAR check). Audit Bölüm 1.1 "öksüz import" yanlış pozitif: 5 sayfa wildcard/parametreli route'lara bağlı (`/personel/:id`, `/qr-tara`, `/izin-talepleri`, `/mesai-talepleri`, `/hq-destek`). 10 dosya, 14+/16-. LSP temiz, HMR PASS. Architect APPROVED. Açık takip: `dashboard-section-config.ts`'te `/denetim`, `/kalite`, `/tedarikciler`, `/siparisler` ek doğrulama bekliyor.
+- **Sırada:** Task #283 (118 kırık API çağrısı) — kapsam geniş, Plan moduna geçilip dalgalara bölünmeli.
+
 ## External Dependencies
 - **OpenAI API**: Utilized for AI vision, chat, embeddings, and summarization.
 - **AWS S3 / Replit Object Storage**: Cloud-based storage for files.

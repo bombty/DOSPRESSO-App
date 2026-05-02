@@ -867,13 +867,13 @@ export default function VardiyaPlanlama() {
 
           {/* Quick Links */}
           <div className="flex gap-2 ml-auto">
-            <Link href="/leave-requests">
+            <Link href="/izin-talepleri">
               <Button variant="outline" size="sm" className="gap-2" data-testid="link-leave-requests">
                 <CalendarPlus className="w-4 h-4" />
                 İzin Talepleri
               </Button>
             </Link>
-            <Link href="/overtime-requests">
+            <Link href="/mesai-talepleri">
               <Button variant="outline" size="sm" className="gap-2" data-testid="link-overtime-requests">
                 <Clock className="w-4 h-4" />
                 Mesai Talepleri

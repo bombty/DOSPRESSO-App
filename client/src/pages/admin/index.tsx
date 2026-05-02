@@ -214,7 +214,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-2">
             {pendingTickets.slice(0, 5).map((ticket: any) => (
-              <Link key={ticket.id} href="/hq-support" data-testid={`link-ticket-${ticket.id}`}>
+              <Link key={ticket.id} href="/hq-destek" data-testid={`link-ticket-${ticket.id}`}>
                 <div className="flex items-center justify-between p-2 rounded-lg hover-elevate cursor-pointer">
                   <div>
                     <p className="text-sm font-medium line-clamp-1">{ticket.title}</p>
@@ -226,7 +226,7 @@ export default function AdminDashboard() {
                 </div>
               </Link>
             ))}
-            <Link href="/hq-support">
+            <Link href="/hq-destek">
               <Button variant="outline" className="w-full mt-2" data-testid="button-view-all-tickets">
                 Tümünü Görüntüle
               </Button>

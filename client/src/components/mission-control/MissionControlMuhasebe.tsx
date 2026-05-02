@@ -146,7 +146,7 @@ export default function MissionControlMuhasebe() {
                   <Calculator className="w-4 h-4" />
                   Şube Maliyet Dağılımı
                 </CardTitle>
-                <Link href="/bordro">
+                <Link href="/bordrom">
                   <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-0.5">
                     Detay <ArrowRight className="w-3 h-3" />
                   </Button>
@@ -187,7 +187,7 @@ export default function MissionControlMuhasebe() {
       </div>
 
       <div className="grid grid-cols-3 gap-2" data-testid="mc-muh-quick-nav">
-        <Link href="/bordro">
+        <Link href="/bordrom">
           <Card className="hover-elevate cursor-pointer">
             <CardContent className="p-2.5 flex flex-col items-center gap-1">
               <Calculator className="w-5 h-5 text-emerald-500" />
