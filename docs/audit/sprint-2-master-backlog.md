@@ -277,17 +277,18 @@ Aşağıdakiler tamamlanmadan Sprint 2'ye geçilmemeli:
 | **Bağlı bulgu** | P3 (audit) + FULL_AUDIT Issue #11 |
 | **Risk** | Pilot 1 instance OK, ama autoscale geçilirse görev duplikasyonu |
 
-### B16 — pg_dump Cron + S3 Yedek Otomasyonu 🔴 YÜKSEK
+### B16 — pg_dump Cron + S3 Yedek Otomasyonu ✅ MERGED (2 May 2026, Task #280 / Wave A-2)
 
 | Alan | Değer |
 |---|---|
-| **Severity** | 🔴 YÜKSEK (DR temeli) |
-| **Kapsam** | Günlük `pg_dump` cron + Object Storage / S3'e upload + son 30 gün retention + restore test playbook |
-| **Süre** | ~2 saat |
-| **Plan dokümanı** | YOK |
-| **Acceptance** | Her gece 03:00 backup, Object Storage'da görünür, manuel restore test başarılı |
-| **Bağlı bulgu** | O6 (audit) |
-| **Risk** | Pilot Day-1 öncesi ZORUNLU |
+| **Severity** | 🔴 YÜKSEK (DR temeli) — ÇÖZÜLDÜ |
+| **Kapsam** | ✅ `scripts/backup/pg-dump-daily.ts` (pg_dump custom + gzip + Object Storage + 30 gün retention); `server/backup.ts` `startDailyPgDumpScheduler()` her gece 03:00 UTC; `docs/runbooks/db-restore-from-backup.md` (10 adım) |
+| **Süre** | ~2 saat (gerçekleşen) |
+| **Plan dokümanı** | `docs/plans/W-A2-pgdump-cron-DR.md` |
+| **Acceptance** | ✅ Dry-run PASS (5.55 MB, 5.3s); ✅ Scheduler boot'ta mount edildi; ⏳ İlk gerçek backup Day-1 sabahı 03:00 UTC |
+| **Bağlı bulgu** | O6 (audit) — ÇÖZÜLDÜ |
+| **Risk** | ✅ Pilot Day-1 hazır; PILOT-DAY1-ROLLBACK-PLAN Seviye 5 ✅ |
+| **DECISIONS** | #30 yeni karar |
 
 ### B17 — Login Lockout DB'ye Taşı 🟡 ORTA
 

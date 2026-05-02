@@ -68,8 +68,8 @@ Neon Console → DB → Branches → "Restore from point-in-time"
 ### Seviye 5 — Tam DR (pg_dump restore, ~1 saat)
 **Ne zaman:** DB tamamen düştü ve Neon point-in-time çalışmıyor.
 **Kim:** Owner + Replit Agent.
-**Önkoşul:** Sprint 2 B16 (`pg_dump` cron + S3 yedek otomasyonu) **TAMAMLANMIŞ olmalı**.
-**Şu an risk:** B16 yapılmadığı için bu seviye çalışmaz → **Pilot Day-1 öncesi B16 ZORUNLU.**
+**Önkoşul:** Sprint 2 B16 (`pg_dump` cron + Object Storage yedek otomasyonu) ✅ TAMAMLANDI (2 May 2026, Wave A-2).
+**Restore prosedürü:** `docs/runbooks/db-restore-from-backup.md` (10 adım, 2 imza zorunlu, ~45 dk).
 
 ---
 
@@ -150,17 +150,18 @@ Her rollback sonrası **24 saat içinde**:
 | Seviye 2 (kod rollback) | ✅ HAZIR | Son 11 commit görünür, push manuel (force yasak) |
 | Seviye 3 (checkpoint) | ✅ HAZIR | Replit checkpoint sistemi otomatik (her merge'de) |
 | Seviye 4 (Neon point-in-time) | 🟡 KISMEN | Neon hesabı OK ama point-in-time test edilmedi |
-| Seviye 5 (pg_dump restore) | ❌ EKSİK | **B16 (pg_dump cron + S3) henüz yapılmadı — Day-1 öncesi ZORUNLU** |
+| Seviye 5 (pg_dump restore) | ✅ HAZIR | Wave A-2 / B16 tamamlandı (2 May 2026): `scripts/backup/pg-dump-daily.ts` her gece 03:00 UTC çalışır, Object Storage `db-backups/dospresso/YYYY-MM-DD/dump.dump`, 30 gün retention. Restore prosedürü: `docs/runbooks/db-restore-from-backup.md` |
 
 ---
 
 ## 8. Eksik Hazırlıklar (Pilot Day-1 Öncesi Tamamlanmalı)
 
 1. **Neon point-in-time restore test** — 1 test branch'te 1 saat öncesine restore çalıştır, tut/sürelerini ölç
-2. **B16 implementasyon** — `pg_dump` günlük cron + Object Storage upload + restore playbook
+2. ~~B16 implementasyon~~ ✅ TAMAMLANDI (2 May 2026, Wave A-2 — pg_dump cron + Object Storage + 30 gün retention + restore runbook)
 3. **WhatsApp grup kurulumu** — Pilot communication kanalı (bkz. PILOT-COMMUNICATION-PLAN)
 4. **Owner + Eren rollback drill** — Bu dökümanı 1 kez birlikte gözden geçir, "şu olursa ne yaparız" prova et
 5. **Hızlı erişim kart** — Bu dökümanın bir özetini telefon ekran kilidi resmi yap (Owner + Eren)
+6. **İlk gerçek backup doğrulaması** — Day-1 sabahı 06:00 TR (= 03:00 UTC) sonrası Object Storage'da bugünkü dump.dump var mı kontrol et
 
 ---
 

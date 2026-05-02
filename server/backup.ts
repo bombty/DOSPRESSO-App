@@ -837,3 +837,80 @@ export async function getAvailableRestorePoints(): Promise<Array<{
     return [];
   }
 }
+
+// ============================================================================
+// Wave A-2 / Sprint 2 B16 — Daily pg_dump Scheduler (separate from JSON backup)
+// ============================================================================
+// pg_dump custom format → Object Storage `db-backups/dospresso/YYYY-MM-DD/dump.dump`
+// 30 gün retention. Her gece 03:00 UTC = TR 06:00.
+// Mevcut JSON-bazlı saatlik backup'tan AYRI; tam DR seviye 5 yedeği.
+// Manuel: `tsx scripts/backup/pg-dump-daily.ts`
+// ============================================================================
+
+let pgDumpSchedulerRunning = false;
+let pgDumpJobRunning = false;
+
+function msUntilNext0300UTC(): number {
+  const now = new Date();
+  const next = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    3, 0, 0, 0
+  ));
+  if (next.getTime() <= now.getTime()) {
+    next.setUTCDate(next.getUTCDate() + 1);
+  }
+  return next.getTime() - now.getTime();
+}
+
+export async function startDailyPgDumpScheduler(): Promise<void> {
+  if (pgDumpSchedulerRunning) {
+    console.log('[pg-dump-cron] Already running');
+    return;
+  }
+  if (!process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID) {
+    console.log('[pg-dump-cron] ⚠️ DEFAULT_OBJECT_STORAGE_BUCKET_ID not set, scheduler skipped');
+    return;
+  }
+  if (!process.env.DATABASE_URL) {
+    console.log('[pg-dump-cron] ⚠️ DATABASE_URL not set, scheduler skipped');
+    return;
+  }
+  pgDumpSchedulerRunning = true;
+
+  const runOnce = async () => {
+    if (pgDumpJobRunning) {
+      console.log('[pg-dump-cron] Previous job still running, skipping');
+      return;
+    }
+    pgDumpJobRunning = true;
+    const startedAt = new Date().toISOString();
+    try {
+      const { runDailyPgDump } = await import('../scripts/backup/pg-dump-daily');
+      const result = await runDailyPgDump({ dryRun: false });
+      if (result.ok) {
+        console.log(`[pg-dump-cron] ✅ Daily backup OK at ${startedAt}, ${(result.bytesUploaded||0)/1024/1024}MB → ${result.storagePath}, ${result.durationMs}ms`);
+      } else {
+        console.error(`[pg-dump-cron] ❌ Daily backup FAILED at ${startedAt}: ${result.error}`);
+      }
+    } catch (e) {
+      console.error('[pg-dump-cron] Unhandled error:', e);
+    } finally {
+      pgDumpJobRunning = false;
+    }
+  };
+
+  // İlk çalıştırma: bir sonraki 03:00 UTC
+  const firstDelayMs = msUntilNext0300UTC();
+  const firstAt = new Date(Date.now() + firstDelayMs).toISOString();
+  console.log(`[pg-dump-cron] 📅 Scheduler started. First run at ${firstAt} (in ${Math.round(firstDelayMs/1000/60)} min)`);
+
+  schedulerManager.registerTimeout('pg-dump-first', () => {
+    void runOnce();
+    // Sonraki çalıştırmalar 24 saat aralıkla
+    schedulerManager.registerInterval('pg-dump-daily', () => {
+      void runOnce();
+    }, 24 * 60 * 60 * 1000);
+  }, firstDelayMs);
+}

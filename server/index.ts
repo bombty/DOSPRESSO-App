@@ -25,7 +25,7 @@ import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
 import { seedPdksSprintA } from "./seed-pdks-sprint-a";
 import { startPdksDailySummarySyncScheduler } from "./services/pdks-daily-summary-sync";
 import { cleanupExpiredKioskSessions } from "./localAuth";
-import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck } from "./backup";
+import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck, startDailyPgDumpScheduler } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
 import { startAgentScheduler, stopAgentScheduler } from "./services/agent-scheduler";
 import { calculateAndSaveDailyScores, calculateAndSaveWeeklyScores, backfillNullScores, closeOrphanedBreakLogs, cleanupStaleShiftSessions } from "./services/factory-scoring-service";
@@ -372,6 +372,7 @@ app.use((req, res, next) => {
       startDailyGapDetection();
       
       startWeeklyBackupScheduler();
+      void startDailyPgDumpScheduler(); // Wave A-2 / B16: günlük pg_dump → Object Storage (03:00 UTC)
       startTrackingCleanup();
       startNotificationCleanupJob();
       startFactoryScoringScheduler();
