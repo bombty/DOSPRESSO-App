@@ -96,6 +96,16 @@ export const branchRecipes = pgTable("branch_recipes", {
   version: varchar("version", { length: 10 }).default("3.6"), // PDF'te "v.3.6"
   isActive: boolean("is_active").default(true),
 
+  // ✅ YENİ: Template sistemi (3 May 2026, Aslan onayı)
+  // Bazı reçeteler şablondur (Meyveli Mojito, Meyveli Yogurt, Matcha Creamice).
+  // Şablon ise → branch_recipe_aroma_compatibility tablosundan aromaları al
+  // Sabit reçete ise → her şey ingredients/steps'te yazılı
+  isTemplate: boolean("is_template").default(false),
+  templateType: varchar("template_type", { length: 50 }),
+  // 'fruit_mojito', 'fruit_ice_tea', 'fruit_italian_soda', 'fruit_mojito_blend',
+  // 'fruit_yogurt_single' (Tango Mango), 'fruit_yogurt_double' (Jimmy Jambo - 2 aroma),
+  // 'fruit_matcha_creamice', 'fruit_milkshake'
+
   // Hazırlama detay
   preparationTimeSec: integer("preparation_time_sec"), // tahmini hazırlama süresi
   difficultyLevel: integer("difficulty_level").default(1), // 1=kolay, 2=orta, 3=zor
@@ -111,6 +121,7 @@ export const branchRecipes = pgTable("branch_recipes", {
 }, (table) => [
   index("br_product_idx").on(table.productId),
   index("br_active_idx").on(table.isActive),
+  index("br_template_idx").on(table.isTemplate),
   unique("br_product_size_unique").on(table.productId, table.size),
 ]);
 
@@ -146,10 +157,19 @@ export const branchRecipeIngredients = pgTable("branch_recipe_ingredients", {
   // Notlar (örn. "Pitcher içerisine ilk çizgisine kadar")
   preparationNote: text("preparation_note"),
 
+  // ✅ YENİ: Template aroma sistemi (3 May 2026, Aslan onayı)
+  // Şablon reçetelerde değişken aroma slot'ları:
+  // Meyveli Mojito: ingredient="Meyve şurup (değişken)", aromaSlot="primary_fruit"
+  // Jimmy Jambo: ingredient="Şeftali" aromaSlot="primary", "Amber" aromaSlot="secondary"
+  isVariableAroma: boolean("is_variable_aroma").default(false),
+  aromaSlot: varchar("aroma_slot", { length: 30 }),
+  // 'primary_fruit', 'secondary_fruit', 'primary' (tek aroma için)
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("bri_recipe_idx").on(table.recipeId),
   index("bri_recipe_step_idx").on(table.recipeId, table.stepOrder),
+  index("bri_aroma_slot_idx").on(table.aromaSlot),
 ]);
 
 export const insertBranchRecipeIngredientSchema = createInsertSchema(branchRecipeIngredients).omit({
@@ -344,6 +364,102 @@ export type InsertBranchRecipeLearningProgress = z.infer<typeof insertBranchReci
 export type BranchRecipeLearningProgress = typeof branchRecipeLearningProgress.$inferSelect;
 
 // ────────────────────────────────────────
+// 8. BRANCH AROMA OPTIONS — Aroma havuzu (template sistemi için)
+// ────────────────────────────────────────
+// Şablon reçetelerde kullanılabilen aromaların listesi.
+// Yeni meyve eklendiğinde tek satır eklenir, tüm template'ler otomatik destekler.
+//
+// Örn: Mango, Şeftali, Pinkberry, Blueberry, Lime, Amber, Mint, ...
+
+export const branchAromaOptions = pgTable("branch_aroma_options", {
+  id: serial("id").primaryKey(),
+
+  // Temel bilgi
+  name: varchar("name", { length: 100 }).notNull().unique(), // "Mango", "Şeftali", ...
+  shortCode: varchar("short_code", { length: 10 }), // "MNG", "SFT", "PNK", ...
+
+  // Kategori (UI grup için)
+  category: varchar("category", { length: 30 }).notNull(),
+  // 'fruit' (Mango/Şeftali), 'herbal' (Mint/Tarçın), 'dairy' (Vanilya), 'sweet' (Karamel)
+
+  // Türkçe açıklama (UI'da gösterilir)
+  description: text("description"),
+
+  // Görsel (UI'da renk/icon)
+  colorHex: varchar("color_hex", { length: 7 }), // "#FF6B35"
+  iconEmoji: varchar("icon_emoji", { length: 4 }), // "🥭"
+
+  // Şurup tipi mi yoksa toz mu?
+  formType: varchar("form_type", { length: 20 }).default("syrup"),
+  // 'syrup' (pump ile ölçülür), 'powder' (ölçek ile), 'fresh' (taze - nane/limon)
+
+  // Sıralama
+  displayOrder: integer("display_order").default(0),
+
+  isActive: boolean("is_active").default(true),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("bao_category_idx").on(table.category),
+  index("bao_active_idx").on(table.isActive),
+]);
+
+export const insertBranchAromaOptionSchema = createInsertSchema(branchAromaOptions).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertBranchAromaOption = z.infer<typeof insertBranchAromaOptionSchema>;
+export type BranchAromaOption = typeof branchAromaOptions.$inferSelect;
+
+// ────────────────────────────────────────
+// 9. BRANCH RECIPE AROMA COMPATIBILITY — Şablon × Aroma uyumluluğu
+// ────────────────────────────────────────
+// Hangi şablon hangi aromayı kabul eder + her aroma için özel pump miktarı.
+//
+// Örn: Meyveli Mojito (template) × Mango (aroma) = 3 pump (Massivo) / 4 pump (Long Diva)
+//      Meyveli Mojito × Pinkberry = aynı 3/4 pump
+//      Jimmy Jambo (Şeftali+Amber) × Şeftali (primary) + Amber (secondary)
+
+export const branchRecipeAromaCompatibility = pgTable("branch_recipe_aroma_compatibility", {
+  id: serial("id").primaryKey(),
+
+  recipeId: integer("recipe_id").notNull()
+    .references(() => branchRecipes.id, { onDelete: "cascade" }),
+
+  aromaId: integer("aroma_id").notNull()
+    .references(() => branchAromaOptions.id, { onDelete: "cascade" }),
+
+  // Hangi slot için? (primary_fruit / secondary_fruit / primary)
+  slotName: varchar("slot_name", { length: 30 }).notNull(),
+
+  // Override miktarları (boş ise reçete varsayılanı kullanılır)
+  overridePumpsMassivo: numeric("override_pumps_massivo", { precision: 5, scale: 2 }),
+  overridePumpsLongDiva: numeric("override_pumps_long_diva", { precision: 5, scale: 2 }),
+  overrideUnit: varchar("override_unit", { length: 20 }), // "pump", "ölçek", ...
+
+  // Varsayılan kombinasyon mu? (UI'da önce gösterilir)
+  isDefault: boolean("is_default").default(false),
+
+  // Görüntüleme adı override (özel ürün ismi varsa)
+  // Örn: Pinkberry Mojito = "Moulin Rouge" gibi pazarlama adı
+  displayNameOverride: varchar("display_name_override", { length: 100 }),
+
+  isActive: boolean("is_active").default(true),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("brac_recipe_idx").on(table.recipeId),
+  index("brac_aroma_idx").on(table.aromaId),
+  unique("brac_recipe_aroma_slot_unique").on(table.recipeId, table.aromaId, table.slotName),
+]);
+
+export const insertBranchRecipeAromaCompatibilitySchema = createInsertSchema(branchRecipeAromaCompatibility).omit({
+  id: true, createdAt: true,
+});
+export type InsertBranchRecipeAromaCompatibility = z.infer<typeof insertBranchRecipeAromaCompatibilitySchema>;
+export type BranchRecipeAromaCompatibility = typeof branchRecipeAromaCompatibility.$inferSelect;
+
+// ────────────────────────────────────────
 // İZOLASYON BEYANI
 // ────────────────────────────────────────
 // Bu schema dosyası fabrika sistemi tablolarına SIFIR FK referans verir.
@@ -356,3 +472,20 @@ export type BranchRecipeLearningProgress = typeof branchRecipeLearningProgress.$
 // Sadece global tablolar:
 //   - users ✅ (createdBy, approvedBy, demoApprovedBy)
 // Mutlak izolasyon ✅
+//
+// TOPLAM: 9 tablo
+// 1-7: Temel reçete sistemi (ürün, reçete, malzeme, adım, quiz, onboarding, ilerleme)
+// 8-9: Template sistemi (aroma havuzu + uyumluluk) — DRY prensibi için
+//
+// TEMPLATE PATTERN ÖRNEKLERİ:
+//   - Meyveli Mojito (template) × {Mango, Şeftali, Pinkberry, Blueberry}
+//   - Meyveli Ice Tea (template) × {aynı meyveler}
+//   - Meyveli Italian Soda (template) × {aynı meyveler}
+//   - Meyveli Mojito Blend (template) × {aynı meyveler}
+//   - Meyveli Yogurt Tek (Tango Mango/Moulin Rouge/Captain Jack) × tek aroma
+//   - Meyveli Yogurt Çift (Jimmy Jambo) × {primary + secondary aroma}
+//   - Matcha Creamice (template) × {Mango, Şeftali, Pinkberry}
+//   - Meyveli Milkshake (template) × {Şeftali+Amber, Mango, Blueberry, Aloe}
+//
+// Yeni meyve eklendiğinde: branch_aroma_options'a 1 satır + her template için
+// 1 compatibility kaydı yeterli. Mevcut sistemde 5+ ürün × 4 template = 20+ kayıt.
