@@ -37,7 +37,7 @@ Commit mesajı formatı:
 
 | Skill | Ne Zaman Güncellenir? | Örnek Değişiklik |
 |---|---|---|
-| `dospresso-architecture` | Tablo/endpoint/rol/sayfa sayısı değişti | "27 Roles" → "29 Roles" |
+| `dospresso-architecture` | Tablo/endpoint/rol/sayfa sayısı değişti | "29 Roles" → "31 Roles" |
 | `dospresso-debug-guide` | Yeni bug tespit edilip çözüldü | §17 Drizzle kolon uyuşmazlığı |
 | `dospresso-quality-gate` | Yeni kontrol maddesi gerekti | Madde 19: Schema-DB sync |
 | `session-protocol` | Workflow'un kendisi değişti | Bu adımlar güncellenirse |
@@ -120,20 +120,20 @@ Test edilmesi gereken endpoint'ler:
 
 ---
 
-## Güncel Sistem Durumu (08.04.2026 itibarıyla)
+## Güncel Sistem Durumu (03.05.2026 itibarıyla)
 
 | Metrik | Değer |
 |---|---|
-| Roller | 29 |
+| Roller | 31 |
 | Sayfalar | 311 |
 | Route dosyaları | 110 |
 | Schema dosyaları | 16 |
 | Quality Gate maddeleri | 19 |
-| Debug guide bölümleri | §20 |
+| Debug guide bölümleri | §24 |
 | Son Sprint | TASK #117 (tamamlandı — Donut seed + senaryo API) |
 | Son commit | ce3635317 (hotfix: seed-donut-recipe-v2 ref_id + expected_unit_weight_unit) |
 | Bekleyen | Task #92 fabrika_depo erişim sorunu (HR_ACCESS_DENIED leftovers/inventory), Task #93 düşük stok→satınalma, Task #94 LOT&SKT girişi |
-| Güncel Değerler | 29 rol, 311+ sayfa, 110+ route dosyası, 16 schema, §21 debug, 19 quality-gate |
+| Güncel Değerler | 31 rol, 305 sayfa, 262 route (App.tsx), 23 schema, 455 pgTable, §24 debug, 35 quality-gate |
 
 ---
 

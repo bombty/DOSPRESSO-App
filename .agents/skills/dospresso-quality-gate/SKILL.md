@@ -1,9 +1,9 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 17-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, and mobile compactness. Run after every sprint build or code change.
+description: DOSPRESSO 35-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, F33 route guard wrap (#306/#325 CI coverage), F36 PIN seed coverage (#324), and F15 dynamic late tolerance (per-branch settings vs hardcoded). Run after every sprint build or code change.
 ---
 
-# DOSPRESSO Quality Gate — 17-Point Checklist
+# DOSPRESSO Quality Gate — 35-Point Checklist
 
 Run after EVERY sprint build or significant code change. Report each item as PASS or FAIL.
 
