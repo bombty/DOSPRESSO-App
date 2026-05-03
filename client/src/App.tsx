@@ -18,6 +18,7 @@ import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
 import { PushPermissionBanner } from "@/components/push-permission";
 import { useAuth } from "@/hooks/useAuth";
+import { ROLE_CONTROL_PATH } from "@/lib/role-routes";
 import { DobodyFlowProvider } from "@/contexts/dobody-flow-context";
 import { DobodyMiniBar } from "@/components/dobody-mini-bar";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -434,9 +435,9 @@ function Router() {
       {isAuthenticated && (
         <>
           <Route path="/" component={HomeScreen} />
-          <Route path="/control" component={ControlDashboard} />
+          <Route path="/control">{() => { const { user } = useAuth(); const [,nav] = useLocation(); useEffect(() => { const target = ROLE_CONTROL_PATH[user?.role || ''] || '/'; if (target !== '/control') nav(target); }, [user?.role]); return null; }}</Route>
           <Route path="/control-legacy">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/control"); }, []); return null; }}</Route>
-          <Route path="/merkez-dashboard">{() => <ExecutiveOnly><MerkezDashboard /></ExecutiveOnly>}</Route>
+          <Route path="/merkez-dashboard">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/muhasebe-centrum"); }, []); return null; }}</Route>
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc">{() => <ExecutiveOnly><SubeNFCDetay /></ExecutiveOnly>}</Route>
           <Route path="/subeler/:id">{() => <ExecutiveOnly><SubeDetay /></ExecutiveOnly>}</Route>
@@ -658,7 +659,7 @@ function Router() {
           <Route path="/ceo-command-center">{() => <HQOnly><CEOCommandCenter /></HQOnly>}</Route>
           <Route path="/cgo-command-center">{() => <ExecutiveOnly><CGOCommandCenter /></ExecutiveOnly>}</Route>
           <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
-          <Route path="/kalite-kontrol-dashboard">{() => <HQOnly><KaliteKontrolDashboard /></HQOnly>}</Route>
+          <Route path="/kalite-kontrol-dashboard">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/fabrika-centrum"); }, []); return null; }}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
@@ -671,8 +672,8 @@ function Router() {
           <Route path="/benim-gunum">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/personel-centrum"); }, []); return null; }}</Route>
           <Route path="/sube-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/sube-centrum"); }, []); return null; }}</Route>
           <Route path="/hq-ozet">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/ceo-command-center"); }, []); return null; }}</Route>
-          <Route path="/kocluk-paneli">{() => <ProtectedRoute allowedRoles={["coach","admin","ceo"]}><KoclukPaneli /></ProtectedRoute>}</Route>
-          <Route path="/franchise-ozet">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","yatirimci_hq","yatirimci_branch","mudur"]}><FranchiseOzet /></ProtectedRoute>}</Route>
+          <Route path="/kocluk-paneli">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/coach-kontrol-merkezi"); }, []); return null; }}</Route>
+          <Route path="/franchise-ozet">{() => { const { user } = useAuth(); const [,nav] = useLocation(); useEffect(() => { const target = ROLE_CONTROL_PATH[user?.role || ''] || '/'; if (target !== '/franchise-ozet') nav(target); }, [user?.role]); return null; }}</Route>
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
           <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>
           <Route path="/pdks-excel-import">{() => <ProtectedRoute allowedRoles={["admin","muhasebe","muhasebe_ik"]}><PdksExcelImport /></ProtectedRoute>}</Route>
