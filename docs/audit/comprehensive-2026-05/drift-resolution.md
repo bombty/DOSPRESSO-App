@@ -11,11 +11,11 @@
 |---|---:|:---:|:---:|
 | Eksik tablo | 13 | – | ✓ |
 | Eksik kolon (`ai_settings`) | 6 | ✓ | – |
-| Kolon tipi/nullability drift | 42 | 41 | 1 (`tasks.target_branch_ids`) |
+| Kolon tipi/nullability drift | 42 | 42 | 0 |
 | Eksik UNIQUE | 4 | 1 (`module_flags`) | 3 (eksik tabloya bağlı) |
 | Eksik index | 83 | 60 | 23 (eksik tabloya bağlı) |
 | Eksik FK | 47 | 28 | 19 (eksik tabloya bağlı) |
-| **TOPLAM** | **195** | **136** | **59** |
+| **TOPLAM** | **195** | **137** | **58** |
 
 ---
 
@@ -133,11 +133,11 @@ DB NOT NULL → schema NULL allows. Sıfır risk:
 > (frontend + scheduler) zaten integer dizi olduğu için risk düşük.
 > Geriye sadece eksik tablo+bağlı kısıtlamalar kaldı.
 
-### 13 Eksik Tablo (Bundle 1B)
+### 13 Eksik Tablo (Bundle 1B = #314)
 Audit'te Task #255 ile kapatıldığı söylenen ama hala eksik olan tablolar. Hangileri ve neden eksik kaldı sonraki adımda incelenecek. FK zinciri analizi gerekir.
-- **Follow-up task:** T-330-B (öneri)
+- **Follow-up task:** #314 (Bundle 1B)
 
-### Bunlara bağlı 3 UNIQUE + 23 index + 19 FK
+### Bunlara bağlı 3 UNIQUE + 23 index + 19 FK = 58 toplam defer item
 Eksik tablolar yaratılınca otomatik kapatılır.
 
 ---
@@ -164,7 +164,7 @@ Eksik tablolar yaratılınca otomatik kapatılır.
 4. **Apply:** `BEGIN; ...; COMMIT;` (asıl uygulama)
 5. **Verify:** `npx tsx scripts/db-drift-check.ts` re-run
    - **Gerçekleşen:** 42 kolon drift → **0**; eksik kolon → **0**; 60 idx/28 FK → 0; module_flags UNIQUE skip (zaten COALESCE-based unique index var)
-   - **Toplam:** 195 → 59 (sadece 13 eksik tablo + bağlı 4 unique/23 idx/19 FK Bundle 1B'de)
+   - **Toplam:** 195 → 58 (sadece 13 eksik tablo + bağlı 3 unique/23 idx/19 FK Bundle 1B'de)
    - **Migration filename:** `migrations/sprint-2ext-drift-close.sql` (task plan acceptance ile uyumlu)
 
 ---
