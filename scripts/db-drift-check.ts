@@ -499,14 +499,19 @@ async function main() {
     );
     // Partial unique indexes with expressions (e.g. COALESCE(col, 0)) are
     // exposed by pg_attribute as truncated column lists (expr slots return
-    // attnum=0 and are dropped). Treat name-match as a satisfying signal so
-    // we don't flag a deliberately partial unique index as missing.
-    const uniqueIndexNameMatch = actualIndexes.some(
-      (a) =>
-        a.table_name === exp.table &&
-        a.is_unique &&
-        a.index_name === exp.name,
-    );
+    // attnum=0 and are dropped). Treat name-match as satisfying ONLY when
+    // the directly-indexed columns are a prefix-subset of the expected
+    // columns (in order) — this prevents a wrong-definition index from
+    // silently masking drift just because it shares the expected name.
+    const uniqueIndexNameMatch = actualIndexes.some((a) => {
+      if (a.table_name !== exp.table) return false;
+      if (!a.is_unique) return false;
+      if (a.index_name !== exp.name) return false;
+      // Actual columns must be a non-empty prefix of expected columns
+      if (a.columns.length === 0) return false;
+      if (a.columns.length > exp.columns.length) return false;
+      return a.columns.every((c, i) => c === exp.columns[i]);
+    });
     if (!constraintMatch && !uniqueIndexMatch && !uniqueIndexNameMatch) {
       missingUniques.push(exp);
     }
