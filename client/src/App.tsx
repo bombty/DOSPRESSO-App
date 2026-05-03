@@ -62,7 +62,6 @@ const Login = lazyWithRetry(() => import("@/pages/login"));
 const Register = lazyWithRetry(() => import("@/pages/register"));
 const ForgotPassword = lazyWithRetry(() => import("@/pages/forgot-password"));
 const ResetPassword = lazyWithRetry(() => import("@/pages/reset-password"));
-const ControlDashboard = lazyWithRetry(() => import("@/pages/control-dashboard"));
 const HomeScreen = lazyWithRetry(() => import("@/components/home-screen/HomeScreen"));
 const Subeler = lazyWithRetry(() => import("@/pages/subeler"));
 const SubeDetay = lazyWithRetry(() => import("@/pages/sube-detay"));
@@ -167,14 +166,12 @@ const Muhasebe = lazyWithRetry(() => import("@/pages/muhasebe"));
 const MaliYonetim = lazyWithRetry(() => import("@/pages/mali-yonetim"));
 const FabrikaMegaModule = lazyWithRetry(() => import("@/pages/fabrika/index"));
 const FabrikaKiosk = lazyWithRetry(() => import("@/pages/fabrika/kiosk"));
-const FabrikaDashboard = lazyWithRetry(() => import("@/pages/fabrika/dashboard"));
 const SubeSiparisStok = lazyWithRetry(() => import("@/pages/sube/siparis-stok"));
 const SubeKiosk = lazyWithRetry(() => import("@/pages/sube/kiosk"));
 const HqKiosk = lazyWithRetry(() => import("@/pages/hq/kiosk"));
 const HqStaffDashboard = lazyWithRetry(() => import("@/pages/hq/staff-dashboard"));
 const SubeDashboard = lazyWithRetry(() => import("@/pages/sube/dashboard"));
 const EmployeeDashboard = lazyWithRetry(() => import("@/pages/sube/employee-dashboard"));
-const MerkezDashboard = lazyWithRetry(() => import("@/pages/merkez-dashboard"));
 const ChecklistExecutionPage = lazyWithRetry(() => import("@/pages/sube/checklist-execution"));
 const HQFabrikaAnalitik = lazyWithRetry(() => import("@/pages/hq-fabrika-analitik"));
 const SubeKarsilastirma = lazyWithRetry(() => import("@/pages/sube-karsilastirma"));
@@ -210,7 +207,6 @@ const TrainerEgitimMerkezi = lazyWithRetry(() => import("@/pages/trainer-egitim-
 const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici-degerlendirme"));
 const BannerEditor = lazyWithRetry(() => import("@/pages/banner-editor"));
 const DuyuruStudioV2 = lazyWithRetry(() => import("@/components/DuyuruStudioV2/DuyuruStudio"));
-const KaliteKontrolDashboard = lazyWithRetry(() => import("@/pages/kalite-kontrol-dashboard"));
 const GidaGuvenligiDashboard = lazyWithRetry(() => import("@/pages/gida-guvenligi-dashboard"));
 const Setup = lazyWithRetry(() => import("@/pages/setup"));
 const MisafirGeriBildirimPublic = lazyWithRetry(() => import("@/pages/misafir-geri-bildirim"));
@@ -233,7 +229,6 @@ const TrainingRedirect = () => { const [, nav] = useLocation(); useEffect(() => 
 const AjandaPage = lazyWithRetry(() => import("@/pages/ajanda"));
 const CEOCommandCenter = lazyWithRetry(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"));
-const HQDashboard = lazyWithRetry(() => import("@/pages/hq-dashboard"));
 const SatinalmaMega = lazyWithRetry(() => import("@/pages/satinalma-mega"));
 
 // Centrum v5 pages
@@ -266,11 +261,7 @@ const KullanimKilavuzu = lazyWithRetry(() => import("@/pages/kullanim-kilavuzu")
 const WasteMegaModule = lazyWithRetry(() => import("@/pages/waste-mega"));
 const HubPage = lazyWithRetry(() => import("@/pages/hub-page"));
 const AgentMerkezi = lazyWithRetry(() => import("@/pages/agent-merkezi"));
-const BenimGunum = lazyWithRetry(() => import("@/pages/benim-gunum"));
-const SubeOzet = lazyWithRetry(() => import("@/pages/sube-ozet"));
-const KoclukPaneli = lazyWithRetry(() => import("@/pages/kocluk-paneli"));
 const SistemAtolyesi = lazyWithRetry(() => import("@/pages/sistem-atolyesi"));
-const FranchiseOzet = lazyWithRetry(() => import("@/pages/franchise-ozet"));
 const PdksPage = lazyWithRetry(() => import("@/pages/pdks"));
 const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"));
 const PdksExcelImport = lazyWithRetry(() => import("@/pages/pdks-excel-import"));
@@ -341,7 +332,7 @@ function CEOOnly({ children }: { children: ReactNode }) {
 function FabrikaDashboardRedirect() {
   const [, setLocation] = useLocation();
   useEffect(() => {
-    setLocation("/fabrika", { replace: true });
+    setLocation("/fabrika-centrum", { replace: true });
   }, [setLocation]);
   return null;
 }

@@ -1,16 +1,10 @@
 // ─── ROLE HOME ROUTES ────────────────────────────────────
 // All non-kiosk roles go to HomeScreen ("/")
 // Kiosk roles go directly to their kiosk page
-// 
-// CONTROL CARD TARGETS (where "Control" module card navigates):
-//   ceo, cgo, admin → /hq-ozet (MissionControlHQ)
-//   coach, trainer → /kocluk-paneli (MissionControlCoach)
-//   supervisor, supervisor_buddy, mudur → /sube-ozet (MissionControlSupervisor)
-//   muhasebe, muhasebe_ik → /merkez-dashboard (MissionControlMuhasebe)
-//   yatirimci_branch, yatirimci_hq → /franchise-ozet (MissionControlYatirimci)
-//   fabrika_mudur, uretim_sefi → /fabrika/dashboard (MissionControlFabrika)
-//   barista, stajyer, bar_buddy → /benim-gunum (MissionControlStajyer)
-//   satinalma, marketing, teknik, destek, gida_muhendisi, kalite_kontrol → /hq-dashboard (MissionControlDynamic)
+//
+// CONTROL CARD TARGETS — see ROLE_CONTROL_PATH below.
+// All control card paths now route to v5 Centrum / Command Center pages
+// (Bundle 3 / Task #307, 3 May 2026 — v4 MissionControl* deleted).
 // ──────────────────────────────────────────────────────────
 
 export const ROLE_HOME_ROUTES: Record<string, string> = {
