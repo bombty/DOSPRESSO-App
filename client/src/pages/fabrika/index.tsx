@@ -22,15 +22,11 @@ import {
   ScanBarcode,
   Flame,
   Award,
-  LayoutDashboard,
   AlertTriangle,
   Users,
   Target,
 } from "lucide-react";
 
-const FabrikaDashboardTab = lazy(() => import("./dashboard").then(mod => ({
-  default: () => mod.default({ embedded: true })
-})));
 const FabrikaKaliteKontrol = lazy(() => import("./kalite-kontrol"));
 const FabrikaPerformans = lazy(() => import("./performans"));
 const FabrikaVardiyaUyumluluk = lazy(() => import("./vardiya-uyumluluk"));
@@ -57,7 +53,6 @@ interface ViewConfig {
 }
 
 const VIEWS: ViewConfig[] = [
-  { id: "dashboard", labelTr: "Dashboard", icon: <LayoutDashboard />, section: "genel", component: FabrikaDashboardTab },
   { id: "kalite-kontrol", labelTr: "Kalite Kontrol", icon: <CheckCircle2 />, permissionModule: "factory_quality", section: "genel", component: FabrikaKaliteKontrol },
   { id: "lot-izleme", labelTr: "LOT İzleme", icon: <ScanBarcode />, permissionModule: "factory_production", section: "genel", component: LotIzleme },
   { id: "uretim-planlama", labelTr: "Üretim Planlama", icon: <ClipboardList />, permissionModule: "factory_stations", section: "uretim", component: FabrikaUretimPlanlama },
@@ -110,7 +105,7 @@ export default function FabrikaMegaModule() {
     return canAccess(v.permissionModule!, "view");
   });
 
-  const firstVisible = visibleViews[0]?.id || "dashboard";
+  const firstVisible = visibleViews[0]?.id || "kalite-kontrol";
 
   const initialView = getViewFromPath(location);
   const [activeView, setActiveView] = useState(
@@ -132,11 +127,7 @@ export default function FabrikaMegaModule() {
 
   const handleViewChange = (viewId: string) => {
     setActiveView(viewId);
-    if (viewId !== "dashboard") {
-      setLocation(`/fabrika/${viewId}`);
-    } else {
-      setLocation("/fabrika");
-    }
+    setLocation(`/fabrika/${viewId}`);
   };
 
   const { data: factoryStats } = useQuery<{
