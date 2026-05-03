@@ -1,0 +1,17 @@
+#!/bin/bash
+# DOSPRESSO pre-commit hook — Task #325
+# Aktivasyon (bir kez): git config core.hooksPath .githooks
+set -e
+
+CHANGED=$(git diff --cached --name-only)
+
+if echo "$CHANGED" | grep -qE '^(client/src/App\.tsx|scripts/audit/route-guard-coverage\.ts|scripts/audit/public-routes-whitelist\.json)$'; then
+  echo "[pre-commit] Route guard kapsama denetimi çalıştırılıyor (Task #325)..."
+  if ! npx --no-install tsx scripts/audit/route-guard-coverage.ts; then
+    echo ""
+    echo "[pre-commit] HATA: Guard'sız <Route> tespit edildi."
+    echo "  - <ProtectedRoute>/<ModuleGuard>/<ExecutiveOnly> ile sarın, ya da"
+    echo "  - Gerçekten public/role-agnostic ise scripts/audit/public-routes-whitelist.json'a ekleyin."
+    exit 1
+  fi
+fi

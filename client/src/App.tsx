@@ -625,7 +625,7 @@ function Router() {
           <Route path="/sistem-atolyesi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer"]}><SistemAtolyesi /></ProtectedRoute>}</Route>
           {/* ── Orphan → Linked (17 sayfa) ── */}
           <Route path="/duyuru-yonetimi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach"]}><Announcements /></ProtectedRoute>}</Route>
-          <Route path="/duyuru/:id">{() => <DuyuruDetay />}</Route>
+          <Route path="/duyuru/:id">{() => <ProtectedRoute><DuyuruDetay /></ProtectedRoute>}</Route>
           <Route path="/mesajlarim" component={Mesajlar} />
           <Route path="/personel-onboarding-akisi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","mudur","supervisor","coach","trainer","fabrika_mudur"]}><PersonelOnboarding /></ProtectedRoute>}</Route>
           <Route path="/ekipman-katalog">{() => <ProtectedRoute allowedRoles={["cgo","admin","teknik"]}><EkipmanKatalog /></ProtectedRoute>}</Route>
@@ -636,8 +636,8 @@ function Router() {
           <Route path="/kampanya-yonetimi">{() => <ProtectedRoute allowedRoles={["marketing","admin","ceo"]}><KampanyaYonetimi /></ProtectedRoute>}</Route>
           <Route path="/onboarding-studio">{() => <ProtectedRoute allowedRoles={["coach","trainer","admin"]}><CoachOnboardingStudio /></ProtectedRoute>}</Route>
           <Route path="/aksiyon-takip">{() => <ProtectedRoute allowedRoles={["coach","ceo","cgo","admin"]}><AksiyonTakip /></ProtectedRoute>}</Route>
-          <Route path="/akademi-ana">{() => <AcademyLanding />}</Route>
-          <Route path="/ogrenme-yolum">{() => <AcademyMyPath />}</Route>
+          <Route path="/akademi-ana">{() => <ModuleGuard moduleKey="akademi"><AcademyLanding /></ModuleGuard>}</Route>
+          <Route path="/ogrenme-yolum">{() => <ModuleGuard moduleKey="akademi"><AcademyMyPath /></ModuleGuard>}</Route>
           <Route path="/kpi-sinyalleri">{() => <ProtectedRoute allowedRoles={["coach","ceo","cgo"]}><CoachKpiSignals /></ProtectedRoute>}</Route>
           <Route path="/supervisor-egitim">{() => <ProtectedRoute allowedRoles={["supervisor","coach","trainer"]}><SupervisorOnboarding /></ProtectedRoute>}</Route>
           <Route path="/gecit-yonetimi">{() => <ProtectedRoute allowedRoles={["coach","trainer"]}><CoachGateManagement /></ProtectedRoute>}</Route>

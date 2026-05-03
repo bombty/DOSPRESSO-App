@@ -56,6 +56,19 @@ else
 fi
 
 echo ""
+echo "5. Route guard coverage (Task #325 — F33 regression)..."
+GUARD_OUTPUT=$(npx tsx scripts/audit/route-guard-coverage.ts 2>&1)
+GUARD_EXIT=$?
+if [ "$GUARD_EXIT" -ne "0" ]; then
+  echo "  Guard'sız route tespit edildi:"
+  echo "$GUARD_OUTPUT" | grep -E "✗|GUARD'SIZ" | head -20
+  echo "  Detay: npx tsx scripts/audit/route-guard-coverage.ts --list"
+  ERRORS=$((ERRORS+1))
+else
+  echo "  Tüm route'lar guard altında veya whitelist'te"
+fi
+
+echo ""
 if [ "$ERRORS" -gt "0" ]; then
   echo "FAILED: $ERRORS issue(s) found. Fix before deploying."
   exit 1

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "Bare <Route component={...} /> ya da guard'sız <Route>{() => <X />}</Route> kullanımına izin verilen path'lerin merkezi listesi. scripts/audit/route-guard-coverage.ts bu listeyi kullanır; listede olmayan herhangi bir guard'sız route audit'i fail eder. Liste F33 (Bundle 2) incelemesinde 'gerçekten public' veya 'authenticated kullanıcılara role-agnostic açık' kabul edilen sayfaları içerir. Yeni giriş eklemeden önce başka bir guard (ProtectedRoute/ModuleGuard/ExecutiveOnly/AdminOnly/FabrikaOnly/HQOnly) uygulamak tercih edilmelidir.",
+  "categories": {
+    "publicNoAuth": "Login öncesi ya da token-secured public sayfalar (gerçek anlamda public).",
+    "authenticatedRoleAgnostic": "isAuthenticated bloğu içinde, tüm rollere açık olması bilinçli kabul edilmiş sayfalar (kullanıcının kendi profili, KVKK metni, redirect bileşenleri vb.). Yeni route burada açılmamalıdır; yeni eklemeler ProtectedRoute ile sarılmalıdır.",
+    "catchAllComponents": "Wouter catch-all olarak path'siz tanımlanmış bileşenler."
+  },
+  "publicNoAuth": [
+    { "path": "/setup",                                "reason": "Initial setup wizard, henüz oturum yok" },
+    { "path": "/login",                                "reason": "Login formu" },
+    { "path": "/register",                             "reason": "Kayıt formu" },
+    { "path": "/forgot-password",                      "reason": "Şifre unuttum" },
+    { "path": "/reset-password/:token",                "reason": "Token tabanlı şifre sıfırlama" },
+    { "path": "/personel-degerlendirme/:token",        "reason": "Token-secured public değerlendirme" },
+    { "path": "/p/urun/:code",                         "reason": "Public ürün sayfası (QR)" },
+    { "path": "/misafir-geri-bildirim/:token",         "reason": "Token-secured misafir geri bildirim" },
+    { "path": "/m/alerjen/:id",                        "reason": "Public müşteri alerjen sayfası" },
+    { "path": "/m/alerjen",                            "reason": "Public müşteri alerjen ana" },
+    { "path": "/sube/checklist-execution/:completionId", "reason": "Şube kiosk checklist akışı (kendi auth)" },
+    { "path": "/sube/employee-dashboard",              "reason": "Şube kiosk dashboard (kendi auth)" },
+    { "path": "/sube/dashboard",                       "reason": "Şube kiosk dashboard (kendi auth)" }
+  ],
+  "authenticatedRoleAgnostic": [
+    { "path": "/",                                     "reason": "HomeScreen — tüm authenticated kullanıcılar" },
+    { "path": "/gizlilik-politikasi",                  "reason": "KVKK metni — tüm rollere açık" },
+    { "path": "/profil",                               "reason": "ProfileRedirect — kullanıcının kendi profili" },
+    { "path": "/vardiya",                              "reason": "VardiyaRedirect — herkesin kendi vardiyası" },
+    { "path": "/performansim",                         "reason": "Kullanıcının kendi performansı" },
+    { "path": "/modul/:moduleId",                      "reason": "MegaModulePage — sayfa kendi içinde role-check yapar" },
+    { "path": "/kayip-esya",                           "reason": "Şube personeli — herkesin erişebildiği kayıp eşya kaydı" },
+    { "path": "/destek",                               "reason": "Destek formu — tüm authenticated kullanıcılar" },
+    { "path": "/operasyon/:tab?",                      "reason": "OperasyonMegaModule — sayfa kendi içinde role-check yapar" },
+    { "path": "/hub/:sectionId",                       "reason": "HubPage — bölüm bazlı role-check sayfa içinde" },
+    { "path": "/mesajlarim",                           "reason": "Kullanıcının kendi mesajları" },
+    { "path": "/kullanim-kilavuzu",                    "reason": "Kullanım kılavuzu — herkese açık" },
+    { "path": "/maas",                                 "reason": "MaasPage — kullanıcının kendi maaşı" },
+    { "path": "/bordrom",                              "reason": "BordromPage — kullanıcının kendi bordrosu" },
+    { "path": "/iletisim-merkezi",                     "reason": "Redirect bileşeni" },
+    { "path": "/musteri-geribildirimi",                "reason": "Redirect bileşeni" },
+    { "path": "/training",                             "reason": "TrainingRedirect bileşeni" }
+  ],
+  "catchAllComponents": [
+    { "match": "NotFound",            "reason": "Wouter catch-all NotFound (path yok)" },
+    { "match": "AuthCatchAllToLogin", "reason": "Unauthenticated catch-all → login" }
+  ]
+}

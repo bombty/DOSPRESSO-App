@@ -1,0 +1,28 @@
+name: Route Guard Coverage (Task #325)
+
+on:
+  push:
+    paths:
+      - "client/src/App.tsx"
+      - "scripts/audit/route-guard-coverage.ts"
+      - "scripts/audit/public-routes-whitelist.json"
+      - ".github/workflows/route-guard-coverage.yml"
+  pull_request:
+    paths:
+      - "client/src/App.tsx"
+      - "scripts/audit/route-guard-coverage.ts"
+      - "scripts/audit/public-routes-whitelist.json"
+
+jobs:
+  audit:
+    name: Bare <Route> guard'sızlık taraması
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install tsx
+        run: npm install -g tsx
+      - name: Run route-guard-coverage audit
+        run: tsx scripts/audit/route-guard-coverage.ts
