@@ -448,7 +448,7 @@ function Router() {
           <Route path="/iletisim" component={IletisimRedirect} />
           <Route path="/crm">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
           <Route path="/crm/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
-          <Route path="/personel/:id" component={PersonelProfil} />
+          <Route path="/personel/:id">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","coach","trainer","mudur","supervisor","fabrika_mudur","gida_muhendisi","kalite_kontrol"]}><PersonelProfil /></ProtectedRoute>}</Route>
           <Route path="/personel-detay/:id">{() => <ExecutiveOnly><PersonelDetay /></ExecutiveOnly>}</Route>
           <Route path="/personel-qr-tokenlar">{() => <ExecutiveOnly><StaffQrTokensPage /></ExecutiveOnly>}</Route>
           <Route path="/ayin-elemani">{() => <ProtectedRoute allowedRoles={["admin","ceo","coach","trainer","mudur"]}><EmployeeOfMonthPage /></ProtectedRoute>}</Route>
@@ -466,7 +466,7 @@ function Router() {
           <Route path="/nfc-giris" component={NFCGiris} />
           <Route path="/personel-musaitlik">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","mudur","supervisor"]}><PersonelMusaitlik /></ProtectedRoute>}</Route>
           <Route path="/devam-takibi">{() => <ModuleGuard moduleKey="pdks"><Attendance /></ModuleGuard>}</Route>
-          <Route path="/sube-vardiya-takibi" component={SubeDashboard} />
+          <Route path="/sube-vardiya-takibi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","mudur","supervisor","supervisor_buddy","muhasebe_ik"]}><SubeDashboard /></ProtectedRoute>}</Route>
           <Route path="/gorevler">{() => <ModuleGuard moduleKey="gorevler"><Tasks /></ModuleGuard>}</Route>
           <Route path="/gorev-detay/:id">{() => <ModuleGuard moduleKey="gorevler"><GorevDetay /></ModuleGuard>}</Route>
           <Route path="/sube-gorevler/:id">{() => <ModuleGuard moduleKey="gorevler"><SubeGorevler /></ModuleGuard>}</Route>
@@ -508,7 +508,7 @@ function Router() {
           <Route path="/akademi-cohort-analytics">{() => <ModuleGuard moduleKey="akademi"><AcademyCohortAnalytics /></ModuleGuard>}</Route>
           <Route path="/receteler">{() => <FabrikaOnly><Receteler /></FabrikaOnly>}</Route>
           <Route path="/recete/:id">{() => <FabrikaOnly><ReceteDetay /></FabrikaOnly>}</Route>
-          <Route path="/egitim/:id" component={ModuleDetail} />
+          <Route path="/egitim/:id">{() => <ModuleGuard moduleKey="akademi"><ModuleDetail /></ModuleGuard>}</Route>
           <Route path="/egitim-ata">{() => <ProtectedRoute allowedRoles={["trainer","admin","ceo","coach"]}><TrainingAssign /></ProtectedRoute>}</Route>
           <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi'; return null; }}</Route>
           <Route path="/bildirimler" component={Notifications} />
@@ -521,14 +521,14 @@ function Router() {
           <Route path="/yeni-sube-projeler">{() => <ExecutiveOnly><YeniSubeProjeler /></ExecutiveOnly>}</Route>
           <Route path="/yeni-sube-detay/:id">{() => <ExecutiveOnly><YeniSubeDetay /></ExecutiveOnly>}</Route>
           <Route path="/ik/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","muhasebe","satinalma","mudur","supervisor"]}><IK /></ProtectedRoute>}</Route>
-          <Route path="/izin-talepleri" component={LeaveRequests} />
-          <Route path="/mesai-talepleri" component={OvertimeRequests} />
+          <Route path="/izin-talepleri">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","coach","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><LeaveRequests /></ProtectedRoute>}</Route>
+          <Route path="/mesai-talepleri">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","coach","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><OvertimeRequests /></ProtectedRoute>}</Route>
           <Route path="/ik-raporlari">{() => <ExecutiveOnly><HRReports /></ExecutiveOnly>}</Route>
           <Route path="/kasa-raporlari">{() => <ExecutiveOnly><CashReports /></ExecutiveOnly>}</Route>
           <Route path="/e2e-raporlar">{() => <ExecutiveOnly><E2EReports /></ExecutiveOnly>}</Route>
           <Route path="/raporlar/:tab?">{() => <ModuleGuard moduleKey="raporlar"><RaporlarMegaModule /></ModuleGuard>}</Route>
           <Route path="/raporlar-hub">{() => <ModuleGuard moduleKey="raporlar"><RaporlarHub /></ModuleGuard>}</Route>
-          <Route path="/performans" component={Performance} />
+          <Route path="/performans">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","mudur","supervisor","fabrika_mudur"]}><Performance /></ProtectedRoute>}</Route>
           <Route path="/muhasebe">{() => <ModuleGuard moduleKey="finans"><Muhasebe /></ModuleGuard>}</Route>
           <Route path="/mali-yonetim">{() => <ModuleGuard moduleKey="finans"><MaliYonetim /></ModuleGuard>}</Route>
           <Route path="/hq-fabrika-analitik">{() => <FabrikaOnly><HQFabrikaAnalitik /></FabrikaOnly>}</Route>
