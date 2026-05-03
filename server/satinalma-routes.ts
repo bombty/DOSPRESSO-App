@@ -629,9 +629,17 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
         const orderItems = await db.select()
           .from(purchaseOrderItems)
           .where(eq(purchaseOrderItems.purchaseOrderId, newOrder.id));
-        
+
         const subtotal = orderItems.reduce((sum, item) => sum + parseFloat(item.lineTotal), 0);
-        const taxAmount = subtotal * 0.18; // Varsayılan KDV
+        // F29 ✅ KAPANDI (3 May 2026, Wave B-3): KDV oranı item-level taxRate'ten okunur.
+        // Daha önce hardcoded 0.18 idi → gıda kalemleri (%1, %10) yanlış işlenirdi.
+        // Şimdi: her item'in taxRate * lineTotal toplamı.
+        // Default 18 (item insert sırasında) korundu — geriye uyumlu.
+        const taxAmount = orderItems.reduce((sum, item) => {
+          const itemTaxRate = parseFloat(item.taxRate || "18") / 100;
+          const itemLine = parseFloat(item.lineTotal);
+          return sum + (itemLine * itemTaxRate);
+        }, 0);
         const totalAmount = subtotal + taxAmount;
         
         await db.update(purchaseOrders)

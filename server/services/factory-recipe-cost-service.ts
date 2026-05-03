@@ -28,18 +28,49 @@ import {
   factoryRecipeIngredients,
   factoryRecipePriceHistory,
 } from "@shared/schema/schema-22-factory-recipes";
+import { factoryCostSettings } from "@shared/schema/schema-10";
 
 // ────────────────────────────────────────
 // CONFIG (Mahmut onayı ile güncellenir)
 // ────────────────────────────────────────
-export const COST_CONFIG = {
-  // TL/saat — 2026 ortalama fabrika işçi saatlik ücret
-  hourlyWage: Number(process.env.FACTORY_HOURLY_WAGE || "205"),
-  // TL/kWh — Sanayi elektrik tarifesi
-  kwhPrice: Number(process.env.FACTORY_KWH_PRICE || "3.50"),
-  // TL/lt — Şebeke suyu
-  waterPrice: Number(process.env.FACTORY_WATER_PRICE || "0.08"),
+// F30 ✅ KAPANDI (3 May 2026, Wave B-3): Fabrika maliyet parametreleri artık
+// factoryCostSettings DB tablosundan okunur (settingKey='hourly_wage' / 'kwh_price' /
+// 'water_price'). Fallback chain: DB → env var → default.
+// Daha önce hardcoded 205 / 3.50 / 0.08 idi → maliyet sapması.
+const DEFAULT_COST_CONFIG = {
+  hourlyWage: 205,
+  kwhPrice: 3.50,
+  waterPrice: 0.08,
 };
+
+// Geriye uyumluluk: COST_CONFIG export'u env-bazlı statik kalır (eski kullanım için).
+// Yeni hesaplamalar getCostConfig() async helper'ını kullanmalı.
+export const COST_CONFIG = {
+  hourlyWage: Number(process.env.FACTORY_HOURLY_WAGE || DEFAULT_COST_CONFIG.hourlyWage),
+  kwhPrice: Number(process.env.FACTORY_KWH_PRICE || DEFAULT_COST_CONFIG.kwhPrice),
+  waterPrice: Number(process.env.FACTORY_WATER_PRICE || DEFAULT_COST_CONFIG.waterPrice),
+};
+
+// F30: Yeni async helper — DB'den oku, env fallback, default fallback.
+export async function getCostConfig(): Promise<typeof COST_CONFIG> {
+  try {
+    const rows = await db.select({
+      key: factoryCostSettings.settingKey,
+      value: factoryCostSettings.settingValue,
+    }).from(factoryCostSettings)
+      .where(inArray(factoryCostSettings.settingKey, ['hourly_wage', 'kwh_price', 'water_price']));
+
+    const map = new Map(rows.map(r => [r.key, Number(r.value)]));
+    return {
+      hourlyWage: map.get('hourly_wage') ?? COST_CONFIG.hourlyWage,
+      kwhPrice: map.get('kwh_price') ?? COST_CONFIG.kwhPrice,
+      waterPrice: map.get('water_price') ?? COST_CONFIG.waterPrice,
+    };
+  } catch (err) {
+    console.warn('[recipe-cost] getCostConfig DB read failed, using env/default fallback', err);
+    return COST_CONFIG;
+  }
+}
 
 // ────────────────────────────────────────
 // Tipler
@@ -326,17 +357,19 @@ export async function recalculateRecipeCost(
   const rawMaterialCost = ingResult.cost;
 
   // 4. İşçilik: workers × saat × hourlyWage
+  // F30 (3 May 2026, Wave B-3): cost config artık DB'den okunur (getCostConfig).
+  const costConfig = await getCostConfig();
   const productionTimeMin = recipe.productionTimeMinutes || 0;
   const prepTimeMin = recipe.prepTimeMinutes || 0;
   const cleaningTimeMin = recipe.cleaningTimeMinutes || 0;
   const totalTimeMin = productionTimeMin + prepTimeMin + cleaningTimeMin;
   const workers = recipe.requiredWorkers || 1;
-  const laborCost = (workers * totalTimeMin / 60) * COST_CONFIG.hourlyWage;
+  const laborCost = (workers * totalTimeMin / 60) * costConfig.hourlyWage;
 
   // 5. Enerji: kWh × kwhPrice + su × waterPrice
   const kwh = Number(recipe.equipmentKwh || 0);
   const waterLt = Number(recipe.waterConsumptionLt || 0);
-  const energyCost = (kwh * COST_CONFIG.kwhPrice) + (waterLt * COST_CONFIG.waterPrice);
+  const energyCost = (kwh * costConfig.kwhPrice) + (waterLt * costConfig.waterPrice);
 
   // 6. Toplam batch + birim
   const totalBatchCost = rawMaterialCost + laborCost + energyCost;
