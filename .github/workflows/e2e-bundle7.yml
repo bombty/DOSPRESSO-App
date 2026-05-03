@@ -1,0 +1,73 @@
+name: Bundle 7 E2E — Şube Puantaj + Fazla Mesai (Task #327)
+
+on:
+  push:
+    paths:
+      - "tests/e2e/branch-attendance-settings.spec.ts"
+      - "tests/e2e/helpers/**"
+      - "server/routes/pdks.ts"
+      - "server/routes/misc.ts"
+      - "server/routes/branches.ts"
+      - "shared/schema/schema-09.ts"
+      - "shared/schema/schema-05.ts"
+      - ".github/workflows/e2e-bundle7.yml"
+  pull_request:
+    paths:
+      - "tests/e2e/branch-attendance-settings.spec.ts"
+      - "tests/e2e/helpers/**"
+      - "server/routes/pdks.ts"
+      - "server/routes/misc.ts"
+
+jobs:
+  e2e:
+    name: Playwright API-level e2e (3 senaryo)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dospresso_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/dospresso_test
+      SESSION_SECRET: ci-test-secret-do-not-use-in-prod
+      NODE_ENV: test
+      E2E_BASE_URL: http://127.0.0.1:5000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install deps
+        run: npm ci
+      - name: Install Playwright browsers (chromium only — fallback for any future UI test)
+        run: npx playwright install --with-deps chromium
+      - name: Apply migrations
+        run: npx tsx server/db/run-migrations.ts || true
+      - name: Boot dev server (background)
+        run: |
+          npm run dev > server.log 2>&1 &
+          for i in {1..30}; do
+            if curl -sf http://127.0.0.1:5000/api/health 2>/dev/null; then
+              echo "Server up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "Server failed to start"; tail -100 server.log; exit 1
+      - name: Run Bundle 7 e2e
+        run: npx playwright test --config=playwright.config.ts tests/e2e/branch-attendance-settings.spec.ts
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: server.log

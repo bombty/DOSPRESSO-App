@@ -255,5 +255,15 @@ test.describe('Bundle 7 — Şube Puantaj + Fazla Mesai Onay (Task #327)', () =>
     expect(after?.approved_minutes).toBe(30);
     expect(after?.approved_at).not.toBeNull();
     expect(after?.approver_id).toBe(managerFixture.userId);
+
+    // Payroll sanity: approved overtime, aynı tarihte çalışanın approved
+    // total_minutes summary'sinde görünmeli (bordro motorunun okuyacağı veri).
+    const totals = await queryOne<{ total: string }>(
+      `SELECT COALESCE(SUM(approved_minutes), 0)::text AS total
+         FROM overtime_requests
+        WHERE user_id = $1 AND overtime_date = $2 AND status = 'approved'`,
+      [workerFixture.userId, todayStr],
+    );
+    expect(Number(totals?.total ?? 0)).toBeGreaterThanOrEqual(30);
   });
 });
