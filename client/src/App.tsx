@@ -437,6 +437,12 @@ function Router() {
           <Route path="/profil" component={ProfileRedirect} />
           <Route path="/vardiya" component={VardiyaRedirect} />
           <Route path="/stok">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","satinalma","mudur","supervisor"]}><StokRedirect /></ProtectedRoute>}</Route>
+          {/* F33 NOTE (Task #306): Aşağıdaki 5 utility/kişisel sayfa kasıtlı olarak yalnızca isAuthenticated ile korunur, ek rol guard'ı yok:
+              - /iletisim → IletisimRedirect (rol bazlı yönlendirme component içinde)
+              - /nfc-giris, /qr-tara → kiosk/giriş utility, tüm aktif kullanıcılar
+              - /bilgi-bankasi → herkese açık öğrenme materyali
+              - /bildirimler → kullanıcı kendi kayıtları (server req.user.id ile filtreler)
+              Diğer 8 F33 sayfası rol guard'ıyla sarıldı (personel/:id, egitim/:id, izin-talepleri, mesai-talepleri, performans, personel-onboarding-akisi, duyurular, icerik-studyosu). */}
           <Route path="/iletisim" component={IletisimRedirect} />
           <Route path="/crm">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
           <Route path="/crm/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
