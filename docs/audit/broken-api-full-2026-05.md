@@ -1,6 +1,6 @@
 # Kırık API Çağrıları — Tam Liste (W0 reconstruction)
 
-**Üretim:** 2026-05-03T01:30:23.698Z
+**Üretim:** 2026-05-03T01:32:26.465Z
 **Script:** scripts/audit/extract-broken-apis.mjs (committed, READ-ONLY)
 **Task:** #288 — Wave W0 of #283
 
@@ -76,9 +76,9 @@ Bu rapor APP_AUDIT_REPORT_2026-05.md §7.1 truncate edilmiş 51-118 satırların
 | 50 | `GET /api/qr/inventory` | 1 | related-exists | — | client/src/components/qr-inventory-detail.tsx:66 |
 | 51 | `GET /api/training/assignments` | 1 | method-mismatch | POST | client/src/pages/training-assign.tsx:52 |
 
-## 51-Sonu Aralığı (audit truncate satırları, normalize edilmiş görünüm)
+## 51-Sonu Aralığı (audit truncate band — bizim methodology ile reproduce EDİLEMEDİ)
 
-Audit ilk 50 satırı göstermişti. Aşağıdaki tablo bu listenin 51+ kısmını yalıtarak audit truncate satırlarını kapatır.
+Audit ilk 50 satırı göstermişti, toplam 118 olduğunu raporlamıştı. Bizim v2 methodology sadece 51 distinct broken üretiyor — yani 52-118 satırları bu reconstruction ile geri kazanılmadı. Aşağıdaki tablo, eğer v2 listesinde 51'den fazla satır olsaydı 51+ kısmını gösterecekti; mevcut durumda ya boş ya da yalnızca son satırı içerir. APP_AUDIT'in 52-118 truncate band'ı reproduce EDİLMEMİŞ olarak kalır.
 
 | # | Method+Path | Use | Kind | FE konumları |
 |---|---|---|---|---|

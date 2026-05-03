@@ -343,9 +343,9 @@ broken.forEach((b, i) => {
 });
 lines.push('');
 
-lines.push('## 51-Sonu Aralığı (audit truncate satırları, normalize edilmiş görünüm)');
+lines.push('## 51-Sonu Aralığı (audit truncate band — bizim methodology ile reproduce EDİLEMEDİ)');
 lines.push('');
-lines.push('Audit ilk 50 satırı göstermişti. Aşağıdaki tablo bu listenin 51+ kısmını yalıtarak audit truncate satırlarını kapatır.');
+lines.push('Audit ilk 50 satırı göstermişti, toplam 118 olduğunu raporlamıştı. Bizim v2 methodology sadece 51 distinct broken üretiyor — yani 52-118 satırları bu reconstruction ile geri kazanılmadı. Aşağıdaki tablo, eğer v2 listesinde 51\'den fazla satır olsaydı 51+ kısmını gösterecekti; mevcut durumda ya boş ya da yalnızca son satırı içerir. APP_AUDIT\'in 52-118 truncate band\'ı reproduce EDİLMEMİŞ olarak kalır.');
 lines.push('');
 lines.push('| # | Method+Path | Use | Kind | FE konumları |');
 lines.push('|---|---|---|---|---|');
