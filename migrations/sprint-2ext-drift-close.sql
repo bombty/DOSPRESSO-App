@@ -8,6 +8,13 @@
 -- Defer: 13 eksik tablo + bağlı 4 unique/23 idx/19 FK (Bundle 1B)
 -- Karar matrisi: docs/audit/comprehensive-2026-05/drift-resolution.md
 -- ============================================================================
+-- IDEMPOTENCY NOTU: Bu migration tek-seferlik (one-shot). FK ALTER TABLE ADD
+-- CONSTRAINT ifadeleri idempotent DEĞİL — replay başarısız olur. Production'a
+-- uygulanmış sayılır; tekrar çalıştırılması gerekirse her FK'yı
+-- "DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;" bloğuyla
+-- sarmak veya migration tracker tablosuna kaydedip skip etmek gerekir.
+-- 3 May 2026 APPLY sonrası repository tracker (manual): APPLIED ✓
+-- ============================================================================
 -- DRY-RUN: BEGIN ile başla, son satırı ROLLBACK olarak değiştir
 -- APPLY:   Son satırı COMMIT olarak bırak
 -- ============================================================================
