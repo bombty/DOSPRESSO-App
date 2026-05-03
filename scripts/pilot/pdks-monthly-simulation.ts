@@ -187,6 +187,7 @@ async function loadActiveUsers(): Promise<ActiveUser[]> {
       AND NOT (u.role = ANY($2::text[]))
       AND (u.first_name IS NULL OR u.first_name NOT ILIKE 'TEST%')
       AND u.username NOT ILIKE 'test%'
+      AND (u.last_name IS NULL OR u.last_name NOT ILIKE 'Kiosk')
     ORDER BY u.role, u.first_name, u.last_name
     `,
     [MONTH_START, NON_PAYROLL_ROLES]
@@ -438,7 +439,7 @@ function makeReport(
   lines.push(`**Task:** #287 (B4) — Pilot ay sonu öncesi kuru çalıştırma.`);
   lines.push(`**Hedef:** Veri eksiklerini, hesap anomalilerini ve hata pattern'lerini owner GO/NO-GO kararından önce görünür kılmak.`);
   lines.push(`**DB Yazma:** YOK (read-only guard hem yerel pg.Pool hem Drizzle pool üzerinde aktif).`);
-  lines.push(`**Kapsam filtresi:** Aktif + approved + !deleted + role NOT IN (${NON_PAYROLL_ROLES.join(', ')}) + first_name NOT ILIKE 'TEST%' + username NOT ILIKE 'test%'.`);
+  lines.push(`**Kapsam filtresi:** Aktif + approved + !deleted + role NOT IN (${NON_PAYROLL_ROLES.join(', ')}) + first_name NOT ILIKE 'TEST%' + username NOT ILIKE 'test%' + last_name NOT ILIKE 'Kiosk' (Fabrika Kiosk vb. tüm kiosk hesaplarını kapsar).`);
   lines.push('');
 
   lines.push('## 1. Veri Sağlığı Özeti');
@@ -469,6 +470,8 @@ function makeReport(
   const sumAnnual = rows.reduce((s, r) => s + r.summary.annualLeaveDays, 0);
   const sumAbsent = rows.reduce((s, r) => s + r.summary.absentDays, 0);
   const sumGross = rows.reduce((s, r) => s + (r.estimatedGrossTL ?? 0), 0);
+  const sumDeduction = rows.reduce((s, r) => s + (r.unpaidLeaveDeductionTL ?? 0), 0);
+  const sumNet = +(sumGross - sumDeduction).toFixed(2);
   const usersWithSalary = rows.filter((r) => r.baseSalaryTL != null).length;
   const usersWithAnomalies = rows.filter((r) => r.anomalies.length > 0).length;
 
@@ -484,22 +487,28 @@ function makeReport(
   lines.push(`| Devamsız (gün) | ${sumAbsent} |`);
   lines.push(`| Maaş bilgisi olan personel | ${usersWithSalary} / ${rows.length} |`);
   lines.push(`| Anomali bayrağı olan personel | ${usersWithAnomalies} |`);
-  lines.push(`| Tahmini toplam brüt (mesai dahil, kesintiler hariç) | ${fmtTL(+sumGross.toFixed(2))} |`);
+  lines.push(`| Tahmini toplam brüt (mesai dahil) | ${fmtTL(+sumGross.toFixed(2))} |`);
+  lines.push(`| Tahmini toplam ücretsiz izin kesintisi | ${fmtTL(+sumDeduction.toFixed(2))} |`);
+  lines.push(`| Tahmini toplam (brüt − ücretsiz izin kesintisi, vergi/SGK hariç) | ${fmtTL(sumNet)} |`);
   lines.push('');
 
   lines.push('## 4. Personel Bazlı Detay (günlük çalışma saati ortalaması dahil)');
   lines.push('');
-  lines.push('| Ad Soyad | Şube | Rol | Çalışılan Gün | Ort. Saat/Gün | F.Mesai | Üc.İzin | Rap.İzin | Yıl.İzin | Devamsız | Brüt | Tahmini Brüt | Anomali |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| Ad Soyad | Şube | Rol | Çalışılan Gün | Ort. Saat/Gün | F.Mesai | Üc.İzin | Rap.İzin | Yıl.İzin | Devamsız | Brüt | Tahmini Brüt | Üc.İzin Kesinti | Net (brüt−kesinti) | Anomali |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const r of rows) {
     const name = userDisplayName(r.user);
     const totalMin = r.summary.days.reduce((s, d) => s + d.workedMinutes, 0);
     const avgPerDay = r.summary.workedDays > 0 ? Math.round(totalMin / r.summary.workedDays) : 0;
+    const net = (r.estimatedGrossTL != null && r.unpaidLeaveDeductionTL != null)
+      ? +(r.estimatedGrossTL - r.unpaidLeaveDeductionTL).toFixed(2)
+      : null;
     lines.push(
       `| ${name} | ${r.user.branch_name ?? '—'} | ${r.user.role} ` +
       `| ${r.summary.workedDays} | ${fmtMin(avgPerDay)} | ${fmtMin(r.summary.totalOvertimeMinutes)} ` +
       `| ${r.summary.unpaidLeaveDays} | ${r.summary.sickLeaveDays} | ${r.summary.annualLeaveDays} ` +
       `| ${r.summary.absentDays} | ${fmtTL(r.baseSalaryTL)} | ${fmtTL(r.estimatedGrossTL)} ` +
+      `| ${fmtTL(r.unpaidLeaveDeductionTL)} | ${fmtTL(net)} ` +
       `| ${r.anomalies.length === 0 ? '—' : r.anomalies.length + '×'} |`
     );
   }
@@ -661,6 +670,7 @@ async function main(): Promise<void> {
   console.log(`  ✓ Rapor: ${outPath} (${md.length} byte)`);
 
   await localPool.end();
+  try { await drizzlePool.end(); } catch { /* ignore */ }
   process.exit(0);
 }
 
