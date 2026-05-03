@@ -123,7 +123,7 @@ export async function seedHqKioskUser(opts: {
   // PIN must equal phoneNumber.slice(-4)
   const phoneNumber = `+90555${randomBytes(2).toString('hex')}${pin}`;
   const { userId, username } = await insertTestUser({
-    branchId: null,
+    branchId: HQ_BRANCH_ID,
     role: opts.role || 'genel_mudur_yardimcisi',
     phoneNumber,
   });
