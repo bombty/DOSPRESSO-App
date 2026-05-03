@@ -24,12 +24,12 @@ Son güncelleme: 3 Mayıs 2026 akşam (Mega-Sprint sonuç — 22/36 finding kapa
 - 7 finding hâlâ açık ama Pilot etkisi düşük
 
 **Sprint 3 ana hedefler:**
-- ✅ DB drift Bundle 1A 195→58 (Replit W-A3 ile 0'a inecek)
+- ✅ DB drift Bundle 1A 195→58 → **Bundle 1B (W-A3) ile 58→0** (#314 ✅ 3 May 2026)
 - ✅ F33 13/13 sayfa guard
 - ✅ PIN coverage %100
 - ✅ pg_dump günlük backup
 - ✅ Skill MD'ler güncel
-- 🟡 W-A3 Bundle 1B drift kapatma (Replit'te devam ediyor)
+- ✅ W-A3 Bundle 1B drift kapatma TAMAMLANDI (13 tablo + 36 idx/constraint, drift=0)
 
 ---
 
@@ -46,7 +46,10 @@ Hedef: Pilot Day-1 (12 May 2026) öncesi açık 36 finding'in 21'i kapatılmalı
 ## ⚡ Sprint 2 Kapanışı (2-3 May 2026 — 102 commit, ~24 saat marathon)
 
 ### Bundle 1A — DB Drift Kapatma (Task #305)
-✅ DB drift 195 → 58 (-137); 42 kolon tipi/nullability + 60 idx + 28 FK + module_flags UNIQUE = kapatıldı. `migrations/sprint-2ext-drift-close.sql`. **Defer:** 13 eksik tablo + bağlı 3 unique + 23 idx + 19 FK = Bundle 1B (W-A3).
+✅ DB drift 195 → 58 (-137); 42 kolon tipi/nullability + 60 idx + 28 FK + module_flags UNIQUE = kapatıldı. `migrations/sprint-2ext-drift-close.sql`.
+
+### Bundle 1B — W-A3 DB Drift Sıfırlama (Task #314) ✅ 3 May 2026
+✅ DB drift 58 → **0**. 13 eksik tablo + 36 index/unique/FK migration apply edildi. `migrations/2026-05-03-bundle-1b-drift-close.sql`. Smoke test 5/5 HTTP 200 (`/api/notification-preferences`, `/api/branch-feedback-summary/1`, `/api/hq-support/tickets`, `/api/inventory/by-supplier/2`, `/api/trend-metrics`). `db-drift-check.ts` → 0 drift doğrulandı.
 
 ### Bundle 2 — F33 Route Guards + F36 PIN Coverage (Task #306)
 ✅ 5 sayfa guard sarımı (`/iletisim`, `/nfc-giris`, `/qr-tara`, `/bilgi-bankasi`, `/bildirimler`) + #325'te 3 daha (`/duyuru/:id`, `/akademi-ana`, `/ogrenme-yolum`) = 8/13 sayfa. **Kalan: 5 sayfa Wave A-1'de.** PIN coverage audit: %100 hedef belirlendi.

@@ -1,5 +1,5 @@
 -- DB DRIFT FIX SCRIPT
--- Üretildi: 2026-05-03T18:33:58.827Z
+-- Üretildi: 2026-05-03T19:04:45.183Z
 -- Bu dosya scripts/db-drift-check.ts tarafından otomatik üretilir.
 -- Çalıştırmadan önce gözden geçirin (özellikle veri çakışmalarına dikkat).
 

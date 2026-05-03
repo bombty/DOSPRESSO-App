@@ -21,7 +21,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Shadcn/ui, 
 ### Technical Implementations
 - **Authentication:** Session-based authentication via Passport.js supports both web (username/password with bcrypt) and kiosk (PIN-based with bcrypt) logins, incorporating security measures like password stripping, account lockout, and status management.
 - **Role System:** A robust Role-Based Access Control (RBAC) system manages 31 roles across HQ, branches, and the factory. Permissions are defined through a static map, and `module_flags` offer granular control over module visibility, with access managed via the `role_module_permissions` DB table.
-- **Database Schema:** The data model is extensive, organized into 23 modular schema files defining 455 `pgTable` covering users, roles, HR, academy, factory operations, CRM, and finance.
+- **Database Schema:** The data model is extensive, organized into 23 modular schema files defining 456 `pgTable` covering users, roles, HR, academy, factory operations, CRM, and finance. **DB drift = 0** (Bundle 1B #314 ✅ 3 May 2026 — 13 eksik tablo + 36 index/constraint migrate edildi, `migrations/2026-05-03-bundle-1b-drift-close.sql`).
 - **Key Architectural Patterns:**
     - **Soft Deletion:** Implemented using a `deleted_at` column across all core business tables.
     - **Data Locking:** Employs time and status-based data locking, supported by a change request workflow.
