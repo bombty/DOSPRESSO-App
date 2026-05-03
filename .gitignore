@@ -80,4 +80,8 @@ docs/audit/import-output-*.log
 docs/audit/*backup*.sql
 docs/audit/*backup*.dump
 docs/audit/*.sql.gz
-docs/audit/*.dumptest-results/
+docs/audit/*.dump
+
+# Playwright test outputs
+test-results/
+playwright-report/

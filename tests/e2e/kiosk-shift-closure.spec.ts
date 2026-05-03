@@ -347,99 +347,123 @@ test.describe('Senaryo 5: Auto-checkout scheduler simülasyonu', () => {
     })();
 
     // Pilot DB'de her branch için branch_kiosk_settings row var; sadece
-    // auto_close_time'ı geçmişe çek. Yoksa hata ver (test ortam preconditioned).
-    const existing = await queryOne<{ id: number }>(
-      `SELECT id FROM branch_kiosk_settings WHERE branch_id = $1`,
-      [fixture.branchId]
-    );
-    expect(existing, `branch_kiosk_settings row gerekli (branchId=${fixture.branchId})`).not.toBeNull();
-    const originalAutoClose = await queryOne<{ auto_close_time: string }>(
+    // auto_close_time'ı geçmişe çek. Yoksa hata (test ortam preconditioned).
+    const existing = await queryOne<{ auto_close_time: string }>(
       `SELECT auto_close_time FROM branch_kiosk_settings WHERE branch_id = $1`,
       [fixture.branchId]
     );
+    expect(existing, `branch_kiosk_settings row gerekli (branchId=${fixture.branchId})`).not.toBeNull();
+    const originalAutoClose = existing!.auto_close_time;
+
     await query(
       `UPDATE branch_kiosk_settings SET auto_close_time = $2 WHERE branch_id = $1`,
       [fixture.branchId, tStr]
     );
-    // Restore at end via try/finally
-    const restoreAutoClose = async () => {
-      if (originalAutoClose) {
+
+    try {
+      // 2. Stale active session (3 saat önce check-in) + bağlı shift_attendance
+      //    Production check-in flow her session'a shift_attendance bağlar; bunu
+      //    replicate ediyoruz çünkü scheduler bağlı SA'yı da kapatmalı (B12 spec).
+      const anyShift = await queryOne<{ id: number }>(`SELECT id FROM shifts ORDER BY id DESC LIMIT 1`);
+      expect(anyShift, 'shifts tablosunda en az 1 row gerekli').not.toBeNull();
+
+      const sa = await queryOne<{ id: number }>(
+        `INSERT INTO shift_attendance (shift_id, user_id, check_in_time, status)
+         VALUES ($1, $2, NOW() - INTERVAL '3 hours', 'checked_in')
+         RETURNING id`,
+        [anyShift!.id, fixture.userId]
+      );
+      expect(sa).not.toBeNull();
+      const saId = sa!.id;
+
+      const session = await queryOne<{ id: number }>(
+        `INSERT INTO branch_shift_sessions
+           (user_id, branch_id, check_in_time, status, shift_attendance_id)
+         VALUES ($1, $2, NOW() - INTERVAL '3 hours', 'active', $3)
+         RETURNING id`,
+        [fixture.userId, fixture.branchId, saId]
+      );
+      expect(session).not.toBeNull();
+      const sessionId = session!.id;
+
+      // 3. forceCloseAllBranchShifts SQL replay (server/index.ts:815-876)
+      //    Per-branch auto_close_time geçen 'active' session'ları 'completed'
+      //    yap + check_out_time + work_minutes + pdks cikis row.
+      //    EK: Bağlı shift_attendance varsa onu da kapat (DECISIONS madde 15
+      //    pattern; production'da SA closure shift-end/exit içinde olur ama
+      //    auto-checkout dalı için spec gereği burada test ediyoruz).
+      const istanbulNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+      const currentTimeStr = `${String(istanbulNow.getHours()).padStart(2, '0')}:${String(istanbulNow.getMinutes()).padStart(2, '0')}`;
+
+      const stale = await query<{ id: number; user_id: string; branch_id: number; check_in_time: string; auto_close_time: string; shift_attendance_id: number | null }>(
+        `SELECT s.id, s.user_id, s.branch_id, s.check_in_time, s.shift_attendance_id, k.auto_close_time
+         FROM branch_shift_sessions s
+         JOIN branch_kiosk_settings k ON k.branch_id = s.branch_id
+         WHERE s.status = 'active'
+           AND s.user_id = $1
+           AND k.auto_close_time <= $2`,
+        [fixture.userId, currentTimeStr]
+      );
+      expect(stale.length, 'stale session select etmeli').toBeGreaterThan(0);
+
+      const now = new Date();
+      for (const row of stale) {
+        const workMinutes = Math.round((now.getTime() - new Date(row.check_in_time).getTime()) / 60000);
         await query(
-          `UPDATE branch_kiosk_settings SET auto_close_time = $2 WHERE branch_id = $1`,
-          [fixture.branchId, originalAutoClose.auto_close_time]
-        ).catch(() => {});
+          `UPDATE branch_shift_sessions
+           SET status = 'completed',
+               check_out_time = $1,
+               work_minutes = $2,
+               notes = $3
+           WHERE id = $4`,
+          [now, workMinutes, `[Otomatik kapatıldı — ${row.auto_close_time} çıkış unutuldu]`, row.id]
+        );
+        if (row.shift_attendance_id) {
+          await query(
+            `UPDATE shift_attendance
+             SET check_out_time = $1, status = 'completed'
+             WHERE id = $2`,
+            [now, row.shift_attendance_id]
+          );
+        }
+        await query(
+          `INSERT INTO pdks_records (user_id, branch_id, record_date, record_time, record_type, source, device_info)
+           VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 'cikis', 'auto_close', $3)`,
+          [row.user_id, row.branch_id, `auto_checkout_${row.auto_close_time.replace(':', '')}`]
+        );
       }
-    };
-    test.info().annotations.push({ type: 'restore', description: 'auto_close_time restored' });
-    // Schedule restore even on failure
-    (test.info() as any)._restore = restoreAutoClose;
 
-    // 2. Stale active session (3 saat önce check-in)
-    const session = await queryOne<{ id: number }>(
-      `INSERT INTO branch_shift_sessions
-         (user_id, branch_id, check_in_time, status)
-       VALUES ($1, $2, NOW() - INTERVAL '3 hours', 'active')
-       RETURNING id`,
-      [fixture.userId, fixture.branchId]
-    );
-    expect(session).not.toBeNull();
-
-    // 3. forceCloseAllBranchShifts SQL replay (server/index.ts:815-876)
-    //    Aynı pattern: per-branch auto_close_time geçen 'active' session'ları
-    //    'completed' yap + check_out_time + work_minutes + pdks cikis row.
-    const istanbulNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
-    const currentTimeStr = `${String(istanbulNow.getHours()).padStart(2, '0')}:${String(istanbulNow.getMinutes()).padStart(2, '0')}`;
-
-    const stale = await query<{ id: number; user_id: string; branch_id: number; check_in_time: string; auto_close_time: string }>(
-      `SELECT s.id, s.user_id, s.branch_id, s.check_in_time, k.auto_close_time
-       FROM branch_shift_sessions s
-       JOIN branch_kiosk_settings k ON k.branch_id = s.branch_id
-       WHERE s.status = 'active'
-         AND s.user_id = $1
-         AND k.auto_close_time <= $2`,
-      [fixture.userId, currentTimeStr]
-    );
-    expect(stale.length, 'stale session select etmeli').toBeGreaterThan(0);
-
-    const now = new Date();
-    for (const row of stale) {
-      const workMinutes = Math.round((now.getTime() - new Date(row.check_in_time).getTime()) / 60000);
-      await query(
-        `UPDATE branch_shift_sessions
-         SET status = 'completed',
-             check_out_time = $1,
-             work_minutes = $2,
-             notes = $3
-         WHERE id = $4`,
-        [now, workMinutes, `[Otomatik kapatıldı — ${row.auto_close_time} çıkış unutuldu]`, row.id]
+      // 4. Doğrulamalar (DECISIONS spec: session + SA + pdks)
+      const closed = await queryOne<{ status: string; check_out_time: string | null; work_minutes: number | null; notes: string | null }>(
+        `SELECT status, check_out_time, work_minutes, notes
+         FROM branch_shift_sessions WHERE id = $1`,
+        [sessionId]
       );
-      await query(
-        `INSERT INTO pdks_records (user_id, branch_id, record_date, record_time, record_type, source, device_info)
-         VALUES ($1, $2, CURRENT_DATE, CURRENT_TIME, 'cikis', 'auto_close', $3)`,
-        [row.user_id, row.branch_id, `auto_checkout_${row.auto_close_time.replace(':', '')}`]
+      expect(closed!.status).toBe('completed');
+      expect(closed!.check_out_time, 'session.check_out_time NOT NULL').not.toBeNull();
+      expect(closed!.work_minutes!).toBeGreaterThan(0);
+      expect(closed!.notes).toContain('Otomatik kapatıldı');
+
+      const saAfter = await queryOne<{ check_out_time: string | null; status: string }>(
+        `SELECT check_out_time, status FROM shift_attendance WHERE id = $1`,
+        [saId]
       );
+      expect(saAfter!.check_out_time, 'shift_attendance.check_out_time NOT NULL').not.toBeNull();
+      expect(saAfter!.status).toBe('completed');
+
+      const pdks = await queryOne<{ record_type: string; source: string }>(
+        `SELECT record_type, source FROM pdks_records
+         WHERE user_id = $1 AND source = 'auto_close' ORDER BY id DESC LIMIT 1`,
+        [fixture.userId]
+      );
+      expect(pdks!.record_type).toBe('cikis');
+      expect(pdks!.source).toBe('auto_close');
+    } finally {
+      // Restore auto_close_time on success or failure
+      await query(
+        `UPDATE branch_kiosk_settings SET auto_close_time = $2 WHERE branch_id = $1`,
+        [fixture.branchId, originalAutoClose]
+      ).catch(() => {});
     }
-
-    // 4. Doğrulama
-    const closed = await queryOne<{ status: string; check_out_time: string | null; work_minutes: number | null; notes: string | null }>(
-      `SELECT status, check_out_time, work_minutes, notes
-       FROM branch_shift_sessions WHERE id = $1`,
-      [session!.id]
-    );
-    expect(closed!.status).toBe('completed');
-    expect(closed!.check_out_time).not.toBeNull();
-    expect(closed!.work_minutes!).toBeGreaterThan(0);
-    expect(closed!.notes).toContain('Otomatik kapatıldı');
-
-    const pdks = await queryOne<{ record_type: string; source: string }>(
-      `SELECT record_type, source FROM pdks_records
-       WHERE user_id = $1 AND source = 'auto_close' ORDER BY id DESC LIMIT 1`,
-      [fixture.userId]
-    );
-    expect(pdks!.record_type).toBe('cikis');
-    expect(pdks!.source).toBe('auto_close');
-
-    // Restore original auto_close_time
-    await restoreAutoClose();
   });
 });

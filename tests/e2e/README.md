@@ -25,22 +25,15 @@ task'ında ayrıca yapılacak).
 ## Çalıştırma
 
 ```bash
-# Tüm suite
-npx playwright test --config=playwright.config.ts
+# Önerilen: npm script
+npm run test:e2e:kiosk-shift
 
-# Sadece kiosk shift-closure
-npx playwright test tests/e2e/kiosk-shift-closure.spec.ts
+# Doğrudan
+npx playwright test --config=playwright.config.ts
 
 # Tek senaryo (test başlığı pattern)
 npx playwright test -g "Senaryo 1"
-
-# Verbose
-npx playwright test --reporter=line
 ```
-
-> **Not:** `package.json` "forbidden_changes" kapsamında olduğu için `npm run`
-> script EKLENMEDİ. Owner onayıyla `"test:e2e:kiosk-shift": "playwright test
-> tests/e2e/kiosk-shift-closure.spec.ts"` script'i sonradan eklenebilir.
 
 ## Test Data Stratejisi
 
@@ -57,19 +50,18 @@ npx playwright test --reporter=line
 
 ## Bilinen Sınırlamalar
 
-1. **HQ + Factory PIN provisioning:** Bazı kurulumlarda HQ ve Factory için
-   ayrı PIN tabloları kullanılıyor olabilir. Test bu durumda `test.skip(...)`
-   ile graceful skip yapar (status≠200 dönerse).
-2. **Auto-checkout real trigger:** `server/index.ts` içindeki `setInterval`
-   global scheduler doğrudan tetiklenmiyor (real data'yı etkilerdi). Senaryo 5
-   sadece scheduler'ın **hedefleme query'sini** doğruluyor. Real scheduler
-   verification için ayrı task açılmalı (HTTP trigger endpoint'i + test-only
-   guard).
-3. **Branch kiosk shift-start endpoint'i:** Eğer login session create etmiyorsa
-   test manuel `INSERT INTO branch_shift_sessions` yapıyor. Bu, prod davranışı
-   simüle eder ama gerçek HTTP path'ini test etmez.
-4. **CI integration YOK:** Suite manuel/cron koşar. CI workflow ekleme ayrı
-   task'ta yapılmalı.
+1. **Auto-checkout real trigger:** `server/index.ts` içindeki
+   `forceCloseAllBranchShifts` server-internal `setInterval` ile çalışır,
+   export edilmez ve HTTP üzerinden tetiklenemez. Senaryo 5 production
+   scheduler'ın TAM SQL pattern'ini test içinde replay eder ve session +
+   shift_attendance + pdks auto_close cikis row'unu doğrular. Tetik için
+   ayrı task: test-only HTTP endpoint (env-guard) ile gerçek fonksiyonu
+   çağırma.
+2. **CI integration YOK:** Suite manuel/cron koşar. CI workflow ekleme
+   ayrı task'ta yapılmalı.
+3. **DB güvenliği:** Testler `DATABASE_URL`'e doğrudan yazar. Sadece pilot
+   veya test DB'sine karşı koşulmalı. Tüm seed satırları `TEST_E2E_`
+   prefix ile etiketlenir, `afterEach` cascade cleanup yapar.
 
 ## Regresyon Bulursa
 
