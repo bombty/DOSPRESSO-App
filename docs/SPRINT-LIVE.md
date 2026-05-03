@@ -1,5 +1,110 @@
 # SPRINT LIVE — DOSPRESSO
 
+## 🌟 Şube Reçete Sistemi (Branch Recipe System) — 3-4 May 2026
+
+**Durum:** Mimari + API + UI tamamlandı, Pilot Day-1 (12 May) için kritik özellik.
+
+### Tamamlanan İşler (3-4 May 2026)
+
+#### Mimari (Sprint 3 Mega-Sprint Sonrası, 3 May)
+- **`shared/schema/schema-24-branch-recipes.ts`** (~440 satır) — 9 tablo, fabrika tablolarından TAMAMEN İZOLE (DECISIONS#30 mutlak kural)
+  - `branch_products` — UNIQUE(name) constraint
+  - `branch_recipes` — boy bazlı (massivo/long_diva/tek_boy) + `isTemplate` + `templateType`
+  - `branch_recipe_ingredients` — `isVariableAroma` + `aromaSlot`
+  - `branch_recipe_steps` — `isCritical` flag
+  - `branch_recipe_quizzes` — 3 zorluk (easy/medium/hard)
+  - `branch_onboarding_steps` — Rol bazlı eğitim adımları
+  - `branch_recipe_learning_progress` — Kullanıcı öğrenme takibi
+  - `branch_aroma_options` — Aroma havuzu (32 aroma, 5 form_type)
+  - `branch_recipe_aroma_compatibility` — Şablon × Aroma (~125 kayıt)
+
+- **Migration:** `migrations/2026-05-03-branch-recipe-system.sql` (9 tablo + 21 aroma seed)
+- **Migration:** `migrations/2026-05-04-branch-recipe-templates-seed.sql` (15 template + 11 yeni aroma + ~80 uyumluluğu)
+- **Migration:** `migrations/2026-05-04-branch-recipe-dedup.sql` (duplicate temizlik + UNIQUE constraint)
+
+#### Backend API (server/routes/branch-recipes.ts, ~1050 satır, 17 endpoint)
+**View Endpoint'leri (10+ rol için):**
+- `GET /api/branch-products` (filtre: category, isActive, search)
+- `GET /api/branch-products/:id` (ürün + reçeteler)
+- `GET /api/branch-recipes/:id` (detay: malzeme + adım + quiz sayısı)
+- `GET /api/branch-recipes/search` (akıllı arama: ürün adı + malzeme)
+- `GET /api/branch-recipes/categories` (kategori sayacı)
+- `GET /api/branch-recipes/:id/quizzes` (rastgele 5 quiz)
+- `POST /api/branch-recipes/quizzes/:quizId/attempt`
+- `GET /api/branch-onboarding/:role`
+- `GET /api/branch-recipes/learning-progress`
+- `GET /api/branch-recipes/files/:filepath(*)` (görsel oku)
+
+**Edit Endpoint'leri (HQ rolleri: admin, ceo, cgo, coach, trainer):**
+- `POST /api/branch-products`
+- `PATCH /api/branch-products/:id`
+- `DELETE /api/branch-products/:id` (soft delete)
+- `POST /api/branch-products/:id/image` ⭐ 3 boyut görsel upload
+- `PATCH /api/branch-recipes/:id`
+- `PUT /api/branch-recipes/:id/ingredients` (toplu, transaction)
+- `PUT /api/branch-recipes/:id/steps` (toplu, transaction)
+- `POST /api/branch-products/:id/recipes`
+
+#### UI Sayfaları (client/src/pages/branch-recipes/)
+- **`index.tsx`** (~280 satır) — Liste + arama + 11 kategori tab + mobil-first card grid
+- **`detail.tsx`** (~390 satır) — Boy seçimi + malzeme/adım + template badge + quiz buton
+- **`admin.tsx`** (~580 satır) — HQ CRUD + görsel upload + filtre + yetki guard
+
+**Routing (App.tsx):**
+- `/branch-recipes/admin` (HQ panel)
+- `/branch-recipes/:id` (detay)
+- `/branch-recipes` (liste)
+- `/receteler`, `/recipes` → redirect
+
+#### Görsel Sistemi (3 Boyut Otomatik)
+- Thumbnail 200×200 (WebP %80, liste)
+- Card 600×400 (WebP %85, mobil kart - PRIMARY)
+- Hero 1200×800 (WebP %90, detay)
+- Sharp library, EXIF auto-fix (rotate), KVKK uyumu (alpha kanal kaldır)
+- Object Storage path: `branch-recipes/products/{id}/{size}-{ts}.webp`
+- Cache 24h, mime whitelist (jpeg/png/webp), max 10 MB
+
+#### Template Pattern (Aslan Tespiti)
+**Bulgu:** Freshess (Mojito/Ice Tea/Italian Soda/Mojito Blend) + Frozen Yogurt + Matcha + Twix-Mars-KitKat + Freddo gibi ürünler aynı şablon, sadece aroma değişir.
+
+**Çözüm:** 15 template + 32 aroma × N kombinasyon = N kayıt yerine 1 + N (DRY prensibi).
+
+**15 Template:**
+- Freshess: `fruit_mojito`, `fruit_ice_tea`, `fruit_italian_soda` (Long Diva only), `fruit_mojito_blend`
+- Frozen Yogurt: `fruit_yogurt_single` (Tango Mango, Moulin Rouge, Captain Jack, Bloody Mary, Golden Yogo) + `fruit_yogurt_double` (Jimmy Jambo Şeftali+Amber, Vanilemon Vanilya+Lime)
+- Milkshake: `fruit_milkshake_single` (Mango/Blueberry/Aloe) + `fruit_milkshake_double` (Şeftali+Amber)
+- Matcha: `matcha_latte_hot`, `matcha_creamy_iced`, `matcha_creamice_blended`
+- Çikolata Bar: `chocolate_bar_creamice` (Twix/Mars/KitKat - physical_item slot)
+- Çay: `fruit_hot_tea`
+- Freddo: `freddo_espresso`, `freddo_cappuccino` (cream_base_aroma slot)
+
+#### Yetki Matrisi
+- View (10+ rol): mudur, supervisor, sup_buddy, barista, bar_buddy, stajyer, admin, ceo, cgo, coach, trainer, destek, teknik
+- Edit (5 rol): admin, ceo, **cgo**, coach, trainer
+
+### DB Final Durumu (4 May 2026)
+- **HEAD:** `21918421b` (admin paneli `f91a1e078` henüz merge bekliyor)
+- **Ürün:** 23 aktif (24 toplam, 1 soft-deleted test)
+- **Reçete:** 29 template + 15 sabit (44 toplam) + 8 önceki seed
+- **Aroma:** 32 (21 başlangıç + 11 yeni: çikolata barlar, Oreo, Türk Kahvesi, vb.)
+- **Aroma uyumluluğu:** ~125 satır
+- **API smoke test:** 5/5 PASS
+- **Drift:** 0 ✅
+
+### Bekleyen İşler (Sonraki Oturum)
+1. **HQ Admin paneli merge** (`f91a1e078` → main) — Aslan Shell'den
+2. **Reçete adım/malzeme editör** (admin'in alt sayfası, Sprint 4)
+3. **Aroma seçim UI + API endpoint** (template detay için)
+4. **Mr. Dobody recipe-finder skill**
+5. **Akademi onboarding bağlantısı** (`branch_onboarding_steps` doldur)
+6. **Geri kalan ~75 sabit ürün seed** (Sıcak/Buzlu kahveler, Creamice, Çaylar, Creamshake)
+7. **Otomatik quiz üretici** (her reçete için 3-5 soru)
+8. **Denetim checklist'leri** (açılış/aracı/kapanış PDF → audit_templates_v2)
+9. **Lara personel + bordro import** (Mahmut DRY_RUN için)
+
+---
+
+
 Aktif sprintin canlı durumudur. Sprint kapanırken arşive alınır, yeni sprint için bu dosya sıfırlanır.
 
 Son güncelleme: 3 Mayıs 2026 akşam (Mega-Sprint sonuç — 22/36 finding kapatıldı)

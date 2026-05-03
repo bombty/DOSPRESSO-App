@@ -981,3 +981,66 @@ SORULAR (Aslan için): [Bilgisiz tahmin etmem, sorular]
 SORULAR: Mahmut (muhasebe) Mayıs sonu bordro çalıştığında doğrula.
 ```
 
+
+---
+
+## Madde 41 — Express Route Ordering Audit (4 May 2026, Branch Recipes Dersi)
+
+**KURAL:** Yeni route dosyası oluştururken veya mevcut router'a yeni endpoint eklerken, wildcard route'lar (`/:id`, `/:slug`) **her zaman sabit path'lerden SONRA** tanımlanmalı.
+
+**RİSK:** Yanlış sıra → `Number("search")` = `NaN` → PostgreSQL 500 hatası.
+
+**KONTROL:**
+```bash
+# Yeni router dosyasında route sırası audit
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/[FILE].ts
+# /:id, /:slug gibi wildcard'lar dosyanın SONUNDA olmalı
+```
+
+**İKİNCİL SAVUNMA:** Her wildcard handler'a NaN guard eklenmeli:
+```typescript
+const id = Number(req.params.id);
+if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+```
+
+**Detaylı:** `dospresso-debug-guide` §31
+
+---
+
+## Madde 42 — Şube ↔ Fabrika İzolasyon Doğrulama (4 May 2026, Branch Recipe Sistemi)
+
+**KURAL (DECISIONS#30):** Şube reçete sistemi (`branch_*` tablolar) fabrika tablolarına SIFIR FK referans verir. Mutlak izolasyon.
+
+**KONTROL (her yeni branch_* tablo eklendiğinde):**
+```bash
+# branch_* tablolarda factory_* referansı var mı?
+grep -E "references.*factory" shared/schema/schema-24-branch-recipes.ts
+# Beklenen: SIFIR satır
+
+# branch_* sadece global tablolara (users) referans verebilir
+grep "references" shared/schema/schema-24-branch-recipes.ts
+# Beklenen: sadece users.id ve aynı schema-24 içi referanslar
+```
+
+**İHLAL DURUMUNDA:** Schema-24'e fabrika tablosu import edildiyse → IMMEDIATE ROLLBACK + Aslan onayı.
+
+---
+
+## Madde 43 — Görsel Upload — 3 Boyut + EXIF Sıfırla (4 May 2026)
+
+**KURAL:** Ürün/içerik görselleri upload edilirken her zaman 3 boyut otomatik üretilmeli + EXIF metadata sıfırlanmalı (KVKK).
+
+**STANDART (server/routes/branch-recipes.ts pattern):**
+- Thumbnail: 200×200, WebP %80 (liste)
+- Card: 600×400, WebP %85 (mobil kart, PRIMARY)
+- Hero: 1200×800, WebP %90 (detay)
+- Sharp `.rotate()` (EXIF auto-fix) + `.removeAlpha()` (KVKK)
+- Mime whitelist: image/jpeg, image/png, image/webp
+- Max 10 MB
+
+**KONTROL:**
+```bash
+grep -A 5 "uploadFromBytes" server/routes/[FILE].ts
+# 3 boyut Promise.all ile paralel olmalı
+# EXIF rotate + removeAlpha çağrılmalı
+```

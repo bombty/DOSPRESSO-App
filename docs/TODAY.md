@@ -1,97 +1,107 @@
-# 📅 DOSPRESSO — TODAY.md
+# TODAY.md — 4 MAYIS 2026 (Pazartesi sabaha karşı)
 
-**Tarih:** 20 Nis 2026 Pazartesi  
-**Pilot:** 28 Nis (8 gün kaldı)  
-**Hazırlık skoru:** 9.4/10 (%94) — Replit Pazar gece 2 task daha bitirdi (push bekliyor)  
-**Son güncelleme:** Pazartesi 03:30 (Claude — Replit raporu sonrası ayar)
+> **Skill kuralı:** Her oturum sonu Claude bu dosyayı 30 saniyede güncellenebilir özet olarak tazeler.
+> **Bağlam:** Pilot 12 May 09:00 — 8 gün kaldı.
 
 ---
 
-## 🚨 ŞU AN BİR SORUN VAR — DİKKAT
+## ⚡ ŞU AN DURUM
 
-**Replit Pazar gece 2 task bitirdi:**
-- `e4cfce7c1` (Task #117 — silent try/catch 5 yer migrate)
-- `9a8a9e632` (Task #118 — derin öz-analiz raporu)
-
-**AMA:** Bu commit'ler **Replit'in local'inde** kaldı. Origin'de YOK!  
-**Sebep:** GitHub auth Replit Agent'ta yok (AGENT-OWNERSHIP gereği push Claude'un).
-
-**ÇÖZÜM:** PENDING.md TASK-PUSH-001 — Aslan Replit'e mesaj atacak, patch al / push et.
+**Branch:** `main` — HEAD `21918421b`
+**Bekleyen PR:** `claude/branch-recipes-admin-2026-05-04` (HEAD: `f91a1e078`)
+**DB Drift:** 0
+**Pilot Skoru:** 9.6/10 (önceki 9.5'ten +0.1, branch recipe sistemi canlı)
 
 ---
 
-## 🎯 ŞU AN TABLO — 30 SANİYEDE OKU
+## ✅ BUGÜN BİTENLER (3-4 May oturumu, ~6 saat)
 
+### Backend (8 commit)
+- **Schema-24** — 9 yeni `branch_*` tablo (factory tablolarına SIFIR FK)
+- **API endpoint'leri** — 17 endpoint (9 read + 8 edit)
+- **İlk seed** — 8 ürün, 15 reçete, 40 malzeme, 63 adım (Reçete v.3.6 PDF'ten)
+- **HQ edit + görsel sistem** — POST/PATCH/DELETE + Sharp 3 boyut transform
+- **CGO yetkisi** — `ALLOWED_EDIT_ROLES`'a eklendi
+- **Template sistemi** — 11 yeni aroma + 15 şablon + ~80 aroma uyumluluğu
+- **Duplicate temizlik** — UNIQUE constraint + cascade DELETE
+- **Bug fix** — Express route ordering (NaN hatası düzeltildi)
+
+### Frontend (3 commit, sonuncu PR)
+- **Liste sayfası** — kategori grup, arama, mobil-first
+- **Detay sayfası** — boy seçimi, malzeme/adım, quiz buton
+- **Admin paneli** ⏳ — HQ CRUD + görsel upload (PR `f91a1e078`)
+
+### Doğrulanmış Test Sonuçları
+- ✅ Drift = 0 (her migration sonrası)
+- ✅ Build hatasız (44.53s)
+- ✅ 6 API endpoint smoke test PASS
+- ✅ Yetki guard barista 403, admin 200
+
+### Commit Listesi
 ```
-ÜCGEN DURUMU      Aslan: uyuyor (gece 03:30)
-                  Claude: PENDING.md güncellendi, commit'ler senkron bekliyor
-                  Replit: 2 task bitirdi local'de, push gerekli
-
-PILOT BLOKER      🚨 Replit'in 2 commit'i hayalet (5 dk push çözer)
-                  🚨 Parola reset bug (Aslan kararı bekleniyor)
-SECONDARY BLOKER  🟢 Sprint D-E ZATEN entegre (Sprint E backend'de yapılmıştı)
-TERTIARY BLOKER   🟢 7 try/catch'ten 5'i Replit yaptı (push bekliyor), 2 yer kaldı
-
-PENDING DECISION  Aslan: Parola fix nasıl? (PENDING.md DECISION-001)
+f91a1e078 feat(branch-recipes): HQ Admin paneli (CRUD + görsel upload) ⏳ MERGE
+21918421b Merge: UI sayfaları — Liste + Detay (mobil-first)
+ec828d220 feat(branch-recipes): UI sayfaları — Liste + Detay (mobil-first)
+375bdf718 Merge: Duplicate temizlik + UNIQUE constraint
+24d2d6a8a fix(branch-recipes): Duplicate temizlik + UNIQUE constraint
+b5914a3b5 Merge: 15 template + 11 yeni aroma + ~80 aroma uyumluluğu
+dad708791 feat(branch-recipes): Template seed migration
+605be9c41 Merge: HQ edit + görsel sistemi
+d487d4684 feat(branch-recipes): HQ edit endpoint'leri + 3-boyutlu görsel sistemi
+837812f9d Fix routing and API issues for branch recipes
+ff4b6d339 Merge: Şube reçete sistemi (mimari + template + aroma)
 ```
 
 ---
 
-## ⏳ ŞU AN AKTİF (Ne yapılıyor şu an)
+## 🚨 ASLAN'IN İLK İŞİ (yeni oturum açılır açılmaz)
 
-- [ ] Hiçbir şey aktif değil — Aslan uyuyor
+1. **Bekleyen PR'ı merge et:**
+```bash
+git fetch origin && \
+git merge --no-ff origin/claude/branch-recipes-admin-2026-05-04 \
+  -m "Merge: HQ Admin paneli (CRUD + görsel upload)" && \
+git push origin main && \
+git push origin --delete claude/branch-recipes-admin-2026-05-04 && \
+git pull origin main
+```
 
----
+2. **Replit'e admin smoke test prompt** ver (devir teslim § A.2)
 
-## 📥 BU GÜN BEKLENEN İŞLER (Pazartesi 20 Nis)
-
-### 🔴 P0 — Bugün mutlaka
-- [ ] **Aslan kararı:** Parola reset bug için yöntem seçimi (PENDING.md DECISION-001)
-- [x] **Replit:** Sprint D-E entegrasyon — 5 yer console.error → critLog (Task #117, patch Aslan'da → Claude push)
-
-### 🟡 P1 — Bugün/Yarın
-- [x] **Replit:** Derin öz-analiz raporu (Task #118, patch Aslan'da → Claude push)
-- [x] **Replit:** docs/skills-archive/ silinmesi (TASK-003 — bu commit'te, push Claude'a)
-- [ ] **Aslan:** Cihaz envanteri + kullanıcı profilleri başlangıç
-
-### 🟢 P2 — Bu hafta
-- [ ] **Replit:** 7 açık silent try/catch — critLog migrate
-- [ ] **Replit:** .agents/skills'a Madde 37 §23-25 ekle
-- [ ] **Aslan:** WhatsApp pilot grupları (4 grup)
-- [ ] **Aslan:** Cumartesi eğitim takvimi
+3. **Sonra Claude'a "devam et" de** — TODO listesinden ilerleyecek
 
 ---
 
-## ✅ DÜN BİTENLER (19 Nis Pazar gece marathon — 9 commit)
+## ⏳ YARIN (5 May Salı) İLK İŞ
 
-| Commit | Sahibi | İş |
-|---|---|---|
-| `b9adf2b` | Claude | Replit derin öz-analiz prompt |
-| `3f23505` | Replit | Sistem değerlendirmesi (4 kritik bulgu) |
-| `15cabee` | Claude | Skill files güncelleme (4 dosya) |
-| `1bd4156` | Replit | Sprint E UI |
-| `b918fe8` | Claude | Sprint E backend |
-| `ae21c58` | Claude | Sprint G — Pilot Day-1 Dashboard |
-| `b5ba72d` | Claude | Sprint D kapanış doc |
-| `538a641` | Claude | Sprint D STEP 2 (TR datetime + 6 P0) |
-| `7828aca` | Claude | Sprint D STEP 1 (backfill) |
-| `137c6f6` | Claude | Sprint A.2 + B.1 + B.3 |
+**Önerim: Reçete adım/malzeme editör** (admin'in alt sayfası)
 
-**Toplam:** 1500+ satır kod + 461 satır skill bilgisi + 1 derin sistem analizi
+**Neden?**
+- Pilot 12 May için kritik — Sema veya Coach'lar yeni reçete versiyonu eklemek isteyebilir
+- 2 saatlik iş
+- Backend zaten hazır (`PUT /api/branch-recipes/:id/ingredients` ve `/steps`)
+- Sadece UI yazılacak
+
+**Detay:** Admin'de reçete satırına tıklayınca → reçete editör → malzeme satırları (ekle/çıkar/sırala) + adım satırları (ekle/çıkar) → kaydet (transaction)
 
 ---
 
-## 🔥 KRİTİK NOT — Pazartesi Sabah Aslan
+## 📋 BEKLEYEN İŞLER (Pilot 12 May için)
 
-İlk yapacağın 3 şey:
+### Kritik (yapılmazsa pilot zorlanır)
+1. **Reçete adım/malzeme editör** — 2h
+2. **Aroma seçim UI + API endpoint** — 1h
+3. **Geri kalan ~75 sabit ürün seed** — 2-3h
+4. **Mr. Dobody recipe-finder skill** — 1h
+5. **Akademi onboarding bağlantısı** — 1-2h
+6. **Otomatik quiz üretici** — 1h
 
-1. **TODAY.md aç** (bu dosya) — 30 saniye okuyup durumu öğren
-2. **Replit ekranını aç** — yapıştır:
-   ```
-   docs/replit-deep-self-analysis-PROMPT.md ve PENDING.md oku.
-   PENDING.md "Replit'e Bekleyen" tasklara P0'dan başla.
-   ```
-3. **Parola reset bug için kararını ver** — PENDING.md DECISION-001 oku, A/B/C seç
+### Yapılırsa iyi
+7. Denetim checklist (açılış/aracı/kapanış) — 1h
+8. Lara personel + bordro import — 1h
+9. Maliyet/fiyat listesi import — 1h
+
+**Toplam kritik:** 10-12 saat (pilot 8 gün uzakta, yetiyor)
 
 ---
 
@@ -100,23 +110,39 @@ PENDING DECISION  Aslan: Parola fix nasıl? (PENDING.md DECISION-001)
 | Tarih | Skor | Olay |
 |---|---|---|
 | 18 Nis Cumartesi | 5.4/10 | Marathon başlangıç |
-| 19 Nis sabah | 6.5/10 | Sprint A.2 + B planlama |
-| 19 Nis akşam | 7.5/10 | Sprint B testleri ✅ |
-| 19 Nis gece | 9.0/10 | Sprint D + G commit |
-| **20 Nis 02:00** | **9.3/10** | **Sprint E backend + skill güncel** |
-| Hedef 28 Nis | 9.5/10 | Replit testleri + parola fix + cheat sheets |
+| 20 Nis 02:00 | 9.3/10 | Sprint E + skill güncel |
+| 28 Nis | 9.5/10 | Pilot pazartesi 5 May iken |
+| 3 May | 9.5/10 | Sprint 3 closure (102 commit) |
+| **4 May 00:45** | **9.6/10** | **Şube reçete sistemi canlı (9 tablo + 17 endpoint + 3 UI)** |
+| Hedef 11 May | 9.9/10 | Tüm reçete + onboarding + Dobody hazır |
+| Pilot 12 May 09:00 | GO-LIVE | — |
 
 ---
 
-## 📌 BAĞLAM REFERANSLAR (Açık tutmaya gerek yok, lazım olunca aç)
+## 📌 BAĞLAM REFERANSLAR
 
-- `docs/00-DASHBOARD.md` — Detaylı uzun-vadeli bağlam (376 satır)
-- `docs/PENDING.md` — Tüm bekleyen iş listesi + kararlar
-- `docs/DECIDED.md` — Geçmiş kararlar arşivi (oluşturulacak)
-- `docs/sistem-degerlendirmesi-replit.md` — Replit'in 78 satır kritik bulgu
-- `docs/replit-deep-self-analysis-PROMPT.md` — Replit'e öz-analiz görevi
-- `docs/pilot/` — 20 dosya pilot dokümantasyonu
+- **Devir teslim:** `docs/DEVIR-TESLIM-4-MAYIS-2026.md` (TAM rehber, yeni oturumda ilk okunur)
+- `docs/00-DASHBOARD.md` — Uzun-vadeli bağlam
+- `docs/PENDING.md` — TASK-XXX/DECISION-XXX listesi
+- `docs/DECISIONS.md` — Donmuş kararlar (1-39)
+- `docs/PILOT-USER-LIST-2026-05.md` — Pilot kullanıcılar
+- `docs/PILOT-DAY1-CHECKLIST.md` — Day-1 prosedür
+- `docs/training/00-INDEX.md` — Eğitim materyalleri (8 dosya)
+- `docs/SPRINT-LIVE.md` — Aktif sprint detayı
 
 ---
 
-**Bu dosya günlük güncellenir. Skill kuralı: Her oturum sonu Claude bu dosyayı tazeler ve commit eder.**
+## 🎭 STANDING RULES (memory + skill)
+
+1. **5-rol mental review** her büyük değişiklikte ZORUNLU
+2. **Şube ↔ Fabrika izolasyon** MUTLAK (DECISIONS#30)
+3. **Pilot freeze ESNEK** (4 May Aslan onayı, fonksiyonel ihtiyaç önce)
+4. **Hard delete YASAK** — soft delete with `isActive=false`
+5. **Force push YASAK**
+6. **Replit Agent push timeout** — Aslan Shell'den manuel push
+7. **Mesaj sonu format:** 🎯 ŞU AN / ✅ SENİN ADIMIN / ❓ BANA LAZIM / ⏳ SONRAKİ
+8. **Türkçe yanıtlar**, kısa mesajlar
+
+---
+
+**Bu dosya günlük güncellenir. Yeni oturum açıldığında ilk olarak okunmalı.**

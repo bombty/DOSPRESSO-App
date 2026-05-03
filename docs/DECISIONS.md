@@ -95,3 +95,53 @@ Son güncelleme: 3 Mayıs 2026
 
 39. **PDKS fazla mesai 30 dakika eşiği — DOSPRESSO iç kuralı.** (Karar — owner Aslan onayı, 3 May 2026.) `server/lib/pdks-engine.ts` `classifyDay` fonksiyonu 30 dakikadan az fazla mesaiyi (overtime) sıfıra yuvarlar (`if (rawOvertime >= 30) → otherwise 0`). Bu DOSPRESSO iç kuralıdır: 30dk altı fazla mesai sayılmaz. Ayrıca tüm fazla mesailer **sadece yönetici onayı ile geçerli** olur (Bundle 7 `overtime_requests` workflow). Kural daha önce `docs/DEVIR-TESLIM-7-NISAN-2026.md` "FM 30dk eşik" notunda dokümante edilmişti. Comprehensive audit (Task #329) F14 olarak yanlış kategorize etmişti — finding ÇÖZÜLDÜ NO-OP olarak kapatıldı. Mevzuat değil iş kuralı, owner kararı ile değiştirilebilir.
 
+
+---
+
+## Sprint 4 / Branch Recipe System Kararları (3-4 May 2026)
+
+### Karar #30: Şube ↔ Fabrika Mutlak İzolasyon (3 May 2026, Aslan)
+Şube reçete sistemi (`branch_*` tablolar) fabrika tablolarına SIFIR FK referans verir. İki sistem tamamen bağımsız çalışır.
+- **Gerekçe:** Veri izolasyonu, ticari sır koruması (Keyblend), KVKK uyumu, hata yayılımı önleme
+- **Uygulama:** `shared/schema/schema-24-branch-recipes.ts` — 9 tablo, sıfır factory_* FK
+- **Kontrol:** `dospresso-quality-gate` Madde 42
+
+### Karar #31: Pilot Freeze Esnek (3 May 2026, Aslan)
+Pilot süresince yeni modül/rol/branch yasağı (DECISIONS#7) **esnek** olarak değiştirildi. Fonksiyonel ihtiyaç önce gelir.
+- **Gerekçe:** Pilot başarısı için kritik özellikler (reçete sistemi gibi) öncelikli
+- **Sınır:** Yeni modül eklenebilir AMA kapsamlı 5-rol değerlendirmesi + smoke test zorunlu
+
+### Karar #32: HQ Edit Yetkisi — CGO Eklendi (4 May 2026, Aslan)
+Reçete düzenleme yetkisi sadece operasyon değil, kalite kontrol/strateji rolüne de açık.
+- **Yetkili roller:** `admin`, `ceo`, **`cgo`**, `coach`, `trainer` (5 rol)
+- **Uygulama:** `server/routes/branch-recipes.ts` `ALLOWED_EDIT_ROLES`
+
+### Karar #33: Görsel Sistemi 3 Boyut Standart (4 May 2026, Aslan)
+Her ürün için 3 boyut görsel otomatik üretilir (Sharp transform).
+- **Standart:**
+  - Thumbnail 200×200 (WebP %80) — liste
+  - Card 600×400 (WebP %85) — mobil kart (PRIMARY, DB'ye URL kaydedilir)
+  - Hero 1200×800 (WebP %90) — detay
+- **Mime:** image/jpeg, image/png, image/webp
+- **Limit:** Max 10 MB
+- **KVKK:** EXIF rotate + alpha kanal kaldır
+- **Cache:** 24 saat
+- **Path:** `branch-recipes/products/{id}/{size}-{ts}.webp`
+
+### Karar #34: Template-Aroma Pattern (3 May 2026, Aslan)
+Aynı reçete sadece aroma/meyve değişimiyle çoğalan ürünler için template sistem.
+- **Pattern:** 1 şablon + N aroma uyumluluğu = N tane ayrı reçete kaydı yerine 1 + N
+- **Uygulama:** `branch_recipes.isTemplate=true` + `branch_recipe_aroma_compatibility`
+- **Kapsam:** 15 template (Freshess 4, Yogurt 2, Milkshake 2, Matcha 3, Çikolata Bar 1, Sıcak Çay 1, Freddo 2)
+- **Slot tipleri:** `primary_fruit`, `secondary_fruit`, `primary` (matcha), `chocolate_bar_type`, `cream_base_aroma`
+- **Pazarlama isimleri:** `displayNameOverride` (Tango Mango, Moulin Rouge, Jimmy Jambo, vb.)
+
+### Karar #35: branch_products.name UNIQUE Constraint (4 May 2026)
+Idempotent seed migration koruması için.
+- **Migration:** `2026-05-04-branch-recipe-dedup.sql`
+- **Schema:** `unique("bp_name_unique").on(table.name)`
+
+### Karar #36: Express Route Ordering Standart (4 May 2026, Branch Recipes Bug Dersi)
+Yeni router dosyalarında wildcard route'lar (`/:id`) her zaman sabit path'lerden sonra.
+- **Detay:** `dospresso-debug-guide` §31, `dospresso-quality-gate` Madde 41
+- **İkincil savunma:** Her wildcard handler'da `isNaN()` guard
