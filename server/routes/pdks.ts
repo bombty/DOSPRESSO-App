@@ -381,39 +381,54 @@ router.patch('/api/pdks/kiosk-settings/:branchId', isAuthenticated, async (req: 
     if (defaultBreakMinutes !== undefined) updateData.defaultBreakMinutes = Number(defaultBreakMinutes);
     if (autoCloseTime !== undefined) updateData.autoCloseTime = String(autoCloseTime);
 
-    // Task #328 — Audit: değişen her field için 1 row insert
-    const [existing] = await db.select().from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId));
-    const auditRows: { branchId: number; changedById: string; fieldName: string; oldValue: string | null; newValue: string | null }[] = [];
-    if (existing) {
-      const fieldsToAudit: Array<keyof SettingsUpdate> = ['defaultShiftStartTime', 'defaultShiftEndTime', 'lateToleranceMinutes', 'earlyLeaveToleranceMinutes', 'defaultBreakMinutes', 'autoCloseTime'];
-      for (const f of fieldsToAudit) {
-        if (updateData[f] === undefined) continue;
-        const oldV = (existing as any)[f];
-        const newV = updateData[f];
-        const oldStr = oldV === null || oldV === undefined ? null : String(oldV);
-        const newStr = newV === null || newV === undefined ? null : String(newV);
-        if (oldStr !== newStr) {
-          auditRows.push({
-            branchId,
-            changedById: user.id,
-            fieldName: f as string,
-            oldValue: oldStr,
-            newValue: newStr,
-          });
+    // Task #328 — Audit: SELECT FOR UPDATE → diff → update + insert tek transaction içinde
+    // (Concurrent PATCH'lerde row lock ile audit eski/yeni değer tutarlılığı garanti)
+    const updated = await db.transaction(async (tx) => {
+      const lockResult: any = await tx.execute(
+        sql`SELECT * FROM ${branchKioskSettings} WHERE ${branchKioskSettings.branchId} = ${branchId} FOR UPDATE`
+      );
+      const existing = lockResult?.rows?.[0];
+
+      const auditRows: { branchId: number; changedById: string; fieldName: string; oldValue: string | null; newValue: string | null }[] = [];
+      if (existing) {
+        const fieldsToAudit: Array<{ key: keyof SettingsUpdate; col: string }> = [
+          { key: 'defaultShiftStartTime', col: 'default_shift_start_time' },
+          { key: 'defaultShiftEndTime', col: 'default_shift_end_time' },
+          { key: 'lateToleranceMinutes', col: 'late_tolerance_minutes' },
+          { key: 'earlyLeaveToleranceMinutes', col: 'early_leave_tolerance_minutes' },
+          { key: 'defaultBreakMinutes', col: 'default_break_minutes' },
+          { key: 'autoCloseTime', col: 'auto_close_time' },
+        ];
+        for (const { key, col } of fieldsToAudit) {
+          if (updateData[key] === undefined) continue;
+          const oldV = existing[col];
+          const newV = updateData[key];
+          const oldStr = oldV === null || oldV === undefined ? null : String(oldV);
+          const newStr = newV === null || newV === undefined ? null : String(newV);
+          if (oldStr !== newStr) {
+            auditRows.push({
+              branchId,
+              changedById: user.id,
+              fieldName: key as string,
+              oldValue: oldStr,
+              newValue: newStr,
+            });
+          }
         }
       }
-    }
 
-    await db.transaction(async (tx) => {
       await tx.update(branchKioskSettings)
         .set(updateData)
         .where(eq(branchKioskSettings.branchId, branchId));
+
       if (auditRows.length > 0) {
         await tx.insert(attendanceSettingsAudit).values(auditRows);
       }
+
+      const [row] = await tx.select().from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId));
+      return row;
     });
 
-    const [updated] = await db.select().from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId));
     res.json(updated);
   } catch (error) {
     console.error("Kiosk settings update error:", error);
