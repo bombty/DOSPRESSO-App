@@ -29,7 +29,9 @@
 
 ---
 
-## Bundle 1A Migration Kategorileri (42 kolon + 6 ekleme + 1 unique + 60 index + 28 FK)
+## Bundle 1A Migration Kategorileri (42 kolon + 6 ekleme + 60 index + 28 FK)
+> module_flags UNIQUE: COALESCE-based partial unique index zaten DB'de var; drift script
+> partial-index name match desteği ile artık doğru tanıyor (false positive giderildi).
 
 > **Scope notu:** Task plan #305 "Index/constraint değişiklikleri ayrı task" diyor.
 > Ancak `scripts/db-drift-check.ts` `--auto-fix` modunda 60 idx + 28 FK için SQL otomatik

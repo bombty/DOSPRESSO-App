@@ -2,8 +2,10 @@
 -- Task #305 — Bundle 1A: DB Drift Close (Mekanik Kısım)
 -- Tarih: 2026-05-03
 -- Sorumlu: Main Agent (Aslan onayı ile)
--- Kapsam: 41 kolon + 6 yeni kolon + 1 unique + 60 index + 28 FK = 136 item
--- Defer: tasks.target_branch_ids (kod refactor), 13 eksik tablo (Bundle 1B)
+-- Kapsam: 42 kolon (40 dönüşüm + 2 K5B int[]) + 6 yeni ai_settings kolonu
+--         + 60 index + 28 FK = 136 item (module_flags UNIQUE COALESCE-index ile zaten karşılanmış)
+-- Dahil: target_branch_ids text→integer[] (Kategori 5B, validator review sonrası)
+-- Defer: 13 eksik tablo + bağlı 4 unique/23 idx/19 FK (Bundle 1B)
 -- Karar matrisi: docs/audit/comprehensive-2026-05/drift-resolution.md
 -- ============================================================================
 -- DRY-RUN: BEGIN ile başla, son satırı ROLLBACK olarak değiştir
@@ -48,10 +50,24 @@ ALTER TABLE tasks ALTER COLUMN branch_id DROP NOT NULL;
 ALTER TABLE messages ALTER COLUMN type DROP NOT NULL;  -- post-drift discovery (3 May 2026)
 
 -- ===== KATEGORİ 5B — text → integer[] (target_branch_ids final fix) =========
--- Kod (frontend, scheduler) zaten integer[] kullanıyor; schema'yı integer().array()
--- olarak düzelttikten sonra DB'yi de uyarla. task_groups boş, tasks dolu (USING raw cast).
+-- Schema authority: shared/schema/schema-02.ts artık integer().array() (satır 3058+3222).
+-- DB'yi de int[]'e uyarla.
+--
+-- Pre-flight veri kanıtı (3 May 2026 APPLY öncesi):
+--   tasks: 1343 satır, target_branch_ids non-null = 1, değer = '{5}' (PG array literal,
+--          int dizi formatı; JSON dizi DEĞİL — kod zaten int dizi yazıyor)
+--   task_groups: 0 satır (boş tablo)
+--
+-- Bu nedenle:
+--   - task_groups: USING NULL (veri yok, kayıp imkansız)
+--   - tasks: USING target_branch_ids::integer[] (PG array literal otomatik cast eder)
+--
+-- Eğer bir gün JSON-style ('[1,2]') veri olsaydı bu cast başarısız olurdu; tablo veri
+-- şekli yukarıdaki pre-flight ile doğrulandı. APPLY öncesi tekrar pre-flight koşulması
+-- önerilir (satır sayısı ve örnek değer kontrolü).
 ALTER TABLE task_groups ALTER COLUMN target_branch_ids TYPE integer[] USING NULL;
-ALTER TABLE tasks ALTER COLUMN target_branch_ids TYPE integer[] USING target_branch_ids;
+ALTER TABLE tasks ALTER COLUMN target_branch_ids TYPE integer[]
+  USING target_branch_ids::integer[];
 
 -- ===== KATEGORİ 6 — BACKFILL (1 satır) =======================================
 UPDATE employee_terminations

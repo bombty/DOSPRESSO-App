@@ -497,7 +497,17 @@ async function main() {
         a.is_unique &&
         colsEq(a.columns, exp.columns),
     );
-    if (!constraintMatch && !uniqueIndexMatch) {
+    // Partial unique indexes with expressions (e.g. COALESCE(col, 0)) are
+    // exposed by pg_attribute as truncated column lists (expr slots return
+    // attnum=0 and are dropped). Treat name-match as a satisfying signal so
+    // we don't flag a deliberately partial unique index as missing.
+    const uniqueIndexNameMatch = actualIndexes.some(
+      (a) =>
+        a.table_name === exp.table &&
+        a.is_unique &&
+        a.index_name === exp.name,
+    );
+    if (!constraintMatch && !uniqueIndexMatch && !uniqueIndexNameMatch) {
       missingUniques.push(exp);
     }
   }
