@@ -428,7 +428,7 @@ function Router() {
           <Route path="/" component={HomeScreen} />
           <Route path="/control">{() => { const { user } = useAuth(); const [,nav] = useLocation(); useEffect(() => { const target = ROLE_CONTROL_PATH[user?.role || ''] || '/'; if (target !== '/control') nav(target); }, [user?.role]); return null; }}</Route>
           <Route path="/control-legacy">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/control"); }, []); return null; }}</Route>
-          <Route path="/merkez-dashboard">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/muhasebe-centrum"); }, []); return null; }}</Route>
+          <Route path="/merkez-dashboard">{() => { const { user } = useAuth(); const [,nav] = useLocation(); useEffect(() => { const target = ROLE_CONTROL_PATH[user?.role || ''] || '/muhasebe-centrum'; if (target !== '/merkez-dashboard') nav(target); }, [user?.role]); return null; }}</Route>
           <Route path="/modul/:moduleId" component={MegaModulePage} />
           <Route path="/subeler/:id/nfc">{() => <ExecutiveOnly><SubeNFCDetay /></ExecutiveOnly>}</Route>
           <Route path="/subeler/:id">{() => <ExecutiveOnly><SubeDetay /></ExecutiveOnly>}</Route>
