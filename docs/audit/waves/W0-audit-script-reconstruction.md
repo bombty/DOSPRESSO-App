@@ -1,6 +1,7 @@
 # Wave W0 — Audit Script Reconstruction (TAMAMLANDI)
 
-**Status:** ✅ DONE (3 May 2026, Task #288)
+**Status:** ✅ DONE v2 (3 May 2026, Task #288)
+**v2 düzeltmeleri:** template literal parsing bug fix (collapse-then-split), querystring artifact filter, raw audit-style view emission. Final: 51 distinct broken (missing=2, mm=7, rel=42). Reconciliation: `docs/audit/api-283-categorized-waves.md` §3.0.5-3.0.7.
 **Mode:** Build (READ-ONLY analiz)
 **Gerçekleşen süre:** ~1.5 saat
 **Risk:** DÜŞÜK (read-only)

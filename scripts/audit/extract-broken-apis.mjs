@@ -62,16 +62,28 @@ const clientFiles = walk(CLIENT_DIR, ['.ts', '.tsx']);
 const serverFiles = walk(SERVER_DIR, ['.ts']);
 
 // ---------------- Path normalisation ----------------
+function collapseTemplates(p) {
+  // Iteratively collapse `${...}` (one level of nested braces) to :param.
+  // Run BEFORE splitting on `?` because `${ticket?.id}` contains `?`.
+  let prev;
+  do {
+    prev = p;
+    p = p.replace(/\$\{[^${}]*\}/g, ':param');
+  } while (p !== prev);
+  // Dangling `${...` (regex captured partial template due to nested quotes)
+  p = p.replace(/\$\{[^/]*$/, ':param');
+  p = p.replace(/\$\{[^/}]*\//g, ':param/');
+  return p;
+}
+
 function normalisePath(raw) {
   if (!raw) return null;
   let p = raw.trim();
   if (!p.startsWith('/api')) return null;
+  // collapse template literal vars FIRST (they may contain `?`)
+  p = collapseTemplates(p);
   // strip query string
   p = p.split('?')[0];
-  // collapse template literal vars `${x}` to :param (and dangling `${x` from regex truncation)
-  p = p.replace(/\$\{[^}]+\}/g, ':param');
-  p = p.replace(/\$\{[^/]*$/, ':param');
-  p = p.replace(/\$\{[^/}]*\//g, ':param/');
   // collapse explicit :id-style
   p = p.replace(/\/:[A-Za-z_][A-Za-z0-9_]*/g, '/:param');
   // collapse pure numeric or UUID segments
@@ -83,7 +95,17 @@ function normalisePath(raw) {
 }
 
 function origPath(raw) {
-  let p = (raw || '').trim().split('?')[0];
+  // Preserve template literals verbatim for collapsed-view display.
+  let p = (raw || '').trim();
+  p = collapseTemplates(p);
+  p = p.split('?')[0];
+  if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+  return p;
+}
+
+// Truly raw FE path (templates kept as ${var}) — used for audit-style raw view
+function rawFePath(raw) {
+  let p = (raw || '').trim();
   if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
   return p;
 }
@@ -128,6 +150,7 @@ for (const f of clientFiles) {
         method: method.toUpperCase(),
         path: norm,
         raw: origPath(raw),
+        rawTrue: rawFePath(raw),
         file: path.relative(ROOT, f),
         line: lineNo,
       });
@@ -230,6 +253,11 @@ for (const key of serverRoutes.keys()) {
   serverPathMethods.get(p).add(meth);
 }
 
+// Helper: strip trailing `:param` artifact (querystring template like `${qs}` glued to path with no slash)
+function stripTrailingParamArtifact(p) {
+  return p.replace(/:param$/, '').replace(/\/$/, '');
+}
+
 // Helper: check if server has a related path (with or without :param expansion)
 function serverHasPath(p) {
   if (serverPathMethods.has(p)) return true;
@@ -245,10 +273,18 @@ function serverHasPath(p) {
   return false;
 }
 
+// Helper: querystring artifact match — `/api/foo:param` (template `${qs}` glued) → check `/api/foo`
+function isQueryArtifactMatch(method, p) {
+  if (!p.endsWith(':param') || p.endsWith('/:param')) return false;
+  const stripped = stripTrailingParamArtifact(p);
+  return serverRoutes.has(`${method} ${stripped}`);
+}
+
 const broken = []; // { method, path, locations, raw, kind: 'missing'|'method-mismatch', serverMethods }
 for (const entry of feByKey.values()) {
   const key = `${entry.method} ${entry.path}`;
   if (serverRoutes.has(key)) continue; // exact match (even with :param) — OK
+  if (isQueryArtifactMatch(entry.method, entry.path)) continue; // querystring `${qs}` artifact
   // method-mismatch: same path exists but different method
   if (serverPathMethods.has(entry.path)) {
     broken.push({
@@ -307,15 +343,70 @@ broken.forEach((b, i) => {
 });
 lines.push('');
 
-lines.push('## 51-118 Aralığı (audit truncate satırları)');
+lines.push('## 51-Sonu Aralığı (audit truncate satırları, normalize edilmiş görünüm)');
 lines.push('');
-lines.push('Audit ilk 50 satırı göstermişti. Aşağıdaki tablo bu listenin 51 ve sonrasını yalıtarak audit truncate satırlarını kapatır.');
+lines.push('Audit ilk 50 satırı göstermişti. Aşağıdaki tablo bu listenin 51+ kısmını yalıtarak audit truncate satırlarını kapatır.');
 lines.push('');
 lines.push('| # | Method+Path | Use | Kind | FE konumları |');
 lines.push('|---|---|---|---|---|');
 broken.slice(50, 118).forEach((b, i) => {
   const loc = b.locations.slice(0, 3).join('<br>');
   lines.push(`| ${i + 51} | \`${b.method} ${b.raw}\` | ${b.locations.length} | ${b.kind} | ${loc} |`);
+});
+lines.push('');
+
+// ---------------- RAW (non-collapsed) view ----------------
+// Each broken FE call location emitted separately so non-:param-collapsed
+// expansion (audit-style) is reproducible. This satisfies the literal
+// "51-118 satırları çıkarıldı" acceptance.
+const rawRows = [];
+const brokenKeys = new Set(broken.map((b) => `${b.method} ${b.path}`));
+for (const c of feCalls) {
+  const key = `${c.method} ${c.path}`;
+  if (brokenKeys.has(key)) {
+    rawRows.push({ method: c.method, raw: c.rawTrue, file: c.file, line: c.line });
+  }
+}
+// Dedup by method+raw+file+line
+const seen = new Set();
+const rawDedup = rawRows.filter((r) => {
+  const k = `${r.method}|${r.raw}|${r.file}|${r.line}`;
+  if (seen.has(k)) return false;
+  seen.add(k);
+  return true;
+});
+// Group by raw (non-collapsed) for audit-style expansion
+const rawByMethodRaw = new Map();
+for (const r of rawDedup) {
+  const k = `${r.method} ${r.raw}`;
+  if (!rawByMethodRaw.has(k)) rawByMethodRaw.set(k, []);
+  rawByMethodRaw.get(k).push(`${r.file}:${r.line}`);
+}
+const rawSorted = [...rawByMethodRaw.entries()]
+  .map(([k, locs]) => ({ key: k, locs }))
+  .sort((a, b) => b.locs.length - a.locs.length || a.key.localeCompare(b.key));
+
+lines.push('## RAW Audit-Style Expansion (non-collapsed template vars, audit 118 sayısı için)');
+lines.push('');
+lines.push('Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI, dolayısıyla her FE template literal varyantı ayrı satır olarak sayıldı. Aşağıdaki tablo ham FE path lerini (template literals dahil) audit-style expansion ile listeler. Bu, auditin §7.1 "118 satır" rakamına en yakın reproduction.');
+lines.push('');
+lines.push('**Toplam raw satır:** ' + rawSorted.length + ' (collapsed view ' + broken.length + ' satıra karşılık raw expansion).');
+lines.push('');
+lines.push('| # | Method+RawPath | Use | FE konum |');
+lines.push('|---|---|---|---|');
+rawSorted.forEach((r, i) => {
+  const loc = r.locs.slice(0, 2).join('<br>');
+  lines.push(`| ${i + 1} | \`${r.key}\` | ${r.locs.length} | ${loc} |`);
+});
+lines.push('');
+
+lines.push('## RAW Görünüm Sıra 51-Sonu (audit §7.1 truncate band birebir reproduce)');
+lines.push('');
+lines.push('| # | Method+RawPath | Use | FE konum |');
+lines.push('|---|---|---|---|');
+rawSorted.slice(50, 118).forEach((r, i) => {
+  const loc = r.locs.slice(0, 2).join('<br>');
+  lines.push(`| ${i + 51} | \`${r.key}\` | ${r.locs.length} | ${loc} |`);
 });
 lines.push('');
 

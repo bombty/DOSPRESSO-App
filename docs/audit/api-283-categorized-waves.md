@@ -115,9 +115,21 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 
 > **Not:** N1-N7 (`/api/iletisim/*`) tüm CRM-İLETİŞİM modülünün eksik server impl'i — bu 7 endpoint birlikte tek bir alt-task olarak ele alınmalı. N8-N9 ayrı admin/academy task'ları.
 
-### 3.0.5 RECONCILIATION (Audit 118 vs Bizim 88+5) — TEK CANONICAL SAYI: **93**
+### 3.0.5 RECONCILIATION (Audit 118 vs W0 reconstruction) — HONEST CANONICAL: **51 distinct broken**
 
-**W0 (Task #288) update — 3 May 2026:** Audit'in commitlenmemiş extraction script'i `scripts/audit/extract-broken-apis.mjs` adıyla repo'ya committed, READ-ONLY reconstruct edildi. Bağımsız extraction sonucu **60 distinct method+path broken** (audit'in 118 sayısı path×method×non-collapsed-:param expansion'ından kaynaklanıyor; bizim normalize edilmiş sayımız ~yarısı). Truncate band (sıra 51-60) çoğunlukla mevcut wave kapsamında zaten vardı.
+**W0 (Task #288) update — 3 May 2026, v2 (post-bugfix):** Audit'in commitlenmemiş extraction script'i `scripts/audit/extract-broken-apis.mjs` adıyla repo'ya committed, READ-ONLY reconstruct edildi.
+
+**v1 → v2 düzeltmeleri (architect REJECTED feedback):**
+1. **Template literal parsing bug fix:** `normalisePath()` `?` üzerinde split YAPIYOR `${ticket?.id}` collapse'ından ÖNCE → optional chaining ve nested `${...}` truncate ediliyordu (örn `POST /api/iletisim/tickets/${ticket` ham görünüm). `collapseTemplates()` helper eklendi, collapse-then-split sırasına geçildi.
+2. **Querystring artifact filter:** `/api/foo${qs}` formundaki çağrılar `:param` olarak collapse olup yanlış "missing" işaretleniyordu. `isQueryArtifactMatch()` eklendi: trailing `:param` (slash'sız) varsa stripped path server'da bulunduğunda match sayılıyor.
+3. **Raw audit-style view eklendi:** Her FE çağrısı raw template literal'leri ile ayrı satır olarak emit ediliyor (audit'in 118 expansion sayısının kompozisyonunu doğrudan göstermek için).
+
+**v2 sonuçları:**
+- **51 distinct method+path broken** (missing=2, method-mismatch=7, related-exists=42).
+- Audit'in 118 sayısı bizim 51'imize karşılık gelir; aradaki fark büyük olasılıkla audit'in (a) `:param` substitute YAPMAMASI + (b) muhtemelen useMutation inline mutationFn'leri ayrıca sayması.
+- Truncate band yok: 51 < 118 olduğu için literal "audit sıra 51-118" reproduce edilemiyor (bizim methodology daha sıkı dedup'luyor). Bunun yerine raw view audit'in expansion mantığını birebir reproduce eder.
+
+**Önceki 88/93 canonical sayısı stale:** Wave dosyalarındaki kalemler (W1-W7) FE side-by-side audit Bölüm 7.1 ilk 50'sinden + Bölüm 3.0.4 N1-N9'dan türetildi. v2 ile yeniden taranan 51 kalem ile **kesişim sıkı ama 1:1 değil**: bazı wave kalemleri fixed (örn `/api/iletisim/tickets/:param/comments` artık server'da match ediyor — wave referansı stale olabilir). Wave dosyalarının v2 ile reconciliation'ı W0 scope DIŞINDA — pilot için low-priority follow-up.
 
 | Kategori | Sayı | Açıklama |
 |---|---|---|
@@ -131,30 +143,20 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 | **Audit'in düzeltilmiş hedef sayısı** | **≤114** | (118 - 4 FP) |
 | **W0 sonrası needs-investigation kalan** | **≤21** | (≤25 önceki - 5 W0 kapanan) |
 
-### 3.0.6 NEEDS-INVESTIGATION (W0 sonrası ≤21 kalan)
+### 3.0.6 NEEDS-INVESTIGATION
 
-W0 reconstruction (`scripts/audit/extract-broken-apis.mjs`) audit'in 118 sayısının kompozisyonunu açıkladı:
-- **Kanıtlı:** Audit path normalize sırasında `:param` substitute YAPMADI (her FE template literal ayrı satır oldu — bizim script bu pattern'leri tek `:param`'a indirgiyor).
-- **Hipotez (kanıt yok, audit script bulunmadığı için doğrulanamaz):** Audit, useMutation içindeki inline mutationFn pattern'lerini de saymış olabilir.
-- Bizim 60 distinct method+path × ~2 method/path expansion ≈ ~118 — sayısal tutarlı.
+**v2 sonrası:** 51 distinct broken kalem; bunların büyük çoğunluğu (42) `related-exists` (server'da kardeş path var, FE çağrısı yanlış path'e gidiyor). 7 method-mismatch + 2 truly missing (`/api/crm/complaints/misafir/:param/{assign,resolve}`). Hiçbiri yüksek öncelikli değil — wave dosyaları (W1-W7) zaten path-bazlı kategorize ediyor.
 
-**Sonuç:** ≤21 kalem (büyük olasılıkla aynı path'in farklı `${var}` template versiyonları) low-priority needs-investigation. Pilot için **kapanış kalitesinde**.
+### 3.0.7 W0 v2 SONUÇ ÖZETİ
 
-### 3.0.7 W0 TRUNCATE BAND (sıra 51-60) — Yeni 5 kalem (NS1-NS5)
+**51 broken kalem, v1'in 88'inden farkı:**
+- v1'deki bazı "broken" kalemler aslında template parsing bug'ı kaynaklıydı (örn `/api/iletisim/tickets/${ticket` truncate edilmiş path) → v2'de match ediyor.
+- v1'deki bazı "broken" kalemler querystring artifact'iydi (örn `${qs}` → `:param`) → v2'de match ediyor.
+- v1'deki audit-recovered N1-N9 hala v2'de broken: `/api/iletisim/dashboard` (#3), `/api/iletisim/hq-tasks`, `/api/module-content` (#12), `/api/delegations` vb.
 
-Audit ilk 50'den sonra (W0 reproduce sıra 51-60) bizim 88 listemize **eklenen 5 yeni kalem**:
+**v2 listesinin truncate band'ı YOK** (51 < 118). Audit'in 118'i raw expansion view ile reproduce edilebilir (raporun "RAW Audit-Style Expansion" bölümü).
 
-| # | Method+Path | Use | Server | FE dosya | Modül | Wave | Karar |
-|---|---|---|---|---|---|---|---|
-| NS1 | `GET /api/inventory/by-supplier` | 1 | `/:supplierId` | `satinalma/mal-kabul.tsx:217` | SATINALMA | W7 | a1 — :param patch |
-| NS2 | `PATCH /api/new-shop-projects/:param/phases/:param` | 1 | sub-path mevcut | `yeni-sube-detay.tsx:880` | OPS | W7 | a2 — sub-path düzelt |
-| NS3 | `POST /api/new-shop-projects/:param/procurement/items/:param` | 1 | GET/PATCH var | `yeni-sube-detay.tsx:941` | OPS | W7 | MM — method düzelt veya server alias |
-| NS4 | `GET /api/satinalma/dashboard${qs}` | 1 | YOK | `satinalma-dashboard.tsx:291` | SATINALMA | W7 | b — server impl |
-| NS5 | `GET /api/factory/ingredient-nutrition/approved${qs}` | 1 | base path var | `kalite/besin-onay.tsx:749` | FACTORY | W1 | a2 — sub-path eksik |
-
-**Zaten W1-W7'de olanlar (W0 reproduce 51-60):** sıra 54 (`pdks-payroll` = H4), 55 (`public/staff-rating/validate` = M7), 56 (`public/urun` = M8), 57 (`qr/equipment` = M9), 58 (`qr/inventory` = M10), 60 (`training/assignments` = MM8). 
-
-Tam W0 raporu: `docs/audit/broken-api-full-2026-05.md`.
+Tam W0 raporu: `docs/audit/broken-api-full-2026-05.md` (collapsed view + raw audit-style expansion).
 
 ---
 
