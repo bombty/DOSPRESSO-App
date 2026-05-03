@@ -383,15 +383,23 @@ router.patch('/api/pdks/kiosk-settings/:branchId', isAuthenticated, async (req: 
 
     // Task #328 — Audit: SELECT FOR UPDATE → diff → update + insert tek transaction içinde
     // (Concurrent PATCH'lerde row lock ile audit eski/yeni değer tutarlılığı garanti)
+    type ExistingRow = {
+      default_shift_start_time: string | null;
+      default_shift_end_time: string | null;
+      late_tolerance_minutes: number | null;
+      early_leave_tolerance_minutes: number | null;
+      default_break_minutes: number | null;
+      auto_close_time: string | null;
+    };
     const updated = await db.transaction(async (tx) => {
-      const lockResult: any = await tx.execute(
+      const lockResult = await tx.execute<ExistingRow>(
         sql`SELECT * FROM ${branchKioskSettings} WHERE ${branchKioskSettings.branchId} = ${branchId} FOR UPDATE`
       );
-      const existing = lockResult?.rows?.[0];
+      const existing = lockResult.rows?.[0];
 
       const auditRows: { branchId: number; changedById: string; fieldName: string; oldValue: string | null; newValue: string | null }[] = [];
       if (existing) {
-        const fieldsToAudit: Array<{ key: keyof SettingsUpdate; col: string }> = [
+        const fieldsToAudit: Array<{ key: keyof SettingsUpdate; col: keyof ExistingRow }> = [
           { key: 'defaultShiftStartTime', col: 'default_shift_start_time' },
           { key: 'defaultShiftEndTime', col: 'default_shift_end_time' },
           { key: 'lateToleranceMinutes', col: 'late_tolerance_minutes' },
@@ -450,8 +458,8 @@ router.get('/api/branches/:id/attendance-audit', isAuthenticated, async (req: an
       return res.status(400).json({ error: 'Geçersiz branchId' });
     }
 
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
-    const days = Math.min(Number(req.query.days) || 90, 365);
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200));
+    const days = Math.max(1, Math.min(Number(req.query.days) || 90, 365));
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const rows = await db.select({
