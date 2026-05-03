@@ -151,11 +151,11 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 **51 broken kalem, v1'in 88'inden farkı:**
 - v1'deki bazı "broken" kalemler aslında template parsing bug'ı kaynaklıydı (örn `/api/iletisim/tickets/${ticket` truncate edilmiş path) → v2'de match ediyor.
 - v1'deki bazı "broken" kalemler querystring artifact'iydi (örn `${qs}` → `:param`) → v2'de match ediyor.
-- v1'deki audit-recovered N1-N9 hala v2'de broken: `/api/iletisim/dashboard` (#3), `/api/iletisim/hq-tasks`, `/api/module-content` (#12), `/api/delegations` vb.
+- v1'deki audit-recovered N1-N9'dan sadece N8 (`/api/module-content`, #12) hala v2'de broken; N1-N7 ve N9 v2'de match ediyor (yukarıdaki §3.0.5 ile uyumlu).
 
-**v2 listesinin truncate band'ı YOK** (51 < 118). Audit'in 118'i raw expansion view ile reproduce edilebilir (raporun "RAW Audit-Style Expansion" bölümü).
+**v2 listesinin truncate band'ı YOK** (51 < 118). Audit'in 118 sayısı bizim methodology ile reproduce EDİLEMEDİ — raw view de 51 üretiyor.
 
-Tam W0 raporu: `docs/audit/broken-api-full-2026-05.md` (collapsed view + raw audit-style expansion).
+Tam W0 raporu: `docs/audit/broken-api-full-2026-05.md` (collapsed view + raw audit-style görünüm).
 
 ---
 

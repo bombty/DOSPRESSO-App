@@ -314,7 +314,7 @@ lines.push(`**Üretim:** ${new Date().toISOString()}`);
 lines.push(`**Script:** scripts/audit/extract-broken-apis.mjs (committed, READ-ONLY)`);
 lines.push(`**Task:** #288 — Wave W0 of #283`);
 lines.push('');
-lines.push('Bu rapor APP_AUDIT_REPORT_2026-05.md §7.1 truncate edilmiş 51-118 satırlarını geri kazandırmak için bağımsız extraction ile üretildi. Methodology audit ile birebir uyumlu (FE: apiRequest/useQuery/fetch; server: app.METHOD + router.METHOD + mount prefix).');
+lines.push("Bu rapor APP_AUDIT_REPORT_2026-05.md §7.1 truncate edilmiş 51-118 satırlarını geri kazandırma denemesi olarak bağımsız extraction ile üretildi. Methodology best-effort reconstructed (FE: apiRequest/useQuery/fetch; server: app.METHOD + router.METHOD + mount prefix). Audit'in 118 satırı bizim methodology ile reproduce EDİLEMEDİ — bizim sayımız 51 distinct broken; gap §3.0.5'te dokümante edildi.");
 lines.push('');
 
 lines.push('## Özet');
