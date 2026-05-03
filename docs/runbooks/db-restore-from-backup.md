@@ -196,3 +196,13 @@ Restore başarılıysa pilot grubuna mesaj (PILOT-COMMUNICATION-PLAN "Devam" şa
 ---
 
 > **Bu runbook her ay 1 kere prova edilmeli (TEST branch'e dry-run restore). Production restore sadece gerçek DR durumunda.**
+
+---
+
+## Son Doğrulama Geçmişi
+
+| Tarih | Backup Dosyası | Boyut | Yöntem | Sonuç |
+|---|---|---|---|---|
+| 2026-05-03 20:00 UTC | `db-backups/dospresso/2026-05-03/dump.dump` | 5.66 MB | Manuel tetikleme (Wave A-2 doğrulama) | ✅ Upload OK, Object Storage'da görünür |
+
+**Bir sonraki otomatik çalışma:** 2026-05-04T03:00:00.000Z (her gece 03:00 UTC)

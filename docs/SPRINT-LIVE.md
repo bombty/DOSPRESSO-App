@@ -27,7 +27,7 @@ Son güncelleme: 3 Mayıs 2026 akşam (Mega-Sprint sonuç — 22/36 finding kapa
 - ✅ DB drift Bundle 1A 195→58 → **Bundle 1B (W-A3) ile 58→0** (#314 ✅ 3 May 2026)
 - ✅ F33 13/13 sayfa guard
 - ✅ PIN coverage %100
-- ✅ pg_dump günlük backup
+- ✅ pg_dump günlük backup (Wave A-2 ✅ — scheduler 03:00 UTC kayıtlı, ilk manuel backup 2026-05-03 5.66 MB Object Storage'da doğrulandı)
 - ✅ Skill MD'ler güncel
 - ✅ W-A3 Bundle 1B drift kapatma TAMAMLANDI (13 tablo + 36 idx/constraint, drift=0)
 
@@ -47,6 +47,14 @@ Hedef: Pilot Day-1 (12 May 2026) öncesi açık 36 finding'in 21'i kapatılmalı
 
 ### Bundle 1A — DB Drift Kapatma (Task #305)
 ✅ DB drift 195 → 58 (-137); 42 kolon tipi/nullability + 60 idx + 28 FK + module_flags UNIQUE = kapatıldı. `migrations/sprint-2ext-drift-close.sql`.
+
+### Wave A-2 — Günlük pg_dump Backup Cron (Task #280 / B16) ✅ 3 May 2026
+✅ `server/backup.ts` `startDailyPgDumpScheduler()` → `server/index.ts` L387 mount edilmiş. Scheduler kayıtlı: ilk çalışma `2026-05-04T03:00:00.000Z` (her gece 03:00 UTC = TR 06:00). Manuel tetikleme başarılı: `db-backups/dospresso/2026-05-03/dump.dump` → **5.66 MB** Object Storage'da doğrulandı. Retention: 30 gün. Exclude: `audit_logs, notifications, scheduler_executions`. Runbook: `docs/runbooks/db-restore-from-backup.md`.
+
+**Object Storage kanıtı (3 May 2026 20:00 UTC):**
+```
+db-backups/dospresso/2026-05-03/dump.dump | 5.66 MB | 2026-05-03T20:00:50.578Z
+```
 
 ### Bundle 1B — W-A3 DB Drift Sıfırlama (Task #314) ✅ 3 May 2026
 ✅ DB drift 58 → **0**. 13 eksik tablo + 36 index/unique/FK migration apply edildi. `migrations/2026-05-03-bundle-1b-drift-close.sql`. Smoke test 5/5 HTTP 200 (`/api/notification-preferences`, `/api/branch-feedback-summary/1`, `/api/hq-support/tickets`, `/api/inventory/by-supplier/2`, `/api/trend-metrics`). `db-drift-check.ts` → 0 drift doğrulandı.
