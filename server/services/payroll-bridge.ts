@@ -404,7 +404,23 @@ export async function calculateUnifiedPayroll(
   const positionCode = ROLE_TO_POSITION[u.role] || "barista";
 
   const salary = await getPositionSalary(positionCode, year, month);
-  if (!salary) return null;
+  if (!salary) {
+    // F27 ✅ KAPANDI (3 May 2026): null guard + structured warn.
+    // Daha önce sessizce null dönerdi → bordro üretmez + alarm yok.
+    console.warn('[payroll-bridge] getPositionSalary null — bordro üretilmedi', {
+      userId,
+      year,
+      month,
+      role: u.role,
+      positionCode,
+      fullName,
+      branchId: u.branchId,
+      source: effectiveSource,
+      reason: 'NO_POSITION_SALARY_FOR_PERIOD',
+      hint: 'positionSalaries tablosuna bu pozisyon + tarih için kayıt eklenmeli',
+    });
+    return null;
+  }
 
   // Kaynağa göre PDKS verisi
   let pdks: PdksMonthSummary;

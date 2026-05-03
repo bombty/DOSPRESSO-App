@@ -138,7 +138,23 @@ export async function calculatePayroll(
   const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Bilinmiyor';
   const positionCode = ROLE_TO_POSITION[u.role] || 'barista';
   const salary = await getPositionSalary(positionCode, year, month);
-  if (!salary) return null;
+  if (!salary) {
+    // F27 ✅ KAPANDI (3 May 2026): null guard + structured warn.
+    // Daha önce sessizce null dönerdi → bordro üretmez + alarm yok.
+    // Şimdi: console.warn yapısal log, ileride payrollAlerts tablosuna yazılabilir.
+    console.warn('[payroll-engine] getPositionSalary null — bordro üretilmedi', {
+      userId,
+      year,
+      month,
+      role: u.role,
+      positionCode,
+      fullName,
+      branchId: u.branchId,
+      reason: 'NO_POSITION_SALARY_FOR_PERIOD',
+      hint: 'positionSalaries tablosuna bu pozisyon + tarih için kayıt eklenmeli',
+    });
+    return null;
+  }
 
   const classification = await getMonthClassification(userId, year, month);
   const daysInMonth = new Date(year, month, 0).getDate();
