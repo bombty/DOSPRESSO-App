@@ -106,7 +106,10 @@ ORDER BY u.role, u.username;
 
 -- ===============================================================
 -- KULLANIM:
---   psql "$DATABASE_URL" -f scripts/audit/pin-coverage-2026-05.sql > docs/security/pin-coverage-2026-05-report.txt
+--   ⚠️ PII İÇERİR (4 ve 5 numaralı sorgular kullanıcı isimleri/şubeleri).
+--   Repo'ya commit edilmiş rapor (docs/security/pin-coverage-2026-05-report.txt)
+--   sadece AGGREGATE içerir. Detaylı PII çıktısı owner-only zarfta:
+--   psql "$DATABASE_URL" -f scripts/audit/pin-coverage-2026-05.sql > /tmp/pin-coverage-PRIVATE.txt
 -- SONRAKİ ADIM (ayrı task, Plan mode + isolated agent + backup + GO):
 --   - Eksik PIN'lere bcrypt hash + 4-6 haneli random PIN üret
 --   - Owner-only kapalı zarf CSV (docs/security/pin-seed-2026-05-PRIVATE.csv)

@@ -1,149 +1,60 @@
-   section    | aktif_user | branch_pin_unique_user | factory_pin_unique_user 
---------------+------------+------------------------+-------------------------
- === ÖZET === |        176 |                     31 |                      13
+=== ÖZET ===
+ aktif_user | branch_pin_unique_user | factory_pin_unique_user 
+------------+------------------------+-------------------------
+        176 |                     31 |                      13
 (1 row)
 
-                 section                 |       role       | toplam_user | pin_var | pin_eksik 
------------------------------------------+------------------+-------------+---------+-----------
- === BRANCH PIN EKSİĞİ (rol bazında) === | barista          |          77 |      13 |        64
- === BRANCH PIN EKSİĞİ (rol bazında) === | sube_kiosk       |          19 |       0 |        19
- === BRANCH PIN EKSİĞİ (rol bazında) === | supervisor       |          17 |       1 |        16
- === BRANCH PIN EKSİĞİ (rol bazında) === | mudur            |          18 |       2 |        16
- === BRANCH PIN EKSİĞİ (rol bazında) === | bar_buddy        |           3 |       3 |         0
- === BRANCH PIN EKSİĞİ (rol bazında) === | stajyer          |           3 |       3 |         0
- === BRANCH PIN EKSİĞİ (rol bazında) === | supervisor_buddy |           1 |       1 |         0
+
+=== BRANCH PIN EKSİĞİ (rol bazında, aggregate) ===
+       role       | toplam | pin_var | eksik 
+------------------+--------+---------+-------
+ barista          |     77 |      13 |    64
+ sube_kiosk       |     19 |       0 |    19
+ supervisor       |     17 |       1 |    16
+ mudur            |     18 |       2 |    16
+ bar_buddy        |      3 |       3 |     0
+ stajyer          |      3 |       3 |     0
+ supervisor_buddy |      1 |       1 |     0
 (7 rows)
 
-                 section                  |       role       | toplam_user | pin_var | pin_eksik 
-------------------------------------------+------------------+-------------+---------+-----------
- === FACTORY PIN EKSİĞİ (rol bazında) === | fabrika_operator |          10 |       9 |         1
- === FACTORY PIN EKSİĞİ (rol bazında) === | gida_muhendisi   |           2 |       1 |         1
- === FACTORY PIN EKSİĞİ (rol bazında) === | fabrika_mudur    |           1 |       1 |         0
- === FACTORY PIN EKSİĞİ (rol bazında) === | sef              |           1 |       1 |         0
+
+=== FACTORY PIN EKSİĞİ (rol bazında, aggregate) ===
+       role       | toplam | pin_var | eksik 
+------------------+--------+---------+-------
+ fabrika_operator |     10 |       9 |     1
+ gida_muhendisi   |      2 |       1 |     1
+ fabrika_mudur    |      1 |       1 |     0
+ sef              |      1 |       1 |     0
 (4 rows)
 
-    pin_type    |               user_id                |   username    |         full_name          |    role    | branch_id |     branch_name      
-----------------+--------------------------------------+---------------+----------------------------+------------+-----------+----------------------
- BRANCH_MISSING | 9379801c-b971-40ed-8928-b40affbdf60e | isiklar       | Işıklar Kiosk              | sube_kiosk |         5 | Işıklar
- BRANCH_MISSING | ad0b4d86-4791-478a-9a7c-a2e519e9efa6 | barista.m1    | Can Akar                   | barista    |         6 | Antalya Mallof
- BRANCH_MISSING | 23cc1951-30b9-4f51-8036-92a7725f9b50 | barista.m2    | Duygu Kaya                 | barista    |         6 | Antalya Mallof
- BRANCH_MISSING | 7f0249ed-825b-496f-b21f-6b7e4c55f35b | barista.m3    | Mehmet Şahin               | barista    |         6 | Antalya Mallof
- BRANCH_MISSING | fc7a385e-ec4a-49df-a0cc-43d2012e3413 | barista.m4    | Selin Çelik                | barista    |         6 | Antalya Mallof
- BRANCH_MISSING | ec37d2c1-530d-479b-a1a4-80cc2d4bd4a6 | mudur.mallof  | Hakan Tunç                 | mudur      |         6 | Antalya Mallof
- BRANCH_MISSING | ac9bc5a0-07bf-4cd9-99ad-2c68a119b763 | mallof        | Antalya Mallof Kiosk       | sube_kiosk |         6 | Antalya Mallof
- BRANCH_MISSING | a041f116-32ca-4fb4-abb9-eb21ee9a497f | sv.mallof     | Senem Yıldız               | supervisor |         6 | Antalya Mallof
- BRANCH_MISSING | 95ea2a67-ebc2-47de-9848-007d27de36a9 | barista.k1    | Burak Yalçın               | barista    |         7 | Antalya Markantalya
- BRANCH_MISSING | 98bf35f0-772b-441a-965a-93b69ced3027 | barista.k2    | Gizem Aktaş                | barista    |         7 | Antalya Markantalya
- BRANCH_MISSING | b84b2317-12db-4cc0-9b12-65a832873792 | barista.k3    | Tarık Polat                | barista    |         7 | Antalya Markantalya
- BRANCH_MISSING | f3e89baa-4795-4a14-bbbc-e4367e712619 | barista.k4    | Nur Özkan                  | barista    |         7 | Antalya Markantalya
- BRANCH_MISSING | 3be753ce-772e-4a6b-9cc5-a2e30428cd36 | mudur.marka   | Volkan Arslan              | mudur      |         7 | Antalya Markantalya
- BRANCH_MISSING | 59963a53-23cb-49cc-894d-c0589e4203f3 | markantalya   | Antalya Markantalya Kiosk  | sube_kiosk |         7 | Antalya Markantalya
- BRANCH_MISSING | 687c7a7c-14d2-4054-ac5a-2fa863d36ad8 | sv.marka      | Pelin Doğan                | supervisor |         7 | Antalya Markantalya
- BRANCH_MISSING | 0338cc48-dfbd-4e43-b512-12e7eb92c8c4 | lara          | Antalya Lara Kiosk         | sube_kiosk |         8 | Antalya Lara
- BRANCH_MISSING | f53f8e61-ead6-4401-8158-a60863b14f10 | barista.b1    | Ali Demirci                | barista    |         9 | Antalya Beachpark
- BRANCH_MISSING | e7327b7a-7cd7-42c0-905f-7cc44b8f022e | barista.b2    | Esra Koç                   | barista    |         9 | Antalya Beachpark
- BRANCH_MISSING | bfafe933-fedc-4321-a6a7-656730df3618 | barista.b3    | Kerem Demir                | barista    |         9 | Antalya Beachpark
- BRANCH_MISSING | e8b42965-4084-46a6-98de-d12bd739295b | barista.b4    | İpek Sarı                  | barista    |         9 | Antalya Beachpark
- BRANCH_MISSING | 0e1dc46b-0439-43fb-a4d1-897adacbe91a | mudur.beach   | Serkan Karataş             | mudur      |         9 | Antalya Beachpark
- BRANCH_MISSING | 273dc220-1597-4038-b726-ef19618496ba | beachpark     | Antalya Beachpark Kiosk    | sube_kiosk |         9 | Antalya Beachpark
- BRANCH_MISSING | 04c8da3f-61e9-4841-873e-3d2fbb133995 | sv.beach      | Zehra Yurt                 | supervisor |         9 | Antalya Beachpark
- BRANCH_MISSING | a27138b0-ac0e-41ac-a0eb-01f27df8b05d | barista.g1    | Onur Kılıç                 | barista    |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | adab32ae-69a6-451c-b78e-1df0d964e1fb | barista.g2    | Ebru Şen                   | barista    |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | 98268f26-08d6-49db-b402-5c9e7fdd8303 | barista.g3    | Berk Aydın                 | barista    |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | ede643e1-152c-4fff-871c-4a6eef54728f | barista.g4    | Sinem Kurt                 | barista    |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | eabef1d3-a0f8-4ad1-8ae7-37230e4015ae | mudur.gep1    | Murat Güneş                | mudur      |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | 2ba52508-66bf-441b-91df-5425ded29dfb | ibrahimli     | Gaziantep İbrahimli Kiosk  | sube_kiosk |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | 6f0221c2-e5e6-444d-8d74-05f4cbabab82 | sv.gep1       | Hacer Yıldırım             | supervisor |        10 | Gaziantep İbrahimli
- BRANCH_MISSING | 38e8c8af-9c4c-4f53-88bc-c4e73d9b6ad2 | barista.i1    | Tolga Güler                | barista    |        11 | Gaziantep İbnisina
- BRANCH_MISSING | 9690ee88-1083-494d-b1e2-d2953b3065ca | barista.i2    | Burcu Öz                   | barista    |        11 | Gaziantep İbnisina
- BRANCH_MISSING | fc878573-6f65-4bc7-b037-806e45c42a0f | barista.i3    | Emre Kaplan                | barista    |        11 | Gaziantep İbnisina
- BRANCH_MISSING | 50bd7ee7-2141-435d-af54-17c2ce2cc5b4 | barista.i4    | Seda Doğru                 | barista    |        11 | Gaziantep İbnisina
- BRANCH_MISSING | b2dd76c2-91c3-47f2-b5c8-8a6bbf79e9a5 | mudur.gep2    | Arda Bulut                 | mudur      |        11 | Gaziantep İbnisina
- BRANCH_MISSING | cc5522c6-a096-4f29-b8b8-a3aa75831008 | ibnisina      | Gaziantep İbnisina Kiosk   | sube_kiosk |        11 | Gaziantep İbnisina
- BRANCH_MISSING | 9f6cd162-3b1c-4318-9746-0513289383e8 | sv.gep2       | Fatma Akın                 | supervisor |        11 | Gaziantep İbnisina
- BRANCH_MISSING | fe895826-b57f-41cd-bea8-69420e9e2949 | barista.u1    | Uğur Tekin                 | barista    |        12 | Gaziantep Üniversite
- BRANCH_MISSING | 769ad37c-6292-4b44-ae51-b2c01aff4ee9 | barista.u2    | Aylin Yılmaz               | barista    |        12 | Gaziantep Üniversite
- BRANCH_MISSING | c151569e-9cac-4d09-8c3d-6bbe1eb1b5eb | barista.u3    | Yasin Güven                | barista    |        12 | Gaziantep Üniversite
- BRANCH_MISSING | c41e134c-ce3d-47fb-9412-c6bc3c6dc266 | barista.u4    | Merve Arı                  | barista    |        12 | Gaziantep Üniversite
- BRANCH_MISSING | 97cccd26-4bae-4e4a-83a8-4016eef3ca87 | mudur.gep3    | Kaan Yıldız                | mudur      |        12 | Gaziantep Üniversite
- BRANCH_MISSING | eebe76fc-beda-4972-be58-9ab66231c3b3 | universite    | Gaziantep Üniversite Kiosk | sube_kiosk |        12 | Gaziantep Üniversite
- BRANCH_MISSING | af4e8326-6b2a-4fc5-862e-762874ad8bc8 | sv.gep3       | Dilan Keskin               | supervisor |        12 | Gaziantep Üniversite
- BRANCH_MISSING | 55a96f10-efa1-443c-9a66-2d3acdb336c9 | barista.n1    | Doruk Baş                  | barista    |        13 | Konya Meram
- BRANCH_MISSING | f5ca5a85-eebe-4159-92cb-cb1b0d5396bf | barista.n2    | Yaren Çetin                | barista    |        13 | Konya Meram
- BRANCH_MISSING | 785f376f-86cf-4b55-a42a-4b5225ec0652 | barista.n3    | Sedat Aslan                | barista    |        13 | Konya Meram
- BRANCH_MISSING | 8783e2e3-91fc-4186-be4f-81430fe70102 | barista.n4    | Tuğba Akçay                | barista    |        13 | Konya Meram
- BRANCH_MISSING | 9c759fe9-1c3b-416a-b542-223b6f27ac68 | mudur.konya1  | Nihat Erdoğan              | mudur      |        13 | Konya Meram
- BRANCH_MISSING | 656eaa9a-59aa-4520-9255-532d3f652885 | meram         | Konya Meram Kiosk          | sube_kiosk |        13 | Konya Meram
- BRANCH_MISSING | 0bc77873-db13-4f43-8cad-fd311e363eb4 | sv.konya1     | Şeyma Avcı                 | supervisor |        13 | Konya Meram
- BRANCH_MISSING | 05ee15f1-6043-48d7-acdb-94dcad0e5ab4 | barista.o1    | Hüseyin Çınar              | barista    |        14 | Konya Bosna
- BRANCH_MISSING | 946678ea-aff4-4e17-b7ad-2963585c1613 | barista.o2    | Büşra Tok                  | barista    |        14 | Konya Bosna
- BRANCH_MISSING | b1b76240-46da-4559-9c9c-baa8e82f77fa | barista.o3    | Adem Kara                  | barista    |        14 | Konya Bosna
- BRANCH_MISSING | 233eb957-689c-4d07-8b4f-b38964387d85 | barista.o4    | Reyhan Şimşek              | barista    |        14 | Konya Bosna
- BRANCH_MISSING | e1b33793-5fab-4a75-bec2-38fde3968086 | mudur.konya2  | Kadir Özdemir              | mudur      |        14 | Konya Bosna
- BRANCH_MISSING | e5917811-ed46-45a1-984c-88cfde907fe5 | bosna         | Konya Bosna Kiosk          | sube_kiosk |        14 | Konya Bosna
- BRANCH_MISSING | b3cd0f91-5aa4-453d-8919-6f6eb5a59491 | sv.konya2     | Elif Gürbüz                | supervisor |        14 | Konya Bosna
- BRANCH_MISSING | 05695929-f6d5-4f4b-ae50-04a1810fcc23 | barista.s1    | Orhan Uysal                | barista    |        15 | Samsun Marina
- BRANCH_MISSING | a10e0355-3aa9-4811-b409-a895bd3f0a02 | barista.s2    | Tuba Bal                   | barista    |        15 | Samsun Marina
- BRANCH_MISSING | 40c7e63d-df2b-476d-9e6a-161a8a0b6fb8 | barista.s3    | Mert Candan                | barista    |        15 | Samsun Marina
- BRANCH_MISSING | b13738c1-ce8f-4586-a7c8-cd3a7f059f10 | barista.s4    | Hande Yavaş                | barista    |        15 | Samsun Marina
- BRANCH_MISSING | ae09a723-a081-47f6-84ae-57cb8218bdc6 | mudur.samsun1 | Celal Öztürk               | mudur      |        15 | Samsun Marina
- BRANCH_MISSING | b745d50e-e123-4308-8dbe-f465bbeabc0e | marina        | Samsun Marina Kiosk        | sube_kiosk |        15 | Samsun Marina
- BRANCH_MISSING | 39f3e510-ed25-4a59-b0b9-d65bf3b1bc4a | sv.samsun1    | Pınar Alp                  | supervisor |        15 | Samsun Marina
- BRANCH_MISSING | 0c7ba1b5-9fa6-4214-9266-c128610854ae | barista.a1    | Cihan Yılmaz               | barista    |        16 | Samsun Atakum
- BRANCH_MISSING | b5dfd11b-0b06-479c-b8e1-6ea8061a1421 | barista.a2    | Sibel Kaçar                | barista    |        16 | Samsun Atakum
- BRANCH_MISSING | e1d5b4c2-6711-4fcd-b760-0db71fd14717 | barista.a3    | Levent Taş                 | barista    |        16 | Samsun Atakum
- BRANCH_MISSING | 47a02212-38f9-4579-bfd0-58f108f9ecf1 | barista.a4    | Neslihan Kurt              | barista    |        16 | Samsun Atakum
- BRANCH_MISSING | 567ce477-f481-49bb-8977-85553b781e80 | mudur.samsun2 | Harun Karadağ              | mudur      |        16 | Samsun Atakum
- BRANCH_MISSING | bb670e46-770c-4302-8773-8ce648109b0b | atakum        | Samsun Atakum Kiosk        | sube_kiosk |        16 | Samsun Atakum
- BRANCH_MISSING | 681a55cc-5bb2-4f44-98a0-695a526c0138 | sv.samsun2    | Gülay Sezer                | supervisor |        16 | Samsun Atakum
- BRANCH_MISSING | d5f697c8-50f5-479d-8eab-e580d65371f3 | barista.bt1   | İbrahim Demir              | barista    |        17 | Batman
- BRANCH_MISSING | 9a6322fc-c770-49bf-937f-f08bb6824271 | barista.bt2   | Hatice Güler               | barista    |        17 | Batman
- BRANCH_MISSING | 7234b84b-22ad-4aea-bc22-fde74f4eac39 | barista.bt3   | Şükrü Öz                   | barista    |        17 | Batman
- BRANCH_MISSING | 7f4388d8-ef60-4d40-bf62-19495a20b57f | barista.bt4   | Gönül Arslan               | barista    |        17 | Batman
- BRANCH_MISSING | f4457692-62f8-4cfe-a177-ba86ba28ed51 | mudur.batman  | Ramazan Çelik              | mudur      |        17 | Batman
- BRANCH_MISSING | b6e5ea74-c819-4e44-b3a8-5d31804d51ea | batman        | Batman Kiosk               | sube_kiosk |        17 | Batman
- BRANCH_MISSING | 820ee88c-ef3a-41af-a625-e53c2f5ec0e9 | sv.batman     | Özlem Kaya                 | supervisor |        17 | Batman
- BRANCH_MISSING | a0e300c6-6d8e-4e77-82f0-28b7a730a43c | barista.d1    | Fuat Aksoy                 | barista    |        18 | Düzce
- BRANCH_MISSING | 9398d8b6-de9b-4a5c-afc2-2ad0b4422835 | barista.d2    | Şule Doğan                 | barista    |        18 | Düzce
- BRANCH_MISSING | 8a6a12ba-b492-4949-b6d2-191fc7c18d86 | barista.d3    | Koray Yıldırım             | barista    |        18 | Düzce
- BRANCH_MISSING | d2f9c657-1717-4543-97de-c66ca0539e07 | barista.d4    | Filiz Kılıç                | barista    |        18 | Düzce
- BRANCH_MISSING | 825a3c41-073e-4642-a107-180eec5130ae | mudur.duzce   | Necdet Aydın               | mudur      |        18 | Düzce
- BRANCH_MISSING | 7b03ca41-650a-4708-9e91-83ad09ba18c3 | duzce         | Düzce Kiosk                | sube_kiosk |        18 | Düzce
- BRANCH_MISSING | c72eccab-c38e-40f8-9652-fa3486663236 | sv.duzce      | Ayşegül Bozkurt            | supervisor |        18 | Düzce
- BRANCH_MISSING | 08c61ab7-8ca2-4089-9853-688c82bd5d34 | barista.si1   | Osman Koç                  | barista    |        19 | Siirt
- BRANCH_MISSING | 8a09ab18-ce76-4ccc-aeb9-81fe51878965 | barista.si2   | Gamze Sarıkaya             | barista    |        19 | Siirt
- BRANCH_MISSING | 541e3c14-a601-4395-ba40-67ce5a8c1334 | barista.si3   | Recep Çetin                | barista    |        19 | Siirt
- BRANCH_MISSING | a79ec0a7-111a-4463-83c5-bb9aa8f46b73 | barista.si4   | Tülay Kaplan               | barista    |        19 | Siirt
- BRANCH_MISSING | cc3c3043-05b4-4f1e-8069-b9a4841f1e6c | mudur.siirt   | Ahmet Altın                | mudur      |        19 | Siirt
- BRANCH_MISSING | a84454ee-a03a-47ec-b5cf-596bdbfcd38a | siirt         | Siirt Kiosk                | sube_kiosk |        19 | Siirt
- BRANCH_MISSING | 6d8df1d6-8016-4fc9-a183-ef60cf17a919 | sv.siirt      | Sevim Yılmaz               | supervisor |        19 | Siirt
- BRANCH_MISSING | 4bcaf9ff-b848-411a-8f14-d680e3137bc3 | barista.kl1   | Kenan Güneş                | barista    |        20 | Kilis
- BRANCH_MISSING | fd1485c0-d26e-4aa7-a320-433ad9b8d046 | barista.kl2   | Selma Bulut                | barista    |        20 | Kilis
- BRANCH_MISSING | db1fd2c2-52ad-43ec-bc6a-7a68595d96d7 | barista.kl3   | Suat Şahin                 | barista    |        20 | Kilis
- BRANCH_MISSING | 6aebf7cd-783a-43ce-b9fb-7102704a6415 | barista.kl4   | Ayten Erbaş                | barista    |        20 | Kilis
- BRANCH_MISSING | b56946a9-1562-4fa4-a663-52cc99ce0138 | mudur.kilis   | Erdal Polat                | mudur      |        20 | Kilis
- BRANCH_MISSING | ba402f3c-00df-4451-9150-5d3a42a8a307 | kilis         | Kilis Kiosk                | sube_kiosk |        20 | Kilis
- BRANCH_MISSING | 7454f986-9368-46ce-84ef-50bd6e7eed53 | sv.kilis      | Müzeyyen Akar              | supervisor |        20 | Kilis
- BRANCH_MISSING | 3cc8cfe8-5af6-4d63-95ac-38081f907885 | barista.ur1   | Fırat Aksu                 | barista    |        21 | Şanlıurfa
- BRANCH_MISSING | 1d892e88-03b8-4de9-947b-04da8d6cb343 | barista.ur2   | Nergiz Güven               | barista    |        21 | Şanlıurfa
- BRANCH_MISSING | cd1f4947-9fde-40fe-89ee-d0a3f6bce04b | barista.ur3   | Yusuf Tekin                | barista    |        21 | Şanlıurfa
- BRANCH_MISSING | dc34b283-6fbf-456f-98c7-3699ae3c651f | barista.ur4   | Havva Demirci              | barista    |        21 | Şanlıurfa
- BRANCH_MISSING | 4d8f6097-60a7-4b90-ba3e-d85d6e81b237 | mudur.urfa    | Veysel Turan               | mudur      |        21 | Şanlıurfa
- BRANCH_MISSING | 8b5eb057-16c1-4bf3-b5b7-1c36842da4a2 | sanliurfa     | Şanlıurfa Kiosk            | sube_kiosk |        21 | Şanlıurfa
- BRANCH_MISSING | daabe2ed-029e-4f48-9cde-4ef0005236f7 | sv.urfa       | Nadide Öztürk              | supervisor |        21 | Şanlıurfa
- BRANCH_MISSING | 94ccf1a5-73d0-412e-b13d-837d5b8ed3c8 | barista.nz1   | Sinan Yurt                 | barista    |        22 | Nizip
- BRANCH_MISSING | 6088770e-1127-493f-8494-b159bd8fb768 | barista.nz2   | Berna Baş                  | barista    |        22 | Nizip
- BRANCH_MISSING | d4c781a8-0970-40b3-9ded-9eb32339ff94 | barista.nz3   | Talat Çakır                | barista    |        22 | Nizip
- BRANCH_MISSING | 585fa9e6-166b-4b7e-9080-d09c16234087 | barista.nz4   | Rukiye Akın                | barista    |        22 | Nizip
- BRANCH_MISSING | 9fd5edb5-3ec6-4837-ad9d-75a0414ba3d5 | mudur.nizip   | Remzi Gün                  | mudur      |        22 | Nizip
- BRANCH_MISSING | 15b02256-70d5-4d6f-be66-6f41fd2efa9b | nizip         | Nizip Kiosk                | sube_kiosk |        22 | Nizip
- BRANCH_MISSING | ed5533e0-2ecd-45d7-9b34-27b5e5957103 | sv.nizip      | Hatun Özkan                | supervisor |        22 | Nizip
- BRANCH_MISSING | 66669965-0077-4612-a059-90d6c42acd57 | hqkiosk       | HQ Kiosk                   | sube_kiosk |        23 | Merkez Ofis (HQ)
-(115 rows)
 
-    pin_type     |               user_id                | username |      full_name      |       role       
------------------+--------------------------------------+----------+---------------------+------------------
- FACTORY_MISSING | a5cb16ee-d017-4ebc-bc80-b5a215cf3550 | fabrika  | Fabrika Kiosk       | fabrika_operator
- FACTORY_MISSING | hq-sema-gida                         | sema     | Sema Gıda Mühendisi | gida_muhendisi
-(2 rows)
+=== BRANCH PIN EKSİĞİ (sube bazında, aggregate) ===
+         sube         | toplam | pin_var | eksik 
+----------------------+--------+---------+-------
+ Gaziantep Üniversite |      7 |       0 |     7
+ Gaziantep İbnisina   |      7 |       0 |     7
+ Konya Bosna          |      7 |       0 |     7
+ Samsun Atakum        |      7 |       0 |     7
+ Samsun Marina        |      7 |       0 |     7
+ Antalya Markantalya  |      7 |       0 |     7
+ Antalya Beachpark    |      7 |       0 |     7
+ Düzce                |      7 |       0 |     7
+ Siirt                |      7 |       0 |     7
+ Nizip                |      7 |       0 |     7
+ Antalya Mallof       |      7 |       0 |     7
+ Şanlıurfa            |      7 |       0 |     7
+ Kilis                |      7 |       0 |     7
+ Batman               |      7 |       0 |     7
+ Gaziantep İbrahimli  |      7 |       0 |     7
+ Konya Meram          |      7 |       0 |     7
+ Merkez Ofis (HQ)     |      1 |       0 |     1
+ Antalya Lara         |     13 |      12 |     1
+ Işıklar              |     11 |      10 |     1
+ Fabrika              |      1 |       1 |     0
+(20 rows)
 
+
+=== NOT ===
+Detaylı kullanıcı listesi (PII) repo'ya commit edilmedi.
+Owner ihtiyacında script yeniden çalıştırılarak owner-only zarfta üretilir:
+  psql "$DATABASE_URL" -f scripts/audit/pin-coverage-2026-05.sql
