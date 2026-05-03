@@ -133,15 +133,10 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 
 | Kategori | Sayı | Açıklama |
 |---|---|---|
-| Path-bazlı distinct broken endpoint | 70 | Bölüm 3.1-3.12 (path-bazlı görünüm) |
-| Path × FE method ham expansion | 71 | `broken-expanded.tsv` (1 path 2 method, dedup edilince 70) |
-| Method-mismatch keşfi | 9 | Bölüm 3.0.1 (audit'te yoktu) |
-| Audit-recovered yeni broken (N1-N9) | 9 | Bölüm 3.0.4 |
-| **W0 reconstruction yeni eklenen (truncate band 51-60)** | **5** | Bölüm 3.0.7 (W7 NS1-NS5) |
-| **TOPLAM hi-confidence (canonical)** | **93** | 70 path + 9 MM + 9 N + 5 NS |
-| Audit FP düzeltmesi | -4 | Bölüm 3.0.3 |
-| **Audit'in düzeltilmiş hedef sayısı** | **≤114** | (118 - 4 FP) |
-| **W0 sonrası needs-investigation kalan** | **≤21** | (≤25 önceki - 5 W0 kapanan) |
+| **W0 v2 script-doğrulanmış distinct broken** | **51** | `scripts/audit/extract-broken-apis.mjs` (missing=2, mm=7, rel=42) |
+| Önceki v1 wave canonical (stale, reconcile edilmedi) | 88-93 | Bölüm 3.1-3.12 + N1-N9 (path-bazlı taşıma; v2 ile 1:1 değil) |
+| **W0 v2 yeni eklenen (script-doğrulanmış)** | **1** | NS1 `/api/inventory/by-supplier` (W7) |
+| W0 v1'de eklenip v2'de kaldırılan FP | -4 | NS2-NS5 (template parsing bug + ${qs} artifact) |
 
 ### 3.0.6 NEEDS-INVESTIGATION
 

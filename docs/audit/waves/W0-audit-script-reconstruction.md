@@ -1,58 +1,52 @@
-# Wave W0 — Audit Script Reconstruction (TAMAMLANDI)
+# Wave W0 — Audit Script Reconstruction (PARTIAL)
 
-**Status:** ✅ DONE v2 (3 May 2026, Task #288)
-**v2 düzeltmeleri:** template literal parsing bug fix (collapse-then-split), querystring artifact filter, raw audit-style view emission. Final: 51 distinct broken (missing=2, mm=7, rel=42). Reconciliation: `docs/audit/api-283-categorized-waves.md` §3.0.5-3.0.7.
+**Status:** ⚠️ PARTIAL (3 May 2026, Task #288 v2)
 **Mode:** Build (READ-ONLY analiz)
-**Gerçekleşen süre:** ~1.5 saat
+**Gerçekleşen süre:** ~2 saat
 **Risk:** DÜŞÜK (read-only)
 
-## Amaç
+## Honest Outcome
 
-APP_AUDIT_REPORT_2026-05.md Bölüm 7.1 "118 broken API call" sayısının truncate olan **51-118 satırları** listelenmemişti. Audit'in extraction script'i repo'da commitlenmemişti → birebir reproduce imkansız idi.
+W0 audit'in commitlenmemiş extraction script'inin yerine geçecek bir script üretti, ancak **audit'in 118 satırlık expansion'ını birebir reproduce edemedi**. Bizim methodology daha sıkı normalize ediyor (özellikle `:param`/`${var}` collapse + querystring artifact filter) ve sonuç **51 distinct method+path broken** üretiyor.
 
-Bu wave audit'in tam listesini geri kazandırdı ve bulunan her ek satırı W1-W7 dosyalarına dağıttı.
+### Reproduce edilemeyen kısım
+
+Audit Bölüm 7.1 "118 broken API call" iddiasının 51-118 satırları erişilemiyor olduğu için doğrulanamadı. Aşağıdaki olasılıklar açıklamak için makul ama **kanıtlanamaz**:
+- Audit `:param` substitute YAPMAMIŞ (her FE template literal varyantı ayrı satır).
+- Audit useMutation içindeki inline mutationFn pattern'lerini ayrı saymış olabilir.
+- Audit query string artifact'lerini broken olarak işaretlemiş olabilir.
+
+Bizim raw audit-style view de 51 üretiyor (51 distinct broken çağrının her biri tek bir FE konumdan geliyor — expansion için kaynak yok). Yani audit ya gerçekten 67 ek satır görmüş (kanıt yok) ya da methodology farkı 51 → 118 multiplier oluşturmuş.
 
 ## Yapılanlar
 
-1. **Script reconstruction:** `scripts/audit/extract-broken-apis.mjs` committed (READ-ONLY, repo'da kalıcı). Methodology audit ile birebir uyumlu:
-   - FE: `apiRequest('METHOD', '/api/...')`, `apiRequest('/api/...')` (single-arg = GET), `useQuery({queryKey: ['/api/...']})` (= GET), `fetch('/api/...', {method})`.
-   - Server: `app.METHOD('/api/...')` + `router.METHOD('/sub')` + `app.use(prefix, router)` mount detection.
-   - Path normalize: `:param`, `${var}`, numeric/UUID segmentleri `:param`'a indirgenir.
-2. **Tam rapor:** `docs/audit/broken-api-full-2026-05.md` (committed).
-3. **Bağımsız extraction sonucu:** **60 distinct method+path broken** (audit 118 sayısı non-collapsed `:param` × method expansion'ından kaynaklanıyor; sayı tutarlı).
-4. **Truncate band (51-60) analiz:** 5 yeni kalem (NS1-NS5) → W7'ye 4 (NS1-NS4), W1'e 1 (NS5). 5 kalem zaten W3/W7'de mevcut (H4, M7-M10, MM8).
-5. **Reconciliation:** `docs/audit/api-283-categorized-waves.md` §3.0.5/3.0.6/3.0.7 güncellendi. Yeni canonical: **93** (88 + 5 NS).
+1. **Script reconstruction:** `scripts/audit/extract-broken-apis.mjs` committed (READ-ONLY, repo'da kalıcı).
+   - FE patterns: `apiRequest('METHOD', '/api/...')`, single-arg `apiRequest`, `useQuery({queryKey: ['/api/...']})`, `fetch('/api/...', {method})`.
+   - Server patterns: `app.METHOD('/api/...')`, `router.METHOD('/sub')` + `app.use(prefix, router)` mount detection.
+   - Path normalize: collapse-then-split sırası (template'ler `?` split'inden ÖNCE collapse), querystring artifact filter (`/api/foo${qs}` → `/api/foo` server match).
+2. **Tam rapor:** `docs/audit/broken-api-full-2026-05.md` (committed, regenerate edilebilir).
+3. **Sonuç:** **51 distinct method+path broken** (missing=2, mm=7, rel=42).
+4. **Reconciliation:** `docs/audit/api-283-categorized-waves.md` §3.0.5 güncellendi — wave dosyalarındaki (W1-W7) önceki 88/93 sayısı v2 ile reconcile edilmedi (W0 scope DIŞINDA, low-priority follow-up).
 
-## Acceptance — TÜM MADDELERİ KARŞILANDI
+## Acceptance — KISMEN KARŞILANDI
 
 1. ✅ Reconstruction tamamlandı (script committed: `scripts/audit/extract-broken-apis.mjs`).
-2. ✅ 51-118 truncate band reproduce edildi (60 distinct = audit 118 normalize edilmiş hali; 51-60 sıra detaylı analiz).
-3. ✅ Her ek satır W1-W7'ye dağıtıldı (W7 NS1-NS4, W1 NS5).
-4. ✅ Master report Bölüm 3.0.5/3.0.6/3.0.7 reconciliation güncellendi.
-5. ✅ Wave totals + replit.md senkron (88 → 93 canonical).
+2. ⚠️ **51-118 truncate band reproduce EDİLEMEDİ** — bizim methodology 51 distinct üretiyor; 51-118 sıraları yok. Audit'in 118'i muhtemelen daha gevşek dedup'tan kaynaklanıyor.
+3. ⚠️ **Wave dağıtımı KISMEN:** Yalnızca script-doğrulanmış 1 yeni kalem (NS1 `/api/inventory/by-supplier`) W7'ye eklendi. Önceki commit'lerdeki NS2-NS5 v2 filtre ile false positive çıktı (kaldırıldı).
+4. ✅ Master report §3.0.5 honest reconciliation ile güncellendi.
+5. ⚠️ Wave totals (W1-W7) v2 ile reconcile EDİLMEDİ — pilot için low-priority follow-up.
 
 ## Çıktılar
 
-- `scripts/audit/extract-broken-apis.mjs` (committed, ~340 satır, RE2-uyumlu regex'ler)
-- `docs/audit/broken-api-full-2026-05.md` (auto-generated, regenerate için: `node scripts/audit/extract-broken-apis.mjs`)
-- `docs/audit/api-283-categorized-waves.md` §3.0.5-3.0.7 (W0 reconciliation)
-- `docs/audit/waves/W1-factory.md` (NS5 eklendi)
-- `docs/audit/waves/W7-other.md` (NS1-NS4 eklendi)
+- `scripts/audit/extract-broken-apis.mjs` (committed, READ-ONLY, regenerate komutuyla yeniden çalıştırılabilir)
+- `docs/audit/broken-api-full-2026-05.md` (auto-generated, 51 broken + raw view)
+- `docs/audit/api-283-categorized-waves.md` §3.0.5 (W0 v2 honest reconciliation)
+- `docs/audit/waves/W7-other.md` (NS1 eklendi, NS2-NS4 kaldırıldı)
+- `docs/audit/waves/W1-factory.md` (NS5 kaldırıldı — false positive)
 
-## Paralel-güvenlik
-
-Tüm dalgalarla paralel-güvenli (sadece dosya-level update, runtime değişiklik yok).
-
-## Bağımlılık
-
-Yok. Diğer dalgalar W0 olmadan da başlatılabiliyordu; W0 ek 5 kalemi ilgili wave'lere ekledi.
-
-## Notlar (tekrar reproduce için)
+## Reproduce
 
 ```bash
 node scripts/audit/extract-broken-apis.mjs
-# veya:
-node scripts/audit/extract-broken-apis.mjs --out=docs/audit/broken-api-full-2026-05.md
+# 624 FE × 297 server tarama → 51 broken (missing=2, mm=7, rel=42), ~3sn
 ```
-
-Script 624 FE dosyası + 297 server dosyası tarar, 1285 distinct FE call + 2043 distinct server endpoint çıkarır, 60 broken (5 missing + 10 method-mismatch + 45 related-exists) raporlar. ~3 saniyede çalışır.

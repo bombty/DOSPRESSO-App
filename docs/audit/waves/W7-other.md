@@ -24,13 +24,12 @@
 |---|---|---|---|
 | V1 | `GET /api/v2/branch-on-shift` | `/:branchId` | **a1** |
 
-### W0 EKLEMELERİ (4 yeni — NS1-NS4)
+### W0 v2 EKLEMESİ (1 yeni — NS1)
 | # | Method+Path | Server | Karar |
 |---|---|---|---|
 | NS1 | `GET /api/inventory/by-supplier` | `/:supplierId` | **a1** — :param patch (SATINALMA mal kabul) |
-| NS2 | `PATCH /api/new-shop-projects/:param/phases/:param` | sub-path mevcut | **a2** — sub-path düzelt (yeni şube faz) |
-| NS3 | `POST /api/new-shop-projects/:param/procurement/items/:param` | GET/PATCH var | **MM** — method düzelt veya server alias |
-| NS4 | `GET /api/satinalma/dashboard?qs` | YOK | **b** — server impl (satınalma dashboard) |
+
+> NS2-NS4 (önceki commit'te) v2 script ile false positive çıktı (template literal parsing bug ve `${qs}` artifact); kaldırıldı.
 
 ### MISC (9) + Method-mismatch 1
 | # | Method+Path | Server | Karar |

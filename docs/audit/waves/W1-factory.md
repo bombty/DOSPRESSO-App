@@ -32,10 +32,9 @@
 |---|---|---|---|
 | MM1 | `GET /api/mrp/leftovers` | POST | **FE method düzelt** — POST body ile gönderilmeli (server `:date` body'de bekliyor olabilir; impl kontrolü gerekli) |
 
-### W0 Eklemesi (1 yeni — NS5)
-| # | Method+Path | Server | Karar |
-|---|---|---|---|
-| NS5 | `GET /api/factory/ingredient-nutrition/approved?qs` | base path var, `/approved` sub-path eksik | **a2** — sub-path ekle veya FE base path'e geç (`kalite/besin-onay.tsx:749`) |
+### W0 v2 Eklemesi: YOK
+
+> Önceki commit'teki NS5 (`/api/factory/ingredient-nutrition/approved?qs`) v2 script ile false positive çıktı (`${qs}` querystring artifact, server'da base path mevcut); kaldırıldı.
 
 ## Acceptance Criteria
 
