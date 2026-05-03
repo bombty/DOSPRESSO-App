@@ -80,4 +80,4 @@ docs/audit/import-output-*.log
 docs/audit/*backup*.sql
 docs/audit/*backup*.dump
 docs/audit/*.sql.gz
-docs/audit/*.dump
+docs/audit/*.dumptest-results/
