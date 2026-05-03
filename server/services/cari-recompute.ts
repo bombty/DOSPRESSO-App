@@ -83,7 +83,7 @@ export async function recomputeAllBalances(options: { onlyActive?: boolean } = {
     ${onlyActive ? sql`WHERE is_active = true` : sql``}
     ORDER BY id
   `);
-  const ids = (accounts.rows as Array<{ id: number }>).map((r) => r.id);
+  const ids = ((accounts.rows ?? []) as unknown as Array<{ id: number }>).map((r) => r.id);
 
   const drifts: Array<{ accountId: number; oldBalance: number; newBalance: number; diff: number }> = [];
   let updated = 0;
@@ -102,15 +102,17 @@ export async function recomputeAllBalances(options: { onlyActive?: boolean } = {
   return { total: ids.length, updated, unchanged, drifts };
 }
 
+interface InvariantRow {
+  account_id: number;
+  account_code: string | null;
+  account_name: string;
+  cached: string | null;
+  computed: string | null;
+  tx_count: number;
+}
+
 export async function checkBalanceInvariant(): Promise<BalanceDriftRow[]> {
-  const result = await db.execute<{
-    account_id: number;
-    account_code: string | null;
-    account_name: string;
-    cached: string | null;
-    computed: string | null;
-    tx_count: number;
-  }>(sql`
+  const result = await db.execute<InvariantRow>(sql`
     SELECT
       a.id AS account_id,
       a.account_code,
@@ -138,13 +140,18 @@ export async function checkBalanceInvariant(): Promise<BalanceDriftRow[]> {
     ORDER BY a.id
   `);
 
-  return (result.rows as Array<any>).map((r) => ({
-    accountId: r.account_id,
-    accountCode: r.account_code,
-    accountName: r.account_name,
-    cachedBalance: Number(r.cached ?? 0),
-    computedBalance: Number(r.computed ?? 0),
-    diff: Number((Number(r.computed ?? 0) - Number(r.cached ?? 0)).toFixed(2)),
-    txCount: Number(r.tx_count ?? 0),
-  }));
+  const rows = (result.rows ?? []) as unknown as InvariantRow[];
+  return rows.map((r) => {
+    const cached = Number(r.cached ?? 0);
+    const computed = Number(r.computed ?? 0);
+    return {
+      accountId: r.account_id,
+      accountCode: r.account_code,
+      accountName: r.account_name,
+      cachedBalance: cached,
+      computedBalance: computed,
+      diff: Number((computed - cached).toFixed(2)),
+      txCount: Number(r.tx_count ?? 0),
+    };
+  });
 }
