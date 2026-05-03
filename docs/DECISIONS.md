@@ -78,3 +78,18 @@ Son güncelleme: 3 Mayıs 2026
 ---
 
 > Karar değişikliği için: önce bu dosyada yeni karar maddesi yazılır, owner'dan açık onay alınır, eski karar ya günceller ya da "geçersiz — bkz. madde X" notu ile arşivlenir.
+
+---
+
+## Sprint 3 Kararları (3 May 2026)
+
+34. **Pilot Day-1 tarihi: 12 Mayıs 2026 Pazartesi 09:00.** (Karar D1, 3 May 2026.) Önceki tarihler (28 Nis → 5 May → 4 May → 5 May) sonrası owner +5 gün uzatma talebi (2 May 2026), Sprint 2'nin 102 commit'lik yoğun ilerlemesi sonrası **+9 gün ek tampon** olacak şekilde 12 May'e ertelendi. Gerekçe: (a) Wave A'nın 3 paralel işine zaman tanımak (W-A1 F33 kalan 5 sayfa guard, W-A2 skill MD update, W-A3 Bundle 1B 13 eksik tablo); (b) iki smoke test (8 May Cuma + 10 May Pazar) için yer; (c) eğitim materyali son hâli (Sema + Eren + Aslan); (d) Pazartesi sabah operasyonel hazırlık (adminhq parola rotasyon, kiosk açılış). Launch-reset 11 May Pazar 22:30, skor banner 12-18 May, mola 120dk → 19 May'da 90dk dönüş.
+
+35. **Sprint 3 sıralama stratejisi: Risk-bazlı.** (Karar D2, 3 May 2026.) Comprehensive audit (Task #329) ile tespit edilen 36 finding'den kapatılmamış 21'i, **mevzuat + veri bütünlüğü + güvenlik** önceliği ile sıralanır. Wave B (pilot hafta 1): F22 (üretim stok stub), F24 (etiket mevzuat), F27 (bordro sessiz fail), F14 (mesai yuvarlama). Wave C (pilot hafta 2-3): F29 (KDV), F30 (saatlik ücret), F31 (döviz), T-312 RBAC bundle, T-315 recipe-cost, T-316 UX-dashboard. Wave D (post-pilot): mimari borç (B21 9 mekanizma konsolidasyonu, B22 manifest-auth fail-open, B6 reçete sistemi tam).
+
+36. **Wave A (3-11 May) — 3 paralel acil iş Replit'e delege edilir.** (Karar D3, 3 May 2026.) Aynı anda 3 isolated agent başlatılacak: (1) **W-A1 — F33 kalan 5 sayfa guard sarımı** (`/personel/:id`, `/egitim/:id`, `/personel-onboarding-akisi`, `/icerik-studyosu`, `/duyurular`) — 1.5h, Plan + isolated; (2) **W-A2 — Skill MD batch update** (`dospresso-roles-and-people` F36 PIN coverage + Bundle 7 supervisor overtime approve + 12 May tarihi) — 30dk, Build (DOCS); (3) **W-A3 — Bundle 1B drift kapatma** (13 eksik tablo + bağlı 3 unique + 23 idx + 19 FK, drift 58→0) — 4h, Plan + isolated DB-write seed. Owner ek manuel iş: W-A4 (eğitim materyali son hâli), W-A5 (pilot kullanıcı listesi doldurma), W-A6 (10 May smoke test).
+
+37. **Comprehensive ek tarama (CRM/Notification/Mr.Dobody) pilot sonrasına ertelendi.** (Karar D4, 3 May 2026.) Audit kapasitesi şu an Wave A-B-C'ye odaklanır; ek tarama Wave D-7 olarak Sprint 4'e taşındı (~30 May+ sonrası). Sebep: pilot Day-1 öncesi yeni audit ek bulgu üretirse Sprint 3 scope'u şişer; ayrıca Wave B-C'de zaten Comprehensive audit'in T-300-T-316 bundle'ları işleniyor.
+
+38. **Çalışma modeli netleştirildi: Aslan owner + GitHub UI merge, Claude MD/plan yazımı + GitHub push, Replit Agent kod/DB/build/test.** (Karar — çalışma sözleşmesi, 3 May 2026.) Detay: `docs/SPRINT-3-MASTER-PLAN.md` Bölüm 5. Token/şifre sohbete YAZILMAZ (kaçınılmazsa hemen iptal). Force push YASAK (`replit.md` L13). Replit Agent push yapamaz → Claude push yapar (yetkili token ile). Her büyük commit sonrası Claude MD + skill update yapar (otomatik sorumluluk).
+
