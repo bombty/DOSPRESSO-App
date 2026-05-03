@@ -129,10 +129,11 @@ function KioskToleranceSettings() {
     mutationFn: async ({ branchId, data }: { branchId: number; data: any }) => {
       return apiRequest('PATCH', `/api/pdks/kiosk-settings/${branchId}`, data);
     },
-    onSuccess: () => {
+    onSuccess: (_res, vars) => {
       toast({ title: "Ayarlar güncellendi" });
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/pdks/kiosk-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/branches', vars.branchId, 'attendance-audit'] });
     },
     onError: () => {
       toast({ title: "Hata", description: "Ayarlar güncellenemedi", variant: "destructive" });
