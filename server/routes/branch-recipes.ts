@@ -51,7 +51,8 @@ const ALLOWED_VIEW_ROLES = [
 ];
 
 const ALLOWED_EDIT_ROLES = [
-  'admin', 'ceo', 'coach', 'trainer', // Sadece HQ + eğitim
+  // 4 May 2026 - Aslan onayı: HQ rolleri reçete düzenleyebilmeli
+  'admin', 'ceo', 'cgo', 'coach', 'trainer',
 ];
 
 function canView(role: string): boolean {
@@ -465,5 +466,491 @@ async function trackRecipeView(userId: string, recipeId: number) {
     console.warn("[trackRecipeView] hata (ignored):", err);
   }
 }
+
+// ════════════════════════════════════════════════════
+// HQ EDIT ENDPOINT'LERİ (4 May 2026 — Aslan onayı)
+// Yetki: admin, ceo, cgo, coach, trainer
+// ════════════════════════════════════════════════════
+
+// ──────────────────────────────────────
+// POST /api/branch-products
+// Yeni ürün ekle
+// ──────────────────────────────────────
+router.post("/api/branch-products", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const { name, shortCode, category, subCategory, description, imageUrl,
+            displayOrder, massivoPrice, longDivaPrice, notes } = req.body;
+
+    if (!name || !category) {
+      return res.status(400).json({ error: "name ve category zorunlu" });
+    }
+
+    const [product] = await db.insert(branchProducts).values({
+      name, shortCode, category, subCategory, description, imageUrl,
+      displayOrder: displayOrder ?? 0,
+      massivoPrice: massivoPrice?.toString(),
+      longDivaPrice: longDivaPrice?.toString(),
+      notes,
+      isActive: true,
+    }).returning();
+
+    res.status(201).json(product);
+  } catch (error: any) {
+    console.error("[POST branch-products] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PATCH /api/branch-products/:id
+// Ürün güncelle
+// ──────────────────────────────────────
+router.patch("/api/branch-products/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const updates: Record<string, any> = {};
+    const allowedFields = [
+      'name', 'shortCode', 'category', 'subCategory', 'description',
+      'imageUrl', 'displayOrder', 'massivoPrice', 'longDivaPrice',
+      'notes', 'isActive', 'isPilotOnly',
+    ];
+
+    for (const field of allowedFields) {
+      if (field in req.body) {
+        if (field === 'massivoPrice' || field === 'longDivaPrice') {
+          updates[field] = req.body[field]?.toString();
+        } else {
+          updates[field] = req.body[field];
+        }
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "Güncellenecek alan yok" });
+    }
+
+    updates.updatedAt = new Date();
+
+    const [updated] = await db.update(branchProducts)
+      .set(updates)
+      .where(eq(branchProducts.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("[PATCH branch-products/:id] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// DELETE /api/branch-products/:id
+// Ürün soft delete (isActive=false)
+// ──────────────────────────────────────
+router.delete("/api/branch-products/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    // Soft delete (DOSPRESSO kuralı — hard delete YASAK)
+    const [deleted] = await db.update(branchProducts)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(branchProducts.id, id))
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    res.json({ message: "Ürün pasif edildi (soft delete)", product: deleted });
+  } catch (error: any) {
+    console.error("[DELETE branch-products/:id] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/branch-products/:id/image
+// Ürün görseli yükle (3 boyut: thumbnail, card, hero)
+// ──────────────────────────────────────
+router.post("/api/branch-products/:id/image", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const [product] = await db.select().from(branchProducts).where(eq(branchProducts.id, id));
+    if (!product) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    const { dataUrl } = req.body;
+    if (!dataUrl) {
+      return res.status(400).json({ error: "dataUrl zorunlu (base64 image)" });
+    }
+
+    // Base64 parse
+    const matches = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: "Geçersiz image data URL" });
+    }
+
+    const mimeType = matches[1];
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimes.includes(mimeType)) {
+      return res.status(400).json({ error: "Sadece JPEG, PNG, WebP desteklenir" });
+    }
+
+    const buffer = Buffer.from(matches[2], 'base64');
+
+    // Boyut limiti (max 10 MB)
+    if (buffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ error: "Maksimum 10 MB" });
+    }
+
+    // Sharp ile 3 boyut transform (KVKK: EXIF metadata sıfırlanır)
+    const sharp = (await import('sharp')).default;
+
+    const baseImage = sharp(buffer)
+      .rotate() // EXIF orientation auto-fix
+      .removeAlpha(); // Alpha channel kaldır
+
+    // Thumbnail (200×200) — liste için
+    const thumbnail = await baseImage.clone()
+      .resize(200, 200, { fit: 'cover' })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    // Card (600×400) — mobil kart için
+    const card = await baseImage.clone()
+      .resize(600, 400, { fit: 'cover' })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    // Hero (1200×800) — detay sayfası için
+    const hero = await baseImage.clone()
+      .resize(1200, 800, { fit: 'cover' })
+      .webp({ quality: 90 })
+      .toBuffer();
+
+    // Object Storage'a yükle
+    const { Client } = await import('@replit/object-storage');
+    const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
+
+    const timestamp = Date.now();
+    const basePath = `branch-recipes/products/${id}`;
+    const thumbnailPath = `${basePath}/thumbnail-${timestamp}.webp`;
+    const cardPath = `${basePath}/card-${timestamp}.webp`;
+    const heroPath = `${basePath}/hero-${timestamp}.webp`;
+
+    const [thumbnailUpload, cardUpload, heroUpload] = await Promise.all([
+      client.uploadFromBytes(thumbnailPath, thumbnail),
+      client.uploadFromBytes(cardPath, card),
+      client.uploadFromBytes(heroPath, hero),
+    ]);
+
+    if (!thumbnailUpload.ok || !cardUpload.ok || !heroUpload.ok) {
+      console.error("[branch-products image upload] Object Storage hata:", {
+        thumbnail: thumbnailUpload.error,
+        card: cardUpload.error,
+        hero: heroUpload.error,
+      });
+      return res.status(500).json({ error: "Görsel yükleme başarısız" });
+    }
+
+    // Veritabanına primary URL kaydet (card boyutu — varsayılan)
+    const protocol = req.protocol || 'https';
+    const host = req.get('host') || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+    const cardUrl = `${protocol}://${host}/api/branch-recipes/files/${encodeURIComponent(cardPath)}`;
+
+    await db.update(branchProducts)
+      .set({ imageUrl: cardUrl, updatedAt: new Date() })
+      .where(eq(branchProducts.id, id));
+
+    res.json({
+      message: "Görsel yüklendi (3 boyut)",
+      productId: id,
+      sizes: {
+        thumbnail: { path: thumbnailPath, bytes: thumbnail.length, dimensions: '200x200' },
+        card: { path: cardPath, bytes: card.length, dimensions: '600x400', primary: true },
+        hero: { path: heroPath, bytes: hero.length, dimensions: '1200x800' },
+      },
+      primaryUrl: cardUrl,
+    });
+  } catch (error: any) {
+    console.error("[POST branch-products/:id/image] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-recipes/files/:path
+// Object Storage'tan görsel oku (public)
+// ──────────────────────────────────────
+router.get("/api/branch-recipes/files/:filepath(*)", async (req: any, res: Response) => {
+  try {
+    const filepath = decodeURIComponent(req.params.filepath);
+
+    // Güvenlik: Sadece branch-recipes/products/ altından okuma
+    if (!filepath.startsWith('branch-recipes/products/')) {
+      return res.status(403).json({ error: "Yetkisiz path" });
+    }
+
+    const { Client } = await import('@replit/object-storage');
+    const client = new Client({ bucketId: process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID });
+
+    const { ok, value, error } = await client.downloadAsBytes(filepath);
+    if (!ok || !value) {
+      return res.status(404).json({ error: "Görsel bulunamadı" });
+    }
+
+    res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h cache
+    // value can be Buffer or Buffer[]
+    const buffer = Array.isArray(value) ? Buffer.concat(value) : value;
+    res.send(buffer);
+  } catch (error: any) {
+    console.error("[GET branch-recipes/files] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+// ──────────────────────────────────────
+// PATCH /api/branch-recipes/:id
+// Reçete güncelle
+// ──────────────────────────────────────
+router.patch("/api/branch-recipes/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const updates: Record<string, any> = {};
+    const allowedFields = [
+      'size', 'version', 'isActive', 'isTemplate', 'templateType',
+      'preparationTimeSec', 'difficultyLevel',
+      'servingCup', 'servingLid', 'servingNotes', 'notes',
+    ];
+
+    for (const field of allowedFields) {
+      if (field in req.body) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "Güncellenecek alan yok" });
+    }
+
+    updates.updatedAt = new Date();
+
+    const [updated] = await db.update(branchRecipes)
+      .set(updates)
+      .where(eq(branchRecipes.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("[PATCH branch-recipes/:id] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PUT /api/branch-recipes/:id/ingredients
+// Reçete malzemelerini toplu güncelle (replace all)
+// ──────────────────────────────────────
+router.put("/api/branch-recipes/:id/ingredients", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const { ingredients } = req.body;
+    if (!Array.isArray(ingredients)) {
+      return res.status(400).json({ error: "ingredients dizi olmalı" });
+    }
+
+    // Reçete var mı kontrol
+    const [recipe] = await db.select().from(branchRecipes).where(eq(branchRecipes.id, id));
+    if (!recipe) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
+
+    // Transaction: eski malzemeleri sil, yenileri ekle
+    await db.transaction(async (tx) => {
+      await tx.delete(branchRecipeIngredients).where(eq(branchRecipeIngredients.recipeId, id));
+
+      if (ingredients.length > 0) {
+        await tx.insert(branchRecipeIngredients).values(
+          ingredients.map((ing: any, idx: number) => ({
+            recipeId: id,
+            stepOrder: ing.stepOrder ?? idx + 1,
+            ingredientName: ing.ingredientName,
+            quantityText: ing.quantityText,
+            quantityNumeric: ing.quantityNumeric?.toString(),
+            unit: ing.unit,
+            preparationNote: ing.preparationNote,
+            isVariableAroma: ing.isVariableAroma ?? false,
+            aromaSlot: ing.aromaSlot,
+          }))
+        );
+      }
+    });
+
+    const updated = await db.select().from(branchRecipeIngredients)
+      .where(eq(branchRecipeIngredients.recipeId, id))
+      .orderBy(branchRecipeIngredients.stepOrder);
+
+    res.json({ message: "Malzemeler güncellendi", count: updated.length, ingredients: updated });
+  } catch (error: any) {
+    console.error("[PUT branch-recipes/:id/ingredients] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PUT /api/branch-recipes/:id/steps
+// Reçete adımlarını toplu güncelle (replace all)
+// ──────────────────────────────────────
+router.put("/api/branch-recipes/:id/steps", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const { steps } = req.body;
+    if (!Array.isArray(steps)) {
+      return res.status(400).json({ error: "steps dizi olmalı" });
+    }
+
+    const [recipe] = await db.select().from(branchRecipes).where(eq(branchRecipes.id, id));
+    if (!recipe) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(branchRecipeSteps).where(eq(branchRecipeSteps.recipeId, id));
+
+      if (steps.length > 0) {
+        await tx.insert(branchRecipeSteps).values(
+          steps.map((step: any, idx: number) => ({
+            recipeId: id,
+            stepOrder: step.stepOrder ?? idx + 1,
+            instruction: step.instruction,
+            imageUrl: step.imageUrl,
+            videoUrl: step.videoUrl,
+            isCritical: step.isCritical ?? false,
+            estimatedSec: step.estimatedSec,
+          }))
+        );
+      }
+    });
+
+    const updated = await db.select().from(branchRecipeSteps)
+      .where(eq(branchRecipeSteps.recipeId, id))
+      .orderBy(branchRecipeSteps.stepOrder);
+
+    res.json({ message: "Adımlar güncellendi", count: updated.length, steps: updated });
+  } catch (error: any) {
+    console.error("[PUT branch-recipes/:id/steps] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/branch-products/:id/recipes
+// Yeni reçete ekle (boy bazlı)
+// ──────────────────────────────────────
+router.post("/api/branch-products/:id/recipes", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const productId = Number(req.params.id);
+    if (isNaN(productId)) {
+      return res.status(400).json({ error: "Geçersiz ürün ID" });
+    }
+
+    const [product] = await db.select().from(branchProducts).where(eq(branchProducts.id, productId));
+    if (!product) {
+      return res.status(404).json({ error: "Ürün bulunamadı" });
+    }
+
+    const { size, version, isTemplate, templateType, preparationTimeSec,
+            difficultyLevel, servingCup, servingLid, servingNotes, notes } = req.body;
+
+    if (!size || !['massivo', 'long_diva', 'tek_boy'].includes(size)) {
+      return res.status(400).json({ error: "size: 'massivo', 'long_diva' veya 'tek_boy'" });
+    }
+
+    const [recipe] = await db.insert(branchRecipes).values({
+      productId,
+      size,
+      version: version ?? '3.6',
+      isTemplate: isTemplate ?? false,
+      templateType,
+      preparationTimeSec,
+      difficultyLevel: difficultyLevel ?? 1,
+      servingCup,
+      servingLid,
+      servingNotes,
+      notes,
+      isActive: true,
+    }).returning();
+
+    res.status(201).json(recipe);
+  } catch (error: any) {
+    console.error("[POST branch-products/:id/recipes] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
 
 export default router;
