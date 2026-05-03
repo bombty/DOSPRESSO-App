@@ -9,7 +9,10 @@ import {
 } from "@shared/schema";
 import { eq, and, desc, sql, ilike, or, count, avg } from "drizzle-orm";
 import { storage } from "../storage";
-import { ObjectStorageService } from "../objectStorage";
+import { ObjectStorageService, objectStorageClient } from "../objectStorage";
+import multer from "multer";
+import { randomUUID } from "crypto";
+import { setObjectAclPolicy } from "../objectAcl";
 
 const SENSITIVE_USER_FIELDS: ReadonlyArray<keyof User> = [
   "hashedPassword",
@@ -368,24 +371,91 @@ router.delete("/api/employee-onboarding/:id", isAuthenticated, (_req, res) => st
 router.post("/api/notifications", isAuthenticated, (_req, res) => stubMutation(res, "Bildirim oluşturma henüz aktif değil"));
 
 // --- Object storage / upload helpers ---
-router.post("/api/objects/generate-upload-url", isAuthenticated, (_req, res) => stubMutation(res, "Yükleme servisi henüz bağlı değil"));
-router.post("/api/object-storage/presigned-url", isAuthenticated, (_req, res) => stubMutation(res, "Yükleme servisi henüz bağlı değil"));
-router.post("/api/upload/public", (_req, res) => stubMutation(res, "Yükleme servisi henüz bağlı değil"));
+// [W4 KONSOLİDASYON 3 May 2026] Tek kanonik upload endpoint:
+//   POST /api/objects/upload  → certificate-routes.ts:229 (auth'lu, ObjectUploader.tsx default)
+//   POST /api/objects/finalize → certificate-routes.ts:242 (ACL + normalize)
+// Eski 4 farklı naming aşağıda KALDIRILDI (FE 5 call site /api/objects/upload'a migrate edildi):
+//   - /api/objects/generate-upload-url (kiosk + guest-form ×2) → /api/objects/upload
+//   - /api/object-storage/presigned-url (announcements ×2) → /api/objects/upload
+//   - /api/upload-url (fault-report + aksiyon-takip ×2) → KORUNUR (Task #283 v4 real impl, FE migrate edilmedi)
+
 // Object storage destekli pre-signed PUT URL üretir.
-// FE (fault-report-dialog, aksiyon-takip vb.) bu uca POST atar, dönen URL'e
+// FE (fault-report-dialog, aksiyon-takip) bu uca POST atar, dönen URL'e
 // dosyayı PUT eder. PRIVATE_OBJECT_DIR ayarsızsa 503 döner.
+// NOT: Yeni FE kullanımları /api/objects/upload kullanmalı; bu endpoint legacy contract için tutuluyor.
 router.post("/api/upload-url", isAuthenticated, async (_req, res) => {
   try {
     const svc = new ObjectStorageService();
     const uploadURL = await svc.getObjectEntityUploadURL();
-    // FE çağrı yerleri (fault-report-dialog, aksiyon-takip) `{ method, url }`
-    // bekliyor; eski entegrasyonlar `uploadURL` adıyla okuyor — her ikisini
-    // de döneriz.
     return res.json({ method: "PUT", url: uploadURL, uploadURL });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Object storage hazır değil (PRIVATE_OBJECT_DIR yok).";
     console.error("[upload-url] Error:", message);
     return res.status(503).json({ success: false, error: message, _stub: true });
+  }
+});
+
+// Public upload (misafir geri bildirim foto) — branchToken doğrulamalı, multipart FormData.
+// FE: misafir-geri-bildirim.tsx:655 — `file` + `branchToken` field bekleniyor.
+// Server-side upload + ACL public set; sonuç `{url}` (`/objects/...` normalize).
+const publicUploadMulter = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+router.post("/api/upload/public", publicUploadMulter.single("file"), async (req, res) => {
+  try {
+    const branchToken = (req.body?.branchToken as string | undefined) ?? "";
+    if (!branchToken) {
+      return res.status(400).json({ message: "branchToken gerekli" });
+    }
+    const branch = await db
+      .select({ id: branches.id })
+      .from(branches)
+      .where(eq(branches.feedbackQrToken, branchToken))
+      .limit(1);
+    if (!branch.length) {
+      return res.status(403).json({ message: "Geçersiz şube tokeni" });
+    }
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file?.buffer) {
+      return res.status(400).json({ message: "Dosya gerekli" });
+    }
+    if (!file.mimetype?.startsWith("image/")) {
+      return res.status(400).json({ message: "Sadece resim dosyaları kabul edilir" });
+    }
+
+    const privateDir = process.env.PRIVATE_OBJECT_DIR;
+    if (!privateDir) {
+      return res.status(503).json({ message: "Object storage hazır değil (PRIVATE_OBJECT_DIR yok)" });
+    }
+
+    // /bucket/dir/uploads/<uuid>
+    const objectId = randomUUID();
+    const fullPath = `${privateDir.replace(/\/$/, "")}/uploads/${objectId}`;
+    const parts = fullPath.replace(/^\//, "").split("/");
+    const bucketName = parts[0];
+    const objectName = parts.slice(1).join("/");
+
+    const bucket = objectStorageClient.bucket(bucketName);
+    const fileRef = bucket.file(objectName);
+    await fileRef.save(file.buffer, {
+      contentType: file.mimetype || "image/jpeg",
+      resumable: false,
+    });
+
+    // Public ACL via setObjectAclPolicy (visibility:public, owner:guest:branch:<id>)
+    await setObjectAclPolicy(fileRef, {
+      owner: `guest:branch:${branch[0].id}`,
+      visibility: "public",
+    });
+
+    // Normalize: /objects/<entityId> (entityId = path after privateDir)
+    const entityId = `uploads/${objectId}`;
+    return res.json({ url: `/objects/${entityId}` });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Yükleme başarısız";
+    console.error("[upload/public] Error:", message);
+    return res.status(500).json({ message });
   }
 });
 

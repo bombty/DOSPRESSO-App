@@ -470,10 +470,7 @@ export default function Announcements() {
                           maxFileSize={5 * 1024 * 1024}
                           maxNumberOfFiles={1}
                           onGetUploadParameters={async () => {
-                            const response = await apiRequest('POST', '/api/object-storage/presigned-url', {
-                              filename: `banner-${Date.now()}.jpg`,
-                              contentType: 'image/jpeg'
-                            });
+                            const response = await apiRequest('POST', '/api/objects/upload', {});
                             const data = await response.json();
                             return { method: 'PUT', url: data.url };
                           }}
@@ -1026,10 +1023,7 @@ export default function Announcements() {
                         maxFileSize={5 * 1024 * 1024}
                         maxNumberOfFiles={1}
                         onGetUploadParameters={async () => {
-                          const response = await apiRequest('POST', '/api/object-storage/presigned-url', {
-                            filename: `banner-${Date.now()}.jpg`,
-                            contentType: 'image/jpeg'
-                          });
+                          const response = await apiRequest('POST', '/api/objects/upload', {});
                           const data = await response.json();
                           return { method: 'PUT', url: data.url };
                         }}

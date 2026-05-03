@@ -465,14 +465,13 @@ export default function GuestFormSettings() {
                   <ObjectUploader
                     maxWidthOrHeight={1920}
                     onGetUploadParameters={async () => {
-                      const res = await fetch("/api/objects/generate-upload-url", {
+                      const res = await fetch("/api/objects/upload", {
                         method: "POST",
                         credentials: "include",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ prefix: "feedback-banners" }),
                       });
                       const data = await res.json();
-                      return { method: "PUT", url: data.uploadUrl };
+                      return { method: "PUT", url: data.url };
                     }}
                     onComplete={(result) => {
                       if (result.successful?.[0]?.uploadURL) {
@@ -506,14 +505,13 @@ export default function GuestFormSettings() {
                   <ObjectUploader
                     maxWidthOrHeight={512}
                     onGetUploadParameters={async () => {
-                      const res = await fetch("/api/objects/generate-upload-url", {
+                      const res = await fetch("/api/objects/upload", {
                         method: "POST",
                         credentials: "include",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ prefix: "feedback-logos" }),
                       });
                       const data = await res.json();
-                      return { method: "PUT", url: data.uploadUrl };
+                      return { method: "PUT", url: data.url };
                     }}
                     onComplete={(result) => {
                       if (result.successful?.[0]?.uploadURL) {

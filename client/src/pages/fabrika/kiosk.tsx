@@ -2172,9 +2172,9 @@ export default function FactoryKiosk() {
                   ) : (
                     <ObjectUploader
                       onGetUploadParameters={async () => {
-                        const res = await kioskFetch("/api/objects/generate-upload-url", "POST", { prefix: "factory-production", visibility: "public" });
+                        const res = await kioskFetch("/api/objects/upload", "POST", {});
                         const data = await res.json();
-                        return { method: "PUT", url: data.uploadUrl };
+                        return { method: "PUT", url: data.url };
                       }}
                       onComplete={(result) => {
                         if (result.successful.length > 0) {
