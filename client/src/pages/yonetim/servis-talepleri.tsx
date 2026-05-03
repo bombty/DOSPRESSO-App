@@ -136,7 +136,16 @@ export default function ServiceRequestsManagement() {
   });
 
   const { data: serviceRequests = [], isLoading: requestsLoading } = useQuery<ServiceRequestWithEquipment[]>({
-    queryKey: ['/api/service-requests', filterBranch !== 'all' ? parseInt(filterBranch) : undefined, filterStatus !== 'all' ? filterStatus : undefined],
+    queryKey: ['/api/service-requests', filterBranch, filterStatus],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filterBranch !== 'all') params.append('branchId', filterBranch);
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+      const qs = params.toString();
+      const res = await fetch(`/api/service-requests${qs ? `?${qs}` : ''}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const branchEquipment = selectedEquipment ? [] : (createBranch ? allEquipment.filter((eq) => eq.branchId === parseInt(createBranch)) : []);

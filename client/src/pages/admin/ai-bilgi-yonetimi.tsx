@@ -229,7 +229,7 @@ export default function AdminAIBilgiYonetimi() {
         brand: data.brand || null,
         model: data.model || null,
       };
-      return apiRequest("/api/equipment-knowledge", "POST", payload);
+      return apiRequest("POST", "/api/equipment-knowledge", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
@@ -250,7 +250,7 @@ export default function AdminAIBilgiYonetimi() {
         brand: data.brand || null,
         model: data.model || null,
       };
-      return apiRequest(`/api/equipment-knowledge/${id}`, "PATCH", payload);
+      return apiRequest("PATCH", `/api/equipment-knowledge/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
@@ -265,7 +265,7 @@ export default function AdminAIBilgiYonetimi() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/equipment-knowledge/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/equipment-knowledge/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-knowledge"] });
@@ -278,7 +278,7 @@ export default function AdminAIBilgiYonetimi() {
 
   const autoResearchMutation = useMutation({
     mutationFn: async (data: { equipmentType: string; brand: string; model: string }) => {
-      const res = await apiRequest("/api/equipment-knowledge/auto-research", "POST", data);
+      const res = await apiRequest("POST", "/api/equipment-knowledge/auto-research", data);
       return res.json() as Promise<{ items: Array<{ category: string; title: string; content: string; keywords: string[] }>; summary: string }>;
     },
     onSuccess: (result) => {
@@ -292,7 +292,7 @@ export default function AdminAIBilgiYonetimi() {
 
   const generateMutation = useMutation({
     mutationFn: async (data: typeof aiFormData) => {
-      const res = await apiRequest("/api/equipment-knowledge/generate-from-manual", "POST", data);
+      const res = await apiRequest("POST", "/api/equipment-knowledge/generate-from-manual", data);
       return res.json() as Promise<{ items: Array<{ category: string; title: string; content: string; keywords: string[] }>; summary: string }>;
     },
     onSuccess: (result) => {
@@ -308,7 +308,7 @@ export default function AdminAIBilgiYonetimi() {
     mutationFn: async (items: typeof generatedItems) => {
       const selectedItems = items.filter(item => item.selected);
       const promises = selectedItems.map(item => 
-        apiRequest("/api/equipment-knowledge", "POST", {
+        apiRequest("POST", "/api/equipment-knowledge", {
           equipmentType: aiFormData.equipmentType,
           brand: aiFormData.brand || null,
           model: aiFormData.model || null,
@@ -336,7 +336,7 @@ export default function AdminAIBilgiYonetimi() {
 
   const bulkGenerateMutation = useMutation({
     mutationFn: async (types: string[]) => {
-      const res = await apiRequest("/api/equipment-knowledge/bulk-generate", "POST", { types });
+      const res = await apiRequest("POST", "/api/equipment-knowledge/bulk-generate", { types });
       return res.json() as Promise<{ message: string; generated: number; total: number; results: Array<{ type: string; itemCount: number; error?: string }> }>;
     },
     onSuccess: (result) => {

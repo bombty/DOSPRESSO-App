@@ -180,25 +180,39 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 // BRANCH CRUD ENDPOINTS
 // ========================================
 
+type BranchRow = Awaited<ReturnType<typeof storage.getBranch>>;
+const BRANCH_SECRET_FIELDS = [
+  "kioskUsername",
+  "kioskPassword",
+  "qrCodeToken",
+  "feedbackQrToken",
+] as const;
+function stripBranchSecrets<T extends BranchRow | NonNullable<BranchRow>>(b: T): T {
+  if (!b) return b;
+  const out: Record<string, unknown> = { ...(b as Record<string, unknown>) };
+  for (const f of BRANCH_SECRET_FIELDS) delete out[f];
+  return out as T;
+}
+
 router.get('/api/branches', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
-    
+
     if (user.role && isHQRole(user.role as UserRoleType)) {
-      const branches = await storage.getBranches();
-      return res.json(branches);
+      const all = await storage.getBranches();
+      return res.json(all.map(stripBranchSecrets));
     }
-    
+
     if (user.role && isBranchRole(user.role as UserRoleType)) {
       if (!user.branchId) {
         return res.status(403).json({ message: "Şube ataması yapılmamış" });
       }
       const branch = await storage.getBranch(user.branchId);
-      return res.json(branch ? [branch] : []);
+      return res.json(branch ? [stripBranchSecrets(branch)] : []);
     }
-    
-    const branches = await storage.getBranches();
-    res.json(branches);
+
+    const all = await storage.getBranches();
+    res.json(all.map(stripBranchSecrets));
   } catch (error: unknown) {
     console.error("Error fetching branches:", error);
     res.status(500).json({ message: "Şubeler alınırken hata oluştu" });
@@ -209,18 +223,18 @@ router.get('/api/branches/:id', isAuthenticated, async (req, res) => {
   try {
     const user = req.user!;
     const id = parseInt(req.params.id);
-    
+
     if (user.role && isBranchRole(user.role as UserRoleType)) {
       if (user.branchId !== id) {
         return res.status(403).json({ message: "Bu şubeye erişim yetkiniz yok" });
       }
     }
-    
+
     const branch = await storage.getBranch(id);
     if (!branch) {
       return res.status(404).json({ message: "Şube bulunamadı" });
     }
-    res.json(branch);
+    res.json(stripBranchSecrets(branch));
   } catch (error: unknown) {
     console.error("Error fetching branch:", error);
     res.status(500).json({ message: "Şube bilgisi alınırken hata oluştu" });
@@ -306,6 +320,7 @@ router.get('/api/branches/:branchId/detail', isAuthenticated, async (req, res) =
 
     const response = {
       ...branchDetails,
+      branch: stripBranchSecrets(branchDetails.branch),
       staff: sanitizedStaff,
     };
     

@@ -111,7 +111,7 @@ export default function CashReports() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertDailyCashReport) => {
-      await apiRequest('/api/cash-reports', 'POST', data);
+      await apiRequest('POST', '/api/cash-reports', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/cash-reports'] });

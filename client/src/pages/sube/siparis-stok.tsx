@@ -352,7 +352,13 @@ function SiparislerimTab({ branchId }: { branchId: number }) {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   const { data: orders = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/branch-orders", branchId ? `?branchId=${branchId}` : ""],
+    queryKey: ["/api/branch-orders", branchId],
+    queryFn: async () => {
+      const url = branchId ? `/api/branch-orders?branchId=${branchId}` : "/api/branch-orders";
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const { data: orderDetail } = useQuery<any>({

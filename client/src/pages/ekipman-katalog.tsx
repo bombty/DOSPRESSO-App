@@ -98,7 +98,13 @@ export default function EkipmanKatalog() {
   const queryString = queryParams.toString();
 
   const { data: catalogItems, isLoading, isError, refetch } = useQuery<EquipmentCatalog[]>({
-    queryKey: ["/api/equipment-catalog", queryString ? `?${queryString}` : ""],
+    queryKey: ["/api/equipment-catalog", queryString],
+    queryFn: async () => {
+      const url = queryString ? `/api/equipment-catalog?${queryString}` : "/api/equipment-catalog";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const { data: branches } = useQuery<Branch[]>({

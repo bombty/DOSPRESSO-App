@@ -71,6 +71,16 @@ export default function CRMAnalytics() {
 
   const { data, isLoading } = useQuery<AnalyticsData>({
     queryKey: ["/api/crm/analytics", queryParams],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      Object.entries(queryParams).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") params.append(k, String(v));
+      });
+      const qs = params.toString();
+      const res = await fetch(`/api/crm/analytics${qs ? `?${qs}` : ""}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
 
   const { data: branchList } = useQuery<Branch[]>({

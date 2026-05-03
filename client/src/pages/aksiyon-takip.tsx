@@ -487,11 +487,12 @@ export default function AksiyonTakipPage() {
                         <ObjectUploader
                           onGetUploadParameters={async () => {
                             try {
-                              const response = await apiRequest('/api/upload-url', 'POST', {
+                              const response = await apiRequest('POST', '/api/upload-url', {
                                 fileName: `capa-evidence-${selectedCapa?.id}-${Date.now()}.jpg`,
                                 fileType: 'image/jpeg',
                               });
-                              return response as unknown as { method: "PUT"; url: string };
+                              const data = await response.json();
+                              return data as { method: "PUT"; url: string };
                             } catch (err) {
                               toast({ title: 'Hata', description: 'Yuklemek icin URL alınamadı', variant: 'destructive' });
                               throw err;

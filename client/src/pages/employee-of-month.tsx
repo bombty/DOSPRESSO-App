@@ -58,8 +58,9 @@ export default function EmployeeOfMonthPage() {
     queryKey: ["/api/employee-of-month/weights"],
   });
 
+  const rankingScope = viewMode === "branch" ? selectedBranchId : "all";
   const { data: rankings, isLoading: rankingsLoading } = useQuery({
-    queryKey: ["/api/employee-of-month/rankings", selectedMonth, selectedYear, viewMode === "branch" ? selectedBranchId : "all"],
+    queryKey: ["/api/employee-of-month/rankings", selectedMonth, selectedYear, rankingScope],
   });
 
   const { data: awards } = useQuery({

@@ -1,12 +1,59 @@
-import { Router, Response } from "express";
+import { Router, Request, Response } from "express";
 import { isAuthenticated } from "../localAuth";
 import { db } from "../db";
-import { 
+import {
   users, leaveRequests, knowledgeBaseArticles, learningStreaks,
   branches, employeePerformanceScores, trainingModules, quizResults,
-  trainingAssignments, isHQRole
+  trainingAssignments, isHQRole,
+  type User, type Branch,
 } from "@shared/schema";
 import { eq, and, desc, sql, ilike, or, count, avg } from "drizzle-orm";
+import { storage } from "../storage";
+import { ObjectStorageService } from "../objectStorage";
+
+const SENSITIVE_USER_FIELDS: ReadonlyArray<keyof User> = [
+  "hashedPassword",
+  "tckn",
+  "address",
+  "homePhone",
+  "emergencyContactName",
+  "emergencyContactPhone",
+  "netSalary",
+  "mealAllowance",
+  "transportAllowance",
+  "bonusBase",
+  "bonusType",
+  "bonusPercentage",
+  "leaveReason",
+  "disabilityLevel",
+];
+
+const SENSITIVE_BRANCH_FIELDS: ReadonlyArray<keyof Branch> = [
+  "kioskUsername",
+  "kioskPassword",
+  "qrCodeToken",
+  "feedbackQrToken",
+];
+
+function sanitizeUser(u: User | undefined | null): Partial<User> | null {
+  if (!u) return null;
+  const out: Partial<User> = { ...u };
+  for (const f of SENSITIVE_USER_FIELDS) delete out[f];
+  return out;
+}
+
+function sanitizeBranch(b: Branch | undefined | null): Partial<Branch> | null {
+  if (!b) return null;
+  const out: Partial<Branch> = { ...b };
+  for (const f of SENSITIVE_BRANCH_FIELDS) delete out[f];
+  return out;
+}
+
+type SessionUser = { id?: string; claims?: { sub?: string } };
+function getSessionUserId(req: Request): string | null {
+  const u = (req as Request & { user?: SessionUser }).user;
+  return u?.claims?.sub ?? u?.id ?? null;
+}
 
 const router = Router();
 
@@ -223,5 +270,208 @@ router.post("/api/action-cards/generate", isAuthenticated, (_req, res) => res.st
 router.get("/api/factory/recipes", isAuthenticated, (_req, res) => res.json([]));
 // [SILINDI 19 Nis 2026] /api/factory/kavurma — kullanılmıyor (stub)
 // [SILINDI 19 Nis 2026] /api/factory/sayim — kullanılmıyor (stub)
+
+const stubFeature = (msg = "Bu özellik henüz aktif değil") => ({
+  _stub: true,
+  _message: msg,
+});
+
+const stubMutation = (res: Response, msg = "Bu özellik henüz aktif değil") =>
+  res.status(503).json({ success: false, error: msg, _stub: true, _message: msg });
+
+// --- Agent / analytics ---
+router.get("/api/agent/insights", isAuthenticated, (_req, res) => res.json({ insights: [], ...stubFeature() }));
+router.get("/api/analytics/summary", isAuthenticated, (_req, res) => res.json({ totalUsers: 0, totalSessions: 0, ...stubFeature() }));
+
+// --- Branches helpers (kiosk staff, users by branch, list) ---
+router.get("/api/branches-list", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/branches/kiosk/staff", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/branches/:branchId/users", isAuthenticated, (_req, res) => res.json([]));
+
+// --- Branch recipients (announcement targets) ---
+router.get("/api/branch-recipients", isAuthenticated, (_req, res) => res.json([]));
+
+// --- Cash reports (kasa raporları) ---
+router.get("/api/cash-reports", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/cash-reports/:branchId/:date", isAuthenticated, (_req, res) => res.json([]));
+router.post("/api/cash-reports", isAuthenticated, (_req, res) => stubMutation(res, "Kasa raporu kaydı henüz aktif değil"));
+router.patch("/api/cash-reports/:id", isAuthenticated, (_req, res) => stubMutation(res, "Kasa raporu güncelleme henüz aktif değil"));
+router.delete("/api/cash-reports/:id", isAuthenticated, (_req, res) => stubMutation(res, "Kasa raporu silme henüz aktif değil"));
+
+// --- Cowork (channels real, but FE also calls flat endpoints) ---
+router.get("/api/cowork/members", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/cowork/messages", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/cowork/tasks", isAuthenticated, (_req, res) => res.json([]));
+
+// --- CRM ek istatistik ---
+router.get("/api/crm/my-stats", isAuthenticated, (_req, res) => res.json({ assigned: 0, resolved: 0, pending: 0 }));
+
+// --- Factory genel istatistik ---
+router.get("/api/factory/stats", isAuthenticated, (_req, res) => res.json({ totalProductions: 0, totalShifts: 0, ...stubFeature() }));
+
+// --- Public feedback form settings (auth gerektirmez) ---
+router.get("/api/feedback-form-settings/public", (_req, res) => res.json({ enabled: false, fields: [] }));
+router.get("/api/feedback-form-settings/public/:branchId", (_req, res) => res.json({ enabled: false, fields: [] }));
+
+// --- PDKS personal status ---
+router.get("/api/pdks/my-status", isAuthenticated, (_req, res) => res.json({ status: "off", lastEvent: null }));
+
+// --- Shift attendance (vardiya yoklama) ---
+router.get("/api/shift-attendance", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/shift-attendance/active", isAuthenticated, (_req, res) => res.json({ active: false, session: null }));
+router.post("/api/shift-attendance", isAuthenticated, (_req, res) => stubMutation(res, "Vardiya yoklama henüz aktif değil"));
+
+// --- Shifts weekly summary ---
+router.get("/api/shifts/weekly-summary", isAuthenticated, (_req, res) => res.json({ days: [] }));
+
+// --- Training user progress ---
+router.get("/api/training/user-progress", isAuthenticated, (_req, res) => res.json({ totalAssigned: 0, completed: 0, inProgress: 0 }));
+
+// --- Users (HQ list & detail) ---
+router.get("/api/users/hq", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/users/:userId", isAuthenticated, (_req, res) => res.json(null));
+
+// --- Academy recipe versions ---
+router.get("/api/academy/recipe/:recipeId/versions", isAuthenticated, (_req, res) => res.json([]));
+
+// --- Alerts (acknowledge/dismiss) ---
+router.patch("/api/alerts/:id/acknowledge", isAuthenticated, (_req, res) => stubMutation(res, "Alarm onaylama henüz aktif değil"));
+router.patch("/api/alerts/:id/dismiss", isAuthenticated, (_req, res) => stubMutation(res, "Alarm kapatma henüz aktif değil"));
+
+// --- Leave / service requests / generic tasks ---
+router.patch("/api/leave-requests/:id/status", isAuthenticated, (_req, res) => stubMutation(res, "İzin talebi durumu güncelleme henüz aktif değil"));
+router.patch("/api/service-requests/:id", isAuthenticated, (_req, res) => stubMutation(res, "Servis talebi güncelleme henüz aktif değil"));
+router.patch("/api/tasks/:id", isAuthenticated, (_req, res) => stubMutation(res, "Görev güncelleme henüz aktif değil"));
+router.post("/api/tasks/:id/claim", isAuthenticated, (_req, res) => stubMutation(res, "Görev sahiplenme henüz aktif değil"));
+
+// --- Admin actions ---
+router.post("/api/admin/seed-equipment-training", isAuthenticated, (_req, res) => stubMutation(res, "Ekipman eğitimi yükleme henüz aktif değil"));
+router.post("/api/admin/users/:userId/reset-password", isAuthenticated, (_req, res) => stubMutation(res, "Şifre sıfırlama henüz aktif değil"));
+router.post("/api/complete-setup", isAuthenticated, (_req, res) => stubMutation(res, "Kurulum tamamlama henüz aktif değil"));
+router.post("/api/test-smtp", isAuthenticated, (_req, res) => stubMutation(res, "SMTP testi henüz aktif değil"));
+
+// --- Disciplinary reports response ---
+router.post("/api/disciplinary-reports/:id/response", isAuthenticated, (_req, res) => stubMutation(res, "Disiplin raporu yanıtı henüz aktif değil"));
+
+// --- Factory keyblends ingredients ---
+router.post("/api/factory/keyblends/:id/ingredients", isAuthenticated, (_req, res) => stubMutation(res, "Keyblend malzeme ekleme henüz aktif değil"));
+
+// --- Projects external users ---
+router.get("/api/projects/:projectId/external-users", isAuthenticated, (_req, res) => res.json([]));
+router.post("/api/projects/:projectId/external-users", isAuthenticated, (_req, res) => stubMutation(res, "Dış kullanıcı ekleme henüz aktif değil"));
+router.delete("/api/projects/:projectId", isAuthenticated, (_req, res) => stubMutation(res, "Proje silme henüz aktif değil"));
+
+// --- Employee onboarding silme ---
+router.delete("/api/employee-onboarding/:id", isAuthenticated, (_req, res) => stubMutation(res, "Onboarding silme henüz aktif değil"));
+
+// --- Notifications create (FE banner çağırıyor) ---
+router.post("/api/notifications", isAuthenticated, (_req, res) => stubMutation(res, "Bildirim oluşturma henüz aktif değil"));
+
+// --- Object storage / upload helpers ---
+router.post("/api/objects/generate-upload-url", isAuthenticated, (_req, res) => stubMutation(res, "Yükleme servisi henüz bağlı değil"));
+router.post("/api/object-storage/presigned-url", isAuthenticated, (_req, res) => stubMutation(res, "Yükleme servisi henüz bağlı değil"));
+router.post("/api/upload/public", (_req, res) => stubMutation(res, "Yükleme servisi henüz bağlı değil"));
+// Object storage destekli pre-signed PUT URL üretir.
+// FE (fault-report-dialog, aksiyon-takip vb.) bu uca POST atar, dönen URL'e
+// dosyayı PUT eder. PRIVATE_OBJECT_DIR ayarsızsa 503 döner.
+router.post("/api/upload-url", isAuthenticated, async (_req, res) => {
+  try {
+    const svc = new ObjectStorageService();
+    const uploadURL = await svc.getObjectEntityUploadURL();
+    // FE çağrı yerleri (fault-report-dialog, aksiyon-takip) `{ method, url }`
+    // bekliyor; eski entegrasyonlar `uploadURL` adıyla okuyor — her ikisini
+    // de döneriz.
+    return res.json({ method: "PUT", url: uploadURL, uploadURL });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Object storage hazır değil (PRIVATE_OBJECT_DIR yok).";
+    console.error("[upload-url] Error:", message);
+    return res.status(503).json({ success: false, error: message, _stub: true });
+  }
+});
+
+router.put("/api/checklist-completions/:id/review", isAuthenticated, (_req, res) => stubMutation(res, "Checklist inceleme henüz aktif değil"));
+
+const getCurrentUser = async (req: Request, res: Response): Promise<Response> => {
+  const userId = getSessionUserId(req);
+  if (!userId) return res.status(401).json({ message: "Yetkisiz" });
+  const user = await storage.getUser(userId);
+  if (!user) return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+  return res.json(sanitizeUser(user));
+};
+router.get("/api/me", isAuthenticated, getCurrentUser);
+router.get("/api/user", isAuthenticated, getCurrentUser);
+
+router.get("/api/branch", isAuthenticated, async (req, res) => {
+  const userId = getSessionUserId(req);
+  if (!userId) return res.status(401).json({ message: "Yetkisiz" });
+  const user = await storage.getUser(userId);
+  if (!user?.branchId) return res.json(null);
+  const branch = await storage.getBranch(user.branchId);
+  return res.json(sanitizeBranch(branch));
+});
+
+// HR / takvim
+router.get("/api/employee-leaves/:year", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/public-holidays/:year", isAuthenticated, (_req, res) => res.json([]));
+
+// Eğitim ilerlemesi
+router.get("/api/training/progress/:userId", isAuthenticated, (_req, res) =>
+  res.json({ summary: [], totals: { assigned: 0, completed: 0, inProgress: 0 } })
+);
+router.get("/api/training/user-modules-stats/:userId", isAuthenticated, (_req, res) =>
+  res.json({ totalModules: 0, completedModules: 0, averageScore: 0 })
+);
+
+// Ayın çalışanı
+router.get("/api/employee-of-month/awards/:year", isAuthenticated, (_req, res) => res.json([]));
+router.get("/api/employee-of-month/rankings/:month/:year/:scope", isAuthenticated, (_req, res) => res.json([]));
+router.get(
+  "/api/employee-of-month/rankings/:month/:year/:scope/branch/:branchId/all",
+  isAuthenticated,
+  (_req, res) => res.json([])
+);
+
+// Şube geri bildirimleri
+router.get("/api/feedback/:branchId", isAuthenticated, (_req, res) => res.json([]));
+
+// Misafir şikayet özeti
+router.get("/api/guest-complaints/stats/:branchId", isAuthenticated, (_req, res) =>
+  res.json({ total: 0, resolved: 0, pending: 0, critical: 0 })
+);
+
+// Fabrika kalite şartnameleri (istasyon bazlı)
+router.get("/api/factory/quality-specs/station/:stationId", isAuthenticated, (_req, res) => res.json([]));
+
+// Akademi onboarding — uygun kullanıcılar
+router.get(
+  "/api/academy/onboarding/available-users/:branchId/:role",
+  isAuthenticated,
+  (_req, res) => res.json([])
+);
+
+// V2 — şubedeki vardiyada olan personel
+router.get("/api/v2/branch-on-shift/:branchId", isAuthenticated, (_req, res) => res.json([]));
+
+// Yeni şube projeleri — alt görevler / atamalar / satın alma kalemleri
+router.get(
+  "/api/new-shop-projects/:projectId/phases/:phaseId/subtasks",
+  isAuthenticated,
+  (_req, res) => res.json([])
+);
+router.get(
+  "/api/new-shop-projects/:projectId/phases/:phaseId/assignments",
+  isAuthenticated,
+  (_req, res) => res.json([])
+);
+router.get(
+  "/api/new-shop-projects/:projectId/procurement/items",
+  isAuthenticated,
+  (_req, res) => res.json([])
+);
+
+// Üretim planlama — plan detayı
+router.get("/api/production-planning/plans/:planId", isAuthenticated, (_req, res) =>
+  res.json({ id: null, items: [], _stub: true })
+);
 
 export default router;

@@ -277,7 +277,12 @@ export function CreateDisciplinaryDialogWithSelector({ branchId }: CreateDiscipl
 
   // Fetch branch personnel
   const { data: users = [] } = useQuery<User[]>({
-    queryKey: ["/api/admin/users", { branchId }],
+    queryKey: ["/api/admin/users", branchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users?branchId=${branchId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
     enabled: open,
   });
 
