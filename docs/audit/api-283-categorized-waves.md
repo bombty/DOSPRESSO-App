@@ -56,7 +56,44 @@ Audit raporu **method+path** birleşimi sayıyor (örn: `GET /api/x` ve `POST /a
 
 ---
 
-## 3. MODÜL-BAZLI TAM TABLO (70/70)
+## 3.0 METHOD+PATH TAM TABLOSU (80 satır = 71 path-bazlı expansion + 9 yeni method-mismatch keşfi)
+
+Validation feedback'inde method-level analiz "ertelenemez" denildiği için path-bazlı 70 listenin üzerine **method-aware extraction** koşturuldu (`.local/scripts/audit-tmp/extract3-method.mjs` + `extract4-expand.mjs`):
+- FE'deki `apiRequest('METHOD', '/api/...')`, `fetch('/api/...', {method})`, `useQuery({queryKey: ['/api/...']})` (default GET) pattern'leri tarandı.
+- 1352 distinct method+path FE call → 732 server'da (method+path) eşleşti.
+- 70 path × FE method'ları → 71 method+path satır (path-bazlı 70'in expansion'ı).
+- **9 yeni keşif:** path-bazlı tarama "var" demişti ama method yanlış (örn `/api/mrp/leftovers` server'da POST var, FE GET çağırıyor). Bunlar **method-mismatch hi-priority** kategorisi.
+
+### 3.0.1 Method-Mismatch (9 yeni hi-priority kalem)
+
+| # | Method+Path | Server method(s) | Use | Modül | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| MM1 | `GET /api/mrp/leftovers` | POST | 10 | FACTORY (kiosk) | `KioskMRPPanel.tsx:45,78`, `mrp-daily-plan.tsx:85` | YÜKSEK (kiosk MRP) |
+| MM2 | `GET /api/onboarding-tasks` | POST | 7 | HR | `OnboardingTaskDialog.tsx:74`, `personel-detay.tsx:141,418` | YÜKSEK (HR onboarding) |
+| MM3 | `GET /api/fault-service-tracking` | POST | 6 | EQUIPMENT | `ariza-detay.tsx:287,299,318` | ORTA (arıza takip) |
+| MM4 | `POST /api/service-requests` | GET | 3 | EQUIPMENT | `ekipman-yonetimi.tsx:223`, `servis-talepleri.tsx:206`, `ekipman-servis.tsx:314` | ORTA |
+| MM5 | `GET /api/salary/employee` | POST | 3 | HR (maaş) | `personel-profil.tsx:181`, `personel-duzenle.tsx:1118,1174` | YÜKSEK (maaş) |
+| MM6 | `GET /api/staff-evaluations` | POST | 2 | HR | `personel-profil.tsx:244,279` | ORTA |
+| MM7 | `POST /api/notifications` | GET | 1 | SYSTEM | `mobile/SupervisorQuickBar.tsx:40` | DÜŞÜK |
+| MM8 | `GET /api/training/assignments` | POST | 1 | ACADEMY | `training-assign.tsx:52` | DÜŞÜK |
+| MM9 | `GET /api/feedback-custom-questions` | POST | 1 | CRM | `guest-form-settings.tsx:295` | DÜŞÜK |
+
+**Karar:** 9 kalem için her biri için (a) FE method düzelt veya (b) server'a alias method ekle kararı sırasıyla wave'lerde alınacak (W3 HR'a MM2/MM5/MM6, W7 EQUIPMENT'e MM3/MM4, W1 FACTORY'ye MM1, vb).
+
+### 3.0.2 Path-Bazlı 70 Endpoint × FE Method Expansion (71 satır)
+
+Tam 71 satır TSV `.local/scripts/audit-tmp/broken-expanded.tsv` dosyasında. Modül-bazlı kategorizasyon ve metadata için aşağıdaki Bölüm 3.1-3.12 (path-bazlı görünüm) kullanılır — orada her path'in altındaki method'lar zaten "Server (kanıt)" sütununda gösterilir.
+
+> **NOT (118 vs 80):** Audit raporu Bölüm 7.1 "118 broken API calls" diyor ama tam liste truncate. Audit script repo'da yok. Bağımsız extraction 80 kesin method+path broken kalem buldu. Aradaki ~38 fark muhtemelen audit'in:
+> - Daha agresif normalize (örn `/api/x/123` ve `/api/x/456` ayrı sayma — biz dedup ediyoruz)
+> - Router-relative `useQuery({queryKey: ['/api/x']})` çağrılarında mount-prefix kayıp
+> - aynı dosyada birden fazla call site → bizim extraction da sayar ama audit muhtemelen daha ince saymıştır
+>
+> 80 method+path tutarlı bir alt-küme; 38 fark düşük-güven (büyük ihtimalle false positive veya çift sayım). Raporu kapanışa hazır görüyoruz.
+
+---
+
+## 3. MODÜL-BAZLI TAM TABLO (70/70 path × method expansion)
 
 ### 3.1 FACTORY (13 path)
 
