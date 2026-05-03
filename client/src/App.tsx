@@ -175,6 +175,9 @@ const HqStaffDashboard = lazyWithRetry(() => import("@/pages/hq/staff-dashboard"
 const SubeDashboard = lazyWithRetry(() => import("@/pages/sube/dashboard"));
 const EmployeeDashboard = lazyWithRetry(() => import("@/pages/sube/employee-dashboard"));
 const ChecklistExecutionPage = lazyWithRetry(() => import("@/pages/sube/checklist-execution"));
+const RecipesListPage = lazyWithRetry(() => import("@/pages/sube/recipes/list"));
+const RecipeDetailPage = lazyWithRetry(() => import("@/pages/sube/recipes/detail"));
+const RecipeEditPage = lazyWithRetry(() => import("@/pages/sube/recipes/edit"));
 const HQFabrikaAnalitik = lazyWithRetry(() => import("@/pages/hq-fabrika-analitik"));
 const SubeKarsilastirma = lazyWithRetry(() => import("@/pages/sube-karsilastirma"));
 const CanliTakip = lazyWithRetry(() => import("@/pages/canli-takip"));
@@ -416,6 +419,10 @@ function Router() {
       <Route path="/fabrika/kiosk">{() => <FabrikaKiosk />}</Route>
       <Route path="/hq/kiosk">{() => <HqKiosk />}</Route>
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
+      <Route path="/sube/recipes/new" component={RecipeEditPage} />
+      <Route path="/sube/recipes/:id/edit" component={RecipeEditPage} />
+      <Route path="/sube/recipes/:id" component={RecipeDetailPage} />
+      <Route path="/sube/recipes" component={RecipesListPage} />
       <Route path="/sube/kiosk/:branchId">{() => <SubeKiosk />}</Route>
       <Route path="/sube/kiosk">{() => <SubeKiosk />}</Route>
       <Route path="/sube/employee-dashboard" component={EmployeeDashboard} />
