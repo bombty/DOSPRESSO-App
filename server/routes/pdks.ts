@@ -738,24 +738,57 @@ router.post('/api/admin/pdks/backfill-attendance', isAuthenticated, async (req: 
     for (const session of orphanSessions) {
       try {
         let shiftId: number | null = session.plannedShiftId || null;
+        let fallbackUsed: "planned" | "nearest" | "adhoc" = "planned";
 
-        // Planlı vardiya yoksa adhoc oluştur
+        // F12 fallback ladder: planlı → en yakın gerçek shift (±3 gün, aynı
+        // user+branch) → adhoc 08-17 (warning log). Adhoc'a düşülmesi sessiz
+        // değil; izleme için console.warn ile işaretlenir.
         if (!shiftId) {
-          const sessionDate = new Date(session.checkInTime).toISOString().split('T')[0];
-          const [adHoc] = await db.insert(shifts).values({
-            branchId: session.branchId,
-            assignedToId: session.userId,
-            createdById: session.userId,
-            shiftDate: sessionDate,
-            startTime: "08:00:00",
-            endTime: "17:00:00",
-            shiftType: "morning",
-            status: "confirmed",
-          }).returning();
-          if (adHoc) shiftId = adHoc.id;
+          // TR-yerel session tarihi (UTC kayması olmadan).
+          const sessionDateTR = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Europe/Istanbul",
+            year: "numeric", month: "2-digit", day: "2-digit",
+          }).format(new Date(session.checkInTime));
+
+          const nearby = await db.select({
+            id: shifts.id,
+            shiftDate: shifts.shiftDate,
+          }).from(shifts)
+            .where(and(
+              eq(shifts.assignedToId, session.userId),
+              eq(shifts.branchId, session.branchId),
+              gte(shifts.shiftDate, sql`(${sessionDateTR}::date - INTERVAL '3 days')::date`),
+              lte(shifts.shiftDate, sql`(${sessionDateTR}::date + INTERVAL '3 days')::date`),
+            ))
+            .orderBy(sql`ABS(EXTRACT(EPOCH FROM (${shifts.shiftDate}::date - ${sessionDateTR}::date)))`)
+            .limit(1);
+
+          if (nearby.length > 0) {
+            shiftId = nearby[0].id;
+            fallbackUsed = "nearest";
+          } else {
+            const [adHoc] = await db.insert(shifts).values({
+              branchId: session.branchId,
+              assignedToId: session.userId,
+              createdById: session.userId,
+              shiftDate: sessionDateTR,
+              startTime: "08:00:00",
+              endTime: "17:00:00",
+              shiftType: "morning",
+              status: "confirmed",
+            }).returning();
+            if (adHoc) {
+              shiftId = adHoc.id;
+              fallbackUsed = "adhoc";
+              console.warn(`[BACKFILL][F12] Adhoc shift created for session=${session.id} user=${session.userId} branch=${session.branchId} date=${sessionDateTR} (no planned shift, no nearby template)`);
+            }
+          }
         }
 
         if (!shiftId) { failed++; continue; }
+        if (fallbackUsed === "nearest") {
+          console.log(`[BACKFILL][F12] Reused nearest shift=${shiftId} for session=${session.id} (no planned shift)`);
+        }
 
         // Mevcut shift_attendance var mı?
         const [existing] = await db.select({ id: shiftAttendance.id })
