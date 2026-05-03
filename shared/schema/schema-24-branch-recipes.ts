@@ -24,7 +24,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { users } from "./schema-01";
+import { users } from "./schema-02";
 
 // ────────────────────────────────────────
 // 1. BRANCH PRODUCTS — Şube ürünleri

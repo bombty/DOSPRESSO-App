@@ -135,6 +135,128 @@ router.get("/api/branch-products/:id", isAuthenticated, async (req: any, res: Re
 });
 
 // ──────────────────────────────────────
+// GET /api/branch-recipes/search?q=...
+// ÖNEMLI: Bu route /:id'den ÖNCE olmalı (Express sıra)
+// ──────────────────────────────────────
+router.get("/api/branch-recipes/search", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canView(req.user.role)) {
+      return res.status(403).json({ error: "Bu kaynağa erişim yetkiniz yok" });
+    }
+
+    const q = (req.query.q as string ?? '').trim();
+    if (q.length < 2) {
+      return res.json([]);
+    }
+
+    const term = `%${q}%`;
+
+    const productMatches = await db.select({
+      id: branchProducts.id,
+      name: branchProducts.name,
+      shortCode: branchProducts.shortCode,
+      category: branchProducts.category,
+      matchType: sql<string>`'product'`,
+    })
+      .from(branchProducts)
+      .where(and(
+        eq(branchProducts.isActive, true),
+        or(
+          ilike(branchProducts.name, term),
+          ilike(branchProducts.shortCode, term),
+        ),
+      ))
+      .limit(20);
+
+    const ingredientMatches = await db.selectDistinct({
+      id: branchProducts.id,
+      name: branchProducts.name,
+      shortCode: branchProducts.shortCode,
+      category: branchProducts.category,
+      matchType: sql<string>`'ingredient'`,
+    })
+      .from(branchProducts)
+      .innerJoin(branchRecipes, eq(branchRecipes.productId, branchProducts.id))
+      .innerJoin(branchRecipeIngredients, eq(branchRecipeIngredients.recipeId, branchRecipes.id))
+      .where(and(
+        eq(branchProducts.isActive, true),
+        ilike(branchRecipeIngredients.ingredientName, term),
+      ))
+      .limit(10);
+
+    const seen = new Set<number>();
+    const combined = [...productMatches, ...ingredientMatches].filter(item => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+
+    res.json(combined);
+  } catch (error: any) {
+    console.error("[branch-recipes/search] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-recipes/categories
+// ÖNEMLI: Bu route /:id'den ÖNCE olmalı (Express sıra)
+// ──────────────────────────────────────
+router.get("/api/branch-recipes/categories", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canView(req.user.role)) {
+      return res.status(403).json({ error: "Bu kaynağa erişim yetkiniz yok" });
+    }
+
+    const categories = await db.select({
+      category: branchProducts.category,
+      count: sql<number>`count(*)::int`,
+    })
+      .from(branchProducts)
+      .where(eq(branchProducts.isActive, true))
+      .groupBy(branchProducts.category)
+      .orderBy(branchProducts.category);
+
+    res.json(categories);
+  } catch (error: any) {
+    console.error("[branch-recipes/categories] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-recipes/learning-progress
+// ÖNEMLI: Bu route /:id'den ÖNCE olmalı (Express sıra)
+// ──────────────────────────────────────
+router.get("/api/branch-recipes/learning-progress", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+
+    const progress = await db.select({
+      recipeId: branchRecipeLearningProgress.recipeId,
+      viewCount: branchRecipeLearningProgress.viewCount,
+      quizAttempts: branchRecipeLearningProgress.quizAttempts,
+      quizCorrect: branchRecipeLearningProgress.quizCorrect,
+      bestScore: branchRecipeLearningProgress.bestScore,
+      demoCompleted: branchRecipeLearningProgress.demoCompleted,
+      masteredAt: branchRecipeLearningProgress.masteredAt,
+      productName: branchProducts.name,
+      size: branchRecipes.size,
+    })
+      .from(branchRecipeLearningProgress)
+      .innerJoin(branchRecipes, eq(branchRecipes.id, branchRecipeLearningProgress.recipeId))
+      .innerJoin(branchProducts, eq(branchProducts.id, branchRecipes.productId))
+      .where(eq(branchRecipeLearningProgress.userId, userId))
+      .orderBy(desc(branchRecipeLearningProgress.lastViewedAt));
+
+    res.json(progress);
+  } catch (error: any) {
+    console.error("[learning-progress] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
 // GET /api/branch-recipes/:id
 // Reçete detay — malzeme + adım + quiz sayısı
 // ──────────────────────────────────────
@@ -145,6 +267,9 @@ router.get("/api/branch-recipes/:id", isAuthenticated, async (req: any, res: Res
     }
 
     const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
     const [recipe] = await db.select().from(branchRecipes).where(eq(branchRecipes.id, id));
 
     if (!recipe) {
@@ -185,99 +310,6 @@ router.get("/api/branch-recipes/:id", isAuthenticated, async (req: any, res: Res
 });
 
 // ──────────────────────────────────────
-// GET /api/branch-recipes/search?q=...
-// Arama (ürün adı, kısa kod, malzeme)
-// ──────────────────────────────────────
-router.get("/api/branch-recipes/search", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    if (!canView(req.user.role)) {
-      return res.status(403).json({ error: "Bu kaynağa erişim yetkiniz yok" });
-    }
-
-    const q = (req.query.q as string ?? '').trim();
-    if (q.length < 2) {
-      return res.json([]);
-    }
-
-    const term = `%${q}%`;
-
-    // Ürün adından/kodundan ara
-    const productMatches = await db.select({
-      id: branchProducts.id,
-      name: branchProducts.name,
-      shortCode: branchProducts.shortCode,
-      category: branchProducts.category,
-      matchType: sql<string>`'product'`,
-    })
-      .from(branchProducts)
-      .where(and(
-        eq(branchProducts.isActive, true),
-        or(
-          ilike(branchProducts.name, term),
-          ilike(branchProducts.shortCode, term),
-        ),
-      ))
-      .limit(20);
-
-    // Malzemeden ara (örn. "matcha" arayan kullanıcı matcha latte bulsun)
-    const ingredientMatches = await db.selectDistinct({
-      id: branchProducts.id,
-      name: branchProducts.name,
-      shortCode: branchProducts.shortCode,
-      category: branchProducts.category,
-      matchType: sql<string>`'ingredient'`,
-    })
-      .from(branchProducts)
-      .innerJoin(branchRecipes, eq(branchRecipes.productId, branchProducts.id))
-      .innerJoin(branchRecipeIngredients, eq(branchRecipeIngredients.recipeId, branchRecipes.id))
-      .where(and(
-        eq(branchProducts.isActive, true),
-        ilike(branchRecipeIngredients.ingredientName, term),
-      ))
-      .limit(10);
-
-    // Birleştir, duplicate kaldır
-    const seen = new Set<number>();
-    const combined = [...productMatches, ...ingredientMatches].filter(item => {
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
-    });
-
-    res.json(combined);
-  } catch (error: any) {
-    console.error("[branch-recipes/search] hatası:", error);
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
-  }
-});
-
-// ──────────────────────────────────────
-// GET /api/branch-recipes/categories
-// Kategori listesi + her kategoride kaç ürün
-// ──────────────────────────────────────
-router.get("/api/branch-recipes/categories", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    if (!canView(req.user.role)) {
-      return res.status(403).json({ error: "Bu kaynağa erişim yetkiniz yok" });
-    }
-
-    const categories = await db.select({
-      category: branchProducts.category,
-      count: sql<number>`count(*)::int`,
-    })
-      .from(branchProducts)
-      .where(eq(branchProducts.isActive, true))
-      .groupBy(branchProducts.category)
-      .orderBy(branchProducts.category);
-
-    res.json(categories);
-  } catch (error: any) {
-    console.error("[branch-recipes/categories] hatası:", error);
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
-  }
-});
-
-// ──────────────────────────────────────
 // GET /api/branch-recipes/:id/quizzes
 // Reçete quiz soruları (rastgele 3-5)
 // ──────────────────────────────────────
@@ -288,6 +320,9 @@ router.get("/api/branch-recipes/:id/quizzes", isAuthenticated, async (req: any, 
     }
 
     const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
     const limit = Math.min(Number(req.query.limit ?? 5), 10);
 
     const quizzes = await db.select().from(branchRecipeQuizzes)
@@ -394,38 +429,6 @@ router.get("/api/branch-onboarding/:role", isAuthenticated, async (req: any, res
     res.json(steps);
   } catch (error: any) {
     console.error("[branch-onboarding/:role] hatası:", error);
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
-  }
-});
-
-// ──────────────────────────────────────
-// GET /api/branch-recipes/learning-progress
-// Kullanıcının öğrenme ilerlemesi
-// ──────────────────────────────────────
-router.get("/api/branch-recipes/learning-progress", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const userId = req.user.id;
-
-    const progress = await db.select({
-      recipeId: branchRecipeLearningProgress.recipeId,
-      viewCount: branchRecipeLearningProgress.viewCount,
-      quizAttempts: branchRecipeLearningProgress.quizAttempts,
-      quizCorrect: branchRecipeLearningProgress.quizCorrect,
-      bestScore: branchRecipeLearningProgress.bestScore,
-      demoCompleted: branchRecipeLearningProgress.demoCompleted,
-      masteredAt: branchRecipeLearningProgress.masteredAt,
-      productName: branchProducts.name,
-      size: branchRecipes.size,
-    })
-      .from(branchRecipeLearningProgress)
-      .innerJoin(branchRecipes, eq(branchRecipes.id, branchRecipeLearningProgress.recipeId))
-      .innerJoin(branchProducts, eq(branchProducts.id, branchRecipes.productId))
-      .where(eq(branchRecipeLearningProgress.userId, userId))
-      .orderBy(desc(branchRecipeLearningProgress.lastViewedAt));
-
-    res.json(progress);
-  } catch (error: any) {
-    console.error("[learning-progress] hatası:", error);
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }
 });

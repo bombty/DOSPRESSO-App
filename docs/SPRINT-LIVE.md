@@ -128,6 +128,9 @@ db-backups/dospresso/2026-05-03/dump.dump | 5.66 MB | 2026-05-03T20:00:50.578Z
 ### Task #302 — Repo Kökü Dokümantasyon Hijyeni
 ✅ 18 stale rapor `docs/archive/2026-Q1/` ve `docs/archive/2026-Q2/` altına taşındı. **STATUS.md güncel sayılarla yenilendi (372 kullanıcı, 31 rol, 305 sayfa, 1.985 endpoint, 455 tablo).** **DECISIONS#32.**
 
+### Şube Reçete Sistemi — Migration + Seed + API Fix ✅ 3 May 2026
+Migration `migrations/2026-05-03-branch-recipe-system.sql` apply edildi: 9 tablo (branch_products, branch_recipes, branch_recipe_ingredients, branch_recipe_steps, branch_recipe_quizzes, branch_onboarding_steps, branch_recipe_learning_progress, branch_aroma_options, branch_recipe_aroma_compatibility) + 21 aroma seed. Drift = 0 (465 tablo). Seed: 8 ürün, 15 reçete, 40 malzeme, 63 adım. Schema import bug fix: `schema-24-branch-recipes.ts` → `import from ./schema-02`. Route ordering bug fix: `branch-recipes.ts`'te `/search`, `/categories`, `/learning-progress` route'ları `/:id`'den önceye taşındı (Express route sıra sorunu). Smoke test 5/5: GET /api/branch-products (8 ürün), GET /api/branch-recipes/categories (['hot_coffee']), GET /api/branch-recipes/search?q=latte (4 sonuç), GET /api/branch-recipes/learning-progress (list), GET /api/branch-recipes/1 (Americano reçetesi).
+
 ### Task #329 — Comprehensive Role × Module Audit
 ✅ 6 paralel kod-explorer subagent + 5 mekanik script-tarama. **36 finding (9 KRİTİK, 5 RBAC, 6 hesap-mantık, 3 stub, 1 kırık-API, 2 mevzuat, 3 hardcode, 2 veri-integrity, 3 UX, 3 infra).** Auto-türetilen 17 task (T-300 → T-316, ~44h). Kapsam: `docs/audit/comprehensive-2026-05/`.
 

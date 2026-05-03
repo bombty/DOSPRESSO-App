@@ -498,7 +498,8 @@ export async function seedBranchRecipes(): Promise<{
 // CLI'dan çalıştırma için
 import { eq, and } from "drizzle-orm";
 
-if (require.main === module) {
+const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+if (isMain || process.argv[1]?.includes('branch-recipes-seed')) {
   seedBranchRecipes()
     .then((result) => {
       console.log("\n✅ Seed tamamlandı:");
