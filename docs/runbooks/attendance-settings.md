@@ -22,7 +22,7 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 | Şube müdürü onay UI | ✅ VAR | `pages/overtime-requests.tsx` |
 | **`attendance_settings_audit` tablosu** | ❌ YOK | Ayar değişiklik geçmişi izlenmiyor |
 | **`late-arrival-tracker.ts` dinamik okuma** | ✅ #326 | `resolveLateThreshold` → `payrollDeductionConfig` cascade |
-| **Bundle 7 e2e test** | ❌ YOK | Mevcut `tests/e2e/kiosk-shift-*` dolaylı kapsar |
+| **Bundle 7 e2e test** | ✅ #327 | `tests/e2e/branch-attendance-settings.spec.ts` (S1 tolerans yazımı, S2 18dk geç+tolerans=20→penalty yok, S3 overtime approve) — gate `E2E_RUN_BUNDLE7=1` |
 
 ## 3. Kullanım — HQ Admin (CEO/CGO/Admin/Muhasebe_IK)
 
@@ -55,9 +55,9 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 **Sorun:** Şube ayar değişikliği denetlenebilir değil; mevcut kayıt yok.
 **Fix önerisi:** `attendance_settings_audit` tablosu — `(branch_id, changed_by_id, field_name, old_value, new_value, changed_at)`. Migration + trigger (veya app-level audit middleware). Plan mode zorunlu.
 
-### B. Otomatik test boşluğu
-**Sorun:** "Müdür A şube X'te tolerans=20 yaptı, kullanıcı Y 18 dk geç geldi → geç sayılmasın → bordro etkilenmesin" senaryosu test'te yok.
-**Fix önerisi:** `tests/e2e/branch-attendance-settings.spec.ts` ekle.
+### ~~B. Otomatik test boşluğu~~ ✅ #327
+**Çözüm:** `tests/e2e/branch-attendance-settings.spec.ts` (3 senaryo: tolerans set, 18dk geç + tolerans=20 → penalty yok, overtime approve).
+**Çalıştır:** `E2E_RUN_BUNDLE7=1 npx playwright test --config=playwright.config.ts tests/e2e/branch-attendance-settings.spec.ts`
 
 ## 6. İlgili Dosyalar
 
