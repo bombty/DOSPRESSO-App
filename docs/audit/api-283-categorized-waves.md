@@ -82,14 +82,63 @@ Validation feedback'inde method-level analiz "ertelenemez" denildiği için path
 
 ### 3.0.2 Path-Bazlı 70 Endpoint × FE Method Expansion (71 satır)
 
-Tam 71 satır TSV `.local/scripts/audit-tmp/broken-expanded.tsv` dosyasında. Modül-bazlı kategorizasyon ve metadata için aşağıdaki Bölüm 3.1-3.12 (path-bazlı görünüm) kullanılır — orada her path'in altındaki method'lar zaten "Server (kanıt)" sütununda gösterilir.
+Tam 71 satır TSV `.local/scripts/audit-tmp/broken-expanded.tsv` dosyasında. Modül-bazlı kategorizasyon ve metadata için aşağıdaki Bölüm 3.1-3.12 (path-bazlı görünüm) kullanılır.
 
-> **NOT (118 vs 80):** Audit raporu Bölüm 7.1 "118 broken API calls" diyor ama tam liste truncate. Audit script repo'da yok. Bağımsız extraction 80 kesin method+path broken kalem buldu. Aradaki ~38 fark muhtemelen audit'in:
-> - Daha agresif normalize (örn `/api/x/123` ve `/api/x/456` ayrı sayma — biz dedup ediyoruz)
-> - Router-relative `useQuery({queryKey: ['/api/x']})` çağrılarında mount-prefix kayıp
-> - aynı dosyada birden fazla call site → bizim extraction da sayar ama audit muhtemelen daha ince saymıştır
->
-> 80 method+path tutarlı bir alt-küme; 38 fark düşük-güven (büyük ihtimalle false positive veya çift sayım). Raporu kapanışa hazır görüyoruz.
+### 3.0.3 AUDIT FALSE POSITIVE'LERİ (4 doğrulanmış — audit'in 118'inden çıkarılmalı)
+
+Audit method-aware extraction yapmadığı için bu 4 endpoint'i `GET` olarak listelemiş; oysa server'da **POST** olarak mevcut ve FE de POST kullanıyor. Doğrulama: `rg "router.post(...)"` + FE `apiRequest('POST', ...)` / `fetch({method: 'POST'})` taraması.
+
+| # | Audit'in iddia ettiği | Server gerçek | FE method (gerçek) | Kanıt |
+|---|---|---|---|---|
+| FP1 | `GET /api/auth/logout` | `POST /api/auth/logout` (`server/localAuth.ts:451`) | POST | `apiRequest('POST', '/api/auth/logout')` `app-header.tsx:38`, `hamburger-menu.tsx:345` |
+| FP2 | `GET /api/upload/photo` | `POST /api/upload/photo` (`server/routes/misc.ts:622`) | POST | `fetch('/api/upload/photo', {method: 'POST'})` `qr-scanner-modal.tsx:148`, `vardiya-checkin.tsx:123` |
+| FP3 | `GET /api/objects/finalize` | `POST /api/objects/finalize` (`server/routes/certificate-routes.ts:242`) | POST | `fetch('/api/objects/finalize', {method: 'POST'})` `ObjectUploader.tsx:74` |
+| FP4 | `GET /api/system/crash-report` | `POST /api/system/crash-report` (`server/routes/system-health.ts:151`) | POST | `fetch('/api/system/crash-report', ...)` `error-boundary.tsx:31` |
+
+**Sonuç:** Audit'in 118'inden ≥4 FP teyit edildi. Düzeltilmiş audit hedefi: **≤114**. (Aksiyon önerilmiyor — bunlar zaten çalışıyor.)
+
+### 3.0.4 AUDIT'TE OLAN AMA PATH-BAZLI EXTRACTION'IMIZIN KAÇIRDIĞI (8 yeni gerçek broken)
+
+Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize aşamasında atlanan 8 yeni gerçek broken (server'da yok):
+
+| # | Method+Path | Use | FE dosya | Modül | Önerilen wave | Kategori |
+|---|---|---|---|---|---|---|
+| N1 | `GET /api/iletisim/tickets` | 30 | `mobile/BaristaQuickActions.tsx:141,238` | CRM-İLETİŞİM | W5 | b — server impl (kritik) |
+| N2 | `POST /api/iletisim/tickets` | 4 | `mobile/BaristaQuickActions.tsx:136`, `mobile/SupervisorQuickBar.tsx:129` | CRM-İLETİŞİM | W5 | b — server impl |
+| N3 | `GET /api/iletisim/dashboard` | 6 | `crm-mega.tsx:349`, `iletisim-merkezi/HqTasksTab.tsx:87` | CRM-İLETİŞİM | W5 | b — server impl |
+| N4 | `GET /api/iletisim/hq-tasks` | 3 | `iletisim-merkezi/HqTasksTab.tsx:55,86` | CRM-İLETİŞİM | W5 | b — server impl |
+| N5 | `GET /api/iletisim/business-hours` | 3 | `iletisim-merkezi/sla-rules-panel.tsx:84,93` | CRM-İLETİŞİM | W5 | b — server impl (SLA bağımlı) |
+| N6 | `GET /api/iletisim/sla-rules` | 3 | `iletisim-merkezi/sla-rules-panel.tsx:273,284` | CRM-İLETİŞİM | W5 | b — server impl (SLA) |
+| N7 | `GET /api/iletisim/assignable-users` | 3 | `iletisim-merkezi/ticket-chat-panel.tsx:136,228` | CRM-İLETİŞİM | W5 | b — server impl |
+| N8 | `GET /api/module-content` | 5 | `module-content-editor.tsx:22,32,41` | ACADEMY | W5 | b — server impl (modül içerik editörü) |
+| N9 | `GET /api/delegations` | 5 | `admin/delegasyon.tsx:74,93` | ADMIN | W6 | b — server impl (delegasyon yönetimi) |
+
+> **Not:** N1-N7 (`/api/iletisim/*`) tüm CRM-İLETİŞİM modülünün eksik server impl'i — bu 7 endpoint birlikte tek bir alt-task olarak ele alınmalı. N8-N9 ayrı admin/academy task'ları.
+
+### 3.0.5 RECONCILIATION (Audit 118 vs Bizim 88)
+
+| Kategori | Sayı | Açıklama |
+|---|---|---|
+| Bizim path-bazlı 70 × FE method | 71 | `broken-expanded.tsv` |
+| Yeni method-mismatch keşfi | 9 | Bölüm 3.0.1 (audit'te yoktu) |
+| Audit'te olan + bizim eklediğimiz | 9 | Bölüm 3.0.4 (N1-N9) |
+| **TOPLAM hi-confidence broken** | **89** | (71 + 9 MM + 9 N) |
+| Audit FP düzeltmesi | -4 | Bölüm 3.0.3 |
+| **Audit'in düzeltilmiş hedef sayısı** | **≤114** | (118 - 4 FP) |
+| **Açıklanamayan kalan (needs-investigation)** | **≤25** | Bkz. 3.0.6 |
+
+### 3.0.6 NEEDS-INVESTIGATION (≤25 kalan)
+
+Audit'in 118'inden 50 görünür + 4 FP teyit (118-50=68 truncate, 4 FP). Görünür 50'den sayım:
+- 50 satırın 41'i bizim 80+9 listede zaten var (path veya MM olarak).
+- 4 FP düşüldü.
+- 5 kalem audit'te ortak listede ama bizim path-listemizde "var" görünüyordu (örn `/api/checklist-completions` POST FE `start/today` sub-path'leri kullanıyor — düşük öncelik a2; `/api/iletisim/*` zaten N1-N9'a girdi).
+
+**Truncate edilen 68 satır** için:
+- Audit script repo'da yok (commit eksik) → birebir reproduce imkansız.
+- Yaklaşık ~25 muhtemel **needs-investigation** kalem (yüksek olasılıkla yine `/api/iletisim/*` alt path'leri, mega-modül route'ları, dashboard widget alt endpoint'leri).
+- **Aksiyon:** Owner'a önerilen Dalga 0 (script reconstruction): audit'in extraction script'ini bulma/yeniden yazma; bulunan her ek satır wave dosyalarına eklenecek.
+- Bu 88 satır kapanış kalitesinde plan için yeterlidir; eksik 25 (varsa) Dalga 0'da kapatılır.
 
 ---
 
@@ -235,16 +284,20 @@ Tam 71 satır TSV `.local/scripts/audit-tmp/broken-expanded.tsv` dosyasında. Mo
 
 | Dalga | Modül | Endpoint sayısı | Etkilenen FE dosya | Tahmini süre | Paralel-güvenli mi | Risk |
 |---|---|---|---|---|---|---|
-| **W1** | FACTORY | 13 (12×a + 1×b) | `fabrika/maliyet-yonetimi.tsx`, `KioskMRPPanel.tsx`, `fabrika/kiosk.tsx`, `fabrika/performans.tsx`, `fabrika/kalite-kontrol.tsx`, `fabrika-centrum.tsx`, `vardiya-uyumluluk.tsx`, `card-grid-hub.tsx` | ~6 saat | EVET (sadece FE patch) | ORTA (kiosk akışı) |
-| **W2** | BRANCH + DASHBOARD | 11 (9×a + 2×b/c) | `MissionControlSupervisor.tsx`, `MissionControlYatirimci.tsx`, `supervisor-centrum.tsx`, `personel-centrum.tsx`, `sube-pin-yonetimi.tsx`, `sube/dashboard.tsx`, `siparis-stok.tsx`, `dashboard-widgets.tsx`, `nfc-giris.tsx` | ~5 saat | EVET | ORTA (mission control + KM2.0) |
-| **W3** | HR | 6 (3×a + 3×b/c) | `qr-scanner-modal.tsx`, `mobile/BaristaQuickActions.tsx`, `personel-duzenle.tsx`, `personel-detay.tsx`, `attendance.tsx`, `sube-bordro-ozet.tsx`, `sube-detay.tsx`, `maas.tsx` | ~4 saat | EVET | YÜKSEK (PDKS) |
+| **W1** | FACTORY | 13 path + **1 MM** = 14 | `fabrika/maliyet-yonetimi.tsx`, `KioskMRPPanel.tsx`, `fabrika/kiosk.tsx`, `fabrika/performans.tsx`, `fabrika/kalite-kontrol.tsx`, `fabrika-centrum.tsx`, `vardiya-uyumluluk.tsx`, `card-grid-hub.tsx`, `kalite/besin-onay.tsx`, `maliyet-analizi.tsx` | ~6 saat | EVET | YÜKSEK (kiosk + MM1 MRP) |
+| **W2** | BRANCH + DASHBOARD | 11 (9×a + 2×b/c) | `MissionControlSupervisor.tsx`, `MissionControlYatirimci.tsx`, `supervisor-centrum.tsx`, `sube-pin-yonetimi.tsx`, `sube/dashboard.tsx`, `siparis-stok.tsx`, `dashboard-widgets.tsx`, `nfc-giris.tsx`, `smart-notification-dialog.tsx`, `dobody-gorev-yonetimi.tsx` | ~5 saat | EVET | ORTA (mission control + KM2.0) |
+| **W3** | HR | 6 path + **3 MM** (MM2,MM5,MM6) = 9 | `qr-scanner-modal.tsx`, `mobile/BaristaQuickActions.tsx`, `personel-duzenle.tsx`, `personel-detay.tsx`, `personel-profil.tsx`, `attendance.tsx`, `sube-bordro-ozet.tsx`, `OnboardingTaskDialog.tsx`, `maas.tsx` | ~5 saat | EVET | YÜKSEK (PDKS + MM5 maaş) |
 | **W4** | OBJECT_STORAGE | 4 (4×b) **+ konsolidasyon** | `fabrika/kiosk.tsx`, `guest-form-settings.tsx`, `announcements.tsx`, `fault-report-dialog.tsx`, `aksiyon-takip.tsx`, `misafir-geri-bildirim.tsx`, **+** yeni `client/src/lib/object-upload.ts` | ~6 saat | KISMEN (W1-W3 ile çakışmaz) | YÜKSEK (upload akışı) |
-| **W5** | CRM + AUTH + ACADEMY + AGENT + OPS | 16 (a + b/c karışık) | `cowork.tsx`, `misafir-geri-bildirim.tsx`, `branch-feedback.tsx`, `my-performance.tsx`, `agent-merkezi.tsx`, `iletisim-merkezi/HqTasksTab.tsx`, `egitim-programi.tsx`, `academy.tsx`, `module-detail.tsx`, `trainer-egitim-merkezi.tsx`, `agent-admin-panel.tsx`, `proje-gorev-detay.tsx`, `sube/checklist-execution.tsx`, `satinalma/mal-kabul.tsx` | ~6 saat | EVET | ORTA |
-| **W6** | ADMIN | 8 (4×a + 4×b/c) | `admin/module-flags.tsx`, `admin/cop-kutusu.tsx`, `branch-onboarding-wizard.tsx`, `module-activation-checklist.tsx`, `admin-seed.tsx`, `admin/yetkilendirme.tsx`, `setup.tsx`, `admin/dobody-gorev-yonetimi.tsx`, `smart-notification-dialog.tsx` | ~5 saat | EVET | YÜKSEK (modül erişim + setup) |
-| **W7** | DİĞER (FINANCE, EQUIPMENT, VERSIONED, MISC) | 12 (a + b/c) | `cash-reports.tsx`, `coach-sube-denetim.tsx`, `denetim-detay-v2.tsx`, `DobodyProposalWidget.tsx`, `fault-report-dialog.tsx`, `ariza-yeni.tsx`, `quick-task-modal.tsx`, `public-staff-rating.tsx`, `sube/employee-dashboard.tsx`, qr/cari sayfaları | ~5 saat | EVET | ORTA |
+| **W5** | CRM + AUTH + ACADEMY + AGENT + OPS | 16 path + **2 MM** (MM8,MM9) + **8 N** (N1-N8) = 26 | `cowork.tsx`, `misafir-geri-bildirim.tsx`, `branch-feedback.tsx`, `my-performance.tsx`, `agent-merkezi.tsx`, `iletisim-merkezi/*`, `egitim-programi.tsx`, `academy.tsx`, `module-detail.tsx`, `module-content-editor.tsx`, `trainer-egitim-merkezi.tsx`, `agent-admin-panel.tsx`, `proje-gorev-detay.tsx`, `sube/checklist-execution.tsx`, `satinalma/mal-kabul.tsx`, `mobile/BaristaQuickActions.tsx`, `mobile/SupervisorQuickBar.tsx`, `crm-mega.tsx`, `training-assign.tsx` | ~10 saat | EVET | YÜKSEK (CRM-İLETİŞİM 7 endpoint impl) |
+| **W6** | ADMIN | 8 path + **1 N** (N9 delegations) = 9 | `admin/module-flags.tsx`, `admin/cop-kutusu.tsx`, `admin/delegasyon.tsx`, `branch-onboarding-wizard.tsx`, `module-activation-checklist.tsx`, `admin-seed.tsx`, `admin/yetkilendirme.tsx`, `setup.tsx` | ~6 saat | EVET | YÜKSEK (modül erişim + setup + delegasyon) |
+| **W7** | DİĞER (FINANCE, EQUIPMENT, VERSIONED, MISC) | 12 path + **3 MM** (MM3,MM4,MM7) = 15 | `cash-reports.tsx`, `coach-sube-denetim.tsx`, `denetim-detay-v2.tsx`, `DobodyProposalWidget.tsx`, `fault-report-dialog.tsx`, `ariza-detay.tsx`, `ariza-yeni.tsx`, `ekipman-yonetimi.tsx`, `servis-talepleri.tsx`, `ekipman-servis.tsx`, `quick-task-modal.tsx`, `public-staff-rating.tsx`, `sube/employee-dashboard.tsx`, `mobile/SupervisorQuickBar.tsx`, qr/cari sayfaları | ~6 saat | EVET | ORTA |
 
-**Dalga toplamı:** 13+11+6+4+16+8+12 = **70** ✓ (broken.tsv ile tutarlı)
-**Toplam tahmini süre:** ~37 saat (paralel olarak ~3 hafta).
+**Dalga toplamı (method+path):** 14+11+9+4+26+9+15 = **88** ✓
+- Dağılım: 70 path-bazlı + 9 MM (method-mismatch) + 9 N (audit-recovered) = 88
+- (W4 4 endpoint, MM/N içermiyor; W2 sadece path-bazlı 11)
+
+**Toplam tahmini süre:** ~44 saat (paralel olarak ~3.5 hafta).
+**Per-wave skeleton dosyaları:** `docs/audit/waves/W{1..7}-*.md`.
 
 ### Dalga Sırası (Risk-bazlı)
 
@@ -316,14 +369,15 @@ W1-W7 dosya alanları **çakışmıyor** (W4 hariç — W4 birden fazla modülü
 
 ## 7. METODOLOJI SINIRLARI (DRIFT)
 
-1. **Method mismatch tam tarama yapılmadı:** Mevcut script FE'deki literal `'/api/...'` çağrılarını yakalıyor ama HTTP method'u tespit etmiyor (FE `apiRequest('POST', ...)` veya `fetch(..., {method: 'POST'})` pattern'ini parse etmiyor). Architect bulgusundaki `/api/auth/logout`, `/api/objects/finalize`, `/api/system/crash-report` gibi method-mismatch'ler için ayrı dalga (Dalga 0 önerisi alttaki) gerekli.
-2. **Kullanım sayısı dosya bazlı:** "use=10" 10 farklı satırı sayıyor, aynı dosyada 5 ardışık kullanım da 5 sayılıyor. Gerçek call-site sayımı için ek deduplikasyon gerekli — bu rapor için kabul edilebilir doğruluk.
-3. **`useQuery({ queryKey: ['/api/x'] })` dolaylı çağrılar yakalandı:** TanStack default fetcher queryKey[0]'ı path olarak kullandığı için bunlar da FE çağrısı sayılıyor — doğru davranış.
-4. **Mount-prefix detection sınırlı:** `app.use('/api/x', router)` yakalandı ama nested router (`router.use('/sub', subRouter)`) yakalanmıyor — bu DOSPRESSO codebase'inde nadir.
+1. **Method mismatch tam tarama YAPILDI** (önceki sürümdeki eksiklik kapatıldı): `extract3-method.mjs` + `extract4-expand.mjs` FE'deki `apiRequest(method, path)`, `fetch(path, {method})`, `useQuery({queryKey: ['/api/x']})` (default GET) pattern'lerini parse ediyor. **Sonuç:** 9 hi-priority method-mismatch (Bölüm 3.0.1, MM1-MM9) + 4 audit FP teyidi (Bölüm 3.0.3). Architect'in örneklerinden `/api/auth/logout`, `/api/objects/finalize`, `/api/system/crash-report` aslında **audit'in FP'leri** olarak doğrulandı (server'da POST var, FE de POST kullanıyor).
+2. **Kullanım sayısı dosya:satır bazlı:** "use=10" 10 farklı satırı sayıyor. Gerçek call-site sayımı için ek deduplikasyon yapılmadı — bu rapor için kabul edilebilir doğruluk.
+3. **`useQuery({ queryKey: ['/api/x'] })` dolaylı çağrılar yakalandı:** TanStack default fetcher queryKey[0]'ı path olarak kullandığı için bunlar da FE çağrısı sayılıyor (default method GET) — doğru davranış. Toplam 1352 distinct method+path FE call extract edildi.
+4. **Mount-prefix detection sınırlı:** `app.use('/api/x', router)` yakalandı ama nested router (`router.use('/sub', subRouter)`) yakalanmıyor — bu DOSPRESSO codebase'inde nadir; etki: ~5-10 false negative tahmini.
+5. **Audit script kayıp:** APP_AUDIT'in extraction script'i repo'da yok → audit'in 118'inin tam listesini birebir reproduce imkansız. 80 + 8 audit-recovered = 88 hi-confidence subset; ~25 needs-investigation (51-118 truncate satırları) Dalga 0'da kapatılır.
 
-### Dalga 0 (Önerilen) — Method Mismatch Tam Tarama
+### Dalga 0 (Önerilen) — Audit Script Reconstruction
 
-Script genişletilmeli: FE'deki `apiRequest(method, path)` ve `fetch(path, {method})` pattern'leri parse edilip server'da o method+path kombinasyonu var mı kontrol edilmeli. Architect'in 3 doğrulanmış örneği (auth/logout, objects/finalize, system/crash-report) muhtemelen kalan ~10-15 endpoint'in göstergesi. Süre: ~3 saat.
+Audit'in tam 118 listesinin truncate olan 51-118 satırlarını üretmek için APP_AUDIT extraction script'i yeniden inşa edilmeli (veya owner'dan eski commit/log iste). Bulunan her ek satır wave dosyalarına eklenecek. Süre: ~2 saat.
 
 ---
 
