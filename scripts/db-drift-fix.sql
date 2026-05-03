@@ -1,9 +1,18 @@
 -- DB DRIFT FIX SCRIPT
--- Üretildi: 2026-04-26T22:05:18.511Z
+-- Üretildi: 2026-05-03T08:20:32.324Z
 -- Bu dosya scripts/db-drift-check.ts tarafından otomatik üretilir.
 -- Çalıştırmadan önce gözden geçirin (özellikle veri çakışmalarına dikkat).
 
 BEGIN;
+
+-- Eksik kolonlar
+-- NOT: NOT NULL kolonlar nullable olarak ekleniyor — backfill sonrası SET NOT NULL'u manuel uygulayın.
+ALTER TABLE "ai_settings" ADD COLUMN IF NOT EXISTS "monthly_budget_usd" numeric(10, 2);
+ALTER TABLE "ai_settings" ADD COLUMN IF NOT EXISTS "budget_enforcement_enabled" boolean;
+ALTER TABLE "ai_settings" ADD COLUMN IF NOT EXISTS "budget_alert_threshold_pct" integer;
+ALTER TABLE "ai_settings" ADD COLUMN IF NOT EXISTS "last_budget_alert_pct" integer;
+ALTER TABLE "ai_settings" ADD COLUMN IF NOT EXISTS "last_budget_alert_at" timestamp;
+ALTER TABLE "ai_settings" ADD COLUMN IF NOT EXISTS "last_budget_alert_month" varchar(7);
 
 -- Eksik UNIQUE constraint'ler
 -- NOT: Mevcut tabloda duplicate veri varsa ALTER fail eder; önce SELECT ile kontrol edin.
