@@ -8,10 +8,74 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { Clock, CalendarDays, UserCheck, UserX, Coffee, AlertTriangle, Plus, ChevronLeft, Settings } from "lucide-react";
+import { Clock, CalendarDays, UserCheck, UserX, Coffee, AlertTriangle, Plus, ChevronLeft, Settings, History } from "lucide-react";
+
+const FIELD_LABELS: Record<string, string> = {
+  defaultShiftStartTime: "Mesai Başlangıç",
+  defaultShiftEndTime: "Mesai Bitiş",
+  lateToleranceMinutes: "Geç Kalma Toleransı (dk)",
+  earlyLeaveToleranceMinutes: "Erken Çıkış Toleransı (dk)",
+  defaultBreakMinutes: "Mola Süresi (dk)",
+  autoCloseTime: "Otomatik Kapanış Saati",
+};
+
+interface AuditEntry {
+  id: number;
+  fieldName: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedAt: string;
+  changedBy: { id: string; firstName: string | null; lastName: string | null };
+}
+
+function AttendanceAuditList({ branchId }: { branchId: number }) {
+  const { user } = useAuth();
+  const canSeeAudit = user && ['admin', 'ceo', 'cgo', 'muhasebe_ik'].includes(user.role);
+  const auditQuery = useQuery<AuditEntry[]>({
+    queryKey: ['/api/branches', branchId, 'attendance-audit'],
+    queryFn: async () => {
+      const res = await fetch(`/api/branches/${branchId}/attendance-audit?limit=50&days=90`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+    enabled: !!canSeeAudit,
+  });
+
+  if (!canSeeAudit) return null;
+
+  return (
+    <Accordion type="single" collapsible className="mt-2" data-testid={`accordion-audit-${branchId}`}>
+      <AccordionItem value="history" className="border-0">
+        <AccordionTrigger className="text-xs text-muted-foreground py-1" data-testid={`button-toggle-audit-${branchId}`}>
+          <span className="flex items-center gap-1"><History className="h-3 w-3" /> Değişiklik Geçmişi (son 90 gün)</span>
+        </AccordionTrigger>
+        <AccordionContent>
+          {auditQuery.isLoading ? (
+            <div className="text-xs text-muted-foreground py-1">Yükleniyor...</div>
+          ) : !auditQuery.data?.length ? (
+            <div className="text-xs text-muted-foreground py-1" data-testid={`text-audit-empty-${branchId}`}>Kayıtlı değişiklik yok.</div>
+          ) : (
+            <div className="space-y-1 text-xs">
+              {auditQuery.data.map(e => (
+                <div key={e.id} className="flex items-center gap-2 flex-wrap" data-testid={`row-audit-${e.id}`}>
+                  <span className="text-muted-foreground">{new Date(e.changedAt).toLocaleString('tr-TR')}</span>
+                  <span className="font-medium">{FIELD_LABELS[e.fieldName] || e.fieldName}:</span>
+                  <span className="text-muted-foreground">{e.oldValue ?? '—'} → </span>
+                  <span>{e.newValue ?? '—'}</span>
+                  <span className="text-muted-foreground">— {[e.changedBy?.firstName, e.changedBy?.lastName].filter(Boolean).join(' ') || 'Bilinmiyor'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
 
 const MONTHS = [
   { value: "1", label: "Ocak" }, { value: "2", label: "Şubat" }, { value: "3", label: "Mart" },
@@ -157,6 +221,7 @@ function KioskToleranceSettings() {
                 <div><span className="text-muted-foreground text-xs">Mola: </span><span data-testid={`text-break-${setting.branchId}`}>{setting.defaultBreakMinutes} dk</span></div>
               </div>
             )}
+            <AttendanceAuditList branchId={setting.branchId} />
           </CardContent>
         </Card>
       ))}

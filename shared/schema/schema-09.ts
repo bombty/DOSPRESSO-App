@@ -338,6 +338,27 @@ export const insertBranchKioskSettingsSchema = createInsertSchema(branchKioskSet
 export type InsertBranchKioskSettings = z.infer<typeof insertBranchKioskSettingsSchema>;
 export type BranchKioskSettings = typeof branchKioskSettings.$inferSelect;
 
+// Task #328 — Şube kiosk/puantaj ayarlarının değişiklik denetim kaydı (immutable log)
+export const attendanceSettingsAudit = pgTable("attendance_settings_audit", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id").notNull().references(() => branches.id, { onDelete: "cascade" }),
+  changedById: varchar("changed_by_id").notNull().references(() => users.id),
+  fieldName: varchar("field_name", { length: 64 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  changedAt: timestamp("changed_at").defaultNow().notNull(),
+}, (t) => ({
+  branchChangedAtIdx: index("idx_attendance_audit_branch_changed").on(t.branchId, t.changedAt),
+}));
+
+export const insertAttendanceSettingsAuditSchema = createInsertSchema(attendanceSettingsAudit).omit({
+  id: true,
+  changedAt: true,
+});
+
+export type InsertAttendanceSettingsAudit = z.infer<typeof insertAttendanceSettingsAuditSchema>;
+export type AttendanceSettingsAudit = typeof attendanceSettingsAudit.$inferSelect;
+
 export const qrCheckinNonces = pgTable("qr_checkin_nonces", {
   id: serial("id").primaryKey(),
   nonce: varchar("nonce", { length: 64 }).notNull().unique(),

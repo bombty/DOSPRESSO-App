@@ -2,7 +2,7 @@
 
 **Bundle:** #311 (Bundle 7 — F14/F15 kısmi delivery)
 **Owner:** Aslan
-**Son güncelleme:** 03.05.2026
+**Son güncelleme:** 03.05.2026 (Task #328 audit log eklendi)
 
 ---
 
@@ -20,7 +20,7 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 | Onay endpoint'leri | ✅ VAR | `routes/misc.ts` L1182-1327 |
 | HQ admin UI | ✅ VAR | `pages/pdks.tsx` `KioskToleranceSettings` |
 | Şube müdürü onay UI | ✅ VAR | `pages/overtime-requests.tsx` |
-| **`attendance_settings_audit` tablosu** | ❌ YOK | Ayar değişiklik geçmişi izlenmiyor |
+| **`attendance_settings_audit` tablosu** | ✅ #328 | `shared/schema/schema-09.ts` L344-363 + migration `2026-05-03-attendance-settings-audit.sql` + PATCH handler `routes/pdks.ts` L387-417 + GET `/api/branches/:id/attendance-audit` + UI accordion `pages/pdks.tsx` `AttendanceAuditList` |
 | **`late-arrival-tracker.ts` dinamik okuma** | ✅ #326 | `resolveLateThreshold` → `payrollDeductionConfig` cascade |
 | **Bundle 7 e2e test** | ✅ #327 | `tests/e2e/branch-attendance-settings.spec.ts` (S1 müdür PATCH tolerans, S2 18dk geç+tolerans=20→penalty yok, S3 overtime POST→approve) — default playwright config, gate yok |
 
@@ -37,7 +37,7 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
    - `autoCloseTime` (TR saati, varsayılan 22:00)
 4. **Kaydet** → `PATCH /api/branches/:id/kiosk-settings`
 
-**Uyarı:** Audit tablosu olmadığı için kim/ne zaman değiştirdi izlenemez. Değişiklik öncesi mevcut değerleri ekran görüntüsüyle saklayın.
+**Audit (Task #328):** Her field değişikliği `attendance_settings_audit` tablosuna kayıt edilir (kim/ne zaman/eski-yeni). HQ Admin Kiosk Ayarları kartında "Değişiklik Geçmişi (son 90 gün)" accordion'undan görünür. Endpoint: `GET /api/branches/:id/attendance-audit?limit=50&days=90` (admin/ceo/cgo/muhasebe_ik).
 
 ## 4. Kullanım — Şube Müdürü (Fazla Mesai Onayı)
 
@@ -51,9 +51,8 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 
 ## 5. Bilinen Açıklar (Phase 2 / follow-up)
 
-### A. Audit tablosu yok
-**Sorun:** Şube ayar değişikliği denetlenebilir değil; mevcut kayıt yok.
-**Fix önerisi:** `attendance_settings_audit` tablosu — `(branch_id, changed_by_id, field_name, old_value, new_value, changed_at)`. Migration + trigger (veya app-level audit middleware). Plan mode zorunlu.
+### ~~A. Audit tablosu yok~~ ✅ #328
+**Çözüm:** `attendance_settings_audit` (`branch_id, changed_by_id, field_name, old_value, new_value, changed_at`) + index `(branch_id, changed_at)`. PATCH handler değişen her field için 1 row insert (tek transaction). GET endpoint son 90 gün, RBAC: admin/ceo/cgo/muhasebe_ik.
 
 ### ~~B. Otomatik test boşluğu~~ ✅ #327
 **Çözüm:** `tests/e2e/branch-attendance-settings.spec.ts` (3 senaryo, HTTP-level: müdür PATCH tolerans, kiosk shift-start late+tolerans, overtime POST→approve).

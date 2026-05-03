@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches, shiftAttendance, shifts, branchShiftSessions } from '@shared/schema';
+import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches, shiftAttendance, shifts, branchShiftSessions, attendanceSettingsAudit } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc, isNull } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { getMonthClassification } from '../lib/pdks-engine';
@@ -381,15 +381,94 @@ router.patch('/api/pdks/kiosk-settings/:branchId', isAuthenticated, async (req: 
     if (defaultBreakMinutes !== undefined) updateData.defaultBreakMinutes = Number(defaultBreakMinutes);
     if (autoCloseTime !== undefined) updateData.autoCloseTime = String(autoCloseTime);
 
-    await db.update(branchKioskSettings)
-      .set(updateData)
-      .where(eq(branchKioskSettings.branchId, branchId));
+    // Task #328 — Audit: değişen her field için 1 row insert
+    const [existing] = await db.select().from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId));
+    const auditRows: { branchId: number; changedById: string; fieldName: string; oldValue: string | null; newValue: string | null }[] = [];
+    if (existing) {
+      const fieldsToAudit: Array<keyof SettingsUpdate> = ['defaultShiftStartTime', 'defaultShiftEndTime', 'lateToleranceMinutes', 'earlyLeaveToleranceMinutes', 'defaultBreakMinutes', 'autoCloseTime'];
+      for (const f of fieldsToAudit) {
+        if (updateData[f] === undefined) continue;
+        const oldV = (existing as any)[f];
+        const newV = updateData[f];
+        const oldStr = oldV === null || oldV === undefined ? null : String(oldV);
+        const newStr = newV === null || newV === undefined ? null : String(newV);
+        if (oldStr !== newStr) {
+          auditRows.push({
+            branchId,
+            changedById: user.id,
+            fieldName: f as string,
+            oldValue: oldStr,
+            newValue: newStr,
+          });
+        }
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(branchKioskSettings)
+        .set(updateData)
+        .where(eq(branchKioskSettings.branchId, branchId));
+      if (auditRows.length > 0) {
+        await tx.insert(attendanceSettingsAudit).values(auditRows);
+      }
+    });
 
     const [updated] = await db.select().from(branchKioskSettings).where(eq(branchKioskSettings.branchId, branchId));
     res.json(updated);
   } catch (error) {
     console.error("Kiosk settings update error:", error);
     res.status(500).json({ error: 'Ayarlar güncellenemedi' });
+  }
+});
+
+// Task #328 — Şube ayar değişiklik geçmişi (audit log)
+router.get('/api/branches/:id/attendance-audit', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    const allowedRoles = ['admin', 'ceo', 'cgo', 'muhasebe_ik'];
+    if (!allowedRoles.includes(user.role)) {
+      return res.status(403).json({ error: 'Yetkisiz' });
+    }
+
+    const branchId = Number(req.params.id);
+    if (!branchId || Number.isNaN(branchId)) {
+      return res.status(400).json({ error: 'Geçersiz branchId' });
+    }
+
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const days = Math.min(Number(req.query.days) || 90, 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const rows = await db.select({
+      id: attendanceSettingsAudit.id,
+      fieldName: attendanceSettingsAudit.fieldName,
+      oldValue: attendanceSettingsAudit.oldValue,
+      newValue: attendanceSettingsAudit.newValue,
+      changedAt: attendanceSettingsAudit.changedAt,
+      changedById: attendanceSettingsAudit.changedById,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    })
+      .from(attendanceSettingsAudit)
+      .leftJoin(users, eq(attendanceSettingsAudit.changedById, users.id))
+      .where(and(
+        eq(attendanceSettingsAudit.branchId, branchId),
+        gte(attendanceSettingsAudit.changedAt, since),
+      ))
+      .orderBy(desc(attendanceSettingsAudit.changedAt))
+      .limit(limit);
+
+    res.json(rows.map(r => ({
+      id: r.id,
+      fieldName: r.fieldName,
+      oldValue: r.oldValue,
+      newValue: r.newValue,
+      changedAt: r.changedAt,
+      changedBy: { id: r.changedById, firstName: r.firstName, lastName: r.lastName },
+    })));
+  } catch (error) {
+    console.error('Attendance audit get error:', error);
+    res.status(500).json({ error: 'Geçmiş getirilemedi' });
   }
 });
 
