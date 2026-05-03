@@ -1255,3 +1255,60 @@ rg -B 2 -A 30 "router\.(post|patch|put|delete)\(" server/routes/factory-recipes.
   | rg -B 30 "RECIPE_EDIT_ROLES" \
   | rg -L "editLocked"
 ```
+
+
+---
+
+## §31 — Express Route Ordering — `/:id` Wildcard Match Hatası (4 May 2026, Branch Recipes Dersi)
+
+### Problem
+Express'te `/api/branch-recipes/:id` gibi wildcard route'lar, **kayıt sırasına göre** match edilir. Eğer `:id` route'u `/search`, `/categories`, `/learning-progress` gibi sabit path'lerden **ÖNCE** tanımlanırsa, sabit path string'leri (`"search"`, `"categories"`) `:id` parametresine yakalanır.
+
+### Sonuç
+- `Number("search")` → `NaN`
+- DB sorgusu: `WHERE id = NaN` → PostgreSQL `invalid input syntax for type integer: NaN` (HTTP 500)
+- Endpoint hiçbir zaman kendi handler'ına ulaşamaz
+
+### Tespit
+```bash
+# Route sırası kontrolü (sabit path'ler /:id'den önce mi?)
+grep -n "router\.\(get\|post\|patch\|put\|delete\)" server/routes/branch-recipes.ts
+# /:id route'unun line number'ı /search, /categories'den BÜYÜK olmalı
+```
+
+### Çözüm (2 katmanlı savunma)
+
+**1. Doğru sıra (zorunlu):**
+```typescript
+// ÖNCE sabit path'ler
+router.get("/api/branch-recipes/search", ...);
+router.get("/api/branch-recipes/categories", ...);
+router.get("/api/branch-recipes/learning-progress", ...);
+
+// SONRA wildcard
+router.get("/api/branch-recipes/:id", ...);
+```
+
+**2. Defansif NaN guard (ikincil savunma):**
+```typescript
+router.get("/api/branch-recipes/:id", isAuthenticated, async (req, res) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "Geçersiz ID" });
+  }
+  // ... gerçek mantık
+});
+```
+
+### Genel Kural
+**Wildcard route'lar her zaman dosyanın sonunda.** Yeni endpoint eklerken:
+- Sabit path'ler dosya başında / üstte
+- `/:param` wildcard'lar sona
+
+### Test
+```bash
+curl /api/branch-recipes/search?q=test  # 200 dönmeli
+curl /api/branch-recipes/categories     # 200 dönmeli
+curl /api/branch-recipes/1              # 200 dönmeli
+curl /api/branch-recipes/abc            # 400 (NaN guard)
+```

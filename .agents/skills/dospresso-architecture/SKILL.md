@@ -5,17 +5,17 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
-## Platform Metrics (2 Mayıs 2026 — Sprint 2 başı, çok perspektifli audit sonrası)
-- **Database tablosu (kodda):** **455 pgTable** tanımı (Apr-26 drift kapatıldı; 13 yeni tablo + 4 UNIQUE + 83 index + 47 FK eklendi, Task #255)
-- **Database tablosu (DB'de gerçek):** ~457 (drift = 0, baseline `migrations/0000_baseline.sql`)
-- **Backend endpoint:** **1,768** (118 route dosyası × ortalama 15 endpoint)
-- **Backend route dosyası:** **118**
-- **Frontend sayfa:** **326** (208 kök seviye + 12 klasörde 118 sayfa: admin/37, fabrika/17, yonetim/11, iletisim-merkezi/11, akademi-hq/10, satinalma/9, crm/8, akademi-v3/5, sube/5, hq/2, kalite/1)
-- **Frontend route (App.tsx):** **266**
+## Platform Metrics (4 Mayıs 2026 — Branch Recipe System eklendi)
+- **Database tablosu (kodda):** **465 pgTable** tanımı (4 May: +9 branch_* + +1 schema-24, Sprint 3'te 13 tablo + 4 UNIQUE + 83 index + 47 FK eklendi, Task #255)
+- **Database tablosu (DB'de gerçek):** ~466 (drift = 0, baseline `migrations/0000_baseline.sql`)
+- **Backend endpoint:** **~1,854** (119 route dosyası × ortalama 15 endpoint)
+- **Backend route dosyası:** **119** (4 May: +1 `branch-recipes.ts`)
+- **Frontend sayfa:** **308** (kök + alt klasörler dahil; 4 May: +3 sayfa `branch-recipes/{index,detail,admin}.tsx`)
+- **Frontend route (App.tsx):** **265**
 - **Aktif kullanıcı:** ~159 (372 toplam — Replit DB doğrulaması)
 - **Rol sayısı:** **31** (sistem 1 + executive 2 + HQ departman 8 + HQ legacy 5 + branch hierarchy 7 + factory floor 5 + factory recipe 2 + kiosk 1). `ROLE_MODULE_DEFAULTS` tablosunda 16 rol eksik (Sprint 2 B14 ile tamamlanacak).
 - **Şube:** 22 (20 aktif + HQ + Fabrika)
-- **Schema dosyası:** **23** (`shared/schema/schema-01.ts` → `schema-23.ts`)
+- **Schema dosyası:** **24** (`shared/schema/schema-01.ts` → `schema-24-branch-recipes.ts`)
 - **App.tsx satır:** 944
 - **nav-registry.ts satır:** 871
 - **Mr. Dobody skill:** 17
@@ -447,6 +447,27 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `webinars` — Webinar definitions
 - `webinar_registrations` — Webinar attendance records
 
+### Branch Recipe System (4 May 2026 — schema-24, factory-isolated)
+**KRİTİK:** Bu 9 tablo factory_* tablolarına SIFIR FK referans verir (DECISIONS#30 mutlak izolasyon).
+- `branch_products` — Şube ürünleri (Latte, Bombty Latte, Meyveli Mojito şablon...) — UNIQUE(name)
+- `branch_recipes` — Boy bazlı reçete (massivo/long_diva/tek_boy) + `isTemplate` + `templateType`
+- `branch_recipe_ingredients` — Malzemeler (esnek format: pump, ölçek, ml) + `isVariableAroma` + `aromaSlot`
+- `branch_recipe_steps` — Adım adım hazırlama + `isCritical` flag
+- `branch_recipe_quizzes` — Otomatik quiz (3 zorluk: easy/medium/hard)
+- `branch_onboarding_steps` — Yeni başlayan eğitim adımları (rol bazlı)
+- `branch_recipe_learning_progress` — Kullanıcı öğrenme takibi
+- `branch_aroma_options` — 32 aroma havuzu (Mango, Şeftali, Twix, Türk Kahvesi...) - 5 form_type
+- `branch_recipe_aroma_compatibility` — Şablon × Aroma uyumluluğu (~125 kayıt)
+
+**Template Pattern:** 15 template (Mojito, Yogurt, Matcha, Twix/Mars/KitKat, Freddo...) × meyve/aroma seçimi.
+DRY prensibi: 1 şablon + N aroma uyumluluğu = N kayıt yerine 1 + N.
+
+**Yetki Matrisi (server/routes/branch-recipes.ts):**
+- View (10+ rol): mudur, supervisor, sup_buddy, barista, bar_buddy, stajyer, admin, ceo, cgo, coach, trainer, destek, teknik
+- Edit (5 rol): admin, ceo, cgo, coach, trainer
+
+**Görsel Sistemi:** 3 boyut otomatik (thumbnail 200×200, card 600×400, hero 1200×800) — Sharp + Object Storage, EXIF auto-fix, KVKK uyumu.
+
 ## New Route Files (Recent Sprints)
 - `server/routes/crm-iletisim.ts` — İletişim Merkezi (tickets, HQ tasks, broadcasts, dashboard, SLA)
 - `server/routes/delegation-routes.ts` — Module delegation CRUD
@@ -460,6 +481,7 @@ System: Admin Panel, Content Studio, Projects, Security/Backups
 - `server/routes/dobody-flow.ts` — Guided workflow mode for daily tasks
 - `server/routes/coach-summary.ts` — Coach role dashboard summaries
 - `server/routes/hq-summary.ts` — HQ executive dashboard summaries
+- `server/routes/branch-recipes.ts` — Şube reçete sistemi (4 May 2026, ~1050 satır, 17 endpoint: 9 view + 8 edit)
 
 ## Database Naming Conventions
 - Table names: snake_case (factory_products, branch_inventory)
@@ -614,3 +636,112 @@ Sprint E (rol konsolidasyon / ölü kod temizliği) veya başka bir sprint'te
 - ❌ Gerçek ölü modül = dokümante edilmemiş, karar alınmamış → sil
 
 Referans doküman: `docs/SISTEM-ANLAYIS-RAPORU-18-NISAN-2026.md` Bölüm 1.3 + 6.3
+
+---
+
+## 🍹 Branch Recipe System (4 May 2026 — yeni eklendi)
+
+**Aslan'ın MUTLAK kuralı (DECISIONS#30):**
+Şube reçete sistemi fabrika reçete sisteminden TAMAMEN BAĞIMSIZDIR.
+Hiçbir `branch_*` tablo `factory_*` tablolarına FK referans VERMEZ.
+
+### 9 Tablo (`shared/schema/schema-24-branch-recipes.ts`)
+
+| Tablo | Açıklama | Önemli Alanlar |
+|---|---|---|
+| `branch_products` | Şube ürünleri (Latte, Mocha...) | name (UNIQUE), category, massivoPrice, longDivaPrice, imageUrl |
+| `branch_recipes` | Boy bazlı reçeteler | size (massivo/long_diva/tek_boy), isTemplate, templateType |
+| `branch_recipe_ingredients` | Malzemeler | quantityText, isVariableAroma, aromaSlot |
+| `branch_recipe_steps` | Hazırlama adımları | instruction, isCritical, estimatedSec |
+| `branch_recipe_quizzes` | Quiz soruları | question, options, correctAnswer, difficulty |
+| `branch_onboarding_steps` | Eğitim adımları (rol bazlı) | targetRole, recipeIds, estimatedMinutes |
+| `branch_recipe_learning_progress` | Öğrenme takibi | userId, viewCount, quizCorrect, masteredAt |
+| `branch_aroma_options` | 32 aroma havuzu | name (UNIQUE), formType (syrup/powder/fresh/physical_item/topping) |
+| `branch_recipe_aroma_compatibility` | Şablon × Aroma | overridePumps, slotName, displayNameOverride |
+
+### Template Pattern (DRY prensibi)
+
+**15 şablon × 4 aroma slot türü:**
+- `primary_fruit` — Mojito, Ice Tea, Yogurt tek aroma için
+- `secondary_fruit` — Jimmy Jambo (Şeftali+Amber), Vanilemon (Vanilya+Lime)
+- `chocolate_bar_type` — Twix/Mars/KitKat (physical_item slot)
+- `cream_base_aroma` — Freddo Espresso/Cappuccino
+
+**Örnek:** "Meyveli Mojito" 1 şablon = 5 ürün (Mango/Şeftali/Pinkberry/Blueberry/Lime).
+Pazarlama isimleri `displayNameOverride` ile (Tango Mango, Moulin Rouge, Captain Jack...).
+
+### 17 API Endpoint (`server/routes/branch-recipes.ts`)
+
+**Read (10 view rolü):** mudur, supervisor, sup_buddy, barista, bar_buddy, stajyer, admin, ceo, cgo, coach, trainer, destek, teknik
+
+**Edit (5 HQ rolü):** admin, ceo, **cgo**, coach, trainer
+
+```
+GET    /api/branch-products              → Filtreli liste
+GET    /api/branch-products/:id          → Ürün + reçeteler
+GET    /api/branch-recipes/:id           → Detay
+GET    /api/branch-recipes/search?q=     → Akıllı arama
+GET    /api/branch-recipes/categories    → Özet
+GET    /api/branch-recipes/:id/quizzes   → Quiz
+POST   /api/branch-recipes/quizzes/:id/attempt
+GET    /api/branch-onboarding/:role      → Eğitim adımları
+GET    /api/branch-recipes/learning-progress
+
+POST   /api/branch-products              → Yeni ürün (HQ)
+PATCH  /api/branch-products/:id          → Güncelle (HQ)
+DELETE /api/branch-products/:id          → Soft delete (HQ)
+POST   /api/branch-products/:id/image    → Görsel upload (3 boyut)
+GET    /api/branch-recipes/files/:path   → Object Storage'tan oku
+PATCH  /api/branch-recipes/:id           → Reçete güncelle (HQ)
+PUT    /api/branch-recipes/:id/ingredients → Toplu malzeme (transaction)
+PUT    /api/branch-recipes/:id/steps     → Toplu adım (transaction)
+POST   /api/branch-products/:id/recipes  → Yeni reçete (HQ)
+```
+
+### Görsel Sistemi
+
+**3 boyut otomatik transform (Sharp):**
+- Thumbnail 200×200 — liste görünümü (WebP %80)
+- **Card 600×400 — mobil kart (PRIMARY, varsayılan)** (WebP %85)
+- Hero 1200×800 — detay sayfası (WebP %90)
+
+**Limitler:**
+- Max 10 MB
+- Mime whitelist: JPEG, PNG, WebP
+- EXIF auto-fix (rotate)
+- KVKK uyumu: alpha kanal kaldır + metadata sıfırla
+- Object Storage path: `branch-recipes/products/{id}/{size}-{ts}.webp`
+- Cache: 24 saat (`Cache-Control: public, max-age=86400`)
+
+### 3 UI Sayfa (`client/src/pages/branch-recipes/`)
+
+```
+index.tsx   (Liste)  — Mobil-first, kategori grup, arama, ~280 satır
+detail.tsx  (Detay)  — Boy seçimi, malzeme/adım, quiz buton, ~390 satır
+admin.tsx   (Admin)  — HQ CRUD, görsel upload, ~580 satır
+```
+
+**Routes (App.tsx):**
+```
+/branch-recipes/admin       → Admin paneli (HQ)
+/branch-recipes/:id         → Detay
+/branch-recipes             → Liste
+/receteler, /recipes        → Redirect
+```
+
+### Şube ↔ Fabrika İzolasyon Kontrolü
+
+```sql
+-- Bu sorgu 0 satır dönmeli (asla fabrika FK olamaz)
+SELECT pg_get_constraintdef(c.oid)
+FROM pg_constraint c
+JOIN pg_class t ON c.conrelid = t.oid
+WHERE t.relname LIKE 'branch_%'
+  AND pg_get_constraintdef(c.oid) ILIKE '%factory_%';
+```
+
+### Migration Dosyaları
+
+- `migrations/2026-05-03-branch-recipe-system.sql` — 9 tablo + 21 aroma seed
+- `migrations/2026-05-04-branch-recipe-templates-seed.sql` — 11 yeni aroma + 15 template + ~80 uyumluluğu
+- `migrations/2026-05-04-branch-recipe-dedup.sql` — UNIQUE constraint + duplicate temizlik
