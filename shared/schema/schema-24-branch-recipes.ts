@@ -70,6 +70,8 @@ export const branchProducts = pgTable("branch_products", {
   index("bp_category_idx").on(table.category),
   index("bp_active_idx").on(table.isActive),
   index("bp_short_code_idx").on(table.shortCode),
+  // 4 May 2026: name unique — duplicate seed önleme
+  unique("bp_name_unique").on(table.name),
 ]);
 
 export const insertBranchProductSchema = createInsertSchema(branchProducts).omit({
