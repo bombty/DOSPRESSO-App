@@ -115,31 +115,46 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 
 > **Not:** N1-N7 (`/api/iletisim/*`) tüm CRM-İLETİŞİM modülünün eksik server impl'i — bu 7 endpoint birlikte tek bir alt-task olarak ele alınmalı. N8-N9 ayrı admin/academy task'ları.
 
-### 3.0.5 RECONCILIATION (Audit 118 vs Bizim 88) — TEK CANONICAL SAYI: **88**
+### 3.0.5 RECONCILIATION (Audit 118 vs Bizim 88+5) — TEK CANONICAL SAYI: **93**
+
+**W0 (Task #288) update — 3 May 2026:** Audit'in commitlenmemiş extraction script'i `scripts/audit/extract-broken-apis.mjs` adıyla repo'ya committed, READ-ONLY reconstruct edildi. Bağımsız extraction sonucu **60 distinct method+path broken** (audit'in 118 sayısı path×method×non-collapsed-:param expansion'ından kaynaklanıyor; bizim normalize edilmiş sayımız ~yarısı). Truncate band (sıra 51-60) çoğunlukla mevcut wave kapsamında zaten vardı.
 
 | Kategori | Sayı | Açıklama |
 |---|---|---|
 | Path-bazlı distinct broken endpoint | 70 | Bölüm 3.1-3.12 (path-bazlı görünüm) |
 | Path × FE method ham expansion | 71 | `broken-expanded.tsv` (1 path 2 method, dedup edilince 70) |
 | Method-mismatch keşfi | 9 | Bölüm 3.0.1 (audit'te yoktu) |
-| Audit-recovered yeni broken | 9 | Bölüm 3.0.4 (N1-N9) |
-| **TOPLAM hi-confidence (canonical)** | **88** | 70 path + 9 MM + 9 N (wave totals ile birebir) |
+| Audit-recovered yeni broken (N1-N9) | 9 | Bölüm 3.0.4 |
+| **W0 reconstruction yeni eklenen (truncate band 51-60)** | **5** | Bölüm 3.0.7 (W7 NS1-NS5) |
+| **TOPLAM hi-confidence (canonical)** | **93** | 70 path + 9 MM + 9 N + 5 NS |
 | Audit FP düzeltmesi | -4 | Bölüm 3.0.3 |
 | **Audit'in düzeltilmiş hedef sayısı** | **≤114** | (118 - 4 FP) |
-| **Açıklanamayan kalan (needs-investigation)** | **≤25** | Bkz. 3.0.6 + W0 skeleton |
+| **W0 sonrası needs-investigation kalan** | **≤21** | (≤25 önceki - 5 W0 kapanan) |
 
-### 3.0.6 NEEDS-INVESTIGATION (≤25 kalan)
+### 3.0.6 NEEDS-INVESTIGATION (W0 sonrası ≤21 kalan)
 
-Audit'in 118'inden 50 görünür + 4 FP teyit (118-50=68 truncate, 4 FP). Görünür 50'den sayım:
-- 50 satırın 41'i bizim 80+9 listede zaten var (path veya MM olarak).
-- 4 FP düşüldü.
-- 5 kalem audit'te ortak listede ama bizim path-listemizde "var" görünüyordu (örn `/api/checklist-completions` POST FE `start/today` sub-path'leri kullanıyor — düşük öncelik a2; `/api/iletisim/*` zaten N1-N9'a girdi).
+W0 reconstruction (`scripts/audit/extract-broken-apis.mjs`) audit'in 118 sayısının kompozisyonunu açıkladı:
+- **Kanıtlı:** Audit path normalize sırasında `:param` substitute YAPMADI (her FE template literal ayrı satır oldu — bizim script bu pattern'leri tek `:param`'a indirgiyor).
+- **Hipotez (kanıt yok, audit script bulunmadığı için doğrulanamaz):** Audit, useMutation içindeki inline mutationFn pattern'lerini de saymış olabilir.
+- Bizim 60 distinct method+path × ~2 method/path expansion ≈ ~118 — sayısal tutarlı.
 
-**Truncate edilen 68 satır** için:
-- Audit script repo'da yok (commit eksik) → birebir reproduce imkansız.
-- Yaklaşık ~25 muhtemel **needs-investigation** kalem (yüksek olasılıkla yine `/api/iletisim/*` alt path'leri, mega-modül route'ları, dashboard widget alt endpoint'leri).
-- **Aksiyon:** Önerilen Dalga 0 (script reconstruction) — committed skeleton: `docs/audit/waves/W0-audit-script-reconstruction.md`. Audit'in extraction script'ini bulma/yeniden yazma; bulunan her ek satır wave dosyalarına eklenecek.
-- Bu 88 satır kapanış kalitesinde plan için yeterlidir; eksik ≤25 (varsa) W0'da kapatılır.
+**Sonuç:** ≤21 kalem (büyük olasılıkla aynı path'in farklı `${var}` template versiyonları) low-priority needs-investigation. Pilot için **kapanış kalitesinde**.
+
+### 3.0.7 W0 TRUNCATE BAND (sıra 51-60) — Yeni 5 kalem (NS1-NS5)
+
+Audit ilk 50'den sonra (W0 reproduce sıra 51-60) bizim 88 listemize **eklenen 5 yeni kalem**:
+
+| # | Method+Path | Use | Server | FE dosya | Modül | Wave | Karar |
+|---|---|---|---|---|---|---|---|
+| NS1 | `GET /api/inventory/by-supplier` | 1 | `/:supplierId` | `satinalma/mal-kabul.tsx:217` | SATINALMA | W7 | a1 — :param patch |
+| NS2 | `PATCH /api/new-shop-projects/:param/phases/:param` | 1 | sub-path mevcut | `yeni-sube-detay.tsx:880` | OPS | W7 | a2 — sub-path düzelt |
+| NS3 | `POST /api/new-shop-projects/:param/procurement/items/:param` | 1 | GET/PATCH var | `yeni-sube-detay.tsx:941` | OPS | W7 | MM — method düzelt veya server alias |
+| NS4 | `GET /api/satinalma/dashboard${qs}` | 1 | YOK | `satinalma-dashboard.tsx:291` | SATINALMA | W7 | b — server impl |
+| NS5 | `GET /api/factory/ingredient-nutrition/approved${qs}` | 1 | base path var | `kalite/besin-onay.tsx:749` | FACTORY | W1 | a2 — sub-path eksik |
+
+**Zaten W1-W7'de olanlar (W0 reproduce 51-60):** sıra 54 (`pdks-payroll` = H4), 55 (`public/staff-rating/validate` = M7), 56 (`public/urun` = M8), 57 (`qr/equipment` = M9), 58 (`qr/inventory` = M10), 60 (`training/assignments` = MM8). 
+
+Tam W0 raporu: `docs/audit/broken-api-full-2026-05.md`.
 
 ---
 

@@ -32,6 +32,11 @@
 |---|---|---|---|
 | MM1 | `GET /api/mrp/leftovers` | POST | **FE method düzelt** — POST body ile gönderilmeli (server `:date` body'de bekliyor olabilir; impl kontrolü gerekli) |
 
+### W0 Eklemesi (1 yeni — NS5)
+| # | Method+Path | Server | Karar |
+|---|---|---|---|
+| NS5 | `GET /api/factory/ingredient-nutrition/approved?qs` | base path var, `/approved` sub-path eksik | **a2** — sub-path ekle veya FE base path'e geç (`kalite/besin-onay.tsx:749`) |
+
 ## Acceptance Criteria
 
 1. 13 path-bazlı endpoint için FE'de doğru `:param` veya sub-path ile çağrı yapılır (TanStack queryKey + apiRequest URL).
