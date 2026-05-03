@@ -64,15 +64,28 @@ export class InventoryMutationError extends Error {
   }
 }
 
+// Stable namespace for advisory locks on the `inventory` table.
+const INVENTORY_ADVISORY_LOCK_NAMESPACE = 0x494e5631; // "INV1" magic number
+
 export async function applyAtomicInventoryMovement(opts: AtomicMovementOpts) {
-  // Retry loop: handles transient serialization_failure (40001) and
-  // deadlock_detected (40P01) under high concurrency. Domain errors
-  // (InventoryMutationError) bubble immediately without retry.
+  // Concurrency contract:
+  //   1. SERIALIZABLE transaction isolation (defense-in-depth vs anomaly).
+  //   2. pg_advisory_xact_lock(namespace, inventoryId) — serializes ALL
+  //      writers on the same inventory row across the whole cluster, even
+  //      across different code paths that forget FOR UPDATE.
+  //   3. SELECT ... FOR UPDATE row lock (belt-and-braces).
+  //   4. Retry loop on SQLSTATE 40001 / 40P01 (max 3, exp backoff 25/50/75ms).
+  // Domain errors (InventoryMutationError) bubble immediately without retry.
   const MAX_ATTEMPTS = 3;
   let lastErr: any;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       return await db.transaction(async (tx) => {
+        await tx.execute(sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`);
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(${INVENTORY_ADVISORY_LOCK_NAMESPACE}::int, ${opts.inventoryId}::int)`
+        );
+
         const [current] = await tx
           .select()
           .from(inventory)

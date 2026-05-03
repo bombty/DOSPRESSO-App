@@ -760,7 +760,7 @@ router.post('/api/admin/pdks/backfill-attendance', isAuthenticated, async (req: 
               gte(shifts.shiftDate, sql`(${sessionDateTR}::date - INTERVAL '3 days')::date`),
               lte(shifts.shiftDate, sql`(${sessionDateTR}::date + INTERVAL '3 days')::date`),
             ))
-            .orderBy(sql`ABS(EXTRACT(EPOCH FROM (${shifts.shiftDate}::date - ${sessionDateTR}::date)))`)
+            .orderBy(sql`ABS((${shifts.shiftDate}::date - ${sessionDateTR}::date))`)
             .limit(1);
 
           if (nearby.length > 0) {
