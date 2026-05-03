@@ -1,9 +1,13 @@
 ---
 name: dospresso-roles-and-people
-description: DOSPRESSO pilot personnel roster, role-to-user mapping, pilot branch supervisors, and known data hygiene issues. Use BEFORE any task that mentions specific people (Yavuz, Ümit, Sema, etc.), pilot branches (Işıklar, Lara), or role-specific testing (coach, recete_gm, sef yetki testi). Source of truth: DB users + branches tables (last sync 25 Apr 2026).
+description: DOSPRESSO pilot personnel roster, role-to-user mapping, pilot branch supervisors, and known data hygiene issues. Use BEFORE any task that mentions specific people (Yavuz, Ümit, Sema, etc.), pilot branches (Işıklar, Lara), or role-specific testing (coach, recete_gm, sef yetki testi). Source of truth: DB users + branches tables (last sync 3 May 2026).
 ---
 
-# DOSPRESSO Roller ve Personel (Pilot 5 May 2026)
+# DOSPRESSO Roller ve Personel (Pilot Day-1: 12 May 2026 Pazartesi 09:00)
+
+> **Pilot tarihi geçmişi:** 28 Nis → 5 May → 4 May → 5 May → **12 May 2026** (DECISIONS#34, 3 May 2026)
+> **PIN coverage:** %100 (branch 31→127, factory 13→14) — Task #324 (3 May 2026)
+> **Sayfa/endpoint sayısı:** 305 sayfa / 1.985 endpoint / 455 tablo (3 May 2026)
 
 ## HQ (Merkez) Ekibi — 12 aktif kişi
 
@@ -137,6 +141,50 @@ FROM users u JOIN branches b ON b.id=u.branch_id
 WHERE u.role IN ('mudur','supervisor','supervisor_buddy')
   AND u.deleted_at IS NULL AND b.id IN (5, 8);
 ```
+
+## Sprint 2 → Sprint 3 Geçiş Bilgileri (3 May 2026)
+
+### F36 — PIN Coverage %100 (Task #324)
+- `branch_staff_pins`: 31 → **127 aktif** (+96)
+- `factory_staff_pins`: 13 → **14 aktif** (+1)
+- Migration: `migrations/2026-05-03-pin-seed-pilot.sql`
+- Script: `scripts/pilot/27-pin-seed-missing.ts` (--dry-run/--apply)
+- Bcrypt rounds=10, BANNED_PINS check, hash collision tarama
+- Pasif/silinmiş kullanıcı PIN'leri otomatik deaktive
+- Snapshot: `branch_staff_pins_bk_20260503`, `factory_staff_pins_bk_20260503`
+- Audit: `scripts/audit/pin-coverage-2026-05.sql`
+
+### Bundle 7 — Şube Puantaj + Fazla Mesai Onay Workflow (#311 + #327)
+
+**Şube ayarları** (`branch_kiosk_settings` schema-09):
+- Müdür `lateToleranceMinutes` (geç gelme tolerans, default 15dk)
+- Default seed: `routes/branches.ts` L2586-2592 upsert ile otomatik
+- F15 (#326): `late-arrival-tracker.ts` artık `payrollDeductionConfig` cascade'inden okur
+
+**Overtime workflow** (`overtime_requests` schema-05 L142):
+- Status: `pending | approved | rejected`
+- Endpoint'ler: `routes/misc.ts` L1182-1327
+  - `GET /api/overtime-requests` — liste
+  - `POST /api/overtime-requests` — worker yeni talep
+  - `PATCH /api/overtime-requests/:id/approve` — müdür onay
+  - `PATCH /api/overtime-requests/:id/reject` — müdür red
+- UI: `pages/pdks.tsx` `KioskToleranceSettings` + `pages/overtime-requests.tsx`
+- Audit log: `attendance_settings_audit` tablosu (Task #328 ✅, 3 May)
+- E2E test: `tests/e2e/branch-attendance-settings.spec.ts` (3 senaryo PASS)
+
+### Mimari Borç (Task #281 — Sprint 4'e ertelendi)
+- `ROLE_MODULE_DEFAULTS` (`shared/modules-registry.ts:368`) **DEAD CODE** (0 import)
+- Gerçek mekanizma: `role_module_permissions` DB tablosu (3127 satır, **31 rolün hepsi DOLU**)
+- Erişim API'si: `GET /api/me/permissions`
+- 9 paralel rol/modül erişim mekanizması var → **B21 Sprint 4'te konsolidasyon (20-30h)**
+- `manifest-auth` middleware **fail-open** → **B22 Sprint 4'te düzeltilecek**
+
+### F33 Route Guard (8/13 + 5 zaten guardlı = 13/13 ✅)
+- Bundle 2 (#306): `/iletisim`, `/nfc-giris`, `/qr-tara`, `/bilgi-bankasi`, `/bildirimler`
+- #325: `/duyuru/:id`, `/akademi-ana`, `/ogrenme-yolum`
+- Zaten guard'lı (audit yanlış tespit etmişti): `/personel/:id`, `/egitim/:id`, `/personel-onboarding-akisi`, `/icerik-studyosu`, `/duyurular`
+- CI regression: `scripts/audit/route-guard-coverage.ts` + `.github/workflows/route-guard-coverage.yml`
+- Whitelist: `scripts/audit/public-routes-whitelist.json` (262 route, 32 bare, 0 violation baseline)
 
 ## İlgili Skill'ler
 
