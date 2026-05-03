@@ -1,42 +1,49 @@
-# Wave W3 — HR (Task #283.3) — **HIGH PRIORITY**
+# Wave W3 — HR (Task #291)
 
-**Status:** PENDING (öncelikli)
-**Mode:** Build (+ Plan moduna geçiş MM5 maaş method karar için)
-**Tahmini süre:** ~5 saat (MM2/MM5/MM6 dahil)
-**Risk:** YÜKSEK (PDKS + maaş)
+**Status:** VERIFIED-NO-OP (3 May 2026, runtime investigation)
+**Bağımlılık:** Task #289 (W1) + #290 (W2) MERGED, ikisi de VERIFIED-NO-OP.
+**Mode:** Build (read-only investigation, no FE patch).
+**Gerçekleşen süre:** ~1 saat (planlanan ~5 saat)
+**Risk:** YOK (kod değişikliği yok)
 
-## Kapsam (6 path-bazlı + 3 method-mismatch = 9)
+## Sonuç (TL;DR)
 
-### Path-bazlı 6
-| # | Method+Path | Server | FE dosya | Karar |
+**9/9 madde FALSE POSITIVE.** PDKS + maaş kritik etiketi düştü. Aynı kök sebep — audit script TanStack queryKey semantiklerini anlamıyor + stub-endpoints.ts'in 200 dönen stub'larını "missing" sanıyor.
+
+## Madde-Madde Doğrulama
+
+| # | Audit iddiası | Gerçek FE davranışı | Server | Verdict |
 |---|---|---|---|---|
-| H1 | `GET /api/shift-attendance` (ve POST) | `PATCH/DELETE :id`; GET base yok | `qr-scanner-modal.tsx:217,242`, `sube-detay.tsx:175`, `vardiya-checkin.tsx:32`, `attendance.tsx:103` | **a1** — sub-path veya `/api/shift-attendances/my-recent` (s ile) çağır |
-| H2 | `GET /api/personnel` | `:id/performance-summary` | `personel-duzenle.tsx:92,195`, `personel-detay.tsx:97`, `personel-profil.tsx:79,160,208` | **a1** — `:id` patch veya `/api/users` rotasına geç |
-| H3 | `GET /api/pdks/my-status` | YOK | `mobile/BaristaQuickActions.tsx:228,230` | **b** — server impl |
-| H4 | `GET /api/pdks-payroll` | `/summary` veya `:userId` | `maas.tsx:100` | **a2** — `/summary` ekle |
-| H5 | `GET /api/shift-attendance/active` | YOK | `attendance.tsx:41` | **a** — `/api/shift-attendances/my-recent` rename |
-| H6 | `GET /api/shifts/weekly-summary` | YOK | `sube-bordro-ozet.tsx:40` | **b** — server impl |
+| H1 | `GET /api/shift-attendance` broken | qr-scanner-modal:217,242 invalidateQueries (cache); sube-detay:179 custom queryFn `fetch(\`...?status=...&branchId=...&date=...\`)`; vardiya-checkin:32 default fetcher; attendance:44,59 custom queryFn `fetch("/api/shift-attendance")` | `stub-endpoints.ts:320` STUB GET (returns []); `shifts.ts:48 PATCH/:id`, `:119 DELETE/:id`, `:702 POST/check-in`, `:816 POST/check-out`, `:1262 GET /api/shift-attendances/my-recent` | ✅ NOT BROKEN (stub 200 dönüyor) |
+| H2 | `GET /api/personnel` broken | personel-duzenle:94 + personel-detay:99 + personel-profil:162 custom queryFn `fetch(\`/api/personnel/${id}\`)`; profil:210 `/performance-summary`; profil:381 `/ai-recommendations`; profil:419 `/leave-salary-summary` | `misc.ts:1084` `/api/personnel/:id`; `staff-evaluations-routes.ts:40, 609, 767` sub-paths mevcut | ✅ NOT BROKEN |
+| H3 | `GET /api/pdks/my-status` YOK | BaristaQuickActions:230 custom queryFn `fetch("/api/pdks/my-status")` | `stub-endpoints.ts:317` STUB MEVCUT (returns `{status:"off",lastEvent:null}`) | ✅ NOT BROKEN |
+| H4 | `GET /api/pdks-payroll` broken | maas.tsx:100 queryKey `['/api/pdks-payroll', userId, year, month]` custom queryFn `fetch(\`/api/pdks-payroll/${userId}?year=...&month=...\`)`; ayrıca :60 `/summary` endpoint zaten kullanılıyor | `payroll.ts:79 /summary`, `:231 /:userId`, `:208 /branches`, `:177 /my`, `:198 /positions` | ✅ NOT BROKEN |
+| H5 | `GET /api/shift-attendance/active` YOK | attendance.tsx:41 queryKey `["/api/shift-attendance/active"]` (custom queryFn fetch /api/shift-attendance kullanıyor — stub) | `stub-endpoints.ts:321` STUB MEVCUT (returns `{active:false,session:null}`) | ✅ NOT BROKEN |
+| H6 | `GET /api/shifts/weekly-summary` YOK | sube-bordro-ozet:40 default fetcher → `/api/shifts/weekly-summary` | `stub-endpoints.ts:325` STUB MEVCUT (returns `{days:[]}`) | ✅ NOT BROKEN |
+| MM2 | `GET /api/onboarding-tasks` (server: POST) | personel-onboarding:509 + personel-detay:143 custom queryFn `fetch(\`/api/onboarding-tasks/${onboardingId}\`)` | `hr.ts:2974` `GET /api/onboarding-tasks/:onboardingId`; `:2992 POST` (create); `:3013 PATCH/:id`; `:3031 POST /:id/complete`; `:3050 POST /:id/verify` | ✅ NOT BROKEN (GET sub-path mevcut, POST ayrı create endpoint) |
+| MM5 | `GET /api/salary/employee` (server: POST) | personel-duzenle:1120 + personel-profil:183 custom queryFn `fetch(\`/api/salary/employee/${id}\`)` | `hr.ts:4712 GET /:userId`; `:4745 POST` (create); `:4774 PATCH/:id` | ✅ NOT BROKEN (GET sub-path mevcut, POST ayrı create endpoint) |
+| MM6 | `GET /api/staff-evaluations` (server: POST) | personel-profil:244 queryKey `['/api/staff-evaluations', id]` default fetcher → `/api/staff-evaluations/${id}` | `staff-evaluations-routes.ts:549 GET /:employeeId`; `:259 POST` (create); `:501 GET /:employeeId/limit-status` | ✅ NOT BROKEN (GET sub-path mevcut, POST ayrı create endpoint) |
 
-### Method-mismatch 3
-| # | Method+Path | Server | Karar |
-|---|---|---|---|
-| MM2 | `GET /api/onboarding-tasks` | POST | **FE method düzelt** — onboarding task fetch GET olmalı, server'a `GET /api/onboarding-tasks?branchId=...` ekle veya FE'yi POST + body'ye çevir |
-| MM5 | `GET /api/salary/employee` | POST | **PLAN MODU** — Maaş hesabı kritik; server tasarımı incele, owner kararı al |
-| MM6 | `GET /api/staff-evaluations` | POST | **FE method düzelt** — server muhtemelen filter body bekliyor; FE GET → POST'a geç veya server GET endpoint ekle |
+## Acceptance Criteria — Re-evaluation
 
-## Acceptance
+1-2. ❌ Path patch / MM owner kararı gereksiz (hepsi FP).
+3-4. ✅ PDKS smoke test + maaş hesap testi gerekmedi (static verification yeterli; kod değişikliği yok).
+5. ✅ Mobile barista my-status zaten çalışıyor (stub 200 dönüyor).
+6. ✅ Veri lock + soft delete kuralları korunur (kod değişikliği yok).
 
-1. 6 path-bazlı endpoint patch.
-2. MM2/MM5/MM6 için her biri owner-onaylı karar (FE patch veya server impl).
-3. **PDKS smoke test** (Task #287 B4 ay sonu sim ile bağımlılık).
-4. **Maaş hesap testi** (MM5 sonrası — kritik).
-5. Mobile barista quick actions'ta my-status butonu çalışır.
-6. Veri lock + soft delete kuralları korunur.
+## Audit Script Bug Pattern
+
+Bu wave aynı zamanda yeni bir FP pattern'i ortaya çıkardı:
+- **Method-mismatch FP**: Server'da hem `GET /:id` hem `POST /` (create) varsa, audit script POST'u kayda alıp GET'i "method-mismatch" olarak işaretliyor. Halbuki ikisi de meşru endpoint, FE GET'i `/${id}` template ile kullanıyor.
+- **Stub FP**: stub-endpoints.ts'deki 200-dönen stub'lar audit'e "missing" görünüyor. Aslında bunlar geçici no-op endpoint'ler — runtime'da hiçbir hata vermiyor.
+
+Audit script v3 enhancement listesi (W1+W2+W3 birikimli):
+1. queryKey.join("/") default fetcher davranışı
+2. Custom queryFn override detection
+3. invalidateQueries cache-only skip
+4. Method-mismatch için sub-path varyantlarını tara (GET/:id varsa POST'u FP sayma)
+5. stub-endpoints.ts'i "valid endpoint" olarak işle
 
 ## Paralel-güvenlik
 
-Diğer dalgalarla paralel-güvenli.
-
-## Bağımlılık
-
-Task #287 (B4 ay sonu puantaj sim) bu wave **sonrası** koşulmalı.
+Kod değişikliği olmadığı için diğer dalgalarla conflict yok.
