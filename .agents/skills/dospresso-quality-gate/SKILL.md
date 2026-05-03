@@ -1,6 +1,6 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 35-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, F33 route guard wrap (#306/#325 CI coverage), F36 PIN seed coverage (#324), and F15 dynamic late tolerance (per-branch settings vs hardcoded). Run after every sprint build or code change.
+description: DOSPRESSO 36-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, F33 route guard wrap (#306/#325 CI coverage), F36 PIN seed coverage (#324), F15 dynamic late tolerance (per-branch settings vs hardcoded), and Five-Role Mental Review (Engineer/Operations/QA/PM/Compliance — owner-approved 3 May 2026). Run after every sprint build or code change.
 ---
 
 # DOSPRESSO Quality Gate — 35-Point Checklist
@@ -869,3 +869,115 @@ curl -s -b /tmp/admin.txt -w "\nHTTP: %{http_code}\n" \
 Pilot 5 May'a kadar tüm recipe/nutrition/factory endpoint'leri bu kontrolü geçmiş olmalı. Aksi halde Day-1'de manager/baş şef boş veriyle karşılaşır, "platform çalışmıyor" diye geri dönüş olur.
 
 > **NOT (Aslan):** Drift #2 (`trans_fat_g`) ve #3 (`history table`) sıraya alındı, pilot zamanı geldiğinde fix edilecek.
+
+---
+
+## 36. Five-Role Mental Review (3 May 2026 - Owner Onayı)
+
+**Her büyük değişiklikten ÖNCE 5 rolü zihinsel olarak çalıştır.** Çelişki çıkarsa açıkça belirt: "Engineer der ki X, Operations der ki Y".
+
+### Rol 1 — PRINCIPAL ENGINEER (Kod Kalitesi)
+20 yıl backend deneyimi, distributed systems uzmanı. Sor:
+- Bu değişiklik 6 ay sonra hâlâ doğru mu?
+- Test coverage var mı? Edge case'ler düşünüldü mü?
+- Concurrency/race condition var mı? Transaction güvenli mi?
+- Geriye uyumlu mu? Mevcut data bozulur mu?
+- Error path nedir? Sessiz fail var mı?
+
+### Rol 2 — FRANCHISE F&B OPERATIONS EXPERT (Gerçek Dünya)
+15 yıl franchise yönetimi, kahve/donut zincirleri. Sor:
+- Pazartesi sabah 9'da pilotta ne olur?
+- Yorgun barista yanlış basabilir mi?
+- Wi-Fi koparsa ne olur?
+- Hangi rolün işine yarar, hangisi gözden kaçar?
+- Müdür/supervisor/barista bunu nasıl kullanacak?
+
+### Rol 3 — SENIOR QA ENGINEER (Hata Bulma)
+3 test senaryosu zorunlu:
+- **Happy path:** Beklenen kullanım
+- **Edge case:** Sınır değerler, null, boş, çok büyük
+- **Failure:** Network kopması, timeout, validation hatası
+- Regression risk değerlendirmesi
+- Smoke test önerisi (8 May / 10 May için)
+
+### Rol 4 — PRODUCT MANAGER (Önceliklendirme)
+- Effort × Impact matrisi
+- Pilot etki seviyesi: 🔴 Yüksek / 🟡 Orta / 🟢 Düşük
+- Sprint kapsamı kararı: Şimdi mi, Sprint 4 mi?
+- Owner onayı gerekli mi?
+
+### Rol 5 — COMPLIANCE OFFICER (Yasal/Mevzuat)
+- Türkiye İş Kanunu (PDKS, mesai, AGI, asgari ücret)
+- Gıda mevzuatı (TGK etiket, alerjen, üretim)
+- Vergi (KDV %1/%10/%18, e-fatura, e-arşiv)
+- KVKK (kişisel veri, audit log, consent)
+
+### Çıktı Formatı
+
+```
+🏛️ ENGINEER: [Bulgu/onay]
+🏪 OPERATIONS: [Bulgu/onay]
+🧪 QA: [3 senaryo + regression]
+📋 PM: [Effort × Impact + Pilot seviye]
+🛡️ COMPLIANCE: [Mevzuat değerlendirme]
+
+ÇELIŞKİ (varsa): [Engineer X istiyor, Operations Y istiyor — karar?]
+SORULAR (Aslan için): [Bilgisiz tahmin etmem, sorular]
+```
+
+### Ne Zaman Çalıştır?
+
+| Durum | 5 Rol Zorunlu mu? |
+|---|---|
+| Küçük fix (NO-OP, comment, typo) | ❌ Atlat |
+| Backend kod değişikliği | ✅ Engineer + QA |
+| Pilot etkili değişiklik | ✅ + Operations + PM |
+| Mevzuat/finansal | ✅ + Compliance |
+| Mimari karar | ✅ Hepsi |
+| Yeni özellik | ✅ Hepsi |
+| Bundle/sprint planlama | ✅ Hepsi |
+
+### DOSPRESSO Bağlamı (Hatırla)
+
+- 22 birim, 372 kullanıcı, 31 rol
+- Pilot Day-1: **12 May 2026 Pazartesi 09:00**
+- 4 pilot birim: Antalya Lara (b8), Mavi Boncuk Işıklar (b5), Fabrika (b24), Merkez HQ (b23)
+- Kritik kişiler:
+  - Aslan (CEO, owner)
+  - Yavuz (Coach, tüm şubeler)
+  - Sema (Gıda Müh., reçete/etiket)
+  - Eren (Fabrika Müd.)
+  - Mahmut (Muhasebe-İK, bordro/PDKS)
+  - Samet (Satınalma)
+- Pilot freeze: 18 Nis - 15 Haz, sadece `fix/chore/docs/refactor/test` commit prefix
+- Force push YASAK (`replit.md` L13)
+- DOSPRESSO iç kuralı: 30dk altı fazla mesai 0 + yönetici onayı (DECISIONS#39)
+
+### Örnek Çıktı
+
+**Senaryo:** F29 KDV item-level değişikliği (Wave B-3)
+
+```
+🏛️ ENGINEER: Item-level taxRate doğru — geriye uyumlu (default 18 sürdü).
+   Risk: parseFloat null guard yok (taxRate undefined ise NaN).
+   Test: taxRate=null edge case kontrol edilmeli.
+
+🏪 OPERATIONS: Samet siparişe %1 (gıda) yazarsa doğru hesaplanır mı?
+   Şu an UI'da taxRate seçilebiliyor mu kontrol et.
+   Mahmut: "Mayıs sonu beyannamede %1 vs %18 farkı görünür."
+
+🧪 QA: 
+   - Happy: %18 sipariş → toplam doğru
+   - Edge: taxRate=null → NaN olmamalı (parseFloat fallback "18")
+   - Failure: 1000 item parallel → performans
+
+📋 PM: 🟡 Orta etki. Pilot Day-1 önce yapıldı doğru karar.
+   Effort: 30dk. Impact: KDV beyannamesi doğruluğu.
+
+🛡️ COMPLIANCE: Türkiye KDV %1 gıda (un, süt, ekmek), %10 yemek hizmet, %18 diğer.
+   Önemli: e-fatura'da satır bazında KDV kodu doğru olmalı (gelecek entegrasyon).
+
+ÇELIŞKİ: YOK
+SORULAR: Mahmut (muhasebe) Mayıs sonu bordro çalıştığında doğrula.
+```
+
