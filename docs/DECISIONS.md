@@ -2,7 +2,7 @@
 
 Bu dosya bugüne kadar alınan ürün/operasyon kararlarının kalıcı kaydıdır. Her madde owner (Aslan) tarafından onaylı, ChatGPT (IT danışman) ile gözden geçirilmiş ve Replit (uygulayıcı) tarafından sisteme yansıtılmış / yansıtılması beklenen karardır.
 
-Son güncelleme: 2 Mayıs 2026
+Son güncelleme: 3 Mayıs 2026
 
 ---
 
@@ -66,6 +66,14 @@ Son güncelleme: 2 Mayıs 2026
 ---
 
 31. **K2 / B14 audit teşhisi yanlıştı; `ROLE_MODULE_DEFAULTS` dead code, gerçek mekanizma `role_module_permissions` DB tablosu — pilot etkisi YOK.** (Task #281 / Wave A-3, 2 May 2026.) Sprint 2 master backlog B14 ("16 rol için ROLE_MODULE_DEFAULTS tamamla") ve audit raporu K2/U3 bulguları yanlış katmanı işaret ediyordu. Doğrulama: (a) `ROLE_MODULE_DEFAULTS` (`shared/modules-registry.ts:368`) hiçbir yerden import edilmiyor (rg ile 0 consumer); (b) gerçek erişim `role_module_permissions` DB tablosu (3127 satır, **31 rolün hepsi DOLU** — admin/supervisor 240, coach 235, muhasebe 231, ceo/cgo/mudur/fabrika_mudur/sef/recete_gm/uretim_sefi/satinalma/trainer/muhasebe_ik 79, supervisor_buddy 123, yatirimci_hq 98, geri kalan 78); (c) frontend kanal `GET /api/me/permissions` (`certificate-routes.ts:751`) → mega-modules render; (d) 5 pilot rol için (ceo, cgo, mudur, fabrika_mudur, sube_kiosk) modül listesi `psql` ile doğrulandı, kritik modüller (dashboard, hr, employees, equipment, shifts, tasks, factory_*) hepsi dolu. **Ek bulgu — mimari borç:** Sistemde **9 paralel rol/modül erişim mekanizması** var (`role_module_permissions` DB, `permission_actions`+`role_permission_grants` boş RBAC v2, `module_flags` DB, `module-manifest.ts`+`requireManifestAccess` fail-open middleware, `MODULES[].roles`, `dobody-proposals.ts` inline matris, `dashboard_role_widgets`, `module-menu-config allowedRoles`, `ROLE_MODULE_DEFAULTS` dead code) + naming drift (243 vs 304 module, `academy.ai`/`academy_ai`/`akademi-ai-assistant`). Bunlar Sprint 3 B21 (konsolidasyon) + B22 (manifest-auth fail-open düzelt) backlog'una taşındı. **Aksiyon:** (a) `ROLE_MODULE_DEFAULTS` üstüne `@deprecated DEAD CODE` JSDoc; (b) `replit.md` "Bilinen açık" notu düzeltildi; (c) `sprint-2-master-backlog.md` B14 → ÇÖZÜLDÜ NO-OP; (d) audit raporu Bölüm 11.5 düzeltme + 9 mekanizma haritası eklendi; (e) Sprint 3 backlog'a B21+B22 önerisi; (f) **reproducible verification artifact** `docs/audit/role-module-defaults-noop-verification-2026-05-02.md` (rg + psql sorguları, 31 rol × 78-240 modül permission tablosu, 5 pilot rol kritik modül kontrolü).
+
+---
+
+## Dokümantasyon Hijyeni & Stale Task'lar (3 May 2026)
+
+32. **Repo kökü dokümantasyon temizliği yapıldı (Task #302).** Mart-Nisan dönemine ait toplam 18 stale rapor arşive taşındı: `docs/archive/2026-Q1/` (15 dosya — DEVIR-TESLIM-v7, DOSPRESSO-Devir-Teslim-v5/v6, DOSPRESSO-SISTEM-RAPORU, DOSPRESSO-TARAMA-RAPORU, DOSPRESSO_Akademi_Audit_Raporu, DOSPRESSO_IT_Audit_Report_2026-03-12, DOSPRESSO_IT_Audit_Report_2026, KIOSK_AUDIT_REPORT, MEGA_SPRINT_AUDIT_REPORT, PRELAUNCH_AUDIT_REPORT, LAUNCH_READINESS_REPORT, QA_AUDIT_REPORT, ARCHITECT_REVIEW_FIXES, REVIEW_KALITE_DENETIM_ŞABLONLARI) ve `docs/archive/2026-Q2/` (3 dosya — DOSPRESSO-Sprint-Plan-v5, DOSPRESSO-Pilot-Analiz-v1, ORPHAN_PAGES_DELETION_REPORT) altına taşındı. Ayrıca (arşiv değil, taşıma): `APP_AUDIT_REPORT_2026-05.md` hâlâ aktif referans olduğu için `docs/audit/` altına alındı (kökten kaldırıldı). Repo kökünde sadece **canlı** MD'ler kaldı: `replit.md`, `STATUS.md`, `AGENTS.md`, `CHANGELOG.md`, `DEPLOYMENT.md`, `EXPORT_README.md`, `design_guidelines.md`, `SYSTEM_AUDIT_PROMPT.md`. `STATUS.md` güncel sayılarla yenilendi (372 kullanıcı, 31 rol, 326 sayfa, 1.768 endpoint, 455 tablo) + `docs/SPRINT-LIVE.md` redirect notu içeriyor. `replit.md`'ye "Documentation Map" bölümü eklendi.
+
+33. **Eski PROPOSED draft Task #17 (DOSPRESSO Kapsamlı Tasarım + Corporate Identity Denetimi, 25 Mart 2026) ve Task #36 (Module Flags Sprint 1C: Dobody Sub-modules + Role-based Flags, 18 Mart 2026) İPTAL edildi (CANCELLED).** Gerekçe: 5+ haftadır PROPOSED durumda, kapsamları o tarihteki sayılara (304 sayfa, 27 rol) göre yazılmış, sistem o günden bu yana 326 sayfa + 31 role evrildi. Module Flags için Sprint 1A/1B zaten merge edildi; Sprint 1C ihtiyacı gerçekleştiyse pilot retrospektifinde yeni kapsamla yeniden değerlendirilir. Tasarım denetimi ihtiyacı için ayrı, güncel kapsamlı bir task açılması tercih edilir (Sprint 3 backlog değerlendirmesi).
 
 ---
 

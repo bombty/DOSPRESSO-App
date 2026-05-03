@@ -1,26 +1,29 @@
 # DOSPRESSO — Sistem Durumu
-**Son güncelleme:** 5 Nisan 2026
 
-## Tamamlanan Sprint'ler (4-5 Nisan)
-- Proje v2 Sprint 1 ✅
-- Denetim v2 Sprint A-D ✅
-- Dobody Sprint 1-7 ✅ (proposal + workflow + brief + aksiyon + sağlık + gruplu)
+> **Bu dosya artık kısa özettir.** Güncel sprint, açık işler ve canlı durum için **`docs/SPRINT-LIVE.md`** kaynağını takip edin.
 
-## Modül Durumları
-| Modül | Durum |
-|-------|-------|
-| Proje v2 | ✅ 6 tab, portfolio |
-| Denetim v2 | ✅ Şablon + form + aksiyon + trend |
-| Dobody Agent | ✅ 11 event, 27 rol scope, aksiyon yürütme |
-| Dobody Widget | ✅ Draft mesaj + düzenle + gönder |
-| Sistem Atölyesi v4 | ✅ 20 akış + diagnostic |
-| AI Provider | ✅ OpenAI/Claude/Gemini multi-provider |
-
-## Bilinen Bug'lar
-- [ ] Barista "Benim Günüm" hooks crash
-- [ ] Barista "İzin Yönetimi" crash  
-- [ ] Şube ekipman listesi boş
-- [ ] Duyuru düzenleme sorunları
+**Son güncelleme:** 3 Mayıs 2026
 
 ## Güncel Rakamlar
-363+ tablo | 1500+ endpoint | 304+ sayfa | 27 rol | 19+ doküman | 11 event tipi
+- **372 kullanıcı** | **31 rol** | **326 sayfa** | **1.768 endpoint** | **455 tablo (23 schema dosyası)**
+- 22 lokasyon (20 şube + HQ + Fabrika)
+
+## Aktif Sprint
+**Sprint 2 — Pilot Day-5 Sertleştirme** (pilot 5 gün uzatıldı, 2 May 2026 owner kararı).
+Detay: `docs/SPRINT-LIVE.md`.
+
+## Kritik Dokümanlar
+| Konu | Dosya |
+|------|-------|
+| Canlı sprint durumu | `docs/SPRINT-LIVE.md` |
+| Ürün/operasyon kararları | `docs/DECISIONS.md` |
+| Çalışma protokolü | `docs/COLLABORATION-PROTOCOL.md` |
+| Pilot Day-1 checklist | `docs/PILOT-DAY1-CHECKLIST.md` |
+| Tam uygulama denetim raporu | `docs/audit/APP_AUDIT_REPORT_2026-05.md` |
+| Sprint 2 dalga planı | `docs/SPRINT-2-WAVE-PLAN.md` |
+| Test matrisi (rol bazlı) | `docs/TEST-MATRIX.md` |
+| Çoklu perspektif sistem audit | `docs/audit/system-multi-perspective-evaluation-2026-05-02.md` |
+
+## Arşiv
+- Mart 2026 raporları: `docs/archive/2026-Q1/`
+- Nisan-Mayıs 2026 raporları: `docs/archive/2026-Q2/`
