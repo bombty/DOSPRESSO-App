@@ -127,9 +127,13 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 **v2 sonuçları:**
 - **51 distinct method+path broken** (missing=2, method-mismatch=7, related-exists=42).
 - Audit'in 118 sayısı bizim 51'imize karşılık gelir; aradaki fark büyük olasılıkla audit'in (a) `:param` substitute YAPMAMASI + (b) muhtemelen useMutation inline mutationFn'leri ayrıca sayması.
-- Truncate band yok: 51 < 118 olduğu için literal "audit sıra 51-118" reproduce edilemiyor (bizim methodology daha sıkı dedup'luyor). Bunun yerine raw view audit'in expansion mantığını birebir reproduce eder.
+- **Truncate band reproduce EDİLEMEDİ:** 51 < 118 olduğu için literal "audit sıra 51-118" reproduce edilemiyor; bizim raw view de 51 üretiyor (her broken endpoint için tek FE çağrısı). Audit'in 118 sayısının kompozisyonu kanıtlanamaz.
 
-**Önceki 88/93 canonical sayısı stale:** Wave dosyalarındaki kalemler (W1-W7) FE side-by-side audit Bölüm 7.1 ilk 50'sinden + Bölüm 3.0.4 N1-N9'dan türetildi. v2 ile yeniden taranan 51 kalem ile **kesişim sıkı ama 1:1 değil**: bazı wave kalemleri fixed (örn `/api/iletisim/tickets/:param/comments` artık server'da match ediyor — wave referansı stale olabilir). Wave dosyalarının v2 ile reconciliation'ı W0 scope DIŞINDA — pilot için low-priority follow-up.
+**Önceki 88/93 canonical sayısı stale:** Wave dosyalarındaki kalemler (W1-W7) audit Bölüm 7.1 ilk 50'sinden + Bölüm 3.0.4 N1-N9'dan türetildi. v2 script çıktısı ile karşılaştırıldığında:
+- N1-N7 (`/api/iletisim/*`) artık v2'de broken DEĞİL — server'a eklenmiş veya wave anti-türetildi.
+- N8 (`/api/module-content`) hala v2'de broken (#12 sırasında `related-exists`).
+- N9 (`/api/delegations`) artık v2'de broken DEĞİL.
+- Wave dosyalarının v2 ile reconciliation'ı W0 scope DIŞINDA — pilot için low-priority follow-up.
 
 | Kategori | Sayı | Açıklama |
 |---|---|---|

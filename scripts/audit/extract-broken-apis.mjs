@@ -356,9 +356,10 @@ broken.slice(50, 118).forEach((b, i) => {
 lines.push('');
 
 // ---------------- RAW (non-collapsed) view ----------------
-// Each broken FE call location emitted separately so non-:param-collapsed
-// expansion (audit-style) is reproducible. This satisfies the literal
-// "51-118 satırları çıkarıldı" acceptance.
+// Each broken FE call location emitted separately with raw template literals
+// preserved. This shows the audit-style expansion shape, but the row count
+// equals the collapsed view's broken count when each broken endpoint has a
+// single FE caller (which is the case for most v2 results).
 const rawRows = [];
 const brokenKeys = new Set(broken.map((b) => `${b.method} ${b.path}`));
 for (const c of feCalls) {
@@ -388,7 +389,7 @@ const rawSorted = [...rawByMethodRaw.entries()]
 
 lines.push('## RAW Audit-Style Expansion (non-collapsed template vars, audit 118 sayısı için)');
 lines.push('');
-lines.push('Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI, dolayısıyla her FE template literal varyantı ayrı satır olarak sayıldı. Aşağıdaki tablo ham FE path lerini (template literals dahil) audit-style expansion ile listeler. Bu, auditin §7.1 "118 satır" rakamına en yakın reproduction.');
+lines.push('Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI veya FE çağrı tekrarlarını ayrı saydı. Aşağıdaki tablo bizim ham FE path lerini (template literals dahil) listeler. NOT: Bu liste audit\'in 118 sayısını birebir reproduce ETMEZ — sadece bizim methodology\'mizin raw görünümünü gösterir.');
 lines.push('');
 lines.push('**Toplam raw satır:** ' + rawSorted.length + ' (collapsed view ' + broken.length + ' satıra karşılık raw expansion).');
 lines.push('');
@@ -400,7 +401,7 @@ rawSorted.forEach((r, i) => {
 });
 lines.push('');
 
-lines.push('## RAW Görünüm Sıra 51-Sonu (audit §7.1 truncate band birebir reproduce)');
+lines.push('## RAW Görünüm Sıra 51-Sonu (sadece v2 raw row sayısı 51\'den fazlaysa dolar; aksi halde bilgilendirme amaçlı boş)');
 lines.push('');
 lines.push('| # | Method+RawPath | Use | FE konum |');
 lines.push('|---|---|---|---|');

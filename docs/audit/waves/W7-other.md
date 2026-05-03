@@ -5,7 +5,7 @@
 **Tahmini süre:** ~6 saat (MM3/MM4/MM7 dahil)
 **Risk:** ORTA
 
-## Kapsam (12 path-bazlı + 3 method-mismatch = 15)
+## Kapsam (12 path-bazlı + 3 method-mismatch + 1 W0 v2 NS1 = 16)
 
 ### FINANCE (1)
 | # | Method+Path | Server | Karar |
@@ -47,7 +47,7 @@
 
 ## Acceptance
 
-1. 12 path-bazlı patch.
+1. 12 path-bazlı patch + 1 W0 v2 NS1 (`/api/inventory/by-supplier`) `:supplierId` patch.
 2. 3 method-mismatch karar.
 3. Cash reports server impl (kritik finans).
 4. QR scan akışı (equipment + inventory) smoke test.

@@ -1,6 +1,6 @@
 # Kırık API Çağrıları — Tam Liste (W0 reconstruction)
 
-**Üretim:** 2026-05-03T01:18:56.348Z
+**Üretim:** 2026-05-03T01:25:33.743Z
 **Script:** scripts/audit/extract-broken-apis.mjs (committed, READ-ONLY)
 **Task:** #288 — Wave W0 of #283
 
@@ -86,7 +86,7 @@ Audit ilk 50 satırı göstermişti. Aşağıdaki tablo bu listenin 51+ kısmın
 
 ## RAW Audit-Style Expansion (non-collapsed template vars, audit 118 sayısı için)
 
-Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI, dolayısıyla her FE template literal varyantı ayrı satır olarak sayıldı. Aşağıdaki tablo ham FE path lerini (template literals dahil) audit-style expansion ile listeler. Bu, auditin §7.1 "118 satır" rakamına en yakın reproduction.
+Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI veya FE çağrı tekrarlarını ayrı saydı. Aşağıdaki tablo bizim ham FE path lerini (template literals dahil) listeler. NOT: Bu liste audit'in 118 sayısını birebir reproduce ETMEZ — sadece bizim methodology'mizin raw görünümünü gösterir.
 
 **Toplam raw satır:** 51 (collapsed view 51 satıra karşılık raw expansion).
 
@@ -144,7 +144,7 @@ Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI, dolayı
 | 50 | `PATCH /api/crm/complaints/misafir/${id}/assign` | 1 | client/src/pages/guest-complaints.tsx:116 |
 | 51 | `PATCH /api/crm/complaints/misafir/${id}/resolve` | 1 | client/src/pages/guest-complaints.tsx:131 |
 
-## RAW Görünüm Sıra 51-Sonu (audit §7.1 truncate band birebir reproduce)
+## RAW Görünüm Sıra 51-Sonu (sadece v2 raw row sayısı 51'den fazlaysa dolar; aksi halde bilgilendirme amaçlı boş)
 
 | # | Method+RawPath | Use | FE konum |
 |---|---|---|---|
