@@ -29,8 +29,9 @@ FROM users u
 LEFT JOIN branch_staff_pins p
   ON p.user_id = u.id
  AND p.is_active = true
- AND (u.branch_id IS NULL OR p.branch_id = u.branch_id)
+ AND p.branch_id = u.branch_id
 WHERE u.is_active = true
+  AND u.branch_id IS NOT NULL  -- branch_id NULL kullanıcılar Bölüm 4'te raporlanır (çift sayım önleme)
   AND u.role IN ('stajyer','bar_buddy','barista','supervisor_buddy','supervisor','mudur')
   AND p.id IS NULL
 GROUP BY u.role
