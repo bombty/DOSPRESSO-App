@@ -34,6 +34,50 @@ function normalizeIngredientPayload<T extends { name?: string | null }>(payload:
   return payload;
 }
 
+// F23 ✅ KAPANDI (3 May 2026, Mega-Sprint): Production-ready tek sign-off helper.
+// Bir reçetenin "üretime hazır" sayılması için 3 scope'un (gramaj, besin, alerjen)
+// hepsinde geçerli onay (invalidatedAt IS NULL) bulunmalı.
+// Daha önce silo'da ayrı kontroller vardı → hatalı sürüm prodüksiyona girebilirdi.
+// Kullanım örneği: const ready = await isRecipeProductionReady(recipeId);
+const REQUIRED_APPROVAL_SCOPES = ['gramaj', 'besin', 'alerjen'] as const;
+
+export async function getRecipeApprovalStatus(recipeId: number): Promise<{
+  isProductionReady: boolean;
+  approvedScopes: string[];
+  missingScopes: string[];
+  invalidatedScopes: string[];
+}> {
+  const approvals = await db.select({
+    scope: factoryRecipeApprovals.scope,
+    invalidatedAt: factoryRecipeApprovals.invalidatedAt,
+  })
+    .from(factoryRecipeApprovals)
+    .where(eq(factoryRecipeApprovals.recipeId, recipeId));
+
+  const approvedScopes = new Set<string>();
+  const invalidatedScopes = new Set<string>();
+  for (const a of approvals) {
+    if (a.invalidatedAt === null) {
+      approvedScopes.add(a.scope);
+    } else {
+      invalidatedScopes.add(a.scope);
+    }
+  }
+
+  const missingScopes = REQUIRED_APPROVAL_SCOPES.filter(s => !approvedScopes.has(s));
+  return {
+    isProductionReady: missingScopes.length === 0,
+    approvedScopes: Array.from(approvedScopes),
+    missingScopes,
+    invalidatedScopes: Array.from(invalidatedScopes),
+  };
+}
+
+export async function isRecipeProductionReady(recipeId: number): Promise<boolean> {
+  const status = await getRecipeApprovalStatus(recipeId);
+  return status.isProductionReady;
+}
+
 // ── Role Guards ──
 // P7.2 (29 Nis 2026 — pilot rol matrisi):
 //   - ceo (Aslan) reçete genel müdürü gibi davranır → tüm reçete yetkilerinde

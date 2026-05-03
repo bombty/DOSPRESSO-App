@@ -38,8 +38,12 @@ const CAREER_LEVELS = [
 const DEFAULT_GATES = [
   { id: "moduller", title: "Modüller", progress: 0, status: "pending" },
   { id: "sinav", title: "Sınav", progress: 0, status: "pending" },
-  { id: "pratik", title: "Pratik", progress: 0, status: "pending" },
-  { id: "onay", title: "Onay", progress: 0, status: "pending" },
+  // F18 ✅ KAPANDI (3 May 2026, Mega-Sprint): Pratik + Onay gate'leri henüz
+  // backend tarafından beslenmiyor → 'placeholder' status ile UI'da
+  // "Yakında" badge gösterilir (kullanıcı boş yere %0 görmek yerine planı bilir).
+  // Backend implementasyonu W-D2 (B3 izin/rapor sistemi) ile birlikte eklenecek.
+  { id: "pratik", title: "Pratik", progress: 0, status: "placeholder" },
+  { id: "onay", title: "Onay", progress: 0, status: "placeholder" },
 ];
 
 function formatTurkishDate(date: Date): string {
@@ -236,10 +240,12 @@ export default function CareerTab() {
               const gateProgress = Number(gate.progress ?? 0);
               const isActive = gate.status === "in_progress" || gate.status === "active";
               const isPassed = gate.status === "passed" || gate.status === "completed";
+              // F18 ✅ KAPANDI (3 May 2026, Mega-Sprint): Placeholder status için "Yakında"
+              const isPlaceholder = gate.status === "placeholder";
               return (
                 <Card
                   key={gate.id || idx}
-                  className={isActive ? "border-primary/30" : isPassed ? "border-green-500/30" : ""}
+                  className={isActive ? "border-primary/30" : isPassed ? "border-green-500/30" : isPlaceholder ? "border-dashed opacity-60" : ""}
                   data-testid={`gate-${gate.id || idx}`}
                 >
                   <CardContent className="p-3">
@@ -251,12 +257,12 @@ export default function CareerTab() {
                         variant={isPassed ? "default" : isActive ? "secondary" : "outline"}
                         data-testid={`gate-status-${gate.id || idx}`}
                       >
-                        {isPassed ? "Geçti" : isActive ? "Aktif" : "Bekliyor"}
+                        {isPassed ? "Geçti" : isActive ? "Aktif" : isPlaceholder ? "Yakında" : "Bekliyor"}
                       </Badge>
                     </div>
                     <Progress value={gateProgress} className="h-1.5" />
                     <div className="text-xs text-muted-foreground mt-1" data-testid={`gate-progress-${gate.id || idx}`}>
-                      %{Math.round(gateProgress)}
+                      {isPlaceholder ? "Henüz aktif değil" : `%${Math.round(gateProgress)}`}
                     </div>
                   </CardContent>
                 </Card>
