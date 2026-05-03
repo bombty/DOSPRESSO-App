@@ -51,14 +51,11 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 
 ## 5. Bilinen Açıklar (Phase 2 / follow-up)
 
-### A. ~~`late-arrival-tracker.ts` hardcoded eşik~~ ✅ #326 ile kapatıldı
-`resolveLateThreshold(branchId, year, month)` helper'ı `payrollDeductionConfig` cascade'inden okur. Fabrika için `branchId=0` → cascade `IS NULL` (genel) config'e fallback eder. Hata/yokluk durumunda DEFAULT=15. Unit test: `tests/unit/late-arrival-tracker.test.ts`.
-
-### B. Audit tablosu yok
+### A. Audit tablosu yok
 **Sorun:** Şube ayar değişikliği denetlenebilir değil; mevcut kayıt yok.
 **Fix önerisi:** `attendance_settings_audit` tablosu — `(branch_id, changed_by_id, field_name, old_value, new_value, changed_at)`. Migration + trigger (veya app-level audit middleware). Plan mode zorunlu.
 
-### C. Otomatik test boşluğu
+### B. Otomatik test boşluğu
 **Sorun:** "Müdür A şube X'te tolerans=20 yaptı, kullanıcı Y 18 dk geç geldi → geç sayılmasın → bordro etkilenmesin" senaryosu test'te yok.
 **Fix önerisi:** `tests/e2e/branch-attendance-settings.spec.ts` ekle.
 

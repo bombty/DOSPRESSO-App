@@ -19,21 +19,26 @@ async function resolveLateThreshold(
   branchId: number,
   year: number,
   month: number,
-): Promise<{ thresholdMinutes: number; source: string }> {
+): Promise<{ thresholdMinutes: number; severeThresholdMinutes: number; source: string }> {
   try {
     const cfg = await getEffectiveConfig(branchId, year, month);
     const minutes = cfg.lateToleranceMinutes ?? DEFAULT_LATE_THRESHOLD_MINUTES;
+    const severe = minutes * 4;
     const source = (cfg as { source?: string }).source ?? "default";
     console.info(
-      `[late-arrival-tracker] threshold=${minutes}dk source=${source} (branchId=${branchId} ${year}-${month})`,
+      `[late-arrival-tracker] threshold=${minutes}dk severe=${severe}dk source=${source} (branchId=${branchId} ${year}-${month})`,
     );
-    return { thresholdMinutes: minutes, source };
+    return { thresholdMinutes: minutes, severeThresholdMinutes: severe, source };
   } catch (err) {
     console.error(
       "[late-arrival-tracker] threshold fetch failed, falling back to default:",
       err instanceof Error ? err.message : err,
     );
-    return { thresholdMinutes: DEFAULT_LATE_THRESHOLD_MINUTES, source: "fallback" };
+    return {
+      thresholdMinutes: DEFAULT_LATE_THRESHOLD_MINUTES,
+      severeThresholdMinutes: DEFAULT_LATE_THRESHOLD_MINUTES * 4,
+      source: "fallback",
+    };
   }
 }
 
