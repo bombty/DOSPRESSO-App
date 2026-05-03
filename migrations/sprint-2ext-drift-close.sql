@@ -47,6 +47,12 @@ ALTER TABLE task_comments ALTER COLUMN user_id DROP NOT NULL;
 ALTER TABLE tasks ALTER COLUMN branch_id DROP NOT NULL;
 ALTER TABLE messages ALTER COLUMN type DROP NOT NULL;  -- post-drift discovery (3 May 2026)
 
+-- ===== KATEGORİ 5B — text → integer[] (target_branch_ids final fix) =========
+-- Kod (frontend, scheduler) zaten integer[] kullanıyor; schema'yı integer().array()
+-- olarak düzelttikten sonra DB'yi de uyarla. task_groups boş, tasks dolu (USING raw cast).
+ALTER TABLE task_groups ALTER COLUMN target_branch_ids TYPE integer[] USING NULL;
+ALTER TABLE tasks ALTER COLUMN target_branch_ids TYPE integer[] USING target_branch_ids;
+
 -- ===== KATEGORİ 6 — BACKFILL (1 satır) =======================================
 UPDATE employee_terminations
    SET processed_by_id = '18e0cb39-87aa-4862-8f08-f52df6ee01b1'

@@ -29,7 +29,14 @@
 
 ---
 
-## Bundle 1A Migration Kategorileri (41 kolon + 6 ekleme + 1 unique + 60 index + 28 FK)
+## Bundle 1A Migration Kategorileri (42 kolon + 6 ekleme + 1 unique + 60 index + 28 FK)
+
+> **Scope notu:** Task plan #305 "Index/constraint değişiklikleri ayrı task" diyor.
+> Ancak `scripts/db-drift-check.ts` `--auto-fix` modunda 60 idx + 28 FK için SQL otomatik
+> üretiyor (eksik tablolardakiler hariç). Owner Seçenek C onayıyla bu otomatik üretilenler
+> Bundle 1A'ya dahil edildi (re-uygulama riski sıfır, IF NOT EXISTS pattern; FK'lar idempotent
+> değil ama orphan pre-flight tüm hatalar elimine edildi). 13 eksik tabloya bağlı 4 unique +
+> 23 idx + 19 FK Bundle 1B'ye defer (tablo yaratılınca otomatik kapatılır).
 
 ### Kategori 1 — text ↔ varchar (3 kolon, sıfır risk genişletme)
 DB varchar → schema text. ALTER TYPE text güvenli (text = varchar superset).
@@ -59,7 +66,7 @@ DB timestamptz → schema timestamp (without TZ): `ALTER TYPE timestamp` (TZ bil
 DB timestamp WITHOUT → schema timestamptz: `ALTER TYPE timestamptz USING (col AT TIME ZONE 'Europe/Istanbul')`:
 - `task_comments.created_at`
 
-### Kategori 5 — DROP NOT NULL (6 kolon, gevşetme)
+### Kategori 5 — DROP NOT NULL (7 kolon, gevşetme)
 DB NOT NULL → schema NULL allows. Sıfır risk:
 - `branch_shift_sessions.gps_fallback_used`
 - `employee_onboarding_progress.updated_at` (Kat. 4 sonrası)
@@ -67,6 +74,13 @@ DB NOT NULL → schema NULL allows. Sıfır risk:
 - `onboarding_template_steps.updated_at` (Kat. 4 sonrası)
 - `task_comments.user_id` (Kat. 1 sonrası)
 - `tasks.branch_id` ← HQ tasks için kritik (görev branch'siz HQ-only olabilir)
+- `messages.type` (post-drift discovery, 3 May 2026)
+
+### Kategori 5B — text → integer[] (2 kolon, schema authority)
+- `tasks.target_branch_ids` text → integer[] (USING raw cast; veri zaten int dizi formatında)
+- `task_groups.target_branch_ids` text → integer[] (USING NULL; tablo boş)
+- Schema dosyası `shared/schema/schema-02.ts` satır 3058 + 3222: `text(...)` → `integer(...).array()`
+- Frontend (`new-task-dialog.tsx`, `task-atama.tsx`) ve scheduler (`branch-task-scheduler.ts`) zaten integer dizisi gönderiyor — kırılma yok.
 
 ### Kategori 6 — BACKFILL (1 kolon, 1 satır)
 - `employee_terminations.processed_by_id` id=4 → admin user_id ile doldur (`adminhq` = `18e0cb39-87aa-4862-8f08-f52df6ee01b1`)
@@ -112,14 +126,10 @@ DB NOT NULL → schema NULL allows. Sıfır risk:
 
 ## Defer Edilenler (Bundle 1B / Follow-up)
 
-### Tek istisna: `tasks.target_branch_ids` (schema yanlış, kod refactor)
-- **Drift:** schema `text("target_branch_ids")`, DB `integer[]`
-- **Kanıt:** `SELECT pg_typeof(target_branch_ids) FROM tasks` → `integer[]`
-- **Frontend:** `selectedBranches.map(b => b.id)` integer array gönderiyor
-- **Kod kullanımı:** `branch-task-scheduler.ts:61` `task.branch_id ? [task.branch_id] : branchIds` int kullanır, `routes/branch-tasks.ts:936` `inArray(usersTable.branchId, targetBranchIds)` int kullanır
-- **Karar:** DB doğru. Schema'yı `integer("target_branch_ids").array()` olarak düzelt + migration `crm-task-migration.ts` text→int[] dönüşüm + `task-atama.tsx` test
-- **Etki:** Kod refactor (3-5 dosya), drizzle-zod tip değişikliği
-- **Follow-up task:** T-330-A (öneri)
+> **NOT:** Önceki revizyonda `tasks.target_branch_ids` defer edilmişti. Validator review
+> sonrası schema fix Kategori 5B olarak Bundle 1A'ya dahil edildi. Kod kullanımı
+> (frontend + scheduler) zaten integer dizi olduğu için risk düşük.
+> Geriye sadece eksik tablo+bağlı kısıtlamalar kaldı.
 
 ### 13 Eksik Tablo (Bundle 1B)
 Audit'te Task #255 ile kapatıldığı söylenen ama hala eksik olan tablolar. Hangileri ve neden eksik kaldı sonraki adımda incelenecek. FK zinciri analizi gerekir.
@@ -151,8 +161,9 @@ Eksik tablolar yaratılınca otomatik kapatılır.
 3. **Owner GO:** Dry-run başarılıysa
 4. **Apply:** `BEGIN; ...; COMMIT;` (asıl uygulama)
 5. **Verify:** `npx tsx scripts/db-drift-check.ts` re-run
-   - **Beklenen sonuç:** 41 kolon drift → 1 (sadece `tasks.target_branch_ids`); 4 unique → 3; 6 kolon → 0; 60 index/28 FK → 0
-   - **Toplam:** 195 → 59 (defer edilenler)
+   - **Gerçekleşen:** 42 kolon drift → **0**; eksik kolon → **0**; 60 idx/28 FK → 0; module_flags UNIQUE skip (zaten COALESCE-based unique index var)
+   - **Toplam:** 195 → 59 (sadece 13 eksik tablo + bağlı 4 unique/23 idx/19 FK Bundle 1B'de)
+   - **Migration filename:** `migrations/sprint-2ext-drift-close.sql` (task plan acceptance ile uyumlu)
 
 ---
 

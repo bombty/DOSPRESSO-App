@@ -3052,7 +3052,7 @@ export const tasks = pgTable("tasks", {
   // P0: Atayan bildirilsin mi
   notifyAssigner: boolean("notify_assigner").default(true),
   targetRole: text("target_role"), // supervisor | mudur | all — rol bazlı atama
-  targetBranchIds: text("target_branch_ids"), // JSON array of branch IDs for bulk
+  targetBranchIds: integer("target_branch_ids").array(), // branch IDs for bulk targeting
   isInternal: boolean("is_internal").default(false), // HQ internal task (misafir görmez)
   recurrenceType: varchar("recurrence_type", { length: 20 }), // daily, weekly, monthly
   recurrenceInterval: integer("recurrence_interval").default(1), // Every N days/weeks/months
@@ -3216,7 +3216,7 @@ export const taskGroups = pgTable("task_groups", {
   description: text("description"),
   createdById: text("created_by_id").references(() => users.id),
   sourceType: text("source_type").$type<'hq_manual'|'dobody'|'periodic'>().default('hq_manual'),
-  targetBranchIds: text("target_branch_ids"), // JSON array
+  targetBranchIds: integer("target_branch_ids").array(), // branch IDs (int[])
   targetRoles: text("target_roles"),           // JSON array
   totalTasks: integer("total_tasks").default(0),
   completedTasks: integer("completed_tasks").default(0),
