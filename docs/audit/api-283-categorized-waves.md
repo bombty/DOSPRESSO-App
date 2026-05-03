@@ -382,6 +382,45 @@ Audit'in tam 118 listesinin truncate olan 51-118 satırlarını üretmek için A
 
 ---
 
+## 9. FINAL STATUS (Owner Review Hazır — 2 May 2026)
+
+**Owner kararı (Task #285):** Bu rapor **analiz/preview** olarak kapatıldı. Implementation yapılmadı, kod/DB değişikliği yok.
+
+### 9.1 Kabul edilen kapsam
+1. **88 hi-confidence broken endpoint** (70 distinct path + 9 method-mismatch + 9 audit-recovered) — Bölüm 3.0.
+2. **4 audit false positive** (server'da POST var, audit GET yazmış) — Bölüm 3.0.3.
+3. **≤25 truncate satır (51-118)** → W0 (#288) skeleton'a deferred.
+
+### 9.2 Audit'in 118 sayısı NEDEN güvenilir kabul edilmedi
+- APP_AUDIT extraction script repo'da commitlenmemiş → **birebir reproduce imkansız**.
+- Doğrulanmış 4 FP → audit'in en az %3.4'ü hatalı.
+- Truncate (51-118) doğrulanamadı → ek FP'ler içerebilir.
+- Audit dosyası muhtemelen eski/temp mtime ile çalışmış olabilir; gerçek codebase ile uyumsuzluk şüphesi.
+- Yeni method-aware extraction (`extract3-method.mjs`) audit'in kaçırdığı 9 MM ve 9 N keşfetti → audit method-blind.
+
+**Sonuç:** Audit'in 118 sayısı bu rapor için **referans** olarak kullanılabilir ama **canonical** değil. Canonical sayı: **88**.
+
+### 9.3 Implementation Bekleyen
+**Uygulamaya geçmeden owner review zorunlu.** Sonraki dalgalar ayrı task olarak planlandı:
+- **#291 (W3 HR)** — PDKS + maaş kritik, ~5h
+- **#294 (W6 ADMIN)** — modül erişim + setup + delegasyon, ~6h
+- **#292 (W4 OBJECT_STORAGE)** — upload akışı konsolidasyon, ~6h (W1 sonrası)
+- Diğerleri: #289 (W1 FACTORY), #290 (W2 BRANCH), #293 (W5 CRM/AUTH/ACADEMY), #295 (W7 DİĞER), #288 (W0 audit-script).
+
+### 9.4 NOTE — Task #283 v4 MERGED (paralel etki)
+2 May 2026'da Task #283 v4 farklı bir agent tarafından MERGED edildi. Audit script (`scripts/audit-app.mjs`) yeniden yazıldı + 118 broken → **0** raporlandı. v4 detayları:
+- `apiRequest(url, method, body)` reversed-arg form tanındı (4 dosya düzeltildi).
+- Custom queryFn'li useQuery atlandı (5 dosya).
+- `/api/upload-url` real impl + branch PII sızıntısı kaynakta düzeltildi.
+- ~15 mutation endpoint kasten 503 stub olarak bırakıldı (`{success:false, _stub:true}`) — fake-success anti-pattern engellendi.
+
+**Etki:** Wave task'larının (#289-#295) çoğu artık **kısmen veya tamamen obsolete** olabilir. Owner her wave için yeniden değerlendirme yapmalı:
+- (a) Cancel — Task #283 v4 kapsadığı kalemler için.
+- (b) Daralt — kalan kalemleri yeniden tarayıp dar kapsamla devam.
+- (c) Devam — v4 kapsamadığı method-mismatch + N1-N9 + b kategori kalemler için.
+
+---
+
 ## 8. SONRAKI ADIMLAR (Owner Kararı)
 
 1. ✅ Bu rapor onayla → Task #285 MERGE.
