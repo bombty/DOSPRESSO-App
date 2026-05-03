@@ -61,7 +61,7 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 ```
 npx playwright test --config=playwright.config.ts tests/e2e/branch-attendance-settings.spec.ts
 ```
-**CI:** `.github/workflows/e2e-bundle7.yml`
+**CI:** `.github/workflows/e2e-bundle7.yml` — manuel (workflow_dispatch only). Otomatik gate yok: `drizzle-kit push` bu DB'de timeout veriyor + fresh CI Postgres seed pipeline ayrı task. Manuel run için `E2E_DATABASE_URL` ve `E2E_SESSION_SECRET` secret'ları seed'li DB'ye işaret etmeli.
 
 ## 6. İlgili Dosyalar
 
