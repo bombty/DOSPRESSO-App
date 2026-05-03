@@ -35,7 +35,7 @@ Yöntem: 6 paralel kod-explorer subagent + 5 mekanik script-tarama (route/guard/
 | F11 | KRİTİK-TZ | Sync `Europe/Istanbul` cast yapıyor; `workDate` string vs UTC timestamp tutarsızlığında kayıt eksilir | Gece-yarısı vardiyaları kaybolur |
 | F12 | KRİTİK-FK | `shift_attendance` `shift_id` zorunlu; kiosk swipe varken planlanmış shift yoksa `pdks_daily_summary`'ye toplanmaz | Plansız mesai bordroya yansımaz |
 | F13 | YETKİ | `pdks.ts` L13 `canManagePdks` direkt rol string check; granüler `hasPermission` bypass ediliyor | Tutarsız RBAC |
-| F14 | HESAP-MANTIK | `pdks-engine.ts` `classifyDay` 30dk altı mesaiyi 0'a yuvarlar | İşçi mesai kaybı (yıl sonu birikimi) |
+| F14 | HESAP-MANTIK | ~~`pdks-engine.ts` `classifyDay` 30dk altı mesaiyi 0'a yuvarlar~~ ✅ **KAPANDI NO-OP (3 May 2026, Wave B)** — DOSPRESSO iç kuralı: 30dk altı fazla mesai sayılmaz, mesai sadece yönetici onayı ile geçerli (DECISIONS#39 + `docs/DEVIR-TESLIM-7-NISAN-2026.md` "FM 30dk eşik"). Audit yanlış kategorize etmişti. | İşçi mesai kaybı (yıl sonu birikimi) |
 | F15 | HESAP-MANTIK | Geç gelme eşiği global hardcoded (LATE_THRESHOLD=15) ama `branch_kiosk_settings.lateToleranceMinutes` var → hangi öncelikli? | Çelişen iki kaynak |
 
 ### A4. Akademi v3
@@ -53,7 +53,7 @@ Yöntem: 6 paralel kod-explorer subagent + 5 mekanik script-tarama (route/guard/
 |---|---|---|---|
 | F20 | HESAP-MANTIK | `factory-recipe-cost-service.ts` `lineCost` birim eşleşmezse `null` döner, hata fırlatmaz → maliyet sessizce eksik raporlanır | Fiyatlandırma hatası |
 | F21 | VERİ-INT | `factoryRecipes.category` (string) vs `factoryProducts.category` (enum) — sync yok | Reçete-ürün eşleşme bozulur |
-| F22 | EKSİK-IMPL | `factory-f2.ts` L131-132 stok seviyesi `SQL 0` stub (kolon eksikti) → gerçek envanter göstermez | Yanlış üretim planlama |
+| F22 | EKSİK-IMPL | ~~`factory-f2.ts` L131-132 stok seviyesi `SQL 0` stub (kolon eksikti) → gerçek envanter göstermez~~ ✅ **KAPANDI (3 May 2026, Wave B)** — `currentStock`, `minStock`, `maxStockLevel` kolonları zaten DB'den okunuyordu (Bundle 4 öncesi); eski stub yorumu kaldırıldı. | Yanlış üretim planlama |
 | F23 | UX-AKIS | Reçete onayları silo: gramaj, besin, maliyet ayrı; "Production Ready" tek sign-off yok | Hatalı sürüm prodüksiyona girebilir |
 | F24 | UYUMLULUK | Reçete versiyon değişti → eski etiket "revize gerekli" otomasyonu YOK (regex hit yok) | Etiket-içerik uyuşmazlığı, gıda mevzuat riski |
 | F25 | DRAFT-LBL | Onaysız reçete → `isDraft:true` etiket basılabiliyor (iyi); ama Lot tekrar engeli yetkili override'a açık (Task #199) | Lot tekrar olası |
@@ -63,7 +63,7 @@ Yöntem: 6 paralel kod-explorer subagent + 5 mekanik script-tarama (route/guard/
 | # | Sınıf | Bulgu | Etki |
 |---|---|---|---|
 | F26 | HESAP-MANTIK | `payroll-calculation-service.ts` AGI = `minWageTaxable * 0.15` basit formül → mevzuat asgari ücret kadar gelir vergisi muafiyeti farklı | Net maaş hatası |
-| F27 | VERİ-SESSİZ | `getPositionSalary` null dönerse hesaplama sessizce duruyor | Bordro üretilmez, alarm yok |
+| F27 | VERİ-SESSİZ | ~~`getPositionSalary` null dönerse hesaplama sessizce duruyor~~ ✅ **KAPANDI (3 May 2026, Wave B)** — `payroll-engine.ts` L97 + `payroll-bridge.ts` L406 iki çağrı yerinde `console.warn` structured log eklendi (userId, year, month, role, positionCode, fullName, branchId, reason, hint). Daha önce sessizce null dönerdi. | Bordro üretilmez, alarm yok |
 | F28 | KRİTİK-RACE | `satinalma-routes.ts` L164-207 stok güncelleme atomic değil (read-modify-write); eşzamanlı POS+manuel sayım override yapar | Stok yanlış |
 | F29 | HARDCODE | KDV %18 default (`satinalma-routes.ts` L540); %1/%10 gıda kalemleri yanlış işlenir | KDV beyanname hatası |
 | F30 | HARDCODE | Fabrika saatlik ücreti 205 TL hardcoded; `factory_cost_settings`'den okunmalı | Maliyet sapması |

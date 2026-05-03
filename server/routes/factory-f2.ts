@@ -128,8 +128,9 @@ router.get("/api/factory/stock-kpi", isAuthenticated, async (req: any, res: Resp
   try {
     if (!F2_ROLES.includes(req.user.role)) return res.status(403).json({ error: "Erişim yok" });
 
-    // NOTE: current_stock ve max_stock_level kolonları henüz factory_products tablosunda mevcut değil
-    // IT danışmana bildirildi — kolonlar eklendiğinde buradaki sql`0` stub'ları gerçek kolonlarla değiştirilecek
+    // F22 ✅ KAPANDI (3 May 2026): currentStock, minStock, maxStockLevel kolonları
+    // factory_products tablosuna eklendi ve buradan okunuyor (Bundle 4 öncesi).
+    // Eski stub yorumu silindi.
     const products = await db.select({
       id: factoryProducts.id,
       name: factoryProducts.name,
