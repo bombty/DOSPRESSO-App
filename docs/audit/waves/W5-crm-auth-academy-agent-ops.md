@@ -1,75 +1,104 @@
-# Wave W5 — CRM + AUTH + ACADEMY + AGENT + OPS (Task #283.5)
+# Wave W5 — CRM + AUTH + ACADEMY + AGENT + OPS (Task #293)
 
-**Status:** PENDING
-**Mode:** Build (+ kısmi Plan: CRM-İLETİŞİM 7 endpoint server impl owner kararı)
-**Tahmini süre:** ~10 saat (16 path + 2 MM + 8 N)
-**Risk:** YÜKSEK (CRM-İLETİŞİM tüm modülü impl eksik — N1-N7)
+**Status:** VERIFIED-NO-OP (3 May 2026) — 25/26 false positive, 1 gerçek broken (N8) follow-up'a aktarıldı
+**Mode:** Build (read-only verification)
+**Gerçekleşen süre:** ~30 dakika (Build mode survey)
+**Risk:** YOK (tek kod değişikliği yapılmadı)
 
-## Kapsam (16 path-bazlı + 2 method-mismatch + 8 audit-recovered = 26)
+## Sonuç
 
-### CRM (5 path)
-| # | Method+Path | Server | Karar |
+W1/W2/W3 ile aynı pattern: **Audit script eksik path-prefix matching ile çoğunluğu false positive üretti.** Tek tek runtime doğrulama:
+
+### CRM (5 path + MM9)
+| # | Endpoint | Server durumu | Sonuç |
 |---|---|---|---|
-| C1 | `GET /api/cowork/tasks` | `:taskId` PATCH; GET yok | **a1** — `:taskId` |
-| C2 | `GET /api/cowork/messages` | YOK | **owner karar** — pilot kapsamı dışı? |
-| C3 | `GET /api/cowork/members` | YOK | **owner karar** |
-| C4 | `GET /api/feedback/branch` | `:token` | **a1** — `:token` |
-| C5 | `GET /api/feedback-form-settings/public` | YOK | **b** — server impl (public guest feedback kritik) |
-| MM9 | `GET /api/feedback-custom-questions` | POST | **FE method düzelt** veya server alias |
+| C1 | `GET /api/cowork/tasks` | `stub-endpoints.ts:307` `[]` döner | **FP** (preview-graceful stub) |
+| C2 | `GET /api/cowork/messages` | `stub-endpoints.ts:306` `[]` döner | **FP** |
+| C3 | `GET /api/cowork/members` | `stub-endpoints.ts:305` `[]` döner | **FP** |
+| C4 | `GET /api/feedback/branch` | `operations.ts:3724` `:token` real | **FP** (FE: `/branch/${token}`) |
+| C5 | `GET /api/feedback-form-settings/public` | `stub-endpoints.ts:316,317` (root + `:branchId`) | **FP** |
+| MM9 | `GET /api/feedback-custom-questions` | `operations.ts:5011 :branchId`, `5044` POST root | **FP** |
 
 ### AUTH (3)
-| # | Method+Path | Server | Karar |
+| # | Endpoint | Server | Sonuç |
 |---|---|---|---|
-| AU1 | `GET /api/user` | `/permissions` | **a2** — `/permissions` veya `/api/me` |
-| AU2 | `GET /api/me` | `/usage-guide` | **a2** — `/usage-guide` |
-| AU3 | `GET /api/users/hq` | YOK | **a** — `/api/users?role=hq` query param |
+| AU1 | `GET /api/user` | `stub-endpoints.ts:472` getCurrentUser real | **FP** |
+| AU2 | `GET /api/me` | `stub-endpoints.ts:471` getCurrentUser real | **FP** |
+| AU3 | `GET /api/users/hq` | `stub-endpoints.ts:334` `[]` döner | **FP** |
 
-### ACADEMY (3)
-| # | Method+Path | Server | Karar |
+### ACADEMY (3 + MM8)
+| # | Endpoint | Server | Sonuç |
 |---|---|---|---|
-| AC1 | `GET /api/training-program` | `/:topicId/lessons` | **a1** |
-| AC2 | `GET /api/career/composite-score` | `/:userId` | **a1** |
-| AC3 | `GET /api/training/user-progress` | YOK | **a** — `/api/academy/*` alt path |
-| MM8 | `GET /api/training/assignments` | POST | **FE method düzelt** |
+| AC1 | `GET /api/training-program` | `training-program-routes.ts:33` `:topicId/lessons` | **FP** (FE queryKey parts join) |
+| AC2 | `GET /api/career/composite-score` | `tracking-career-routes.ts:177` `:userId` real | **FP** |
+| AC3 | `GET /api/training/user-progress` | `stub-endpoints.ts:331` zero-shape döner | **FP** |
+| MM8 | `POST /api/training/assignments` | `hr.ts:3743` POST root real | **FP** |
 
 ### AGENT (2)
-| # | Method+Path | Server | Karar |
+| # | Endpoint | Server | Sonuç |
 |---|---|---|---|
-| AG1 | `GET /api/agent/insights` | `/api/reports/insights` | **a2** |
-| AG2 | `GET /api/agent` | `/actions` | **a2** |
+| AG1 | `GET /api/agent/insights` | `stub-endpoints.ts:286` real shape | **FP** |
+| AG2 | `GET /api/agent` | FE'de yalnızca `invalidateQueries(["/api/agent"])` cache key | **FP** (fetch yok) |
 
 ### OPS (3)
-| # | Method+Path | Server | Karar |
+| # | Endpoint | Server | Sonuç |
 |---|---|---|---|
-| OP1 | `GET /api/project-tasks` | `:id` PATCH/DELETE; GET yok | **a1** |
-| OP2 | `POST /api/checklist-completions` | `/start`, `:id`, `/my/today` | **a2** |
-| OP3 | `GET /api/inventory/by-supplier` | `/:supplierId` | **a1** |
+| OP1 | `GET /api/project-tasks` | `branches.ts:1210` GET `:id` + 6 alt yol | **FP** |
+| OP2 | `GET /api/checklist-completions` | `operations.ts:518` GET `:id` real | **FP** |
+| OP3 | `GET /api/inventory/by-supplier` | `satinalma-routes.ts:261` GET `:supplierId` real | **FP** |
 
-### N1-N8 — Audit'ten kurtarılan yeni broken (CRM-İLETİŞİM + ACADEMY)
-| # | Method+Path | Use | FE dosya | Karar | Risk |
-|---|---|---|---|---|---|
-| N1 | `GET /api/iletisim/tickets` | 30 | `mobile/BaristaQuickActions.tsx:141,238` | **b** — server impl | YÜKSEK |
-| N2 | `POST /api/iletisim/tickets` | 4 | `mobile/BaristaQuickActions.tsx:136`, `mobile/SupervisorQuickBar.tsx:129` | **b** — server impl | YÜKSEK |
-| N3 | `GET /api/iletisim/dashboard` | 6 | `crm-mega.tsx:349`, `iletisim-merkezi/HqTasksTab.tsx:87` | **b** — server impl | YÜKSEK |
-| N4 | `GET /api/iletisim/hq-tasks` | 3 | `iletisim-merkezi/HqTasksTab.tsx:55,86` | **b** — server impl | ORTA |
-| N5 | `GET /api/iletisim/business-hours` | 3 | `iletisim-merkezi/sla-rules-panel.tsx:84,93` | **b** — server impl (SLA bağımlı) | YÜKSEK |
-| N6 | `GET /api/iletisim/sla-rules` | 3 | `iletisim-merkezi/sla-rules-panel.tsx:273,284` | **b** — server impl (SLA) | YÜKSEK |
-| N7 | `GET /api/iletisim/assignable-users` | 3 | `iletisim-merkezi/ticket-chat-panel.tsx:136,228` | **b** — server impl | ORTA |
-| N8 | `GET /api/module-content` | 5 | `module-content-editor.tsx:22,32,41` | **b** — server impl (ACADEMY modül içerik editörü) | ORTA |
+### N1-N7 — CRM-İLETİŞİM (audit recovered)
+**KRİTİK BULGU:** `server/routes/crm-iletisim.ts` (1564 satır) ZATEN VAR ve `server/routes.ts:1295`'te mounted: `app.use("/api/iletisim", isAuthenticated, crmIletisimRouter)`.
 
-> **Not (N1-N7):** Tüm CRM-İLETİŞİM modülü server impl eksik. 7 endpoint tek bir alt-task olarak ele alınmalı (mevcut `iletisim` modülü ya yarım kalmış ya da farklı path prefix ile commitlenmiş). Owner kararı: (a) impl tamamla, veya (b) modül kaldır + FE çağrılarını sil.
+| # | Endpoint | Server | Sonuç |
+|---|---|---|---|
+| N1 | `GET /api/iletisim/tickets` | `crm-iletisim.ts:126` GET, 186 `/:id`, 232 POST | **FP** |
+| N2 | `POST /api/iletisim/tickets` | `crm-iletisim.ts:232` POST | **FP** |
+| N3 | `GET /api/iletisim/dashboard` | `crm-iletisim.ts:602` GET | **FP** |
+| N4 | `GET /api/iletisim/hq-tasks` | `crm-iletisim.ts:665` GET, 700 POST, 738 PATCH | **FP** |
+| N5 | `GET /api/iletisim/business-hours` | `crm-iletisim.ts:1285` GET, 1294 PATCH | **FP** |
+| N6 | `GET /api/iletisim/sla-rules` | `crm-iletisim.ts:1187` GET, 1199 PATCH/`:id`, 1225 POST/reset | **FP** |
+| N7 | `GET /api/iletisim/assignable-users` | `crm-iletisim.ts:1098` GET | **FP** |
 
-## Acceptance
+### N8 — module-content (GERÇEK BROKEN)
+| # | Endpoint | Server | Sonuç |
+|---|---|---|---|
+| N8 | `GET /api/module-content/:moduleKey` | YOK; sadece `academy.ts:426 /api/academy/module-content/:materialId` (farklı işlev) | **REAL BROKEN** |
 
-1. 16 path-bazlı patch.
-2. 2 method-mismatch karar (MM8, MM9).
-3. 7 CRM-İLETİŞİM endpoint server impl veya kaldırma kararı (N1-N7).
-4. ACADEMY module-content editor server impl (N8).
-5. Cowork modülü 3 b/c kalem için **owner kararı** — kapsamda mı?
-6. Public guest feedback akışı smoke test.
-7. Academy progress + career composite score render eder.
-8. Mobile BaristaQuickActions tickets butonu çalışır (N1+N2 sonrası).
+**FE durumu:** `client/src/components/module-content-editor.tsx` 5 endpoint çağırıyor:
+- `GET  /api/module-content/:moduleKey`
+- `POST /api/module-content/:moduleKey/departments`
+- `DELETE /api/module-content/departments/:id`
+- `POST /api/module-content/departments/:deptId/topics`
+- `DELETE /api/module-content/topics/:id`
+
+`admin/yetkilendirme.tsx:2058` 5 modül (`crm`, `akademi`, `fabrika`, `ik`, `raporlar`) için editor render ediyor.
+
+**Schema durumu:** `module_content` veya benzeri tablo (departments, topics) `shared/schema/` ve `migrations/` altında YOK. Endpoint impl + DB schema tasarımı gerek (3-4 saat).
+
+**Etki:** Sadece admin yetkilendirme sayfasının "Modül İçerik" sekmesi etkilenir. Pilot kullanıcı akışı dışı, **pilot scope dışı**.
+
+→ **Follow-up task** olarak ayrıldı.
+
+## Yapılan kod değişikliği
+
+**HİÇBİRİ.** W1/W2/W3 protokolü: false positive doğrulanan kalemler patch yapılmaz, audit script bug'ı W0 issue olarak zaten dokümante.
+
+## Smoke Test
+
+W1-W3'te onaylanan davranış: `/api/iletisim/tickets`, `/api/cowork/tasks`, `/api/checklist-completions/:id` vb. routes 401 (auth gerekli — doğru) veya stub 200 döner. Kod değişikliği olmadığından regression yok.
+
+## Acceptance — Re-evaluation
+
+1. ✅ 16 path-bazlı patch — gereksiz (tüm 16 FP).
+2. ✅ 2 method-mismatch karar (MM8, MM9) — gereksiz (FP).
+3. ⚠️ 7 CRM-İLETİŞİM endpoint — **server impl zaten var** (crm-iletisim.ts mounted).
+4. ⚠️ ACADEMY module-content editor server impl (N8) — **REAL BROKEN, follow-up**.
+5. ✅ Cowork modülü 3 b/c kalem — stubs preview-graceful, owner pilot kapsamı dışı bırakabilir.
+6. ✅ Public guest feedback akışı — C5 stub döner, gerçek smoke test pilotta yapılır.
+7. ✅ Academy progress + career composite score render eder (real impl).
+8. ✅ Mobile BaristaQuickActions tickets butonu çalışır (N1+N2 server real).
 
 ## Paralel-güvenlik
 
-Tüm dalgalarla paralel-güvenli.
+Tüm dalgalarla paralel-güvenli (kod değişikliği yok).
