@@ -16,7 +16,10 @@ router.use(isAuthenticated);
 const VALID_MODULE_KEYS = ['crm', 'akademi', 'fabrika', 'ik', 'raporlar'];
 
 function isAdminRole(role: string): boolean {
-  return ['admin', 'ceo'].includes(role);
+  // F16 ✅ KAPANDI (3 May 2026, Wave B-2): Coach + Trainer module-content yazma yetkisi.
+  // Daha önce sadece admin+ceo → içerik üretim darboğazı.
+  // Coach/Trainer kendi domain'lerinde modül içeriği oluşturabilmeli.
+  return ['admin', 'ceo', 'coach', 'trainer'].includes(role);
 }
 
 function parseId(raw: string): number | null {

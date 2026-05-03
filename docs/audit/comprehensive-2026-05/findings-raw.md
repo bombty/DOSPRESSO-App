@@ -13,15 +13,15 @@ Yöntem: 6 paralel kod-explorer subagent + 5 mekanik script-tarama (route/guard/
 | # | Sınıf | Bulgu | Etki |
 |---|---|---|---|
 | F01 | KRİTİK-UI | `lib/role-routes.ts` v5 Centrum'a gönderiyor; `mission-control/DashboardRouter.tsx` hâlâ v4 (MissionControlHQ/Coach) render ediyor → aynı kullanıcı "Control" kartı vs ana sayfada farklı dashboard görüyor | Kullanıcı kafa karışıklığı, hangisi gerçek? |
-| F02 | YETKİ | `server/routes/hq-summary.ts` `isHQRole` filtresi `yatirimci_hq` için bazı endpoint'lerde eksik olabilir | Yatırımcı 403 |
-| F03 | OPS | `/api/agent/escalations/:id/resolve` sadece Admin/CEO/CGO; Coach kendi domain'inde resolve edemiyor | Eskalasyon darboğazı |
+| F02 | YETKİ | ~~`server/routes/hq-summary.ts` `isHQRole` filtresi `yatirimci_hq` için bazı endpoint'lerde eksik olabilir~~ ✅ **KAPANDI NO-OP (3 May 2026, Wave B-2)** — `HQ_ROLES` set'i `YATIRIMCI_HQ` içeriyor (`shared/schema/schema-01.ts`), `isHQRole(yatirimci_hq) === true` doğrulandı. Diğer hq route'larda da `yatirimci_hq` özel listelerde mevcut (quick-action, branch-summary, hr, vd.). Audit yanlış kategorize. | Yatırımcı 403 |
+| F03 | OPS | ~~`/api/agent/escalations/:id/resolve` sadece Admin/CEO/CGO; Coach kendi domain'inde resolve edemiyor~~ ✅ **KAPANDI NO-OP (3 May 2026, Wave B-2)** — `server/routes/agent.ts` L474 `isHQOrAdmin` middleware Coach + Trainer'ı içeriyor (admin, ceo, cgo, coach, trainer, teknik, ekipman_teknik, satinalma, muhasebe, destek, gida_muhendisi, kalite_kontrol). Audit yanlış kategorize. | Eskalasyon darboğazı |
 | F04 | HESAP-MANTIK | CEO `financialData` `/api/branch-financial-summary` veri yoksa "Girilmemiş: X şube" gösteriyor ama toplam KPI eksik şubeleri çıkarmadan yayınlıyor | CEO yanıltıcı bordro/ciro toplamı görüyor |
 
 ### A2. Şube — Müdür / Supervisor / Barista / Buddy / Stajyer
 
 | # | Sınıf | Bulgu | Etki |
 |---|---|---|---|
-| F05 | YETKİ | `operations.ts` L2065/L2092 PUT/DELETE sadece `isHQRole` → şube müdürü kendi şubesinin denetim şablonunu düzenleyemiyor | Müdür operasyonel regression |
+| F05 | YETKİ | ~~`operations.ts` L2065/L2092 PUT/DELETE sadece `isHQRole` → şube müdürü kendi şubesinin denetim şablonunu düzenleyemiyor~~ ✅ **KAPANDI NO-OP (3 May 2026, Wave B-2)** — `auditTemplates` tablosunda `branchId` kolonu YOK; şablonlar global (sistem genelinde paylaşılır). Müdürün kendi şubesinin değil, **tüm sistem şablonunu** düzenlemesi yetki ihlali olur. HQ-only doğru tasarım. Audit "kendi şubesi" varsayımı yanlıştı. | Müdür operasyonel regression |
 | F06 | YETKİ-SIZINTI | `sube/siparis-stok.tsx` API'sı role değil `branchId` varlığına dayanıyor → Barista doğrudan API çağırırsa sipariş geçebilir | Yetki bypass riski (orta) |
 | F07 | HESAP-MANTIK | `operations.ts` L2455 `sectionWeight` default = 20; şablonda ağırlık yoksa puanlama dengesizleşir | Yanlış denetim skoru |
 | F08 | UX | Bar Buddy / Supervisor Buddy "Eğitim/Vardiyam" gizli; dokümantasyon yok | Kullanıcı şikayet beklentisi |
@@ -34,7 +34,7 @@ Yöntem: 6 paralel kod-explorer subagent + 5 mekanik script-tarama (route/guard/
 | F10 | KRİTİK-VERİ | `pdks-daily-summary-sync.ts` L94 `notes='PILOT_PRE_DAY1_TEST_2026_04_29'` etiketli kayıtları HARİÇ tutuyor → 42 eksik kayıt buradan gelmiş olabilir | Pilot test verisi sessizce kayboluyor |
 | F11 | KRİTİK-TZ | Sync `Europe/Istanbul` cast yapıyor; `workDate` string vs UTC timestamp tutarsızlığında kayıt eksilir | Gece-yarısı vardiyaları kaybolur |
 | F12 | KRİTİK-FK | `shift_attendance` `shift_id` zorunlu; kiosk swipe varken planlanmış shift yoksa `pdks_daily_summary`'ye toplanmaz | Plansız mesai bordroya yansımaz |
-| F13 | YETKİ | `pdks.ts` L13 `canManagePdks` direkt rol string check; granüler `hasPermission` bypass ediliyor | Tutarsız RBAC |
+| F13 | YETKİ | `pdks.ts` L13 `canManagePdks` direkt rol string check; granüler `hasPermission` bypass ediliyor → ⏳ **SPRINT 4'e ERTELENDİ (3 May 2026, Wave B-2)** — Bu mimari mesele B21 (9 paralel rol mekanizması konsolidasyonu, 20-30h) kapsamında çözülecek. Pilot için fonksiyonel etkisi yok (canManagePdks doğru rolleri içeriyor). | Tutarsız RBAC |
 | F14 | HESAP-MANTIK | ~~`pdks-engine.ts` `classifyDay` 30dk altı mesaiyi 0'a yuvarlar~~ ✅ **KAPANDI NO-OP (3 May 2026, Wave B)** — DOSPRESSO iç kuralı: 30dk altı fazla mesai sayılmaz, mesai sadece yönetici onayı ile geçerli (DECISIONS#39 + `docs/DEVIR-TESLIM-7-NISAN-2026.md` "FM 30dk eşik"). Audit yanlış kategorize etmişti. | İşçi mesai kaybı (yıl sonu birikimi) |
 | F15 | HESAP-MANTIK | Geç gelme eşiği global hardcoded (LATE_THRESHOLD=15) ama `branch_kiosk_settings.lateToleranceMinutes` var → hangi öncelikli? | Çelişen iki kaynak |
 
@@ -42,7 +42,7 @@ Yöntem: 6 paralel kod-explorer subagent + 5 mekanik script-tarama (route/guard/
 
 | # | Sınıf | Bulgu | Etki |
 |---|---|---|---|
-| F16 | YETKİ | `module-content-routes.ts` `isAdminRole` sadece admin+ceo; Coach/Trainer module-content yazamaz (Task #299 ile örtüşür) | İçerik üretim darboğazı |
+| F16 | YETKİ | ~~`module-content-routes.ts` `isAdminRole` sadece admin+ceo; Coach/Trainer module-content yazamaz (Task #299 ile örtüşür)~~ ✅ **KAPANDI (3 May 2026, Wave B-2)** — `server/routes/module-content-routes.ts` L18 `isAdminRole` listesi: `['admin', 'ceo', 'coach', 'trainer']` (Coach + Trainer eklendi). 4 endpoint (POST/PUT/DELETE/PUT order) etkilendi. İçerik üretim darboğazı kalktı. | İçerik üretim darboğazı |
 | F17 | KIRIK-API | `akademi-hq/ModullerTab.tsx` `/api/training/modules` çağırıyor; ana academy route'larda yok, `training-program-routes.ts` veya `mega-module-routes.ts`'te aranmalı | 404/silent fail |
 | F18 | EKSİK-IMPL | `CareerTab` "Pratik" ve "Onay" gate'leri statik/placeholder; supervisor onay ekranı entegre değil | Kariyer kademe geçişi yarım |
 | F19 | UX-AI | `Mr. Dobody` `CareerTab` önerileri kural-bazlı; "Acil Eğitim" uyarısı sadece HomeTab'da | AI kapsamı dar |
