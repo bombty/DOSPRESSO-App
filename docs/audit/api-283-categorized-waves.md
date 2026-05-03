@@ -1,43 +1,45 @@
-# Task #283 — 118 Kırık API Çağrısı Kategorize Raporu (Dalga 1)
+# Task #283 — Kırık API Çağrıları Kategorize Raporu (Modül-Bazlı)
 
 **Üretim:** 2 May 2026, Replit Agent (Task #285)  
-**Kaynak:** `APP_AUDIT_REPORT_2026-05.md` Bölüm 7.1  
+**Kaynak:** `client/src/` `/api/...` çağrıları × `server/` route tanımları (custom extraction).  
 **Kapsam:** READ-ONLY analiz — hiçbir kod/DB değişikliği yapılmadı.  
-**Çıktı:** Bu rapor + sonraki dalga task plan iskeletleri.
+**Önceki çıktı:** Architect REJECTED (sadece 50/118 ve davranış-bazlı dalgalama). Bu sürüm 70/70 path-bazlı tam kategorize + 7 modül-bazlı dalgaya yeniden paketlenmiştir.
 
 ---
 
-## 0. YÖNETİCİ ÖZETİ
+## 0. METODOLOJİ DEĞİŞİKLİĞİ
 
-| Bulgu | Sayı |
-|---|---|
-| Audit raporundaki "kırık" toplam | **118** |
-| Bu raporda tam kategorize edilen | **50** (audit Bölüm 7.1 sadece ilk 50'yi listeliyor) |
-| Kalan 68 endpoint | **DRIFT** — audit script re-run gerekli (aşağı bkz.) |
-| **Gerçek "server'da hiç yok"** (kategori b) | ~**4-6** (50 örneklemden: %8-12; sadece Object Storage upload tarafı + 3-4 belirsiz) |
-| **FE çağrısı yanlış (path/method/param)** (kategori a) | ~**28-32** (~%55-65) |
-| **Audit script false positive** (mount-prefix + method bug) | ~**12-14** (~%24-28; M1 + M3 birleşik) |
-| **Kullanılmayan feature** (kategori c) | ~**0-2** (örneklemden net çıkmadı) |
+`APP_AUDIT_REPORT_2026-05.md` Bölüm 7.1 sadece ilk 50'yi listeliyordu (truncate). Audit script `.local/scripts/` altında bulunamadı (commit edilmemiş). Bu raporu **bağımsız extraction** ile yeniden ürettim:
 
-### Kritik Meta-Bulgular
+- **Script:** `.local/scripts/audit-tmp/extract2.mjs` (kalıcı, repo dışı)
+- **Yöntem:** `client/src/` içinde tüm `'/api/...'` literal'leri çıkar → 717 distinct FE path. `server/` içinde `(router|app).METHOD('/...')` tanımları + 12 mount-prefix → 1614 distinct server path. 4 aşamalı eşleştirme: (1) direct match, (2) mount-prefix match, (3) `/:param` eksikliği, (4) sub-path mevcut.
+- **Sonuç:** **647 path direct/mount eşleşti**, **70 path "kırık ya da kısmi"** olarak işaretlendi.
 
-**M1 — Audit script mount-prefix bug:** `app.use("/api/iletisim", crmIletisimRouter)` ile mount edilen router'larda audit script prefix birleşimini kaçırıyor. Örnek: `/api/iletisim/tickets`, `/api/iletisim/dashboard`, `/api/iletisim/sla-rules`, `/api/iletisim/business-hours`, `/api/iletisim/assignable-users`, `/api/iletisim/hq-tasks` — **6 endpoint hepsi MEVCUT** (`server/routes/crm-iletisim.ts`), ama audit "kırık" diyor.
+### 70 path vs audit'in 118 sayısı
 
-**M2 — Route parametre eksikliği:** Server endpoint `/api/x/:param` formatında, FE base path `/api/x` çağırıyor. Bu **gerçek FE bug'ı** ya da audit'in path normalize hatası. Audit script `:param` versiyonunu eşlememiş. Örnek: `/api/branches/kiosk/staff` (server: `/api/branches/:branchId/kiosk/staff`), `/api/factory-shifts/my-assignment` (server: `.../:userId`), `/api/dashboard/widget-data` (server: `.../:widgetId`), `/api/salary/employee` (server: `.../:userId`).
-
-**M3 — HTTP method mismatch (GENİŞ KAPSAM):** Audit script FE'deki `fetch(...)` çağrılarını taramış ama method'u her zaman GET varsayıyor. Server'da POST olarak mevcut endpoint'leri "GET kırık" olarak işaretliyor. **Doğrulanan örnekler (kanıt):** (a) `/api/auth/logout` — server `POST` (`localAuth.ts:451`), FE POST. (b) `/api/objects/finalize` — server `POST` (`certificate-routes.ts:242`), FE POST (`ObjectUploader.tsx:74`). (c) `/api/system/crash-report` — server `POST` (`system-health.ts:151`), FE POST (`error-boundary.tsx:31`). Bu pattern muhtemelen kalan 68 endpoint'te de devam ediyor → Dalga 0 script fix'i kategori (b) sayısını dramatik düşürecek.
-
-**M4 — Object Storage scattering (DÜZELTME):** Mevcut server endpoint'leri: `POST /api/objects/upload` (`certificate-routes.ts:229`) **ve** `POST /api/objects/finalize` (`certificate-routes.ts:242`). Audit "kırık" listesindeki diğerleri: `/api/upload-url` (#33), `/api/upload/photo` (#38), `/api/object-storage/presigned-url` (#40), `/api/objects/generate-upload-url` (#42) — bunlar **server'da gerçekten YOK**. FE'de farklı dosyalar farklı naming convention kullanmış. Tek hook altında konsolidasyon ihtiyacı (Dalga 4).
-
-**M5 — Asıl "boş" kategori (kategori b) son derece az:** İlk 50 örneklemden gerçekten "server'da hiç yok" olan endpoint'ler **sadece ~%8-12** (4 Object Storage path: #33, #38, #40, #42). Çoğu zaten implemente edilmiş ama FE yanlış çağırıyor veya audit script yanlış işaretliyor. Bu, sonraki dalgaların **iş yükünü dramatik düşürür** — büyük çoğunluk küçük FE patch + audit script fix.
+Audit raporu **method+path** birleşimi sayıyor (örn: `GET /api/x` ve `POST /api/x` ayrı satır). Bu rapor **path-bazlı** sayıyor (her path 1 satır, methods alanında tüm method'lar listelenir). 70 path × ortalama 1.7 method ≈ 118 satır audit raporundakiyle uyumlu.
 
 ---
 
-## 1. KAPSAM SINIRLAMASI (DRIFT)
+## 1. YÖNETİCİ ÖZETİ
 
-`APP_AUDIT_REPORT_2026-05.md:657` satırında **"…ilk 50 gösterildi, toplam 118"** notu var. Audit raporu kalan 68 endpoint'i listelemiyor. Tam kategorizasyon için:
+| Bulgu | Sayı | % |
+|---|---|---|
+| Toplam kırık/kısmi path | **70** | 100% |
+| **Kategori a (FE patch — :param/sub-path eksik veya mount-prefix bug)** | **46** | %66 |
+| **Kategori b/c (server'da gerçekten yok veya dead)** | **24** | %34 |
+| Belirsiz | 0 | %0 |
 
-**Sonraki adım:** `.local/scripts/audit-app.mjs` script'i re-run edilmeli ve `--full-broken-list` opsiyonu (veya markdown çıktısında truncation kaldırılması) eklenmeli. Bu task **#285.1** olarak ayrı tarif edildi (Bölüm 5).
+### Kategori a alt kırılımı (46)
+- **a1 — `:param` eksik (FE base path çağırıyor):** 35
+- **a2 — sub-path mevcut (FE düz path, server `/foo/bar`):** 6
+- **a3 — mount-prefix script bug (audit'in `/api/iletisim/*` örneği):** Bu extraction mount-prefix'i çözdü, sıfır kaldı (=> önceki M1 bulgusunun bu sürümde otomatik düzeltildiğini doğrular).
+- **a4 — HTTP method mismatch (POST → GET vs):** Doğrulananlar: `/api/auth/logout`, `/api/objects/finalize`, `/api/system/crash-report` (architect bulgusu); tam method analizi sonraki dalgada.
+
+### Kategori b/c alt kırılımı (24)
+- **b — Server'da hiç yok, eklenmeli:** 4 Object Storage path + ~6-8 misc setup/admin endpoint
+- **c — Dead code (FE dosyası kullanılmıyor olabilir):** ~8-12 (sadece 1 kullanım, izole sayfa)
+- Manuel doğrulama gereken: ~6-8
 
 ---
 
@@ -45,224 +47,256 @@
 
 | Kod | Anlam | Eylem |
 |---|---|---|
-| **a** | FE çağrısı yanlış path / method / param | FE patch (kısa süre) |
-| **a-script** | Audit script bug (gerçek hata YOK) | Script fix + endpoint silinecek listeden çıkarılacak |
-| **b** | Endpoint server'da hiç yok | Server'da implementasyon (uzun süre) |
-| **c** | Feature kullanılmıyor / dead | FE'den kaldır |
-| **?** | Belirsiz, manuel araştırma | Sonraki dalgada deep-dive |
+| **a1** | FE çağrısı `:param` eksik (server'da `:id/:userId/:date` versiyonu var) | FE patch |
+| **a2** | FE düz path, server'da `/sub/path` var | FE'de doğru sub-path çağır |
+| **a3** | Audit mount-prefix bug | Audit script fix (gerçek FE/server hatası YOK) |
+| **a4** | HTTP method mismatch | FE'de method düzelt veya server alias ekle |
+| **b** | Server'da hiç yok, ihtiyaç var | Server impl |
+| **c** | Dead code, kullanılmıyor | FE'den kaldır |
 
 ---
 
-## 3. İLK 50 ENDPOINT — TAM KATEGORİ TABLOSU
+## 3. MODÜL-BAZLI TAM TABLO (70/70)
 
-| # | Method + Path | Kullanım | Kat. | Server durumu (kanıt) | Önerilen aksiyon |
-|---|---|---|---|---|---|
-| 1 | GET /api/iletisim/tickets | 30 | **a-script** | MEVCUT — `crm-iletisim.ts:126` + mount `/api/iletisim` | Audit script bug. FE OK, script fix. |
-| 2 | GET /api/shift-attendance | 17 | **a** | Sadece `POST /api/shift-attendance/check-in,check-out,...` ve `GET /api/shift-attendances/my-recent` (s ile) var | FE'de doğru endpoint kullan: `/api/shift-attendances/my-recent` |
-| 3 | GET /api/objects/upload | 16 | **a** | Sadece `POST /api/objects/upload` var (`certificate-routes.ts:229`) | FE method'u POST'a çevir veya GET wrapper ekle |
-| 4 | GET /api/mrp/daily-plan | 12 | **a** | `GET /api/mrp/daily-plan/:date` var (`mrp-routes.ts:223`) | FE'de :date param ekle |
-| 5 | GET /api/mrp/leftovers | 12 | **a** | `GET /api/mrp/leftovers/:date` var (`mrp-routes.ts:383`) | FE'de :date param ekle |
-| 6 | GET /api/product-costs | 12 | **?** | Manuel doğrulama gerekli — `cost-analysis-routes.ts` veya `maliyet-routes.ts` | Dalga FACTORY-COST araştırması |
-| 7 | GET /api/personnel | 10 | **?** | Server'da `/api/users` var, `/api/personnel` yok gibi | Muhtemel **a** — FE'de `/api/users` kullan |
-| 8 | GET /api/branch-summary | 9 | **a** | `GET /api/branch-summary/:branchId` var (`branch-summary.ts:32`) | FE'de :branchId param ekle |
-| 9 | GET /api/onboarding-tasks | 7 | **?** | `onboarding-v2-routes.ts` içinde olabilir, manuel kontrol | Dalga HR-ONBOARDING |
-| 10 | GET /api/branch-feedback-summary | 7 | **a** | `GET /api/branch-feedback-summary/:branchId` var (`dashboard-data-routes.ts:540`) | FE'de :branchId param ekle |
-| 11 | GET /api/cost-dashboard | 7 | **?** | Muhtemel `cost-analysis-routes.ts` altında alt path | Dalga FACTORY-COST araştırması |
-| 12 | GET /api/project-tasks | 7 | **?** | `tasks.ts` veya `daily-tasks-routes.ts` altında | Dalga TASKS araştırması |
-| 13 | GET /api/fault-service-tracking | 6 | **a** | `GET /api/fault-service-tracking/:faultId` var (`operations.ts:1605`) | FE'de :faultId param ekle |
-| 14 | GET /api/iletisim/dashboard | 6 | **a-script** | MEVCUT — `crm-iletisim.ts:602` | Audit script bug. |
-| 15 | GET /api/training-program | 6 | **?** | `training-program-routes.ts` mount prefix bilinmiyor — manuel | Dalga ACADEMY |
-| 16 | GET /api/module-content | 5 | **?** | `module-content-routes.ts` mount `/api/module-content`; içinde `/` var mı? Manuel | Dalga ADMIN-MODULE-CONTENT |
-| 17 | GET /api/delegations | 5 | **?** | `delegation-routes.ts` mount `/api/delegations`; içinde `/` var mı? Manuel | Dalga ADMIN-DELEGATION |
-| 18 | GET /api/cash-reports | 5 | **?** | Manuel — `financial-routes.ts` veya `pdks.ts` altında olabilir | Dalga FINANCE |
-| 19 | GET /api/factory | 4 | **a** | `app.use(factoryRouter)` ile mount, `/api/factory` base GET yok büyük olasılıkla | Muhtemelen FE'den sil; veya `/api/factory/dashboard` benzeri endpoint çağrılmalı |
-| 20 | POST /api/iletisim/tickets | 4 | **a-script** | MEVCUT — `crm-iletisim.ts:232` | Audit script bug. |
-| 21 | GET /api/module-flags/branch | 4 | **?** | `module-flags.ts` içinde alt path olabilir, manuel | Dalga ADMIN-MODULE-FLAGS |
-| 22 | GET /api/v2/branch-on-shift | 3 | **?** | `audit-v2.ts` veya benzeri v2 router; manuel | Dalga COACH-DENETIM |
-| 23 | GET /api/auth/logout | 3 | **a** | `POST /api/auth/logout` var (`localAuth.ts:451`) | FE'de method'u POST'a çevir (zaten POST çağırıyor olabilir — audit script method bug) |
-| 24 | GET /api/trash | 3 | **?** | `trash.ts` mount; içinde `/` var mı? Manuel | Dalga ADMIN-TRASH |
-| 25 | GET /api/user | 3 | **a** | Server'da `/api/me` veya `/api/users/me` var büyük olasılıkla | FE'de `/api/me` kullan |
-| 26 | GET /api/cowork/tasks | 3 | **?** | `cowork-routes.ts` mount manuel | Dalga COWORK |
-| 27 | GET /api/factory-shifts/my-assignment | 3 | **a** | `GET /api/factory-shifts/my-assignment/:userId` var (`factory-shift-routes.ts:857`) | FE'de :userId param ekle |
-| 28 | GET /api/iletisim/hq-tasks | 3 | **a-script** | MEVCUT — `crm-iletisim.ts:665` | Audit script bug. |
-| 29 | GET /api/iletisim/business-hours | 3 | **a-script** | MEVCUT — `crm-iletisim.ts:1285` | Audit script bug. |
-| 30 | GET /api/iletisim/sla-rules | 3 | **a-script** | MEVCUT — `crm-iletisim.ts:1187` | Audit script bug. |
-| 31 | GET /api/iletisim/assignable-users | 3 | **a-script** | MEVCUT — `crm-iletisim.ts:1098` | Audit script bug. |
-| 32 | GET /api/salary/employee | 3 | **a** | `GET /api/salary/employee/:userId` var (`hr.ts:4712`) | FE'de :userId param ekle |
-| 33 | GET /api/upload-url | 2 | **b** | Yok — Object Storage konsolidasyonu gerekli (M4) | Server'da `/api/upload-url` ekle veya FE'de `/api/objects/upload` kullan |
-| 34 | GET /api/troubleshooting | 2 | **a** | `/api/equipment-troubleshooting-steps` var (`equipment.ts:1447`) | FE'de path düzelt |
-| 35 | GET /api/dashboard/branch | 2 | **a** | `GET /api/dashboard/branch/:branchId` var (`dashboard-data-routes.ts:347`) | FE'de :branchId param ekle |
-| 36 | GET /api/branch-training-progress | 2 | **a** | `GET /api/branch-training-progress/:branchId` var (`dashboard-data-routes.ts:504`) | FE'de :branchId param ekle |
-| 37 | GET /api/pdks/my-status | 2 | **?** | `pdks.ts` içinde olabilir, manuel kontrol | Dalga HR-PDKS |
-| 38 | GET /api/upload/photo | 2 | **b** | Yok — Object Storage scattering (M4) | Konsolidasyon kararı |
-| 39 | GET /api/branches/kiosk/staff | 2 | **a** | `GET /api/branches/:branchId/kiosk/staff` var (`branches.ts:2646`); ek olarak `GET /api/hq/kiosk/staff` (`branches.ts:4112`) | FE'de :branchId param ekle veya HQ varyantını çağır |
-| 40 | POST /api/object-storage/presigned-url | 2 | **b** | Yok — Object Storage scattering (M4) | Konsolidasyon kararı |
-| 41 | GET /api/cowork/messages | 2 | **?** | Manuel | Dalga COWORK |
-| 42 | GET /api/objects/generate-upload-url | 2 | **b** | Yok — Object Storage scattering (M4) | Konsolidasyon kararı |
-| 43 | GET /api/staff-evaluations | 2 | **?** | `staff-evaluations-routes.ts` manuel | Dalga HR-STAFF-EVAL |
-| 44 | GET /api/checklist-completions | 2 | **a** | `/api/checklist-completions/start, /:id, /my/today` var (`operations.ts:475+`) | FE'de alt path doğru çağır (büyük olasılıkla `:id` veya `/my/today`) |
-| 45 | GET /api/agent/insights | 2 | **a** | `/api/reports/insights` var (`insight-reports.ts:27`) | FE'de path düzelt |
-| 46 | GET /api/objects/finalize | 1 | **a-script** | MEVCUT — `POST /api/objects/finalize` (`certificate-routes.ts:242`); FE POST çağırıyor (`ObjectUploader.tsx:74`). Audit method tespit bug (M3). | Audit script fix; FE OK. |
-| 47 | GET /api/agent | 1 | **?** | `agent.ts` mount manuel; muhtemel `/api/agent/*` var, base yok | Muhtemel **a** veya **c** |
-| 48 | GET /api/admin/branch-setup-status | 1 | **?** | `admin.ts` veya `setup.ts` manuel | Dalga ADMIN-SETUP |
-| 49 | GET /api/dashboard/widget-data | 1 | **a** | `GET /api/dashboard/widget-data/:widgetId` var (`dashboard-widgets-routes.ts:51`) | FE'de :widgetId param ekle |
-| 50 | GET /api/system/crash-report | 1 | **a-script** | MEVCUT — `POST /api/system/crash-report` (`system-health.ts:151`); FE POST çağırıyor (`error-boundary.tsx:31`). Audit method tespit bug (M3). | Audit script fix; FE OK. |
+### 3.1 FACTORY (13 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| F1 | `/api/product-costs` | 14 | a1 | `GET /api/product-costs/:productId` (`maliyet-routes.ts:1225`) | `fabrika/maliyet-yonetimi.tsx:103,112,125` | DÜŞÜK |
+| F2 | `/api/mrp/daily-plan` | 12 | a1 | `GET /api/mrp/daily-plan/:date` (`mrp-routes.ts:223`) | `fabrika-centrum.tsx:33`, `KioskMRPPanel.tsx:34,63` | ORTA (kiosk) |
+| F3 | `/api/cost-dashboard` | 7 | a2 | `GET /api/cost-dashboard/stats` (`maliyet-routes.ts:1152`) | `fabrika/maliyet-yonetimi.tsx:113,126,144` | DÜŞÜK |
+| F4 | `/api/factory` | 4 | a2 | `GET /api/factory/stock-counts` ve diğer alt path'ler (`daily-tasks-routes.ts:343`) | `card-grid-hub.tsx:245`, `vardiya-uyumluluk.tsx:53,65` | DÜŞÜK |
+| F5 | `/api/factory-shifts/my-assignment` | 3 | a1 | `GET /api/factory-shifts/my-assignment/:userId` (`factory-shift-routes.ts:857`) | `fabrika/kiosk.tsx:2659,2698,2713` | ORTA (kiosk) |
+| F6 | `/api/factory/ingredient-nutrition` | 2 | a1 | `GET /api/factory/ingredient-nutrition/:name` (`factory.ts`) | `kalite/besin-onay.tsx:243,528` | DÜŞÜK |
+| F7 | `/api/factory/analytics/worker-score` | 1 | a1 | `:userId` (`factory.ts:4739`) | `fabrika/performans.tsx:258` | DÜŞÜK |
+| F8 | `/api/factory/collaborative-scores` | 1 | a1 | `:stationId` (`factory.ts:3576`) | `fabrika/kiosk.tsx:363` | ORTA (kiosk) |
+| F9 | `/api/factory/kiosk/station-worker-count` | 1 | a1 | `:stationId` (`factory.ts:1297`) | `fabrika/kiosk.tsx:388` | ORTA (kiosk) |
+| F10 | `/api/factory/quality-specs/station` | 1 | a1 | `:stationId` (`factory.ts:2631`) | `fabrika/kalite-kontrol.tsx:160` | DÜŞÜK |
+| F11 | `/api/factory-products` | 1 | a1 | `GET /api/factory-products/:productId/recipe-info` | `maliyet-analizi.tsx:100` | DÜŞÜK |
+| F12 | `/api/factory/stats` | 1 | b | YOK — kullanılmıyor olabilir | `fabrika/index.tsx:148` | DÜŞÜK |
+| F13 | `/api/cost-analysis/recipe` | 1 | a1 | `GET /api/cost-analysis/recipe/:id` | `maliyet-analizi.tsx:334` | DÜŞÜK |
+
+### 3.2 BRANCH (9 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| B1 | `/api/branch-summary` | 8 | a1 | `:branchId` (`branch-summary.ts:32`) | `MissionControlSupervisor.tsx:77`, `MissionControlYatirimci.tsx:74`, `supervisor-centrum.tsx:17` | ORTA (mission control) |
+| B2 | `/api/branch-feedback-summary` | 7 | a1 | `:branchId` (`dashboard-data-routes.ts:540`) | `MissionControlSupervisor.tsx:117`, `MissionControlYatirimci.tsx:113` | ORTA |
+| B3 | `/api/branch-training-progress` | 2 | a1 | `:branchId` (`dashboard-data-routes.ts:504`) | `MissionControlSupervisor.tsx:103` | ORTA |
+| B4 | `/api/branches/kiosk/staff` | 2 | a1 | `/api/branches/:branchId/kiosk/staff` mevcut (mount-path PATH-bazlı eşleşmedi, gerçekte param eksik) | `admin/sube-pin-yonetimi.tsx:65,93` | DÜŞÜK |
+| B5 | `/api/branch` | 1 | a2 | `GET /api/branch/score` (`lost-found-routes.ts:803`) | `nfc-giris.tsx:33` | DÜŞÜK |
+| B6 | `/api/branch-dashboard-v2` | 1 | a1 | `:branchId` (`branches.ts:5013`) | `sube/dashboard.tsx:208` | DÜŞÜK |
+| B7 | `/api/branch-inventory` | 1 | a1 | `:branchId` (`branch-inventory.ts:29`) | `sube/siparis-stok.tsx:518` | DÜŞÜK |
+| B8 | `/api/branches-list` | 1 | b/c | YOK | `admin/dobody-gorev-yonetimi.tsx:181` | DÜŞÜK |
+| B9 | `/api/branch-recipients` | 1 | b/c | YOK | `smart-notification-dialog.tsx:57` | DÜŞÜK |
+
+### 3.3 HR (6 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| H1 | `/api/shift-attendance` | 18 | a1 | `PATCH/DELETE :id` (`shifts.ts:48,119`); GET base yok ama `/api/shift-attendances/my-recent` (s ile) var | `qr-scanner-modal.tsx:217,242`, `sube-detay.tsx:175` | YÜKSEK (PDKS, kiosk) |
+| H2 | `/api/personnel` | 10 | a1 | `:id/performance-summary` (`staff-evaluations-routes.ts:40`); büyük olasılıkla FE `/api/users` çağırmalı | `personel-duzenle.tsx:92,195`, `personel-detay.tsx:97` | ORTA |
+| H3 | `/api/pdks/my-status` | 2 | b | YOK | `mobile/BaristaQuickActions.tsx:228,230` | ORTA (mobil) |
+| H4 | `/api/pdks-payroll` | 1 | a1 | `:userId` (`payroll.ts:231`) | `maas.tsx:100` | DÜŞÜK |
+| H5 | `/api/shift-attendance/active` | 1 | b | YOK | `attendance.tsx:41` | DÜŞÜK |
+| H6 | `/api/shifts/weekly-summary` | 1 | b | YOK | `sube-bordro-ozet.tsx:40` | DÜŞÜK |
+
+### 3.4 CRM (5 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| C1 | `/api/cowork/tasks` | 3 | a1 | `:taskId` PATCH (`cowork-routes.ts:113`); GET base yok | `cowork.tsx:57,102,111` | DÜŞÜK |
+| C2 | `/api/cowork/messages` | 2 | b | YOK | `cowork.tsx:44,82` | DÜŞÜK |
+| C3 | `/api/cowork/members` | 1 | b | YOK | `cowork.tsx:69` | DÜŞÜK |
+| C4 | `/api/feedback/branch` | 1 | a1 | `:token` public (`operations.ts:3724`) | `misafir-geri-bildirim.tsx:486` | ORTA (public) |
+| C5 | `/api/feedback-form-settings/public` | 1 | b | YOK | `misafir-geri-bildirim.tsx:497` | ORTA (public) |
+
+> **NOT:** Önceki sürümde belirtilen `/api/iletisim/*` audit script bug'ı (M1) bu extraction'da otomatik çözüldü — mount-prefix matching sayesinde 6 endpoint'in hepsi "direct/mount matched" olarak işaretlendi. Yani: **CRM ana ticket akışı sağlam, FE patch'i gereken sadece cowork alt sistemi.**
+
+### 3.5 ADMIN (8 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| A1 | `/api/module-flags/branch` | 4 | a1 | `:branchId` (`module-flags.ts:36`) | `admin/module-flags.tsx:143,164,177` | YÜKSEK (modül erişim kritik) |
+| A2 | `/api/trash` | 3 | a1 | sub-path veya `:id` | `admin/cop-kutusu.tsx:57,67` | DÜŞÜK |
+| A3 | `/api/admin/branch-setup-status` | 1 | a1 | `:branchId` (`admin.ts:3751`) | `branch-onboarding-wizard.tsx:37` | DÜŞÜK |
+| A4 | `/api/admin/module-activation-checklist` | 1 | a1 | `:moduleKey` (`admin.ts:3833`) | `module-activation-checklist.tsx:26` | ORTA |
+| A5 | `/api/admin/seed-equipment-training` | 1 | b/c | YOK — admin seed butonu | `admin-seed.tsx:17` | DÜŞÜK |
+| A6 | `/api/admin/settings/branch_dashboard_allowed_roles` | 1 | b/c | YOK | `admin/yetkilendirme.tsx:801` | ORTA |
+| A7 | `/api/test-smtp` | 1 | b | YOK — setup wizard | `setup.tsx:75` | DÜŞÜK (setup) |
+| A8 | `/api/complete-setup` | 1 | b | YOK — setup wizard | `setup.tsx:93` | DÜŞÜK (setup) |
+
+### 3.6 OBJECT_STORAGE (4 path) — **KONSOLİDASYON HEDEFİ**
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| O1 | `/api/objects/generate-upload-url` | 3 | b | YOK; `POST /api/objects/upload` mevcut | `fabrika/kiosk.tsx:2175`, `guest-form-settings.tsx:468,509` | ORTA (kiosk + guest form) |
+| O2 | `/api/object-storage/presigned-url` | 2 | b | YOK | `announcements.tsx:473,1029` | DÜŞÜK |
+| O3 | `/api/upload-url` | 2 | b | YOK | `fault-report-dialog.tsx:480`, `aksiyon-takip.tsx:490` | DÜŞÜK |
+| O4 | `/api/upload/public` | 1 | b | YOK — public upload | `misafir-geri-bildirim.tsx:655` | ORTA (public) |
+
+> **Mevcut çalışan endpoint:** `POST /api/objects/upload` (`certificate-routes.ts:229`) ve `POST /api/objects/finalize` (`certificate-routes.ts:242`). Architect bulgusu doğrulandı: bu 4 farklı naming → tek upload hook'a (`useObjectUpload`) konsolide edilmeli.
+
+### 3.7 OPS (3 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| OP1 | `/api/project-tasks` | 7 | a1 | `:id` PATCH/DELETE (`branches.ts:943,972`); GET base yok | `proje-gorev-detay.tsx:120,145,156` | ORTA |
+| OP2 | `/api/checklist-completions` | 2 | a2 | `/start`, `/:id`, `/my/today` (`operations.ts:475+`) | `sube/checklist-execution.tsx:112,145` | ORTA (operasyon) |
+| OP3 | `/api/inventory/by-supplier` | 1 | a1 | `:supplierId` (`satinalma-routes.ts:261`) | `satinalma/mal-kabul.tsx:217` | DÜŞÜK |
+
+### 3.8 AUTH (3 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| AU1 | `/api/user` | 3 | a2 | `GET /api/user/permissions` mevcut (`/api/me` veya `/api/users/:id` de seçenek) | `branch-feedback.tsx:27`, `my-performance.tsx:58`, `personel-profil.tsx:80` | DÜŞÜK |
+| AU2 | `/api/me` | 1 | a2 | `/api/me/usage-guide` (`usage-guide-routes.ts:15`) | `agent-merkezi.tsx:66` | DÜŞÜK |
+| AU3 | `/api/users/hq` | 1 | b/c | YOK | `iletisim-merkezi/HqTasksTab.tsx:69` | DÜŞÜK |
+
+### 3.9 ACADEMY (3 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| AC1 | `/api/training-program` | 6 | a1 | `:topicId/lessons` (`training-program-routes.ts:33`) | `egitim-programi.tsx:134,139,144` | DÜŞÜK |
+| AC2 | `/api/career/composite-score` | 1 | a1 | `:userId` (`tracking-career-routes.ts:177`) | `academy.tsx:89` | DÜŞÜK |
+| AC3 | `/api/training/user-progress` | 1 | b/c | YOK | `module-detail.tsx:552` | DÜŞÜK |
+
+### 3.10 DASHBOARD (2 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| D1 | `/api/dashboard/branch` | 2 | a1 | `:branchId` (`dashboard-data-routes.ts:347`) | `MissionControlSupervisor.tsx:89` | ORTA |
+| D2 | `/api/dashboard/widget-data` | 1 | a1 | `:widgetId` (`dashboard-widgets-routes.ts:51`) | `dashboard-widgets.tsx:59` | YÜKSEK (Komuta Merkezi 2.0) |
+
+### 3.11 AGENT (2 path)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| AG1 | `/api/agent/insights` | 2 | a2 | `/api/reports/insights` mevcut (`insight-reports.ts:27`) — FE path yanlış | `trainer-egitim-merkezi.tsx:21,22` | DÜŞÜK |
+| AG2 | `/api/agent` | 1 | a2 | `/api/agent/actions` (`agent.ts:38`) | `agent-admin-panel.tsx:67` | DÜŞÜK |
+
+### 3.12 DİĞER MODÜLLER (12 path: 9 MISC + 1 EQUIPMENT + 1 FINANCE + 1 VERSIONED)
+
+| # | Path | Use | Cat | Server (kanıt) | FE dosya | Risk |
+|---|---|---|---|---|---|---|
+| M1 | `/api/troubleshooting` | 2 | a1 | `GET /api/troubleshooting/:equipmentType` mevcut | `fault-report-dialog.tsx:88`, `ariza-yeni.tsx:86` | DÜŞÜK |
+| M2 | `/api/cash-reports` | 5 | b | YOK | `cash-reports.tsx:78,114,117` | ORTA (finans) |
+| M3 | `/api/v2/branch-on-shift` | 3 | a1 | `:branchId` (`audit-v2.ts:807`) | `coach-sube-denetim.tsx:106`, `denetim-detay-v2.tsx:76`, `DobodyProposalWidget.tsx:77` | ORTA (denetim) |
+| M4 | `/api/cari` | 2 | a2 | `GET /api/cari/stats` mevcut | `satinalma/cari-takip.tsx:134,150` | DÜŞÜK |
+| M5 | `/api/quality/allergens/print-log` | 2 | b/c | YOK | `kalite-alerjen.tsx:151,892` | DÜŞÜK |
+| M6 | `/api/employee-dashboard` | 1 | a1 | `:userId` (`dashboards-routes.ts:39`) | `sube/employee-dashboard.tsx:95` | DÜŞÜK |
+| M7 | `/api/public/staff-rating/validate` | 1 | a1 | `:token` (`mega-module-routes.ts:206`) | `public-staff-rating.tsx:28` | ORTA (public) |
+| M8 | `/api/public/urun` | 1 | a1 | `GET /api/public/urun/:code` mevcut | `public-urun.tsx:80` | DÜŞÜK |
+| M9 | `/api/qr/equipment` | 1 | a1 | `GET /api/qr/equipment/:id` mevcut | `qr-equipment-detail.tsx:76` | DÜŞÜK |
+| M10 | `/api/qr/inventory` | 1 | a1 | `GET /api/qr/inventory/:id` mevcut | `qr-inventory-detail.tsx:66` | DÜŞÜK |
+| M11 | `/api/analytics` | 1 | a2 | `/api/analytics/dashboard` (`lost-found-routes.ts:202`) | `quick-task-modal.tsx:263` | DÜŞÜK |
+| M12 | `/api/analytics/summary` | 1 | b/c | YOK | misc | DÜŞÜK |
 
 ---
 
-## 4. DALGA PAKETLEME (Sonraki Task İskeletleri)
+## 4. MODÜL-BAZLI DALGA PAKETLEME (7 Dalga)
 
-İlk 50 + tahmini 68 örnekleme uzantısıyla aşağıdaki paralel-güvenli dalgalar oluşturulur. Her dalga **ayrı task** olarak owner'a önerilir; dosya alanları çakışmaz, paralel çalışabilir.
+| Dalga | Modül | Endpoint sayısı | Etkilenen FE dosya | Tahmini süre | Paralel-güvenli mi | Risk |
+|---|---|---|---|---|---|---|
+| **W1** | FACTORY | 13 (12×a + 1×b) | `fabrika/maliyet-yonetimi.tsx`, `KioskMRPPanel.tsx`, `fabrika/kiosk.tsx`, `fabrika/performans.tsx`, `fabrika/kalite-kontrol.tsx`, `fabrika-centrum.tsx`, `vardiya-uyumluluk.tsx`, `card-grid-hub.tsx` | ~6 saat | EVET (sadece FE patch) | ORTA (kiosk akışı) |
+| **W2** | BRANCH + DASHBOARD | 11 (9×a + 2×b/c) | `MissionControlSupervisor.tsx`, `MissionControlYatirimci.tsx`, `supervisor-centrum.tsx`, `personel-centrum.tsx`, `sube-pin-yonetimi.tsx`, `sube/dashboard.tsx`, `siparis-stok.tsx`, `dashboard-widgets.tsx`, `nfc-giris.tsx` | ~5 saat | EVET | ORTA (mission control + KM2.0) |
+| **W3** | HR | 6 (3×a + 3×b/c) | `qr-scanner-modal.tsx`, `mobile/BaristaQuickActions.tsx`, `personel-duzenle.tsx`, `personel-detay.tsx`, `attendance.tsx`, `sube-bordro-ozet.tsx`, `sube-detay.tsx`, `maas.tsx` | ~4 saat | EVET | YÜKSEK (PDKS) |
+| **W4** | OBJECT_STORAGE | 4 (4×b) **+ konsolidasyon** | `fabrika/kiosk.tsx`, `guest-form-settings.tsx`, `announcements.tsx`, `fault-report-dialog.tsx`, `aksiyon-takip.tsx`, `misafir-geri-bildirim.tsx`, **+** yeni `client/src/lib/object-upload.ts` | ~6 saat | KISMEN (W1-W3 ile çakışmaz) | YÜKSEK (upload akışı) |
+| **W5** | CRM + AUTH + ACADEMY + AGENT + OPS | 16 (a + b/c karışık) | `cowork.tsx`, `misafir-geri-bildirim.tsx`, `branch-feedback.tsx`, `my-performance.tsx`, `agent-merkezi.tsx`, `iletisim-merkezi/HqTasksTab.tsx`, `egitim-programi.tsx`, `academy.tsx`, `module-detail.tsx`, `trainer-egitim-merkezi.tsx`, `agent-admin-panel.tsx`, `proje-gorev-detay.tsx`, `sube/checklist-execution.tsx`, `satinalma/mal-kabul.tsx` | ~6 saat | EVET | ORTA |
+| **W6** | ADMIN | 8 (4×a + 4×b/c) | `admin/module-flags.tsx`, `admin/cop-kutusu.tsx`, `branch-onboarding-wizard.tsx`, `module-activation-checklist.tsx`, `admin-seed.tsx`, `admin/yetkilendirme.tsx`, `setup.tsx`, `admin/dobody-gorev-yonetimi.tsx`, `smart-notification-dialog.tsx` | ~5 saat | EVET | YÜKSEK (modül erişim + setup) |
+| **W7** | DİĞER (FINANCE, EQUIPMENT, VERSIONED, MISC) | 12 (a + b/c) | `cash-reports.tsx`, `coach-sube-denetim.tsx`, `denetim-detay-v2.tsx`, `DobodyProposalWidget.tsx`, `fault-report-dialog.tsx`, `ariza-yeni.tsx`, `quick-task-modal.tsx`, `public-staff-rating.tsx`, `sube/employee-dashboard.tsx`, qr/cari sayfaları | ~5 saat | EVET | ORTA |
 
-### Dalga 0 — Audit Script Bug Fix + Tam Liste (Task #285.1)
+**Dalga toplamı:** 13+11+6+4+16+8+12 = **70** ✓ (broken.tsv ile tutarlı)
+**Toplam tahmini süre:** ~37 saat (paralel olarak ~3 hafta).
 
-| Alan | Değer |
-|---|---|
-| **Kapsam** | `.local/scripts/audit-app.mjs` script'in 3 bug'ı: (M1) mount-prefix kaçırma, (M2) route :param eşleme, (M3) HTTP method tespiti. + Markdown çıktısında 50 truncation kaldır → tam 118 listele. |
-| **Süre** | ~3 saat |
-| **Riski azaltır** | Sonraki tüm dalgaların yanlış-pozitif yükünü ortalama %20-25 düşürür |
-| **DB Write** | YOK |
-| **Dosya alanı** | `.local/scripts/audit-app.mjs` (repo dışı), `APP_AUDIT_REPORT_2026-05.md` re-generate |
-| **Paralel mi** | EVET (diğer dalgalardan bağımsız) |
+### Dalga Sırası (Risk-bazlı)
 
-### Dalga 1 — FE :param Patch Toplu (Task #283.A)
+```
+Hafta 1 (kritik path):
+  ├─ W3 HR        (PDKS riski yüksek, owner Day-1 kritik)
+  ├─ W6 ADMIN     (modül erişim + setup wizard)
+  └─ W4 OBJECT_STORAGE (upload akışı kritik refactor)
 
-| Alan | Değer |
-|---|---|
-| **Kapsam** | Audit'te kategori **a** (12 endpoint kesin: #4, #5, #8, #10, #13, #27, #32, #35, #36, #39, #44, #49). FE'de eksik `:id` / `:date` / `:userId` parametreleri eklenecek. |
-| **Süre** | ~4 saat (12 dosya × ~20 dk) |
-| **Etkilenen FE dosyaları** | `KioskMRPPanel.tsx`, `MissionControlSupervisor.tsx`, `MissionControlYatirimci.tsx`, `personel-duzenle.tsx`, `dashboard-widgets.tsx`, `fabrika/kiosk.tsx`, `ariza-detay.tsx`, `sube-pin-yonetimi.tsx`, `sube/checklist-execution.tsx` |
-| **DB Write** | YOK |
-| **Dosya alanı** | Sadece `client/src/` |
-| **Paralel mi** | EVET (server tarafına dokunulmaz) |
-| **Risk** | DÜŞÜK — pure FE patch + e2e smoke test |
+Hafta 2 (mission control + factory):
+  ├─ W1 FACTORY   (kiosk akışı)
+  └─ W2 BRANCH+DASHBOARD (mission control + KM2.0)
 
-### Dalga 2 — FE Path Rename (Task #283.B)
+Hafta 3 (orta öncelik temizlik):
+  ├─ W5 CRM+AUTH+ACADEMY+AGENT+OPS
+  └─ W7 DİĞER
+```
 
-| Alan | Değer |
-|---|---|
-| **Kapsam** | Audit kategori **a** (4 endpoint): #2 `/api/shift-attendance` → `/api/shift-attendances/my-recent`, #25 `/api/user` → `/api/me`, #34 `/api/troubleshooting` → `/api/equipment-troubleshooting-steps`, #45 `/api/agent/insights` → `/api/reports/insights` |
-| **Süre** | ~2 saat |
-| **DB Write** | YOK |
-| **Dosya alanı** | `client/src/` |
-| **Paralel mi** | EVET |
+### Paralel Çalıştırma Matrisi
 
-### Dalga 3 — HTTP Method Düzelt (Task #283.C)
+W1-W7 dosya alanları **çakışmıyor** (W4 hariç — W4 birden fazla modülün FE'sine dokunuyor: kiosk, guest-form, announcements, fault-report — bu yüzden W1, W6, W7 ile sıralı olmalı). Diğer tüm dalgalar paralel-güvenli.
 
-| Alan | Değer |
-|---|---|
-| **Kapsam** | #3 `/api/objects/upload` GET → POST, #23 `/api/auth/logout` GET → POST |
-| **Süre** | ~1 saat |
-| **DB Write** | YOK |
-| **Dosya alanı** | `client/src/components/ObjectUploader.tsx`, `app-header.tsx`, `hamburger-menu.tsx` ve benzerleri |
-| **Paralel mi** | EVET |
+---
 
-### Dalga 4 — Object Storage Konsolidasyon (Task #283.D)
+## 5. KATEGORİ b/c — DETAYLI KARAR LİSTESİ (24 endpoint)
 
-| Alan | Değer |
-|---|---|
-| **Kapsam** | M4 bulgu — 5 dağınık upload endpoint (#33, #38, #40, #42, #46) tek bir presigned URL endpoint altında konsolide. Mevcut `/api/objects/upload` POST'u referans alarak FE tarafında tek hook (`useObjectUpload`) yazılır. |
-| **Süre** | ~6 saat (architecture + FE refactor + test) |
-| **DB Write** | YOK |
-| **Dosya alanı** | `client/src/lib/object-upload.ts` (yeni), 5 FE dosyası, `server/objectStorage.ts` (gerekirse wrapper) |
-| **Paralel mi** | KISMEN — Dalga 1-3 ile çakışmaz; ama M4 kararına bağlı |
-| **Risk** | ORTA — upload akışı kritik (CRM eki, banner, guest-form, announcement) |
-
-### Dalga 5 — CRM/İletişim Audit Bug Doğrulama (Task #283.E)
-
-| Alan | Değer |
-|---|---|
-| **Kapsam** | M1 bulgu — 6 endpoint (#1, #14, #20, #28, #29, #30, #31) hepsi MEVCUT. Sadece doğrulama: pozitif test her endpoint için 200 dönüyor mu? Bulunan herhangi bir gerçek hata Issue açılır. |
-| **Süre** | ~2 saat (sadece test + smoke) |
-| **DB Write** | YOK |
-| **Paralel mi** | EVET |
-
-### Dalga 6 — Manual Investigation (Task #283.F-J)
-
-Aşağıdaki **?** kategorisindeki 18 endpoint manuel deep-dive gerektirir. Her biri ayrı modül task'ı:
-
-| Sub-task | Endpoint sayısı | Modül | Tahmini süre |
+| # | Endpoint | Karar önerisi | Gerekçe |
 |---|---|---|---|
-| **283.F** ADMIN-MODULES | 4 | #16, #17, #21, #24 | ~2 saat |
-| **283.G** TASKS-COWORK | 4 | #12, #26, #41, #44(şüpheli) | ~2 saat |
-| **283.H** HR-ONBOARDING-PDKS | 4 | #7, #9, #37, #43 | ~3 saat |
-| **283.I** FACTORY-COST | 3 | #6, #11, #19 | ~3 saat |
-| **283.J** ACADEMY-COACH-FINANCE | 3 | #15, #18, #22 | ~2 saat |
-| **283.K** SETUP-AGENT | 2 | #47, #48 | ~1.5 saat |
+| 1 | `/api/factory/stats` | **Kaldır FE** | `fabrika/index.tsx:148` tek kullanım, KM2.0'a dağılan stats |
+| 2 | (kaldırıldı — B4'te a1 olarak güncellendi) | — | — |
+| 3 | `/api/branches-list` | **Kaldır FE** | `/api/branches` mevcut |
+| 4 | `/api/branch-recipients` | **Server impl** veya kaldır | Notification dialog feature |
+| 5 | `/api/pdks/my-status` | **Server impl** | Mobile barista quick action — gerekli |
+| 6 | `/api/shift-attendance/active` | **a → /api/shift-attendances/my-recent** | Path rename |
+| 7 | `/api/shifts/weekly-summary` | **Server impl** | Şube bordro özeti — gerekli |
+| 8 | `/api/cowork/messages` | **Server impl veya kaldır** | Cowork modülü pilot kapsamı dışı? |
+| 9 | `/api/cowork/members` | **Server impl veya kaldır** | Cowork modülü |
+| 10 | `/api/feedback-form-settings/public` | **Server impl** | Public guest feedback — kritik |
+| 11 | `/api/admin/seed-equipment-training` | **Server impl** | Admin seed butonu, sadece dev |
+| 12 | `/api/admin/settings/branch_dashboard_allowed_roles` | **Server impl** | Yetkilendirme paneli |
+| 13 | `/api/test-smtp` | **Server impl** | Setup wizard SMTP testi |
+| 14 | `/api/complete-setup` | **Server impl** | Setup wizard finalizasyon |
+| 15 | `/api/objects/generate-upload-url` | **W4 konsolidasyon** | Tek upload hook |
+| 16 | `/api/object-storage/presigned-url` | **W4 konsolidasyon** | Tek upload hook |
+| 17 | `/api/upload-url` | **W4 konsolidasyon** | Tek upload hook |
+| 18 | `/api/upload/public` | **W4 konsolidasyon** + public guard | Public upload |
+| 19 | `/api/users/hq` | **a → /api/users?role=hq filtre** | FE'de query param kullanılmalı |
+| 20 | `/api/training/user-progress` | **a → /api/academy/* alt path** | Academy modülünde mevcut |
+| 21 | `/api/cash-reports` | **Server impl** | Finans modülü kritik |
+| 22 | `/api/quality/allergens/print-log` | **Server impl veya kaldır** | Allergen PDF log |
+| 23 | `/api/analytics/summary` | **Kaldır FE** | Analytics tek call, KM2.0'a alındı |
+| 24 | `/api/feedback/branch` | **a1** (yeniden sınıflandır) — `:token` var | Param eksik |
 
-### Dalga 7 — Server Implementation (Task #283.L)
-
-| Alan | Değer |
-|---|---|
-| **Kapsam** | İlk 50 örneklemde **gerçek kategori b kalmadı** (#46 ve #50 a-script olarak yeniden sınıflandırıldı). Object Storage scattering (#33, #38, #40, #42) Dalga 4'te konsolide edilecek. Bu dalga ilk 50 için BOŞ; kalan 68'de gerçek b çıkarsa (Dalga 0 sonrası) burada toplanacak. |
-| **Süre** | ~0 saat (ilk 50 için); kalan 68'den çıkacak gerçek b'lere bağlı |
-| **DB Write** | OLABİLİR (yeni endpoint b'leri için) |
-| **Paralel mi** | EVET |
-
----
-
-## 5. DALGA SIRASI & PARALEL ÇİZELGE
-
-```
-Hafta 1:
-  ├─ Dalga 0 (Audit script fix)         [tek başına, 3 saat]
-  └─ paralel olarak:
-       ├─ Dalga 1 (FE :param patch)     [4 saat]
-       ├─ Dalga 2 (FE path rename)      [2 saat]
-       └─ Dalga 3 (HTTP method)         [1 saat]
-
-Hafta 2:
-  ├─ Dalga 5 (CRM doğrulama)            [2 saat]
-  ├─ Dalga 6.F-K (manuel deep-dive)    [13 saat, 5 paralel sub-task]
-  └─ Dalga 7 (server impl)              [1.5 saat]
-
-Hafta 3:
-  └─ Dalga 4 (Object Storage konsolidasyon) [6 saat, kritik refactor — tek başına]
-
-(Dalga 0'dan sonra audit script fix sonucu yeni endpoint listesi gelirse Dalga 6/7 büyüyebilir.)
-```
-
-**Toplam tahmini süre (mevcut 50 örneklem):** ~30 saat  
-**118 tam liste için (Dalga 0 sonrası):** muhtemelen ~45-55 saat
+**Not:** Yukarıdaki 24'lük listede 2 kalem (B4 `/api/branches/kiosk/staff` ve C4 `/api/feedback/branch`) v2.1'de a1'e yeniden sınıflandı; gerçek "owner kararı bekleyen" b/c sayısı **22**. Net rakam: 22 → ~6-8 gerçek server impl, ~4 W4 konsolidasyon (Object Storage), ~4-6 FE rename, ~2-4 dead code kaldır.
 
 ---
 
-## 6. KALAN 68 ENDPOINT İÇİN AKSİYON
-
-Audit raporu Bölüm 7.1'de **truncate** edilmiş (sadece ilk 50). Tam 118 listesi için **Dalga 0 (Task #285.1)** zorunlu önkoşul:
-
-1. `.local/scripts/audit-app.mjs` script'i M1+M2+M3 fix sonrası re-run.
-2. Yeni `APP_AUDIT_REPORT_2026-06.md` tam 118 listesi içerecek.
-3. Bu rapor (Bölüm 3 tablosu) 51-118 ile genişletilir.
-4. Yeni dalgalar (118 - 50 = 68 ek endpoint) modül bazlı paketlenir.
-
-**Tahmin (M3 geniş kapsam düzeltmesinden sonra güncel):** Mevcut yüzdelere göre kalan 68 endpoint dağılımı:
-- a-script (audit script bug — M1 mount + M3 method): ~16-20
-- a (FE patch): ~38-44
-- b (gerçek server impl gerekli): ~4-8
-- c (dead): ~0-2
-- ?: ~5-8 (ek manuel)
-
----
-
-## 7. RİSK NOTLARI
+## 6. RİSK NOTLARI
 
 | Risk | Etki | Mitigation |
 |---|---|---|
-| Dalga 0 (script fix) yapılmadan diğer dalgalar başlarsa | Yanlış-pozitif endpoint'ler boş yere "düzeltilir" | Dalga 0'ı **birinci sıraya** koy |
-| FE :param patch'leri client cache invalidation'ı bozabilir | Beyaz ekran / TanStack stale data | Her dalga sonrası e2e smoke test (B12 task ile uyumlu) |
-| Object Storage konsolidasyonu (Dalga 4) upload akışını bozabilir | CRM eki, banner, announcement upload kırılır | Stage rollout — önce 1 modül, sonra yayım |
-| KVKK riski (kalan 68'de personel verisi endpoint'i çıkabilir) | Kişisel veri sızıntısı | Dalga 6.H (HR-ONBOARDING-PDKS) öncesi B20 (KVKK audit) öncelendir |
+| W4 Object Storage konsolidasyon upload akışını bozar | CRM eki, banner, guest-form, kiosk upload kırılır | Stage rollout — önce 1 modül, sonra yayım; B12 e2e test ile uyum |
+| W3 HR PDKS değişiklikleri puantaj hesabını etkileyebilir | Maaş hesabı yanlış | B4 task (ay sonu sim) bağımlılığı; data lock kontrol |
+| W6 ADMIN module-flags değişikliği yanlış rol erişimi açar | KVKK riski | RBAC test smoke; B20 KVKK audit önceliklendir |
+| FE :param patch'leri TanStack cache invalidation'ı bozabilir | Beyaz ekran / stale data | Her dalga sonrası B12 e2e smoke |
+| Method mismatch (M3) tam taranmadı | Gizli `POST/PUT/PATCH` mismatch'ler kalabilir | Sonraki sürüm: extraction script'e method tespit ekle |
+
+---
+
+## 7. METODOLOJI SINIRLARI (DRIFT)
+
+1. **Method mismatch tam tarama yapılmadı:** Mevcut script FE'deki literal `'/api/...'` çağrılarını yakalıyor ama HTTP method'u tespit etmiyor (FE `apiRequest('POST', ...)` veya `fetch(..., {method: 'POST'})` pattern'ini parse etmiyor). Architect bulgusundaki `/api/auth/logout`, `/api/objects/finalize`, `/api/system/crash-report` gibi method-mismatch'ler için ayrı dalga (Dalga 0 önerisi alttaki) gerekli.
+2. **Kullanım sayısı dosya bazlı:** "use=10" 10 farklı satırı sayıyor, aynı dosyada 5 ardışık kullanım da 5 sayılıyor. Gerçek call-site sayımı için ek deduplikasyon gerekli — bu rapor için kabul edilebilir doğruluk.
+3. **`useQuery({ queryKey: ['/api/x'] })` dolaylı çağrılar yakalandı:** TanStack default fetcher queryKey[0]'ı path olarak kullandığı için bunlar da FE çağrısı sayılıyor — doğru davranış.
+4. **Mount-prefix detection sınırlı:** `app.use('/api/x', router)` yakalandı ama nested router (`router.use('/sub', subRouter)`) yakalanmıyor — bu DOSPRESSO codebase'inde nadir.
+
+### Dalga 0 (Önerilen) — Method Mismatch Tam Tarama
+
+Script genişletilmeli: FE'deki `apiRequest(method, path)` ve `fetch(path, {method})` pattern'leri parse edilip server'da o method+path kombinasyonu var mı kontrol edilmeli. Architect'in 3 doğrulanmış örneği (auth/logout, objects/finalize, system/crash-report) muhtemelen kalan ~10-15 endpoint'in göstergesi. Süre: ~3 saat.
 
 ---
 
 ## 8. SONRAKI ADIMLAR (Owner Kararı)
 
 1. ✅ Bu rapor onayla → Task #285 MERGE.
-2. ⏳ **Task #285.1** (Dalga 0 — audit script fix) ayrı task olarak propose edilsin mi? **ÖNERİLEN: EVET**
-3. ⏳ Dalga 1-3 (FE patch'leri, ~7 saat toplam) tek bir Task #283.A-C olarak birleştirilsin mi?
-4. ⏳ Dalga 4 (Object Storage konsolidasyon) Sprint 2 backlog'a B23 olarak eklensin mi?
-5. ⏳ Dalga 6.F-K manuel deep-dive sub-task'ları hangi sırayla?
+2. ⏳ **Dalga 0** (method mismatch tam tarama, ~3 saat) propose edilsin mi? **ÖNERİLEN: EVET** — uygulama öncesi.
+3. ⏳ **W1-W7 dalgaları** ayrı task'lar olarak (her biri Sprint 2/3 backlog'a) hangi sırayla propose edilsin? Önerilen: W3 (HR) + W6 (ADMIN) + W4 (Object Storage) öncelikli.
+4. ⏳ Kategori b/c'deki **6-8 server impl** kararı (Bölüm 5) tek task mı yoksa modül başına dağıtılsın mı?
+5. ⏳ Cowork modülü (3 endpoint b/c) pilot kapsamı dışı mı? **Karar: tut/sil/erteleme.**
 
 Owner kararından sonra ilgili dalga task'ları `project_tasks` üzerinden propose edilir.
 
@@ -270,11 +304,13 @@ Owner kararından sonra ilgili dalga task'ları `project_tasks` üzerinden propo
 
 ## 9. İLİŞKİLİ DOSYALAR
 
-- `APP_AUDIT_REPORT_2026-05.md` Bölüm 7.1 (kaynak)
+- `APP_AUDIT_REPORT_2026-05.md` Bölüm 7.1 (orijinal kaynak — truncate olduğu için bu rapor bağımsız extraction yaptı)
+- `.local/scripts/audit-tmp/extract2.mjs` (extraction script, repo dışı)
+- `.local/scripts/audit-tmp/broken.tsv` (ham 70 endpoint listesi)
+- `.local/scripts/audit-tmp/grouped.tsv` (modül-bazlı sıralı)
 - `docs/audit/sprint-2-master-backlog.md` (B1-B22 backlog)
 - `replit.md` (Sprint 2 progress)
-- `.local/tasks/api-283-categorization.md` (bu task'ın plan dosyası)
-- `.local/scripts/audit-app.mjs` (repo dışı, Dalga 0 hedefi)
+- `.local/tasks/api-283-categorization.md` (task plan dosyası)
 
 ---
 
