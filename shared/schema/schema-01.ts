@@ -140,6 +140,10 @@ export const DEPARTMENT_DASHBOARD_ROUTES: Record<string, string> = {
   [UserRole.CEO]: '/ceo-command-center',
   [UserRole.CGO]: '/cgo-command-center',
   [UserRole.MUHASEBE_IK]: '/hq-dashboard/ik',
+  // F34 ✅ KAPANDI (3 May 2026, Wave B-4): Saf MUHASEBE rolü için dashboard alias.
+  // Önceden sadece MUHASEBE_IK vardı → MUHASEBE login → '/' fallback.
+  // Şimdi: MUHASEBE da ik dashboard'una yönlenir (muhasebe + ik aynı modül erişimi).
+  [UserRole.MUHASEBE]: '/hq-dashboard/ik',
   [UserRole.SATINALMA]: '/hq-dashboard/satinalma',
   [UserRole.COACH]: '/hq-dashboard/coach',
   [UserRole.MARKETING]: '/hq-dashboard/marketing',

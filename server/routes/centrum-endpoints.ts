@@ -71,6 +71,9 @@ router.get("/api/branch-financial-summary", isAuthenticated, async (req, res) =>
     const branchId = req.query.branchId ? Number(req.query.branchId) : null;
     const branchList = await db.select({ id: branches.id, name: branches.name }).from(branches);
 
+    // F04 ✅ KAPANDI (3 May 2026, Wave B-4): Endpoint stub durumunu açıkça işaretler.
+    // Daha önce silent boş array dönerdi → CEO yanıltıcı toplam görürdü.
+    // Şimdi: hasData=false, dataStatus='not_implemented' bayrakları UI'da banner gösterir.
     const summary = branchList.map(b => ({
       branchId: b.id,
       branchName: b.name,
@@ -80,6 +83,9 @@ router.get("/api/branch-financial-summary", isAuthenticated, async (req, res) =>
         { category: "Elektrik", amount: null },
         { category: "Su/Gaz", amount: null },
       ],
+      hasData: false, // F04: Endpoint henüz veri kaynağı bağlı değil
+      dataStatus: 'not_implemented' as const,
+      dataNote: 'Şube finansal veri girişi henüz aktif değil — toplam KPI yanıltıcıdır',
     }));
 
     if (branchId) {

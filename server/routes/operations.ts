@@ -2449,10 +2449,22 @@ function ensurePermission(user: Express.User, module: string, action: string, er
       const sectionMap = new Map<string, any>();
       for (const item of templateItems) {
         if (!sectionMap.has(item.sectionName)) {
+          // F07 ✅ KAPANDI (3 May 2026, Wave B-4): sectionWeight null/0 ise default 20
+          // veriyordu → puanlama dengesizleşir + sessiz hata.
+          // Şimdi: null/0 ise warn + 0 weight (puanlamada bu bölüm devre dışı kalır,
+          // şablon eksiği UI'da görülür).
+          const sectionWeight = Number(item.sectionWeight) || 0;
+          if (sectionWeight === 0) {
+            console.warn('[audit-template] sectionWeight=0 — şablon eksik', {
+              templateItemId: item.id,
+              sectionName: item.sectionName,
+              hint: 'audit_template_items.section_weight kolonu doldurulmalı',
+            });
+          }
           sectionMap.set(item.sectionName, {
             sectionId: item.sectionOrder,
             sectionName: item.sectionName,
-            weight: item.sectionWeight || 20,
+            weight: sectionWeight,
             items: []
           });
         }
