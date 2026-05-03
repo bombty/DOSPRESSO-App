@@ -40,6 +40,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Shadcn/ui, 
 - **Mission Control Dashboards:** Six role-based dashboards deliver critical KPIs and insights through monthly snapshots of branch and factory performance.
 - **Komuta Merkezi 2.0 (Dynamic Dashboard System):** A widget-based dashboard infrastructure with 24 registered widgets across 7 categories. It uses `dashboard_widgets` for registry and `dashboard_role_widgets` for per-role assignments. A unified API endpoint `GET /api/me/dashboard-data` delivers role-tailored widgets with real data, KPIs, and quick actions.
 - **Late Arrival Detection:** Uses `LATE_THRESHOLD_MINUTES=15` and `SEVERE_LATE_MINUTES=60` global hard-coded constants. Mr. Dobody skill `late_arrival_tracker` runs daily, targeting specific roles.
+- **Route Guards (F33):** All authenticated routes are role-restricted via `ProtectedRoute`/`HQOnly`/`ExecutiveOnly`/`ModuleGuard`/`FabrikaOnly`. Bare `component={...}` Route'larda direct URL leak riski → `/iletisim`, `/nfc-giris`, `/qr-tara`, `/bilgi-bankasi`, `/bildirimler` Bundle 2'de sarıldı. PIN coverage audit script: `scripts/audit/pin-coverage-2026-05.sql` (read-only).
 
 ## External Dependencies
 - **OpenAI API**: Utilized for AI vision, chat, embeddings, and summarization.

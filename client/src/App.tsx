@@ -437,7 +437,7 @@ function Router() {
           <Route path="/profil" component={ProfileRedirect} />
           <Route path="/vardiya" component={VardiyaRedirect} />
           <Route path="/stok">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","satinalma","mudur","supervisor"]}><StokRedirect /></ProtectedRoute>}</Route>
-          <Route path="/iletisim" component={IletisimRedirect} />
+          <Route path="/iletisim">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><IletisimRedirect /></ProtectedRoute>}</Route>
           <Route path="/crm">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
           <Route path="/crm/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","satinalma","marketing","teknik","destek","mudur","supervisor"]}><CRMMegaModule /></ProtectedRoute>}</Route>
           <Route path="/personel/:id">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","coach","trainer","mudur","supervisor","fabrika_mudur","gida_muhendisi","kalite_kontrol"]}><PersonelProfil /></ProtectedRoute>}</Route>
@@ -455,7 +455,7 @@ function Router() {
           <Route path="/vardiya-planlama">{() => <ModuleGuard moduleKey="vardiya"><VardiyaPlanlama /></ModuleGuard>}</Route>
           <Route path="/vardiyalarim">{() => <ModuleGuard moduleKey="vardiya"><Vardiyalarim /></ModuleGuard>}</Route>
           <Route path="/vardiya-checkin">{() => <ModuleGuard moduleKey="vardiya"><VardiyaCheckin /></ModuleGuard>}</Route>
-          <Route path="/nfc-giris" component={NFCGiris} />
+          <Route path="/nfc-giris">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","muhasebe","satinalma","marketing","teknik","destek","kalite_kontrol","gida_muhendisi","fabrika_mudur","fabrika","sef","recete_gm","mudur","supervisor","supervisor_buddy","barista","bar_buddy","stajyer","uretim_sefi","fabrika_operator","fabrika_sorumlu","fabrika_personel","fabrika_depo","ekipman_teknik","ik","pazarlama"]}><NFCGiris /></ProtectedRoute>}</Route>
           <Route path="/personel-musaitlik">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","mudur","supervisor"]}><PersonelMusaitlik /></ProtectedRoute>}</Route>
           <Route path="/devam-takibi">{() => <ModuleGuard moduleKey="pdks"><Attendance /></ModuleGuard>}</Route>
           <Route path="/sube-vardiya-takibi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","mudur","supervisor","supervisor_buddy","muhasebe_ik"]}><SubeDashboard /></ProtectedRoute>}</Route>
@@ -469,8 +469,8 @@ function Router() {
           <Route path="/ariza-detay/:id">{() => <ModuleGuard moduleKey="ekipman"><FaultDetail /></ModuleGuard>}</Route>
           <Route path="/ariza-yeni">{() => <ModuleGuard moduleKey="ekipman"><NewFaultReport /></ModuleGuard>}</Route>
           <Route path="/ekipman-analitics">{() => <ModuleGuard moduleKey="ekipman"><EquipmentAnalytics /></ModuleGuard>}</Route>
-          <Route path="/qr-tara" component={QRScanner} />
-          <Route path="/bilgi-bankasi" component={KnowledgeBase} />
+          <Route path="/qr-tara">{() => <ProtectedRoute><QRScanner /></ProtectedRoute>}</Route>
+          <Route path="/bilgi-bankasi">{() => <ProtectedRoute><KnowledgeBase /></ProtectedRoute>}</Route>
           <Route path="/akademi/*?">{() => <ModuleGuard moduleKey="akademi"><AkademiV3 /></ModuleGuard>}</Route>
           <Route path="/akademi-v3/*?">{() => <ModuleGuard moduleKey="akademi"><AkademiV3 /></ModuleGuard>}</Route>
           <Route path="/akademi-legacy/*?">{() => <ModuleGuard moduleKey="akademi"><AkademiMegaModule /></ModuleGuard>}</Route>
@@ -503,7 +503,7 @@ function Router() {
           <Route path="/egitim/:id">{() => <ModuleGuard moduleKey="akademi"><ModuleDetail /></ModuleGuard>}</Route>
           <Route path="/egitim-ata">{() => <ProtectedRoute allowedRoles={["trainer","admin","ceo","coach"]}><TrainingAssign /></ProtectedRoute>}</Route>
           <Route path="/egitim">{() => { if (typeof window !== 'undefined') window.location.href = '/akademi'; return null; }}</Route>
-          <Route path="/bildirimler" component={Notifications} />
+          <Route path="/bildirimler">{() => <ProtectedRoute><Notifications /></ProtectedRoute>}</Route>
           <Route path="/duyurular">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/icerik-studyosu">{() => <HQOnly><IcerikStudyosu /></HQOnly>}</Route>
           <Route path="/mesajlar">{() => { if (typeof window !== 'undefined') window.location.href = '/bildirimler?tab=mesajlar'; return null; }}</Route>

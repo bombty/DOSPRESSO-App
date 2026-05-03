@@ -1,117 +1,138 @@
--- ===============================================================
--- PIN COVERAGE AUDIT (Bundle 2 / Task #306 / F36) — READ-ONLY
--- Üretim: 3 May 2026 | Owner: Aslan
--- Amaç: Pilot Day-1 öncesi 176 aktif user'ın PIN kapsama oranını
---       hangi rolün hangi PIN tablosuna ihtiyacı olduğuna göre raporla.
--- HİÇBİR DB WRITE YOK. Çıktı owner kararı için.
--- ===============================================================
+-- ============================================================
+-- F36 — PIN Coverage Audit (READ-ONLY, dry-run)
+-- Owner: Aslan | Pilot Day-1 öncesi PIN seed kapsama kontrolü
+-- Tarih: 2026-05-03
+-- Tablolar:
+--   - branch_staff_pins  : Şube kiosk PIN'leri (BRANCH_ROLES)
+--   - factory_staff_pins : Fabrika kiosk PIN'leri (FACTORY_FLOOR + uretim_sefi/sef/recete_gm/fabrika_mudur/fabrika_depo/fabrika)
+--   - hq_staff_pins      : YOK (HQ kioskı PIN tablosu mevcut değil → HQ rolleri sadece web login)
+--
+-- ÇALIŞTIRMA: psql $DATABASE_URL -f scripts/audit/pin-coverage-2026-05.sql
+-- DB WRITE YOK. Sadece SELECT.
+-- ============================================================
 
--- 1) Genel özet
+\echo '=== 1) GENEL ÖZET — Aktif Kullanıcı / PIN Sayıları ==='
 SELECT
-  '=== ÖZET ===' AS section,
-  (SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND is_active = true) AS aktif_user,
-  (SELECT COUNT(DISTINCT user_id) FROM branch_staff_pins WHERE is_active = true) AS branch_pin_unique_user,
-  (SELECT COUNT(DISTINCT user_id) FROM factory_staff_pins WHERE is_active = true) AS factory_pin_unique_user;
+  (SELECT COUNT(*) FROM users WHERE is_active = true) AS toplam_aktif_kullanici,
+  (SELECT COUNT(*) FROM branch_staff_pins WHERE is_active = true) AS aktif_branch_pin,
+  (SELECT COUNT(*) FROM factory_staff_pins WHERE is_active = true) AS aktif_factory_pin;
 
--- 2) Branch PIN ihtiyacı olan roller × eksik PIN
--- BRANCH_ROLES: stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur, sube_kiosk
--- (yatirimci_branch hariç — read-only, kiosk login etmiyor)
-WITH branch_pin_users AS (
-  SELECT u.id, u.username, COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'') AS full_name, u.role, u.branch_id
-  FROM users u
-  WHERE u.deleted_at IS NULL
-    AND u.is_active = true
-    AND u.role IN ('stajyer','bar_buddy','barista','supervisor_buddy','supervisor','mudur','sube_kiosk')
-)
+\echo ''
+\echo '=== 2) BRANCH PIN — Eksik kullanıcılar (rol bazlı) ==='
+\echo 'Beklenen: stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur'
+\echo '(yatirimci_branch ve sube_kiosk hariç — bu roller kioska girmez)'
 SELECT
-  '=== BRANCH PIN EKSİĞİ (rol bazında) ===' AS section,
-  bpu.role,
-  COUNT(*) AS toplam_user,
-  COUNT(bsp.user_id) AS pin_var,
-  COUNT(*) - COUNT(bsp.user_id) AS pin_eksik
-FROM branch_pin_users bpu
-LEFT JOIN branch_staff_pins bsp
-  ON bsp.user_id = bpu.id
- AND bsp.branch_id = bpu.branch_id
- AND bsp.is_active = true
-GROUP BY bpu.role
-ORDER BY pin_eksik DESC;
-
--- 3) Factory PIN ihtiyacı olan roller × eksik PIN
--- FACTORY_ROLES: fabrika_mudur, uretim_sefi, fabrika_operator, fabrika_sorumlu,
--- fabrika_personel, fabrika_depo, sef, recete_gm, gida_muhendisi, kalite_kontrol
-WITH factory_pin_users AS (
-  SELECT u.id, u.username, COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'') AS full_name, u.role
-  FROM users u
-  WHERE u.deleted_at IS NULL
-    AND u.is_active = true
-    AND u.role IN ('fabrika_mudur','uretim_sefi','fabrika_operator','fabrika_sorumlu',
-                    'fabrika_personel','fabrika_depo','sef','recete_gm',
-                    'gida_muhendisi','kalite_kontrol')
-)
-SELECT
-  '=== FACTORY PIN EKSİĞİ (rol bazında) ===' AS section,
-  fpu.role,
-  COUNT(*) AS toplam_user,
-  COUNT(fsp.user_id) AS pin_var,
-  COUNT(*) - COUNT(fsp.user_id) AS pin_eksik
-FROM factory_pin_users fpu
-LEFT JOIN factory_staff_pins fsp
-  ON fsp.user_id = fpu.id
- AND fsp.is_active = true
-GROUP BY fpu.role
-ORDER BY pin_eksik DESC;
-
--- 4) Eksik branch PIN olan kullanıcı listesi (CSV-ready)
-SELECT
-  'BRANCH_MISSING' AS pin_type,
-  u.id AS user_id,
-  u.username,
-  COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'') AS full_name,
   u.role,
-  u.branch_id,
-  b.name AS branch_name
+  COUNT(*) AS pin_eksik_sayi,
+  STRING_AGG(u.id::text || ' (' || COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'') || ', branch=' || COALESCE(u.branch_id::text,'NULL') || ')', E'\n  ' ORDER BY u.id) AS detay
 FROM users u
-LEFT JOIN branches b ON b.id = u.branch_id
-WHERE u.deleted_at IS NULL
-  AND u.is_active = true
-  AND u.role IN ('stajyer','bar_buddy','barista','supervisor_buddy','supervisor','mudur','sube_kiosk')
-  AND NOT EXISTS (
-    SELECT 1 FROM branch_staff_pins bsp
-    WHERE bsp.user_id = u.id
-      AND bsp.branch_id = u.branch_id
-      AND bsp.is_active = true
-  )
-ORDER BY u.branch_id, u.role, u.username;
+LEFT JOIN branch_staff_pins p
+  ON p.user_id = u.id
+ AND p.is_active = true
+ AND (u.branch_id IS NULL OR p.branch_id = u.branch_id)
+WHERE u.is_active = true
+  AND u.role IN ('stajyer','bar_buddy','barista','supervisor_buddy','supervisor','mudur')
+  AND p.id IS NULL
+GROUP BY u.role
+ORDER BY u.role;
 
--- 5) Eksik factory PIN olan kullanıcı listesi (CSV-ready)
+\echo ''
+\echo '=== 3) FACTORY PIN — Eksik kullanıcılar (rol bazlı) ==='
+\echo 'Beklenen: uretim_sefi, fabrika_operator, fabrika_sorumlu, fabrika_personel,'
+\echo '          fabrika_depo, sef, recete_gm, fabrika_mudur, fabrika'
 SELECT
-  'FACTORY_MISSING' AS pin_type,
-  u.id AS user_id,
-  u.username,
-  COALESCE(u.first_name,'')||' '||COALESCE(u.last_name,'') AS full_name,
-  u.role
+  u.role,
+  COUNT(*) AS pin_eksik_sayi,
+  STRING_AGG(u.id::text || ' (' || COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'') || ')', E'\n  ' ORDER BY u.id) AS detay
 FROM users u
-WHERE u.deleted_at IS NULL
-  AND u.is_active = true
-  AND u.role IN ('fabrika_mudur','uretim_sefi','fabrika_operator','fabrika_sorumlu',
-                  'fabrika_personel','fabrika_depo','sef','recete_gm',
-                  'gida_muhendisi','kalite_kontrol')
-  AND NOT EXISTS (
-    SELECT 1 FROM factory_staff_pins fsp
-    WHERE fsp.user_id = u.id
-      AND fsp.is_active = true
-  )
-ORDER BY u.role, u.username;
+LEFT JOIN factory_staff_pins p
+  ON p.user_id = u.id
+ AND p.is_active = true
+WHERE u.is_active = true
+  AND u.role IN ('uretim_sefi','fabrika_operator','fabrika_sorumlu','fabrika_personel','fabrika_depo','sef','recete_gm','fabrika_mudur','fabrika')
+  AND p.id IS NULL
+GROUP BY u.role
+ORDER BY u.role;
 
--- ===============================================================
--- KULLANIM:
---   ⚠️ PII İÇERİR (4 ve 5 numaralı sorgular kullanıcı isimleri/şubeleri).
---   Repo'ya commit edilmiş rapor (docs/security/pin-coverage-2026-05-report.txt)
---   sadece AGGREGATE içerir. Detaylı PII çıktısı owner-only zarfta:
---   psql "$DATABASE_URL" -f scripts/audit/pin-coverage-2026-05.sql > /tmp/pin-coverage-PRIVATE.txt
--- SONRAKİ ADIM (ayrı task, Plan mode + isolated agent + backup + GO):
---   - Eksik PIN'lere bcrypt hash + 4-6 haneli random PIN üret
---   - Owner-only kapalı zarf CSV (docs/security/pin-seed-2026-05-PRIVATE.csv)
---   - branch_staff_pins / factory_staff_pins INSERT (branch_id zorunlu, branch role'leri için)
--- ===============================================================
+\echo ''
+\echo '=== 4) ŞÜPHELİ — branchId NULL ama BRANCH rolünde aktif kullanıcı ==='
+\echo '(PIN tablosuna yazılamaz çünkü branch_id NOT NULL — önce branch atanmalı)'
+SELECT id, role, first_name, last_name, email
+FROM users
+WHERE is_active = true
+  AND role IN ('stajyer','bar_buddy','barista','supervisor_buddy','supervisor','mudur')
+  AND branch_id IS NULL
+ORDER BY role, id;
+
+\echo ''
+\echo '=== 5) ŞÜPHELİ — Kilitli PIN sayısı (locked_until > now) ==='
+SELECT 'branch' AS kaynak, COUNT(*) AS kilitli_pin
+FROM branch_staff_pins
+WHERE pin_locked_until IS NOT NULL AND pin_locked_until > NOW()
+UNION ALL
+SELECT 'factory' AS kaynak, COUNT(*) AS kilitli_pin
+FROM factory_staff_pins
+WHERE pin_locked_until IS NOT NULL AND pin_locked_until > NOW();
+
+\echo ''
+\echo '=== 6) ŞÜPHELİ — Pasif kullanıcı PIN aktif (temizlik adayı) ==='
+SELECT 'branch' AS kaynak, p.user_id, u.role, u.is_active
+FROM branch_staff_pins p
+JOIN users u ON u.id = p.user_id
+WHERE p.is_active = true AND u.is_active = false
+UNION ALL
+SELECT 'factory' AS kaynak, p.user_id, u.role, u.is_active
+FROM factory_staff_pins p
+JOIN users u ON u.id = p.user_id
+WHERE p.is_active = true AND u.is_active = false
+ORDER BY kaynak, user_id;
+
+\echo ''
+\echo '=== 7) KAPSAMA YÜZDESI — Rol bazlı ==='
+WITH branch_target AS (
+  SELECT u.role, COUNT(*) AS toplam
+  FROM users u
+  WHERE u.is_active = true
+    AND u.role IN ('stajyer','bar_buddy','barista','supervisor_buddy','supervisor','mudur')
+    AND u.branch_id IS NOT NULL
+  GROUP BY u.role
+),
+branch_have AS (
+  SELECT u.role, COUNT(*) AS sahip
+  FROM users u
+  JOIN branch_staff_pins p
+    ON p.user_id = u.id AND p.is_active = true AND p.branch_id = u.branch_id
+  WHERE u.is_active = true
+  GROUP BY u.role
+),
+factory_target AS (
+  SELECT u.role, COUNT(*) AS toplam
+  FROM users u
+  WHERE u.is_active = true
+    AND u.role IN ('uretim_sefi','fabrika_operator','fabrika_sorumlu','fabrika_personel','fabrika_depo','sef','recete_gm','fabrika_mudur','fabrika')
+  GROUP BY u.role
+),
+factory_have AS (
+  SELECT u.role, COUNT(*) AS sahip
+  FROM users u
+  JOIN factory_staff_pins p
+    ON p.user_id = u.id AND p.is_active = true
+  WHERE u.is_active = true
+  GROUP BY u.role
+)
+SELECT 'branch' AS kaynak, t.role, t.toplam, COALESCE(h.sahip,0) AS pin_sahip,
+       ROUND(100.0 * COALESCE(h.sahip,0) / NULLIF(t.toplam,0), 1) AS yuzde
+FROM branch_target t
+LEFT JOIN branch_have h USING (role)
+UNION ALL
+SELECT 'factory' AS kaynak, t.role, t.toplam, COALESCE(h.sahip,0) AS pin_sahip,
+       ROUND(100.0 * COALESCE(h.sahip,0) / NULLIF(t.toplam,0), 1) AS yuzde
+FROM factory_target t
+LEFT JOIN factory_have h USING (role)
+ORDER BY kaynak, role;
+
+\echo ''
+\echo '=== AUDIT BİTTİ — Aşağıdaki adımlar:'
+\echo '  1) Çıktıyı docs/audit/comprehensive-2026-05/pin-coverage-out.txt e kaydet'
+\echo '  2) Eksik PIN listesi → Plan mode + isolated agent ile seed migration üret'
+\echo '  3) GO komutu owner Aslan tarafından verilir (DB WRITE)'
