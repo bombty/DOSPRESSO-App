@@ -486,6 +486,12 @@ ALTER TABLE factory_tablo_adi
 7. **Verify:** `npx tsx scripts/db-drift-check.ts` re-run, beklenen düşüş ile karşılaştır.
 8. **Workflow restart:** Cache invalidation için (özellikle ai_settings gibi cached config tabloları).
 
+**ZORUNLU — Post-Migration Workflow Restart (Bundle 1A 3 May 2026 dersi):**
+Migration APPLY sonrası eski long-running connection'lar prepared statement cache nedeniyle yeni kolonları görmez ve `column "X" does not exist` hatası vermeye devam eder. Bundle 1A ai_settings'e 6 kolon ekledi → app uptime 25dk → log'da `monthly_budget_usd does not exist` (×6), `SLATracker TypeError` (×6, Object.entries(undefined)), `skill.generateActions` (×5) hataları **stale connection collateral damage** olarak göründü. Restart sonrası 3 hata sınıfı da 0'a düştü.
+- Migration sonrası `restart_workflow("Start application")` veya `kill -HUP` zorunlu.
+- Hata "does not exist" diyor ama `psql \d table` kolonu görüyorsa → connection pool stale, restart yeter, panik yapma.
+- DRY-RUN sırasında bu hatalar görünmez (henüz commit yok); APPLY sonrası restart yapılmazsa false-positive runtime alarm üretir.
+
 **Kritik tuzaklar:**
 - `ALTER TABLE ADD CONSTRAINT IF NOT EXISTS` PostgreSQL'de DESTEKLENMEZ — DO bloğu veya ön-check gerekir.
 - Drift script bazen "eksik UNIQUE constraint" der ama pg_class'ta aynı isimle UNIQUE INDEX olabilir
