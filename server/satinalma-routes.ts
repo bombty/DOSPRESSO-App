@@ -2356,4 +2356,56 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
       res.status(500).json({ error: "Ürün tedarikçisi silinemedi" });
     }
   });
+
+  // ────────────────────────────────────────────────────────────────────
+  // F32 — Cari currentBalance recompute + invariant
+  // ────────────────────────────────────────────────────────────────────
+  // GET /api/cari/balance-invariant — READ-ONLY drift raporu
+  // POST /api/cari/recompute-balances — tüm aktif hesapları SUM(transactions)'a göre günceller
+  // POST /api/cari/recompute-balances/:id — tek hesap recompute
+  // Tümü HQ-only (admin/ceo/cgo/muhasebe).
+  app.get("/api/cari/balance-invariant", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const role = (req as any).user?.role;
+      const allowed = ["admin", "ceo", "cgo", "muhasebe", "muhasebe_ik"];
+      if (!allowed.includes(role)) return res.status(403).json({ error: "Yetkisiz" });
+      const { checkBalanceInvariant } = await import("./services/cari-recompute");
+      const drifts = await checkBalanceInvariant();
+      res.json({ count: drifts.length, drifts });
+    } catch (error) {
+      console.error("cari invariant check error:", error);
+      res.status(500).json({ error: "Cari invariant kontrolü başarısız" });
+    }
+  });
+
+  app.post("/api/cari/recompute-balances", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const role = (req as any).user?.role;
+      const allowed = ["admin", "ceo", "cgo", "muhasebe", "muhasebe_ik"];
+      if (!allowed.includes(role)) return res.status(403).json({ error: "Yetkisiz" });
+      const { recomputeAllBalances } = await import("./services/cari-recompute");
+      const result = await recomputeAllBalances({ onlyActive: true });
+      res.json(result);
+    } catch (error) {
+      console.error("cari recompute-all error:", error);
+      res.status(500).json({ error: "Cari recompute başarısız" });
+    }
+  });
+
+  app.post("/api/cari/recompute-balances/:id", isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const role = (req as any).user?.role;
+      const allowed = ["admin", "ceo", "cgo", "muhasebe", "muhasebe_ik"];
+      if (!allowed.includes(role)) return res.status(403).json({ error: "Yetkisiz" });
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Geçersiz ID" });
+      const { recomputeAccountBalance } = await import("./services/cari-recompute");
+      const result = await recomputeAccountBalance(id);
+      res.json(result);
+    } catch (error: any) {
+      console.error("cari recompute single error:", error);
+      const status = String(error?.message || "").includes("bulunamadı") ? 404 : 500;
+      res.status(status).json({ error: error?.message || "Cari recompute başarısız" });
+    }
+  });
 }

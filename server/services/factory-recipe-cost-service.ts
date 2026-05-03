@@ -348,6 +348,23 @@ export async function recalculateRecipeCost(
     ? (ingResult.resolved / ingResult.total) * 100
     : 0;
 
+  // F20: lineCost null guard — eksik içerik varsa structured warning,
+  // toplam %0 ise unitCost güvenilmez (UI badge için coveragePercent
+  // ve missing[] response'ta zaten döner; status alanı da audit history'ye yazılır).
+  if (ingResult.missing.length > 0) {
+    console.warn(
+      `[recipe-cost] recipe=${recipeId} coverage=${coveragePercent.toFixed(1)}% ` +
+      `resolved=${ingResult.resolved}/${ingResult.total} ` +
+      `missing=${ingResult.missing.length} ` +
+      `reasons=${JSON.stringify(
+        ingResult.missing.reduce<Record<string, number>>((acc, m) => {
+          acc[m.reason] = (acc[m.reason] || 0) + 1;
+          return acc;
+        }, {})
+      )}`
+    );
+  }
+
   // 8. factory_recipes tablosuna yaz
   await db.update(factoryRecipes)
     .set({

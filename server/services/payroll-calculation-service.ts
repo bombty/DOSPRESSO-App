@@ -31,7 +31,14 @@ export interface PayrollResult {
   incomeTax: number;
   stampTax: number;
   totalDeductions: number;
+  /**
+   * 2026 mevzuatı: AGI kaldırıldı, yerine "asgari ücrete kadar gelir vergisi
+   * + damga vergisi muafiyeti" geldi. `agi` alanı geriye uyumluluk için
+   * incomeTaxExemption + stampTaxExemption toplamı olarak korunur.
+   */
   agi: number;
+  incomeTaxExemption: number;
+  stampTaxExemption: number;
   netSalary: number;
   sgkEmployer: number;
   unemploymentEmployer: number;
@@ -157,11 +164,23 @@ export async function calculatePayroll(input: PayrollInput): Promise<PayrollResu
 
   const stampTax = Math.round(grossTotal * params.stampTaxRate);
 
+  // 2026 mevzuatı: AGI kaldırıldı; asgari ücret kadar gelir vergisi + damga
+  // vergisi muafiyeti uygulanır. Cumulative bracket'leri doğru kullanarak
+  // asgari ücret üzerinden hesaplanan gelir vergisi kadar muafiyet, ve
+  // asgari ücretin damga vergisi kadar damga muafiyeti net maaşa eklenir.
+  // Muafiyet, çalışanın hesaplanan vergisinden büyük olamaz (max 0 sınırı).
   const minWageSgk = Math.round(params.minimumWageGross * params.sgkEmployeeRate);
   const minWageUnemployment = Math.round(params.minimumWageGross * params.unemploymentEmployeeRate);
-  const minWageTaxable = params.minimumWageGross - minWageSgk - minWageUnemployment;
-  const minWageTax = Math.round(minWageTaxable * (params.taxBrackets[0]?.rate || 0.15));
-  const agi = Math.round(minWageTax);
+  const minWageTaxable = Math.max(0, params.minimumWageGross - minWageSgk - minWageUnemployment);
+  const { tax: minWageIncomeTax } = calculateIncomeTax(
+    minWageTaxable,
+    input.cumulativeTaxBase,
+    params.taxBrackets
+  );
+  const incomeTaxExemption = Math.min(incomeTax, minWageIncomeTax);
+  const minWageStampTax = Math.round(params.minimumWageGross * params.stampTaxRate);
+  const stampTaxExemption = Math.min(stampTax, minWageStampTax);
+  const agi = incomeTaxExemption + stampTaxExemption;
 
   const totalDeductions = sgkEmployee + unemploymentEmployee + incomeTax + stampTax;
   const netSalary = grossTotal - totalDeductions + agi;
@@ -186,6 +205,8 @@ export async function calculatePayroll(input: PayrollInput): Promise<PayrollResu
     stampTax,
     totalDeductions,
     agi,
+    incomeTaxExemption,
+    stampTaxExemption,
     netSalary,
     sgkEmployer,
     unemploymentEmployer,
