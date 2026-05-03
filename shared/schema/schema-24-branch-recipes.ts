@@ -391,7 +391,9 @@ export const branchAromaOptions = pgTable("branch_aroma_options", {
 
   // Şurup tipi mi yoksa toz mu?
   formType: varchar("form_type", { length: 20 }).default("syrup"),
-  // 'syrup' (pump ile ölçülür), 'powder' (ölçek ile), 'fresh' (taze - nane/limon)
+  // 'syrup' (pump ile ölçülür), 'powder' (ölçek ile), 'fresh' (taze - nane/limon),
+  // 'physical_item' (yarım çikolata, oreo crash gibi fiziksel ürün),
+  // 'topping' (üzerine süsleme: kakao, drizzle, hindistan cevizi)
 
   // Sıralama
   displayOrder: integer("display_order").default(0),
