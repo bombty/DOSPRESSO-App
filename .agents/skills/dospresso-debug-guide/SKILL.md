@@ -466,6 +466,35 @@ ALTER TABLE factory_tablo_adi
 - [ ] Drizzle schema'da comment değerleri ("gluten", "soya", "gr", "ml") kolon ismi gibi görünebilir — dikkatli oku
 - [ ] Kolon ismi farklılığına dikkat: DB'de `show_to_gm` varken schema `show_name_to_gm` bekleyebilir
 
+### Toplu Drift Kapatma (Task #305 deneyimi, 3 May 2026)
+
+**Süreç (zorunlu sıra):**
+1. **Envanter:** `npx tsx scripts/db-drift-check.ts` ile tüm drift kategorize edilir.
+2. **Karar matrisi:** `docs/audit/comprehensive-2026-05/drift-resolution.md` benzeri MD dosyası
+   yaz; her kategori için yön (DB→schema mı, schema→DB mi) ve risk belirt.
+3. **Pre-flight veri audit:** SET NOT NULL eklenecek her kolon için NULL satır say. >0 ise
+   backfill stratejisi (admin user_id, NULL allow vb.).
+4. **FK orphan kontrol:** Her FK için `WHERE NOT EXISTS (SELECT 1 FROM parent ...)` ile
+   yetim kayıt sayımı. Yetim varsa: nullable kolonsa NULL'a set, NOT NULL kolonsa admin/varsayılan
+   ID ile backfill et (silme YASAK — veri korunur).
+5. **DRY-RUN:** `sed 's/^COMMIT;$/ROLLBACK;/' migration.sql | psql -v ON_ERROR_STOP=1` —
+   transaction içinde test, hata yoksa rollback. Hatalar genelde:
+   - Constraint adının pg_class'ta zaten var olması (çoğu zaman aynı semantik unique INDEX)
+   - Orphan FK satırları (yukarıdaki adım 4 atlanırsa)
+   - NOT NULL kolona NULL set etme denemesi (orphan strategy yanlış seçilirse)
+6. **Owner GO + APPLY:** Dry-run %100 temizse `psql -v ON_ERROR_STOP=1 -f migration.sql`.
+7. **Verify:** `npx tsx scripts/db-drift-check.ts` re-run, beklenen düşüş ile karşılaştır.
+8. **Workflow restart:** Cache invalidation için (özellikle ai_settings gibi cached config tabloları).
+
+**Kritik tuzaklar:**
+- `ALTER TABLE ADD CONSTRAINT IF NOT EXISTS` PostgreSQL'de DESTEKLENMEZ — DO bloğu veya ön-check gerekir.
+- Drift script bazen "eksik UNIQUE constraint" der ama pg_class'ta aynı isimle UNIQUE INDEX olabilir
+  (özellikle COALESCE-based partial unique). Önce `SELECT * FROM pg_class WHERE relname='...'` ile doğrula.
+- timestamp ↔ timestamptz dönüşümlerinde TZ bilgisi: schema timestamp without TZ ise basit cast yeter,
+  schema timestamptz ise `USING (col AT TIME ZONE 'Europe/Istanbul')` ile yorumla.
+- Schema yanlışsa (örn. `text` ama DB `integer[]` ve kod integer kullanıyorsa) — DB'ye dokunma,
+  schema fix follow-up task aç (kod refactor gerekir).
+
 ---
 
 ## §18 — Dobody branchPerf Undefined (Şube Analizi Çalışmıyor)
