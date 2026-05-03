@@ -56,7 +56,7 @@ Audit raporu **method+path** birleşimi sayıyor (örn: `GET /api/x` ve `POST /a
 
 ---
 
-## 3.0 METHOD+PATH TAM TABLOSU (80 satır = 71 path-bazlı expansion + 9 yeni method-mismatch keşfi)
+## 3.0 METHOD+PATH TAM TABLOSU (88 canonical = 70 path + 9 MM + 9 N)
 
 Validation feedback'inde method-level analiz "ertelenemez" denildiği için path-bazlı 70 listenin üzerine **method-aware extraction** koşturuldu (`.local/scripts/audit-tmp/extract3-method.mjs` + `extract4-expand.mjs`):
 - FE'deki `apiRequest('METHOD', '/api/...')`, `fetch('/api/...', {method})`, `useQuery({queryKey: ['/api/...']})` (default GET) pattern'leri tarandı.
@@ -115,17 +115,18 @@ Audit Bölüm 7.1'in ilk 50'sinde olan, ancak `extract2.mjs`'in path normalize a
 
 > **Not:** N1-N7 (`/api/iletisim/*`) tüm CRM-İLETİŞİM modülünün eksik server impl'i — bu 7 endpoint birlikte tek bir alt-task olarak ele alınmalı. N8-N9 ayrı admin/academy task'ları.
 
-### 3.0.5 RECONCILIATION (Audit 118 vs Bizim 88)
+### 3.0.5 RECONCILIATION (Audit 118 vs Bizim 88) — TEK CANONICAL SAYI: **88**
 
 | Kategori | Sayı | Açıklama |
 |---|---|---|
-| Bizim path-bazlı 70 × FE method | 71 | `broken-expanded.tsv` |
-| Yeni method-mismatch keşfi | 9 | Bölüm 3.0.1 (audit'te yoktu) |
-| Audit'te olan + bizim eklediğimiz | 9 | Bölüm 3.0.4 (N1-N9) |
-| **TOPLAM hi-confidence broken** | **89** | (71 + 9 MM + 9 N) |
+| Path-bazlı distinct broken endpoint | 70 | Bölüm 3.1-3.12 (path-bazlı görünüm) |
+| Path × FE method ham expansion | 71 | `broken-expanded.tsv` (1 path 2 method, dedup edilince 70) |
+| Method-mismatch keşfi | 9 | Bölüm 3.0.1 (audit'te yoktu) |
+| Audit-recovered yeni broken | 9 | Bölüm 3.0.4 (N1-N9) |
+| **TOPLAM hi-confidence (canonical)** | **88** | 70 path + 9 MM + 9 N (wave totals ile birebir) |
 | Audit FP düzeltmesi | -4 | Bölüm 3.0.3 |
 | **Audit'in düzeltilmiş hedef sayısı** | **≤114** | (118 - 4 FP) |
-| **Açıklanamayan kalan (needs-investigation)** | **≤25** | Bkz. 3.0.6 |
+| **Açıklanamayan kalan (needs-investigation)** | **≤25** | Bkz. 3.0.6 + W0 skeleton |
 
 ### 3.0.6 NEEDS-INVESTIGATION (≤25 kalan)
 
@@ -137,8 +138,8 @@ Audit'in 118'inden 50 görünür + 4 FP teyit (118-50=68 truncate, 4 FP). Görü
 **Truncate edilen 68 satır** için:
 - Audit script repo'da yok (commit eksik) → birebir reproduce imkansız.
 - Yaklaşık ~25 muhtemel **needs-investigation** kalem (yüksek olasılıkla yine `/api/iletisim/*` alt path'leri, mega-modül route'ları, dashboard widget alt endpoint'leri).
-- **Aksiyon:** Owner'a önerilen Dalga 0 (script reconstruction): audit'in extraction script'ini bulma/yeniden yazma; bulunan her ek satır wave dosyalarına eklenecek.
-- Bu 88 satır kapanış kalitesinde plan için yeterlidir; eksik 25 (varsa) Dalga 0'da kapatılır.
+- **Aksiyon:** Önerilen Dalga 0 (script reconstruction) — committed skeleton: `docs/audit/waves/W0-audit-script-reconstruction.md`. Audit'in extraction script'ini bulma/yeniden yazma; bulunan her ek satır wave dosyalarına eklenecek.
+- Bu 88 satır kapanış kalitesinde plan için yeterlidir; eksik ≤25 (varsa) W0'da kapatılır.
 
 ---
 
