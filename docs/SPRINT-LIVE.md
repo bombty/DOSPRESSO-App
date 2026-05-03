@@ -2,11 +2,172 @@
 
 Aktif sprintin canlı durumudur. Sprint kapanırken arşive alınır, yeni sprint için bu dosya sıfırlanır.
 
-Son güncelleme: 2 Mayıs 2026
+Son güncelleme: 3 Mayıs 2026 (Sprint 3 geçişi, 102 commit Sprint 2 kapanışı)
 
 ---
 
 ## Aktif Sprint
+
+**Sprint 3 — Pilot Hazırlık + Risk Mitigasyon (12 May Pazartesi Pilot Day-1)**
+
+Hedef: Pilot Day-1 (12 May 2026) öncesi açık 36 finding'in 21'i kapatılmalı, F33 13/13 sayfa guard, DB drift 0, PIN coverage %100 (zaten erişildi), eğitim materyali son hâli, pilot kullanıcı listesi doldurulmalı.
+
+**Plan dosyası:** `docs/SPRINT-3-MASTER-PLAN.md` (3 May 2026)
+
+---
+
+## ⚡ Sprint 2 Kapanışı (2-3 May 2026 — 102 commit, ~24 saat marathon)
+
+### Bundle 1A — DB Drift Kapatma (Task #305)
+✅ DB drift 195 → 58 (-137); 42 kolon tipi/nullability + 60 idx + 28 FK + module_flags UNIQUE = kapatıldı. `migrations/sprint-2ext-drift-close.sql`. **Defer:** 13 eksik tablo + bağlı 3 unique + 23 idx + 19 FK = Bundle 1B (W-A3).
+
+### Bundle 2 — F33 Route Guards + F36 PIN Coverage (Task #306)
+✅ 5 sayfa guard sarımı (`/iletisim`, `/nfc-giris`, `/qr-tara`, `/bilgi-bankasi`, `/bildirimler`) + #325'te 3 daha (`/duyuru/:id`, `/akademi-ana`, `/ogrenme-yolum`) = 8/13 sayfa. **Kalan: 5 sayfa Wave A-1'de.** PIN coverage audit: %100 hedef belirlendi.
+
+### Bundle 3 — Dashboard v4 → v5 Centrum (Task #307)
+✅ Dashboard router v5 Centrum tek yola yönlendirildi, v4 ölü kodu silindi. F01 KAPATILDI. CEO/CGO/Coach/Trainer artık tek dashboard görür. Build break (orphan import) çözüldü.
+
+### Bundle 4 — PDKS Sync Trio + Atomic Stok (Task #308)
+✅ F10 (PILOT exclude) doğrulandı; ✅ F11 (Europe/Istanbul TZ) doğrulandı; ✅ F12 (shift_id FK gap) — 3 katmanlı fallback ladder (planned/nearest ±3gün/adhoc + warn). ✅ F28 (atomic stok race) — `applyAtomicInventoryMovement` helper + 3 endpoint (manuel hareket, mal kabul, kabul onay) + `SELECT FOR UPDATE` + 3 deneme retry (40001/40P01 SQLSTATE).
+
+### Bundle 5 — Bordro AGI + Cari Recompute + Recipe Cost (Task #309)
+✅ F26 (AGI 2026 mevzuat) — `calculateIncomeTax` doğru bracket akışı + damga muafiyeti. ✅ F32 (cari recompute) — `recomputeAccountBalance` + invariant check + 3 endpoint. ✅ F20 (lineCost null silent) — structured warn + coveragePercent UI badge. F17 (training/modules 404) — audit yanlışmış, endpoint mevcut.
+
+### Bundle 7 — Şube Puantaj + Fazla Mesai E2E (#311 + #327)
+✅ E2E test paketi: `tests/e2e/branch-attendance-settings.spec.ts` 3 senaryo (S1 müdür tolerans PATCH, S2 18dk geç+tolerans=20 lateMinutes, S3 worker overtime POST + müdür approve). Workflow: `.github/workflows/e2e-bundle7.yml` manuel (workflow_dispatch). Pattern: `kiosk-shift-closure.spec.ts` API-level Playwright + raw pg.
+
+### F15 (#326) — Mr. Dobody Dinamik Geç Tolerans
+✅ `late-arrival-tracker.ts` artık `payrollDeductionConfig` cascade'inden okur (fabrika branchId=0 → genel). Hardcoded `LATE_THRESHOLD_MINUTES=15` silindi. Unit test 5 senaryo `tests/unit/late-arrival-tracker.test.ts`.
+
+### Task #324 — PIN Seed (F36 Phase 2)
+✅ Pilot Day-1 hedefi %100 PIN kapsama. `branch_staff_pins` 31→127 aktif (+96), `factory_staff_pins` 13→14 aktif (+1). Migration: `migrations/2026-05-03-pin-seed-pilot.sql` + `scripts/pilot/27-pin-seed-missing.ts` (--dry-run/--apply, bcrypt rounds=10, BANNED_PINS, hash collision tarama). Pasif/silinmiş kullanıcı PIN'leri otomatik deaktive.
+
+### Task #325 — Route Guard CI Regression Test
+✅ `scripts/audit/route-guard-coverage.ts` + `.github/workflows/route-guard-coverage.yml` + `scripts/audit/public-routes-whitelist.json` (262 route, 32 bare, 0 violation baseline). Yeni guard'sız Route otomatik fail.
+
+### Task #272 — Pilot Day-5 Güvenlik Sertleştirme
+✅ `POST /api/auth/register` admin/ceo/muhasebe_ik korumalı (anonim 401). Helmet `frameguard: SAMEORIGIN`. authLimiter + passwordResetLimiter mount. Admin bootstrap log'u temizlendi (hash_prefix kaldırıldı).
+
+### Task #273 — shift_attendance check_out Atomic
+✅ Branch (3 endpoint), HQ end_of_day, Factory (2 endpoint) `db.transaction` içinde session UPDATE + `shift_attendance.check_out_time` UPDATE atomik. Backfill 0 aday (gerek yok).
+
+### Task #274 — '0000' Parola Gate
+✅ `resetNonAdminPasswords()` üretimde ASLA çalışmaz. `rotatePilotDefaultPasswords()` pilot_launched=true iken tek seferlik. `enforcePasswordChangeGate` HTTP 423 password_change_required.
+
+### Task #276 — pdks_daily_summary Sync (B11)
+✅ Şube/HQ/Fabrika kapanışlarında günlük sync.
+
+### Task #277, #286 — Kiosk Vardiya Kapanış E2E (B12)
+✅ E2E test 5/5 PASS.
+
+### Task #278 — APP_AUDIT_REPORT
+✅ 326 sayfa × 1985 endpoint × 806 FE çağrısı tarandı. 10 öksüz sayfa, 81 mega-modül alt sayfa, **118 kırık API çağrısı**, 1278 ölü endpoint adayı.
+
+### Task #282 — 12 Kırık Link/Menü Düzeltmesi
+✅ `/bordro→/bordrom`, `/hq-support→/hq-destek`, `/personel-profil→/profil`, `/finans→/mali-yonetim`, `/waste-executive→/waste`, vb. 9 dosya, 14 ekleme/15 silme.
+
+### Task #283 v4 — 118 Kırık API Düzeltmesi
+✅ Tüm FE→BE endpoint çağrıları kapandı. Branch PII source'da sanitize.
+
+### Task #279 — Wave A-1 G1+G2 AUTH Doğrulama (NO-OP)
+✅ `delegation-routes.ts` (5 endpoint) + `module-content-routes.ts` (5 endpoint) zaten korumalıydı (admin+ceo). Audit eskimiş, anonim 401 doğrulandı. **DECISIONS#29.**
+
+### Task #280 — Wave A-2 pg_dump Cron + DR Playbook (B16)
+✅ `scripts/backup/pg-dump-daily.ts` her gece 03:00 UTC. 30-gün retention, Object Storage. Restore runbook 10 adım, 2 imza zorunlu. **DECISIONS#30.**
+
+### Task #281 — Wave A-3 B14 NO-OP Closure
+✅ `ROLE_MODULE_DEFAULTS` dead code (0 import). Gerçek mekanizma `role_module_permissions` DB (3127 satır, 31 rol DOLU). Pilot etkisi SIFIR. **9 paralel rol mekanizması B21+B22 olarak Sprint 4'e taşındı.** **DECISIONS#31.**
+
+### Task #284 — 91 Öksüz Sayfa Silme
+✅ 326 → 305 sayfa. Repo temizlendi.
+
+### Task #287 (B4) — Ay Sonu Puantaj Simülasyonu
+✅ READ-ONLY simülasyon. `docs/audit/pdks-monthly-simulation-2026-05.md`.
+
+### Task #288 — W0 Audit Script Reconstruction
+✅ Audit pipeline temellendirildi.
+
+### Task #302 — Repo Kökü Dokümantasyon Hijyeni
+✅ 18 stale rapor `docs/archive/2026-Q1/` ve `docs/archive/2026-Q2/` altına taşındı. **STATUS.md güncel sayılarla yenilendi (372 kullanıcı, 31 rol, 305 sayfa, 1.985 endpoint, 455 tablo).** **DECISIONS#32.**
+
+### Task #329 — Comprehensive Role × Module Audit
+✅ 6 paralel kod-explorer subagent + 5 mekanik script-tarama. **36 finding (9 KRİTİK, 5 RBAC, 6 hesap-mantık, 3 stub, 1 kırık-API, 2 mevzuat, 3 hardcode, 2 veri-integrity, 3 UX, 3 infra).** Auto-türetilen 17 task (T-300 → T-316, ~44h). Kapsam: `docs/audit/comprehensive-2026-05/`.
+
+---
+
+## 📊 Sprint 2 → Sprint 3 Geçiş Bilançosu
+
+### Kapatılan Finding'ler (36'dan 15'i)
+F01 (Dashboard v4/v5), F10 (PILOT exclude), F11 (TZ), F12 (FK gap), F15 (geç tolerans), F17 (training endpoint mevcut), F20 (lineCost), F26 (AGI), F28 (atomic stok), F32 (cari), F33 (8/13 sayfa), F35 (DB drift Bundle 1A), F36 (PIN coverage)
+**+ Plus:** Pilot Day-5 hardening, '0000' parola gate, shift_attendance check_out, pg_dump backup, 118 kırık API, 40 kırık link, 91 öksüz sayfa.
+
+### Açık Kalan Finding'ler (~21)
+F02, F03, F04, F05, F06, F07, F08, F09, F13, F14, F16, F18, F19, F21, F22, F23, F24, F25, F27, F29, F30, F31, F33 (5 sayfa kalan), F34
+
+### Sayısal Değişim
+| Metrik | Önce (2 May) | Sonra (3 May) |
+|---|---|---|
+| Sayfa | 326 | **305** (-21 öksüz) |
+| DB drift | 195 | **58** (-137) |
+| Kırık API | 118 | **0** |
+| Kırık link | 40 | **0** |
+| F33 sayfa | 13 | **5** (8 kapandı) |
+| PIN coverage branch | %25 | **%100** (31→127) |
+| PIN coverage factory | %93 | **%100** (13→14) |
+
+---
+
+## 🌊 Sprint 3 Wave Planı (Detay: SPRINT-3-MASTER-PLAN.md)
+
+### Wave A — Pilot Day-1 Öncesi (3-11 May, 9 gün)
+- **W-A1:** F33 kalan 5 sayfa guard sarımı (1.5h, isolated)
+- **W-A2:** Skill MD batch update — `dospresso-roles-and-people` (30dk, DOCS)
+- **W-A3:** Bundle 1B — 13 eksik tablo + bağlı 58 item, drift 58→0 (4h, isolated DB-write)
+- **W-A4:** Eğitim materyali son hâli (manuel, owner)
+- **W-A5:** Pilot kullanıcı listesi doldur (manuel, owner)
+- **W-A6:** 8 May + 10 May smoke testler
+
+### Wave B — Pilot Hafta 1 (12-18 May, 7 gün)
+- **W-B1:** F22 — factory-f2 stok stub kaldır (3h)
+- **W-B2:** F24 — Reçete versiyon → etiket revize otomasyonu (5h, mevzuat)
+- **W-B3:** F27 — getPositionSalary null guard (1.5h)
+- **W-B4:** F14 — PDKS classifyDay 30dk yuvarlama düzelt (1.5h)
+- **W-B5:** Pilot Day-1 gün sonu rapor + incident review
+
+### Wave C — Pilot Hafta 2-3 (19 May → 1 Jun, 14 gün)
+- **W-C1:** F29 — KDV oranlarını parametrik yap (2h)
+- **W-C2:** F30 — Fabrika saatlik ücreti settings'den oku (2h)
+- **W-C3:** F31 — Döviz kuru handling (4h)
+- **W-C4:** T-312 — RBAC bundle (F02, F05, F06, F13, F16) — 6h
+- **W-C5:** T-315 — Recipe-cost bundle (F21, F23) — 4h
+- **W-C6:** T-316 — UX-Dashboard bundle (F04, F18, F34) — 4h
+
+### Wave D — Sprint 4 / Post-Pilot (~30 May+)
+- W-D1: B1 HQ kiosk PIN bcrypt (4.5h)
+- W-D2: B3 İzin/rapor bakiye sistemi (12h)
+- W-D3: B5 Fabrika üretim MVP (6-10h)
+- W-D4: B6 Reçete + besin + alerjen + etiket (16-24h)
+- W-D5: **B21 — 9 paralel rol mekanizması konsolidasyonu (BÜYÜK, 20-30h)**
+- W-D6: B22 — manifest-auth fail-open düzelt (4h)
+- W-D7: Comprehensive ek tarama (CRM/Notification/Mr.Dobody) (8h)
+- W-D8: B10 — OpenAI aylık harcama tavanı (3-4h)
+- W-D9: B17 — Login lockout DB'ye taşı (3h)
+- W-D10: B18 — TEST-MATRIX 31 role genişletme (4h)
+- W-D11: B20 — KVKK audit + iyileştirme (6h)
+
+---
+
+## Çalışma Modeli (3 May 2026 Netleştirildi)
+
+| Rol | Yapar | Yapmaz |
+|---|---|---|
+| **Aslan (Owner)** | GO/NO-GO, Replit chat, GitHub UI (PR merge), saha | Kod, DB write, döküman yazma |
+| **Claude** | MD/plan/audit yaz, **local commit + GitHub push**, Replit prompt hazırla, sürekli MD tarama | Replit chat ile direkt konuşma, DB write |
+| **Replit Agent** | Kod, DB, build, test, deploy, isolated paralel agent | Push (workflow scope), karar, plan |
+
+Detay: `docs/SPRINT-3-MASTER-PLAN.md` Bölüm 5.
+
+---
 
 **Sprint 2 — Pilot Day-5 Sertleştirme**
 
