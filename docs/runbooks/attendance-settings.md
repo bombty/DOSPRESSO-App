@@ -21,7 +21,7 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 | HQ admin UI | ✅ VAR | `pages/pdks.tsx` `KioskToleranceSettings` |
 | Şube müdürü onay UI | ✅ VAR | `pages/overtime-requests.tsx` |
 | **`attendance_settings_audit` tablosu** | ❌ YOK | Ayar değişiklik geçmişi izlenmiyor |
-| **`late-arrival-tracker.ts` dinamik okuma** | ❌ YOK | L6-7 hâlâ hardcoded `LATE_THRESHOLD_MINUTES=15` |
+| **`late-arrival-tracker.ts` dinamik okuma** | ✅ #326 | `resolveLateThreshold` → `payrollDeductionConfig` cascade |
 | **Bundle 7 e2e test** | ❌ YOK | Mevcut `tests/e2e/kiosk-shift-*` dolaylı kapsar |
 
 ## 3. Kullanım — HQ Admin (CEO/CGO/Admin/Muhasebe_IK)
@@ -51,9 +51,8 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 
 ## 5. Bilinen Açıklar (Phase 2 / follow-up)
 
-### A. `late-arrival-tracker.ts` hardcoded eşik
-**Sorun:** Mr. Dobody günlük geç gelme bildirimleri global `LATE_THRESHOLD_MINUTES=15` kullanıyor → şube müdürünün ayarladığı 20 dk tolerans bu skill'de etkisiz.
-**Fix önerisi:** `server/agent/skills/late-arrival-tracker.ts` L46/L120 → `branchSettings.lateToleranceMinutes` cache'den okusun. Plan mode + dry-run gerek (skill 372 kullanıcıya bildirim üretiyor).
+### A. ~~`late-arrival-tracker.ts` hardcoded eşik~~ ✅ #326 ile kapatıldı
+`resolveLateThreshold(branchId, year, month)` helper'ı `payrollDeductionConfig` cascade'inden okur. Fabrika için `branchId=0` → cascade `IS NULL` (genel) config'e fallback eder. Hata/yokluk durumunda DEFAULT=15. Unit test: `tests/unit/late-arrival-tracker.test.ts`.
 
 ### B. Audit tablosu yok
 **Sorun:** Şube ayar değişikliği denetlenebilir değil; mevcut kayıt yok.
@@ -73,4 +72,4 @@ Her şubenin kendine özel geç-gelme toleransı, vardiya başlangıç/bitiş sa
 - `server/routes/misc.ts` (L1182-1327)
 - `client/src/pages/pdks.tsx` (`KioskToleranceSettings`)
 - `client/src/pages/overtime-requests.tsx`
-- `server/agent/skills/late-arrival-tracker.ts` (L6-7 — fix bekliyor)
+- `server/agent/skills/late-arrival-tracker.ts` — `resolveLateThreshold` helper (#326)

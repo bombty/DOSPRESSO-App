@@ -2,12 +2,40 @@ import { db } from "../../db";
 import { factoryShiftSessions, shifts, users } from "@shared/schema";
 import { eq, and, gte, lte, sql, isNotNull } from "drizzle-orm";
 import { registerSkill, type AgentSkill, type SkillContext, type SkillInsight, type SkillAction } from "./skill-registry";
+import { getEffectiveConfig } from "../../routes/payroll-config";
 
-const LATE_THRESHOLD_MINUTES = 15;
-const SEVERE_LATE_MINUTES = 60;
+const DEFAULT_LATE_THRESHOLD_MINUTES = 15;
 const MONTHLY_LATE_WARNING = 2;
 const MONTHLY_LATE_ESCALATION = 4;
 const BRANCH_SYSTEMIC_THRESHOLD = 20;
+
+/**
+ * F15: Geç kalma eşiğini payrollDeductionConfig cascade'inden dinamik oku.
+ * Fabrika tarafında branchId yok (factoryShiftSessions.branchId mevcut değil),
+ * bu yüzden 0 ile çağrı yapılır → cascade `IS NULL` (genel) config'e fallback eder.
+ * Hata durumunda DEFAULT_LATE_THRESHOLD_MINUTES (15) ile devam edilir, skill çökmez.
+ */
+async function resolveLateThreshold(
+  branchId: number,
+  year: number,
+  month: number,
+): Promise<{ thresholdMinutes: number; source: string }> {
+  try {
+    const cfg = await getEffectiveConfig(branchId, year, month);
+    const minutes = cfg.lateToleranceMinutes ?? DEFAULT_LATE_THRESHOLD_MINUTES;
+    const source = (cfg as { source?: string }).source ?? "default";
+    console.info(
+      `[late-arrival-tracker] threshold=${minutes}dk source=${source} (branchId=${branchId} ${year}-${month})`,
+    );
+    return { thresholdMinutes: minutes, source };
+  } catch (err) {
+    console.error(
+      "[late-arrival-tracker] threshold fetch failed, falling back to default:",
+      err instanceof Error ? err.message : err,
+    );
+    return { thresholdMinutes: DEFAULT_LATE_THRESHOLD_MINUTES, source: "fallback" };
+  }
+}
 
 const lateArrivalTrackerSkill: AgentSkill = {
   id: "late_arrival_tracker",
@@ -36,6 +64,12 @@ const lateArrivalTrackerSkill: AgentSkill = {
           .limit(100);
 
         if (todayFactory.length > 0) {
+          const now = new Date();
+          const { thresholdMinutes } = await resolveLateThreshold(
+            0,
+            now.getFullYear(),
+            now.getMonth() + 1,
+          );
           const earlyHour = 7;
           const lateArrivals = todayFactory.filter((s) => {
             if (!s.checkInTime) return false;
@@ -43,7 +77,7 @@ const lateArrivalTrackerSkill: AgentSkill = {
             const expectedStart = new Date(checkIn);
             expectedStart.setHours(earlyHour, 0, 0, 0);
             const diffMinutes = (checkIn.getTime() - expectedStart.getTime()) / 60000;
-            return diffMinutes > LATE_THRESHOLD_MINUTES;
+            return diffMinutes > thresholdMinutes;
           });
 
           if (lateArrivals.length > 0) {
@@ -55,6 +89,7 @@ const lateArrivalTrackerSkill: AgentSkill = {
                 lateCount: lateArrivals.length,
                 totalEntries: todayFactory.length,
                 lateUserIds: lateArrivals.map((l) => l.userId).slice(0, 10),
+                thresholdMinutes,
               },
               requiresAI: false,
             });
@@ -108,6 +143,11 @@ const lateArrivalTrackerSkill: AgentSkill = {
           .limit(1000);
 
         if (monthlyFactory.length > 0) {
+          const { thresholdMinutes } = await resolveLateThreshold(
+            0,
+            monthAgo.getFullYear(),
+            monthAgo.getMonth() + 1,
+          );
           const earlyHour = 7;
           const lateByUser = new Map<string, number>();
 
@@ -117,7 +157,7 @@ const lateArrivalTrackerSkill: AgentSkill = {
             const expected = new Date(checkIn);
             expected.setHours(earlyHour, 0, 0, 0);
             const diff = (checkIn.getTime() - expected.getTime()) / 60000;
-            if (diff > LATE_THRESHOLD_MINUTES) {
+            if (diff > thresholdMinutes) {
               lateByUser.set(session.userId, (lateByUser.get(session.userId) || 0) + 1);
             }
           }
@@ -143,6 +183,7 @@ const lateArrivalTrackerSkill: AgentSkill = {
                 latePercentage,
                 isSystemic: latePercentage >= BRANCH_SYSTEMIC_THRESHOLD,
                 topOffenders: severelyLate.slice(0, 5).map(([userId, count]) => ({ userId, count })),
+                thresholdMinutes,
               },
               requiresAI: severelyLate.length > 0,
             });
@@ -206,4 +247,5 @@ const lateArrivalTrackerSkill: AgentSkill = {
 };
 
 registerSkill(lateArrivalTrackerSkill);
+export { resolveLateThreshold };
 export default lateArrivalTrackerSkill;
