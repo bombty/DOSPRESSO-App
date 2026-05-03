@@ -1,6 +1,6 @@
 # Kırık API Çağrıları — Tam Liste (W0 reconstruction)
 
-**Üretim:** 2026-05-03T01:27:48.158Z
+**Üretim:** 2026-05-03T01:30:23.698Z
 **Script:** scripts/audit/extract-broken-apis.mjs (committed, READ-ONLY)
 **Task:** #288 — Wave W0 of #283
 
@@ -84,9 +84,9 @@ Audit ilk 50 satırı göstermişti. Aşağıdaki tablo bu listenin 51+ kısmın
 |---|---|---|---|---|
 | 51 | `GET /api/training/assignments` | 1 | method-mismatch | client/src/pages/training-assign.tsx:52 |
 
-## RAW Audit-Style Expansion (non-collapsed template vars, audit 118 sayısı için)
+## RAW Audit-Style Expansion (distinct method + raw path, bilgilendirme amaçlı)
 
-Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI veya FE çağrı tekrarlarını ayrı saydı. Aşağıdaki tablo bizim ham FE path lerini (template literals dahil) listeler. NOT: Bu liste audit'in 118 sayısını birebir reproduce ETMEZ — sadece bizim methodology'mizin raw görünümünü gösterir.
+Aşağıdaki tablo bizim ham FE path lerini (template literals dahil) **distinct method+raw-path** olarak listeler — per-call-occurrence DEĞİL (aynı raw path birden fazla FE konumundan çağrılıyorsa tek satıra collapse olur, use sayısı kolonda gösterilir). Audit'in 118 sayısı bu raw view ile reproduce EDİLMEZ; bizim methodology distinct kombinasyonları sayar. Per-occurrence sayan bir audit varyantı 51'den fazla satır üretebilir, bu nedenle raw view satır sayısı 118 reproduce-edilmezliğin kanıtı olarak kullanılmamalıdır.
 
 **Toplam raw satır:** 51 (collapsed view 51 satıra karşılık raw expansion).
 

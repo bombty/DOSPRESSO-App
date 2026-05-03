@@ -356,10 +356,10 @@ broken.slice(50, 118).forEach((b, i) => {
 lines.push('');
 
 // ---------------- RAW (non-collapsed) view ----------------
-// Each broken FE call location emitted separately with raw template literals
-// preserved. This shows the audit-style expansion shape, but the row count
-// equals the collapsed view's broken count when each broken endpoint has a
-// single FE caller (which is the case for most v2 results).
+// NOTE: Rows are distinct (method + raw template path), NOT per-call-location.
+// Multiple FE callers of the same raw path collapse to one row. So the raw row
+// count is a lower bound — an audit variant counting per-call-occurrence could
+// be higher (sum of `Use` column = total occurrences).
 const rawRows = [];
 const brokenKeys = new Set(broken.map((b) => `${b.method} ${b.path}`));
 for (const c of feCalls) {
@@ -387,9 +387,9 @@ const rawSorted = [...rawByMethodRaw.entries()]
   .map(([k, locs]) => ({ key: k, locs }))
   .sort((a, b) => b.locs.length - a.locs.length || a.key.localeCompare(b.key));
 
-lines.push('## RAW Audit-Style Expansion (non-collapsed template vars, audit 118 sayısı için)');
+lines.push('## RAW Audit-Style Expansion (distinct method + raw path, bilgilendirme amaçlı)');
 lines.push('');
-lines.push('Audit muhtemelen path normalize sırasında `:param` substitute YAPMADI veya FE çağrı tekrarlarını ayrı saydı. Aşağıdaki tablo bizim ham FE path lerini (template literals dahil) listeler. NOT: Bu liste audit\'in 118 sayısını birebir reproduce ETMEZ — sadece bizim methodology\'mizin raw görünümünü gösterir.');
+lines.push('Aşağıdaki tablo bizim ham FE path lerini (template literals dahil) **distinct method+raw-path** olarak listeler — per-call-occurrence DEĞİL (aynı raw path birden fazla FE konumundan çağrılıyorsa tek satıra collapse olur, use sayısı kolonda gösterilir). Audit\'in 118 sayısı bu raw view ile reproduce EDİLMEZ; bizim methodology distinct kombinasyonları sayar. Per-occurrence sayan bir audit varyantı 51\'den fazla satır üretebilir, bu nedenle raw view satır sayısı 118 reproduce-edilmezliğin kanıtı olarak kullanılmamalıdır.');
 lines.push('');
 lines.push('**Toplam raw satır:** ' + rawSorted.length + ' (collapsed view ' + broken.length + ' satıra karşılık raw expansion).');
 lines.push('');
