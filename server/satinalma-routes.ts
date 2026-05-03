@@ -39,6 +39,96 @@ import { eq, desc, and, gte, lte, sql, or, like, asc, inArray } from "drizzle-or
 
 type AuthMiddleware = (req: Request, res: Response, next: () => void) => void;
 
+// F28 (Task #308) — Atomic inventory mutation helper.
+// Wraps stock read-modify-write in a single transaction with SELECT ... FOR UPDATE
+// row lock, eliminating the read-modify-write race that allowed concurrent
+// POS + manual count requests to clobber each other's stock writes.
+type AtomicMovementOpts = {
+  inventoryId: number;
+  movementType: string;
+  quantity: number;
+  notes?: string | null;
+  batchNumber?: string | null;
+  expiryDate?: Date | null;
+  fromLocation?: string | null;
+  toLocation?: string | null;
+  referenceType?: string | null;
+  referenceId?: number | null;
+  createdById?: string | null;
+  lastPurchasePrice?: string | null;
+};
+
+const INCOMING_MOVEMENT_TYPES = ["giris", "uretim_giris", "iade", "mal_kabul"];
+const OUTGOING_MOVEMENT_TYPES = ["cikis", "uretim_cikis", "fire"];
+
+export class InventoryMutationError extends Error {
+  constructor(public code: "NOT_FOUND" | "INSUFFICIENT_STOCK", message: string) {
+    super(message);
+  }
+}
+
+export async function applyAtomicInventoryMovement(opts: AtomicMovementOpts) {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(inventory)
+      .where(eq(inventory.id, opts.inventoryId))
+      .for("update");
+
+    if (!current) {
+      throw new InventoryMutationError("NOT_FOUND", "Stok kalemi bulunamadı");
+    }
+
+    const previousStock = parseFloat(current.currentStock);
+    let newStock = previousStock;
+
+    if (opts.movementType === "sayim_duzeltme") {
+      newStock = opts.quantity;
+    } else if (INCOMING_MOVEMENT_TYPES.includes(opts.movementType)) {
+      newStock = previousStock + opts.quantity;
+    } else if (OUTGOING_MOVEMENT_TYPES.includes(opts.movementType)) {
+      newStock = previousStock - opts.quantity;
+      if (newStock < 0) {
+        throw new InventoryMutationError("INSUFFICIENT_STOCK", "Yetersiz stok");
+      }
+    }
+
+    const [movement] = await tx
+      .insert(inventoryMovements)
+      .values({
+        inventoryId: opts.inventoryId,
+        movementType: opts.movementType,
+        quantity: String(opts.quantity),
+        previousStock: String(previousStock),
+        newStock: String(newStock),
+        notes: opts.notes ?? null,
+        batchNumber: opts.batchNumber ?? null,
+        expiryDate: opts.expiryDate ?? null,
+        fromLocation: opts.fromLocation ?? null,
+        toLocation: opts.toLocation ?? null,
+        referenceType: opts.referenceType ?? null,
+        referenceId: opts.referenceId ?? null,
+        createdById: opts.createdById ?? null,
+      })
+      .returning();
+
+    const updateData: Record<string, unknown> = {
+      currentStock: String(newStock),
+      updatedAt: new Date(),
+    };
+    if (opts.lastPurchasePrice) {
+      updateData.lastPurchasePrice = opts.lastPurchasePrice;
+    }
+
+    await tx
+      .update(inventory)
+      .set(updateData)
+      .where(eq(inventory.id, opts.inventoryId));
+
+    return { movement, previousStock, newStock };
+  });
+}
+
 export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddleware) {
   
   // ========================================
@@ -151,63 +241,43 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
       const user = (req as any).user;
       const inventoryId = parseInt(req.params.id);
       const { movementType, quantity, notes, batchNumber, expiryDate, fromLocation, toLocation, referenceType, referenceId } = req.body;
-      
-      // Mevcut stoğu al
-      const [currentItem] = await db.select()
-        .from(inventory)
-        .where(eq(inventory.id, inventoryId));
-      
-      if (!currentItem) {
-        return res.status(404).json({ error: "Stok kalemi bulunamadı" });
+
+      // F28 (Task #308) — Manuel hareket endpoint'i için orijinal davranış
+      // korunuyor: sadece kullanıcının elle seçebileceği tipler. "mal_kabul"
+      // mal kabul iş akışına özel; manuel POST'tan kabul edilmiyor (regresyon
+      // koruması — eskiden bilinmeyen tipler sessiz no-op yapıyordu).
+      const MANUAL_ALLOWED_MOVEMENT_TYPES = new Set([
+        "giris", "uretim_giris", "iade",
+        "cikis", "uretim_cikis", "fire",
+        "sayim_duzeltme",
+      ]);
+      if (!MANUAL_ALLOWED_MOVEMENT_TYPES.has(movementType)) {
+        return res.status(400).json({ error: "Geçersiz hareket tipi" });
       }
-      
-      const previousStock = parseFloat(currentItem.currentStock);
-      let newStock = previousStock;
-      
-      // Hareket tipine göre stok hesapla
-      const incomingTypes = ["giris", "uretim_giris", "iade"];
-      const outgoingTypes = ["cikis", "uretim_cikis", "fire"];
-      
-      if (incomingTypes.includes(movementType)) {
-        newStock = previousStock + parseFloat(quantity);
-      } else if (outgoingTypes.includes(movementType)) {
-        newStock = previousStock - parseFloat(quantity);
-        if (newStock < 0) {
-          return res.status(400).json({ error: "Yetersiz stok" });
-        }
-      } else if (movementType === "sayim_duzeltme") {
-        newStock = parseFloat(quantity); // Direkt değer ataması
-      }
-      
-      // Stok hareketini kaydet
-      const [movement] = await db.insert(inventoryMovements)
-        .values({
-          inventoryId,
-          movementType,
-          quantity: quantity.toString(),
-          previousStock: previousStock.toString(),
-          newStock: newStock.toString(),
-          notes,
-          batchNumber,
-          expiryDate: expiryDate ? new Date(expiryDate) : null,
-          fromLocation,
-          toLocation,
-          referenceType,
-          referenceId,
-          createdById: user?.id
-        })
-        .returning();
-      
-      // Stok miktarını güncelle
-      await db.update(inventory)
-        .set({ 
-          currentStock: newStock.toString(),
-          updatedAt: new Date()
-        })
-        .where(eq(inventory.id, inventoryId));
-      
+
+      // F28 (Task #308) — Atomic mutation: tek tx + SELECT FOR UPDATE row lock
+      // ile race-safe. Önceki kod read-modify-write idi, paralel POS + sayım
+      // çağrıları stok değerlerini override ediyordu.
+      const { movement } = await applyAtomicInventoryMovement({
+        inventoryId,
+        movementType,
+        quantity: parseFloat(quantity),
+        notes,
+        batchNumber,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        fromLocation,
+        toLocation,
+        referenceType,
+        referenceId,
+        createdById: user?.id,
+      });
+
       res.status(201).json(movement);
     } catch (error) {
+      if (error instanceof InventoryMutationError) {
+        const status = error.code === "NOT_FOUND" ? 404 : 400;
+        return res.status(status).json({ error: error.message });
+      }
       console.error("Error creating inventory movement:", error);
       res.status(500).json({ error: "Stok hareketi kaydedilemedi" });
     }
@@ -704,41 +774,28 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
             rejectionReason: item.rejectionReason
           });
           
-          // Kabul edilen miktarı stoğa ekle
+          // Kabul edilen miktarı stoğa ekle — F28 (Task #308) atomic helper
           const acceptedQty = parseFloat(item.acceptedQuantity || item.receivedQuantity);
           if (acceptedQty > 0) {
-            // Mevcut stoğu al
-            const [currentInventory] = await db.select()
-              .from(inventory)
-              .where(eq(inventory.id, item.inventoryId));
-            
-            if (currentInventory) {
-              const previousStock = parseFloat(currentInventory.currentStock);
-              const newStock = previousStock + acceptedQty;
-              
-              // Stok hareketini kaydet
-              await db.insert(inventoryMovements).values({
+            try {
+              await applyAtomicInventoryMovement({
                 inventoryId: item.inventoryId,
                 movementType: "giris",
-                quantity: acceptedQty.toString(),
-                previousStock: previousStock.toString(),
-                newStock: newStock.toString(),
+                quantity: acceptedQty,
                 referenceType: "goods_receipt",
                 referenceId: newReceipt.id,
-                batchNumber: item.batchNumber,
+                batchNumber: item.batchNumber ?? null,
                 expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
                 notes: `Mal kabul - ${receiptNumber}`,
-                createdById: user?.id
+                createdById: user?.id,
+                lastPurchasePrice: item.unitPrice != null ? String(item.unitPrice) : null,
               });
-              
-              // Stok miktarını güncelle
-              await db.update(inventory)
-                .set({ 
-                  currentStock: newStock.toString(),
-                  lastPurchasePrice: item.unitPrice?.toString(),
-                  updatedAt: new Date()
-                })
-                .where(eq(inventory.id, item.inventoryId));
+            } catch (movementErr) {
+              if (movementErr instanceof InventoryMutationError && movementErr.code === "NOT_FOUND") {
+                console.warn(`[goods-receipts] Inventory ${item.inventoryId} bulunamadı, kalem atlandı`);
+              } else {
+                throw movementErr;
+              }
             }
           }
         }
@@ -808,32 +865,28 @@ export function registerSatinalmaRoutes(app: Express, isAuthenticated: AuthMiddl
           const acceptedQty = parseFloat(grItem.acceptedQuantity || grItem.receivedQuantity || "0");
           
           if (qualityOk && acceptedQty > 0 && invItem) {
-            const previousStock = parseFloat(invItem.currentStock);
-            const newStock = previousStock + acceptedQty;
-            
-            // Stok hareketini kaydet
-            await db.insert(inventoryMovements).values({
-              inventoryId: grItem.inventoryId,
-              movementType: "mal_kabul",
-              quantity: acceptedQty.toString(),
-              previousStock: previousStock.toString(),
-              newStock: newStock.toString(),
-              referenceType: "goods_receipt",
-              referenceId: id,
-              batchNumber: grItem.batchNumber,
-              expiryDate: grItem.expiryDate,
-              notes: `Mal kabul - ${updated.receiptNumber}`,
-              createdById: user?.id
-            });
-            
-            // Stok miktarını güncelle
-            await db.update(inventory)
-              .set({ 
-                currentStock: newStock.toString(),
-                lastPurchasePrice: grItem.unitPrice?.toString(),
-                updatedAt: new Date()
-              })
-              .where(eq(inventory.id, grItem.inventoryId));
+            // F28 (Task #308) — Atomic mutation; helper SELECT FOR UPDATE
+            // ile current_stock'u kilitler ve race'i önler.
+            try {
+              await applyAtomicInventoryMovement({
+                inventoryId: grItem.inventoryId,
+                movementType: "mal_kabul",
+                quantity: acceptedQty,
+                referenceType: "goods_receipt",
+                referenceId: id,
+                batchNumber: grItem.batchNumber ?? null,
+                expiryDate: grItem.expiryDate ?? null,
+                notes: `Mal kabul - ${updated.receiptNumber}`,
+                createdById: user?.id,
+                lastPurchasePrice: grItem.unitPrice != null ? String(grItem.unitPrice) : null,
+              });
+            } catch (movementErr) {
+              if (movementErr instanceof InventoryMutationError && movementErr.code === "NOT_FOUND") {
+                console.warn(`[goods-receipts/status] Inventory ${grItem.inventoryId} bulunamadı, kalem atlandı`);
+              } else {
+                throw movementErr;
+              }
+            }
           }
         }
         
