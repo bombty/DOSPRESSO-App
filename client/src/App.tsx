@@ -562,7 +562,7 @@ function Router() {
           <Route path="/yonetim/menu">{() => <AdminOnly><YonetimMenu /></AdminOnly>}</Route>
           <Route path="/task-atama">{() => <ExecutiveOnly><TaskAtama /></ExecutiveOnly>}</Route>
           <Route path="/task-takip">{() => <ExecutiveOnly><TaskTakip /></ExecutiveOnly>}</Route>
-          <Route path="/cgo-teknik-komuta">{() => <ProtectedRoute allowedRoles={["cgo","admin","ceo"]}><CgoTeknikKomuta /></ProtectedRoute>}</Route>
+          <Route path="/cgo-teknik-komuta">{() => <ProtectedRoute allowedRoles={["cgo","admin","ceo","teknik","ekipman_teknik"]}><CgoTeknikKomuta /></ProtectedRoute>}</Route>
           <Route path="/cowork">{() => <ExecutiveOnly><Cowork /></ExecutiveOnly>}</Route>
           <Route path="/coach-kontrol-merkezi">{() => <ProtectedRoute allowedRoles={["coach","admin","ceo"]}><CoachKontrolMerkezi /></ProtectedRoute>}</Route>
           <Route path="/trainer-egitim-merkezi">{() => <ProtectedRoute allowedRoles={["trainer","admin","ceo"]}><TrainerEgitimMerkezi /></ProtectedRoute>}</Route>

@@ -1,11 +1,7 @@
-// ─── ROLE HOME ROUTES ────────────────────────────────────
-// All non-kiosk roles go to HomeScreen ("/")
-// Kiosk roles go directly to their kiosk page
-//
-// CONTROL CARD TARGETS — see ROLE_CONTROL_PATH below.
-// All control card paths now route to v5 Centrum / Command Center pages
-// (Bundle 3 / Task #307, 3 May 2026 — v4 MissionControl* deleted).
-// ──────────────────────────────────────────────────────────
+// Role-based routing: home paths and control dashboard targets.
+// Non-kiosk roles land on HomeScreen ("/"); kiosk roles go directly
+// to their kiosk page. ROLE_CONTROL_PATH maps each role to its v5
+// Centrum / Command Center dashboard.
 
 export const ROLE_HOME_ROUTES: Record<string, string> = {
   // Kiosk roles → direct to kiosk (skip HomeScreen)
@@ -85,8 +81,19 @@ export const ROLE_CONTROL_PATH: Record<string, string> = {
 
   // Diğer HQ
   marketing: '/marketing-centrum',
+  pazarlama: '/marketing-centrum',
   teknik: '/cgo-teknik-komuta',
+  ekipman_teknik: '/cgo-teknik-komuta',
   destek: '/destek-centrum',
+
+  // Fabrika kiosk/operatör rolleri — kiosk dışı erişimde fabrika-centrum
+  fabrika: '/fabrika-centrum',
+  fabrika_personel: '/fabrika-centrum',
+  fabrika_sorumlu: '/fabrika-centrum',
+  fabrika_operator: '/fabrika-centrum',
+
+  // Şube kiosk — dashboard kartı yok, home'a düş
+  sube_kiosk: '/',
 };
 
 export function getRoleHomePath(role: string | undefined, branchId?: number | null): string {
