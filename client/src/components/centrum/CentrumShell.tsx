@@ -404,9 +404,9 @@ export function CentrumShell({ title, subtitle, roleLabel, roleColor, roleBg, ro
           ))}
         </div>
       )}
-      <div className="flex gap-2.5 flex-1 overflow-hidden p-3">
-        <div className="flex-1 overflow-y-auto space-y-2.5">{children}</div>
-        {rightPanel&&(<div className="w-[200px] shrink-0 space-y-2 overflow-y-auto">{rightPanel}</div>)}
+      <div className="flex flex-col md:flex-row gap-2.5 flex-1 overflow-hidden p-3">
+        <div className="flex-1 overflow-y-auto space-y-2.5 min-w-0">{children}</div>
+        {rightPanel&&(<div className="w-full md:w-[200px] shrink-0 space-y-2 md:overflow-y-auto">{rightPanel}</div>)}
       </div>
     </div>
   );

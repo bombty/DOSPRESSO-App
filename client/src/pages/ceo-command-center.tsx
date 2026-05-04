@@ -68,13 +68,13 @@ export default function CEOCommandCenter() {
         { label: "Sağlık", value: healthAvg, variant: (healthAvg >= 70 ? "ok" : healthAvg >= 50 ? "warn" : "alert") as KpiVariant },
         { label: "Kritik", value: criticalCount, variant: (criticalCount > 0 ? "alert" : "ok") as KpiVariant },
         { label: "Eskalasyon", value: escalations.length, variant: (escalations.length > 0 ? "warn" : "ok") as KpiVariant },
-        { label: "Bordro", value: `₺${dashData?.totalPayroll || "—"}`, variant: "info" as KpiVariant },
+        { label: "Personel", value: Number(dashData?.kpiSummary?.totalEmployees ?? 0), variant: "info" as KpiVariant },
         { label: "Dobody", value: dobodyActions.length, variant: "purple" as KpiVariant },
       ]}
       actions={<div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={() => setLocation("/task-atama")} className="text-xs h-7">+ Görev</Button><Button size="sm" variant="outline" onClick={() => setLocation("/raporlar")} className="text-xs h-7">Raporlar</Button><TimeFilter value={period} onChange={setPeriod} /></div>}
       rightPanel={<DobodyProposalWidget maxItems={5} />}
     >
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <Widget title="Şube Sağlık" onClick={() => setLocation("/sube-saglik-skoru")}
           badge={criticalCount > 0 ? <span className="text-[7px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(239,68,68,0.20)", color: "#ef4444" }}>{criticalCount}kritik</span> : undefined}>
           {[...branches].sort((a: any, b: any) => (b.totalScore || b.overallScore || 0) - (a.totalScore || a.overallScore || 0)).slice(0, 6).map((b: any, i: number) => {
@@ -99,30 +99,48 @@ export default function CEOCommandCenter() {
         </Widget>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <MiniStats title="💰Merkez Bordro" rows={[
-          { label: "Fabrika", value: `₺${dashData?.fabrikaPayroll || "—"}` },
-          { label: "HQ", value: `₺${dashData?.hqPayroll || "—"}` },
-          { label: "Işıklar", value: `₺${dashData?.isiklarPayroll || "—"}` },
-          { label: "Toplam", value: `₺${dashData?.totalPayroll || "—"}`, color: "#60a5fa" },
-        ]} onLink={() => setLocation("/ik")} />
-        <MiniStats title="💰Diğer Şubeler" rows={[
-          { label: "Toplam", value: `₺${dashData?.branchPayrollTotal || "—"}` },
-          { label: "Girilmemiş", value: `${(financialData || []).filter((f: any) => !f.fixedCosts?.some((c: any) => c.amount)).length} şube⚠`, color: "#ef4444" },
-        ]} onLink={() => setLocation("/ik")} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <MiniStats title="📈 KPI Özeti" rows={[
+          { label: "Şube", value: `${Number(dashData?.kpiSummary?.totalBranches ?? 0)}` },
+          { label: "Personel", value: `${Number(dashData?.kpiSummary?.totalEmployees ?? 0)}` },
+          { label: "Açık arıza", value: `${Number(dashData?.kpiSummary?.activeFaults ?? 0)}`, color: "#ef4444" },
+          { label: "Şube ort. skor", value: `${Number(dashData?.kpiSummary?.branchAvgScore ?? 0)}`, color: "#60a5fa" },
+        ]} onLink={() => setLocation("/raporlar")} />
+        <MiniStats title="🛠 Ekipman" rows={[
+          { label: "Çalışıyor (uptime)", value: `%${Number(dashData?.kpiSummary?.equipmentUptime ?? 0)}`, color: "#22c55e" },
+          { label: "Şube finansal", value: `${(financialData || []).length} şube` },
+          { label: "Veri girişi yok", value: `${(financialData || []).filter((f: any) => !f.fixedCosts?.some((c: any) => c.amount)).length} şube⚠`, color: "#ef4444" },
+        ]} onLink={() => setLocation("/teknik-arızalar")} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
-        <MiniStats title="📊Merkez Gider" rows={[
-          { label: "Kira+gider", value: `₺${dashData?.rentExpense || "—"}` },
-          { label: "Stok", value: `₺${dashData?.stockCost || "—"}`, color: "#fbbf24" },
-          { label: "Toplam", value: `₺${dashData?.totalExpense || "—"}` },
-        ]} onLink={() => setLocation("/mali-yonetim")} />
-        <MiniStats title="Franchise KPI" rows={[
-          { label: "Müşteri", value: `${dashData?.avgRating || healthData?.avgRating || "—"}★`, color: "#fbbf24" },
-          { label: "Eğitim", value: `%${dashData?.trainingCompletion || "—"}`, color: "#ef4444" },
-          { label: "Uyum", value: `${dashData?.complianceScore || "—"}`, color: "#22c55e" },
-        ]} onLink={() => setLocation("/sube-saglik-skoru")} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <Widget title="🚨 Acil Uyarılar">
+          {(dashData?.urgentAlerts || []).slice(0, 4).map((u: any, i: number) => (
+            <ListItem key={i} title={u.message || ""} meta={u.type || ""}
+              priority={u.severity === 'critical' ? 'K1' : 'K3'}
+              priorityColor={u.severity === 'critical' ? '#ef4444' : '#fbbf24'} />
+          ))}
+          {(!dashData?.urgentAlerts || dashData.urgentAlerts.length === 0) && (
+            <p className="text-[9px] px-2.5 py-2" style={{ color: "#6b7a8d" }}>Acil uyarı yok</p>
+          )}
+        </Widget>
+        <Widget title="⬇️ Düşük Performanslı 3 Yönetici" onClick={() => setLocation("/ik")}>
+          {(dashData?.bottomManagers || []).slice(0, 3).map((m: any, i: number) => (
+            <div key={i} className="flex items-center justify-between px-2.5 py-1">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] truncate" style={{ color: "#cbd5e1" }}>{m.name || "—"}</span>
+                <span className="text-[8px]" style={{ color: "#6b7a8d" }}>{m.department || ""}</span>
+              </div>
+              <span className="text-[10px] font-semibold shrink-0 ml-2"
+                style={{ color: m.score < 50 ? "#ef4444" : m.score < 70 ? "#fbbf24" : "#22c55e" }}>
+                {Number(m.score ?? 0)}
+              </span>
+            </div>
+          ))}
+          {(!dashData?.bottomManagers || dashData.bottomManagers.length === 0) && (
+            <p className="text-[9px] px-2.5 py-2" style={{ color: "#6b7a8d" }}>Veri yok</p>
+          )}
+        </Widget>
       </div>
     </CentrumShell>
   );
