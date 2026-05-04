@@ -1096,6 +1096,44 @@ export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
 export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 1 / TASK-#343 (5 May 2026): leave_balances Tablosu
+// ═══════════════════════════════════════════════════════════════════
+// Mahmut Bey'in İK perspektifi için izin bakiyesi takibi.
+// İş Kanunu Madde 53 + DOSPRESSO politikası ile yıllık hak hesaplaması.
+// remaining_days hesaplanan kolon: entitlement + carried_over - used
+// Bir kullanıcı + bir yıl için tek kayıt (UNIQUE constraint).
+export const leaveBalances = pgTable("leave_balances", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  periodYear: integer("period_year").notNull(),
+  annualEntitlementDays: integer("annual_entitlement_days").notNull().default(14),
+  usedDays: integer("used_days").notNull().default(0),
+  carriedOverDays: integer("carried_over_days").notNull().default(0),
+  // remaining_days hesaplanan (GENERATED ALWAYS AS) - DB tarafından otomatik
+  // Drizzle bu kolonu select edebilir ama insert/update edilemez
+  remainingDays: integer("remaining_days"),
+  notes: text("notes"),
+  lastCalculatedAt: timestamp("last_calculated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userYearUniq: unique("leave_balances_user_year_uniq").on(table.userId, table.periodYear),
+  userIdx: index("idx_leave_balances_user").on(table.userId),
+  yearIdx: index("idx_leave_balances_year").on(table.periodYear),
+}));
+
+export const insertLeaveBalanceSchema = createInsertSchema(leaveBalances).omit({
+  id: true,
+  remainingDays: true,  // GENERATED kolon - insert edilemez
+  lastCalculatedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLeaveBalance = z.infer<typeof insertLeaveBalanceSchema>;
+export type LeaveBalance = typeof leaveBalances.$inferSelect;
+
 // Shift Attendance table - Employee check-in/out and break tracking
 export const shiftAttendance = pgTable("shift_attendance", {
   id: serial("id").primaryKey(),
