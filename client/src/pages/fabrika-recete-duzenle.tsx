@@ -82,7 +82,9 @@ export default function FabrikaReceteDuzenle() {
     expectedWasteKg: 0, expectedLossGrams: 0, wasteTolerance: 5,
     recipeType: "OPEN", technicalNotes: "", bakersPercentage: "",
     equipmentDescription: "",
+    storageConditions: "", manufacturerInfo: "", shelfLifeDays: "" as string | number,
   });
+  const [tgkAllergens, setTgkAllergens] = useState<string[]>([]);
 
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [steps, setSteps] = useState<any[]>([]);
@@ -456,6 +458,26 @@ export default function FabrikaReceteDuzenle() {
     },
   });
 
+  // TGK-340: Besin değeri hesaplama (pilot)
+  const [calcNutrResult, setCalcNutrResult] = useState<any | null>(null);
+  const calcNutritionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/factory/recipes/${id}/calculate-nutrition`,
+      );
+      return await res.json();
+    },
+    onSuccess: (data: any) => {
+      setCalcNutrResult(data);
+      qc.invalidateQueries({ queryKey: ["/api/factory/recipes", id] });
+      toast({ title: "Besin değerleri hesaplandı", description: `${data?.ingredientCount ?? 0} malzeme kullanıldı` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err?.message || "Hesaplama başarısız", variant: "destructive" });
+    },
+  });
+
   const undoMutation = useMutation({
     mutationFn: async () => {
       if (!latestSnapshot) throw new Error("Snapshot yok");
@@ -572,7 +594,12 @@ export default function FabrikaReceteDuzenle() {
         technicalNotes: recipe.technicalNotes || recipe.technical_notes || "",
         bakersPercentage: recipe.bakersPercentage || recipe.bakers_percentage || "",
         equipmentDescription: recipe.equipmentDescription || recipe.equipment_description || "",
+        storageConditions: recipe.storageConditions || recipe.storage_conditions || "",
+        manufacturerInfo: recipe.manufacturerInfo || recipe.manufacturer_info || "",
+        shelfLifeDays: recipe.shelfLifeDays || recipe.shelf_life_days || "",
       });
+      if (Array.isArray(recipe.mayContainAllergens)) setTgkAllergens(recipe.mayContainAllergens);
+      else if (Array.isArray(recipe.may_contain_allergens)) setTgkAllergens(recipe.may_contain_allergens);
       if (recipe.ingredients) setIngredients(recipe.ingredients);
       if (recipe.steps) setSteps(recipe.steps);
     }
@@ -595,6 +622,10 @@ export default function FabrikaReceteDuzenle() {
         expectedWasteKg: String(form.expectedWasteKg),
         expectedLossGrams: String(form.expectedLossGrams),
         wasteTolerancePct: String(form.wasteTolerance),
+        storageConditions: form.storageConditions || null,
+        manufacturerInfo: form.manufacturerInfo || null,
+        mayContainAllergens: tgkAllergens.length > 0 ? tgkAllergens : null,
+        shelfLifeDays: form.shelfLifeDays !== "" ? Number(form.shelfLifeDays) : null,
       };
 
       if (isNew) {
@@ -1246,6 +1277,143 @@ export default function FabrikaReceteDuzenle() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* TGK-340: TGK UYUM KARTI (Türk Gıda Kodeksi — pilot) */}
+      {!isNew && (
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4" />
+                TGK Uyum Bilgileri
+                <Badge variant="outline" className="text-[10px]">Türk Gıda Kodeksi</Badge>
+              </CardTitle>
+              {canEditNutrition && (
+                <Button
+                  size="sm"
+                  onClick={() => calcNutritionMutation.mutate()}
+                  disabled={calcNutritionMutation.isPending}
+                  data-testid="button-calculate-nutrition"
+                >
+                  <Calculator className={cn("w-3.5 h-3.5 mr-1", calcNutritionMutation.isPending && "animate-spin")} />
+                  {calcNutritionMutation.isPending ? "Hesaplanıyor..." : "Besin Değerleri Hesapla"}
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {calcNutrResult && (
+              <div className="border rounded-md p-3 bg-muted/30 space-y-2 text-sm" data-testid="tgk-nutrition-result">
+                <div className="font-medium text-xs text-muted-foreground uppercase tracking-wide">
+                  Hesaplanan Besin Değerleri (100 gr başına)
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 text-center">
+                  {[
+                    { label: "Enerji", unit: "kcal", val: calcNutrResult.per100g?.energyKcal },
+                    { label: "Yağ", unit: "g", val: calcNutrResult.per100g?.fatG },
+                    { label: "Doy. Yağ", unit: "g", val: calcNutrResult.per100g?.saturatedFatG },
+                    { label: "Karb.", unit: "g", val: calcNutrResult.per100g?.carbohydrateG },
+                    { label: "Şeker", unit: "g", val: calcNutrResult.per100g?.sugarG },
+                    { label: "Protein", unit: "g", val: calcNutrResult.per100g?.proteinG },
+                    { label: "Tuz", unit: "g", val: calcNutrResult.per100g?.saltG },
+                  ].map(item => (
+                    <div key={item.label} className="border rounded-md p-1.5">
+                      <div className="text-[10px] text-muted-foreground">{item.label}</div>
+                      <div className="font-semibold text-sm">{item.val != null ? Number(item.val).toFixed(1) : "—"}</div>
+                      <div className="text-[10px] text-muted-foreground">{item.unit}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[11px] text-muted-foreground border-t pt-2">
+                  Kapsam: {calcNutrResult.ingredientCount ?? 0} malzeme,{" "}
+                  {calcNutrResult.coveredCount ?? 0} eşleşti (%{calcNutrResult.coveragePct ?? 0} kapsam).
+                  {(calcNutrResult.coveragePct ?? 0) < 100 && (
+                    <span className="text-orange-600 dark:text-orange-400"> Eksik malzeme besin değerleri gıda mühendisi tarafından girilmeli.</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Üretici / Dağıtıcı Bilgisi</Label>
+                <Textarea
+                  value={form.manufacturerInfo}
+                  onChange={e => f("manufacturerInfo", e.target.value)}
+                  rows={2}
+                  placeholder="Dospresso Gıda San. Tic. A.Ş. — Organize Sanayi Bölgesi..."
+                  disabled={!canEditNutrition}
+                  data-testid="input-tgk-manufacturer-info"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Saklama Koşulları</Label>
+                <Textarea
+                  value={form.storageConditions}
+                  onChange={e => f("storageConditions", e.target.value)}
+                  rows={2}
+                  placeholder="+2°C ~ +8°C arası buzdolabında saklayın..."
+                  disabled={!canEditNutrition}
+                  data-testid="input-tgk-storage-conditions"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm">Raf Ömrü (gün)</Label>
+              <Input
+                type="number"
+                value={form.shelfLifeDays}
+                onChange={e => f("shelfLifeDays", e.target.value)}
+                placeholder="7"
+                className="w-32"
+                disabled={!canEditNutrition}
+                data-testid="input-tgk-shelf-life"
+              />
+            </div>
+
+            <div>
+              <Label className="text-sm mb-2 block">İçerebilir Alerjenler (çapraz kontaminasyon)</Label>
+              {!canEditNutrition && (
+                <Badge variant="outline" className="text-[10px] mb-2">
+                  <Lock className="w-3 h-3 mr-1" /> salt-okunur
+                </Badge>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {ALLERGEN_OPTIONS.map(a => {
+                  const selected = tgkAllergens.includes(a);
+                  return (
+                    <Badge
+                      key={a}
+                      variant={selected ? "default" : "outline"}
+                      className={cn("cursor-pointer capitalize", !canEditNutrition && "opacity-50 pointer-events-none")}
+                      onClick={() => {
+                        if (!canEditNutrition) return;
+                        setTgkAllergens(prev =>
+                          prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]
+                        );
+                      }}
+                      data-testid={`badge-tgk-allergen-${a}`}
+                    >
+                      {a}
+                    </Badge>
+                  );
+                })}
+              </div>
+              {tgkAllergens.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {tgkAllergens.length} alerjen seçili — etiket üzerinde "İçerebilir" alanında gösterilecek.
+                </p>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground border-t pt-2">
+              Bu bilgiler "Türk Gıda Kodeksi Etiketleme Yönetmeliği" kapsamında ürün etiketine aktarılır.
+              TGK alanlarını düzenlemek için gıda mühendisi yetkisi gereklidir.
+            </p>
           </CardContent>
         </Card>
       )}

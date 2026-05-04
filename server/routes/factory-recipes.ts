@@ -2361,4 +2361,114 @@ router.post("/api/factory/recipes/:id/approvals", isAuthenticated, async (req: a
   }
 });
 
+// TGK-340: POST /api/factory/recipes/:id/calculate-nutrition
+// Reçete malzemelerinin besin değerlerini ağırlıklı ortalama ile hesaplar (100 gr başına).
+// Yetki: admin, gida_muhendisi, recete_gm, ceo
+const NUTRITION_CALC_ROLES = ["admin", "gida_muhendisi", "recete_gm", "ceo"];
+
+router.post("/api/factory/recipes/:id/calculate-nutrition", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!NUTRITION_CALC_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ error: "Besin değeri hesaplama yetkiniz yok" });
+    }
+
+    const recipeId = Number(req.params.id);
+    if (!Number.isFinite(recipeId)) return res.status(400).json({ error: "Geçersiz reçete id" });
+
+    // Reçeteyi ve malzemeleri çek
+    const [recipe] = await db.select().from(factoryRecipes).where(
+      and(eq(factoryRecipes.id, recipeId), isNull(factoryRecipes.deletedAt))
+    );
+    if (!recipe) return res.status(404).json({ error: "Reçete bulunamadı" });
+
+    const ingredientRows = await db.select().from(factoryRecipeIngredients).where(
+      eq(factoryRecipeIngredients.recipeId, recipeId)
+    );
+    if (ingredientRows.length === 0) {
+      return res.status(400).json({ error: "Reçetede malzeme yok — önce malzeme ekleyin" });
+    }
+
+    // Besin verisi olan malzemeleri çek
+    const ingredientNames = ingredientRows.map(r => canonicalIngredientName(r.name || "")).filter(Boolean);
+    const nutritionRows = ingredientNames.length > 0
+      ? await db.select().from(factoryIngredientNutrition).where(
+          inArray(factoryIngredientNutrition.ingredientName, ingredientNames)
+        )
+      : [];
+    const nutritionMap = new Map(nutritionRows.map(r => [canonicalIngredientName(r.ingredientName || ""), r]));
+
+    // Toplam ağırlık hesapla (sadece gr/kg cinsinden olanlar dahil)
+    let totalGrams = 0;
+    const weightedSums = { energyKcal: 0, fatG: 0, saturatedFatG: 0, carbohydrateG: 0, sugarG: 0, proteinG: 0, saltG: 0 };
+    let coveredGrams = 0;
+    let coveredCount = 0;
+
+    for (const ing of ingredientRows) {
+      const canonical = canonicalIngredientName(ing.name || "");
+      const unit = (ing.unit || "gr").toLowerCase();
+      let gramsAmount = 0;
+      if (unit === "gr" || unit === "g") gramsAmount = Number(ing.amount || 0);
+      else if (unit === "kg") gramsAmount = Number(ing.amount || 0) * 1000;
+      else gramsAmount = Number(ing.amount || 0); // litre/adet: yaklaşık gram
+
+      totalGrams += gramsAmount;
+
+      const nutr = nutritionMap.get(canonical);
+      if (nutr) {
+        coveredGrams += gramsAmount;
+        coveredCount++;
+        // Besin değerleri 100 gr başına → malzeme ağırlığına göre oran
+        const ratio = gramsAmount / 100;
+        weightedSums.energyKcal += Number(nutr.energyKcal || 0) * ratio;
+        weightedSums.fatG += Number(nutr.fatG || 0) * ratio;
+        weightedSums.saturatedFatG += Number(nutr.saturatedFatG || 0) * ratio;
+        weightedSums.carbohydrateG += Number(nutr.carbohydrateG || 0) * ratio;
+        weightedSums.sugarG += Number(nutr.sugarG || 0) * ratio;
+        weightedSums.proteinG += Number(nutr.proteinG || 0) * ratio;
+        weightedSums.saltG += Number(nutr.saltG || 0) * ratio;
+      }
+    }
+
+    // 100 gr başına normalize
+    const per100g = totalGrams > 0 ? {
+      energyKcal: (weightedSums.energyKcal / totalGrams) * 100,
+      fatG: (weightedSums.fatG / totalGrams) * 100,
+      saturatedFatG: (weightedSums.saturatedFatG / totalGrams) * 100,
+      carbohydrateG: (weightedSums.carbohydrateG / totalGrams) * 100,
+      sugarG: (weightedSums.sugarG / totalGrams) * 100,
+      proteinG: (weightedSums.proteinG / totalGrams) * 100,
+      saltG: (weightedSums.saltG / totalGrams) * 100,
+    } : null;
+
+    const coveragePct = totalGrams > 0 ? Math.round((coveredGrams / totalGrams) * 100) : 0;
+
+    // Hesaplanan değerleri nutrition_facts'e kaydet
+    if (per100g) {
+      const nutritionFacts = {
+        energyKcal: Number(per100g.energyKcal.toFixed(2)),
+        fatG: Number(per100g.fatG.toFixed(2)),
+        saturatedFatG: Number(per100g.saturatedFatG.toFixed(2)),
+        carbohydrateG: Number(per100g.carbohydrateG.toFixed(2)),
+        sugarG: Number(per100g.sugarG.toFixed(2)),
+        proteinG: Number(per100g.proteinG.toFixed(2)),
+        saltG: Number(per100g.saltG.toFixed(2)),
+      };
+      await db.update(factoryRecipes)
+        .set({ nutritionFacts: nutritionFacts } as any)
+        .where(eq(factoryRecipes.id, recipeId));
+    }
+
+    res.json({
+      per100g,
+      ingredientCount: ingredientRows.length,
+      coveredCount,
+      coveragePct,
+      totalGrams: Math.round(totalGrams),
+    });
+  } catch (error) {
+    console.error("Calculate nutrition error:", error);
+    res.status(500).json({ error: "Besin değeri hesaplanamadı" });
+  }
+});
+
 export default router;

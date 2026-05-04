@@ -164,6 +164,12 @@ export const factoryRecipes = pgTable("factory_recipes", {
   // Versiyonlama
   version: integer("version").default(1),
 
+  // TGK 2017/2284 Uyum (Mad. 9/g, 9/h, 24/3)
+  storageConditions: text("storage_conditions"),        // Saklama koşulları (zorunlu)
+  manufacturerInfo: text("manufacturer_info"),          // Üretici/distribütör (zorunlu)
+  mayContainAllergens: text("may_contain_allergens").array(), // Çapraz bulaşma (öneri)
+  shelfLifeDays: integer("shelf_life_days"),            // Raf ömrü gün
+
   // Teknik notlar (markdown)
   bakersPercentage: text("bakers_percentage"),
   technicalNotes: text("technical_notes"),
