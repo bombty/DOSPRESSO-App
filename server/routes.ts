@@ -412,6 +412,7 @@ import criticalLogsRouter from "./routes/critical-logs";
 import adminPasswordRouter from "./routes/admin-password";
 import payrollRouter from "./routes/payroll";
 import payrollConfigRouter from "./routes/payroll-config";
+import ikDashboardRouter from "./routes/ik-dashboard";  // Sprint 3 (5 May 2026)
 import factoryRecipesRouter from "./routes/factory-recipes";
 import factoryRecipeNutritionRouter from "./routes/factory-recipe-nutrition";
 import factoryAllergensRouter from "./routes/factory-allergens";
@@ -889,6 +890,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(adminPasswordRouter);
   app.use(payrollRouter);
   app.use(payrollConfigRouter);
+  app.use(ikDashboardRouter);  // Sprint 3 (5 May 2026): Mahmut Bey IK Dashboard endpoints
   app.use(factoryRecipesRouter);
   app.use(factoryRecipeNutritionRouter);
   app.use(factoryAllergensRouter);
