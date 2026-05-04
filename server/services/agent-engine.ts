@@ -674,7 +674,7 @@ KURALLAR:
 - En fazla 3 ek aksiyon öner
 - Zaten var olan aksiyonları tekrarlama
 
-Yanıt formatı:
+Yanıt formatı (sadece geçerli JSON döndür, başka metin ekleme):
 {"actions": [{"actionType": "remind|escalate|report|suggest_task|alert", "title": "string", "description": "string", "severity": "low|med|high|critical", "deepLink": "/path"}]}`;
 
   const existingTitles = existingActions.map(a => a.title).join(", ");
