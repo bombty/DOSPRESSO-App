@@ -1630,21 +1630,9 @@ export default function FactoryKiosk() {
                   Arıza Bildir
                 </Button>
 
-                {/* P1 (4 May gece): İstasyon Değiştir butonu — mola ekranından buraya taşındı.
-                    Sadece istasyon seçilmişse görünür (yani üretim modu) */}
-                {currentStationInfo && (
-                  <Button
-                    className="h-24 text-lg flex flex-col items-center gap-2 bg-purple-600 hover:bg-purple-700"
-                    onClick={() => {
-                      setSelectedStation(null);
-                      setStep('select-station');
-                    }}
-                    data-testid="button-change-station"
-                  >
-                    <Repeat className="h-8 w-8" />
-                    İstasyon Değiştir
-                  </Button>
-                )}
+                {/* P1 (4 May gece): "İstasyon Değiştir" butonu zaten yukarıda
+                    "İstasyon Seç / İstasyon Değiştir" olarak var (currentStationInfo'ya göre).
+                    Duplicate kaldırıldı. */}
               </div>
 
               <Button
