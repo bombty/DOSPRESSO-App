@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfWeek, addDays, isToday, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2, AlertTriangle, Calendar, GripVertical, ArrowLeftRight, Clock, CheckCircle2, XCircle, CalendarPlus, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, Loader2, Wand2, UserPlus, Trash2, AlertTriangle, Calendar, GripVertical, ArrowLeftRight, Clock, CheckCircle2, XCircle, CalendarPlus, FileText, Building2, Info } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
@@ -133,6 +133,40 @@ export default function VardiyaPlanlama() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [periodWeeks, setPeriodWeeks] = useState<1 | 2>(1);
   const [activeShift, setActiveShift] = useState<any>(null);
+
+  // ─────────────────────────────────────────────────────────────
+  // HQ ŞUBE SEÇİCİ (Aslan istek 4 May 2026)
+  // HQ rolleri (admin/coach/trainer/cgo/ceo vb.) hangi şube için
+  // planlama yaptıklarını seçmeliler. Şube rolleri kendi şubesini
+  // otomatik kullanır.
+  // ─────────────────────────────────────────────────────────────
+  const HQ_ROLES_PLANNING = new Set([
+    'admin', 'ceo', 'cgo', 'coach', 'trainer',
+    'muhasebe', 'muhasebe_ik', 'destek', 'teknik', 'ik',
+  ]);
+  const isHQPlanner = !!user?.role && HQ_ROLES_PLANNING.has(user.role);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+
+  // Branch role için kendi branch'i — HQ için seçilen branch
+  const effectiveBranchId = isHQPlanner ? selectedBranchId : (user?.branchId || null);
+
+  // HQ rolleri için tüm şube listesi (sadece HQ için fetch)
+  const { data: allBranchesRaw } = useQuery({
+    queryKey: ['/api/branches'],
+    staleTime: 600000,
+    enabled: isHQPlanner,
+  });
+  const allBranches = useMemo<any[]>(
+    () => Array.isArray(allBranchesRaw) ? allBranchesRaw : [],
+    [allBranchesRaw]
+  );
+
+  // Seçilen şubenin adını göstermek için
+  const selectedBranchName = useMemo(() => {
+    if (!effectiveBranchId) return null;
+    const b = allBranches.find((x: any) => x.id === effectiveBranchId);
+    return b?.name || null;
+  }, [allBranches, effectiveBranchId]);
   
   // Shift swap states
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -164,7 +198,7 @@ export default function VardiyaPlanlama() {
   const [selectedTaskId, setSelectedTaskId] = useState<string>("");
 
   // Role-based access: Only these roles can edit shifts
-  const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'coach', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin'];
+  const editableRoles = ['supervisor', 'supervisor_buddy', 'destek', 'muhasebe', 'muhasebe_ik', 'coach', 'trainer', 'teknik', 'satinalma', 'fabrika', 'yatirimci_hq', 'admin', 'ceo', 'cgo'];
   const canEditShifts = user?.role && editableRoles.includes(user.role);
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'supervisor_buddy' || ['admin', 'hq_admin', 'hq_staff', 'destek'].includes(user?.role || '');
 
@@ -212,9 +246,9 @@ export default function VardiyaPlanlama() {
 
   // Fetch branch details for opening/closing hours
   const { data: branchData } = useQuery({
-    queryKey: ['/api/branches', user?.branchId],
+    queryKey: ['/api/branches', effectiveBranchId],
     staleTime: 300000,
-    enabled: !!user?.branchId,
+    enabled: !!effectiveBranchId,
   });
 
   const branchHours = useMemo(() => {
@@ -226,8 +260,9 @@ export default function VardiyaPlanlama() {
   }, [branchData]);
 
   const branchEmployees = useMemo(() => {
-    return allEmployees.filter((emp: any) => emp.branchId === user?.branchId);
-  }, [allEmployees, user?.branchId]);
+    if (!effectiveBranchId) return [];
+    return allEmployees.filter((emp: any) => emp.branchId === effectiveBranchId);
+  }, [allEmployees, effectiveBranchId]);
 
   const { data: checklistsRaw } = useQuery({
     queryKey: ['/api/checklists'],
@@ -438,7 +473,7 @@ export default function VardiyaPlanlama() {
         shiftType,
         assignedToId: selectedEmployee,
         status: 'draft',
-        branchId: user?.branchId || 0,
+        branchId: effectiveBranchId || 0,
         checklistId: checklist1 && checklist1 !== 'none' ? parseInt(checklist1) : null,
         checklist2Id: checklist2 && checklist2 !== 'none' ? parseInt(checklist2) : null,
         checklist3Id: checklist3 && checklist3 !== 'none' ? parseInt(checklist3) : null,
@@ -659,13 +694,13 @@ export default function VardiyaPlanlama() {
 
   // Submit swap request
   const handleSubmitSwapRequest = () => {
-    if (!swapSourceShift || !swapTargetShift || !user?.branchId) return;
+    if (!swapSourceShift || !swapTargetShift || !effectiveBranchId) return;
     
     createSwapRequestMutation.mutate({
       requesterShiftId: swapSourceShift.id,
       targetShiftId: swapTargetShift.id,
       targetUserId: swapTargetShift.assignedToId,
-      branchId: user.branchId,
+      branchId: effectiveBranchId,
       swapDate: swapSourceShift.shiftDate,
       reason: swapReason,
     });
@@ -753,10 +788,86 @@ export default function VardiyaPlanlama() {
 
   return (
     <div className="flex flex-col gap-4 p-3">
+      {/* HQ ŞUBE SEÇİCİ — Sadece HQ rolleri için (Aslan istek 4 May 2026) */}
+      {isHQPlanner && (
+        <div
+          className="rounded-lg border p-3 flex flex-col sm:flex-row sm:items-center gap-3"
+          style={{
+            background: effectiveBranchId ? "rgba(34,197,94,0.06)" : "rgba(245,158,11,0.10)",
+            borderColor: effectiveBranchId ? "rgba(34,197,94,0.3)" : "rgba(245,158,11,0.4)",
+          }}
+          data-testid="hq-branch-selector"
+        >
+          <div className="flex items-center gap-2 shrink-0">
+            <Building2 className="w-4 h-4" style={{ color: effectiveBranchId ? "#22c55e" : "#f59e0b" }} />
+            <span className="text-sm font-medium">
+              {effectiveBranchId ? "Planlama yapılan şube:" : "Önce şube seçin:"}
+            </span>
+          </div>
+          <Select
+            value={effectiveBranchId ? String(effectiveBranchId) : ""}
+            onValueChange={(v) => setSelectedBranchId(v ? parseInt(v) : null)}
+          >
+            <SelectTrigger className="flex-1 sm:max-w-xs" data-testid="select-hq-branch">
+              <SelectValue placeholder="Şube seç..." />
+            </SelectTrigger>
+            <SelectContent>
+              {allBranches
+                .filter((b: any) => b.isActive !== false)
+                .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', 'tr'))
+                .map((b: any) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.name}{b.city ? ` — ${b.city}` : ''}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          {!effectiveBranchId && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Plan yapmak için bir şube seçmelisiniz.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* HQ Planner ama hiç şube seçmedi → boş ekran ipucu */}
+      {isHQPlanner && !effectiveBranchId && (
+        <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+          <Building2 className="w-12 h-12 mb-4 opacity-40" />
+          <h3 className="text-base font-medium mb-1">Şube Seçilmedi</h3>
+          <p className="text-sm max-w-md">
+            HQ rolündesiniz. Vardiya planlamak için yukarıdan bir şube seçin.
+            <br />
+            Seçtiğiniz şubenin personeli, mevcut vardiyaları ve AI önerileri görünecek.
+          </p>
+        </div>
+      )}
+
+      {/* Branch role ama branchId yok (admin sıfır branch'le) — başka bir hata */}
+      {!isHQPlanner && !effectiveBranchId && (
+        <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 p-4 text-sm">
+          <p className="font-medium text-red-700 dark:text-red-300">Şube atamanız yok</p>
+          <p className="text-red-600 dark:text-red-400 mt-1">
+            Vardiya planlama için bir şubeye atanmış olmanız gerekiyor. İK ile iletişime geçin.
+          </p>
+        </div>
+      )}
+
+      {/* Asıl içerik — şube seçili ise göster */}
+      {effectiveBranchId && (
+      <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">Vardiya Planlama</h1>
+          <h1 className="text-xl font-bold">
+            Vardiya Planlama
+            {selectedBranchName && isHQPlanner && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                — {selectedBranchName}
+              </span>
+            )}
+          </h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{format(weekStart, "d MMM", { locale: tr })} - {format(periodEndDate, "d MMM yyyy", { locale: tr })}</span>
             {branchHours && (
@@ -794,14 +905,30 @@ export default function VardiyaPlanlama() {
 
               {canEditShifts && (
                 <>
-                  <Button onClick={() => setAiModalOpen(true)} className="gap-2" data-testid="button-ai-plan">
+                  <Button
+                    onClick={() => {
+                      if (!effectiveBranchId) {
+                        toast({
+                          title: "Şube seçin",
+                          description: "AI plan oluşturmak için önce bir şube seçmelisiniz.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setAiModalOpen(true);
+                    }}
+                    className="gap-2"
+                    disabled={!effectiveBranchId}
+                    data-testid="button-ai-plan"
+                  >
                     <Wand2 className="w-4 h-4" />
                     AI Planla
                   </Button>
                   <Button 
                     variant="destructive" 
                     onClick={() => setResetConfirmOpen(true)} 
-                    className="gap-2" 
+                    className="gap-2"
+                    disabled={!effectiveBranchId}
                     data-testid="button-reset-shifts"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -921,7 +1048,7 @@ export default function VardiyaPlanlama() {
               copyWeekMutation.mutate({
                 sourceWeekStart: prevWeekStart.toISOString().split('T')[0],
                 targetWeekStart: weekStart.toISOString().split('T')[0],
-                branchId: user?.branchId,
+                branchId: effectiveBranchId,
               });
             }}
             data-testid="button-copy-prev-week"
@@ -1508,7 +1635,7 @@ export default function VardiyaPlanlama() {
         {/* Compliance Tab */}
         <TabsContent value="compliance" className="mt-4">
           <ComplianceView
-            branchId={user?.branchId || 0}
+            branchId={effectiveBranchId || 0}
             weekStart={weekStart}
           />
         </TabsContent>
@@ -1531,7 +1658,7 @@ export default function VardiyaPlanlama() {
         onClose={() => setAiModalOpen(false)}
         weekStart={weekStart}
         employees={branchEmployees}
-        branchId={user?.branchId || 0}
+        branchId={effectiveBranchId || 0}
         existingShifts={Array.isArray(shifts) ? shifts : []}
       />
 
@@ -1672,6 +1799,8 @@ export default function VardiyaPlanlama() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }

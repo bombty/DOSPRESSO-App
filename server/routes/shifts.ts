@@ -2034,7 +2034,7 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
     
-    const allowedRoles = ['supervisor', 'supervisor_buddy', 'destek', 'admin', 'coach', 'muhasebe'];
+    const allowedRoles = ['supervisor', 'supervisor_buddy', 'destek', 'admin', 'coach', 'trainer', 'cgo', 'ceo', 'muhasebe', 'muhasebe_ik'];
     if (!allowedRoles.includes(role)) {
       return res.status(403).json({ message: "Vardiya önerileri görüntüleme yetkiniz yok" });
     }
