@@ -92,6 +92,7 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./predictive-alert");
   await import("./action-plan-generator");
   await import("./financial-insight");
+  await import("./recipe-finder");
 }
 
 export function registerSkill(skill: AgentSkill): void {
