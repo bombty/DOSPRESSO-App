@@ -1276,4 +1276,367 @@ router.patch("/api/aroma-options/:id", isAuthenticated, async (req: any, res: Re
   }
 });
 
+// ════════════════════════════════════════════════════════════════
+// ONBOARDING CRUD (TASK-ONBOARDING-001 — 4 May 2026)
+// HQ admin için onboarding adımları yönetimi.
+// ════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────
+// GET /api/branch-onboarding
+// Tüm aktif onboarding adımları (rol bazlı gruplanmış)
+// ──────────────────────────────────────
+router.get("/api/branch-onboarding", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canView(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const includeInactive = req.query.includeInactive === 'true' && canEdit(req.user.role);
+
+    const conditions: any[] = [];
+    if (!includeInactive) {
+      conditions.push(eq(branchOnboardingSteps.isActive, true));
+    }
+
+    const steps = await db.select()
+      .from(branchOnboardingSteps)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(branchOnboardingSteps.targetRole), asc(branchOnboardingSteps.stepNumber));
+
+    // Rol bazlı grupla
+    const grouped: Record<string, any[]> = {};
+    for (const step of steps) {
+      if (!grouped[step.targetRole]) grouped[step.targetRole] = [];
+      grouped[step.targetRole].push(step);
+    }
+
+    res.json({
+      steps,
+      grouped,
+      roles: Object.keys(grouped),
+      total: steps.length,
+    });
+  } catch (error: any) {
+    console.error("[GET branch-onboarding] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/branch-onboarding
+// Yeni onboarding adımı ekle (HQ admin)
+// ──────────────────────────────────────
+router.post("/api/branch-onboarding", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Onboarding ekleme yetkiniz yok" });
+    }
+
+    const {
+      targetRole, stepNumber, title, description,
+      recipeIds, estimatedMinutes, prerequisiteStepIds, completionCriteria,
+    } = req.body;
+
+    if (!targetRole || !title) {
+      return res.status(400).json({ error: "targetRole ve title zorunlu" });
+    }
+
+    // stepNumber otomatik atama: bu rolün en yüksek + 1
+    let finalStepNumber = stepNumber;
+    if (typeof finalStepNumber !== 'number') {
+      const [maxRow] = await db.select({ max: sql<number>`COALESCE(MAX(${branchOnboardingSteps.stepNumber}), 0)::int` })
+        .from(branchOnboardingSteps)
+        .where(eq(branchOnboardingSteps.targetRole, targetRole));
+      finalStepNumber = (maxRow?.max ?? 0) + 1;
+    }
+
+    // Aynı role + stepNumber var mı? (UNIQUE constraint)
+    const [existing] = await db.select()
+      .from(branchOnboardingSteps)
+      .where(and(
+        eq(branchOnboardingSteps.targetRole, targetRole),
+        eq(branchOnboardingSteps.stepNumber, finalStepNumber),
+      ));
+
+    if (existing) {
+      return res.status(409).json({
+        error: `${targetRole} rolü için adım #${finalStepNumber} zaten var`,
+        existingId: existing.id,
+        hint: "Farklı stepNumber kullanın veya mevcut adımı güncelleyin",
+      });
+    }
+
+    const [step] = await db.insert(branchOnboardingSteps).values({
+      targetRole,
+      stepNumber: finalStepNumber,
+      title,
+      description: description ?? null,
+      recipeIds: Array.isArray(recipeIds) ? recipeIds : [],
+      estimatedMinutes: estimatedMinutes ?? 30,
+      prerequisiteStepIds: Array.isArray(prerequisiteStepIds) ? prerequisiteStepIds : [],
+      completionCriteria: completionCriteria ?? null,
+      isActive: true,
+    }).returning();
+
+    res.status(201).json(step);
+  } catch (error: any) {
+    console.error("[POST branch-onboarding] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PATCH /api/branch-onboarding/:id
+// Onboarding adımını güncelle
+// ──────────────────────────────────────
+router.patch("/api/branch-onboarding/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const allowed = ['title', 'description', 'recipeIds', 'estimatedMinutes', 'prerequisiteStepIds', 'completionCriteria', 'isActive', 'stepNumber'];
+    const updates: any = { updatedAt: new Date() };
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        updates[key] = req.body[key];
+      }
+    }
+
+    const [updated] = await db.update(branchOnboardingSteps)
+      .set(updates)
+      .where(eq(branchOnboardingSteps.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Adım bulunamadı" });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("[PATCH branch-onboarding/:id] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// DELETE /api/branch-onboarding/:id
+// Soft delete (isActive=false)
+// ──────────────────────────────────────
+router.delete("/api/branch-onboarding/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const [updated] = await db.update(branchOnboardingSteps)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(branchOnboardingSteps.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Adım bulunamadı" });
+    }
+
+    res.json({ message: "Adım pasif edildi", step: updated });
+  } catch (error: any) {
+    console.error("[DELETE branch-onboarding/:id] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/branch-onboarding/reorder
+// Bir rol için adım sırasını topluca güncelle
+// Body: { targetRole, orderedIds: number[] }
+// ──────────────────────────────────────
+router.post("/api/branch-onboarding/reorder", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const { targetRole, orderedIds } = req.body;
+    if (!targetRole || !Array.isArray(orderedIds)) {
+      return res.status(400).json({ error: "targetRole ve orderedIds dizi olmalı" });
+    }
+
+    // İki aşamalı: önce hepsini negatif (geçici), sonra istenen sıraya
+    // Bu UNIQUE(targetRole, stepNumber) constraint'ini bypass eder
+    await db.transaction(async (tx) => {
+      // Aşama 1: tüm step'leri geçici negatif numaraya taşı
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx.update(branchOnboardingSteps)
+          .set({ stepNumber: -(i + 1000), updatedAt: new Date() })
+          .where(and(
+            eq(branchOnboardingSteps.id, orderedIds[i]),
+            eq(branchOnboardingSteps.targetRole, targetRole),
+          ));
+      }
+      // Aşama 2: doğru sıraya
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx.update(branchOnboardingSteps)
+          .set({ stepNumber: i + 1, updatedAt: new Date() })
+          .where(and(
+            eq(branchOnboardingSteps.id, orderedIds[i]),
+            eq(branchOnboardingSteps.targetRole, targetRole),
+          ));
+      }
+    });
+
+    const reordered = await db.select()
+      .from(branchOnboardingSteps)
+      .where(eq(branchOnboardingSteps.targetRole, targetRole))
+      .orderBy(asc(branchOnboardingSteps.stepNumber));
+
+    res.json({
+      message: `${orderedIds.length} adım yeniden sıralandı`,
+      steps: reordered,
+    });
+  } catch (error: any) {
+    console.error("[POST branch-onboarding/reorder] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-onboarding/me/progress
+// Mevcut kullanıcının ilerleme durumu
+// ──────────────────────────────────────
+router.get("/api/branch-onboarding/me/progress", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user?.role) {
+      return res.status(400).json({ error: "Kullanıcı rolü bulunamadı" });
+    }
+
+    // Bu rol için onboarding adımları
+    const steps = await db.select()
+      .from(branchOnboardingSteps)
+      .where(and(
+        eq(branchOnboardingSteps.targetRole, user.role),
+        eq(branchOnboardingSteps.isActive, true),
+      ))
+      .orderBy(asc(branchOnboardingSteps.stepNumber));
+
+    if (steps.length === 0) {
+      return res.json({
+        targetRole: user.role,
+        steps: [],
+        progress: [],
+        summary: { totalSteps: 0, completedSteps: 0, percentComplete: 0 },
+        message: "Bu rol için tanımlı onboarding yok",
+      });
+    }
+
+    // Tüm reçete ID'lerini topla
+    const allRecipeIds: number[] = [];
+    for (const step of steps) {
+      const ids = (step.recipeIds as number[]) || [];
+      for (const id of ids) {
+        if (!allRecipeIds.includes(id)) allRecipeIds.push(id);
+      }
+    }
+
+    // Bu kullanıcının bu reçeteler için progress'i
+    let progressByRecipe: Record<number, any> = {};
+    if (allRecipeIds.length > 0) {
+      const progressRows = await db.select()
+        .from(branchRecipeLearningProgress)
+        .where(and(
+          eq(branchRecipeLearningProgress.userId, user.id),
+          inArray(branchRecipeLearningProgress.recipeId, allRecipeIds),
+        ));
+
+      for (const p of progressRows) {
+        progressByRecipe[p.recipeId] = p;
+      }
+    }
+
+    // Her adım için tamamlanma durumu hesapla
+    const stepProgress = steps.map(step => {
+      const recipeIds = (step.recipeIds as number[]) || [];
+      const criteria = (step.completionCriteria as any) ?? {};
+      const minQuizScore = criteria.minQuizScore ?? 0;
+
+      let completedRecipes = 0;
+      let viewedRecipes = 0;
+      let recipeStatuses: any[] = [];
+
+      for (const rid of recipeIds) {
+        const p = progressByRecipe[rid];
+        const viewed = !!p && (p.viewCount ?? 0) > 0;
+        const quizPassed = !!p && minQuizScore > 0
+          ? ((p.quizCorrect ?? 0) / Math.max(p.quizAttempts ?? 1, 1) * 100) >= minQuizScore
+          : viewed; // Quiz şartı yoksa, izlemek yeterli
+
+        if (viewed) viewedRecipes++;
+        if (quizPassed) completedRecipes++;
+
+        recipeStatuses.push({
+          recipeId: rid,
+          viewed,
+          viewCount: p?.viewCount ?? 0,
+          quizAttempts: p?.quizAttempts ?? 0,
+          quizCorrect: p?.quizCorrect ?? 0,
+          completed: quizPassed,
+        });
+      }
+
+      const totalRecipes = recipeIds.length;
+      const isComplete = totalRecipes === 0 || completedRecipes === totalRecipes;
+      const percent = totalRecipes === 0 ? 0 : Math.round((completedRecipes / totalRecipes) * 100);
+
+      return {
+        stepId: step.id,
+        stepNumber: step.stepNumber,
+        title: step.title,
+        description: step.description,
+        estimatedMinutes: step.estimatedMinutes,
+        prerequisiteStepIds: step.prerequisiteStepIds,
+        completionCriteria: step.completionCriteria,
+        totalRecipes,
+        completedRecipes,
+        viewedRecipes,
+        percent,
+        isComplete,
+        recipes: recipeStatuses,
+      };
+    });
+
+    // Önkoşullar nedeniyle "kilitli" olan adımları işaretle
+    const completedStepIds = new Set(stepProgress.filter(sp => sp.isComplete).map(sp => sp.stepId));
+    const stepsWithLockState = stepProgress.map(sp => {
+      const prereqs = (sp.prerequisiteStepIds as number[]) || [];
+      const locked = prereqs.length > 0 && !prereqs.every(pid => completedStepIds.has(pid));
+      return { ...sp, locked };
+    });
+
+    const completedCount = stepsWithLockState.filter(sp => sp.isComplete).length;
+
+    res.json({
+      targetRole: user.role,
+      steps: stepsWithLockState,
+      summary: {
+        totalSteps: steps.length,
+        completedSteps: completedCount,
+        percentComplete: Math.round((completedCount / steps.length) * 100),
+      },
+    });
+  } catch (error: any) {
+    console.error("[GET branch-onboarding/me/progress] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
 export default router;

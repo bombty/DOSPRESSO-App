@@ -195,26 +195,36 @@ export default function BranchRecipesAdminPage() {
             HQ paneli — Ürün ekle, düzenle, görsel yükle
           </p>
         </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              className="bg-[#c0392b] hover:bg-[#a73225]"
-              data-testid="button-new-product"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Ürün
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <ProductFormDialog
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ["/api/branch-products"] });
-                setCreateDialogOpen(false);
-              }}
-              onCancel={() => setCreateDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/branch-recipes/admin/onboarding")}
+            data-testid="button-onboarding"
+          >
+            <ChefHat className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Onboarding</span>
+          </Button>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                className="bg-[#c0392b] hover:bg-[#a73225]"
+                data-testid="button-new-product"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni Ürün
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <ProductFormDialog
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/branch-products"] });
+                  setCreateDialogOpen(false);
+                }}
+                onCancel={() => setCreateDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Filtreler */}

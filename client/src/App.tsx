@@ -83,6 +83,7 @@ const BranchRecipes = lazyWithRetry(() => import("@/pages/branch-recipes/index")
 const BranchRecipeDetail = lazyWithRetry(() => import("@/pages/branch-recipes/detail"));
 const BranchRecipesAdmin = lazyWithRetry(() => import("@/pages/branch-recipes/admin"));
 const BranchRecipeEditor = lazyWithRetry(() => import("@/pages/branch-recipes/recipe-editor"));
+const BranchRecipesOnboarding = lazyWithRetry(() => import("@/pages/branch-recipes/onboarding"));
 const AcademySupervisor = lazyWithRetry(() => import("@/pages/academy-supervisor"));
 const AcademyHQ = lazyWithRetry(() => import("@/pages/akademi-hq"));
 const ModuleDetail = lazyWithRetry(() => import("@/pages/module-detail"));
@@ -488,6 +489,7 @@ function Router() {
           <Route path="/akademi-hq">{() => <ModuleGuard moduleKey="akademi"><AcademyHQ /></ModuleGuard>}</Route>
 
           {/* Şube Reçete Sistemi (4 May 2026 — Aslan onayı) */}
+          <Route path="/branch-recipes/admin/onboarding">{() => <BranchRecipesOnboarding />}</Route>
           <Route path="/branch-recipes/admin/recipe/:recipeId">{() => <BranchRecipeEditor />}</Route>
           <Route path="/branch-recipes/admin">{() => <BranchRecipesAdmin />}</Route>
           <Route path="/branch-recipes/:id">{(params) => <BranchRecipeDetail />}</Route>
