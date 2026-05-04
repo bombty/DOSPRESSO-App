@@ -277,6 +277,16 @@ export default function FactoryKiosk() {
     refetchInterval: 30000,
   });
 
+  // P1 (4 May gece): QC yetkili kullanıcılar listesi
+  // qcMode aktifken kullanıcı seç ekranında "Eren, Atiye, Sema, Aslan" gibi
+  // text input yerine liste gösterilir.
+  const { data: qcUsers = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory/kiosk/qc-users'],
+    queryFn: () => kioskFetchJson<any[]>('/api/factory/kiosk/qc-users', []),
+    enabled: qcMode && !selectedUser && step === 'enter-pin',
+    refetchInterval: 60000,
+  });
+
   const { data: activeWorkersData = [] } = useQuery<any[]>({
     queryKey: ['/api/factory/active-workers'],
     queryFn: () => kioskFetchJson<any[]>('/api/factory/active-workers', []),
@@ -1334,9 +1344,48 @@ export default function FactoryKiosk() {
                   <ClipboardCheck className="h-7 w-7 text-cyan-400" />
                 </div>
               ) : null}
-              <p className="text-sm text-slate-400 mb-2">{qcMode && !selectedUser ? 'Kullanıcı adınızı ve PIN kodunuzu girin' : 'PIN kodunuzu girin'}</p>
+              <p className="text-sm text-slate-400 mb-2">{qcMode && !selectedUser ? 'QC yapacak kullanıcıyı seçin' : 'PIN kodunuzu girin'}</p>
 
+              {/* P1 (4 May gece): QC kullanıcı listesi (text input yerine) */}
               {qcMode && !selectedUser && (
+                <div className="w-full max-w-md mb-4">
+                  {qcUsers.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-6">
+                      QC yetkili kullanıcı bulunamadı.<br />
+                      <span className="text-xs">Yetkili roller: kalite_yoneticisi, gida_muhendisi, admin, ceo</span>
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto">
+                      {qcUsers.map((qcUser: any) => (
+                        <Button
+                          key={qcUser.id}
+                          variant="outline"
+                          className="h-auto p-3 flex flex-col items-center gap-1 bg-slate-700/50 border-slate-600 hover:border-cyan-500 transition-all"
+                          onClick={() => {
+                            setSelectedUser(qcUser);
+                            setUsernameInput(qcUser.username || '');
+                            setPinInput('');
+                          }}
+                          data-testid={`qc-user-${qcUser.id}`}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-cyan-600/20 flex items-center justify-center">
+                            <span className="text-sm font-bold text-cyan-400">
+                              {(qcUser.firstName?.[0] || '')}{(qcUser.lastName?.[0] || '')}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-200 font-medium text-center leading-tight">
+                            {qcUser.firstName} {qcUser.lastName}
+                          </span>
+                          <span className="text-[9px] text-slate-500 uppercase">{qcUser.role}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Eski text input — qcMode liste varsa gizle */}
+              {qcMode && !selectedUser && false && (
                 <Input
                   placeholder="Kullanıcı adı"
                   value={usernameInput}
