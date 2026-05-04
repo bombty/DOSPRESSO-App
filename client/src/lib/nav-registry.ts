@@ -435,6 +435,25 @@ export const NAV_ITEMS: NavItem[] = [
     defaultDescTR: "Bordro & Maaş Yönetimi",
     defaultDescEN: "Payroll & Salary",
   },
+  // Sprint 2 (5 May 2026): HQ Kiosk — Ofis personeli giriş-çıkış takibi
+  // Mahmut Bey'in görmesi gereken 15 ofis çalışanı için
+  {
+    id: "hq-kiosk",
+    route: "/hq/kiosk",
+    icon: Clock,
+    group: "management",
+    order: 51,
+    labelKey: "nav.hqKiosk",
+    defaultLabelTR: "Ofis Kiosk",
+    defaultLabelEN: "HQ Kiosk",
+    scopes: ["hq"],
+    roles: ["admin", "ceo", "muhasebe", "muhasebe_ik", "ik"],
+    color: "bg-cyan-600",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/40",
+    descriptionKey: "nav.desc.hqKiosk",
+    defaultDescTR: "Ofis giriş-çıkış takibi",
+    defaultDescEN: "Office check-in/out",
+  },
   {
     id: "stock",
     route: "/satinalma",
