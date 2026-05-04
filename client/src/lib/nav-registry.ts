@@ -654,6 +654,22 @@ export const NAV_ITEMS: NavItem[] = [
     defaultDescTR: "Kendi bordronuzu görüntüleyin",
     defaultDescEN: "View your own payslip",
   },
+  // Sprint 4 (5 May 2026): Personel Self-Service — kendi puantaj/izin/mesai
+  {
+    id: "personel-puantajim",
+    route: "/personel-puantajim",
+    icon: Clock,
+    group: "settings",
+    order: 76,
+    labelKey: "nav.myAttendance",
+    defaultLabelTR: "Puantajım",
+    defaultLabelEN: "My Attendance",
+    scopes: ["branch", "factory", "hq"],
+    color: "bg-blue-600",
+    descriptionKey: "nav.desc.myAttendance",
+    defaultDescTR: "Kendi puantaj, izin ve mesainiz",
+    defaultDescEN: "Your attendance, leave & overtime",
+  },
   {
     id: "search",
     route: "#search",

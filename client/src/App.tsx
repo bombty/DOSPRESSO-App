@@ -273,6 +273,7 @@ const PdksIzinGunleri = lazyWithRetry(() => import("@/pages/pdks-izin-gunleri"))
 const PdksExcelImport = lazyWithRetry(() => import("@/pages/pdks-excel-import"));
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
+const PersonelPuantajim = lazyWithRetry(() => import("@/pages/personel-puantajim"));  // Sprint 4 (5 May 2026)
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 // ── Orphan → Linked (Sistem Atölyesi kararı) ──
 const Announcements = lazyWithRetry(() => import("@/pages/announcements"));
@@ -687,6 +688,9 @@ function Router() {
           <Route path="/pdks-excel-import">{() => <ProtectedRoute allowedRoles={["admin","muhasebe","muhasebe_ik"]}><PdksExcelImport /></ProtectedRoute>}</Route>
           <Route path="/maas" component={MaasPage} />
           <Route path="/bordrom" component={BordromPage} />
+          {/* Sprint 4 (5 May 2026): Personel Self-Service — kendi puantaj/izin/mesai */}
+          <Route path="/personel-puantajim" component={PersonelPuantajim} />
+          <Route path="/puantajim" component={PersonelPuantajim} />
           <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />
           {/* Sprint A1 (21 Nisan 2026) — 2 kırık link redirect (Karar 4 + Karar 5) */}
           <Route path="/musteri-geribildirimi" component={MusteriGeribildirimiRedirect} />
